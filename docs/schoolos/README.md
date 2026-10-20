@@ -23,7 +23,7 @@ such as F01 and A02) lives in the SchoolOS Kanbanger project, which uses the `SC
 3. [Issuer-qualified principal identity](adr/0003-principal-identity.md)
 4. [Capability packs and policy floors](adr/0004-capability-packs-and-policy-floors.md)
 5. [Default-deny authorization vocabulary](adr/0005-authorization-vocabulary.md)
-6. [PlayTrek IP boundary](adr/0006-playtrek-ip-boundary.md)
+6. [Reusing PlayTrek code](adr/0006-playtrek-ip-boundary.md)
 
 ## Rules every SchoolOS change follows
 
