@@ -15,6 +15,18 @@ such as F01 and A02) lives in the SchoolOS Kanbanger project, which uses the `SC
 | `docs/schoolos/threat-model.md` | Assets, trust boundaries and threats, mapped to the acceptance tests. |
 | `packages/schoolos-contracts` | `@schoolos/contracts`: IDs, scopes, principals, the authorization vocabulary, capability manifests, configuration revisions, policy floors, errors and directory integrity checks. |
 | `packages/schoolos-fixtures` | `@schoolos/fixtures`: two isolated synthetic districts. These are the only directory data tests may use. |
+| `packages/schoolos-harness` | `@schoolos/harness`: boots both districts locally as isolated instances, each with a fake IdP, roster and AI provider. |
+
+## Running the districts locally
+
+```sh
+pnpm schoolos:harness            # Northfield on :4801, Riverbend on :4802, until Ctrl-C
+pnpm schoolos:harness -- --check # boot, check every /health over HTTP, exit
+```
+
+Each district serves `GET /health`, `GET /me` and `POST /ai/complete`. The harness prints a
+ready-made `curl` command with a student token for each district. A token from one district's IdP is
+rejected by the other. `SCHOOLOS_HARNESS_PORT` moves the first port.
 
 ## Decisions
 
