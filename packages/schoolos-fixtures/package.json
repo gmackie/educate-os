@@ -1,0 +1,17 @@
+{
+  "name": "@schoolos/fixtures",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Two isolated synthetic SchoolOS districts for tests and the local harness. Synthetic data only; no real people.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

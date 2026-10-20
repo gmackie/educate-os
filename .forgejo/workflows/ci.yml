@@ -1,0 +1,83 @@
+# SchoolOS CI on ForgeGraph (git.forgegraf.com). Forgejo ignores .github/workflows when this
+# directory exists, so the upstream Cloudflare workflows (CLA, contribution policy, previews, evals)
+# do not run here; GitHub (gmackie/school-os) only mirrors commits.
+#
+# The required gate is the repository's own `pnpm lint` (oxlint, script types, generated configs and
+# the full workspace build) plus every SchoolOS package's tests. The upstream Workshop suites are
+# kept in a separate job so a kernel regression is still visible.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  NODE_VERSION: "24.19.0"
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # pnpm's version and integrity hash come from `packageManager` in package.json.
+      - name: Enable Corepack
+        run: corepack enable
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint and build
+        run: pnpm lint
+
+      - name: Test SchoolOS packages
+        run: node scripts/vp/run.ts --cache --fail-if-no-match --filter='@schoolos/*' test
+
+      - name: Report CI result to ForgeGraph
+        if: always()
+        env:
+          FG_CI_TOKEN: ${{ secrets.FORGEGRAPH_TOKEN }}
+        run: |
+          case "${{ job.status }}" in
+            success) STATUS=success ;;
+            cancelled) STATUS=cancelled ;;
+            *) STATUS=failure ;;
+          esac
+          REPO_FULL="${{ github.repository }}"
+          curl -sf -X POST "https://forgegraf.com/api/fg/ci/report" \
+            -H "Authorization: Bearer ${FG_CI_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"owner\": \"${REPO_FULL%%/*}\",
+              \"repo\": \"${REPO_FULL##*/}\",
+              \"sha\": \"${{ github.event.pull_request.head.sha || github.sha }}\",
+              \"branch\": \"${{ github.head_ref || github.ref_name }}\",
+              \"status\": \"${STATUS}\",
+              \"runId\": \"${{ github.run_id }}\",
+              \"runUrl\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",
+              \"workflowName\": \"CI\"
+            }" || echo "::warning::Failed to report CI result to ForgeGraph"
+
+  # Not part of the reported gate: upstream's own suites, which SchoolOS changes should not break.
+  workshop-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Test Workshop packages (browser suites excluded)
+        run: >-
+          node scripts/vp/run.ts --cache --fail-if-no-match
+          --filter=!cloudflare-os --filter='!@schoolos/*'
+          --filter=!@gadgets/workshop-frontend --filter=!@gadgets/configurator-ui
+          test

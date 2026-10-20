@@ -1,0 +1,7 @@
+app: school-os
+server: https://forgegraf.com
+
+# --- Operator notes (comments only; not part of the applied schema) ---
+# Pull requests and CI live on ForgeGraph (git.forgegraf.com/gmackie/school-os, remote `forge`).
+# GitHub (gmackie/school-os, remote `origin`) receives the same commits as a mirror; it has no PRs.
+# No deployment stages yet: SchoolOS districts deploy into their own Cloudflare accounts (R02).
