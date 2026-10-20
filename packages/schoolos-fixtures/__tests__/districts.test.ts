@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkDirectoryIntegrity, externalIdentityKey } from "@schoolos/contracts";
-import { NORTHFIELD, RIVERBEND, SYNTHETIC_DISTRICTS } from "../src/index";
+import { NORTHFIELD, RIVERBEND, SYNTHETIC_DISTRICTS } from "../src/index.ts";
 
 function allIds(snapshot: (typeof SYNTHETIC_DISTRICTS)[number]): string[] {
   return [

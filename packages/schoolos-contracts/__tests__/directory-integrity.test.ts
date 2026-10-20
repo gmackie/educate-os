@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DistrictDirectorySnapshot, checkDirectoryIntegrity } from "../src/index";
+import { DistrictDirectorySnapshot, checkDirectoryIntegrity } from "../src/index.ts";
 
 const D = "dst_one";
 const IDP = "https://idp.one.example";

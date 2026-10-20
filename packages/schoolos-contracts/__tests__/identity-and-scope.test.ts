@@ -8,7 +8,7 @@ import {
   SchoolId,
   externalIdentityKey,
   scopeContains,
-} from "../src/index";
+} from "../src/index.ts";
 
 describe("identifiers", () => {
   it("accepts an ID of its own kind and rejects every other kind", () => {

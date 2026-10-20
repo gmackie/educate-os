@@ -7,8 +7,8 @@ import {
   PrincipalId,
   SchoolId,
   TermId,
-} from "./ids";
-import { Principal, RoleAssignment } from "./identity";
+} from "./ids.ts";
+import { Principal, RoleAssignment } from "./identity.ts";
 
 /** A district: the tenant, and the owner of every record beneath it. */
 export const District = z.strictObject({

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { DistrictId, PrincipalId } from "./ids";
-import { Scope } from "./scope";
+import { DistrictId, PrincipalId } from "./ids.ts";
+import { Scope } from "./scope.ts";
 
 /**
  * An identity asserted by a trusted issuer (an IdP, Cloudflare Access, an LTI platform). It is a

@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { DistrictId, PrincipalId } from "./ids";
-import { Scope } from "./scope";
-import { TermState } from "./academic";
+import { DistrictId, PrincipalId } from "./ids.ts";
+import { Scope } from "./scope.ts";
+import { TermState } from "./academic.ts";
 
 /**
  * The authorization vocabulary every SchoolOS service and Gatekeeper speaks (ADR-0005). These are

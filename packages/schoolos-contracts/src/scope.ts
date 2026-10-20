@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ActivityId, DistrictId, OfferingId, SchoolId } from "./ids";
+import { ActivityId, DistrictId, OfferingId, SchoolId } from "./ids.ts";
 
 /**
  * The levels configuration and authorization attach to, from widest to narrowest. Policy resolves

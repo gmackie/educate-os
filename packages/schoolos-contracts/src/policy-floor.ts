@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ScopeLevel, SCOPE_LEVELS } from "./scope";
+import { ScopeLevel, SCOPE_LEVELS } from "./scope.ts";
 
 /**
  * The governance settings that form a district's policy floor (roadmap §4). Each enumerated

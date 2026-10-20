@@ -1,5 +1,5 @@
 import { DistrictDirectorySnapshot } from "@schoolos/contracts";
-import { enroll, person } from "./builders";
+import { enroll, person } from "./builders.ts";
 
 const D = "dst_riverbend";
 const IDP = "https://login.riverbend.example";

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { CapabilityId, ConfigRevisionId, DistrictId, OfferingId, PrincipalId, SchoolId } from "./ids";
-import { ScopeLevel } from "./scope";
+import { CapabilityId, ConfigRevisionId, DistrictId, OfferingId, PrincipalId, SchoolId } from "./ids.ts";
+import { ScopeLevel } from "./scope.ts";
 
 /** A semantic version (`1.4.0`, `0.2.0-beta.1`). */
 export const SemVer = z

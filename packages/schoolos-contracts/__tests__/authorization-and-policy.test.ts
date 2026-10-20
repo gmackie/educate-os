@@ -6,7 +6,7 @@ import {
   SchoolOsError,
   precheckAuthorization,
   resolvePolicy,
-} from "../src/index";
+} from "../src/index.ts";
 
 const request = (overrides: Record<string, unknown> = {}) => ({
   subject: { principalId: "prn_student-a", districtId: "dst_one" },

@@ -1,6 +1,6 @@
-import type { DistrictDirectorySnapshot } from "./academic";
-import { externalIdentityKey } from "./identity";
-import type { Scope } from "./scope";
+import type { DistrictDirectorySnapshot } from "./academic.ts";
+import { externalIdentityKey } from "./identity.ts";
+import type { Scope } from "./scope.ts";
 
 /** One referential or tenancy problem in a directory snapshot. */
 export interface DirectoryIssue {

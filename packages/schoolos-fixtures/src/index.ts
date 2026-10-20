@@ -1,9 +1,9 @@
 import type { DistrictDirectorySnapshot } from "@schoolos/contracts";
-import { NORTHFIELD } from "./northfield";
-import { RIVERBEND } from "./riverbend";
+import { NORTHFIELD } from "./northfield.ts";
+import { RIVERBEND } from "./riverbend.ts";
 
-export { NORTHFIELD } from "./northfield";
-export { RIVERBEND } from "./riverbend";
+export { NORTHFIELD } from "./northfield.ts";
+export { RIVERBEND } from "./riverbend.ts";
 
 /**
  * Both synthetic districts. They are meant to run as fully isolated instances: no ID, issuer or
