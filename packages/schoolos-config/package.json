@@ -1,0 +1,20 @@
+{
+  "name": "@schoolos/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS configuration compiler: the capability registry and shipped pack manifests, the declarative district config document, configuration revisions with diff and rollback, dry-run plans and schema-driven form descriptors. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}
