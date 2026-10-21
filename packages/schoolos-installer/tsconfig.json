@@ -2,14 +2,14 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    // The CLI and the release-directory reader use node:fs; the library itself uses only fetch,
-    // Web Crypto and the other globals workerd also provides.
+    // The web-standard surface Workers, Node 24 and browsers share (ADR-0009), plus Node's
+    // typings: this package is a Node program, not only a library.
     "types": ["node"],
-    // Node runs these sources directly (the CLI), so specifiers name the file on disk and only
-    // erasable TypeScript syntax is allowed.
+    // Node runs these sources directly, so specifiers name the file on disk and only erasable
+    // TypeScript syntax is allowed.
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true
   },

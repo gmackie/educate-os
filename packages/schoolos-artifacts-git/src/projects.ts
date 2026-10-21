@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { GitOid } from "@gadgets/workshop-shared/gatekeeper";
+import type { GitOid } from "@gadgets/gatekeeper-kit/git-objects";
 import { diffGitTrees, parseGitTreePayload, type GitDiffHunk, type TreeDiffSource } from "@gadgets/gatekeeper-kit/git-diff";
 import {
   ArtifactId,

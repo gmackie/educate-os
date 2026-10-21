@@ -2,7 +2,7 @@
 // namespace and repository handles (the same calls `gatekeeper-context`'s `artifact-sync.ts` and
 // context collections make), and a token-authenticated Git transport for pushing versions. A real
 // `Artifacts` binding satisfies `ArtifactsNamespace` structurally; `InMemoryArtifacts` is the fake.
-import type { GitOid } from "@gadgets/workshop-shared/gatekeeper";
+import type { GitOid } from "@gadgets/gatekeeper-kit/git-objects";
 import type { GitObject } from "./git-objects.ts";
 
 /** A token's access: `read` clones and fetches; `write` also pushes. */

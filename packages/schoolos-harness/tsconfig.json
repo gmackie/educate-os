@@ -2,18 +2,17 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    // The CLI serves districts over node:http; everything else uses only fetch-standard APIs.
+    // The web-standard surface Workers, Node 24 and browsers share (ADR-0009), plus Node's
+    // typings: this package is a Node program, not only a library.
     "types": ["node"],
-    "paths": {
-      // The district app reaches @schoolos/artifacts-git; see that package's tsconfig.
-      "@gadgets/workshop-shared/gatekeeper": ["../schoolos-artifacts-git/types/workshop-shared-gatekeeper.d.ts"]
-    },
+    // Node runs these sources directly, so specifiers name the file on disk and only erasable
+    // TypeScript syntax is allowed.
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true
   },
-  "include": ["src", "__tests__", "../schoolos-district-app/types"],
+  "include": ["src", "__tests__"],
   "exclude": ["dist", "node_modules"]
 }

@@ -115,7 +115,7 @@ async function retrieve(url: string, fetch: ImportFetch, limits: UrlImportLimits
  */
 export async function fetchForImport(url: string, fetch: ImportFetch, limits: UrlImportLimits = DEFAULT_URL_IMPORT_LIMITS): Promise<FetchedSource> {
   const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   // The race also bounds a fetch implementation that ignores its abort signal.
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {

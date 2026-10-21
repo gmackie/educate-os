@@ -2,16 +2,17 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    // For the web globals the code uses (`crypto`, `TextEncoder`, `Blob`, `Response` and the
-    // compression streams), and for the tests' `node:child_process`. The source imports nothing
-    // from Node, so it runs unchanged under workerd.
-    "types": ["node"],
+    // The web-standard surface Workers, Node 24 and browsers share (ADR-0009): no runtime's own
+    // typings, so any SchoolOS package can compile these sources unchanged.
+    "types": [],
+    // Node runs these sources directly, so specifiers name the file on disk and only erasable
+    // TypeScript syntax is allowed.
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true
   },
-  "include": ["src", "__tests__"],
+  "include": ["src"],
   "exclude": ["dist", "node_modules"]
 }

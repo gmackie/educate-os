@@ -2,23 +2,19 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    // The UI itself uses no Node API. The route schemas it reaches through @schoolos/api-client are
-    // typed against Node's fetch globals, and the district app's `types/` (with this package's own,
-    // for the DOM) reconciles the Content Studio sources with them; the harness-backed tests boot a
-    // real district app besides. `vite/client` types the stylesheet import.
-    "types": ["node", "vite/client"],
-    "paths": {
-      "@gadgets/workshop-shared/gatekeeper": ["../schoolos-artifacts-git/types/workshop-shared-gatekeeper.d.ts"]
-    },
+    // The route schemas the API client validates with are checked here too; they are written against
+    // the web-standard surface (ADR-0009), so the DOM typings take them as they are. `vite/client`
+    // types the stylesheet import.
+    "types": ["vite/client"],
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src", "types", "../schoolos-district-app/types"],
+  "include": ["src"],
   "exclude": ["dist", "node_modules"]
 }

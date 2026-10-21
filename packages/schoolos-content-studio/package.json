@@ -14,7 +14,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "catalog:",
     "@gadgets/scripts": "workspace:*",
     "@schoolos/fixtures": "workspace:*",
     "vitest": "catalog:"

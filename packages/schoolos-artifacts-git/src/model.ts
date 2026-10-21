@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { GitOid } from "@gadgets/workshop-shared/gatekeeper";
+import type { GitOid } from "@gadgets/gatekeeper-kit/git-objects";
 import { SchoolOsError } from "@schoolos/contracts";
 import { ContentDigest, RevisionId, sha256Digest } from "@schoolos/learning-artifacts";
 import { DIRECTORY_MODE, encodeTree, FILE_MODE, gitObject, type GitObject, type TreeEntryInput } from "./git-objects.ts";
