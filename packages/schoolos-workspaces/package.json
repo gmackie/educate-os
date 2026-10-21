@@ -1,0 +1,22 @@
+{
+  "name": "@schoolos/workspaces",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS workspace directory: stable logical personal and course workspaces, provisioned lazily per student, with a lifecycle derived from term state and retention, legal hold, term close and rollover, and promotion links. Every read goes through the ABAC policy engine. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/academics": "workspace:*",
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/policy": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}
