@@ -29,8 +29,9 @@ rounding to cents makes moderation spend disappear from budgets and reports.
 
 - Sub-cent moderation spend accumulates exactly: 1,000 checks at 38,000 nanodollars total 3.8¢.
 - Usage with no reported cost is recorded as an unknown liability, never as $0.
-- Commerce money (`@schoolos/commerce`) stays in cents, because invoices are cents. It rounds the
-  fleet heartbeat's AI spend up to the cent where it prices an overage line.
+- Commerce money (`@schoolos/commerce`) stays in cents, because invoices are cents. The fleet
+  heartbeat's AI spend is the district's own AI Gateway bill, which an invoice reports on a
+  zero-amount line and never charges (SCHO-98), so it keeps that figure in nanodollars.
 
 ## Amendment (SCHO-119)
 

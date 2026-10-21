@@ -1,4 +1,4 @@
-import { CapabilityId, CommercialAccountId, InstanceId, OpaqueCode, UtcTimestamp } from "@schoolos/contracts";
+import { CapabilityId, CommercialAccountId, InstanceId, OpaqueCode, UsdNano, UtcTimestamp } from "@schoolos/contracts";
 import { z } from "zod";
 import {
   ContactRef,
@@ -32,7 +32,7 @@ export const CommercialAccount = z.strictObject({
   instanceIds: z.array(InstanceId).max(16),
   /**
    * Whether the district opted in to sharing its aggregate AI spend with the root. Only then may
-   * that figure inform an invoice's usage line.
+   * that figure appear on an invoice, and only as a reporting line that charges nothing.
    */
   aiUsageSharing: z.enum(["opted-in", "opted-out"]),
   /** The account's customer at the payment processor, once created. */
@@ -60,7 +60,11 @@ export const GraceRules = z.strictObject({
 /** Grace rules. */
 export type GraceRules = z.infer<typeof GraceRules>;
 
-/** A plan: a tier, the capability packs it entitles, its enrollment band, AI credit allowance and price. */
+/**
+ * A plan: a tier, the capability packs it entitles, its enrollment band and price. It includes no
+ * AI credit: districts pay for AI on their own Cloudflare bill, and SchoolOS neither funds nor
+ * resells it (SCHO-98).
+ */
 export const Plan = z
   .strictObject({
     planId: PlanId,
@@ -75,8 +79,6 @@ export const Plan = z
       minEnrollment: z.number().int().min(0),
       maxEnrollment: z.number().int().min(1).optional(),
     }),
-    /** SchoolOS-funded AI credit included per term, in cents. */
-    aiCreditAllowanceCents: Cents,
     /** The plan's fee per term, in cents. */
     termFeeCents: Cents,
     graceRules: GraceRules,
@@ -149,17 +151,23 @@ export const PurchaseOrder = z.strictObject({
 export type PurchaseOrder = z.infer<typeof PurchaseOrder>;
 
 /**
- * What an invoice line charges for. Every kind is a SchoolOS fee: there is deliberately no kind
- * for the district's Cloudflare bill, which Cloudflare invoices to the district directly and which
+ * What an invoice line is for. Every kind but one is a SchoolOS fee; `ai-usage-report` is a
+ * reporting line that charges nothing (see {@link InvoiceLine}). There is deliberately no kind for
+ * the district's Cloudflare bill, which Cloudflare invoices to the district directly and which
  * SchoolOS never passes through, marks up or collects (roadmap R04).
  */
-export const InvoiceLineKind = z.enum(["plan-fee", "capability-pack", "support", "ai-credit-overage", "adjustment"]);
+export const InvoiceLineKind = z.enum(["plan-fee", "capability-pack", "support", "ai-usage-report", "adjustment"]);
 /** An invoice line kind. */
 export type InvoiceLineKind = z.infer<typeof InvoiceLineKind>;
 
 /**
  * One invoice line: a catalog code, never free text, so nothing personal can be written into an
  * invoice. `amountCents` is always `quantity * unitAmountCents`.
+ *
+ * An `ai-usage-report` line states the district's own AI Gateway spend, from an opted-in
+ * heartbeat, in `reportedUsdNano` (nanodollars, ADR-0008), and charges nothing: that spend is already on the district's
+ * Cloudflare bill, so charging for it would bill it twice (SCHO-98). Its amounts are always zero,
+ * and no other line carries `reportedUsdNano`.
  */
 export const InvoiceLine = z
   .strictObject({
@@ -168,8 +176,13 @@ export const InvoiceLine = z
     quantity: z.number().int().min(1).max(1_000_000),
     unitAmountCents: Cents,
     amountCents: Cents,
+    reportedUsdNano: UsdNano.optional(),
   })
-  .refine((l) => l.amountCents === l.quantity * l.unitAmountCents, { message: "expected amountCents = quantity * unitAmountCents" });
+  .refine((l) => l.amountCents === l.quantity * l.unitAmountCents, { message: "expected amountCents = quantity * unitAmountCents" })
+  .refine((l) => (l.kind === "ai-usage-report") === (l.reportedUsdNano !== undefined), {
+    message: "expected reportedUsdNano on exactly the ai-usage-report lines",
+  })
+  .refine((l) => l.kind !== "ai-usage-report" || l.amountCents === 0, { message: "expected an ai-usage-report line to charge nothing" });
 /** An invoice line. */
 export type InvoiceLine = z.infer<typeof InvoiceLine>;
 
@@ -277,3 +290,18 @@ export const CreditEntry = z
   .refine((e) => (e.kind === "applied") === (e.invoiceId !== undefined), { message: "expected an invoice on exactly the applied entries" });
 /** A credit ledger entry. */
 export type CreditEntry = z.infer<typeof CreditEntry>;
+
+/** A charge or refund commerce asked the processor for, and its outcome once a webhook reports it. */
+export const ProcessorOperation = z.strictObject({
+  processorRef: ProcessorRef,
+  accountId: CommercialAccountId,
+  kind: z.enum(["charge", "refund"]),
+  invoiceId: InvoiceId,
+  amountCents: Cents,
+  /** For a refund, the payment it reverses. */
+  refundOf: PaymentId.optional(),
+  /** Absent until the processor reports the outcome. */
+  outcome: z.enum(["succeeded", "failed"]).optional(),
+});
+/** A processor operation. */
+export type ProcessorOperation = z.infer<typeof ProcessorOperation>;

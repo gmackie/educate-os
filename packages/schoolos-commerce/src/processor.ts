@@ -4,9 +4,9 @@ import { z } from "zod";
 import { ProcessorRef } from "./ids.ts";
 import { Cents } from "./money.ts";
 
-// The payment processor is a port. A real adapter (Stripe or another processor) lives in the
-// private root service, which owns the credentials and the network; this library only defines the
-// contract and ships a fake for tests. Full procurement automation is deferred (roadmap §12).
+// The payment processor is a port. `StripePaymentProcessor` (`stripe.ts`) is the adapter the
+// private root service runs with its own credentials; `FakePaymentProcessor` stands in for tests
+// and the local harness. Full procurement automation is deferred (roadmap §12).
 
 /**
  * A processor webhook event, normalized. A real adapter verifies the processor's webhook
@@ -49,10 +49,11 @@ export interface PaymentProcessor {
   /** Requests a refund of (part of) a charge. Returns the refund's reference. */
   refund(request: RefundRequest): Promise<ProcessorRef>;
   /**
-   * Maps a raw webhook delivery to a {@link ProcessorEvent}, or `undefined` for event types
-   * commerce doesn't act on. Throws `unauthenticated` if the delivery fails verification.
+   * Verifies a raw webhook delivery and maps it to a {@link ProcessorEvent}, or `undefined` for
+   * event types commerce doesn't act on. Throws `unauthenticated` if the delivery fails
+   * verification.
    */
-  mapWebhookEvent(delivery: unknown): ProcessorEvent | undefined;
+  mapWebhookEvent(delivery: unknown): Promise<ProcessorEvent | undefined>;
 }
 
 /** The raw delivery the {@link FakePaymentProcessor} emits: a normalized event plus a shared-secret tag. */
@@ -103,7 +104,7 @@ export class FakePaymentProcessor implements PaymentProcessor {
     return this.#once(`refund:${request.idempotencyKey}`, "re", (ref) => this.#emit("refund.succeeded", ref, request.amountCents));
   }
 
-  mapWebhookEvent(delivery: unknown): ProcessorEvent | undefined {
+  async mapWebhookEvent(delivery: unknown): Promise<ProcessorEvent | undefined> {
     const parsed = FakeDelivery.safeParse(delivery);
     if (!parsed.success) throw new SchoolOsError("unauthenticated", "webhook delivery failed verification");
     return parseWire(ProcessorEvent, parsed.data.event, "processor event");
