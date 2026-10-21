@@ -1,0 +1,8 @@
+{
+  // The seed generator runs under Node at authoring time, never in a Worker.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["."]
+}

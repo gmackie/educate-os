@@ -1,0 +1,21 @@
+{
+  "name": "@schoolos/catalog",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS reviewed framework catalog (CCSS, NGSS, C3, CASEL, ELOF, TEKS, Michigan) with licensing decisions, PlayTrek-derived seed content, and a district-local catalog mirror with pinned releases, approvals, overlays, upgrade diffs and coverage reports. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/registry": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@gadgets/scripts": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}
