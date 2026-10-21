@@ -38,6 +38,7 @@ import {
   UserGatewayRouting,
 } from "./ai-models";
 import { AI_CALL_DENIED, AgentTurnError, AiCallDeniedError, completeText } from "./ai-invoke";
+import type { AiCallSite } from "@gadgets/workshop-shared/ai-call-guard";
 import {
   AiGatewayLogRetryableError,
   getAiGatewayConfig,
@@ -1074,8 +1075,10 @@ class OverseerImpl implements AgentHooks {
     // queued after the final response: as in #finishAgentTurn, they prompt the next turn.
     let wait = this.#decisionWait(record.chatId);
     let meta = this.storage.chatMeta.get(record.chatId);
+    let callSite = record.callSite ?? (record.callbackInitiated ? "agent.callback" : "chat.agent");
     if (wait === null && meta?.queuedSteers) {
       this.#logQueuedSteers(meta, false);
+      callSite = "chat.steer";
     } else if (wait !== undefined) {
       if (meta) {
         delete meta.activeAgent;
@@ -1150,8 +1153,7 @@ class OverseerImpl implements AgentHooks {
     delete record.resumeAttempts;
     this.storage.activeAgents.put(record);
     await this.#runAgentTurn(
-        record.chatId, aiModel, record.initiator, record.initiatorUserId, record.callbackInitiated,
-        liveChat);
+        record.chatId, aiModel, record.initiator, record.initiatorUserId, callSite, liveChat);
   }
 
   // The hand-off once a chat's turn is over and its running-agent state has been torn down: drop
@@ -1176,7 +1178,8 @@ class OverseerImpl implements AgentHooks {
       if (next) meta.activeAgent = next.aiModel.profile;
       this.#logQueuedSteers(meta, !next);
       if (next) {
-        this.startAgent(chatId, next.aiModel, next.initiator, next.initiatorUserId);
+        this.startAgent(
+            chatId, next.aiModel, next.initiator, next.initiatorUserId, "chat.steer");
         return;
       }
     }
@@ -6624,8 +6627,9 @@ class OverseerImpl implements AgentHooks {
 
     if (prepared.message !== undefined && userMeta.aiModel) {
       let needsAgentTurnKeepAlive = responseTargetRegistration !== undefined;
-      this.startAgent(chatId, userMeta.aiModel, userMeta.profile,
-                      clientUser.id.toString(), false, needsAgentTurnKeepAlive);
+      this.startAgent(chatId, userMeta.aiModel, userMeta.profile, clientUser.id.toString(),
+                      responseTargetRegistration ? "chat.external" : "chat.message",
+                      needsAgentTurnKeepAlive);
     }
 
     if (userMeta.quickModel) {
@@ -6756,8 +6760,9 @@ class OverseerImpl implements AgentHooks {
 
     if (runsAgentTurn && userMeta.aiModel) {
       let needsAgentTurnKeepAlive = responseTargetRegistration !== undefined;
-      this.startAgent(chatId, userMeta.aiModel, userMeta.profile,
-                      clientUser.id.toString(), false, needsAgentTurnKeepAlive);
+      this.startAgent(chatId, userMeta.aiModel, userMeta.profile, clientUser.id.toString(),
+                      responseTargetRegistration ? "chat.external" : "chat.message",
+                      needsAgentTurnKeepAlive);
     }
     this.recordGadgetAnalytics({
       event_name: "gadget_interaction",
@@ -7132,10 +7137,11 @@ class OverseerImpl implements AgentHooks {
   // Start an agent turn for the given chat (fire-and-forget). Persists an `ActiveAgentRecord` so
   // the turn can be resumed after a server restart, and tracks the turn so the keep-alive alarm is
   // held while it runs. `initiatorUserId` is the hex DO ID of the user whose model/account is used,
-  // needed to re-resolve the model config on resume.
+  // needed to re-resolve the model config on resume. `callSite` names what started the turn, for the
+  // AI call guard.
   startAgent(chatId: number, aiModel: UserAiModelRecord,
              initiator: AiChatAuthorInfo, initiatorUserId: string,
-             callbackInitiated: boolean = false,
+             callSite: AiCallSite = "chat.agent",
              keepAlive: boolean = false): void {
     // Register before starting the turn so registration always precedes the turn's teardown
     // (`#unregisterRunningAgent`, in `#runAgentTurn`'s finally).
@@ -7146,19 +7152,19 @@ class OverseerImpl implements AgentHooks {
       initiatorUserId,
       modelId: aiModel.profile.id,
       initiator,
-      callbackInitiated,
+      callbackInitiated: callSite === "agent.callback",
+      callSite,
     });
 
     let liveChat = this.#getLiveChat(chatId);
-    let turn = this.#runAgentTurn(
-        chatId, aiModel, initiator, initiatorUserId, callbackInitiated, liveChat);
+    let turn = this.#runAgentTurn(chatId, aiModel, initiator, initiatorUserId, callSite, liveChat);
     if (keepAlive) this.ctx.waitUntil(turn);
   }
 
   #runAgentTurn(chatId: number, aiModel: UserAiModelRecord,
                 initiator: AiChatAuthorInfo,
                 initiatorUserId: string,
-                callbackInitiated: boolean,
+                callSite: AiCallSite,
                 liveChat: LiveChatContext): Promise<void> {
     return obsContext.with({
       operation: "agent.run",
@@ -7166,13 +7172,13 @@ class OverseerImpl implements AgentHooks {
       chatId,
       modelId: aiModel.profile.id,
     }, () => this.#runAgentTurnWithContext(
-        chatId, aiModel, initiator, initiatorUserId, callbackInitiated, liveChat));
+        chatId, aiModel, initiator, initiatorUserId, callSite, liveChat));
   }
 
   async #runAgentTurnWithContext(chatId: number, aiModel: UserAiModelRecord,
                                  initiator: AiChatAuthorInfo,
                                  initiatorUserId: string,
-                                 callbackInitiated: boolean,
+                                 callSite: AiCallSite,
                                  liveChat: LiveChatContext): Promise<void> {
     let owns = () => this.#liveChats.get(chatId) === liveChat;
     // When this turn is billed to the user's own Cloudflare account, we refresh their cached credit
@@ -7189,7 +7195,7 @@ class OverseerImpl implements AgentHooks {
       modelId: aiModel.profile.id,
     });
     turnLogger.debug("agent run started", {
-      event: "agent.run.started", callbackInitiated,
+      event: "agent.run.started", callbackInitiated: callSite === "agent.callback",
     });
 
     try {
@@ -7241,11 +7247,13 @@ class OverseerImpl implements AgentHooks {
         }
 
         let sessionAffinity = await computeSessionAffinity(this.ctx.id.toString(), chatId);
+        // ai-call-site: chat.message chat.external chat.steer agent.callback agent.spawn chat.agent
         let chosenModel = getModel(
             this.env, aiModel.config, initiator, {
               sessionAffinity,
               userGateway: byokRouting,
               metadata: { source: "chat", gadgetId: this.ctx.id.toString(), chatId },
+              callSite,
             });
         turn.setModel(chosenModel.model);
 
@@ -7534,8 +7542,7 @@ class OverseerImpl implements AgentHooks {
       meta.activeAgent = userMeta.aiModel.profile;
       meta.lastActive = this.getChatTimestamp();
       this.storage.chatMeta.put(meta);
-      this.startAgent(chatId, userMeta.aiModel, author, initiatorUserId,
-                      /* callbackInitiated */ true);
+      this.startAgent(chatId, userMeta.aiModel, author, initiatorUserId, "agent.callback");
     } catch (err) {
       this.logger.error("failed to deliver pending agent calls", {
         event: "agent.callback.start.failed", error: err, chatId,
@@ -7755,6 +7762,7 @@ class OverseerImpl implements AgentHooks {
       subject: string, takenNames: Set<string>,
       quick: {config: AiModelConfig, initiator: AiChatAuthorInfo}): Promise<string | undefined> {
     try {
+      // ai-call-site: chat.binding-name
       let model = getModel(this.env, quick.config, quick.initiator,
           { callSite: "chat.binding-name" });
       let result = await completeText(model, {
@@ -8633,6 +8641,7 @@ class OverseerImpl implements AgentHooks {
                             modelConfig: AiModelConfig,
                             initiator: AiChatAuthorInfo): Promise<void> {
     try {
+      // ai-call-site: chat.title
       let model = getModel(this.env, modelConfig, initiator, {
         metadata: { source: "thread-title", gadgetId: this.ctx.id.toString(), chatId },
       });
@@ -8690,6 +8699,7 @@ class OverseerImpl implements AgentHooks {
         }
       }
 
+      // ai-call-site: gadget.title
       let model = getModel(this.env, modelConfig, initiator, {
         metadata: { source: "gadget-title", gadgetId: this.ctx.id.toString(), chatId },
       });
@@ -10695,7 +10705,7 @@ export class OverseerDurableObject extends DurableObject<Cloudflare.Env> {
 
     if (userMeta.aiModel) {
       // Fire off the agent (asynchronously).
-      this.impl.startAgent(chatId, userMeta.aiModel, author, initiatorUserId);
+      this.impl.startAgent(chatId, userMeta.aiModel, author, initiatorUserId, "agent.spawn");
     } else {
       // TODO: Flag as needing user attention.
     }

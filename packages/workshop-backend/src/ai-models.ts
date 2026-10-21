@@ -110,6 +110,11 @@ export type ModelStreamOptions = SimpleStreamOptions & {
    * quick, and none of them benefit from cross-step reasoning. Default: true.
    */
   thinking?: boolean;
+  /**
+   * The AI call guard's call site for this request alone, when it differs from the handle's: a
+   * compaction request made on an agent turn's handle.
+   */
+  callSite?: AiCallSite;
 };
 
 /**
@@ -1055,6 +1060,7 @@ export class LanguageModelGatekeeper
     // minted with, its model is described as one with none set, whatever the admin has set since.
     let { reasoning, ...config } = this.ctx.props.config;
     await refuseRevokedModel(this.env, this.ctx.props);
+    // ai-call-site: gadget.llm
     let model = getModel(this.env, config, this.ctx.props.initiator, {
       metadata: this.ctx.props.metadata,
     });
@@ -1127,6 +1133,7 @@ export class DecisionModelGatekeeper
       : Promise<DecisionModelBinding> {
     let { config, initiator, metadata } = this.ctx.props;
     await refuseRevokedModel(this.env, this.ctx.props);
+    // ai-call-site: gadget.decision
     return new DecisionModelBindingImpl(getDecisionModel(this.env, config, initiator, metadata));
   }
 

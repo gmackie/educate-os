@@ -4209,10 +4209,12 @@ async function runAgentPass(
           // The summarized messages are the prompt up to the boundary; the rest stays verbatim.
           let keptFrom = projection.findIndex(({sequence}) =>
             sequence !== undefined && sequence >= compactedTo);
+          // ai-call-site: chat.compaction
           let {summary, block} = await requestAnthropicCompaction(
               handle, stream,
               {messages: [leadingSystemMessage, ...modelMessages.slice(0, keptFrom)]},
-              COMPACTION_SYSTEM_PROMPT, {maxTokens: maxOutputTokens, signal: abortSignal});
+              COMPACTION_SYSTEM_PROMPT,
+              {maxTokens: maxOutputTokens, signal: abortSignal, callSite: "chat.compaction"});
           written = {summary, anthropicCompactionBlock: block};
         } else {
           let summaryMessages = buildSummaryPrompt(projection, compactedTo, handle.model);
@@ -4224,11 +4226,13 @@ async function runAgentPass(
           // Like title generation, this call's usage is deliberately not billed to the chat. It
           // carries the turn's largest prompt, so it needs the response cap most: without it a
           // model that charges the response to the same window would reject the request outright.
+          // ai-call-site: chat.compaction
           let summary = (await completeText(handle, {
             systemPrompt: COMPACTION_SYSTEM_PROMPT,
             messages: summaryMessages,
             maxTokens: maxOutputTokens,
             signal: abortSignal,
+            callSite: "chat.compaction",
           })).trim();
           // An empty summary would discard the compacted history, so keep the history instead.
           if (!summary) throw new Error("Compaction produced an empty summary.");

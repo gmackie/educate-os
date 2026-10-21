@@ -11,6 +11,7 @@ import type {
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import type {
   AiCallDecision, AiCallDescriptor, AiCallGuard, AiCallMessage, AiCallMessagePart, AiCallOutcome,
+  AiCallSite,
 } from "@gadgets/workshop-shared/ai-call-guard";
 import { createLogger } from "@gadgets/observability/logger";
 import { AI_CALL_DENIED, AiCallDeniedError, zeroUsage } from "./ai-invoke.js";
@@ -35,9 +36,17 @@ const MAX_SCOPES = 256;
 const MAX_MESSAGES_PER_SCOPE = 4096;
 const passedByScope = new Map<string, Set<string>>();
 
+// The steps of a chat's agent turns replay one transcript whatever started each turn, so they share
+// one record: a turn with a new label passes only what is new, not the whole history again.
+const AGENT_TURN_SITES = new Set<AiCallSite>([
+  "chat.message", "chat.external", "chat.steer", "agent.callback", "agent.spawn", "chat.agent",
+  "chat.compaction",
+]);
+
 function passedMessages(scope: AiCallScope): Set<string> {
   if (scope.gadgetId === undefined) return new Set();
-  let key = `${scope.callSite}:${scope.gadgetId}:${scope.chatId ?? ""}`;
+  let site = AGENT_TURN_SITES.has(scope.callSite) ? "agent-turn" : scope.callSite;
+  let key = `${site}:${scope.gadgetId}:${scope.chatId ?? ""}`;
   let passed = passedByScope.get(key) ?? new Set();
   // Most recently used last, so the oldest scope is the first evicted.
   passedByScope.delete(key);
@@ -174,15 +183,17 @@ function reportedUsage(usage: Usage | undefined): AiCallOutcome["usage"] {
 }
 
 /**
- * Makes `handle.stream` consult `guard` around every request. A denied request is never sent: its
- * stream ends at once with an error response that throwIfAiCallDenied() recognizes. Returns
+ * Makes `handle.stream` consult `guard` around every request, as one from `scope`'s call site
+ * unless the request names its own (ModelStreamOptions.callSite). A denied request is never sent:
+ * its stream ends at once with an error response that throwIfAiCallDenied() recognizes. Returns
  * `handle` itself, modified, so `lastResponse` stays where the handle's own stream writes it.
  */
 export function guardModelHandle(
     guard: AiCallGuardClient | undefined, handle: ModelHandle, scope: AiCallScope): ModelHandle {
   if (!guard) return handle;
   let stream = handle.stream;
-  handle.stream = (model, context, options = {}) => {
+  handle.stream = (model, context, { callSite, ...options } = {}) => {
+    let callScope = callSite ? { ...scope, callSite } : scope;
     let guarded = createAssistantMessageEventStream();
     let fail = (errorMessage: string, denial?: AiCallDeniedError) => {
       let error: AssistantMessage = {
@@ -194,7 +205,7 @@ export function guardModelHandle(
       guarded.push({ type: "error", reason: "error", error });
     };
     void (async () => {
-      let admitted = await admit(guard, scope,
+      let admitted = await admit(guard, callScope,
           { kind: "language-model", maxOutputTokens: options.maxTokens ?? model.maxTokens },
           await describeContext(context), options.signal);
       if (admitted instanceof AiCallDeniedError) return fail(admitted.message, admitted);

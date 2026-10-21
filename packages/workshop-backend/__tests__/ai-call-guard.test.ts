@@ -109,6 +109,35 @@ describe("guardModelHandle", () => {
     expect(calls[0].logicalRequestId).not.toBe(calls[1].logicalRequestId);
   });
 
+  it("shares one record across a chat's agent turns, whatever started them", async () => {
+    let { handle } = fauxHandle([fauxAssistantMessage(fauxText("One."))]);
+    let { calls, guard } = fakeGuard();
+    let chat = { ...scope(), callSite: "chat.message" as const };
+    guardModelHandle(guard, handle, chat);
+    let first = await handle.stream(handle.model, { messages: [user("Hi")] }).result();
+    let steered = fauxHandle([fauxAssistantMessage(fauxText("Two."))]).handle;
+    guardModelHandle(guard, steered, { ...chat, callSite: "chat.steer" });
+    await steered.stream(steered.model, { messages: [user("Hi"), first, user("Faster")] }).result();
+    // A title is not an agent turn: it is shown what it sends.
+    let title = fauxHandle([fauxAssistantMessage(fauxText("Chat"))]).handle;
+    guardModelHandle(guard, title, { ...chat, callSite: "chat.title" });
+    await completeText(title, { prompt: "Hi" });
+
+    expect(calls.map(call => [call.callSite, texts(call)])).toEqual([
+      ["chat.message", ["Hi"]], ["chat.steer", ["Faster"]], ["chat.title", ["Hi"]],
+    ]);
+  });
+
+  it("asks as the call site a request names, on any handle", async () => {
+    let { handle } = fauxHandle([fauxAssistantMessage(fauxText("Summary."))]);
+    let { calls, guard } = fakeGuard();
+    guardModelHandle(guard, handle, scope());
+
+    await completeText(handle, { prompt: "Summarize", callSite: "chat.compaction" });
+
+    expect(calls.map(call => call.callSite)).toEqual(["chat.compaction"]);
+  });
+
   it("sends a denied request nowhere, and completeText throws the denial", async () => {
     let { faux, handle } = fauxHandle([fauxAssistantMessage(fauxText("Never."))]);
     let { outcomes, guard } = fakeGuard(() => DENY);

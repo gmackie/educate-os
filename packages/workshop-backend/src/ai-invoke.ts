@@ -1,5 +1,5 @@
 import type { AssistantMessage, Message, ProviderHeaders, Usage } from "@earendil-works/pi-ai";
-import type { ModelHandle } from "./ai-models.js";
+import type { ModelHandle, ModelStreamOptions } from "./ai-models.js";
 
 /**
  * An all-zeros pi Usage record, for synthesizing assistant messages that were never actually
@@ -104,6 +104,8 @@ export async function completeText(handle: ModelHandle, args: {
    * cache write.
    */
   cache?: boolean;
+  /** The AI call guard's call site, when it differs from the handle's (see ModelStreamOptions). */
+  callSite?: ModelStreamOptions["callSite"];
 }): Promise<string> {
   const messages: Message[] = args.messages ??
       [{ role: "user", content: args.prompt ?? "", timestamp: Date.now() }];
@@ -116,6 +118,7 @@ export async function completeText(handle: ModelHandle, args: {
     headers: args.headers,
     thinking: args.thinking ?? false,
     ...(args.cache ? {} : { cacheRetention: "none" }),
+    callSite: args.callSite,
   });
   const message = await stream.result();
   if (message.stopReason === "error" || message.stopReason === "aborted") {

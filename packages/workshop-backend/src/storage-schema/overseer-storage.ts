@@ -27,6 +27,7 @@ import {
   type BlueprintOutput, type ChatGadgetPinRecord, type CollaboratorRole, type GadgetUpstream,
   type GatekeeperCreationSpec, type PermissionEdge, type WorkpieceId,
 } from "@gadgets/workshop-shared/api";
+import type { AiCallSite } from "@gadgets/workshop-shared/ai-call-guard";
 import type { CodeChange } from "@gadgets/workshop-shared/code-change";
 import type { ChatGatewayRpcTarget } from "@gadgets/workshop-shared/external-message-gateway";
 import type {
@@ -753,6 +754,8 @@ export type ActiveAgentRecord = {
   initiator: AiChatAuthorInfo;
   /** Whether this turn was initiated by a gadget callback (vs. a chat message). */
   callbackInitiated: boolean;
+  /** What started the turn, for the AI call guard. Absent from records made before it was kept. */
+  callSite?: AiCallSite;
   /** Model-lookup attempts since the last successful preparation, bounded across DO resets. */
   resumeAttempts?: number;
 };

@@ -856,6 +856,7 @@ export class AdminSettings extends DurableObject<Cloudflare.Env> {
     let startedAt = Date.now();
     let failure: { status?: number, message: string } | undefined;
     try {
+      // ai-call-site: admin.model-test
       let handle = getModel(this.env, config,
           { type: "user", id: adminUserId, name: adminUserId }, { callSite: "admin.model-test" });
       await completeText(handle, {

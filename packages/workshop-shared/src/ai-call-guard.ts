@@ -4,10 +4,27 @@ import type { AiChatAuthorInfo, AiModelProvider } from "./api";
 /**
  * Where in the Workshop a model call comes from. Every language-model and decision-model request
  * carries one, so a guard can apply a different policy to, say, an agent step and a chat title.
+ * Each step of an agent turn is labelled by what started the turn: steers the agent reads mid-turn
+ * arrive as user messages of that turn's next step, whatever its label.
  */
 export type AiCallSite =
-  /** A step of an agent turn on a chat, including the turn's compaction requests. */
+  /** A step of an agent turn started by a user's message, including a new chat's first. */
+  | "chat.message"
+  /** A step of an agent turn started by a message sent through the external message gateway. */
+  | "chat.external"
+  /** A step of an agent turn started by steers sent while the previous turn ran. */
+  | "chat.steer"
+  /** A step of an agent turn started by calls that gadget code made to the chat's agent. */
+  | "agent.callback"
+  /** A step of the first turn of an agent a gadget spawned, on the prompt the gadget gave it. */
+  | "agent.spawn"
+  /**
+   * A step of an agent turn started some other way: a retry, a blueprint merge review, or a turn
+   * resumed from a record made before turns named their cause.
+   */
   | "chat.agent"
+  /** A request that compacts a chat's history during an agent turn. */
+  | "chat.compaction"
   /** The title generated for a new chat from its first message. */
   | "chat.title"
   /** The workspace title generated from a chat's log. */
@@ -82,11 +99,12 @@ export type AiCallDescriptor = {
   /** The response cap the request asks for, when it has one: the most output it can bill. */
   maxOutputTokens?: number;
   /**
-   * The messages of this request the guard has not been shown for this chat (or, outside a chat,
-   * this workspace's call site). The Workshop guarantees at-least-once: no message reaches a model
-   * without having been passed here in a call the guard let proceed, but one may be passed again,
-   * for example after the Workshop restarts or when a replay renders it differently. Never logged
-   * by the Workshop.
+   * The messages of this request the guard has not been shown for this chat's agent turns (every
+   * agent-turn call site, compaction included, shares one record), for another call site in this
+   * chat, or, outside a chat, for this workspace's call site. The Workshop guarantees
+   * at-least-once: no message reaches a model without having been passed here in a call the guard
+   * let proceed, but one may be passed again, for example after the Workshop restarts or when a
+   * replay renders it differently. Never logged by the Workshop.
    */
   newMessages: AiCallMessage[];
 };
