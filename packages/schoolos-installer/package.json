@@ -1,0 +1,24 @@
+{
+  "name": "@schoolos/installer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS district installer (roadmap R02): Cloudflare API port, account preflight, desired-state compilation of a pinned release manifest, and an ownership-checked, resumable reconciler with rollback and fleet registration. A library plus a district-run Node CLI, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "node src/cli.ts"
+  },
+  "dependencies": {
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/fleet": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@types/node": "^26.1.0",
+    "vitest": "catalog:"
+  }
+}
