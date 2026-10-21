@@ -5,3 +5,4 @@ export * from "./model.ts";
 export * from "./lifecycle.ts";
 export * from "./store.ts";
 export * from "./directory.ts";
+export * from "./workshop-adapter.ts";
