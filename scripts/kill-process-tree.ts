@@ -13,6 +13,7 @@
 // signalled.
 
 import { execFile, spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 // The pids a child-lister prints for one parent. Resolves empty when the parent has no children or
 // the lister reports failure -- `pgrep` exits 1 for "no matches", which is not an error here.
@@ -63,13 +64,26 @@ function signalPid(pid: number, signal: NodeJS.Signals): void {
   }
 }
 
-// Whether `pid` still exists. Signal 0 delivers nothing and only checks for the process.
-function isAlive(pid: number): boolean {
+/**
+ * Whether `pid` is still running. Signal 0 delivers nothing and only checks for the process, but it
+ * also finds a zombie: a process that has exited and is waiting for its parent to reap it. A killed
+ * process orphaned to a pid 1 that never reaps (a container whose entrypoint is `tail -f /dev/null`,
+ * as CI runners use) stays a zombie forever, so on Linux a zombie counts as gone.
+ */
+export function isAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
-    return true;
   } catch (error) {
     return (error as NodeJS.ErrnoException).code !== "ESRCH";
+  }
+  if (process.platform !== "linux") return true;
+  try {
+    // The state follows the parenthesised command name, which may itself contain ") ".
+    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+    return stat.slice(stat.lastIndexOf(")") + 2, stat.lastIndexOf(")") + 3) !== "Z";
+  } catch {
+    // Reaped between the two checks.
+    return false;
   }
 }
 

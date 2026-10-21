@@ -84,6 +84,26 @@ const EXPECTED: Record<string, ExpectedArea> = {
   "packages/workshop-backend": {
     uncached: ["BUNDLED_BLUEPRINTS_DIR"],
   },
+  // The SchoolOS consoles' build tasks set NODE_ENV before importing Vite, as the Workshop
+  // frontend's does. The district URL each one reads is only the `vite` dev server's `/api` proxy
+  // target: `pnpm dev` is a script with the ambient environment, and a build never uses the proxy.
+  "packages/schoolos-admin-ui": {
+    forwarded: ["SCHOOLOS_ADMIN_API"],
+    injected: ["NODE_ENV"],
+  },
+  "packages/schoolos-student-ui": {
+    forwarded: ["VITE_SCHOOLOS_AI_HELP"],
+    injected: ["NODE_ENV"],
+    external: ["SCHOOLOS_DISTRICT_URL"],
+  },
+  // CHROME is read by `scripts/screenshots.ts`, which is run directly.
+  "packages/schoolos-teacher-ui": {
+    external: ["CHROME", "SCHOOLOS_DISTRICT_URL"],
+  },
+  // Read by the harness CLI (`pnpm schoolos:harness`), never by a task.
+  "packages/schoolos-harness": {
+    external: ["SCHOOLOS_HARNESS_PORT"],
+  },
   // `build-gatekeeper-configurator.ts` is covered in detail by
   // build-gatekeeper-configurator.test.ts, which pins its reads against the shared task's `env`.
   // `build-release.ts`, `run-dev-server.ts`, `run-local.ts` and `preview/` are invoked directly,

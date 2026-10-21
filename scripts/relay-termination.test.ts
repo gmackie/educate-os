@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, describe, it } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { isAlive } from "./kill-process-tree.ts";
 
 const RELAY = pathToFileURL(join(dirname(fileURLToPath(import.meta.url)), "relay-termination.ts"));
 
@@ -16,15 +17,6 @@ after(() => rmSync(fixtureRoot, { recursive: true, force: true }));
 
 let caseCount = 0;
 
-function isAlive(pid: number): boolean {
-  try {
-    // Signal 0 checks for existence without delivering anything.
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code !== "ESRCH";
-  }
-}
 
 async function waitUntilGone(pid: number, timeoutMs = 10_000): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
@@ -171,7 +163,10 @@ async function spawnWrapper(
   };
 
   try {
-    assert.ok(await waitForOutput(/^grandchild \d+$/m), "the wrapper never reported both pids");
+    // Both lines, in either order: the wrapper and the child write to the same pipe, and pipe
+    // writes are asynchronous on macOS, so the child's line can land before the wrapper's.
+    assert.ok(await waitForOutput(/^child \d+$[\s\S]*^grandchild \d+$|^grandchild \d+$[\s\S]*^child \d+$/m),
+        "the wrapper never reported both pids");
     childPid = Number(/^child (\d+)$/m.exec(text)?.[1] ?? 0);
     grandchildPid = Number(/^grandchild (\d+)$/m.exec(text)?.[1] ?? 0);
     assert.ok(childPid && grandchildPid, "the wrapper never reported both pids");
