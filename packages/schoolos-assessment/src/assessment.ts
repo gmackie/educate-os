@@ -689,7 +689,7 @@ export class AssessmentService {
   // Internals
 
   #decisions(caller: Caller): Decisions {
-    return new Decisions(caller, this.#policy, crypto.randomUUID());
+    return new Decisions(caller, this.#policy, caller.correlationId ?? crypto.randomUUID());
   }
 
   /** The offering's policy scope and term state, or `not-found` if the district has no such offering. */

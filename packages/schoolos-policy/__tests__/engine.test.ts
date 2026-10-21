@@ -276,7 +276,7 @@ describe("the policy information point", () => {
     const ended = withChanges(granted, (d) => {
       d.principals.find((p) => p.id === amara)!.status = status;
     });
-    expect(subjectFactsFrom(ended, amara)).toEqual({ principalId: amara, districtId: "dst_northfield", kind: "student", roles: [] });
+    expect(subjectFactsFrom(ended, amara)).toEqual({ principalId: amara, districtId: "dst_northfield", kind: "student", active: false, roles: [] });
   });
 
   it("ends a graduating student's class access on the next decision", async () => {

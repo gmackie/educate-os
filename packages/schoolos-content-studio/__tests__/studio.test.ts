@@ -117,6 +117,24 @@ describe("approval authority", () => {
     await rejectsWith(s.getReport(AMARA, item.id), "not-found");
   });
 
+  it("refuses a target scope naming a class under a school it is not in, even to a district-wide curriculum admin", async () => {
+    const { studio: s, audit } = await studio();
+    const forged = { ...BIO_SCOPE, schoolId: "sch_nf-middle" } as typeof BIO_SCOPE;
+    await rejectsWith(s.submitUrl(CURRICULUM, { url: CELLS, targetScope: forged }), "forbidden");
+    expect(audit.events.at(-1)).toMatchObject({ principalId: CURRICULUM.principalId, ruleId: "scope.unknown" });
+  });
+
+  it("decides and audits every studio call in the district's policy engine", async () => {
+    const { studio: s, audit } = await studio();
+    const item = await s.submitUrl(MORGAN, { url: CELLS, targetScope: BIO_SCOPE });
+    await s.approve(MORGAN, item.id, { alignments: [] });
+    expect(audit.events.filter((e) => e.resourceKind === "learning-resource").map((e) => [e.action, e.ruleId])).toStrictEqual([
+      ["create", "content-studio.teacher.offering"],
+      ["read", "course.instructor.read"],
+      ["approve", "content-studio.teacher.offering"],
+    ]);
+  });
+
   it("refuses a subject from another district", async () => {
     const { studio: s } = await studio();
     const item = await s.submitUrl(MORGAN, { url: CELLS, targetScope: BIO_SCOPE });

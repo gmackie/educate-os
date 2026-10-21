@@ -48,7 +48,7 @@ export function assertTransition(from: PipelineState, to: PipelineState): void {
 }
 
 /** What happened in an audit event. */
-export const AuditEventType = z.enum(["transition", "rights-changed", "bound"]);
+export const AuditEventType = z.enum(["transition", "rights-changed", "bound", "flags-acknowledged"]);
 /** An audit event type. */
 export type AuditEventType = z.infer<typeof AuditEventType>;
 

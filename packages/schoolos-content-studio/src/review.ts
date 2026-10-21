@@ -3,25 +3,52 @@ import type { PageMetadata } from "./html.ts";
 import type { LicenseEvidence } from "./license.ts";
 import type { ContentType } from "./sniff.ts";
 
-/** How serious a deterministic check's flag is. `blocking` flags are shown first; none approves or rejects on its own. */
+/**
+ * How serious a deterministic check's flag is. `blocking` flags are shown first, and an item
+ * carrying one is approved only with the flag explicitly acknowledged (see
+ * {@link ADMIN_REVIEW_FLAGS}); no flag approves or rejects on its own.
+ */
 export type FlagSeverity = "info" | "warning" | "blocking";
+
+/** What a deterministic check flags. */
+export const CheckFlagCode = z.enum([
+  "license-absent",
+  "license-unrecognized",
+  "license-conflicting",
+  "attribution-absent",
+  "lang-missing",
+  "images-without-alt",
+  "external-scripts",
+  "inline-scripts",
+  "instruction-like-text",
+  "age-appropriateness",
+  "not-parsed",
+]);
+/** A check flag code. */
+export type CheckFlagCode = z.infer<typeof CheckFlagCode>;
 
 /** One flag raised by a deterministic check. */
 export interface CheckFlag {
-  code:
-    | "license-absent"
-    | "license-unrecognized"
-    | "license-conflicting"
-    | "attribution-absent"
-    | "lang-missing"
-    | "images-without-alt"
-    | "external-scripts"
-    | "inline-scripts"
-    | "instruction-like-text"
-    | "age-appropriateness"
-    | "not-parsed";
+  code: CheckFlagCode;
   severity: FlagSeverity;
   message: string;
+}
+
+/**
+ * Blocking flags only a curriculum admin may approve past (SCHO-128), because what they question
+ * is the district's right to use the content, which only a curriculum admin may decide (only they
+ * widen rights): `license-conflicting`, a source naming more than one license.
+ *
+ * Every other blocking flag, such as `instruction-like-text`, is about what the content says, which
+ * the teacher reviewing it is placed to judge: they may approve once they acknowledge the flag.
+ * Imported text is passed only as data, so an acknowledged injection attempt still instructs
+ * nothing (threat T7).
+ */
+export const ADMIN_REVIEW_FLAGS: readonly CheckFlagCode[] = ["license-conflicting"];
+
+/** The codes of an item's blocking flags, each once, in report order. */
+export function blockingFlagCodes(checks: ChecksReport | undefined): CheckFlagCode[] {
+  return [...new Set((checks?.flags ?? []).filter((flag) => flag.severity === "blocking").map((flag) => flag.code))];
 }
 
 /**

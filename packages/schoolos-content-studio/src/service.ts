@@ -20,7 +20,15 @@ import { randomIdBody, snapshotDigest } from "./ids.ts";
 import type { ClassBinding, ContentItem, ItemSource, StudioRelease } from "./item.ts";
 import { interpretLicenseHints } from "./license.ts";
 import { assertTransition, type PipelineState, type StudioAuditEvent, USABLE_STATES } from "./pipeline.ts";
-import { type AgeAppropriatenessHook, type ContentReviewer, runAiReview, runChecks } from "./review.ts";
+import {
+  ADMIN_REVIEW_FLAGS,
+  type AgeAppropriatenessHook,
+  blockingFlagCodes,
+  CheckFlagCode,
+  type ContentReviewer,
+  runAiReview,
+  runChecks,
+} from "./review.ts";
 import { permittedUses, proposeRightsMode, widens } from "./rights.ts";
 import { type ScannerSetting, scanUpload } from "./scanner.ts";
 import { type ContentType, declaredContentType, resolveContentType } from "./sniff.ts";
@@ -54,8 +62,14 @@ export const RightsChangeInput = z.strictObject({ mode: RightsMode, reason: z.st
 /** A rights mode change. */
 export type RightsChangeInput = z.infer<typeof RightsChangeInput>;
 
-/** An approval: the alignments the reviewer asserts, each with evidence. */
-export const ApproveInput = z.strictObject({ alignments: z.array(AlignmentInput).max(50) });
+/**
+ * An approval: the alignments the reviewer asserts, each with evidence, and the item's blocking
+ * flags the reviewer acknowledges having weighed. Every blocking flag must be listed.
+ */
+export const ApproveInput = z.strictObject({
+  alignments: z.array(AlignmentInput).max(50),
+  acknowledgedFlags: z.array(CheckFlagCode).max(CheckFlagCode.options.length).default([]),
+});
 /** An approval. */
 export type ApproveInput = z.infer<typeof ApproveInput>;
 
@@ -87,13 +101,19 @@ export interface QueueEntry {
   currentRights: RightsMode;
   /** How many deterministic flags are `blocking`, so the queue can sort the riskiest first. */
   blockingFlags: number;
+  /** Whether a blocking flag means only a curriculum admin may approve it (see `ADMIN_REVIEW_FLAGS`). */
+  needsCurriculumAdmin: boolean;
 }
 
 /** Everything a Content Studio needs. Each district runs its own, over its own storage. */
 export interface ContentStudioOptions {
   districtId: DistrictId;
   storage: ContentStudioStorage;
-  /** Decides every call. {@link contentStudioAuthorizer} implements the C03 rules over a directory. */
+  /**
+   * Decides every call: the district's `PolicyEngine` (`@schoolos/policy`), whose default rule
+   * table holds the C03 learning-resource rules. Items are authorized as `teacher-only`
+   * `learning-resource`s at their target scope.
+   */
   authorizer: Authorizer;
   /** The surface calls arrive through, recorded in authorization requests. */
   channel?: RequestChannel;
@@ -213,6 +233,7 @@ export class ContentStudio {
         proposedRights: item.rights.proposed,
         currentRights: item.rights.current,
         blockingFlags: item.checks?.flags.filter((flag) => flag.severity === "blocking").length ?? 0,
+        needsCurriculumAdmin: blockingFlagCodes(item.checks).some((code) => ADMIN_REVIEW_FLAGS.includes(code)),
       });
     }
     return entries.toSorted((a, b) => b.blockingFlags - a.blockingFlags || a.submittedAt.localeCompare(b.submittedAt));
@@ -254,16 +275,28 @@ export class ContentStudio {
 
   /**
    * Approves a reviewed item and creates its immutable release. Alignments must name items of
-   * framework releases the district approved.
+   * framework releases the district approved. An item with blocking flags is approved only when
+   * the approver acknowledges every one of them, and one with a flag in {@link ADMIN_REVIEW_FLAGS}
+   * only by someone who may also `review` at its scope: a curriculum admin, not a teacher. The
+   * acknowledgement is kept on the decision and in the item's audit trail.
    *
    * @throws SchoolOsError `not-found` if the subject cannot see the item, `forbidden` if they may
-   *   not approve at its scope, `conflict` unless it is awaiting a decision, and
-   *   `validation-failed` for an alignment the catalog cannot resolve.
+   *   not approve at its scope or a flag needs a curriculum admin, `conflict` unless it is
+   *   awaiting a decision, and `validation-failed` for an unacknowledged blocking flag or an
+   *   alignment the catalog cannot resolve.
    */
   async approve(subject: VerifiedPrincipal, itemId: unknown, input: unknown): Promise<StudioRelease> {
-    const { alignments } = parseInput(ApproveInput, input);
+    const { alignments, acknowledgedFlags } = parseInput(ApproveInput, input);
     const item = await this.#item(subject, itemId, "approve");
     assertTransition(item.state, "approved");
+    const blocking = blockingFlagCodes(item.checks);
+    if (blocking.some((code) => ADMIN_REVIEW_FLAGS.includes(code))) {
+      await this.#require(subject, "review", item.targetScope, item.id, "this item has a flag only a curriculum admin may approve");
+    }
+    const unacknowledged = blocking.filter((code) => !acknowledgedFlags.includes(code));
+    if (unacknowledged.length > 0) {
+      throw new SchoolOsError("validation-failed", `acknowledge each blocking flag before approving: ${unacknowledged.join(", ")}`);
+    }
     const resolved = [];
     for (const alignment of alignments) {
       const competency = await this.#options.alignments.resolve(alignment.frameworkKey, alignment.competencyUri);
@@ -314,7 +347,10 @@ export class ContentStudio {
       alignmentEvidence: resolved.map(({ alignment }) => ({ competencyUri: alignment.competencyUri, evidence: alignment.evidence })),
     };
     await this.#options.storage.addRelease(release);
-    item.decision = { outcome: "approved", by: subject.principalId, at, version };
+    item.decision = { outcome: "approved", by: subject.principalId, at, version, acknowledgedFlags: blocking };
+    if (blocking.length > 0) {
+      await this.#audit({ itemId: item.id, type: "flags-acknowledged", actor: subject.principalId, at, detail: blocking.join(", ") });
+    }
     await this.#transition(item, "approved", subject.principalId, at);
     await this.#transition(item, "released", subject.principalId, at, `version ${version}`);
     await this.#save(item);
@@ -492,8 +528,8 @@ export class ContentStudio {
     return decision.effect === "allow";
   }
 
-  async #require(subject: VerifiedPrincipal, action: Action, scope: Scope, id?: string): Promise<void> {
-    if (!(await this.#allowed(subject, action, scope, id))) throw new SchoolOsError("forbidden", `not permitted to ${action} here`);
+  async #require(subject: VerifiedPrincipal, action: Action, scope: Scope, id?: string, why = `not permitted to ${action} here`): Promise<void> {
+    if (!(await this.#allowed(subject, action, scope, id))) throw new SchoolOsError("forbidden", why);
   }
 
   async #transition(item: ContentItem, to: PipelineState, actor: StudioAuditEvent["actor"], at: string, detail?: string): Promise<void> {

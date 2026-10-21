@@ -2,7 +2,7 @@ import type { ContentItemId, DistrictId, PrincipalId, ResourceId, Scope } from "
 import type { ResourceDescriptor, RightsMode } from "@schoolos/registry";
 import type { LicenseEvidence } from "./license.ts";
 import type { PipelineState } from "./pipeline.ts";
-import type { AiReview, ChecksReport } from "./review.ts";
+import type { AiReview, CheckFlagCode, ChecksReport } from "./review.ts";
 import type { ScanOutcome } from "./scanner.ts";
 import type { ContentType } from "./sniff.ts";
 
@@ -31,7 +31,17 @@ export interface ItemRights {
 
 /** A reviewer's decision on an item. */
 export type ItemDecision =
-  | { outcome: "approved"; by: PrincipalId; at: string; version: string }
+  | {
+    outcome: "approved";
+    by: PrincipalId;
+    at: string;
+    version: string;
+    /**
+     * The blocking flags the approver explicitly acknowledged: every one the item had. Absent on
+     * decisions recorded before acknowledgement was required.
+     */
+    acknowledgedFlags?: CheckFlagCode[];
+  }
   | { outcome: "rejected"; by: PrincipalId | "system"; at: string; reason: string };
 
 /** One imported revision of a source, as it moves through the pipeline. */

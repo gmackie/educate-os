@@ -68,12 +68,27 @@ describe("the academic directory with the policy engine", () => {
     expect(await directory.getEnrollment(http(P.amara), EnrollmentId.parse("enr_nf-06"))).toMatchObject({ status: "active" });
   });
 
-  it("denies a Riverbend admin", async () => {
-    // The directory runs `precheckAuthorization` itself and never asks the engine, so these
-    // denials are not audited yet (see the SCHO-7 follow-up on routing prechecks to the engine).
-    const { directory } = academics();
+  it("denies a Riverbend admin, and audits each denial as a cross-district precheck (SCHO-54)", async () => {
+    const { directory, audit } = academics();
     expect(await directory.listSchools(http(P.rbAdmin))).toEqual([]);
     await rejectsWith(directory.getTerm(http(P.rbAdmin), TermId.parse("trm_nf-2026-fall")), "not-found");
+    expect(audit.events.length).toBeGreaterThan(0);
+    expect(audit.events.every((e) => e.ruleId === "precheck.cross-district" && e.reason === "cross-district" && e.principalId === P.rbAdmin.principalId))
+      .toBe(true);
+  });
+
+  it("audits a request too malformed to authorize as an invalid-request precheck", async () => {
+    const { directory, audit } = academics();
+    const malformed = { principal: { ...P.amara, principalId: "not a principal" }, channel: "http" } as unknown as Caller;
+    await rejectsWith(directory.getTerm(malformed, TermId.parse("trm_nf-2026-fall")), "not-found");
+    expect(audit.events).toMatchObject([{ effect: "deny", reason: "invalid-request", ruleId: "precheck.invalid-request", action: "read", resourceKind: "term" }]);
+    expect(audit.events[0]!.principalId).toBeUndefined();
+  });
+
+  it("audits every decision of one call under the caller's correlation ID", async () => {
+    const { directory, audit } = academics();
+    await directory.listSchools({ ...http(P.highPrincipal), correlationId: "corr-listing-1" });
+    expect(audit.events.map((e) => e.correlationId)).toEqual(["corr-listing-1", "corr-listing-1"]);
   });
 
   it("audits each decision it is asked for with the deciding rule", async () => {
@@ -116,6 +131,14 @@ describe("the academic tools through the school tool runner", () => {
     const outcome = await tools.invoke(mcp(P.amara), "get_roster", { offeringId: "off_nf-math7-fall-p1" });
     expect(outcome).toMatchObject({ status: "error", error: { code: "not-found", correlationId: expect.any(String) } });
     expect(audit.events[0]).toMatchObject({ action: "invoke-tool", ruleId: "tool.invoke.district-member", effect: "allow" });
+  });
+
+  it("audits the runner's decision and the operation's own under the invocation's one correlation ID", async () => {
+    const { tools, audit } = academics();
+    const outcome = await tools.invoke(mcp(P.highPrincipal), "list_schools", {});
+    expect(outcome).toMatchObject({ status: "ok", correlationId: expect.any(String) });
+    expect(audit.events.map((e) => e.ruleId)).toEqual(["tool.invoke.district-member", "admin.school.directory", "default.deny"]);
+    expect(new Set(audit.events.map((e) => e.correlationId))).toEqual(new Set([outcome.status === "ok" ? outcome.correlationId : ""]));
   });
 
   it("lets an admin create through a tool and records the operation's own decision", async () => {

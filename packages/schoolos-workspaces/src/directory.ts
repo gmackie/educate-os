@@ -216,6 +216,29 @@ export class WorkspaceDirectory {
     return (await access.readable(inOffering, snapshot)).map((w) => this.#view(caller, w, snapshot, state));
   }
 
+  /**
+   * Every personal workspace's record in the district, for retention and legal-hold review
+   * (SCHO-56): its owner, when it was created, its lifecycle and any legal hold. Requires the
+   * policy engine to allow listing personal workspaces, which the default rules give a district
+   * admin alone. It never returns a storage handle, and reading any one workspace, or anything in
+   * it, is still refused to everyone but its owner.
+   */
+  async listPersonalWorkspaceRecords(caller: Caller): Promise<WorkspaceView[]> {
+    const { state, snapshot } = await this.#load();
+    const collection: Target = {
+      resource: { kind: "personal-workspace", scope: { level: "district", districtId: snapshot.district.id }, classification: "personal-private" },
+    };
+    if (!(await this.#access(caller).allows("list", collection))) {
+      throw new SchoolOsError("forbidden", "Only a district administrator can review personal workspace records.");
+    }
+    return state.workspaces
+      .filter((w): w is PersonalWorkspace => w.kind === "personal")
+      .map((workspace) => {
+        const { storageHandle: _contents, ...record } = workspace;
+        return { ...record, lifecycle: this.#lifecycle(workspace, snapshot, state) };
+      });
+  }
+
   // Roster changes and term close
 
   /**
@@ -372,7 +395,7 @@ export class WorkspaceDirectory {
   }
 
   #access(caller: Caller): Access {
-    return new Access(caller, this.#policy, crypto.randomUUID(), () => this.#now().toISOString());
+    return new Access(caller, this.#policy, caller.correlationId ?? crypto.randomUUID(), () => this.#now().toISOString());
   }
 
   #lifecycle(workspace: Workspace, snapshot: DistrictDirectorySnapshot, state: WorkspaceState) {

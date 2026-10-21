@@ -1525,12 +1525,18 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
+      '@schoolos/academics':
+        specifier: workspace:*
+        version: link:../schoolos-academics
       '@schoolos/catalog':
         specifier: workspace:*
         version: link:../schoolos-catalog
       '@schoolos/fixtures':
         specifier: workspace:*
         version: link:../schoolos-fixtures
+      '@schoolos/policy':
+        specifier: workspace:*
+        version: link:../schoolos-policy
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -1625,9 +1631,15 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
+      '@schoolos/academics':
+        specifier: workspace:*
+        version: link:../schoolos-academics
       '@schoolos/fixtures':
         specifier: workspace:*
         version: link:../schoolos-fixtures
+      '@schoolos/policy':
+        specifier: workspace:*
+        version: link:../schoolos-policy
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
@@ -1663,9 +1675,15 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
+      '@schoolos/academics':
+        specifier: workspace:*
+        version: link:../schoolos-academics
       '@schoolos/fixtures':
         specifier: workspace:*
         version: link:../schoolos-fixtures
+      '@schoolos/policy':
+        specifier: workspace:*
+        version: link:../schoolos-policy
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
@@ -1952,12 +1970,18 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
+      '@schoolos/academics':
+        specifier: workspace:*
+        version: link:../schoolos-academics
       '@schoolos/content-studio':
         specifier: workspace:*
         version: link:../schoolos-content-studio
       '@schoolos/fixtures':
         specifier: workspace:*
         version: link:../schoolos-fixtures
+      '@schoolos/policy':
+        specifier: workspace:*
+        version: link:../schoolos-policy
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))

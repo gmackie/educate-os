@@ -14,6 +14,5 @@ export * from "./review.ts";
 export * from "./alignments.ts";
 export * from "./item.ts";
 export * from "./storage.ts";
-export * from "./policy.ts";
 export * from "./service.ts";
 export * from "./http.ts";

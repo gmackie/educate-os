@@ -1,18 +1,14 @@
-import {
-  ContentStudio,
-  contentStudioAuthorizer,
-  InMemoryContentStudioStorage,
-  type ImportFetch,
-} from "@schoolos/content-studio";
-import { type DistrictDirectorySnapshot, DistrictId, PrincipalId, type VerifiedPrincipal } from "@schoolos/contracts";
+import { InMemoryAcademicStore } from "@schoolos/academics";
+import { blockingFlagCodes, ContentStudio, InMemoryContentStudioStorage, type ImportFetch } from "@schoolos/content-studio";
+import { type DistrictDirectorySnapshot, DistrictId, type PolicySettings, PrincipalId, type VerifiedPrincipal } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
+import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
 import type { CompetencyRef } from "@schoolos/registry";
 import { expect } from "vitest";
 import {
   type AiHelpLayers,
   contentStudioReleases,
   CurriculumService,
-  curriculumAuthorizer,
   InMemoryCodexPublisher,
   InMemoryCurriculumStorage,
   type OfferingScope,
@@ -21,6 +17,24 @@ import {
 } from "../src/index.ts";
 
 export const D = DistrictId.parse("dst_northfield");
+
+/** The policy floor the tests decide under: the conservative district defaults. */
+const FLOOR: PolicySettings = {
+  aiSpending: "capped",
+  promptsInGatewayLogs: "prohibited",
+  studentPersonalConversations: "private",
+  teacherObservation: "assigned-work-only",
+  automatedSelProfiling: "prohibited",
+  aiMonthlyCapCentsPerPrincipal: 500,
+};
+
+/** The district's one policy engine over `directory`, with the audit trail it writes. */
+export function policyEngine(directory: DistrictDirectorySnapshot) {
+  const audit = new InMemoryPolicyAuditSink();
+  const information = directoryPolicyInformation(InMemoryAcademicStore.seeded(directory), { effectivePolicy: async () => FLOOR });
+  return { engine: new PolicyEngine({ information, audit }), audit };
+}
+
 
 const subject = (id: string): VerifiedPrincipal => ({ principalId: PrincipalId.parse(id), districtId: D });
 
@@ -101,6 +115,7 @@ const alignments = {
 /** A curriculum service over Northfield, with a real Content Studio holding its releases. */
 export async function setup(options: { directory?: DistrictDirectorySnapshot } = {}) {
   const directory = options.directory ?? NORTHFIELD;
+  const { engine, audit } = policyEngine(directory);
   let tick = 0;
   // Each call is a minute later, so timestamps order events.
   const now = () => new Date(Date.UTC(2026, 9, 20, 9, tick++)).toISOString();
@@ -108,7 +123,7 @@ export async function setup(options: { directory?: DistrictDirectorySnapshot } =
   const studio = new ContentStudio({
     districtId: D,
     storage: studioStorage,
-    authorizer: contentStudioAuthorizer(NORTHFIELD),
+    authorizer: engine,
     fetch: web(PAGE_TITLES),
     scanner: undefined,
     alignments: { resolve: async () => undefined },
@@ -121,7 +136,7 @@ export async function setup(options: { directory?: DistrictDirectorySnapshot } =
   const service = new CurriculumService({
     districtId: D,
     directory,
-    authorizer: curriculumAuthorizer(directory),
+    authorizer: engine,
     releases: contentStudioReleases(studioStorage),
     alignments,
     aiHelpPolicy: { layersFor: async (scope) => ({ district: policy.district, ...policy.offerings[scope.offeringId] }) },
@@ -130,10 +145,10 @@ export async function setup(options: { directory?: DistrictDirectorySnapshot } =
     now,
   });
 
-  /** Imports and approves a page for an offering, returning its release. */
+  /** Imports and approves a page for an offering, acknowledging any blocking flags, and returns its release. */
   const release = async (teacher: VerifiedPrincipal, url: string, scope: OfferingScope): Promise<ResourceReleaseRef> => {
     const item = await studio.submitUrl(teacher, { url, targetScope: scope });
-    const released = await studio.approve(teacher, item.id, { alignments: [] });
+    const released = await studio.approve(teacher, item.id, { alignments: [], acknowledgedFlags: blockingFlagCodes(item.checks) });
     return { resourceId: released.descriptor.id, version: released.descriptor.release.version };
   };
   /** Imports a page and leaves it awaiting review: it has no release. */
@@ -141,7 +156,7 @@ export async function setup(options: { directory?: DistrictDirectorySnapshot } =
     const item = await studio.submitUrl(teacher, { url, targetScope: scope });
     return { resourceId: item.resourceId, version: "1.0.0" };
   };
-  return { service, studio, publisher, storage, policy, release, pending };
+  return { service, studio, publisher, storage, policy, release, pending, engine, audit };
 }
 
 /** An English 9 argumentative essay. */

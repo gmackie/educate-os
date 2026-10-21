@@ -47,7 +47,11 @@ export interface AcademicDirectoryOptions {
   store: AcademicStore;
   /** The source of record for each record type. */
   authority: AuthorityMap;
-  /** Decides every request, after `precheckAuthorization`. */
+  /**
+   * Decides every request. It receives the request exactly as built, so an auditing authorizer
+   * records cross-district and malformed requests too; the directory still denies whatever
+   * `precheckAuthorization` refuses, whatever the authorizer answers.
+   */
   authorizer: Authorizer;
 }
 
@@ -506,9 +510,13 @@ export class AcademicDirectory {
         ...(target.termState === undefined ? {} : { termState: target.termState }),
       },
     };
+    const decision = caller.correlationId === undefined
+      ? await this.#authorizer.authorize(request)
+      : await this.#authorizer.authorize(request, { correlationId: caller.correlationId });
+    // The authorizer sees, and can audit, every request; it still cannot allow one the shared
+    // precheck refuses, such as a caller from another district.
     const precheck = precheckAuthorization(request);
-    if (!precheck.ok) return precheck.decision;
-    return this.#authorizer.authorize(precheck.request);
+    return precheck.ok ? decision : precheck.decision;
   }
 
   /** Requires an allow, answering `forbidden` otherwise. For actions on the district itself. */

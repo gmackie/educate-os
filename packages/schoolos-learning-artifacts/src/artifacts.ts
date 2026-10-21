@@ -367,7 +367,8 @@ export class LearningArtifacts {
 
   /**
    * Records that the artifact's owner shared it with another principal of the district. The record
-   * grants nothing by itself: reads stay decided by policy (see `ShareGrant`). Idempotent.
+   * grants nothing by itself: reads stay decided by policy, through `artifactShareRelationships`
+   * (see `ShareGrant`). Idempotent.
    */
   async share(caller: Caller, artifactId: ArtifactId, rawGrantee: PrincipalId): Promise<ShareGrant> {
     const grantee = parse(PrincipalId, rawGrantee);
@@ -506,7 +507,7 @@ export class LearningArtifacts {
   // Internals
 
   #decisions(caller: Caller): Decisions {
-    return new Decisions(caller, this.#policy, crypto.randomUUID());
+    return new Decisions(caller, this.#policy, caller.correlationId ?? crypto.randomUUID());
   }
 
   /** The artifact, if it exists (and is not deleted, unless asked) and the caller may read it; else `not-found`. */

@@ -72,7 +72,11 @@ export interface CurriculumServiceOptions {
   districtId: DistrictId;
   /** The district directory, for offerings and their terms. */
   directory: DistrictDirectorySnapshot;
-  /** Decides every call. {@link curriculumAuthorizer} implements the C05 rules over a directory. */
+  /**
+   * Decides every call: the district's `PolicyEngine` (`@schoolos/policy`), whose default rule
+   * table holds the C05 activity rules. Definitions are `teacher-only` activities; an installed
+   * activity is read as `teacher-only` by staff and as `course` by students.
+   */
   authorizer: Authorizer;
   /** The surface calls arrive through, recorded in authorization requests. */
   channel?: RequestChannel;

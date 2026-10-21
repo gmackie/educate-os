@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { AI_REVIEW_NOTICE, type ContentReviewer, REVIEWER_INSTRUCTIONS, type ReviewerRequest } from "../src/index.ts";
-import { BIO_SCOPE, html, LICENSED_PAGE, MORGAN, rejectsWith, studio } from "./helpers.ts";
+import { ADMIN_REVIEW_FLAGS, AI_REVIEW_NOTICE, type ContentReviewer, REVIEWER_INSTRUCTIONS, type ReviewerRequest } from "../src/index.ts";
+import { BIO_SCOPE, CURRICULUM, html, LICENSED_PAGE, MORGAN, rejectsWith, studio } from "./helpers.ts";
 
 const CELLS = "https://open-lessons.example/cells";
 
@@ -135,5 +135,56 @@ describe("deterministic checks", () => {
     const first = (await importWith(LICENSED_PAGE, gullibleReviewer())).item.checks;
     const second = (await importWith(LICENSED_PAGE, gullibleReviewer())).item.checks;
     expect(second).toStrictEqual(first);
+  });
+});
+
+/** The lesson page naming two different licenses: a rights question, not a content one. */
+const CONFLICTING_PAGE = LICENSED_PAGE.replace("</body>", '<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC</a></body>');
+
+describe("approving past a blocking flag (SCHO-128)", () => {
+  it("makes a teacher acknowledge instruction-like text before approving, and records the acknowledgement", async () => {
+    const { s, item, storage } = await importWith(INJECTED_PAGE, gullibleReviewer());
+    expect(item.checks?.flags.find((f) => f.code === "instruction-like-text")?.severity).toBe("blocking");
+
+    await rejectsWith(s.approve(MORGAN, item.id, { alignments: [] }), "validation-failed");
+    await rejectsWith(s.approve(MORGAN, item.id, { alignments: [], acknowledgedFlags: ["license-absent"] }), "validation-failed");
+    expect((await s.getReport(MORGAN, item.id)).state).toBe("reviewed");
+    expect(await storage.listReleases()).toStrictEqual([]);
+
+    await s.approve(MORGAN, item.id, { alignments: [], acknowledgedFlags: ["instruction-like-text"] });
+    const report = await s.getReport(MORGAN, item.id);
+    expect(report.decision).toMatchObject({ outcome: "approved", by: MORGAN.principalId, acknowledgedFlags: ["instruction-like-text"] });
+    const acknowledged = (await s.listAudit(MORGAN, item.id)).filter((e) => e.type === "flags-acknowledged");
+    expect(acknowledged).toMatchObject([{ actor: MORGAN.principalId, detail: "instruction-like-text" }]);
+    // The audit records the flag, never the text that raised it.
+    expect(JSON.stringify(acknowledged)).not.toMatch(/Ignore previous/);
+  });
+
+  it("needs no acknowledgement for an item without blocking flags", async () => {
+    const { s, item } = await importWith(LICENSED_PAGE, gullibleReviewer());
+    await s.approve(MORGAN, item.id, { alignments: [] });
+    expect((await s.getReport(MORGAN, item.id)).decision).toMatchObject({ outcome: "approved", acknowledgedFlags: [] });
+  });
+
+  it("sends a conflicting license to a curriculum admin, whom it still asks to acknowledge it", async () => {
+    expect(ADMIN_REVIEW_FLAGS).toStrictEqual(["license-conflicting"]);
+    const { studio: s, audit } = await studio({ routes: { [CELLS]: html(CONFLICTING_PAGE) } });
+    const item = await s.submitUrl(MORGAN, { url: CELLS, targetScope: BIO_SCOPE });
+    expect(item.checks?.flags.map((f) => f.code)).toContain("license-conflicting");
+    expect((await s.listQueue(MORGAN, BIO_SCOPE))[0]).toMatchObject({ itemId: item.id, needsCurriculumAdmin: true });
+
+    // An acknowledging teacher is still refused, and the refusal is the engine's, on the record.
+    await rejectsWith(s.approve(MORGAN, item.id, { alignments: [], acknowledgedFlags: ["license-conflicting"] }), "forbidden");
+    expect(audit.events.findLast((e) => e.action === "review")).toMatchObject({ principalId: MORGAN.principalId, effect: "deny" });
+    // The teacher may still reject it.
+    await rejectsWith(s.approve(CURRICULUM, item.id, { alignments: [] }), "validation-failed");
+    const release = await s.approve(CURRICULUM, item.id, { alignments: [], acknowledgedFlags: ["license-conflicting"] });
+    expect(release.descriptor.review).toMatchObject({ status: "approved", reviewer: CURRICULUM.principalId });
+  });
+
+  it("lets a teacher reject a flagged item without acknowledging anything", async () => {
+    const { studio: s } = await studio({ routes: { [CELLS]: html(CONFLICTING_PAGE) } });
+    const item = await s.submitUrl(MORGAN, { url: CELLS, targetScope: BIO_SCOPE });
+    expect((await s.reject(MORGAN, item.id, { reason: "Unclear license." })).state).toBe("rejected");
   });
 });

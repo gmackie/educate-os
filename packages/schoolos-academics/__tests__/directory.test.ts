@@ -312,7 +312,7 @@ describe("authorization", () => {
     await rejectsWith(directory.deactivateEnrollment(NF.amara, EnrollmentId.parse("enr_nf-02")), "forbidden");
   });
 
-  it("denies a cross-district caller even when the authorizer would allow everything", async () => {
+  it("denies a cross-district caller even when the authorizer would allow everything, after showing it the request", async () => {
     const allowAll: Authorizer = { authorize: vi.fn(async () => ({ effect: "allow" as const })) };
     const { store, directory } = directoryFor(NORTHFIELD, { authorizer: allowAll });
     const before = await store.load();
@@ -322,7 +322,8 @@ describe("authorization", () => {
     await rejectsWith(directory.createTerm(RB_ADMIN, { name: "T", startsOn: "2026-09-01", endsOn: "2026-12-01" }), "forbidden");
     await rejectsWith(directory.deactivateEnrollment(RB_ADMIN, EnrollmentId.parse("enr_nf-02")), "not-found");
     expect(await directory.listSchools(RB_ADMIN)).toEqual([]);
-    expect(allowAll.authorize).not.toHaveBeenCalled();
+    // The authorizer is still asked, so an auditing one records the attempt (SCHO-54).
+    expect(allowAll.authorize).toHaveBeenCalledWith(expect.objectContaining({ subject: RB_ADMIN.principal }));
     expect(await store.load()).toEqual(before);
   });
 

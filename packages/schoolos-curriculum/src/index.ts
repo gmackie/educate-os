@@ -8,6 +8,5 @@ export * from "./model.ts";
 export * from "./templates.ts";
 export * from "./releases.ts";
 export * from "./codex.ts";
-export * from "./policy.ts";
 export * from "./storage.ts";
 export * from "./service.ts";
