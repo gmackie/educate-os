@@ -1,0 +1,23 @@
+{
+  "name": "@schoolos/learning-artifacts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS learning artifacts: artifacts and their immutable, content-addressed revisions in workspaces, held inline (small text) or in R2 with digest verification on read, or recorded as approved external references. Save, history, pin, share, export and sanitized baselines, each authorized by the ABAC policy engine. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/academics": "workspace:*",
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/policy": "workspace:*",
+    "@schoolos/workspaces": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}
