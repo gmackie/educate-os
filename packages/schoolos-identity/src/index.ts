@@ -5,3 +5,4 @@ export * from "./cloudflare-access.ts";
 export * from "./workshop-user.ts";
 export * from "./identity-linker.ts";
 export * from "./migration-plan.ts";
+export * from "./access-sign-in.ts";

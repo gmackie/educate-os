@@ -13,7 +13,9 @@
  */
 export function getAuthGatekeeperAllowlist(env: Cloudflare.Env): string[] {
   const raw = (env as { AUTH_GATEKEEPERS?: string }).AUTH_GATEKEEPERS;
-  if (!raw) return [];
+  // A gatekeeper reports an email, not the issuer and subject a principal resolver resolves, so
+  // gatekeeper sign-in stays off with one bound until gatekeepers can report a verified pair.
+  if (!raw || env.PRINCIPAL_RESOLVER) return [];
   return raw.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
 }
 
@@ -28,6 +30,8 @@ export function hasAuthGatekeepers(env: Cloudflare.Env): boolean {
  * auth gatekeeper is allowlisted, otherwise we'd lock everyone out, so password auth stays on.
  */
 export function isPasswordAuthEnabled(env: Cloudflare.Env): boolean {
+  // Password users are keyed by username, which a principal resolver must never fall back to.
+  if (env.PRINCIPAL_RESOLVER) return false;
   if (env.DISABLE_PASSWORD_AUTH !== "true") return true;
   return !hasAuthGatekeepers(env);
 }

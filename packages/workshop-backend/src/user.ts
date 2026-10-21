@@ -267,9 +267,12 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   /**
    * Returns true when this login created the account on first use. When the account doesn't yet
    * exist and `allowCreate` is false (deployment signups are closed), refuses rather than creating —
-   * existing users can still sign in.
+   * existing users can still sign in. `id` is the name this DO is addressed by: the email, or a
+   * principal name when a principal resolver is bound (see auth/principal-sign-in.ts), which also
+   * supplies the initial display name.
    */
-  async authenticateFromCfAccess(email: string, allowCreate: boolean): Promise<boolean> {
+  async authenticateFromCfAccess(id: string, allowCreate: boolean, displayName?: string)
+      : Promise<boolean> {
     const isNew = !this.storage.created.get();
     if (isNew) {
       if (!allowCreate) {
@@ -279,8 +282,8 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
       this.storage.created.put(true);
       this.storage.profile.put({
         type: "user",
-        name: email.split("@")[0],
-        id: email,
+        name: displayName ?? id.split("@")[0],
+        id,
       });
     }
     this.#syncDirectory();

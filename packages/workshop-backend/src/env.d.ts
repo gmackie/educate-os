@@ -73,6 +73,12 @@ declare global {
       CF_ACCESS_AUD?: string;   // audience
       CF_ACCESS_ISS?: string;   // team URL, e.g. https://<team>.cloudflareaccess.com
 
+      // Optional principal resolver (see auth/principal-sign-in.ts). The deployment binds it; when
+      // it is bound, Access sign-in names users by principal and every other sign-in is refused.
+      PRINCIPAL_RESOLVER?: Service<
+        import("@gadgets/workshop-shared/principal-resolver").PrincipalResolver
+      >;
+
       // Comma-separated allowlist of gatekeeper vendor ids permitted to drive sign-in (e.g.
       // "google,github,cloudflare"). A listed gatekeeper must also advertise providesAuth. Empty =
       // no gatekeeper sign-in (password / CF Access only).

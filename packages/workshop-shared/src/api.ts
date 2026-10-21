@@ -415,6 +415,10 @@ export const getOpenGadgetErrorCode = openGadgetErrors.getCode;
 export const AUTH_ERROR_CODES = {
   invalidSessionToken: "INVALID_SESSION_TOKEN",
   notAuthenticatedWithAccess: "NOT_AUTHENTICATED_WITH_ACCESS",
+  /** The deployment's principal resolver linked the Access sign-in to no principal. */
+  principalUnresolved: "PRINCIPAL_UNRESOLVED",
+  /** The Access sign-in waits for an administrator to confirm adopting an existing account. */
+  principalAdoptionPending: "PRINCIPAL_ADOPTION_PENDING",
 } as const;
 
 /** An expected authentication failure code. */
@@ -425,6 +429,9 @@ export type AuthErrorCode = typeof AUTH_ERROR_CODES[keyof typeof AUTH_ERROR_CODE
 export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   [AUTH_ERROR_CODES.invalidSessionToken]: "invalid session token",
   [AUTH_ERROR_CODES.notAuthenticatedWithAccess]: "Not authenticated with Access.",
+  [AUTH_ERROR_CODES.principalUnresolved]: "This sign-in is not linked to an account here.",
+  [AUTH_ERROR_CODES.principalAdoptionPending]:
+      "This sign-in is waiting for an administrator to confirm your existing account.",
 };
 
 const authErrors = codedErrorFamily(AUTH_ERROR_MESSAGES);
