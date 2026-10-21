@@ -1,0 +1,22 @@
+{
+  "name": "@schoolos/content-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS Content Studio (roadmap §5.3, PR C03): SSRF-guarded URL import and magic-byte-checked uploads into quarantine, rights modes, deterministic and AI-assisted review reports, a reviewer queue, and immutable resource releases. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/catalog": "workspace:*",
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/registry": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "vitest": "catalog:"
+  }
+}
