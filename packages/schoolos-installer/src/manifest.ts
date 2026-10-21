@@ -110,8 +110,13 @@ const ObservabilityConfig = z.looseObject({ enabled: z.boolean() });
 
 /** Everything the manifest says about one worker (manifest-lib's `WorkerEntry`). */
 export const WorkerEntry = z.strictObject({
-  kind: z.enum(["backend", "router", "gatekeeper"]),
+  kind: z.enum(["backend", "router", "gatekeeper", "service"]),
   shortName: z.string().regex(/^[a-z][a-z0-9]{0,19}$/).optional(),
+  /**
+   * Services only: the service binding the backend gains once the service is installed. The
+   * district installer does not install services yet (SCHO-131); it accepts and ignores them.
+   */
+  backendBinding: z.strictObject({ name: BindingName, entrypoint: z.string().min(1) }).optional(),
   installable: z.boolean(),
   preinstall: z.literal(true).optional(),
   singleton: z.literal(true).optional(),

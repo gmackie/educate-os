@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  gatekeeperShortName, isGatekeeperPackage, readDeployablePackages, type BindingDecl,
+  gatekeeperShortName, isGatekeeperPackage, isServicePackage, readDeployablePackages, type BindingDecl,
 } from "../release/manifest-lib.ts";
 import {
   MAX_PREVIEW_NAME_LENGTH,
@@ -198,12 +198,14 @@ test("a reserved prefix shrinks the slug budget rather than overflowing it", () 
   assert.equal(slugifyPreviewName("feature/foo", { reserve: 9 }), "feature-foo");
 });
 
-test("every deployable package gets a preview config, on the configured account", () => {
+test("every deployable package but the optional services gets a preview config, on the configured account", () => {
   const { packages, configs } = buildAll();
 
-  assert.equal(configs.size, packages.length);
+  const previewed = packages.filter((pkg) => !isServicePackage(pkg.name));
+  assert.ok(previewed.length < packages.length, "expected an optional service among the deployables");
+  assert.deepEqual([...configs.keys()].toSorted(), previewed.map((pkg) => pkg.name).toSorted());
   assert.ok(configs.has("router") && configs.has("workshop-backend"),
-      "the router and backend are the two non-gatekeeper deployables");
+      "the router and backend are the two core non-gatekeeper deployables");
   for (const [name, config] of configs) {
     assert.equal(config.account_id, ACCOUNT_ID, name);
     assert.equal(config.routes, undefined, `${name}: a preview cannot be served from a zone`);

@@ -151,7 +151,7 @@ export interface DeployablePackage {
   config: WranglerConfig;
 }
 
-/** One user-supplied value the deploy wizard collects before installing a gatekeeper. */
+/** One user-supplied value the deploy wizard collects before installing a gatekeeper or service. */
 export interface DeployInput {
   /** Env var / secret name the worker reads. Screaming snake case. */
   name: string;
@@ -174,10 +174,19 @@ export type ManifestBinding = { type: string; name: string } & Record<string, un
 
 /** Everything the manifest says about one worker in the release. */
 export interface WorkerEntry {
-  /** Which role this worker plays in a deployment. */
-  kind: "backend" | "router" | "gatekeeper";
+  /**
+   * Which role this worker plays in a deployment. A `service` is an optional deployment-provided
+   * service the backend binds by a fixed name (see `backendBinding`), such as the SchoolOS AI call
+   * guard bound as `AI_CALL_GUARD`.
+   */
+  kind: "backend" | "router" | "gatekeeper" | "service";
   /** Gatekeepers only: the path segment the router routes `/gatekeeper/<shortName>/*` on. */
   shortName?: string;
+  /**
+   * Services only: the backend binding the deploy service adds once this worker is installed, a
+   * service binding named `name` to this worker's `entrypoint`.
+   */
+  backendBinding?: BackendServiceBinding;
   /** Whether the deploy wizard offers this worker for installation. */
   installable: boolean;
   /** Installed server-side on every fresh core deploy, with no user interaction. */
@@ -329,6 +338,29 @@ export const DEFAULT_CRED_INPUTS: DeployInput[] = [
 
 const GATEKEEPER_PREFIX = "gatekeeper-";
 
+/** How the backend binds an installed {@link SERVICE_PACKAGES} worker. */
+export interface BackendServiceBinding {
+  /** The backend's binding name, e.g. `AI_CALL_GUARD`. */
+  name: string;
+  /** The worker's named entrypoint the binding targets. */
+  entrypoint: string;
+}
+
+// Deployable workers that are neither core nor gatekeepers: optional services the backend binds
+// under a fixed name when one is installed (an unbound name leaves the backend's behaviour as
+// upstream's). Each is installable at most once, since the backend has one binding for it. Its
+// wizard inputs come from its deploy-inputs.json, with no OAuth default, and it gets no BASE_URL:
+// it is reached only through the backend's binding, never routed.
+const SERVICE_PACKAGES: Record<string, BackendServiceBinding> = {
+  // ADR-0007: SchoolOS budgets and Hall Monitor moderation around every model call.
+  "schoolos-ai-guard": { name: "AI_CALL_GUARD", entrypoint: "SchoolOsAiCallGuard" },
+};
+
+/** True when a deployable package is an optional backend service (see `SERVICE_PACKAGES`). */
+export function isServicePackage(pkgName: string): boolean {
+  return Object.hasOwn(SERVICE_PACKAGES, pkgName);
+}
+
 /** Read every deployable package and its Wrangler configuration, sorted by package name. */
 export function readDeployablePackages(packagesDir: string): DeployablePackage[] {
   return readdirSync(packagesDir)
@@ -403,6 +435,7 @@ function workerKind(pkgName: string): WorkerEntry["kind"] {
   if (pkgName === "workshop-backend") return "backend";
   if (pkgName === "router") return "router";
   if (isGatekeeperPackage(pkgName)) return "gatekeeper";
+  if (isServicePackage(pkgName)) return "service";
   throw new Error(`cannot classify deployable package: ${pkgName}`);
 }
 
@@ -511,6 +544,8 @@ export function buildWorkerEntry(
     // The router routes /gatekeeper/<short>/* by scanning its own GATEKEEPER_* bindings
     // (default entrypoint — it forwards whole HTTP requests, not vendor RPC).
     gatekeeperBindingExpansion = { propsByPackage: {} };
+  } else if (kind === "service") {
+    inputs = deployInputs ?? [];
   } else {
     vars.BASE_URL = `$PUBLIC_BASE_URL/gatekeeper/${releaseShortName(pkgName)}`;
     installable = !NOT_INSTALLABLE.has(pkgName);
@@ -520,24 +555,26 @@ export function buildWorkerEntry(
     } else {
       inputs = [];
     }
-    // Every declared secret input becomes a pass-through secret_text binding.
-    for (const input of inputs) {
-      if (input.kind === "secret") {
-        bindings.push({ type: "secret_text", name: input.name, text: `$SECRET(${input.name})` });
-      }
-    }
     if (PREINSTALL.has(pkgName) && inputs.length > 0) {
       throw new Error(`${pkgName} is preinstalled but declares input(s); preinstalls run ` +
           `with no user interaction, so this release would be broken`);
     }
   }
 
+  // Every declared secret input becomes a pass-through secret_text binding.
+  for (const input of inputs ?? []) {
+    if (input.kind === "secret") {
+      bindings.push({ type: "secret_text", name: input.name, text: `$SECRET(${input.name})` });
+    }
+  }
+
   return {
     kind,
     ...(kind === "gatekeeper" ? { shortName: releaseShortName(pkgName) } : {}),
+    ...(kind === "service" ? { backendBinding: SERVICE_PACKAGES[pkgName] } : {}),
     installable,
     ...(PREINSTALL.has(pkgName) ? { preinstall: true } : {}),
-    ...(SINGLETON.has(pkgName) ? { singleton: true } : {}),
+    ...(SINGLETON.has(pkgName) || kind === "service" ? { singleton: true } : {}),
     mainModule,
     modules: modules.map(({ name, type, sha256, size }) => ({
       name, type, sha256, size, r2Key: moduleR2Key(sha256),

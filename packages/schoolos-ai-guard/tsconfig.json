@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["./worker-configuration.d.ts"],
+    // SchoolOS packages and the vendored Hall Monitor packages ship TypeScript source whose
+    // specifiers name the file on disk.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "__tests__"],
+  "exclude": ["node_modules", ".wrangler"]
+}

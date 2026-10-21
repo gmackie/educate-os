@@ -3,17 +3,19 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 // This repository is public, and every consumer of it — forks, CI, external contributors — can
-// only reach registry.npmjs.org, so every dependency has to resolve from there.
+// only reach registry.npmjs.org, so every dependency has to resolve from there, or from a tarball
+// committed under vendor/ (a release no registry serves, kept with its checksums; see
+// vendor/hall-monitor/README.md), which every consumer has with the checkout.
 const PUBLIC_REGISTRY = "https://registry.npmjs.org/";
 
 const lockfile = readFileSync(new URL("../pnpm-lock.yaml", import.meta.url), "utf8");
 const npmrc = readFileSync(new URL("../.npmrc", import.meta.url), "utf8");
 
 describe("registry policy", () => {
-  it("resolves every lockfile tarball from the public npm registry", () => {
+  it("resolves every lockfile tarball from the public npm registry or the repository's vendor/", () => {
     const offenders = lockfile
       .split("\n")
-      .filter((line) => /tarball: (?!https:\/\/registry\.npmjs\.org\/)/.test(line))
+      .filter((line) => /tarball: (?!https:\/\/registry\.npmjs\.org\/|file:vendor\/[\w-]+\/[\w.-]+\.tgz\})/.test(line))
       .map((line) => line.trim());
 
     assert.deepEqual(

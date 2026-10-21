@@ -1271,6 +1271,76 @@
       },
       "vars": {}
     },
+    "schoolos-ai-guard": {
+      "backendBinding": {
+        "entrypoint": "SchoolOsAiCallGuard",
+        "name": "AI_CALL_GUARD"
+      },
+      "bindings": [
+        {
+          "name": "HALL_MONITOR_SIGNING_KEY",
+          "text": "$SECRET(HALL_MONITOR_SIGNING_KEY)",
+          "type": "secret_text"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [],
+      "inputs": [
+        {
+          "help": "The district, its directory snapshot, funding pools (including the safety pool), model rates, Hall Monitor profiles and principal bindings. See packages/schoolos-ai-guard/README.md for the schema.",
+          "kind": "var",
+          "label": "Guard configuration (JSON)",
+          "name": "AI_GUARD_CONFIG"
+        },
+        {
+          "help": "The HTTPS origin of the Hall Monitor deployment this district's moderation runs on.",
+          "kind": "var",
+          "label": "Hall Monitor URL",
+          "name": "HALL_MONITOR_URL"
+        },
+        {
+          "help": "The iss claim of the guard's service tokens. Hall Monitor must list it in HM_TRUSTED_ISSUERS with the signing key's public half.",
+          "kind": "var",
+          "label": "Service token issuer",
+          "name": "HALL_MONITOR_ISSUER"
+        },
+        {
+          "help": "A private Ed25519 or P-256 JSON Web Key (with a kid) the guard signs its Hall Monitor service tokens with.",
+          "kind": "secret",
+          "label": "Service token signing key",
+          "name": "HALL_MONITOR_SIGNING_KEY"
+        }
+      ],
+      "installable": true,
+      "kind": "service",
+      "mainModule": "worker.js",
+      "migrations": [
+        {
+          "new_sqlite_classes": [
+            "DistrictAiLedger"
+          ],
+          "tag": "v1"
+        }
+      ],
+      "modules": [
+        {
+          "name": "worker.js",
+          "r2Key": "blobs/modules/33cacbb08395e84df3f828402f94122f08a4c644852aaecb53dd5e5577ab52d9",
+          "sha256": "33cacbb08395e84df3f828402f94122f08a4c644852aaecb53dd5e5577ab52d9",
+          "size": 59,
+          "type": "esm"
+        }
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "singleton": true,
+      "vars": {}
+    },
     "workshop-backend": {
       "bindings": [
         {

@@ -93,6 +93,7 @@ Release pipeline (`scripts/release/`) — how customer instances get deployed:
     * `node scripts/release/upload-release.ts --release release-out --candidate` — mirror to R2; omit `--candidate` to publish directly (bypasses the gate — CI never does this).
     * `node scripts/release/promote-release.ts --release-id <id>` — copy the verified candidate's manifest into `releases/<id>/`.
 * Deploy-wizard configuration: an installable gatekeeper's user-supplied inputs default to OAuth `CLIENT_ID`/`CLIENT_SECRET` secrets; a per-package `deploy-inputs.json` overrides them, and `NO_DEFAULT_CRED_INPUTS` in `manifest-lib.ts` opts out gatekeepers that take no third-party OAuth app credentials (the wizard blocks Install on unfilled secret inputs, so a spurious default makes a gatekeeper uninstallable). Backend instance-state vars (`ADMINS`, `CLOUDFLARE_OS_DEPLOYMENT`, ...) are injected by the deploy service at PUT time, never manifest-templated.
+* A deployable package that is neither core nor `gatekeeper-*` must be listed in `SERVICE_PACKAGES` in `manifest-lib.ts` (or the release build throws). Such a package is an optional backend service, kind `service`: the backend binds it under a fixed name (`backendBinding`, e.g. `AI_CALL_GUARD` for `schoolos-ai-guard`), it is installable once, its wizard inputs come only from its `deploy-inputs.json`, and previews leave it out.
 
 Development checks:
 

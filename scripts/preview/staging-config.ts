@@ -30,7 +30,7 @@ import { createHash } from "node:crypto";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  gatekeeperShortName, isGatekeeperPackage, readDeployablePackages,
+  gatekeeperShortName, isGatekeeperPackage, isServicePackage, readDeployablePackages,
   type BindingDecl, type DeployablePackage, type ObservabilityConfig, type ServiceBinding,
   type WranglerConfig,
 } from "../release/manifest-lib.ts";
@@ -409,6 +409,9 @@ export function buildPreviewConfigs({
   const configs = new Map<string, StagingConfig>();
 
   for (const pkg of packages) {
+    // An optional backend service (the SchoolOS AI guard) needs deployment configuration a
+    // preview has none of, and the backend runs as upstream's without it, so previews leave it out.
+    if (isServicePackage(pkg.name)) continue;
     const config: StagingConfig = structuredClone(pkg.config);
     if (config.name !== pkg.name) {
       // Checked before the rename below, not after: every URL and service binding here is
@@ -734,7 +737,7 @@ export function generatePreviewConfigs(options: {
 } {
   const previewName = options.previewName ?? resolvePreviewName();
   const { accountId, workersDevHost } = resolveTarget();
-  const packages = readDeployablePackages(PACKAGES_DIR);
+  const packages = readDeployablePackages(PACKAGES_DIR).filter((pkg) => !isServicePackage(pkg.name));
   const configs = buildPreviewConfigs({
     previewName,
     packages,

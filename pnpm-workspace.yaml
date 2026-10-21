@@ -59,6 +59,11 @@ overrides:
   # - @lezer/markdown is a deep transitive of @codemirror/lang-markdown.
   '@types/node': 26.1.0
   '@lezer/markdown': 1.6.4
+  # Hall Monitor v0.1.0 is consumed from its GitHub release tarballs, vendored with their checksums
+  # in vendor/hall-monitor/ (see its README). The client depends on the contracts by version, which
+  # no registry serves, so the transitive dependency is pointed at the vendored tarball too.
+  '@gmacko/hall-monitor-client': file:vendor/hall-monitor/gmacko-hall-monitor-client-0.1.0.tgz
+  '@gmacko/hall-monitor-contracts': file:vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz
 
 peerDependencyRules:
   allowedVersions:

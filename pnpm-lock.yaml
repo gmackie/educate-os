@@ -58,6 +58,8 @@ overrides:
   vite@*: 7.3.6
   '@types/node': 26.1.0
   '@lezer/markdown': 1.6.4
+  '@gmacko/hall-monitor-client': file:vendor/hall-monitor/gmacko-hall-monitor-client-0.1.0.tgz
+  '@gmacko/hall-monitor-contracts': file:vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz
 
 importers:
 
@@ -1276,6 +1278,58 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
+
+  packages/schoolos-ai-guard:
+    dependencies:
+      '@gadgets/observability':
+        specifier: workspace:*
+        version: link:../observability
+      '@gadgets/workshop-shared':
+        specifier: workspace:*
+        version: link:../workshop-shared
+      '@gmacko/hall-monitor-client':
+        specifier: file:../../vendor/hall-monitor/gmacko-hall-monitor-client-0.1.0.tgz
+        version: file:vendor/hall-monitor/gmacko-hall-monitor-client-0.1.0.tgz
+      '@gmacko/hall-monitor-contracts':
+        specifier: file:../../vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz
+        version: file:vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz
+      '@schoolos/ai-governance':
+        specifier: workspace:*
+        version: link:../schoolos-ai-governance
+      '@schoolos/contracts':
+        specifier: workspace:*
+        version: link:../schoolos-contracts
+      capnweb:
+        specifier: 'catalog:'
+        version: 0.12.0
+      capnweb-validate:
+        specifier: 'catalog:'
+        version: 0.3.0(capnweb@0.12.0)(esbuild@0.28.2)(rollup@4.62.3)(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+    devDependencies:
+      '@cloudflare/vitest-plugin':
+        specifier: 'catalog:'
+        version: 1.4.3(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)(vitest@5.0.5)
+      '@gadgets/scripts':
+        specifier: workspace:*
+        version: link:../../scripts
+      '@schoolos/fixtures':
+        specifier: workspace:*
+        version: link:../schoolos-fixtures
+      miniflare:
+        specifier: 'catalog:'
+        version: 5.20261001.0-alpha(@types/node@26.1.0)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
+      wrangler:
+        specifier: 'catalog:'
+        version: 4.147.0(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)
 
   packages/schoolos-api-client:
     dependencies:
@@ -3374,6 +3428,14 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+
+  '@gmacko/hall-monitor-client@file:vendor/hall-monitor/gmacko-hall-monitor-client-0.1.0.tgz':
+    resolution: {integrity: sha512-A4YdBiwHSuIau/BxGfMQZB4ai/bOVg9pewl09OpY41H63zkloRO7JFWBNIA1kkw40vfeWFnkzpmbs8YA2FU/SQ==, tarball: file:vendor/hall-monitor/gmacko-hall-monitor-client-0.1.0.tgz}
+    version: 0.1.0
+
+  '@gmacko/hall-monitor-contracts@file:vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz':
+    resolution: {integrity: sha512-e/XxbmfOy4PQp26VXD2t4t5VRI/4BOHSG/K2Xd4WSi1iy5Zp5C3THOugynhPaHGbMLD0IychGUX3YCrNt8r60w==, tarball: file:vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz}
+    version: 0.1.0
 
   '@google/genai@2.21.0':
     resolution: {integrity: sha512-+PDtco2/Z0ONdzCGekCoCT+O1VJS9xJQNN4XzQpXG/t3El/SWWMkCWlFRO1KmivOHPa4Q0VjUYu1HBKCZ/v33Q==}
@@ -7866,6 +7928,15 @@ snapshots:
       react-dom: 19.2.8(react@19.2.8)
 
   '@floating-ui/utils@0.2.12': {}
+
+  '@gmacko/hall-monitor-client@file:vendor/hall-monitor/gmacko-hall-monitor-client-0.1.0.tgz':
+    dependencies:
+      '@gmacko/hall-monitor-contracts': file:vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz
+      zod: 4.6.5
+
+  '@gmacko/hall-monitor-contracts@file:vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz':
+    dependencies:
+      zod: 4.6.5
 
   '@google/genai@2.21.0(supports-color@10.2.2)':
     dependencies:

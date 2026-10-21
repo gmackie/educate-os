@@ -1,0 +1,22 @@
+// Project-specific Env augmentation for Wrangler's generated types. These are deploy inputs or
+// deployment-specific bindings, so none is in the config.
+
+declare namespace Cloudflare {
+  interface Env {
+    /** The guard's configuration as JSON (see `GuardConfig` in config.ts). */
+    AI_GUARD_CONFIG: string;
+    /**
+     * A district's own Hall Monitor Worker, bound by service binding (ADR-0007 §2). Its target is
+     * no Worker of this release, so it is added by the deployment rather than the config.
+     */
+    HALL_MONITOR?: Fetcher;
+    /** Hall Monitor's HTTPS origin, for a managed tenant reaching it with a service token. */
+    HALL_MONITOR_URL?: string;
+    /** The private JWK (Ed25519 or P-256) service tokens are signed with. */
+    HALL_MONITOR_SIGNING_KEY?: string;
+    /** The `iss` claim of service tokens; Hall Monitor must trust it with the key's public half. */
+    HALL_MONITOR_ISSUER?: string;
+    /** The `aud` claim of service tokens. Defaults to `hall-monitor`. */
+    HALL_MONITOR_AUDIENCE?: string;
+  }
+}

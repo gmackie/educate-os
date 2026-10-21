@@ -323,3 +323,22 @@ test("a gatekeeper-prefixed library is not a deployable worker", () => {
   assert.ok(!deployable.includes("gatekeeper-kit"),
       "gatekeeper-kit is a library; adding a wrangler.jsonc would publish it as a connector");
 });
+
+// A service is bound by the backend under a fixed name, never routed, so it must not pick up a
+// gatekeeper's shortName, BASE_URL or OAuth default inputs (which would make it uninstallable).
+test("a service package carries its backend binding and only its own inputs", () => {
+  const builds = readTestWorkerBuilds();
+  const guard = buildTestManifest(builds).workers["schoolos-ai-guard"];
+  assert.ok(guard, "expected schoolos-ai-guard among the deployable packages");
+  assert.equal(guard.kind, "service");
+  assert.deepEqual(guard.backendBinding, { name: "AI_CALL_GUARD", entrypoint: "SchoolOsAiCallGuard" });
+  assert.equal(guard.shortName, undefined);
+  assert.equal(guard.vars.BASE_URL, undefined);
+  assert.equal(guard.singleton, true);
+
+  const withoutInputs = { ...builds.find((w) => w.pkgName === "schoolos-ai-guard")!, deployInputs: undefined };
+  const entry = buildTestManifest([...builds.filter((w) => w.pkgName !== "schoolos-ai-guard"), withoutInputs])
+      .workers["schoolos-ai-guard"];
+  assert.deepEqual(entry?.inputs, []);
+  assert.deepEqual(entry?.bindings, []);
+});
