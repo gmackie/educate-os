@@ -71,3 +71,23 @@ sign-in seam lands in a separate PR.
   reassigns an address and the old Access user is never removed, the new holder may receive the
   same `sub`. District offboarding must therefore revoke departing users in Access, too. This
   needs to be confirmed against a live organization before pilot.
+
+## Kernel seam (SCHO-35)
+
+The kernel takes an optional `PRINCIPAL_RESOLVER` service binding
+(`@gadgets/workshop-shared/principal-resolver`). `createAccessSignInResolver` in
+`@schoolos/identity` implements it over one district's directory; a Worker entrypoint bound as
+`PRINCIPAL_RESOLVER` delegates to it.
+
+- **Unbound.** Sign-in keys `UserDurableObject` by email, exactly as before.
+- **Bound.** Access sign-in passes the verified `iss` and `sub` (and `email`, as an adoption hint
+  only) to the resolver, and the user DO is named `principal:<principalId>`. An unresolved sign-in
+  fails with `PRINCIPAL_UNRESOLVED` and a pending adoption with `PRINCIPAL_ADOPTION_PENDING`;
+  neither falls back to email. The device-session callback checks its handoff against the resolved
+  principal's DO.
+- **Other sign-in is off while bound.** Session tokens, passwords and authentication gatekeepers
+  name email- or username-keyed users, so `authenticate`, password login and gatekeeper sign-in are
+  refused. Gatekeeper sign-in needs its own seam, for gatekeepers to report a verified issuer and
+  subject.
+- **Admins.** `ADMINS` lists user DO names, so a principal deployment lists
+  `principal:<principalId>` entries.
