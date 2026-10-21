@@ -1,0 +1,20 @@
+{
+  "name": "@schoolos/academics",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS AcademicDirectory: schools, terms, catalog courses, offerings and enrollments behind a storage interface, with source-of-record enforcement and a fetch-standard local fallback HTTP service and MCP-style tools over the same rules. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}
