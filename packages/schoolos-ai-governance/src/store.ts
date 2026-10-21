@@ -19,6 +19,9 @@ export interface LedgerDecision<T> {
  * An implementation may instead run steps optimistically, deciding on a snapshot and retrying on
  * fresh state when another step committed first, provided no step ever commits over one it did
  * not see. Pool allocations, principal caps and the protected safety pool all rest on this.
+ *
+ * `DurableObjectLedgerStore` (`@schoolos/ai-governance/durable-object-store`) is the durable
+ * implementation; {@link InMemoryLedgerStore} is for tests and the local harness.
  */
 export interface LedgerStore {
   /** A snapshot of every committed entry. */
