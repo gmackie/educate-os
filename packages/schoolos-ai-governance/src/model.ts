@@ -67,6 +67,17 @@ export const AiWorkspaceContext = z.discriminatedUnion("kind", [
 export type AiWorkspaceContext = z.infer<typeof AiWorkspaceContext>;
 
 /**
+ * What a request's spend is for. `generative` requests (an assistant, feedback) are the default and
+ * are funded by course and personal pools, within each principal's cap. `safety` requests (content
+ * moderation, say) are organizational: they draw only on the district's safety pool, never on a
+ * principal's cap, so a student who has spent their AI budget is still protected. A generative
+ * request never draws on a safety pool, so ordinary use cannot starve moderation.
+ */
+export const FundingPurpose = z.enum(["generative", "safety"]);
+/** A funding purpose. */
+export type FundingPurpose = z.infer<typeof FundingPurpose>;
+
+/**
  * Token counts for one model response, with no token counted twice: `inputTokens` is uncached
  * input only, and the tokens read from or written to the provider's prompt cache are counted
  * separately in `cacheReadTokens` and `cacheWriteTokens`. Providers that report an input total
@@ -206,6 +217,11 @@ export const AiDenialReason = z.enum([
   "model-not-allowed",
   "principal-cap-reached",
   "pool-exhausted",
+  /**
+   * The safety pool cannot fund a safety request. The caller should not fall back to unmoderated
+   * generative AI: it should block generative AI for the request and offer a path without AI.
+   */
+  "safety-budget-exhausted",
   "request-already-completed",
 ]);
 /** A denial reason. */
@@ -228,6 +244,7 @@ export function denialErrorCode(reason: AiDenialReason): "forbidden" | "policy-v
     case "no-funding-pool":
     case "principal-cap-reached":
     case "pool-exhausted":
+    case "safety-budget-exhausted":
       return "budget-exceeded";
     case "request-already-completed":
       return "conflict";

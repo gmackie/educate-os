@@ -108,6 +108,7 @@ export function skipReasonFor(reason: ModelDenialReason): AiSkipReason {
     case "no-funding-pool":
     case "principal-cap-reached":
     case "pool-exhausted":
+    case "safety-budget-exhausted":
       return "budget";
     case "request-already-completed":
       return "already-requested";

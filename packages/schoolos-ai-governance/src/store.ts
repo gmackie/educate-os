@@ -16,6 +16,9 @@ export interface LedgerDecision<T> {
  * not at all. That is what stops two concurrent reservations from both spending the same balance,
  * and a retried request from being reserved twice. `decide` is synchronous so an implementation
  * can run it inside a single storage transaction (a Durable Object's `transactionSync`, say).
+ * An implementation may instead run steps optimistically, deciding on a snapshot and retrying on
+ * fresh state when another step committed first, provided no step ever commits over one it did
+ * not see. Pool allocations, principal caps and the protected safety pool all rest on this.
  */
 export interface LedgerStore {
   /** A snapshot of every committed entry. */

@@ -45,6 +45,7 @@ export const ModelDenialReason = z.enum([
   "model-not-allowed",
   "principal-cap-reached",
   "pool-exhausted",
+  "safety-budget-exhausted",
   "request-already-completed",
 ]);
 /** A model denial reason. */

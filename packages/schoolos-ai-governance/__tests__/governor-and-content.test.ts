@@ -99,8 +99,8 @@ describe("no content in any record", () => {
 
     // The usage event's fields are fixed: adding one is a deliberate, reviewed change.
     expect(Object.keys(AiUsageEvent.shape).toSorted()).toEqual([
-      "attempts", "cacheReadTokens", "cacheWriteTokens", "chargedUsdNano", "districtId", "hasUnknownCost", "inputTokens",
-      "model", "occurredAt", "outputTokens", "poolId", "priceBookId", "principalId", "requestId", "workspace",
+      "attempts", "cacheReadTokens", "cacheWriteTokens", "chargedUsdNano", "districtId", "fundingPurpose", "hasUnknownCost",
+      "inputTokens", "model", "occurredAt", "outputTokens", "poolId", "priceBookId", "principalId", "requestId", "workspace",
     ]);
     // No key anywhere in the records names content.
     const everything = JSON.stringify({ entries, events, report: await ledger.report() });

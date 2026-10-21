@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DistrictId, PrincipalId } from "@schoolos/contracts";
-import { AiAttempts, AiRequestId, AiWorkspaceContext, ModelRef, PriceBookId, TokenUsage } from "./model.ts";
+import { AiAttempts, AiRequestId, AiWorkspaceContext, FundingPurpose, ModelRef, PriceBookId, TokenUsage } from "./model.ts";
 import { PositiveUsdNano, SignedUsdNano, UsdNano, USD_NANO_PER_CENT, signedUsdNano, usdNanoFromCents, usdNanoValue } from "./money.ts";
 import { FundingPoolId } from "./pools.ts";
 
@@ -30,6 +30,8 @@ export const ReservationEntry = z.strictObject({
   districtId: DistrictId,
   principalId: PrincipalId,
   workspace: AiWorkspaceContext,
+  /** Whether the spend is generative or safety; safety spend is outside every principal cap. */
+  fundingPurpose: FundingPurpose,
   poolId: FundingPoolId,
   model: ModelRef,
   /** The most the request may cost, held against the pool until it settles or is voided. */
@@ -120,7 +122,7 @@ const v1Common = { requestId: AiRequestId };
  */
 export const LegacyLedgerEntryV1 = z.discriminatedUnion("type", [
   z.strictObject({
-    ...ReservationEntry.omit({ entrySchemaVersion: true, heldUsdNano: true }).shape,
+    ...ReservationEntry.omit({ entrySchemaVersion: true, fundingPurpose: true, heldUsdNano: true }).shape,
     heldCents: z.int().positive(),
   }),
   z.strictObject({
@@ -140,15 +142,16 @@ export const LegacyLedgerEntryV1 = z.discriminatedUnion("type", [
 export type LegacyLedgerEntryV1 = z.infer<typeof LegacyLedgerEntryV1>;
 
 /**
- * Reads a version 1 entry as the current format: every cent becomes 10^7 nanodollars, and a
+ * Reads a version 1 entry as the current format: every cent becomes 10^7 nanodollars, a
  * settlement's one usage becomes a single `estimated` attempt (version 1 settled the gateway's
- * cost estimate). Nothing else changes, so the upgrade is exact and charges stay the same.
+ * cost estimate), and a reservation is `generative` (version 1 had no safety funding). Nothing
+ * else changes, so the upgrade is exact and charges stay the same.
  */
 export function upgradeLedgerEntryV1(entry: LegacyLedgerEntryV1): z.infer<typeof CurrentLedgerEntry> {
   switch (entry.type) {
     case "reservation": {
       const { heldCents, ...rest } = entry;
-      return { ...rest, entrySchemaVersion: ENTRY_SCHEMA_VERSION, heldUsdNano: usdNanoFromCents(heldCents) };
+      return { ...rest, entrySchemaVersion: ENTRY_SCHEMA_VERSION, fundingPurpose: "generative", heldUsdNano: usdNanoFromCents(heldCents) };
     }
     case "settlement": {
       const actualUsdNano = usdNanoFromCents(entry.actualCents);
@@ -278,18 +281,24 @@ export class LedgerIndex {
     return signedUsdNano(total);
   }
 
-  /** Everything charged or held for a principal in a period, across pools, with their attributed adjustments. */
+  /**
+   * Everything charged or held for a principal's generative requests in a period, across pools,
+   * with their attributed adjustments: what counts against the principal's cap. Safety spend is
+   * organizational and is left out.
+   */
   principalCharged(principalId: string, period: BillingPeriod): SignedUsdNano {
     let total = 0n;
     for (const record of this.#requests.values()) {
-      if (record.reservation.principalId === principalId && record.reservation.period === period) {
+      const { reservation } = record;
+      if (reservation.principalId === principalId && reservation.period === period && reservation.fundingPurpose === "generative") {
         total += usdNanoValue(requestCharge(record));
       }
     }
     for (const adjustment of this.#adjustments.values()) {
-      if (adjustment.attribution?.principalId === principalId && adjustment.period === period) {
-        total += usdNanoValue(adjustment.deltaUsdNano);
-      }
+      if (adjustment.attribution?.principalId !== principalId || adjustment.period !== period) continue;
+      const corrected = adjustment.basis.kind === "request" ? this.#requests.get(adjustment.basis.requestId) : undefined;
+      if (corrected?.reservation.fundingPurpose === "safety") continue;
+      total += usdNanoValue(adjustment.deltaUsdNano);
     }
     return signedUsdNano(total);
   }

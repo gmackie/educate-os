@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { SchoolOsError, type SchoolOsErrorBody } from "@schoolos/contracts";
-import { AiRequestId, AiWorkspaceContext, ModelRef, denialErrorCode, type AiDenialReason } from "./model.ts";
+import { AiRequestId, AiWorkspaceContext, FundingPurpose, ModelRef, denialErrorCode, type AiDenialReason } from "./model.ts";
 import { PositiveUsdNano } from "./money.ts";
 import { AiPrincipal, AiSettlement, type AiLedger, type SettleResult, type VoidResult } from "./ledger.ts";
 import type { ReservationEntry } from "./entries.ts";
@@ -18,6 +18,8 @@ export const GovernedAiRequest = z.strictObject({
   model: ModelRef,
   /** The most the request can cost, in nanodollars, from its input size and output token limit. */
   estimatedMaxUsdNano: PositiveUsdNano,
+  /** What the spend is for; `safety` for moderation. Defaults to `generative`. */
+  fundingPurpose: FundingPurpose.optional(),
 });
 /** A governed AI request. */
 export type GovernedAiRequest = z.infer<typeof GovernedAiRequest>;
@@ -89,7 +91,8 @@ export function ledgerGovernor(ledger: AiLedger): AiRequestGovernor {
   return {
     async beforeRequest(raw) {
       const request = parseOrThrow(GovernedAiRequest, raw);
-      const result = await ledger.reserve(request.requestId, request.principal, request.workspace, request.model, request.estimatedMaxUsdNano);
+      const result = await ledger.reserve(request.requestId, request.principal, request.workspace, request.model, request.estimatedMaxUsdNano,
+        request.fundingPurpose === undefined ? {} : { fundingPurpose: request.fundingPurpose });
       if (result.outcome === "denied") return deny(result.reason);
       if (result.status !== "held") return deny("request-already-completed");
       return { effect: "allow", reservation: result.reservation };

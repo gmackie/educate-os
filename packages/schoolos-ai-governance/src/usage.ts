@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DistrictId, PrincipalId } from "@schoolos/contracts";
-import { AiRequestId, AiWorkspaceContext, ModelRef, PriceBookId, addTokenUsage, modelKey } from "./model.ts";
+import { AiRequestId, AiWorkspaceContext, FundingPurpose, ModelRef, PriceBookId, addTokenUsage, modelKey } from "./model.ts";
 import { UsdNano, addUsdNano, type SignedUsdNano } from "./money.ts";
 import { FundingPoolId } from "./pools.ts";
 import type { AdjustmentEntry, LedgerIndex } from "./entries.ts";
@@ -18,6 +18,8 @@ export const AiUsageEvent = z.strictObject({
   districtId: DistrictId,
   principalId: PrincipalId,
   workspace: AiWorkspaceContext,
+  /** Generative or safety spend; safety spend is organizational, and outside the principal's cap. */
+  fundingPurpose: FundingPurpose,
   poolId: FundingPoolId,
   model: ModelRef,
   /** Provider attempts the request made; a retried request has more than one. */
@@ -51,6 +53,7 @@ export function usageEventsFrom(ledger: LedgerIndex): AiUsageEvent[] {
       districtId: reservation.districtId,
       principalId: reservation.principalId,
       workspace: reservation.workspace,
+      fundingPurpose: reservation.fundingPurpose,
       poolId: reservation.poolId,
       model: reservation.model,
       attempts: settlement.attempts.length,

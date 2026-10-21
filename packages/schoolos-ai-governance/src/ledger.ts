@@ -10,6 +10,7 @@ import {
   AiAttempts,
   AiRequestId,
   AiWorkspaceContext,
+  FundingPurpose,
   ModelRef,
   PriceBookId,
   TokenUsage,
@@ -130,7 +131,14 @@ const ReserveInput = z.strictObject({
   workspace: AiWorkspaceContext,
   model: ModelRef,
   estimatedMaxUsdNano: PositiveUsdNano,
+  fundingPurpose: FundingPurpose,
 });
+
+/** Options for {@link AiLedger.reserve}. */
+export interface ReserveOptions {
+  /** What the spend is for. Defaults to `generative`. */
+  fundingPurpose?: FundingPurpose;
+}
 
 /** The attempts and price book of a parsed settlement, in the long form. */
 function settlementAttempts(settlement: z.output<typeof AiSettlement>): { attempts: AiAttempt[]; priceBookId?: PriceBookId } {
@@ -158,7 +166,7 @@ function parsed<T>(schema: z.ZodType<T>, value: unknown): T {
 
 /** A request's routing: the model, the pools to draw on in order, and the principal's cap. */
 type Routing =
-  | { ok: true; model: GovernedModel; pools: FundingPool[]; capUsdNano: bigint }
+  | { ok: true; model: GovernedModel; pools: FundingPool[]; capUsdNano: bigint | undefined }
   | { ok: false; reason: AiDenialReason };
 
 function sameWorkspace(a: AiWorkspaceContext, b: AiWorkspaceContext): boolean {
@@ -199,8 +207,16 @@ export class AiLedger {
    * provided the principal's month-to-date charges plus the estimate stay within the effective
    * `aiMonthlyCapCentsPerPrincipal`.
    *
+   * A `safety` request (see {@link FundingPurpose}) is held only against the district safety pool
+   * and is not subject to the principal cap. When that pool has too little left it is refused
+   * with `safety-budget-exhausted`, so the caller can block generative AI and offer a path
+   * without AI. A generative request never draws on the safety pool.
+   *
    * A request ID already reserved returns that reservation and its status. Reusing one for a
-   * different principal, workspace, model or estimate is a `conflict`.
+   * different principal, workspace, model, estimate or purpose is a `conflict`.
+   *
+   * The pool and cap checks and the hold are one `LedgerStore.transact` step, so concurrent
+   * reservations can never together hold more than a pool's allocation or a principal's cap.
    */
   async reserve(
     requestId: AiRequestId,
@@ -208,12 +224,14 @@ export class AiLedger {
     workspace: AiWorkspaceContext,
     model: ModelRef,
     estimatedMaxUsdNano: UsdNano,
+    options: ReserveOptions = {},
   ): Promise<ReserveResult> {
-    const input = parsed(ReserveInput, { requestId, principal, workspace, model, estimatedMaxUsdNano });
+    const fundingPurpose = options.fundingPurpose ?? "generative";
+    const input = parsed(ReserveInput, { requestId, principal, workspace, model, estimatedMaxUsdNano, fundingPurpose });
     const estimate = usdNanoValue(input.estimatedMaxUsdNano);
     const reservedAt = this.#now().toISOString();
     const period = billingPeriodOf(reservedAt);
-    const decision = await this.#route(input.principal, input.workspace, input.model);
+    const decision = await this.#route(input.principal, input.workspace, input.model, input.fundingPurpose);
 
     return this.#store.transact<ReserveResult>((ledger) => {
       const existing = ledger.request(input.requestId);
@@ -221,7 +239,7 @@ export class AiLedger {
         const held = existing.reservation;
         if (held.principalId !== input.principal.principalId || held.districtId !== input.principal.districtId
           || !sameWorkspace(held.workspace, input.workspace) || !sameModel(held.model, input.model)
-          || held.heldUsdNano !== input.estimatedMaxUsdNano) {
+          || held.heldUsdNano !== input.estimatedMaxUsdNano || held.fundingPurpose !== input.fundingPurpose) {
           throw new SchoolOsError("conflict", "request ID was already used for a different request");
         }
         const status: RequestStatus = existing.settlement ? "settled" : existing.voided ? "voided" : "held";
@@ -229,13 +247,18 @@ export class AiLedger {
       }
       if (!decision.ok) return { append: [], result: { outcome: "denied", reason: decision.reason } };
 
-      const principalCharged = usdNanoValue(ledger.principalCharged(input.principal.principalId, period));
-      if (principalCharged + estimate > decision.capUsdNano) {
-        return { append: [], result: { outcome: "denied", reason: "principal-cap-reached" } };
+      if (decision.capUsdNano !== undefined) {
+        const principalCharged = usdNanoValue(ledger.principalCharged(input.principal.principalId, period));
+        if (principalCharged + estimate > decision.capUsdNano) {
+          return { append: [], result: { outcome: "denied", reason: "principal-cap-reached" } };
+        }
       }
       const pool = decision.pools.find((candidate) =>
         usdNanoValue(ledger.poolCharged(candidate.id, period)) + estimate <= usdNanoValue(candidate.monthlyAllocationUsdNano));
-      if (pool === undefined) return { append: [], result: { outcome: "denied", reason: "pool-exhausted" } };
+      if (pool === undefined) {
+        const reason = input.fundingPurpose === "safety" ? "safety-budget-exhausted" : "pool-exhausted";
+        return { append: [], result: { outcome: "denied", reason } };
+      }
 
       const reservation: ReservationEntry = {
         type: "reservation",
@@ -244,6 +267,7 @@ export class AiLedger {
         districtId: this.#districtId,
         principalId: input.principal.principalId,
         workspace: input.workspace,
+        fundingPurpose: input.fundingPurpose,
         poolId: pool.id,
         model: { provider: decision.model.provider, modelId: decision.model.modelId },
         heldUsdNano: input.estimatedMaxUsdNano,
@@ -351,7 +375,7 @@ export class AiLedger {
     }));
   }
 
-  async #route(principal: AiPrincipal, workspace: AiWorkspaceContext, model: ModelRef): Promise<Routing> {
+  async #route(principal: AiPrincipal, workspace: AiWorkspaceContext, model: ModelRef, purpose: FundingPurpose): Promise<Routing> {
     if (principal.districtId !== this.#districtId) return { ok: false, reason: "cross-district" };
     const [snapshot, pools, closures, catalog] = await Promise.all([
       this.#source.directory(),
@@ -359,11 +383,13 @@ export class AiLedger {
       this.#source.termClosures(),
       this.#source.modelCatalog(),
     ]);
-    const funding = resolveFunding(snapshot, pools, closures, principal, workspace);
+    const funding = resolveFunding(snapshot, pools, closures, principal, workspace, purpose);
     if (!funding.ok) return funding;
     const policy = await this.#source.effectivePolicy(funding.policyScope);
     const route = routeModel(model, { policy, catalog, pools: funding.pools });
     if (!route.ok) return route;
-    return { ok: true, model: route.model, pools: route.pools, capUsdNano: usdNanoValue(usdNanoFromCents(policy.aiMonthlyCapCentsPerPrincipal)) };
+    // Safety spend is organizational, so no principal cap applies to it.
+    const capUsdNano = purpose === "safety" ? undefined : usdNanoValue(usdNanoFromCents(policy.aiMonthlyCapCentsPerPrincipal));
+    return { ok: true, model: route.model, pools: route.pools, capUsdNano };
   }
 }

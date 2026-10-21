@@ -50,15 +50,21 @@ export const SONNET: ModelRef = { provider: "anthropic", modelId: "claude-sonnet
 export const OPUS: ModelRef = { provider: "anthropic", modelId: "claude-opus-example" };
 export const MINI: ModelRef = { provider: "openai", modelId: "gpt-mini-example" };
 export const GEMINI: ModelRef = { provider: "google", modelId: "gemini-pro-example" };
+/** A moderation model, like the Hall Monitor's Clef-flash check. */
+export const MODERATOR: ModelRef = { provider: "cloudflare", modelId: "clef-flash-example" };
 
 export const CATALOG: GovernedModel[] = [
   { ...SONNET, mode: "enabled" },
   { ...OPUS, mode: "enabled" },
   { ...MINI, mode: "hidden" },
   { ...GEMINI, mode: "disabled" },
+  { ...MODERATOR, mode: "hidden" },
 ];
 
-/** Northfield's pools: two class pools, a high-school pool, and a personal pool. Middle school has none. */
+/**
+ * Northfield's pools: two class pools, a high-school pool, a personal pool and a safety pool for
+ * moderation. Middle school has no course pool.
+ */
 export function northfieldPools(overrides: Partial<Record<string, Partial<FundingPool>>> = {}): FundingPool[] {
   const pools = [
     {
@@ -92,6 +98,14 @@ export function northfieldPools(overrides: Partial<Record<string, Partial<Fundin
       scope: { level: "district", districtId: NF },
       monthlyAllocationUsdNano: c(300),
       allowedModels: [MINI],
+    },
+    {
+      id: "fpl_nf-safety",
+      name: "Moderation",
+      purpose: "safety",
+      scope: { level: "district", districtId: NF },
+      monthlyAllocationUsdNano: c(100),
+      allowedModels: [MODERATOR],
     },
   ].map((pool) => ({ ...pool, ...overrides[pool.id] }));
   return FundingPoolSet.parse(pools);
