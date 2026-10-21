@@ -31,9 +31,12 @@ application under `/api/` (see `@schoolos/district-app` below), seeded with demo
 resource and an installed activity in every active class, a student's essay in a personal and a
 course workspace, one submission, an applied configuration revision and one AI request. The harness
 prints a ready-made `curl` command with a token for one student, one teacher and one district
-administrator per district. A token from one district's IdP is rejected by the other.
-`SCHOOLOS_HARNESS_PORT` moves the first port.
+administrator per district. A token from one district's IdP is rejected by the other. Sign-in takes
+the production path: each token's verified payload goes through `identityFromAccessPayload` and the
+directory's `createDirectoryPrincipalResolver`, and the CLI shows Morgan Lee (one IdP subject in both
+districts) landing on a different principal in each. `SCHOOLOS_HARNESS_PORT` moves the first port.
 | `packages/schoolos-identity` | `@schoolos/identity`: resolves verified `(issuer, subject)` claims to principals, the Cloudflare Access adapter, admin-confirmed identity linking and the email-keyed migration plan (F04). |
+| `packages/schoolos-identity-links` | `@schoolos/identity-links`: the district identity-link control. An append-only log of pending identity links and Workshop user adoptions (in memory, or Durable Object SQLite via `./durable-object-store`), and the district-admin service that lists, approves and rejects them under the policy engine, persisting every audit event and, for a confirmed adoption, the Workshop user rebind intent (SCHO-38). |
 | `packages/schoolos-registry` | `@schoolos/registry`: Learning Registry records (frameworks, competencies, associations, resources, curriculum packs, evidence contracts), lossless CASE 1.1 codecs and a fetch-injected CASE client. `src/case/codec.ts` lists what CASE cannot express. |
 | `packages/schoolos-config` | `@schoolos/config`: the configuration compiler. Capability registry and shipped pack manifests, the `schoolos.dev/v1alpha1` district document, revisions with diff and rollback, dry-run plans and form descriptors. |
 | `packages/schoolos-integrations` | `@schoolos/integrations`: interoperability adapters, one namespace per standard. `oneroster` reads a OneRoster 1.2 bulk CSV export, previews it against the current directory, links IdP identities, quarantines mismatches, and applies only results that pass `checkDirectoryIntegrity`. |

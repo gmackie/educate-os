@@ -1,5 +1,6 @@
 // Boots both synthetic districts, each on its own local port with the full district application
-// (`/api/...`) seeded with demo content, and prints their health and demo sign-in tokens.
+// (`/api/...`) seeded with demo content, and prints their health, demo sign-in tokens and where
+// Morgan Lee (one IdP subject in both districts) lands in each.
 //
 //   pnpm schoolos:harness           serve until interrupted (ports 4801, 4802, ...)
 //   pnpm schoolos:harness --check   boot, query every /health and /api/admin/health over HTTP, then exit
@@ -9,6 +10,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from "node:net";
 import { bootDistrictApp, harnessFetch, seedDemo } from "./district-app.ts";
 import { bootHarness } from "./harness.ts";
+import { MORGAN_LEE_SUBJECT, signInAcrossDistricts } from "./scenarios.ts";
 
 async function toRequest(req: IncomingMessage, origin: string): Promise<Request> {
   const chunks: Buffer[] = [];
@@ -80,6 +82,10 @@ async function main(): Promise<void> {
       }
     }
   }
+
+  // The same teacher, signed in at each district through its own IdP, is a different principal there.
+  const morgan = await signInAcrossDistricts(districts.map(({ entry }) => entry), MORGAN_LEE_SUBJECT);
+  console.log(`${morgan[0]?.displayName ?? MORGAN_LEE_SUBJECT}: ${morgan.map((s) => `${s.districtId} -> ${s.principalId} (foreign tokens refused: ${s.foreignTokensRefused})`).join("; ")}`);
 
   if (check) {
     await Promise.all(servers.map((server) => new Promise((resolve) => server.close(resolve))));

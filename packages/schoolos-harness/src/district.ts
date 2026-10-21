@@ -1,13 +1,14 @@
 import {
   checkDirectoryIntegrity,
   DistrictDirectorySnapshot,
-  externalIdentityKey,
   SchoolOsError,
   type ErrorCode,
   type Principal,
 } from "@schoolos/contracts";
+import { createDirectoryPrincipalResolver, type PrincipalResolver } from "@schoolos/identity";
 import type { FakeAiProvider } from "./fake-ai.ts";
 import type { FakeIdentityProvider } from "./fake-identity.ts";
+import { identityFromBearer } from "./sign-in.ts";
 
 /** A roster source. The fake returns a fixture; A03 and A04 will add OneRoster CSV and REST. */
 export interface RosterProvider {
@@ -94,14 +95,12 @@ export class DistrictInstance {
   /** The loaded directory. */
   readonly directory: DistrictDirectorySnapshot;
   readonly #providers: DistrictProviders;
-  readonly #principalsByIdentity: Map<string, Principal>;
+  readonly #resolver: PrincipalResolver;
 
   private constructor(directory: DistrictDirectorySnapshot, providers: DistrictProviders) {
     this.directory = directory;
     this.#providers = providers;
-    this.#principalsByIdentity = new Map(
-      directory.principals.flatMap((p) => p.externalIdentities.map((link) => [externalIdentityKey(link), p] as const)),
-    );
+    this.#resolver = createDirectoryPrincipalResolver(directory);
   }
 
   /**
@@ -146,18 +145,15 @@ export class DistrictInstance {
   }
 
   /**
-   * Resolves a bearer token to a principal. The token proves only `(issuer, subject)`; the
-   * principal and everything about it come from this district's directory.
+   * Resolves a bearer token to a principal, through `identityFromAccessPayload` and the
+   * directory's `createDirectoryPrincipalResolver` (see `sign-in.ts`). The token proves only
+   * `(issuer, subject)`; the principal and everything about it come from this district's directory.
    */
   async resolvePrincipal(request: Request): Promise<Principal> {
-    const header = request.headers.get("authorization") ?? "";
-    const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : "";
-    const verified = token === "" ? null : await this.#providers.identity.verifyToken(token);
-    const principal = verified === null ? undefined : this.#principalsByIdentity.get(
-      externalIdentityKey({ districtId: this.directory.district.id, ...verified }),
-    );
-    if (principal === undefined) throw new SchoolOsError("unauthenticated", "Sign in with this district's identity provider.");
-    return principal;
+    const identity = await identityFromBearer(request, this.#providers.identity);
+    if (identity === undefined) throw new SchoolOsError("unauthenticated", "Sign in with this district's identity provider.");
+    const { principalId } = await this.#resolver.resolve(identity);
+    return this.directory.principals.find((p) => p.id === principalId)!;
   }
 
   /** Handles one HTTP request. */

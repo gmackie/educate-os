@@ -56,6 +56,8 @@ export const ResourceKind = z.enum([
   "audit-event",
   /** A purpose-bound, time-limited grant of access to one student's record, such as for an appeal. */
   "access-grant",
+  /** A pending request to link a sign-in identity, or adopt an existing Workshop user, into a principal. */
+  "identity-link",
 ]);
 /** A resource kind. */
 export type ResourceKind = z.infer<typeof ResourceKind>;

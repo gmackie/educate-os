@@ -1,4 +1,5 @@
 import type { VerifiedIdentity } from "@schoolos/contracts";
+import type { VerifiedAccessJwtPayload } from "@schoolos/identity";
 // A stand-in for a district IdP. It signs HS256 tokens with a per-instance random key, so a token
 // minted by one district's fake IdP never verifies at another's, just as with real issuers. It
 // uses only Web Crypto and `btoa`/`atob`, so it runs unchanged under Node and workerd.
@@ -61,10 +62,15 @@ export class FakeIdentityProvider {
   }
 
   /**
-   * Verifies a token this IdP issued. Returns null for anything else: a bad signature, another
-   * issuer, an algorithm other than HS256, an expired token or malformed input.
+   * Verifies a token this IdP issued and returns its whole payload, shaped like what the kernel's
+   * `verifyCfAccessJwt` returns for an Access token: `iss`, `sub` (or `common_name` for a service
+   * token), the timestamps and any extra claims. Returns null for anything else: a bad signature,
+   * another issuer, an algorithm other than HS256, an expired token or malformed input.
+   *
+   * It deliberately does not judge the subject: `identityFromAccessPayload` does, exactly as it
+   * does for real Access payloads, so the harness exercises the production adapter.
    */
-  async verifyToken(token: string): Promise<VerifiedClaims | null> {
+  async verifyPayload(token: string): Promise<VerifiedAccessJwtPayload | null> {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
     const [header, payload, signature] = parts as [string, string, string];
@@ -80,13 +86,23 @@ export class FakeIdentityProvider {
       const claims: unknown = JSON.parse(new TextDecoder().decode(base64UrlDecode(payload)));
       if (typeof decodedHeader !== "object" || decodedHeader === null) return null;
       if ((decodedHeader as { alg?: unknown }).alg !== "HS256") return null;
-      if (typeof claims !== "object" || claims === null) return null;
-      const { iss, sub, exp } = claims as { iss?: unknown; sub?: unknown; exp?: unknown };
-      if (iss !== this.issuer || typeof sub !== "string" || sub === "") return null;
+      if (typeof claims !== "object" || claims === null || Array.isArray(claims)) return null;
+      const { iss, exp } = claims as { iss?: unknown; exp?: unknown };
+      if (iss !== this.issuer) return null;
       if (typeof exp !== "number" || exp <= Math.floor(Date.now() / 1000)) return null;
-      return { issuer: iss, subject: sub };
+      return claims as VerifiedAccessJwtPayload;
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Verifies a token this IdP issued for a person and returns only its issuer and subject. Returns
+   * null for everything {@link verifyPayload} refuses, and for a token with no subject.
+   */
+  async verifyToken(token: string): Promise<VerifiedClaims | null> {
+    const claims = await this.verifyPayload(token);
+    const sub = claims?.sub;
+    return typeof sub === "string" && sub !== "" ? { issuer: this.issuer, subject: sub } : null;
   }
 }

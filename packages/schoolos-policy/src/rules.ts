@@ -484,6 +484,12 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     effect: { effect: "allow" },
   },
   {
+    id: "admin.district.identity-links",
+    description: "Only a district admin lists and decides pending identity links and Workshop user adoptions: they decide who a sign-in is.",
+    when: { kinds: ["identity-link"], roles: ["district-admin"], actions: ["read", "list", "approve"] },
+    effect: { effect: "allow" },
+  },
+  {
     id: "admin.audit-read",
     description: "Administrators read the content-free policy audit trail in their scope.",
     when: { kinds: ["audit-event"], roles: [...ADMINS], actions: [...READS, "export"] },
