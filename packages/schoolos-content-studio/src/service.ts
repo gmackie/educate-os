@@ -15,6 +15,8 @@ import {
 import { ResourceDescriptor, RightsMode } from "@schoolos/registry";
 import { z } from "zod";
 import { AlignmentInput, type AlignmentSource } from "./alignments.ts";
+import { blueprintLocator, blueprintReleaseManifest, SubmitBlueprintInput, verifyBlueprintRelease } from "./blueprint.ts";
+import { type ExtractionRecord, extractForReview, type TextExtractor } from "./extraction.ts";
 import { extractPageMetadata, type PageMetadata } from "./html.ts";
 import { randomIdBody, snapshotDigest } from "./ids.ts";
 import type { ClassBinding, ContentItem, ItemSource, StudioRelease } from "./item.ts";
@@ -124,6 +126,11 @@ export interface ContentStudioOptions {
   scanner: ScannerSetting;
   reviewer?: ContentReviewer;
   ageHooks?: readonly AgeAppropriatenessHook[];
+  /**
+   * Extracts PDF and DOCX text for review, such as `@schoolos/doc-extract`'s
+   * `extractDocumentText`. Without one, those documents are stored but not read.
+   */
+  extractText?: TextExtractor;
   alignments: AlignmentSource;
   /** The current time as an ISO 8601 timestamp. */
   now?: () => string;
@@ -210,6 +217,39 @@ export class ContentStudio {
       resourceId: update?.resourceId,
       previousDigest: update?.digest,
       scan,
+    });
+  }
+
+  /**
+   * Submits a Workshop Blueprint release for review (SCHO-121). The release is named by its commit,
+   * which is recomputed from its files, so what is approved is exactly the code that commit holds.
+   * The studio keeps only a manifest of the release (its paths and blob IDs) in quarantine: the
+   * code itself is never stored here nor put in a registry record, and runs only in a Gadget
+   * sandbox once the release is approved. The README, if any, is the text reviewed.
+   *
+   * @throws SchoolOsError `forbidden` if the subject may not submit at the target scope,
+   *   `validation-failed` if the commit does not match the files, `policy-violation` if the release
+   *   is larger than the upload cap, and `conflict` if it is the resource's latest release again.
+   */
+  async submitBlueprint(subject: VerifiedPrincipal, input: unknown): Promise<ContentItem> {
+    const { release, targetScope, updatesResourceId } = parseInput(SubmitBlueprintInput, input);
+    await this.#require(subject, "create", targetScope);
+    const maxBytes = this.#options.maxUploadBytes ?? DEFAULT_MAX_UPLOAD_BYTES;
+    const encoder = new TextEncoder();
+    const size = Object.values(release.files).reduce((sum, text) => sum + encoder.encode(text).byteLength, 0);
+    if (size > maxBytes) throw new SchoolOsError("policy-violation", `the release is larger than ${maxBytes} bytes`);
+    const verified = await verifyBlueprintRelease(release);
+    const update = await this.#updateTarget(subject, updatesResourceId, targetScope);
+    return this.#ingest(subject, {
+      source: { kind: "blueprint", fileName: release.fileName, name: release.name, version: release.version, commitId: verified.commitId, snapshot: verified.snapshot },
+      contentType: "blueprint-release",
+      bytes: await blueprintReleaseManifest(release, verified),
+      targetScope,
+      resourceId: update?.resourceId,
+      previousDigest: update?.digest,
+      scan: undefined,
+      title: release.title,
+      reviewText: release.files["README.md"],
     });
   }
 
@@ -314,8 +354,8 @@ export class ContentStudio {
     const descriptor = ResourceDescriptor.safeParse({
       id: item.resourceId,
       release: { version, releasedAt: at, contentDigest: item.snapshotDigest },
-      kind: item.contentType === "html" ? "web-page" : "document",
-      title: (item.title ?? (item.source.kind === "upload" ? item.source.fileName : item.source.finalUrl)).slice(0, 500),
+      kind: resourceKindOf(item),
+      title: (item.title ?? (item.source.kind === "url" ? item.source.finalUrl : item.source.fileName)).slice(0, 500),
       locator: locatorOf(item),
       license: {
         name: item.license.status === "recognized" ? item.license.license.name : "No recognized license",
@@ -332,11 +372,13 @@ export class ContentStudio {
       alignments: resolved.map(({ alignment, competency }) => ({ competency, purpose: alignment.purpose, review: { status: "reviewed", ...review } })),
       review: { status: "approved", ...review },
       provenance: {
-        // A URL import is the publisher's own page; an upload's publisher is unknown, so it is recorded as the district's.
-        source: item.source.kind === "url" ? "official" : "district-authored",
+        // A URL import is the publisher's own page, and a Blueprint release the publisher's own commit;
+        // an upload's publisher is unknown, so it is recorded as the district's.
+        source: item.source.kind === "upload" ? "district-authored" : "official",
         sourceUri: locatorOf(item),
         retrievedAt: item.submittedAt,
-        sourceRevision: item.snapshotDigest,
+        // A Blueprint release is pinned to its commit, which names the code itself.
+        sourceRevision: item.source.kind === "blueprint" ? item.source.commitId : item.snapshotDigest,
       },
     });
     if (!descriptor.success) throw new SchoolOsError("validation-failed", "the item cannot be released as a registry resource");
@@ -428,6 +470,10 @@ export class ContentStudio {
       resourceId: ResourceId | undefined;
       previousDigest: string | undefined;
       scan: ContentItem["scan"];
+      /** The title the submission states, for sources whose content has none. */
+      title?: string;
+      /** Text to review in place of the content, for sources whose content is not text. */
+      reviewText?: string | undefined;
     },
   ): Promise<ContentItem> {
     const digest = await snapshotDigest(input.bytes);
@@ -447,7 +493,7 @@ export class ContentStudio {
       snapshotDigest: digest,
       byteLength: input.bytes.byteLength,
       scan: input.scan,
-      title: input.source.kind === "upload" ? input.source.fileName : undefined,
+      title: input.title ?? (input.source.kind === "upload" ? input.source.fileName : undefined),
       canonicalUrl: undefined,
       lang: undefined,
       license: { status: "absent", hints: [] },
@@ -469,7 +515,14 @@ export class ContentStudio {
 
     let metadata: PageMetadata | undefined;
     let text: string | undefined;
-    if (input.contentType === "html" || input.contentType === "text") {
+    let extraction: ExtractionRecord | undefined;
+    if (input.contentType === "pdf" || input.contentType === "docx") {
+      // The extracted text is untrusted data: it reaches the checks and the AI reviewer's data slot, and is never stored.
+      ({ record: extraction, text } = await extractForReview(this.#options.extractText, input.bytes, input.contentType));
+      item.extraction = extraction;
+    } else if (input.contentType === "blueprint-release") {
+      text = input.reviewText;
+    } else if (input.contentType === "html" || input.contentType === "text") {
       const decoded = new TextDecoder().decode(input.bytes);
       if (input.contentType === "html") {
         metadata = extractPageMetadata(decoded, input.source.kind === "url" ? input.source.finalUrl : "https://upload.invalid/");
@@ -492,7 +545,7 @@ export class ContentStudio {
     item.rights = { proposed, current: proposed, changes: [{ from: undefined, to: proposed, by: "importer", at, widened: false, reason: `proposed from license evidence (${item.license.status})` }] };
     await this.#transition(item, "provenance-resolved", "system", at);
 
-    item.checks = runChecks({ contentType: input.contentType, metadata, text, license: item.license, ageHooks: this.#options.ageHooks ?? [] });
+    item.checks = runChecks({ contentType: input.contentType, metadata, text, license: item.license, ageHooks: this.#options.ageHooks ?? [], extraction });
     item.ai = await runAiReview(this.#options.reviewer, { title: item.title, sourceUrl: input.source.kind === "url" ? input.source.finalUrl : undefined, text }, randomIdBody());
     await this.#transition(item, "reviewed", "system", this.#now());
     await this.#save(item);
@@ -548,10 +601,17 @@ export class ContentStudio {
   }
 }
 
-/** Where a release's resource lives: the canonical or final URL, or the upload's snapshot. */
+/** Where a release's resource lives: the canonical or final URL, the Blueprint release, or the upload's snapshot. */
 function locatorOf(item: ContentItem): string {
   if (item.source.kind === "url") return item.canonicalUrl ?? item.source.finalUrl;
+  if (item.source.kind === "blueprint") return blueprintLocator(item.source.name, item.source.commitId);
   return `urn:schoolos:snapshot:${item.snapshotDigest}`;
+}
+
+/** The registry kind a release of `item` is: a gadget is interactive, a page a web page, anything else a document. */
+function resourceKindOf(item: ContentItem): ResourceDescriptor["kind"] {
+  if (item.source.kind === "blueprint") return "interactive";
+  return item.contentType === "html" ? "web-page" : "document";
 }
 
 function accessibilitySummary(item: ContentItem): string | undefined {

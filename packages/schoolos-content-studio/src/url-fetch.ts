@@ -77,7 +77,9 @@ async function retrieve(url: string, fetch: ImportFetch, limits: UrlImportLimits
         headers: { accept: "text/html,application/xhtml+xml,text/plain,application/pdf,image/png,image/jpeg" },
         signal,
       });
-    } catch {
+    } catch (error) {
+      // A fetch that refuses on policy grounds (the pinned egress fetch's DNS check) says so.
+      if (error instanceof SchoolOsError) throw error;
       throw new SchoolOsError("unavailable", "the source could not be reached");
     }
     if (response.status >= 300 && response.status < 400) {
@@ -126,6 +128,6 @@ export async function fetchForImport(url: string, fetch: ImportFetch, limits: Ur
   try {
     return await Promise.race([retrieve(url, fetch, limits, controller.signal), timeout]);
   } finally {
-    clearTimeout(timer);
+    if (timer !== undefined) clearTimeout(timer);
   }
 }

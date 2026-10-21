@@ -1,0 +1,21 @@
+{
+  "name": "@schoolos/doc-extract",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS bounded document text extraction for Content Studio review (SCHO-79): DOCX through the cartridge's bounded unzip and DTD-free XML parser, and PDF text from uncompressed or Flate-compressed content streams only, under caps on size, pages and work. A pure library: no network, no storage. Not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/cartridge": "workspace:*",
+    "@schoolos/content-studio": "workspace:*"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@schoolos/portability": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

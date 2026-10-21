@@ -35,15 +35,18 @@ export const demoWeb: ImportFetch = async (url) => {
 /**
  * The district application for a harness district: in-memory stores seeded with its directory,
  * its fake IdP's tokens as the only credential (signed in as Access payloads are), the synthetic
- * web for imports, and one funded district course pool for the synthetic model.
+ * web for imports (or `importFetch`, such as `createPinnedEgressFetch()` from
+ * `@schoolos/harness/pinned-fetch` for the real web; the demo seed imports synthetic pages, so
+ * {@link seedDemo} needs the synthetic web), and one funded district course pool for the synthetic
+ * model.
  */
-export async function bootDistrictApp(entry: HarnessDistrict): Promise<DistrictApp> {
+export async function bootDistrictApp(entry: HarnessDistrict, importFetch: ImportFetch = demoWeb): Promise<DistrictApp> {
   const { directory } = entry.district;
   return createDistrictApp({
     stores: inMemoryDistrictStores(directory),
     // The app resolves the identity with `createDirectoryPrincipalResolver` against its own store.
     verifyRequest: (request) => identityFromBearer(request, entry.identity),
-    importFetch: demoWeb,
+    importFetch,
     fundingPools: [{
       id: "fpl_demo-courses" as never,
       name: "Demo course AI",

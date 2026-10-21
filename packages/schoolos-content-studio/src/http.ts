@@ -26,11 +26,11 @@ const MAX_JSON_BYTES = 64 * 1024;
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8" } });
 
-async function readJson(request: Request): Promise<unknown> {
+async function readJson(request: Request, maxBytes = MAX_JSON_BYTES): Promise<unknown> {
   const declared = Number(request.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > MAX_JSON_BYTES) throw new SchoolOsError("validation-failed", "the request body is too large");
+  if (Number.isFinite(declared) && declared > maxBytes) throw new SchoolOsError("validation-failed", "the request body is too large");
   const text = await request.text();
-  if (new TextEncoder().encode(text).byteLength > MAX_JSON_BYTES) throw new SchoolOsError("validation-failed", "the request body is too large");
+  if (new TextEncoder().encode(text).byteLength > maxBytes) throw new SchoolOsError("validation-failed", "the request body is too large");
   try {
     return JSON.parse(text);
   } catch {
@@ -82,6 +82,7 @@ async function readUpload(request: Request, maxBytes: number) {
  * relative to wherever the handler is mounted:
  *
  * - `POST /imports/url`: `{ url, targetScope, updatesResourceId? }`
+ * - `POST /imports/blueprint`: `{ release, targetScope, updatesResourceId? }` (a Blueprint release)
  * - `POST /imports/upload`: multipart with a `file` part and a `metadata` part holding
  *   `{ fileName, mediaType, targetScope, updatesResourceId? }` as JSON
  * - `GET /queue?scope=<scope JSON>`
@@ -110,6 +111,10 @@ export function createContentStudioHandler(options: {
     const path = url.pathname.replace(/\/+$/, "");
     const method = request.method;
     if (method === "POST" && path === "/imports/url") return json(await studio.submitUrl(subject, await readJson(request)), 201);
+    if (method === "POST" && path === "/imports/blueprint") {
+      // A release carries its files, so it may be as large as an upload.
+      return json(await studio.submitBlueprint(subject, await readJson(request, maxUploadBytes + MAX_JSON_BYTES)), 201);
+    }
     if (method === "POST" && path === "/imports/upload") {
       const { description, bytes } = await readUpload(request, maxUploadBytes);
       return json(await studio.submitUpload(subject, description, bytes), 201);

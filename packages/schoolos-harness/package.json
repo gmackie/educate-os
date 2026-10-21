@@ -5,7 +5,8 @@
   "description": "Boots the synthetic SchoolOS districts locally as isolated instances with fake identity, roster and AI providers, each serving the full district application with demo content. Development tooling, not a deployable Worker.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./pinned-fetch": "./src/pinned-fetch.ts"
   },
   "scripts": {
     "start": "node src/cli.ts"

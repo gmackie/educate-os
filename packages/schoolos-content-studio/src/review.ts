@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ExtractionRecord } from "./extraction.ts";
 import type { PageMetadata } from "./html.ts";
 import type { LicenseEvidence } from "./license.ts";
 import type { ContentType } from "./sniff.ts";
@@ -23,6 +24,8 @@ export const CheckFlagCode = z.enum([
   "instruction-like-text",
   "age-appropriateness",
   "not-parsed",
+  "not-extractable",
+  "gadget-code",
 ]);
 /** A check flag code. */
 export type CheckFlagCode = z.infer<typeof CheckFlagCode>;
@@ -99,6 +102,8 @@ export function runChecks(input: {
   text: string | undefined;
   license: LicenseEvidence;
   ageHooks: readonly AgeAppropriatenessHook[];
+  /** For a PDF or DOCX, what text extraction produced. */
+  extraction?: ExtractionRecord;
 }): ChecksReport {
   const { metadata, text, license } = input;
   const flags: CheckFlag[] = [];
@@ -135,7 +140,21 @@ export function runChecks(input: {
       flags.push({ code: "age-appropriateness", severity: "warning", message: flag.message.slice(0, 500) });
     }
   }
-  if (text === undefined) flags.push({ code: "not-parsed", severity: "info", message: `${input.contentType.toUpperCase()} content is stored but not parsed; review it by opening the file.` });
+  if (input.contentType === "blueprint-release") {
+    flags.push({
+      code: "gadget-code",
+      severity: "info",
+      message: "This is an interactive gadget. Its code is not shown here: open the release in the Workshop to review it. It runs only in a Gadget sandbox, once approved.",
+    });
+  } else if (input.extraction?.status === "not-extractable") {
+    flags.push({
+      code: "not-extractable",
+      severity: "warning",
+      message: `No text could be extracted from this ${input.contentType.toUpperCase()} (${input.extraction.reason}); review it by opening the file.`,
+    });
+  } else if (text === undefined) {
+    flags.push({ code: "not-parsed", severity: "info", message: `${input.contentType.toUpperCase()} content is stored but not parsed; review it by opening the file.` });
+  }
   return {
     license,
     attribution,
