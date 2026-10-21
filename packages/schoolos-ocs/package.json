@@ -1,0 +1,24 @@
+{
+  "name": "@schoolos/ocs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS Open Course Specification (roadmap §5.3 and §15.10, PR C06): the OCS course package contract (manifest, units, activities, resources, Codex, lockfile), a deterministic module resolver, the composer that flattens a locked course into one outline, friendly composition for teachers, and the export to curriculum activity installations. A library, not a deployable Worker. See docs/schoolos/rfc/0001-open-course-specification.md.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/catalog": "workspace:*",
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/curriculum": "workspace:*",
+    "@schoolos/registry": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/content-studio": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "vitest": "catalog:"
+  }
+}
