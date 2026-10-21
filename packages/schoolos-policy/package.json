@@ -1,0 +1,21 @@
+{
+  "name": "@schoolos/policy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS ABAC policy engine: a named, data-driven rule table over trusted directory facts, content-free decision audit, and the school tool contract that re-authorizes every MCP/agent tool call. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/academics": "workspace:*",
+    "@schoolos/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

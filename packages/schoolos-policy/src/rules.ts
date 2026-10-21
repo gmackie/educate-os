@@ -1,0 +1,417 @@
+import { z } from "zod";
+import {
+  Action,
+  Classification,
+  Decision,
+  PolicySettings,
+  RequestChannel,
+  ResourceKind,
+  SchoolRole,
+  TermState,
+} from "@schoolos/contracts";
+
+/**
+ * How the resource's owner relates to the subject: the subject owns it, someone else does, or it
+ * has no owner (a class's shared workspace, a rubric).
+ */
+export const Ownership = z.enum(["own", "others", "unowned"]);
+/** An ownership relation. */
+export type Ownership = z.infer<typeof Ownership>;
+
+/** Values of a policy-floor setting that a rule applies under. */
+const policyValues = <K extends keyof typeof PolicySettings.shape>(key: K) =>
+  z.array(PolicySettings.shape[key]).min(1).optional();
+
+/**
+ * When a rule applies. Every listed field must match; an omitted field matches anything. Lists
+ * match when the request's value is any of their members.
+ *
+ * Everything here is evaluated against trusted facts only: the parsed request (built by the
+ * service from stored records), the subject's directory roles, and the effective policy floor.
+ */
+export const RuleCondition = z.strictObject({
+  /** The requested actions. */
+  actions: z.array(Action).min(1).optional(),
+  /** The resource kinds. */
+  kinds: z.array(ResourceKind).min(1).optional(),
+  /** The resource classifications. */
+  classifications: z.array(Classification).min(1).optional(),
+  /** The channels the request may arrive through. */
+  channels: z.array(RequestChannel).min(1).optional(),
+  /**
+   * The states of the term the resource belongs to. A request with no term state never matches a
+   * rule that lists some.
+   */
+  termStates: z.array(TermState).min(1).optional(),
+  /** The subject must hold one of these roles at a scope that contains the resource's scope. */
+  roles: z.array(SchoolRole).min(1).optional(),
+  /** How the resource's owner relates to the subject. */
+  ownership: z.array(Ownership).min(1).optional(),
+  /** The effective policy floor at the resource's scope must have one of these values per setting. */
+  policy: z.strictObject({
+    aiSpending: policyValues("aiSpending"),
+    promptsInGatewayLogs: policyValues("promptsInGatewayLogs"),
+    studentPersonalConversations: policyValues("studentPersonalConversations"),
+    teacherObservation: policyValues("teacherObservation"),
+    automatedSelProfiling: policyValues("automatedSelProfiling"),
+  }).optional(),
+});
+/** A rule condition. */
+export type RuleCondition = z.infer<typeof RuleCondition>;
+
+/**
+ * One named rule. Its `id` is recorded with every decision it makes, so an audit entry always
+ * names the exact rule responsible.
+ */
+export const PolicyRule = z.strictObject({
+  /** A stable dotted name, such as `course.instructor.read`. */
+  id: z.string().regex(/^[a-z][a-z0-9-]*(\.[a-z0-9-]+)+$/),
+  /** What the rule allows or forbids, and why, for administrators reading an audit trail. */
+  description: z.string().min(1).max(500),
+  /** When the rule applies. */
+  when: RuleCondition,
+  /** The decision it makes when it applies. */
+  effect: Decision,
+});
+/** A policy rule. */
+export type PolicyRule = z.infer<typeof PolicyRule>;
+
+/**
+ * An ordered rule table. The first rule whose condition matches decides, so guards that deny come
+ * before the grants they protect. Rule IDs are unique.
+ */
+export const PolicyRuleTable = z.array(PolicyRule).min(1).superRefine((rules, ctx) => {
+  const seen = new Set<string>();
+  for (const [index, rule] of rules.entries()) {
+    if (seen.has(rule.id)) ctx.addIssue({ code: "custom", path: [index, "id"], message: `duplicate rule id ${rule.id}` });
+    seen.add(rule.id);
+  }
+});
+
+/** The rule ID recorded when nothing in the table matched. */
+export const DEFAULT_DENY_RULE_ID = "default.deny";
+
+const READS = ["read", "list"] as const satisfies Action[];
+
+/** Actions that change something. Everything except reading, listing, exporting and invoking a tool. */
+export const WRITE_ACTIONS = [
+  "create",
+  "update",
+  "delete",
+  "submit",
+  "review",
+  "grade",
+  "publish",
+  "approve",
+  "assign",
+  "share",
+  "configure",
+] as const satisfies Action[];
+
+/** Resource kinds that belong to a course offering, and so to its term. */
+export const COURSE_RESOURCE_KINDS = [
+  "offering",
+  "enrollment",
+  "course-workspace",
+  "shared-conversation",
+  "artifact",
+  "submission",
+  "activity",
+  "rubric",
+  "assessment-run",
+  "feedback",
+  "official-grade",
+] as const satisfies ResourceKind[];
+
+const OFFICIAL_GRADE_WRITES = ["create", "update", "grade"] as const satisfies Action[];
+const ADMINS = ["district-admin", "school-admin"] as const satisfies z.infer<typeof SchoolRole>[];
+const INSTRUCTORS = ["teacher", "co-teacher"] as const satisfies z.infer<typeof SchoolRole>[];
+/** Content everyone with standing in a course may see. Never `teacher-only`, `personal-private` or `restricted`. */
+const COURSE_VISIBLE = ["public", "district-internal", "course"] as const satisfies Classification[];
+/** What instructional staff and administrators may see in a course: course content plus teacher-only materials. */
+const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Classification[];
+
+/**
+ * The SchoolOS v1 rule table (roadmap §8, ADR-0005). Decisions it encodes that A01 left open:
+ *
+ * - **Terms and catalog courses** are district reference data: any principal of the district may
+ *   read them. They hold no student data.
+ * - **Offerings** are readable by the principals actively enrolled in them (students and staff) and
+ *   by administrators over them. Students cannot read rosters; they read their own enrollments.
+ * - **Roster-sourced offering roles need an active enrollment.** That check lives in the policy
+ *   information point (`subjectFactsFrom`), so a dropped teacher or student stops matching every
+ *   rule below that names a role at the offering.
+ * - **A dropped student keeps their own work.** The owner rules do not require an enrollment, so
+ *   after a drop a student still reads and exports their artifacts, submissions, feedback and
+ *   grades in that offering, but can no longer change them or see the class's live material.
+ * - **Completed terms are read-only** for every course resource, including official grades and
+ *   enrollments, for everyone. A `grading` term still accepts grades.
+ * - **Co-teachers** have a teacher's read and course-management access, but their official-grade
+ *   writes, like any grade write through an agent or MCP tool, wait for a teacher's approval.
+ * - **Administrators** see the directory, governance records and course structure (activities,
+ *   rubrics, the shared course workspace, official grades). They do not see student-authored work
+ *   or any conversation, and no rule ever reaches `personal-private` content for anyone but its
+ *   owner.
+ */
+export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse([
+  // Guards. These deny before any grant below can match.
+  {
+    id: "guard.personal.owner-only",
+    description: "Personal workspaces and conversations belong to their owner alone: not teachers, not administrators.",
+    when: { kinds: ["personal-workspace", "personal-conversation"], ownership: ["others", "unowned"] },
+    effect: { effect: "deny", reason: "owner-only" },
+  },
+  {
+    id: "guard.personal-private.owner-only",
+    description: "Content classified personal-private is visible only to its owner, whatever kind of resource holds it.",
+    when: { classifications: ["personal-private"], ownership: ["others", "unowned"] },
+    effect: { effect: "deny", reason: "classification-restricted" },
+  },
+  {
+    id: "guard.term-completed.read-only",
+    description: "Course resources in a completed term are kept but read-only, including grades and enrollments.",
+    when: { kinds: [...COURSE_RESOURCE_KINDS], actions: [...WRITE_ACTIONS], termStates: ["completed"] },
+    effect: { effect: "deny", reason: "term-not-active" },
+  },
+  {
+    id: "guard.shared-conversation.observation-floor",
+    description: "When the policy floor limits teachers to assigned work, nobody but the student sees a shared conversation.",
+    when: { kinds: ["shared-conversation"], ownership: ["others", "unowned"], policy: { teacherObservation: ["assigned-work-only"] } },
+    effect: { effect: "deny", reason: "policy-floor" },
+  },
+  {
+    id: "guard.shared-conversation.private-floor",
+    description: "When the policy floor keeps student conversations private, a shared conversation is visible only to its owner.",
+    when: { kinds: ["shared-conversation"], ownership: ["others", "unowned"], policy: { studentPersonalConversations: ["private"] } },
+    effect: { effect: "deny", reason: "policy-floor" },
+  },
+  {
+    id: "guard.personal-conversation.no-sharing",
+    description: "When the policy floor keeps student conversations private, a personal conversation cannot be shared.",
+    when: { kinds: ["personal-conversation"], actions: ["share"], policy: { studentPersonalConversations: ["private"] } },
+    effect: { effect: "deny", reason: "policy-floor" },
+  },
+
+  // Personal space: the owner, and only the owner.
+  {
+    id: "personal.owner",
+    description: "A principal manages their own personal workspaces and conversations.",
+    when: {
+      kinds: ["personal-workspace", "personal-conversation"],
+      ownership: ["own"],
+      actions: ["read", "list", "create", "update", "delete", "share", "export", "invoke-tool"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "personal.owner-artifacts",
+    description: "A principal manages their own personal-private artifacts.",
+    when: {
+      kinds: ["artifact"],
+      classifications: ["personal-private"],
+      ownership: ["own"],
+      actions: ["read", "list", "create", "update", "delete", "share", "export"],
+    },
+    effect: { effect: "allow" },
+  },
+
+  // Official grades. Ordered before the general course rules so nothing else can write one.
+  {
+    id: "grade.official.teacher-direct",
+    description: "A teacher of the offering writes or approves an official grade directly, through the SchoolOS UI or API.",
+    when: {
+      kinds: ["official-grade"],
+      actions: [...OFFICIAL_GRADE_WRITES, "approve"],
+      roles: ["teacher"],
+      channels: ["http"],
+      classifications: ["course"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "grade.official.needs-teacher-review",
+    description: "Any other official-grade write by course staff or an administrator, including every write through an agent or tool, waits for a teacher's approval.",
+    when: { kinds: ["official-grade"], actions: [...OFFICIAL_GRADE_WRITES], roles: [...INSTRUCTORS, ...ADMINS], classifications: ["course"] },
+    effect: { effect: "require-approval", reason: "requires-teacher-review" },
+  },
+
+  // Shared conversations.
+  {
+    id: "shared-conversation.owner",
+    description: "A student reads, updates, unshares or deletes a conversation they shared.",
+    when: { kinds: ["shared-conversation"], ownership: ["own"], actions: ["read", "list", "update", "delete", "share", "export"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "shared-conversation.instructor-read",
+    description: "Course staff read a conversation a student explicitly shared with the offering, when the policy floor permits it.",
+    when: {
+      kinds: ["shared-conversation"],
+      roles: [...INSTRUCTORS],
+      classifications: ["course"],
+      actions: [...READS],
+      policy: {
+        teacherObservation: ["assigned-work-and-shared-conversations"],
+        studentPersonalConversations: ["shared-by-student"],
+      },
+    },
+    effect: { effect: "allow" },
+  },
+
+  // A principal's own course records, which survive a drop.
+  {
+    id: "course.owner.read-own",
+    description: "A principal reads and exports their own course work, feedback, grades and enrollments, even after leaving the offering.",
+    when: {
+      kinds: ["enrollment", "course-workspace", "artifact", "submission", "feedback", "official-grade"],
+      ownership: ["own"],
+      classifications: ["course"],
+      actions: ["read", "list", "export"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "course.student.own-work",
+    description: "An actively enrolled student creates, edits and submits their own course work.",
+    when: {
+      kinds: ["course-workspace", "artifact", "submission"],
+      ownership: ["own"],
+      roles: ["student"],
+      classifications: ["course"],
+      actions: ["create", "update", "submit"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "course.student.read",
+    description: "An actively enrolled student reads the offering and its class material, never other students' work or teacher-only material.",
+    when: {
+      kinds: ["offering", "course-workspace", "activity", "rubric", "learning-resource"],
+      ownership: ["unowned", "own"],
+      roles: ["student"],
+      classifications: [...COURSE_VISIBLE],
+      actions: [...READS],
+    },
+    effect: { effect: "allow" },
+  },
+
+  // Instructional staff.
+  {
+    id: "course.instructor.read",
+    description: "Course staff read their offering's roster, material and assigned student work; never personal-private content.",
+    when: {
+      kinds: [
+        "offering",
+        "enrollment",
+        "course-workspace",
+        "artifact",
+        "submission",
+        "activity",
+        "rubric",
+        "assessment-run",
+        "feedback",
+        "official-grade",
+        "learning-resource",
+      ],
+      roles: [...INSTRUCTORS],
+      classifications: [...STAFF_VISIBLE],
+      actions: [...READS, "export"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "course.instructor.manage",
+    description: "Course staff create and publish their offering's activities, rubrics, class workspace and feedback.",
+    when: {
+      kinds: ["activity", "rubric", "course-workspace", "feedback", "assessment-run"],
+      ownership: ["unowned", "own"],
+      roles: [...INSTRUCTORS],
+      classifications: ["course", "teacher-only"],
+      actions: ["create", "update", "publish", "assign"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "course.instructor.review",
+    description: "Course staff review students' submitted work in their offering.",
+    when: { kinds: ["artifact", "submission"], roles: [...INSTRUCTORS], classifications: ["course"], actions: ["review"] },
+    effect: { effect: "allow" },
+  },
+
+  // Administration.
+  {
+    id: "admin.district.directory",
+    description: "A district admin manages the district's schools, terms, catalog courses, offerings and enrollments.",
+    when: {
+      kinds: ["district", "school", "term", "course", "offering", "enrollment"],
+      roles: ["district-admin"],
+      actions: ["read", "list", "create", "update"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.school.directory",
+    description: "A school admin manages their school's record, offerings and enrollments.",
+    when: { kinds: ["school", "offering", "enrollment"], roles: ["school-admin"], actions: ["read", "list", "create", "update"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.course-oversight",
+    description: "Administrators read course structure and official grades in their scope, but not student-authored work or conversations.",
+    when: {
+      kinds: ["activity", "rubric", "course-workspace", "assessment-run", "official-grade"],
+      ownership: ["unowned", "others"],
+      roles: [...ADMINS],
+      classifications: [...STAFF_VISIBLE],
+      actions: [...READS],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.governance",
+    description: "Administrators read and configure capability settings and AI budgets in their scope.",
+    when: { kinds: ["capability-config", "ai-budget"], roles: [...ADMINS], actions: [...READS, "configure"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.audit-read",
+    description: "Administrators read the content-free policy audit trail in their scope.",
+    when: { kinds: ["audit-event"], roles: [...ADMINS], actions: [...READS, "export"] },
+    effect: { effect: "allow" },
+  },
+
+  // Curriculum.
+  {
+    id: "curriculum.admin.manage",
+    description: "A curriculum admin authors, reviews, approves and publishes learning resources in their scope.",
+    when: {
+      kinds: ["learning-resource"],
+      roles: ["curriculum-admin"],
+      classifications: [...STAFF_VISIBLE],
+      actions: ["read", "list", "create", "update", "review", "approve", "publish"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "curriculum.published.read",
+    description: "Any principal of the district reads learning resources published to the district.",
+    when: { kinds: ["learning-resource"], classifications: ["public", "district-internal"], actions: [...READS] },
+    effect: { effect: "allow" },
+  },
+
+  // Tools.
+  {
+    id: "tool.invoke.district-member",
+    description: "Any principal of the district may invoke the district's tools; each tool's operation is then authorized on its own record.",
+    when: { kinds: ["district"], classifications: ["district-internal"], actions: ["invoke-tool"] },
+    effect: { effect: "allow" },
+  },
+
+  // Reference data.
+  {
+    id: "directory.reference.read",
+    description: "Any principal of the district reads its academic terms and catalog courses.",
+    when: { kinds: ["term", "course"], classifications: ["public", "district-internal"], actions: [...READS] },
+    effect: { effect: "allow" },
+  },
+]);
