@@ -11,16 +11,9 @@
 // Every record is `derived` with PlayTrek as the transcriber, never `official`. Text the licensing
 // decisions withhold is an empty `fullStatement`, and each node's `extensions` say why.
 import { SchoolOsError } from "@schoolos/contracts";
-import {
-  type CompetencyAssociation,
-  type CompetencyNode,
-  type FrameworkDefinition,
-  FrameworkRelease,
-  type NodeLink,
-  type Provenance,
-} from "@schoolos/registry";
+import { type FrameworkDefinition, FrameworkRelease, type Provenance } from "@schoolos/registry";
 import { z } from "zod";
-import { catalogUuid } from "../digest.ts";
+import { assembleRecords, type RecordLevel, type RecordRow } from "../records.ts";
 import seedFile from "./seed-rows.json" with { type: "json" };
 
 /** How a seed row's text was checked before it shipped (see `scripts/generate-playtrek-seeds.ts`). */
@@ -29,6 +22,9 @@ export const SeedTextCheck = z.enum([
   "verbatim",
   // Matches it except for list-label style, dash and quote glyphs, whitespace and full stops.
   "formatting-only",
+  // PlayTrek's text differed; the row ships the publisher's own statement instead, read from the
+  // publisher's page and matched against its PDF edition (SCHO-63).
+  "replaced-from-publisher",
   // Differs from the publisher's text in wording; withheld.
   "differs",
   // The publisher's page has no such code; withheld.
@@ -61,7 +57,7 @@ export const PlayTrekSeedRow = z.strictObject({
   subject: z.string().min(1),
   parentCode: z.string().regex(/^[A-Za-z0-9.-]+$/),
 }).refine(
-  (row) => (row.statement !== null) === ["verbatim", "formatting-only", "paraphrase"].includes(row.textCheck),
+  (row) => (row.statement !== null) === ["verbatim", "formatting-only", "replaced-from-publisher", "paraphrase"].includes(row.textCheck),
   "a statement ships exactly when its text check allows it",
 );
 /** A PlayTrek seed row. */
@@ -71,7 +67,7 @@ const SeedFile = z.strictObject({
   /** The notices the frameworks' terms require on any copy of their text, keyed by framework. */
   notices: z.record(z.string(), z.string().min(1)),
   source: z.strictObject({ path: z.string(), commit: z.string().regex(/^[0-9a-f]{7,40}$/) }),
-  ccssReference: z.strictObject({ site: z.url(), retrievedOn: z.iso.date() }),
+  ccssReference: z.strictObject({ site: z.url(), pdfs: z.array(z.url()).min(1), retrievedOn: z.iso.date() }),
   rows: z.array(PlayTrekSeedRow),
 });
 
@@ -114,13 +110,6 @@ const CASEL_BANDS: Readonly<Record<string, readonly string[]>> = {
 };
 const CASEL_BAND_LABELS: Readonly<Record<string, string>> = { K2: "grades K-2", "35": "grades 3-5", "68": "grades 6-8" };
 
-/** One level of a row's hierarchy, from the framework's top grouping down to the row itself. */
-interface Level {
-  code: string;
-  humanCodingScheme?: string;
-  itemType: string;
-  statement: string;
-}
 
 const slug = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
@@ -142,8 +131,8 @@ function educationLevelsOf(row: PlayTrekSeedRow): string[] {
 }
 
 /** The groupings above a row, top first, then the row. */
-function levelsOf(row: PlayTrekSeedRow): Level[] {
-  const standard: Level = {
+function levelsOf(row: PlayTrekSeedRow): RecordLevel[] {
+  const standard: RecordLevel = {
     code: row.code,
     humanCodingScheme: row.shortCode,
     itemType: row.framework === "head-start-elof" ? "Goal" : row.framework === "casel-5" ? "Indicator" : "Standard",
@@ -199,19 +188,14 @@ function invalid(row: PlayTrekSeedRow, message: string): SchoolOsError {
   return new SchoolOsError("validation-failed", `PlayTrek seed ${row.code} ${message}`);
 }
 
-const SUBJECT_LABELS: Readonly<Record<PlayTrekSeededFramework, string>> = {
-  "ccss-math": "Mathematics",
-  "ccss-ela": "English Language Arts & Literacy",
-  "casel-5": "Social and Emotional Learning",
-  "head-start-elof": "Early Learning",
-};
-
 function notesFor(textCheck: SeedTextCheck): string {
   const transcribed = `Transcribed by PlayTrek (seed commit ${seeds.source.commit}); not the publisher's own record.`;
   switch (textCheck) {
     case "verbatim":
     case "formatting-only":
       return `${transcribed} Statement checked word for word against ${seeds.ccssReference.site} on ${seeds.ccssReference.retrievedOn}.`;
+    case "replaced-from-publisher":
+      return `Coded and placed by PlayTrek (seed commit ${seeds.source.commit}). PlayTrek's statement differed from the publisher's, so this is the publisher's own statement from ${seeds.ccssReference.site}, matched against its PDF edition on ${seeds.ccssReference.retrievedOn}.`;
     case "paraphrase":
       return `${transcribed} PlayTrek's paraphrase of the publisher's goal, not a quotation.`;
     case "differs":
@@ -223,9 +207,6 @@ function notesFor(textCheck: SeedTextCheck): string {
 }
 
 const GROUPING_NOTE = `A grouping from PlayTrek's seed hierarchy (seed commit ${seeds.source.commit}), labelled as PlayTrek recorded it.`;
-
-/** The order education levels are listed in: pre-K, then kindergarten through grade 12. */
-const LEVEL_ORDER = ["PK", ...GRADES];
 
 /**
  * Builds the release of registry records for one PlayTrek-seeded framework, from the shipped seed
@@ -239,78 +220,32 @@ export async function playTrekSeedRelease(
   framework: FrameworkDefinition,
   rows: readonly PlayTrekSeedRow[] = playTrekSeedRows(key),
 ): Promise<FrameworkRelease> {
-  const frameworkLink: NodeLink = { title: framework.title, identifier: framework.identifier, uri: framework.uri };
-  const uriOf = (code: string) => `urn:schoolos:catalog:${key}:${code}`;
-
-  /** A node being assembled: its level, the education levels of the rows under it, and its parent. */
-  interface Draft { level: Level; levels: Set<string>; textCheck: SeedTextCheck | undefined; parent: string | undefined }
-  const drafts = new Map<string, Draft>();
-  for (const row of rows) {
-    const levels = educationLevelsOf(row);
-    if (PLAYTREK_GRADE[levels[0]!] !== row.gradeLevel) {
-      throw invalid(row, `has gradeLevel ${row.gradeLevel}, but its code says ${levels.join(", ")}`);
-    }
-    const path = levelsOf(row);
-    for (const [depth, level] of path.entries()) {
-      const isRow = depth === path.length - 1;
-      const existing = drafts.get(level.code);
-      if (existing === undefined) {
-        drafts.set(level.code, {
-          level,
-          levels: new Set(levels),
-          textCheck: isRow ? row.textCheck : undefined,
-          parent: path[depth - 1]?.code,
-        });
-      } else if (isRow || existing.level.statement !== level.statement) {
-        throw invalid(row, isRow ? "appears twice" : `gives ${level.code} a second statement`);
-      } else {
-        for (const l of levels) existing.levels.add(l);
-      }
-    }
-  }
-
-  const nodes: CompetencyNode[] = [];
-  const associations: CompetencyAssociation[] = [];
-  for (const [code, draft] of drafts) {
-    const uri = uriOf(code);
-    const identifier = await catalogUuid(uri);
-    nodes.push({
-      uri,
-      identifier,
-      frameworkLink,
-      fullStatement: draft.level.statement,
-      ...(draft.level.humanCodingScheme === undefined ? {} : { humanCodingScheme: draft.level.humanCodingScheme }),
-      itemType: draft.level.itemType,
-      educationLevels: LEVEL_ORDER.filter((l) => draft.levels.has(l)),
-      subjects: [SUBJECT_LABELS[key]],
-      language: "en",
-      lastChangeDateTime: RECORDED_AT,
-      notes: draft.textCheck === undefined ? GROUPING_NOTE : notesFor(draft.textCheck),
-      extensions: { [SEED_EXTENSION]: { transcriber: "PlayTrek", textCheck: draft.textCheck ?? "grouping" } },
-      provenance: PROVENANCE,
-    });
-    const parentUri = draft.parent === undefined ? undefined : uriOf(draft.parent);
-    const destination = parentUri === undefined
-      ? { ...frameworkLink, targetType: "CFDocument" }
-      : { title: drafts.get(draft.parent!)!.level.statement, identifier: await catalogUuid(parentUri), uri: parentUri };
-    const associationId = await catalogUuid(`${uri} isChildOf ${destination.uri}`);
-    associations.push({
-      uri: `urn:schoolos:catalog:${key}:association:${associationId}`,
-      identifier: associationId,
-      relation: "child-of",
-      origin: { title: draft.level.statement, identifier, uri },
-      destination,
-      frameworkLink,
-      lastChangeDateTime: RECORDED_AT,
-      // The hierarchy is PlayTrek's `parentCode`, so PlayTrek's seed is what asserts it.
-      evidence: [{ basis: "publisher-assertion", sourceUri: SEED_SOURCE_URI }],
-      provenance: PROVENANCE,
-    });
-  }
-
-  const release = FrameworkRelease.safeParse({ framework, nodes, associations });
+  const release = FrameworkRelease.safeParse({ framework, ...(await assembleRecords(key, framework, playTrekRecordRows(key, rows), describe)) });
   if (!release.success) {
     throw new SchoolOsError("validation-failed", `PlayTrek seeds for ${key} do not form a valid release`);
   }
   return release.data;
+}
+
+const describe = (row: RecordRow) => `PlayTrek seed ${row.levels.at(-1)!.code}`;
+
+/**
+ * The record rows for PlayTrek seed rows, with their education levels restored from their codes.
+ *
+ * @throws SchoolOsError `validation-failed` if a row's code and grade disagree.
+ */
+export function playTrekRecordRows(key: PlayTrekSeededFramework, rows: readonly PlayTrekSeedRow[] = playTrekSeedRows(key)): RecordRow[] {
+  return rows.map((row) => {
+    const levels = educationLevelsOf(row);
+    if (PLAYTREK_GRADE[levels[0]!] !== row.gradeLevel) {
+      throw invalid(row, `has gradeLevel ${row.gradeLevel}, but its code says ${levels.join(", ")}`);
+    }
+    return {
+      levels: levelsOf(row),
+      educationLevels: levels,
+      item: { notes: notesFor(row.textCheck), extensions: { [SEED_EXTENSION]: { transcriber: "PlayTrek", textCheck: row.textCheck } }, provenance: PROVENANCE },
+      grouping: { notes: GROUPING_NOTE, extensions: { [SEED_EXTENSION]: { transcriber: "PlayTrek", textCheck: "grouping" } }, provenance: PROVENANCE },
+      hierarchySource: SEED_SOURCE_URI,
+    };
+  });
 }

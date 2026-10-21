@@ -93,7 +93,7 @@ export const CatalogStatus = z.enum(["available", "pointer-only", "gap"]);
 /** A catalog status. */
 export type CatalogStatus = z.infer<typeof CatalogStatus>;
 
-/** Where an `available` entry's items came from: a transcription SchoolOS did not author. */
+/** Where an `available` entry's PlayTrek-derived items came from: a transcription SchoolOS did not author. */
 export const SeedOrigin = z.strictObject({
   /** Who transcribed or authored the items. */
   transcriber: z.literal("PlayTrek"),
@@ -103,6 +103,22 @@ export const SeedOrigin = z.strictObject({
 });
 /** A seed origin. */
 export type SeedOrigin = z.infer<typeof SeedOrigin>;
+
+/**
+ * Where an `available` entry's publisher text came from: statements SchoolOS read from the
+ * publisher's own pages or publication and checked against a second publisher source (SCHO-63).
+ * SchoolOS transcribes; it never writes standards text.
+ */
+export const TranscriptionOrigin = z.strictObject({
+  transcriber: z.literal("SchoolOS"),
+  /** The publisher sources read, the first being the one the text is taken from. */
+  sources: z.array(RegistryUri).min(1).max(10),
+  /** The script that reads and checks them, so the data can be regenerated. */
+  generator: z.string().regex(/^packages\/schoolos-catalog\/scripts\/[a-z0-9-]+\.ts$/),
+  retrievedOn: RegistryDate,
+});
+/** A transcription origin. */
+export type TranscriptionOrigin = z.infer<typeof TranscriptionOrigin>;
 
 /**
  * One reviewed framework in the catalog.
@@ -122,14 +138,18 @@ export const CatalogEntry = z
     subjects: z.array(CatalogSubject).min(1),
     coverage: z.array(CoverageRow),
     seed: SeedOrigin.optional(),
+    transcription: TranscriptionOrigin.optional(),
   })
   .superRefine((entry, ctx) => {
     const issue = (path: (string | number)[], message: string) => ctx.addIssue({ code: "custom", path, message });
     if (entry.framework.provenance.source !== "derived") {
       issue(["framework", "provenance", "source"], "catalog metadata is SchoolOS-authored and must be derived");
     }
-    if ((entry.status === "available") !== (entry.seed !== undefined)) {
-      issue(["seed"], "an available entry names its seed origin, and no other entry has one");
+    if ((entry.status === "available") !== (entry.seed !== undefined || entry.transcription !== undefined)) {
+      issue(["seed"], "an available entry names where its items came from, and no other entry does");
+    }
+    if (entry.transcription !== undefined && entry.license.textRedistribution !== "permitted") {
+      issue(["transcription"], "publisher text is transcribed only where the license permits redistribution");
     }
     const declared = new Set<string>();
     for (const [index, row] of entry.coverage.entries()) {

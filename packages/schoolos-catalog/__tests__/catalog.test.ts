@@ -25,7 +25,7 @@ describe("catalog entries", () => {
       "ccss-math": "available",
       "ccss-ela": "available",
       "ngss": "pointer-only",
-      "c3": "gap",
+      "c3": "available",
       "casel-5": "available",
       "head-start-elof": "available",
       "teks": "pointer-only",
@@ -61,9 +61,8 @@ describe("catalog entries", () => {
           .toStrictEqual([...GRADE_BANDS]);
       }
     }
-    expect(highSchool("ccss-ela").state).toBe("gap");
-    expect(highSchool("casel-5").state).toBe("gap");
-    expect(highSchool("ccss-math")).toMatchObject({ state: "pointer", note: expect.stringMatching(/^Gap in the catalog/) });
+    expect(highSchool("casel-5")).toMatchObject({ state: "gap", note: expect.stringMatching(/^Gap/) });
+    expect(highSchool("michigan").state).toBe("gap");
 
     const entry = catalogEntry("ccss-ela");
     const withoutHighSchool = { ...entry, coverage: entry.coverage.filter((r) => r.band !== "9-12") };
@@ -83,6 +82,7 @@ describe("catalog entries", () => {
   it("ships no items for pointer-only and gap frameworks", async () => {
     for (const entry of CATALOG.filter((e) => e.status !== "available")) {
       expect(entry.seed, entry.key).toBeUndefined();
+      expect(entry.transcription, entry.key).toBeUndefined();
       expect(entry.coverage.every((r) => r.state === "pointer" || r.state === "gap"), entry.key).toBe(true);
       await rejectsWith(catalogSeedRelease(entry.key), "conflict");
     }

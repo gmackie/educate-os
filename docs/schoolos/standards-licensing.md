@@ -17,10 +17,10 @@ counsel are in [legal/standards-licensing-counsel-brief.md](legal/standards-lice
 
 | Catalog key | Framework | Text in this repository | Status | CASE source |
 | --- | --- | --- | --- | --- |
-| `ccss-math` | CCSS Mathematics | Yes, where verified verbatim | available (K-8) | CASE Network record, via OpenSALT (mirror) |
-| `ccss-ela` | CCSS ELA/Literacy | Yes, where verified verbatim | available (K-8) | None verified |
+| `ccss-math` | CCSS Mathematics | Yes, where verified verbatim | available (K-12) | CASE Network record, via OpenSALT (mirror) |
+| `ccss-ela` | CCSS ELA/Literacy | Yes, where verified verbatim | available (K-12, with 6-12 literacy) | None verified |
 | `ngss` | Next Generation Science Standards | No | pointer-only | OpenSALT (mirror) |
-| `c3` | C3 Framework for Social Studies | Permitted, but none yet | gap | None found |
+| `c3` | C3 Framework for Social Studies | Yes, transcribed and verified | available (K-12) | None found |
 | `casel-5` | CASEL 5 | No | available (codes and grade bands only) | None |
 | `head-start-elof` | Head Start ELOF (pre-K) | Yes (PlayTrek paraphrase) | available (pre-K) | None |
 | `teks` | Texas Essential Knowledge and Skills | No | pointer-only | TEA (publisher) |
@@ -39,6 +39,10 @@ declared gap rather than an omission.
 - Content a district imports from the publisher's own CASE server is `official`. Content imported
   from a mirror, such as OpenSALT serving a copy, is `derived`, because SchoolOS cannot check that the
   copy is unchanged.
+- Text SchoolOS reads from a publisher's own pages or publication (CCSS high school, the replaced
+  K-8 statements, C3) is `derived` too: it is a transcription, not the publisher's record. Each
+  statement ships only after a second publisher source matched it word for word, and otherwise ships
+  empty. The scripts in `packages/schoolos-catalog/scripts/` regenerate every row from the sources.
 - SchoolOS never writes standards text that could pass for the publisher's.
 
 ## CCSS Mathematics and ELA/Literacy
@@ -64,12 +68,34 @@ the publisher's pages on thecorestandards.org, by `packages/schoolos-catalog/scr
 
 "Presentation" means list labels written `(a)` rather than `a.`, dash and quote glyphs, whitespace,
 or a full stop before a list label or at the end. The words match the publisher's. Rows that differ
-in wording ship with an empty statement and a note, because shipping a changed text would be a
-modification the license does not grant. Typical differences: a dropped cross-reference such as
-"(See grade 1 Language standards 1 and 3 here for specific expectations.)", or "as used in a text"
-for the published "as they are used in a text". The official text fills these in when a district
-imports from CASE. Domain and cluster headings were spot-checked the same way; apart from footnote
-markers and dash spacing, they match.
+in wording never ship PlayTrek's text, because shipping a changed text would be a modification the
+license does not grant. Typical differences: a dropped cross-reference such as "(See grade 1
+Language standards 1 and 3 here for specific expectations.)", or "as used in a text" for the
+published "as they are used in a text". Domain and cluster headings were spot-checked the same way;
+apart from footnote markers and dash spacing, they match.
+
+**SCHO-63 (2026-10-21): withheld rows replaced, high school and 6-12 literacy added.** A row that
+differed now carries the publisher's own statement, read from its page, wherever that statement
+also appears word for word in the publisher's PDF edition
+(<https://corestandards.org/wp-content/uploads/2023/09/Math_Standards1.pdf> and
+`ELA_Standards1.pdf`). The high-school standards and the grade 6-12 literacy standards are read the
+same way. `scripts/ccss-publisher-text.ts` lists the rules that turn the pages' markup into text:
+superscripts are written `x^2` and stacked fractions `a/b`, footnote markers are dropped, and the
+modeling star (★) is recorded beside the statement rather than in it. Those are changes of
+presentation, the same class as "formatting-only" above.
+
+| Rows | Shipped with the publisher's text | Withheld (page and PDF disagree) |
+| --- | --- | --- |
+| K-8 Mathematics rows PlayTrek got wrong | 46 of 50 | 4 |
+| K-8 ELA/Literacy rows PlayTrek got wrong | 30 of 45 | 15 |
+| High-school Mathematics (standards and lettered parts) | 189 | 3 |
+| Grade 9-12 ELA (RL, RI, W, SL, L) | 144 | 5 |
+| Grade 6-12 literacy (RH, RST, WHST) | 121 | 1 |
+
+Most withheld rows are cross-references where the page says "here" and the PDF gives a page number
+(W.x.5 and SL.x.6). The official text fills them in when a district imports from CASE. The
+publisher's "(RL.9-10.8 not applicable to literature)" placeholders are not standards and are
+not shipped.
 
 The CCSS Mathematics CASE record is `c6496676-d7cb-11e8-824f-0242ac160002`, URI
 `https://casenetwork.imsglobal.org/uri/c6496676-d7cb-11e8-824f-0242ac160002`, creator CCSSO,
@@ -109,9 +135,16 @@ import from it is `derived`.
 - The free-reproduction notice covers the 2013 framework document only. NCSS's book edition
   (Bulletin 113) adds chapters it does not cover.
 
-**Decision: text permitted, none shipped yet (status `gap`).** PlayTrek has no C3 seeds, and no
-machine-readable source was found. Shipping C3 text needs a sourced transcription from the NCSS
-PDF, checked the way the CCSS rows were. SchoolOS will not generate it.
+**Decision: text permitted, transcribed (status `available`, SCHO-63).** No machine-readable source
+was found, so `scripts/generate-c3-rows.ts` transcribes the Dimension 1-4 grade-band indicators from
+the NCSS PDF. It reads each word's position on the page (`pdftotext -bbox`), assigns words to the
+column of the indicator codes they sit under, and joins a word broken across lines only where the
+document itself uses the joined form elsewhere, or the dictionary has it; a break neither settles
+stops the run until a reviewed decision is recorded in the script. Each indicator is then checked
+against a second reading of the PDF in its own reading order, and must match there whole. All 283
+indicators did (the "Begins in grades ..." placeholder cells are not indicators). The entry's
+attribution is the citation NCSS asks for. The companion documents for psychology, sociology and
+anthropology in the appendices are not included.
 
 ## CASEL 5
 

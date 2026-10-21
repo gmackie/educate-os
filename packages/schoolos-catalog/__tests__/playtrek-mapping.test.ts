@@ -6,6 +6,7 @@ import {
   PLAYTREK_SEEDED_FRAMEWORKS,
   playTrekSeedRelease,
   playTrekSeedRows,
+  PUBLISHER_TEXT_EXTENSION,
   SEED_EXTENSION,
 } from "../src/index.ts";
 
@@ -23,7 +24,9 @@ describe("PlayTrek seed mapping", () => {
       const records = [...(content.nodes ?? []), ...(content.associations ?? [])];
       expect(records.length, key).toBeGreaterThan(0);
       for (const record of records) expect(record.provenance.source, record.uri).toBe("derived");
-      for (const node of content.nodes ?? []) {
+      // CCSS releases also carry the publisher-text records, which say so instead.
+      const seeded = (content.nodes ?? []).filter((node) => node.extensions?.[PUBLISHER_TEXT_EXTENSION] === undefined);
+      for (const node of seeded) {
         expect(node.extensions?.[SEED_EXTENSION], node.uri).toMatchObject({ transcriber: "PlayTrek" });
         expect(node.notes, node.uri).toMatch(/PlayTrek/);
       }
@@ -72,16 +75,23 @@ describe("PlayTrek seed mapping", () => {
     expect(cluster.uri).toBe("urn:schoolos:catalog:ccss-math:CCSS.MATH.CONTENT.K.CC.A");
   });
 
-  it("ships CCSS text only where it matched the publisher's text", async () => {
+  it("ships CCSS text only where it is the publisher's: PlayTrek's where it matched, the publisher's own where not", async () => {
     expect((await nodeByCode("ccss-math", "K.CC.A.1")).fullStatement).toBe("Count to 100 by ones and by tens.");
-    // PlayTrek wrote "as used in a text"; the published standard says "as they are used in a text".
-    const differs = await nodeByCode("ccss-ela", "RL.3.4");
-    expect(differs.fullStatement).toBe("");
-    expect(differs.extensions?.[SEED_EXTENSION]).toMatchObject({ textCheck: "differs" });
+    // PlayTrek wrote "as used in a text"; the row now carries the published standard instead.
+    const replaced = await nodeByCode("ccss-ela", "RL.3.4");
+    expect(replaced.fullStatement).toBe("Determine the meaning of words and phrases as they are used in a text, distinguishing literal from nonliteral language.");
+    expect(replaced.extensions?.[SEED_EXTENSION]).toMatchObject({ textCheck: "replaced-from-publisher" });
+    expect(replaced.notes).toMatch(/publisher's own statement/);
+    // Superscripts the old reference dropped are kept as exponents.
+    expect((await nodeByCode("ccss-math", "8.EE.A.1")).fullStatement).toMatch(/3\^2 × 3\^\(-5\) = 3\^\(-3\) = 1\/3\^3 = 1\/27\./);
+    // The publisher's page and PDF disagree here (the page says "here" for the PDF's page reference).
+    const withheld = await nodeByCode("ccss-ela", "SL.1.6");
+    expect(withheld.fullStatement).toBe("");
+    expect(withheld.extensions?.[SEED_EXTENSION]).toMatchObject({ textCheck: "differs" });
 
     for (const key of ["ccss-math", "ccss-ela"] as const) {
       for (const row of playTrekSeedRows(key)) {
-        expect(row.statement !== null, row.code).toBe(row.textCheck === "verbatim" || row.textCheck === "formatting-only");
+        expect(row.statement !== null, row.code).toBe(["verbatim", "formatting-only", "replaced-from-publisher"].includes(row.textCheck));
       }
     }
   });

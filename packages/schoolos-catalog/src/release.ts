@@ -11,7 +11,9 @@ import { z } from "zod";
 import { CATALOG_RELEASED_AT, CATALOG_VERSION, catalogEntry } from "./catalog.ts";
 import { contentDigest } from "./digest.ts";
 import type { CatalogEntry } from "./entry.ts";
-import { PLAYTREK_SEEDED_FRAMEWORKS, type PlayTrekSeededFramework, playTrekSeedRelease } from "./playtrek/mapping.ts";
+import { playTrekRecordRows } from "./playtrek/mapping.ts";
+import { c3RecordRows, ccssPublisherRecordRows } from "./publisher/mapping.ts";
+import { assembleRecords, type RecordRow } from "./records.ts";
 import { CatalogKey } from "./vocabulary.ts";
 
 /**
@@ -46,29 +48,38 @@ export const CatalogRelease = z.strictObject({
 /** A catalog release. */
 export type CatalogRelease = z.infer<typeof CatalogRelease>;
 
-function isSeeded(key: string): key is PlayTrekSeededFramework {
-  return (PLAYTREK_SEEDED_FRAMEWORKS as readonly string[]).includes(key);
-}
+/** The record rows each `available` framework ships, by catalog key. */
+const SHIPPED_ROWS: Readonly<Record<string, () => RecordRow[]>> = {
+  "ccss-math": () => [...playTrekRecordRows("ccss-math"), ...ccssPublisherRecordRows("ccss-math")],
+  "ccss-ela": () => [...playTrekRecordRows("ccss-ela"), ...ccssPublisherRecordRows("ccss-ela")],
+  "c3": c3RecordRows,
+  "casel-5": () => playTrekRecordRows("casel-5"),
+  "head-start-elof": () => playTrekRecordRows("head-start-elof"),
+};
 
 /**
- * The catalog's release of an `available` framework's seed records, at {@link CATALOG_VERSION}.
- * Deterministic: the same catalog version always yields the same digest.
+ * The catalog's release of an `available` framework's shipped records (PlayTrek-derived seeds and
+ * publisher text), at {@link CATALOG_VERSION}. Deterministic: the same catalog version always
+ * yields the same digest.
  *
  * @throws SchoolOsError `not-found` if the framework is not in the catalog, or `conflict` if the
  *   catalog ships no items for it.
  */
 export async function catalogSeedRelease(key: string): Promise<CatalogRelease> {
   const entry = catalogEntry(key);
-  if (entry.status !== "available" || !isSeeded(key)) {
+  const rows = SHIPPED_ROWS[key];
+  if (entry.status !== "available" || rows === undefined) {
     throw new SchoolOsError("conflict", `the catalog ships no items for ${key}; import it from its source`);
   }
-  const content = await playTrekSeedRelease(key, entry.framework);
+  const records = await assembleRecords(key, entry.framework, rows(), (row) => `${key} row ${row.levels.at(-1)!.code}`);
+  const content = FrameworkRelease.safeParse({ framework: entry.framework, ...records });
+  if (!content.success) throw new SchoolOsError("validation-failed", `the shipped records for ${key} do not form a valid release`);
   return {
     frameworkKey: entry.key,
     version: CATALOG_VERSION,
     releasedAt: CATALOG_RELEASED_AT,
-    contentDigest: await contentDigest(content),
-    content,
+    contentDigest: await contentDigest(content.data),
+    content: content.data,
   };
 }
 
