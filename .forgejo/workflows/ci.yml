@@ -27,6 +27,12 @@ env:
   VP_RUN_CONCURRENCY_LIMIT: "2"
   TESTS_WITH_TIMEOUT_IDLE_SECONDS: "300"
   TESTS_WITH_TIMEOUT_MAX_SECONDS: "1500"
+  # Vitest's own per-test (5 s default) and per-hook (10 s) timeouts still tripped at that
+  # concurrency: @schoolos/ai-guard's guard.test.ts (run 195), durable-object-store tests (runs
+  # 190/191) and a gatekeeper conformance race (run 187). These are floors, not overrides: a package
+  # that sets a longer timeout keeps it, and local runs are unchanged (SCHO-160, docs/testing.md).
+  VITEST_TEST_TIMEOUT: "60000"
+  VITEST_HOOK_TIMEOUT: "60000"
 
 jobs:
   ci:

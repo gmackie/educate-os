@@ -36,6 +36,21 @@ threshold. An omitted override retains that command's default; malformed values 
 command starts. Cached tasks forward and fingerprint the overrides, so results from a different
 policy are not reused. The direct Vitest route does not use this shared watchdog.
 
+Vitest's per-test and per-hook timeouts (5 and 10 seconds unless a config sets them) are enforced
+inside the test worker and are not affected by the watchdog bounds. On a slow runner, raise them with
+floors, in milliseconds:
+
+```sh
+VITEST_TEST_TIMEOUT=60000 VITEST_HOOK_TIMEOUT=60000 pnpm test
+```
+
+When either is set, the shared wrapper adds `scripts/vitest-timeout-floor.ts` as a reporter to each
+`vitest` command, which raises every project's timeout to at least that value. A floor never lowers
+a timeout: a config that sets 120 seconds keeps 120 seconds, and a timeout passed to an individual
+test or hook is untouched. Unset, commands run exactly as written. Malformed values fail before the
+command starts, and cached tasks forward and fingerprint both variables like the watchdog overrides.
+CI sets both to 60000 in `.forgejo/workflows/ci.yml` (SCHO-160).
+
 `TESTS_WITH_TIMEOUT_DISABLE=1` retains its existing meaning: disable both watchdogs, not process
 cleanup. Prefer bounded overrides; disable only when an outer job or operator supplies the bound.
 A timeout exits 124 and names the idle/total limit, command, and surviving process tree. Exit 137
