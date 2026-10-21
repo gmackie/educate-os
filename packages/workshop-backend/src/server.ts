@@ -34,6 +34,7 @@ import { createWorkshopLogger } from "./observability";
 import { deployServiceInstall, routerVersionTag } from "./deployment-updates.js";
 import { retryOnDoReset, wrapDoStubForTelemetry } from "./do-retry";
 import { deviceSessionCallback } from "./auth/device-session-callback.js";
+import { resolvePrincipalUser } from "./auth/principal-sign-in.js";
 
 const logger = createWorkshopLogger("workshop.server");
 
@@ -781,7 +782,8 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
 
   async authenticate(token: string): Promise<AuthenticatedApi> {
     let split = token.split(':');
-    if (split.length !== 2) {
+    // Session tokens name email- or username-keyed users, so a principal resolver refuses them all.
+    if (split.length !== 2 || this.env.PRINCIPAL_RESOLVER) {
       throw createAuthError(AUTH_ERROR_CODES.invalidSessionToken);
     }
 
@@ -801,10 +803,13 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     }
 
     let email = this.accessSession.payload.email as string;
-    let userId = this.users.idFromName(email);
+    let user = this.env.PRINCIPAL_RESOLVER
+        ? await resolvePrincipalUser(this.env.PRINCIPAL_RESOLVER, this.accessSession.payload)
+        : { name: email, displayName: undefined };
+    let userId = this.users.idFromName(user.name);
     let signupsEnabled = (await readAdminConfig(this.env)).signupsEnabled;
-    let accountCreated =
-        await this.users.get(userId).authenticateFromCfAccess(email, signupsEnabled);
+    let accountCreated = await this.users.get(userId)
+        .authenticateFromCfAccess(user.name, signupsEnabled, user.displayName);
     if (accountCreated) {
       recordAnalytics(this.ctx, this.env, {
         event_name: "account_created",
@@ -948,13 +953,16 @@ export default {
       let expectedUserDoId: string | undefined;
       if (env.CF_ACCESS_AUD) {
         const payload = await verifyCfAccessJwt(req, env);
-        if (typeof payload?.email !== "string" || payload.email.length === 0) {
+        const name = payload && env.PRINCIPAL_RESOLVER
+          ? await resolvePrincipalUser(env.PRINCIPAL_RESOLVER, payload).then(u => u.name, () => null)
+          : payload?.email;
+        if (typeof name !== "string" || name.length === 0) {
           return new Response("Invalid CF access JWT.", {
             status: 403,
             headers: { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" },
           });
         }
-        expectedUserDoId = ctx.exports.UserDurableObject.idFromName(payload.email).toString();
+        expectedUserDoId = ctx.exports.UserDurableObject.idFromName(name).toString();
       }
       return deviceSessionCallback(req, async (userDoId, state, ticket) => {
         let id: DurableObjectId;
@@ -1001,7 +1009,8 @@ export default {
         const payload = await verifyCfAccessJwt(req, env);
         if (!payload) return new Response("Invalid CF access JWT.", { status: 403 });
 
-        if (!payload.email) {
+        // With a principal resolver, authenticateFromCfAccess() needs `sub` instead, and checks it.
+        if (!payload.email && !env.PRINCIPAL_RESOLVER) {
           return new Response("Access JWT didn't specify email address.", { status: 403 });
         }
 
