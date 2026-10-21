@@ -2,7 +2,7 @@
   "name": "@schoolos/portability",
   "version": "0.1.0",
   "private": true,
-  "description": "SchoolOS learner portability (roadmap P01): the deterministic `.schoolos` student archive, its exporter (policy-checked, rights-enforced, with internal IDs cross-mapped to export-local ones), bounded archive validation, a git fast-import export of an artifact's history, and the CLR 2.0 seam. A library, not a deployable Worker.",
+  "description": "SchoolOS learner portability (roadmap P01): the deterministic `.schoolos` student archive, its exporter (policy-checked, rights-enforced, with internal IDs cross-mapped to export-local ones), bounded archive validation, a git fast-import export of an artifact's history, and the CLR 2.0 seam; and cross-district transfer (roadmap P02): consent, signed transfer packages, learner-carried and direct channels that never touch the root, the destination importer, and the portable learner identity link. A library, not a deployable Worker.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

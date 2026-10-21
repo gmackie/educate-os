@@ -4,7 +4,8 @@ A `.schoolos` file is what a learner takes with them when they leave a district 
 closes (roadmap P01, §0.6, §6.1). It holds their own work and what was shared with them. It never
 holds anything secret, nobody else's content, or anything that identifies records inside the
 district. `@schoolos/portability` writes it (`StudentArchiveExporter`) and checks it
-(`validateArchive`). Importing an archive into another district is P02, and is out of scope here.
+(`validateArchive`). Moving an archive into another district (P02) is described under
+"Transfer to another district" below.
 
 Media type: `application/vnd.schoolos.student-archive+zip`.
 
@@ -240,6 +241,65 @@ principal ID.
 `@schoolos/portability` therefore defines the `ClrIssuer` seam and nothing behind it. The default,
 `UNCONFIGURED_CLR_ISSUER`, refuses with `unavailable`. SchoolOS never builds a credential out of an
 archive's contents on its own.
+
+## Transfer to another district
+
+A learner who moves districts takes their archive with them under a consent (roadmap P02). The
+root (`schoolos.dev`) is never on the path (ADR-0001): no transfer step has a client for it.
+
+**Consent.** `issueTransferConsent` records a `TransferConsent` at the source district. It names
+one export (its `exportId` and learner pseudonym), the item classes consented to (`artifacts`,
+`submissions`, `feedback`, `resources`), the source and destination districts by display label
+and, optionally, fleet instance ID, and an expiry of at most 90 days. Who consents follows the
+district's `ConsentAgePolicy`: the learner at or over its `selfConsentAge`, a guardian below it.
+The learner's age is used for that check and never stored. A consent can be revoked
+(`revokeTransferConsent`), which sets `revokedAt` and nothing else.
+
+**Transfer package.** `issueTransferPackage` validates the archive and signs a detached
+`TransferStatement` with the source district's agent key (Ed25519, context
+`schoolos-transfer/v1`, kind `student-transfer`). The statement covers the archive's SHA-256
+digest, the export ID and pseudonym, the consent's ID and the digest of its grant (every field but
+`revokedAt`), and both districts. The archive bytes are unchanged.
+
+**Channels.** A package travels one of two ways:
+- `learner-carried`: the learner downloads a `.schoolos-transfer` file
+  (`application/vnd.schoolos.transfer+json`: the archive in base64url, the consent and the
+  signature) and uploads it at the destination;
+- `direct`: the source pushes the same body over HTTPS to the destination's transfer endpoint.
+  Only signed packages are pushed, and the endpoint accepts them only from sources whose key its
+  admin has pinned.
+
+**Import.** `StudentArchiveImporter.importStudentArchive(bytes, signature, consent, target)` at
+the destination:
+1. runs `validateArchive`, then refuses the whole archive if any record or content entry holds a
+   district ID shape or secret-shaped text, binary content included;
+2. verifies the signature when the source is pinned (by label or instance ID). An unsigned or
+   unpinned file is accepted only if it was learner-carried and the admin's policy accepts
+   unverified sources; it is then marked `unverified-source`;
+3. checks the consent is for this archive, from the archive's district, to this district,
+   unrevoked and unexpired;
+4. applies the admin's `DestinationImportPolicy`: only item classes both consented and accepted
+   are imported, and the rest are recorded as skipped;
+5. checks the target against any admin-confirmed `PortableIdentityLink` for the archive's learner.
+   A direct push needs one, because it names the learner.
+
+Each item becomes a new artifact, with a fresh local ID, in the target's personal workspace. It is
+therefore `personal-private`: never course work, and not visible to teachers. Submissions arrive as
+`evidence` summaries, feedback and cited references as documents. A link to a document host the
+destination has not approved is skipped. The `ImportRecord` keeps the source district's label, the
+archive digest, how the source was verified, and the map from archive-local IDs to new artifact
+IDs. Import is idempotent on the archive digest.
+
+**Portable learner identity.** A `PortableIdentityLink` is a destination admin's confirmation that
+the learner an archive calls `learner-…`, from a given district, is a given local principal. It is
+never a credential: nobody signs in with it and it grants nothing. SchoolOS has no global child
+identity broker (roadmap §12 defers one), so the only cross-district identifier is the export's own
+pseudonym, and a person at the destination makes the link.
+
+**Revocation.** The source refuses to sign or push under a revoked consent, and the destination
+refuses a consent marked revoked. A learner-carried file downloaded before revocation carries the
+consent as it was then; the destination cannot learn of the revocation without a notice from the
+source.
 
 ## Versioning
 
