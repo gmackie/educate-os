@@ -1,6 +1,6 @@
-import { SchoolOsError } from "@schoolos/contracts";
+import { SchoolOsError, type ArtifactType, type ContentDigest } from "@schoolos/contracts";
 import { digestHex, sha256Digest } from "./digest.ts";
-import type { ArtifactType, ContentBackendKind, ContentDigest, ContentRef, HeldContentRef, MediaType } from "./model.ts";
+import type { ContentBackendKind, ContentRef, HeldContentRef, MediaType } from "./model.ts";
 
 /**
  * The largest text revision kept inline, in canonical bytes: comfortably an essay or a lab's CSV.

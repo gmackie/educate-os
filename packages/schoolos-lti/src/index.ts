@@ -10,7 +10,6 @@ export * from "./broker.ts";
 export * from "./handlers.ts";
 export * from "./canvas.ts";
 export * from "./service-client.ts";
-export * from "./roster-projection.ts";
 export * from "./nrps.ts";
 export * from "./ags.ts";
 export * from "./passback.ts";

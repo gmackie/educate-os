@@ -5,10 +5,12 @@ import {
   OfferingId,
   PrincipalId,
   RubricId,
+  type ArtifactType,
+  type Caller,
   type PolicySettings,
   type RequestChannel,
 } from "@schoolos/contracts";
-import { InMemoryAcademicStore, type Caller } from "@schoolos/academics";
+import { InMemoryAcademicStore } from "@schoolos/academics";
 import { AssessmentService, InMemoryAssessmentRecordStore, type SubmissionReceipt } from "@schoolos/assessment";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import { directoryPolicyInformation, PolicyEngine, type PolicyAuditEvent, type PolicyAuditSink } from "@schoolos/policy";
@@ -19,7 +21,6 @@ import {
   InMemoryInlineTextTable,
   InMemoryR2Bucket,
   LearningArtifacts,
-  type ArtifactType,
   type ArtifactView,
 } from "@schoolos/learning-artifacts";
 import {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   DistrictId,
+  GradeAuthority,
   OfferingId,
   PrincipalId,
   SchoolOsError,
@@ -10,20 +11,7 @@ import {
 import { LtiContextServices } from "./service-client.ts";
 import type { Clock } from "./stores.ts";
 
-/**
- * Which system holds an offering's official grades. `local` means SchoolOS does, and nothing is
- * sent to an LMS. `lms:<platform>` means the named LMS does, and SchoolOS only publishes
- * teacher-approved grades to it. The form follows `@schoolos/academics`' `Authority`
- * (`external:<provider>`), with `lms:` because only an LMS can hold a gradebook.
- */
-export const GradeAuthority = z.union([
-  z.literal("local"),
-  z.templateLiteral(["lms:", z.string().regex(/^[a-z][a-z0-9-]{0,62}$/)]),
-]);
-/** A grade authority. */
-export type GradeAuthority = z.infer<typeof GradeAuthority>;
-
-const LmsAuthority = z.templateLiteral(["lms:", z.string().regex(/^[a-z][a-z0-9-]{0,62}$/)]);
+const LmsAuthority = GradeAuthority.options[1];
 
 /** An offering whose grades SchoolOS keeps. */
 export const LocalGradeRoute = z.strictObject({ offeringId: OfferingId, authority: z.literal("local") });

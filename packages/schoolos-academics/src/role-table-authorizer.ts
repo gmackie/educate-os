@@ -4,22 +4,10 @@ import {
   type Authorizer,
   type Decision,
   type DistrictDirectorySnapshot,
-  type DistrictId,
+  type PrincipalFacts,
   type PrincipalId,
-  type PrincipalKind,
-  type RoleAssignment,
 } from "@schoolos/contracts";
 import type { AcademicStore } from "./store.ts";
-
-/** What an authorizer knows about a subject, read from the directory rather than from the request. */
-export interface PrincipalFacts {
-  /** The principal's district. */
-  districtId: DistrictId;
-  /** Whether the principal is a student, staff member or service. */
-  kind: PrincipalKind;
-  /** Roles held: the directory's role assignments plus those projected from active staff enrollments. */
-  roles: RoleAssignment[];
-}
 
 /** Looks up {@link PrincipalFacts} for a verified subject. */
 export interface PrincipalFactsSource {
@@ -38,6 +26,7 @@ export function principalFactsFrom(
 ): PrincipalFacts | undefined {
   const principal = snapshot.principals.find((p) => p.id === principalId);
   if (principal === undefined) return undefined;
+  if (principal.status !== "active") return { districtId: principal.districtId, kind: principal.kind, roles: [] };
   const roles = snapshot.roleAssignments.filter((assignment) => assignment.principalId === principalId);
   for (const enrollment of snapshot.enrollments) {
     if (enrollment.principalId !== principalId || enrollment.status !== "active" || enrollment.role === "student") {

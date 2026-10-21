@@ -266,6 +266,29 @@ describe("the policy information point", () => {
     await store.commit(snapshot, version);
     expect(await decide(engine, req(P.rivera, "list", roster))).toMatchObject({ effect: "deny" });
   });
+
+  it.each(["graduated", "inactive"] as const)("gives a %s principal no roles, local grants included, while they stay known", (status) => {
+    const amara = P.amara.principalId;
+    const granted = withChanges(NORTHFIELD, (d) => {
+      d.roleAssignments.push({ principalId: amara, role: "student", scope: { level: "district", districtId: d.district.id }, source: "local-grant" });
+    });
+    expect(subjectFactsFrom(granted, amara)!.roles.length).toBeGreaterThan(1);
+    const ended = withChanges(granted, (d) => {
+      d.principals.find((p) => p.id === amara)!.status = status;
+    });
+    expect(subjectFactsFrom(ended, amara)).toEqual({ principalId: amara, districtId: "dst_northfield", kind: "student", roles: [] });
+  });
+
+  it("ends a graduating student's class access on the next decision", async () => {
+    const { engine, store } = engineFor();
+    expect(await decide(engine, req(P.amara, "update", amaraBioArtifact))).toMatchObject({ effect: "allow" });
+    const { snapshot, version } = await store.load();
+    snapshot.principals.find((p) => p.id === P.amara.principalId)!.status = "graduated";
+    await store.commit(snapshot, version);
+    expect(await decide(engine, req(P.amara, "update", amaraBioArtifact))).toMatchObject({ effect: "deny" });
+    expect(await decide(engine, req(P.amara, "read", courseResource(BIO, "rubric", "course", { id: "rbr_bio-released" }))))
+      .toMatchObject({ effect: "deny" });
+  });
 });
 
 describe("A01 open question: offerings, terms and courses", () => {

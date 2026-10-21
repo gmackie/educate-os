@@ -1,5 +1,5 @@
-import type { ArtifactId, SubmissionId } from "@schoolos/contracts";
-import { sha256Digest, type ContentDigest, type RevisionId } from "@schoolos/learning-artifacts";
+import type { ArtifactId, ContentDigest, RevisionId, SubmissionId } from "@schoolos/contracts";
+import { sha256Digest } from "@schoolos/learning-artifacts";
 import type { AssignmentId } from "./model.ts";
 
 /** The part of a submission item its digest covers. */

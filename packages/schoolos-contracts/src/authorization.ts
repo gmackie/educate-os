@@ -2,6 +2,7 @@ import { z } from "zod";
 import { DistrictId, PrincipalId } from "./ids.ts";
 import { Scope } from "./scope.ts";
 import { TermState } from "./academic.ts";
+import type { PrincipalKind, RoleAssignment } from "./identity.ts";
 
 /**
  * The authorization vocabulary every SchoolOS service and Gatekeeper speaks (ADR-0005). These are
@@ -108,6 +109,34 @@ export const AuthorizationRequest = z.strictObject({
 });
 /** An authorization request. */
 export type AuthorizationRequest = z.infer<typeof AuthorizationRequest>;
+
+/** A principal whose identity the transport has already verified: the subject of every request. */
+export type VerifiedPrincipal = AuthorizationRequest["subject"];
+
+/**
+ * Who is calling and through which surface. `principal` must come from verified authentication
+ * (an HTTP handler's principal resolver, an MCP session), never from a request body or a tool
+ * argument.
+ */
+export interface Caller {
+  /** The verified principal. */
+  principal: VerifiedPrincipal;
+  /** The surface the request arrived through. Every surface is authorized identically. */
+  channel: RequestChannel;
+}
+
+/**
+ * What an authorizer knows about a subject, read from the directory rather than from the request.
+ * A principal that is not `active` is still known, but holds no roles.
+ */
+export interface PrincipalFacts {
+  /** The principal's district. */
+  districtId: DistrictId;
+  /** Whether the principal is a student, staff member or service. */
+  kind: PrincipalKind;
+  /** The roles in force at the time of the lookup. */
+  roles: RoleAssignment[];
+}
 
 /**
  * Why a request was not simply allowed. Reasons go to audit logs and to administrators

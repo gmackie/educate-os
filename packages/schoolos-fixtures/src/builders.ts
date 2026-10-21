@@ -15,6 +15,7 @@ export function person(
     id,
     districtId,
     kind,
+    status: "active",
     displayName,
     ...(email === undefined ? {} : { email }),
     externalIdentities: [{ districtId, issuer, subject }],

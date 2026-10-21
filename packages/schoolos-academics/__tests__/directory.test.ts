@@ -298,6 +298,14 @@ describe("authorization", () => {
     await rejectsWith(directory.deactivateEnrollment(NF.highPrincipal, EnrollmentId.parse("enr_nf-16")), "not-found");
   });
 
+  it("ends a graduated teacher's roster access while keeping their records", async () => {
+    const graduated = structuredClone(NORTHFIELD);
+    graduated.principals.find((p) => p.id === NF.morgan.principal.principalId)!.status = "graduated";
+    const { directory } = directoryFor(graduated);
+    await rejectsWith(directory.roster(NF.morgan, BIO_FALL), "not-found");
+    expect((await directory.roster(NF.admin, BIO_FALL)).some((e) => e.principalId === NF.morgan.principal.principalId)).toBe(true);
+  });
+
   it("answers forbidden for a write to something the caller can see but not change", async () => {
     // A student may read their own enrollment but not deactivate it.
     const { directory } = directoryFor();

@@ -1,3 +1,4 @@
+import type { VerifiedIdentity } from "@schoolos/contracts";
 // A stand-in for a district IdP. It signs HS256 tokens with a per-instance random key, so a token
 // minted by one district's fake IdP never verifies at another's, just as with real issuers. It
 // uses only Web Crypto and `btoa`/`atob`, so it runs unchanged under Node and workerd.
@@ -19,13 +20,11 @@ function encodeJson(value: unknown): string {
   return base64UrlEncode(encoder.encode(JSON.stringify(value)));
 }
 
-/** The claims a verified token proves. Anything else a token carries is ignored. */
-export interface VerifiedIdentity {
-  /** The token's issuer. */
-  issuer: string;
-  /** The token's subject. */
-  subject: string;
-}
+/**
+ * The claims a verified token proves: a contracts `VerifiedIdentity` without the credential kind,
+ * which the caller decides. Anything else a token carries is ignored.
+ */
+export type VerifiedClaims = Pick<VerifiedIdentity, "issuer" | "subject">;
 
 /** Options for {@link FakeIdentityProvider.issueToken}. */
 export interface IssueOptions {
@@ -65,7 +64,7 @@ export class FakeIdentityProvider {
    * Verifies a token this IdP issued. Returns null for anything else: a bad signature, another
    * issuer, an algorithm other than HS256, an expired token or malformed input.
    */
-  async verifyToken(token: string): Promise<VerifiedIdentity | null> {
+  async verifyToken(token: string): Promise<VerifiedClaims | null> {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
     const [header, payload, signature] = parts as [string, string, string];

@@ -1,18 +1,6 @@
 import { Scope } from "@schoolos/contracts";
 import { z } from "zod";
 
-/**
- * Identifies an activity definition, across all of its versions. It follows the `<prefix>_<body>`
- * convention of `@schoolos/contracts` and may belong there once another package refers to it. An
- * installed activity is identified separately, by the contracts `ActivityId`.
- */
-export const ActivityDefinitionId = z
-  .string()
-  .regex(/^adf_[a-z0-9][a-z0-9-]{0,62}$/, "expected an activity definition ID (adf_…)")
-  .brand<"activityDefinition">();
-/** An activity definition identifier. */
-export type ActivityDefinitionId = z.infer<typeof ActivityDefinitionId>;
-
 /** An offering scope: where an activity is installed and taught. */
 export const OfferingScope = Scope.options[2];
 /** An offering scope. */

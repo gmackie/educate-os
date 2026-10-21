@@ -12,8 +12,8 @@ function snapshot(edit: (s: Record<string, any>) => void = () => {}) {
     courses: [{ id: "crs_bio", districtId: D, title: "Biology", subject: "science", gradeBand: "9" }],
     offerings: [{ id: "off_1", districtId: D, schoolId: "sch_a", termId: "trm_t", courseId: "crs_bio", sectionName: "1" }],
     principals: [
-      { id: "prn_t", districtId: D, kind: "staff", displayName: "T", externalIdentities: [{ districtId: D, issuer: IDP, subject: "t" }] },
-      { id: "prn_s", districtId: D, kind: "student", displayName: "S", externalIdentities: [{ districtId: D, issuer: IDP, subject: "s" }] },
+      { id: "prn_t", districtId: D, kind: "staff", status: "active", displayName: "T", externalIdentities: [{ districtId: D, issuer: IDP, subject: "t" }] },
+      { id: "prn_s", districtId: D, kind: "student", status: "active", displayName: "S", externalIdentities: [{ districtId: D, issuer: IDP, subject: "s" }] },
     ],
     enrollments: [
       { id: "enr_1", districtId: D, offeringId: "off_1", principalId: "prn_t", role: "teacher", status: "active" },

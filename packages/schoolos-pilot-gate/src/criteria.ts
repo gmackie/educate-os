@@ -255,7 +255,7 @@ export const CRITERIA: readonly Criterion[] = z.array(Criterion).parse([
     file: "security-matrix.test.ts",
     checks: [
       { id: "semester-end", status: "test", name: "closing a term revokes class grants and course AI funding, and keeps the students' work readable and keepable" },
-      { id: "graduation", status: "todo", name: "a graduating student's grants end while their eligible work is kept", blockedBy: ["SCHO-51"], reason: "Principals have no lifecycle status, so graduation cannot be represented yet." },
+      { id: "graduation", status: "todo", name: "a graduating student's grants end while their eligible work is kept", blockedBy: ["SCHO-145"], reason: "Principals now have a graduated status that holds no roles, but no district app route moves a principal to it: the roster import sets only active or inactive, and the academic directory has no principal writes." },
       { id: "export-offered", status: "todo", name: "the student is offered an export of eligible work", blockedBy: ["SCHO-90"], reason: "The district app has no export route, and the exporter is not wired to submissions and feedback." },
     ],
   },

@@ -3,6 +3,7 @@ import {
   SchoolOsError,
   type Action,
   type AuthorizationRequest,
+  type Caller,
   type CourseOffering,
   type DistrictDirectorySnapshot,
   type OfferingId,
@@ -12,7 +13,7 @@ import {
   type WorkspaceId,
   ArtifactId,
 } from "@schoolos/contracts";
-import type { AcademicStore, Caller } from "@schoolos/academics";
+import type { AcademicStore } from "@schoolos/academics";
 import type { PolicyDecider } from "@schoolos/policy";
 import { workspaceLifecycle } from "./lifecycle.ts";
 import {

@@ -1,4 +1,5 @@
-import type { CommercialAccountId, InstanceId } from "@schoolos/fleet";
+import type { InstanceId } from "@schoolos/contracts";
+import type { CommercialAccountId } from "@schoolos/fleet";
 import type { FinanceAuditEvent } from "./audit.ts";
 import type { ProcessorRef } from "./ids.ts";
 import type { CommercialAccount, CreditEntry, Grant, Invoice, Payment, PurchaseOrder, Subscription } from "./model.ts";

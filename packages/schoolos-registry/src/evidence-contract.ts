@@ -1,5 +1,5 @@
+import { EvidenceContractId } from "@schoolos/contracts";
 import { z } from "zod";
-import { EvidenceContractId } from "./ids.ts";
 import { CompetencyRef, Provenance } from "./primitives.ts";
 
 /** The form a learner's response takes. Independent of how the activity is delivered. */

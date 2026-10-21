@@ -1,6 +1,7 @@
+import { RosterProjection } from "@schoolos/contracts";
 import { describe, expect, it } from "vitest";
 import { createDirectoryPrincipalResolver } from "@schoolos/identity";
-import { NrpsClient, RosterProjection } from "../src/index.ts";
+import { NrpsClient } from "../src/index.ts";
 import { NORTHFIELD_LTI, rejection } from "./helpers.ts";
 import { AMARA_SUB, BIO, BIO_CONTEXT, createServicesWorld, type ServicesWorld } from "./services-helpers.ts";
 

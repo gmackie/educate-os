@@ -1,5 +1,5 @@
+import { ResourceId } from "@schoolos/contracts";
 import { z } from "zod";
-import { ResourceId } from "./ids.ts";
 import { CompetencyRef, HumanReview, ImmutableRelease, Provenance, RegistryUri } from "./primitives.ts";
 
 /** What kind of thing a resource is (roadmap §5.1). */

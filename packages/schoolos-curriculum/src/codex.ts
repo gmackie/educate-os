@@ -1,9 +1,8 @@
 import type { StudioRelease } from "@schoolos/content-studio";
-import { ActivityId, DistrictId, OfferingId, SchoolOsError } from "@schoolos/contracts";
-import { ResourceId } from "@schoolos/registry";
+import { ActivityDefinitionId, ActivityId, DistrictId, OfferingId, ResourceId, SchoolOsError } from "@schoolos/contracts";
 import { z } from "zod";
 import type { AiHelpLevel } from "./ai-help.ts";
-import { ActivityDefinitionId, LocalId } from "./ids.ts";
+import { LocalId } from "./ids.ts";
 import { type ActivityContent, type CodexVisibility, releaseKey, ResourceReleaseRef } from "./model.ts";
 
 /**

@@ -1,5 +1,5 @@
-import { CapabilityId } from "@schoolos/contracts";
-import { CommercialAccountId, ContactRole, InstanceId } from "@schoolos/fleet";
+import { CapabilityId, InstanceId } from "@schoolos/contracts";
+import { CommercialAccountId, ContactRole } from "@schoolos/fleet";
 import { z } from "zod";
 import { ReleasePin } from "./manifest.ts";
 

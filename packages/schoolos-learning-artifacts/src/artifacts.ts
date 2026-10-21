@@ -1,25 +1,27 @@
 import { z } from "zod";
 import {
+  ArtifactType,
+  ContentDigest,
   ID_PREFIXES,
   PrincipalId,
   SchoolOsError,
   type Action,
   type ArtifactId,
   type AuthorizationRequest,
+  type Caller,
   type DistrictDirectorySnapshot,
   type ResourceRef,
+  type RevisionId,
   type TermState,
   WorkspaceId,
 } from "@schoolos/contracts";
-import type { AcademicStore, Caller } from "@schoolos/academics";
+import type { AcademicStore } from "@schoolos/academics";
 import type { PolicyDecider } from "@schoolos/policy";
 import type { Workspace, WorkspaceState, WorkspaceStore } from "@schoolos/workspaces";
 import { chooseBackend, isTextMediaType, type ArtifactStore } from "./content.ts";
 import { canonicalTextBytes, sha256Digest } from "./digest.ts";
 import {
   AiAssistance,
-  ArtifactType,
-  ContentDigest,
   EXTERNAL_REFERENCE_MEDIA_TYPE,
   MediaType,
   PinConsumer,
@@ -29,7 +31,6 @@ import {
   type ContentRef,
   type Pin,
   type ProvenanceRecord,
-  type RevisionId,
   type ShareGrant,
 } from "./model.ts";
 import type { ArtifactRecordStore } from "./store.ts";

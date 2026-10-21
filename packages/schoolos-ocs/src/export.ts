@@ -1,4 +1,5 @@
-import type { ActivityInstallation, CurriculumService, CurriculumSubject, InstallActivityInput, OfferingScope } from "@schoolos/curriculum";
+import type { VerifiedPrincipal } from "@schoolos/contracts";
+import type { ActivityInstallation, CurriculumService, InstallActivityInput, OfferingScope } from "@schoolos/curriculum";
 import type { ComposedCourse } from "./composer.ts";
 
 /** One activity installation a composed course asks for, and the course item it comes from. */
@@ -47,7 +48,7 @@ export interface CourseInstallation {
  */
 export async function installCourse(
   service: Pick<CurriculumService, "install">,
-  subject: CurriculumSubject,
+  subject: VerifiedPrincipal,
   course: ComposedCourse,
   offering: OfferingScope,
 ): Promise<CourseInstallation[]> {

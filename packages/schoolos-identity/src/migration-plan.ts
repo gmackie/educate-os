@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { DistrictId, PrincipalId, SchoolOsError, type DistrictDirectorySnapshot } from "@schoolos/contracts";
-import { WorkshopUserId } from "./workshop-user.ts";
+import { DistrictId, PrincipalId, SchoolOsError, WorkshopUserId, type DistrictDirectorySnapshot } from "@schoolos/contracts";
 
 /**
  * An existing Workshop user as the kernel keys it today: by the email (or, for password accounts,

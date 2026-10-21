@@ -4,14 +4,13 @@ import {
   InMemoryContentStudioStorage,
   type ImportFetch,
 } from "@schoolos/content-studio";
-import { type DistrictDirectorySnapshot, DistrictId, PrincipalId } from "@schoolos/contracts";
+import { type DistrictDirectorySnapshot, DistrictId, PrincipalId, type VerifiedPrincipal } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import type { CompetencyRef } from "@schoolos/registry";
 import { expect } from "vitest";
 import {
   type AiHelpLayers,
   contentStudioReleases,
-  type CurriculumSubject,
   CurriculumService,
   curriculumAuthorizer,
   InMemoryCodexPublisher,
@@ -23,7 +22,7 @@ import {
 
 export const D = DistrictId.parse("dst_northfield");
 
-const subject = (id: string): CurriculumSubject => ({ principalId: PrincipalId.parse(id), districtId: D });
+const subject = (id: string): VerifiedPrincipal => ({ principalId: PrincipalId.parse(id), districtId: D });
 
 /** Teaches Biology, fall period 2. */
 export const MORGAN = subject("prn_nf-morgan-lee");
@@ -42,7 +41,7 @@ export const ELENA = subject("prn_nf-student-elena");
 /** Active in Mathematics 7 only. */
 export const CHIDI = subject("prn_nf-student-chidi");
 /** A Riverbend teacher: another district. */
-export const RIVERBEND_TEACHER: CurriculumSubject = { principalId: PrincipalId.parse("prn_rb-morgan-lee"), districtId: DistrictId.parse("dst_riverbend") };
+export const RIVERBEND_TEACHER: VerifiedPrincipal = { principalId: PrincipalId.parse("prn_rb-morgan-lee"), districtId: DistrictId.parse("dst_riverbend") };
 
 const offering = (schoolId: string, offeringId: string) => ({ level: "offering", districtId: D, schoolId, offeringId }) as OfferingScope;
 export const BIO = offering("sch_nf-high", "off_nf-bio-fall-p2");
@@ -132,13 +131,13 @@ export async function setup(options: { directory?: DistrictDirectorySnapshot } =
   });
 
   /** Imports and approves a page for an offering, returning its release. */
-  const release = async (teacher: CurriculumSubject, url: string, scope: OfferingScope): Promise<ResourceReleaseRef> => {
+  const release = async (teacher: VerifiedPrincipal, url: string, scope: OfferingScope): Promise<ResourceReleaseRef> => {
     const item = await studio.submitUrl(teacher, { url, targetScope: scope });
     const released = await studio.approve(teacher, item.id, { alignments: [] });
     return { resourceId: released.descriptor.id, version: released.descriptor.release.version };
   };
   /** Imports a page and leaves it awaiting review: it has no release. */
-  const pending = async (teacher: CurriculumSubject, url: string, scope: OfferingScope): Promise<ResourceReleaseRef> => {
+  const pending = async (teacher: VerifiedPrincipal, url: string, scope: OfferingScope): Promise<ResourceReleaseRef> => {
     const item = await studio.submitUrl(teacher, { url, targetScope: scope });
     return { resourceId: item.resourceId, version: "1.0.0" };
   };

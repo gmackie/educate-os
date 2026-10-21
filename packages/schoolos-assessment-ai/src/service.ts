@@ -4,8 +4,7 @@
 // share: that engine's guarantees (zero cost, no clock, randomness or network) are exactly what
 // these runs cannot give.
 import { z } from "zod";
-import { AssessmentRunId, SchoolOsError, SubmissionId } from "@schoolos/contracts";
-import type { Caller } from "@schoolos/academics";
+import { AssessmentRunId, SchoolOsError, SubmissionId, type Caller } from "@schoolos/contracts";
 import { submissionDigest, type AssessmentService, type AssignmentBinding, type RubricReleaseRef, type SubmissionSnapshot } from "@schoolos/assessment";
 import {
   assessmentRunIdFor,

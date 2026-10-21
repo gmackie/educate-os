@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkDirectoryIntegrity, SchoolOsError, type PrincipalId } from "@schoolos/contracts";
+import { checkDirectoryIntegrity, SchoolOsError, type PrincipalId, type VerifiedIdentity, type WorkshopUserId } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import {
   approveIdentityLink,
@@ -7,8 +7,6 @@ import {
   IdentityLinkAuditEvent,
   rejectIdentityLink,
   requestIdentityLink,
-  type VerifiedIdentity,
-  type WorkshopUserId,
 } from "../src/index.ts";
 import { AT, NF_ACCESS, NF_ADMIN, NF_IDP, RB_ADMIN, withAccess } from "./helpers.ts";
 

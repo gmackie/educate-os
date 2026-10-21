@@ -55,7 +55,8 @@ async function applied(current: oneroster.RosterState, files: Files, options: Pa
 function principalOf(state: oneroster.RosterState, sourcedId: string) {
   const entry = Object.entries(state.sources.principals).find(([, s]) => s.sourcedId === sourcedId);
   if (!entry) throw new Error(`no principal for ${sourcedId}`);
-  return { id: entry[0], active: entry[1].active, principal: state.snapshot.principals.find((p) => p.id === entry[0]) };
+  const principal = state.snapshot.principals.find((p) => p.id === entry[0]);
+  return { id: entry[0], active: principal?.status === "active", principal };
 }
 
 function enrollmentOf(state: oneroster.RosterState, sourcedId: string) {
@@ -243,6 +244,7 @@ describe("identity linking", () => {
           id: "prn_local-okafor" as never,
           districtId: local.id,
           kind: "student",
+          status: "active",
           displayName: "A. Okafor",
           email: "family.okafor@northfield.example",
           externalIdentities: [{ districtId: local.id, issuer: ISSUER, subject: "someone-else" }],
@@ -280,7 +282,7 @@ describe("re-import", () => {
 
     expect(preview.changes.principals).toEqual({ added: [], updated: [], deactivated: [felix.id], retained: [] });
     expect(preview.changes.enrollments.deactivated).toEqual([enrollmentOf(first.next, "e-17")!.id]);
-    expect(principalOf(next, "u-felix")).toEqual({ ...felix, active: false });
+    expect(principalOf(next, "u-felix")).toEqual({ ...felix, active: false, principal: { ...felix.principal, status: "inactive" } });
     expect(enrollmentOf(next, "e-17")?.status).toBe("inactive");
     for (const kind of ["schools", "terms", "courses", "offerings", "principals", "enrollments"] as const) {
       expect(next.snapshot[kind].map((r) => r.id)).toEqual(first.next.snapshot[kind].map((r) => r.id));
@@ -328,7 +330,7 @@ describe("re-import", () => {
     const { next, preview } = await applied(first.next, edited({ "users.csv": rekey, "roles.csv": [["r-u-amara,,,u-amara,", "r-u-amara-2,,,u-amara-2,"]], "enrollments.csv": rekey }));
     expect(preview.quarantined).toEqual([expect.objectContaining({ sourcedId: "u-amara-2", reason: "subject-in-use" })]);
     expect(preview.changes.principals.deactivated).toEqual([amara.id]);
-    expect(principalOf(next, "u-amara").principal).toEqual(amara.principal);
+    expect(principalOf(next, "u-amara").principal).toEqual({ ...amara.principal, status: "inactive" });
   });
 
   it("quarantines a user whose roles turn a student into staff", async () => {

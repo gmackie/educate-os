@@ -1,5 +1,5 @@
+import { RevisionId } from "@schoolos/contracts";
 import { describe, expect, it } from "vitest";
-import { RevisionId } from "@schoolos/learning-artifacts";
 import { O, P, doc, essayAssignment, ref, rejectsWith, setup, withEssay } from "./setup.ts";
 
 const AI = { kind: "ai", modelId: "workers-ai/llama-3.3-70b" } as const;

@@ -1,18 +1,13 @@
-import { CapabilityId, SemVer } from "@schoolos/contracts";
+import { CapabilityId, InstanceId, OpaqueCode, SemVer, UtcTimestamp } from "@schoolos/contracts";
 import { z } from "zod";
 import { Base64Url } from "./encoding.ts";
 import { SignedEnvelope } from "./envelope.ts";
 import { Ed25519PublicKey, KeyId } from "./identity.ts";
-import { CommercialAccountId, InstanceId, OpaqueCode, SupportSessionId } from "./ids.ts";
+import { CommercialAccountId, SupportSessionId } from "./ids.ts";
 
 // Every message here is a strict allow-list (ADR-0001): a field the schema doesn't name fails to
 // parse, so personal data can't ride along in an extra property. `__tests__/no-pii.test.ts` also
 // rejects any field whose name suggests personal data.
-
-/** A UTC timestamp (`2026-10-20T14:00:00Z`). */
-export const UtcTimestamp = z.iso.datetime();
-/** A UTC timestamp string. */
-export type UtcTimestamp = z.infer<typeof UtcTimestamp>;
 
 /**
  * A per-instance message counter. Every signed message after registration carries the next

@@ -1,6 +1,6 @@
 import { expect } from "vitest";
-import { DistrictId, OfferingId, PrincipalId, type DistrictDirectorySnapshot, type PolicySettings } from "@schoolos/contracts";
-import { InMemoryAcademicStore, type Caller } from "@schoolos/academics";
+import { DistrictId, OfferingId, PrincipalId, type Caller, type DistrictDirectorySnapshot, type PolicySettings } from "@schoolos/contracts";
+import { InMemoryAcademicStore } from "@schoolos/academics";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import { directoryPolicyInformation, PolicyEngine, type PolicyAuditEvent, type PolicyAuditSink } from "@schoolos/policy";
 import { InMemoryWorkspaceStore, WorkspaceDirectory } from "@schoolos/workspaces";

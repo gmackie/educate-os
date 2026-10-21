@@ -1,5 +1,6 @@
+import { InstanceId } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
-import { InstanceId, SigningIdentity } from "@schoolos/fleet";
+import { SigningIdentity } from "@schoolos/fleet";
 import {
   DistrictReleaseManager,
   InMemoryDistrictReleaseStore,

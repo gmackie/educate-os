@@ -1,6 +1,6 @@
-import { SchoolOsError } from "@schoolos/contracts";
+import { InstanceId, SchoolOsError } from "@schoolos/contracts";
 import { RIVERBEND } from "@schoolos/fixtures";
-import { type EntitlementEvaluation, type EntitlementState, InstanceId } from "@schoolos/fleet";
+import { type EntitlementEvaluation, type EntitlementState } from "@schoolos/fleet";
 import { describe, expect, it } from "vitest";
 import type { SubscriptionStatus } from "../src/index.ts";
 import { CLERK, DAY, ENTERPRISE, idsFor, setup, TERM_END, TERM_START } from "./support.ts";

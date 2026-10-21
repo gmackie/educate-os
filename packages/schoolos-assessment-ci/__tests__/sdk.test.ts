@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { ArtifactId, RubricId } from "@schoolos/contracts";
+import { ArtifactId, RevisionId, RubricId } from "@schoolos/contracts";
 import { submissionDigest, type SubmissionItem } from "@schoolos/assessment";
-import { canonicalTextBytes, RevisionId, sha256Digest } from "@schoolos/learning-artifacts";
+import { canonicalTextBytes, sha256Digest } from "@schoolos/learning-artifacts";
 import {
   ArithmeticError,
   AssessmentRuns,

@@ -1,9 +1,8 @@
 // Roster sync runs over any source that yields the OneRoster row model: complete and delta syncs,
 // the roster mirror a delta is laid over, and the run record each sync leaves. New for SchoolOS.
-import { SchoolOsError } from "@schoolos/contracts";
+import { SchoolOsError, type IntegrationSyncRun, type SyncCounts, type SyncErrorCode, type SyncMode } from "@schoolos/contracts";
 import { z } from "zod";
 import { RosterSyncError } from "../sync-run.ts";
-import type { IntegrationSyncRun, SyncCounts, SyncErrorCode, SyncMode } from "../sync-run.ts";
 import { readOneRosterCsv } from "./feed.ts";
 import type { OneRosterCsvFiles, OneRosterCsvLimits, OneRosterFeed, OneRosterIssue } from "./feed.ts";
 import { applyOneRosterFeed } from "./import.ts";

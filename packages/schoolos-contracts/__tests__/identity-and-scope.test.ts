@@ -2,12 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   DistrictId,
   ExternalIdentity,
+  ID_PREFIXES,
+  InstanceId,
   OfferingId,
   Principal,
+  ResourceId,
+  RevisionId,
   Scope,
   SchoolId,
   externalIdentityKey,
   scopeContains,
+  SourceLink,
 } from "../src/index.ts";
 
 describe("identifiers", () => {
@@ -50,6 +55,7 @@ describe("external identity keys", () => {
       id: "prn_x",
       districtId: "dst_one",
       kind: "student",
+      status: "active",
       displayName: "X",
       email: "x@example.com",
       externalIdentities: [],
@@ -80,5 +86,41 @@ describe("scopeContains", () => {
 
   it("rejects scopes with fields from another level", () => {
     expect(Scope.safeParse({ level: "district", districtId: "dst_one", schoolId: "sch_a" }).success).toBe(false);
+  });
+});
+
+describe("shared identifiers", () => {
+  it("gives every record kind its own prefix, so no two kinds can parse each other's IDs", () => {
+    const prefixes = Object.values(ID_PREFIXES);
+    expect(new Set(prefixes).size).toBe(prefixes.length);
+    expect(InstanceId.safeParse("ins_northfield").success).toBe(true);
+    expect(InstanceId.safeParse("dst_northfield").success).toBe(false);
+    expect(ResourceId.safeParse("pck_bio").success).toBe(false);
+    expect(RevisionId.safeParse("rev_1").success).toBe(true);
+  });
+});
+
+describe("principal lifecycle", () => {
+  const principal = {
+    id: "prn_x",
+    districtId: "dst_one",
+    kind: "student",
+    displayName: "X",
+    externalIdentities: [{ districtId: "dst_one", issuer: "https://idp.one.example", subject: "x" }],
+  };
+
+  it("requires a status, so no principal is active by omission", () => {
+    expect(Principal.safeParse(principal).success).toBe(false);
+    for (const status of ["active", "inactive", "graduated"]) {
+      expect(Principal.safeParse({ ...principal, status }).success, status).toBe(true);
+    }
+    expect(Principal.safeParse({ ...principal, status: "deleted" }).success).toBe(false);
+  });
+
+  it("keeps a source link to provenance: no identity or profile fields ride along", () => {
+    const link = { system: "oneroster", sourcedId: "u-17", lastSeenAt: "2026-10-20T14:00:00Z" };
+    expect(SourceLink.safeParse(link).success).toBe(true);
+    expect(SourceLink.safeParse({ ...link, email: "x@one.example" }).success).toBe(false);
+    expect(SourceLink.safeParse({ ...link, system: "OneRoster" }).success).toBe(false);
   });
 });

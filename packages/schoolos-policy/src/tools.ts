@@ -6,11 +6,9 @@ import {
   type ResourceRef,
   type SchoolOsErrorBody,
   type TermState,
+  type VerifiedPrincipal,
 } from "@schoolos/contracts";
 import type { PolicyDecider } from "./engine.ts";
-
-/** A principal the session has already verified. Tools never learn identity any other way. */
-export type VerifiedSubject = AuthorizationRequest["subject"];
 
 /** The channels a school tool is invoked through. */
 export type ToolChannel = "mcp-tool" | "agent";
@@ -18,7 +16,7 @@ export type ToolChannel = "mcp-tool" | "agent";
 /** The trusted context of one tool invocation. */
 export interface SchoolToolContext {
   /** The verified principal the call acts for. A principal named in the input is only a selector. */
-  principal: VerifiedSubject;
+  principal: VerifiedPrincipal;
   /** How the call arrived. */
   channel: ToolChannel;
   /** The correlation ID every decision and error of this invocation carries. */
@@ -166,7 +164,7 @@ export class SchoolToolRunner {
    * Invokes one tool. `session` must come from verified authentication; `name` and `args` are
    * untrusted model or client output.
    */
-  async invoke(session: { principal: VerifiedSubject; channel: ToolChannel }, name: unknown, args: unknown): Promise<SchoolToolOutcome> {
+  async invoke(session: { principal: VerifiedPrincipal; channel: ToolChannel }, name: unknown, args: unknown): Promise<SchoolToolOutcome> {
     const correlationId = crypto.randomUUID();
     const tool = typeof name === "string" ? this.#tools.get(name) : undefined;
     if (tool === undefined) {

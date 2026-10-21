@@ -1,15 +1,7 @@
 import { z } from "zod";
-import { SchoolOsError } from "@schoolos/contracts";
-import { sha256Digest, type ContentDigest } from "@schoolos/learning-artifacts";
+import { InstanceId, SchoolOsError, type ContentDigest } from "@schoolos/contracts";
+import { sha256Digest } from "@schoolos/learning-artifacts";
 import { canonicalJsonBytes, ExportId, SubjectRef, type StudentArchiveManifest } from "./archive.ts";
-
-/**
- * Identifies one SchoolOS deployment in the fleet. The same shape as `@schoolos/fleet`'s
- * `InstanceId`, which this should become once that package is reachable from here.
- */
-export const InstanceId = z.string().regex(/^ins_[a-z0-9][a-z0-9-]{0,62}$/, "expected an instance ID (ins_…)").brand<"instance">();
-/** An instance identifier. */
-export type InstanceId = z.infer<typeof InstanceId>;
 
 /** A district display label, as it appears in an archive's manifest. */
 export const DistrictLabel = z.string().min(1).max(200);

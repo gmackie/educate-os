@@ -1,7 +1,7 @@
 // Rubric report view models for future teacher and student UIs: pure functions from records to
 // plain data, with no React and no I/O. The student view is built by filtering, never by trusting
 // its caller to have filtered, so it can be handed every record a submission has.
-import type { AssessmentRunId, SubmissionId } from "@schoolos/contracts";
+import type { AssessmentRunId, RevisionId, SubmissionId } from "@schoolos/contracts";
 import type { CriterionId } from "@schoolos/assessment";
 import {
   evaluatorLabel,
@@ -15,7 +15,6 @@ import {
   type TextRange,
 } from "@schoolos/assessment-ci";
 import type { ArtifactId } from "@schoolos/contracts";
-import type { RevisionId } from "@schoolos/learning-artifacts";
 import { AI_FEEDBACK_NOTICE, AI_SUGGESTED, type AiEvidence, type AiExcerpt, type AiSkipReason, type Uncertainty } from "./ai-feedback.ts";
 import { modelLabel } from "./model-port.ts";
 import type { AiFeedbackReport, OptionalRecords, OptionalRun, OptionalRunError, OverrideDecision, SandboxReport, TeacherOverride } from "./model.ts";

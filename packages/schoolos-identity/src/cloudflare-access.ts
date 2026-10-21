@@ -1,5 +1,4 @@
-import { SchoolOsError } from "@schoolos/contracts";
-import { VerifiedIdentity } from "./verified-identity.ts";
+import { SchoolOsError, VerifiedIdentity } from "@schoolos/contracts";
 
 /**
  * The claims of a Cloudflare Access JWT *after* verification: what the kernel's

@@ -1,8 +1,6 @@
 import { z } from "zod";
-import { PrincipalId, RubricId, SchoolOsError } from "@schoolos/contracts";
-import type { Caller } from "@schoolos/academics";
+import { ContentDigest, PrincipalId, RubricId, SchoolOsError, type Caller } from "@schoolos/contracts";
 import { CriterionId, type RubricReleaseRef } from "@schoolos/assessment";
-import { ContentDigest } from "@schoolos/learning-artifacts";
 import { canonicalDigest } from "./canonical.ts";
 import type { EvaluatorRegistry } from "./registry.ts";
 import { EvaluatorId } from "./sdk.ts";

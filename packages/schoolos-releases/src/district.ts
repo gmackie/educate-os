@@ -1,13 +1,10 @@
-import { SchoolOsError, SemVer } from "@schoolos/contracts";
+import { OpaqueCode, SchoolOsError, SemVer, UtcTimestamp, type InstanceId } from "@schoolos/contracts";
 import {
-  type InstanceId,
-  OpaqueCode,
   parseWire,
   ReleaseOffer,
   ReleaseOfferPurpose,
   Sequence,
   SignedEnvelope,
-  UtcTimestamp,
   verifyEnvelope,
 } from "@schoolos/fleet";
 import { z } from "zod";

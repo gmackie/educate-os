@@ -4,7 +4,7 @@ export * from "./authority.ts";
 export * from "./validation.ts";
 export * from "./store.ts";
 export * from "./inputs.ts";
-export { AcademicDirectory, type AcademicDirectoryOptions, type Caller, type VerifiedPrincipal } from "./directory.ts";
+export { AcademicDirectory, type AcademicDirectoryOptions } from "./directory.ts";
 export * from "./sync.ts";
 export * from "./role-table-authorizer.ts";
 export * from "./operations.ts";

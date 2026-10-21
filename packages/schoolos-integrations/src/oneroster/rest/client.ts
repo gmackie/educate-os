@@ -5,9 +5,9 @@
 // form body; a rejected token is refreshed once; every collection is read to its last page; every
 // response is size-capped and validated; error messages never include a response body; and the
 // base path is the 1.2 rostering service's (`/ims/oneroster/rostering/v1p2`, not `/ims/oneroster/v1p2`).
+import type { SyncErrorCode } from "@schoolos/contracts";
 import { z } from "zod";
 import { RosterSyncError } from "../../sync-run.ts";
-import type { SyncErrorCode } from "../../sync-run.ts";
 import type { OneRosterIssue } from "../feed.ts";
 import { DEFAULT_RETRY_POLICY, fetchWithRetry, realSleep } from "./retry.ts";
 import type { RetryPolicy, Sleep } from "./retry.ts";

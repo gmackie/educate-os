@@ -1,6 +1,4 @@
-import { SchoolOsError } from "@schoolos/contracts";
-import type { ResourceId } from "@schoolos/registry";
-import type { ContentItemId } from "./ids.ts";
+import { SchoolOsError, type ContentItemId, type ResourceId } from "@schoolos/contracts";
 import type { ClassBinding, ContentItem, StudioRelease } from "./item.ts";
 import type { StudioAuditEvent } from "./pipeline.ts";
 

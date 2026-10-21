@@ -1,7 +1,7 @@
-import { DistrictDirectorySnapshot, checkDirectoryIntegrity } from "@schoolos/contracts";
+import { DistrictDirectorySnapshot, checkDirectoryIntegrity, IntegrationSyncRun } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import { describe, expect, it } from "vitest";
-import { IntegrationSyncRun, oneroster } from "../src/index.ts";
+import { oneroster } from "../src/index.ts";
 import type { RosterSource } from "../src/index.ts";
 import { loadExport } from "./fixtures/load.ts";
 import { DEMOGRAPHICS_SENTINEL, PASSWORD_SENTINEL } from "./fixtures/northfield-export.ts";
@@ -56,7 +56,8 @@ async function synced(state: oneroster.RosterSyncState, source: RosterSource, mo
 
 function principalOf(state: oneroster.RosterSyncState, sourcedId: string) {
   const entry = Object.entries(state.roster.sources.principals).find(([, s]) => s.sourcedId === sourcedId)!;
-  return { id: entry[0], active: entry[1].active, principal: state.roster.snapshot.principals.find((p) => p.id === entry[0])! };
+  const principal = state.roster.snapshot.principals.find((p) => p.id === entry[0])!;
+  return { id: entry[0], active: principal.status === "active", principal };
 }
 
 function enrollmentOf(state: oneroster.RosterSyncState, sourcedId: string) {

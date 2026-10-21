@@ -1,5 +1,4 @@
-import { type ActivityId, SchoolOsError } from "@schoolos/contracts";
-import type { ActivityDefinitionId } from "./ids.ts";
+import { type ActivityDefinitionId, type ActivityId, SchoolOsError } from "@schoolos/contracts";
 import type { ActivityDefinition, ActivityInstallation } from "./model.ts";
 
 /**

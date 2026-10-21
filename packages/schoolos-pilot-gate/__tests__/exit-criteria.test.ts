@@ -1,8 +1,8 @@
 // Roadmap §3.4, the pilot exit criteria.
 import { expect } from "vitest";
-import { PrincipalId, SchoolId, type DistrictDirectorySnapshot } from "@schoolos/contracts";
+import { InstanceId, PrincipalId, SchoolId, type DistrictDirectorySnapshot } from "@schoolos/contracts";
 import { ResourceDescriptor } from "@schoolos/registry";
-import { DistrictAgent, InMemorySequenceCounter, InstanceId, SigningIdentity } from "@schoolos/fleet";
+import { DistrictAgent, InMemorySequenceCounter, SigningIdentity } from "@schoolos/fleet";
 import { createDistrictApiClient, type DistrictApiClient } from "@schoolos/api-client";
 import { bootDistrictApp, bootHarness, harnessFetch, seedDemo, type HarnessDistrict } from "@schoolos/harness";
 import { criterion } from "./gate.ts";

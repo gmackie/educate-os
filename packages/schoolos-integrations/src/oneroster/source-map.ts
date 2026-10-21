@@ -1,7 +1,7 @@
 // How SchoolOS records relate to OneRoster records. PlayTrek kept this relation in its
 // `external_identities` table (packages/edtech/src/oneroster/sync.ts at commit 7258e4347); SchoolOS
 // keeps it as a plain map returned beside each snapshot, so this package needs no database.
-import { CourseId, EnrollmentId, ID_PREFIXES, OfferingId, PrincipalId, SchoolId, TermId } from "@schoolos/contracts";
+import { CourseId, EnrollmentId, ID_PREFIXES, OfferingId, PrincipalId, SchoolId, SourceLink, TermId } from "@schoolos/contracts";
 import type { DistrictId } from "@schoolos/contracts";
 import { z } from "zod";
 import { SourcedId } from "./spec.ts";
@@ -10,15 +10,17 @@ import { SourcedId } from "./spec.ts";
  * The OneRoster `sourcedId` behind each SchoolOS record a roster import created or linked, by
  * entity type. Records absent from it were not made by an import, and an import leaves them alone.
  *
- * A principal also records whether the roster still lists it. A principal the roster stops listing
- * stays in the directory (see `import.ts`), so the snapshot alone cannot say it was deactivated.
+ * A principal's entry is a contracts `SourceLink` (system `oneroster`), which also records when an
+ * applied import last saw the roster list it. Whether the roster still lists it is the principal's
+ * own `status` in the directory: one the roster stops listing stays there as `inactive` (see
+ * `import.ts`).
  */
 export const OneRosterSourceMap = z.strictObject({
   schools: z.record(SchoolId, SourcedId),
   terms: z.record(TermId, SourcedId),
   courses: z.record(CourseId, SourcedId),
   offerings: z.record(OfferingId, SourcedId),
-  principals: z.record(PrincipalId, z.strictObject({ sourcedId: SourcedId, active: z.boolean() })),
+  principals: z.record(PrincipalId, SourceLink),
   enrollments: z.record(EnrollmentId, SourcedId),
 });
 /** A OneRoster source map. */

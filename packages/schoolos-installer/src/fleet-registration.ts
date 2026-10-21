@@ -3,11 +3,10 @@
 // secret, and used once to sign the registration; the ownership token the root returns goes the
 // same way. The installer keeps neither: Worker secrets cannot be read back, so after this the
 // district alone holds them. A root that is down or refuses does not undo the install.
-import { SchoolOsError } from "@schoolos/contracts";
+import { SchoolOsError, type InstanceId } from "@schoolos/contracts";
 import {
   DistrictAgent,
   InMemorySequenceCounter,
-  type InstanceId,
   RegistrationReceipt,
   type RegistrationDetails,
   type SignedEnvelope,

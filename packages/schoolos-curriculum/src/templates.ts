@@ -1,11 +1,10 @@
-import { GradeBand, Subject } from "@schoolos/contracts";
+import { ArtifactType, GradeBand, Subject } from "@schoolos/contracts";
 import { z } from "zod";
 import { AiHelpLevel } from "./ai-help.ts";
 import {
   type ActivityContent,
   type ActivityStep,
   AlignmentRequest,
-  ArtifactType,
   CodexEntry,
   DatasetColumn,
   DueDateRule,

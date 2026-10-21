@@ -1,5 +1,5 @@
-import { SchoolOsError, SemVer } from "@schoolos/contracts";
-import { parseWire, ReleaseChannel, SignedEnvelope, UtcTimestamp } from "@schoolos/fleet";
+import { SchoolOsError, SemVer, UtcTimestamp } from "@schoolos/contracts";
+import { parseWire, ReleaseChannel, SignedEnvelope } from "@schoolos/fleet";
 import { z } from "zod";
 import { compareSemVer } from "./semver.ts";
 import { openReleaseMessage, type ReleaseTrust } from "./trust.ts";

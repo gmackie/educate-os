@@ -3,10 +3,10 @@
 // Studio's AI reviewer (`packages/schoolos-content-studio/src/review.ts`, SCHO-15). Unlike that
 // reviewer, a finding whose quote is not exactly the submitted text at its range is dropped rather
 // than shown as unverified, because a teacher reads these findings against a student's grade.
+import { RevisionId } from "@schoolos/contracts";
 import { z } from "zod";
 import { CriterionId } from "@schoolos/assessment";
 import { Excerpt, TextRange, type AcceptedInput, type EvaluationArtifact, type Evaluator, type RubricCriterion } from "@schoolos/assessment-ci";
-import { RevisionId } from "@schoolos/learning-artifacts";
 import type { GovernedModelRequest, ModelDenialReason, ModelPort, ModelRequestId } from "./model-port.ts";
 import type { AiExecutionProfile } from "./profiles.ts";
 
@@ -271,4 +271,3 @@ export class AiFeedbackEvaluator implements NondeterministicEvaluator {
     await this.#model.afterResponse({ status: "failed", requestId });
   }
 }
-

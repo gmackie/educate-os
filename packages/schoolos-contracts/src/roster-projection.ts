@@ -1,9 +1,12 @@
 import { z } from "zod";
-import { DistrictId, ExternalIdentity, OfferingId } from "@schoolos/contracts";
+import { DistrictId, OfferingId } from "./ids.ts";
+import { ExternalIdentity } from "./identity.ts";
+import { UtcTimestamp } from "./primitives.ts";
 
 /**
- * Whether the platform lists a member as active. A `deleted` member is reported so a sync adapter
- * can end their live access; it is never a reason to delete a principal, an enrollment or work.
+ * Whether an external platform lists a member as active. A `deleted` member is reported so a sync
+ * adapter can end their live access; it is never a reason to delete a principal, an enrollment or
+ * work.
  */
 export const ProjectedMemberStatus = z.enum(["active", "inactive", "deleted"]);
 /** A projected member's status. */
@@ -41,17 +44,17 @@ export const RosterProjectionSource = z.discriminatedUnion("kind", [
 export type RosterProjectionSource = z.infer<typeof RosterProjectionSource>;
 
 /**
- * An external roster for one offering, as observed at `observedAt`. This is input for a sync
- * adapter, not a directory write: nothing in `@schoolos/lti` changes the district directory. The
- * adapter that consumes it (through `@schoolos/academics`' `AcademicSync`, only when the district's
- * authority map names this provider for enrollments) adds or updates enrollments and marks missing
- * or deleted members inactive; it never removes a record (roadmap §6.3, §14).
+ * An external roster for one offering, as observed at `observedAt`. It is input for a sync
+ * adapter, not a directory write. The adapter that consumes it (through `@schoolos/academics`'
+ * `AcademicSync`, only when the district's authority map names this provider for enrollments) adds
+ * or updates enrollments and marks missing or deleted members inactive; it never removes a record
+ * (roadmap §6.3, §14).
  */
 export const RosterProjection = z.strictObject({
   districtId: DistrictId,
   offeringId: OfferingId,
   source: RosterProjectionSource,
-  observedAt: z.iso.datetime(),
+  observedAt: UtcTimestamp,
   members: z.array(RosterProjectionMember),
 });
 /** A roster projection. */

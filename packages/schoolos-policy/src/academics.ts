@@ -1,11 +1,10 @@
 import { z } from "zod";
-import { SchoolOsError } from "@schoolos/contracts";
+import { SchoolOsError, type AuthorityMap } from "@schoolos/contracts";
 import {
   ACADEMIC_OPERATIONS,
   AcademicDirectory,
   invokeOperation,
   type AcademicStore,
-  type AuthorityMap,
 } from "@schoolos/academics";
 import type { PolicyAuditSink } from "./audit.ts";
 import { PolicyEngine } from "./engine.ts";

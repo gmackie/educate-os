@@ -3,16 +3,19 @@ import {
   type Action,
   type ArtifactId,
   type AuthorizationRequest,
+  type Caller,
+  type ContentDigest,
   type DistrictDirectorySnapshot,
   type DistrictId,
   type OfferingId,
   type PrincipalId,
   type ResourceRef,
+  type RevisionId,
   type Scope,
   type TermState,
 } from "@schoolos/contracts";
-import type { AcademicStore, Caller } from "@schoolos/academics";
-import { sha256Digest, type Artifact, type ArtifactRevision, type ContentDigest, type LearningArtifacts, type RevisionId } from "@schoolos/learning-artifacts";
+import type { AcademicStore } from "@schoolos/academics";
+import { sha256Digest, type Artifact, type ArtifactRevision, type LearningArtifacts } from "@schoolos/learning-artifacts";
 import type { PolicyDecider } from "@schoolos/policy";
 import type { WorkspaceDirectory, WorkspaceLifecycle } from "@schoolos/workspaces";
 import {

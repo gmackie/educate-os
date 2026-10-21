@@ -1,16 +1,19 @@
 import { z } from "zod";
 import {
+  AuditEventBase,
   checkDirectoryIntegrity,
+  CredentialKind,
   DistrictId,
   ExternalIdentity,
   externalIdentityKey,
   PrincipalId,
   SchoolOsError,
+  WorkshopUserId,
   type DistrictDirectorySnapshot,
   type Principal,
+  type VerifiedIdentity,
 } from "@schoolos/contracts";
-import { credentialMatchesPrincipal, CredentialKind, type VerifiedIdentity } from "./verified-identity.ts";
-import { WorkshopUserId } from "./workshop-user.ts";
+import { credentialMatchesPrincipal } from "./verified-identity.ts";
 
 /**
  * A request to link a new external identity to an existing principal. It changes nothing until a
@@ -43,12 +46,9 @@ export type IdentityLinkDecision = z.infer<typeof IdentityLinkDecision>;
  * The audit record of an identity link decision. It names principals and the identity link only:
  * no email or other profile data, so the audit log never becomes a second copy of the directory.
  */
-export const IdentityLinkAuditEvent = z.strictObject({
-  districtId: DistrictId,
-  actor: z.strictObject({ principalId: PrincipalId }),
+export const IdentityLinkAuditEvent = AuditEventBase.extend({
   action: z.enum(["identity-link.approved", "identity-link.rejected"]),
   target: z.strictObject({ principalId: PrincipalId, identity: ExternalIdentity }),
-  at: z.iso.datetime(),
 });
 /** An identity link audit event. */
 export type IdentityLinkAuditEvent = z.infer<typeof IdentityLinkAuditEvent>;

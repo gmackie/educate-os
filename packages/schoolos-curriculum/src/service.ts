@@ -1,5 +1,6 @@
 import { type AlignmentSource, randomIdBody, type StudioRelease } from "@schoolos/content-studio";
 import {
+  ActivityDefinitionId,
   type Action,
   ActivityId,
   type AuthorizationRequest,
@@ -12,6 +13,7 @@ import {
   SchoolOsError,
   scopeContains,
   type TermState,
+  type VerifiedPrincipal,
 } from "@schoolos/contracts";
 import { type CompetencyRef, EvidenceContract } from "@schoolos/registry";
 import { z } from "zod";
@@ -26,7 +28,7 @@ import {
   studentCodexOf,
   studentContent,
 } from "./codex.ts";
-import { ActivityDefinitionId, type ActivityScope, OfferingScope } from "./ids.ts";
+import { type ActivityScope, OfferingScope } from "./ids.ts";
 import {
   type ActivityContent,
   ActivityDefinition,
@@ -37,9 +39,6 @@ import {
 import type { ReleaseLookup } from "./releases.ts";
 import type { CurriculumStorage } from "./storage.ts";
 import { generateActivity, TemplateInput } from "./templates.ts";
-
-/** The verified principal a curriculum call is made for. Built only from trusted server-side identity. */
-export type CurriculumSubject = AuthorizationRequest["subject"];
 
 /** A new activity: the offering it is authored for and a template's inputs. */
 export const CreateActivityInput = z.strictObject({ scope: OfferingScope, activity: TemplateInput });
@@ -125,7 +124,7 @@ export class CurriculumService {
    *   `validation-failed` for invalid content, an unreleased resource or an unresolvable alignment,
    *   and `policy-violation` if its AI-help level would loosen the policy.
    */
-  async createDraft(subject: CurriculumSubject, input: unknown): Promise<ActivityDefinition> {
+  async createDraft(subject: VerifiedPrincipal, input: unknown): Promise<ActivityDefinition> {
     const { scope, activity } = parseInput(CreateActivityInput, input);
     await this.#require(subject, "create", scope, "teacher-only");
     const content = generateActivity(activity);
@@ -139,7 +138,7 @@ export class CurriculumService {
    *
    * @throws SchoolOsError as {@link createDraft}, and `not-found` if the subject cannot see it.
    */
-  async revise(subject: CurriculumSubject, definitionId: unknown, input: unknown): Promise<ActivityDefinition> {
+  async revise(subject: VerifiedPrincipal, definitionId: unknown, input: unknown): Promise<ActivityDefinition> {
     const { activity } = parseInput(ReviseActivityInput, input);
     const latest = (await this.#versions(subject, definitionId, "update")).at(-1)!;
     const version = latest.status === "draft" ? latest.version : latest.version + 1;
@@ -151,7 +150,7 @@ export class CurriculumService {
    *
    * @throws SchoolOsError `conflict` if the latest version is already published, and as {@link createDraft}.
    */
-  async publish(subject: CurriculumSubject, definitionId: unknown): Promise<ActivityDefinition> {
+  async publish(subject: VerifiedPrincipal, definitionId: unknown): Promise<ActivityDefinition> {
     const latest = (await this.#versions(subject, definitionId, "publish")).at(-1)!;
     if (latest.status === "published") throw new SchoolOsError("conflict", "this version is already published; edit it to create a new version");
     await this.#validate(latest.content, latest.scope);
@@ -161,7 +160,7 @@ export class CurriculumService {
   }
 
   /** One version of a definition, or the latest. Staff only: definitions are teacher-only. */
-  async getDefinition(subject: CurriculumSubject, definitionId: unknown, version?: number): Promise<ActivityDefinition> {
+  async getDefinition(subject: VerifiedPrincipal, definitionId: unknown, version?: number): Promise<ActivityDefinition> {
     const versions = await this.#versions(subject, definitionId, "read");
     const found = version === undefined ? versions.at(-1) : versions[version - 1];
     if (found === undefined) throw NOT_FOUND();
@@ -178,7 +177,7 @@ export class CurriculumService {
    *   planned or active term, `validation-failed` and `policy-violation` as {@link createDraft},
    *   and `validation-failed` if the due date falls outside the term.
    */
-  async install(subject: CurriculumSubject, input: unknown): Promise<ActivityInstallation> {
+  async install(subject: VerifiedPrincipal, input: unknown): Promise<ActivityInstallation> {
     const { definitionId, version, offering } = parseInput(InstallActivityInput, input);
     const versions = await this.#versions(subject, definitionId, "read");
     const definition = version === undefined ? versions.findLast((v) => v.status === "published") : versions[version - 1];
@@ -222,7 +221,7 @@ export class CurriculumService {
    * @throws SchoolOsError `not-found` if the subject may not read it, including a student who is
    *   not actively enrolled in its offering.
    */
-  async getActivity(subject: CurriculumSubject, activityId: unknown): Promise<InstalledActivityView> {
+  async getActivity(subject: VerifiedPrincipal, activityId: unknown): Promise<InstalledActivityView> {
     const { installation, definition } = await this.#installed(activityId);
     const base = { installation, evidenceContract: definition.evidenceContract };
     if (await this.#allowed(subject, "read", installation.scope, "teacher-only")) return { view: "teacher", ...base, content: definition.content };
@@ -231,14 +230,14 @@ export class CurriculumService {
   }
 
   /** An installed activity's full class Codex, teacher-only entries included. Staff only. */
-  async getClassCodex(subject: CurriculumSubject, activityId: unknown): Promise<ClassCodex> {
+  async getClassCodex(subject: VerifiedPrincipal, activityId: unknown): Promise<ClassCodex> {
     const { installation, definition } = await this.#installed(activityId);
     if (!(await this.#allowed(subject, "read", installation.scope, "teacher-only"))) throw NOT_FOUND();
     return buildClassCodex(installation.id, definition.content, await this.#releases(definition.content));
   }
 
   /** An installed activity's student-visible Codex, as published. */
-  async getStudentCodex(subject: CurriculumSubject, activityId: unknown): Promise<StudentCodex> {
+  async getStudentCodex(subject: VerifiedPrincipal, activityId: unknown): Promise<StudentCodex> {
     const { installation, definition } = await this.#installed(activityId);
     if (!(await this.#allowed(subject, "read", installation.scope, "course"))) throw NOT_FOUND();
     return this.#studentCodex(installation, definition);
@@ -251,7 +250,7 @@ export class CurriculumService {
    * @throws SchoolOsError `not-found` if the subject may not read the activity, and
    *   `policy-violation` if AI help is off for it.
    */
-  async helperContext(subject: CurriculumSubject, activityId: unknown): Promise<HelperContext> {
+  async helperContext(subject: VerifiedPrincipal, activityId: unknown): Promise<HelperContext> {
     const { installation, definition } = await this.#installed(activityId);
     if (!(await this.#allowed(subject, "read", installation.scope, "course"))) throw NOT_FOUND();
     const { districtId, schoolId, offeringId } = installation.scope;
@@ -264,7 +263,7 @@ export class CurriculumService {
 
   /** Validates and stores one definition version as a draft. */
   async #save(
-    subject: CurriculumSubject,
+    subject: VerifiedPrincipal,
     draft: Pick<ActivityDefinition, "id" | "version" | "scope" | "content">,
   ): Promise<ActivityDefinition> {
     const { competencies } = await this.#validate(draft.content, draft.scope);
@@ -348,7 +347,7 @@ export class CurriculumService {
   }
 
   /** A definition's versions, if the subject may see it and act on it. */
-  async #versions(subject: CurriculumSubject, definitionId: unknown, action: Action): Promise<ActivityDefinition[]> {
+  async #versions(subject: VerifiedPrincipal, definitionId: unknown, action: Action): Promise<ActivityDefinition[]> {
     const id = ActivityDefinitionId.safeParse(definitionId);
     if (!id.success) throw NOT_FOUND();
     const versions = await this.#options.storage.listVersions(id.data);
@@ -370,7 +369,7 @@ export class CurriculumService {
     return { installation, definition };
   }
 
-  async #allowed(subject: CurriculumSubject, action: Action, scope: Scope | ActivityScope, classification: Classification, id?: string, termState?: TermState): Promise<boolean> {
+  async #allowed(subject: VerifiedPrincipal, action: Action, scope: Scope | ActivityScope, classification: Classification, id?: string, termState?: TermState): Promise<boolean> {
     const decision = await this.#options.authorizer.authorize({
       subject,
       action,
@@ -380,7 +379,7 @@ export class CurriculumService {
     return decision.effect === "allow";
   }
 
-  async #require(subject: CurriculumSubject, action: Action, scope: Scope, classification: Classification, termState?: TermState): Promise<void> {
+  async #require(subject: VerifiedPrincipal, action: Action, scope: Scope, classification: Classification, termState?: TermState): Promise<void> {
     if (!(await this.#allowed(subject, action, scope, classification, undefined, termState))) {
       throw new SchoolOsError("forbidden", `not permitted to ${action} here`);
     }

@@ -4,21 +4,22 @@ import {
   ID_PREFIXES,
   OfferingId,
   PrincipalId,
+  RevisionId,
   SchoolOsError,
   SubmissionId,
   type Action,
   type AuthorizationRequest,
+  type Caller,
   type Decision,
   type DistrictDirectorySnapshot,
   type ResourceRef,
   type Scope,
   type TermState,
 } from "@schoolos/contracts";
-import type { AcademicStore, Caller } from "@schoolos/academics";
+import type { AcademicStore } from "@schoolos/academics";
 import type { PolicyDecider } from "@schoolos/policy";
 import {
   isTextMediaType,
-  RevisionId,
   type ArtifactStore,
   type LearningArtifacts,
   type RevisionContent,

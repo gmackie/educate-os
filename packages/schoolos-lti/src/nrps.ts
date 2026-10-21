@@ -5,9 +5,8 @@
 // member is validated or the roster is refused, paging stays on the membership URL's origin and is
 // capped, names and emails are never read, and roles are carried only as untrusted metadata.
 import { z } from "zod";
-import { SchoolOsError } from "@schoolos/contracts";
+import { RosterProjection, SchoolOsError, type ProjectedMemberStatus } from "@schoolos/contracts";
 import { offeringForContext, type PlatformRegistrationStore } from "./registration.ts";
-import { RosterProjection, type ProjectedMemberStatus } from "./roster-projection.ts";
 import {
   LTI_SCOPES,
   nextPageUrl,

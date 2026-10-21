@@ -1,57 +1,17 @@
 import { z } from "zod";
 import {
   ArtifactId,
+  ArtifactType,
   Classification,
+  ContentDigest,
   DistrictId,
   PrincipalId,
   RequestChannel,
+  RevisionId,
   Scope,
   SubmissionId,
   WorkspaceId,
 } from "@schoolos/contracts";
-
-/**
- * What a learning artifact is (roadmap §6.2). `external-ref` is the one type whose content
- * SchoolOS does not hold: it records an approved link to a Docs, Drive or LMS document.
- */
-export const ArtifactType = z.enum([
-  "document",
-  "notebook",
-  "spreadsheet",
-  "presentation",
-  "dataset",
-  "image",
-  "audio",
-  "video",
-  "interactive",
-  "evidence",
-  "portfolio",
-  "external-ref",
-]);
-/** An artifact type. */
-export type ArtifactType = z.infer<typeof ArtifactType>;
-
-/**
- * Identifies one immutable revision of an artifact. It may belong in `@schoolos/contracts` once a
- * second package (E01's submissions) refers to revisions.
- */
-export const RevisionId = z
-  .string()
-  .regex(/^rev_[a-z0-9][a-z0-9-]{0,62}$/, "expected a revision ID (rev_…)")
-  .brand<"revision">();
-/** A revision identifier. */
-export type RevisionId = z.infer<typeof RevisionId>;
-
-/**
- * A SHA-256 digest of canonical bytes, as `sha256:<64 lowercase hex>`. The same bytes always give
- * the same digest, so a receipt that commits to one names exactly the content it covers.
- */
-export const ContentDigest = z
-  .string()
-  .regex(/^sha256:[0-9a-f]{64}$/, "expected sha256:<64 hex digits>")
-  .brand<"content-digest">();
-/** A content digest. */
-export type ContentDigest = z.infer<typeof ContentDigest>;
 
 /** A `type/subtype` media type, without parameters. */
 export const MediaType = z.string().max(127).regex(/^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/);
@@ -220,10 +180,3 @@ export const ArtifactState = z.strictObject({
 });
 /** The artifact service's stored state. */
 export type ArtifactState = z.infer<typeof ArtifactState>;
-
-/** The reproducible identity of one revision's content, for receipts and submission snapshots. */
-export interface RevisionRef {
-  artifactId: ArtifactId;
-  revisionId: RevisionId;
-  digest: ContentDigest;
-}

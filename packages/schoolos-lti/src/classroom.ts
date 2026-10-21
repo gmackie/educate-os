@@ -2,9 +2,8 @@
 // with Google Classroom is gated on verified API access and Google's partner terms, and nothing in
 // this package calls Google. `ClassroomProvider` is the seam a real client will implement.
 import { z } from "zod";
-import { SchoolOsError, type DistrictId, type OfferingId, type Principal } from "@schoolos/contracts";
+import { RosterProjection, SchoolOsError, type DistrictId, type OfferingId, type Principal } from "@schoolos/contracts";
 import { routeOfKind, type ClassroomGradeRoute, type GradeDelivery, type GradeRouteStore, type GradeSink, type LmsGradeRoute } from "./passback.ts";
-import { RosterProjection } from "./roster-projection.ts";
 import type { Clock } from "./stores.ts";
 
 /**

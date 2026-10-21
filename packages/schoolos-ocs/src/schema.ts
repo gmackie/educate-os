@@ -1,5 +1,5 @@
-import { GradeBand, Subject } from "@schoolos/contracts";
-import { ActivityDefinitionId, AlignmentRequest, LocalId, ResourceReleaseRef } from "@schoolos/curriculum";
+import { ActivityDefinitionId, GradeBand, Subject } from "@schoolos/contracts";
+import { AlignmentRequest, LocalId, ResourceReleaseRef } from "@schoolos/curriculum";
 import { LanguageTag, RightsMode } from "@schoolos/registry";
 import { z } from "zod";
 import { SemVer, VersionRange, isExactRange } from "./semver.ts";

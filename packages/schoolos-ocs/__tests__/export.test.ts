@@ -1,8 +1,7 @@
 import { ContentStudio, contentStudioAuthorizer, InMemoryContentStudioStorage } from "@schoolos/content-studio";
-import { DistrictId, PrincipalId } from "@schoolos/contracts";
+import { DistrictId, PrincipalId, type VerifiedPrincipal } from "@schoolos/contracts";
 import {
   contentStudioReleases,
-  type CurriculumSubject,
   CurriculumService,
   curriculumAuthorizer,
   InMemoryCodexPublisher,
@@ -17,9 +16,9 @@ import { activity, IDS, libraryOf, packageFiles, unit } from "./helpers.ts";
 
 const D = DistrictId.parse("dst_northfield");
 /** Teaches Biology, fall period 2. */
-const MORGAN: CurriculumSubject = { principalId: PrincipalId.parse("prn_nf-morgan-lee"), districtId: D };
+const MORGAN: VerifiedPrincipal = { principalId: PrincipalId.parse("prn_nf-morgan-lee"), districtId: D };
 /** Teaches Mathematics 7, not Biology. */
-const PATEL: CurriculumSubject = { principalId: PrincipalId.parse("prn_nf-teacher-patel"), districtId: D };
+const PATEL: VerifiedPrincipal = { principalId: PrincipalId.parse("prn_nf-teacher-patel"), districtId: D };
 const BIO = { level: "offering", districtId: D, schoolId: "sch_nf-high", offeringId: "off_nf-bio-fall-p2" } as OfferingScope;
 
 const LAB_PAGE = "https://open-lessons.example/osmosis-lab";

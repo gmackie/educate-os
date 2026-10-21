@@ -1,4 +1,6 @@
 import {
+  ContentItemId,
+  ResourceId,
   type Action,
   type AuthorizationRequest,
   type Authorizer,
@@ -8,12 +10,13 @@ import {
   Scope,
   SchoolOsError,
   scopeContains,
+  type VerifiedPrincipal,
 } from "@schoolos/contracts";
-import { ResourceDescriptor, ResourceId, RightsMode } from "@schoolos/registry";
+import { ResourceDescriptor, RightsMode } from "@schoolos/registry";
 import { z } from "zod";
 import { AlignmentInput, type AlignmentSource } from "./alignments.ts";
 import { extractPageMetadata, type PageMetadata } from "./html.ts";
-import { ContentItemId, randomIdBody, snapshotDigest } from "./ids.ts";
+import { randomIdBody, snapshotDigest } from "./ids.ts";
 import type { ClassBinding, ContentItem, ItemSource, StudioRelease } from "./item.ts";
 import { interpretLicenseHints } from "./license.ts";
 import { assertTransition, type PipelineState, type StudioAuditEvent, USABLE_STATES } from "./pipeline.ts";
@@ -23,9 +26,6 @@ import { type ScannerSetting, scanUpload } from "./scanner.ts";
 import { type ContentType, declaredContentType, resolveContentType } from "./sniff.ts";
 import type { ContentStudioStorage } from "./storage.ts";
 import { DEFAULT_URL_IMPORT_LIMITS, fetchForImport, type ImportFetch, type UrlImportLimits } from "./url-fetch.ts";
-
-/** The verified principal a studio call is made for. Built only from trusted server-side identity. */
-export type StudioSubject = AuthorizationRequest["subject"];
 
 /** An offering scope: the only scope a class binding can name. */
 const OfferingScope = Scope.options[2];
@@ -147,7 +147,7 @@ export class ContentStudio {
    * @throws SchoolOsError `forbidden` if the subject may not submit at the target scope, and
    *   whatever {@link fetchForImport} throws for a refused or failed fetch.
    */
-  async submitUrl(subject: StudioSubject, input: unknown): Promise<ContentItem> {
+  async submitUrl(subject: VerifiedPrincipal, input: unknown): Promise<ContentItem> {
     const { url, targetScope, updatesResourceId } = parseInput(SubmitUrlInput, input);
     await this.#require(subject, "create", targetScope);
     const update = await this.#updateTarget(subject, updatesResourceId, targetScope);
@@ -171,7 +171,7 @@ export class ContentStudio {
    *   allowlist or contradicting its bytes; `unavailable` if no scanner is configured or the scan
    *   fails, in which case nothing is stored.
    */
-  async submitUpload(subject: StudioSubject, input: unknown, bytes: Uint8Array): Promise<ContentItem> {
+  async submitUpload(subject: VerifiedPrincipal, input: unknown, bytes: Uint8Array): Promise<ContentItem> {
     const { fileName, mediaType, targetScope, updatesResourceId } = parseInput(SubmitUploadInput, input);
     await this.#require(subject, "create", targetScope);
     const maxBytes = this.#options.maxUploadBytes ?? DEFAULT_MAX_UPLOAD_BYTES;
@@ -194,7 +194,7 @@ export class ContentStudio {
   }
 
   /** The reviewer queue: items awaiting a decision within `scope` that the subject may review. */
-  async listQueue(subject: StudioSubject, scope: unknown): Promise<QueueEntry[]> {
+  async listQueue(subject: VerifiedPrincipal, scope: unknown): Promise<QueueEntry[]> {
     const parsed = parseInput(Scope, scope);
     await this.#require(subject, "list", parsed);
     const entries: QueueEntry[] = [];
@@ -219,12 +219,12 @@ export class ContentStudio {
   }
 
   /** An item's review report: provenance, rights and their history, the checks, and any AI findings. */
-  async getReport(subject: StudioSubject, itemId: unknown): Promise<ContentItem> {
+  async getReport(subject: VerifiedPrincipal, itemId: unknown): Promise<ContentItem> {
     return this.#item(subject, itemId, "read");
   }
 
   /** An item's audit trail. */
-  async listAudit(subject: StudioSubject, itemId: unknown): Promise<StudioAuditEvent[]> {
+  async listAudit(subject: VerifiedPrincipal, itemId: unknown): Promise<StudioAuditEvent[]> {
     const item = await this.#item(subject, itemId, "read");
     return this.#options.storage.listAudit(item.id);
   }
@@ -237,7 +237,7 @@ export class ContentStudio {
    * @throws SchoolOsError `forbidden` for a widening the subject may not make, and `conflict` once
    *   the item has been decided or when the mode is unchanged.
    */
-  async setRightsMode(subject: StudioSubject, itemId: unknown, input: unknown): Promise<ContentItem> {
+  async setRightsMode(subject: VerifiedPrincipal, itemId: unknown, input: unknown): Promise<ContentItem> {
     const { mode, reason } = parseInput(RightsChangeInput, input);
     const item = await this.#item(subject, itemId, "update");
     if (item.decision !== undefined) throw new SchoolOsError("conflict", "rights cannot change after a decision; import a new revision");
@@ -260,7 +260,7 @@ export class ContentStudio {
    *   not approve at its scope, `conflict` unless it is awaiting a decision, and
    *   `validation-failed` for an alignment the catalog cannot resolve.
    */
-  async approve(subject: StudioSubject, itemId: unknown, input: unknown): Promise<StudioRelease> {
+  async approve(subject: VerifiedPrincipal, itemId: unknown, input: unknown): Promise<StudioRelease> {
     const { alignments } = parseInput(ApproveInput, input);
     const item = await this.#item(subject, itemId, "approve");
     assertTransition(item.state, "approved");
@@ -322,7 +322,7 @@ export class ContentStudio {
   }
 
   /** Rejects a reviewed item. Its snapshot stays in quarantine for the record; nothing is released. */
-  async reject(subject: StudioSubject, itemId: unknown, input: unknown): Promise<ContentItem> {
+  async reject(subject: VerifiedPrincipal, itemId: unknown, input: unknown): Promise<ContentItem> {
     const { reason } = parseInput(RejectInput, input);
     const item = await this.#item(subject, itemId, "approve");
     if (item.state !== "reviewed") throw new SchoolOsError("conflict", `an item cannot be rejected while ${item.state}`);
@@ -334,7 +334,7 @@ export class ContentStudio {
   }
 
   /** Publishes a released item to the district's resource registry, where its scope can discover it. */
-  async publish(subject: StudioSubject, itemId: unknown): Promise<ContentItem> {
+  async publish(subject: VerifiedPrincipal, itemId: unknown): Promise<ContentItem> {
     const item = await this.#item(subject, itemId, "publish");
     await this.#transition(item, "published", subject.principalId, this.#now());
     await this.#save(item);
@@ -345,7 +345,7 @@ export class ContentStudio {
    * Releases usable at `scope`: those released for a scope containing it (a district-wide release
    * is usable in every offering) and those released within it.
    */
-  async listReleases(subject: StudioSubject, scope: unknown, resourceId?: unknown): Promise<StudioRelease[]> {
+  async listReleases(subject: VerifiedPrincipal, scope: unknown, resourceId?: unknown): Promise<StudioRelease[]> {
     const parsed = parseInput(Scope, scope);
     const resource = resourceId === undefined ? undefined : parseInput(ResourceId, resourceId);
     await this.#require(subject, "list", parsed);
@@ -360,7 +360,7 @@ export class ContentStudio {
    * @throws SchoolOsError `conflict` if the resource has no release yet, `forbidden` if the subject
    *   may not assign in the offering or the release does not cover it, `not-found` otherwise.
    */
-  async bindToOffering(subject: StudioSubject, input: unknown): Promise<ClassBinding> {
+  async bindToOffering(subject: VerifiedPrincipal, input: unknown): Promise<ClassBinding> {
     const { resourceId, version, offering } = parseInput(BindInput, input);
     const releases = await this.#options.storage.listReleases(resourceId);
     const release = version === undefined ? releases.at(-1) : releases.find((r) => r.descriptor.release.version === version);
@@ -383,7 +383,7 @@ export class ContentStudio {
 
   /** Runs an import through quarantine, parsing, provenance and review, auditing each step. */
   async #ingest(
-    subject: StudioSubject,
+    subject: VerifiedPrincipal,
     input: {
       source: ItemSource;
       contentType: ContentType;
@@ -464,7 +464,7 @@ export class ContentStudio {
   }
 
   /** The resource a submission updates, checked to be visible and at the same scope. */
-  async #updateTarget(subject: StudioSubject, resourceId: ResourceId | undefined, targetScope: Scope) {
+  async #updateTarget(subject: VerifiedPrincipal, resourceId: ResourceId | undefined, targetScope: Scope) {
     if (resourceId === undefined) return undefined;
     const latest = (await this.#options.storage.listReleases(resourceId)).at(-1);
     if (latest === undefined || !(await this.#allowed(subject, "read", latest.scope))) throw new SchoolOsError("not-found", "no such resource");
@@ -472,7 +472,7 @@ export class ContentStudio {
     return { resourceId, digest: latest.descriptor.release.contentDigest };
   }
 
-  async #item(subject: StudioSubject, itemId: unknown, action: Action): Promise<ContentItem> {
+  async #item(subject: VerifiedPrincipal, itemId: unknown, action: Action): Promise<ContentItem> {
     const id = ContentItemId.safeParse(itemId);
     if (!id.success) throw NOT_FOUND();
     const item = await this.#options.storage.getItem(id.data);
@@ -482,7 +482,7 @@ export class ContentStudio {
     return item;
   }
 
-  async #allowed(subject: StudioSubject, action: Action, scope: Scope, id?: string): Promise<boolean> {
+  async #allowed(subject: VerifiedPrincipal, action: Action, scope: Scope, id?: string): Promise<boolean> {
     const decision = await this.#options.authorizer.authorize({
       subject,
       action,
@@ -492,7 +492,7 @@ export class ContentStudio {
     return decision.effect === "allow";
   }
 
-  async #require(subject: StudioSubject, action: Action, scope: Scope, id?: string): Promise<void> {
+  async #require(subject: VerifiedPrincipal, action: Action, scope: Scope, id?: string): Promise<void> {
     if (!(await this.#allowed(subject, action, scope, id))) throw new SchoolOsError("forbidden", `not permitted to ${action} here`);
   }
 

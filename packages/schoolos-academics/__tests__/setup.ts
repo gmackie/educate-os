@@ -1,7 +1,9 @@
 import {
   DistrictId,
   PrincipalId,
+  type AuthorityMap,
   type Authorizer,
+  type Caller,
   type DistrictDirectorySnapshot,
 } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
@@ -10,8 +12,6 @@ import {
   InMemoryAcademicStore,
   RoleTableAuthorizer,
   storePrincipalFacts,
-  type AuthorityMap,
-  type Caller,
 } from "../src/index.ts";
 
 /** SchoolOS owns every record type. */

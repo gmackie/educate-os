@@ -1,8 +1,8 @@
-import { ActivityId, GradeBand, PrincipalId, RubricId, Subject, TermId } from "@schoolos/contracts";
-import { EvidenceContract, ImmutableRelease, ObservableCriterion, RegistryUri, ResourceId, ResponseType } from "@schoolos/registry";
+import { ActivityDefinitionId, ActivityId, ArtifactType, GradeBand, PrincipalId, ResourceId, RubricId, Subject, TermId } from "@schoolos/contracts";
+import { EvidenceContract, ImmutableRelease, ObservableCriterion, RegistryUri, ResponseType } from "@schoolos/registry";
 import { z } from "zod";
 import { AiHelpLevel } from "./ai-help.ts";
-import { ActivityDefinitionId, ActivityScope, LocalId, OfferingScope } from "./ids.ts";
+import { ActivityScope, LocalId, OfferingScope } from "./ids.ts";
 
 /**
  * One Content Studio release of a resource: its resource ID and release version. Releases are
@@ -18,27 +18,6 @@ export type ResourceReleaseRef = z.infer<typeof ResourceReleaseRef>;
 
 /** The key a release reference is compared by. */
 export const releaseKey = (ref: ResourceReleaseRef): string => `${ref.resourceId}@${ref.version}`;
-
-/**
- * What a student may produce for an activity (roadmap §6.2). The same vocabulary as the Learning
- * Artifacts service (W02), which may move it into `@schoolos/contracts`.
- */
-export const ArtifactType = z.enum([
-  "document",
-  "notebook",
-  "spreadsheet",
-  "presentation",
-  "dataset",
-  "image",
-  "audio",
-  "video",
-  "interactive",
-  "evidence",
-  "portfolio",
-  "external-ref",
-]);
-/** An artifact type. */
-export type ArtifactType = z.infer<typeof ArtifactType>;
 
 /** One column of a dataset a step asks for. */
 export const DatasetColumn = z.strictObject({

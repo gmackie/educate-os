@@ -6,9 +6,10 @@ import {
   Enrollment,
   Principal,
   School,
+  type AuthorityMap,
   type DistrictDirectorySnapshot,
 } from "@schoolos/contracts";
-import { assertSyncWritable, type AuthorityMap, type DirectoryEntityKind } from "./authority.ts";
+import { assertSyncWritable, type DirectoryEntityKind } from "./authority.ts";
 import { replace } from "./directory.ts";
 import type { AcademicStore } from "./store.ts";
 import { assertTermTransition, DirectoryValidationError, validateDirectory, zodIssues } from "./validation.ts";

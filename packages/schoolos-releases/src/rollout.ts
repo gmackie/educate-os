@@ -1,12 +1,9 @@
-import { SchoolOsError, SemVer } from "@schoolos/contracts";
+import { InstanceId, OpaqueCode, SchoolOsError, SemVer, UtcTimestamp } from "@schoolos/contracts";
 import {
-  InstanceId,
   type InstanceRegistry,
-  OpaqueCode,
   ReleaseChannel,
   type ReleaseOfferPurpose,
   SignedEnvelope,
-  UtcTimestamp,
 } from "@schoolos/fleet";
 import { z } from "zod";
 import { ReleaseId, ReleaseManifestStatement } from "./manifest.ts";

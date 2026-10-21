@@ -1,5 +1,5 @@
+import { CurriculumPackId, EvidenceContractId, LearningUnitId, ResourceId } from "@schoolos/contracts";
 import { z } from "zod";
-import { CurriculumPackId, EvidenceContractId, LearningUnitId, ResourceId } from "./ids.ts";
 import { ImmutableRelease, Provenance } from "./primitives.ts";
 import { ResourceAudience, ReviewStatus } from "./resource.ts";
 

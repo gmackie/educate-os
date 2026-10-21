@@ -1,5 +1,6 @@
+import { IntegrationSyncRun } from "@schoolos/contracts";
 import { describe, expect, it } from "vitest";
-import { IntegrationSyncRun, integrationHealth } from "../src/index.ts";
+import { integrationHealth } from "../src/index.ts";
 
 const ZERO = { added: 0, updated: 0, deactivated: 0 };
 const COUNTS = {
