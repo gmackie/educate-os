@@ -55,7 +55,16 @@ type Gate = {started: boolean; released: boolean};
 async function pass(gate: Gate | undefined): Promise<void> {
   if (!gate || gate.released) return;
   gate.started = true;
-  await vi.waitFor(() => expect(gate.released).toBe(true), {timeout: 10_000, interval: 5});
+  while (!gate.released) await scheduler.wait(1);
+}
+
+/**
+ * Wait until `done()` holds. Polled, with no deadline but the test's own: how long the runtime
+ * takes to get there depends on the runner's load, and a loaded CI runner can take seconds, past
+ * any shorter deadline.
+ */
+async function until(done: () => boolean | Promise<boolean>): Promise<void> {
+  while (!await done()) await scheduler.wait(10);
 }
 
 type MockMessage = {id: string; threadId: string; labelIds: string[]; subject: string};
@@ -251,12 +260,12 @@ const driverStorage = <T>(key: string) => runInDurableObject(driver(),
  * Wait until the driver has no history read or delivery due: its own alarm runs them, and forcing
  * that alarm here as well would run it twice concurrently.
  */
-const settled = () => vi.waitFor(() => runInDurableObject(driver(), (_instance: unknown, state: DurableObjectState) => {
+const settled = () => until(() => runInDurableObject(driver(), (_instance: unknown, state: DurableObjectState) => {
   const now = Date.now();
-  const due = [...state.storage.kv.list<{at?: number}>({prefix: "msg:"})].filter(([, row]) => row.at! <= now);
+  const due = [...state.storage.kv.list<{at?: number}>({prefix: "msg:"})].some(([, row]) => row.at! <= now);
   const syncAt = state.storage.kv.get<number>("syncAt");
-  if (due.length > 0 || (syncAt !== undefined && syncAt <= now)) throw new Error("The driver is still busy.");
-}), {timeout: 5_000});
+  return !due && (syncAt === undefined || syncAt > now);
+}));
 
 /** Run the driver's alarm on a clock `ms` ahead, which the runtime won't wake it for. */
 async function later(ms: number): Promise<void> {
@@ -297,9 +306,8 @@ async function holdTracking(connection: {props: {userObjectId: string}}) {
   });
   return {
     /** Resolves once an enable is waiting on the account. */
-    waiting: () => vi.waitFor(() => runInDurableObject(account, (_instance: unknown, state: DurableObjectState) => {
-      if (!state.storage.kv.get("test:trackingHeld")) throw new Error("No enable is waiting on the account yet.");
-    }), {timeout: 5_000}),
+    waiting: () => until(() => runInDurableObject(account, (_instance: unknown, state: DurableObjectState) =>
+      state.storage.kv.get("test:trackingHeld") === true)),
     release: () => runInDurableObject(account, (_instance: unknown, state: DurableObjectState) => {
       state.storage.kv.delete("test:holdTracking");
     }),
@@ -604,7 +612,10 @@ it("drops a hook registered before accounts kept track once its driver finds the
     state.storage.kv.delete(`tracked:${ada.props.userObjectId}`));
   arrive(gmail);
   expect(await push(gmail)).toBe(204);
-  await vi.waitFor(async () => expect(await driverHooks()).toEqual({registered: 0, pending: 0}), {timeout: 5_000});
+  await until(async () => {
+    const {registered, pending} = await driverHooks();
+    return registered === 0 && pending === 0;
+  });
 });
 
 it.each([["succeeds", 0], ["fails", 1]])(
@@ -616,11 +627,11 @@ it.each([["succeeds", 0], ["fails", 1]])(
     await ada.hooks.setGmailHookBehavior({held: true, failures});
     const message = arrive(gmail);
     await push(gmail);
-    await vi.waitFor(async () => expect((await ada.hooks.readGmailHook()).holding).toBe(true), {timeout: 5_000});
+    await until(async () => (await ada.hooks.readGmailHook()).holding === true);
 
     await disconnect(ada);
     await ada.hooks.setGmailHookBehavior({held: false});
-    await vi.waitFor(async () => expect((await ada.hooks.readGmailHook()).holding).toBe(false));
+    await until(async () => (await ada.hooks.readGmailHook()).holding !== true);
     // Past when a retry, and then the hourly history read, would be due.
     gmail.requests.length = 0;
     await later(MINUTE);
@@ -706,17 +717,17 @@ it.each([
   // A push starts a history read, which Gmail holds.
   const history: Gate = gmail.holdHistory = {started: false, released: false};
   await push(gmail, {data: btoa(JSON.stringify({emailAddress: MAILBOX, historyId: gmail.historyId + 1}))});
-  await vi.waitFor(() => expect(history.started).toBe(true));
+  await until(() => history.started);
   // Bob's enable reads the history ID it starts from, then waits.
   const profile: Gate = gmail.holdProfile = {started: false, released: false};
   const enabling = bob.hooks.chatEnableHook();
-  await vi.waitFor(() => expect(profile.started).toBe(true));
+  await until(() => profile.started);
   const message = arrive(gmail);
 
   for (const held of order) {
     if (held === "history") {
       history.released = true;
-      await vi.waitFor(async () => expect(await driverStorage("cursor")).toBe(String(gmail.historyId)));
+      await until(async () => await driverStorage("cursor") === String(gmail.historyId));
     } else {
       profile.released = true;
       await enabling;

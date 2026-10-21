@@ -85,9 +85,10 @@ function mockGoogle() {
     if (url.href === "https://www.googleapis.com/oauth2/v3/userinfo") return json({sub: subject});
     if (url.href === "https://workspaceevents.googleapis.com/v1/subscriptions" && method === "POST") {
       if (google.unrecorded) return json({error: {code: 409, status: "ALREADY_EXISTS"}}, 409);
-      if (google.stallCreate) {
-        google.stallCreate.started = true;
-        await vi.waitFor(() => expect(google.stallCreate!.released).toBe(true), {timeout: 10_000, interval: 5});
+      const createGate = google.stallCreate;
+      if (createGate) {
+        createGate.started = true;
+        while (!createGate.released) await scheduler.wait(1);
       }
       google.creates++;
       return json({name: "operations/create", done: true, response: {
@@ -110,9 +111,10 @@ function mockGoogle() {
       return json({name: "operations/reactivate", done: true, response: live});
     }
     if (url.hostname === "workspaceevents.googleapis.com" && subscription && method === "GET") {
-      if (!google.stallGet) return json(live);
-      google.stallGet.started = true;
-      await vi.waitFor(() => expect(google.stallGet!.released).toBe(true));
+      const getGate = google.stallGet;
+      if (!getGate) return json(live);
+      getGate.started = true;
+      while (!getGate.released) await scheduler.wait(1);
       return json({error: {code: 403, status: "PERMISSION_DENIED"}}, 403);
     }
     if (url.hostname === "workspaceevents.googleapis.com" && subscription && method === "DELETE") {
@@ -196,13 +198,20 @@ async function push(subscriber: string, messages: ChatMessageRaw[], {
 const driver = () => testEnv.ChatHookDriver.get(testEnv.ChatHookDriver.idFromName(SPACE));
 
 /**
+ * Wait until `done()` holds. Polled, with no deadline but the test's own: how long the runtime
+ * takes to get there depends on the runner's load, and a loaded CI runner can take seconds, past
+ * any shorter deadline.
+ */
+async function until(done: () => boolean | Promise<boolean>): Promise<void> {
+  while (!await done()) await scheduler.wait(10);
+}
+
+/**
  * Wait until the space driver has no delivery due: its own alarm runs them, and forcing that alarm
  * here as well would deliver one message twice from two concurrent alarm() calls.
  */
-const deliver = () => vi.waitFor(() => runInDurableObject(driver(), (_instance: unknown, state: DurableObjectState) => {
-  const due = [...state.storage.kv.list<{at?: number}>({prefix: "msg:"})].filter(([, row]) => row.at! <= Date.now());
-  if (due.length > 0) throw new Error(`${due.length} deliveries due`);
-}));
+const deliver = () => until(() => runInDurableObject(driver(), (_instance: unknown, state: DurableObjectState) =>
+  ![...state.storage.kv.list<{at?: number}>({prefix: "msg:"})].some(([, row]) => row.at! <= Date.now())));
 
 it("delivers each new message from someone else once, and the hook's reply applies as an action", async () => {
   const google = mockGoogle();
@@ -434,9 +443,9 @@ async function whileTracking(connection: {props: {userObjectId: string}}, run: (
   return {
     account,
     waitedFor: async () => {
-      await vi.waitFor(() => runInDurableObject(account, (_instance: unknown, state: DurableObjectState) => {
-        if (!state.storage.kv.get("test:trackingHeld")) throw new Error("No enable is waiting on the account yet.");
-      }), {timeout: 5_000});
+      // Until an enable is waiting on the account.
+      await until(() => runInDurableObject(account, (_instance: unknown, state: DurableObjectState) =>
+        state.storage.kv.get("test:trackingHeld") === true));
       await run();
       await runInDurableObject(account, (_instance: unknown, state: DurableObjectState) => {
         state.storage.kv.delete("test:holdTracking");
@@ -471,7 +480,7 @@ it("refuses an enable whose account is disconnected while it subscribes, registe
   google.stallCreate = {started: false, released: false};
   // Expected at once, as the enable is refused while the test is still acting.
   const refused = expect(Promise.resolve(ada.hooks.chatEnableHook())).rejects.toThrow("This Google account has been disconnected.");
-  await vi.waitFor(() => expect(google.stallCreate!.started).toBe(true), {timeout: 5_000});
+  await until(() => google.stallCreate!.started);
   await (testEnv.UserAccount.get(testEnv.UserAccount.idFromString(ada.props.userObjectId)) as unknown as
     {revoke(): Promise<void>}).revoke();
   google.stallCreate.released = true;
@@ -555,7 +564,7 @@ it("keeps the subscription an enable creates while a renewal of the expired one 
   vi.setSystemTime(Date.now() + 4 * 3_600_000);
   try {
     const renewal = runDurableObjectAlarm(driver());
-    await vi.waitFor(() => expect(google.stallGet!.started).toBe(true));
+    await until(() => google.stallGet!.started);
     google.subscriptionId = "replacement";
     await thread.hooks.chatEnableHook();
     google.stallGet.released = true;
@@ -583,7 +592,7 @@ it("keeps the subscription an enable makes while the alarm renewing another was 
   vi.setSystemTime(Date.now() + 4 * 3_600_000);
   try {
     const alarm = runDurableObjectAlarm(driver());
-    await vi.waitFor(() => expect(google.stallGet!.started).toBe(true));
+    await until(() => google.stallGet!.started);
     await bob.hooks.chatEnableHook();
     google.stallGet.released = true;
     await alarm;

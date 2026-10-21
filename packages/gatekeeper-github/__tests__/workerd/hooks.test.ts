@@ -414,23 +414,38 @@ function binding(account: string, overrides: Partial<GatekeeperProps> = {}) {
 const driver = (account: string) => env.GITHUB_HOOK_DRIVER.getByName(account);
 
 /**
- * Wait until the account's driver has no delivery due: its own alarm runs them, and forcing that
- * alarm here as well would deliver one event twice from two concurrent alarm() calls. A loaded CI
- * runner can take longer than vi.waitFor's default second to get through a check's redeliveries.
+ * Wait until `done()` holds. Polled, with no deadline but the test's own: how long the runtime
+ * takes to get there depends on the runner's load, and a loaded CI runner can take seconds, past
+ * any shorter deadline. A test that gave up early would also leave its work in flight, to reach
+ * the next test's FakeGitHub through the shared fetch stub.
  */
-const settled = (account: string) => vi.waitFor(() => runInDurableObject(driver(account), (_instance, state) => {
-  const due = [...state.storage.kv.list<{ at?: number }>({ prefix: "msg:" })]
-    .filter(([, row]) => row.at !== undefined && row.at <= Date.now());
-  if (due.length > 0) throw new Error(`${due.length} deliveries due`);
-}), { timeout: 10_000, interval: 25 });
+async function until(done: () => boolean | Promise<boolean>): Promise<void> {
+  while (!await done()) await scheduler.wait(10);
+}
+
+/**
+ * Wait until the account's driver has no delivery due: its own alarm runs them, and forcing that
+ * alarm here as well would deliver one event twice from two concurrent alarm() calls.
+ */
+const settled = (account: string) => until(() => runInDurableObject(driver(account), (_instance, state) =>
+  ![...state.storage.kv.list<{ at?: number }>({ prefix: "msg:" })]
+    .some(([, row]) => row.at !== undefined && row.at <= Date.now())));
+
+/**
+ * Wait until a request has reached one of FakeGitHub's stalls, as `count`, one of its `stalled*`
+ * counters, shows.
+ */
+async function reached(count: () => number): Promise<void> {
+  await until(() => count() > 0);
+  expect(count()).toBe(1);
+}
 
 /**
  * Wait until a disconnect has reached the account's driver, which from then on refuses whatever is
- * in flight. A loaded CI runner can take longer than any fixed wait to get it there.
+ * in flight.
  */
-const fenced = (account: string) => vi.waitFor(() => runInDurableObject(driver(account), (_instance, state) => {
-  if (!state.storage.kv.get("revoked")) throw new Error("not yet disconnected");
-}), { timeout: 10_000, interval: 25 });
+const fenced = (account: string) => until(() => runInDurableObject(driver(account), (_instance, state) =>
+  state.storage.kv.get("revoked") === true));
 
 /** Run the driver's alarm at `ms` from now, on a faked clock the runtime itself never wakes for. */
 async function after(ms: number, account: string): Promise<void> {
@@ -900,7 +915,7 @@ it("leaves a working webhook when a hook is enabled while the last one's is bein
 
   github.stallDeletes = true;
   const disabling = first.disable();
-  await vi.waitFor(() => expect(github.stalledDeletes).toBe(1));
+  await reached(() => github.stalledDeletes);
   const enabling = second.enable();
   // Time for the enable to reach the driver, which must not touch the webhook being deleted.
   await scheduler.wait(100);
@@ -1084,7 +1099,7 @@ it("skips the comments of the GitHub user its account reconnected as while GitHu
   // The hourly check asks who the account is, and GitHub is slow to answer Ada...
   github.stallViewerReadsAs = ADA;
   const checking = after(HOUR, account);
-  await vi.waitFor(() => expect(github.stalledViewerReads).toBe(1));
+  await reached(() => github.stalledViewerReads);
   // ...until the account has reconnected as Bob.
   github.viewer = BOB;
   const userAccount = env.USER_ACCOUNT.get(env.USER_ACCOUNT.idFromString(account));
@@ -1288,11 +1303,12 @@ it("starts each check's redeliveries where the last check's stopped, when more r
     };
     names.push(name);
   }
-  for (const name of names) {
+  // Enabled together, as twenty-one one after another took a loaded CI runner past the timeout.
+  await Promise.all(names.map(async name => {
     const hook = binding(account, { repo: name });
     await hook.subscribe();
     await hook.enable();
-  }
+  }));
   const { at, alarm } = clock(account);
 
   // One failed delivery on each, which GitHub then fails again each time it is redelivered.
@@ -1595,7 +1611,7 @@ it("keeps on record what a disconnect has yet to delete from GitHub, for another
 
   github.stallDeletes = true;
   const disconnecting = triage.hooks.revokeAccount(account);
-  await vi.waitFor(() => expect(github.stalledDeletes).toBe(1));
+  await reached(() => github.stalledDeletes);
   expect(await stored()).toEqual(["account", "revoked", `webhook:${REPO_ID}`]);
   github.stallDeletes = false;
   await unwrap(disconnecting);
@@ -1648,7 +1664,7 @@ it.each<[string, (github: FakeGitHub) => () => number, number]>([
   const stalled = stall(github);
   // Expected at once, as the enable is refused while the test is still acting.
   const refused = expect(triage.enable()).rejects.toThrow("This GitHub account has been disconnected.");
-  await vi.waitFor(() => expect(stalled()).toBe(1));
+  await reached(stalled);
   const disconnecting = triage.hooks.revokeAccount(account);
   // Until the disconnect has reached the driver, where it waits for the enable.
   await fenced(account);
@@ -1686,7 +1702,7 @@ it("deletes at the next hourly check a webhook GitHub added as the driver restar
 
   github.stallCreateAnswers = true;
   const refused = expect(triage.enable()).rejects.toThrow();
-  await vi.waitFor(() => expect(github.stalledCreateAnswers).toBe(1));
+  await reached(() => github.stalledCreateAnswers);
   await runInDurableObject(driver(account), async (_instance, state) => {
     await state.storage.sync();
     state.abort("The test hook driver restarted.");
@@ -1735,7 +1751,7 @@ it("keeps on record the webhook an enable added as its account was disconnected,
 
   github.stallCreates = true;
   const refused = expect(triage.enable()).rejects.toThrow("This GitHub account has been disconnected.");
-  await vi.waitFor(() => expect(github.stalledCreates).toBe(1));
+  await reached(() => github.stalledCreates);
   const disconnecting = triage.hooks.revokeAccount(account);
   await fenced(account);
   github.failDeletesWith = 500;
