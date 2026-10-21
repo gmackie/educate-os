@@ -12,6 +12,7 @@ import {
   publicHostname,
   resourcePrefix,
   workerScriptName,
+  WorkerScriptName,
 } from "./config.ts";
 import type {
   AssetManifestEntry,
@@ -214,9 +215,35 @@ function nameSuffix(binding: string): string {
 }
 
 /**
+ * The plain-text vars a gatekeeper's non-secret deploy inputs become, from the config's values.
+ * Every `var` and `workerName` input needs a value; a value for anything else is refused, so a
+ * secret can't be put in the (non-secret) config by mistake and a typo can't go unnoticed.
+ */
+function gatekeeperInputVars(pkgName: string, entry: WorkerEntry, config: DistrictInstallConfig): Record<string, string> {
+  const supplied = config.gatekeeperInputs[pkgName] ?? {};
+  const inputs = new Map((entry.inputs ?? []).map((input) => [input.name, input]));
+  for (const name of Object.keys(supplied)) {
+    const input = inputs.get(name);
+    if (!input) invalid(`${pkgName} declares no deploy input ${name}`);
+    if (input.kind === "secret") invalid(`${pkgName}: ${name} is a secret; supply it as a secret, never in the install config`);
+  }
+  const vars: Record<string, string> = {};
+  for (const input of inputs.values()) {
+    if (input.kind === "secret") continue;
+    const value = supplied[input.name];
+    if (value === undefined) invalid(`${pkgName} needs a value for ${input.name} (${input.label}) in gatekeeperInputs`);
+    if (input.kind === "workerName" && !WorkerScriptName.safeParse(value).success) {
+      invalid(`${pkgName}: ${input.name} must be a Worker name`);
+    }
+    vars[input.name] = value;
+  }
+  return vars;
+}
+
+/**
  * Compiles the desired state. Installs the backend, the router, every preinstalled gatekeeper and
- * the gatekeepers the config names; refuses a named gatekeeper that is not installable or that
- * needs non-secret inputs, which this installer cannot collect yet.
+ * the gatekeepers the config names, with the config's values for their non-secret deploy inputs;
+ * refuses a named gatekeeper that is not installable or whose inputs the config does not fit.
  *
  * Services the config enables are installed with their `var` inputs from the config and their
  * secrets from the secret source, and the backend gains the manifest's `backendBinding` to each,
@@ -241,10 +268,10 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     const entry = manifest.workers[name];
     if (!entry || entry.kind !== "gatekeeper") invalid(`release has no gatekeeper ${name}`);
     if (!entry.installable) invalid(`${name} is not installable on district instances`);
-    if (entry.inputs?.some((input) => input.kind !== "secret")) {
-      invalid(`${name} needs non-secret deploy inputs, which the installer does not collect yet`);
-    }
     gatekeepers.add(name);
+  }
+  for (const name of Object.keys(config.gatekeeperInputs)) {
+    if (!gatekeepers.has(name)) invalid(`gatekeeperInputs names ${name}, which this install does not include`);
   }
   const installed = [...gatekeepers].toSorted();
 
@@ -399,6 +426,8 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       }
     }
 
+    // Operator values are literal: they are never placeholder-resolved, so no `$` in them is read.
+    const inputVars = entry.kind === "gatekeeper" ? gatekeeperInputVars(pkgName, entry, config) : {};
     const vars: Record<string, unknown> = {
       ...entry.vars,
       [MARKER_VARS.instance]: config.instanceId,
@@ -418,6 +447,10 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     for (const [name, value] of Object.entries(vars).toSorted(([a], [b]) => a.localeCompare(b))) {
       const resolved = resolveDeep(value);
       bindings.push(typeof resolved === "string" ? { type: "plain_text", name, text: resolved } : { type: "json", name, json: resolved });
+    }
+    for (const [name, text] of Object.entries(inputVars).toSorted(([a], [b]) => a.localeCompare(b))) {
+      if (Object.hasOwn(vars, name)) invalid(`${pkgName}: input ${name} would replace a var the release or installer sets`);
+      bindings.push({ type: "plain_text", name, text });
     }
     if (entry.kind === "backend") {
       bindings.push({ type: "plain_text", name: "CF_ACCESS_AUD", text: { ref: accessApplication.key, output: "aud" } });

@@ -49,9 +49,12 @@ export const DurableObjectMigration = z.looseObject({
 export type DurableObjectMigration = z.infer<typeof DurableObjectMigration>;
 
 /**
- * A binding template. These are exactly the binding shapes manifest-lib emits, plus `d1`, which
- * manifest version 1 does not emit yet (see {@link D1Migration}).
+ * The file the release pipeline writes the root's signed statement to, beside `manifest.json`
+ * (scripts/release/release-signing.ts's `SIGNED_MANIFEST_FILE`).
  */
+export const SIGNED_MANIFEST_FILE = "manifest.signed.json";
+
+/** A binding template. These are exactly the binding shapes manifest-lib emits. */
 export const ManifestBinding = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("kv_namespace"), name: BindingName, namespace_id: z.string() }),
   z.strictObject({ type: z.literal("r2_bucket"), name: BindingName, bucket_name: z.string() }),
@@ -90,9 +93,8 @@ export const AssetManifestEntry = z.strictObject({ hash: z.string().regex(/^[0-9
 export type AssetManifestEntry = z.infer<typeof AssetManifestEntry>;
 
 /**
- * A D1 migration a worker's database needs, in apply order. Manifest version 1 does not emit D1
- * at all; the installer accepts this ahead of the generator so SchoolOS domain workers can ship
- * D1-backed state without an installer change. A follow-up teaches manifest-lib to emit it.
+ * A D1 migration a worker's database needs, in apply order: manifest-lib's `D1MigrationEntry`,
+ * read from the package's `migrations_dir`. The SQL is a content-addressed release blob.
  */
 export const D1Migration = z.strictObject({
   /** The `d1` binding whose database the migration runs against. */
@@ -172,8 +174,9 @@ export type SignedReleasePin = z.infer<typeof SignedReleasePin>;
 
 /**
  * Development only: pins a release by the SHA-256 of its manifest bytes, with no signature. It
- * exists because the release pipeline does not sign manifests yet, so a locally built release
- * has no root statement; the CLI also demands `--insecure-pin` before it accepts one.
+ * exists for unsigned development builds (built without the root release key), which have no
+ * root statement. A signed release is always pinned with {@link SignedReleasePin}; the CLI also
+ * demands `--insecure-pin` before it accepts this one.
  */
 export const InsecureReleasePin = z.strictObject({
   mode: z.literal("insecure-pin"),

@@ -7,7 +7,10 @@
 // Output layout (mirrored to R2 by upload-release.ts):
 //   <out>/manifest.json                    the release manifest (upload LAST — its presence
 //                                          marks the release complete)
-//   <out>/modules/<sha256>                 worker module blobs, content-addressed
+//   <out>/manifest.signed.json             the root's signed statement for manifest.json, when
+//                                          SCHOOLOS_RELEASE_SIGNING_KEY is set (release-signing.ts)
+//   <out>/modules/<sha256>                 worker module and D1 migration SQL blobs,
+//                                          content-addressed
 //   <out>/assets/<cfHash>                  static asset blobs, content-addressed
 //
 // The builds overlap: the frontend and every worker bundle run concurrently, up to --concurrency
@@ -15,6 +18,11 @@
 // and writes only its own directory, and results are reassembled in package order.
 //
 // Usage: node scripts/release/build-release.ts --out <dir> [--release-id <id>] [--concurrency <n>]
+//          [--version <semver> --channel <canary|stable|lts> [--minimum-compatible-version <semver>]
+//           [--valid-days <n>]]
+//
+// The signing flags are required when SCHOOLOS_RELEASE_SIGNING_KEY holds the root release key, and
+// unused otherwise: without the key the release is an unsigned development build.
 
 import {
   execFile, execFileSync, type ChildProcess, type ExecFileOptions,
@@ -32,7 +40,11 @@ import {
   collectAssets, collectModules, stableStringify, type CollectedAssets,
 } from "./hash-lib.ts";
 import {
-  generateManifest, readDeployablePackages, readDeployInputs,
+  parseSigningArg, RELEASE_SIGNING_KEY_ENV, releaseSigningKey, requireSigningOptions,
+  SIGNED_MANIFEST_FILE, signReleaseManifest, type ReleaseSigningOptions,
+} from "./release-signing.ts";
+import {
+  generateManifest, readD1Migrations, readDeployablePackages, readDeployInputs,
   type DeployablePackage, type WorkerBuild,
 } from "./manifest-lib.ts";
 
@@ -88,14 +100,18 @@ function parseArgs(argv: string[]): {
   out: string;
   releaseId: string | undefined;
   concurrency: number;
+  signing: Partial<ReleaseSigningOptions>;
 } {
   let out: string | undefined;
   let releaseId: string | undefined;
+  const signing: Partial<ReleaseSigningOptions> = {};
   // Each bundle is one mostly CPU-bound esbuild process. Lower it on a runner that cannot afford
   // that many at once; raise it on one whose cores this undercounts.
   let concurrency = availableParallelism();
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--out") out = resolve(argv[++i]);
+    const signingArg = parseSigningArg(argv, i, signing);
+    if (signingArg !== undefined) i = signingArg;
+    else if (argv[i] === "--out") out = resolve(argv[++i]);
     else if (argv[i] === "--release-id") releaseId = argv[++i];
     else if (argv[i] === "--concurrency") {
       concurrency = Number(argv[++i]);
@@ -105,7 +121,7 @@ function parseArgs(argv: string[]): {
     } else throw new Error(`unknown argument: ${argv[i]}`);
   }
   if (!out) throw new Error("--out <dir> is required");
-  return { out, releaseId, concurrency };
+  return { out, releaseId, concurrency, signing };
 }
 
 // Runs a command to completion and prints its output as one block once it finishes.
@@ -348,6 +364,9 @@ async function buildAll(packages: DeployablePackage[], concurrency: number): Pro
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  // Read and checked before anything is built, so a bad key or missing flag fails in seconds.
+  const signingKey = await releaseSigningKey(process.env);
+  const signing = signingKey ? requireSigningOptions(args.signing) : undefined;
   const commit = gitCommit();
   const releaseId = args.releaseId ?? defaultReleaseId(commit);
   const wranglerVersion = pinnedWranglerVersion();
@@ -374,8 +393,9 @@ async function main() {
 
   const workers: WorkerBuild[] = packages.map((pkg, i) => {
     const { mainModule, modules } = bundles[i];
-    for (const mod of modules) {
-      writeFileSync(join(args.out, "modules", mod.sha256), mod.bytes);
+    const d1Migrations = readD1Migrations(pkg);
+    for (const blob of [...modules, ...d1Migrations]) {
+      writeFileSync(join(args.out, "modules", blob.sha256), blob.bytes);
     }
     return {
       pkgName: pkg.name,
@@ -383,6 +403,7 @@ async function main() {
       mainModule,
       modules,
       deployInputs: readDeployInputs(pkg.dir),
+      d1Migrations,
     };
   });
 
@@ -396,7 +417,16 @@ async function main() {
     workers,
     assetVariants,
   });
-  writeFileSync(join(args.out, "manifest.json"), stableStringify(manifest) + "\n");
+  const manifestBytes = new TextEncoder().encode(stableStringify(manifest) + "\n");
+  if (signingKey && signing) {
+    const signed = await signReleaseManifest(manifestBytes, signingKey, signing);
+    writeFileSync(join(args.out, SIGNED_MANIFEST_FILE), JSON.stringify(signed, null, 2) + "\n");
+    console.log(`signed ${releaseId} as ${signing.version} on ${signing.channel} with ${signingKey.keyId}`);
+  } else {
+    console.log(`${RELEASE_SIGNING_KEY_ENV} is not set: unsigned development release ` +
+        `(installable only with the installer's insecure-pin mode)`);
+  }
+  writeFileSync(join(args.out, "manifest.json"), manifestBytes);
 
   const moduleCount = workers.reduce((n, w) => n + w.modules.length, 0);
   console.log(`\nrelease ${releaseId}: ${workers.length} workers, ${moduleCount} modules, ` +

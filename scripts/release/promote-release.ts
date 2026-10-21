@@ -19,12 +19,26 @@
 // A missing candidate manifest is a hard error: the caller asked to promote something that was
 // never uploaded (or was cleaned up), and silently succeeding would report a phantom publish.
 //
+// Signing (release-signing.ts): with SCHOOLOS_RELEASE_SIGNING_KEY set, the verified candidate's
+// manifest bytes are signed here and releases/<id>/manifest.signed.json is written before the
+// manifest copy, so a published release never lacks the statement it was published with. This is
+// the recommended place for the key: a candidate that fails the e2e gate is then never signed,
+// and a district can install only what was promoted. Without the key, a statement the candidate
+// was uploaded with (build-release.ts signed it) is copied across instead; with neither, the
+// release is published unsigned, for development only.
+//
 // Env: R2_ENDPOINT (https://<account>.r2.cloudflarestorage.com), R2_BUCKET,
-//      R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
+//      R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, optional SCHOOLOS_RELEASE_SIGNING_KEY
 // Usage: node scripts/release/promote-release.ts --release-id <id>
+//          [--version <semver> --channel <canary|stable|lts> [--minimum-compatible-version <semver>]
+//           [--valid-days <n>]]
 
 import { pathToFileURL } from "node:url";
 import { AwsClient } from "aws4fetch";
+import {
+  parseSigningArg, releaseSigningKey, requireSigningOptions, SIGNED_MANIFEST_FILE,
+  signReleaseManifest, type ReleaseSigningOptions,
+} from "./release-signing.ts";
 
 /** The CI run number of an `r<run#>-<sha>` release id, or null for any other id shape
  *  (dev-<ts> releases carry no ordering claim). */
@@ -51,14 +65,17 @@ function requireEnv(name: string): string {
   return value;
 }
 
-function parseArgs(argv: string[]): { releaseId: string } {
+function parseArgs(argv: string[]): { releaseId: string; signing: Partial<ReleaseSigningOptions> } {
   let releaseId: string | undefined;
+  const signing: Partial<ReleaseSigningOptions> = {};
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--release-id") releaseId = argv[++i];
+    const signingArg = parseSigningArg(argv, i, signing);
+    if (signingArg !== undefined) i = signingArg;
+    else if (argv[i] === "--release-id") releaseId = argv[++i];
     else throw new Error(`unknown argument: ${argv[i]}`);
   }
   if (!releaseId) throw new Error("--release-id <id> is required");
-  return { releaseId };
+  return { releaseId, signing };
 }
 
 // Key names only (paginated ListObjectsV2, 1000 keys per round trip); manifest bodies are
@@ -87,6 +104,8 @@ async function listPublishedReleaseIds(
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  const signingKey = await releaseSigningKey(process.env);
+  const signing = signingKey ? requireSigningOptions(args.signing) : undefined;
   const endpoint = requireEnv("R2_ENDPOINT").replace(/\/$/, "");
   const bucket = requireEnv("R2_BUCKET");
   const client = new AwsClient({
@@ -99,6 +118,8 @@ async function main() {
 
   const publishedKey = `releases/${args.releaseId}/manifest.json`;
   const candidateKey = `candidates/${args.releaseId}/manifest.json`;
+  const publishedSignedKey = `releases/${args.releaseId}/${SIGNED_MANIFEST_FILE}`;
+  const candidateSignedKey = `candidates/${args.releaseId}/${SIGNED_MANIFEST_FILE}`;
 
   const publishedHead = await client.fetch(keyUrl(publishedKey), { method: "HEAD" });
   if (publishedHead.status === 200) {
@@ -125,6 +146,30 @@ async function main() {
       `(${superseder}) is already published; promoting now would roll the deploy ` +
       "service back to this older candidate.");
     return;
+  }
+
+  // The statement lands before the manifest: manifest presence is what publishes the release.
+  let statement: Uint8Array | undefined;
+  if (signingKey && signing) {
+    const signed = await signReleaseManifest(manifestBody, signingKey, signing);
+    statement = new TextEncoder().encode(JSON.stringify(signed, null, 2) + "\n");
+    console.log(`signed ${args.releaseId} as ${signing.version} on ${signing.channel} with ${signingKey.keyId}`);
+  } else {
+    const candidateSigned = await client.fetch(keyUrl(candidateSignedKey), { method: "GET" });
+    if (candidateSigned.ok) statement = new Uint8Array(await candidateSigned.arrayBuffer());
+    else if (candidateSigned.status !== 404) {
+      throw new Error(`GET ${candidateSignedKey}: ${candidateSigned.status} ${await candidateSigned.text()}`);
+    } else console.warn(`WARNING: promoting ${args.releaseId} unsigned; districts can install it only with insecure-pin`);
+  }
+  if (statement) {
+    const putSigned = await client.fetch(keyUrl(publishedSignedKey), {
+      method: "PUT",
+      body: statement,
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!putSigned.ok) {
+      throw new Error(`PUT ${publishedSignedKey}: ${putSigned.status} ${await putSigned.text()}`);
+    }
   }
 
   // Server-side CopyObject first (no second body transfer); the buffered GET above doubles as
