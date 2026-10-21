@@ -688,6 +688,18 @@ export interface AuthenticatedApi extends RpcTarget {
   newGadget(): Promise<RpcStub<Overseer>>;
 
   /**
+   * Create this user's workspace for `request.externalId`, an external system's own ID for it, or
+   * return the one an earlier call created. Returns the workspace's ID, for `openGadget()`.
+   *
+   * Calls are keyed by the user and `externalId`, so a retry never creates a second workspace.
+   * `request.owner` must be this user's profile ID: the workspace is only ever created as its
+   * owner, and is shared with no one. Like a `newGadget()` workspace, it is provisional, and so
+   * absent from `listGadgets()`, until its first activity. A call naming a different `kind` than
+   * the existing workspace's is refused. Nothing here deletes a workspace.
+   */
+  ensureExternalWorkspace(request: ExternalWorkspaceRequest): Promise<string>;
+
+  /**
    * List metadata about all the user's Gadgets. Used to display the front-page listing.
    *
    * Provisional gadgets are hidden.
@@ -2248,6 +2260,21 @@ export type GadgetMetadataWithTimestamps = GadgetMetadata & {
   created: Date;
   lastActive: Date;
 }
+
+/** What an externally created workspace is for: one person's own work, or their work in a course. */
+export type ExternalWorkspaceKind = "personal" | "course";
+
+/** The external workspace `AuthenticatedApi.ensureExternalWorkspace()` creates or returns. */
+export type ExternalWorkspaceRequest = {
+  /** The external system's ID for the workspace. Opaque to the Workshop. */
+  externalId: string;
+  /** The profile ID of the user the workspace belongs to, which must be the caller's. */
+  owner: string;
+  /** What the workspace is for, recorded with the user's record of it. */
+  kind: ExternalWorkspaceKind;
+  /** The title the workspace is created with. An existing workspace keeps its own. */
+  title: string;
+};
 
 /**
  * The icons an output format may be drawn with. A closed set because we want them to look consistent.
