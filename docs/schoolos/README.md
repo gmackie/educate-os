@@ -24,9 +24,13 @@ pnpm schoolos:harness            # Northfield on :4801, Riverbend on :4802, unti
 pnpm schoolos:harness -- --check # boot, check every /health over HTTP, exit
 ```
 
-Each district serves `GET /health`, `GET /me` and `POST /ai/complete`. The harness prints a
-ready-made `curl` command with a student token for each district. A token from one district's IdP is
-rejected by the other. `SCHOOLOS_HARNESS_PORT` moves the first port.
+Each district serves `GET /health`, `GET /me` and `POST /ai/complete`, and the full district
+application under `/api/` (see `@schoolos/district-app` below), seeded with demo content: an approved
+resource and an installed activity in every active class, a student's essay in a personal and a
+course workspace, one submission, an applied configuration revision and one AI request. The harness
+prints a ready-made `curl` command with a token for one student, one teacher and one district
+administrator per district. A token from one district's IdP is rejected by the other.
+`SCHOOLOS_HARNESS_PORT` moves the first port.
 | `packages/schoolos-identity` | `@schoolos/identity`: resolves verified `(issuer, subject)` claims to principals, the Cloudflare Access adapter, admin-confirmed identity linking and the email-keyed migration plan (F04). |
 | `packages/schoolos-registry` | `@schoolos/registry`: Learning Registry records (frameworks, competencies, associations, resources, curriculum packs, evidence contracts), lossless CASE 1.1 codecs and a fetch-injected CASE client. `src/case/codec.ts` lists what CASE cannot express. |
 | `packages/schoolos-config` | `@schoolos/config`: the configuration compiler. Capability registry and shipped pack manifests, the `schoolos.dev/v1alpha1` district document, revisions with diff and rollback, dry-run plans and form descriptors. |
@@ -42,6 +46,8 @@ rejected by the other. `SCHOOLOS_HARNESS_PORT` moves the first port.
 | `packages/schoolos-installer` | `@schoolos/installer`: installs a pinned release into a district's Cloudflare account, through OAuth or a district-run token. It runs preflight, then reconciles desired against actual state with ownership checks, resumes after interruption, and supports rollback. Permissions are in [installer-permissions.md](installer-permissions.md). |
 | `packages/schoolos-installer` | `@schoolos/installer`: installs a root-signed release, verified against the release keys the district pins, into a district's Cloudflare account, through OAuth or a district-run token. It runs preflight, then reconciles desired against actual state with ownership checks, resumes after interruption, and supports rollback. Permissions are in [installer-permissions.md](installer-permissions.md). |
 | `packages/schoolos-releases` | `@schoolos/releases`: root-signed release manifests and rotating release keys, the `canary`/`stable`/`lts` channels, district-side verification of signed offers with approve, decline and defer, migration gates over the installer's dry-run drift report, and the root's staged rollout that halts on failing fleet health and offers a rollback. |
+| `packages/schoolos-district-app` | `@schoolos/district-app`: the district application. `createDistrictApp` composes the domain services over their storage interfaces (in-memory for now), around one `PolicyEngine` and one audit sink, behind a fetch-standard handler whose `/api/me`, `/api/student`, `/api/teacher` and `/api/admin` routes are declared once, with their Zod schemas, in `src/routes.ts`. Every request gets a correlation ID that its policy decisions are audited under. `src/adapters.ts` holds the glue between services. |
+| `packages/schoolos-api-client` | `@schoolos/api-client`: the typed fetch client the UIs use, written against the district app's route table, so a call names a route and its input and response types come from the same schemas the server validates with. |
 
 ## Decisions
 

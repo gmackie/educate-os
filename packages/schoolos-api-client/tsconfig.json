@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // For the fetch-standard globals. The district app's `types/` reconciles the Content Studio
+    // sources its route schemas reach, which are typed against Workers, with Node's typings.
+    "types": ["node"],
+    "paths": {
+      // The tests boot a real district app, which reaches @schoolos/artifacts-git; see its tsconfig.
+      "@gadgets/workshop-shared/gatekeeper": ["../schoolos-artifacts-git/types/workshop-shared-gatekeeper.d.ts"]
+    },
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__", "../schoolos-district-app/types"],
+  "exclude": ["dist", "node_modules"]
+}

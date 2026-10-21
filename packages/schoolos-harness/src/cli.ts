@@ -1,12 +1,14 @@
-// Boots both synthetic districts, each on its own local port, and prints their health.
+// Boots both synthetic districts, each on its own local port with the full district application
+// (`/api/...`) seeded with demo content, and prints their health and demo sign-in tokens.
 //
 //   pnpm schoolos:harness           serve until interrupted (ports 4801, 4802, ...)
-//   pnpm schoolos:harness --check   boot, query every /health over HTTP, then exit
+//   pnpm schoolos:harness --check   boot, query every /health and /api/admin/health over HTTP, then exit
 //
 // SCHOOLOS_HARNESS_PORT changes the first port. With --check, ports are ephemeral.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { bootHarness, type HarnessDistrict } from "./harness.ts";
+import { bootDistrictApp, harnessFetch, seedDemo } from "./district-app.ts";
+import { bootHarness } from "./harness.ts";
 
 async function toRequest(req: IncomingMessage, origin: string): Promise<Request> {
   const chunks: Buffer[] = [];
@@ -29,14 +31,14 @@ async function writeResponse(res: ServerResponse, response: Response): Promise<v
   res.end(Buffer.from(await response.arrayBuffer()));
 }
 
-function serve(entry: HarnessDistrict, port: number): Promise<Server> {
+function serve(districtId: string, handle: (request: Request) => Promise<Response>, port: number): Promise<Server> {
   const server = createServer((req, res) => {
     const origin = `http://${req.headers.host ?? "localhost"}`;
     toRequest(req, origin)
-      .then((request) => entry.district.fetch(request))
+      .then(handle)
       .then((response) => writeResponse(res, response))
       .catch((error: unknown) => {
-        console.error(`${entry.district.districtId}: request failed`, error);
+        console.error(`${districtId}: request failed`, error);
         res.writeHead(500).end();
       });
   });
@@ -49,20 +51,33 @@ function serve(entry: HarnessDistrict, port: number): Promise<Server> {
 async function main(): Promise<void> {
   const check = process.argv.includes("--check");
   const basePort = check ? 0 : Number(process.env.SCHOOLOS_HARNESS_PORT ?? 4801);
-  const districts = await bootHarness();
-  const servers = await Promise.all(districts.map((entry, i) => serve(entry, check ? 0 : basePort + i)));
+  const districts = await Promise.all((await bootHarness()).map(async (entry) => {
+    const app = await bootDistrictApp(entry);
+    return { entry, app, demo: await seedDemo(entry, app) };
+  }));
+  const servers = await Promise.all(districts.map(({ entry, app }, i) =>
+    serve(entry.district.districtId, harnessFetch(entry, app), check ? 0 : basePort + i)));
 
-  for (const [i, entry] of districts.entries()) {
+  for (const [i, { entry, demo }] of districts.entries()) {
     const { port } = servers[i]!.address() as AddressInfo;
     const url = `http://127.0.0.1:${port}`;
     const response = await fetch(`${url}/health`);
     const health = (await response.json()) as { directory: Record<string, number> };
     const counts = Object.entries(health.directory).map(([k, v]) => `${k}=${v}`).join(" ");
+    const tokens = {
+      student: await entry.identity.issueToken(demo.student.externalIdentities[0]!.subject),
+      teacher: await entry.identity.issueToken(demo.teacher.externalIdentities[0]!.subject),
+      admin: await entry.identity.issueToken(demo.admin.externalIdentities[0]!.subject),
+    };
+    const app = await fetch(`${url}/api/admin/health`, { headers: { authorization: `Bearer ${tokens.admin}` } });
+    const work = ((await app.json()) as { work?: Record<string, number> }).work ?? {};
+    const seeded = Object.entries(work).map(([k, v]) => `${k}=${v}`).join(" ");
     console.log(`${entry.district.districtId}  ${url}  health=${response.status}  ${counts}`);
+    console.log(`  app=${app.status}  ${seeded}`);
     if (!check) {
-      const student = entry.district.directory.principals.find((p) => p.kind === "student")!;
-      const token = await entry.identity.issueToken(student.externalIdentities[0]!.subject);
-      console.log(`  try: curl -H 'authorization: Bearer ${token}' ${url}/me   # ${student.displayName}`);
+      for (const role of ["student", "teacher", "admin"] as const) {
+        console.log(`  ${role.padEnd(7)} ${demo[role].displayName.padEnd(18)} curl -H 'authorization: Bearer ${tokens[role]}' ${url}/api/me`);
+      }
     }
   }
 

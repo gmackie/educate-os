@@ -1,0 +1,37 @@
+{
+  "name": "@schoolos/district-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The SchoolOS district application: the merged domain services composed behind one typed, fetch-standard /api surface for the Student, Teacher and Admin UIs. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./routes": "./src/routes.ts"
+  },
+  "dependencies": {
+    "@schoolos/academics": "workspace:*",
+    "@schoolos/ai-governance": "workspace:*",
+    "@schoolos/artifacts-git": "workspace:*",
+    "@schoolos/assessment": "workspace:*",
+    "@schoolos/assessment-ci": "workspace:*",
+    "@schoolos/catalog": "workspace:*",
+    "@schoolos/config": "workspace:*",
+    "@schoolos/content-studio": "workspace:*",
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/curriculum": "workspace:*",
+    "@schoolos/identity": "workspace:*",
+    "@schoolos/integrations": "workspace:*",
+    "@schoolos/learning-artifacts": "workspace:*",
+    "@schoolos/policy": "workspace:*",
+    "@schoolos/registry": "workspace:*",
+    "@schoolos/workspaces": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}
