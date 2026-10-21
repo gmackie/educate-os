@@ -1,0 +1,21 @@
+{
+  "name": "@schoolos/commerce",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS commerce (roadmap R04): the root control plane's commercial layer. Plans, subscriptions with explicit grace rules, purchase orders, integer-cent invoices, grant credit ledgers, a payment processor port with a fake, signed entitlement issuance for the fleet entitlement cache, and an append-only finance audit with reconciliation. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/fleet": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@types/node": "^26.1.0",
+    "vitest": "catalog:"
+  }
+}
