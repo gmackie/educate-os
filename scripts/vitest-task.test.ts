@@ -133,6 +133,7 @@ describe("the watchdog environment policy", () => {
   it("is forwarded and fingerprinted on every generated test task", () => {
     assert.deepEqual(TESTS_WITH_TIMEOUT_ENV, [
       "TESTS_WITH_TIMEOUT_DISABLE", "TESTS_WITH_TIMEOUT_IDLE_SECONDS", "TESTS_WITH_TIMEOUT_MAX_SECONDS",
+      "VITEST_TEST_TIMEOUT", "VITEST_HOOK_TIMEOUT",
     ]);
     for (const variable of TESTS_WITH_TIMEOUT_ENV) {
       assert.ok(vitestTask("vitest run").cache.env.includes(variable));
@@ -196,7 +197,7 @@ describe("the watchdog environment policy", () => {
   });
 
   it("rejects invalid overrides before starting the command", async () => {
-    for (const variable of TESTS_WITH_TIMEOUT_ENV.slice(1)) {
+    for (const variable of ["TESTS_WITH_TIMEOUT_IDLE_SECONDS", "TESTS_WITH_TIMEOUT_MAX_SECONDS"]) {
       for (const value of ["0", "-1", "", "nope", "Infinity"]) {
         const { code, stderr } = await runWatchdog(3, 3, 0, { [variable]: value });
         assert.equal(code, 2, `${variable}=${JSON.stringify(value)}`);

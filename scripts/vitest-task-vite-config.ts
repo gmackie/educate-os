@@ -156,14 +156,18 @@ export const withTestTimeout = (command: TestCommand): string => {
 /**
  * The `cache.env` every task wrapping `withTestTimeout` must declare, if it is cached.
  *
- * The watchdog accepts positive-second idle/total overrides, or a non-empty disable switch.
- * `cache.env` passes and fingerprints all three, so a run never replays a different timeout policy.
- * Hand-declared watchdogged tasks must use this list too (or be uncached).
+ * The watchdog accepts positive-second idle/total overrides, or a non-empty disable switch, and
+ * applies the millisecond floors under vitest's per-test and per-hook timeouts
+ * (`vitest-timeout-floor.ts`). `cache.env` passes and fingerprints all five, so a run never replays
+ * a different timeout policy. Hand-declared watchdogged tasks must use this list too (or be
+ * uncached).
  */
 export const TESTS_WITH_TIMEOUT_ENV: string[] = [
   'TESTS_WITH_TIMEOUT_DISABLE',
   'TESTS_WITH_TIMEOUT_IDLE_SECONDS',
   'TESTS_WITH_TIMEOUT_MAX_SECONDS',
+  'VITEST_TEST_TIMEOUT',
+  'VITEST_HOOK_TIMEOUT',
 ]
 
 /**

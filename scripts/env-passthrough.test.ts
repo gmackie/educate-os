@@ -108,12 +108,14 @@ const EXPECTED: Record<string, ExpectedArea> = {
   // build-gatekeeper-configurator.test.ts, which pins its reads against the shared task's `env`.
   // `build-release.ts`, `run-dev-server.ts`, `run-local.ts` and `preview/` are invoked directly,
   // never as vp tasks.
-  // Every cached watchdogged task declares the timeout policy via TESTS_WITH_TIMEOUT_ENV;
+  // Every cached watchdogged task declares the timeout policy -- the watchdog's thresholds and
+  // the vitest timeout floors in vitest-timeout-floor.ts -- via TESTS_WITH_TIMEOUT_ENV;
   // vitest-task.test.ts pins the shared declaration.
   scripts: {
     forwarded: [
       "TESTS_WITH_TIMEOUT_DISABLE", "TESTS_WITH_TIMEOUT_IDLE_SECONDS",
-      "TESTS_WITH_TIMEOUT_MAX_SECONDS", "VITE_FRONTEND_ERROR_REPORTING",
+      "TESTS_WITH_TIMEOUT_MAX_SECONDS", "VITEST_HOOK_TIMEOUT", "VITEST_TEST_TIMEOUT",
+      "VITE_FRONTEND_ERROR_REPORTING",
     ],
     external: [
       "CF_ACCESS_AUD", "CF_ACCESS_ISS", "CF_AI_GATEWAY", "CF_AI_GATEWAY_ACCOUNT_ID",

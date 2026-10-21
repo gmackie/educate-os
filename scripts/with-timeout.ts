@@ -37,12 +37,20 @@
 // `TESTS_WITH_TIMEOUT_IDLE_SECONDS` and `TESTS_WITH_TIMEOUT_MAX_SECONDS` override their respective
 // CLI thresholds for slow CI/container runs. Both require positive, finite seconds and are likewise
 // forwarded and fingerprinted; neither disables the watchdog.
+//
+// `VITEST_TEST_TIMEOUT` and `VITEST_HOOK_TIMEOUT` are not watchdog thresholds but floors, in
+// milliseconds, under vitest's own per-test and per-hook timeouts; when either is set, a `vitest`
+// command gets the reporter in vitest-timeout-floor.ts that applies them. Forwarded and
+// fingerprinted the same way, and malformed values fail before the command starts.
 
 import { execFile, spawn } from "node:child_process";
 import { constants } from "node:os";
 import { fileURLToPath } from "node:url";
 import { resolveBinEntry } from "./bin-entry.ts";
 import { collectTree, killProcessTreeEscalating } from "./kill-process-tree.ts";
+import {
+  type TimeoutFloors, timeoutFloorsFromEnv, withTimeoutFloorReporter,
+} from "./vitest-timeout-floor.ts";
 
 /** Exit status for a threshold firing, matching GNU `timeout`. */
 const TIMED_OUT_EXIT_CODE = 124;
@@ -89,6 +97,14 @@ function parseSeconds(flag: string, value: string | undefined): number {
   const seconds = Number(value);
   if (!Number.isFinite(seconds) || seconds <= 0) fail(`${flag} needs a positive number of seconds`);
   return seconds * 1000;
+}
+
+function timeoutFloorsOrFail(): TimeoutFloors {
+  try {
+    return timeoutFloorsFromEnv();
+  } catch (error) {
+    fail((error as Error).message);
+  }
 }
 
 function fail(message: string): never {
@@ -179,7 +195,7 @@ function supervise(args: string[]): void {
     parseSeconds("TESTS_WITH_TIMEOUT_IDLE_SECONDS", idleOverride);
   const maxMs = maxOverride === undefined ? defaults.maxMs :
     parseSeconds("TESTS_WITH_TIMEOUT_MAX_SECONDS", maxOverride);
-  const { argv } = defaults;
+  const argv = withTimeoutFloorReporter(defaults.argv, timeoutFloorsOrFail());
   // After `parseArgs`, so a malformed invocation fails with the usage error even when disabled.
   const watchdogsDisabled = Boolean(process.env.TESTS_WITH_TIMEOUT_DISABLE);
   const [command, commandArgs] = resolveCommand(argv);
