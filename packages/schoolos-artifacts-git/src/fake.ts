@@ -1,6 +1,5 @@
-import type { GitOid } from "@gadgets/workshop-shared/gatekeeper";
 import { parseGitTreePayload, treeEntryKind } from "@gadgets/gatekeeper-kit/git-diff";
-import { parseGitCommitPayload } from "@gadgets/gatekeeper-kit/git-objects";
+import { parseGitCommitPayload, type GitOid } from "@gadgets/gatekeeper-kit/git-objects";
 import { SchoolOsError } from "@schoolos/contracts";
 import type {
   ArtifactsCommit,

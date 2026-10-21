@@ -12,7 +12,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "catalog:",
     "@gadgets/scripts": "workspace:*",
     "vitest": "catalog:"
   }

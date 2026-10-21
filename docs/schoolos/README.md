@@ -59,6 +59,7 @@ administrator per district. A token from one district's IdP is rejected by the o
 6. [Reusing PlayTrek code](adr/0006-playtrek-ip-boundary.md)
 7. [Hall Monitor and the kernel AI call guard](adr/0007-hall-monitor-and-ai-call-guard.md)
 8. [AI spend in integer nanodollars](adr/0008-usd-nano-money.md)
+9. [SchoolOS libraries type-check against the web-standard surface](adr/0009-typings.md)
 
 ## Rules every SchoolOS change follows
 

@@ -2,23 +2,19 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    // The route schemas the API client is written against reach domain sources typed for Node and
-    // Workers. The district app's `types/` reconciles them with Node's typings, as it does for the
-    // client's own check, and this package's `types/` with the DOM's. Node's typings are for the
-    // Vite config and the screenshot script.
+    // The route schemas the API client validates with are written against the web-standard surface
+    // (ADR-0009), so the DOM typings take them as they are. Node's typings are for the Vite config
+    // and the screenshot script.
     "types": ["node", "vite/client"],
-    "paths": {
-      "@gadgets/workshop-shared/gatekeeper": ["../schoolos-artifacts-git/types/workshop-shared-gatekeeper.d.ts"]
-    },
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src", "__tests__", "scripts", "types", "vite.config.ts", "vitest.config.ts", "../schoolos-district-app/types"],
+  "include": ["src", "__tests__", "scripts", "vite.config.ts", "vitest.config.ts"],
   "exclude": ["dist", "node_modules"]
 }

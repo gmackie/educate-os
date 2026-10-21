@@ -4,8 +4,9 @@ import { withVitestTask } from "@gadgets/scripts/vitest-task";
 export default withVitestTask({
   run: {
     tasks: {
-      // A pure typecheck: the root tsconfig sets `noEmit`.
-      build: { command: "tsc" },
+      // Pure typechecks (the root tsconfig sets `noEmit`): the library against the web-standard
+      // surface, then the tests, which also need Node's typings.
+      build: { command: "tsc && tsc -p __tests__" },
     },
   },
 }, "vitest run");

@@ -230,7 +230,8 @@ async function inflateRaw(data: Uint8Array, expected: number): Promise<Uint8Arra
   const feeding = (async () => {
     for (let at = 0; at < data.byteLength; at += INPUT_SLICE) {
       await writer.ready;
-      await writer.write(data.subarray(at, at + INPUT_SLICE));
+      // `slice`, not `subarray`: stream writers take only views over an `ArrayBuffer`.
+      await writer.write(data.slice(at, at + INPUT_SLICE));
     }
     await writer.close();
   })();

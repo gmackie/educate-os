@@ -14,7 +14,11 @@
 // kit's `PageHookCursor` (`./cursors`), the `RpcTarget` that runs it on each page before the
 // caller sees it.
 
-import type { GitOid } from "@gadgets/workshop-shared/gatekeeper";
+/**
+ * A git object ID: the same alias as `@gadgets/workshop-shared/gatekeeper`'s `GitOid`, restated here
+ * so this leaf loads no Workers-typed module and type-checks under any runtime's typings.
+ */
+export type GitOid = string;
 
 /** The author or committer of a commit, as recorded in the commit object itself. */
 export type GitCommitIdentity = {

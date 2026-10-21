@@ -2,11 +2,12 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    // Inflating uses the Workers `DecompressionStream`, package digests the Workers `crypto.subtle`.
-    "types": ["@cloudflare/workers-types"],
+    // The web-standard surface Workers, Node 24 and browsers share (ADR-0009): no runtime's own
+    // typings, so any SchoolOS package can compile these sources unchanged.
+    "types": [],
     // Node runs these sources directly, so specifiers name the file on disk and only erasable
     // TypeScript syntax is allowed.
     "allowImportingTsExtensions": true,

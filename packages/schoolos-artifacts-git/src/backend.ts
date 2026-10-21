@@ -1,4 +1,4 @@
-import type { GitOid } from "@gadgets/workshop-shared/gatekeeper";
+import type { GitOid } from "@gadgets/gatekeeper-kit/git-objects";
 import { MAX_DIFF_BLOB_BYTES, type GitTreeEntry, type TreeDiffSource } from "@gadgets/gatekeeper-kit/git-diff";
 import { SchoolOsError, type PrincipalId, type WorkspaceId } from "@schoolos/contracts";
 import { NO_COMMIT, type ArtifactsNamespace, type ArtifactsRepository, type GitTransport } from "./artifacts-api.ts";

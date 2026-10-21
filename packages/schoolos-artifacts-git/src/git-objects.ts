@@ -1,8 +1,7 @@
 // Git object encoding: the write side that gatekeeper-kit's `git-objects` and `git-diff` (which
 // parse commits and trees) do not cover. A project version is written as real, byte-exact Git
 // objects so that Cloudflare Artifacts, `git clone` and the kit's tree diff all read it unchanged.
-import type { GitOid } from "@gadgets/workshop-shared/gatekeeper";
-import { isCommitOid } from "@gadgets/gatekeeper-kit/git-objects";
+import { isCommitOid, type GitOid } from "@gadgets/gatekeeper-kit/git-objects";
 
 /** The kinds of Git object a project version is made of. */
 export type GitObjectType = "blob" | "tree" | "commit";
