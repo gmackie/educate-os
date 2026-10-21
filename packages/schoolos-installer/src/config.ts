@@ -16,6 +16,23 @@ const DomainName = z
  */
 export const MAX_INSTANCE_SLUG_LENGTH = 20;
 
+const GatekeeperPackage = z.string().regex(/^gatekeeper-[a-z0-9-]+$/, "expected a gatekeeper package name");
+const InputName = z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/, "expected an input name");
+
+/**
+ * A Worker script name, the value of a `workerName` deploy input: lowercase letters, digits and
+ * hyphens, at most 63 characters, as Cloudflare names Workers.
+ */
+export const WorkerScriptName = z.string().regex(/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/, "expected a Worker name");
+
+/**
+ * Values for one gatekeeper's non-secret deploy inputs (`var` and `workerName`), by input name.
+ * They are written to the gatekeeper as plain-text vars, verbatim. Secret inputs never go here.
+ */
+export const GatekeeperInputValues = z.record(InputName, z.string().min(1).max(5_000));
+/** Gatekeeper input values, by input name. */
+export type GatekeeperInputValues = z.infer<typeof GatekeeperInputValues>;
+
 /**
  * How the district wants one optional backend service (a release worker of kind `service`, such
  * as `schoolos-ai-guard`) handled. A service the config does not name is not managed at all: it
@@ -32,7 +49,7 @@ export const ServiceInstallConfig = z.strictObject({
    * Values for the service's `var` deploy inputs, by input name. Secret inputs are never here;
    * they come from the {@link SecretSource}, like gatekeeper secrets.
    */
-  vars: z.record(z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/, "expected an input name"), z.string()).default({}),
+  vars: z.record(InputName, z.string()).default({}),
 });
 /** A service install config, as parsed. */
 export type ServiceInstallConfig = z.infer<typeof ServiceInstallConfig>;
@@ -40,7 +57,8 @@ export type ServiceInstallConfig = z.infer<typeof ServiceInstallConfig>;
 /**
  * What a district supplies to install SchoolOS into its own Cloudflare account. Nothing here is a
  * secret: credentials come from the token provider and gatekeeper and service secrets from a
- * {@link SecretSource}.
+ * {@link SecretSource}. Non-secret gatekeeper inputs are here, in `gatekeeperInputs`, and
+ * non-secret service inputs in `services`.
  */
 export const DistrictInstallConfig = z.strictObject({
   /** The instance ID the district registered with the root, or chose for a district-run install. */
@@ -67,7 +85,13 @@ export const DistrictInstallConfig = z.strictObject({
   admins: z.array(z.email()).min(1).max(20),
   release: ReleasePin,
   /** Gatekeepers to install besides the release's preinstalled ones, by package name. */
-  gatekeepers: z.array(z.string().regex(/^gatekeeper-[a-z0-9-]+$/)).max(32).default([]),
+  gatekeepers: z.array(GatekeeperPackage).max(32).default([]),
+  /**
+   * Values for the non-secret deploy inputs of the gatekeepers in {@link DistrictInstallConfig.gatekeepers},
+   * by package name. Every `var` and `workerName` input a chosen gatekeeper declares must have one;
+   * its secret inputs come from the {@link SecretSource}.
+   */
+  gatekeeperInputs: z.record(GatekeeperPackage, GatekeeperInputValues).default({}),
   /** Optional backend services, by package name, e.g. `{ "schoolos-ai-guard": { enabled: true, vars: {...} } }`. */
   services: z.record(z.string().regex(/^[a-z][a-z0-9-]{0,62}$/, "expected a workspace package name"), ServiceInstallConfig)
     .refine((services) => Object.keys(services).length <= 16, "at most 16 services")

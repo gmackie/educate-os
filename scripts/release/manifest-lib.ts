@@ -9,6 +9,8 @@
 //   $ACCOUNT_ID              the user's account tag
 //   $KV_<BINDING>_ID         a KV namespace provisioned at deploy time
 //   $R2_<BINDING>_NAME       an R2 bucket provisioned at deploy time
+//   $D1_<BINDING>_ID         a D1 database provisioned at deploy time; its migrations ship in the
+//                            worker entry's `d1Migrations`, in apply order
 //   $WORKER_NAME(<pkg>)      the instance's chosen name for another worker in this release
 //   $SECRET(<name>)          a user-supplied secret, passed through as secret_text
 //   $PUBLIC_BASE_URL         the instance's public origin (the router's URL)
@@ -16,9 +18,12 @@
 // The placeholder list is closed: the deploy-side renderer fails on any `$` token it doesn't
 // recognize, so this file and the renderer must evolve together (manifestVersion guards that).
 
+import { createHash } from "node:crypto";
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "jsonc-parser";
+// Type-only on purpose: Worker packages type-check this file through worker-config.ts without
+// allowImportingTsExtensions, which only an import that is erased entirely gets past.
 import type { AssetManifestEntry, CollectedAssets, CollectedModule } from "./hash-lib.ts";
 
 /** Manifest version the deploy-side renderer must agree with (see header comment). */
@@ -32,6 +37,68 @@ export interface BindingDecl {
 /** A KV namespace binding declaration. `preview_id` names a local-dev Miniflare namespace only. */
 export interface KvNamespaceDecl extends BindingDecl {
   preview_id?: string;
+}
+
+/**
+ * A D1 database binding declaration. Only `binding` and `migrations_dir` reach the manifest: the
+ * database itself is provisioned per instance (`$D1_<BINDING>_ID`), and the installer keeps its own
+ * migration ledger, so `migrations_table` is local-dev wrangler state only.
+ */
+export interface D1DatabaseDecl extends BindingDecl {
+  /** The local-dev database name. */
+  database_name?: string;
+  /** The local-dev database id. */
+  database_id?: string;
+  /** A `wrangler dev --remote` preview database id. */
+  preview_database_id?: string;
+  /** Where the migration `.sql` files live, relative to the package. Wrangler's default is `migrations`. */
+  migrations_dir?: string;
+  /** The table wrangler records applied migrations in locally. */
+  migrations_table?: string;
+}
+
+// The D1 declaration keys this generator understands; any other fails closed, like
+// HANDLED_CONFIG_KEYS, because it may be one that changes what customer instances get.
+const HANDLED_D1_KEYS = new Set([
+  "binding", "database_name", "database_id", "preview_database_id", "migrations_dir",
+  "migrations_table",
+]);
+
+/** Wrangler's default D1 migrations directory. */
+const DEFAULT_D1_MIGRATIONS_DIR = "migrations";
+
+/**
+ * A D1 migration ID: the `.sql` file name without its extension. Mirrors `@schoolos/installer`'s
+ * `D1Migration.id`, so a release never carries an ID the installer would refuse.
+ */
+const D1_MIGRATION_ID_RE = /^[0-9]{4}_[a-z0-9_]{1,60}$/;
+
+/** One D1 migration file read from a package, as handed to {@link generateManifest}. */
+export interface CollectedD1Migration {
+  /** The `d1_databases` binding whose database the migration runs against. */
+  binding: string;
+  /** The migration ID, e.g. `0001_principals`. */
+  id: string;
+  /** SHA-256 of the SQL bytes; also the blob's name. */
+  sha256: string;
+  /** Size of the SQL in bytes. */
+  size: number;
+  /** The SQL itself, written to the release's blob directory by build-release.ts. */
+  bytes: Uint8Array;
+}
+
+/** A D1 migration as the manifest lists it: the SQL is a content-addressed blob, like a module. */
+export interface D1MigrationEntry {
+  /** The `d1` binding whose database the migration runs against. */
+  binding: string;
+  /** The migration ID; migrations run in ID order. */
+  id: string;
+  /** SHA-256 of the SQL bytes. */
+  sha256: string;
+  /** Size of the SQL in bytes. */
+  size: number;
+  /** R2 key of the SQL blob. */
+  r2Key: string;
 }
 
 /** A service binding declaration in a wrangler config. */
@@ -113,6 +180,8 @@ export interface WranglerConfig {
   kv_namespaces?: KvNamespaceDecl[];
   /** R2 bucket bindings; names become `$R2_<BINDING>_NAME` placeholders. */
   r2_buckets?: BindingDecl[];
+  /** D1 database bindings; ids become `$D1_<BINDING>_ID` placeholders. */
+  d1_databases?: D1DatabaseDecl[];
   /** Worker Loader bindings (the Gadget sandbox). */
   worker_loaders?: BindingDecl[];
   /** Service bindings; targets become `$WORKER_NAME(<pkg>)` placeholders. */
@@ -222,6 +291,11 @@ export interface WorkerEntry {
   };
   /** Values the deploy wizard collects before installing. Absent for core workers. */
   inputs?: DeployInput[];
+  /**
+   * The D1 migrations of every `d1` binding, ordered by binding and then ID. Present only on a
+   * worker that declares D1 databases, so manifests of releases without D1 are unchanged.
+   */
+  d1Migrations?: D1MigrationEntry[];
 }
 
 /** The release manifest: the contract between this repo's CI and the deploy service. */
@@ -254,13 +328,16 @@ export interface WorkerBuild {
   modules: CollectedModule[];
   /** Contents of the package's `deploy-inputs.json`, if it has one. */
   deployInputs?: DeployInput[];
+  /** The package's D1 migration files (see {@link readD1Migrations}). */
+  d1Migrations?: CollectedD1Migration[];
 }
 
 // wrangler.jsonc keys this generator understands. Anything else fails closed — a new config key
 // on a deployable worker needs an explicit decision about how customer instances get it.
 const HANDLED_CONFIG_KEYS = new Set([
   "$schema", "name", "main", "build", "compatibility_date", "compatibility_flags", "rules",
-  "migrations", "observability", "kv_namespaces", "r2_buckets", "worker_loaders", "services",
+  "migrations", "observability", "kv_namespaces", "r2_buckets", "d1_databases", "worker_loaders",
+  "services",
   "assets", "vars",
   // Browser Rendering (Gadget PDF exports). Unlike artifacts it is generally available, so it
   // passes through to customer instances as a placeholder-free binding, like the AI binding.
@@ -431,6 +508,47 @@ export function readDeployInputs(pkgDir: string): DeployInput[] | undefined {
   return JSON.parse(readFileSync(path, "utf8")) as DeployInput[];
 }
 
+/**
+ * Read the migration files of every D1 database a package declares, ordered by binding and then
+ * ID. A `.sql` file whose name is not a migration ID fails the build: the installer would refuse
+ * the manifest on every customer instance.
+ */
+export function readD1Migrations(pkg: DeployablePackage): CollectedD1Migration[] {
+  const migrations: CollectedD1Migration[] = [];
+  for (const db of pkg.config.d1_databases ?? []) {
+    const dir = join(pkg.dir, db.migrations_dir ?? DEFAULT_D1_MIGRATIONS_DIR);
+    if (!existsSync(dir)) continue;
+    for (const file of readdirSync(dir).filter((name) => name.endsWith(".sql")).toSorted()) {
+      const id = file.slice(0, -".sql".length);
+      if (!D1_MIGRATION_ID_RE.test(id)) {
+        throw new Error(`${pkg.name}: D1 migration ${file} must be named NNNN_<lowercase_words>.sql`);
+      }
+      const bytes = readFileSync(join(dir, file));
+      migrations.push({ binding: db.binding, id, sha256: createHash("sha256").update(bytes).digest("hex"), size: bytes.byteLength, bytes });
+    }
+  }
+  return migrations.toSorted((a, b) => a.binding.localeCompare(b.binding) || a.id.localeCompare(b.id));
+}
+
+// The manifest entries for a worker's D1 migrations, checked against its d1_databases.
+function d1MigrationEntries(
+  pkgName: string, databases: D1DatabaseDecl[], migrations: CollectedD1Migration[],
+): D1MigrationEntry[] {
+  const bindings = new Set(databases.map((db) => db.binding));
+  const seen = new Set<string>();
+  for (const { binding, id } of migrations) {
+    if (!bindings.has(binding)) {
+      throw new Error(`${pkgName}: D1 migration ${id} is for ${binding}, which it does not bind`);
+    }
+    if (!D1_MIGRATION_ID_RE.test(id)) throw new Error(`${pkgName}: ${id} is not a D1 migration ID`);
+    if (seen.has(`${binding}/${id}`)) throw new Error(`${pkgName}: D1 migration ${binding}/${id} is listed twice`);
+    seen.add(`${binding}/${id}`);
+  }
+  return migrations
+      .map(({ binding, id, sha256, size }) => ({ binding, id, sha256, size, r2Key: moduleR2Key(sha256) }))
+      .toSorted((a, b) => a.binding.localeCompare(b.binding) || a.id.localeCompare(b.id));
+}
+
 function workerKind(pkgName: string): WorkerEntry["kind"] {
   if (pkgName === "workshop-backend") return "backend";
   if (pkgName === "router") return "router";
@@ -444,7 +562,7 @@ function workerKind(pkgName: string): WorkerEntry["kind"] {
  * `modules` entries are { name, type, sha256, size } (bytes stripped by the caller).
  */
 export function buildWorkerEntry(
-  { pkgName, config, mainModule, modules, deployInputs }: WorkerBuild,
+  { pkgName, config, mainModule, modules, deployInputs, d1Migrations }: WorkerBuild,
 ): WorkerEntry {
   const kind = workerKind(pkgName);
   const unknownKeys = Object.keys(config).filter((k) => !HANDLED_CONFIG_KEYS.has(k));
@@ -473,6 +591,18 @@ export function buildWorkerEntry(
       name: r2.binding,
       bucket_name: `$R2_${r2.binding}_NAME`,
     });
+  }
+  const databases = config.d1_databases ?? [];
+  for (const db of databases) {
+    const unknownD1Keys = Object.keys(db).filter((k) => !HANDLED_D1_KEYS.has(k));
+    if (unknownD1Keys.length > 0) {
+      throw new Error(`${pkgName}/wrangler.jsonc d1_databases[${db.binding}] has key(s) this ` +
+          `generator doesn't handle: ${unknownD1Keys.join(", ")}`);
+    }
+    bindings.push({ type: "d1", name: db.binding, id: `$D1_${db.binding}_ID` });
+  }
+  if (databases.length === 0 && (d1Migrations ?? []).length > 0) {
+    throw new Error(`${pkgName} has D1 migrations but declares no d1_databases`);
   }
   if (config.browser) {
     // `remote` is dev-only wrangler behavior; the deployed binding is just { type, name }.
@@ -590,10 +720,16 @@ export function buildWorkerEntry(
     ...(gatekeeperBindingExpansion ? { gatekeeperBindingExpansion } : {}),
     ...(assetsConfig ? { assetsConfig } : {}),
     ...(inputs ? { inputs } : {}),
+    ...(databases.length > 0
+      ? { d1Migrations: d1MigrationEntries(pkgName, databases, d1Migrations ?? []) }
+      : {}),
   };
 }
 
-/** R2 key a worker module blob is stored under, by content hash. */
+/**
+ * R2 key a worker module blob is stored under, by content hash. D1 migration SQL shares this
+ * content-addressed store: the installer reads every SHA-256-named blob from one place.
+ */
 export function moduleR2Key(sha256: string): string {
   return `blobs/modules/${sha256}`;
 }
@@ -605,7 +741,7 @@ export function assetR2Key(cfHash: string): string {
 
 /**
  * Assembles the full manifest.
- *  - workers: [{ pkgName, config, mainModule, modules, deployInputs }]
+ *  - workers: [{ pkgName, config, mainModule, modules, deployInputs, d1Migrations }]
  *  - assetVariants: { [variantName]: { manifest, blobs } } from collectAssets() — attached to
  *    every worker entry that has an assetsConfig (today: just the router).
  */

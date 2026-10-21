@@ -8,12 +8,14 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { collectAssets, collectModules, stableStringify } from "./hash-lib.ts";
 import {
-  generateManifest, readDeployablePackages, readDeployInputs, releaseShortName,
+  generateManifest, readD1Migrations, readDeployablePackages, readDeployInputs, releaseShortName,
+  type WorkerBuild,
 } from "./manifest-lib.ts";
 
 const RELEASE = dirname(fileURLToPath(import.meta.url));
@@ -23,7 +25,7 @@ const GOLDEN_PATH = join(TESTDATA, "golden-manifest.json");
 
 // Placeholder syntax the deploy-side renderer understands. Closed list — see manifest-lib.ts.
 const PLACEHOLDER_RE =
-    /^\$(ACCOUNT_ID|PUBLIC_BASE_URL|KV_[A-Z0-9_]+_ID|R2_[A-Z0-9_]+_NAME|WORKER_NAME\([a-z0-9-]+\)|SECRET\([A-Z0-9_]+\))/;
+    /^\$(ACCOUNT_ID|PUBLIC_BASE_URL|KV_[A-Z0-9_]+_ID|R2_[A-Z0-9_]+_NAME|D1_[A-Z0-9_]+_ID|WORKER_NAME\([a-z0-9-]+\)|SECRET\([A-Z0-9_]+\))/;
 
 function readTestWorkerBuilds() {
   return readDeployablePackages(join(ROOT, "packages")).map((pkg) => {
@@ -42,7 +44,7 @@ function readTestWorkerBuilds() {
   });
 }
 
-function buildTestManifest(workers = readTestWorkerBuilds()) {
+function buildTestManifest(workers: WorkerBuild[] = readTestWorkerBuilds()) {
   return generateManifest({
     releaseId: "r000000-fixture",
     commit: "0000000000000000000000000000000000000000",
@@ -341,4 +343,66 @@ test("a service package carries its backend binding and only its own inputs", ()
       .workers["schoolos-ai-guard"];
   assert.deepEqual(entry?.inputs, []);
   assert.deepEqual(entry?.bindings, []);
+});
+
+// No deployable package declares D1 yet, so the golden file cannot show it. These pin the shape
+// @schoolos/installer accepts (its D1Migration and `d1` binding schemas), which its own suite
+// checks against a manifest generated here.
+function d1Package(files: Record<string, string>, d1: Record<string, unknown> = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "manifest-lib-d1-"));
+  mkdirSync(join(dir, "db"));
+  for (const [name, sql] of Object.entries(files)) writeFileSync(join(dir, "db", name), sql);
+  const config = {
+    name: "schoolos-ai-guard",
+    main: "src/index.ts",
+    d1_databases: [{
+      binding: "SCHOOLOS_DB", database_name: "local", database_id: "local-id", migrations_dir: "db",
+      ...d1,
+    }],
+  };
+  return { name: "schoolos-ai-guard", dir, config };
+}
+
+function d1Build(pkg: ReturnType<typeof d1Package>): WorkerBuild {
+  const { mainModule, modules } = collectModules(join(TESTDATA, "fixture-bundles", "schoolos-ai-guard"));
+  return { pkgName: pkg.name, config: pkg.config, mainModule, modules, d1Migrations: readD1Migrations(pkg) };
+}
+
+test("a D1 database becomes a $D1_<B>_ID binding and its migrations content-addressed blobs", () => {
+  const pkg = d1Package({
+    "0002_rosters.sql": "CREATE TABLE rosters (id TEXT PRIMARY KEY);\n",
+    "0001_principals.sql": "CREATE TABLE principals (id TEXT PRIMARY KEY);\n",
+    "README.md": "not a migration",
+  });
+  const entry = buildTestManifest([d1Build(pkg)]).workers["schoolos-ai-guard"];
+
+  assert.deepEqual(entry.bindings.find((b) => b.type === "d1"),
+      { type: "d1", name: "SCHOOLOS_DB", id: "$D1_SCHOOLOS_DB_ID" });
+  assert.deepEqual(entry.d1Migrations?.map((m) => m.id), ["0001_principals", "0002_rosters"]);
+  for (const migration of entry.d1Migrations ?? []) {
+    const sql = readFileSync(join(pkg.dir, "db", `${migration.id}.sql`));
+    assert.equal(migration.binding, "SCHOOLOS_DB");
+    assert.equal(migration.size, sql.byteLength);
+    assert.equal(migration.r2Key, `blobs/modules/${migration.sha256}`);
+    assert.deepEqual(Object.keys(migration).toSorted(), ["binding", "id", "r2Key", "sha256", "size"]);
+  }
+  // Local-dev identifiers never reach a customer manifest.
+  assert.doesNotMatch(JSON.stringify(entry), /local-id/);
+});
+
+test("workers without D1 carry no d1Migrations field, so existing manifests are unchanged", () => {
+  for (const [name, entry] of Object.entries(buildTestManifest().workers)) {
+    assert.equal("d1Migrations" in entry, false, `${name}: unexpected d1Migrations`);
+  }
+});
+
+test("D1 migrations the installer would refuse fail the release build", () => {
+  assert.throws(() => readD1Migrations(d1Package({ "1_init.sql": "SELECT 1;" })),
+      /must be named NNNN_<lowercase_words>\.sql/);
+  assert.throws(() => buildTestManifest([d1Build(d1Package({}, { remote: true }))]),
+      /d1_databases\[SCHOOLOS_DB\] has key\(s\) this generator doesn't handle: remote/);
+
+  const orphan = d1Build(d1Package({ "0001_init.sql": "SELECT 1;" }));
+  orphan.d1Migrations = orphan.d1Migrations?.map((m) => ({ ...m, binding: "OTHER_DB" }));
+  assert.throws(() => buildTestManifest([orphan]), /0001_init is for OTHER_DB, which it does not bind/);
 });

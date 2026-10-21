@@ -1,26 +1,30 @@
 // District-run installer CLI. The district runs it itself (or from its own CI) with an API token
 // it created; the root's OAuth path uses the library directly.
 //
-//   pnpm --filter @schoolos/installer start <command> --config install.json --manifest release/manifest.json \
-//     --signed-manifest release/manifest.signed.json
+//   pnpm --filter @schoolos/installer start <command> --config install.json --manifest release/manifest.json
 //
 //   preflight   check the account, products, quotas, DNS and Access setup
 //   plan        preflight, then observe and print the plan (changes nothing)
 //   apply       preflight, plan and apply; then register with the root if --registry-url is given
-//   rollback    return to a previous release:
-//               --previous-manifest <file> --previous-signed-manifest <file>
+//   rollback    return to a previous release: --previous-manifest <file>
 //
 // The manifest must come with the root's signed statement for it, verified against the release
-// keys the config pins. A config with an `insecure-pin` release (development builds, which the
-// release pipeline does not sign yet) is refused unless --insecure-pin is also given; its rollback
-// then takes --previous-pin <releaseId>@<sha256> instead of a signed manifest.
+// keys the config pins (`release.mode: "signed"`). The release pipeline writes the statement
+// beside the manifest as manifest.signed.json, which is where it is read from unless
+// --signed-manifest (or, for rollback, --previous-signed-manifest) names another file.
+//
+// Unsigned development builds (built without SCHOOLOS_RELEASE_SIGNING_KEY) have no statement. Only
+// for those, a config may pin the release by digest (`insecure-pin`), and the CLI then also demands
+// --insecure-pin; its rollback takes --previous-pin <releaseId>@<sha256> instead of a statement.
 //
 // The token is read from CLOUDFLARE_API_TOKEN. Gatekeeper and service secrets are read from
 // SCHOOLOS_SECRET_<PACKAGE>__<NAME>, e.g. SCHOOLOS_SECRET_GATEKEEPER_GOOGLE__CLIENT_ID. Neither is
-// ever printed. Release blobs are read from the manifest's directory (build-release.ts layout)
-// unless --release-dir says otherwise.
+// ever printed. Non-secret gatekeeper inputs are in the config's `gatekeeperInputs`, and service
+// vars in its `services`. Release blobs are read from the manifest's directory (build-release.ts
+// layout) unless --release-dir says otherwise.
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import { SchoolOsError } from "@schoolos/contracts";
 import { z } from "zod";
@@ -30,7 +34,12 @@ import { DirectoryReleaseArtifacts } from "./directory-artifacts.ts";
 import { InstallerHaltedError } from "./errors.ts";
 import { httpRegistryEndpoint } from "./fleet-registration.ts";
 import { install, rollback } from "./installer.ts";
-import { loadPinnedManifest, type ReleaseManifest, verifyReleaseManifest } from "./manifest.ts";
+import {
+  loadPinnedManifest,
+  type ReleaseManifest,
+  SIGNED_MANIFEST_FILE,
+  verifyReleaseManifest,
+} from "./manifest.ts";
 import type { PreflightReport } from "./preflight.ts";
 import { districtRunTokenProvider } from "./token.ts";
 
@@ -61,6 +70,11 @@ function printPreflight(report: PreflightReport): void {
   console.log(report.ok ? "preflight: ok" : "preflight: blocked");
 }
 
+/** The signed statement's path: the one given, or the release pipeline's file beside the manifest. */
+function signedManifestPath(given: string | undefined, manifestPath: string): string {
+  return given ?? join(dirname(manifestPath), SIGNED_MANIFEST_FILE);
+}
+
 async function readJson(path: string): Promise<unknown> {
   try {
     return JSON.parse(await readFile(path, "utf8"));
@@ -77,8 +91,8 @@ async function previousManifest(
   if (!values["previous-manifest"]) return undefined;
   const bytes = await readBytes(values["previous-manifest"]);
   if (pin.mode === "signed") {
-    if (!values["previous-signed-manifest"]) return undefined;
-    return (await verifyReleaseManifest(bytes, await readJson(values["previous-signed-manifest"]), pin.trust)).manifest;
+    const signed = signedManifestPath(values["previous-signed-manifest"], values["previous-manifest"]);
+    return (await verifyReleaseManifest(bytes, await readJson(signed), pin.trust)).manifest;
   }
   const [releaseId, manifestSha256] = (values["previous-pin"] ?? "").split("@");
   if (!releaseId || !manifestSha256) return undefined;
@@ -102,7 +116,7 @@ async function main(): Promise<number> {
   });
   const command = positionals[0] as (typeof COMMANDS)[number] | undefined;
   if (!command || !COMMANDS.includes(command) || !values.config || !values.manifest) {
-    console.error(`usage: cli.ts <${COMMANDS.join("|")}> --config <file> --manifest <file> [--release-dir <dir>] [--registry-url <url>]`);
+    console.error(`usage: cli.ts <${COMMANDS.join("|")}> --config <file> --manifest <file> [--signed-manifest <file>] [--release-dir <dir>] [--registry-url <url>]`);
     return 2;
   }
 
@@ -116,14 +130,19 @@ async function main(): Promise<number> {
     console.error("the config pins the release by digest only (insecure-pin); pass --insecure-pin to accept an unsigned development release");
     return 2;
   }
-  if (config.release.mode === "signed" && !values["signed-manifest"]) {
-    console.error("--signed-manifest <file> is required: the root's signed statement for the release manifest");
-    return 2;
+  let signedManifest: unknown;
+  if (config.release.mode === "signed") {
+    const path = signedManifestPath(values["signed-manifest"], values.manifest);
+    if (!existsSync(path)) {
+      console.error(`--signed-manifest <file> is required: the root's signed statement for the release manifest (none at ${path})`);
+      return 2;
+    }
+    signedManifest = await readJson(path);
   }
   const manifest = await loadPinnedManifest(
     await readBytes(values.manifest),
     config.release,
-    values["signed-manifest"] ? { signedManifest: await readJson(values["signed-manifest"]) } : {},
+    signedManifest === undefined ? {} : { signedManifest },
   );
   const api = new CloudflareHttpApi({ tokens: districtRunTokenProvider(process.env) });
 
@@ -131,7 +150,7 @@ async function main(): Promise<number> {
     const previous = await previousManifest(config.release, values);
     if (!previous) {
       console.error(config.release.mode === "signed"
-        ? "rollback needs --previous-manifest <file> and --previous-signed-manifest <file>"
+        ? "rollback needs --previous-manifest <file> (its statement is read from beside it unless --previous-signed-manifest <file> is given)"
         : "rollback needs --previous-manifest <file> and --previous-pin <releaseId>@<sha256>");
       return 2;
     }

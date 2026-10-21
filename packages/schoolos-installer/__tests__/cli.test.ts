@@ -50,6 +50,19 @@ describe("district-run CLI", () => {
     expect(result.stdout).toContain("preflight: blocked");
   });
 
+  it("reads the signed statement from beside the manifest by default, as the release pipeline lays it out", async () => {
+    const release = await goldenRelease();
+    const { config } = writeConfig(configFor(NORTHFIELD, release));
+    const dir = mkdtempSync(join(tmpdir(), "schoolos-release-"));
+    writeFileSync(join(dir, "manifest.json"), release.bytes);
+    writeFileSync(join(dir, "manifest.signed.json"), JSON.stringify(release.signedManifest));
+
+    const result = await run(["preflight", "--config", config, "--manifest", join(dir, "manifest.json")]);
+
+    // Verified, so it got as far as asking Cloudflare, which needs the (absent) token.
+    expect(result.stdout).toContain("BLOCKING credential.rejected");
+  });
+
   it("requires the root's signed manifest statement for a signed pin", async () => {
     const release = await goldenRelease();
     const { config } = writeConfig(configFor(NORTHFIELD, release));

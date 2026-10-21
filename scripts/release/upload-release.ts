@@ -11,14 +11,18 @@
 // to the deploy service (which scans only releases/) until promote-release.ts copies it over
 // after the e2e gate passes. Blob handling is identical either way.
 //
+// A manifest.signed.json beside the manifest (build-release.ts signed it) is uploaded to the same
+// prefix just before the manifest, so the manifest never appears without its statement.
+//
 // Env: R2_ENDPOINT (https://<account>.r2.cloudflarestorage.com), R2_BUCKET,
 //      R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
 // Usage: node scripts/release/upload-release.ts --release <dir> [--candidate]
 
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { AwsClient } from "aws4fetch";
 import { assetR2Key, moduleR2Key, type ReleaseManifest } from "./manifest-lib.ts";
+import { SIGNED_MANIFEST_FILE } from "./release-signing.ts";
 
 const UPLOAD_CONCURRENCY = 8;
 
@@ -94,8 +98,21 @@ async function main() {
   await Promise.all(Array.from({ length: UPLOAD_CONCURRENCY }, worker));
   console.log(`blobs: ${uploaded} uploaded, ${skipped} already present`);
 
-  const manifestKey =
-    `${args.candidate ? "candidates" : "releases"}/${manifest.releaseId}/manifest.json`;
+  const prefix = `${args.candidate ? "candidates" : "releases"}/${manifest.releaseId}`;
+  const signedPath = join(args.release, SIGNED_MANIFEST_FILE);
+  if (existsSync(signedPath)) {
+    const signedKey = `${prefix}/${SIGNED_MANIFEST_FILE}`;
+    const putSigned = await client.fetch(keyUrl(signedKey), {
+      method: "PUT",
+      body: readFileSync(signedPath),
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!putSigned.ok) {
+      throw new Error(`PUT ${signedKey}: ${putSigned.status} ${await putSigned.text()}`);
+    }
+  }
+
+  const manifestKey = `${prefix}/manifest.json`;
   const put = await client.fetch(keyUrl(manifestKey), {
     method: "PUT",
     body: readFileSync(join(args.release, "manifest.json")),

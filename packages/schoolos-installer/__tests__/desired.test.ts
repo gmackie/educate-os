@@ -64,6 +64,41 @@ describe("desired state", () => {
     expect(() => workers(["gatekeeper-nonexistent"])).toThrow(/no gatekeeper/);
   });
 
+  it("renders the non-secret deploy inputs the config supplies, and keeps secrets out of it", async () => {
+    const golden = await goldenRelease();
+    const release = await deriveRelease(golden, "r1-inputs", (m) => {
+      m.workers["gatekeeper-google"]!.inputs!.push(
+        { name: "WORKSPACE_DOMAIN", kind: "var", label: "Google Workspace domain" },
+        { name: "AUDIT_WORKER", kind: "workerName", label: "Audit Worker" },
+      );
+    });
+    const compile = (gatekeeperInputs: Record<string, Record<string, string>>, gatekeepers = ["gatekeeper-google"]) =>
+      compileDesiredState(release.manifest, configFor(NORTHFIELD, release, { gatekeepers, gatekeeperInputs }));
+    const inputs = { WORKSPACE_DOMAIN: "$PUBLIC_BASE_URL northfield.example", AUDIT_WORKER: "northfield-audit" };
+
+    const google = compile({ "gatekeeper-google": inputs }).resources.find((r) => r.key === "worker:gatekeeper-google");
+    expect(google?.kind === "worker_script" && google.bindings).toEqual(expect.arrayContaining([
+      // Operator values are literal; a `$` in one is never read as a placeholder.
+      { type: "plain_text", name: "WORKSPACE_DOMAIN", text: "$PUBLIC_BASE_URL northfield.example" },
+      { type: "plain_text", name: "AUDIT_WORKER", text: "northfield-audit" },
+    ]));
+
+    expect(() => compile({})).toThrow(/needs a value for WORKSPACE_DOMAIN \(Google Workspace domain\)/);
+    expect(() => compile({ "gatekeeper-google": { ...inputs, CLIENT_SECRET: "synthetic-secret" } })).toThrow(/CLIENT_SECRET is a secret/);
+    expect(() => compile({ "gatekeeper-google": { ...inputs, WORKSPACE_DOMIAN: "typo" } })).toThrow(/declares no deploy input WORKSPACE_DOMIAN/);
+    expect(() => compile({ "gatekeeper-google": { ...inputs, AUDIT_WORKER: "Not A Worker" } })).toThrow(/AUDIT_WORKER must be a Worker name/);
+    expect(() => compile({ "gatekeeper-google": inputs, "gatekeeper-slack": { X: "y" } })).toThrow(/gatekeeper-slack, which this install does not include/);
+  });
+
+  it("refuses an input that would replace a var the release sets", async () => {
+    const golden = await goldenRelease();
+    const release = await deriveRelease(golden, "r1-clash", (m) => {
+      m.workers["gatekeeper-google"]!.inputs!.push({ name: "BASE_URL", kind: "var", label: "Base URL" });
+    });
+    const config = configFor(NORTHFIELD, release, { gatekeeperInputs: { "gatekeeper-google": { BASE_URL: "https://elsewhere.example" } } });
+    expect(() => compileDesiredState(release.manifest, config)).toThrow(/BASE_URL would replace a var/);
+  });
+
   it("fails on a placeholder outside the manifest's closed vocabulary", async () => {
     const release = await goldenRelease();
     const odd = await deriveRelease(release, "r1-odd", (m) => {
