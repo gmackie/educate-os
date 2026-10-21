@@ -2,7 +2,7 @@
   "name": "@schoolos/integrations",
   "version": "0.1.0",
   "private": true,
-  "description": "SchoolOS interoperability adapters, starting with OneRoster 1.2 CSV import: parse, preview, identity linking and safe apply. A library, not a deployable Worker.",
+  "description": "SchoolOS interoperability adapters, starting with OneRoster 1.2 roster sync from a bulk CSV export or a REST server: preview, identity linking, safe apply, delta sync runs and integration health. A library, not a deployable Worker.",
   "type": "module",
   "scripts": {
     "fixtures:write": "node __tests__/fixtures/write-fixtures.ts"

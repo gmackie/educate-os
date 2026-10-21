@@ -82,6 +82,17 @@ export interface OneRosterImportInput {
 }
 
 /**
+ * An import of a feed already read into rows, by any source. The feed is the whole roster: a
+ * roster record it does not list is treated as gone, exactly as for a bulk export.
+ */
+export interface OneRosterFeedImportInput extends Omit<OneRosterImportInput, "files" | "limits"> {
+  /** The rows. */
+  feed: OneRosterFeed;
+  /** The issues found reading the feed. An `error` among them blocks apply. */
+  issues: readonly OneRosterIssue[];
+}
+
+/**
  * How an import changes one kind of record. Nothing is ever removed: a record the feed no longer
  * lists is either `deactivated` (principals and enrollments) or `retained` unchanged.
  */
@@ -185,7 +196,7 @@ export type OneRosterApplyResult =
 
 /** Shows what importing a feed would change, without changing anything. */
 export async function previewOneRosterImport(input: OneRosterImportInput): Promise<OneRosterPreview> {
-  return (await planImport(input)).preview;
+  return (await planImport(readCsvInput(input))).preview;
 }
 
 /**
@@ -197,8 +208,22 @@ export async function previewOneRosterImport(input: OneRosterImportInput): Promi
  * Applying the result and then importing the same feed again changes nothing.
  */
 export async function applyOneRosterImport(input: OneRosterImportInput): Promise<OneRosterApplyResult> {
+  return applyOneRosterFeed(readCsvInput(input));
+}
+
+/** {@link previewOneRosterImport} for a feed already read, such as one fetched over REST. */
+export async function previewOneRosterFeed(input: OneRosterFeedImportInput): Promise<OneRosterPreview> {
+  return (await planImport(input)).preview;
+}
+
+/** {@link applyOneRosterImport} for a feed already read, such as one fetched over REST. */
+export async function applyOneRosterFeed(input: OneRosterFeedImportInput): Promise<OneRosterApplyResult> {
   const { preview, next } = await planImport(input);
   return preview.canApply ? { applied: true, next, preview } : { applied: false, preview };
+}
+
+function readCsvInput({ files, limits, ...rest }: OneRosterImportInput): OneRosterFeedImportInput {
+  return { ...rest, ...readOneRosterCsv(files, limits) };
 }
 
 /** Whether an import changes anything at all. */
@@ -224,7 +249,7 @@ const DISTRICT_ADMIN_ROLES = new Set<OneRosterRole>(["districtAdministrator", "s
 const EMAIL = z.email();
 const IMPORTED_KINDS: readonly ImportedKind[] = ["schools", "terms", "courses", "offerings", "principals", "enrollments"];
 
-async function planImport(input: OneRosterImportInput): Promise<{ preview: OneRosterPreview; next: RosterState }> {
+async function planImport(input: OneRosterFeedImportInput): Promise<{ preview: OneRosterPreview; next: RosterState }> {
   const ctx = await createContext(input);
   const catalog = mapCatalog(ctx);
   const people = linkUsers(ctx);
@@ -255,13 +280,14 @@ interface ImportContext {
   warn(file: OneRosterFile, row: number, column: string, message: string): void;
 }
 
-async function createContext(input: OneRosterImportInput): Promise<ImportContext> {
+async function createContext(input: OneRosterFeedImportInput): Promise<ImportContext> {
   const config = parseInput(OneRosterImportConfig, input.config, "import config");
   const current = parseInput(DistrictDirectorySnapshot, input.current.snapshot, "current snapshot");
   const sources = parseInput(OneRosterSourceMap, input.current.sources, "source map");
   const districtId = current.district.id;
   const today = dateInZone(input.now, current.district.timeZone);
-  const { feed, issues } = readOneRosterCsv(input.files, input.limits);
+  const feed = input.feed;
+  const issues = [...input.issues];
 
   const known = {} as Record<ImportedKind, Map<string, string>>;
   for (const kind of IMPORTED_KINDS) {
@@ -288,6 +314,14 @@ async function createContext(input: OneRosterImportInput): Promise<ImportContext
       await Promise.all(feedIds[kind].map(async (s) => [s, await derivedId(districtId, kind, s)] as const)),
     );
   }));
+  const rowSources = new Map<string, string>();
+  for (const file of Object.keys(feed) as OneRosterFile[]) {
+    for (const row of feed[file]) if ("sourcedId" in row) rowSources.set(`${file}:${row.row}`, row.sourcedId);
+  }
+  const located = (file: OneRosterFile, row: number) => {
+    const sourcedId = rowSources.get(`${file}:${row}`);
+    return { file, row, ...(sourcedId === undefined ? {} : { sourcedId }) };
+  };
   const currentIds: Record<ImportedKind, Set<string>> = {
     schools: new Set(current.schools.map((r) => r.id)),
     terms: new Set(current.terms.map((r) => r.id)),
@@ -310,8 +344,8 @@ async function createContext(input: OneRosterImportInput): Promise<ImportContext
       const id = known[kind].get(sourcedId);
       return id !== undefined && currentIds[kind].has(id) ? id : undefined;
     },
-    error: (file, row, column, message) => issues.push({ severity: "error", file, row, column, message }),
-    warn: (file, row, column, message) => issues.push({ severity: "warning", file, row, column, message }),
+    error: (file, row, column, message) => issues.push({ severity: "error", ...located(file, row), column, message }),
+    warn: (file, row, column, message) => issues.push({ severity: "warning", ...located(file, row), column, message }),
   };
 }
 

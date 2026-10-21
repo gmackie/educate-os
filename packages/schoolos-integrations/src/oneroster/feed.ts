@@ -10,8 +10,13 @@ export interface OneRosterIssue {
   severity: "error" | "warning";
   /** The file the problem is in, when it is in one. */
   file?: OneRosterFile | "manifest.csv";
-  /** The 1-based row, counting the header as row 1. */
+  /**
+   * The 1-based row, counting the header as row 1. A feed read over REST has no header: its rows
+   * are numbered from 1 in the order the feed lists them.
+   */
   row?: number;
+  /** The `sourcedId` of the record the problem is in, when it has one. */
+  sourcedId?: string;
   /** The column, when the problem is in one field. */
   column?: string;
   /** What is wrong, safe to show a district administrator. */

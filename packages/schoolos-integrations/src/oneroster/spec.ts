@@ -1,7 +1,8 @@
 // Extracted from PlayTrek packages/edtech/src/oneroster/client.ts at commit 7258e4347: the OneRoster
 // 1.2 entity vocabulary (statuses, org, session, class and role types). PlayTrek typed the REST JSON
 // binding; this file types the CSV binding of the same entities, validates it with Zod, and adds the
-// 1.2 `roles.csv` that the REST client never needed.
+// 1.2 `roles.csv` that the REST client never needed. The rows are also the model the REST binding is
+// mapped into (`rest/rows.ts`), so list, boolean and `userIds` fields accept their JSON form too.
 import { z } from "zod";
 
 /** The OneRoster CSV files SchoolOS reads, in the order a bulk import is mapped. */
@@ -69,19 +70,25 @@ export type SourcedId = z.infer<typeof SourcedId>;
  */
 const Status = z.preprocess(blank, z.enum(["active", "tobedeleted"]).default("active"));
 
-/** A comma-separated list held in one field, such as `"09,10"`. */
-const List = z.string().transform((value) => value.split(",").map((item) => item.trim()).filter((item) => item !== ""));
+/** A list: in CSV a comma-separated field, such as `"09,10"`; in JSON an array. */
+const List = z.union([
+  z.array(z.string()),
+  z.string().transform((value) => value.split(",").map((item) => item.trim()).filter((item) => item !== "")),
+]);
 
 /** An ISO calendar date, which is how every OneRoster CSV date is written. */
 const CsvDate = z.iso.date("expected a date as YYYY-MM-DD");
 
-const CsvBoolean = z.enum(["true", "false"]).transform((value) => value === "true");
+const CsvBoolean = z.union([z.boolean(), z.enum(["true", "false"]).transform((value) => value === "true")]);
+
+const UserId = z.strictObject({ type: z.string().min(1), identifier: z.string() });
 
 /**
- * A user's `userIds`: a list of `{type:identifier}` pairs, such as `{LDAP:42},{SIS:9001}`. The type
- * ends at the first colon; the identifier may contain colons of its own.
+ * A user's `userIds`. In CSV, a list of `{type:identifier}` pairs, such as `{LDAP:42},{SIS:9001}`,
+ * where the type ends at the first colon and the identifier may contain colons of its own. In JSON,
+ * an array of `{type, identifier}` objects.
  */
-const UserIds = z.string().transform((value, ctx) => {
+const UserIds = z.union([z.array(UserId), z.string().transform((value, ctx) => {
   const ids: { type: string; identifier: string }[] = [];
   const rest = value.replace(/\{([^{}:]+):([^{}]*)\}(?:,|$)/g, (_match, type: string, identifier: string) => {
     ids.push({ type, identifier });
@@ -92,7 +99,7 @@ const UserIds = z.string().transform((value, ctx) => {
     return z.NEVER;
   }
   return ids;
-});
+})]);
 
 /** The role vocabulary of OneRoster 1.2 `roles.csv`. */
 export const OneRosterRole = z.enum([
@@ -183,6 +190,9 @@ export const ROW_SCHEMAS = {
     primary: optional(CsvBoolean),
   }),
 } as const satisfies Record<OneRosterFile, z.ZodType>;
+
+/** A validated row of one OneRoster file, without its position. Parsing one again yields itself. */
+export type OneRosterRecord<F extends OneRosterFile> = z.infer<(typeof ROW_SCHEMAS)[F]>;
 
 /** A validated row of one OneRoster file, with the row it came from for error reporting. */
 export type OneRosterRow<F extends OneRosterFile> = z.infer<(typeof ROW_SCHEMAS)[F]> & { row: number };
