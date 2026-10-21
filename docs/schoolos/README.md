@@ -13,6 +13,7 @@ such as F01 and A02) lives in the SchoolOS Kanbanger project, which uses the `SC
 | --- | --- |
 | `docs/schoolos/adr/` | Architecture decision records. Read these before changing a SchoolOS boundary. |
 | `docs/schoolos/threat-model.md` | Assets, trust boundaries and threats, mapped to the acceptance tests. |
+| `docs/schoolos/hall-monitor/` | Hall Monitor moderation and AI cost governance: the reconciled plan, model ingress matrix and source specification. |
 | `packages/schoolos-contracts` | `@schoolos/contracts`: IDs, scopes, principals, the authorization vocabulary, capability manifests, configuration revisions, policy floors, errors and directory integrity checks. |
 | `packages/schoolos-fixtures` | `@schoolos/fixtures`: two isolated synthetic districts. These are the only directory data tests may use. |
 | `packages/schoolos-harness` | `@schoolos/harness`: boots both districts locally as isolated instances, each with a fake IdP, roster and AI provider. |
@@ -57,6 +58,8 @@ administrator per district. A token from one district's IdP is rejected by the o
 4. [Capability packs and policy floors](adr/0004-capability-packs-and-policy-floors.md)
 5. [Default-deny authorization vocabulary](adr/0005-authorization-vocabulary.md)
 6. [Reusing PlayTrek code](adr/0006-playtrek-ip-boundary.md)
+7. [Hall Monitor and the kernel AI call guard](adr/0007-hall-monitor-and-ai-call-guard.md)
+8. [AI spend in integer nanodollars](adr/0008-usd-nano-money.md)
 
 ## Rules every SchoolOS change follows
 

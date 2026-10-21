@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared Hall Monitor + AI cost governance — reconciled build plan</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--background, #fff); color: var(--foreground, #202124); font: 14px/1.5 var(--font-sans, system-ui, sans-serif); }
+  main { width: 100%; min-width: 0; }
+  h1 { font-size: 1.2rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1rem; margin: 1.6rem 0 .5rem; }
+  h3 { font-size: .9rem; margin: 0 0 .25rem; }
+  p { max-width: 78ch; margin: .45rem 0; }
+  a { color: var(--accent-surface-foreground, #2458ac); }
+  .meta, .muted { color: var(--muted-foreground, #606773); }
+  :focus-visible { outline: 2px solid var(--ring, #2458ac); outline-offset: 3px; }
+  code, pre { font-family: var(--font-mono, Menlo, Consolas, monospace); font-size: .85em; background: var(--code-background, #f1f3f5); color: var(--code-foreground, #202124); border-radius: 4px; }
+  code { padding: 0 .25em; }
+  pre { padding: .6rem; }
+  pre, .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th, td { text-align: left; vertical-align: top; padding: .4rem .5rem; border-bottom: 1px solid var(--border, #d8dce2); }
+  th { color: var(--muted-foreground, #606773); font-weight: 600; }
+  svg { max-width: 100%; }
+  .badge, .chip { display: inline-block; border-radius: 999px; padding: .1rem .5rem; font-size: .72rem; font-weight: 600; white-space: nowrap; }
+  .badge { background: var(--accent-surface, #eaf0ff); color: var(--accent-surface-foreground, #2458ac); }
+  .chip.done { background: color-mix(in srgb, var(--success, #1e8e3e) 18%, transparent); color: var(--success, #1e8e3e); }
+  .chip.active { background: var(--accent-surface, #eaf0ff); color: var(--accent-surface-foreground, #2458ac); }
+  .chip.todo { background: var(--muted, #f1f3f5); color: var(--muted-foreground, #606773); }
+  .chip.risk { background: var(--warning-surface, #fff4d6); color: var(--warning-foreground, #7a5200); }
+  .chip.gate { background: var(--destructive-surface, #fde7e9); color: var(--destructive, #b3261e); }
+  .callout { border-left: 3px solid var(--accent, #2458ac); background: var(--accent-surface, #eaf0ff); color: var(--accent-surface-foreground, #1a2b4d); border-radius: 0 var(--radius, .625rem) var(--radius, .625rem) 0; padding: .65rem .85rem; margin: .75rem 0; }
+  .callout p { margin: .25rem 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: .75rem; }
+  .card { border: 1px solid var(--border, #d8dce2); border-radius: var(--radius, .625rem); background: var(--card, #f7f8fa); color: var(--card-foreground, #202124); padding: .75rem; }
+  .card.key { border-color: var(--accent, #2458ac); box-shadow: 0 0 0 1px var(--accent, #2458ac); }
+  .card ul { margin: .4rem 0 0; padding-left: 1.1rem; }
+  .card p { margin: .3rem 0; }
+  .diff { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--border, #d8dce2); border-radius: var(--radius, .625rem); overflow: hidden; }
+  .diff > div { padding: .5rem .7rem; border-bottom: 1px solid var(--border, #d8dce2); font-size: .85rem; }
+  .diff > div:nth-last-child(-n+2) { border-bottom: 0; }
+  .diff .was { background: color-mix(in srgb, var(--destructive, #b3261e) 6%, transparent); }
+  .diff .now { background: color-mix(in srgb, var(--success, #1e8e3e) 7%, transparent); border-left: 1px solid var(--border, #d8dce2); }
+  .diff .hd { font-weight: 600; color: var(--muted-foreground, #606773); background: var(--card, #f7f8fa); }
+  @media (max-width: 560px) { .diff { grid-template-columns: 1fr; } .diff .now { border-left: 0; } }
+  .progress { display: flex; gap: 3px; height: 8px; margin: .5rem 0 1rem; }
+  .progress span { flex: 1; border-radius: 3px; background: var(--muted, #e6e8eb); transform-origin: left; }
+  .progress span.done { background: var(--success, #1e8e3e); }
+  .progress span.active { background: var(--accent, #2458ac); }
+  .timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+  .timeline::before { content: ""; position: absolute; left: 7px; top: 6px; bottom: 6px; width: 2px; background: var(--border, #d8dce2); }
+  .timeline > li { position: relative; padding: 0 0 1rem 1.75rem; }
+  .timeline > li::before { content: ""; position: absolute; left: 0; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--background, #fff); border: 2px solid var(--border, #d8dce2); }
+  .timeline > li.done::before { background: var(--success, #1e8e3e); border-color: var(--success, #1e8e3e); }
+  .timeline > li.active::before { background: var(--accent, #2458ac); border-color: var(--accent, #2458ac); }
+  .timeline .head { display: flex; gap: .5rem; align-items: baseline; flex-wrap: wrap; }
+  details { border: 1px solid var(--border, #d8dce2); border-radius: var(--radius, .625rem); background: var(--card, #f7f8fa); padding: .55rem .75rem; margin: .6rem 0; }
+  summary { cursor: pointer; font-weight: 600; }
+  .flow { width: 100%; height: auto; }
+  .flow .node rect { fill: var(--card, #f7f8fa); stroke: var(--border, #c8ccd2); }
+  .flow .node.hm rect { stroke: var(--accent, #2458ac); stroke-width: 2; }
+  .flow .node.led rect { stroke: var(--chart-2, #1e8e3e); stroke-width: 2; }
+  .flow text { fill: var(--foreground, #202124); font: 12px var(--font-sans, system-ui, sans-serif); }
+  .flow text.sub { fill: var(--muted-foreground, #606773); font-size: 10.5px; }
+  .flow .edge { fill: none; stroke: var(--muted-foreground, #8a9099); stroke-width: 1.5; marker-end: url(#arrow); }
+  .flow .edge.hm { stroke: var(--accent, #2458ac); }
+  .flow .edge.led { stroke: var(--chart-2, #1e8e3e); stroke-dasharray: 4 3; }
+  .gated li { margin: .25rem 0; }
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal { animation: rise .45s cubic-bezier(.2,.7,.3,1) both; animation-delay: calc(var(--i, 0) * 60ms); }
+    .progress span { animation: grow .5s ease-out both; animation-delay: calc(300ms + var(--i, 0) * 60ms); }
+    .timeline > li.active::before { animation: pulse 1.8s ease-in-out infinite; }
+    .flow .edge { stroke-dasharray: 300; stroke-dashoffset: 300; animation: draw .9s ease-out forwards; animation-delay: calc(400ms + var(--i, 0) * 120ms); }
+    .flow .edge.led { animation-name: drawdash; }
+    @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+    @keyframes grow { from { transform: scaleX(0); } }
+    @keyframes pulse { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent, #2458ac) 25%, transparent); } }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    @keyframes drawdash { from { stroke-dasharray: 300; stroke-dashoffset: 300; } to { stroke-dasharray: 4 3; stroke-dashoffset: 0; } }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1 class="reveal">Shared Hall Monitor + AI cost governance <span class="badge">Reconciled plan · building</span></h1>
+  <p class="meta reveal" style="--i:1">2026-10-20 · repos: <code>gmackie/hall-monitor</code> (new, GitHub, public) · <code>gmackie/school-os</code> (ForgeGraph) · <code>gmackie/playtrek</code> (ForgeGraph) · source: <em>SchoolOS_Hall_Monitor_Cost_and_Milestone_Master_Plan.md</em> + doc set</p>
+
+  <div class="callout reveal" style="--i:2">
+    <p><strong>Decision:</strong> build Hall Monitor as a product-neutral service and SDK in <code>gmackie/hall-monitor</code>. Do <em>not</em> build a new cost ledger. Extend SchoolOS's existing <code>@schoolos/ai-governance</code> (SCHO-25) to integer USD-nano amounts, price books and per-attempt receipts. Then hook both into the Workshop kernel at the one function every model request already goes through.</p>
+    <p class="muted">The source plan was written without SCHO-25 (merged reserve/settle ledger, pools, reconciliation) or SCHO-31 (commerce). It also missed that <code>steerRunningTurn</code>, agent callbacks and <code>spawnAgent</code> all skip the shared message preparation step.</p>
+  </div>
+
+  <h2 class="reveal" style="--i:3">What changed from the source plan</h2>
+  <div class="diff reveal" style="--i:4" role="table" aria-label="Source plan versus reconciled plan">
+    <div class="hd" role="columnheader">Source plan said</div><div class="hd now" role="columnheader">Reconciled (verified in code)</div>
+    <div class="was">M3 builds a greenfield ledger: price books, reserve/settle, Budget DO.</div>
+    <div class="now">The ledger exists: <code>AiLedger</code>, which reserves, settles, voids and reconciles per request ID (<code>schoolos-ai-governance/src/ledger.ts:131</code>). M3 becomes a set of <strong>extensions</strong>: USD-nano amounts, price books, per-attempt rows, a protected safety pool. SCHO-73 already owns the DO store.</div>
+    <div class="was">SchoolOS only has per-user daily call caps.</div>
+    <div class="now">Both exist. The call caps (<code>usage-checker.ts:64</code>) are upstream kernel code; district USD caps live in ai-governance, which <strong>nothing in workshop-backend imports yet</strong>. SCHO-72 is the existing issue for the kernel hook, and moderation shares it.</div>
+    <div class="was">Amounts in nanodollars throughout.</div>
+    <div class="now">Today ai-governance counts whole cents (<code>model.ts:79</code>), and the kernel's cost total is a float in dollars (<code>overseer.ts:8830</code>). One Clef check (~$0.000038) rounds to 0¢, so migrating to <code>UsdNano</code> is a prerequisite. Admin-entered caps stay in cents and are converted at the edge.</div>
+    <div class="was">Intercept newChat, sendChatMessage, steerRunningTurn, attachments.</div>
+    <div class="now">There are 14 ingress paths. Three bypass <code>#prepareChatMessage</code>: steers (<code>overseer.ts:6661</code>), agent callbacks (<code>:7489</code>) and <code>spawnAgent</code> (<code>:10677</code>). Decision models also skip <code>ModelHandle.stream</code> (<code>ai-models.ts:917</code>). Fix: one guard on <code>makeHandle().stream</code> (<code>ai-models.ts:545</code>), one on <code>getDecisionModel</code>, plus ingress checks where the error messages need to be clear.</div>
+    <div class="was">Extract PlayTrek evaluators into the shared repo.</div>
+    <div class="now">hall-monitor is a <strong>public</strong> repo and PlayTrek is private, so the generic evaluators are rewritten from scratch against neutral contracts and no source is copied. Game-specific evaluators (mechanic, npc, world, narrative) stay in PlayTrek behind an adapter.</div>
+    <div class="was">PlayTrek already meters Hall Monitor LLM calls.</div>
+    <div class="now">Rows are recorded per call under purpose <code>hall_monitor</code>, but <code>GenerateAIFn</code> returns only a string, so usage never reaches the evaluator, and the composer estimates cost from character counts. The constructed-response judge sends <strong>learner free text</strong> to a model with no moderation and no ledger row (<code>llm-judge.ts</code>); it is the main <code>interaction.input</code> target.</div>
+  </div>
+
+  <h2 class="reveal" style="--i:5">Architecture</h2>
+  <svg class="flow reveal" style="--i:6" viewBox="0 0 720 300" role="img" aria-labelledby="flowT flowD">
+    <title id="flowT">Request flow</title>
+    <desc id="flowD">SchoolOS and PlayTrek send evaluations to the Hall Monitor Worker over service binding or signed HTTPS. Hall Monitor runs deterministic checks, then Clef-flash, escalating to Clef, and returns a decision and cost receipt. Each product reserves funds in the billing owner's ledger before generative calls and settles each attempt afterwards.</desc>
+    <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="var(--muted-foreground, #8a9099)"/></marker></defs>
+    <g class="node"><rect x="10" y="20" width="190" height="62" rx="8"/><text x="22" y="44">SchoolOS Workshop kernel</text><text class="sub" x="22" y="62">AiCallGuard on ModelHandle.stream</text><text class="sub" x="22" y="75">+ decision model + ingress</text></g>
+    <g class="node"><rect x="10" y="200" width="190" height="62" rx="8"/><text x="22" y="224">PlayTrek</text><text class="sub" x="22" y="242">Episode Composer adapter</text><text class="sub" x="22" y="255">constructed-response judge</text></g>
+    <g class="node hm"><rect x="265" y="95" width="222" height="92" rx="8"/><text x="277" y="118">Hall Monitor Worker</text><text class="sub" x="277" y="136">auth → policy revision → deterministic</text><text class="sub" x="277" y="150">→ Clef-flash → (Clef escalation)</text><text class="sub" x="277" y="164">→ resolver: allow/coach/hold/block/support</text><text class="sub" x="277" y="178">+ UsdNano receipt (price book pinned)</text></g>
+    <g class="node led"><rect x="530" y="20" width="180" height="62" rx="8"/><text x="542" y="44">SchoolOS ledger</text><text class="sub" x="542" y="62">@schoolos/ai-governance</text><text class="sub" x="542" y="75">pools · safety pool · DO store</text></g>
+    <g class="node led"><rect x="530" y="200" width="180" height="62" rx="8"/><text x="542" y="224">PlayTrek ledger</text><text class="sub" x="542" y="242">aiGenerations + receipts</text><text class="sub" x="542" y="255">(billing-owner local)</text></g>
+    <path class="edge hm" style="--i:0" d="M200,55 C240,55 240,120 263,125"/>
+    <path class="edge hm" style="--i:1" d="M200,230 C240,230 240,165 263,160"/>
+    <path class="edge led" style="--i:2" d="M200,40 C360,0 440,30 528,45"/>
+    <path class="edge led" style="--i:3" d="M200,245 C360,290 440,260 528,240"/>
+    <path class="edge led" style="--i:4" d="M487,125 C505,110 510,75 528,65"/>
+    <path class="edge led" style="--i:5" d="M487,160 C505,175 510,210 528,220"/>
+  </svg>
+  <p class="muted">Solid edges carry evaluation requests (a service binding within the same account, signed short-lived JWT over HTTPS across accounts). Dashed edges carry content-free cost receipts into the ledger of whoever owns the bill. Nothing goes through <code>schoolos.dev</code>.</p>
+
+  <h2 class="reveal" style="--i:7">Key decisions</h2>
+  <div class="grid">
+    <section class="card key reveal" style="--i:8"><h3>Repo &amp; distribution</h3><p><code>gmackie/hall-monitor</code> is a pnpm workspace: <code>contracts</code>, <code>costing</code>, <code>policy</code>, <code>evaluators</code>, <code>clef</code>, <code>core</code>, <code>client</code>, <code>apps/worker</code>. Packages export TypeScript source, and consumers pin a commit with a pnpm git dependency. Publishing to npm as <code>@gmacko/*</code> (like <code>@gmacko/lti</code>) waits for your approval (OPS-01).</p></section>
+    <section class="card key reveal" style="--i:9"><h3>Money</h3><p>Amounts are integer <code>UsdNano</code> (10⁻⁹ USD), as a decimal string on the wire and <code>bigint</code> internally. Price rates are rational. Rounding up to cents happens only for display and invoices. <code>ai-governance</code> migrates fully; assessment-ai and fleet switch at their boundaries and get follow-up issues.</p></section>
+    <section class="card key reveal" style="--i:10"><h3>Kernel seam</h3><p>A single optional <code>AI_CALL_GUARD</code> hook: the kernel calls <code>beforeModelCall</code> / <code>afterModelCall</code> with content-free metadata plus <em>only the new messages</em>. Upstream behaviour is unchanged when it's unbound. SchoolOS supplies the implementation (ledger governor plus Hall Monitor client), so its package code stays out of the kernel.</p></section>
+    <section class="card reveal" style="--i:11"><h3>Safety funding</h3><p>A new <code>safety</code> pool purpose, which only the district admin can configure. Hall Monitor spend is drawn from it, never from a student or teacher wallet. If the safety pool is exhausted, generative calls are blocked and a safe non-AI path is offered; moderation is never skipped.</p></section>
+    <section class="card reveal" style="--i:12"><h3>Failure policy</h3><p>Behaviour depends on the action and the audience. For student-facing modes, Hall Monitor being unavailable means AI is unavailable (fail closed, with a support path). Educator-only modes may use the approved deterministic fallback. The resolver never lets a model make up an action string.</p></section>
+    <section class="card reveal" style="--i:13"><h3>Privacy</h3><p>Prompts are never written to receipts, the ledger, metrics labels or logs. Gateway calls send <code>cf-aig-collect-log-payload: false</code>. Text is processed in memory. A human-review store (UI-04) stays gated until the privacy review is done.</p></section>
+  </div>
+
+  <h2 class="reveal" style="--i:14">Delivery waves</h2>
+  <div class="progress" role="img" aria-label="Wave 0 in progress; waves 1 to 4 not started">
+    <span class="active" style="--i:0"></span><span style="--i:1"></span><span style="--i:2"></span><span style="--i:3"></span><span style="--i:4"></span>
+  </div>
+  <ol class="timeline">
+    <li class="active reveal" style="--i:15"><div class="head"><h3>Wave 0 — M0 discovery &amp; tracking</h3><span class="chip active">In progress</span></div>
+      <p class="muted">The ADR, the ingress matrix (14 paths), the reconciled doc set in <code>school-os/docs/hall-monitor/</code>, a Kanbanger <em>Hall Monitor</em> project, and issues across all three projects.</p>
+      <details><summary>Tasks</summary><div class="table-scroll"><table>
+        <thead><tr><th>Task</th><th>Files</th><th>Verification</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>ADR-HM-1 service boundary + ADR-HM-2 UsdNano + ingress matrix</td><td><code>docs/hall-monitor/*</code></td><td>Every row cites file:line; the doc PR is reviewed</td><td><span class="chip active">In progress</span></td></tr>
+          <tr><td>Kanbanger project + issues for every work item below</td><td>—</td><td>Issues read back; PRs linked</td><td><span class="chip active">In progress</span></td></tr>
+        </tbody></table></div></details></li>
+    <li class="reveal" style="--i:16"><div class="head"><h3>Wave 1 — M1/M2 service · M3 ledger extensions</h3><span class="chip todo">Todo</span></div>
+      <p class="muted">Two parallel tracks with no shared files: the hall-monitor repo, and the SchoolOS ledger migration.</p>
+      <details><summary>Tasks</summary><div class="table-scroll"><table>
+        <thead><tr><th>Task</th><th>Files</th><th>Verification</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>HM-01 contracts + costing (UsdNano, price book 2026-10-20, receipts)</td><td><code>hall-monitor/packages/{contracts,costing}</code></td><td>Schema tests; 602 tok × $0.038/M = 22,876 nano; scenario table reproduced exactly</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>HM-04 policy profiles, floors, deterministic resolver</td><td><code>packages/policy</code></td><td>Same revision + findings ⇒ same action; course can't weaken district floor</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>HM-05 Clef adapter (flash → clef escalation, timeout, receipt per attempt)</td><td><code>packages/clef</code></td><td>Fake Workers AI: 429, timeout, malformed, uncertain → escalate</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>HM-06/07 generic evaluators + synthetic fixtures</td><td><code>packages/{evaluators,test-fixtures}</code></td><td>Distress → support; literature/history stays allow; injection → block; graded direct-answer → coach</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>HM-02/03 Worker (<code>/v1/evaluations</code>, batch, capabilities, health, ready, receipts), JWT service auth, idempotency DO, client SDK</td><td><code>apps/worker</code>, <code>packages/client</code></td><td>workerd tests; fake SchoolOS + fake PlayTrek clients hit the same Worker</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>COST-01/02 ai-governance → UsdNano, price books, attempt rows</td><td><code>schoolos-ai-governance</code>, callers</td><td>Existing suites pass; 10× duplicate ⇒ 1 charge; retry ⇒ 2 attempts</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>COST-03 safety pool + concurrency invariants</td><td><code>schoolos-ai-governance</code></td><td>$1 pool, 100 × $0.20 concurrent ⇒ ≤5 admitted; safety drawn when wallet empty</td><td><span class="chip todo">Todo</span></td></tr>
+        </tbody></table></div></details></li>
+    <li class="reveal" style="--i:17"><div class="head"><h3>Wave 2 — M4 product enforcement</h3><span class="chip todo">Todo</span></div>
+      <details><summary>Tasks</summary><div class="table-scroll"><table>
+        <thead><tr><th>Task</th><th>Files</th><th>Verification</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>SCH-01a kernel <code>AI_CALL_GUARD</code> seam (with SCHO-72)</td><td><code>workshop-backend/src/ai-models.ts</code>, <code>overseer.ts</code></td><td>Small reviewed diff; unbound ⇒ upstream tests unchanged</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>SCH-01b <code>@schoolos/hall-monitor</code> guard implementation (governor + HM client)</td><td><code>packages/schoolos-hall-monitor</code></td><td>block/hold voids reservation; safety spend kept</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>INT-01 ingress coverage manifest test</td><td><code>workshop-backend/src/__tests__</code></td><td>Each of the 14 paths reaches the guard; unregistered call site fails CI</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>SCHO-73 DO LedgerStore</td><td><code>schoolos-ai-governance</code></td><td>Restart replay reconstructs balances</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>PLAY-03 usage-returning <code>GenerateAIFn</code>; PLAY-01 composer → <code>content.candidate</code> (dual-run)</td><td><code>playtrek/packages/{ai,engine}</code></td><td>Local and shared results both recorded; receipts in <code>aiGenerations</code></td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>PLAY-02 constructed-response judge → <code>interaction.input</code> + ledger row</td><td><code>playtrek/packages/api/src/services/play</code></td><td>Unmoderated learner text cannot reach the judge when policy is on</td><td><span class="chip todo">Todo</span></td></tr>
+        </tbody></table></div></details></li>
+    <li class="reveal" style="--i:18"><div class="head"><h3>Wave 3 — M5 reconciliation · M6 admin</h3><span class="chip todo">Todo</span></div>
+      <details><summary>Tasks</summary><div class="table-scroll"><table>
+        <thead><tr><th>Task</th><th>Files</th><th>Verification</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>COST-05 provider usage normalization (Gateway log cost, cache fields, neurons)</td><td><code>schoolos-ai-governance</code></td><td>Cache tokens never counted twice; missing usage ⇒ marked liability</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>COST-06/07 account allocator (10K neurons/day, $5 base) applied once per account</td><td><code>schoolos-ai-governance</code></td><td>Fixture month: two products, one account, one allowance</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>COST-08 scenario/workbook bridge</td><td><code>hall-monitor/packages/costing</code></td><td>5 scenarios reproduce the plan's HM gross figures exactly</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>UI-01/02/03 admin AI governance panel (profiles, pools, safety reserve, gross vs net)</td><td><code>workshop-frontend</code> admin + backend AdminApi</td><td>Frontend conventions skill; admin sees 80% projection warning</td><td><span class="chip todo">Todo</span></td></tr>
+        </tbody></table></div></details></li>
+    <li class="reveal" style="--i:19"><div class="head"><h3>Wave 4 — M7 shadow tooling · M8 ops</h3><span class="chip todo">Todo</span></div>
+      <p class="muted">Shadow mode (run, record the decision, don't enforce) on synthetic traffic, a launch checklist template, rollback drill scripts, and a signed policy-pack format. The pilot itself is gated, see below.</p></li>
+  </ol>
+
+  <h2 class="reveal" style="--i:20">Not something an agent can complete</h2>
+  <ul class="gated">
+    <li><span class="chip gate">Human</span> COPPA/FERPA/DPA legal and privacy review; parental consent basis; approval of the safeguarding route. This blocks any student rollout and UI-04.</li>
+    <li><span class="chip gate">Human</span> Calibrating Clef thresholds on human-labelled reference data. The code ships with honest placeholders and reports precision and recall for each class.</li>
+    <li><span class="chip gate">Credentials</span> Live import of Cloudflare and provider billing (COST-06 against real accounts) needs least-privilege API tokens. Fixtures are used until then.</li>
+    <li><span class="chip gate">Approval</span> Publishing <code>@gmacko/hall-monitor-*</code> to public npm, and deploying the Worker to production accounts.</li>
+    <li><span class="chip gate">Pilot</span> M7 pilot: shadow → educator-only → opt-in staff → grades 6–12, each step signed off by people.</li>
+  </ul>
+
+  <h2 class="reveal" style="--i:21">Risks</h2>
+  <p><span class="chip risk">High</span> <strong>Kernel diff size.</strong> The guard touches the hottest code in the repo. <span class="muted">Keep it to one hook interface and six call sites, in its own PR; all policy logic lives in SchoolOS packages.</span></p>
+  <p><span class="chip risk">High</span> <strong>Transcript re-moderation cost and latency.</strong> <code>stream</code> sees the whole transcript on every step. <span class="muted">Track the moderated message index per chat and only check messages added since; key a cache on digest + policy + evaluator version.</span></p>
+  <p><span class="chip risk">Med</span> <strong>Cents → nano migration of stored entries.</strong> <span class="muted">The in-memory store is the only one shipped, so no persisted data needs migrating. Add a versioned entry schema with a parse-time upgrade from <code>*Cents</code> fields anyway.</span></p>
+  <p><span class="chip risk">Med</span> <strong>Public repo leakage.</strong> <span class="muted">No PlayTrek source and only synthetic fixtures. A CI grep blocks <code>@playtrek/</code> imports.</span></p>
+  <p><span class="chip risk">Med</span> <strong>Streaming output moderation.</strong> <span class="muted">Student modes buffer output until it is released; educator modes stream. Each profile declares which it uses.</span></p>
+
+  <h2>Verification</h2>
+  <p>Hall Monitor: <code>pnpm test</code> (vitest + workerd) and GitHub Actions on every PR. SchoolOS: <code>pnpm lint</code> plus the package suites (<code>vp run -F</code>), with ForgeGraph CI green on the head revision before auto-approval. PlayTrek: turbo test/typecheck/oxlint for the packages touched. Cross-product acceptance: a synthetic co-op (12 teachers, 60 students) runs end to end with duplicate events, timeouts, an exhausted student wallet and the root offline.</p>
+
+  <h2>Open questions</h2>
+  <p>None blocking. Defaults chosen: a pnpm git dependency until npm publishing is approved; a Kanbanger <em>Hall Monitor</em> project in team GMA; GitHub PRs for hall-monitor and ForgeGraph PRs for school-os and playtrek.</p>
+</main>
+</body>
+</html>

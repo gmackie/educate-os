@@ -1,0 +1,139 @@
+/**
+ * Sketch of the versioned shared service contracts.
+ * Illustrative reference ONLY: production implementation should use Effect Schema
+ * or Zod at every untrusted boundary and generate OpenAPI from the source schema.
+ */
+
+export type Product = "schoolos" | "playtrek" | "hall-monitor";
+export type EvaluationKind =
+  | "interaction.input"
+  | "interaction.output"
+  | "content.candidate"
+  | "assessment.evaluator-result";
+export type ModerationAction = "allow" | "coach" | "hold" | "block" | "support";
+export type UsdNano = string; // decimal integer; never float for budget mutation
+
+export interface EvalContext {
+  /** Signed caller determines identity and tenant. Do not trust a browser role field. */
+  tenantId: string;
+  product: Product;
+  principalKey?: string;        // pseudonymous within tenant
+  gradeBand?: "K-2" | "3-5" | "6-8" | "9-12";
+  subject?: string;
+  activityKind?: string;
+  costCenterId: string;
+  parentRequestId?: string;
+}
+
+export interface EvaluationEnvelope {
+  schemaVersion: "1.0";
+  requestId: string;
+  idempotencyKey: string;
+  policyProfileId: string;
+  policyRevision: string;
+  evaluationKind: EvaluationKind;
+  context: EvalContext;
+  content:
+    | { kind: "text"; text: string }
+    | { kind: "permitted-content-ref"; sourceRef: string; digest: string }
+    | { kind: "metadata-only"; digest: string; mimeType: string };
+}
+
+export interface EvaluatorFinding {
+  evaluatorId: string;
+  evaluatorVersion: string;
+  category: string;
+  reasonCode: string;
+  confidence?: number;
+  severity: "info" | "warn" | "block" | "support";
+  /** Do NOT put raw student prompt text in this object. */
+}
+
+export interface InferenceAttemptUsage {
+  attemptId: string;
+  providerRequestId?: string;
+  gatewayLogId?: string;
+  providerId: string;
+  modelId: string;
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  outputTokens?: number;
+  workersAiNeurons?: number;
+  grossUsdNano?: UsdNano;
+  measurement: "provider-reported" | "estimated" | "unknown";
+  priceBookId: string;
+}
+
+export interface CostReceipt {
+  receiptId: string;
+  tenantId: string;
+  product: Product;
+  billingOwnerId: string;
+  costCenterId: string;
+  logicalRequestId: string;
+  parentRequestId?: string;
+  createdAt: string;
+  attempts: InferenceAttemptUsage[];
+  totalGrossUsdNano: UsdNano;
+  signature?: string; // for cross-account delivery
+}
+
+export interface HallMonitorResult {
+  schemaVersion: "1.0";
+  evaluationId: string;
+  decision: ModerationAction;
+  findings: EvaluatorFinding[];
+  policyRevision: string;
+  evaluatorBundleRevision: string;
+  uncertain: boolean;
+  usageReceipt: CostReceipt | null; // null when no billable evaluation
+}
+
+export interface PriceBookRate {
+  rateId: string;
+  priceBookId: string;
+  modelOrSku: string;
+  priceNumerator: string;   // rational USD nano / denominator unit
+  priceDenominator: string;
+  unit: "input_tokens" | "output_tokens" | "neurons" | "operations";
+  effectiveFrom: string;
+  sourceUrl: string;
+}
+
+export interface ReserveSpendRequest {
+  logicalRequestId: string;
+  tenantId: string;
+  principalKey?: string;
+  costCenterId: string;
+  fundingPoolId: string;
+  maxUsdNano: UsdNano;
+  ttlSeconds: number;
+  idempotencyKey: string;
+}
+
+export interface SpendReservation {
+  reservationId: string;
+  fundingPoolId: string;
+  reservedUsdNano: UsdNano;
+  expiresAt: string;
+  status: "active" | "settled" | "released" | "unknown-liability";
+}
+
+export interface SettleSpendRequest {
+  reservationId: string;
+  receiptId: string;
+  actualGrossUsdNano: UsdNano;
+  /** True only when provider usage has been independently confirmed. */
+  providerConfirmed: boolean;
+  idempotencyKey: string;
+}
+
+export interface EvaluatorPlugin {
+  id: string;
+  version: string;
+  supportedKinds: EvaluationKind[];
+  evaluate(request: EvaluationEnvelope): Promise<{
+    findings: EvaluatorFinding[];
+    usage: InferenceAttemptUsage[];
+  }>;
+}
