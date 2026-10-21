@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // Node types are for the tests, which read CSV fixtures from disk. `src` uses only globals that
+    // Workers also provide (`crypto.subtle`, `TextEncoder`, `TextDecoder`, `Intl`).
+    "types": ["node"],
+    // Node runs these sources directly (the F02 harness), so specifiers name the file on disk and
+    // only erasable TypeScript syntax is allowed.
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__"],
+  "exclude": ["dist", "node_modules"]
+}

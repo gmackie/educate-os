@@ -1,0 +1,13 @@
+sourcedId,status,dateLastModified,userSourcedId,roleType,role,beginDate,endDate,orgSourcedId,userProfileSourcedId
+r-u-avery,,,u-avery,primary,districtAdministrator,,,org-nf-district,
+r-u-jordan,,,u-jordan,primary,principal,,,org-nf-high,
+r-u-morgan,,,u-morgan,primary,teacher,,,org-nf-high,
+r-u-rivera,,,u-rivera,primary,teacher,,,org-nf-high,
+r-u-chen,,,u-chen,primary,teacher,,,org-nf-high,
+r-u-patel,,,u-patel,primary,teacher,,,org-nf-middle,
+r-u-amara,,,u-amara,primary,student,,,org-nf-high,
+r-u-chidi,,,u-chidi,primary,student,,,org-nf-middle,
+r-u-dmitri,,,u-dmitri,primary,student,,,org-nf-high,
+r-u-elena,,,u-elena,primary,student,,,org-nf-high,
+r-u-felix,,,u-felix,primary,student,,,org-nf-middle,
+r-u-guardian-okafor,,,u-guardian-okafor,primary,guardian,,,org-nf-district,

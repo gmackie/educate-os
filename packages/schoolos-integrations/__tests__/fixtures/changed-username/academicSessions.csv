@@ -1,0 +1,6 @@
+sourcedId,status,dateLastModified,title,type,startDate,endDate,parentSourcedId,schoolYear
+sy-2025-26,,,2025-2026,schoolYear,2025-08-01,2026-07-31,,2026
+sem-2026-spring,,,Spring 2026,semester,2026-01-12,2026-06-12,sy-2025-26,2026
+sy-2026-27,,,2026-2027,schoolYear,2026-08-01,2027-07-31,,2027
+sem-2026-fall,,,Fall 2026,semester,2026-08-31,2027-01-22,sy-2026-27,2027
+gp-2026-fall-q1,,,"Fall 2026, Quarter 1",gradingPeriod,2026-08-31,2026-10-30,sem-2026-fall,2027

@@ -1,0 +1,6 @@
+sourcedId,status,dateLastModified,schoolYearSourcedId,title,courseCode,grades,orgSourcedId,subjects,subjectCodes
+crs-biology-1,,,,Biology I,BIO1,"09,10",org-nf-district,Biology,03051
+crs-english-9,,,,English 9,ENG9,09,org-nf-district,English Language Arts,
+crs-us-history,,,,United States History,USH,11,org-nf-district,,04104
+crs-math-7,,,,Mathematics 7,MA7,07,org-nf-district,Math,
+crs-advisory-9,,,,"Advisory, Grade 9",ADV9,09,org-nf-district,Advisory,22001

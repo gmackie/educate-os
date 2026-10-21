@@ -1,0 +1,4 @@
+﻿sourcedId,status,dateLastModified,name,type,identifier,parentSourcedId
+org-nf-district,,,Northfield Public Schools (synthetic),district,NF,
+org-nf-high,,,Northfield High School,school,NF-HS,org-nf-district
+org-nf-middle,,,Northfield Middle School,school,NF-MS,org-nf-district

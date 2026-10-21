@@ -1,0 +1,23 @@
+{
+  "name": "@schoolos/integrations",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS interoperability adapters, starting with OneRoster 1.2 CSV import: parse, preview, identity linking and safe apply. A library, not a deployable Worker.",
+  "type": "module",
+  "scripts": {
+    "fixtures:write": "node __tests__/fixtures/write-fixtures.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

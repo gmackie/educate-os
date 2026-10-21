@@ -30,6 +30,7 @@ rejected by the other. `SCHOOLOS_HARNESS_PORT` moves the first port.
 | `packages/schoolos-identity` | `@schoolos/identity`: resolves verified `(issuer, subject)` claims to principals, the Cloudflare Access adapter, admin-confirmed identity linking and the email-keyed migration plan (F04). |
 | `packages/schoolos-registry` | `@schoolos/registry`: Learning Registry records (frameworks, competencies, associations, resources, curriculum packs, evidence contracts), lossless CASE 1.1 codecs and a fetch-injected CASE client. `src/case/codec.ts` lists what CASE cannot express. |
 | `packages/schoolos-config` | `@schoolos/config`: the configuration compiler. Capability registry and shipped pack manifests, the `schoolos.dev/v1alpha1` district document, revisions with diff and rollback, dry-run plans and form descriptors. |
+| `packages/schoolos-integrations` | `@schoolos/integrations`: interoperability adapters, one namespace per standard. `oneroster` reads a OneRoster 1.2 bulk CSV export, previews it against the current directory, links IdP identities, quarantines mismatches, and applies only results that pass `checkDirectoryIntegrity`. |
 
 ## Decisions
 

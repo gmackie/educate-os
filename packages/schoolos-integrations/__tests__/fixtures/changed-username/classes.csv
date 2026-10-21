@@ -1,0 +1,6 @@
+sourcedId,status,dateLastModified,title,grades,courseSourcedId,classCode,classType,location,schoolSourcedId,termSourcedIds,subjects,subjectCodes,periods
+cls-bio-fall-p2,,,Period 2,"09,10",crs-biology-1,BIO1-2,scheduled,Room 114,org-nf-high,sem-2026-fall,,,2
+cls-bio-spring-p4,,,Period 4,"09,10",crs-biology-1,BIO1-4,scheduled,Room 114,org-nf-high,sem-2026-spring,,,4
+cls-eng9-fall-p3,,,Period 3,09,crs-english-9,ENG9-3,scheduled,Room 201,org-nf-high,gp-2026-fall-q1,,,3
+cls-ushist-fall-p5,,,Period 5,11,crs-us-history,USH-5,scheduled,Room 305,org-nf-high,"sy-2026-27,sem-2026-fall",,,5
+cls-math7-fall-p1,,,Period 1,07,crs-math-7,MA7-1,scheduled,Room 12,org-nf-middle,sem-2026-fall,,,1

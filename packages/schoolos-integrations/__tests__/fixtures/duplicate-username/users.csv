@@ -1,0 +1,13 @@
+sourcedId,status,dateLastModified,enabledUser,username,userIds,givenName,familyName,middleName,identifier,email,sms,phone,agentSourcedIds,grades,password,userMasterIdentifier,resourceSourcedIds,preferredGivenName,preferredMiddleName,preferredFamilyName,primaryOrgSourcedId,pronouns
+u-avery,,,true,nf-0001,"{idp:nf-0001},{sis:1001}",Avery,Admin,,1001,avery.admin@northfield.example,,,,,SENTINEL-PASSWORD-91c2,,,,,,org-nf-district,
+u-jordan,,,true,nf-0002,"{idp:nf-0002},{sis:1002}",Jordan,Principal,,1002,jordan.principal@northfield.example,,,,,SENTINEL-PASSWORD-91c2,,,,,,org-nf-high,
+u-morgan,,,true,user-1042,"{idp:user-1042},{sis:1042}",Morgan,Lee,,1042,morgan.lee@teachers.example,,,,,SENTINEL-PASSWORD-91c2,,,,,,org-nf-high,
+u-rivera,,,true,nf-0101,"{idp:nf-0101},{sis:1101}",Sam,Rivera,,1101,sam.rivera@northfield.example,,,,,SENTINEL-PASSWORD-91c2,,,,,,org-nf-high,
+u-chen,,,true,nf-0102,"{idp:nf-0102},{sis:1102}",Riley,Chen,,1102,riley.chen@northfield.example,,,,,SENTINEL-PASSWORD-91c2,,,,,,org-nf-high,
+u-patel,,,true,nf-0103,"{idp:nf-0103},{sis:1103}",Casey,Patel,,1103,casey.patel@northfield.example,,,,,SENTINEL-PASSWORD-91c2,,,,,,org-nf-middle,
+u-amara,,,true,nf-s-2001,"{idp:nf-s-2001},{sis:2001}",Amara,Okafor,,2001,family.okafor@northfield.example,,,u-guardian-okafor,09,SENTINEL-PASSWORD-91c2,,,,,,org-nf-high,
+u-chidi,,,true,nf-s-2002,"{idp:nf-s-2002},{sis:2002}",Chidi,Okafor,,2002,family.okafor@northfield.example,,,u-guardian-okafor,07,SENTINEL-PASSWORD-91c2,,,,,,org-nf-middle,
+u-dmitri,,,true,nf-s-2003,"{idp:nf-s-2003},{sis:2003}",Dmitri,Novak,,2003,,,,,09,SENTINEL-PASSWORD-91c2,,,,,,org-nf-high,
+u-elena,,,true,nf-s-2003,"{idp:nf-s-2003},{sis:2004}",Elena,Sato,,2004,,,,,09,SENTINEL-PASSWORD-91c2,,,,,,org-nf-high,
+u-felix,,,true,nf-s-2005,"{idp:nf-s-2005},{sis:2005}",Felix,Brandt,,2005,,,,,07,SENTINEL-PASSWORD-91c2,,,,,,org-nf-middle,
+u-guardian-okafor,,,true,nf-g-3001,"{idp:nf-g-3001},{sis:3001}",Ngozi,Okafor,,3001,family.okafor@northfield.example,,,,,SENTINEL-PASSWORD-91c2,,,,,,org-nf-district,
