@@ -52,7 +52,7 @@ describe("one pipeline across subjects (E02 acceptance)", () => {
       [["content.required@1.0.0", "yes"]],
     ]);
     expect(report.summary).toMatchObject({ criteria: 3, checks: 3, passed: 7, failed: 2, observations: 0 });
-    expect(report.costCents).toBe(0);
+    expect(report.costUsdNano).toBe("0");
   });
 
   it("explains a Biology lab CSV's columns, units and computed mean against a fixture", async () => {

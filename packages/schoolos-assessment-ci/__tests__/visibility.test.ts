@@ -66,7 +66,7 @@ describe("student-visible and teacher-only checks", () => {
 
   it("does not tell the student why a run failed, which could name teacher-only checks", async () => {
     const env = await threeSubjects();
-    const { ci } = env.ciWith({ profiles: [{ id: "tiny@1", kind: "deterministic", limits: { maxSteps: 10, maxInputBytes: 10_000, maxRetries: 0, maxCostCents: 0 } }] });
+    const { ci } = env.ciWith({ profiles: [{ id: "tiny@1", kind: "deterministic", limits: { maxSteps: 10, maxInputBytes: 10_000, maxRetries: 0, maxCostUsdNano: "0" } }] });
     const submissionId = env.math.receipt.submissionId;
     const own = await ci.run(P.chidi, { submissionId, idempotencyKey: "k", executionProfile: "tiny@1" });
     expect(own).toEqual({ view: "student", runId: own.runId, state: "failed", failed: true });

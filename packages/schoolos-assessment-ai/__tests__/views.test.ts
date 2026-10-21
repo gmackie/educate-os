@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FakeExecutionSandbox, studentReportView } from "../src/index.ts";
-import { ESSAY, P, quote, rejectsWith, setup } from "./setup.ts";
+import { ESSAY, P, quote, MODEL_COST_USD_NANO, rejectsWith, setup } from "./setup.ts";
 
 /** A full environment: a deterministic run, sandboxed checks and one AI run, nothing released yet. */
 async function everything() {
@@ -36,7 +36,7 @@ async function everything() {
 }
 
 /** What must never reach a student before the teacher releases it, or ever. */
-const TEACHER_ONLY = ["content.required", "Discusses silence", "hidden-answer-check", "suggestions", "suggestedLevel", "points", "anthropic", "costCents", "proficient", "strong"];
+const TEACHER_ONLY = ["content.required", "Discusses silence", "hidden-answer-check", "suggestions", "suggestedLevel", "points", "anthropic", "costUsdNano", "proficient", "strong"];
 
 function expectNoTeacherOnly(value: unknown, also: string[] = []): void {
   const json = JSON.stringify(value);
@@ -60,7 +60,7 @@ describe("rubric report views", () => {
       ["ai-suggested", "anthropic/claude-feedback-test", "proficient"],
     ]);
     expect(structure.actions.map((a) => a.action)).toEqual(["accept", "reject", "edit"]);
-    expect(view.ai).toMatchObject([{ label: "ai-suggested", status: "completed", costCents: 3, released: false, releaseAction: { action: "release" } }]);
+    expect(view.ai).toMatchObject([{ label: "ai-suggested", status: "completed", costUsdNano: MODEL_COST_USD_NANO, released: false, releaseAction: { action: "release" } }]);
     expect(view.official).toBe(false);
 
     // Once the teacher decides, the decision replaces the actions.

@@ -119,7 +119,7 @@ describe("fleet protocol field names", () => {
       const district = await makeDistrict(snapshot, clock, { sharesAggregateSpend: true });
       await registry.register(await district.registration());
       await registry.acceptHeartbeat(
-        await district.agent.heartbeat({ releaseVersion: "0.1.0", probes: [], aggregateAiSpendCents: 5 }),
+        await district.agent.heartbeat({ releaseVersion: "0.1.0", probes: [], aggregateAiSpendUsdNano: "50000000" }),
       );
     }
     for (const record of await storage.list()) {

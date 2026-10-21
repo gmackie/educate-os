@@ -4,7 +4,7 @@
 // share: that engine's guarantees (zero cost, no clock, randomness or network) are exactly what
 // these runs cannot give.
 import { z } from "zod";
-import { AssessmentRunId, SchoolOsError, SubmissionId, type Caller } from "@schoolos/contracts";
+import { AssessmentRunId, compareUsdNano, SchoolOsError, SubmissionId, usdNano, usdNanoValue, type Caller, type UsdNano } from "@schoolos/contracts";
 import { submissionDigest, type AssessmentService, type AssignmentBinding, type RubricReleaseRef, type SubmissionSnapshot } from "@schoolos/assessment";
 import {
   assessmentRunIdFor,
@@ -425,9 +425,9 @@ export class AssessmentAi {
     rubric: RubricRelease,
     artifacts: EvaluationArtifact[],
   ): Promise<Outcome> {
-    const completed = (outcome: AiOutcome, costCents: number): Outcome => ({
+    const completed = (outcome: AiOutcome, costUsdNano: UsdNano): Outcome => ({
       kind: "completed",
-      report: { kind: "ai", format: "schoolos.ai-feedback-report.v1", runId: run.id, key: run.key, label: "ai-suggested", evaluator: spec.evaluator, model: spec.model, outcome, costCents },
+      report: { kind: "ai", format: "schoolos.ai-feedback-report.v2", runId: run.id, key: run.key, label: "ai-suggested", evaluator: spec.evaluator, model: spec.model, outcome, costUsdNano },
     });
     const ai = this.#options.ai;
     if (ai === undefined || ai.id !== spec.evaluator.id || ai.release !== spec.evaluator.release) {
@@ -435,7 +435,7 @@ export class AssessmentAi {
     }
     // The policy in force when the work is sent decides, not the one when the run was queued.
     const policy = (await this.#options.aiHelpPolicies.aiHelpPolicy(run.activityId)) ?? "none";
-    if (policy === "none") return completed({ status: "skipped", reason: "ai-help-policy" }, 0);
+    if (policy === "none") return completed({ status: "skipped", reason: "ai-help-policy" }, "0");
     const criteria = rubric.criteria.filter((c) => spec.config.criteria === undefined || spec.config.criteria.includes(c.id));
     try {
       const evaluation = await ai.evaluate({
@@ -445,7 +445,7 @@ export class AssessmentAi {
         criteria,
         artifacts,
       }, spec.config);
-      return completed(evaluation.outcome, evaluation.costCents);
+      return completed(evaluation.outcome, evaluation.costUsdNano);
     } catch {
       return { kind: "retry", message: "The model request did not complete." };
     }
@@ -457,12 +457,12 @@ export class AssessmentAi {
     if (!availability.available) return failed("sandbox-unavailable", availability.reason);
     const files = sandboxFiles(artifacts);
     const checks: SandboxCheckResult[] = [];
-    let spent = 0;
+    let spent = 0n;
     for (const check of spec.checks) {
-      const remaining = profile.sandbox.maxCostCents - spent;
+      const remaining = usdNano(usdNanoValue(profile.sandbox.maxCostUsdNano) - spent);
       let raw: unknown;
       try {
-        raw = await this.#sandbox.run({ jobId: `${run.id}:${check.id}`, entrypoint: check.entrypoint, files, profile: profile.sandbox, remainingCostCents: remaining });
+        raw = await this.#sandbox.run({ jobId: `${run.id}:${check.id}`, entrypoint: check.entrypoint, files, profile: profile.sandbox, remainingCostUsdNano: remaining });
       } catch {
         return { kind: "retry", message: `The sandbox did not finish check ${check.id}.` };
       }
@@ -470,10 +470,10 @@ export class AssessmentAi {
       if (!result.success) return failed("sandbox-error", `The sandbox returned a malformed result for check ${check.id}.`);
       if (result.data.status === "unavailable") return failed("sandbox-unavailable", result.data.reason);
       // The sandbox enforces the limits; a result beyond them means it did not, so nothing it said is kept.
-      if (result.data.costCents > remaining || result.data.cpuMs > profile.sandbox.cpuMs) {
+      if (compareUsdNano(result.data.costUsdNano, remaining) > 0 || result.data.cpuMs > profile.sandbox.cpuMs) {
         return failed("sandbox-error", `The sandbox reported check ${check.id} beyond its profile's limits.`);
       }
-      spent += result.data.costCents;
+      spent += usdNanoValue(result.data.costUsdNano);
       checks.push({
         checkId: check.id,
         criterionId: check.criterionId,
@@ -482,7 +482,7 @@ export class AssessmentAi {
         evidence: sandboxEvidence(check, result.data),
       });
     }
-    return { kind: "completed", report: { kind: "sandbox", format: "schoolos.sandbox-report.v1", runId: run.id, key: run.key, evaluator: spec.evaluator, checks, costCents: spent } };
+    return { kind: "completed", report: { kind: "sandbox", format: "schoolos.sandbox-report.v2", runId: run.id, key: run.key, evaluator: spec.evaluator, checks, costUsdNano: usdNano(spent) } };
   }
 
   #work(caller: Caller, submission: SubmissionSnapshot): SubmittedWork {

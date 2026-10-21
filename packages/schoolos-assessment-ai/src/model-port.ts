@@ -1,22 +1,20 @@
 // The model port: how an AI evaluator reaches a model, always through governance. Its
-// `beforeRequest` / `afterResponse` pair mirrors `AiRequestGovernor` in `@schoolos/ai-governance`
-// (G01), which is not in this package's lineage yet; once it is, `ledgerGovernor` supplies those
-// two methods and the shapes below are replaced by imports.
+// `beforeRequest` / `afterResponse` pair is a narrowing of `AiRequestGovernor` in
+// `@schoolos/ai-governance` (G01), in the governor's own types, amounts in nanodollars included,
+// so `ledgerGovernor` supplies those two methods as they are.
 import { z } from "zod";
-import { DistrictId, OfferingId, PrincipalId } from "@schoolos/contracts";
+import {
+  AiDenialReason,
+  AiProvider,
+  AiRequestId,
+  ModelRef,
+  TokenUsage,
+  UsdNano,
+  type AiWorkspaceContext,
+  type GovernedAiRequest,
+} from "@schoolos/ai-governance";
 
-/** The AI providers a district can route through AI Gateway; mirrors `AiProvider` in `@schoolos/ai-governance`. */
-export const AiProvider = z.enum(["openai", "anthropic", "google", "cloudflare", "ollama"]);
-/** An AI provider. */
-export type AiProvider = z.infer<typeof AiProvider>;
-
-/** Names one model: its provider and its ID on that provider's API. Mirrors `ModelRef` in `@schoolos/ai-governance`. */
-export const ModelRef = z.strictObject({
-  provider: AiProvider,
-  modelId: z.string().regex(/^[A-Za-z0-9_.:@-][A-Za-z0-9_.:/@-]{0,150}$/, "expected a model ID"),
-});
-/** A model reference. */
-export type ModelRef = z.infer<typeof ModelRef>;
+export { AiProvider, ModelRef, TokenUsage };
 
 /** The label a model's suggestions carry in the assessment service: `<provider>/<modelId>`. */
 export function modelLabel(model: ModelRef): string {
@@ -24,68 +22,37 @@ export function modelLabel(model: ModelRef): string {
 }
 
 /**
- * Identifies one model request; mirrors `AiRequestId`. An AI assessment run uses its run ID, which
- * is derived from its whole run key, so every attempt of one run is the same request.
+ * Identifies one model request: governance's `AiRequestId`. An AI assessment run uses its run ID,
+ * which is derived from its whole run key, so every attempt of one run is the same request.
  */
-export const ModelRequestId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/, "expected an opaque request ID");
+export const ModelRequestId = AiRequestId;
 /** A model request identifier. */
-export type ModelRequestId = z.infer<typeof ModelRequestId>;
+export type ModelRequestId = AiRequestId;
 
-/** Why governance refused a request; mirrors `AiDenialReason`. */
-export const ModelDenialReason = z.enum([
-  "cross-district",
-  "unknown-principal",
-  "unknown-offering",
-  "not-enrolled",
-  "term-closed",
-  "no-funding-pool",
-  "ai-spending-disabled",
-  "model-unknown",
-  "model-disabled",
-  "model-not-allowed",
-  "principal-cap-reached",
-  "pool-exhausted",
-  "safety-budget-exhausted",
-  "request-already-completed",
-]);
+/** Why governance refused a request: governance's `AiDenialReason`. */
+export const ModelDenialReason = AiDenialReason;
 /** A model denial reason. */
-export type ModelDenialReason = z.infer<typeof ModelDenialReason>;
+export type ModelDenialReason = AiDenialReason;
 
 /**
- * What governance is told before a request; mirrors `GovernedAiRequest`, except that amounts here
- * are whole cents (an execution profile's cost limit) where governance holds integer nanodollars,
- * so the adapter onto the governor converts them with `usdNanoFromCents`. There is no field for
- * the prompt, so the student's work never reaches the ledger.
+ * What governance is told before a request: a `GovernedAiRequest` whose workspace is a course,
+ * because AI assessment of course work is always billed to its offering, and whose purpose is the
+ * default, generative. `estimatedMaxUsdNano` is the execution profile's cost limit. There is no
+ * field for the prompt, so the student's work never reaches the ledger.
  */
-export interface GovernedModelRequest {
-  requestId: ModelRequestId;
-  principal: { principalId: PrincipalId; districtId: DistrictId };
-  /** AI assessment of course work is always billed to its offering. */
-  workspace: { kind: "course"; offeringId: OfferingId };
-  model: ModelRef;
-  /** The most the request may cost: the execution profile's cost limit. */
-  estimatedMaxCents: number;
-}
+export type GovernedModelRequest = Omit<GovernedAiRequest, "workspace" | "fundingPurpose"> & {
+  workspace: Extract<AiWorkspaceContext, { kind: "course" }>;
+};
 
 /** Whether governance lets a request go ahead; the parts of `GovernorDecision` an evaluator reads. */
 export type ModelGovernorDecision = { effect: "allow" } | { effect: "deny"; reason: ModelDenialReason };
 
-/** Token counts for one response; mirrors `TokenUsage`. */
-export const TokenUsage = z.strictObject({
-  inputTokens: z.int().nonnegative(),
-  outputTokens: z.int().nonnegative(),
-  cacheReadTokens: z.int().nonnegative(),
-  cacheWriteTokens: z.int().nonnegative(),
-});
-/** Token usage. */
-export type TokenUsage = z.infer<typeof TokenUsage>;
-
 /**
- * How a request ended, as reported to governance; mirrors the single-attempt form of
- * `AiResponseOutcome`, in whole cents (see {@link GovernedModelRequest}).
+ * How a request ended, as reported to governance: the single-attempt and failed forms of
+ * `AiResponseOutcome`, with the cost in nanodollars.
  */
 export type ModelResponseOutcome =
-  | { status: "completed"; requestId: ModelRequestId; usage: TokenUsage; actualCents: number }
+  | { status: "completed"; requestId: ModelRequestId; usage: TokenUsage; actualUsdNano: UsdNano }
   | { status: "failed"; requestId: ModelRequestId };
 
 /**
@@ -107,8 +74,8 @@ export interface ModelPrompt {
 export const ModelCompletion = z.strictObject({
   output: z.unknown(),
   usage: TokenUsage,
-  /** The gateway's cost estimate, rounded up to whole cents. */
-  actualCents: z.int().nonnegative(),
+  /** What the request cost, in nanodollars, as the gateway reported or estimated it. */
+  actualUsdNano: UsdNano,
 });
 /** A model completion. */
 export type ModelCompletion = z.infer<typeof ModelCompletion>;
@@ -123,6 +90,6 @@ export interface ModelPort {
   beforeRequest(request: GovernedModelRequest): Promise<ModelGovernorDecision>;
   /** Sends the prompt. Throwing is a transient failure: the run retries it under the same request ID. */
   complete(prompt: ModelPrompt): Promise<ModelCompletion>;
-  /** Settles a completed request or releases a failed one. */
-  afterResponse(outcome: ModelResponseOutcome): Promise<void>;
+  /** Settles a completed request or releases a failed one. What it resolves to is not read. */
+  afterResponse(outcome: ModelResponseOutcome): Promise<unknown>;
 }

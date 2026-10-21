@@ -1,4 +1,4 @@
-import { InstanceId, OpaqueCode, SchoolOsError, UtcTimestamp } from "@schoolos/contracts";
+import { ceilUsdNanoToCents, InstanceId, OpaqueCode, SchoolOsError, UtcTimestamp } from "@schoolos/contracts";
 import {
   CommercialAccountId,
   Entitlement,
@@ -387,12 +387,14 @@ export class CommerceService {
 
   // The plan's AI credit allowance is SchoolOS-funded; only spend beyond it is a SchoolOS fee. The
   // figure is the one aggregate number an opted-in heartbeat carries, never anything per person.
+  // The heartbeat counts nanodollars and invoices are cents, so the spend is rounded up to the
+  // cent here, at the invoice boundary (ADR-0008).
   #aiOverageLine(account: CommercialAccount, subscription: Subscription | undefined, heartbeat: Heartbeat): InvoiceLine | undefined {
     if (account.aiUsageSharing !== "opted-in") throw new SchoolOsError("policy-violation", "district has not opted in to sharing AI usage");
     if (!account.instanceIds.includes(heartbeat.instanceId)) throw new SchoolOsError("not-found", "instance not found");
     if (subscription === undefined) throw new SchoolOsError("validation-failed", "AI usage is invoiced against a subscription");
-    if (heartbeat.aggregateAiSpendCents === undefined) return undefined;
-    const overageCents = Math.max(0, subtractCents(heartbeat.aggregateAiSpendCents, this.#plan(subscription.planId).aiCreditAllowanceCents));
+    if (heartbeat.aggregateAiSpendUsdNano === undefined) return undefined;
+    const overageCents = Math.max(0, subtractCents(ceilUsdNanoToCents(heartbeat.aggregateAiSpendUsdNano), this.#plan(subscription.planId).aiCreditAllowanceCents));
     if (overageCents === 0) return undefined;
     return { kind: "ai-credit-overage", code: "ai-credit-overage", quantity: 1, unitAmountCents: overageCents, amountCents: overageCents };
   }

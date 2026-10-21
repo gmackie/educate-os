@@ -32,7 +32,7 @@ sandbox's to enforce. The code under test cannot raise any of them.
 | `memoryMb` | Peak memory. | `limit-exceeded: memory` once exceeded. |
 | `maxOutputBytes` | stdout and stderr together. | `limit-exceeded: output` once exceeded. |
 | `egress` | `none`, or an allowlist of host names. | Any other connection is `limit-exceeded: network`. |
-| `maxCostCents` | The most one run may spend, across all its checks. | Each job gets what is left. It is stopped with `limit-exceeded: cost` before spending more. |
+| `maxCostUsdNano` | The most one run may spend, across all its checks, in nanodollars. | Each job gets what is left. It is stopped with `limit-exceeded: cost` before spending more. |
 
 `SandboxExecutionProfile.maxRetries` bounds retries after transient failures, where the sandbox
 throws instead of reporting. A retried job keeps its `jobId` (`<runId>:<checkId>`), so a backend
@@ -53,7 +53,7 @@ current Cloudflare documentation and a real account before it is relied on.
 | `maxOutputBytes` | Truncate the exec stream on the Worker side. | Truncate the build log on retrieval. |
 | `egress: none` | Disable outbound networking for the container, if supported. Otherwise route all egress through a Worker that denies it. | Unknown whether build egress can be disabled. |
 | `egress: allowlist` | An outbound Worker proxy that allows only the listed hosts. | Unknown. |
-| `maxCostCents` | Estimate from instance-seconds before the job, then stop the job when the estimate reaches the remaining budget. Reconcile against the bill later, as AI governance does (G01). | Estimate from build minutes. Reconcile against the bill. |
+| `maxCostUsdNano` | Estimate from instance-seconds before the job, then stop the job when the estimate reaches the remaining budget. Reconcile against the bill later, as AI governance does (G01). | Estimate from build minutes. Reconcile against the bill. |
 | Availability | Containers on the district's account and plan. | Artifacts and its CI on the district's account and plan. |
 
 Whichever backend is chosen, these rules from this package still apply:

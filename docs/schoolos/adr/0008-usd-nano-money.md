@@ -29,6 +29,17 @@ rounding to cents makes moderation spend disappear from budgets and reports.
 
 - Sub-cent moderation spend accumulates exactly: 1,000 checks at 38,000 nanodollars total 3.8¢.
 - Usage with no reported cost is recorded as an unknown liability, never as $0.
-- Other packages that store AI cost in cents (`assessment-ai`, `assessment-ci`, `fleet`) convert at
-  their boundaries until SCHO-119 migrates them. Commerce money (`@schoolos/commerce`) stays in
-  cents, because invoices are cents.
+- Commerce money (`@schoolos/commerce`) stays in cents, because invoices are cents. It rounds the
+  fleet heartbeat's AI spend up to the cent where it prices an overage line.
+
+## Amendment (SCHO-119)
+
+- `UsdNano` and its helpers live in `@schoolos/contracts` (`src/money.ts`) and are re-exported by
+  `@schoolos/ai-governance`. Assessment reports and the fleet heartbeat carry AI cost too, and
+  `@schoolos/fleet` (a wire format the root also reads) should not depend on the district's ledger
+  package; the contracts are the shared, zod-only vocabulary ADR-0002 provides for exactly this.
+- `assessment-ai`, `assessment-ci` and `fleet` hold AI cost as `*UsdNano` fields. The assessment
+  model port is typed by the governor's own request and outcome types.
+- The fleet heartbeat sends `aggregateAiSpendUsdNano`. The root still accepts a heartbeat carrying
+  the earlier `aggregateAiSpendCents` and reads it as nanodollars, so instances can upgrade in any
+  order; a heartbeat carrying both is refused.

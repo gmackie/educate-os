@@ -1,3 +1,4 @@
+import { usdNanoFromCents } from "@schoolos/contracts";
 import { describe, expect, it } from "vitest";
 import { FakeExecutionSandbox, SANDBOX_UNAVAILABLE_REASON, unavailableSandbox, type CiSandboxProfile, type FakeProgram, type SandboxJob } from "../src/index.ts";
 import { P, SANDBOX_PROFILE, rejectsWith, setup } from "./setup.ts";
@@ -32,8 +33,12 @@ const PROGRAMS: Record<string, FakeProgram> = {
   "tests/expensive.py": (ctx) => ctx.cpu(1500),
 };
 
-function job(entrypoint: string, profile: Partial<CiSandboxProfile> = {}, remainingCostCents = 10): SandboxJob {
-  return { jobId: "asr_test:check", entrypoint, files: [], profile: { ...SANDBOX_PROFILE.sandbox, ...profile }, remainingCostCents };
+const cents = (n: number) => usdNanoFromCents(n);
+/** Four cents a CPU second. */
+const FOUR_CENTS = cents(4);
+
+function job(entrypoint: string, profile: Partial<CiSandboxProfile> = {}, remainingCostUsdNano = cents(10)): SandboxJob {
+  return { jobId: "asr_test:check", entrypoint, files: [], profile: { ...SANDBOX_PROFILE.sandbox, ...profile }, remainingCostUsdNano };
 }
 
 const checks = [
@@ -72,12 +77,13 @@ describe("the execution sandbox", () => {
       ["smoke", "student-visible", "1 of 1 tests passed", true, 1],
     ]);
     expect(JSON.stringify(run.report)).not.toContain("4 tests run");
-    // Each job is charged whole cents, rounded up.
-    expect(run.report?.kind === "sandbox" && run.report.costCents).toBe(2);
+    // Each job is charged for its CPU time exactly, never rounded to whole cents: 0.4 s at the
+    // default cent a second is 0.4 cents (two whole cents when each job was rounded up).
+    expect(run.report?.kind === "sandbox" && run.report.costUsdNano).toBe("4000000");
   });
 
   it("enforces CPU time, memory, output size, egress and cost in the fake", async () => {
-    const sandbox = new FakeExecutionSandbox(PROGRAMS, { centsPerCpuSecond: 4 });
+    const sandbox = new FakeExecutionSandbox(PROGRAMS, { usdNanoPerCpuSecond: FOUR_CENTS });
     expect(await sandbox.run(job("tests/spin.py"))).toMatchObject({ status: "limit-exceeded", limit: "cpu", cpuMs: 2000 });
     expect(await sandbox.run(job("tests/hog.py"))).toMatchObject({ status: "limit-exceeded", limit: "memory" });
     expect(await sandbox.run(job("tests/chatty.py"))).toMatchObject({ status: "limit-exceeded", limit: "output" });
@@ -87,22 +93,28 @@ describe("the execution sandbox", () => {
     expect(await sandbox.run(job("tests/fetch-data.py", allow))).toMatchObject({ status: "completed", tests: [{ name: "downloaded", passed: true }] });
     expect(await sandbox.run(job("tests/phone-home.py", allow))).toMatchObject({ status: "limit-exceeded", limit: "network" });
     // 1.5 s at 4 cents a second is 6 cents: within a 10-cent run, not within the 5 cents left.
-    expect(await sandbox.run(job("tests/expensive.py"))).toMatchObject({ status: "completed", costCents: 6 });
-    expect(await sandbox.run(job("tests/expensive.py", {}, 5))).toMatchObject({ status: "limit-exceeded", limit: "cost", costCents: 5 });
+    expect(await sandbox.run(job("tests/expensive.py"))).toMatchObject({ status: "completed", costUsdNano: cents(6) });
+    expect(await sandbox.run(job("tests/expensive.py", {}, cents(5)))).toMatchObject({ status: "limit-exceeded", limit: "cost", costUsdNano: cents(5) });
+  });
+
+  it("charges a fraction of a cent, rounded up only to the nanodollar", async () => {
+    // 1.5 s at 15,001 nanodollars a second is 22,501.5 nanodollars, charged as 22,502.
+    const sandbox = new FakeExecutionSandbox(PROGRAMS, { usdNanoPerCpuSecond: "15001" });
+    expect(await sandbox.run(job("tests/expensive.py"))).toMatchObject({ status: "completed", costUsdNano: "22502" });
   });
 
   it("charges every check against one per-run cost limit", async () => {
-    const sandbox = new FakeExecutionSandbox(PROGRAMS, { centsPerCpuSecond: 4 });
+    const sandbox = new FakeExecutionSandbox(PROGRAMS, { usdNanoPerCpuSecond: FOUR_CENTS });
     const env = await setup({ sandbox });
     const twice = ["a", "b"].map((id) => ({ id, criterionId: "structure", entrypoint: "tests/expensive.py", visibility: "teacher-only" as const }));
     const run = await env.ai.runSandbox(P.rivera, { submissionId: env.submissionId, idempotencyKey: "costly", executionProfile: "sandbox-tests@1", checks: twice });
-    expect(sandbox.jobs.map((j) => j.remainingCostCents)).toEqual([10, 4]);
+    expect(sandbox.jobs.map((j) => j.remainingCostUsdNano)).toEqual([cents(10), cents(4)]);
     expect(run.report?.kind === "sandbox" && run.report.checks.map((c) => c.limit ?? "ok")).toEqual(["ok", "cost"]);
-    expect(run.report?.kind === "sandbox" && run.report.costCents).toBe(10);
+    expect(run.report?.kind === "sandbox" && run.report.costUsdNano).toBe(cents(10));
   });
 
   it("refuses a sandbox that reports beyond its limits", async () => {
-    const lying = { availability: () => ({ available: true as const }), run: async () => ({ status: "completed" as const, exitCode: 0, tests: [], outputBytes: 0, cpuMs: 999_999, costCents: 0 }) };
+    const lying = { availability: () => ({ available: true as const }), run: async () => ({ status: "completed" as const, exitCode: 0, tests: [], outputBytes: 0, cpuMs: 999_999, costUsdNano: "0" }) };
     const env = await setup({ sandbox: lying });
     const run = await env.ai.runSandbox(P.rivera, { submissionId: env.submissionId, idempotencyKey: "tests", executionProfile: "sandbox-tests@1", checks });
     expect(run).toMatchObject({ state: "failed", error: { code: "sandbox-error" } });

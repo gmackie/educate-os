@@ -3,6 +3,7 @@ import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
 import { describe, expect, it } from "vitest";
 import {
   type HealthProbe,
+  Heartbeat,
   KeyId,
   OwnershipToken,
   type SignedEnvelope,
@@ -72,7 +73,7 @@ describe("R01 acceptance: two districts register and heartbeat without uploading
     const northfieldBeat = await northfield.agent.heartbeat({
       releaseVersion: "0.1.1",
       probes: HEALTHY,
-      aggregateAiSpendCents: 12_345,
+      aggregateAiSpendUsdNano: "123450038000",
     });
     const riverbendBeat = await riverbend.agent.heartbeat({ releaseVersion: "0.1.0", probes: HEALTHY });
     sent.push(northfieldBeat, riverbendBeat);
@@ -316,14 +317,52 @@ describe("revocation of management access", () => {
   });
 });
 
+describe("heartbeat AI spend across the SCHO-119 upgrade", () => {
+  const base = { instanceId: "ins_northfield", sequence: 1, sentAt: "2026-10-20T14:00:00Z", releaseVersion: "0.1.0", probes: [] };
+
+  it("reads the current form, in nanodollars, unchanged", () => {
+    expect(Heartbeat.parse({ ...base, aggregateAiSpendUsdNano: "38000" })).toEqual({ ...base, aggregateAiSpendUsdNano: "38000" });
+  });
+
+  it("reads the earlier form, in cents, as nanodollars", () => {
+    expect(Heartbeat.parse({ ...base, aggregateAiSpendCents: 12_345 })).toEqual({ ...base, aggregateAiSpendUsdNano: "123450000000" });
+  });
+
+  it("refuses a heartbeat that carries both forms, or a malformed amount", () => {
+    expect(Heartbeat.safeParse({ ...base, aggregateAiSpendCents: 1, aggregateAiSpendUsdNano: "10000000" }).success).toBe(false);
+    for (const amount of ["-1", "01", "1.5", 5]) expect(Heartbeat.safeParse({ ...base, aggregateAiSpendUsdNano: amount }).success).toBe(false);
+  });
+
+  it("the root accepts a signed heartbeat from an agent that still sends cents", async () => {
+    const clock = manualClock();
+    const { registry, storage } = makeRegistry(clock);
+    const district = await makeDistrict(NORTHFIELD, clock, { sharesAggregateSpend: true });
+    await registry.register(await district.registration());
+    clock.advance(MINUTE);
+    const legacy = { ...base, instanceId: district.instanceId, sentAt: clock.now().toISOString(), aggregateAiSpendCents: 250 };
+    await registry.acceptHeartbeat(overTheWire(await signEnvelope(district.identity, "heartbeat", legacy)));
+    const [record] = await storage.list();
+    expect(record).toMatchObject({ aggregateAiSpendUsdNano: "2500000000", lastSequence: 1 });
+    expect(record).not.toHaveProperty("aggregateAiSpendCents");
+  });
+});
+
 describe("district agent", () => {
   it("refuses to send aggregate AI spend unless the district opted in", async () => {
     const clock = manualClock();
     const district = await makeDistrict(NORTHFIELD, clock);
     const error = await rejection(
-      district.agent.heartbeat({ releaseVersion: "0.1.0", probes: [], aggregateAiSpendCents: 100 }),
+      district.agent.heartbeat({ releaseVersion: "0.1.0", probes: [], aggregateAiSpendUsdNano: "1000000000" }),
     );
     expect(error.code).toBe("policy-violation");
+  });
+
+  it("sends AI spend in nanodollars and never the earlier cents field", async () => {
+    const clock = manualClock();
+    const district = await makeDistrict(NORTHFIELD, clock, { sharesAggregateSpend: true });
+    const beat = await district.agent.heartbeat({ releaseVersion: "0.1.0", probes: [], aggregateAiSpendUsdNano: "38000" });
+    expect(beat.payload).toMatchObject({ aggregateAiSpendUsdNano: "38000" });
+    expect(Object.keys(beat.payload as object)).not.toContain("aggregateAiSpendCents");
   });
 
   it("drops fields outside the allow-list instead of signing them", async () => {

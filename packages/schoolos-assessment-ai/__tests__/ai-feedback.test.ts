@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
-import type { AiFeedbackReport, OptionalRun } from "../src/index.ts";
+import { AiResponseOutcome, GovernedAiRequest, type AiRequestGovernor } from "@schoolos/ai-governance";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import type { AiFeedbackReport, ModelPort, OptionalRun } from "../src/index.ts";
 import { AI_FEEDBACK_INSTRUCTIONS } from "../src/index.ts";
-import { ESSAY, INJECTION, P, quote, rejectsWith, setup, type FakeModel } from "./setup.ts";
+import { ESSAY, INJECTION, P, quote, MODEL_COST_USD_NANO, rejectsWith, setup, type FakeModel } from "./setup.ts";
 
 function aiReport(run: OptionalRun): AiFeedbackReport {
   if (run.report?.kind !== "ai") throw new Error(`expected a completed AI run, got ${run.state} ${JSON.stringify(run.error)}`);
@@ -30,7 +31,7 @@ describe("AI feedback (E03)", () => {
     grounded(env.model);
     const run = await env.ai.requestAiFeedback(P.rivera, { submissionId: env.submissionId, idempotencyKey: "first-read", executionProfile: "ai-feedback@1" });
     const report = aiReport(run);
-    expect(report).toMatchObject({ label: "ai-suggested", model: { provider: "anthropic" }, costCents: 3 });
+    expect(report).toMatchObject({ label: "ai-suggested", model: { provider: "anthropic" }, costUsdNano: MODEL_COST_USD_NANO });
     expect(report.outcome.status).toBe("completed");
     if (report.outcome.status !== "completed") return;
     expect(report.outcome.findings.map((f) => [f.source, f.criterionId, f.suggestedLevelId, f.uncertainty])).toEqual([
@@ -133,7 +134,7 @@ describe("AI feedback (E03)", () => {
 
     expect(deterministic.state).toBe("completed");
     expect(run.state).toBe("completed");
-    expect(aiReport(run)).toMatchObject({ outcome: { status: "skipped", reason: "budget" }, costCents: 0 });
+    expect(aiReport(run)).toMatchObject({ outcome: { status: "skipped", reason: "budget" }, costUsdNano: "0" });
     expect(env.model.prompts).toEqual([]);
 
     const view = await env.ai.teacherReport(P.rivera, env.submissionId, deterministic.runId);
@@ -156,9 +157,13 @@ describe("AI feedback (E03)", () => {
     expect(run).toMatchObject({ state: "completed", attempts: 2 });
     expect(env.model.prompts.map((p) => p.requestId)).toEqual([run.id, run.id]);
     expect(env.model.requests.map((r) => r.requestId)).toEqual([run.id, run.id]);
-    expect(env.model.requests[0]).toMatchObject({ estimatedMaxCents: 25, workspace: { kind: "course", offeringId: "off_nf-eng9-fall-p3" }, principal: { principalId: "prn_nf-teacher-rivera" } });
+    expect(env.model.requests[0]).toMatchObject({ estimatedMaxUsdNano: "250000000", workspace: { kind: "course", offeringId: "off_nf-eng9-fall-p3" }, principal: { principalId: "prn_nf-teacher-rivera" } });
     expect(env.model.reservations).toBe(1);
-    expect(env.model.outcomes).toEqual([{ status: "completed", requestId: run.id, usage: expect.any(Object), actualCents: 3 }]);
+    expect(env.model.outcomes).toEqual([{ status: "completed", requestId: run.id, usage: expect.any(Object), actualUsdNano: MODEL_COST_USD_NANO }]);
+
+    // What the port sends is exactly what the real governor accepts, nanodollars included.
+    for (const sent of env.model.requests) expect(GovernedAiRequest.safeParse(sent).success).toBe(true);
+    for (const sent of env.model.outcomes) expect(AiResponseOutcome.safeParse(sent).success).toBe(true);
 
     // Asking for the same run again returns it, with no model call and no new charge.
     expect((await env.ai.requestAiFeedback(P.rivera, request)).id).toBe(run.id);
@@ -203,5 +208,11 @@ describe("AI feedback (E03)", () => {
     await rejectsWith(env.ai.requestAiFeedback(P.rivera, { ...request, config: { criteria: ["voice"] } }), "validation-failed");
     await rejectsWith(env.ai.requestAiFeedback(P.rivera, { ...request, executionProfile: "sandbox-tests@1" }), "validation-failed");
     expect(env.model.requests).toEqual([]);
+  });
+});
+
+describe("the model port", () => {
+  it("is the governor's own hook pair, so ledgerGovernor plugs in with no adapter", () => {
+    expectTypeOf<AiRequestGovernor>().toExtend<Pick<ModelPort, "beforeRequest" | "afterResponse">>();
   });
 });

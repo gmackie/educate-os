@@ -1,12 +1,17 @@
 import { z } from "zod";
 import { aiHelpLayersAt, type AiHelpLevel, type DesiredState } from "@schoolos/config";
-import { POLICY_ORDERINGS, type ActivityId, type Scope } from "@schoolos/contracts";
+import { compareUsdNano, POLICY_ORDERINGS, PositiveUsdNano, UsdNano, type ActivityId, type Scope } from "@schoolos/contracts";
 import { ExecutionProfileId } from "@schoolos/assessment-ci";
 import { ModelRef } from "./model-port.ts";
 
+/** The most a profile may let one run spend: $100, in nanodollars. */
+export const MAX_RUN_COST_USD_NANO = "100000000000";
+const withinRunCostCeiling = (amount: string) => compareUsdNano(amount, MAX_RUN_COST_USD_NANO) <= 0;
+
 /**
  * How an AI assessment run executes (roadmap §7): one model, and the limits on tokens, the size of
- * the work sent, cost and retries. The cost limit is what governance reserves before the request.
+ * the work sent, cost and retries. The cost limit, in nanodollars (ADR-0008), is what governance
+ * reserves before the request.
  */
 export const AiExecutionProfile = z.strictObject({
   id: ExecutionProfileId,
@@ -16,7 +21,7 @@ export const AiExecutionProfile = z.strictObject({
     /** The most characters of submitted text sent to the model; a longer submission is skipped, never truncated. */
     maxInputChars: z.int().positive().max(400_000),
     maxOutputTokens: z.int().positive().max(32_000),
-    maxCostCents: z.int().positive().max(10_000),
+    maxCostUsdNano: PositiveUsdNano.refine(withinRunCostCeiling, "expected at most $100"),
     maxRetries: z.int().nonnegative().max(5),
   }),
 });
@@ -34,7 +39,7 @@ const EgressHost = z.string().regex(/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z
  * - `memoryMb`: the most memory the job may hold at once.
  * - `maxOutputBytes`: the most the job may write to stdout and stderr together.
  * - `egress`: `none`, or only the listed hosts.
- * - `maxCostCents`: the most the run may spend across all its checks.
+ * - `maxCostUsdNano`: the most the run may spend across all its checks, in nanodollars.
  */
 export const CiSandboxProfile = z.strictObject({
   runtime: z.enum(["python-3", "node-22"]),
@@ -45,7 +50,7 @@ export const CiSandboxProfile = z.strictObject({
     z.strictObject({ kind: z.literal("none") }),
     z.strictObject({ kind: z.literal("allowlist"), hosts: z.array(EgressHost).min(1).max(20) }),
   ]),
-  maxCostCents: z.int().nonnegative().max(10_000),
+  maxCostUsdNano: UsdNano.refine(withinRunCostCeiling, "expected at most $100"),
 });
 /** A CI sandbox profile. */
 export type CiSandboxProfile = z.infer<typeof CiSandboxProfile>;

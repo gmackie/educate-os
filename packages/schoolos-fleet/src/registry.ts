@@ -1,4 +1,4 @@
-import { type CapabilityId, SchoolOsError, type InstanceId } from "@schoolos/contracts";
+import { type CapabilityId, SchoolOsError, type InstanceId, type UsdNano } from "@schoolos/contracts";
 import type { z } from "zod";
 import { fromBase64Url, toBase64Url } from "./encoding.ts";
 import { type FleetMessageKind, parseWire, SignedEnvelope, verifyEnvelope } from "./envelope.ts";
@@ -34,7 +34,8 @@ export interface InstanceRecord {
   lastSequence: number;
   lastHeartbeatAt?: string;
   probes: HealthProbe[];
-  aggregateAiSpendCents?: number;
+  /** The district's last reported AI spend this billing period, in nanodollars, if it shares it. */
+  aggregateAiSpendUsdNano?: UsdNano;
   /** When the district revoked the root's management access. The root then issues no offers. */
   managementRevokedAt?: string;
 }
@@ -166,7 +167,7 @@ export class InstanceRegistry {
       releaseVersion: message.releaseVersion,
       lastHeartbeatAt: message.sentAt,
       probes: message.probes,
-      aggregateAiSpendCents: message.aggregateAiSpendCents,
+      aggregateAiSpendUsdNano: message.aggregateAiSpendUsdNano,
     });
   }
 

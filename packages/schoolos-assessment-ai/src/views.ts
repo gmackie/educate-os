@@ -14,7 +14,7 @@ import {
   type RubricRelease,
   type TextRange,
 } from "@schoolos/assessment-ci";
-import type { ArtifactId } from "@schoolos/contracts";
+import type { ArtifactId, UsdNano } from "@schoolos/contracts";
 import { AI_FEEDBACK_NOTICE, AI_SUGGESTED, type AiEvidence, type AiExcerpt, type AiSkipReason, type Uncertainty } from "./ai-feedback.ts";
 import { modelLabel } from "./model-port.ts";
 import type { AiFeedbackReport, OptionalRecords, OptionalRun, OptionalRunError, OverrideDecision, SandboxReport, TeacherOverride } from "./model.ts";
@@ -87,7 +87,8 @@ export interface AiRunSummary {
   skipReason?: AiSkipReason;
   /** How many findings were dropped, such as for quoting text the work does not contain. */
   dropped: number;
-  costCents: number;
+  /** What the run cost, in nanodollars; round up to the cent to show it. */
+  costUsdNano: UsdNano;
   error?: OptionalRunError;
   released: boolean;
   /** Present when the teacher may release this run's feedback to the student. */
@@ -98,7 +99,8 @@ export interface AiRunSummary {
 export interface SandboxRunSummary {
   runId: AssessmentRunId;
   state: OptionalRun["state"];
-  costCents: number;
+  /** What the run cost, in nanodollars; round up to the cent to show it. */
+  costUsdNano: UsdNano;
   error?: OptionalRunError;
 }
 
@@ -247,7 +249,7 @@ export function teacherReportView(inputs: ReportInputs): TeacherReportView {
       ...(outcome === undefined ? {} : { status: outcome.status }),
       ...(outcome?.status === "skipped" ? { skipReason: outcome.reason } : {}),
       dropped: outcome?.status === "completed" ? outcome.dropped.length : 0,
-      costCents: report?.costCents ?? 0,
+      costUsdNano: report?.costUsdNano ?? "0",
       ...(run.error === undefined ? {} : { error: run.error }),
       released: released.has(run.id),
       ...(releasable ? { releaseAction: { action: "release" as const, runId: run.id } } : {}),
@@ -256,7 +258,7 @@ export function teacherReportView(inputs: ReportInputs): TeacherReportView {
   const sandboxRuns = inputs.runs.filter((r) => r.spec.kind === "sandbox").map((run): SandboxRunSummary => ({
     runId: run.id,
     state: run.state,
-    costCents: run.report?.kind === "sandbox" ? run.report.costCents : 0,
+    costUsdNano: run.report?.kind === "sandbox" ? run.report.costUsdNano : "0",
     ...(run.error === undefined ? {} : { error: run.error }),
   }));
   return { view: "teacher", submissionId: inputs.submissionId, rubric: rubricHeader(inputs.rubric), criteria, ai: aiRuns, sandbox: sandboxRuns, official: false };

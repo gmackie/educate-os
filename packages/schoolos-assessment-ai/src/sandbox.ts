@@ -4,6 +4,7 @@
 import { z } from "zod";
 import { CriterionId } from "@schoolos/assessment";
 import { CheckVisibility, type CriterionEvidence, type EvaluationArtifact } from "@schoolos/assessment-ci";
+import { compareUsdNano, USD_NANO_PER_CENT, UsdNano, usdNanoFromRational, usdNanoValue } from "@schoolos/contracts";
 import type { CiSandboxProfile } from "./profiles.ts";
 
 /** Whether a sandbox can run jobs at all, and if not, why. */
@@ -25,8 +26,8 @@ export interface SandboxJob {
   /** The submitted text, one file per artifact, named by artifact ID. */
   readonly files: readonly { path: string; text: string }[];
   readonly profile: CiSandboxProfile;
-  /** What is left of the run's cost limit; the job stops before it spends more. */
-  readonly remainingCostCents: number;
+  /** What is left of the run's cost limit, in nanodollars; the job stops before it spends more. */
+  readonly remainingCostUsdNano: UsdNano;
 }
 
 /** What a sandbox reports for a job. It is untrusted until parsed. */
@@ -37,14 +38,14 @@ export const SandboxResult = z.discriminatedUnion("status", [
     tests: z.array(z.strictObject({ name: z.string().min(1).max(200), passed: z.boolean() })).max(1000),
     outputBytes: z.int().nonnegative(),
     cpuMs: z.int().nonnegative(),
-    costCents: z.int().nonnegative(),
+    costUsdNano: UsdNano,
   }),
   z.strictObject({
     status: z.literal("limit-exceeded"),
     limit: SandboxLimit,
     detail: z.string().min(1).max(500),
     cpuMs: z.int().nonnegative(),
-    costCents: z.int().nonnegative(),
+    costUsdNano: UsdNano,
   }),
   z.strictObject({ status: z.literal("unavailable"), reason: z.string().min(1).max(500) }),
 ]);
@@ -103,17 +104,18 @@ class LimitHit extends Error {
 /**
  * A sandbox for tests, which runs {@link FakeProgram}s by entrypoint and enforces a profile's limits
  * as a real backend must: CPU time, peak memory, output size, egress (none, or only allowlisted
- * hosts) and the run's remaining cost, charged per CPU second.
+ * hosts) and the run's remaining cost, charged per CPU second and rounded up to the nanodollar.
  */
 export class FakeExecutionSandbox implements ExecutionSandbox {
   readonly #programs: ReadonlyMap<string, FakeProgram>;
-  readonly #centsPerCpuSecond: number;
+  readonly #usdNanoPerCpuSecond: bigint;
   /** Every job it was asked to run, in order. */
   readonly jobs: SandboxJob[] = [];
 
-  constructor(programs: Readonly<Record<string, FakeProgram>>, options: { centsPerCpuSecond?: number } = {}) {
+  /** `usdNanoPerCpuSecond` is the price of a CPU second; it defaults to one cent. */
+  constructor(programs: Readonly<Record<string, FakeProgram>>, options: { usdNanoPerCpuSecond?: UsdNano } = {}) {
     this.#programs = new Map(Object.entries(programs));
-    this.#centsPerCpuSecond = options.centsPerCpuSecond ?? 1;
+    this.#usdNanoPerCpuSecond = usdNanoValue(options.usdNanoPerCpuSecond ?? USD_NANO_PER_CENT.toString());
   }
 
   availability(): SandboxAvailability {
@@ -124,18 +126,19 @@ export class FakeExecutionSandbox implements ExecutionSandbox {
     this.jobs.push(job);
     const program = this.#programs.get(job.entrypoint);
     const { profile } = job;
-    const costLimit = Math.min(profile.maxCostCents, job.remainingCostCents);
+    const costLimit = compareUsdNano(profile.maxCostUsdNano, job.remainingCostUsdNano) <= 0 ? profile.maxCostUsdNano : job.remainingCostUsdNano;
     let cpuMs = 0;
     let memory = 0;
     let outputBytes = 0;
     const tests: { name: string; passed: boolean }[] = [];
-    const cost = () => Math.ceil((cpuMs / 1000) * this.#centsPerCpuSecond);
+    const cost = () => usdNanoFromRational(BigInt(cpuMs) * this.#usdNanoPerCpuSecond, 1000n);
+    const overLimit = () => compareUsdNano(cost(), costLimit) > 0;
     const context: FakeSandboxContext = {
       files: job.files,
       cpu: (ms) => {
         cpuMs += ms;
         if (cpuMs > profile.cpuMs) throw new LimitHit("cpu", `The job used more than ${profile.cpuMs} ms of CPU time.`);
-        if (cost() > costLimit) throw new LimitHit("cost", `The job would cost more than the ${costLimit} cents the run has left.`);
+        if (overLimit()) throw new LimitHit("cost", `The job would cost more than the ${costLimit} nanodollars the run has left.`);
       },
       allocate: (mb) => {
         memory += mb;
@@ -156,14 +159,14 @@ export class FakeExecutionSandbox implements ExecutionSandbox {
         tests.push({ name, passed });
       },
     };
-    if (program === undefined) return { status: "completed", exitCode: 127, tests: [], outputBytes: 0, cpuMs: 0, costCents: 0 };
+    if (program === undefined) return { status: "completed", exitCode: 127, tests: [], outputBytes: 0, cpuMs: 0, costUsdNano: "0" };
     try {
       const exitCode = program(context) ?? 0;
-      return { status: "completed", exitCode, tests, outputBytes, cpuMs, costCents: cost() };
+      return { status: "completed", exitCode, tests, outputBytes, cpuMs, costUsdNano: cost() };
     } catch (error) {
-      if (error instanceof LimitHit) return { status: "limit-exceeded", limit: error.limit, detail: error.message, cpuMs: Math.min(cpuMs, profile.cpuMs), costCents: Math.min(cost(), costLimit) };
+      if (error instanceof LimitHit) return { status: "limit-exceeded", limit: error.limit, detail: error.message, cpuMs: Math.min(cpuMs, profile.cpuMs), costUsdNano: overLimit() ? costLimit : cost() };
       // A crash inside the program is the program's failure, like a non-zero exit.
-      return { status: "completed", exitCode: 1, tests, outputBytes, cpuMs, costCents: cost() };
+      return { status: "completed", exitCode: 1, tests, outputBytes, cpuMs, costUsdNano: cost() };
     }
   }
 }

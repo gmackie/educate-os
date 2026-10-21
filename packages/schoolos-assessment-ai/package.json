@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@schoolos/academics": "workspace:*",
+    "@schoolos/ai-governance": "workspace:*",
     "@schoolos/assessment": "workspace:*",
     "@schoolos/assessment-ci": "workspace:*",
     "@schoolos/config": "workspace:*",

@@ -5,6 +5,7 @@
 // than shown as unverified, because a teacher reads these findings against a student's grade.
 import { RevisionId } from "@schoolos/contracts";
 import { z } from "zod";
+import type { UsdNano } from "@schoolos/contracts";
 import { CriterionId } from "@schoolos/assessment";
 import { Excerpt, TextRange, type AcceptedInput, type EvaluationArtifact, type Evaluator, type RubricCriterion } from "@schoolos/assessment-ci";
 import type { GovernedModelRequest, ModelDenialReason, ModelPort, ModelRequestId } from "./model-port.ts";
@@ -194,7 +195,7 @@ export function verifyFindings(output: AiFeedbackOutput, artifacts: readonly Eva
 export interface AiEvaluationInput {
   /** The governance request ID: the run's ID, the same on every attempt. */
   readonly requestId: ModelRequestId;
-  readonly governance: Omit<GovernedModelRequest, "requestId" | "model" | "estimatedMaxCents">;
+  readonly governance: Omit<GovernedModelRequest, "requestId" | "model" | "estimatedMaxUsdNano">;
   readonly profile: AiExecutionProfile;
   /** The signed rubric's criteria the config addresses. */
   readonly criteria: readonly RubricCriterion[];
@@ -205,7 +206,8 @@ export interface AiEvaluationInput {
 /** What one AI evaluation attempt came to, and what it cost. */
 export interface AiEvaluation {
   outcome: AiOutcome;
-  costCents: number;
+  /** In nanodollars. */
+  costUsdNano: UsdNano;
 }
 
 /** What an {@link AiFeedbackEvaluator} is built from. */
@@ -243,11 +245,11 @@ export class AiFeedbackEvaluator implements NondeterministicEvaluator {
   async evaluate(input: AiEvaluationInput, config: AiFeedbackConfig): Promise<AiEvaluation> {
     const { profile } = input;
     const artifacts = input.artifacts.filter((a) => this.accepts.artifactTypes.includes(a.artifactType) && this.accepts.mediaTypes.includes(a.mediaType));
-    if (artifacts.every((a) => a.text.trim() === "")) return { outcome: { status: "skipped", reason: "no-text" }, costCents: 0 };
-    if (artifacts.reduce((n, a) => n + a.text.length, 0) > profile.limits.maxInputChars) return { outcome: { status: "skipped", reason: "input-too-large" }, costCents: 0 };
+    if (artifacts.every((a) => a.text.trim() === "")) return { outcome: { status: "skipped", reason: "no-text" }, costUsdNano: "0" };
+    if (artifacts.reduce((n, a) => n + a.text.length, 0) > profile.limits.maxInputChars) return { outcome: { status: "skipped", reason: "input-too-large" }, costUsdNano: "0" };
 
-    const decision = await this.#model.beforeRequest({ ...input.governance, requestId: input.requestId, model: profile.model, estimatedMaxCents: profile.limits.maxCostCents });
-    if (decision.effect === "deny") return { outcome: { status: "skipped", reason: skipReasonFor(decision.reason) }, costCents: 0 };
+    const decision = await this.#model.beforeRequest({ ...input.governance, requestId: input.requestId, model: profile.model, estimatedMaxUsdNano: profile.limits.maxCostUsdNano });
+    if (decision.effect === "deny") return { outcome: { status: "skipped", reason: skipReasonFor(decision.reason) }, costUsdNano: "0" };
 
     const boundary = this.#boundary();
     const completion = await this.#model.complete({
@@ -258,11 +260,11 @@ export class AiFeedbackEvaluator implements NondeterministicEvaluator {
       payload: buildPayload(artifacts, boundary),
       maxOutputTokens: profile.limits.maxOutputTokens,
     });
-    await this.#model.afterResponse({ status: "completed", requestId: input.requestId, usage: completion.usage, actualCents: completion.actualCents });
+    await this.#model.afterResponse({ status: "completed", requestId: input.requestId, usage: completion.usage, actualUsdNano: completion.actualUsdNano });
     const parsed = AiFeedbackOutput.safeParse(completion.output);
     return {
       outcome: parsed.success ? verifyFindings(parsed.data, artifacts, input.criteria) : { status: "invalid-output" },
-      costCents: completion.actualCents,
+      costUsdNano: completion.actualUsdNano,
     };
   }
 

@@ -71,7 +71,7 @@ function registryWith(...evaluators: Evaluator[]): EvaluatorRegistry {
   return new EvaluatorRegistry(evaluators, Object.fromEntries(evaluators.map((e) => [e.id, e.release])));
 }
 
-const TINY: ExecutionProfile = { id: "tiny@1", kind: "deterministic", limits: { maxSteps: 50, maxInputBytes: 64, maxRetries: 1, maxCostCents: 0 } };
+const TINY: ExecutionProfile = { id: "tiny@1", kind: "deterministic", limits: { maxSteps: 50, maxInputBytes: 64, maxRetries: 1, maxCostUsdNano: "0" } };
 
 describe("assessment runs", () => {
   it("are idempotent on their key: the same key is the same run, evaluated once", async () => {

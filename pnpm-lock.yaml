@@ -1484,6 +1484,9 @@ importers:
       '@schoolos/academics':
         specifier: workspace:*
         version: link:../schoolos-academics
+      '@schoolos/ai-governance':
+        specifier: workspace:*
+        version: link:../schoolos-ai-governance
       '@schoolos/assessment':
         specifier: workspace:*
         version: link:../schoolos-assessment

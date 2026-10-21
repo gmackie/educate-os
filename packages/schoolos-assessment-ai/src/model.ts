@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ActivityId, AssessmentRunId, DistrictId, OfferingId, PrincipalId, SubmissionId } from "@schoolos/contracts";
+import { ActivityId, AssessmentRunId, DistrictId, OfferingId, PrincipalId, SubmissionId, UsdNano } from "@schoolos/contracts";
 import { CriterionId } from "@schoolos/assessment";
 import { AssessmentRunKey, CheckVisibility, CriterionEvidence, EvaluatorRelease, RunState } from "@schoolos/assessment-ci";
 import { AI_SUGGESTED, AiFeedbackConfig, AiOutcome } from "./ai-feedback.ts";
@@ -22,14 +22,15 @@ export type OptionalRunSpec = z.infer<typeof OptionalRunSpec>;
 /** What an AI run found, labelled `ai-suggested` throughout. It is never official. */
 export const AiFeedbackReport = z.strictObject({
   kind: z.literal("ai"),
-  format: z.literal("schoolos.ai-feedback-report.v1"),
+  format: z.literal("schoolos.ai-feedback-report.v2"),
   runId: AssessmentRunId,
   key: AssessmentRunKey,
   label: z.literal(AI_SUGGESTED),
   evaluator: EvaluatorRelease,
   model: ModelRef,
   outcome: AiOutcome,
-  costCents: z.int().nonnegative(),
+  /** What the model request cost, in nanodollars. */
+  costUsdNano: UsdNano,
 });
 /** An AI feedback report. */
 export type AiFeedbackReport = z.infer<typeof AiFeedbackReport>;
@@ -48,12 +49,13 @@ export type SandboxCheckResult = z.infer<typeof SandboxCheckResult>;
 /** What a sandboxed run found. */
 export const SandboxReport = z.strictObject({
   kind: z.literal("sandbox"),
-  format: z.literal("schoolos.sandbox-report.v1"),
+  format: z.literal("schoolos.sandbox-report.v2"),
   runId: AssessmentRunId,
   key: AssessmentRunKey,
   evaluator: EvaluatorRelease,
   checks: z.array(SandboxCheckResult),
-  costCents: z.int().nonnegative(),
+  /** What the run's checks cost together, in nanodollars. */
+  costUsdNano: UsdNano,
 });
 /** A sandbox report. */
 export type SandboxReport = z.infer<typeof SandboxReport>;

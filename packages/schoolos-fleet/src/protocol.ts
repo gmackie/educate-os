@@ -1,4 +1,4 @@
-import { CapabilityId, InstanceId, OpaqueCode, SemVer, UtcTimestamp } from "@schoolos/contracts";
+import { CapabilityId, InstanceId, OpaqueCode, SemVer, UsdNano, usdNanoFromCents, UtcTimestamp } from "@schoolos/contracts";
 import { z } from "zod";
 import { Base64Url } from "./encoding.ts";
 import { SignedEnvelope } from "./envelope.ts";
@@ -73,21 +73,42 @@ export const HealthProbe = z.strictObject({
 /** A health probe result. */
 export type HealthProbe = z.infer<typeof HealthProbe>;
 
-/** A district's periodic report of its version and health. */
-export const Heartbeat = z.strictObject({
+const HeartbeatFields = z.strictObject({
   instanceId: InstanceId,
   sequence: Sequence,
   sentAt: UtcTimestamp,
   releaseVersion: SemVer,
   probes: z.array(HealthProbe).max(64),
   /**
-   * The district's total AI spend for the current billing period, in cents. Present only when the
-   * district has opted in; it is one number for the whole instance, never per principal or class.
+   * The district's total AI spend for the current billing period, in nanodollars (ADR-0008).
+   * Present only when the district has opted in; it is one number for the whole instance, never
+   * per principal or class.
+   */
+  aggregateAiSpendUsdNano: UsdNano.optional(),
+  /**
+   * The same total in whole cents, as agents before SCHO-119 sent it. Accepted on read and
+   * converted to {@link Heartbeat}'s `aggregateAiSpendUsdNano`; never sent. A message may carry
+   * one form or the other, not both.
    */
   aggregateAiSpendCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
 });
-/** A heartbeat. */
-export type Heartbeat = z.infer<typeof Heartbeat>;
+
+/**
+ * A district's periodic report of its version and health. Parsing accepts both the current wire
+ * form and the earlier one whose AI spend was in cents, and always yields nanodollars, so the root
+ * reads heartbeats from instances on either side of the upgrade. The signature covers the payload
+ * as sent, so converting after verification leaves it intact.
+ */
+export const Heartbeat = HeartbeatFields
+  .refine((heartbeat) => heartbeat.aggregateAiSpendCents === undefined || heartbeat.aggregateAiSpendUsdNano === undefined, {
+    message: "expected aggregateAiSpendUsdNano or aggregateAiSpendCents, not both",
+  })
+  .transform(({ aggregateAiSpendCents, ...heartbeat }) =>
+    aggregateAiSpendCents === undefined ? heartbeat : { ...heartbeat, aggregateAiSpendUsdNano: usdNanoFromCents(aggregateAiSpendCents) });
+/** A heartbeat, with its AI spend in nanodollars. */
+export type Heartbeat = z.output<typeof Heartbeat>;
+/** A heartbeat as it may arrive on the wire, in either the current or the earlier form. */
+export type HeartbeatWire = z.input<typeof Heartbeat>;
 
 /**
  * The district revoking the root's management access. Signed by the instance key and carrying the

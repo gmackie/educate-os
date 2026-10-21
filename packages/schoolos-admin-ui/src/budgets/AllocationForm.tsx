@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Banner, Button, Input, Text } from "@cloudflare/kumo";
 import { Warning } from "@phosphor-icons/react";
+import { ceilUsdNanoToCents } from "@schoolos/contracts";
 import { useAdminClient } from "../app/AdminClientContext.tsx";
 import { useAnnounce } from "../app/Announcer.tsx";
 import { ConfirmDialog } from "../app/ConfirmDialog.tsx";
 import { errorMessage } from "../app/useLoad.ts";
-import { formatCents, usdNanoToCents } from "../policies/policySettings.ts";
+import { formatCents } from "../policies/policySettings.ts";
 import {
   centsToDollarsInput,
   parseDollarsToCents,
@@ -57,7 +58,7 @@ export const AllocationForm = ({ report, revisionId, onSaved }: AllocationFormPr
   const capCents = report.districtCapUsdNano === undefined ? undefined : usdNanoToWholeCents(report.districtCapUsdNano);
   const overCap = capCents !== undefined && generativeCents > capCents;
   const safetyCents = report.safety.pool === undefined ? undefined : parsed.find((entry) => entry.pool.purpose === "safety")?.cents;
-  const recommendedCents = usdNanoToCents(report.safety.recommendedMinimumUsdNano);
+  const recommendedCents = ceilUsdNanoToCents(report.safety.recommendedMinimumUsdNano);
   const safetyBelowRecommended = safetyCents !== undefined && safetyCents < recommendedCents;
 
   const save = async () => {

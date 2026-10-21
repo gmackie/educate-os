@@ -14,3 +14,4 @@ export * from "./capability.ts";
 export * from "./policy-floor.ts";
 export * from "./errors.ts";
 export * from "./directory-integrity.ts";
+export * from "./money.ts";

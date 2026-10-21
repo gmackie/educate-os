@@ -1,4 +1,4 @@
-import type { DistrictDirectorySnapshot } from "@schoolos/contracts";
+import { type DistrictDirectorySnapshot, usdNanoFromCents } from "@schoolos/contracts";
 import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
 import { DistrictAgent, InMemorySequenceCounter, SigningIdentity } from "@schoolos/fleet";
 import { describe, expect, it } from "vitest";
@@ -142,7 +142,7 @@ describe("no per-student data enters commerce records", () => {
         sharesAggregateSpend: true,
         now: clock.now,
       });
-      const signed = await agent.heartbeat({ releaseVersion: "0.1.0", probes: [], aggregateAiSpendCents: 75_000 });
+      const signed = await agent.heartbeat({ releaseVersion: "0.1.0", probes: [], aggregateAiSpendUsdNano: usdNanoFromCents(75_000) });
       const invoice = await service.issueInvoice(
         {
           accountId,

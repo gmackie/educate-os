@@ -2,6 +2,7 @@
 // not rounded to the cent: a moderation check costs a fraction of a cent, and a reserve that has
 // paid for a thousand of them must not read as $0.00 or as a whole number of cents it never spent.
 import type { RouteResponse } from "@schoolos/api-client";
+import { USD_NANO_PER_CENT, USD_NANO_PER_USD } from "@schoolos/contracts";
 import { className, schoolName } from "../app/labels.ts";
 
 /** Where the district's funding stands this month. */
@@ -10,8 +11,6 @@ export type FundingReport = RouteResponse<"admin.aiFunding">["report"];
 export type PoolStatus = FundingReport["pools"][number];
 /** How close a pool is to its allocation. */
 export type BudgetThreshold = PoolStatus["threshold"];
-
-const USD_NANO_PER_USD = 1_000_000_000n;
 
 /**
  * An amount in nanodollars as exact dollars: at least two decimal places, and as many more as it
@@ -26,7 +25,7 @@ export function formatUsdNanoExact(usdNano: string): string {
 
 /** Whole cents from an amount in nanodollars, rounded down; allocations are always whole cents. */
 export function usdNanoToWholeCents(usdNano: string): number {
-  return Number(BigInt(usdNano) / 10_000_000n);
+  return Number(BigInt(usdNano) / USD_NANO_PER_CENT);
 }
 
 /** The most one pool may be allocated, in cents: $1,000,000 a month, as the district enforces. */

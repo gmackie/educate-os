@@ -1,4 +1,4 @@
-import { type CapabilityId, SchoolOsError, type InstanceId } from "@schoolos/contracts";
+import { type CapabilityId, SchoolOsError, type InstanceId, type UsdNano } from "@schoolos/contracts";
 import { signEnvelope, type SignedEnvelope } from "./envelope.ts";
 import type { SigningIdentity } from "./identity.ts";
 import type { CommercialAccountId } from "./ids.ts";
@@ -56,8 +56,11 @@ export interface RegistrationDetails {
 export interface HeartbeatDetails {
   releaseVersion: string;
   probes: readonly HealthProbe[];
-  /** Sent only if the district opted in; supplying it otherwise is an error. */
-  aggregateAiSpendCents?: number;
+  /**
+   * The district's AI spend this billing period, in nanodollars. Sent only if the district opted
+   * in; supplying it otherwise is an error.
+   */
+  aggregateAiSpendUsdNano?: UsdNano;
 }
 
 /**
@@ -102,7 +105,7 @@ export class DistrictAgent {
 
   /** A signed heartbeat with the next sequence number. */
   async heartbeat(details: HeartbeatDetails): Promise<SignedEnvelope> {
-    if (details.aggregateAiSpendCents !== undefined && !this.#sharesAggregateSpend) {
+    if (details.aggregateAiSpendUsdNano !== undefined && !this.#sharesAggregateSpend) {
       throw new SchoolOsError("policy-violation", "the district has not opted in to sharing aggregate AI spend");
     }
     const heartbeat = Heartbeat.parse({
@@ -111,7 +114,7 @@ export class DistrictAgent {
       sentAt: this.#timestamp(),
       releaseVersion: details.releaseVersion,
       probes: details.probes.map((probe) => ({ probeId: probe.probeId, status: probe.status, code: probe.code })),
-      aggregateAiSpendCents: details.aggregateAiSpendCents,
+      aggregateAiSpendUsdNano: details.aggregateAiSpendUsdNano,
     });
     return await signEnvelope(this.#identity, "heartbeat", heartbeat);
   }

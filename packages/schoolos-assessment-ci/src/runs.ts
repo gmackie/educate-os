@@ -397,7 +397,7 @@ function buildReport(
     suggestions: suggestionsFor(criterion, checks),
   }));
   return {
-    format: "schoolos.assessment-report.v1",
+    format: "schoolos.assessment-report.v2",
     runId: run.id,
     key: run.key,
     rubricDigest: rubric.signature.digest,
@@ -405,7 +405,7 @@ function buildReport(
     summary: summarize(criteria),
     evaluatorReleases: run.evaluators,
     stepsUsed,
-    costCents: 0,
+    costUsdNano: "0",
   };
 }
 

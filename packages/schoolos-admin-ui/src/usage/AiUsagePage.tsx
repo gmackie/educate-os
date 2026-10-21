@@ -1,10 +1,11 @@
 import { Meter, Table, Text } from "@cloudflare/kumo";
 import type { RouteResponse } from "@schoolos/api-client";
+import { ceilUsdNanoToCents } from "@schoolos/contracts";
 import { className, count } from "../app/labels.ts";
 import { LoadState } from "../app/LoadState.tsx";
 import { useLoad } from "../app/useLoad.ts";
 import type { DistrictConfigState } from "../app/useDistrictConfig.ts";
-import { formatCents, formatUsdNano, usdNanoToCents } from "../policies/policySettings.ts";
+import { formatCents, formatUsdNano } from "../policies/policySettings.ts";
 
 type UsageReport = RouteResponse<"admin.aiUsage">;
 type UsageTotals = UsageReport["district"];
@@ -43,7 +44,7 @@ const UsageTable = ({ caption, label, rows }: { caption: string; label: string; 
 
 /** How many people's recorded spend reached, or came near, the per-person cap. Counts only. */
 export function capStatus(report: UsageReport, capCents: number): { atCap: number; nearCap: number; people: number } {
-  const spends = Object.values(report.byPrincipal).map((t) => usdNanoToCents(t.totalUsdNano));
+  const spends = Object.values(report.byPrincipal).map((t) => ceilUsdNanoToCents(t.totalUsdNano));
   return {
     atCap: spends.filter((s) => s >= capCents).length,
     nearCap: spends.filter((s) => s < capCents && s >= capCents * 0.8).length,

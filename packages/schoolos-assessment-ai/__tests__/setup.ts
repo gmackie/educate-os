@@ -117,19 +117,22 @@ export function essayRubric(): RubricDraft {
   };
 }
 
+/** What every fake model request costs: just over 3 cents, so a test sees it is not rounded. */
+export const MODEL_COST_USD_NANO = "30000038";
+
 /** The AI profile every test uses: an Anthropic model, at most 25 cents a run, two retries. */
 export const AI_PROFILE: AiExecutionProfile = {
   id: "ai-feedback@1",
   kind: "ai",
   model: { provider: "anthropic", modelId: "claude-feedback-test" },
-  limits: { maxInputChars: 20_000, maxOutputTokens: 2000, maxCostCents: 25, maxRetries: 2 },
+  limits: { maxInputChars: 20_000, maxOutputTokens: 2000, maxCostUsdNano: "250000000", maxRetries: 2 },
 };
 
 /** The sandbox profile: no network, 2 s CPU, 256 MB, 4 KiB of output, 10 cents a run. */
 export const SANDBOX_PROFILE: SandboxExecutionProfile = {
   id: "sandbox-tests@1",
   kind: "sandbox",
-  sandbox: { runtime: "python-3", cpuMs: 2000, memoryMb: 256, maxOutputBytes: 4096, egress: { kind: "none" }, maxCostCents: 10 },
+  sandbox: { runtime: "python-3", cpuMs: 2000, memoryMb: 256, maxOutputBytes: 4096, egress: { kind: "none" }, maxCostUsdNano: "100000000" },
   maxRetries: 1,
 };
 
@@ -179,7 +182,7 @@ export class FakeModel implements ModelPort {
       this.failNext -= 1;
       throw new Error("gateway timeout");
     }
-    return { output: this.respond(prompt), usage: { inputTokens: 900, outputTokens: 120, cacheReadTokens: 0, cacheWriteTokens: 0 }, actualCents: 3 };
+    return { output: this.respond(prompt), usage: { inputTokens: 900, outputTokens: 120, cacheReadTokens: 0, cacheWriteTokens: 0 }, actualUsdNano: MODEL_COST_USD_NANO };
   }
 
   async afterResponse(outcome: ModelResponseOutcome): Promise<void> {

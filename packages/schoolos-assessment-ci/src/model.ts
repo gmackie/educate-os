@@ -12,13 +12,14 @@ export type ExecutionProfileId = z.infer<typeof ExecutionProfileId>;
 /**
  * The limits a run executes under (roadmap §7): CPU time as a budget of evaluation steps, the
  * total size of the submitted work, how many times a run is attempted again after a transient
- * failure, and cost. Deterministic evaluation calls no model, so its cost limit is zero.
+ * failure, and cost, in nanodollars (ADR-0008). Deterministic evaluation calls no model, so its
+ * cost limit is zero.
  */
 export const ExecutionLimits = z.strictObject({
   maxSteps: z.int().positive().max(100_000_000),
   maxInputBytes: z.int().positive().max(64 * 1024 * 1024),
   maxRetries: z.int().nonnegative().max(10),
-  maxCostCents: z.literal(0),
+  maxCostUsdNano: z.literal("0"),
 });
 /** Execution limits. */
 export type ExecutionLimits = z.infer<typeof ExecutionLimits>;
@@ -36,7 +37,7 @@ export type ExecutionProfile = z.infer<typeof ExecutionProfile>;
 export const DETERMINISTIC_PROFILE: ExecutionProfile = Object.freeze({
   id: "deterministic@1",
   kind: "deterministic",
-  limits: Object.freeze({ maxSteps: 1_000_000, maxInputBytes: 2 * 1024 * 1024, maxRetries: 2, maxCostCents: 0 }),
+  limits: Object.freeze({ maxSteps: 1_000_000, maxInputBytes: 2 * 1024 * 1024, maxRetries: 2, maxCostUsdNano: "0" }),
 });
 
 /** Distinguishes runs that are otherwise identical, such as a teacher's deliberate re-run. */
@@ -142,7 +143,7 @@ export type ReportSummary = z.infer<typeof ReportSummary>;
  * counts, so the same key always gives byte-for-byte the same report.
  */
 export const AssessmentReport = z.strictObject({
-  format: z.literal("schoolos.assessment-report.v1"),
+  format: z.literal("schoolos.assessment-report.v2"),
   runId: AssessmentRunId,
   key: AssessmentRunKey,
   rubricDigest: ContentDigest,
@@ -151,7 +152,8 @@ export const AssessmentReport = z.strictObject({
   /** Every evaluator release the run used, sorted by ID. */
   evaluatorReleases: z.array(EvaluatorRelease),
   stepsUsed: z.int().nonnegative(),
-  costCents: z.literal(0),
+  /** What the run cost, in nanodollars: always nothing, since deterministic evaluation calls no model. */
+  costUsdNano: z.literal("0"),
 });
 /** An assessment report. */
 export type AssessmentReport = z.infer<typeof AssessmentReport>;

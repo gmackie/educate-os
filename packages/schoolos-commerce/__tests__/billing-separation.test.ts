@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { usdNanoFromCents, type UsdNano } from "@schoolos/contracts";
 import { Heartbeat } from "@schoolos/fleet";
 import { IssueInvoiceRequest } from "../src/index.ts";
 import { CLERK, DAY, setup, TERM_START } from "./support.ts";
@@ -7,13 +8,17 @@ const DUE_AT = new Date(Date.parse(TERM_START) + 30 * DAY).toISOString();
 const PLAN_FEE = [{ kind: "plan-fee" as const, code: "pilot-term", quantity: 1, unitAmountCents: 250_000 }];
 
 function heartbeat(instanceId: string, aggregateAiSpendCents?: number): Heartbeat {
+  return heartbeatSpending(instanceId, aggregateAiSpendCents === undefined ? undefined : usdNanoFromCents(aggregateAiSpendCents));
+}
+
+function heartbeatSpending(instanceId: string, aggregateAiSpendUsdNano?: UsdNano): Heartbeat {
   return Heartbeat.parse({
     instanceId,
     sequence: 1,
     sentAt: TERM_START,
     releaseVersion: "0.1.0",
     probes: [],
-    ...(aggregateAiSpendCents === undefined ? {} : { aggregateAiSpendCents }),
+    ...(aggregateAiSpendUsdNano === undefined ? {} : { aggregateAiSpendUsdNano }),
   });
 }
 
@@ -63,6 +68,26 @@ describe("aggregate AI usage informs a usage line only if the district opted in"
     );
     expect(invoice.lines.at(-1)).toEqual({ kind: "ai-credit-overage", code: "ai-credit-overage", quantity: 1, unitAmountCents: 30_000, amountCents: 30_000 });
     expect(invoice.totalCents).toBe(280_000);
+  });
+
+  it("rounds a sub-cent spend up to the cent, because invoices are cents", async () => {
+    const { service, accountId, instanceId, subscription } = await activePilot("opted-in");
+    // 50,000 cents of allowance, then 0.0038 cents more: billed as one cent.
+    const invoice = await service.issueInvoice(
+      { accountId, subscriptionId: subscription.subscriptionId, lines: PLAN_FEE, aiUsageHeartbeat: heartbeatSpending(instanceId, "500000038000"), dueAt: DUE_AT },
+      CLERK,
+    );
+    expect(invoice.lines.at(-1)).toMatchObject({ kind: "ai-credit-overage", amountCents: 1 });
+  });
+
+  it("still reads a heartbeat from an agent that reports its spend in cents", async () => {
+    const { service, accountId, instanceId, subscription } = await activePilot("opted-in");
+    const legacy = { instanceId, sequence: 1, sentAt: TERM_START, releaseVersion: "0.1.0", probes: [], aggregateAiSpendCents: 80_000 };
+    const invoice = await service.issueInvoice(
+      { accountId, subscriptionId: subscription.subscriptionId, lines: PLAN_FEE, aiUsageHeartbeat: legacy, dueAt: DUE_AT },
+      CLERK,
+    );
+    expect(invoice.lines.at(-1)).toMatchObject({ kind: "ai-credit-overage", amountCents: 30_000 });
   });
 
   it("adds no line for spend within the allowance, or for a heartbeat that carries no spend", async () => {

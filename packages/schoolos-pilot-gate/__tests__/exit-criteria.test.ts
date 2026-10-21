@@ -376,9 +376,9 @@ criterion("x34.metering", {
       sharesAggregateSpend: true,
     });
     const usage = await northfield.app.ledger.report();
-    const heartbeat = await agent.heartbeat({ releaseVersion: "0.1.0", probes: [{ probeId: "district-app", status: "ok" }], aggregateAiSpendCents: centsOf(usage.district.totalUsdNano) });
+    const heartbeat = await agent.heartbeat({ releaseVersion: "0.1.0", probes: [{ probeId: "district-app", status: "ok" }], aggregateAiSpendUsdNano: usage.district.totalUsdNano });
     const sent = JSON.stringify(heartbeat);
-    expect(Object.keys(heartbeat.payload as object).toSorted()).toStrictEqual(["aggregateAiSpendCents", "instanceId", "probes", "releaseVersion", "sentAt", "sequence"]);
+    expect(Object.keys(heartbeat.payload as object).toSorted()).toStrictEqual(["aggregateAiSpendUsdNano", "instanceId", "probes", "releaseVersion", "sentAt", "sequence"]);
     const { directory } = northfield;
     const personal = [
       ...directory.principals.flatMap((p) => [p.id, p.displayName, p.email ?? "", ...p.externalIdentities.map((x) => x.subject)]),
