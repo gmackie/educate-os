@@ -21,16 +21,23 @@ export interface LifecycleFacts {
  * - A personal workspace is permanent: always `active`.
  * - A course workspace follows its term until the term is closed, then is `retained`, and once the
  *   retention period has passed is `eligible-for-deletion`, unless a legal hold keeps it retained.
+ *   It stays `eligible-for-deletion` while the retention job deletes it, and is `deleted` after.
  *
  * Enrollment is deliberately not an input: a student leaving the roster changes their access, never
  * how long their work is kept (roadmap §6.1, §14).
  */
 export function workspaceLifecycle(workspace: Workspace, facts: LifecycleFacts): WorkspaceLifecycle {
   if (workspace.kind === "personal") return "active";
+  if (workspace.deletion?.state === "deleted") return "deleted";
   if (facts.termState === undefined) throw new Error(`course workspace ${workspace.id} has no term state`);
   if (facts.termState !== "completed") return facts.termState;
   if (facts.closure === undefined) return "completed";
-  const eligibleFrom = Date.parse(facts.closure.closedAt) + facts.retention.courseWorkspaceRetentionDays * DAY_MS;
-  if (workspace.legalHold !== undefined || facts.now.getTime() < eligibleFrom) return "retained";
+  if (workspace.deletion?.state === "pending") return "eligible-for-deletion";
+  if (workspace.legalHold !== undefined || facts.now.getTime() < eligibleFrom(facts.closure, facts.retention).getTime()) return "retained";
   return "eligible-for-deletion";
+}
+
+/** When a closed term's course workspaces become eligible for deletion, legal holds aside. */
+export function eligibleFrom(closure: TermClosure, retention: RetentionPolicy): Date {
+  return new Date(Date.parse(closure.closedAt) + retention.courseWorkspaceRetentionDays * DAY_MS);
 }

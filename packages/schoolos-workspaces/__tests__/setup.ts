@@ -12,7 +12,7 @@ import {
 import { InMemoryAcademicStore } from "@schoolos/academics";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
-import { InMemoryWorkspaceStore, WorkspaceDirectory } from "../src/index.ts";
+import { InMemoryWorkspaceStore, WorkspaceDirectory, type ArtifactPromoter, type WorkspaceStore } from "../src/index.ts";
 
 const FLOOR: PolicySettings = {
   aiSpending: "capped",
@@ -36,10 +36,13 @@ export const ALL_LOCAL: AuthorityMap = {
 /** Retention used throughout: course workspaces are kept 30 days after close. */
 export const RETENTION_DAYS = 30;
 
-/** A workspace directory over a fresh copy of `snapshot`, with a settable clock. */
-export function setup(snapshot: DistrictDirectorySnapshot = NORTHFIELD) {
+/**
+ * A workspace directory over a fresh copy of `snapshot`, with a settable clock, kept in `store`
+ * (in memory unless given) and promoting through `promoter` if one is given.
+ */
+export function setup(snapshot: DistrictDirectorySnapshot = NORTHFIELD, options: { store?: WorkspaceStore; promoter?: ArtifactPromoter } = {}) {
   const academics = InMemoryAcademicStore.seeded(snapshot);
-  const store = new InMemoryWorkspaceStore();
+  const store = options.store ?? new InMemoryWorkspaceStore();
   const audit = new InMemoryPolicyAuditSink();
   const clock = { now: new Date("2026-10-20T12:00:00Z") };
   const engine = new PolicyEngine({
@@ -51,6 +54,7 @@ export function setup(snapshot: DistrictDirectorySnapshot = NORTHFIELD) {
     directory: academics,
     policy: engine,
     retention: { courseWorkspaceRetentionDays: RETENTION_DAYS },
+    ...(options.promoter === undefined ? {} : { promoter: options.promoter }),
     now: () => clock.now,
   });
 

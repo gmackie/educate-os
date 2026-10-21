@@ -1,13 +1,13 @@
 import { z } from "zod";
-import { ArtifactId, DistrictId, OfferingId, PrincipalId, SchoolId, TermId, WorkspaceId, type TermState } from "@schoolos/contracts";
+import { ArtifactId, AuditEventBase, DistrictId, OfferingId, PrincipalId, SchoolId, TermId, WorkspaceId, type TermState } from "@schoolos/contracts";
 
 /**
  * Where a workspace is in its life (roadmap §6.1). The first four follow the term; `retained` and
- * `eligible-for-deletion` follow the term's close and the retention policy. Nothing here deletes:
- * `eligible-for-deletion` only says a retention job may, and a legal hold keeps a workspace out of
- * it.
+ * `eligible-for-deletion` follow the term's close and the retention policy, and a legal hold keeps
+ * a workspace out of `eligible-for-deletion`. Only the retention job (`WorkspaceRetentionJob`)
+ * deletes, and `deleted` is the record it leaves behind once the workspace's storage is gone.
  */
-export const WorkspaceLifecycle = z.enum(["planned", "active", "grading", "completed", "retained", "eligible-for-deletion"]);
+export const WorkspaceLifecycle = z.enum(["planned", "active", "grading", "completed", "retained", "eligible-for-deletion", "deleted"]);
 /** A workspace lifecycle state. */
 export type WorkspaceLifecycle = z.infer<typeof WorkspaceLifecycle>;
 
@@ -35,6 +35,19 @@ export const LegalHold = z.strictObject({
 /** A legal hold. */
 export type LegalHold = z.infer<typeof LegalHold>;
 
+/**
+ * The retention job's progress deleting a workspace. `pending` is committed before any storage is
+ * touched, in the same check-and-commit that confirms the workspace is still eligible (no legal
+ * hold), so that commit is the moment of deletion; from then on a legal hold is refused. A job that
+ * stops while `pending` resumes the deletion on its next run. `deleted` means the storage is gone.
+ */
+export const WorkspaceDeletion = z.discriminatedUnion("state", [
+  z.strictObject({ state: z.literal("pending"), startedAt: z.iso.datetime() }),
+  z.strictObject({ state: z.literal("deleted"), startedAt: z.iso.datetime(), deletedAt: z.iso.datetime() }),
+]);
+/** A workspace deletion. */
+export type WorkspaceDeletion = z.infer<typeof WorkspaceDeletion>;
+
 const workspaceFields = {
   /** The stable logical ID. It never changes, whatever storage is attached behind it. */
   id: WorkspaceId,
@@ -47,6 +60,8 @@ const workspaceFields = {
   storageHandle: StorageHandle.optional(),
   /** A legal hold, if one is in place. */
   legalHold: LegalHold.optional(),
+  /** The retention job's deletion, once it has begun. Only course workspaces are ever deleted. */
+  deletion: WorkspaceDeletion.optional(),
 };
 
 /** A principal's personal workspace: one per principal, permanent, and private to them. */
@@ -169,6 +184,25 @@ export const WorkspaceEvent = z.strictObject({
 /** A workspace event. */
 export type WorkspaceEvent = z.infer<typeof WorkspaceEvent>;
 
+/**
+ * The audit record of one workspace deletion, written in the same commit that marks the workspace
+ * `deleted`, so there is exactly one per deletion however often the job is interrupted. Identifiers
+ * and times only: it never names what the workspace held.
+ */
+export const WorkspaceDeletionRecord = AuditEventBase.extend({
+  action: z.literal("workspace.storage-deleted"),
+  target: z.strictObject({
+    workspaceId: WorkspaceId,
+    ownerPrincipalId: PrincipalId,
+    offeringId: OfferingId,
+    termId: TermId,
+  }),
+  /** When the term closed and when retention made the workspace eligible, so the deletion can be checked against policy. */
+  retention: z.strictObject({ closedAt: z.iso.datetime(), eligibleFrom: z.iso.datetime() }),
+});
+/** A workspace deletion record. */
+export type WorkspaceDeletionRecord = z.infer<typeof WorkspaceDeletionRecord>;
+
 /** Everything the workspace directory stores for one district. */
 export const WorkspaceState = z.strictObject({
   workspaces: z.array(Workspace),
@@ -177,6 +211,8 @@ export const WorkspaceState = z.strictObject({
   promotions: z.array(PromotionLink),
   /** The outbox, oldest first. */
   events: z.array(WorkspaceEvent),
+  /** One audit record per workspace the retention job deleted, oldest first. */
+  deletions: z.array(WorkspaceDeletionRecord),
 });
 /** The workspace directory's stored state. */
 export type WorkspaceState = z.infer<typeof WorkspaceState>;

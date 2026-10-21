@@ -31,6 +31,18 @@ import {
 } from "./model.ts";
 import type { WorkspaceStore } from "./store.ts";
 
+/**
+ * What promotion needs from the artifact service, which `@schoolos/learning-artifacts`'
+ * `LearningArtifacts` provides: confirming that an artifact is the caller's and in the course
+ * workspace before the link is recorded, and copying it into the personal workspace after.
+ */
+export interface ArtifactPromoter {
+  /** Resolves if the artifact is in `fromWorkspaceId`, not deleted, and the caller's; rejects with `not-found` if not. */
+  confirmPromotable(caller: Caller, fromWorkspaceId: WorkspaceId, artifactId: ArtifactId): Promise<void>;
+  /** Copies the linked artifact into the link's personal workspace. Idempotent per link. */
+  copyPromoted(caller: Caller, link: PromotionLink): Promise<unknown>;
+}
+
 /** What a {@link WorkspaceDirectory} is built from. */
 export interface WorkspaceDirectoryOptions {
   /** Where the district's workspace records are kept. */
@@ -41,6 +53,11 @@ export interface WorkspaceDirectoryOptions {
   policy: PolicyDecider;
   /** How long course workspaces are kept after their term closes. */
   retention: RetentionPolicy;
+  /**
+   * The artifact service promotion confirms and copies through. Without it `promoteArtifact`
+   * records the link only, and its caller must confirm and copy (see `ArtifactPromoter`).
+   */
+  promoter?: ArtifactPromoter;
   /** The clock. Defaults to the system clock. */
   now?: () => Date;
 }
@@ -89,15 +106,16 @@ function offeringScope(offering: CourseOffering): ResourceRef["scope"] {
  * Workspaces are provisioned lazily, on the owner's first access, and never in bulk. Every read
  * and list is decided by the policy engine from a `ResourceRef` built only from stored records:
  * the student as owner, `personal-private` or `course` classification, and the offering's term
- * state. Reads the caller may not make answer `not-found`. Nothing is ever deleted here; a roster
- * drop revokes grants, and only retention (never the roster) makes a workspace eligible for
- * deletion.
+ * state. Reads the caller may not make answer `not-found`. Nothing is deleted here; a roster drop
+ * revokes grants, only retention (never the roster) makes a workspace eligible for deletion, and
+ * only `WorkspaceRetentionJob` deletes one.
  */
 export class WorkspaceDirectory {
   readonly #workspaces: WorkspaceStore;
   readonly #directory: AcademicStore;
   readonly #policy: PolicyDecider;
   readonly #retention: RetentionPolicy;
+  readonly #promoter: ArtifactPromoter | undefined;
   readonly #now: () => Date;
 
   constructor(options: WorkspaceDirectoryOptions) {
@@ -105,6 +123,7 @@ export class WorkspaceDirectory {
     this.#directory = options.directory;
     this.#policy = options.policy;
     this.#retention = RetentionPolicy.parse(options.retention);
+    this.#promoter = options.promoter;
     this.#now = options.now ?? (() => new Date());
   }
 
@@ -311,15 +330,17 @@ export class WorkspaceDirectory {
   // Promotion and legal hold
 
   /**
-   * Links an artifact from the caller's closed course workspace into their personal workspace,
-   * provisioning that on first use. Idempotent per artifact. Policy decides both halves: exporting
-   * the course artifact, and creating a personal-private one. The link is all this records; W02
-   * copies content, and must confirm the artifact is in the course workspace.
+   * Keeps an artifact from the caller's closed course workspace in their personal workspace,
+   * provisioning that on first use. Policy decides both halves: exporting the course artifact, and
+   * creating a personal-private one. With a `promoter`, the artifact service first confirms the
+   * artifact is the caller's and in that workspace, and after the link is recorded copies it as a
+   * new personal-private artifact. The link and the copy are two writes, and both are idempotent per
+   * artifact, so calling again after a failed copy completes it.
    */
   async promoteArtifact(caller: Caller, fromWorkspaceId: WorkspaceId, rawArtifactId: ArtifactId): Promise<PromotionLink> {
     const artifactId = ArtifactId.parse(rawArtifactId);
     const access = this.#access(caller);
-    return this.#mutate(async (state, snapshot) => {
+    const link = await this.#mutate(async (state, snapshot): Promise<Mutation<PromotionLink>> => {
       const source = state.workspaces.find((w) => w.id === fromWorkspaceId);
       if (source === undefined) throw notFound("workspace", fromWorkspaceId);
       await access.requireRead(source, snapshot);
@@ -328,9 +349,12 @@ export class WorkspaceDirectory {
         throw notFound("workspace", fromWorkspaceId);
       }
       const lifecycle = this.#lifecycle(source, snapshot, state);
+      if (lifecycle === "deleted") throw notFound("workspace", fromWorkspaceId);
       if (lifecycle !== "retained" && lifecycle !== "eligible-for-deletion") {
         throw new SchoolOsError("conflict", "Work can be kept in your personal workspace once the class has closed.");
       }
+      // Asked before anything is written, so a link never names an artifact that is not there.
+      await this.#promoter?.confirmPromotable(caller, source.id, artifactId);
       const exported = courseTarget(source, snapshot);
       exported.resource = { ...exported.resource, kind: "artifact", id: artifactId };
       if (!(await access.allows("export", exported))) throw new SchoolOsError("forbidden", "This work cannot be kept.");
@@ -343,19 +367,22 @@ export class WorkspaceDirectory {
       const current = withPersonal ?? state;
       const existing = current.promotions.find((p) => p.fromWorkspaceId === source.id && p.artifactId === artifactId);
       if (existing !== undefined) return { ...(withPersonal === undefined ? {} : { next: withPersonal }), result: existing };
-      const link: PromotionLink = {
+      const recorded: PromotionLink = {
         principalId: caller.principal.principalId,
         fromWorkspaceId: source.id,
         toWorkspaceId: personal.id,
         artifactId,
         promotedAt: this.#now().toISOString(),
       };
-      return { next: { ...current, promotions: [...current.promotions, link] }, result: link };
+      return { next: { ...current, promotions: [...current.promotions, recorded] }, result: recorded };
     });
+    await this.#promoter?.copyPromoted(caller, link);
+    return link;
   }
 
   /**
-   * Places or lifts a legal hold on a workspace. A held workspace is never eligible for deletion.
+   * Places or lifts a legal hold on a workspace. A held workspace is never eligible for deletion,
+   * and once the retention job has begun deleting one, a hold is refused with `conflict`.
    * Requires district administration, which is checked before the workspace is looked up so the
    * call reveals nothing to anyone else. Placing a hold does not let the administrator read the
    * workspace.
@@ -375,6 +402,10 @@ export class WorkspaceDirectory {
       const workspace = state.workspaces.find((w) => w.id === workspaceId);
       if (workspace === undefined) throw notFound("workspace", workspaceId);
       if ((workspace.legalHold !== undefined) === held) return { result: undefined };
+      // The retention job decided to delete it when it committed the deletion, holds checked then.
+      if (workspace.deletion !== undefined) {
+        throw new SchoolOsError("conflict", "This workspace is already being deleted under the retention policy.");
+      }
       const { legalHold: _previous, ...rest } = workspace;
       const updated: Workspace = held
         ? { ...rest, legalHold: { placedAt: this.#now().toISOString(), placedBy: caller.principal.principalId } }
