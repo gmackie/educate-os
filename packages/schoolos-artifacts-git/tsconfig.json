@@ -14,6 +14,7 @@
     "erasableSyntaxOnly": true
   },
   "include": ["src"],
-  // The smart HTTP transport uses gatekeeper-kit's Workers-typed transport module; see tsconfig.transport.json.
+  // The smart HTTP transport reaches a Workers-typed kernel module through gatekeeper-kit's
+  // transport module; see tsconfig.transport.json.
   "exclude": ["dist", "node_modules", "src/smart-http.ts"]
 }

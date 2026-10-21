@@ -1,6 +1,7 @@
-// The smart HTTP transport and its test, typechecked as gatekeeper-kit's own transport module is:
-// against Workers types. `erasableSyntaxOnly` is off only because the kit's module uses a
-// parameter property; this package's own code stays erasable (tsconfig.json checks the rest).
+// The smart HTTP transport and its test, typechecked against Workers types (ADR-0009). Its own code
+// and gatekeeper-kit's transport module both compile on the web-standard surface; what does not is
+// the kernel module (`@gadgets/workshop-shared/gatekeeper`) the kit's transport type-imports its
+// pull-side types from, which is Workers-typed.
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
@@ -9,11 +10,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "types": ["@cloudflare/workers-types/experimental"],
-    "paths": {
-      "@gadgets/observability/*": ["../observability/src/*"],
-      "@gadgets/workshop-shared/*": ["../workshop-shared/src/*"]
-    },
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
   },
   "include": ["src/smart-http.ts", "__tests__/smart-http.test.ts"],
   "exclude": ["dist", "node_modules"]

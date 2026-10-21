@@ -1,8 +1,8 @@
 // Git's smart HTTP protocol as a `GitTransport` for Cloudflare Artifacts remotes, built on
 // gatekeeper-kit's pkt-line framing and send-pack client. It is a separate entry point
-// (`@schoolos/artifacts-git/smart-http`), typechecked against the Workers types the kit's transport
-// module is written for (see `tsconfig.transport.json`).
-import type { GitOid } from "@gadgets/workshop-shared/gatekeeper";
+// (`@schoolos/artifacts-git/smart-http`), typechecked against Workers types because the kit's
+// transport module type-imports a Workers-typed kernel module (see `tsconfig.transport.json`).
+import type { GitOid } from "@gadgets/gatekeeper-kit/git-objects";
 import { DELIM_PKT, encodePktLine, FLUSH_PKT, parsePktItems, pktText, pushGitRefUpdate } from "@gadgets/gatekeeper-kit/git-transport";
 import { readBytesCapped } from "@gadgets/gatekeeper-kit/response-body";
 import { SchoolOsError } from "@schoolos/contracts";

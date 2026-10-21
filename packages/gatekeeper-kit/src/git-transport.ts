@@ -510,8 +510,12 @@ export function parseReceivePackResponse(body: Uint8Array, refName: string): voi
  * apply. Distinguished so the caller can map it to its branch-moved guidance.
  */
 export class GitRefUpdateRejectedError extends Error {
-  constructor(refName: string, public readonly reason: string) {
+  /** The server's reason, such as `stale info` or `non-fast-forward`. */
+  readonly reason: string;
+
+  constructor(refName: string, reason: string) {
     super(`git push rejected for ${refName}: ${reason}`);
+    this.reason = reason;
   }
 }
 
@@ -549,9 +553,10 @@ export async function pushGitRefUpdate(
         return;
       }
       reader ??= pack.getReader();
-      let { done, value } = await reader.read();
-      if (done) controller.close();
-      else controller.enqueue(value);
+      // Not destructured: only the result object narrows `value` to a chunk once `done` is false.
+      let result = await reader.read();
+      if (result.done) controller.close();
+      else controller.enqueue(result.value);
     },
     async cancel(reason) {
       if (reader !== undefined) await reader.cancel(reason).catch(() => {});
