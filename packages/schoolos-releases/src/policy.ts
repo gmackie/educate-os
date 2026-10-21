@@ -25,7 +25,7 @@ export const DriftChange = z.strictObject({
   /** The installer's resource key, e.g. `worker:workshop-backend`. */
   resource: z.string().min(1).max(200),
   kind: z.string().min(1).max(64),
-  action: z.enum(["create", "update", "refuse", "needs-input"]),
+  action: z.enum(["create", "update", "delete", "refuse", "needs-input"]),
   reason: z.string().max(500),
 });
 /** A drift change. */

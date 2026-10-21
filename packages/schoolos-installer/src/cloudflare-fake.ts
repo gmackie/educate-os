@@ -58,7 +58,7 @@ interface Script {
 }
 
 const MUTATIONS = new Set([
-  "uploadWorkerScript", "createAssetsUploadSession", "uploadAssets", "putWorkerSecret", "deployWorkerVersion",
+  "uploadWorkerScript", "deleteWorkerScript", "createAssetsUploadSession", "uploadAssets", "putWorkerSecret", "deployWorkerVersion",
   "attachWorkerDomain", "createKvNamespace", "createR2Bucket", "createD1Database", "createAccessPolicy",
   "updateAccessPolicy", "createAccessApplication", "updateAccessApplication", "createAiGateway",
 ]);
@@ -167,6 +167,16 @@ export class FakeCloudflare {
     this.#scripts.set(name, { versions: [version], activeVersionId: version.id, secrets: new Map() });
   }
 
+  /**
+   * Deploys a new version of a Worker with edited bindings, as a dashboard edit would: the
+   * installer's marker vars, including its digest, survive unchanged.
+   */
+  editWorkerBindings(name: string, edit: (bindings: ObservedBinding[]) => ObservedBinding[]): void {
+    const script = this.#scripts.get(name);
+    if (!script) throw new Error(`no Worker ${name}`);
+    this.#addVersion(script, edit(activeVersion(script).bindings.map((b) => ({ ...b }))), script.migrationTag);
+  }
+
   /** Adds an Access application the installer did not create. */
   seedAccessApplication(name: string, domain: string): void {
     const id = this.#id();
@@ -240,6 +250,16 @@ export class FakeCloudflare {
       return { bindings: [...activeVersion(script).bindings, ...secrets] };
     },
     upload: (name: string, upload: WorkerUpload) => this.#upload(name, upload),
+    deleteScript: (name: string) => {
+      this.#script(name, "deleteWorkerScript");
+      // Cloudflare refuses to delete a Worker another Worker's deployed version binds, or that a
+      // custom domain routes to, unless forced. The exact error codes are unverified.
+      const boundBy = [...this.#scripts].some(([other, script]) =>
+        other !== name && activeVersion(script).bindings.some((b) => b.type === "service" && b.service === name));
+      if (boundBy) throw new CloudflareApiError("deleteWorkerScript", 400, [10064]);
+      if ([...this.#domains.values()].some((d) => d.service === name)) throw new CloudflareApiError("deleteWorkerScript", 400, [10065]);
+      this.#scripts.delete(name);
+    },
     assetsSession: (manifest: Record<string, { hash: string; size: number }>) => {
       const pending = new Set(Object.values(manifest).map((e) => e.hash).filter((h) => !this.#assets.has(h)));
       const jwt = `assets-session-${this.#id()}`;
@@ -270,6 +290,7 @@ export class FakeCloudflare {
         id: v.id,
         createdOn: v.createdOn,
         vars: Object.fromEntries(v.bindings.flatMap((b) => (b.type === "plain_text" && b.text !== undefined ? [[b.name, b.text]] : []))),
+        serviceBindings: v.bindings.flatMap((b) => (b.type === "service" ? [{ name: b.name, service: String(b.service) }] : [])),
       })),
     deploy: (name: string, versionId: string) => {
       const script = this.#script(name, "deployWorkerVersion");
@@ -464,6 +485,7 @@ class FakeCloudflareApi implements CloudflareApi {
   listWorkerScripts(a: string) { return this.#call(a, "listWorkerScripts", () => this.#fake.op.scripts()); }
   getWorkerSettings(a: string, s: string) { return this.#call(a, "getWorkerSettings", () => this.#fake.op.settings(s)); }
   uploadWorkerScript(a: string, s: string, u: WorkerUpload) { return this.#call(a, "uploadWorkerScript", () => this.#fake.op.upload(s, u)); }
+  deleteWorkerScript(a: string, s: string) { return this.#call(a, "deleteWorkerScript", () => this.#fake.op.deleteScript(s)); }
   createAssetsUploadSession(a: string, _s: string, m: Record<string, { hash: string; size: number }>) {
     return this.#call(a, "createAssetsUploadSession", () => this.#fake.op.assetsSession(m));
   }

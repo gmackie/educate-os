@@ -114,7 +114,7 @@ export const WorkerEntry = z.strictObject({
   shortName: z.string().regex(/^[a-z][a-z0-9]{0,19}$/).optional(),
   /**
    * Services only: the service binding the backend gains once the service is installed. The
-   * district installer does not install services yet (SCHO-131); it accepts and ignores them.
+   * district installer installs a service only when the config enables it (`services`).
    */
   backendBinding: z.strictObject({ name: BindingName, entrypoint: z.string().min(1) }).optional(),
   installable: z.boolean(),

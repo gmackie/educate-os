@@ -15,7 +15,7 @@
 // release pipeline does not sign yet) is refused unless --insecure-pin is also given; its rollback
 // then takes --previous-pin <releaseId>@<sha256> instead of a signed manifest.
 //
-// The token is read from CLOUDFLARE_API_TOKEN. Gatekeeper secrets are read from
+// The token is read from CLOUDFLARE_API_TOKEN. Gatekeeper and service secrets are read from
 // SCHOOLOS_SECRET_<PACKAGE>__<NAME>, e.g. SCHOOLOS_SECRET_GATEKEEPER_GOOGLE__CLIENT_ID. Neither is
 // ever printed. Release blobs are read from the manifest's directory (build-release.ts layout)
 // unless --release-dir says otherwise.

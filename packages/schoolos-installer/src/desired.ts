@@ -111,6 +111,16 @@ export interface DesiredWorkerSecret extends ResourceBase {
   secretName: string;
 }
 
+/**
+ * A service the config disabled: its Worker must not exist. It runs after the backend, so the
+ * backend's binding to it is gone before the Worker is deleted.
+ */
+export interface DesiredRetiredWorker extends ResourceBase {
+  kind: "worker_retired";
+  pkgName: string;
+  scriptName: string;
+}
+
 /** The public hostname, attached to the router as a Workers custom domain. */
 export interface DesiredCustomDomain extends ResourceBase {
   kind: "custom_domain";
@@ -129,7 +139,16 @@ export type DesiredResource =
   | DesiredAccessApplication
   | DesiredWorker
   | DesiredWorkerSecret
+  | DesiredRetiredWorker
   | DesiredCustomDomain;
+
+/**
+ * A deploy input an installed service needs. Var values come from the config, so whether one is
+ * supplied is known here; secrets come from the {@link SecretSource} and preflight checks them.
+ */
+export type DesiredInput =
+  | { pkgName: string; name: string; label: string; kind: "var"; supplied: boolean }
+  | { pkgName: string; name: string; label: string; kind: "secret" };
 
 /** The compiled desired state of one instance at one release. */
 export interface DesiredState {
@@ -137,6 +156,8 @@ export interface DesiredState {
   accountId: string;
   releaseId: string;
   hostname: string;
+  /** The deploy inputs of every installed service, for preflight. */
+  inputs: DesiredInput[];
   /** Every resource, in an order where each comes after everything it depends on. */
   resources: DesiredResource[];
 }
@@ -170,6 +191,11 @@ export function workerKey(pkgName: string): ResourceKey {
   return `worker:${pkgName}`;
 }
 
+/** The resource key of a disabled service's Worker, which must not exist. */
+export function retiredWorkerKey(pkgName: string): ResourceKey {
+  return `retired:${pkgName}`;
+}
+
 /** Whether a value is an {@link OutputRef}. */
 export function isOutputRef(value: unknown): value is OutputRef {
   return typeof value === "object" && value !== null && "ref" in value && "output" in value;
@@ -191,6 +217,11 @@ function nameSuffix(binding: string): string {
  * Compiles the desired state. Installs the backend, the router, every preinstalled gatekeeper and
  * the gatekeepers the config names; refuses a named gatekeeper that is not installable or that
  * needs non-secret inputs, which this installer cannot collect yet.
+ *
+ * Services the config enables are installed with their `var` inputs from the config and their
+ * secrets from the secret source, and the backend gains the manifest's `backendBinding` to each,
+ * after the service Worker and its secrets exist. Services the config disables become
+ * {@link DesiredRetiredWorker}s ordered after the backend, so the binding goes before the Worker.
  */
 export function compileDesiredState(manifest: ReleaseManifest, config: DistrictInstallConfig): DesiredState {
   if (manifest.releaseId !== config.release.releaseId) invalid("manifest and config pin different releases");
@@ -216,7 +247,33 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     gatekeepers.add(name);
   }
   const installed = [...gatekeepers].toSorted();
-  const scriptNames = new Map([backendPkg, routerPkg, ...installed].map((pkg) => [pkg, workerScriptName(config, pkg)]));
+
+  const services: string[] = [];
+  const retired: DesiredRetiredWorker[] = [];
+  const inputs: DesiredInput[] = [];
+  for (const [name, wanted] of Object.entries(config.services).toSorted(([a], [b]) => a.localeCompare(b))) {
+    if (!wanted.enabled) {
+      // Removal needs only the Worker's name, so it works with a release that no longer ships it.
+      retired.push({ kind: "worker_retired", key: retiredWorkerKey(name), dependsOn: [workerKey(backendPkg)], pkgName: name, scriptName: workerScriptName(config, name) });
+      continue;
+    }
+    const entry = manifest.workers[name];
+    if (!entry || entry.kind !== "service") invalid(`release has no service ${name}`);
+    if (!entry.installable) invalid(`${name} is not installable on district instances`);
+    if (!entry.backendBinding) invalid(`service ${name} has no backendBinding`);
+    const declared = new Map((entry.inputs ?? []).map((input) => [input.name, input]));
+    for (const input of declared.values()) {
+      if (input.kind === "workerName") invalid(`${name} needs a workerName input, which the installer does not collect yet`);
+      inputs.push(input.kind === "var"
+        ? { pkgName: name, name: input.name, label: input.label, kind: "var", supplied: Object.hasOwn(wanted.vars, input.name) }
+        : { pkgName: name, name: input.name, label: input.label, kind: "secret" });
+    }
+    for (const varName of Object.keys(wanted.vars)) {
+      if (declared.get(varName)?.kind !== "var") invalid(`${name} has no var input ${varName}`);
+    }
+    services.push(name);
+  }
+  const scriptNames = new Map([backendPkg, routerPkg, ...installed, ...services].map((pkg) => [pkg, workerScriptName(config, pkg)]));
 
   const storage = new Map<ResourceKey, DesiredResource>();
   const workers: DesiredResource[] = [];
@@ -245,7 +302,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     ? { kind: "ai_gateway", key: RESOURCE_KEYS.aiGateway, dependsOn: [], gatewayId: prefix }
     : undefined;
 
-  for (const pkgName of [...installed, backendPkg, routerPkg]) {
+  for (const pkgName of [...installed, ...services, backendPkg, routerPkg]) {
     const entry = manifest.workers[pkgName]!;
     const dependsOn = new Set<ResourceKey>();
     const resolve = (value: string): TemplateValue => {
@@ -331,6 +388,17 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       }
     }
 
+    // Optional services are bound by the backend once they and their secrets exist.
+    if (entry.kind === "backend") {
+      for (const service of services) {
+        const { name, entrypoint } = manifest.workers[service]!.backendBinding!;
+        if (bindings.some((b) => b.name === name)) invalid(`${service}'s backend binding ${name} collides with an existing backend binding`);
+        bindings.push({ type: "service", name, service: scriptNames.get(service)!, entrypoint });
+        dependsOn.add(workerKey(service));
+        for (const secret of secrets) if (secret.kind === "worker_secret" && secret.pkgName === service) dependsOn.add(secret.key);
+      }
+    }
+
     const vars: Record<string, unknown> = {
       ...entry.vars,
       [MARKER_VARS.instance]: config.instanceId,
@@ -353,6 +421,13 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     }
     if (entry.kind === "backend") {
       bindings.push({ type: "plain_text", name: "CF_ACCESS_AUD", text: { ref: accessApplication.key, output: "aud" } });
+    }
+    if (entry.kind === "service") {
+      // Operator-supplied values are literal: a `$` in them is not a placeholder.
+      for (const [name, text] of Object.entries(config.services[pkgName]!.vars).toSorted(([x], [y]) => x.localeCompare(y))) {
+        if (bindings.some((b) => b.name === name)) invalid(`${pkgName}: input ${name} collides with a binding the release declares`);
+        bindings.push({ type: "plain_text", name, text });
+      }
     }
 
     for (const migration of entry.d1Migrations ?? []) {
@@ -416,9 +491,10 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     accessApplication,
     ...workers,
     ...secrets,
+    ...retired,
     customDomain,
   ]);
-  return { instanceId: config.instanceId, accountId: config.accountId, releaseId: manifest.releaseId, hostname, resources };
+  return { instanceId: config.instanceId, accountId: config.accountId, releaseId: manifest.releaseId, hostname, inputs, resources };
 }
 
 /** Orders resources so each follows its dependencies, keeping input order otherwise. Rejects cycles. */

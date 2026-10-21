@@ -17,8 +17,29 @@ const DomainName = z
 export const MAX_INSTANCE_SLUG_LENGTH = 20;
 
 /**
+ * How the district wants one optional backend service (a release worker of kind `service`, such
+ * as `schoolos-ai-guard`) handled. A service the config does not name is not managed at all: it
+ * is neither installed nor removed, and the backend gets no binding to it.
+ */
+export const ServiceInstallConfig = z.strictObject({
+  /**
+   * True installs the service and binds it to the backend under the manifest's `backendBinding`.
+   * False uninstalls it: the backend binding is removed first, then the Worker is deleted, and
+   * with it the service's Durable Object data (the guard's ledger).
+   */
+  enabled: z.boolean(),
+  /**
+   * Values for the service's `var` deploy inputs, by input name. Secret inputs are never here;
+   * they come from the {@link SecretSource}, like gatekeeper secrets.
+   */
+  vars: z.record(z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/, "expected an input name"), z.string()).default({}),
+});
+/** A service install config, as parsed. */
+export type ServiceInstallConfig = z.infer<typeof ServiceInstallConfig>;
+
+/**
  * What a district supplies to install SchoolOS into its own Cloudflare account. Nothing here is a
- * secret: credentials come from the token provider and gatekeeper secrets from a
+ * secret: credentials come from the token provider and gatekeeper and service secrets from a
  * {@link SecretSource}.
  */
 export const DistrictInstallConfig = z.strictObject({
@@ -47,6 +68,10 @@ export const DistrictInstallConfig = z.strictObject({
   release: ReleasePin,
   /** Gatekeepers to install besides the release's preinstalled ones, by package name. */
   gatekeepers: z.array(z.string().regex(/^gatekeeper-[a-z0-9-]+$/)).max(32).default([]),
+  /** Optional backend services, by package name, e.g. `{ "schoolos-ai-guard": { enabled: true, vars: {...} } }`. */
+  services: z.record(z.string().regex(/^[a-z][a-z0-9-]{0,62}$/, "expected a workspace package name"), ServiceInstallConfig)
+    .refine((services) => Object.keys(services).length <= 16, "at most 16 services")
+    .default({}),
   /** Creates an AI Gateway named after the instance and points the backend at it. */
   aiGateway: z.boolean().default(false),
   /**

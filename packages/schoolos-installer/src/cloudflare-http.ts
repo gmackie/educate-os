@@ -152,6 +152,10 @@ export class CloudflareHttpApi implements CloudflareApi {
     await this.#result("uploadWorkerScript", "PUT", scriptPath(accountId, scriptName), { form });
   }
 
+  async deleteWorkerScript(accountId: string, scriptName: string) {
+    await this.#result("deleteWorkerScript", "DELETE", scriptPath(accountId, scriptName));
+  }
+
   async createAssetsUploadSession(accountId: string, scriptName: string, manifest: Record<string, { hash: string; size: number }>) {
     return AssetsSessionWire.parse(
       await this.#result("createAssetsUploadSession", "POST", `${scriptPath(accountId, scriptName)}/assets-upload-session`, {
@@ -198,7 +202,12 @@ export class CloudflareHttpApi implements CloudflareApi {
       const detail = VersionDetail.parse(
         await this.#result("listWorkerVersions", "GET", `${scriptPath(accountId, scriptName)}/versions/${seg(item.id)}`),
       );
-      return { id: item.id, createdOn: item.metadata.created_on, vars: plainTextVars(detail.resources.bindings) };
+      return {
+        id: item.id,
+        createdOn: item.metadata.created_on,
+        vars: plainTextVars(detail.resources.bindings),
+        serviceBindings: serviceBindings(detail.resources.bindings),
+      };
     }));
   }
 
@@ -391,6 +400,10 @@ function scriptPath(accountId: string, scriptName: string): string {
 
 function plainTextVars(bindings: z.infer<typeof BindingWire>[]): Record<string, string> {
   return Object.fromEntries(bindings.flatMap((b) => (b.type === "plain_text" && b.text !== undefined ? [[b.name, b.text]] : [])));
+}
+
+function serviceBindings(bindings: z.infer<typeof BindingWire>[]): { name: string; service: string }[] {
+  return bindings.flatMap((b) => (b.type === "service" && typeof b.service === "string" ? [{ name: b.name, service: b.service }] : []));
 }
 
 function toDomain(wire: z.infer<typeof DomainWire>): WorkerDomain {

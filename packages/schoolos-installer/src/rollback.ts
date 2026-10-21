@@ -34,6 +34,7 @@ export async function planRollback(api: CloudflareApi, current: DesiredState, pr
   }
   const account = current.accountId;
   const scripts = await guarded(() => api.listWorkerScripts(account));
+  const deployed = new Set(scripts.map((s) => s.name));
   const previousWorkers = new Map(
     previous.resources.filter((r): r is DesiredWorker => r.kind === "worker_script").map((w) => [w.pkgName, w]),
   );
@@ -76,6 +77,17 @@ export async function planRollback(api: CloudflareApi, current: DesiredState, pr
     if (!target) {
       step("blocked", `no retained version of ${previous.releaseId}; reinstall that release instead`);
       continue;
+    }
+    // A version whose service binding targets a Worker that has since been deleted (a service
+    // disabled after that release) cannot be deployed; Cloudflare would refuse it.
+    const dangling = target.serviceBindings.filter((b) => !deployed.has(b.service));
+    if (dangling.length > 0) {
+      step("blocked", `the ${previous.releaseId} version binds ${dangling.map((b) => `${b.name} to ${b.service}`).join(", ")}, which is no longer deployed`);
+      continue;
+    }
+    const currentBindings = new Set(worker.bindings.filter((b) => b.type === "service").map((b) => b.name));
+    for (const removed of currentBindings.difference(new Set(target.serviceBindings.map((b) => b.name)))) {
+      irreversible.push(`${worker.scriptName} returns to a version without its ${removed} binding; the Worker it bound stays deployed`);
     }
     step("deploy-version", `redeploy version from ${previous.releaseId}`, target.id);
   }

@@ -81,11 +81,20 @@ export interface WorkerUpload {
   modules: WorkerModulePart[];
 }
 
+/** A service binding as a Worker version carries it. */
+export interface ServiceBindingRef {
+  name: string;
+  /** The Worker the binding targets. */
+  service: string;
+}
+
 /** One version of a Worker, with its plain-text vars (where the installer records release IDs). */
 export interface WorkerVersion {
   id: string;
   createdOn: string;
   vars: Record<string, string>;
+  /** The version's service bindings; redeploying it needs every target to exist. */
+  serviceBindings: ServiceBindingRef[];
 }
 
 /** A Worker custom domain. */
@@ -188,6 +197,11 @@ export interface CloudflareApi {
   listWorkerScripts(accountId: string): Promise<WorkerScriptSummary[]>;
   getWorkerSettings(accountId: string, scriptName: string): Promise<WorkerSettings>;
   uploadWorkerScript(accountId: string, scriptName: string, upload: WorkerUpload): Promise<void>;
+  /**
+   * Deletes a Worker and its Durable Objects' data. Without `force`, Cloudflare refuses while
+   * another Worker binds it, which is the order the installer relies on.
+   */
+  deleteWorkerScript(accountId: string, scriptName: string): Promise<void>;
   createAssetsUploadSession(
     accountId: string,
     scriptName: string,

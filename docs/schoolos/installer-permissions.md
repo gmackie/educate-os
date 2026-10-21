@@ -36,6 +36,7 @@ guess.
 | `findZone` | `GET /zones?name=` | Zone: Read | `zone:read` | wrangler-requested |
 | `listDnsRecords` | `GET /zones/{zone}/dns_records` | DNS: Read | `zone:read` | unverified (may need a DNS scope) |
 | `listWorkerScripts`, `getWorkerSettings`, `uploadWorkerScript` | `/accounts/{id}/workers/scripts[/{name}[/settings]]` | Workers Scripts: Edit | `workers_scripts:write` | wrangler-requested |
+| `deleteWorkerScript` (disabling a service) | `DELETE /accounts/{id}/workers/scripts/{name}` (never `force`) | Workers Scripts: Edit | `workers_scripts:write` | wrangler-requested |
 | `createAssetsUploadSession`, `uploadAssets` | `.../assets-upload-session`, `/workers/assets/upload` (session JWT) | Workers Scripts: Edit | `workers_scripts:write` | wrangler-requested |
 | `listWorkerSecrets`, `putWorkerSecret` | `.../scripts/{name}/secrets` | Workers Scripts: Edit | `workers_scripts:write` | wrangler-requested |
 | `listWorkerVersions`, `deployWorkerVersion` (rollback) | `.../versions`, `.../deployments` | Workers Scripts: Edit | `workers_scripts:write` | wrangler-requested |
@@ -70,11 +71,31 @@ Two OAuth gaps may block OAuth mode outright, pending Cloudflare's answer:
 | `dns.zone-missing`, `dns.zone-pending` | The base domain is an active zone in the account | Add the zone and delegate its nameservers. |
 | `dns.record-conflict` | The SchoolOS hostname has no existing DNS records | Remove them or pick another subdomain. |
 | `quota.*` | Room under documented per-account limits (Workers 500, KV 1,000, D1 50,000, R2 1,000,000; **unverified** per account) | Free up resources or request a raise. |
+| `service.input-missing` | Every `var` input of an enabled service is in the config | Set `services["<pkg>"].vars.<NAME>`. |
+| `service.secret-missing` | Every secret input of an enabled service is supplied, or already set on its Worker | Supply it through the secret source (`SCHOOLOS_SECRET_<PKG>__<NAME>` for the CLI). |
 | `permission.missing`, `credential.rejected` | The credential works and has each permission above | Re-authorize, or grant the named permission. |
 
 Preflight also warns (`access.free-seat-limit`) when it finds no paid Zero Trust plan. Zero Trust
 Free admits 50 users, and every student and teacher who signs in takes a seat. It warns
-(`product.worker-loader`) that Worker Loader availability can't be checked through the API.
+(`product.worker-loader`) that Worker Loader availability can't be checked through the API, and
+(`service.var-size`) when a service var is over the documented 5 KB variable limit.
+
+## Optional services
+
+A release worker of kind `service` (today only `schoolos-ai-guard`) is installed only when the
+config names it under `services` with `enabled: true`, its `var` inputs under `vars` and its
+secrets from the secret source. The backend then gains the manifest's `backendBinding` (for the
+guard, `AI_CALL_GUARD` to the `SchoolOsAiCallGuard` entrypoint), and the backend is uploaded only
+after the service Worker and its secrets exist. `enabled: false` reverses this: the backend is
+re-uploaded without the binding, then the service Worker is deleted, which also deletes its
+Durable Object data (the guard's spend ledger). A service the config does not name is neither
+installed nor removed. The installer deletes only Workers carrying its own instance marker.
+
+Drift detection compares each Worker's deployed service bindings with the desired ones directly,
+because a dashboard edit keeps the installer's digest marker; a removed or retargeted
+`AI_CALL_GUARD` is reported and repaired by the next apply. Rollback refuses to redeploy a version
+whose service binding targets a Worker that no longer exists, and notes when it returns the
+backend to a version without a binding.
 
 ## What the credential can reach, and what the installer touches
 
@@ -105,4 +126,6 @@ a working credential, in either mode, continues from them.
   depends on this to apply a migration and its ledger row together.
 - The `environment` field on `PUT /workers/domains`.
 - Whether version detail responses expose plain-text binding values. Rollback finds the previous
-  release's version through them.
+  release's version through them, and reads service binding targets from the same response.
+- That deleting a Worker another Worker's deployed version binds is refused without `force` (the
+  fake models it; the error codes are not known).

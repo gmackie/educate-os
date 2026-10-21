@@ -4,7 +4,7 @@
 // missing zone or IdP is reported as an operator step, not worked around.
 import type { CloudflareApi } from "./cloudflare-api.ts";
 import { R2_NOT_ENABLED_CODE } from "./cloudflare-http.ts";
-import type { DistrictInstallConfig } from "./config.ts";
+import type { DistrictInstallConfig, SecretSource } from "./config.ts";
 import type { DesiredState, DesiredWorker } from "./desired.ts";
 import { CloudflareApiError, isCredentialFailure } from "./errors.ts";
 
@@ -38,11 +38,23 @@ export const DOCUMENTED_LIMITS = {
 /** Rate plan IDs that include Workers Paid. Unverified beyond `workers_paid`. */
 const WORKERS_PAID_PLANS = new Set(["workers_paid", "workers_bundled", "workers_unbound", "enterprise"]);
 
+/** Cloudflare's documented size limit for one Workers environment variable, in bytes. Unverified. */
+export const WORKER_VAR_LIMIT_BYTES = 5 * 1024;
+
 /** Zero Trust Free allows this many users; a district needs a paid seat plan. */
 const ZERO_TRUST_FREE_SEATS = 50;
 
-/** Runs every preflight check. Credential failures are findings, not exceptions. */
-export async function preflight(api: CloudflareApi, config: DistrictInstallConfig, desired: DesiredState): Promise<PreflightReport> {
+/**
+ * Runs every preflight check. Credential failures are findings, not exceptions. With `secrets`, an
+ * installed service's secret input is also checked: it must be supplied, or already set on the
+ * service's Worker by an earlier install (values are never read back).
+ */
+export async function preflight(
+  api: CloudflareApi,
+  config: DistrictInstallConfig,
+  desired: DesiredState,
+  secrets?: SecretSource,
+): Promise<PreflightReport> {
   const blocking: PreflightItem[] = [];
   const warnings: PreflightItem[] = [];
   const account = config.accountId;
@@ -121,6 +133,7 @@ export async function preflight(api: CloudflareApi, config: DistrictInstallConfi
     const d1 = await probe("listing D1 databases", "D1: Edit", () => api.listD1Databases(account));
     if (!d1.failed) quota(warnings, blocking, "d1Databases", "D1 databases", d1.value.length, count("d1_database"));
   }
+  await checkServiceInputs(api, config, desired, secrets, scripts.failed ? undefined : new Set(scripts.value.map((s) => s.name)), blocking, warnings);
   if (bindingTypes.has("worker_loader")) {
     warnings.push({
       code: "product.worker-loader",
@@ -138,6 +151,55 @@ export async function preflight(api: CloudflareApi, config: DistrictInstallConfi
   }
 
   return { ok: blocking.length === 0, blocking, warnings };
+}
+
+async function checkServiceInputs(
+  api: CloudflareApi,
+  config: DistrictInstallConfig,
+  desired: DesiredState,
+  secrets: SecretSource | undefined,
+  existingScripts: Set<string> | undefined,
+  blocking: PreflightItem[],
+  warnings: PreflightItem[],
+) {
+  const scriptOf = new Map(desired.resources.flatMap((r) => (r.kind === "worker_script" ? [[r.pkgName, r.scriptName]] : [])));
+  const setSecrets = new Map<string, Set<string>>();
+  for (const input of desired.inputs) {
+    const where = `services["${input.pkgName}"]`;
+    if (input.kind === "var") {
+      const value = config.services[input.pkgName]?.vars[input.name];
+      if (!input.supplied || value === undefined) {
+        blocking.push({
+          code: "service.input-missing",
+          message: `${input.pkgName} needs ${input.name} (${input.label}).`,
+          operatorAction: `Set ${where}.vars.${input.name} in the install config.`,
+        });
+      } else if (new TextEncoder().encode(value).byteLength > WORKER_VAR_LIMIT_BYTES) {
+        warnings.push({
+          code: "service.var-size",
+          message: `${input.pkgName}'s ${input.name} is over Cloudflare's documented ${WORKER_VAR_LIMIT_BYTES}-byte variable limit; the upload may be refused.`,
+        });
+      }
+      continue;
+    }
+    if (!secrets || secrets.get(input.pkgName, input.name) !== undefined) continue;
+    const scriptName = scriptOf.get(input.pkgName);
+    if (scriptName && existingScripts?.has(scriptName)) {
+      if (!setSecrets.has(scriptName)) {
+        try {
+          setSecrets.set(scriptName, new Set(await api.listWorkerSecrets(config.accountId, scriptName)));
+        } catch {
+          setSecrets.set(scriptName, new Set());
+        }
+      }
+      if (setSecrets.get(scriptName)!.has(input.name)) continue;
+    }
+    blocking.push({
+      code: "service.secret-missing",
+      message: `${input.pkgName} needs the secret ${input.name} (${input.label}), and it is neither supplied nor set on the Worker.`,
+      operatorAction: `Supply ${input.name} for ${input.pkgName} through the installer's secret source (the CLI reads SCHOOLOS_SECRET_${input.pkgName.toUpperCase().replaceAll("-", "_")}__${input.name}).`,
+    });
+  }
 }
 
 type ProbeResult<T> = { failed: false; value: T } | { failed: true };

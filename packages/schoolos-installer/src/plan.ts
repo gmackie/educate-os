@@ -3,7 +3,7 @@
 // running again, and a second machine (the district's own CI after the root's OAuth grant is
 // revoked) reconciles exactly as the first would.
 import { SchoolOsError } from "@schoolos/contracts";
-import type { CloudflareApi, KvNamespace } from "./cloudflare-api.ts";
+import type { CloudflareApi, KvNamespace, ObservedBinding } from "./cloudflare-api.ts";
 import type { SecretSource } from "./config.ts";
 import {
   type DesiredResource,
@@ -22,7 +22,7 @@ export type Observation =
   | { status: "foreign"; reason: string };
 
 /** What the reconciler will do with one resource. */
-export type PlanAction = "create" | "update" | "noop" | "refuse" | "needs-input";
+export type PlanAction = "create" | "update" | "delete" | "noop" | "refuse" | "needs-input";
 
 /** One step of a plan. */
 export interface PlanStep {
@@ -192,6 +192,22 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
         else step("needs-input", `supply ${resource.secretName} for ${resource.pkgName}`);
         break;
       }
+      case "worker_retired": {
+        const found = scripts.find((s) => s.name === resource.scriptName);
+        if (!found) {
+          step("noop", "service not installed");
+          break;
+        }
+        const settings = await guarded(() => api.getWorkerSettings(account, resource.scriptName));
+        const marker = settings.bindings.find((b) => b.type === "plain_text" && b.name === MARKER_VARS.instance)?.text;
+        if (marker !== desired.instanceId) {
+          // Never delete what the installer does not own; a foreign Worker of that name is left alone.
+          step("noop", `Worker ${resource.scriptName} is not this instance's; left in place`);
+          break;
+        }
+        step("delete", "service disabled: deletes the Worker and its Durable Object data, after the backend drops its binding");
+        break;
+      }
       case "custom_domain": {
         const found = domains.find((d) => d.hostname === resource.hostname);
         if (found && found.service !== resource.scriptName) {
@@ -213,7 +229,7 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
 async function planWorker(
   worker: DesiredWorker,
   migrationTag: string | undefined,
-  observed: { type: string; name: string; text?: string }[],
+  observed: ObservedBinding[],
   outputs: ResourceOutputs,
 ): Promise<PlanStep> {
   const base = { key: worker.key, kind: worker.kind, resource: worker, ...(migrationTag ? { observedMigrationTag: migrationTag } : {}) };
@@ -223,13 +239,40 @@ async function planWorker(
     if (error instanceof SchoolOsError) return { ...base, action: "refuse", reason: error.message };
     throw error;
   }
+  const serviceChanges = serviceBindingChanges(worker, observed);
+  const suffix = serviceChanges.length > 0 ? `; ${serviceChanges.join("; ")}` : "";
   const bindings = resolveBindings(worker, outputs);
-  if (!bindings) return { ...base, action: "update", reason: "a dependency will be created first" };
+  if (!bindings) return { ...base, action: "update", reason: `a dependency will be created first${suffix}` };
   const digest = await workerDigest(worker, bindings);
   const current = observed.find((b) => b.type === "plain_text" && b.name === MARKER_VARS.digest)?.text;
-  return current === digest
-    ? { ...base, action: "noop", reason: "deployed version matches the release" }
-    : { ...base, action: "update", reason: "release content or configuration changed" };
+  if (current !== digest) return { ...base, action: "update", reason: `release content or configuration changed${suffix}` };
+  // The digest marker survives a dashboard edit, so service bindings are also compared directly:
+  // a removed or retargeted binding (such as AI_CALL_GUARD) is drift the next apply repairs.
+  return serviceChanges.length > 0
+    ? { ...base, action: "update", reason: `drift: ${serviceChanges.join("; ")}` }
+    : { ...base, action: "noop", reason: "deployed version matches the release" };
+}
+
+/**
+ * How a Worker's deployed service bindings differ from the desired ones, in operator terms, e.g.
+ * `binds AI_CALL_GUARD to schoolos-x-schoolos-ai-guard (SchoolOsAiCallGuard)`. Service binding
+ * targets are literal Worker names, so this needs no outputs.
+ */
+export function serviceBindingChanges(worker: DesiredWorker, observed: ObservedBinding[]): string[] {
+  const want = new Map(worker.bindings.filter((b) => b.type === "service").map((b) => [b.name, describeServiceTarget(b)]));
+  const have = new Map(observed.filter((b) => b.type === "service").map((b) => [b.name, describeServiceTarget(b)]));
+  const changes: string[] = [];
+  for (const [name, target] of want) {
+    const current = have.get(name);
+    if (current === undefined) changes.push(`binds ${name} to ${target}`);
+    else if (current !== target) changes.push(`rebinds ${name} from ${current} to ${target}`);
+  }
+  for (const name of have.keys()) if (!want.has(name)) changes.push(`removes binding ${name}`);
+  return changes;
+}
+
+function describeServiceTarget(binding: Record<string, unknown>): string {
+  return `${String(binding.service)}${typeof binding.entrypoint === "string" ? ` (${binding.entrypoint})` : ""}`;
 }
 
 /** The D1 migration ledger table. Holds migration IDs only, never district data. */

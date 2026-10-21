@@ -7,6 +7,7 @@ import { type ReleaseArtifacts, verifiedAsset, verifiedBlob } from "./artifacts.
 import type { CloudflareApi } from "./cloudflare-api.ts";
 import type { SecretSource } from "./config.ts";
 import type { DesiredD1Database, DesiredWorker } from "./desired.ts";
+import { CloudflareApiError } from "./errors.ts";
 import { D1_LEDGER_TABLE, guarded, type InstallPlan, type PlanStep } from "./plan.ts";
 import { migrationsFrom, type ResourceOutputs, resolveBindings, uploadMetadata, workerDigest } from "./render.ts";
 
@@ -95,6 +96,14 @@ export async function applyPlan(plan: InstallPlan, context: ApplyContext): Promi
         await guarded(() => api.putWorkerSecret(account, resource.scriptName, resource.secretName, value));
         break;
       }
+      case "worker_retired":
+        try {
+          await guarded(() => api.deleteWorkerScript(account, resource.scriptName));
+        } catch (error) {
+          // A delete whose response was lost landed; the Worker is gone either way.
+          if (!(error instanceof CloudflareApiError && error.status === 404)) throw error;
+        }
+        break;
       case "custom_domain": {
         const zoneId = plan.zoneId;
         if (!zoneId) throw new SchoolOsError("validation-failed", `zone ${resource.zoneName} is not in the account`);

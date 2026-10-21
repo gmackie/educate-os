@@ -45,7 +45,7 @@ export interface InstallReport {
 export async function install(options: InstallOptions): Promise<InstallReport> {
   const { api, config } = options;
   const desired = compileDesiredState(options.manifest, config);
-  const report = await preflight(api, config, desired);
+  const report = await preflight(api, config, desired, options.secrets);
   if (!report.ok) return { status: "preflight-blocked", preflight: report };
 
   const plan = await planInstall(api, desired, options.secrets);
@@ -89,7 +89,15 @@ export interface RollbackOptions {
 /** Plans, and unless a dry run applies, a rollback to the previous release. */
 export async function rollback(options: RollbackOptions): Promise<{ plan: RollbackPlan; deployed: string[] }> {
   const current = compileDesiredState(options.current, options.config);
-  const previous = compileDesiredState(options.previous, { ...options.config, release: { ...options.config.release, releaseId: options.previous.releaseId } });
+  // A service the previous release does not ship cannot be part of its desired state; rollback
+  // then returns the backend to a version without its binding and leaves the service running.
+  const previousServices = Object.fromEntries(Object.entries(options.config.services)
+    .filter(([name, wanted]) => !wanted.enabled || options.previous.workers[name]?.kind === "service"));
+  const previous = compileDesiredState(options.previous, {
+    ...options.config,
+    services: previousServices,
+    release: { ...options.config.release, releaseId: options.previous.releaseId },
+  });
   const plan = await planRollback(options.api, current, previous);
   if (options.dryRun) return { plan, deployed: [] };
   return { plan, deployed: await applyRollback(options.api, options.config.accountId, plan) };

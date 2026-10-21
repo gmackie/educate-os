@@ -83,6 +83,31 @@ describe("Cloudflare HTTP client", () => {
     expect((form.get("index.js") as Blob).type).toBe("application/javascript+module");
   });
 
+  it("deletes a script without force, and reads each version's service bindings", async () => {
+    const { fetchImpl, requests } = stubFetch((request) => {
+      const path = new URL(request.url).pathname;
+      if (request.method === "DELETE") return ok(null);
+      if (path.endsWith("/versions")) return ok({ items: [{ id: "v1", metadata: { created_on: "2026-10-20T00:00:00Z" } }] });
+      return ok({ resources: { bindings: [
+        { type: "plain_text", name: "SCHOOLOS_RELEASE_ID", text: "r1" },
+        { type: "service", name: "AI_CALL_GUARD", service: "schoolos-northfield-schoolos-ai-guard", entrypoint: "SchoolOsAiCallGuard" },
+      ] } });
+    });
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+
+    await api.deleteWorkerScript(ACCOUNT, "schoolos-northfield-schoolos-ai-guard");
+    expect(requests[0]!.method).toBe("DELETE");
+    expect(new URL(requests[0]!.url).pathname).toBe(`/client/v4/accounts/${ACCOUNT}/workers/scripts/schoolos-northfield-schoolos-ai-guard`);
+    expect(new URL(requests[0]!.url).searchParams.has("force")).toBe(false);
+
+    expect(await api.listWorkerVersions(ACCOUNT, "schoolos-northfield-workshop-backend")).toEqual([{
+      id: "v1",
+      createdOn: "2026-10-20T00:00:00Z",
+      vars: { SCHOOLOS_RELEASE_ID: "r1" },
+      serviceBindings: [{ name: "AI_CALL_GUARD", service: "schoolos-northfield-schoolos-ai-guard" }],
+    }]);
+  });
+
   it("authenticates asset uploads with the session JWT, not the account token", async () => {
     const { fetchImpl, requests } = stubFetch(() => ok({ jwt: "completion-jwt" }));
     const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });

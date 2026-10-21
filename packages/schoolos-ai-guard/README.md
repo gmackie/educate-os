@@ -23,8 +23,8 @@ by its district ID, and the guard reaches it through `ctx.exports`.
 The release manifest has a `service` kind for this Worker (see `SERVICE_PACKAGES` in
 `scripts/release/manifest-lib.ts`). A service is installable once. Its entry carries
 `backendBinding: { name: "AI_CALL_GUARD", entrypoint: "SchoolOsAiCallGuard" }`, which tells the
-deploy service how to bind it to the backend. Its wizard inputs (`deploy-inputs.json`) are listed
-below; none of them is OAuth:
+deploy service (and the SchoolOS district installer) how to bind it to the backend. Its wizard
+inputs (`deploy-inputs.json`) are listed below; none of them is OAuth:
 
 | Input | Kind | What it is |
 |---|---|---|
@@ -105,8 +105,10 @@ snapshot stand in for `@schoolos/identity` and the district app (see follow-ups)
   (SCHO-115), and scheduled reconciliation against the provider's bill (SCHO-115/116).
 - Coaching prompts for `coach` decisions.
 - Moderating attachments. Image parts are skipped; Hall Monitor accepts them only as digests.
-- Teaching the deploy service the `service` kind and its `backendBinding`. Until then, a guard
-  installed from a release must be bound to the backend by hand.
+- Teaching the hosted deploy service the `service` kind and its `backendBinding`. The SchoolOS
+  district installer already does (`services` in the install config, SCHO-131; see
+  `docs/schoolos/installer-permissions.md`), but the upstream Cloudflare deploy service is external
+  to this repo, so a guard it installs must still be bound to the backend by hand.
 - Including the guard in `pnpm dev-server` and previews. Both currently leave it out, so the
   backend runs unguarded there.
 
