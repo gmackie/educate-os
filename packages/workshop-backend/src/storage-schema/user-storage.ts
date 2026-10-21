@@ -6,7 +6,7 @@
 
 import { createTypedStorage, collection } from "@gadgets/typed-storage";
 import type {
-  AiChatAuthorInfo, AiModelConfig, BlueprintMetadata, BlueprintOutput,
+  AiChatAuthorInfo, AiModelConfig, BlueprintMetadata, BlueprintOutput, ExternalWorkspaceKind,
   GadgetMetadata, WorkpieceId,
 } from "@gadgets/workshop-shared/api";
 import type { AccountDescription, GatekeeperUser } from "@gadgets/workshop-shared/gatekeeper";
@@ -116,6 +116,9 @@ type LibraryBlueprintRecord = {
 export type GadgetRecord = GadgetMetadata & {
   created: Date;
   lastActive?: Date;  // if missing, gadget is provisional
+  // Set on a workspace AuthenticatedApi.ensureExternalWorkspace() created: the external system's
+  // ID for it, and what it is for.
+  external?: { externalId: string; kind: ExternalWorkspaceKind };
   // If we're not the gadget owner (it was shared with us), `owner` is set (inherited from
   // GadgetMetadata).
 };
