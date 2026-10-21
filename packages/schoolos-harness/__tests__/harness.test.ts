@@ -149,5 +149,7 @@ describe("CLI", () => {
     const { stdout } = await promisify(execFile)(process.execPath, [cli, "--check"], { timeout: 30_000 });
     expect(stdout).toMatch(/dst_northfield .* health=200/);
     expect(stdout).toMatch(/dst_riverbend .* health=200/);
-  });
+    // The CLI now boots and seeds the full district app for both districts in a child process, which
+    // takes several seconds on a loaded CI runner; match the vitest budget to execFile's.
+  }, 35_000);
 });
