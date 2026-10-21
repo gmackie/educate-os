@@ -14,12 +14,13 @@
 | AI budgets and usage records | They are district money, and per-principal usage is personal data. |
 | District configuration and policy | Changing them changes who can see what. |
 | Integration credentials | IdP, roster, LMS and provider keys. |
-| Release and entitlement signatures | They decide what code a district runs. |
+| Release signatures and the pinned release keys | They decide what code a district runs. The district verifies them offline against keys it pins, and can pin its own (ADR-0011). There are no entitlement signatures in the default runtime. |
 
 ## Trust boundaries
 
-1. **Root ↔ district.** `schoolos.dev` is outside the data plane (ADR-0001). It can propose a
-   release. The district verifies the signature and applies it.
+1. **Root ↔ district.** `schoolos.dev` is outside the data plane (ADR-0001) and outside the
+   runtime (ADR-0011). It can publish a release. The district verifies the signature and applies
+   it.
 2. **District A ↔ district B.** Each district is a separate account or instance. Contracts carry
    `districtId` everywhere, and authorization denies across districts before any policy rule runs.
 3. **Issuer ↔ principal.** Tokens prove an `(issuer, subject)`. Only the district's directory turns
