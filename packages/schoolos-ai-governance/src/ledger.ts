@@ -7,18 +7,30 @@ import {
 } from "@schoolos/contracts";
 import type { PolicySource } from "@schoolos/policy";
 import {
+  AiAttempts,
   AiRequestId,
   AiWorkspaceContext,
-  Cents,
   ModelRef,
+  PriceBookId,
   TokenUsage,
   sameModel,
+  type AiAttempt,
   type AiDenialReason,
   type GovernedModel,
 } from "./model.ts";
+import {
+  PositiveUsdNano,
+  UsdNano,
+  signedUsdNano,
+  usdNano,
+  usdNanoFromCents,
+  usdNanoValue,
+  type SignedUsdNano,
+} from "./money.ts";
 import { routeModel } from "./model-policy.ts";
 import { resolveFunding, type FundingPool, type TermClosedEvent } from "./pools.ts";
 import {
+  ENTRY_SCHEMA_VERSION,
   billingPeriodOf,
   type BillingPeriod,
   type LedgerEntry,
@@ -76,12 +88,29 @@ export type VoidResult = { outcome: "voided"; replayed: boolean } | { outcome: "
 /** A pool's position for one month. */
 export interface PoolBalance {
   /** The month's allocation. */
-  allocationCents: number;
+  allocationUsdNano: UsdNano;
   /** Settled, held and adjusted charges. */
-  chargedCents: number;
-  /** `allocationCents - chargedCents`; negative when settlement or a bill correction overran it. */
-  remainingCents: number;
+  chargedUsdNano: SignedUsdNano;
+  /** `allocationUsdNano - chargedUsdNano`; negative when settlement or a bill correction overran it. */
+  remainingUsdNano: SignedUsdNano;
 }
+
+/**
+ * How a request ended: every provider attempt it made, and the price book the gateway estimated
+ * costs from. The single-attempt form (`usage` and `actualUsdNano`, with `state` defaulting to
+ * `estimated`) is shorthand for one attempt at index 0.
+ */
+export const AiSettlement = z.union([
+  z.strictObject({ attempts: AiAttempts, priceBookId: PriceBookId.optional() }),
+  z.strictObject({
+    usage: TokenUsage,
+    actualUsdNano: UsdNano,
+    state: z.enum(["provider_reported", "estimated"]).optional(),
+    priceBookId: PriceBookId.optional(),
+  }),
+]);
+/** A settlement, as {@link AiLedger.settle} accepts it. */
+export type AiSettlement = z.input<typeof AiSettlement>;
 
 /** Settings for an {@link AiLedger}. */
 export interface AiLedgerOptions {
@@ -100,10 +129,24 @@ const ReserveInput = z.strictObject({
   principal: AiPrincipal,
   workspace: AiWorkspaceContext,
   model: ModelRef,
-  estimatedMaxCents: Cents.positive(),
+  estimatedMaxUsdNano: PositiveUsdNano,
 });
 
-const SettleInput = z.strictObject({ requestId: AiRequestId, usage: TokenUsage, actualCents: Cents });
+/** The attempts and price book of a parsed settlement, in the long form. */
+function settlementAttempts(settlement: z.output<typeof AiSettlement>): { attempts: AiAttempt[]; priceBookId?: PriceBookId } {
+  const priceBook = settlement.priceBookId === undefined ? {} : { priceBookId: settlement.priceBookId };
+  if ("attempts" in settlement) return { attempts: settlement.attempts, ...priceBook };
+  const { usage, actualUsdNano, state = "estimated" } = settlement;
+  return { attempts: [{ attemptIndex: 0, state, usage, actualUsdNano }], ...priceBook };
+}
+
+/** JSON with object keys sorted, so two equal settlements compare equal whatever their key order. */
+function canonicalJson(value: unknown): string {
+  return JSON.stringify(value, (_key, inner: unknown) =>
+    inner !== null && typeof inner === "object" && !Array.isArray(inner)
+      ? Object.fromEntries(Object.entries(inner).toSorted(([a], [b]) => a.localeCompare(b)))
+      : inner);
+}
 
 function parsed<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
@@ -115,7 +158,7 @@ function parsed<T>(schema: z.ZodType<T>, value: unknown): T {
 
 /** A request's routing: the model, the pools to draw on in order, and the principal's cap. */
 type Routing =
-  | { ok: true; model: GovernedModel; pools: FundingPool[]; capCents: number }
+  | { ok: true; model: GovernedModel; pools: FundingPool[]; capUsdNano: bigint }
   | { ok: false; reason: AiDenialReason };
 
 function sameWorkspace(a: AiWorkspaceContext, b: AiWorkspaceContext): boolean {
@@ -130,6 +173,9 @@ function sameWorkspace(a: AiWorkspaceContext, b: AiWorkspaceContext): boolean {
  * rather than holding again, and a second settlement or void changes nothing, so a retry is never
  * billed twice. Caps and pool balances are checked only when funds are first held: settlement
  * always records the actual cost, even when that overruns a cap, because the spend has happened.
+ *
+ * Every amount is in {@link UsdNano}. The policy's principal cap is set in whole cents and is
+ * converted with `usdNanoFromCents` when it is applied.
  */
 export class AiLedger {
   readonly #districtId: DistrictId;
@@ -145,7 +191,7 @@ export class AiLedger {
   }
 
   /**
-   * Holds `estimatedMaxCents` for one request, or refuses it before anything is spent.
+   * Holds `estimatedMaxUsdNano` for one request, or refuses it before anything is spent.
    *
    * The request must come from a principal of this district, be fundable from their enrollments
    * (see `resolveFunding`), and name a model the policy and a candidate pool allow (see
@@ -161,9 +207,10 @@ export class AiLedger {
     principal: AiPrincipal,
     workspace: AiWorkspaceContext,
     model: ModelRef,
-    estimatedMaxCents: number,
+    estimatedMaxUsdNano: UsdNano,
   ): Promise<ReserveResult> {
-    const input = parsed(ReserveInput, { requestId, principal, workspace, model, estimatedMaxCents });
+    const input = parsed(ReserveInput, { requestId, principal, workspace, model, estimatedMaxUsdNano });
+    const estimate = usdNanoValue(input.estimatedMaxUsdNano);
     const reservedAt = this.#now().toISOString();
     const period = billingPeriodOf(reservedAt);
     const decision = await this.#route(input.principal, input.workspace, input.model);
@@ -174,7 +221,7 @@ export class AiLedger {
         const held = existing.reservation;
         if (held.principalId !== input.principal.principalId || held.districtId !== input.principal.districtId
           || !sameWorkspace(held.workspace, input.workspace) || !sameModel(held.model, input.model)
-          || held.heldCents !== input.estimatedMaxCents) {
+          || held.heldUsdNano !== input.estimatedMaxUsdNano) {
           throw new SchoolOsError("conflict", "request ID was already used for a different request");
         }
         const status: RequestStatus = existing.settlement ? "settled" : existing.voided ? "voided" : "held";
@@ -182,23 +229,24 @@ export class AiLedger {
       }
       if (!decision.ok) return { append: [], result: { outcome: "denied", reason: decision.reason } };
 
-      const principalCharged = ledger.principalCharged(input.principal.principalId, period);
-      if (principalCharged + input.estimatedMaxCents > decision.capCents) {
+      const principalCharged = usdNanoValue(ledger.principalCharged(input.principal.principalId, period));
+      if (principalCharged + estimate > decision.capUsdNano) {
         return { append: [], result: { outcome: "denied", reason: "principal-cap-reached" } };
       }
       const pool = decision.pools.find((candidate) =>
-        ledger.poolCharged(candidate.id, period) + input.estimatedMaxCents <= candidate.monthlyAllocationCents);
+        usdNanoValue(ledger.poolCharged(candidate.id, period)) + estimate <= usdNanoValue(candidate.monthlyAllocationUsdNano));
       if (pool === undefined) return { append: [], result: { outcome: "denied", reason: "pool-exhausted" } };
 
       const reservation: ReservationEntry = {
         type: "reservation",
+        entrySchemaVersion: ENTRY_SCHEMA_VERSION,
         requestId: input.requestId,
         districtId: this.#districtId,
         principalId: input.principal.principalId,
         workspace: input.workspace,
         poolId: pool.id,
         model: { provider: decision.model.provider, modelId: decision.model.modelId },
-        heldCents: input.estimatedMaxCents,
+        heldUsdNano: input.estimatedMaxUsdNano,
         period,
         reservedAt,
       };
@@ -207,22 +255,46 @@ export class AiLedger {
   }
 
   /**
-   * Records what a reserved request actually cost, replacing its hold. Settling an already-settled
-   * request returns the first settlement and changes nothing. A request voided first stays voided;
-   * if the provider billed it anyway, reconciliation charges it.
+   * Records what a reserved request actually cost, replacing its hold.
+   *
+   * A request may have made several provider attempts (a retry after a timeout is billed again),
+   * and each is charged. An attempt whose cost is `unknown` is charged at the reservation's hold,
+   * never at $0, and the settlement is flagged `hasUnknownCost` until reconciliation corrects it.
+   *
+   * Settlement is idempotent on the request ID: settling again with the same attempts and price
+   * book returns the first settlement and changes nothing, and settling with anything different
+   * is a `conflict`. A request voided first stays voided; if the provider billed it anyway,
+   * reconciliation charges it.
    */
-  async settle(requestId: AiRequestId, usage: z.input<typeof TokenUsage>, actualCents: number): Promise<SettleResult> {
-    const input = parsed(SettleInput, { requestId, usage, actualCents });
+  async settle(requestId: AiRequestId, settlement: AiSettlement): Promise<SettleResult> {
+    const id = parsed(AiRequestId, requestId);
+    const { attempts, priceBookId } = settlementAttempts(parsed(AiSettlement, settlement));
     const settledAt = this.#now().toISOString();
     return this.#store.transact<SettleResult>((ledger) => {
-      const record = ledger.request(input.requestId);
+      const record = ledger.request(id);
       if (record === undefined) throw new SchoolOsError("not-found", "no reservation for this request");
       if (record.settlement !== undefined) {
-        return { append: [], result: { outcome: "settled", settlement: record.settlement, replayed: true } };
+        const settled = record.settlement;
+        if (canonicalJson([settled.attempts, settled.priceBookId]) !== canonicalJson([attempts, priceBookId])) {
+          throw new SchoolOsError("conflict", "request was already settled with different attempts");
+        }
+        return { append: [], result: { outcome: "settled", settlement: settled, replayed: true } };
       }
       if (record.voided !== undefined) return { append: [], result: { outcome: "already-voided" } };
-      const settlement: SettlementEntry = { type: "settlement", requestId: input.requestId, usage: input.usage, actualCents: input.actualCents, settledAt };
-      return { append: [settlement], result: { outcome: "settled", settlement, replayed: false } };
+      const held = usdNanoValue(record.reservation.heldUsdNano);
+      let charged = 0n;
+      for (const attempt of attempts) charged += attempt.state === "unknown" ? held : usdNanoValue(attempt.actualUsdNano);
+      const entry: SettlementEntry = {
+        type: "settlement",
+        entrySchemaVersion: ENTRY_SCHEMA_VERSION,
+        requestId: id,
+        attempts,
+        ...(priceBookId === undefined ? {} : { priceBookId }),
+        chargedUsdNano: usdNano(charged),
+        hasUnknownCost: attempts.some((attempt) => attempt.state === "unknown"),
+        settledAt,
+      };
+      return { append: [entry], result: { outcome: "settled", settlement: entry, replayed: false } };
     });
   }
 
@@ -235,7 +307,8 @@ export class AiLedger {
       if (record === undefined) return { append: [], result: { outcome: "not-found" } };
       if (record.settlement !== undefined) return { append: [], result: { outcome: "already-settled" } };
       if (record.voided !== undefined) return { append: [], result: { outcome: "voided", replayed: true } };
-      return { append: [{ type: "void", requestId: id, voidedAt }], result: { outcome: "voided", replayed: false } };
+      const entry: LedgerEntry = { type: "void", entrySchemaVersion: ENTRY_SCHEMA_VERSION, requestId: id, voidedAt };
+      return { append: [entry], result: { outcome: "voided", replayed: false } };
     });
   }
 
@@ -272,8 +345,9 @@ export class AiLedger {
   async poolBalances(period: BillingPeriod): Promise<Record<string, PoolBalance>> {
     const [ledger, pools] = await Promise.all([this.#store.read(), this.#source.fundingPools()]);
     return Object.fromEntries(pools.map((pool) => {
-      const chargedCents = ledger.poolCharged(pool.id, period);
-      return [pool.id, { allocationCents: pool.monthlyAllocationCents, chargedCents, remainingCents: pool.monthlyAllocationCents - chargedCents }];
+      const chargedUsdNano = ledger.poolCharged(pool.id, period);
+      const remaining = usdNanoValue(pool.monthlyAllocationUsdNano) - usdNanoValue(chargedUsdNano);
+      return [pool.id, { allocationUsdNano: pool.monthlyAllocationUsdNano, chargedUsdNano, remainingUsdNano: signedUsdNano(remaining) }];
     }));
   }
 
@@ -290,6 +364,6 @@ export class AiLedger {
     const policy = await this.#source.effectivePolicy(funding.policyScope);
     const route = routeModel(model, { policy, catalog, pools: funding.pools });
     if (!route.ok) return route;
-    return { ok: true, model: route.model, pools: route.pools, capCents: policy.aiMonthlyCapCentsPerPrincipal };
+    return { ok: true, model: route.model, pools: route.pools, capUsdNano: usdNanoValue(usdNanoFromCents(policy.aiMonthlyCapCentsPerPrincipal)) };
   }
 }

@@ -17,6 +17,9 @@ import {
   type GovernedModel,
   type ModelRef,
   type TermClosedEvent,
+  type TokenUsage,
+  type UsdNano,
+  usdNanoFromCents,
 } from "../src/index.ts";
 
 export const NF = DistrictId.parse("dst_northfield");
@@ -63,7 +66,7 @@ export function northfieldPools(overrides: Partial<Record<string, Partial<Fundin
       name: "Biology I, Period 2",
       purpose: "course",
       scope: { level: "offering", districtId: NF, schoolId: "sch_nf-high", offeringId: "off_nf-bio-fall-p2" },
-      monthlyAllocationCents: 1000,
+      monthlyAllocationUsdNano: c(1000),
       allowedModels: [SONNET, MINI, GEMINI],
     },
     {
@@ -71,7 +74,7 @@ export function northfieldPools(overrides: Partial<Record<string, Partial<Fundin
       name: "Biology I, Period 4 (spring)",
       purpose: "course",
       scope: { level: "offering", districtId: NF, schoolId: "sch_nf-high", offeringId: "off_nf-bio-spring-p4" },
-      monthlyAllocationCents: 1000,
+      monthlyAllocationUsdNano: c(1000),
       allowedModels: [SONNET],
     },
     {
@@ -79,7 +82,7 @@ export function northfieldPools(overrides: Partial<Record<string, Partial<Fundin
       name: "Northfield High classes",
       purpose: "course",
       scope: { level: "school", districtId: NF, schoolId: "sch_nf-high" },
-      monthlyAllocationCents: 500,
+      monthlyAllocationUsdNano: c(500),
       allowedModels: [SONNET],
     },
     {
@@ -87,7 +90,7 @@ export function northfieldPools(overrides: Partial<Record<string, Partial<Fundin
       name: "Personal workspaces",
       purpose: "personal",
       scope: { level: "district", districtId: NF },
-      monthlyAllocationCents: 300,
+      monthlyAllocationUsdNano: c(300),
       allowedModels: [MINI],
     },
   ].map((pool) => ({ ...pool, ...overrides[pool.id] }));
@@ -149,7 +152,17 @@ export function harness() {
   return { source, store, clock, ledger };
 }
 
+/** Whole cents as nanodollars, so tests can state amounts at a readable scale. */
+export function c(cents: number): UsdNano {
+  return usdNanoFromCents(cents);
+}
+
+/** A single-attempt settlement at a gateway-estimated cost. */
+export function paid(usage: TokenUsage, actualUsdNano: UsdNano) {
+  return { usage, actualUsdNano };
+}
+
 /** Token usage for a settlement. */
-export function tokens(input: number, output: number, cacheRead = 0, cacheWrite = 0) {
+export function tokens(input: number, output: number, cacheRead = 0, cacheWrite = 0): TokenUsage {
   return { inputTokens: input, outputTokens: output, cacheReadTokens: cacheRead, cacheWriteTokens: cacheWrite };
 }

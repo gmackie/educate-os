@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { SchoolOsError, type SchoolOsErrorBody } from "@schoolos/contracts";
-import { AiRequestId, AiWorkspaceContext, Cents, ModelRef, TokenUsage, denialErrorCode, type AiDenialReason } from "./model.ts";
-import { AiPrincipal, type AiLedger, type SettleResult, type VoidResult } from "./ledger.ts";
+import { AiRequestId, AiWorkspaceContext, ModelRef, denialErrorCode, type AiDenialReason } from "./model.ts";
+import { PositiveUsdNano } from "./money.ts";
+import { AiPrincipal, AiSettlement, type AiLedger, type SettleResult, type VoidResult } from "./ledger.ts";
 import type { ReservationEntry } from "./entries.ts";
 
 /**
@@ -15,21 +16,23 @@ export const GovernedAiRequest = z.strictObject({
   principal: AiPrincipal,
   workspace: AiWorkspaceContext,
   model: ModelRef,
-  /** The most the request can cost, from its input size and output token limit. */
-  estimatedMaxCents: Cents.positive(),
+  /** The most the request can cost, in nanodollars, from its input size and output token limit. */
+  estimatedMaxUsdNano: PositiveUsdNano,
 });
 /** A governed AI request. */
 export type GovernedAiRequest = z.infer<typeof GovernedAiRequest>;
 
-/** How a model request ended, as the gateway seam reports it. */
-export const AiResponseOutcome = z.discriminatedUnion("status", [
-  z.strictObject({
-    status: z.literal("completed"),
-    requestId: AiRequestId,
-    usage: TokenUsage,
-    /** The gateway's cost estimate for the response, rounded up to whole cents. */
-    actualCents: Cents,
-  }),
+/**
+ * How a model request ended, as the gateway seam reports it. A completed request carries its
+ * settlement (see {@link AiSettlement}): every provider attempt it made, each with its usage and
+ * cost in nanodollars, or the single-attempt shorthand. An attempt whose usage never came back is
+ * reported with state `unknown`, and is charged at the reserved maximum, never at $0.
+ */
+const completed = { status: z.literal("completed"), requestId: AiRequestId };
+const [withAttempts, singleAttempt] = AiSettlement.options;
+export const AiResponseOutcome = z.union([
+  withAttempts.extend(completed),
+  singleAttempt.extend(completed),
   /** The provider returned an error or the request was abandoned before any response. */
   z.strictObject({ status: z.literal("failed"), requestId: AiRequestId }),
 ]);
@@ -86,16 +89,16 @@ export function ledgerGovernor(ledger: AiLedger): AiRequestGovernor {
   return {
     async beforeRequest(raw) {
       const request = parseOrThrow(GovernedAiRequest, raw);
-      const result = await ledger.reserve(request.requestId, request.principal, request.workspace, request.model, request.estimatedMaxCents);
+      const result = await ledger.reserve(request.requestId, request.principal, request.workspace, request.model, request.estimatedMaxUsdNano);
       if (result.outcome === "denied") return deny(result.reason);
       if (result.status !== "held") return deny("request-already-completed");
       return { effect: "allow", reservation: result.reservation };
     },
     async afterResponse(raw) {
       const outcome = parseOrThrow(AiResponseOutcome, raw);
-      return outcome.status === "completed"
-        ? ledger.settle(outcome.requestId, outcome.usage, outcome.actualCents)
-        : ledger.void(outcome.requestId);
+      if (outcome.status === "failed") return ledger.void(outcome.requestId);
+      const { status: _status, requestId, ...settlement } = outcome;
+      return ledger.settle(requestId, settlement);
     },
   };
 }

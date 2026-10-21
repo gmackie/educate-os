@@ -51,8 +51,10 @@ export const ModelDenialReason = z.enum([
 export type ModelDenialReason = z.infer<typeof ModelDenialReason>;
 
 /**
- * What governance is told before a request; mirrors `GovernedAiRequest`. There is no field for the
- * prompt, so the student's work never reaches the ledger.
+ * What governance is told before a request; mirrors `GovernedAiRequest`, except that amounts here
+ * are whole cents (an execution profile's cost limit) where governance holds integer nanodollars,
+ * so the adapter onto the governor converts them with `usdNanoFromCents`. There is no field for
+ * the prompt, so the student's work never reaches the ledger.
  */
 export interface GovernedModelRequest {
   requestId: ModelRequestId;
@@ -77,7 +79,10 @@ export const TokenUsage = z.strictObject({
 /** Token usage. */
 export type TokenUsage = z.infer<typeof TokenUsage>;
 
-/** How a request ended, as reported to governance; mirrors `AiResponseOutcome`. */
+/**
+ * How a request ended, as reported to governance; mirrors the single-attempt form of
+ * `AiResponseOutcome`, in whole cents (see {@link GovernedModelRequest}).
+ */
 export type ModelResponseOutcome =
   | { status: "completed"; requestId: ModelRequestId; usage: TokenUsage; actualCents: number }
   | { status: "failed"; requestId: ModelRequestId };

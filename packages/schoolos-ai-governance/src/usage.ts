@@ -1,15 +1,17 @@
 import { z } from "zod";
 import { DistrictId, PrincipalId } from "@schoolos/contracts";
-import { AiRequestId, AiWorkspaceContext, Cents, ModelRef, modelKey } from "./model.ts";
+import { AiRequestId, AiWorkspaceContext, ModelRef, PriceBookId, addTokenUsage, modelKey } from "./model.ts";
+import { UsdNano, addUsdNano, type SignedUsdNano } from "./money.ts";
 import { FundingPoolId } from "./pools.ts";
 import type { AdjustmentEntry, LedgerIndex } from "./entries.ts";
 
 /**
  * The attribution record for one settled model request: who made it, from which offering (or a
- * personal workspace), which pool paid, which model ran, the tokens it used and what it cost.
+ * personal workspace), which pool paid, which model ran, how many provider attempts it took, the
+ * tokens they used and what they cost.
  *
  * It never carries a prompt, response, tool argument or message. Strict parsing rejects any field
- * not listed here, and a test holds the field list to identifiers, counts and cents.
+ * not listed here, and a test holds the field list to identifiers, counts and amounts.
  */
 export const AiUsageEvent = z.strictObject({
   requestId: AiRequestId,
@@ -18,12 +20,22 @@ export const AiUsageEvent = z.strictObject({
   workspace: AiWorkspaceContext,
   poolId: FundingPoolId,
   model: ModelRef,
+  /** Provider attempts the request made; a retried request has more than one. */
+  attempts: z.int().positive(),
+  /** Uncached input tokens across the attempts whose usage came back. */
   inputTokens: z.int().nonnegative(),
   outputTokens: z.int().nonnegative(),
   cacheReadTokens: z.int().nonnegative(),
   cacheWriteTokens: z.int().nonnegative(),
-  /** The settled charge: the gateway's estimate of the actual cost, before reconciliation. */
-  cents: Cents,
+  /**
+   * The settled charge, before reconciliation: the attempts' costs, with any attempt of unknown
+   * cost charged at the reservation's hold.
+   */
+  chargedUsdNano: UsdNano,
+  /** Whether some attempt's cost is unknown and has not yet been reconciled against the bill. */
+  hasUnknownCost: z.boolean(),
+  /** The price book the costs were estimated from, when the settlement named one. */
+  priceBookId: PriceBookId.optional(),
   occurredAt: z.iso.datetime(),
 });
 /** An AI usage event. */
@@ -41,8 +53,11 @@ export function usageEventsFrom(ledger: LedgerIndex): AiUsageEvent[] {
       workspace: reservation.workspace,
       poolId: reservation.poolId,
       model: reservation.model,
-      ...settlement.usage,
-      cents: settlement.actualCents,
+      attempts: settlement.attempts.length,
+      ...addTokenUsage(settlement.attempts.flatMap((attempt) => attempt.usage === undefined ? [] : [attempt.usage])),
+      chargedUsdNano: settlement.chargedUsdNano,
+      hasUnknownCost: ledger.hasOutstandingUnknownCost(reservation.requestId),
+      ...(settlement.priceBookId === undefined ? {} : { priceBookId: settlement.priceBookId }),
       occurredAt: reservation.reservedAt,
     });
   }
@@ -53,6 +68,10 @@ export function usageEventsFrom(ledger: LedgerIndex): AiUsageEvent[] {
 export interface UsageTotals {
   /** Settled requests. */
   requests: number;
+  /** Provider attempts those requests made. */
+  attempts: number;
+  /** Settled requests still carrying an unreconciled unknown cost (charged at their hold). */
+  unknownCostRequests: number;
   /** Input tokens. */
   inputTokens: number;
   /** Output tokens. */
@@ -61,16 +80,17 @@ export interface UsageTotals {
   cacheReadTokens: number;
   /** Cache-write tokens. */
   cacheWriteTokens: number;
-  /** Settled charges, from the gateway's estimates. */
-  usageCents: number;
+  /** Settled charges, from the gateway's estimates and unknown-cost liabilities. */
+  usageUsdNano: UsdNano;
   /** Reconciliation adjustments attributed to this row. */
-  adjustmentCents: number;
-  /** `usageCents + adjustmentCents`: what this row actually cost. */
-  totalCents: number;
+  adjustmentUsdNano: SignedUsdNano;
+  /** `usageUsdNano + adjustmentUsdNano`: what this row actually cost. */
+  totalUsdNano: SignedUsdNano;
 }
 
 /**
- * Aggregate AI usage for a district (the U03 dashboard's source). Every settled cent and adjustment
+ * Aggregate AI usage for a district (the U03 dashboard's source). Amounts are {@link UsdNano};
+ * a display rounds them up to cents with `ceilUsdNanoToCents`. Every settled amount and adjustment
  * lands in exactly one row of each breakdown, so each breakdown sums to `district`:
  *
  * - `byPrincipal` plus `unattributed` (bill corrections reconciled by day rather than by request),
@@ -97,13 +117,15 @@ export interface UsageReport {
 function emptyTotals(): UsageTotals {
   return {
     requests: 0,
+    attempts: 0,
+    unknownCostRequests: 0,
     inputTokens: 0,
     outputTokens: 0,
     cacheReadTokens: 0,
     cacheWriteTokens: 0,
-    usageCents: 0,
-    adjustmentCents: 0,
-    totalCents: 0,
+    usageUsdNano: "0",
+    adjustmentUsdNano: "0",
+    totalUsdNano: "0",
   };
 }
 
@@ -114,17 +136,19 @@ function row(rows: Record<string, UsageTotals>, key: string): UsageTotals {
 
 function addEvent(totals: UsageTotals, event: AiUsageEvent): void {
   totals.requests += 1;
+  totals.attempts += event.attempts;
+  if (event.hasUnknownCost) totals.unknownCostRequests += 1;
   totals.inputTokens += event.inputTokens;
   totals.outputTokens += event.outputTokens;
   totals.cacheReadTokens += event.cacheReadTokens;
   totals.cacheWriteTokens += event.cacheWriteTokens;
-  totals.usageCents += event.cents;
-  totals.totalCents += event.cents;
+  totals.usageUsdNano = addUsdNano(totals.usageUsdNano, event.chargedUsdNano);
+  totals.totalUsdNano = addUsdNano(totals.totalUsdNano, event.chargedUsdNano);
 }
 
 function addAdjustment(totals: UsageTotals, adjustment: AdjustmentEntry): void {
-  totals.adjustmentCents += adjustment.deltaCents;
-  totals.totalCents += adjustment.deltaCents;
+  totals.adjustmentUsdNano = addUsdNano(totals.adjustmentUsdNano, adjustment.deltaUsdNano);
+  totals.totalUsdNano = addUsdNano(totals.totalUsdNano, adjustment.deltaUsdNano);
 }
 
 /** Builds a {@link UsageReport} from usage events and reconciliation adjustments. */

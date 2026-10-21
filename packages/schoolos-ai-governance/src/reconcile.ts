@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { SchoolOsError } from "@schoolos/contracts";
 import { AiProvider, AiRequestId, ModelRef, modelKey, sameModel } from "./model.ts";
+import { signedUsdNano, usdNano, usdNanoFromDecimalUsd, usdNanoValue, type SignedUsdNano, type UsdNano } from "./money.ts";
 import type { FundingPoolId } from "./pools.ts";
-import { billingPeriodOf, type AdjustmentBasis, type AdjustmentEntry, type LedgerIndex } from "./entries.ts";
+import { ENTRY_SCHEMA_VERSION, billingPeriodOf, type AdjustmentBasis, type AdjustmentEntry, type LedgerIndex } from "./entries.ts";
 
 /**
  * Identifies one reconciliation run, such as `2026-10-gateway`. Re-running a reconciliation under
@@ -22,7 +23,7 @@ export type ReconciliationId = z.infer<typeof ReconciliationId>;
  * | `date`       | UTC day the request was made, `YYYY-MM-DD` | The UTC date of the log's `created_at` |
  * | `provider`   | One of {@link AiProvider}                  | The log's `provider` (`workers-ai` maps to `cloudflare`) |
  * | `model`      | The model ID on the provider's API         | The log's `model` |
- * | `cost_usd`   | What was billed, in US dollars, as a decimal string with at most six decimal places | The provider invoice line, or the log's `cost` |
+ * | `cost_usd`   | What was billed, in US dollars, as a decimal string with at most nine decimal places (one nanodollar) | The provider invoice line, or the log's `cost` |
  *
  * A provider invoice that has no request IDs leaves `request_id` empty; those rows reconcile by
  * model and day. Costs are strings so no float rounding happens before the ledger sees them.
@@ -32,7 +33,7 @@ export const CostExportRow = z.strictObject({
   date: z.iso.date(),
   provider: AiProvider,
   model: z.string().min(1).max(200),
-  cost_usd: z.string().regex(/^\d{1,9}(\.\d{1,6})?$/, "expected a decimal dollar amount"),
+  cost_usd: z.string().regex(/^\d{1,9}(\.\d{1,9})?$/, "expected a decimal dollar amount"),
 });
 /** A cost export row. */
 export type CostExportRow = z.infer<typeof CostExportRow>;
@@ -48,7 +49,7 @@ export const CostExportDocument = z.strictObject({
 /** A cost export document. */
 export type CostExportDocument = z.infer<typeof CostExportDocument>;
 
-/** One billed line after import: costs in whole micro-dollars, so sums are exact. */
+/** One billed line after import: costs in whole nanodollars, so sums are exact. */
 export interface BilledCost {
   /** The matched request, when the export named one. */
   requestId?: AiRequestId;
@@ -56,17 +57,16 @@ export interface BilledCost {
   day: string;
   /** The model billed. */
   model: ModelRef;
-  /** The cost in millionths of a US dollar. */
-  costMicroUsd: number;
+  /** What was billed. */
+  costUsdNano: UsdNano;
 }
 
 function toBilledCost(row: CostExportRow): BilledCost {
-  const [whole, fraction = ""] = row.cost_usd.split(".");
   return {
     ...(row.request_id ? { requestId: row.request_id } : {}),
     day: row.date,
     model: ModelRef.parse({ provider: row.provider, modelId: row.model }),
-    costMicroUsd: Number(whole) * 1_000_000 + Number(fraction.padEnd(6, "0")),
+    costUsdNano: usdNanoFromDecimalUsd(row.cost_usd),
   };
 }
 
@@ -104,25 +104,20 @@ export function parseCostExportCsv(text: string): BilledCost[] {
   });
 }
 
-/** Whole cents from micro-dollars, rounding half up. */
-function centsOf(microUsd: number): number {
-  return Math.floor((microUsd + 5_000) / 10_000);
-}
-
 /** One reconciled line: what the ledger charged against what was actually billed. */
 export interface ReconciliationLine {
   /** The request or model-and-day this line covers. */
   basis: AdjustmentBasis;
-  /** What the ledger settled from gateway estimates. */
-  estimatedCents: number;
+  /** What the ledger settled from gateway estimates (and unknown-cost liabilities). */
+  estimatedUsdNano: UsdNano;
   /** Adjustments earlier reconciliations already made for this basis. */
-  priorAdjustmentCents: number;
+  priorAdjustmentUsdNano: SignedUsdNano;
   /** What the export says was billed. */
-  actualCents: number;
-  /** `actualCents - estimatedCents`: how far the gateway estimate was off. */
-  varianceCents: number;
+  actualUsdNano: UsdNano;
+  /** `actualUsdNano - estimatedUsdNano`: how far the gateway estimate was off. */
+  varianceUsdNano: SignedUsdNano;
   /** The correction this run makes: the variance not already adjusted. */
-  adjustmentCents: number;
+  adjustmentUsdNano: SignedUsdNano;
 }
 
 /** The outcome of reconciling one export against the ledger. */
@@ -135,33 +130,36 @@ export interface ReconciliationReport {
    * Billed model-days with no ledger usage at all. They cannot be attributed to a pool, so they
    * are reported for an administrator and not adjusted.
    */
-  unmatched: { model: ModelRef; day: string; actualCents: number }[];
+  unmatched: { model: ModelRef; day: string; actualUsdNano: UsdNano }[];
   /** Billed requests still holding a reservation. They are reconciled once they settle or void. */
   unsettledRequestIds: AiRequestId[];
   /** The adjustment entries this run appends. */
   adjustments: AdjustmentEntry[];
   /** Totals over `lines`. */
-  totals: { estimatedCents: number; actualCents: number; varianceCents: number; adjustmentCents: number };
+  totals: { estimatedUsdNano: UsdNano; actualUsdNano: UsdNano; varianceUsdNano: SignedUsdNano; adjustmentUsdNano: SignedUsdNano };
 }
 
 /**
  * Splits `amount` across weights in proportion, by largest remainder, so the parts sum exactly.
  * Ties go to the earlier key, which callers keep in a stable order.
  */
-function apportion<K>(amount: number, weights: [K, number][]): [K, number][] {
-  const total = weights.reduce((sum, [, weight]) => sum + weight, 0);
-  const magnitude = Math.abs(amount);
-  const shares = weights.map(([key, weight], index) => {
-    const exact = (magnitude * weight) / total;
-    return { key, index, whole: Math.floor(exact), remainder: exact - Math.floor(exact) };
-  });
-  let left = magnitude - shares.reduce((sum, share) => sum + share.whole, 0);
-  for (const share of shares.toSorted((a, b) => b.remainder - a.remainder || a.index - b.index)) {
-    if (left === 0) break;
-    share.whole += 1;
-    left -= 1;
+function apportion<K>(amount: bigint, weights: [K, bigint][]): [K, bigint][] {
+  const total = weights.reduce((sum, [, weight]) => sum + weight, 0n);
+  const magnitude = amount < 0n ? -amount : amount;
+  const shares = weights.map(([key, weight], index) => ({
+    key,
+    index,
+    whole: (magnitude * weight) / total,
+    remainder: (magnitude * weight) % total,
+  }));
+  let left = magnitude - shares.reduce((sum, share) => sum + share.whole, 0n);
+  const order = shares.toSorted((a, b) => (a.remainder === b.remainder ? a.index - b.index : a.remainder > b.remainder ? -1 : 1));
+  for (const share of order) {
+    if (left === 0n) break;
+    share.whole += 1n;
+    left -= 1n;
   }
-  return shares.map((share) => [share.key, Math.sign(amount) * share.whole]);
+  return shares.map((share) => [share.key, amount < 0n ? -share.whole : share.whole]);
 }
 
 /**
@@ -177,6 +175,11 @@ function apportion<K>(amount: number, weights: [K, number][]): [K, number][] {
  * Each comparison counts earlier adjustments for the same basis, so re-importing a bill corrects
  * only what is still off. One export should cover a given day either by request or in aggregate,
  * not both.
+ *
+ * A settled request with an unknown cost was charged its hold as a liability. Matching it by ID
+ * replaces that liability with the billed amount and clears its unknown flag, so its adjustment is
+ * appended even when the two happen to agree (as a zero adjustment). Aggregate rows cannot clear
+ * the flag, since they never say which request a cost belongs to.
  */
 export function planReconciliation(
   ledger: LedgerIndex,
@@ -190,58 +193,62 @@ export function planReconciliation(
     unmatched: [],
     unsettledRequestIds: [],
     adjustments: [],
-    totals: { estimatedCents: 0, actualCents: 0, varianceCents: 0, adjustmentCents: 0 },
+    totals: { estimatedUsdNano: "0", actualUsdNano: "0", varianceUsdNano: "0", adjustmentUsdNano: "0" },
   };
+  const totals = { estimated: 0n, actual: 0n, variance: 0n, adjustment: 0n };
   const priorFor = (basisKey: string) => {
-    let total = 0;
+    let total = 0n;
     for (const adjustment of ledger.adjustments) {
-      if (keyOfBasis(adjustment.basis) === basisKey) total += adjustment.deltaCents;
+      if (keyOfBasis(adjustment.basis) === basisKey) total += usdNanoValue(adjustment.deltaUsdNano);
     }
     return total;
   };
-  const addLine = (basis: AdjustmentBasis, estimatedCents: number, actualCents: number) => {
-    const priorAdjustmentCents = priorFor(keyOfBasis(basis));
-    const line: ReconciliationLine = {
+  /** Records one line and returns its adjustment. */
+  const addLine = (basis: AdjustmentBasis, estimated: bigint, actual: bigint): bigint => {
+    const prior = priorFor(keyOfBasis(basis));
+    const adjustment = actual - estimated - prior;
+    report.lines.push({
       basis,
-      estimatedCents,
-      priorAdjustmentCents,
-      actualCents,
-      varianceCents: actualCents - estimatedCents,
-      adjustmentCents: actualCents - estimatedCents - priorAdjustmentCents,
-    };
-    report.lines.push(line);
-    report.totals.estimatedCents += line.estimatedCents;
-    report.totals.actualCents += line.actualCents;
-    report.totals.varianceCents += line.varianceCents;
-    report.totals.adjustmentCents += line.adjustmentCents;
-    return line;
+      estimatedUsdNano: usdNano(estimated),
+      priorAdjustmentUsdNano: signedUsdNano(prior),
+      actualUsdNano: usdNano(actual),
+      varianceUsdNano: signedUsdNano(actual - estimated),
+      adjustmentUsdNano: signedUsdNano(adjustment),
+    });
+    totals.estimated += estimated;
+    totals.actual += actual;
+    totals.variance += actual - estimated;
+    totals.adjustment += adjustment;
+    return adjustment;
   };
 
-  const byRequest = new Map<string, number>();
-  const aggregate = new Map<string, { model: ModelRef; day: string; costMicroUsd: number }>();
-  for (const cost of billed) {
-    if (cost.requestId !== undefined && ledger.request(cost.requestId) !== undefined) {
-      byRequest.set(cost.requestId, (byRequest.get(cost.requestId) ?? 0) + cost.costMicroUsd);
+  const byRequest = new Map<string, bigint>();
+  const aggregate = new Map<string, { model: ModelRef; day: string; cost: bigint }>();
+  for (const billedCost of billed) {
+    const cost = usdNanoValue(billedCost.costUsdNano);
+    if (billedCost.requestId !== undefined && ledger.request(billedCost.requestId) !== undefined) {
+      byRequest.set(billedCost.requestId, (byRequest.get(billedCost.requestId) ?? 0n) + cost);
       continue;
     }
-    const key = keyOfBasis({ kind: "aggregate", model: cost.model, day: cost.day });
-    const group = aggregate.get(key) ?? { model: cost.model, day: cost.day, costMicroUsd: 0 };
-    group.costMicroUsd += cost.costMicroUsd;
+    const key = keyOfBasis({ kind: "aggregate", model: billedCost.model, day: billedCost.day });
+    const group = aggregate.get(key) ?? { model: billedCost.model, day: billedCost.day, cost: 0n };
+    group.cost += cost;
     aggregate.set(key, group);
   }
 
-  for (const [requestId, costMicroUsd] of byRequest) {
+  for (const [requestId, cost] of byRequest) {
     const record = ledger.request(requestId)!;
     if (record.settlement === undefined && record.voided === undefined) {
       report.unsettledRequestIds.push(requestId);
       continue;
     }
     const basis: AdjustmentBasis = { kind: "request", requestId };
-    const line = addLine(basis, record.settlement?.actualCents ?? 0, centsOf(costMicroUsd));
-    if (line.adjustmentCents === 0) continue;
+    const delta = addLine(basis, usdNanoValue(record.settlement?.chargedUsdNano ?? "0"), cost);
+    if (delta === 0n && !ledger.hasOutstandingUnknownCost(requestId)) continue;
     const { reservation } = record;
     report.adjustments.push({
       type: "adjustment",
+      entrySchemaVersion: ENTRY_SCHEMA_VERSION,
       adjustmentId: `${reconciliationId}:${keyOfBasis(basis)}:${reservation.poolId}`,
       reconciliationId,
       basis,
@@ -249,48 +256,54 @@ export function planReconciliation(
       model: reservation.model,
       period: reservation.period,
       attribution: { principalId: reservation.principalId, workspace: reservation.workspace },
-      deltaCents: line.adjustmentCents,
+      deltaUsdNano: signedUsdNano(delta),
       recordedAt,
     });
   }
 
   for (const group of aggregate.values()) {
-    const actualCents = centsOf(group.costMicroUsd);
-    const poolCents = new Map<FundingPoolId, { cents: number; requests: number }>();
+    const poolCharges = new Map<FundingPoolId, { charged: bigint; requests: bigint }>();
     for (const { reservation, settlement } of ledger.requests) {
       if (settlement === undefined || byRequest.has(reservation.requestId)) continue;
       if (!sameModel(reservation.model, group.model) || reservation.reservedAt.slice(0, 10) !== group.day) continue;
-      const share = poolCents.get(reservation.poolId) ?? { cents: 0, requests: 0 };
-      share.cents += settlement.actualCents;
-      share.requests += 1;
-      poolCents.set(reservation.poolId, share);
+      const share = poolCharges.get(reservation.poolId) ?? { charged: 0n, requests: 0n };
+      share.charged += usdNanoValue(settlement.chargedUsdNano);
+      share.requests += 1n;
+      poolCharges.set(reservation.poolId, share);
     }
-    if (poolCents.size === 0) {
-      report.unmatched.push({ model: group.model, day: group.day, actualCents });
+    if (poolCharges.size === 0) {
+      report.unmatched.push({ model: group.model, day: group.day, actualUsdNano: usdNano(group.cost) });
       continue;
     }
-    const shares = [...poolCents].toSorted(([a], [b]) => a.localeCompare(b));
-    const estimatedCents = shares.reduce((sum, [, share]) => sum + share.cents, 0);
+    const shares = [...poolCharges].toSorted(([a], [b]) => a.localeCompare(b));
+    const estimated = shares.reduce((sum, [, share]) => sum + share.charged, 0n);
     const basis: AdjustmentBasis = { kind: "aggregate", model: group.model, day: group.day };
-    const line = addLine(basis, estimatedCents, actualCents);
-    if (line.adjustmentCents === 0) continue;
+    const delta = addLine(basis, estimated, group.cost);
+    if (delta === 0n) continue;
     // Weigh pools by what they were charged; if every charge was zero, by how many requests they paid for.
-    const weights = shares.map(([poolId, share]): [FundingPoolId, number] => [poolId, estimatedCents > 0 ? share.cents : share.requests]);
-    for (const [poolId, deltaCents] of apportion(line.adjustmentCents, weights)) {
-      if (deltaCents === 0) continue;
+    const weights = shares.map(([poolId, share]): [FundingPoolId, bigint] => [poolId, estimated > 0n ? share.charged : share.requests]);
+    for (const [poolId, part] of apportion(delta, weights)) {
+      if (part === 0n) continue;
       report.adjustments.push({
         type: "adjustment",
+        entrySchemaVersion: ENTRY_SCHEMA_VERSION,
         adjustmentId: `${reconciliationId}:${keyOfBasis(basis)}:${poolId}`,
         reconciliationId,
         basis,
         poolId,
         model: group.model,
         period: billingPeriodOf(group.day),
-        deltaCents,
+        deltaUsdNano: signedUsdNano(part),
         recordedAt,
       });
     }
   }
+  report.totals = {
+    estimatedUsdNano: usdNano(totals.estimated),
+    actualUsdNano: usdNano(totals.actual),
+    varianceUsdNano: signedUsdNano(totals.variance),
+    adjustmentUsdNano: signedUsdNano(totals.adjustment),
+  };
   // Earlier adjustments count as prior, so an identical re-run plans none. A collision means the
   // same run ID was reused for a different bill, which must be imported under a new ID instead.
   const reused = report.adjustments.find((adjustment) => ledger.hasAdjustment(adjustment.adjustmentId));

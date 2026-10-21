@@ -1,6 +1,7 @@
 import { expect } from "vitest";
 import { SchoolOsErrorBody, type DistrictDirectorySnapshot, type PrincipalId } from "@schoolos/contracts";
 import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
+import { usdNanoFromCents } from "@schoolos/ai-governance";
 import type { VerifiedIdentity } from "@schoolos/identity";
 import { catalogSeedRelease } from "@schoolos/catalog";
 import type { ImportFetch } from "@schoolos/content-studio";
@@ -100,7 +101,7 @@ export async function bootDistrict(
       name: "Course AI",
       purpose: "course",
       scope: { level: "district", districtId: directory.district.id },
-      monthlyAllocationCents: 10_000,
+      monthlyAllocationUsdNano: usdNanoFromCents(10_000),
       allowedModels: [{ provider: "cloudflare", modelId: "synthetic-model" }],
     }],
     modelCatalog: [{ provider: "cloudflare", modelId: "synthetic-model", mode: "enabled" }],
@@ -332,13 +333,13 @@ export async function recordAiRequest(district: TestDistrict, principalId: strin
     principal: { principalId: principalId as PrincipalId, districtId: district.app.districtId },
     workspace: { kind: "course", offeringId },
     model: { provider: "cloudflare", modelId: "synthetic-model" },
-    estimatedMaxCents: 5,
+    estimatedMaxUsdNano: usdNanoFromCents(5),
   });
   expect(decision.effect).toBe("allow");
   await district.app.aiGovernor.afterResponse({
     status: "completed",
     requestId,
     usage: { inputTokens: 120, outputTokens: 80, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    actualCents: 2,
+    actualUsdNano: usdNanoFromCents(2),
   });
 }

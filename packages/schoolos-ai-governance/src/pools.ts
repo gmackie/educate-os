@@ -9,6 +9,7 @@ import {
   type PrincipalId,
 } from "@schoolos/contracts";
 import { ModelRef, type AiDenialReason, type AiWorkspaceContext } from "./model.ts";
+import { UsdNano } from "./money.ts";
 
 /**
  * Identifies a funding pool. It is local to this package for now and may belong in
@@ -35,8 +36,8 @@ export const FundingPool = z
     purpose: z.enum(["course", "personal"]),
     /** Where the pool applies. Activities are funded by their offering, so they cannot hold one. */
     scope: Scope.refine((scope) => scope.level !== "activity", "a pool is district, school or offering scoped"),
-    /** The allocation for each month, in US cents. */
-    monthlyAllocationCents: z.int().nonnegative(),
+    /** The allocation for each month. Use `usdNanoFromCents` to set one from an amount in cents. */
+    monthlyAllocationUsdNano: UsdNano,
     /** The only models this pool pays for. */
     allowedModels: z.array(ModelRef).min(1),
   })

@@ -51,7 +51,7 @@ export async function bootDistrictApp(entry: HarnessDistrict): Promise<DistrictA
       name: "Demo course AI",
       purpose: "course",
       scope: { level: "district", districtId: directory.district.id },
-      monthlyAllocationCents: 50_000,
+      monthlyAllocationUsdNano: "500000000000", // $500
       allowedModels: [DEMO_MODEL],
     }],
     modelCatalog: [{ ...DEMO_MODEL, mode: "enabled" }],
@@ -221,14 +221,14 @@ export async function seedDemo(entry: HarnessDistrict, app: DistrictApp): Promis
     principal: { principalId: student.id, districtId: directory.district.id },
     workspace: { kind: "course", offeringId: essay.offeringId },
     model: DEMO_MODEL,
-    estimatedMaxCents: 3,
+    estimatedMaxUsdNano: "30000000", // 3¢
   });
   if (decision.effect === "allow") {
     await app.aiGovernor.afterResponse({
       status: "completed",
       requestId,
       usage: { inputTokens: 240, outputTokens: 120, cacheReadTokens: 0, cacheWriteTokens: 0 },
-      actualCents: 1,
+      actualUsdNano: "10000000", // 1¢
     });
   }
   return { student, teacher: essay.teacher, admin };

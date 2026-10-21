@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { usdNanoFromCents } from "@schoolos/ai-governance";
 import { termClosedEvents } from "../src/index.ts";
 import {
   bootDistrict,
@@ -163,8 +164,8 @@ describe("admin journey (roadmap §3.1)", () => {
     expect(broken.ok).toBe(false);
 
     await recordAiRequest(district, NF.amara, NF.eng9);
-    const usage = await district.ok(admin, "admin.aiUsage") as { district: { requests: number; totalCents: number }; byOffering: Record<string, unknown> };
-    expect(usage.district).toMatchObject({ requests: 1, totalCents: 2 });
+    const usage = await district.ok(admin, "admin.aiUsage") as { district: { requests: number; totalUsdNano: string }; byOffering: Record<string, unknown> };
+    expect(usage.district).toMatchObject({ requests: 1, totalUsdNano: usdNanoFromCents(2) });
     expect(Object.keys(usage.byOffering)).toStrictEqual([NF.eng9]);
     expect(JSON.stringify(usage)).not.toMatch(/prompt|text/i);
 
@@ -195,7 +196,7 @@ describe("admin journey (roadmap §3.1)", () => {
       principal: { principalId: NF.amara, districtId: "dst_northfield" },
       workspace: { kind: "course", offeringId: NF.bioSpring },
       model: { provider: "cloudflare", modelId: "synthetic-model" },
-      estimatedMaxCents: 5,
+      estimatedMaxUsdNano: usdNanoFromCents(5),
     });
     expect(spring).toMatchObject({ effect: "deny" });
   });

@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { OfferingId } from "@schoolos/contracts";
+import { OfferingId, SchoolOsError } from "@schoolos/contracts";
+import { UsdNano } from "./money.ts";
 
 /**
  * The AI providers a district can route through AI Gateway. This mirrors the Workshop's
@@ -65,18 +66,128 @@ export const AiWorkspaceContext = z.discriminatedUnion("kind", [
 /** A request's workspace context. */
 export type AiWorkspaceContext = z.infer<typeof AiWorkspaceContext>;
 
-/** Token counts reported for one model response. */
+/**
+ * Token counts for one model response, with no token counted twice: `inputTokens` is uncached
+ * input only, and the tokens read from or written to the provider's prompt cache are counted
+ * separately in `cacheReadTokens` and `cacheWriteTokens`. Providers that report an input total
+ * which already includes cached tokens must go through {@link normalizeTokenUsage} first.
+ */
 export const TokenUsage = z.strictObject({
+  /** Input tokens neither read from nor written to the prompt cache. */
   inputTokens: z.int().nonnegative(),
   outputTokens: z.int().nonnegative(),
+  /** Input tokens served from the prompt cache. Not included in `inputTokens`. */
   cacheReadTokens: z.int().nonnegative(),
+  /** Input tokens written to the prompt cache. Not included in `inputTokens`. */
   cacheWriteTokens: z.int().nonnegative(),
 });
 /** Token usage. */
 export type TokenUsage = z.infer<typeof TokenUsage>;
 
-/** A non-negative amount of US cents. The ledger holds and charges whole cents only. */
-export const Cents = z.int().nonnegative();
+/**
+ * Token counts as a provider reports them. `inputIncludesCache` says whether `inputTokens` is a
+ * total that already contains the cached tokens (OpenAI's `prompt_tokens`, Google's
+ * `promptTokenCount`) or excludes them (Anthropic's `input_tokens`).
+ */
+export interface ReportedTokenUsage {
+  /** The provider's input count. */
+  inputTokens: number;
+  /** Output tokens. */
+  outputTokens: number;
+  /** Cache-read tokens, when reported. */
+  cacheReadTokens?: number;
+  /** Cache-write tokens, when reported. */
+  cacheWriteTokens?: number;
+  /** Whether `inputTokens` already includes the cache reads and writes. */
+  inputIncludesCache: boolean;
+}
+
+/**
+ * Converts reported token counts to a {@link TokenUsage} whose `inputTokens` excludes cached
+ * tokens, so cache reads are never counted (or priced) twice. Throws `validation-failed` when an
+ * inclusive total is smaller than its own cached part, or when any count is not a whole number.
+ */
+export function normalizeTokenUsage(reported: ReportedTokenUsage): TokenUsage {
+  const cacheReadTokens = reported.cacheReadTokens ?? 0;
+  const cacheWriteTokens = reported.cacheWriteTokens ?? 0;
+  const inputTokens = reported.inputIncludesCache
+    ? reported.inputTokens - cacheReadTokens - cacheWriteTokens
+    : reported.inputTokens;
+  const usage = TokenUsage.safeParse({ inputTokens, outputTokens: reported.outputTokens, cacheReadTokens, cacheWriteTokens });
+  if (!usage.success) throw new SchoolOsError("validation-failed", "inconsistent token usage");
+  return usage.data;
+}
+
+/** The sum of some token usages. */
+export function addTokenUsage(usages: Iterable<TokenUsage>): TokenUsage {
+  const total: TokenUsage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
+  for (const usage of usages) {
+    total.inputTokens += usage.inputTokens;
+    total.outputTokens += usage.outputTokens;
+    total.cacheReadTokens += usage.cacheReadTokens;
+    total.cacheWriteTokens += usage.cacheWriteTokens;
+  }
+  return total;
+}
+
+/**
+ * Names the price book a cost was computed from (a provider's published rates, or a district's
+ * negotiated ones, at some version), so a charge can be audited against the rates that made it.
+ */
+export const PriceBookId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/, "expected a price book ID");
+/** A price book identifier. */
+export type PriceBookId = z.infer<typeof PriceBookId>;
+
+/**
+ * How an attempt's cost is known: reported by the provider, estimated by the gateway from token
+ * counts and a price book, or not known at all (the attempt ran but no usage or cost came back).
+ */
+export const AttemptCostState = z.enum(["provider_reported", "estimated", "unknown"]);
+/** An attempt cost state. */
+export type AttemptCostState = z.infer<typeof AttemptCostState>;
+
+const attemptIdentifiers = {
+  /** The attempt's position within its request, from 0. Unique per request. */
+  attemptIndex: z.int().nonnegative().max(1000),
+  /** The provider's ID for the attempt, when it returned one. */
+  providerRequestId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/).optional(),
+  /** The AI Gateway log ID for the attempt, when there is one. */
+  gatewayLogId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/).optional(),
+};
+
+/**
+ * One provider call made for a request. A request holds one reservation, but a retry after a
+ * timeout or a provider error is a second call the provider may bill, so each is recorded.
+ *
+ * An attempt whose cost is `unknown` carries no amount; the ledger charges it at the request's
+ * reserved maximum (a liability, never $0) until reconciliation settles what was billed.
+ */
+export const AiAttempt = z.discriminatedUnion("state", [
+  z.strictObject({
+    ...attemptIdentifiers,
+    state: z.enum(["provider_reported", "estimated"]),
+    usage: TokenUsage,
+    /** What the attempt cost. */
+    actualUsdNano: UsdNano,
+  }),
+  z.strictObject({
+    ...attemptIdentifiers,
+    state: z.literal("unknown"),
+    /** Token counts, when they came back without a cost. */
+    usage: TokenUsage.optional(),
+  }),
+]);
+/** One attempt of a request. */
+export type AiAttempt = z.infer<typeof AiAttempt>;
+
+/** A request's attempts, in index order, with no index repeated. */
+export const AiAttempts = z.array(AiAttempt).min(1).max(100).superRefine((attempts, ctx) => {
+  for (const [index, attempt] of attempts.entries()) {
+    if (index > 0 && attempt.attemptIndex <= attempts[index - 1]!.attemptIndex) {
+      ctx.addIssue({ code: "custom", message: "attempts must be in increasing attemptIndex order", path: [index, "attemptIndex"] });
+    }
+  }
+});
 
 /**
  * Why a request was refused before any spend. These go to the gateway seam and to audit; the
