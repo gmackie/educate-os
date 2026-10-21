@@ -1,21 +1,11 @@
 import { SchoolOsError } from "@schoolos/contracts";
+import { ZipRefusalReason } from "@schoolos/zip";
 import { z } from "zod";
 
 /** Why a cartridge package was refused before anything in it was used. */
 export const CartridgeRefusalReason = z.enum([
   // The archive.
-  "not-a-zip",
-  "zip64-unsupported",
-  "multi-disk-unsupported",
-  "too-many-entries",
-  "entry-too-large",
-  "package-too-large",
-  "compression-ratio",
-  "unsafe-path",
-  "duplicate-entry",
-  "encrypted-entry",
-  "unsupported-compression",
-  "corrupt-entry",
+  ...ZipRefusalReason.options,
   // The manifest.
   "manifest-missing",
   "xml-doctype",

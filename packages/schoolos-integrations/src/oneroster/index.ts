@@ -8,4 +8,6 @@ export * from "./mapping.ts";
 export * from "./source-map.ts";
 export * from "./import.ts";
 export * from "./sync.ts";
+export * from "./zip.ts";
+export * from "./store.ts";
 export * from "./rest/index.ts";

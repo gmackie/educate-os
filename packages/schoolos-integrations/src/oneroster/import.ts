@@ -13,6 +13,8 @@ import {
   RoleAssignment,
   School,
   SchoolOsError,
+  IdpSubjectField as ContractIdpSubjectField,
+  RosterIdentityMapping,
   checkDirectoryIntegrity,
   externalIdentityKey,
   type SourceLink,
@@ -35,30 +37,24 @@ import type { OneRosterCsvFiles, OneRosterCsvLimits, OneRosterFeed, OneRosterIss
 import { gradeBandFor, subjectFor } from "./mapping.ts";
 import { OneRosterSourceMap, derivedId } from "./source-map.ts";
 import type { ImportedKind } from "./source-map.ts";
+import { ONEROSTER_FILES } from "./spec.ts";
 import type { OneRosterFile, OneRosterRole, OneRosterRow } from "./spec.ts";
 
 /**
- * Which users.csv field holds the subject the district's IdP asserts for each user. Email is not an
- * option: it is not a stable or unique key (ADR-0003).
+ * Which users.csv field holds the subject the district's IdP asserts for each user (the contracts
+ * `IdpSubjectField`).
  */
-export const IdpSubjectField = z.discriminatedUnion("field", [
-  z.strictObject({ field: z.literal("username") }),
-  z.strictObject({ field: z.literal("identifier") }),
-  /** The identifier of the `userIds` entry with this type, such as `{idp:nf-0001}` for `idp`. */
-  z.strictObject({ field: z.literal("userIds"), type: z.string().min(1) }),
-]);
+export const IdpSubjectField = ContractIdpSubjectField;
 /** An IdP subject field. */
-export type IdpSubjectField = z.infer<typeof IdpSubjectField>;
+export type IdpSubjectField = ContractIdpSubjectField;
 
-/** How a district's roster relates to its IdP. */
-export const OneRosterImportConfig = z.strictObject({
-  /** The issuer that asserts the subjects in the roster. The district must trust it. */
-  issuer: z.url({ protocol: /^https$/ }),
-  /** Where in users.csv each user's subject is. */
-  subject: IdpSubjectField,
-});
+/**
+ * How a district's roster relates to its IdP (the contracts `RosterIdentityMapping`), as a
+ * configuration revision stores it under `rostering.identityMapping`.
+ */
+export const OneRosterImportConfig = RosterIdentityMapping;
 /** A OneRoster import configuration. */
-export type OneRosterImportConfig = z.infer<typeof OneRosterImportConfig>;
+export type OneRosterImportConfig = RosterIdentityMapping;
 
 /** A district directory and the record of which of its entries came from the roster. */
 export interface RosterState {
@@ -83,6 +79,12 @@ export interface OneRosterImportInput {
 }
 
 /**
+ * How a feed was delivered, which decides how issues name where a record is: a CSV export's
+ * `users.csv`, or a REST server's `users` collection.
+ */
+export type OneRosterFormat = "csv" | "rest";
+
+/**
  * An import of a feed already read into rows, by any source. The feed is the whole roster: a
  * roster record it does not list is treated as gone, exactly as for a bulk export.
  */
@@ -91,7 +93,23 @@ export interface OneRosterFeedImportInput extends Omit<OneRosterImportInput, "fi
   feed: OneRosterFeed;
   /** The issues found reading the feed. An `error` among them blocks apply. */
   issues: readonly OneRosterIssue[];
+  /** How the feed was delivered, for the wording of issues. A bulk CSV export when absent. */
+  format?: OneRosterFormat;
 }
+
+/** Where a row-model file's records come from in a feed of each format, as issues name it. */
+const PLACES: Readonly<Record<OneRosterFormat, Readonly<Record<OneRosterFile, string>>>> = {
+  csv: Object.fromEntries(ONEROSTER_FILES.map((file) => [file, file])) as Record<OneRosterFile, string>,
+  rest: {
+    "orgs.csv": "the orgs collection",
+    "academicSessions.csv": "the academicSessions collection",
+    "courses.csv": "the courses collection",
+    "classes.csv": "the classes collection",
+    "users.csv": "the users collection",
+    "roles.csv": "the users' roles",
+    "enrollments.csv": "the enrollments collection",
+  },
+};
 
 /**
  * How an import changes one kind of record. Nothing is ever removed: a record the feed no longer
@@ -281,11 +299,17 @@ interface ImportContext {
   retainedId(kind: ImportedKind, sourcedId: string): string | undefined;
   error(file: OneRosterFile, row: number, column: string, message: string): void;
   warn(file: OneRosterFile, row: number, column: string, message: string): void;
+  /** Where a file's records come from, in the feed's own terms (`users.csv`, the users collection). */
+  place(file: OneRosterFile): string;
 }
 
 async function createContext(input: OneRosterFeedImportInput): Promise<ImportContext> {
   const config = parseInput(OneRosterImportConfig, input.config, "import config");
   const current = parseInput(DistrictDirectorySnapshot, input.current.snapshot, "current snapshot");
+  // Checked before anything is mapped: every principal the import makes would name this issuer.
+  if (!current.district.trustedIssuers.includes(config.issuer)) {
+    throw new SchoolOsError("validation-failed", `the roster's issuer ${config.issuer} is not one of the district's trusted issuers`);
+  }
   const sources = parseInput(OneRosterSourceMap, input.current.sources, "source map");
   const districtId = current.district.id;
   const today = dateInZone(input.now, current.district.timeZone);
@@ -350,6 +374,7 @@ async function createContext(input: OneRosterFeedImportInput): Promise<ImportCon
     },
     error: (file, row, column, message) => issues.push({ severity: "error", ...located(file, row), column, message }),
     warn: (file, row, column, message) => issues.push({ severity: "warning", ...located(file, row), column, message }),
+    place: (file) => PLACES[input.format ?? "csv"][file],
   };
 }
 
@@ -472,15 +497,15 @@ function mapCatalog(ctx: ImportContext): Catalog {
     const termSessions = new Set(cls.termSourcedIds.map(termSessionOf).filter((s) => s !== undefined));
     const term = termSessions.size === 1 ? termId([...termSessions][0]!) : undefined;
     if (school === undefined) {
-      ctx.error("classes.csv", cls.row, "schoolSourcedId", `names ${cls.schoolSourcedId}, which orgs.csv does not list as an active school`);
+      ctx.error("classes.csv", cls.row, "schoolSourcedId", `names ${cls.schoolSourcedId}, which ${ctx.place("orgs.csv")} does not list as an active school`);
     }
     if (course === undefined && !failedCourses.has(cls.courseSourcedId)) {
-      ctx.error("classes.csv", cls.row, "courseSourcedId", `names ${cls.courseSourcedId}, which courses.csv does not list as active`);
+      ctx.error("classes.csv", cls.row, "courseSourcedId", `names ${cls.courseSourcedId}, which ${ctx.place("courses.csv")} does not list as active`);
     }
     if (termSessions.size > 1) {
       ctx.error("classes.csv", cls.row, "termSourcedIds", "spans more than one term; SchoolOS offerings belong to one");
     } else if (term === undefined) {
-      ctx.error("classes.csv", cls.row, "termSourcedIds", "names no active term or semester in academicSessions.csv");
+      ctx.error("classes.csv", cls.row, "termSourcedIds", `names no active term or semester in ${ctx.place("academicSessions.csv")}`);
     }
     if (school === undefined || course === undefined || term === undefined) {
       failedClasses.add(cls.sourcedId);
@@ -540,7 +565,7 @@ function linkUsers(ctx: ImportContext): People {
   const rolesByUser = new Map<string, OneRosterRole[]>();
   for (const role of live(feed, "roles.csv")) {
     if (userRows.has(role.userSourcedId)) append(rolesByUser, role.userSourcedId, role.role);
-    else ctx.error("roles.csv", role.row, "userSourcedId", `names ${role.userSourcedId}, which is not in users.csv`);
+    else ctx.error("roles.csv", role.row, "userSourcedId", `names ${role.userSourcedId}, which is not in ${ctx.place("users.csv")}`);
   }
 
   const principalsById = new Map<string, Principal>(current.principals.map((p) => [p.id, p]));
@@ -580,7 +605,7 @@ function linkUsers(ctx: ImportContext): People {
       outcomes.set(user.sourcedId, existing === undefined ? { kind: "skipped" } : { kind: "absent", id: existing });
       ctx.warn("users.csv", user.row, "sourcedId", "is a guardian, parent or relative; SchoolOS does not import them");
     } else if (!isStudent && !isStaff) {
-      quarantine(user, "no-role", "has no role in roles.csv", existing);
+      quarantine(user, "no-role", `has no role in ${ctx.place("roles.csv")}`, existing);
     } else {
       const subject = subjectOf(user, config.subject);
       if (subject === undefined) quarantine(user, "missing-subject", `has no ${describeField(config.subject)}`, existing);
@@ -595,7 +620,7 @@ function linkUsers(ctx: ImportContext): People {
   const principals = new Map<string, Principal>();
   for (const { user, existing, kind, subject } of candidates) {
     if (subjectCounts.get(subject)! > 1) {
-      quarantine(user, "duplicate-subject", `shares the subject ${subject} with another user in users.csv`, existing);
+      quarantine(user, "duplicate-subject", `shares the subject ${subject} with another user in ${ctx.place("users.csv")}`, existing);
       continue;
     }
     let id: string;
@@ -669,7 +694,7 @@ function mapEnrollments(ctx: ImportContext, catalog: Catalog, people: People): E
   for (const row of ctx.feed["enrollments.csv"]) {
     const outcome = people.outcomes.get(row.userSourcedId);
     if (outcome === undefined) {
-      ctx.error("enrollments.csv", row.row, "userSourcedId", `names ${row.userSourcedId}, which is not in users.csv`);
+      ctx.error("enrollments.csv", row.row, "userSourcedId", `names ${row.userSourcedId}, which is not in ${ctx.place("users.csv")}`);
       continue;
     }
     if (outcome.kind === "quarantined") {
@@ -686,7 +711,7 @@ function mapEnrollments(ctx: ImportContext, catalog: Catalog, people: People): E
     const offeringId = catalog.offeringId(row.classSourcedId);
     if (offeringId === undefined) {
       if (!catalog.failedClasses.has(row.classSourcedId) && !catalog.deletedClasses.has(row.classSourcedId)) {
-        ctx.error("enrollments.csv", row.row, "classSourcedId", `names ${row.classSourcedId}, which is not in classes.csv`);
+        ctx.error("enrollments.csv", row.row, "classSourcedId", `names ${row.classSourcedId}, which is not in ${ctx.place("classes.csv")}`);
       }
       continue;
     }

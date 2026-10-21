@@ -5,6 +5,8 @@ import {
   POLICY_ORDERINGS,
   PolicyOverrides,
   PolicySettings,
+  RosterIdentityMapping,
+  RosterSyncSchedule,
   Scope,
   SemVer,
 } from "@schoolos/contracts";
@@ -137,6 +139,18 @@ const Identity = z.strictObject({ provider: z.enum(["district-sso", "cloudflare-
 const Rostering = z.strictObject({
   provider: z.enum(["oneroster-csv", "oneroster-api", "manual"]),
   mode: z.enum(["preview-before-apply", "apply-automatically"]),
+  /**
+   * How the roster's users map to the IdP's subjects, for a OneRoster provider. The issuer must be
+   * one the district trusts, which the plan checks against the directory.
+   */
+  identityMapping: RosterIdentityMapping.optional(),
+  /** When the roster syncs, for a OneRoster provider. */
+  schedule: RosterSyncSchedule.optional(),
+}).superRefine((rostering, context) => {
+  if (rostering.provider !== "manual") return;
+  for (const field of ["identityMapping", "schedule"] as const) {
+    if (rostering[field] !== undefined) context.addIssue({ code: "custom", path: [field], message: `a manual roster has no ${field}` });
+  }
 });
 
 /**

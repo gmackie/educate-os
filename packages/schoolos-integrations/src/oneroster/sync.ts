@@ -4,18 +4,34 @@ import { SchoolOsError, type IntegrationSyncRun, type SyncCounts, type SyncError
 import { z } from "zod";
 import { RosterSyncError } from "../sync-run.ts";
 import { readOneRosterCsv } from "./feed.ts";
-import type { OneRosterCsvFiles, OneRosterCsvLimits, OneRosterFeed, OneRosterIssue } from "./feed.ts";
+import type { OneRosterCsvFiles, OneRosterCsvLimits, OneRosterFeed, OneRosterHighWater, OneRosterIssue } from "./feed.ts";
 import { applyOneRosterFeed } from "./import.ts";
-import type { OneRosterChanges, OneRosterImportConfig, OneRosterPreview, RosterState } from "./import.ts";
+import type { OneRosterChanges, OneRosterFormat, OneRosterImportConfig, OneRosterPreview, RosterState } from "./import.ts";
 import { ONEROSTER_FILES, ROW_SCHEMAS } from "./spec.ts";
 import type { OneRosterFile, OneRosterRecord } from "./spec.ts";
+
+/**
+ * Where each file's next delta starts, as ISO 8601 UTC, keyed by row-model file. A delta reads a
+ * file with no cursor whole, which is always safe: a delta never deactivates what it does not list.
+ */
+export const RosterCursors = z.partialRecord(z.enum(ONEROSTER_FILES), z.iso.datetime());
+/** Roster cursors. */
+export type RosterCursors = z.infer<typeof RosterCursors>;
+
+/**
+ * How far behind each file's newest `dateLastModified` its next delta starts. A record can be
+ * stamped before a read but committed after it (a write in flight while the collection is paged),
+ * so starting exactly at the newest stamp seen could skip it. Re-reading records is harmless: a
+ * delta is idempotent.
+ */
+export const DELTA_OVERLAP_MS = 5 * 60_000;
 
 /** What a sync asks a source for. */
 export interface RosterReadRequest {
   /** Whether to read the whole roster or only what changed. */
   mode: SyncMode;
-  /** For a delta, the cursor: the high-water `dateLastModified` of the last successful sync. */
-  since?: string;
+  /** For a delta, where each file starts. A file with no cursor is read whole. */
+  since?: RosterCursors;
 }
 
 /** What a source read. */
@@ -26,8 +42,8 @@ export interface RosterBatch {
   feed: OneRosterFeed;
   /** Problems found reading. An `error` among them stops the sync. */
   issues: OneRosterIssue[];
-  /** The latest `dateLastModified` among the records read, when the source reports one. */
-  highWater?: string;
+  /** Each file's latest `dateLastModified` among the records read, when the source reports them. */
+  highWater?: OneRosterHighWater;
 }
 
 /**
@@ -37,6 +53,8 @@ export interface RosterBatch {
 export interface RosterSource {
   /** What kind of source this is, such as `oneroster-csv`. */
   readonly kind: string;
+  /** How the source delivers records, which decides how import issues name where a record is. */
+  readonly format: OneRosterFormat;
   /** The modes it can read in. Every source can read a complete roster. */
   readonly modes: readonly SyncMode[];
   /**
@@ -47,12 +65,14 @@ export interface RosterSource {
 }
 
 /**
- * A source serving one OneRoster bulk CSV export. It reads complete rosters only: the CSV path
- * refuses delta exports, and reports no high-water mark, so a delta cannot follow it.
+ * A source serving one OneRoster bulk CSV export. It reads complete rosters only (the CSV path
+ * refuses delta exports), and reports each file's latest `dateLastModified`, so a REST delta can
+ * follow a CSV import.
  */
 export function csvRosterSource(files: OneRosterCsvFiles, limits?: OneRosterCsvLimits): RosterSource {
   return {
     kind: "oneroster-csv",
+    format: "csv",
     modes: ["complete"],
     read: async (request) => {
       if (request.mode !== "complete") throw new RosterSyncError("delta-unsupported", "a CSV export is read whole");
@@ -82,8 +102,8 @@ export interface RosterSyncState {
   roster: RosterState;
   /** The roster's rows. Absent until a complete sync succeeds. */
   mirror?: RosterMirror;
-  /** Where the next delta starts. Advances only when a sync succeeds. */
-  cursor?: string;
+  /** Where each file's next delta starts. Changes only when a sync succeeds. */
+  cursors?: RosterCursors;
 }
 
 /** Everything one sync needs. */
@@ -122,7 +142,7 @@ export interface RosterSyncResult {
  *
  * A run is deterministic and idempotent: the same state and source always give the same result,
  * and running the same delta again, or a complete sync of an unchanged roster, changes nothing.
- * Nothing is applied and the cursor stays where it was unless the whole feed applies.
+ * Nothing is applied and the cursors stay where they were unless the whole feed applies.
  *
  * A failure to read, or a feed that does not apply, is returned as a failed run. Invalid state or
  * configuration is a caller error and is thrown.
@@ -131,11 +151,11 @@ export async function runRosterSync(input: RosterSyncInput): Promise<RosterSyncR
   const { state, source, mode, config } = input;
   const startedAt = input.clock();
   const mirror = state.mirror === undefined ? undefined : parseState(RosterMirror, state.mirror, "roster mirror");
-  const previousCursor = state.cursor === undefined ? undefined : parseState(z.iso.datetime(), state.cursor, "cursor");
+  const previousCursors = state.cursors === undefined ? undefined : parseState(RosterCursors, state.cursors, "cursors");
 
   const finish = (outcome: { errorCode: SyncErrorCode; preview?: OneRosterPreview } | { next: RosterSyncState; preview: OneRosterPreview }): RosterSyncResult => {
     const failed = "errorCode" in outcome;
-    const cursor = failed ? previousCursor : outcome.next.cursor;
+    const cursor = earliest(failed ? previousCursors : outcome.next.cursors);
     const run: IntegrationSyncRun = {
       id: input.runId,
       mode,
@@ -155,11 +175,11 @@ export async function runRosterSync(input: RosterSyncInput): Promise<RosterSyncR
   };
 
   if (!source.modes.includes(mode)) return finish({ errorCode: "delta-unsupported" });
-  if (mode === "delta" && (mirror === undefined || previousCursor === undefined)) return finish({ errorCode: "no-baseline" });
+  if (mode === "delta" && mirror === undefined) return finish({ errorCode: "no-baseline" });
 
   let batch: RosterBatch;
   try {
-    batch = await source.read(mode === "delta" ? { mode, since: previousCursor } : { mode });
+    batch = await source.read(mode === "delta" ? { mode, since: previousCursors ?? {} } : { mode });
   } catch (error) {
     if (error instanceof RosterSyncError) return finish({ errorCode: error.code });
     throw error;
@@ -175,13 +195,37 @@ export async function runRosterSync(input: RosterSyncInput): Promise<RosterSyncR
     issues: batch.issues,
     config,
     now: startedAt,
+    format: source.format,
   });
   if (!result.applied) return finish({ errorCode: "feed-rejected", preview: result.preview });
-  const cursor = later(previousCursor, batch.highWater);
+  const cursors = nextCursors(mode, previousCursors ?? {}, batch.highWater ?? {});
   return finish({
-    next: { roster: result.next, mirror: records, ...(cursor === undefined ? {} : { cursor }) },
+    next: { roster: result.next, mirror: records, ...(Object.keys(cursors).length === 0 ? {} : { cursors }) },
     preview: result.preview,
   });
+}
+
+/**
+ * The cursors after a sync that applied. Each file starts {@link DELTA_OVERLAP_MS} before the newest
+ * record read from it. A complete sync replaces the whole roster, so its marks replace the old
+ * cursors, even earlier ones (an older export sets the roster back, and the next delta must
+ * re-read what it rolled back). A delta only moves a file's cursor forward, and keeps the cursor of
+ * a file it read nothing new from.
+ *
+ * Cursors are kept per file because collections are read one after another: a record modified
+ * after its collection was read but stamped earlier than a later collection's newest record would
+ * be skipped by a single, roster-wide high-water mark.
+ */
+export function nextCursors(mode: SyncMode, previous: RosterCursors, highWater: OneRosterHighWater): RosterCursors {
+  const next: RosterCursors = mode === "complete" ? {} : { ...previous };
+  for (const file of ONEROSTER_FILES) {
+    const mark = highWater[file];
+    if (mark === undefined) continue;
+    const start = Date.parse(mark) - DELTA_OVERLAP_MS;
+    const kept = next[file];
+    if (kept === undefined || start > Date.parse(kept)) next[file] = new Date(start).toISOString();
+  }
+  return next;
 }
 
 /**
@@ -234,10 +278,10 @@ function stripRows(feed: OneRosterFeed): RosterMirror {
   ) as RosterMirror;
 }
 
-/** The later of two timestamps, as ISO 8601 UTC. */
-function later(a: string | undefined, b: string | undefined): string | undefined {
-  const times = [a, b].filter((t) => t !== undefined).map((t) => Date.parse(t));
-  return times.length === 0 ? undefined : new Date(Math.max(...times)).toISOString();
+/** Where the next delta starts re-reading anything: the earliest cursor, as ISO 8601 UTC. */
+function earliest(cursors: RosterCursors | undefined): string | undefined {
+  const times = Object.values(cursors ?? {}).map((t) => Date.parse(t));
+  return times.length === 0 ? undefined : new Date(Math.min(...times)).toISOString();
 }
 
 function entityCounts(change: { added: unknown[]; updated: unknown[]; deactivated: unknown[] } | undefined) {

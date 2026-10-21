@@ -3,7 +3,7 @@
 // commit 7258e4347; the source and delta reads are new.
 import { z } from "zod";
 import { RosterSyncError } from "../../sync-run.ts";
-import type { OneRosterIssue } from "../feed.ts";
+import type { OneRosterHighWater, OneRosterIssue } from "../feed.ts";
 import { ONEROSTER_FILES, ROW_SCHEMAS } from "../spec.ts";
 import type { OneRosterFile } from "../spec.ts";
 import { numberRows } from "../sync.ts";
@@ -101,43 +101,51 @@ const TO_ROWS: { [C in RosterCollection]: (record: RosterRecord<C>) => { file: O
 
 /**
  * A roster source reading a OneRoster 1.2 REST server. A complete read fetches every record of
- * each collection; a delta fetches those with `dateLastModified` at or after the cursor.
+ * each collection; a delta fetches, from each collection, those with `dateLastModified` at or after
+ * that collection's own cursor, and the whole collection when it has none.
  *
- * The delta filter is inclusive: a record modified in the same instant as the cursor, or in a
- * fraction of a second the cursor's millisecond precision dropped, is read again rather than
- * missed. Reading a record twice changes nothing, since applying a delta is idempotent.
+ * The delta filter is inclusive, and each cursor already starts an overlap window before the
+ * newest record last read (see `nextCursors`), so a record modified while the roster was being
+ * read is read again rather than missed. Reading a record twice changes nothing, since applying a
+ * delta is idempotent.
  */
 export function restRosterSource(client: OneRosterRestClient): RosterSource {
   return {
     kind: "oneroster-rest",
+    format: "rest",
     modes: ["complete", "delta"],
     read: (request) => readRest(client, request),
   };
 }
 
-async function readRest(client: OneRosterRestClient, request: RosterReadRequest): Promise<RosterBatch> {
-  let filter: string | undefined;
-  if (request.mode === "delta") {
-    const since = DateTime.safeParse(request.since);
-    if (!since.success) throw new RosterSyncError("no-baseline", "a delta needs the cursor of an earlier sync");
-    // The cursor is validated as an ISO timestamp, so it cannot close the quoted filter value.
-    filter = `dateLastModified>='${new Date(since.data).toISOString()}'`;
-  }
+/** The `dateLastModified` filter for a collection's delta, or none to read it whole. */
+function deltaFilter(collection: RosterCollection, request: RosterReadRequest): string | undefined {
+  if (request.mode !== "delta") return undefined;
+  const cursor = request.since?.[COLLECTION_FILES[collection]];
+  if (cursor === undefined) return undefined;
+  const since = DateTime.safeParse(cursor);
+  if (!since.success) throw new RosterSyncError("no-baseline", "a delta needs the cursor of an earlier sync");
+  // The cursor is validated as an ISO timestamp, so it cannot close the quoted filter value.
+  return `dateLastModified>='${new Date(since.data).toISOString()}'`;
+}
 
+async function readRest(client: OneRosterRestClient, request: RosterReadRequest): Promise<RosterBatch> {
   const rows = Object.fromEntries(ONEROSTER_FILES.map((file) => [file, [] as Record<string, unknown>[]])) as Record<
     OneRosterFile,
     Record<string, unknown>[]
   >;
   const issues: OneRosterIssue[] = [];
-  let highWater: number | undefined;
+  const highWater: OneRosterHighWater = {};
   for (const collection of ROSTER_COLLECTIONS) {
+    const filter = deltaFilter(collection, request);
     const read = await client.list(collection, filter === undefined ? {} : { filter });
+    let newest: number | undefined;
     issues.push(...read.issues);
     // Sorted here as well as by the server, so the feed is the same whatever order it served.
     const records = (read.records as RosterRecord<RosterCollection>[]).toSorted((a, b) => compare(a.sourcedId, b.sourcedId));
     for (const [index, record] of records.entries()) {
       const modified = Date.parse(record.dateLastModified);
-      if (highWater === undefined || modified > highWater) highWater = modified;
+      if (newest === undefined || modified > newest) newest = modified;
       const toRows = TO_ROWS[collection] as (record: RosterRecord<RosterCollection>) => { file: OneRosterFile; row: unknown }[];
       for (const { file, row } of toRows(record)) {
         const target = rows[file];
@@ -158,13 +166,9 @@ async function readRest(client: OneRosterRestClient, request: RosterReadRequest)
         }
       }
     }
+    if (newest !== undefined) highWater[COLLECTION_FILES[collection]] = new Date(newest).toISOString();
   }
-  return {
-    mode: request.mode,
-    feed: numberRows(rows as RosterMirror),
-    issues,
-    ...(highWater === undefined ? {} : { highWater: new Date(highWater).toISOString() }),
-  };
+  return { mode: request.mode, feed: numberRows(rows as RosterMirror), issues, highWater };
 }
 
 function compare(a: string, b: string): number {

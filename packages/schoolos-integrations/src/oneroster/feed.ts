@@ -1,5 +1,5 @@
 // Reads a OneRoster 1.2 bulk CSV export into validated rows. New for SchoolOS.
-import type { z } from "zod";
+import { z } from "zod";
 import { parseCsv } from "./csv.ts";
 import { ONEROSTER_FILES, ONEROSTER_HEADERS, ROW_SCHEMAS } from "./spec.ts";
 import type { OneRosterFile, OneRosterRow } from "./spec.ts";
@@ -40,6 +40,12 @@ export const DEFAULT_CSV_LIMITS: OneRosterCsvLimits = {
 /** The validated rows of every file SchoolOS reads. Rows that failed validation are left out. */
 export type OneRosterFeed = { [F in OneRosterFile]: OneRosterRow<F>[] };
 
+/**
+ * The latest `dateLastModified` a feed lists in each file, as ISO 8601 UTC: where a delta of that
+ * file's records can start. A file whose records list none has no entry.
+ */
+export type OneRosterHighWater = Partial<Record<OneRosterFile, string>>;
+
 /** A bulk export as uploaded: file contents keyed by file name, such as `users.csv`. */
 export type OneRosterCsvFiles = Readonly<Record<string, string | Uint8Array>>;
 
@@ -53,6 +59,10 @@ const MANIFEST_MAX_ROWS = 1000;
  * specification. Every problem is returned as an issue rather than thrown, so a preview can show
  * them all; the feed holds only the rows that validated.
  *
+ * It also reports each file's latest `dateLastModified`, so a REST delta can follow a CSV import.
+ * A blank date is allowed (bulk files may omit it); one that is not a date and time is a warning
+ * and is left out of the high-water mark, which can only make a later delta read more.
+ *
  * Only {@link ONEROSTER_FILES} are opened. Every other file in the export is ignored unread, and
  * `demographics.csv` in particular is never decoded, size-checked or parsed: SchoolOS has no use for
  * it and it is the most sensitive file in an export.
@@ -60,12 +70,15 @@ const MANIFEST_MAX_ROWS = 1000;
 export function readOneRosterCsv(
   files: OneRosterCsvFiles,
   limits: OneRosterCsvLimits = DEFAULT_CSV_LIMITS,
-): { feed: OneRosterFeed; issues: OneRosterIssue[] } {
+): { feed: OneRosterFeed; issues: OneRosterIssue[]; highWater: OneRosterHighWater } {
   const issues: OneRosterIssue[] = [];
   const readable = readManifest(files, limits, issues);
   const feed = {} as Record<OneRosterFile, unknown[]>;
+  const highWater: OneRosterHighWater = {};
   for (const file of ONEROSTER_FILES) {
-    feed[file] = (readable ? readFile(file, files, limits, issues) : undefined) ?? [];
+    const read = readable ? readFile(file, files, limits, issues) : undefined;
+    feed[file] = read?.rows ?? [];
+    if (read?.highWater !== undefined) highWater[file] = new Date(read.highWater).toISOString();
   }
 
   if (issues.length > MAX_ISSUES) {
@@ -75,7 +88,7 @@ export function readOneRosterCsv(
       message: `${issues.length - MAX_ISSUES} more issues not shown (${errors} errors in total)`,
     });
   }
-  return { feed: feed as OneRosterFeed, issues };
+  return { feed: feed as OneRosterFeed, issues, highWater };
 }
 
 /** Reads a file's text, enforcing the byte limit before decoding. */
@@ -162,13 +175,18 @@ function readManifest(files: OneRosterCsvFiles, limits: OneRosterCsvLimits, issu
   return issues.length === before;
 }
 
-/** Reads one file's header and rows. Returns undefined when the file cannot be read at all. */
+const ModifiedAt = z.iso.datetime({ offset: true });
+
+/**
+ * Reads one file's header and rows, and the latest `dateLastModified` among the rows read, in
+ * epoch milliseconds. Returns undefined when the file cannot be read at all.
+ */
 function readFile(
   file: OneRosterFile,
   files: OneRosterCsvFiles,
   limits: OneRosterCsvLimits,
   issues: OneRosterIssue[],
-): Record<string, unknown>[] | undefined {
+): { rows: Record<string, unknown>[]; highWater?: number } | undefined {
   const text = readText(file, files, limits, issues);
   if (text === undefined) return undefined;
   const parsed = parseCsv(text, { maxRows: limits.maxRowsPerFile });
@@ -199,7 +217,9 @@ function readFile(
 
   const schema: z.ZodObject = ROW_SCHEMAS[file];
   const read = Object.keys(schema.shape).map((column) => [column, header.fields.indexOf(column)] as const);
+  const modifiedColumn = header.fields.indexOf("dateLastModified");
   const rows: Record<string, unknown>[] = [];
+  let highWater: number | undefined;
   const sourcedIds = new Set<string>();
   for (const record of records) {
     if (record.fields.length !== header.fields.length) {
@@ -227,6 +247,13 @@ function readFile(
       sourcedIds.add(value.sourcedId);
     }
     rows.push({ ...value, row: record.row });
+    const modified = record.fields[modifiedColumn] ?? "";
+    if (modified === "") continue;
+    if (!ModifiedAt.safeParse(modified).success) {
+      issues.push({ severity: "warning", file, row: record.row, column: "dateLastModified", message: "is not a date and time, so a delta cannot start from it" });
+      continue;
+    }
+    highWater = Math.max(highWater ?? -Infinity, Date.parse(modified));
   }
-  return rows;
+  return { rows, ...(highWater === undefined ? {} : { highWater }) };
 }

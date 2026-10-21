@@ -94,3 +94,42 @@ export const IntegrationSyncRun = z.strictObject({
 });
 /** An integration sync run. */
 export type IntegrationSyncRun = z.infer<typeof IntegrationSyncRun>;
+
+/**
+ * Which roster field holds the subject the district's IdP asserts for each user. Email is not an
+ * option: it is not a stable or unique key (ADR-0003).
+ */
+export const IdpSubjectField = z.discriminatedUnion("field", [
+  z.strictObject({ field: z.literal("username") }),
+  z.strictObject({ field: z.literal("identifier") }),
+  /** The identifier of the `userIds` entry with this type, such as `{idp:nf-0001}` for `idp`. */
+  z.strictObject({ field: z.literal("userIds"), type: z.string().min(1).max(64) }),
+]);
+/** An IdP subject field. */
+export type IdpSubjectField = z.infer<typeof IdpSubjectField>;
+
+/**
+ * How a district's roster relates to its IdP: the issuer that asserts the roster's subjects, which
+ * the district must trust, and where each user's subject is. It is configuration (stored in a
+ * configuration revision), never a credential.
+ */
+export const RosterIdentityMapping = z.strictObject({
+  /** The issuer that asserts the subjects in the roster. */
+  issuer: z.url({ protocol: /^https$/ }),
+  /** Where each user's subject is. */
+  subject: IdpSubjectField,
+});
+/** A roster identity mapping. */
+export type RosterIdentityMapping = z.infer<typeof RosterIdentityMapping>;
+
+/**
+ * When a roster integration syncs: a delta every `deltaEveryMinutes`, where the source can read
+ * one, and a complete sync every `completeEveryHours`, which is also how deletions a delta never
+ * reports (records removed rather than marked `tobedeleted`) are caught.
+ */
+export const RosterSyncSchedule = z.strictObject({
+  deltaEveryMinutes: z.int().min(5).max(24 * 60),
+  completeEveryHours: z.int().min(1).max(24 * 31),
+});
+/** A roster sync schedule. */
+export type RosterSyncSchedule = z.infer<typeof RosterSyncSchedule>;
