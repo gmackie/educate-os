@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // Only because the parent packages' sources (`@schoolos/academics`) use `crypto`, `console` and
+    // web globals. This package imports nothing from Node, so it runs unchanged under workerd.
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__"],
+  "exclude": ["dist", "node_modules"]
+}

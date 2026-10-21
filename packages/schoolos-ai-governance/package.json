@@ -1,0 +1,21 @@
+{
+  "name": "@schoolos/ai-governance",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS AI governance (roadmap G01): funding pools, model policy, an idempotent reserve/settle attribution ledger with budget caps, content-free usage reports, provider bill reconciliation, and the governor interface a kernel AI Gateway seam calls. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/policy": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}
