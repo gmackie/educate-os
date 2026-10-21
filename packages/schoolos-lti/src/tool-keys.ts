@@ -49,11 +49,14 @@ export interface ToolKeySet {
 
 /** Generates a new 2048-bit RS256 tool key, returned in its storable form. */
 export async function generateToolKey(): Promise<StoredToolKey> {
-  const pair = await crypto.subtle.generateKey(
+  // An RSA key always generates a pair. The Workers runtime's typings return the wider
+  // `CryptoKey | CryptoKeyPair` for every algorithm, so the stores' workerd suite needs the
+  // narrowing that the DOM typings already make.
+  const pair = (await crypto.subtle.generateKey(
     { ...RS256, modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]) },
     true,
     ["sign", "verify"],
-  );
+  )) as CryptoKeyPair;
   const privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
   return StoredToolKey.parse({ kid: randomToken().slice(0, 22), privateJwk });
 }

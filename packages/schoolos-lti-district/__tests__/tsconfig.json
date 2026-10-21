@@ -1,0 +1,10 @@
+{
+  // The Node suite adds Node's typings to the web-standard surface the library is checked against
+  // (ADR-0009). The workerd suite is checked by ../tsconfig.workerd.json instead.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["."],
+  "exclude": ["workerd"]
+}

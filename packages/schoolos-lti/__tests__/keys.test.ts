@@ -6,7 +6,7 @@ import {
   importToolKey,
   PlatformJwksCache,
   rotateToolKeys,
-  toolJwks,
+  toolJwks, STATE_COOKIE_BINDING,
 } from "../src/index.ts";
 import { generatePlatformKey } from "./fake-platform.ts";
 import { createWorld, rejection, SHARED_SUB, startLogin, TOOL, type World } from "./helpers.ts";
@@ -17,7 +17,7 @@ async function launchSignedBy(world: World, key = world.platforms.nfCanvas.signi
   const platform = world.platforms.nfCanvas;
   const { state, nonce } = await startLogin(world, platform);
   const token = await platform.idToken({ sub: SHARED_SUB, contextId: BIO, nonce, targetLinkUri: `${TOOL}/lti/launch` }, key);
-  return world.broker.launch(token, state);
+  return world.broker.launch(token, state, STATE_COOKIE_BINDING);
 }
 
 describe("platform JWKS", () => {

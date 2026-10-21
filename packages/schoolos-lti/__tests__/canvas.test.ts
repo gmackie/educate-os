@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { decodeJwt } from "jose";
 import { ActivityId } from "@schoolos/contracts";
-import { CANVAS_PLACEMENTS, canvasDeveloperKey, LTI_CLAIM, ltiToolEndpoints, type CanvasPlacement } from "../src/index.ts";
+import { CANVAS_PLACEMENTS, canvasDeveloperKey, LTI_CLAIM, ltiToolEndpoints, type CanvasPlacement, STATE_COOKIE_BINDING } from "../src/index.ts";
 import developerKeyFixture from "./fixtures/canvas-developer-key.json" with { type: "json" };
 import { canvasPlacementClaims } from "./fixtures/canvas-placements.ts";
 import { createWorld, startLogin, TOOL } from "./helpers.ts";
@@ -31,7 +31,7 @@ describe("Canvas", () => {
         targetLinkUri: `${TOOL}/lti/launch`,
         overrides: canvasPlacementClaims(placement, "nf-canvas-course-bio-p2"),
       });
-      const { launch, deepLinkSession } = await world.broker.launch(token, state);
+      const { launch, deepLinkSession } = await world.broker.launch(token, state, STATE_COOKIE_BINDING);
       expect(launch).toMatchObject({ messageType, offeringId: "off_nf-bio-fall-p2", principal: { kind: "student" } });
       if (messageType === "LtiResourceLinkRequest") return expect(deepLinkSession).toBeUndefined();
 

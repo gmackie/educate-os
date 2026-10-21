@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createLocalJWKSet, decodeJwt, jwtVerify } from "jose";
 import { SchoolOsError } from "@schoolos/contracts";
-import { LTI_CLAIM, type ResolvedLaunch } from "../src/index.ts";
+import { LTI_CLAIM, type ResolvedLaunch, STATE_COOKIE_BINDING } from "../src/index.ts";
 import type { ClaimOverrides } from "./fake-platform.ts";
 import { cookiePair, createWorld, formPost, startLogin, TOOL, type World } from "./helpers.ts";
 
@@ -52,7 +52,7 @@ async function launchItem(world: World, contextId: string, custom: Record<string
     targetLinkUri: `${TOOL}/lti/launch`,
     overrides: { [LTI_CLAIM.custom]: custom },
   });
-  return (await world.broker.launch(token, state)).launch;
+  return (await world.broker.launch(token, state, STATE_COOKIE_BINDING)).launch;
 }
 
 describe("Deep Linking 2.0", () => {
@@ -152,6 +152,6 @@ describe("Deep Linking 2.0", () => {
       targetLinkUri: `${TOOL}/lti/launch`,
       overrides: { [LTI_CLAIM.deepLinkingSettings]: { ...settings, deep_link_return_url: "javascript:alert(1)" } },
     });
-    await expect(world.broker.launch(token, state)).rejects.toMatchObject({ code: "unauthenticated" });
+    await expect(world.broker.launch(token, state, STATE_COOKIE_BINDING)).rejects.toMatchObject({ code: "unauthenticated" });
   });
 });

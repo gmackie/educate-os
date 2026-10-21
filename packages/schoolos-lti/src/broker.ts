@@ -2,11 +2,11 @@
 // `packages/lti/src/oidc/callback.ts` at commit 7258e4347. PlayTrek handed both to `@gmacko/lti`
 // with a stateless, HMAC-signed state; here the state and nonce are server-side and single-use,
 // the deployment and target link are checked, and the launch resolves to a district principal.
-import { errors as joseErrors, jwtVerify, type JWTVerifyGetKey } from "jose";
+import { decodeJwt, errors as joseErrors, jwtVerify, type JWTVerifyGetKey } from "jose";
 import { z } from "zod";
 import { ActivityId, OfferingId, SchoolOsError } from "@schoolos/contracts";
 import { ResolvedPrincipal, type PrincipalResolver } from "@schoolos/identity";
-import { LaunchMessageType, parseLaunchClaims, type DeepLinkingSettings, type ParsedLaunchClaims } from "./claims.ts";
+import { DeepLinkingSettings, LaunchMessageType, parseLaunchClaims, type ParsedLaunchClaims } from "./claims.ts";
 import {
   activityContentItem,
   deepLinkingReturnPage,
@@ -19,10 +19,10 @@ import {
   offeringForContext,
   type PlatformRegistration,
   type PlatformRegistrationStore,
-  type RegistrationKey,
 } from "./registration.ts";
 import { LtiContextServices } from "./service-client.ts";
-import { randomToken, type Clock, type SingleUseStore } from "./stores.ts";
+import { platformStorageKey, StorageTarget, type PlatformStorageRequest } from "./platform-storage.ts";
+import { randomToken, sha256Base64Url, type Clock, type SingleUseStore } from "./stores.ts";
 import { toolJwks, type ToolKeySet, type ToolPublicJwk } from "./tool-keys.ts";
 
 /** Clock skew tolerated on `exp`, `iat` and `nbf`, in seconds. */
@@ -56,8 +56,8 @@ export type ResolvedLaunch = z.infer<typeof ResolvedLaunch>;
 
 /**
  * The OIDC third-party login initiation parameters. A stripping `z.object`: platforms add their
- * own (Canvas sends `canvas_region` and `lti_storage_target`), and refusing them would refuse
- * Canvas.
+ * own (Canvas sends `canvas_region`), and refusing them would refuse Canvas. `lti_storage_target`
+ * names the platform frame that offers client-side storage when cookies may be blocked.
  */
 export const LoginInitiation = z.object({
   iss: z.string().min(1),
@@ -66,27 +66,55 @@ export const LoginInitiation = z.object({
   lti_message_hint: z.string().optional(),
   lti_deployment_id: z.string().optional(),
   client_id: z.string().optional(),
+  lti_storage_target: StorageTarget.optional(),
 });
 /** Login initiation parameters. */
 export type LoginInitiation = z.infer<typeof LoginInitiation>;
 
-/** What the broker remembers between login initiation and launch. Single use. */
-export interface LoginState {
-  readonly issuer: string;
-  readonly clientId: string;
-  readonly nonce: string;
-  readonly targetLinkUri: string;
+const LtiId = z.string().min(1).max(255);
+const RegistrationKeyShape = z.strictObject({ issuer: z.url({ protocol: /^https$/ }), clientId: LtiId });
+
+/**
+ * What the broker remembers between login initiation and launch. Single use.
+ *
+ * `storageDigest` is present when the platform offered client-side storage: the login put a fresh
+ * secret there, and only its SHA-256 is kept here. A launch that arrives without the state cookie
+ * must return that secret, read back from the same browser's platform storage.
+ */
+export const LoginState = z.strictObject({
+  issuer: RegistrationKeyShape.shape.issuer,
+  clientId: LtiId,
+  nonce: z.string().min(1),
+  targetLinkUri: z.string().min(1),
   /** The deployment the login named, if it named one; the launch must then match it. */
-  readonly deploymentId: string | undefined;
-}
+  deploymentId: LtiId.optional(),
+  storageDigest: z.string().min(1).optional(),
+});
+/** A login state. */
+export type LoginState = z.infer<typeof LoginState>;
 
 /** What the broker remembers between a deep linking request and the principal's choice. Single use. */
-export interface DeepLinkSession {
-  readonly registration: RegistrationKey;
-  readonly deploymentId: string;
-  readonly settings: DeepLinkingSettings;
-  readonly launch: ResolvedLaunch;
-}
+export const DeepLinkSession = z.strictObject({
+  registration: RegistrationKeyShape,
+  deploymentId: LtiId,
+  settings: DeepLinkingSettings,
+  launch: ResolvedLaunch,
+});
+/** A deep linking session. */
+export type DeepLinkSession = z.infer<typeof DeepLinkSession>;
+
+/**
+ * How a launch proves it is posted by the browser that started its login. Either the browser sent
+ * the `__Host-lti-state-<state>` cookie, which only that browser holds, or it read the login's
+ * secret back from the platform's client-side storage, which is keyed to this tool's origin in that
+ * browser. Without one of these, an attacker could post their own id_token from a victim's browser.
+ */
+export type LaunchBinding =
+  | { readonly kind: "state-cookie" }
+  | { readonly kind: "platform-storage"; readonly value: string };
+
+/** The launch binding for a request that carried the login's state cookie. */
+export const STATE_COOKIE_BINDING: LaunchBinding = { kind: "state-cookie" };
 
 /** The tool's own endpoints, all under one HTTPS origin. */
 export interface LtiToolEndpoints {
@@ -125,10 +153,15 @@ export interface LtiBrokerOptions {
   readonly now?: Clock;
 }
 
-/** The result of starting a login: where to send the browser, and the state to bind to it. */
+/**
+ * The result of starting a login: where to send the browser, and the state to bind to it. When the
+ * platform offered client-side storage, `storage` is what the browser must put there before it
+ * follows the redirect.
+ */
 export interface LoginRedirect {
   readonly redirectUrl: string;
   readonly state: string;
+  readonly storage: PlatformStorageRequest | undefined;
 }
 
 /** The result of a launch. A deep linking request also gets a session for the content picker. */
@@ -181,15 +214,17 @@ export class LtiBroker {
 
     const state = randomToken();
     const nonce = randomToken();
+    const storageSecret = params.lti_storage_target === undefined ? undefined : randomToken();
     await this.#options.loginStates.put(
       state,
-      {
+      LoginState.parse({
         issuer: registration.issuer,
         clientId: registration.clientId,
         nonce,
         targetLinkUri: params.target_link_uri,
-        deploymentId: params.lti_deployment_id,
-      },
+        ...(params.lti_deployment_id === undefined ? {} : { deploymentId: params.lti_deployment_id }),
+        ...(storageSecret === undefined ? {} : { storageDigest: await sha256Base64Url(storageSecret) }),
+      }),
       this.#now() + LOGIN_STATE_TTL_MS,
     );
 
@@ -207,17 +242,55 @@ export class LtiBroker {
       nonce,
     };
     for (const [name, value] of Object.entries(query)) if (value !== undefined) redirect.searchParams.set(name, value);
-    return { redirectUrl: redirect.toString(), state };
+    const storage =
+      params.lti_storage_target === undefined || storageSecret === undefined
+        ? undefined
+        : {
+            target: params.lti_storage_target,
+            platformOrigin: new URL(registration.authLoginUrl).origin,
+            key: platformStorageKey(state),
+            value: storageSecret,
+          };
+    return { redirectUrl: redirect.toString(), state, storage };
+  }
+
+  /**
+   * The platform origin a launch's storage read must be answered from, for a launch posted without
+   * the state cookie. It is the origin of the registration's OIDC endpoint, which is where the
+   * login put the secret. The token is only decoded here to find its registration; nothing in it is
+   * trusted until {@link launch} verifies it, and that also checks it against the login's own
+   * registration.
+   */
+  async platformStorageOrigin(idToken: string): Promise<string> {
+    let claims: { iss?: unknown; aud?: unknown; azp?: unknown };
+    try {
+      claims = decodeJwt(idToken);
+    } catch {
+      return refuse("The LTI launch token is invalid.");
+    }
+    const audiences = typeof claims.aud === "string" ? [claims.aud] : Array.isArray(claims.aud) ? claims.aud : [];
+    const clientId = typeof claims.azp === "string" ? claims.azp : audiences.length === 1 ? audiences[0] : undefined;
+    if (typeof claims.iss !== "string" || typeof clientId !== "string") return refuse("The LTI launch token is invalid.");
+    const registration = await this.#options.registrations.get({ issuer: claims.iss, clientId });
+    if (registration === undefined) return refuse("This LTI platform is not registered.");
+    return new URL(registration.authLoginUrl).origin;
   }
 
   /**
    * Validates a launch and resolves it. The login state is consumed first, so a replayed
    * `(id_token, state)` fails however the rest of validation would have gone, and a token replayed
-   * with a fresh state fails on its nonce.
+   * with a fresh state fails on its nonce. `binding` is how the request proved it came from the
+   * browser that started the login (see {@link LaunchBinding}); the caller checks the cookie, and
+   * the broker checks a platform-storage secret against the login's digest.
    */
-  async launch(idToken: string, state: string): Promise<LaunchResult> {
+  async launch(idToken: string, state: string, binding: LaunchBinding): Promise<LaunchResult> {
     const login = await this.#options.loginStates.take(state);
     if (login === undefined) return refuse("The LTI launch state is unknown, expired or already used.");
+    if (binding.kind === "platform-storage") {
+      if (login.storageDigest === undefined || !constantTimeEqual(await sha256Base64Url(binding.value), login.storageDigest)) {
+        return refuse("This LTI launch did not start in this browser.");
+      }
+    }
     const registration = await this.#options.registrations.get(login);
     if (registration === undefined) return refuse("This LTI platform is not registered.");
 
@@ -257,7 +330,12 @@ export class LtiBroker {
     const session = randomToken();
     await this.#options.deepLinkSessions.put(
       session,
-      { registration: { issuer: registration.issuer, clientId: registration.clientId }, deploymentId: claims.deploymentId, settings: claims.deepLinking, launch },
+      DeepLinkSession.parse({
+        registration: { issuer: registration.issuer, clientId: registration.clientId },
+        deploymentId: claims.deploymentId,
+        settings: claims.deepLinking,
+        launch,
+      }),
       this.#now() + DEEP_LINK_SESSION_TTL_MS,
     );
     return { launch, deepLinkSession: session };
@@ -365,6 +443,14 @@ export class LtiBroker {
     if (byResourceLink !== undefined) return byResourceLink;
     return claims.schoolosLinkId === undefined ? undefined : activityForLink(registration, offeringId, claims.schoolosLinkId);
   }
+}
+
+/** Compares two digests without an early exit, so timing reveals nothing about a near miss. */
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let difference = 0;
+  for (let i = 0; i < a.length; i++) difference |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return difference === 0;
 }
 
 function contextServices(registration: PlatformRegistration, claims: ParsedLaunchClaims): LtiContextServices | undefined {

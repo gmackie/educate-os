@@ -218,40 +218,72 @@ export interface PassbackLedger {
   release(key: string, version: number): Promise<void>;
 }
 
-interface LedgerEntry {
-  version: number;
-  approvedAtMs: number;
-  state: "pending" | "posted";
-  leaseUntil: number;
+/** What a passback ledger records for one (column, student). */
+export const PassbackLedgerEntry = z.strictObject({
+  version: GradeVersion,
+  approvedAtMs: z.number().int().nonnegative(),
+  state: z.enum(["pending", "posted"]),
+  leaseUntil: z.number().int().nonnegative(),
+});
+/** A passback ledger entry. */
+export type PassbackLedgerEntry = z.infer<typeof PassbackLedgerEntry>;
+
+/**
+ * The ledger's rule for one claim, shared by every {@link PassbackLedger}: the outcome, and the
+ * entry to record when the outcome is `claimed`. Implementations run it and write the entry in one
+ * atomic step.
+ */
+export function decidePassbackClaim(
+  entry: PassbackLedgerEntry | undefined,
+  version: number,
+  approvedAtMs: number,
+  now: number,
+  leaseUntil: number,
+): { claim: Exclude<PassbackClaim, "claimed"> } | { claim: "claimed"; entry: PassbackLedgerEntry } {
+  if (entry !== undefined) {
+    if (version < entry.version) return { claim: "stale" };
+    if (version === entry.version) {
+      if (entry.state === "posted") return { claim: "already-posted" };
+      if (entry.leaseUntil > now) return { claim: "in-progress" };
+    } else if (approvedAtMs <= entry.approvedAtMs) {
+      return { claim: "stale" };
+    }
+  }
+  return { claim: "claimed", entry: { version, approvedAtMs, state: "pending", leaseUntil } };
+}
+
+/**
+ * The entry after `complete` (`posted`) or `release` (lease ended) of `version`, or `undefined` when
+ * nothing changes because the entry has moved on to another version or is already posted.
+ */
+export function settlePassbackEntry(
+  entry: PassbackLedgerEntry | undefined,
+  version: number,
+  outcome: "complete" | "release",
+): PassbackLedgerEntry | undefined {
+  if (entry === undefined || entry.version !== version) return undefined;
+  if (outcome === "complete") return { ...entry, state: "posted" };
+  return entry.state === "pending" ? { ...entry, leaseUntil: 0 } : undefined;
 }
 
 /** An in-memory {@link PassbackLedger}, for tests and single-isolate development. */
 export class InMemoryPassbackLedger implements PassbackLedger {
-  readonly #entries = new Map<string, LedgerEntry>();
+  readonly #entries = new Map<string, PassbackLedgerEntry>();
 
   async claim(key: string, version: number, approvedAtMs: number, now: number, leaseUntil: number): Promise<PassbackClaim> {
-    const entry = this.#entries.get(key);
-    if (entry !== undefined) {
-      if (version < entry.version) return "stale";
-      if (version === entry.version) {
-        if (entry.state === "posted") return "already-posted";
-        if (entry.leaseUntil > now) return "in-progress";
-      } else if (approvedAtMs <= entry.approvedAtMs) {
-        return "stale";
-      }
-    }
-    this.#entries.set(key, { version, approvedAtMs, state: "pending", leaseUntil });
-    return "claimed";
+    const decision = decidePassbackClaim(this.#entries.get(key), version, approvedAtMs, now, leaseUntil);
+    if (decision.claim === "claimed") this.#entries.set(key, decision.entry);
+    return decision.claim;
   }
 
   async complete(key: string, version: number): Promise<void> {
-    const entry = this.#entries.get(key);
-    if (entry !== undefined && entry.version === version) entry.state = "posted";
+    const next = settlePassbackEntry(this.#entries.get(key), version, "complete");
+    if (next !== undefined) this.#entries.set(key, next);
   }
 
   async release(key: string, version: number): Promise<void> {
-    const entry = this.#entries.get(key);
-    if (entry !== undefined && entry.version === version && entry.state === "pending") entry.leaseUntil = 0;
+    const next = settlePassbackEntry(this.#entries.get(key), version, "release");
+    if (next !== undefined) this.#entries.set(key, next);
   }
 }
 

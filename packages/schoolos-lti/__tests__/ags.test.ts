@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LTI_CLAIM, LTI_SCOPES } from "../src/index.ts";
+import { LTI_CLAIM, LTI_SCOPES, STATE_COOKIE_BINDING } from "../src/index.ts";
 import { rejection, startLogin, TOOL } from "./helpers.ts";
 import { AMARA_SUB, BIO, BIO_CONTEXT, createServicesWorld } from "./services-helpers.ts";
 
@@ -78,7 +78,7 @@ describe("LTI Advantage claims on a launch", () => {
     const launch = async (overrides: Record<string, unknown>) => {
       const { state, nonce } = await startLogin(world, platform);
       const token = await platform.idToken({ sub: AMARA_SUB, nonce, contextId: BIO_CONTEXT, targetLinkUri: `${TOOL}/lti/launch`, overrides });
-      return (await world.broker.launch(token, state)).launch;
+      return (await world.broker.launch(token, state, STATE_COOKIE_BINDING)).launch;
     };
 
     const full = await launch({ [LTI_CLAIM.agsEndpoint]: ags, [LTI_CLAIM.nrpsService]: nrps });

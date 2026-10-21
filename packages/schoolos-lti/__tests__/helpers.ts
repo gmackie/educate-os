@@ -76,6 +76,7 @@ export class TestClock {
 function registration(platform: FakePlatform, districtId: string, offerings: PlatformRegistration["offerings"]): PlatformRegistration {
   return {
     districtId: DistrictId.parse(districtId),
+    provider: platform.issuer.includes("moodle") ? "moodle" : "canvas",
     issuer: platform.issuer,
     clientId: platform.clientId,
     deploymentIds: [platform.deploymentId],

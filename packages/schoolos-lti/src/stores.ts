@@ -48,12 +48,20 @@ export class InMemorySingleUseStore<T> implements SingleUseStore<T> {
   }
 }
 
-/** A random, URL-safe token with 256 bits of entropy. */
-export function randomToken(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
+const base64Url = (bytes: Uint8Array): string => {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+};
+
+/** A random, URL-safe token with 256 bits of entropy. */
+export function randomToken(): string {
+  return base64Url(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+/** The SHA-256 of `value`'s UTF-8 bytes, base64url-encoded. */
+export async function sha256Base64Url(value: string): Promise<string> {
+  return base64Url(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))));
 }
 
 const keyOf = (key: RegistrationKey): string => JSON.stringify([key.issuer, key.clientId]);

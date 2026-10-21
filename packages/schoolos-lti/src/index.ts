@@ -8,6 +8,8 @@ export * from "./tool-keys.ts";
 export * from "./deep-linking.ts";
 export * from "./broker.ts";
 export * from "./handlers.ts";
+export * from "./platform-storage.ts";
+export * from "./dynamic-registration.ts";
 export * from "./canvas.ts";
 export * from "./service-client.ts";
 export * from "./nrps.ts";

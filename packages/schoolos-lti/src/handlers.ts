@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { ActivityId, SchoolOsError, type ErrorCode } from "@schoolos/contracts";
-import { LOGIN_STATE_TTL_MS, type LtiBroker, type ResolvedLaunch } from "./broker.ts";
+import { LOGIN_STATE_TTL_MS, STATE_COOKIE_BINDING, type LaunchBinding, type LtiBroker, type ResolvedLaunch } from "./broker.ts";
 import type { DeepLinkSelection } from "./deep-linking.ts";
+import type { DynamicRegistration } from "./dynamic-registration.ts";
+import {
+  platformStorageLaunchPage,
+  platformStorageLoginPage,
+  platformStoragePageHeaders,
+  StorageTarget,
+} from "./platform-storage.ts";
 
 /** What the host application supplies around the broker. */
 export interface LtiHandlerOptions {
@@ -19,6 +26,8 @@ export interface LtiHandlerOptions {
    * refuse.
    */
   selectActivities(launch: ResolvedLaunch, activityIds: readonly ActivityId[]): Promise<readonly DeepLinkSelection[]>;
+  /** Serves `GET /lti/register` (LTI Dynamic Registration) when set. Without it the route is absent. */
+  readonly dynamicRegistration?: DynamicRegistration;
 }
 
 const HTTP_STATUS: Record<ErrorCode, number> = {
@@ -53,7 +62,23 @@ function hasCookie(request: Request, name: string): boolean {
   return header.split(";").some((pair) => pair.trim().split("=", 1)[0] === name);
 }
 
-const LaunchForm = z.object({ id_token: z.string().min(1).max(16_384), state: StateLike });
+/**
+ * The platform's launch post, or the storage page's re-post of it. A stripping `z.object`: Canvas
+ * adds `authenticity_token` and others. `lti_storage_target` is the frame the login used for
+ * client-side storage; `lti_storage_value` is the secret the storage page read back from it.
+ */
+/** Whether a browser sent `request` from a page on `url`'s origin. */
+function isSameOriginPost(request: Request, url: string): boolean {
+  const site = request.headers.get("sec-fetch-site");
+  return request.headers.get("origin") === new URL(url).origin && (site === null || site === "same-origin");
+}
+
+const LaunchForm = z.object({
+  id_token: z.string().min(1).max(16_384),
+  state: StateLike,
+  lti_storage_target: StorageTarget.optional(),
+  lti_storage_value: z.string().min(1).max(256).optional(),
+});
 const DeepLinkForm = z.object({ session: StateLike, activity: z.array(ActivityId).max(50) });
 
 async function formFields(request: Request): Promise<Record<string, string[]>> {
@@ -75,11 +100,15 @@ const single = (fields: Record<string, string[]>): Record<string, string | undef
  * Fetch-standard handlers for the tool's LTI endpoints. Returns `undefined` for any other path, so
  * a Worker can fall through to its other routes.
  *
- * - `GET|POST /lti/login`: OIDC third-party login initiation; redirects to the platform.
- * - `POST /lti/launch`: the platform's form post of `id_token` and `state`.
+ * - `GET|POST /lti/login`: OIDC third-party login initiation; redirects to the platform, through a
+ *   page that first puts the login's secret in the platform's storage when the platform offers it.
+ * - `POST /lti/launch`: the platform's form post of `id_token` and `state`. Without the state
+ *   cookie, and when the platform offered storage, it answers with a page that reads the secret
+ *   back and posts the launch again with it.
  * - `GET /lti/jwks`: the tool's public keys.
  * - `POST /lti/deep-link`: the content picker's choice; answers with a page that posts the signed
  *   deep linking response back to the platform.
+ * - `GET /lti/register`: LTI Dynamic Registration, when `dynamicRegistration` is set.
  */
 export function createLtiHandler(options: LtiHandlerOptions): (request: Request) => Promise<Response | undefined> {
   const { broker } = options;
@@ -90,23 +119,56 @@ export function createLtiHandler(options: LtiHandlerOptions): (request: Request)
     ["/lti/jwks", new Map([["GET", async () => json(broker.jwks(), 200)]])],
     ["/lti/deep-link", new Map([["POST", deepLink]])],
   ]);
+  const { dynamicRegistration } = options;
+  if (dynamicRegistration !== undefined) {
+    routes.set("/lti/register", new Map([["GET", async (request: Request) => dynamicRegistration.handle(request)]]));
+  }
 
   async function login(request: Request): Promise<Response> {
     const params =
       request.method === "GET" ? Object.fromEntries(new URL(request.url).searchParams) : single(await formFields(request));
-    const { redirectUrl, state } = await broker.login(params);
+    const { redirectUrl, state, storage } = await broker.login(params);
+    // The cookie is set either way: a browser that accepts it launches with it, and the platform's
+    // storage is only the fallback for one that does not.
     const cookie = `${stateCookieName(state)}=1; Path=/; Max-Age=${LOGIN_STATE_TTL_MS / 1000}; Secure; HttpOnly; SameSite=None; Partitioned`;
+    if (storage !== undefined) {
+      return new Response(platformStorageLoginPage(redirectUrl, storage), {
+        status: 200,
+        headers: { ...platformStoragePageHeaders(), "set-cookie": cookie },
+      });
+    }
     return new Response(null, { status: 302, headers: { location: redirectUrl, "set-cookie": cookie, ...NO_STORE } });
   }
 
   async function launch(request: Request): Promise<Response> {
     const form = LaunchForm.safeParse(single(await formFields(request)));
     if (!form.success) throw new SchoolOsError("unauthenticated", "The LTI launch is incomplete.");
-    const { id_token: idToken, state } = form.data;
-    if (!hasCookie(request, stateCookieName(state))) {
+    const { id_token: idToken, state, lti_storage_target: storageTarget, lti_storage_value: storageValue } = form.data;
+    let binding: LaunchBinding;
+    if (hasCookie(request, stateCookieName(state))) {
+      binding = STATE_COOKIE_BINDING;
+    } else if (storageValue !== undefined) {
+      // Only the storage page itself posts a storage value. Anyone can learn the secret of a login
+      // they started, so a value posted from another site (an attacker replaying their own launch
+      // from a victim's browser) must not count; a browser cannot forge `Origin`.
+      if (!isSameOriginPost(request, broker.endpoints.launch)) {
+        throw new SchoolOsError("unauthenticated", "This LTI launch did not start in this browser.");
+      }
+      binding = { kind: "platform-storage", value: storageValue };
+    } else if (storageTarget !== undefined) {
+      // Nothing is consumed yet: the page reads the secret back and posts this launch again.
+      const html = platformStorageLaunchPage({
+        launchUrl: broker.endpoints.launch,
+        idToken,
+        state,
+        target: storageTarget,
+        platformOrigin: await broker.platformStorageOrigin(idToken),
+      });
+      return new Response(html, { status: 200, headers: platformStoragePageHeaders() });
+    } else {
       throw new SchoolOsError("unauthenticated", "This LTI launch did not start in this browser.");
     }
-    const result = await broker.launch(idToken, state);
+    const result = await broker.launch(idToken, state, binding);
     const response =
       result.deepLinkSession === undefined
         ? await options.onResourceLinkLaunch(result.launch)
