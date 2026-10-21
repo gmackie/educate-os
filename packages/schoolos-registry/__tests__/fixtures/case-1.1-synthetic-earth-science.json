@@ -1,0 +1,372 @@
+{
+  "CFDocument": {
+    "identifier": "4bdfa521-bea3-542a-90e5-4eab8ff58541",
+    "uri": "https://case.registry.example/uri/4bdfa521-bea3-542a-90e5-4eab8ff58541",
+    "CFPackageURI": {
+      "title": "Synthetic Earth Science Framework",
+      "identifier": "4bdfa521-bea3-542a-90e5-4eab8ff58541",
+      "uri": "https://case.registry.example/ims/case/v1p1/CFPackages/4bdfa521-bea3-542a-90e5-4eab8ff58541"
+    },
+    "creator": "Example State Department of Education",
+    "title": "Synthetic Earth Science Framework",
+    "lastChangeDateTime": "2026-09-01T12:00:00+00:00",
+    "frameworkType": "Standards",
+    "caseVersion": "1.1",
+    "officialSourceURL": "https://standards.example/earth-science",
+    "publisher": "Example Publisher",
+    "description": "A synthetic framework used only for tests.",
+    "subject": [
+      "Science"
+    ],
+    "subjectURI": [
+      {
+        "title": "Science",
+        "identifier": "071d1ae3-f6e3-59f0-8d2a-c366c428f433",
+        "uri": "https://case.registry.example/uri/071d1ae3-f6e3-59f0-8d2a-c366c428f433"
+      }
+    ],
+    "language": "en",
+    "version": "2026.1",
+    "adoptionStatus": "Adopted",
+    "statusStartDate": "2026-07-01",
+    "statusEndDate": "2031-06-30",
+    "licenseURI": {
+      "title": "Example Open License",
+      "identifier": "6d4c507a-1049-5c5a-aa80-2dd018ff138c",
+      "uri": "https://case.registry.example/uri/6d4c507a-1049-5c5a-aa80-2dd018ff138c"
+    },
+    "notes": "Synthetic.",
+    "extensions": {
+      "example:reviewCycle": {
+        "years": 5
+      }
+    }
+  },
+  "CFItems": [
+    {
+      "identifier": "c100ae69-00e4-5f91-b515-1cc4c68611bc",
+      "uri": "https://case.registry.example/uri/c100ae69-00e4-5f91-b515-1cc4c68611bc",
+      "CFDocumentURI": {
+        "title": "Synthetic Earth Science Framework",
+        "identifier": "4bdfa521-bea3-542a-90e5-4eab8ff58541",
+        "uri": "https://case.registry.example/uri/4bdfa521-bea3-542a-90e5-4eab8ff58541"
+      },
+      "fullStatement": "Earth Systems",
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00",
+      "CFItemType": "Domain",
+      "CFItemTypeURI": {
+        "title": "Domain",
+        "identifier": "9ac5b8e1-36b1-587a-b177-e574d4582ad1",
+        "uri": "https://case.registry.example/uri/9ac5b8e1-36b1-587a-b177-e574d4582ad1"
+      },
+      "humanCodingScheme": "SYN.ES",
+      "listEnumeration": "1",
+      "educationLevel": [
+        "09",
+        "10",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "identifier": "e7dccdf8-dcb5-54a7-88e8-b170d9362f5c",
+      "uri": "https://case.registry.example/uri/e7dccdf8-dcb5-54a7-88e8-b170d9362f5c",
+      "fullStatement": "Use a model to describe how energy moves through a synthetic water cycle.",
+      "lastChangeDateTime": "2026-08-15T09:30:00",
+      "CFItemType": "Standard",
+      "CFItemTypeURI": {
+        "title": "Standard",
+        "identifier": "196f54f4-bea1-5e5f-bdf1-0605d5a56d0c",
+        "uri": "https://case.registry.example/uri/196f54f4-bea1-5e5f-bdf1-0605d5a56d0c"
+      },
+      "humanCodingScheme": "SYN.ES.1",
+      "listEnumeration": "1",
+      "abbreviatedStatement": "Energy in the water cycle",
+      "alternativeLabel": "Water cycle energy",
+      "conceptKeywords": [
+        "energy",
+        "water cycle"
+      ],
+      "conceptKeywordsURI": {
+        "title": "Energy",
+        "identifier": "c89064c2-3c7c-5674-9230-a14712edf7c0",
+        "uri": "https://case.registry.example/uri/c89064c2-3c7c-5674-9230-a14712edf7c0"
+      },
+      "educationLevel": [
+        "9-12"
+      ],
+      "subject": [
+        "Earth Science"
+      ],
+      "language": "en",
+      "licenseURI": {
+        "title": "Example Open License",
+        "identifier": "6d4c507a-1049-5c5a-aa80-2dd018ff138c",
+        "uri": "https://case.registry.example/uri/6d4c507a-1049-5c5a-aa80-2dd018ff138c"
+      },
+      "notes": "Grade band published as 9-12.",
+      "extensions": {
+        "example:difficulty": "core",
+        "example:tags": [
+          "model",
+          3,
+          null,
+          true
+        ]
+      }
+    },
+    {
+      "identifier": "2D5616EF-0429-57CD-A5ED-E09D60D75EDE",
+      "uri": "https://case.registry.example/uri/2D5616EF-0429-57CD-A5ED-E09D60D75EDE",
+      "fullStatement": "Describe <em>patterns</em> in synthetic weather data.",
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00",
+      "CFItemType": "Standard",
+      "humanCodingScheme": "SYN.ES.2",
+      "listEnumeration": "2",
+      "educationLevel": [
+        "KG",
+        "01",
+        "02"
+      ],
+      "statusStartDate": "2026-07-01",
+      "statusEndDate": "2031-06-30"
+    },
+    {
+      "identifier": "cf96c536-6f51-5d51-8a9b-02186d036962",
+      "uri": "https://case.registry.example/uri/cf96c536-6f51-5d51-8a9b-02186d036962",
+      "fullStatement": "Usar un modelo para describir el flujo de energía en un ciclo del agua sintético.",
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00",
+      "CFItemType": "Standard",
+      "humanCodingScheme": "SYN.ES.1",
+      "language": "es-MX",
+      "educationLevel": [
+        "9-12"
+      ]
+    }
+  ],
+  "CFAssociations": [
+    {
+      "identifier": "5ff17cde-55f6-568c-8d54-41c2f0a06561",
+      "uri": "https://case.registry.example/uri/5ff17cde-55f6-568c-8d54-41c2f0a06561",
+      "associationType": "isChildOf",
+      "sequenceNumber": 1,
+      "originNodeURI": {
+        "title": "Earth Systems",
+        "identifier": "c100ae69-00e4-5f91-b515-1cc4c68611bc",
+        "uri": "https://case.registry.example/uri/c100ae69-00e4-5f91-b515-1cc4c68611bc",
+        "targetType": "CFItem"
+      },
+      "destinationNodeURI": {
+        "title": "Synthetic Earth Science Framework",
+        "identifier": "4bdfa521-bea3-542a-90e5-4eab8ff58541",
+        "uri": "https://case.registry.example/uri/4bdfa521-bea3-542a-90e5-4eab8ff58541",
+        "targetType": "CFDocument"
+      },
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+    },
+    {
+      "identifier": "206a2c2b-35bb-5b8e-bf42-fee384c8eedd",
+      "uri": "https://case.registry.example/uri/206a2c2b-35bb-5b8e-bf42-fee384c8eedd",
+      "associationType": "isChildOf",
+      "sequenceNumber": 1,
+      "originNodeURI": {
+        "title": "SYN.ES.1",
+        "identifier": "e7dccdf8-dcb5-54a7-88e8-b170d9362f5c",
+        "uri": "https://case.registry.example/uri/e7dccdf8-dcb5-54a7-88e8-b170d9362f5c"
+      },
+      "destinationNodeURI": {
+        "title": "SYN.ES",
+        "identifier": "c100ae69-00e4-5f91-b515-1cc4c68611bc",
+        "uri": "https://case.registry.example/uri/c100ae69-00e4-5f91-b515-1cc4c68611bc"
+      },
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00",
+      "CFDocumentURI": {
+        "title": "Synthetic Earth Science Framework",
+        "identifier": "4bdfa521-bea3-542a-90e5-4eab8ff58541",
+        "uri": "https://case.registry.example/uri/4bdfa521-bea3-542a-90e5-4eab8ff58541"
+      }
+    },
+    {
+      "identifier": "b84554af-0c33-52e1-8e44-193f8db3728f",
+      "uri": "https://case.registry.example/uri/b84554af-0c33-52e1-8e44-193f8db3728f",
+      "associationType": "isChildOf",
+      "sequenceNumber": 2,
+      "originNodeURI": {
+        "title": "SYN.ES.2",
+        "identifier": "2D5616EF-0429-57CD-A5ED-E09D60D75EDE",
+        "uri": "https://case.registry.example/uri/2D5616EF-0429-57CD-A5ED-E09D60D75EDE"
+      },
+      "destinationNodeURI": {
+        "title": "SYN.ES",
+        "identifier": "c100ae69-00e4-5f91-b515-1cc4c68611bc",
+        "uri": "https://case.registry.example/uri/c100ae69-00e4-5f91-b515-1cc4c68611bc"
+      },
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+    },
+    {
+      "identifier": "c27effa8-2ce5-51fe-bb12-1d27c1e8b82a",
+      "uri": "https://case.registry.example/uri/c27effa8-2ce5-51fe-bb12-1d27c1e8b82a",
+      "associationType": "isTranslationOf",
+      "originNodeURI": {
+        "title": "SYN.ES.1 (es-MX)",
+        "identifier": "cf96c536-6f51-5d51-8a9b-02186d036962",
+        "uri": "https://case.registry.example/uri/cf96c536-6f51-5d51-8a9b-02186d036962"
+      },
+      "destinationNodeURI": {
+        "title": "SYN.ES.1",
+        "identifier": "e7dccdf8-dcb5-54a7-88e8-b170d9362f5c",
+        "uri": "https://case.registry.example/uri/e7dccdf8-dcb5-54a7-88e8-b170d9362f5c"
+      },
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+    },
+    {
+      "identifier": "534a3289-bbd1-5aae-b6e7-26edd7b7d584",
+      "uri": "https://case.registry.example/uri/534a3289-bbd1-5aae-b6e7-26edd7b7d584",
+      "associationType": "exactMatchOf",
+      "originNodeURI": {
+        "title": "SYN.ES.1",
+        "identifier": "e7dccdf8-dcb5-54a7-88e8-b170d9362f5c",
+        "uri": "https://case.registry.example/uri/e7dccdf8-dcb5-54a7-88e8-b170d9362f5c"
+      },
+      "destinationNodeURI": {
+        "title": "Other Publisher Item",
+        "identifier": "a41c6f0e-b26c-536b-8f9c-f96a0f2c7a25",
+        "uri": "https://other-publisher.example/case/uri/a41c6f0e-b26c-536b-8f9c-f96a0f2c7a25"
+      },
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+    },
+    {
+      "identifier": "31556c38-0e05-51f1-a8cb-c1e91e8b00fd",
+      "uri": "https://case.registry.example/uri/31556c38-0e05-51f1-a8cb-c1e91e8b00fd",
+      "associationType": "precedes",
+      "originNodeURI": {
+        "title": "SYN.ES.2",
+        "identifier": "2D5616EF-0429-57CD-A5ED-E09D60D75EDE",
+        "uri": "https://case.registry.example/uri/2D5616EF-0429-57CD-A5ED-E09D60D75EDE"
+      },
+      "destinationNodeURI": {
+        "title": "SYN.ES.1",
+        "identifier": "e7dccdf8-dcb5-54a7-88e8-b170d9362f5c",
+        "uri": "https://case.registry.example/uri/e7dccdf8-dcb5-54a7-88e8-b170d9362f5c"
+      },
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+    },
+    {
+      "identifier": "440ca3fa-103b-5c00-b5b5-df9eddc6a3d4",
+      "uri": "https://case.registry.example/uri/440ca3fa-103b-5c00-b5b5-df9eddc6a3d4",
+      "associationType": "ext:example.alignsToCareer",
+      "originNodeURI": {
+        "title": "SYN.ES.1",
+        "identifier": "e7dccdf8-dcb5-54a7-88e8-b170d9362f5c",
+        "uri": "https://case.registry.example/uri/e7dccdf8-dcb5-54a7-88e8-b170d9362f5c"
+      },
+      "destinationNodeURI": {
+        "title": "Hydrologist",
+        "identifier": "career-hydro",
+        "uri": "https://careers.example/hydrologist",
+        "targetType": "ext:career"
+      },
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00",
+      "extensions": {
+        "example:weight": 0.5
+      }
+    },
+    {
+      "identifier": "15f767f4-920a-5779-a857-ac396fea5a38",
+      "uri": "https://case.registry.example/uri/15f767f4-920a-5779-a857-ac396fea5a38",
+      "associationType": "covers",
+      "originNodeURI": {
+        "title": "Unit 1",
+        "identifier": "unit-1",
+        "uri": "https://case.registry.example/uri/unit-1"
+      },
+      "destinationNodeURI": {
+        "title": "SYN.ES.2",
+        "identifier": "2D5616EF-0429-57CD-A5ED-E09D60D75EDE",
+        "uri": "https://case.registry.example/uri/2D5616EF-0429-57CD-A5ED-E09D60D75EDE"
+      },
+      "CFAssociationGroupingURI": {
+        "title": "Curriculum map",
+        "identifier": "754af9f4-97d0-5457-8bf2-d23c98e6386f",
+        "uri": "https://case.registry.example/uri/754af9f4-97d0-5457-8bf2-d23c98e6386f"
+      },
+      "notes": "Bare extension name, as in the CASE 1.1 implementation guide.",
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+    }
+  ],
+  "CFDefinitions": {
+    "CFConcepts": [
+      {
+        "identifier": "c89064c2-3c7c-5674-9230-a14712edf7c0",
+        "uri": "https://case.registry.example/uri/c89064c2-3c7c-5674-9230-a14712edf7c0",
+        "title": "Energy",
+        "hierarchyCode": "1",
+        "keywords": "energy|heat",
+        "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+      }
+    ],
+    "CFSubjects": [
+      {
+        "identifier": "071d1ae3-f6e3-59f0-8d2a-c366c428f433",
+        "uri": "https://case.registry.example/uri/071d1ae3-f6e3-59f0-8d2a-c366c428f433",
+        "title": "Science",
+        "hierarchyCode": "1",
+        "description": "Science",
+        "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+      }
+    ],
+    "CFLicenses": [
+      {
+        "identifier": "6d4c507a-1049-5c5a-aa80-2dd018ff138c",
+        "uri": "https://case.registry.example/uri/6d4c507a-1049-5c5a-aa80-2dd018ff138c",
+        "title": "Example Open License",
+        "licenseText": "Synthetic license text for tests.",
+        "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+      }
+    ],
+    "CFItemTypes": [
+      {
+        "identifier": "9ac5b8e1-36b1-587a-b177-e574d4582ad1",
+        "uri": "https://case.registry.example/uri/9ac5b8e1-36b1-587a-b177-e574d4582ad1",
+        "title": "Domain",
+        "description": "A domain",
+        "hierarchyCode": "1",
+        "typeCode": "DOM",
+        "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+      },
+      {
+        "identifier": "196f54f4-bea1-5e5f-bdf1-0605d5a56d0c",
+        "uri": "https://case.registry.example/uri/196f54f4-bea1-5e5f-bdf1-0605d5a56d0c",
+        "title": "Standard",
+        "description": "A standard",
+        "hierarchyCode": "2",
+        "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+      }
+    ],
+    "CFAssociationGroupings": [
+      {
+        "identifier": "754af9f4-97d0-5457-8bf2-d23c98e6386f",
+        "uri": "https://case.registry.example/uri/754af9f4-97d0-5457-8bf2-d23c98e6386f",
+        "title": "Curriculum map",
+        "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+      }
+    ]
+  },
+  "CFRubrics": [
+    {
+      "identifier": "527ffd8f-af1c-59b4-a511-5c79341584ae",
+      "uri": "https://case.registry.example/uri/527ffd8f-af1c-59b4-a511-5c79341584ae",
+      "title": "Synthetic rubric",
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00",
+      "CFRubricCriteria": [
+        {
+          "identifier": "ef7a99bf-2b14-561b-9757-ddf6cb9a5c72",
+          "description": "Uses a model"
+        }
+      ]
+    }
+  ],
+  "extensions": {
+    "example:packageNote": "synthetic"
+  }
+}

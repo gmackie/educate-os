@@ -1,0 +1,171 @@
+{
+  "CFDocument": {
+    "id": "e1d84df6-dc98-5615-8c22-c9de4b46dd6e",
+    "uri": "https://case.registry.example/uri/e1d84df6-dc98-5615-8c22-c9de4b46dd6e",
+    "title": "Synthetic Social-Emotional Framework",
+    "creator": "Example Consortium",
+    "description": "Synthetic PlayTrek-shaped framework.",
+    "subjects": [
+      "sel"
+    ],
+    "lastChangeDateTime": "2026-09-01T12:00:00+00:00",
+    "officialSourceURL": "https://sel.example/framework",
+    "CFPackageURI": {
+      "title": "Synthetic Social-Emotional Framework",
+      "identifier": "e1d84df6-dc98-5615-8c22-c9de4b46dd6e",
+      "uri": "https://case.registry.example/ims/case/v1p1/CFPackages/e1d84df6-dc98-5615-8c22-c9de4b46dd6e"
+    }
+  },
+  "CFItems": [
+    {
+      "id": "2590b76b-e8dc-57c8-8477-5cad7d7d0a74",
+      "uri": "https://case.registry.example/uri/2590b76b-e8dc-57c8-8477-5cad7d7d0a74",
+      "fullStatement": "Self-awareness",
+      "humanCodingScheme": "SYN.SA",
+      "CFDocumentURI": {
+        "title": "Synthetic Social-Emotional Framework",
+        "identifier": "e1d84df6-dc98-5615-8c22-c9de4b46dd6e",
+        "uri": "https://case.registry.example/uri/e1d84df6-dc98-5615-8c22-c9de4b46dd6e"
+      },
+      "CFItemType": "Competency",
+      "educationLevel": [
+        "KG",
+        "01",
+        "02"
+      ],
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00",
+      "parentURI": {
+        "title": "Synthetic Social-Emotional Framework",
+        "identifier": "e1d84df6-dc98-5615-8c22-c9de4b46dd6e",
+        "uri": "https://case.registry.example/uri/e1d84df6-dc98-5615-8c22-c9de4b46dd6e"
+      },
+      "listEnumeration": "1"
+    },
+    {
+      "id": "cadd5311-502e-5eec-8956-ec540f1ea714",
+      "uri": "https://case.registry.example/uri/cadd5311-502e-5eec-8956-ec540f1ea714",
+      "fullStatement": "Name a synthetic feeling.",
+      "humanCodingScheme": "SYN.SA.K2.1",
+      "CFDocumentURI": {
+        "title": "Synthetic Social-Emotional Framework",
+        "identifier": "e1d84df6-dc98-5615-8c22-c9de4b46dd6e",
+        "uri": "https://case.registry.example/uri/e1d84df6-dc98-5615-8c22-c9de4b46dd6e"
+      },
+      "CFItemType": "Standard",
+      "educationLevel": [
+        "K-2"
+      ],
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00",
+      "parentURI": {
+        "title": "SYN.SA",
+        "identifier": "2590b76b-e8dc-57c8-8477-5cad7d7d0a74",
+        "uri": "https://case.registry.example/uri/2590b76b-e8dc-57c8-8477-5cad7d7d0a74"
+      },
+      "listEnumeration": "1.1"
+    },
+    {
+      "id": "0e88c387-4293-5dfc-8e5e-1ad15cdfe29a",
+      "uri": "https://case.registry.example/uri/0e88c387-4293-5dfc-8e5e-1ad15cdfe29a",
+      "fullStatement": "Reflect on a synthetic goal.",
+      "humanCodingScheme": "SYN.SA.HS.1",
+      "CFDocumentURI": {
+        "title": "Synthetic Social-Emotional Framework",
+        "identifier": "e1d84df6-dc98-5615-8c22-c9de4b46dd6e",
+        "uri": "https://case.registry.example/uri/e1d84df6-dc98-5615-8c22-c9de4b46dd6e"
+      },
+      "CFItemType": "Standard",
+      "educationLevel": [
+        "9-12"
+      ],
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00",
+      "parentURI": {
+        "title": "SYN.SA",
+        "identifier": "2590b76b-e8dc-57c8-8477-5cad7d7d0a74",
+        "uri": "https://case.registry.example/uri/2590b76b-e8dc-57c8-8477-5cad7d7d0a74"
+      },
+      "listEnumeration": "1.2"
+    }
+  ],
+  "CFAssociations": [
+    {
+      "id": "7d0877cd-9cac-5794-b936-eb00c7b74216",
+      "uri": "https://case.registry.example/uri/7d0877cd-9cac-5794-b936-eb00c7b74216",
+      "associationType": "isChildOf",
+      "originNodeURI": {
+        "title": "SYN.SA",
+        "identifier": "2590b76b-e8dc-57c8-8477-5cad7d7d0a74",
+        "uri": "https://case.registry.example/uri/2590b76b-e8dc-57c8-8477-5cad7d7d0a74"
+      },
+      "destinationNodeURI": {
+        "title": "Synthetic Social-Emotional Framework",
+        "identifier": "e1d84df6-dc98-5615-8c22-c9de4b46dd6e",
+        "uri": "https://case.registry.example/uri/e1d84df6-dc98-5615-8c22-c9de4b46dd6e"
+      },
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+    },
+    {
+      "id": "47d74f9c-2cd8-5f88-acbc-158c19f515e1",
+      "uri": "https://case.registry.example/uri/47d74f9c-2cd8-5f88-acbc-158c19f515e1",
+      "associationType": "isChildOf",
+      "originNodeURI": {
+        "title": "SYN.SA.K2.1",
+        "identifier": "cadd5311-502e-5eec-8956-ec540f1ea714",
+        "uri": "https://case.registry.example/uri/cadd5311-502e-5eec-8956-ec540f1ea714"
+      },
+      "destinationNodeURI": {
+        "title": "SYN.SA",
+        "identifier": "2590b76b-e8dc-57c8-8477-5cad7d7d0a74",
+        "uri": "https://case.registry.example/uri/2590b76b-e8dc-57c8-8477-5cad7d7d0a74"
+      },
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+    },
+    {
+      "id": "b82cc2fa-6784-5404-8cb9-1a55e893463c",
+      "uri": "https://case.registry.example/uri/b82cc2fa-6784-5404-8cb9-1a55e893463c",
+      "associationType": "isChildOf",
+      "originNodeURI": {
+        "title": "SYN.SA.HS.1",
+        "identifier": "0e88c387-4293-5dfc-8e5e-1ad15cdfe29a",
+        "uri": "https://case.registry.example/uri/0e88c387-4293-5dfc-8e5e-1ad15cdfe29a"
+      },
+      "destinationNodeURI": {
+        "title": "SYN.SA",
+        "identifier": "2590b76b-e8dc-57c8-8477-5cad7d7d0a74",
+        "uri": "https://case.registry.example/uri/2590b76b-e8dc-57c8-8477-5cad7d7d0a74"
+      },
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+    },
+    {
+      "id": "cee13e5c-ab21-52a3-bc07-1a912864df4d",
+      "uri": "https://case.registry.example/uri/cee13e5c-ab21-52a3-bc07-1a912864df4d",
+      "associationType": "exactMatchOf",
+      "originNodeURI": {
+        "title": "SYN.SA.HS.1",
+        "identifier": "0e88c387-4293-5dfc-8e5e-1ad15cdfe29a",
+        "uri": "https://case.registry.example/uri/0e88c387-4293-5dfc-8e5e-1ad15cdfe29a"
+      },
+      "destinationNodeURI": {
+        "title": "Other Publisher Item",
+        "identifier": "a41c6f0e-b26c-536b-8f9c-f96a0f2c7a25",
+        "uri": "https://other-publisher.example/case/uri/a41c6f0e-b26c-536b-8f9c-f96a0f2c7a25"
+      },
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+    },
+    {
+      "id": "56e5dc0e-d8e8-585f-a18d-d28b5d14bda4",
+      "uri": "https://case.registry.example/uri/56e5dc0e-d8e8-585f-a18d-d28b5d14bda4",
+      "associationType": "precedes",
+      "originNodeURI": {
+        "title": "SYN.SA.K2.1",
+        "identifier": "cadd5311-502e-5eec-8956-ec540f1ea714",
+        "uri": "https://case.registry.example/uri/cadd5311-502e-5eec-8956-ec540f1ea714"
+      },
+      "destinationNodeURI": {
+        "title": "SYN.SA.HS.1",
+        "identifier": "0e88c387-4293-5dfc-8e5e-1ad15cdfe29a",
+        "uri": "https://case.registry.example/uri/0e88c387-4293-5dfc-8e5e-1ad15cdfe29a"
+      },
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+    }
+  ]
+}

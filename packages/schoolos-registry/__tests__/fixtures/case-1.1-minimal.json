@@ -1,0 +1,17 @@
+{
+  "CFDocument": {
+    "identifier": "21ca09a5-5558-5e21-8c58-6bc42341c03a",
+    "uri": "https://case.registry.example/uri/21ca09a5-5558-5e21-8c58-6bc42341c03a",
+    "creator": "Example District",
+    "title": "Minimal Framework",
+    "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+  },
+  "CFItems": [
+    {
+      "identifier": "4d952cbd-24ae-5a45-8949-dea38a81193c",
+      "uri": "https://case.registry.example/uri/4d952cbd-24ae-5a45-8949-dea38a81193c",
+      "fullStatement": "",
+      "lastChangeDateTime": "2026-09-01T12:00:00+00:00"
+    }
+  ]
+}
