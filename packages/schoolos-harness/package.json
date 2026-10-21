@@ -17,7 +17,8 @@
     "@schoolos/contracts": "workspace:*",
     "@schoolos/curriculum": "workspace:*",
     "@schoolos/district-app": "workspace:*",
-    "@schoolos/fixtures": "workspace:*"
+    "@schoolos/fixtures": "workspace:*",
+    "@schoolos/identity": "workspace:*"
   },
   "devDependencies": {
     "@gadgets/scripts": "workspace:*",

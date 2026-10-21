@@ -8,6 +8,7 @@ import type { TemplateInput } from "@schoolos/curriculum";
 import { createDistrictApp, inMemoryDistrictStores, type DistrictApp } from "@schoolos/district-app";
 import { createDistrictApiClient, type DistrictApiClient } from "@schoolos/api-client";
 import type { HarnessDistrict } from "./harness.ts";
+import { identityFromBearer } from "./sign-in.ts";
 
 /** The synthetic model every harness district funds. */
 const DEMO_MODEL = { provider: "cloudflare", modelId: "synthetic-demo-model" } as const;
@@ -33,18 +34,15 @@ export const demoWeb: ImportFetch = async (url) => {
 
 /**
  * The district application for a harness district: in-memory stores seeded with its directory,
- * its fake IdP's tokens as the only credential, the synthetic web for imports, and one funded
- * district course pool for the synthetic model.
+ * its fake IdP's tokens as the only credential (signed in as Access payloads are), the synthetic
+ * web for imports, and one funded district course pool for the synthetic model.
  */
 export async function bootDistrictApp(entry: HarnessDistrict): Promise<DistrictApp> {
   const { directory } = entry.district;
   return createDistrictApp({
     stores: inMemoryDistrictStores(directory),
-    verifyRequest: async (request) => {
-      const header = request.headers.get("authorization") ?? "";
-      const verified = header.startsWith("Bearer ") ? await entry.identity.verifyToken(header.slice("Bearer ".length)) : null;
-      return verified === null ? undefined : { ...verified, credential: "person" };
-    },
+    // The app resolves the identity with `createDirectoryPrincipalResolver` against its own store.
+    verifyRequest: (request) => identityFromBearer(request, entry.identity),
     importFetch: demoWeb,
     fundingPools: [{
       id: "fpl_demo-courses" as never,

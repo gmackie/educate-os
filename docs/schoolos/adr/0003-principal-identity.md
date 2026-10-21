@@ -91,3 +91,23 @@ The kernel takes an optional `PRINCIPAL_RESOLVER` service binding
   subject.
 - **Admins.** `ADMINS` lists user DO names, so a principal deployment lists
   `principal:<principalId>` entries.
+
+## Pending links and adoptions (SCHO-38)
+
+`@schoolos/identity-links` keeps a district's pending identity links and Workshop user adoptions in
+an append-only log, held by the district's control Durable Object (`DurableObjectIdentityLinkStore`).
+
+- **Who decides.** `IdentityLinkAdminService` authorizes every list, approval and rejection through
+  the policy engine as an `identity-link` resource at district scope. The rule
+  `admin.district.identity-links` grants it to `district-admin` alone: not school administrators,
+  and not the person being linked.
+- **Approval** claims the request in the log, writes the directory through `approveIdentityLink`
+  (which re-runs every check), then records the decision with its `IdentityLinkAuditEvent`. A
+  rejection cannot land between the two writes, and approving again finishes an interrupted
+  approval without linking twice.
+- **Adoption** confirmation records a `WorkshopUserRebindIntent` with its audit event: the
+  email-keyed Workshop user's data is to be rebound to the principal, never deleted. A Workshop user
+  is adopted into one principal, and a principal adopts one Workshop user. The kernel rebind that acts
+  on the intent is separate work.
+- **No email** reaches the log: links and adoptions carry identifiers only, and their schemas are
+  strict.
