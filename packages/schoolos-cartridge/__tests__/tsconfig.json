@@ -1,0 +1,9 @@
+{
+  // Tests and the fixture generator run under Node and read or write fixture files, so they add
+  // Node types; the library itself is checked with Workers types only.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "@cloudflare/workers-types"]
+  },
+  "include": ["."]
+}
