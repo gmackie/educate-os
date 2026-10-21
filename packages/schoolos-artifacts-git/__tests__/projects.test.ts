@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ProjectManifest, PROJECT_MANIFEST_MEDIA_TYPE } from "../src/index.ts";
+import { PROJECT_MANIFEST_MEDIA_TYPE } from "../src/index.ts";
 import { bytes, notebook, O, P, rejectsWith, saving, setup } from "./setup.ts";
 
 const v1 = [
@@ -12,16 +12,9 @@ const v2 = [
   { path: "src/fit.py", text: "import math\n" },
 ];
 
-async function manifestOf(records: ReturnType<typeof setup>["records"], text: ReturnType<typeof setup>["text"], revisionId: string) {
-  const { state } = await records.load();
-  const revision = state.revisions.find((r) => r.id === revisionId)!;
-  expect(revision.content.backend).toBe("text");
-  return ProjectManifest.parse(JSON.parse((await text.get(revision.content.key))!));
-}
-
 describe("a project with Artifacts on the plan", () => {
   it("keeps each saved version as a commit on top of the last, in its own repository", async () => {
-    const { projects, workspaces, storage, records, text } = setup();
+    const { projects, workspaces, storage, manifestOf } = setup();
     const bio = await workspaces.ensureCourseWorkspace(P.amara, O.bioFall);
     const created = await projects.createProject(P.amara, notebook(bio.id, v1));
     const second = await projects.checkpoint(P.amara, created.artifact.id, saving(v2, "Added the fit"));
@@ -29,8 +22,8 @@ describe("a project with Artifacts on the plan", () => {
     expect(created.latest).toMatchObject({ number: 1, message: "First version", fileCount: 2 });
     expect(second).toMatchObject({ number: 2, message: "Added the fit", fileCount: 3, savedBy: P.amara.principal.principalId });
 
-    const first = await manifestOf(records, text, created.latest.revisionId);
-    const latest = await manifestOf(records, text, second.revisionId);
+    const first = await manifestOf(created.latest.revisionId);
+    const latest = await manifestOf(second.revisionId);
     if (first.storage.kind !== "artifacts-git" || latest.storage.kind !== "artifacts-git") throw new Error("expected Git storage");
     expect(latest.storage.repository).toBe(first.storage.repository);
     // The repository's branch is the latest version, whose only parent is the first.
@@ -59,18 +52,18 @@ describe("a project with Artifacts on the plan", () => {
 
     expect(again.contentDigest).toBe(a.latest.contentDigest);
     expect(b.latest.contentDigest).toBe(a.latest.contentDigest);
-    const first = await manifestOf(withGit.records, withGit.text, a.latest.revisionId);
-    const bundled = await manifestOf(without.records, without.text, b.latest.revisionId);
+    const first = await withGit.manifestOf(a.latest.revisionId);
+    const bundled = await without.manifestOf(b.latest.revisionId);
     expect(bundled.tree).toBe(first.tree);
     // The revision digest learning-artifacts records still distinguishes the two saves.
     expect(again.revisionDigest).not.toBe(a.latest.revisionDigest);
   });
 
   it("pushes nothing for a save that would be refused", async () => {
-    const { projects, workspaces, storage, records, text, changeDirectory } = setup();
+    const { projects, workspaces, storage, changeDirectory, manifestOf } = setup();
     const bio = await workspaces.ensureCourseWorkspace(P.amara, O.bioFall);
     const created = await projects.createProject(P.amara, notebook(bio.id, v1));
-    const manifest = await manifestOf(records, text, created.latest.revisionId);
+    const manifest = await manifestOf(created.latest.revisionId);
     if (manifest.storage.kind !== "artifacts-git") throw new Error("expected Git storage");
     const objectsBefore = storage.objectIds(manifest.storage.repository).length;
 
@@ -223,16 +216,19 @@ describe("diff", () => {
   });
 
   it("refuses a corrupted object rather than show the wrong difference", async () => {
-    const { projects, workspaces, storage, records, text } = setup();
+    const { projects, workspaces, storage, manifestOf } = setup();
     const personal = await workspaces.ensurePersonalWorkspace(P.amara);
     const created = await projects.createProject(P.amara, notebook(personal.id, v1));
     const saved = await projects.checkpoint(P.amara, created.artifact.id, saving(v2));
-    const manifest = await manifestOf(records, text, saved.revisionId);
+    const manifest = await manifestOf(saved.revisionId);
+    const before = await manifestOf(created.latest.revisionId);
     if (manifest.storage.kind !== "artifacts-git") throw new Error("expected Git storage");
+    const files = new Set([...manifest.files, ...before.files].map((f) => f.blob));
     const repo = await storage.get(manifest.storage.repository);
     const readBlob = repo.readBlob.bind(repo);
     const get = storage.get.bind(storage);
-    storage.get = async (name) => ({ ...(await get(name)), readBlob: async (hash) => ((await readBlob(hash)) === null ? null : new Blob([bytes("tampered\n")])) });
+    // Every project file reads back wrong; the version manifests themselves are left intact.
+    storage.get = async (name) => ({ ...(await get(name)), readBlob: async (hash) => ((await readBlob(hash)) === null || !files.has(hash) ? readBlob(hash) : new Blob([bytes("tampered\n")])) });
 
     const diff = await projects.diff(P.amara, created.artifact.id, created.latest.revisionId, saved.revisionId);
     expect(diff.files.filter((f) => f.change === "modified").every((f) => f.linesOmitted)).toBe(true);

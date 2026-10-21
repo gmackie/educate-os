@@ -76,7 +76,8 @@ export interface GitTransport {
 
 /**
  * One compare-and-swap branch move: gatekeeper-kit's `GitRefUpdate`, which `SmartHttpGitTransport`
- * passes it as. Restated here because the kit's transport module is typed for Workers only.
+ * passes it as. Restated here because the kit's transport module type-imports a Workers-typed
+ * kernel module, which this package's web-standard typecheck cannot load.
  */
 export interface BranchUpdate {
   /** A branch name, not a full ref name. */
@@ -89,6 +90,14 @@ export interface BranchUpdate {
 
 /** "No commit": the kit's `ZERO_OID`, the old value of a branch being created. */
 export const NO_COMMIT: GitOid = "0".repeat(40);
+
+/**
+ * The branch namespace for saved versions: `refs/heads/schoolos/versions/<commit>`, one per saved
+ * version, written only by the service. A student's write token covers the whole repository, so
+ * the remote must refuse it these refs; `InMemoryArtifacts` does, and docs/schoolos/artifacts-git.md
+ * says what that needs from Cloudflare Artifacts.
+ */
+export const VERSION_REF_PREFIX = "schoolos/versions/";
 
 /** The username Artifacts expects beside a repository token, as `artifact-sync.ts` sends it. */
 export const ARTIFACTS_TOKEN_USERNAME = "x-access-token";

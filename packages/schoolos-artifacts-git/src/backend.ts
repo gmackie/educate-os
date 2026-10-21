@@ -1,10 +1,11 @@
 import type { GitOid } from "@gadgets/gatekeeper-kit/git-objects";
 import { MAX_DIFF_BLOB_BYTES, type GitTreeEntry, type TreeDiffSource } from "@gadgets/gatekeeper-kit/git-diff";
 import { SchoolOsError, type PrincipalId, type WorkspaceId } from "@schoolos/contracts";
-import { NO_COMMIT, type ArtifactsNamespace, type ArtifactsRepository, type GitTransport } from "./artifacts-api.ts";
+import type { ContentProvider, RegisteredContentRef } from "@schoolos/learning-artifacts";
+import { NO_COMMIT, VERSION_REF_PREFIX, type ArtifactsNamespace, type ArtifactsRepository, type GitTransport } from "./artifacts-api.ts";
 import { GitCredentialBroker, INTERNAL_TOKEN_TTL_SECONDS, type CredentialLedger } from "./credentials.ts";
-import { DIRECTORY_MODE, encodeCommit, encodeTree, FILE_MODE, gitObject, gitObjectId } from "./git-objects.ts";
-import type { BuiltTree, RepositoryName } from "./model.ts";
+import { DIRECTORY_MODE, encodeCommit, encodeTree, FILE_MODE, gitObject, gitObjectId, type GitObject } from "./git-objects.ts";
+import { MAX_PROJECT_BYTES, ObjectId, RepositoryName, type BuiltTree } from "./model.ts";
 
 /**
  * Whether the district's plan includes Cloudflare Artifacts (roadmap §15.5). Where it does not,
@@ -18,8 +19,24 @@ export interface ArtifactsPlan {
   transport: GitTransport;
 }
 
-/** The one branch a project repository has. Versions are commits on it. */
+/** The branch a project repository's owner works on. Each saved version is a commit on it. */
 export const PROJECT_BRANCH = "main";
+
+/** The name a project version's content is registered under with learning-artifacts. */
+export const ARTIFACTS_GIT_PROVIDER = "artifacts-git";
+
+/** The one file a version commit's tree holds: the version's manifest. */
+export const VERSION_MANIFEST_PATH = "version.json";
+
+/** A saved version as pushed: the project commit, and the service-owned version commit above it. */
+export interface PushedVersion {
+  /** The project commit, on {@link PROJECT_BRANCH}. */
+  commit: GitOid;
+  /** The version commit that holds the manifest, with the project commit as its parent. */
+  version: GitOid;
+  /** The protected ref the version commit is pushed to. */
+  ref: string;
+}
 
 /** The most commits a baseline scan walks before refusing to vouch for the history. */
 export const MAX_SCANNED_COMMITS = 5000;
@@ -76,48 +93,91 @@ export class ArtifactsGitBackend {
   }
 
   /**
-   * Writes `built` as a commit on the repository's branch, with `parent` as its only parent (none
-   * for a first version), pushed with a write token minted for `principalId` alone and revoked as
-   * soon as the push ends. The branch moves from wherever it is: the parent comes from the version
-   * record, so a commit left behind by an earlier failed save is simply superseded.
+   * The project commit for `built`, with `parent` as its only parent (none for a first version).
+   * Pure: it is pushed by {@link pushVersion}, once the manifest naming it is written.
    */
-  async commit(input: {
+  async projectCommit(input: { built: BuiltTree; parent: GitOid | undefined; principalId: PrincipalId; message: string; at: Date }): Promise<GitObject> {
+    return gitObject("commit", encodeCommit({
+      tree: input.built.tree,
+      parents: input.parent === undefined ? [] : [input.parent],
+      author: authorOf(input.principalId, input.at),
+      message: input.message,
+    }));
+  }
+
+  /**
+   * Pushes a saved version with a write token minted for the service alone and revoked as soon as
+   * the pushes end:
+   *
+   * 1. A **version commit** to the protected ref `VERSION_REF_PREFIX<commit>`. Its tree holds only
+   *    the manifest (`version.json`) and its parent is the project commit, so the ref keeps both
+   *    reachable whatever happens to the branch, and the manifest is what learning-artifacts reads
+   *    back as the version's content. Only service tokens may write these refs (see the docs).
+   * 2. The **project commit** to the branch, moved from wherever it is: the parent comes from the
+   *    version record, so a commit left behind by an earlier failed save is simply superseded.
+   */
+  async pushVersion(input: {
     repository: RepositoryName;
     workspaceId: WorkspaceId;
     principalId: PrincipalId;
     built: BuiltTree;
-    parent: GitOid | undefined;
-    message: string;
+    commit: GitObject;
+    manifest: Uint8Array<ArrayBuffer>;
     at: Date;
-  }): Promise<GitOid> {
+  }): Promise<PushedVersion> {
     const { plan, broker } = this.#require();
-    const commit = await gitObject("commit", encodeCommit({
-      tree: input.built.tree,
-      parents: input.parent === undefined ? [] : [input.parent],
-      author: { name: input.principalId, email: `${input.principalId}@principals.schoolos.invalid`, seconds: Math.floor(input.at.getTime() / 1000) },
-      message: input.message,
+    const manifest = await gitObject("blob", input.manifest);
+    const tree = await gitObject("tree", encodeTree([{ name: VERSION_MANIFEST_PATH, mode: FILE_MODE, oid: manifest.oid }]));
+    const version = await gitObject("commit", encodeCommit({
+      tree: tree.oid,
+      parents: [input.commit.oid],
+      author: authorOf(input.principalId, input.at),
+      message: `Saved version ${input.commit.oid}`,
     }));
+    const ref = `${VERSION_REF_PREFIX}${input.commit.oid}`;
     const remote = await this.remote(input.repository);
     const token = await broker.mint({
       repository: input.repository,
       workspaceId: input.workspaceId,
       principalId: input.principalId,
       scope: "write",
+      holder: "service",
       ttlSeconds: INTERNAL_TOKEN_TTL_SECONDS,
     });
     try {
+      const versionHead = await plan.transport.readBranch(remote, token.plaintext, ref);
+      if (versionHead !== version.oid) {
+        await plan.transport.push(
+          remote,
+          token.plaintext,
+          { branch: ref, oldSha: versionHead ?? NO_COMMIT, newSha: version.oid },
+          [...input.built.objects, input.commit, manifest, tree, version],
+        );
+      }
       const head = await plan.transport.readBranch(remote, token.plaintext, PROJECT_BRANCH);
-      await plan.transport.push(
-        remote,
-        token.plaintext,
-        { branch: PROJECT_BRANCH, oldSha: head ?? NO_COMMIT, newSha: commit.oid },
-        [...input.built.objects, commit],
-      );
+      if (head !== input.commit.oid) {
+        await plan.transport.push(remote, token.plaintext, { branch: PROJECT_BRANCH, oldSha: head ?? NO_COMMIT, newSha: input.commit.oid }, []);
+      }
     } finally {
       // A token that fails to revoke expires within a minute, and stays in the ledger for revokeAll.
       await broker.revoke(input.repository, token.id).catch(() => {});
     }
-    return commit.oid;
+    return { commit: input.commit.oid, version: version.oid, ref };
+  }
+
+  /**
+   * The learning-artifacts content provider for project versions: it reads a version's manifest
+   * out of its version commit, checking the commit's tree and the manifest blob against their IDs.
+   * learning-artifacts then checks the bytes against the revision's digest.
+   */
+  readonly contentProvider: ContentProvider = {
+    name: ARTIFACTS_GIT_PROVIDER,
+    read: async (ref) => this.#readManifest(ref),
+  };
+
+  /** The registered key of a version's manifest. */
+  static versionKey(repository: RepositoryName, version: GitOid): string {
+    return `${repository}/${version}`;
   }
 
   /** A diff source over the repository's objects, each verified against its ID as it is read. */
@@ -171,6 +231,24 @@ export class ArtifactsGitBackend {
     });
   }
 
+  async #readManifest(ref: RegisteredContentRef): Promise<Uint8Array<ArrayBuffer> | null> {
+    if (this.#plan === undefined) return null;
+    const [rawRepository, rawVersion, ...rest] = ref.key.split("/");
+    const repository = RepositoryName.safeParse(rawRepository);
+    const version = ObjectId.safeParse(rawVersion);
+    if (!repository.success || !version.success || rest.length > 0) return null;
+    return this.#withRepository(repository.data, async (repo) => {
+      const commit = await repo.readCommit(version.data);
+      if (commit === null) return null;
+      const source = verifiedSource(repo, MAX_PROJECT_BYTES);
+      const entries = await source.getTree(commit.treeHash);
+      const entry = entries?.find((e) => e.name === VERSION_MANIFEST_PATH && e.mode === FILE_MODE);
+      if (entries?.length !== 1 || entry === undefined) return null;
+      const bytes = await source.getBlob(entry.oid);
+      return bytes === "unavailable" ? null : new Uint8Array(bytes);
+    });
+  }
+
   #require(): { plan: ArtifactsPlan; broker: GitCredentialBroker } {
     if (this.#plan === undefined || this.#broker === undefined) {
       throw new SchoolOsError("unavailable", "Project history is not available on this district's plan.");
@@ -186,6 +264,11 @@ export class ArtifactsGitBackend {
       repo[Symbol.dispose]?.();
     }
   }
+}
+
+/** The author and committer a service-written commit names: the principal it was saved for. */
+function authorOf(principalId: PrincipalId, at: Date) {
+  return { name: principalId, email: `${principalId}@principals.schoolos.invalid`, seconds: Math.floor(at.getTime() / 1000) };
 }
 
 function unavailable(): SchoolOsError {
