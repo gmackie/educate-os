@@ -5,7 +5,7 @@ import { LoadState } from "../app/LoadState.tsx";
 import { useLoad } from "../app/useLoad.ts";
 import type { DistrictConfigState } from "../app/useDistrictConfig.ts";
 import { documentFromDesired } from "../configDocument.ts";
-import { formatCents } from "../policies/policySettings.ts";
+import { formatUsdNano } from "../policies/policySettings.ts";
 
 const ROSTER_PROVIDERS: Record<string, string> = {
   "oneroster-csv": "OneRoster CSV export",
@@ -69,7 +69,7 @@ export const Dashboard = ({ state }: { state: DistrictConfigState }) => {
             <li>
               <LoadState loaded={usage} what="AI usage" onRetry={usage.reload}>
                 {(u) => (
-                  <Tile title="AI usage and cost" value={formatCents(u.district.totalCents)}>
+                  <Tile title="AI usage and cost" value={formatUsdNano(u.district.totalUsdNano)}>
                     {count(u.district.requests, "request")} recorded.
                   </Tile>
                 )}

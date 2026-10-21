@@ -105,6 +105,23 @@ export function formatCents(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
 
+const USD_NANO_PER_CENT = 10_000_000n;
+
+/**
+ * Whole cents for an AI spend in nanodollars (the ledger's decimal-string unit), rounded up so a
+ * non-zero spend never shows as nothing.
+ */
+export function usdNanoToCents(usdNano: string): number {
+  const value = BigInt(usdNano);
+  const cents = value / USD_NANO_PER_CENT;
+  return Number(value % USD_NANO_PER_CENT > 0n ? cents + 1n : cents);
+}
+
+/** An AI spend in nanodollars as dollars and cents, rounded up to the cent. */
+export function formatUsdNano(usdNano: string): string {
+  return formatCents(usdNanoToCents(usdNano));
+}
+
 function choiceLabel(key: OrderedPolicyKey, value: string): string {
   return ENUMERATED_POLICIES.find((p) => p.key === key)?.choices.find((c) => c.value === value)?.label ?? value;
 }

@@ -4,7 +4,7 @@ import { className, count } from "../app/labels.ts";
 import { LoadState } from "../app/LoadState.tsx";
 import { useLoad } from "../app/useLoad.ts";
 import type { DistrictConfigState } from "../app/useDistrictConfig.ts";
-import { formatCents } from "../policies/policySettings.ts";
+import { formatCents, formatUsdNano, usdNanoToCents } from "../policies/policySettings.ts";
 
 type UsageReport = RouteResponse<"admin.aiUsage">;
 type UsageTotals = UsageReport["district"];
@@ -31,7 +31,7 @@ const UsageTable = ({ caption, label, rows }: { caption: string; label: string; 
                 <Table.Cell>{totals.requests.toLocaleString("en-US")}</Table.Cell>
                 <Table.Cell>{totals.inputTokens.toLocaleString("en-US")}</Table.Cell>
                 <Table.Cell>{totals.outputTokens.toLocaleString("en-US")}</Table.Cell>
-                <Table.Cell>{formatCents(totals.totalCents)}</Table.Cell>
+                <Table.Cell>{formatUsdNano(totals.totalUsdNano)}</Table.Cell>
               </Table.Row>
             ))}
           </Table.Body>
@@ -43,7 +43,7 @@ const UsageTable = ({ caption, label, rows }: { caption: string; label: string; 
 
 /** How many people's recorded spend reached, or came near, the per-person cap. Counts only. */
 export function capStatus(report: UsageReport, capCents: number): { atCap: number; nearCap: number; people: number } {
-  const spends = Object.values(report.byPrincipal).map((t) => t.totalCents);
+  const spends = Object.values(report.byPrincipal).map((t) => usdNanoToCents(t.totalUsdNano));
   return {
     atCap: spends.filter((s) => s >= capCents).length,
     nearCap: spends.filter((s) => s < capCents && s >= capCents * 0.8).length,
@@ -72,7 +72,7 @@ export const AiUsagePage = ({ state }: { state: DistrictConfigState }) => {
             <div className="flex flex-col gap-8">
               <section aria-labelledby="usage-total" className="flex flex-col gap-2">
                 <Text as="h3" variant="heading" id="usage-total">District total</Text>
-                <Text>{count(report.district.requests, "request")}, {formatCents(report.district.totalCents)} in total, of which {formatCents(report.personal.totalCents)} in personal spaces.</Text>
+                <Text>{count(report.district.requests, "request")}, {formatUsdNano(report.district.totalUsdNano)} in total, of which {formatUsdNano(report.personal.totalUsdNano)} in personal spaces.</Text>
               </section>
               {status !== undefined && cap !== undefined && (
                 <section aria-labelledby="cap-status" className="flex max-w-lg flex-col gap-2">

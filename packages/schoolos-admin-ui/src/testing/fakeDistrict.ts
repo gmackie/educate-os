@@ -204,7 +204,8 @@ export function rosterPreview(): RouteResponse<"admin.previewRoster"> {
 }
 
 const totals = (requests: number, cents: number) => ({
-  requests, inputTokens: requests * 200, outputTokens: requests * 100, cacheReadTokens: 0, cacheWriteTokens: 0, usageCents: cents, adjustmentCents: 0, totalCents: cents,
+  requests, inputTokens: requests * 200, outputTokens: requests * 100, cacheReadTokens: 0, cacheWriteTokens: 0, attempts: requests, unknownCostRequests: 0,
+  usageUsdNano: String(cents * 10_000_000), adjustmentUsdNano: "0", totalUsdNano: String(cents * 10_000_000),
 });
 
 /** The fake district: the client the console is given, and what it was asked. */
