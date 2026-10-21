@@ -14,5 +14,6 @@
     "erasableSyntaxOnly": true
   },
   "include": ["src", "__tests__"],
-  "exclude": ["dist", "node_modules"]
+  // The workerd suite is checked by tsconfig.workerd.json, against the Workers runtime types.
+  "exclude": ["dist", "node_modules", "__tests__/workerd"]
 }

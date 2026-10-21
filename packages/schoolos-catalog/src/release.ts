@@ -1,5 +1,6 @@
 import { SchoolOsError } from "@schoolos/contracts";
 import {
+  caseAdapter,
   CaseClient,
   type CaseClientOptions,
   decodeCasePackage,
@@ -14,6 +15,20 @@ import { PLAYTREK_SEEDED_FRAMEWORKS, type PlayTrekSeededFramework, playTrekSeedR
 import { CatalogKey } from "./vocabulary.ts";
 
 /**
+ * A root release key's signature over a catalog release's statement (its framework key, version,
+ * release time and content digest; see `signature.ts`). The digest binds the content, which the
+ * mirror checks against it before it asks whether the signature is genuine. Only the shape is
+ * checked here; the key ID and signature are judged by the verifier, which refuses any it cannot
+ * match to a pinned key.
+ */
+export const CatalogReleaseSignature = z.strictObject({
+  keyId: z.string().min(1).max(200),
+  signature: z.string().min(1).max(200),
+});
+/** A catalog release signature. */
+export type CatalogReleaseSignature = z.infer<typeof CatalogReleaseSignature>;
+
+/**
  * One installable release of a framework's records: the catalog's own seed release, or content a
  * district imported from a CASE source. `contentDigest` is the digest of `content`'s canonical
  * JSON, so the mirror can tell whether the bytes it was given are the bytes that were released.
@@ -23,10 +38,10 @@ export const CatalogRelease = z.strictObject({
   ...ImmutableRelease.shape,
   content: FrameworkRelease,
   /**
-   * The release's signature, as the catalog publisher issued it. The catalog does not interpret
-   * it; the mirror's `verifyRelease` hook does (roadmap R03).
+   * The root's signature, as the catalog publisher issued it. The catalog does not interpret it;
+   * the mirror's `verifyRelease` hook does, normally `catalogReleaseVerifier` (roadmap R03).
    */
-  signature: z.string().min(1).max(8192).optional(),
+  signature: CatalogReleaseSignature.optional(),
 });
 /** A catalog release. */
 export type CatalogRelease = z.infer<typeof CatalogRelease>;
@@ -73,10 +88,12 @@ export interface CaseImportOptions {
  * time. This is how text the catalog cannot ship reaches a district.
  *
  * Records from the publisher's own server are `official`; records from a mirror are `derived`,
- * because the copy's fidelity to the publisher cannot be checked.
+ * because the copy's fidelity to the publisher cannot be checked. A source that names an adapter
+ * is read through it, and each record's provenance lists what the adapter changed.
  *
  * @throws SchoolOsError `not-found` if the source is not one the entry declares, and whatever the
- *   CASE client or decoder throws for an unreachable service or a package that is not CASE 1.1.
+ *   CASE client or decoder throws for an unreachable service or a package that is not CASE 1.1
+ *   (after the source's adapter, if it names one).
  */
 export async function importCaseRelease(
   entry: CatalogEntry,
@@ -92,13 +109,15 @@ export async function importCaseRelease(
     fetch: options.fetch,
     ...(options.apiKey === undefined ? {} : { apiKey: options.apiKey }),
   });
-  const pkg = await client.getPackage(source.documentIdentifier);
+  const { value: pkg, adaptations } = source.adapter === undefined
+    ? { value: await client.getPackage(source.documentIdentifier), adaptations: [] }
+    : await client.getAdaptedPackage(caseAdapter(source.adapter), source.documentIdentifier);
   const content = decodeCasePackage(pkg, {
     source: source.host === "publisher" ? "official" : "derived",
     sourceUri: source.documentUri,
     retrievedAt: options.importedAt,
     sourceRevision: pkg.CFDocument.version ?? pkg.CFDocument.lastChangeDateTime,
-  });
+  }, adaptations);
   const release = CatalogRelease.safeParse({
     frameworkKey: entry.key,
     version: options.version,

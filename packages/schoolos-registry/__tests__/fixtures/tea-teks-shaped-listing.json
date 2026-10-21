@@ -1,0 +1,51 @@
+[
+  {
+    "adoptionStatus": "adopted",
+    "creator": "Synthetic Education Agency",
+    "description": "Chapter 900. Synthetic Mathematics",
+    "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+    "language": "en",
+    "lastChangeDateTime": "2019-08-26T15:21:18+00:00",
+    "notes": "Synthetic shape-only fixture modelled on TEA teks-api packages; no TEKS text.",
+    "officialSourceURL": "https://rules.texasgateway.example/chapter900",
+    "publisher": "Synthetic Education Agency",
+    "subject": "Mathematics",
+    "subjectURI": [
+      {
+        "identifier": "949ccfd2-9c86-5b15-b11c-6714e04903ff",
+        "title": "Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFSubjects/949ccfd2-9c86-5b15-b11c-6714e04903ff"
+      }
+    ],
+    "title": "Chapter 900. Synthetic Mathematics",
+    "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9",
+    "version": "1.1.2",
+    "CFPackageURI": {
+      "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+      "title": "Chapter 900. Synthetic Mathematics",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFPackages/83e57449-b81f-589d-abe7-01351202ccc9"
+    },
+    "licenseURI": null
+  },
+  {
+    "CFPackageURI": {
+      "identifier": "1e95e2e3-6acb-5bf1-b21b-11a19a10ccb8",
+      "title": "Synthetic Prekindergarten Guidelines",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFPackages/1e95e2e3-6acb-5bf1-b21b-11a19a10ccb8"
+    },
+    "adoptionStatus": "adopted",
+    "creator": "Synthetic Education Agency",
+    "description": null,
+    "identifier": "1e95e2e3-6acb-5bf1-b21b-11a19a10ccb8",
+    "language": "en",
+    "lastChangeDateTime": "2022-06-01T00:00:00+00:00",
+    "licenseURI": null,
+    "notes": null,
+    "officialSourceURL": null,
+    "publisher": null,
+    "subject": "Prekindergarten",
+    "title": "Synthetic Prekindergarten Guidelines",
+    "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/1e95e2e3-6acb-5bf1-b21b-11a19a10ccb8",
+    "version": null
+  }
+]

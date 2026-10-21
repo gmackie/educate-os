@@ -19,7 +19,7 @@
 // - Resources, curriculum packs, learning units and evidence contracts, which have no CASE form.
 // What SchoolOS does not interpret but keeps: CASE rubrics and unknown association types.
 import { SchoolOsError } from "@schoolos/contracts";
-import type { z } from "zod";
+import { z } from "zod";
 import {
   type CompetencyAssociation,
   type CompetencyNode,
@@ -27,7 +27,8 @@ import {
   type FrameworkDefinition,
   FrameworkRelease,
 } from "../framework.ts";
-import { Provenance } from "../primitives.ts";
+import { Provenance, type ProvenanceAdaptation } from "../primitives.ts";
+import { CaseAdaptation } from "./adapter.ts";
 import {
   type CaseAssociation,
   type CaseAssociationType,
@@ -157,20 +158,55 @@ function parseOrThrow<T extends z.ZodType>(schema: T, value: unknown, what: stri
 }
 
 /**
+ * Groups adaptations by the document or item they changed, as provenance adaptations.
+ *
+ * @throws SchoolOsError `validation-failed` if one targets a listing, or a record the package
+ *   does not contain.
+ */
+function adaptationsByRecord(pkg: CasePackage, adaptations: readonly CaseAdaptation[]): Map<string, ProvenanceAdaptation[]> {
+  const records = new Set([`document:${pkg.CFDocument.identifier}`, ...(pkg.CFItems ?? []).map((item) => `item:${item.identifier}`)]);
+  const byRecord = new Map<string, ProvenanceAdaptation[]>();
+  for (const { target, ...adaptation } of parseOrThrow(z.array(CaseAdaptation), adaptations, "adaptations")) {
+    const key = target.kind === "listing" ? undefined : `${target.kind}:${target.identifier}`;
+    if (key === undefined || !records.has(key)) {
+      throw new SchoolOsError("validation-failed", "an adaptation names a record the package does not contain");
+    }
+    byRecord.set(key, [...(byRecord.get(key) ?? []), adaptation]);
+  }
+  return byRecord;
+}
+
+/**
  * Decodes a CASE 1.1 `CFPackage` into a {@link FrameworkRelease}. Every record gets `provenance`,
  * and every association is recorded as the publisher's assertion.
  *
- * @throws SchoolOsError `validation-failed` if the input is not a valid CASE 1.1 package.
+ * The package must be strict CASE 1.1. A publisher's known deviations are normalized first by a
+ * named adapter (`adaptCasePackage`, ADR-0011), whose `adaptations` are passed here and recorded
+ * on the provenance of the document or item each one changed.
+ *
+ * @throws SchoolOsError `validation-failed` if the input is not a valid CASE 1.1 package, or an
+ *   adaptation names a record it does not contain.
  */
-export function decodeCasePackage(input: unknown, provenance: Provenance): FrameworkRelease {
+export function decodeCasePackage(
+  input: unknown,
+  provenance: Provenance,
+  adaptations: readonly CaseAdaptation[] = [],
+): FrameworkRelease {
   const pkg = parseOrThrow(CasePackage, input, "CASE package");
   const recordProvenance = parseOrThrow(Provenance, provenance, "provenance");
+  const adapted = adaptationsByRecord(pkg, adaptations);
   const definitions = pkg.CFDefinitions;
   const withProvenance = <T extends object>(record: T) => ({ ...record, provenance: recordProvenance });
+  const provenanceOf = (key: string): Provenance => {
+    const changes = adapted.get(key);
+    return changes === undefined
+      ? recordProvenance
+      : { ...recordProvenance, adaptations: [...(recordProvenance.adaptations ?? []), ...changes] };
+  };
 
   return parseOrThrow(FrameworkRelease, compact({
-    framework: { ...renameFields(pkg.CFDocument, DOCUMENT_FIELDS, false), provenance: recordProvenance },
-    nodes: pkg.CFItems?.map((item) => ({ ...renameFields(item, ITEM_FIELDS, false), provenance: recordProvenance })),
+    framework: { ...renameFields(pkg.CFDocument, DOCUMENT_FIELDS, false), provenance: provenanceOf(`document:${pkg.CFDocument.identifier}`) },
+    nodes: pkg.CFItems?.map((item) => ({ ...renameFields(item, ITEM_FIELDS, false), provenance: provenanceOf(`item:${item.identifier}`) })),
     associations: pkg.CFAssociations?.map((association) => {
       const relation = RELATION_BY_CASE_TYPE.get(association.associationType);
       return {
