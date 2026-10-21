@@ -3,6 +3,7 @@ import { SchoolOsError } from "@schoolos/contracts";
 import { AiProvider, AiRequestId, ModelRef, modelKey, sameModel } from "./model.ts";
 import { signedUsdNano, usdNano, usdNanoFromDecimalUsd, usdNanoValue, type SignedUsdNano, type UsdNano } from "./money.ts";
 import type { FundingPoolId } from "./pools.ts";
+import { apportion } from "./apportion.ts";
 import { ENTRY_SCHEMA_VERSION, billingPeriodOf, type AdjustmentBasis, type AdjustmentEntry, type LedgerIndex } from "./entries.ts";
 
 /**
@@ -137,29 +138,6 @@ export interface ReconciliationReport {
   adjustments: AdjustmentEntry[];
   /** Totals over `lines`. */
   totals: { estimatedUsdNano: UsdNano; actualUsdNano: UsdNano; varianceUsdNano: SignedUsdNano; adjustmentUsdNano: SignedUsdNano };
-}
-
-/**
- * Splits `amount` across weights in proportion, by largest remainder, so the parts sum exactly.
- * Ties go to the earlier key, which callers keep in a stable order.
- */
-function apportion<K>(amount: bigint, weights: [K, bigint][]): [K, bigint][] {
-  const total = weights.reduce((sum, [, weight]) => sum + weight, 0n);
-  const magnitude = amount < 0n ? -amount : amount;
-  const shares = weights.map(([key, weight], index) => ({
-    key,
-    index,
-    whole: (magnitude * weight) / total,
-    remainder: (magnitude * weight) % total,
-  }));
-  let left = magnitude - shares.reduce((sum, share) => sum + share.whole, 0n);
-  const order = shares.toSorted((a, b) => (a.remainder === b.remainder ? a.index - b.index : a.remainder > b.remainder ? -1 : 1));
-  for (const share of order) {
-    if (left === 0n) break;
-    share.whole += 1n;
-    left -= 1n;
-  }
-  return shares.map((share) => [share.key, amount < 0n ? -share.whole : share.whole]);
 }
 
 /**

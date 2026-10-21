@@ -12,3 +12,4 @@ export * from "./ledger.ts";
 export * from "./governor.ts";
 export * from "./price-book.ts";
 export * from "./provider-usage.ts";
+export * from "./account-allocation.ts";
