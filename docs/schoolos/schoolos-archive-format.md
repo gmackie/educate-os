@@ -240,7 +240,8 @@ principal ID.
 
 `@schoolos/portability` therefore defines the `ClrIssuer` seam and nothing behind it. The default,
 `UNCONFIGURED_CLR_ISSUER`, refuses with `unavailable`. SchoolOS never builds a credential out of an
-archive's contents on its own.
+archive's contents on its own. [ADR-0009](adr/0009-clr-issuer.md) (Proposed) sets out the decisions an
+implementation needs.
 
 ## Transfer to another district
 

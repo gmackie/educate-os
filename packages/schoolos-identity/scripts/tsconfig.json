@@ -1,0 +1,8 @@
+{
+  // The SCHO-37 comparison CLI runs under Node on an operator's machine, never in a Worker.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["."]
+}

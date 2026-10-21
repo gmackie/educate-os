@@ -5,6 +5,7 @@ export * from "./model-port.ts";
 export * from "./profiles.ts";
 export * from "./ai-feedback.ts";
 export * from "./sandbox.ts";
+export * from "./cloudflare-sandbox.ts";
 export * from "./model.ts";
 export * from "./store.ts";
 export * from "./service.ts";

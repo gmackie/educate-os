@@ -56,7 +56,11 @@ guess.
 | `listAiGateways`, `createAiGateway` (optional) | `/accounts/{id}/ai-gateway/gateways` | AI Gateway: Edit | `ai:write` | unverified |
 | (refresh tokens) | `https://dash.cloudflare.com/oauth2/token` | n/a | `offline_access` | wrangler-requested |
 
-Two OAuth gaps may block OAuth mode outright, pending Cloudflare's answer:
+Two OAuth gaps may block OAuth mode outright, pending Cloudflare's answer. [installer-oauth.md](installer-oauth.md)
+(SCHO-67, 2026-10-21) has since found that third parties can register public OAuth clients, and
+that Access and AI Gateway scope names exist; whether a public client may request them is still
+open. [runbooks/installer-sandbox-verification.md](runbooks/installer-sandbox-verification.md)
+(SCHO-66) is the procedure that settles the **unverified** rows below.
 
 1. **Public client registration.** Wrangler's client ID belongs to Cloudflare. Whether a third
    party can register a public OAuth client for these scopes is unknown. Until it can, OAuth mode
