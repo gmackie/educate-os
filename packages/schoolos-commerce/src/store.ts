@@ -1,7 +1,8 @@
 import type { CommercialAccountId, InstanceId } from "@schoolos/contracts";
+import { SerialQueue } from "@schoolos/fleet";
 import type { FinanceAuditEvent } from "./audit.ts";
 import type { ProcessorRef } from "./ids.ts";
-import type { CommercialAccount, CreditEntry, Grant, Invoice, Payment, PurchaseOrder, Subscription } from "./model.ts";
+import type { CommercialAccount, CreditEntry, Grant, Invoice, Payment, ProcessorOperation, PurchaseOrder, Subscription } from "./model.ts";
 
 /** The mutable commerce records, by kind. Each is replaced whole when its state changes. */
 export interface CommerceRecords {
@@ -21,26 +22,22 @@ export interface CommerceLogs {
   payment: Payment;
 }
 
-/** A charge or refund commerce asked the processor for, and its outcome once a webhook reports it. */
-export interface ProcessorOperation {
-  processorRef: ProcessorRef;
-  accountId: CommercialAccountId;
-  kind: "charge" | "refund";
-  invoiceId: Invoice["invoiceId"];
-  amountCents: number;
-  /** For a refund, the payment it reverses. */
-  refundOf?: Payment["paymentId"];
-  /** Absent until the processor reports the outcome. */
-  outcome?: "succeeded" | "failed";
-}
-
-
 /**
- * Where commerce keeps its records. The private root service implements it over its own database
- * (a Durable Object, which serializes calls); every method is a single atomic step. Logs have no
- * update or delete, which is what makes the finance audit append-only.
+ * Where commerce keeps its records: `DurableObjectCommerceStore`
+ * (`@schoolos/commerce/durable-object-store`) in production. Logs have no update or delete, which
+ * is what makes the finance audit append-only.
+ *
+ * Every service operation runs inside {@link CommerceStore.atomically}, so its writes (a webhook's
+ * payment, invoice, subscription change, audit events and its processed mark) commit together or
+ * not at all, and no other operation interleaves with it.
  */
 export interface CommerceStore {
+  /**
+   * Runs `work` as one atomic step: every write it makes commits together, or none does if it
+   * throws, and no other `atomically` step runs until it has settled. Reads inside `work` see its
+   * own writes. Not reentrant: `work` must not call `atomically` again.
+   */
+  atomically<T>(work: () => Promise<T>): Promise<T>;
   /** A record by kind and ID. */
   get<K extends keyof CommerceRecords>(kind: K, id: string): Promise<CommerceRecords[K] | undefined>;
   /** Inserts or replaces a record. */
@@ -51,20 +48,41 @@ export interface CommerceStore {
   append<K extends keyof CommerceLogs>(log: K, entry: CommerceLogs[K]): Promise<void>;
   /** An account's entries in a log, oldest first. */
   entries<K extends keyof CommerceLogs>(log: K, accountId: CommercialAccountId): Promise<CommerceLogs[K][]>;
+  /** An account's newest entry in a log, if any: the tip the next audit event chains onto. */
+  lastEntry<K extends keyof CommerceLogs>(log: K, accountId: CommercialAccountId): Promise<CommerceLogs[K] | undefined>;
   /** Whether a processor webhook event has already been applied. */
   hasProcessedEvent(eventId: ProcessorRef): Promise<boolean>;
-  /** Records that a processor webhook event has been applied. */
+  /** Records that a processor webhook event has been applied. Throws if it already was, which rolls back its step. */
   markEventProcessed(eventId: ProcessorRef): Promise<void>;
   /** The next entitlement revision for an instance: 1, then 2, and so on. */
   nextEntitlementRevision(instanceId: InstanceId): Promise<number>;
 }
 
-/** A {@link CommerceStore} in memory. For tests and as the reference for real implementations. */
+/**
+ * A {@link CommerceStore} in memory. For tests and as the reference for real implementations. An
+ * `atomically` step that throws restores the state from before it began.
+ */
 export class InMemoryCommerceStore implements CommerceStore {
-  readonly #records = new Map<string, Map<string, unknown>>();
-  readonly #logs = new Map<string, unknown[]>();
-  readonly #processedEvents = new Set<string>();
-  readonly #revisions = new Map<string, number>();
+  #records = new Map<string, Map<string, unknown>>();
+  #logs = new Map<string, unknown[]>();
+  #processedEvents = new Set<string>();
+  #revisions = new Map<string, number>();
+  readonly #queue = new SerialQueue();
+
+  async atomically<T>(work: () => Promise<T>): Promise<T> {
+    return this.#queue.run(async () => {
+      const snapshot = structuredClone({ records: this.#records, logs: this.#logs, processed: this.#processedEvents, revisions: this.#revisions });
+      try {
+        return await work();
+      } catch (error) {
+        this.#records = snapshot.records;
+        this.#logs = snapshot.logs;
+        this.#processedEvents = snapshot.processed;
+        this.#revisions = snapshot.revisions;
+        throw error;
+      }
+    });
+  }
 
   #table(kind: string): Map<string, unknown> {
     let table = this.#records.get(kind);
@@ -97,11 +115,16 @@ export class InMemoryCommerceStore implements CommerceStore {
     return structuredClone(entries.filter((entry) => entry.accountId === accountId));
   }
 
+  async lastEntry<K extends keyof CommerceLogs>(log: K, accountId: CommercialAccountId): Promise<CommerceLogs[K] | undefined> {
+    return (await this.entries(log, accountId)).at(-1);
+  }
+
   async hasProcessedEvent(eventId: ProcessorRef): Promise<boolean> {
     return this.#processedEvents.has(eventId);
   }
 
   async markEventProcessed(eventId: ProcessorRef): Promise<void> {
+    if (this.#processedEvents.has(eventId)) throw new Error("processor event already marked processed");
     this.#processedEvents.add(eventId);
   }
 

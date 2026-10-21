@@ -1,4 +1,5 @@
 import { CommercialAccountId, InstanceId, OpaqueCode, UtcTimestamp } from "@schoolos/contracts";
+import { canonicalJson } from "@schoolos/fleet";
 import { z } from "zod";
 import { FinanceAuditEventId, GrantId, InvoiceId, PaymentId, PurchaseOrderId, SubscriptionId } from "./ids.ts";
 import { SignedCents } from "./money.ts";
@@ -75,16 +76,84 @@ export const FinanceStateSummary = z.strictObject({
 /** A state summary. */
 export type FinanceStateSummary = z.infer<typeof FinanceStateSummary>;
 
-/** One append-only finance audit event. */
+/** A hex-encoded SHA-256, as the audit chain links events with. */
+export const AuditHash = z.string().regex(/^[0-9a-f]{64}$/, "expected a hex SHA-256");
+
+/** The `previousHash` of an account's first audit event. */
+export const GENESIS_AUDIT_HASH = "0".repeat(64);
+
+/**
+ * One append-only finance audit event, linked into its account's hash chain (SCHO-99). `sequence`
+ * counts the account's events from 1, `previousHash` is the `hash` of the event before it
+ * ({@link GENESIS_AUDIT_HASH} for the first), and `hash` covers every other field, so editing,
+ * removing or reordering any event breaks the chain from there on ({@link verifyFinanceAuditChain}).
+ */
 export const FinanceAuditEvent = z.strictObject({
   eventId: FinanceAuditEventId,
   accountId: CommercialAccountId,
+  sequence: z.number().int().min(1),
   actor: FinanceActor,
   action: FinanceAction,
   subject: FinanceSubject,
   before: FinanceStateSummary.optional(),
   after: FinanceStateSummary.optional(),
   at: UtcTimestamp,
+  previousHash: AuditHash,
+  hash: AuditHash,
 });
 /** A finance audit event. */
 export type FinanceAuditEvent = z.infer<typeof FinanceAuditEvent>;
+
+const AUDIT_CONTEXT = "schoolos-finance-audit/v1";
+
+/** The hash of an audit event: SHA-256 over a context string and the canonical JSON of every field but `hash`. */
+export async function hashFinanceAuditEvent(event: Omit<FinanceAuditEvent, "hash">): Promise<string> {
+  const fields: Record<string, unknown> = { ...event };
+  delete fields.hash;
+  const bytes = new TextEncoder().encode(`${AUDIT_CONTEXT}\0${canonicalJson(fields)}`).slice();
+  return [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Links an event onto the chain after `previous` (undefined for an account's first event): sets
+ * its sequence and previous hash and computes its own hash.
+ */
+export async function chainFinanceAuditEvent(
+  event: Omit<FinanceAuditEvent, "sequence" | "previousHash" | "hash">,
+  previous: FinanceAuditEvent | undefined,
+): Promise<FinanceAuditEvent> {
+  const linked = { ...event, sequence: (previous?.sequence ?? 0) + 1, previousHash: previous?.hash ?? GENESIS_AUDIT_HASH };
+  return FinanceAuditEvent.parse({ ...linked, hash: await hashFinanceAuditEvent(linked) });
+}
+
+/** Where an audit chain first fails to verify, and why. */
+export interface AuditChainBreak {
+  /** The index, in the events checked, of the first event that fails. */
+  index: number;
+  reason: "malformed" | "account" | "sequence" | "previous-hash" | "hash";
+}
+
+/** The result of {@link verifyFinanceAuditChain}. */
+export type AuditChainVerification = { intact: true; length: number; headHash: string } | ({ intact: false } & AuditChainBreak);
+
+/**
+ * Verifies one account's audit trail, oldest first: every event parses, belongs to the same
+ * account, follows its predecessor in sequence and by hash, and hashes to what it says. An empty
+ * trail is intact. The chain proves the trail was not edited, reordered or cut in the middle; that
+ * nothing was cut from the end needs the head hash compared with a copy kept elsewhere, which is
+ * what `headHash` is for.
+ */
+export async function verifyFinanceAuditChain(events: readonly unknown[]): Promise<AuditChainVerification> {
+  let previous: FinanceAuditEvent | undefined;
+  for (const [index, input] of events.entries()) {
+    const parsed = FinanceAuditEvent.safeParse(input);
+    if (!parsed.success) return { intact: false, index, reason: "malformed" };
+    const event = parsed.data;
+    if (previous !== undefined && event.accountId !== previous.accountId) return { intact: false, index, reason: "account" };
+    if (event.sequence !== (previous?.sequence ?? 0) + 1) return { intact: false, index, reason: "sequence" };
+    if (event.previousHash !== (previous?.hash ?? GENESIS_AUDIT_HASH)) return { intact: false, index, reason: "previous-hash" };
+    if (event.hash !== (await hashFinanceAuditEvent(event))) return { intact: false, index, reason: "hash" };
+    previous = event;
+  }
+  return { intact: true, length: events.length, headHash: previous?.hash ?? GENESIS_AUDIT_HASH };
+}

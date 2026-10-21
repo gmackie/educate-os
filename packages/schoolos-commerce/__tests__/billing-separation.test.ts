@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { usdNanoFromCents, type UsdNano } from "@schoolos/contracts";
 import { Heartbeat } from "@schoolos/fleet";
-import { IssueInvoiceRequest } from "../src/index.ts";
+import { InvoiceLine, IssueInvoiceRequest } from "../src/index.ts";
 import { CLERK, DAY, setup, TERM_START } from "./support.ts";
 
 const DUE_AT = new Date(Date.parse(TERM_START) + 30 * DAY).toISOString();
@@ -50,34 +50,36 @@ describe("independent Cloudflare bills: invoices carry SchoolOS fees only", () =
     expect(invoice.totalCents).toBe(295_000);
   });
 
-  it("AI credit overage can't be entered by hand", async () => {
+  it("the AI usage report can't be entered by hand", async () => {
     const { service, accountId } = await activePilot("opted-in");
     await expect(
-      service.issueInvoice({ accountId, lines: [{ kind: "ai-credit-overage" as never, code: "ai", quantity: 1, unitAmountCents: 1 }], dueAt: DUE_AT }, CLERK),
+      service.issueInvoice({ accountId, lines: [{ kind: "ai-usage-report" as never, code: "ai", quantity: 1, unitAmountCents: 1 }], dueAt: DUE_AT }, CLERK),
     ).rejects.toMatchObject({ code: "validation-failed" });
   });
 });
 
-describe("aggregate AI usage informs a usage line only if the district opted in", () => {
-  it("adds a SchoolOS overage line for spend beyond the plan's AI credit allowance when opted in", async () => {
+// SCHO-98: the heartbeat's figure is the district's own AI Gateway spend, already on its
+// Cloudflare bill, so an invoice may report it but never charge for it.
+describe("aggregate AI usage is reported on an invoice, never charged, and only if the district opted in", () => {
+  it("adds a zero-amount reporting line with the district's own spend when opted in", async () => {
     const { service, accountId, instanceId, subscription } = await activePilot("opted-in");
-    // The pilot plan includes 50,000 cents of SchoolOS-funded AI credit.
     const invoice = await service.issueInvoice(
       { accountId, subscriptionId: subscription.subscriptionId, lines: PLAN_FEE, aiUsageHeartbeat: heartbeat(instanceId, 80_000), dueAt: DUE_AT },
       CLERK,
     );
-    expect(invoice.lines.at(-1)).toEqual({ kind: "ai-credit-overage", code: "ai-credit-overage", quantity: 1, unitAmountCents: 30_000, amountCents: 30_000 });
-    expect(invoice.totalCents).toBe(280_000);
+    expect(invoice.lines.at(-1)).toEqual({ kind: "ai-usage-report", code: "ai-gateway-spend", quantity: 1, unitAmountCents: 0, amountCents: 0, reportedUsdNano: usdNanoFromCents(80_000) });
+    expect(invoice).toMatchObject({ subtotalCents: 250_000, totalCents: 250_000 });
+    const report = await service.reconciliationReport(accountId);
+    expect(report.totals.invoicedCents).toBe(250_000);
   });
 
-  it("rounds a sub-cent spend up to the cent, because invoices are cents", async () => {
+  it("reports a sub-cent spend exactly, in nanodollars", async () => {
     const { service, accountId, instanceId, subscription } = await activePilot("opted-in");
-    // 50,000 cents of allowance, then 0.0038 cents more: billed as one cent.
     const invoice = await service.issueInvoice(
       { accountId, subscriptionId: subscription.subscriptionId, lines: PLAN_FEE, aiUsageHeartbeat: heartbeatSpending(instanceId, "500000038000"), dueAt: DUE_AT },
       CLERK,
     );
-    expect(invoice.lines.at(-1)).toMatchObject({ kind: "ai-credit-overage", amountCents: 1 });
+    expect(invoice.lines.at(-1)).toMatchObject({ kind: "ai-usage-report", amountCents: 0, reportedUsdNano: "500000038000" });
   });
 
   it("still reads a heartbeat from an agent that reports its spend in cents", async () => {
@@ -87,18 +89,29 @@ describe("aggregate AI usage informs a usage line only if the district opted in"
       { accountId, subscriptionId: subscription.subscriptionId, lines: PLAN_FEE, aiUsageHeartbeat: legacy, dueAt: DUE_AT },
       CLERK,
     );
-    expect(invoice.lines.at(-1)).toMatchObject({ kind: "ai-credit-overage", amountCents: 30_000 });
+    expect(invoice.lines.at(-1)).toMatchObject({ kind: "ai-usage-report", amountCents: 0, reportedUsdNano: usdNanoFromCents(80_000) });
   });
 
-  it("adds no line for spend within the allowance, or for a heartbeat that carries no spend", async () => {
+  it("charges nothing however large the spend, and adds no line for a heartbeat that carries none", async () => {
     const { service, accountId, instanceId, subscription } = await activePilot("opted-in");
-    for (const hb of [heartbeat(instanceId, 50_000), heartbeat(instanceId)]) {
-      const invoice = await service.issueInvoice(
-        { accountId, subscriptionId: subscription.subscriptionId, lines: PLAN_FEE, aiUsageHeartbeat: hb, dueAt: DUE_AT },
-        CLERK,
-      );
-      expect(invoice.lines.map((line) => line.kind)).toEqual(["plan-fee"]);
-    }
+    const large = await service.issueInvoice(
+      { accountId, subscriptionId: subscription.subscriptionId, lines: PLAN_FEE, aiUsageHeartbeat: heartbeat(instanceId, 9_000_000), dueAt: DUE_AT },
+      CLERK,
+    );
+    expect(large.totalCents).toBe(250_000);
+    const none = await service.issueInvoice(
+      { accountId, subscriptionId: subscription.subscriptionId, lines: PLAN_FEE, aiUsageHeartbeat: heartbeat(instanceId), dueAt: DUE_AT },
+      CLERK,
+    );
+    expect(none.lines.map((line) => line.kind)).toEqual(["plan-fee"]);
+  });
+
+  it("an invoice line can't report usage and charge for it, or report usage under another kind", () => {
+    const line = { kind: "ai-usage-report", code: "ai-gateway-spend", quantity: 1, unitAmountCents: 0, amountCents: 0, reportedUsdNano: "800000000000" } as const;
+    expect(InvoiceLine.safeParse(line).success).toBe(true);
+    expect(InvoiceLine.safeParse({ ...line, unitAmountCents: 80_000, amountCents: 80_000 }).success).toBe(false);
+    expect(InvoiceLine.safeParse({ ...line, kind: "support" }).success).toBe(false);
+    expect(InvoiceLine.safeParse({ kind: "ai-usage-report", code: "ai", quantity: 1, unitAmountCents: 0, amountCents: 0 }).success).toBe(false);
   });
 
   it("refuses to use AI usage from a district that has not opted in", async () => {

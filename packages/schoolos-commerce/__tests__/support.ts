@@ -55,7 +55,6 @@ export const PLANS: Plan[] = [
     tier: "pilot",
     capabilityIds: ["core-learning"] as Plan["capabilityIds"],
     enrollmentBand: { minEnrollment: 0, maxEnrollment: 500 },
-    aiCreditAllowanceCents: 50_000,
     termFeeCents: 250_000,
     graceRules: { pastDueDays: 7, graceDays: 14 },
   },
@@ -64,7 +63,6 @@ export const PLANS: Plan[] = [
     tier: "standard",
     capabilityIds: ["core-learning", "assessment-ci"] as Plan["capabilityIds"],
     enrollmentBand: { minEnrollment: 501, maxEnrollment: 10_000 },
-    aiCreditAllowanceCents: 200_000,
     termFeeCents: 1_200_000,
     graceRules: { pastDueDays: 15, graceDays: 30 },
   },
@@ -73,7 +71,6 @@ export const PLANS: Plan[] = [
     tier: "enterprise",
     capabilityIds: ["core-learning", "assessment-ci", "content-studio"] as Plan["capabilityIds"],
     enrollmentBand: { minEnrollment: 10_001 },
-    aiCreditAllowanceCents: 1_000_000,
     termFeeCents: 9_000_000,
     graceRules: { pastDueDays: 0, graceDays: 30 },
   },
@@ -86,16 +83,18 @@ export function idsFor(snapshot: DistrictDirectorySnapshot) {
 }
 
 /** A commerce service with in-memory storage and a fake processor, and one district's open account. */
-export async function setup(options: { snapshot?: DistrictDirectorySnapshot; aiUsageSharing?: "opted-in" | "opted-out" } = {}) {
+export async function setup(
+  options: { snapshot?: DistrictDirectorySnapshot; aiUsageSharing?: "opted-in" | "opted-out"; store?: InMemoryCommerceStore; contactRefs?: string[] } = {},
+) {
   const snapshot = options.snapshot ?? NORTHFIELD;
   const clock = manualClock(TERM_START);
-  const store = new InMemoryCommerceStore();
+  const store = options.store ?? new InMemoryCommerceStore();
   const processor = new FakePaymentProcessor(clock.now);
   const signer = await SigningIdentity.generate();
   const service = new CommerceService({ store, processor, plans: PLANS, entitlementSigner: signer, now: clock.now });
   const { accountId, instanceId } = idsFor(snapshot);
   await service.openAccount(
-    { accountId, districtLabel: snapshot.district.name, aiUsageSharing: options.aiUsageSharing ?? "opted-out" },
+    { accountId, districtLabel: snapshot.district.name, aiUsageSharing: options.aiUsageSharing ?? "opted-out", contactRefs: options.contactRefs ?? [] },
     CLERK,
   );
   await service.linkInstance(accountId, instanceId, CLERK);
