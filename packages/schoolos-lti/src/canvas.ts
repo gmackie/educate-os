@@ -1,5 +1,6 @@
 import type { LaunchMessageType } from "./claims.ts";
 import type { LtiToolEndpoints } from "./broker.ts";
+import { LTI_SCOPES } from "./service-client.ts";
 
 /** The Canvas placements SchoolOS offers, and the message each one sends. */
 export const CANVAS_PLACEMENTS = {
@@ -31,7 +32,7 @@ export interface CanvasDeveloperKeyJson {
   readonly oidc_initiation_url: string;
   readonly target_link_uri: string;
   readonly public_jwk_url: string;
-  /** No LTI Advantage scopes yet: AGS and NRPS arrive with I02. */
+  /** The LTI Advantage scopes the tool may request: AGS line items, results and scores, and NRPS. */
   readonly scopes: readonly string[];
   readonly extensions: readonly [
     {
@@ -65,7 +66,13 @@ export function canvasDeveloperKey(endpoints: LtiToolEndpoints, title = "SchoolO
     oidc_initiation_url: endpoints.login,
     target_link_uri: endpoints.launch,
     public_jwk_url: endpoints.jwks,
-    scopes: [],
+    scopes: [
+      LTI_SCOPES.lineItem,
+      LTI_SCOPES.lineItemReadonly,
+      LTI_SCOPES.resultReadonly,
+      LTI_SCOPES.score,
+      LTI_SCOPES.contextMembershipReadonly,
+    ],
     extensions: [
       {
         platform: "canvas.instructure.com",

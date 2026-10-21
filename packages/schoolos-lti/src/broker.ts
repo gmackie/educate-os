@@ -21,6 +21,7 @@ import {
   type PlatformRegistrationStore,
   type RegistrationKey,
 } from "./registration.ts";
+import { LtiContextServices } from "./service-client.ts";
 import { randomToken, type Clock, type SingleUseStore } from "./stores.ts";
 import { toolJwks, type ToolKeySet, type ToolPublicJwk } from "./tool-keys.ts";
 
@@ -44,6 +45,11 @@ export const ResolvedLaunch = z.strictObject({
   offeringId: OfferingId,
   activity: ActivityId.optional(),
   messageType: LaunchMessageType,
+  /**
+   * The LTI Advantage services (AGS, NRPS) the platform offers in the launch's context, when it
+   * offers any. The host records them for the offering; nothing is called during the launch.
+   */
+  services: LtiContextServices.optional(),
 });
 /** A resolved launch. */
 export type ResolvedLaunch = z.infer<typeof ResolvedLaunch>;
@@ -237,11 +243,13 @@ export class LtiBroker {
     const principal = await resolver.resolve({ issuer: registration.issuer, subject: claims.subject, credential: "person" });
 
     const activity = this.#activity(registration, offeringId, claims);
+    const services = contextServices(registration, claims);
     const launch: ResolvedLaunch = {
       principal,
       offeringId,
       ...(activity === undefined ? {} : { activity }),
       messageType: claims.messageType,
+      ...(services === undefined ? {} : { services }),
     };
     if (claims.messageType !== "LtiDeepLinkingRequest" || claims.deepLinking === undefined) {
       return { launch, deepLinkSession: undefined };
@@ -357,4 +365,15 @@ export class LtiBroker {
     if (byResourceLink !== undefined) return byResourceLink;
     return claims.schoolosLinkId === undefined ? undefined : activityForLink(registration, offeringId, claims.schoolosLinkId);
   }
+}
+
+function contextServices(registration: PlatformRegistration, claims: ParsedLaunchClaims): LtiContextServices | undefined {
+  const { ags, nrps } = claims.services;
+  if (claims.contextId === undefined || (ags === undefined && nrps === undefined)) return undefined;
+  return {
+    registration: { issuer: registration.issuer, clientId: registration.clientId },
+    contextId: claims.contextId,
+    ...(ags === undefined ? {} : { ags: { ...ags, scopes: [...ags.scopes] } }),
+    ...(nrps === undefined ? {} : { nrps }),
+  };
 }

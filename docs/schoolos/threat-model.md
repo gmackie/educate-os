@@ -45,7 +45,7 @@
 | T7 | Prompt injection in imported content | Content is quarantined and treated as data. Policy and tools are unreachable from content. | §14 row 7. C03 |
 | T8 | Answer key leaks through Git history | Baselines are sanitized before forking. Publication is blocked if old commits hold teacher-only files. | §14 row 8. W03 |
 | T9 | AI overspend or double billing on retry | Reserve, then settle, with idempotency keys. Caps are enforced locally. | §14 row 9. G01 |
-| T10 | An AI score becomes an official grade | Grade writeback requires `require-approval` and a teacher decision. | §14 row 10. E03 |
+| T10 | An AI score becomes an official grade | Grade writeback requires `require-approval` and a teacher decision. | §14 row 10. E03; LMS passback gate in I02 |
 | T11 | Expired course access persists | Term state is part of the authorization context. Course grants are revoked at close. | §14 row 12. W01 |
 | T12 | Root compromise pushes malicious code | Releases are signed and pinned. The district can decline or roll back. Root holds no data. | §14 rows 13-15. R03 |
 | T13 | Policy loosened through delegation | `resolvePolicy` refuses any narrower setting looser than the floor. | Contracts tests. F03 |

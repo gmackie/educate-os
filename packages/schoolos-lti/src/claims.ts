@@ -6,6 +6,8 @@ import { z } from "zod";
 
 const LTI = "https://purl.imsglobal.org/spec/lti/claim/";
 const LTI_DL = "https://purl.imsglobal.org/spec/lti-dl/claim/";
+const LTI_AGS = "https://purl.imsglobal.org/spec/lti-ags/claim/";
+const LTI_NRPS = "https://purl.imsglobal.org/spec/lti-nrps/claim/";
 
 /** The claim URIs this package reads or writes. */
 export const LTI_CLAIM = {
@@ -20,6 +22,8 @@ export const LTI_CLAIM = {
   contentItems: `${LTI_DL}content_items`,
   data: `${LTI_DL}data`,
   message: `${LTI_DL}msg`,
+  agsEndpoint: `${LTI_AGS}endpoint`,
+  nrpsService: `${LTI_NRPS}namesroleservice`,
 } as const;
 
 /** The only LTI version the broker accepts. */
@@ -73,6 +77,34 @@ export const LaunchClaims = z.object({
   [LTI_CLAIM.custom]: z.record(z.string(), z.unknown()).optional(),
 });
 
+/**
+ * The Assignment and Grade Services endpoint claim. `scope` lists what the platform lets the tool
+ * do in this context; `lineitems` is the context's line item container and `lineitem` the line
+ * item of the launching resource link, when it has one.
+ */
+const AgsEndpointClaim = z.object({
+  scope: z.array(z.string().max(512)).max(16),
+  lineitems: HttpsUrl.optional(),
+  lineitem: HttpsUrl.optional(),
+});
+
+/** The Names and Role Provisioning Services claim. Only version 2.0 is spoken. */
+const NrpsServiceClaim = z.object({
+  context_memberships_url: HttpsUrl,
+  service_versions: z.array(z.string()).refine((versions) => versions.includes("2.0"), "NRPS 2.0 is required"),
+});
+
+/**
+ * Where the platform offers LTI Advantage services for the launch's context. Read only from a
+ * verified launch, so every URL is one the platform signed.
+ */
+export interface LaunchServiceClaims {
+  /** AGS: the line item container, the launching link's line item, and the granted scopes. */
+  readonly ags: { readonly scopes: readonly string[]; readonly lineItemsUrl?: string; readonly lineItemUrl?: string } | undefined;
+  /** NRPS: the context membership URL. */
+  readonly nrps: { readonly membershipsUrl: string } | undefined;
+}
+
 /** The facts the broker takes from a verified launch. */
 export interface ParsedLaunchClaims {
   /** The platform issuer. */
@@ -102,6 +134,8 @@ export interface ParsedLaunchClaims {
    * item. A key into the registration's activity links, never an activity ID.
    */
   readonly schoolosLinkId: string | undefined;
+  /** The LTI Advantage services the platform offers for this context. */
+  readonly services: LaunchServiceClaims;
 }
 
 /** The custom parameter that carries a deep-linked item's SchoolOS link ID. */
@@ -135,5 +169,25 @@ export function parseLaunchClaims(payload: unknown): ParsedLaunchClaims | undefi
     contextId: claims[LTI_CLAIM.context]?.id,
     resourceLinkId,
     deepLinking,
+    services: parseServiceClaims(payload as Record<string, unknown>),
+  };
+}
+
+/**
+ * Reads the AGS and NRPS claims. A malformed service claim is dropped rather than failing the
+ * launch: the person can still use SchoolOS, and the service is simply not offered for the context.
+ */
+function parseServiceClaims(payload: Record<string, unknown>): LaunchServiceClaims {
+  const ags = AgsEndpointClaim.safeParse(payload[LTI_CLAIM.agsEndpoint]);
+  const nrps = NrpsServiceClaim.safeParse(payload[LTI_CLAIM.nrpsService]);
+  return {
+    ags: ags.success
+      ? {
+          scopes: ags.data.scope,
+          ...(ags.data.lineitems === undefined ? {} : { lineItemsUrl: ags.data.lineitems }),
+          ...(ags.data.lineitem === undefined ? {} : { lineItemUrl: ags.data.lineitem }),
+        }
+      : undefined,
+    nrps: nrps.success ? { membershipsUrl: nrps.data.context_memberships_url } : undefined,
   };
 }

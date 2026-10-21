@@ -4,7 +4,13 @@
   "oidc_initiation_url": "https://schoolos.example/lti/login",
   "target_link_uri": "https://schoolos.example/lti/launch",
   "public_jwk_url": "https://schoolos.example/lti/jwks",
-  "scopes": [],
+  "scopes": [
+    "https://purl.imsglobal.org/spec/lti-ags/scope/lineitem",
+    "https://purl.imsglobal.org/spec/lti-ags/scope/lineitem.readonly",
+    "https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly",
+    "https://purl.imsglobal.org/spec/lti-ags/scope/score",
+    "https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly"
+  ],
   "extensions": [
     {
       "platform": "canvas.instructure.com",
