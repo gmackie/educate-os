@@ -103,7 +103,9 @@ runner in `__tests__/cloudflare-sandbox.test.ts`. For each job, the adapter:
 5. **Passes the egress rule through.** The runner applies it with `enableInternet: false`, plus
    `interceptOutboundHttps` for each allowlisted host.
 
-The runner Worker isn't written yet, and writing it is the spike's main work. It:
+The runner Worker is written (SCHO-144): `packages/schoolos-sandbox-runner`, tested against a fake
+container and end to end against the adapter. It has no Worker config and has not run on an
+account; step 2 adds the config and deploys it. It:
 
 - authenticates the backend through the service binding, and is never public;
 - names the Durable Object by `jobId`, so a retry of the same job reaches the same object and isn't
@@ -146,8 +148,9 @@ row in the results table below.
     with a snapshot. Record the account's concurrent-instance ceiling as observed.
 11. **Placement.** Set `constraints: { jurisdiction: "us" }` and check whether it is honoured under
     the `durable_object` policy.
-12. **Read the plan from the pack.** Wire `assessmentPlanFromPack(manifest, provisioned)` into the
-    district app. `manifest` is the `assessment-ci` pack's manifest in
+12. **Read the plan from the pack.** Done in code (SCHO-144): `AssessmentAi` now takes the installed
+    pack (`assessmentPack: { manifest, provisionedOptionalResources }`) and reads the plan through
+    `assessmentPlanFromPack`. What remains is the district app passing them. `manifest` is the `assessment-ci` pack's manifest in
     `packages/schoolos-config/src/packs.ts`. `provisioned` comes from the installer's record of the
     optional resources it created. The district app then stops passing `plan` by hand. This is the
     second follow-up in assessment-sandbox.md.

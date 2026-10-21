@@ -1,0 +1,20 @@
+{
+  "name": "@schoolos/sandbox-runner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS assessment sandbox runner (SCHO-144): the Worker and per-job Durable Object that `createCloudflareSandbox` in @schoolos/assessment-ai targets. It carries out the adapter's decisions (instance type, wall-clock bound, output cap, egress rule) on one container per job and answers with a RunnerJobResponse. Code and tests only: it has no Worker config and deploys nowhere until the SCHO-102 spike verifies it on a sandbox account.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/assessment-ai": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
+    "@gadgets/scripts": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

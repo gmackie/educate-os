@@ -87,6 +87,14 @@ export const DistrictAssessmentPlan = z.strictObject({ sandbox: z.enum(["availab
 /** A district assessment plan. */
 export type DistrictAssessmentPlan = z.infer<typeof DistrictAssessmentPlan>;
 
+/** The installed Assessment CI pack, as the district's configuration and installer record it. */
+export interface InstalledAssessmentPack {
+  /** The pack's manifest: what it declares it can use. */
+  manifest: Pick<CapabilityManifest, "optionalResources">;
+  /** The optional resources the installer provisioned for it. */
+  provisionedOptionalResources: readonly PlatformResource[];
+}
+
 /**
  * The district plan, read from the installed capability pack (roadmap §4) instead of being
  * asserted by a caller: the sandbox is available only where the pack declares `ci-sandbox` among

@@ -55,9 +55,10 @@ describe("the execution sandbox", () => {
     expect(run.report).toBeUndefined();
   });
 
-  it("does not run where the district plan lacks it, even with a sandbox configured", async () => {
+  it("does not run where the installed pack's plan lacks it, even with a sandbox configured", async () => {
     const sandbox = new FakeExecutionSandbox(PROGRAMS);
-    const env = await setup({ plan: { sandbox: "unavailable" }, sandbox });
+    // The district never provisioned the pack's optional sandbox.
+    const env = await setup({ provisioned: ["ai-gateway"], sandbox });
     const run = await env.ai.runSandbox(P.rivera, { submissionId: env.submissionId, idempotencyKey: "tests", executionProfile: "sandbox-tests@1", checks });
     expect(run).toMatchObject({ state: "failed", error: { code: "sandbox-unavailable" } });
     expect(sandbox.jobs).toEqual([]);

@@ -1,5 +1,6 @@
 import { expect } from "vitest";
-import { ActivityId, DistrictId, OfferingId, PrincipalId, RubricId, SchoolId, type Caller, type PolicySettings, type RequestChannel } from "@schoolos/contracts";
+import { ActivityId, DistrictId, OfferingId, PrincipalId, RubricId, SchoolId, type Caller, type PlatformResource, type PolicySettings, type RequestChannel } from "@schoolos/contracts";
+import { SHIPPED_PACK_DEFINITIONS } from "@schoolos/config";
 import { InMemoryAcademicStore } from "@schoolos/academics";
 import { AssessmentService, InMemoryAssessmentRecordStore } from "@schoolos/assessment";
 import {
@@ -25,7 +26,6 @@ import {
   InMemoryOptionalRunStore,
   type AiExecutionProfile,
   type AiHelpPolicy,
-  type DistrictAssessmentPlan,
   type ExecutionSandbox,
   type GovernedModelRequest,
   type ModelCompletion,
@@ -63,6 +63,9 @@ export const P = {
   amara: as("prn_nf-student-amara"),
   elena: as("prn_nf-student-elena"),
 };
+
+/** The shipped Assessment CI pack's manifest, which declares the sandbox as an optional resource. */
+const ASSESSMENT_CI_PACK = SHIPPED_PACK_DEFINITIONS.find((pack) => pack.manifest.id === "assessment-ci")!.manifest;
 
 const ENG9 = OfferingId.parse("off_nf-eng9-fall-p3");
 const ENG9_SCOPE = { level: "offering", districtId: DistrictId.parse("dst_northfield"), schoolId: SchoolId.parse("sch_nf-high"), offeringId: ENG9 } as const;
@@ -195,7 +198,8 @@ export class FakeModel implements ModelPort {
 export async function setup(options: {
   work?: string;
   policy?: AiHelpPolicy;
-  plan?: DistrictAssessmentPlan;
+  /** The optional resources provisioned for the Assessment CI pack. Defaults to the sandbox. */
+  provisioned?: readonly PlatformResource[];
   sandbox?: ExecutionSandbox;
   /** Instructions for AI feedback, signed into the rubric release. */
   aiInstructions?: string;
@@ -227,7 +231,7 @@ export async function setup(options: {
     profiles: [AI_PROFILE, SANDBOX_PROFILE],
     ai: new AiFeedbackEvaluator({ model }),
     ...(options.sandbox === undefined ? {} : { sandbox: options.sandbox }),
-    plan: options.plan ?? { sandbox: "available" },
+    assessmentPack: { manifest: ASSESSMENT_CI_PACK, provisionedOptionalResources: options.provisioned ?? ["ci-sandbox"] },
     aiHelpPolicies: { aiHelpPolicy: async (activityId) => (activityId === ACTIVITY ? policies.current : undefined) },
     ...(options.boundRubric === true ? { signing } : {}),
     now,
