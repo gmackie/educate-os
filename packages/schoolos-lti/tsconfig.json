@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // For the fetch-standard globals (Request, Response, fetch, crypto.subtle). The code itself uses
+    // only Web APIs, so it runs unchanged on Workers.
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__"],
+  "exclude": ["dist", "node_modules"]
+}

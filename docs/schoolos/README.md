@@ -31,6 +31,7 @@ rejected by the other. `SCHOOLOS_HARNESS_PORT` moves the first port.
 | `packages/schoolos-registry` | `@schoolos/registry`: Learning Registry records (frameworks, competencies, associations, resources, curriculum packs, evidence contracts), lossless CASE 1.1 codecs and a fetch-injected CASE client. `src/case/codec.ts` lists what CASE cannot express. |
 | `packages/schoolos-config` | `@schoolos/config`: the configuration compiler. Capability registry and shipped pack manifests, the `schoolos.dev/v1alpha1` district document, revisions with diff and rollback, dry-run plans and form descriptors. |
 | `packages/schoolos-integrations` | `@schoolos/integrations`: interoperability adapters, one namespace per standard. `oneroster` reads a OneRoster 1.2 bulk CSV export, previews it against the current directory, links IdP identities, quarantines mismatches, and applies only results that pass `checkDirectoryIntegrity`. |
+| `packages/schoolos-lti` | `@schoolos/lti`: the LTI 1.3 broker. Platform registrations, launch validation, launch-to-principal and offering mapping, and Canvas Deep Linking (I01). See [lti.md](lti.md). |
 
 ## Decisions
 

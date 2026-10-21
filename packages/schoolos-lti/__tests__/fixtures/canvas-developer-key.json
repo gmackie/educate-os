@@ -1,0 +1,45 @@
+{
+  "title": "SchoolOS",
+  "description": "SchoolOS courses and activities.",
+  "oidc_initiation_url": "https://schoolos.example/lti/login",
+  "target_link_uri": "https://schoolos.example/lti/launch",
+  "public_jwk_url": "https://schoolos.example/lti/jwks",
+  "scopes": [],
+  "extensions": [
+    {
+      "platform": "canvas.instructure.com",
+      "domain": "schoolos.example",
+      "privacy_level": "anonymous",
+      "settings": {
+        "text": "SchoolOS",
+        "placements": [
+          {
+            "placement": "course_navigation",
+            "message_type": "LtiResourceLinkRequest",
+            "target_link_uri": "https://schoolos.example/lti/launch",
+            "text": "SchoolOS"
+          },
+          {
+            "placement": "link_selection",
+            "message_type": "LtiDeepLinkingRequest",
+            "target_link_uri": "https://schoolos.example/lti/launch",
+            "text": "SchoolOS"
+          },
+          {
+            "placement": "assignment_selection",
+            "message_type": "LtiDeepLinkingRequest",
+            "target_link_uri": "https://schoolos.example/lti/launch",
+            "text": "SchoolOS"
+          },
+          {
+            "placement": "editor_button",
+            "message_type": "LtiDeepLinkingRequest",
+            "target_link_uri": "https://schoolos.example/lti/launch",
+            "text": "SchoolOS"
+          }
+        ]
+      }
+    }
+  ],
+  "custom_fields": {}
+}
