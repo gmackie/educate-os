@@ -1,0 +1,12 @@
+@source "../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
+@import "@cloudflare/kumo/styles";
+@import "tailwindcss";
+@custom-variant dark (&:where([data-mode="dark"], [data-mode="dark"] *));
+
+/* Kumo's text sizes are tuned for dense consoles; a learning app reads at the browser's defaults. */
+@theme {
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+}
