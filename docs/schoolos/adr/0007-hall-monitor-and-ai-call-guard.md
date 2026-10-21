@@ -56,3 +56,15 @@ SchoolOS already has a reserve/settle ledger (`@schoolos/ai-governance`, SCHO-25
   and evaluator version.
 - Student modes that need output screening buffer the model's output until it is released.
   Educator modes keep streaming.
+
+## Note (2026-10-21, ADR-0011)
+
+- There is no SchoolOS-hosted Hall Monitor. Rule 2's "managed tenant" over HTTPS does not exist:
+  every organization runs its Hall Monitor Worker in its own Cloudflare account
+  ([ADR-0011](0011-open-source-charter-and-module-ownership.md)). The AI call guard reaches it
+  through the `HALL_MONITOR` service binding, or over HTTPS at `HALL_MONITOR_URL`, which then names
+  that organization-run Worker.
+- Only the Hall Monitor client and contracts tarballs are vendored and pinned today
+  ([`vendor/hall-monitor`](../../../vendor/hall-monitor/README.md)). The Worker itself is built
+  from `gmackie/hall-monitor` outside the SchoolOS release. Shipping a pinned, auditable Worker
+  build in the release is a known gap (RFC 0002 §12, IF-00b).

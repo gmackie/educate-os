@@ -22,6 +22,7 @@ The source plan was written without some work already merged here. The plan reco
 | Nanodollars throughout | Today the ledger uses whole cents and the kernel uses float dollars. Migrating to `UsdNano` (SCHO-111) is a prerequisite. |
 | Intercept new chat, messages, steering and attachments | There are 14 paths. Steering, agent callbacks, `spawnAgent`, the gadget LLM binding and decision models all bypass the shared preparation step. One stream guard plus a decision-model guard covers them all (ADR-0007). |
 | Extract PlayTrek's evaluators | Hall Monitor's generic evaluators are rewritten in the public repo. PlayTrek's game-specific checks stay in PlayTrek. |
+| A managed operator or managed tenants, with contractual entitlements and chargeback | There is no hosted SchoolOS service. Each organization runs Hall Monitor in its own account and checks no entitlements ([ADR-0011](../adr/0011-open-source-charter-and-module-ownership.md), ADR-0007 note). |
 
 ## Work items
 

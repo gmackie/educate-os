@@ -43,3 +43,11 @@ rounding to cents makes moderation spend disappear from budgets and reports.
 - The fleet heartbeat sends `aggregateAiSpendUsdNano`. The root still accepts a heartbeat carrying
   the earlier `aggregateAiSpendCents` and reads it as nanodollars, so instances can upgrade in any
   order; a heartbeat carrying both is refused.
+
+## Note (2026-10-21, ADR-0011)
+
+`@schoolos/commerce` and `@schoolos/fleet` are optional, non-default reference code
+([ADR-0011](0011-open-source-charter-and-module-ownership.md)). The consequence about commerce
+overage pricing and the amendment's fleet heartbeat bullets apply only where an organization uses
+those packages. The default runtime prices no overage and sends no heartbeat. The rest of this ADR,
+`UsdNano` in the ledger, assessment reports and the AI call guard, is unchanged.

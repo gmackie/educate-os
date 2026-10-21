@@ -20,6 +20,13 @@ not as facts.
 Both modes run the same reconciler. Its state is what it observes in the account, with no local
 state file, so either mode can pick up where the other stopped.
 
+District-run mode needs nothing from `schoolos.dev`: the district builds or downloads a release,
+verifies it offline against the keys it pins ([release-signing.md](release-signing.md)), and
+installs it with its own token. OAuth mode exists for the optional guided bootstrap
+(ADR-0011), and the root holds its token only for the length of the install. Registering the
+instance with a registry is a separate, optional step: it runs only when the install config has a
+`fleet` section and the CLI is given `--registry-url`, and it is off by default.
+
 ## Per-operation permissions
 
 "API token permission" is the permission group a district-run token needs. Names follow the
@@ -108,8 +115,9 @@ ADR-0001's rule that the installer never holds data access rests on three things
   migration IDs.
 - OAuth grants are for the install session. The district revokes them when it is done, and a
   revoked grant stops the installer at its next call (tested). The deployed district keeps serving.
-- The district agent's private key and the root's ownership token go straight into backend Worker
-  secrets, which cannot be read back. The installer never stores them.
+- With optional instance registration only, the district agent's private key and the registry's
+  ownership token go straight into backend Worker secrets, which cannot be read back. The installer
+  never stores them. An install without registration creates neither.
 
 ## Behaviour on credential failure
 

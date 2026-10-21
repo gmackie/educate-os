@@ -4,6 +4,9 @@ SchoolOS turns this Workshop into a district-owned K-12 learning environment. A 
 into its own Cloudflare account. Students, teachers and administrators then work inside it without
 operating developer infrastructure themselves.
 
+SchoolOS is open source (Apache-2.0) and is not a hosted service. Every organization that installs it
+runs all of it in its own account ([ADR-0011](adr/0011-open-source-charter-and-module-ownership.md)).
+
 This directory holds the decisions and contracts SchoolOS is built on. The execution roadmap (PR IDs
 such as F01 and A02) lives in the SchoolOS Kanbanger project, which uses the `SCHO-` issue prefix.
 
@@ -13,6 +16,8 @@ such as F01 and A02) lives in the SchoolOS Kanbanger project, which uses the `SC
 | --- | --- |
 | `docs/schoolos/adr/` | Architecture decision records. Read these before changing a SchoolOS boundary. |
 | `docs/schoolos/threat-model.md` | Assets, trust boundaries and threats, mapped to the acceptance tests. |
+| `docs/schoolos/licensing.md` | The repository license, SchoolOS additions, extracted PlayTrek code, and the rules for ClassBack and vendored code. |
+| `docs/schoolos/maturity.md` | How far each capability has got, from designed to certified, with the evidence. Read it before claiming support for a standard. |
 | `docs/schoolos/hall-monitor/` | Hall Monitor moderation and AI cost governance: the reconciled plan, model ingress matrix and source specification. |
 | `packages/schoolos-contracts` | `@schoolos/contracts`: the shared vocabulary every SchoolOS package imports. Prefixed IDs for every record kind (directory, registry, artifacts, fleet instances), timestamps and opaque codes, scopes, principals with their lifecycle status and source links, verified identities, the authorization vocabulary with `Caller` and principal facts, sources of record (`Authority`, `GradeAuthority`), the audit event base, artifact types and revision references, integration sync runs, roster projections, capability manifests, configuration revisions, policy floors, errors and directory integrity checks. A type a second package needs belongs here, not in a copy. |
 | `packages/schoolos-contracts` | `@schoolos/contracts`: IDs, scopes, principals, the authorization vocabulary, capability manifests, configuration revisions, policy floors, errors, directory integrity checks and nanodollar money (`UsdNano`, ADR-0008). |
@@ -46,11 +51,10 @@ districts) landing on a different principal in each. `SCHOOLOS_HARNESS_PORT` mov
 | `packages/schoolos-cartridge` | `@schoolos/cartridge`: the Thin Common Cartridge importer (C04). A bounded `.imscc` reader (entry, size and ratio caps, no unsafe paths, symbolic links ignored) and a DTD-free manifest parser for CC and Thin CC 1.1-1.3. Web links wait in quarantine until a teacher submits one to the Content Studio; LTI links become external-tool references that are never launchable without an approved registration; the organization becomes a proposed curriculum outline. Other resource types are skipped and counted. |
 | `packages/schoolos-curriculum` | `@schoolos/curriculum`: learning activities (C05). Four subject-neutral templates (writing task, science investigation, primary-source analysis, problem set) generate one runtime model; definitions are versioned and immutable once published, reference only Content Studio releases, and may only narrow the AI-help policy. Installations pin one version into one offering and term and publish the student-visible class Codex, which never holds teacher-only notes or answer keys and reaches the AI helper only as data (threat T7). |
 | `packages/schoolos-ocs` | `@schoolos/ocs`: the Open Course Specification (C06). Course packages of units, activity and resource references, Codex notes and standards that include other packages as modules; a deterministic resolver that writes a byte-stable lockfile and verifies every package's digest; a composer that flattens a locked course into one outline with hide, reorder and rename overrides, per-item provenance and rights that only narrow; teacher composition with no Git vocabulary; and the export to curriculum installations. |
-| `docs/schoolos/rfc/` | Format RFCs. [0001](rfc/0001-open-course-specification.md) specifies OCS 1.0, which is its own contract, not Thin CC. |
+| `docs/schoolos/rfc/` | RFCs. [0001](rfc/0001-open-course-specification.md) specifies OCS 1.0, which is its own contract, not Thin CC. [0002](rfc/0002-integration-fabric.md) proposes the Integration Fabric (education operations, MCP, LTI and access configuration) and its IF-00 to IF-12 roadmap. |
 | `docs/schoolos/standards-licensing.md` | What standards text may ship in this public repository, and why, framework by framework. |
-| `packages/schoolos-installer` | `@schoolos/installer`: installs a root-signed release, verified against the release keys the district pins, into a district's Cloudflare account, through OAuth or a district-run token. It runs preflight, then reconciles desired against actual state with ownership checks, resumes after interruption, and supports rollback. Permissions are in [installer-permissions.md](installer-permissions.md); how releases are signed is in [release-signing.md](release-signing.md). |
-| `packages/schoolos-installer` | `@schoolos/installer`: installs a root-signed release, verified against the release keys the district pins, into a district's Cloudflare account, through OAuth or a district-run token. It runs preflight, then reconciles desired against actual state with ownership checks, resumes after interruption, and supports rollback. Permissions are in [installer-permissions.md](installer-permissions.md). |
-| `packages/schoolos-releases` | `@schoolos/releases`: root-signed release manifests and rotating release keys, the `canary`/`stable`/`lts` channels, district-side verification of signed offers with approve, decline and defer, migration gates over the installer's dry-run drift report, and the root's staged rollout that halts on failing fleet health and offers a rollback. |
+| `packages/schoolos-installer` | `@schoolos/installer`: installs a release-key-signed release, verified offline against the release keys the district pins, into a district's Cloudflare account, through OAuth or a district-run token. It runs preflight, then reconciles desired against actual state with ownership checks, resumes after interruption, and supports rollback. Registering the instance with a registry is optional and off unless configured. Permissions are in [installer-permissions.md](installer-permissions.md); how releases are signed is in [release-signing.md](release-signing.md). |
+| `packages/schoolos-releases` | `@schoolos/releases`: release manifests signed with rotating release keys, the `canary`/`stable`/`lts` channels, district-side offline verification of signed offers with approve, decline and defer, and migration gates over the installer's dry-run drift report. Its staged rollout, which halts on failing fleet health, is reference code for a release publisher and is not part of an installation. |
 | `packages/schoolos-district-app` | `@schoolos/district-app`: the district application. `createDistrictApp` composes the domain services over their storage interfaces (in-memory for now), around one `PolicyEngine` and one audit sink, behind a fetch-standard handler whose `/api/me`, `/api/student`, `/api/teacher` and `/api/admin` routes are declared once, with their Zod schemas, in `src/routes.ts`. Every request gets a correlation ID that its policy decisions are audited under. `src/adapters.ts` holds the glue between services. |
 | `packages/schoolos-api-client` | `@schoolos/api-client`: the typed fetch client the UIs use, written against the district app's route table, so a call names a route and its input and response types come from the same schemas the server validates with. |
 | `packages/schoolos-academics` | `@schoolos/academics`: the academic directory (A01). Schools, terms, catalog courses, offerings and enrollments behind a storage interface, with source-of-record enforcement, a local fallback HTTP service and MCP-style tools over the same rules. |
@@ -63,8 +67,8 @@ districts) landing on a different principal in each. `SCHOOLOS_HARNESS_PORT` mov
 | `packages/schoolos-assessment-ci` | `@schoolos/assessment-ci`: Assessment CI (E02). A deterministic evaluator SDK with pinned releases, built-in evaluators, teacher-signed rubric releases, and idempotent assessment runs whose evidence reaches feedback only as labelled suggestions. |
 | `packages/schoolos-assessment-ai` | `@schoolos/assessment-ai`: the optional Assessment CI backends (E03). AI feedback through a governed model port with excerpt-verified evidence, an execution sandbox that fails closed, teacher overrides and releases, and rubric report view models. See [assessment-sandbox.md](assessment-sandbox.md). |
 | `packages/schoolos-portability` | `@schoolos/portability`: learner portability (P01, P02). The deterministic `.schoolos` student archive and its exporter, bounded validation, a git export of an artifact's history, the CLR 2.0 seam, and consented cross-district transfer. See [schoolos-archive-format.md](schoolos-archive-format.md). |
-| `packages/schoolos-fleet` | `@schoolos/fleet`: the fleet protocol (R01). Allow-listed wire messages, Ed25519 signed envelopes, the district-side agent, a reference root instance registry and the district's offline entitlement cache. |
-| `packages/schoolos-commerce` | `@schoolos/commerce`: the root control plane's commercial layer (R04). Plans, subscriptions with grace rules, purchase orders, integer-cent invoices, grant credit ledgers, a payment processor port, signed entitlements and an append-only finance audit. |
+| `packages/schoolos-fleet` | `@schoolos/fleet`: optional, non-default reference code for the fleet protocol (R01): allow-listed wire messages, Ed25519 signed envelopes, a district-side agent, a reference instance registry and an offline entitlement cache. No default install uses it, and the default runtime checks no entitlements (ADR-0011). Release signing still borrows its `SigningIdentity` until that moves (IF-00b). |
+| `packages/schoolos-commerce` | `@schoolos/commerce`: optional, non-default reference code from the withdrawn commercial control plane (R04): plans, subscriptions, invoices, grant credit ledgers, a payment processor port, signed entitlement issuance and a finance audit. Nothing in an installation depends on it, and whether it stays in the repository is an open owner decision (ADR-0011). |
 | `packages/schoolos-student-ui` | `@schoolos/student-ui`: the Student Learning Home (U01), a Vite React app over `@schoolos/api-client`. |
 | `packages/schoolos-teacher-ui` | `@schoolos/teacher-ui`: Teacher Studio (U02), a Vite React app over `@schoolos/api-client`. |
 | `packages/schoolos-admin-ui` | `@schoolos/admin-ui`: the district admin console (U03), a Vite React app over `@schoolos/api-client`. |
@@ -82,10 +86,20 @@ districts) landing on a different principal in each. `SCHOOLOS_HARNESS_PORT` mov
 8. [AI spend in integer nanodollars](adr/0008-usd-nano-money.md)
 9. [SchoolOS libraries type-check against the web-standard surface](adr/0009-typings.md)
 10. [One rule table, record-backed grants, and flags that need a second reviewer](adr/0010-one-rule-table-and-record-grants.md)
+11. [Open-source charter and module ownership](adr/0011-open-source-charter-and-module-ownership.md)
 
 ## Rules every SchoolOS change follows
 
 - No student or teacher content leaves the district's account. `schoolos.dev` is never in the data path.
+- SchoolOS runs entirely in the organization's account. `schoolos.dev` may host documentation, an
+  optional guided bootstrap and public releases. It never mediates runtime access, issues runtime
+  tokens or gates features.
+- No paid-gated core: no entitlement checks, subscription callbacks, student-data fleet reporting or
+  remote administrative access in the default runtime. Instance registration is opt-in,
+  content-free and off by default.
+- Releases are verified offline against keys the organization pins.
+- Claims about standards support match [maturity.md](maturity.md). No 1EdTech certification is
+  claimed.
 - Identity is `(district, issuer, subject)`. Email is display metadata.
 - Every HTTP route, MCP tool and agent action authorizes through the same vocabulary and denies by default.
 - Narrower scopes may tighten district policy, never loosen it.
