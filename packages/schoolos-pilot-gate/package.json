@@ -32,6 +32,7 @@
     "@schoolos/district-app": "workspace:*",
     "@schoolos/fixtures": "workspace:*",
     "@schoolos/fleet": "workspace:*",
+    "@schoolos/gatekeeper": "workspace:*",
     "@schoolos/harness": "workspace:*",
     "@schoolos/installer": "workspace:*",
     "@schoolos/learning-artifacts": "workspace:*",

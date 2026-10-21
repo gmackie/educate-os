@@ -2,8 +2,9 @@
 import { expect } from "vitest";
 import { z } from "zod";
 import { ArtifactId, InstanceId, OfferingId, PrincipalId, type ResourceRef } from "@schoolos/contracts";
-import { NORTHFIELD } from "@schoolos/fixtures";
-import { defineSchoolTool, SchoolToolRunner } from "@schoolos/policy";
+import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
+import { defineSchoolTool, InMemoryToolApprovalStore, SchoolToolRunner } from "@schoolos/policy";
+import { createSchoolToolService, SchoolToolsSessionCore, type SchoolChange } from "@schoolos/gatekeeper";
 import { AssessmentService } from "@schoolos/assessment";
 import { LearningArtifacts } from "@schoolos/learning-artifacts";
 import { RetentionPolicy, WorkspaceDirectory } from "@schoolos/workspaces";
@@ -210,45 +211,8 @@ criterion("s14.tool-identity", {
     const { northfield } = await bootPilot();
     const { assignment } = await teacherInstallsEssay(northfield, NF.rivera, NF.eng9);
     const { artifact } = await studentSubmitsEssay(northfield, NF.elena, NF.eng9, assignment.id);
-    const termState = "active" as const;
-    const artifactOf = async (artifactId: string) => {
-      const record = (await northfield.stores.artifactRecords.load()).state.artifacts.find((a) => a.id === artifactId);
-      if (record === undefined) return undefined;
-      const resource: ResourceRef = { kind: "artifact", id: record.id, scope: offeringScope(NF.eng9), classification: "course", ownerPrincipalId: record.ownerPrincipalId };
-      return { resource, termState };
-    };
     const handled: string[] = [];
-    const runner = new SchoolToolRunner({
-      engine: northfield.app.engine,
-      tools: [
-        defineSchoolTool({
-          name: "list_student_work",
-          description: "Lists a student's work in a class.",
-          inputSchema: z.strictObject({ offeringId: OfferingId, studentId: PrincipalId }),
-          action: "list",
-          resource: async ({ offeringId, studentId }) => ({ resource: { kind: "artifact", scope: offeringScope(offeringId), classification: "course", ownerPrincipalId: studentId }, termState }),
-          handler: async () => void handled.push("list_student_work"),
-        }),
-        defineSchoolTool({
-          name: "edit_artifact",
-          description: "Edits an artifact.",
-          inputSchema: z.strictObject({ artifactId: ArtifactId, text: z.string().max(1000) }),
-          action: "update",
-          annotations: { readOnlyHint: true, destructiveHint: false },
-          resource: async ({ artifactId }) => artifactOf(artifactId),
-          handler: async () => void handled.push("edit_artifact"),
-        }),
-        defineSchoolTool({
-          name: "record_grade",
-          description: "Records an official grade.",
-          inputSchema: z.strictObject({ studentId: PrincipalId }),
-          action: "grade",
-          annotations: { readOnlyHint: true },
-          resource: async ({ studentId }) => ({ resource: { kind: "official-grade", scope: offeringScope(NF.eng9), classification: "course", ownerPrincipalId: studentId }, termState }),
-          handler: async () => void handled.push("record_grade"),
-        }),
-      ],
-    });
+    const runner = new SchoolToolRunner({ engine: northfield.app.engine, tools: pilotSchoolTools(northfield, handled) });
     const session = (principalId: string) => ({ principal: callerOf(northfield, principalId).principal, channel: "mcp-tool" as const });
 
     // Amara's session names Elena: the session's principal is the subject, and Elena's work is not hers.
@@ -266,7 +230,106 @@ criterion("s14.tool-identity", {
     const audited = northfield.audit.events().filter((e) => e.channel === "mcp-tool");
     expect(new Set(audited.map((e) => `${e.principalId} ${e.effect}`))).toStrictEqual(new Set([`${NF.amara} deny`, `${NF.rivera} require-approval`]));
   },
+
+  "mcp-surface": async () => {
+    const { northfield } = await bootPilot();
+    const { assignment } = await teacherInstallsEssay(northfield, NF.rivera, NF.eng9);
+    const { artifact } = await studentSubmitsEssay(northfield, NF.elena, NF.eng9, assignment.id);
+    const handled: string[] = [];
+    const runner = new SchoolToolRunner({
+      engine: northfield.app.engine,
+      tools: pilotSchoolTools(northfield, handled),
+      approvals: { store: new InMemoryToolApprovalStore() },
+    });
+    // The district's service as the gatekeeper is bound to it. Connecting is the Worker's job and is
+    // covered by its own suite; here each account is already connected.
+    const district = createSchoolToolService({ districtId: northfield.app.districtId, runner, authenticate: async () => null });
+    const accountFor = (principalId: string, districtId = northfield.app.districtId) => {
+      const submitted: SchoolChange[] = [];
+      const observed: string[] = [];
+      const principal = { principalId: PrincipalId.parse(principalId), districtId };
+      const session = new SchoolToolsSessionCore({
+        district,
+        account: async () => principal,
+        observe: async (read) => void observed.push(read.tool),
+        submit: async (change) => void submitted.push(change),
+      });
+      return { session, submitted, observed, principal };
+    };
+    const amara = accountFor(NF.amara);
+    const rivera = accountFor(NF.rivera);
+
+    // The agent of Amara's account names Elena, or claims to be her: the account's principal is the subject.
+    expect(await amara.session.callTool("list_student_work", { offeringId: NF.eng9, studentId: NF.elena })).toMatchObject({ status: "error", code: "not-found" });
+    expect(await amara.session.callTool("list_student_work", { offeringId: NF.eng9, studentId: NF.elena, principalId: NF.elena }))
+      .toMatchObject({ status: "error", code: "validation-failed" });
+    // readOnlyHint does not make Elena's essay Amara's to change, and the agent is not shown the hint.
+    expect(await amara.session.callTool("edit_artifact", { artifactId: artifact.id, text: "overwritten" })).toMatchObject({ status: "error" });
+    expect((await amara.session.listTools()).some((tool) => "annotations" in tool)).toBe(false);
+    expect(amara.submitted).toStrictEqual([]);
+    expect(amara.observed).toStrictEqual([]);
+
+    // A teacher's agent grade is queued for a person, never applied by the agent; the teacher's own
+    // decision, forwarded by the Workshop, applies it once.
+    expect(await rivera.session.callTool("record_grade", { studentId: NF.elena })).toMatchObject({ status: "awaiting-decision" });
+    expect(rivera.submitted).toMatchObject([{ tool: "record_grade", needs: "approval" }]);
+    expect(handled).toStrictEqual([]);
+    const approvalId = rivera.submitted[0]!.approvalId;
+    expect(await runner.approve({ principal: rivera.principal, channel: "agent" }, approvalId)).toMatchObject({ status: "error", error: { code: "forbidden" } });
+    expect(await district.approveChange(amara.principal, approvalId)).toMatchObject({ status: "error" });
+    expect(handled).toStrictEqual([]);
+    expect(await district.approveChange(rivera.principal, approvalId)).toMatchObject({ status: "applied" });
+    expect(await district.approveChange(rivera.principal, approvalId)).toMatchObject({ status: "already-applied" });
+    expect(handled).toStrictEqual(["record_grade"]);
+
+    // A Riverbend account reaches nothing in Northfield.
+    const outsider = accountFor(RB.morgan, RIVERBEND.district.id);
+    expect(await outsider.session.callTool("list_student_work", { offeringId: NF.eng9, studentId: NF.elena })).toMatchObject({ status: "error", code: "unauthenticated" });
+
+    // Every agent decision was made for the account's own principal.
+    const audited = northfield.audit.events().filter((e) => e.channel === "agent");
+    expect(new Set(audited.map((e) => e.principalId))).toStrictEqual(new Set([NF.amara, NF.rivera]));
+  },
 });
+
+/** The school tools both tool-identity checks drive: a listing, an annotated edit and an annotated grade. */
+function pilotSchoolTools(district: PilotDistrict, handled: string[]) {
+  const termState = "active" as const;
+  const artifactOf = async (artifactId: string) => {
+    const record = (await district.stores.artifactRecords.load()).state.artifacts.find((a) => a.id === artifactId);
+    if (record === undefined) return undefined;
+    const resource: ResourceRef = { kind: "artifact", id: record.id, scope: offeringScope(NF.eng9), classification: "course", ownerPrincipalId: record.ownerPrincipalId };
+    return { resource, termState };
+  };
+  return [
+    defineSchoolTool({
+      name: "list_student_work",
+      description: "Lists a student's work in a class.",
+      inputSchema: z.strictObject({ offeringId: OfferingId, studentId: PrincipalId }),
+      action: "list",
+      resource: async ({ offeringId, studentId }) => ({ resource: { kind: "artifact", scope: offeringScope(offeringId), classification: "course", ownerPrincipalId: studentId }, termState }),
+      handler: async () => void handled.push("list_student_work"),
+    }),
+    defineSchoolTool({
+      name: "edit_artifact",
+      description: "Edits an artifact.",
+      inputSchema: z.strictObject({ artifactId: ArtifactId, text: z.string().max(1000) }),
+      action: "update",
+      annotations: { readOnlyHint: true, destructiveHint: false },
+      resource: async ({ artifactId }) => artifactOf(artifactId),
+      handler: async () => void handled.push("edit_artifact"),
+    }),
+    defineSchoolTool({
+      name: "record_grade",
+      description: "Records an official grade.",
+      inputSchema: z.strictObject({ studentId: PrincipalId }),
+      action: "grade",
+      annotations: { readOnlyHint: true },
+      resource: async ({ studentId }) => ({ resource: { kind: "official-grade", scope: offeringScope(NF.eng9), classification: "course", ownerPrincipalId: studentId }, termState }),
+      handler: async () => void handled.push("record_grade"),
+    }),
+  ];
+}
 
 criterion("s14.roster-removal", {
   "drop-and-return": async () => {

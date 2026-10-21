@@ -825,6 +825,47 @@
         "BASE_URL": "$PUBLIC_BASE_URL/gatekeeper/scheduler"
       }
     },
+    "gatekeeper-schoolos": {
+      "bindings": [],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
+      "inputs": [],
+      "installable": true,
+      "kind": "gatekeeper",
+      "mainModule": "worker.js",
+      "migrations": [
+        {
+          "new_sqlite_classes": [
+            "SchoolOsAccountObject",
+            "SchoolOsGatekeeper"
+          ],
+          "tag": "v1"
+        }
+      ],
+      "modules": [
+        {
+          "name": "worker.js",
+          "r2Key": "blobs/modules/0c09f0363cf8a1209b09102de21dfb68f5aaaa97a77cd80873e2f1515d1d0c50",
+          "sha256": "0c09f0363cf8a1209b09102de21dfb68f5aaaa97a77cd80873e2f1515d1d0c50",
+          "size": 61,
+          "type": "esm"
+        }
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "shortName": "schoolos",
+      "singleton": true,
+      "vars": {
+        "BASE_URL": "$PUBLIC_BASE_URL/gatekeeper/schoolos"
+      }
+    },
     "gatekeeper-slack": {
       "bindings": [
         {

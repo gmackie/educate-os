@@ -192,6 +192,14 @@ test("worker entries carry the deploy contract", () => {
   assert.equal(workers["gatekeeper-mcp-portal"].singleton, true);
   assert.equal(workers["gatekeeper-homeassistant"].singleton, true);
 
+  // The SchoolOS gatekeeper takes no OAuth credentials: the district verifies its own sign-in,
+  // through a service binding the district deployment injects, so the release declares none.
+  const schoolos = workers["gatekeeper-schoolos"];
+  assert.deepEqual(schoolos.inputs, []);
+  assert.equal(schoolos.singleton, true);
+  assert.equal(schoolos.preinstall, undefined);
+  assert.ok(!schoolos.bindings.some((b) => b.type === "service"));
+
   // Module blobs are content-addressed.
   for (const [name, entry] of Object.entries(workers)) {
     assert.ok(entry.modules.some((m) => m.name === entry.mainModule),

@@ -63,8 +63,11 @@ MET for these reasons:
 - **Two lifecycle steps are missing.** Principals have a `graduated` status that holds no roles,
   but no district app route moves a principal to it yet (SCHO-145). An export offer at term end
   needs the export route (SCHO-90).
-- **School tools have no MCP surface yet.** Tool-identity rules are checked on the tool runner over
-  the district app's engine. The gatekeeper Worker that will expose them is SCHO-57.
+- **The district app does not serve its school tools to the gatekeeper yet.** `gatekeeper-schoolos`
+  (SCHO-57) exposes school tools to Workshop agents, and the gate drives its session over the
+  district app's engine through the in-process district service. A district Worker that exposes the
+  same service as the gatekeeper's `SCHOOLOS_DISTRICT` binding, with the district's tools and a
+  durable approval store, is still to be built.
 
 ### Restore rehearsal
 
@@ -107,7 +110,7 @@ because the store refuses a stale commit and the client retries. A durable artif
 | District B request to district A resource | Rejected at deployment boundary and policy layer | G0 | test: a Northfield token is refused at Riverbend, and Riverbend's principals find no Northfield record by ID<br>test: Northfield's policy engine denies a Riverbend subject on a Northfield resource before any rule runs (direct) | `security-matrix.test.ts` | **MET** |  |
 | Student A attempts B's artifact and private chat | Denied independent of query params/client UI | G1 | test: a classmate cannot read, list, revise, keep or submit another student's artifact, whatever IDs, query or extra fields the request carries<br>test: the district's policy engine denies a classmate reading a student's personal conversation (direct)<br>todo: a classmate cannot read another student's private AI chat over the API (SCHO-107) | `security-matrix.test.ts` | **NOT MET** | SCHO-107 |
 | Teacher requests unrelated personal AI conversation | Denied; only explicit assigned-work projections visible | G1 | test: a teacher sees submitted work and course workspace records, never a personal workspace or its contents<br>test: the district's policy engine denies a teacher reading a student's personal conversation (direct)<br>todo: a teacher cannot open a student's personal AI conversation over the API (SCHO-107) | `security-matrix.test.ts` | **NOT MET** | SCHO-107 |
-| MCP tool claims other student identity or untrusted `readOnlyHint` | Trusted principal/action policy prevails; denied/approval required | G1 | test: an API request naming another principal or role is refused, and the caller is always the token's verified principal<br>test: a school tool call naming another student is denied, and one with an untrusted readOnlyHint is authorized as its real action (direct)<br>todo: the same holds through the agent-facing MCP surface (SCHO-57) | `security-matrix.test.ts` | **NOT MET** | SCHO-57 |
+| MCP tool claims other student identity or untrusted `readOnlyHint` | Trusted principal/action policy prevails; denied/approval required | G1 | test: an API request naming another principal or role is refused, and the caller is always the token's verified principal<br>test: a school tool call naming another student is denied, and one with an untrusted readOnlyHint is authorized as its real action (direct)<br>test: through the agent-facing gatekeeper, the subject is the connected account's principal, readOnlyHint is ignored, every write waits for a person, and another district's account reaches nothing (direct) | `security-matrix.test.ts` | **MET** |  |
 | OneRoster removes enrolled student temporarily | Workspace retained; access policy updated; no automatic deletion | G2 | test: a roster import that drops a student keeps their workspace and work, revokes their class access on the next request, and a later import restores it | `security-matrix.test.ts` | **MET** |  |
 | Imported Thin CC references unregistered LTI tool | Resource can remain referenced but cannot be launched as authorized tool | G4 | test: a Thin CC LTI link is kept as a never-launchable tool reference while its web links reach the class review queue (direct) | `security-matrix.test.ts` | **MET** |  |
 | External page embeds prompt injection | Treated as data; no tool/system instruction escalation | G1 | test: an imported page with instruction-like text is flagged for review, never auto-released, and changes no policy, configuration or rights | `security-matrix.test.ts` | **MET** |  |
@@ -154,6 +157,7 @@ because the store refuses a stale commit and the client retries. A durable artif
 | Student A attempts B's artifact and private chat | the district's policy engine denies a classmate reading a student's personal conversation | The district app has no conversation routes yet, so the decision is asked of its engine directly. |
 | Teacher requests unrelated personal AI conversation | the district's policy engine denies a teacher reading a student's personal conversation | The district app has no conversation routes yet, so the decision is asked of its engine directly. |
 | MCP tool claims other student identity or untrusted `readOnlyHint` | a school tool call naming another student is denied, and one with an untrusted readOnlyHint is authorized as its real action | The district app does not expose school tools; the tool runner is driven over the district app's own policy engine. |
+| MCP tool claims other student identity or untrusted `readOnlyHint` | through the agent-facing gatekeeper, the subject is the connected account's principal, readOnlyHint is ignored, every write waits for a person, and another district's account reaches nothing | The district app does not expose its school tools to the gatekeeper yet; the gatekeeper's session is driven over the district app's own policy engine through the in-process district service. |
 | Imported Thin CC references unregistered LTI tool | a Thin CC LTI link is kept as a never-launchable tool reference while its web links reach the class review queue | The district app has no cartridge import route, so the importer is driven directly against the district app's Content Studio storage; the review queue is read over HTTP. |
 | Blueprint Git baseline contains answer key in old commit | forking a baseline whose history holds an answer key is blocked, and recreating it yields a parentless commit without the key | The district app saves projects but has no baseline or fork route, so its project service is built directly over the app's stores and engine. |
 | Stale course AI budget, underfunded student or retry duplication | a closed term's course budget and an exhausted student cap deny new inference, and a retried request is billed once | Model requests reach the governor through the kernel AI Gateway seam (SCHO-72), not a district route, so `app.aiGovernor` is called as that seam would; usage is read over HTTP. |
@@ -171,7 +175,7 @@ because the store refuses a stale commit and the client retries. A durable artif
 | Gate | Criteria | MET | NOT MET |
 | --- | --- | --- | --- |
 | G0 | 2 | 2 | 0 |
-| G1 | 21 | 10 | 11 |
+| G1 | 21 | 11 | 10 |
 | G2 | 3 | 3 | 0 |
 | G3 | 3 | 2 | 1 |
 | G4 | 2 | 1 | 1 |
