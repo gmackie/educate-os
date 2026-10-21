@@ -153,6 +153,35 @@ describe("retention and legal hold", () => {
   });
 });
 
+describe("personal workspace records for retention (SCHO-56)", () => {
+  it("lists every personal workspace's record to a district admin, never its contents", async () => {
+    const { workspaces, store, audit } = setup();
+    const amara = await workspaces.ensurePersonalWorkspace(P.amara);
+    await workspaces.ensurePersonalWorkspace(P.elena);
+    const { state, version } = await store.load();
+    const handle = { backend: "workshop" as const, ref: "ws-amara-personal" };
+    await store.commit({ ...state, workspaces: state.workspaces.map((w) => (w.id === amara.id ? { ...w, storageHandle: handle } : w)) }, version);
+    await workspaces.setLegalHold(P.nfAdmin, amara.id, true);
+
+    const records = await workspaces.listPersonalWorkspaceRecords(P.nfAdmin);
+    expect(records.map((r) => r.ownerPrincipalId).toSorted()).toEqual([P.amara.principal.principalId, P.elena.principal.principalId]);
+    expect(records.find((r) => r.id === amara.id)).toMatchObject({ kind: "personal", legalHold: { placedBy: P.nfAdmin.principal.principalId } });
+    expect(JSON.stringify(records)).not.toContain(handle.ref);
+    expect(audit.events.findLast((e) => e.resourceKind === "personal-workspace" && e.action === "list"))
+      .toMatchObject({ effect: "allow", ruleId: "admin.retention.personal-workspace-records" });
+    // The listing opens none of them.
+    await rejectsWith(workspaces.getWorkspace(P.nfAdmin, amara.id), "not-found");
+  });
+
+  it("refuses everyone but a district admin", async () => {
+    const { workspaces } = setup();
+    await workspaces.ensurePersonalWorkspace(P.amara);
+    for (const caller of [P.highPrincipal, P.morgan, P.amara, P.rbAdmin]) {
+      await rejectsWith(workspaces.listPersonalWorkspaceRecords(caller), "forbidden");
+    }
+  });
+});
+
 describe("promotion to the personal workspace", () => {
   const essay = ArtifactId.parse("art_cell-respiration-essay");
 

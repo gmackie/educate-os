@@ -54,6 +54,8 @@ export const ResourceKind = z.enum([
   "capability-config",
   "ai-budget",
   "audit-event",
+  /** A purpose-bound, time-limited grant of access to one student's record, such as for an appeal. */
+  "access-grant",
 ]);
 /** A resource kind. */
 export type ResourceKind = z.infer<typeof ResourceKind>;
@@ -123,6 +125,11 @@ export interface Caller {
   principal: VerifiedPrincipal;
   /** The surface the request arrived through. Every surface is authorized identically. */
   channel: RequestChannel;
+  /**
+   * Groups every decision one invocation makes, nested service calls included, under one audit
+   * correlation ID. Absent, each decision gets its own.
+   */
+  correlationId?: string;
 }
 
 /**
@@ -168,10 +175,19 @@ export const Decision = z.discriminatedUnion("effect", [
 /** An authorization decision. */
 export type Decision = z.infer<typeof Decision>;
 
+/** How one authorization is recorded. */
+export interface AuthorizeOptions {
+  /** The audit correlation ID of the invocation the decision belongs to (see {@link Caller}). */
+  correlationId?: string;
+}
+
 /** Decides authorization requests. Implementations must deny anything they were not written to allow. */
 export interface Authorizer {
-  /** Decides one request. It receives unvalidated input and must deny anything that does not parse. */
-  authorize(request: unknown): Promise<Decision>;
+  /**
+   * Decides one request. It receives unvalidated input and must deny anything that does not parse.
+   * An implementation that audits records the decision under `options.correlationId` when given.
+   */
+  authorize(request: unknown, options?: AuthorizeOptions): Promise<Decision>;
 }
 
 /**

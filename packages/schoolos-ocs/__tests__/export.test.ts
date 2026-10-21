@@ -1,20 +1,37 @@
-import { ContentStudio, contentStudioAuthorizer, InMemoryContentStudioStorage } from "@schoolos/content-studio";
-import { DistrictId, PrincipalId, type VerifiedPrincipal } from "@schoolos/contracts";
+import { InMemoryAcademicStore } from "@schoolos/academics";
+import { ContentStudio, InMemoryContentStudioStorage } from "@schoolos/content-studio";
+import { type DistrictDirectorySnapshot, DistrictId, type PolicySettings, PrincipalId, type VerifiedPrincipal } from "@schoolos/contracts";
 import {
   contentStudioReleases,
   CurriculumService,
-  curriculumAuthorizer,
   InMemoryCodexPublisher,
   InMemoryCurriculumStorage,
   type OfferingScope,
   type TemplateInput,
 } from "@schoolos/curriculum";
 import { NORTHFIELD } from "@schoolos/fixtures";
+import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
 import { describe, expect, it } from "vitest";
 import { addModule, hide, installCourse, planInstallations, preview, startCourse } from "../src/index.ts";
 import { activity, IDS, libraryOf, packageFiles, unit } from "./helpers.ts";
 
 const D = DistrictId.parse("dst_northfield");
+
+/** The policy floor the tests decide under: the conservative district defaults. */
+const FLOOR: PolicySettings = {
+  aiSpending: "capped",
+  promptsInGatewayLogs: "prohibited",
+  studentPersonalConversations: "private",
+  teacherObservation: "assigned-work-only",
+  automatedSelProfiling: "prohibited",
+  aiMonthlyCapCentsPerPrincipal: 500,
+};
+
+/** The district's one policy engine over `directory`. */
+function policyEngine(directory: DistrictDirectorySnapshot) {
+  const information = directoryPolicyInformation(InMemoryAcademicStore.seeded(directory), { effectivePolicy: async () => FLOOR });
+  return { engine: new PolicyEngine({ information, audit: new InMemoryPolicyAuditSink() }) };
+}
 /** Teaches Biology, fall period 2. */
 const MORGAN: VerifiedPrincipal = { principalId: PrincipalId.parse("prn_nf-morgan-lee"), districtId: D };
 /** Teaches Mathematics 7, not Biology. */
@@ -28,11 +45,12 @@ const STRUCTURE = { frameworkKey: "ngss", competencyUri: "https://frameworks.exa
 async function curriculum() {
   let tick = 0;
   const now = () => new Date(Date.UTC(2026, 9, 20, 9, tick++)).toISOString();
+  const { engine } = policyEngine(NORTHFIELD);
   const studioStorage = new InMemoryContentStudioStorage();
   const studio = new ContentStudio({
     districtId: D,
     storage: studioStorage,
-    authorizer: contentStudioAuthorizer(NORTHFIELD),
+    authorizer: engine,
     fetch: async () => new Response("<!doctype html><html lang=\"en\"><head><title>Osmosis in Potato Cells</title></head><body><p>Synthetic.</p></body></html>", { headers: { "content-type": "text/html; charset=utf-8" } }),
     scanner: undefined,
     alignments: { resolve: async () => undefined },
@@ -41,7 +59,7 @@ async function curriculum() {
   const service = new CurriculumService({
     districtId: D,
     directory: NORTHFIELD,
-    authorizer: curriculumAuthorizer(NORTHFIELD),
+    authorizer: engine,
     releases: contentStudioReleases(studioStorage),
     alignments: {
       resolve: async (frameworkKey, competencyUri) =>

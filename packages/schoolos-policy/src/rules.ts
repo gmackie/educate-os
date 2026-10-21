@@ -9,6 +9,7 @@ import {
   SchoolRole,
   TermState,
 } from "@schoolos/contracts";
+import { Relationship } from "./information.ts";
 
 /**
  * How the resource's owner relates to the subject: the subject owns it, someone else does, or it
@@ -47,6 +48,11 @@ export const RuleCondition = z.strictObject({
   roles: z.array(SchoolRole).min(1).optional(),
   /** How the resource's owner relates to the subject. */
   ownership: z.array(Ownership).min(1).optional(),
+  /**
+   * The subject must hold one of these relationships to this specific resource, established by a
+   * stored record (see `RelationshipSource`). Only an active principal holds any.
+   */
+  relationships: z.array(Relationship).min(1).optional(),
   /** The effective policy floor at the resource's scope must have one of these values per setting. */
   policy: z.strictObject({
     aiSpending: policyValues("aiSpending"),
@@ -125,6 +131,8 @@ export const COURSE_RESOURCE_KINDS = [
 
 const OFFICIAL_GRADE_WRITES = ["create", "update", "grade"] as const satisfies Action[];
 const ADMINS = ["district-admin", "school-admin"] as const satisfies z.infer<typeof SchoolRole>[];
+/** The kinds an appeal grant may name: one student's submitted work and the feedback on it. */
+export const APPEAL_RESOURCE_KINDS = ["submission", "artifact", "feedback"] as const satisfies ResourceKind[];
 const INSTRUCTORS = ["teacher", "co-teacher"] as const satisfies z.infer<typeof SchoolRole>[];
 /** Content everyone with standing in a course may see. Never `teacher-only`, `personal-private` or `restricted`. */
 const COURSE_VISIBLE = ["public", "district-internal", "course"] as const satisfies Classification[];
@@ -153,10 +161,52 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   unowned, so these rules never reach it.
  * - **Administrators** see the directory, governance records and course structure (activities,
  *   rubrics, the shared course workspace, official grades). They do not see student-authored work
- *   or any conversation, and no rule ever reaches `personal-private` content for anyone but its
- *   owner.
+ *   or any conversation, with one audited exception: an appeal grant (SCHO-56) lets a named
+ *   administrator read one named piece of a student's `course` work until it expires.
+ * - **`personal-private` content is its owner's**, with two exceptions placed above the guard that
+ *   protects it. A district admin may list personal workspace *records* for retention, never read
+ *   one. And a principal the owner shared an artifact with reads it, but only while the policy
+ *   floor lets students share personal material (`studentPersonalConversations:
+ *   shared-by-student`); under a `private` floor the owner cannot share it at all (SCHO-103).
+ * - **Activities** come in two classifications. A `teacher-only` activity is a curriculum
+ *   definition (answer keys and teacher notes included): only a teacher of the offering authors,
+ *   publishes and installs it, installing only into a planned or active term, and a student is
+ *   refused it outright. A `course` activity is the student-visible assignment, which all course
+ *   staff manage (SCHO-87, from C05's local rules).
+ * - **Learning resources in the Content Studio** are `teacher-only` items at their target scope. A
+ *   teacher imports and approves for the classes they teach; a curriculum admin works at any scope
+ *   their grant covers, reviews items a teacher may not approve alone, and alone widens rights
+ *   (SCHO-87, from C03's local rules).
  */
 export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse([
+  // Exceptions to the personal guards, each narrower than the guard it precedes: a metadata-only
+  // listing for retention, and a read the owner consented to by sharing (SCHO-56, SCHO-103).
+  {
+    id: "admin.retention.personal-workspace-records",
+    description: "A district admin lists the district's personal workspace records (owner, dates, legal hold) for retention; this never reads one or its content.",
+    when: {
+      kinds: ["personal-workspace"],
+      ownership: ["unowned"],
+      classifications: ["personal-private"],
+      roles: ["district-admin"],
+      actions: ["list"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "share.grantee.read",
+    description: "A principal an artifact's owner shared it with reads it, while the policy floor lets students share personal material.",
+    when: {
+      kinds: ["artifact"],
+      classifications: ["personal-private"],
+      ownership: ["others"],
+      relationships: ["share-grantee"],
+      actions: ["read"],
+      policy: { studentPersonalConversations: ["shared-by-student"] },
+    },
+    effect: { effect: "allow" },
+  },
+
   // Guards. These deny before any grant below can match.
   {
     id: "guard.personal.owner-only",
@@ -169,6 +219,12 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     description: "Content classified personal-private is visible only to its owner, whatever kind of resource holds it.",
     when: { classifications: ["personal-private"], ownership: ["others", "unowned"] },
     effect: { effect: "deny", reason: "classification-restricted" },
+  },
+  {
+    id: "guard.personal-private.no-sharing",
+    description: "When the policy floor keeps student conversations private, personal-private content cannot be shared, even by its owner.",
+    when: { classifications: ["personal-private"], actions: ["share"], policy: { studentPersonalConversations: ["private"] } },
+    effect: { effect: "deny", reason: "policy-floor" },
   },
   {
     id: "guard.term-completed.read-only",
@@ -344,12 +400,24 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
   },
   {
     id: "course.instructor.manage",
-    description: "Course staff create and publish their offering's activities, rubrics, class workspace and feedback.",
+    description: "Course staff create and publish their offering's rubrics, class workspace and feedback.",
     when: {
-      kinds: ["activity", "rubric", "course-workspace", "feedback", "assessment-run"],
+      kinds: ["rubric", "course-workspace", "feedback", "assessment-run"],
       ownership: ["unowned", "own"],
       roles: [...INSTRUCTORS],
       classifications: ["course", "teacher-only"],
+      actions: ["create", "update", "publish", "assign"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "course.instructor.assignments",
+    description: "Course staff create, update, publish and assign their offering's student-visible (course) activities.",
+    when: {
+      kinds: ["activity"],
+      ownership: ["unowned", "own"],
+      roles: [...INSTRUCTORS],
+      classifications: ["course"],
       actions: ["create", "update", "publish", "assign"],
     },
     effect: { effect: "allow" },
@@ -391,6 +459,25 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     effect: { effect: "allow" },
   },
   {
+    id: "appeal.reviewer.read",
+    description: "An administrator named by an unexpired appeal grant reads the one piece of a student's course work it names; every read is audited with the grant.",
+    when: {
+      kinds: [...APPEAL_RESOURCE_KINDS],
+      ownership: ["others"],
+      relationships: ["appeal-reviewer"],
+      roles: [...ADMINS],
+      classifications: ["course"],
+      actions: ["read"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.appeal-grants.manage",
+    description: "A district admin issues, lists and revokes purpose-bound appeal grants in the district.",
+    when: { kinds: ["access-grant"], roles: ["district-admin"], classifications: ["restricted"], actions: ["create", "list", "read", "update"] },
+    effect: { effect: "allow" },
+  },
+  {
     id: "admin.governance",
     description: "Administrators read and configure capability settings and AI budgets in their scope.",
     when: { kinds: ["capability-config", "ai-budget"], roles: [...ADMINS], actions: [...READS, "configure"] },
@@ -414,6 +501,60 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
       actions: ["read", "list", "create", "update", "review", "approve", "publish"],
     },
     effect: { effect: "allow" },
+  },
+  {
+    id: "content-studio.teacher.offering",
+    description: "A teacher imports, reviews, approves, publishes and uses learning resources for the classes they teach.",
+    when: {
+      kinds: ["learning-resource"],
+      roles: ["teacher"],
+      classifications: ["teacher-only"],
+      actions: ["create", "list", "read", "update", "approve", "publish", "assign"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "content-studio.curriculum-admin.manage",
+    description: "A curriculum admin also uses resources in classes and widens an item's rights.",
+    when: { kinds: ["learning-resource"], roles: ["curriculum-admin"], classifications: ["teacher-only"], actions: ["assign", "configure"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "curriculum.activity.teacher-author",
+    description: "A teacher of the offering authors, revises and publishes its activity definitions, answer keys included.",
+    when: {
+      kinds: ["activity"],
+      ownership: ["unowned", "own"],
+      roles: ["teacher"],
+      classifications: ["teacher-only"],
+      actions: ["create", "update", "publish"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "curriculum.activity.teacher-install",
+    description: "A teacher of the offering installs an activity definition into it while its term is planned or active.",
+    when: {
+      kinds: ["activity"],
+      ownership: ["unowned", "own"],
+      roles: ["teacher"],
+      classifications: ["teacher-only"],
+      actions: ["assign"],
+      termStates: ["planned", "active"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "curriculum.activity.install-needs-open-term",
+    description: "An install into a term that is grading, completed or unknown is refused, even for the offering's teacher.",
+    when: { kinds: ["activity"], roles: ["teacher"], classifications: ["teacher-only"], actions: ["assign"] },
+    effect: { effect: "deny", reason: "term-not-active" },
+  },
+  {
+    id: "curriculum.activity.definition-staff-only",
+    description: "A student never reads an activity definition: it holds answer keys and teacher notes. Students read the installed course activity.",
+    when: { kinds: ["activity"], roles: ["student"], classifications: ["teacher-only"], actions: [...READS] },
+    effect: { effect: "deny", reason: "classification-restricted" },
   },
   {
     id: "curriculum.published.read",

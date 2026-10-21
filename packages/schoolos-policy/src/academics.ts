@@ -70,7 +70,10 @@ export function academicSchoolTools(store: AcademicStore, directory: AcademicDir
         };
       },
       handler: async (input, context) => {
-        const outcome = await invokeOperation(operation, directory, { principal: context.principal, channel: context.channel }, input);
+        // The invocation's correlation ID goes with the caller, so the operation's own decisions are
+        // audited under the same ID as the runner's.
+        const caller = { principal: context.principal, channel: context.channel, correlationId: context.correlationId };
+        const outcome = await invokeOperation(operation, directory, caller, input);
         if (!outcome.ok) throw new SchoolOsError(outcome.error.code, outcome.error.message);
         return outcome.value;
       },

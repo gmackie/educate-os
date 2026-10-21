@@ -28,8 +28,10 @@ export const PolicyAuditEvent = z.strictObject({
   effect: z.enum(["allow", "deny", "require-approval"]),
   /** Why it was not simply allowed. */
   reason: DecisionReason.optional(),
-  /** The rule that decided, or a `precheck.*` / `subject.*` / `default.*` pseudo-rule. */
+  /** The rule that decided, or a `precheck.*` / `subject.*` / `scope.*` / `default.*` pseudo-rule. */
   ruleId: z.string().min(1),
+  /** The record the deciding rule relied on, such as the appeal grant or share that allowed a read. */
+  grantId: z.string().min(1).max(128).optional(),
 });
 /** A policy audit event. */
 export type PolicyAuditEvent = z.infer<typeof PolicyAuditEvent>;
@@ -41,4 +43,14 @@ export type PolicyAuditEvent = z.infer<typeof PolicyAuditEvent>;
 export interface PolicyAuditSink {
   /** Stores one event. */
   record(event: PolicyAuditEvent): Promise<void>;
+}
+
+/** A {@link PolicyAuditSink} that keeps events in memory, in order: for tests and local harnesses. */
+export class InMemoryPolicyAuditSink implements PolicyAuditSink {
+  /** The events recorded so far. */
+  readonly events: PolicyAuditEvent[] = [];
+
+  async record(event: PolicyAuditEvent): Promise<void> {
+    this.events.push(event);
+  }
 }

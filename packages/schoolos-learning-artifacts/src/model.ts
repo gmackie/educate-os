@@ -158,8 +158,10 @@ export type Pin = z.infer<typeof Pin>;
 
 /**
  * A record that an artifact's owner shared it with another principal. It grants nothing on its
- * own: every read is still decided by the policy engine, which under the v1 rule table keeps
- * `personal-private` content owner-only, so a share takes effect only where a policy rule allows it.
+ * own: the policy information point reads it through `artifactShareRelationships`, and the engine
+ * decides every read. Under the default rule table the grantee reads a shared `personal-private`
+ * artifact only while the policy floor lets students share personal material, and under a
+ * `private` floor the owner cannot share at all.
  */
 export const ShareGrant = z.strictObject({
   artifactId: ArtifactId,

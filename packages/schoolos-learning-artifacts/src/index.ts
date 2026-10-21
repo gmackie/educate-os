@@ -7,3 +7,4 @@ export * from "./digest.ts";
 export * from "./content.ts";
 export * from "./store.ts";
 export * from "./artifacts.ts";
+export * from "./shares.ts";

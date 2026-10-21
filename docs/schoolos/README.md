@@ -76,6 +76,7 @@ administrator per district. A token from one district's IdP is rejected by the o
 7. [Hall Monitor and the kernel AI call guard](adr/0007-hall-monitor-and-ai-call-guard.md)
 8. [AI spend in integer nanodollars](adr/0008-usd-nano-money.md)
 9. [SchoolOS libraries type-check against the web-standard surface](adr/0009-typings.md)
+10. [One rule table, record-backed grants, and flags that need a second reviewer](adr/0010-one-rule-table-and-record-grants.md)
 
 ## Rules every SchoolOS change follows
 

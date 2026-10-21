@@ -5,6 +5,7 @@ import { NORTHFIELD } from "@schoolos/fixtures";
 import { directoryPolicyInformation, PolicyEngine, type PolicyAuditEvent, type PolicyAuditSink } from "@schoolos/policy";
 import { InMemoryWorkspaceStore, WorkspaceDirectory } from "@schoolos/workspaces";
 import {
+  artifactShareRelationships,
   BackendArtifactStore,
   InMemoryArtifactRecordStore,
   InMemoryInlineTextTable,
@@ -22,7 +23,7 @@ class MemoryAuditSink implements PolicyAuditSink {
   }
 }
 
-const FLOOR: PolicySettings = {
+export const FLOOR: PolicySettings = {
   aiSpending: "capped",
   promptsInGatewayLogs: "prohibited",
   studentPersonalConversations: "shared-by-student",
@@ -35,13 +36,22 @@ const FLOOR: PolicySettings = {
 export const DOCS_HOST = "docs.northfield.example";
 
 /** An artifact service over a fresh copy of `snapshot`, with the workspace directory that provisions its workspaces. */
-export function setup(snapshot: DistrictDirectorySnapshot = NORTHFIELD) {
+export function setup(
+  snapshot: DistrictDirectorySnapshot = NORTHFIELD,
+  options: { floor?: PolicySettings; shares?: "wired" | "unwired" } = {},
+) {
   const academics = InMemoryAcademicStore.seeded(snapshot);
   const workspaceStore = new InMemoryWorkspaceStore();
+  const records = new InMemoryArtifactRecordStore();
   const audit = new MemoryAuditSink();
   const clock = { now: new Date("2026-10-20T12:00:00Z") };
+  const floor = options.floor ?? FLOOR;
   const policy = new PolicyEngine({
-    information: directoryPolicyInformation(academics, { effectivePolicy: async () => FLOOR }),
+    information: directoryPolicyInformation(
+      academics,
+      { effectivePolicy: async () => floor },
+      options.shares === "wired" ? { relationships: [artifactShareRelationships(records)] } : {},
+    ),
     audit,
   });
   const workspaces = new WorkspaceDirectory({
@@ -53,7 +63,6 @@ export function setup(snapshot: DistrictDirectorySnapshot = NORTHFIELD) {
   });
   const bucket = new InMemoryR2Bucket();
   const text = new InMemoryInlineTextTable();
-  const records = new InMemoryArtifactRecordStore();
   const artifacts = new LearningArtifacts({
     records,
     content: new BackendArtifactStore({ text, r2: bucket }),

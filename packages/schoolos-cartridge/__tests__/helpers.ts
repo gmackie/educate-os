@@ -3,16 +3,33 @@ import { CatalogMirror, InMemoryCatalogMirrorStorage } from "@schoolos/catalog";
 import {
   catalogAlignmentSource,
   ContentStudio,
-  contentStudioAuthorizer,
   type ImportFetch,
   InMemoryContentStudioStorage,
 } from "@schoolos/content-studio";
-import { DistrictId, PrincipalId, type Scope, type VerifiedPrincipal } from "@schoolos/contracts";
+import { InMemoryAcademicStore } from "@schoolos/academics";
+import { type DistrictDirectorySnapshot, DistrictId, type PolicySettings, PrincipalId, type Scope, type VerifiedPrincipal } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
+import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
 import { expect } from "vitest";
 import { CartridgeImporter, type CartridgeLimits, InMemoryCartridgeImportStorage } from "../src/index.ts";
 
 const D = DistrictId.parse("dst_northfield");
+
+/** The policy floor the tests decide under: the conservative district defaults. */
+const FLOOR: PolicySettings = {
+  aiSpending: "capped",
+  promptsInGatewayLogs: "prohibited",
+  studentPersonalConversations: "private",
+  teacherObservation: "assigned-work-only",
+  automatedSelProfiling: "prohibited",
+  aiMonthlyCapCentsPerPrincipal: 500,
+};
+
+/** The district's one policy engine over `directory`. */
+function policyEngine(directory: DistrictDirectorySnapshot) {
+  const information = directoryPolicyInformation(InMemoryAcademicStore.seeded(directory), { effectivePolicy: async () => FLOOR });
+  return { engine: new PolicyEngine({ information, audit: new InMemoryPolicyAuditSink() }) };
+}
 const subject = (id: string): VerifiedPrincipal => ({ principalId: PrincipalId.parse(id), districtId: D });
 
 /** Teaches Biology, fall period 2. */
@@ -53,7 +70,7 @@ export function fakeWeb(): ImportFetch & { requested: string[] } {
 /** An importer over Northfield, its Content Studio and a synthetic web. */
 export function importer(limits?: CartridgeLimits) {
   const web = fakeWeb();
-  const authorizer = contentStudioAuthorizer(NORTHFIELD);
+  const { engine: authorizer } = policyEngine(NORTHFIELD);
   const studioStorage = new InMemoryContentStudioStorage();
   let tick = 0;
   // Each call is a minute later, so timestamps order events.

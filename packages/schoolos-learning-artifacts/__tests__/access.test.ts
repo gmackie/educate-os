@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ArtifactId, PrincipalId, SubmissionId } from "@schoolos/contracts";
-import { essay, O, P, rejectsWith, setup } from "./setup.ts";
+import { essay, FLOOR, O, P, rejectsWith, setup } from "./setup.ts";
 
 /** Amara with a personal journal entry and a Biology essay. */
 async function amarasWork() {
@@ -89,6 +89,55 @@ describe("sharing", () => {
     await rejectsWith(artifacts.readRevision(P.elena, journal.artifact.id), "not-found");
     await rejectsWith(artifacts.share(P.amara, journal.artifact.id, PrincipalId.parse("prn_nf-nobody")), "not-found");
     await rejectsWith(artifacts.share(P.amara, journal.artifact.id, P.amara.principal.principalId), "validation-failed");
+  });
+
+  it("lets the grantee read shared personal work once the policy information point reads shares, under a sharing floor", async () => {
+    const ctx = setup(undefined, { shares: "wired" });
+    const personal = await ctx.workspaces.ensurePersonalWorkspace(P.amara);
+    const journal = await ctx.artifacts.createArtifact(P.amara, essay(personal.id, "Private reflections.", "Journal"));
+    await rejectsWith(ctx.artifacts.readRevision(P.elena, journal.artifact.id), "not-found");
+
+    await ctx.artifacts.share(P.amara, journal.artifact.id, P.elena.principal.principalId);
+    expect((await ctx.artifacts.readRevision(P.elena, journal.artifact.id)).content).toEqual({ kind: "text", text: "Private reflections." });
+    const read = ctx.audit.events.findLast((e) => e.principalId === P.elena.principal.principalId && e.effect === "allow");
+    expect(read).toMatchObject({ ruleId: "share.grantee.read", grantId: `share:${journal.artifact.id}:${P.elena.principal.principalId}` });
+
+    // A read is all the share gives: no edit, re-share or export, and no one else gains anything.
+    await rejectsWith(
+      ctx.artifacts.saveRevision(P.elena, journal.artifact.id, { content: { kind: "text", mediaType: "text/markdown", text: "edited" }, aiAssistance: { level: "none" } }),
+      "forbidden",
+    );
+    await rejectsWith(ctx.artifacts.share(P.elena, journal.artifact.id, P.morgan.principal.principalId), "forbidden");
+    await rejectsWith(ctx.artifacts.exportArtifact(P.elena, journal.artifact.id), "forbidden");
+    await rejectsWith(ctx.artifacts.readRevision(P.morgan, journal.artifact.id), "not-found");
+
+    // Deleting the artifact ends the share.
+    await ctx.artifacts.deleteArtifact(P.amara, journal.artifact.id);
+    await rejectsWith(ctx.artifacts.readRevision(P.elena, journal.artifact.id), "not-found");
+  });
+
+  it("is refused to the owner, and opens nothing, under a floor that keeps personal material private", async () => {
+    const ctx = setup(undefined, { shares: "wired", floor: { ...FLOOR, studentPersonalConversations: "private" } });
+    const personal = await ctx.workspaces.ensurePersonalWorkspace(P.amara);
+    const journal = await ctx.artifacts.createArtifact(P.amara, essay(personal.id, "Private reflections.", "Journal"));
+    await rejectsWith(ctx.artifacts.share(P.amara, journal.artifact.id, P.elena.principal.principalId), "forbidden");
+    expect(ctx.audit.events.findLast((e) => e.action === "share")).toMatchObject({ effect: "deny", reason: "policy-floor", ruleId: "guard.personal-private.no-sharing" });
+
+    // A grant recorded while sharing was allowed stops working when the floor tightens.
+    const { state, version } = await ctx.records.load();
+    const grant = { artifactId: journal.artifact.id, granteePrincipalId: P.elena.principal.principalId, grantedBy: P.amara.principal.principalId, grantedAt: "2026-10-20T12:00:00.000Z" };
+    await ctx.records.commit({ ...state, shares: [...state.shares, grant] }, version);
+    await rejectsWith(ctx.artifacts.readRevision(P.elena, journal.artifact.id), "not-found");
+  });
+
+  it("ignores a share record that its artifact's owner did not make", async () => {
+    const ctx = setup(undefined, { shares: "wired" });
+    const personal = await ctx.workspaces.ensurePersonalWorkspace(P.amara);
+    const journal = await ctx.artifacts.createArtifact(P.amara, essay(personal.id, "Private reflections.", "Journal"));
+    const { state, version } = await ctx.records.load();
+    const forged = { artifactId: journal.artifact.id, granteePrincipalId: P.elena.principal.principalId, grantedBy: P.elena.principal.principalId, grantedAt: "2026-10-20T12:00:00.000Z" };
+    await ctx.records.commit({ ...state, shares: [...state.shares, forged] }, version);
+    await rejectsWith(ctx.artifacts.readRevision(P.elena, journal.artifact.id), "not-found");
   });
 
   it("is refused for course work, which policy gives no share rule", async () => {

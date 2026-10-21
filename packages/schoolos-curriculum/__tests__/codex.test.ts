@@ -1,7 +1,7 @@
 import { DistrictDirectorySnapshot } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import { describe, expect, it } from "vitest";
-import { codexCollectionKey, curriculumAuthorizer, helperInstructions, InMemoryCodexPublisher, StudentCodex } from "../src/index.ts";
+import { codexCollectionKey, helperInstructions, InMemoryCodexPublisher, StudentCodex } from "../src/index.ts";
 import {
   BIO,
   BIO_SPRING,
@@ -10,6 +10,7 @@ import {
   CHIDI,
   D,
   ELENA,
+  ENG9,
   HISTORY,
   HOSTILE_TITLE,
   historySources,
@@ -18,6 +19,7 @@ import {
   MORGAN,
   PAGES,
   PATEL,
+  policyEngine,
   rejectsWith,
   RIVERBEND_TEACHER,
   setup,
@@ -125,17 +127,27 @@ const request = (subject: { principalId: string; districtId: string }, action: s
   context: { channel: "http", ...extra },
 });
 
-describe("curriculum authorizer", () => {
+describe("activity rules in the district policy engine (SCHO-87)", () => {
   it("refuses installation into a term that is not open, even for its teacher", async () => {
     // A test-only grant: Morgan teaches the completed spring section.
     const directory = DistrictDirectorySnapshot.parse({
       ...NORTHFIELD,
       roleAssignments: [...NORTHFIELD.roleAssignments, { principalId: MORGAN.principalId, role: "teacher", scope: BIO_SPRING, source: "local-grant" }],
     });
-    const authorizer = curriculumAuthorizer(directory);
-    expect(await authorizer.authorize(request(MORGAN, "assign", BIO_SPRING, { termState: "completed" }))).toStrictEqual({ effect: "deny", reason: "term-not-active" });
-    expect(await authorizer.authorize(request(MORGAN, "assign", BIO_SPRING))).toStrictEqual({ effect: "deny", reason: "term-not-active" });
-    expect(await authorizer.authorize(request(MORGAN, "assign", BIO, { termState: "active" }))).toStrictEqual({ effect: "allow" });
+    const { engine } = policyEngine(directory);
+    expect(await engine.decide(request(MORGAN, "assign", BIO_SPRING, { termState: "completed" }))).toMatchObject({
+      decision: { effect: "deny", reason: "term-not-active" },
+      ruleId: "guard.term-completed.read-only",
+    });
+    expect(await engine.decide(request(MORGAN, "assign", BIO_SPRING))).toMatchObject({
+      decision: { effect: "deny", reason: "term-not-active" },
+      ruleId: "curriculum.activity.install-needs-open-term",
+    });
+    expect(await engine.decide(request(MORGAN, "assign", BIO, { termState: "grading" }))).toMatchObject({ decision: { effect: "deny", reason: "term-not-active" } });
+    expect(await engine.decide(request(MORGAN, "assign", BIO, { termState: "active" }))).toMatchObject({
+      decision: { effect: "allow" },
+      ruleId: "curriculum.activity.teacher-install",
+    });
 
     const { service, release } = await setup({ directory });
     const lab = await release(MORGAN, PAGES.cells, BIO);
@@ -143,14 +155,32 @@ describe("curriculum authorizer", () => {
     await rejectsWith(service.install(MORGAN, { definitionId: definition.id, offering: BIO_SPRING }), "forbidden");
   });
 
-  it("denies other districts, other resource kinds and forged fields", async () => {
-    const authorizer = curriculumAuthorizer(NORTHFIELD);
-    expect((await authorizer.authorize(request(RIVERBEND_TEACHER, "read", BIO))).effect).toBe("deny");
-    expect(await authorizer.authorize({ ...request(MORGAN, "read", BIO), resource: { kind: "learning-resource", scope: BIO, classification: "course" } }))
-      .toStrictEqual({ effect: "deny", reason: "no-matching-grant" });
-    expect(await authorizer.authorize({ ...request(MORGAN, "read", BIO), role: "teacher" })).toStrictEqual({ effect: "deny", reason: "invalid-request" });
+  it("denies other districts, forged fields, unknown offerings and definitions to students", async () => {
+    const { engine, audit } = policyEngine(NORTHFIELD);
+    expect(await engine.authorize(request(RIVERBEND_TEACHER, "read", BIO))).toStrictEqual({ effect: "deny", reason: "cross-district" });
+    expect(await engine.authorize({ ...request(MORGAN, "read", BIO), role: "teacher" })).toStrictEqual({ effect: "deny", reason: "invalid-request" });
+    // An offering that is not in the directory, even one a district-wide grant would contain.
+    const invented = { ...BIO, offeringId: "off_nf-invented" };
+    expect(await engine.decide(request(MORGAN, "read", invented))).toMatchObject({ decision: { effect: "deny" }, ruleId: "scope.unknown" });
     // A student in Biology reads only course-classified activities there.
-    expect(await authorizer.authorize(request({ principalId: "prn_nf-student-amara", districtId: D }, "read", BIO)))
-      .toStrictEqual({ effect: "deny", reason: "classification-restricted" });
+    expect(await engine.decide(request({ principalId: "prn_nf-student-amara", districtId: D }, "read", BIO))).toMatchObject({
+      decision: { effect: "deny", reason: "classification-restricted" },
+      ruleId: "curriculum.activity.definition-staff-only",
+    });
+    expect(audit.events.map((e) => e.ruleId)).toStrictEqual([
+      "precheck.cross-district",
+      "precheck.invalid-request",
+      "scope.unknown",
+      "curriculum.activity.definition-staff-only",
+    ]);
+  });
+
+  it("lets a co-teacher read a class's definitions but not author, publish or install them", async () => {
+    const { engine } = policyEngine(NORTHFIELD);
+    expect((await engine.authorize(request(CHEN, "read", ENG9))).effect).toBe("allow");
+    for (const action of ["create", "update", "publish"]) {
+      expect((await engine.authorize(request(CHEN, action, ENG9))).effect).toBe("deny");
+    }
+    expect((await engine.authorize(request(CHEN, "assign", ENG9, { termState: "active" }))).effect).toBe("deny");
   });
 });

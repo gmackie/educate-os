@@ -8,12 +8,13 @@ import {
   ResourceKind,
   scopeContains,
   type AuthorizationRequest,
+  type AuthorizeOptions,
   type Authorizer,
   type Decision,
   type PolicySettings,
 } from "@schoolos/contracts";
 import { PolicyAuditEvent, type PolicyAuditSink } from "./audit.ts";
-import type { PolicyInformationPoint, SubjectFacts } from "./information.ts";
+import type { PolicyInformationPoint, RelationshipFact, SubjectFacts } from "./information.ts";
 import { DEFAULT_DENY_RULE_ID, DEFAULT_POLICY_RULES, PolicyRuleTable, type Ownership, type PolicyRule, type RuleCondition } from "./rules.ts";
 
 /** A decision with the rule that made it and the correlation ID it was audited under. */
@@ -24,6 +25,8 @@ export interface PolicyDecision {
   ruleId: string;
   /** The audit event's correlation ID. */
   correlationId: string;
+  /** The record whose relationship the deciding rule relied on, such as an appeal grant. */
+  grantId?: string;
 }
 
 /** Decides requests and reports which rule decided. {@link PolicyEngine} is the implementation. */
@@ -50,14 +53,17 @@ export const PSEUDO_RULE_IDS = {
   invalidRequest: "precheck.invalid-request",
   crossDistrict: "precheck.cross-district",
   unknownSubject: "subject.unknown",
+  unknownScope: "scope.unknown",
   noMatch: DEFAULT_DENY_RULE_ID,
 } as const;
 
 /**
  * The SchoolOS ABAC engine (roadmap A02). It runs `precheckAuthorization`, looks the subject up
- * through the policy information point, and then walks the rule table in order: the first rule
- * whose condition matches decides. A request no rule matches is denied with `no-matching-grant`.
- * Every decision, including prechecks, is written to the audit sink with the deciding rule's ID.
+ * through the policy information point, refuses a scope naming a school or offering the directory
+ * does not have, and then walks the rule table in order: the first rule whose condition matches
+ * decides. A request no rule matches is denied with `no-matching-grant`. Every decision, including
+ * prechecks, is written to the audit sink with the deciding rule's ID and, when that rule relied on
+ * a relationship, the ID of the record that established it.
  */
 export class PolicyEngine implements Authorizer, PolicyDecider {
   readonly #information: PolicyInformationPoint;
@@ -70,18 +76,18 @@ export class PolicyEngine implements Authorizer, PolicyDecider {
     this.#rules = options.rules === undefined ? DEFAULT_POLICY_RULES : PolicyRuleTable.parse(options.rules);
   }
 
-  async authorize(request: unknown): Promise<Decision> {
-    return (await this.decide(request)).decision;
+  async authorize(request: unknown, options: AuthorizeOptions = {}): Promise<Decision> {
+    return (await this.decide(request, options)).decision;
   }
 
   async decide(request: unknown, options: { correlationId?: string } = {}): Promise<PolicyDecision> {
     const correlationId = options.correlationId ?? crypto.randomUUID();
-    const { decision, ruleId } = await this.#evaluate(request);
-    await this.#audit.record(auditEvent(request, decision, ruleId, correlationId));
-    return { decision, ruleId, correlationId };
+    const { decision, ruleId, grantId } = await this.#evaluate(request);
+    await this.#audit.record(auditEvent(request, decision, ruleId, correlationId, grantId));
+    return { decision, ruleId, correlationId, ...(grantId === undefined ? {} : { grantId }) };
   }
 
-  async #evaluate(input: unknown): Promise<{ decision: Decision; ruleId: string }> {
+  async #evaluate(input: unknown): Promise<{ decision: Decision; ruleId: string; grantId?: string }> {
     const precheck = precheckAuthorization(input);
     if (!precheck.ok) {
       const ruleId = precheck.decision.effect !== "allow" && precheck.decision.reason === "cross-district"
@@ -94,11 +100,22 @@ export class PolicyEngine implements Authorizer, PolicyDecider {
     if (facts === undefined || facts.districtId !== request.subject.districtId) {
       return { decision: { effect: "deny", reason: "no-matching-grant" }, ruleId: PSEUDO_RULE_IDS.unknownSubject };
     }
+    if (!(await this.#information.scopeExists(request.resource.scope))) {
+      return { decision: { effect: "deny", reason: "no-matching-grant" }, ruleId: PSEUDO_RULE_IDS.unknownScope };
+    }
 
     let policy: PolicySettings | undefined;
-    const policyAt = async () => (policy ??= await this.#information.effectivePolicy(request.resource.scope));
+    let relationships: readonly RelationshipFact[] | undefined;
+    const lookups: Lookups = {
+      policy: async () => (policy ??= await this.#information.effectivePolicy(request.resource.scope)),
+      // An inactive principal's roles end with its status, and so do its relationships.
+      relationships: async () =>
+        (relationships ??= facts.active ? await this.#information.relationships(request.subject.principalId, request.resource) : []),
+    };
     for (const rule of this.#rules) {
-      if (await matches(rule.when, request, facts, policyAt)) return { decision: rule.effect, ruleId: rule.id };
+      const match = await matches(rule.when, request, facts, lookups);
+      if (match === false) continue;
+      return { decision: rule.effect, ruleId: rule.id, ...(match.grantId === undefined ? {} : { grantId: match.grantId }) };
     }
     return { decision: { effect: "deny", reason: "no-matching-grant" }, ruleId: PSEUDO_RULE_IDS.noMatch };
   }
@@ -114,12 +131,19 @@ function ownershipOf(request: AuthorizationRequest): Ownership {
   return owner === request.subject.principalId ? "own" : "others";
 }
 
+/** The facts a rule may need beyond the request and subject, each read at most once per decision. */
+interface Lookups {
+  policy(): Promise<PolicySettings>;
+  relationships(): Promise<readonly RelationshipFact[]>;
+}
+
+/** Whether `when` matches, and if it named a relationship, the record that established it. */
 async function matches(
   when: RuleCondition,
   request: AuthorizationRequest,
   facts: SubjectFacts,
-  policyAt: () => Promise<PolicySettings>,
-): Promise<boolean> {
+  lookups: Lookups,
+): Promise<false | { grantId?: string }> {
   const { action, resource, context } = request;
   if (
     !includes(when.actions, action)
@@ -138,12 +162,16 @@ async function matches(
     return false;
   }
   if (when.policy !== undefined) {
-    const policy = await policyAt();
+    const policy = await lookups.policy();
     for (const [key, allowed] of Object.entries(when.policy) as [keyof PolicySettings, readonly unknown[] | undefined][]) {
       if (allowed !== undefined && !allowed.includes(policy[key])) return false;
     }
   }
-  return true;
+  if (when.relationships !== undefined) {
+    const held = (await lookups.relationships()).find((fact) => when.relationships!.includes(fact.relationship));
+    return held === undefined ? false : { grantId: held.grantId };
+  }
+  return {};
 }
 
 /** The value if it parses, else nothing: lets a malformed request still be audited field by field. */
@@ -155,7 +183,7 @@ function field<S extends z.ZodType>(schema: S, value: unknown): z.output<S> | un
 /** An identifier: no spaces or punctuation that prose would need, so free text is never copied as an ID. */
 const RESOURCE_ID_SHAPE = /^[A-Za-z0-9_.:-]{1,128}$/;
 
-function auditEvent(input: unknown, decision: Decision, ruleId: string, correlationId: string): PolicyAuditEvent {
+function auditEvent(input: unknown, decision: Decision, ruleId: string, correlationId: string, grantId: string | undefined): PolicyAuditEvent {
   // Read through optional chaining only: the input may be anything, and only identifiers and
   // vocabulary that parse are copied, so no content can reach the trail.
   const raw = input as
@@ -177,5 +205,6 @@ function auditEvent(input: unknown, decision: Decision, ruleId: string, correlat
     effect: decision.effect,
     reason: decision.effect === "allow" ? undefined : decision.reason,
     ruleId,
+    grantId,
   });
 }

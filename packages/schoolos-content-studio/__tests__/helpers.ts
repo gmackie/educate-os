@@ -1,15 +1,16 @@
 import { CatalogMirror, catalogSeedRelease, InMemoryCatalogMirrorStorage } from "@schoolos/catalog";
-import { DistrictDirectorySnapshot, DistrictId, PrincipalId, type Scope, type VerifiedPrincipal } from "@schoolos/contracts";
+import { InMemoryAcademicStore } from "@schoolos/academics";
+import { DistrictDirectorySnapshot, DistrictId, type PolicySettings, PrincipalId, type Scope, type VerifiedPrincipal } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import { expect } from "vitest";
 import {
   catalogAlignmentSource,
   ContentStudio,
   type ContentStudioOptions,
-  contentStudioAuthorizer,
   type ImportFetch,
   InMemoryContentStudioStorage,
 } from "../src/index.ts";
+import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
 
 const D = DistrictId.parse("dst_northfield");
 
@@ -24,6 +25,23 @@ export const DIRECTORY = DistrictDirectorySnapshot.parse({
     { principalId: "prn_nf-district-admin", role: "curriculum-admin", scope: { level: "district", districtId: D }, source: "local-grant" },
   ],
 });
+
+/** The policy floor the tests decide under: the conservative district defaults. */
+const FLOOR: PolicySettings = {
+  aiSpending: "capped",
+  promptsInGatewayLogs: "prohibited",
+  studentPersonalConversations: "private",
+  teacherObservation: "assigned-work-only",
+  automatedSelProfiling: "prohibited",
+  aiMonthlyCapCentsPerPrincipal: 500,
+};
+
+/** The district's one policy engine over `directory`, with the audit trail it writes. */
+export function policyEngine(directory: DistrictDirectorySnapshot) {
+  const audit = new InMemoryPolicyAuditSink();
+  const information = directoryPolicyInformation(InMemoryAcademicStore.seeded(directory), { effectivePolicy: async () => FLOOR });
+  return { engine: new PolicyEngine({ information, audit }), audit };
+}
 
 const subject = (id: string): VerifiedPrincipal => ({ principalId: PrincipalId.parse(id), districtId: D });
 
@@ -92,11 +110,12 @@ export async function studio({ routes, ...options }: Partial<ContentStudioOption
   const storage = new InMemoryContentStudioStorage();
   const web = fakeWeb(routes ?? { "https://open-lessons.example/cells": html(LICENSED_PAGE) });
   const catalog = await approvedCatalog();
+  const { engine, audit } = policyEngine(DIRECTORY);
   let tick = 0;
   const instance = new ContentStudio({
     districtId: D,
     storage,
-    authorizer: contentStudioAuthorizer(DIRECTORY),
+    authorizer: engine,
     fetch: web,
     scanner: undefined,
     alignments: catalogAlignmentSource(catalog.mirror),
@@ -104,7 +123,7 @@ export async function studio({ routes, ...options }: Partial<ContentStudioOption
     now: () => new Date(Date.UTC(2026, 9, 20, 9, tick++)).toISOString(),
     ...options,
   });
-  return { studio: instance, storage, web, catalog };
+  return { studio: instance, storage, web, catalog, audit };
 }
 
 /** Expects a promise to reject with a SchoolOsError of `code`. */
