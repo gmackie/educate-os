@@ -18,6 +18,8 @@ such as F01 and A02) lives in the SchoolOS Kanbanger project, which uses the `SC
 | `docs/schoolos/threat-model.md` | Assets, trust boundaries and threats, mapped to the acceptance tests. |
 | `docs/schoolos/licensing.md` | The repository license, SchoolOS additions, extracted PlayTrek code, and the rules for ClassBack and vendored code. |
 | `docs/schoolos/maturity.md` | How far each capability has got, from designed to certified, with the evidence. Read it before claiming support for a standard. |
+| `docs/schoolos/runbooks/` | Procedures a person runs against a live test account: [Access `sub` stability](runbooks/access-sub-stability.md) (SCHO-37) and [installer sandbox verification](runbooks/installer-sandbox-verification.md) (SCHO-66). |
+| `docs/schoolos/legal/`, `integrations/`, `spikes/` | Work gated outside the repository: the [standards counsel brief](legal/standards-licensing-counsel-brief.md) (SCHO-62), [Google Classroom](integrations/google-classroom.md) (SCHO-77), the [Cloudflare sandbox spike](spikes/assessment-sandbox-cloudflare.md) (SCHO-102), and [installer OAuth](installer-oauth.md) (SCHO-67). |
 | `docs/schoolos/hall-monitor/` | Hall Monitor moderation and AI cost governance: the reconciled plan, model ingress matrix and source specification. |
 | `packages/schoolos-contracts` | `@schoolos/contracts`: the shared vocabulary every SchoolOS package imports. Prefixed IDs for every record kind (directory, registry, artifacts, fleet instances), timestamps and opaque codes, scopes, principals with their lifecycle status and source links, verified identities, the authorization vocabulary with `Caller` and principal facts, sources of record (`Authority`, `GradeAuthority`), the audit event base, artifact types and revision references, integration sync runs, roster projections, capability manifests, configuration revisions, policy floors, errors and directory integrity checks. A type a second package needs belongs here, not in a copy. |
 | `packages/schoolos-contracts` | `@schoolos/contracts`: IDs, scopes, principals, the authorization vocabulary, capability manifests, configuration revisions, policy floors, errors, directory integrity checks and nanodollar money (`UsdNano`, ADR-0008). |
@@ -87,6 +89,7 @@ districts) landing on a different principal in each. `SCHOOLOS_HARNESS_PORT` mov
 9. [SchoolOS libraries type-check against the web-standard surface](adr/0009-typings.md)
 10. [One rule table, record-backed grants, and flags that need a second reviewer](adr/0010-one-rule-table-and-record-grants.md)
 11. [Open-source charter and module ownership](adr/0011-open-source-charter-and-module-ownership.md)
+9. [Comprehensive Learner Record issuer](adr/0009-clr-issuer.md) (Proposed)
 
 ## Rules every SchoolOS change follows
 

@@ -10,7 +10,8 @@ The decisions below were made on 2026-10-20 by reading each publisher's terms at
 that declares shipped text under terms marked `not-permitted`. Change the two together.
 
 This is an engineering reading of published terms, not legal advice. Anything marked for review
-below should go to counsel before SchoolOS distributes more than it does today.
+below should go to counsel before SchoolOS distributes more than it does today. The questions for
+counsel are in [legal/standards-licensing-counsel-brief.md](legal/standards-licensing-counsel-brief.md) (SCHO-62).
 
 ## Summary
 

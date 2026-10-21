@@ -67,6 +67,10 @@ Whichever backend is chosen, these rules from this package still apply:
 
 ## Follow-ups
 
+[spikes/assessment-sandbox-cloudflare.md](spikes/assessment-sandbox-cloudflare.md) (SCHO-102) plans
+both, against the Sandbox SDK 1.0 and Containers docs as of 2026-10-21. A flagged-off adapter
+(`createCloudflareSandbox`) and `assessmentPlanFromPack` are already in `@schoolos/assessment-ai`.
+
 - A backend spike that verifies one column of the mapping above and implements `ExecutionSandbox`
   against it.
 - Read the district plan from the installed capability pack's optional resources (roadmap §4,

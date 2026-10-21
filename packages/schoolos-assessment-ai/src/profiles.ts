@@ -1,6 +1,15 @@
 import { z } from "zod";
 import { aiHelpLayersAt, type AiHelpLevel, type DesiredState } from "@schoolos/config";
-import { compareUsdNano, POLICY_ORDERINGS, PositiveUsdNano, UsdNano, type ActivityId, type Scope } from "@schoolos/contracts";
+import {
+  compareUsdNano,
+  POLICY_ORDERINGS,
+  PositiveUsdNano,
+  UsdNano,
+  type ActivityId,
+  type CapabilityManifest,
+  type PlatformResource,
+  type Scope,
+} from "@schoolos/contracts";
 import { ExecutionProfileId } from "@schoolos/assessment-ci";
 import { ModelRef } from "./model-port.ts";
 
@@ -77,6 +86,20 @@ export type OptionalExecutionProfile = z.infer<typeof OptionalExecutionProfile>;
 export const DistrictAssessmentPlan = z.strictObject({ sandbox: z.enum(["available", "unavailable"]) });
 /** A district assessment plan. */
 export type DistrictAssessmentPlan = z.infer<typeof DistrictAssessmentPlan>;
+
+/**
+ * The district plan, read from the installed capability pack (roadmap §4) instead of being
+ * asserted by a caller: the sandbox is available only where the pack declares `ci-sandbox` among
+ * its `optionalResources` **and** the district provisioned it. A resource provisioned for a pack
+ * that never asked for it does not count.
+ */
+export function assessmentPlanFromPack(
+  manifest: Pick<CapabilityManifest, "optionalResources">,
+  provisionedOptionalResources: readonly PlatformResource[],
+): DistrictAssessmentPlan {
+  const declared = manifest.optionalResources?.includes("ci-sandbox") ?? false;
+  return { sandbox: declared && provisionedOptionalResources.includes("ci-sandbox") ? "available" : "unavailable" };
+}
 
 /**
  * Whether an activity allows AI feedback on its work:

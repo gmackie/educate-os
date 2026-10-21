@@ -70,7 +70,9 @@ sign-in seam lands in a separate PR.
 - **Caveat.** Access keeps one user record per email in a Zero Trust organization. If the IdP
   reassigns an address and the old Access user is never removed, the new holder may receive the
   same `sub`. District offboarding must therefore revoke departing users in Access, too. This
-  needs to be confirmed against a live organization before pilot.
+  needs to be confirmed against a live organization before pilot:
+  [runbooks/access-sub-stability.md](../runbooks/access-sub-stability.md) (SCHO-37) is the
+  procedure, and lists what this caveat becomes for each outcome.
 
 ## Kernel seam (SCHO-35)
 
