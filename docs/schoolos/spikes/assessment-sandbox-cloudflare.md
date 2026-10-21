@@ -95,7 +95,7 @@ runner in `__tests__/cloudflare-sandbox.test.ts`. For each job, the adapter:
    the run's remaining budget at list prices.
 3. **Refuses a job the remaining budget can't cover** without sending it.
 4. **Derives the result from what the runner reports:**
-   - `cpuMs` and `costCents` come from the reported wall-clock time and are capped at the limits;
+   - `cpuMs` and `costUsdNano` come from the reported wall-clock time and are capped at the limits;
    - a runner that reports running past its bound gets a limit result;
    - output over `maxOutputBytes` gets an `output` limit;
    - an answer with unknown fields throws, so the job is retried;
@@ -140,7 +140,7 @@ row in the results table below.
 8. **Output.** A job that writes 10 MiB with `maxOutputBytes: 4096` is aborted with
    `limit: output`, and the runner reads no more than about 4 KiB plus one chunk.
 9. **Cost.** Run 100 typical jobs (a 2-second pytest run on `lite`). Compare the adapter's
-   `costCents` with the account's Containers billing for the hour. This sets whether
+   `costUsdNano` with the account's Containers billing for the hour. This sets whether
    `CONTAINER_LIST_PRICING` needs a margin for disk and the Durable Object's own cost.
 10. **Cold start and throughput.** Measure p50 and p99 from `run()` to the answer, both cold and
     with a snapshot. Record the account's concurrent-instance ceiling as observed.

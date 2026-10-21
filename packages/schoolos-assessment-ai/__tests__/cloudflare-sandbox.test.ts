@@ -1,3 +1,4 @@
+import { usdNanoFromCents } from "@schoolos/contracts";
 import { describe, expect, it } from "vitest";
 import {
   assessmentPlanFromPack,
@@ -28,13 +29,13 @@ function fakeRunner(reply: (request: RunnerJobRequest) => Response | Promise<Res
 const completed = (extra: Record<string, unknown> = {}) =>
   Response.json({ status: "completed", exitCode: 0, tests: [{ name: "runs", passed: true }], outputBytes: 12, wallMs: 4000, ...extra });
 
-function job(profile: Partial<CiSandboxProfile> = {}, remainingCostCents = 10): SandboxJob {
+function job(profile: Partial<CiSandboxProfile> = {}, remainingCostUsdNano = usdNanoFromCents(10)): SandboxJob {
   return {
     jobId: "asr_test:check",
     entrypoint: "tests/run.py",
     files: [{ path: "a1", text: "print('hi')" }],
     profile: { ...SANDBOX_PROFILE.sandbox, ...profile },
-    remainingCostCents,
+    remainingCostUsdNano,
   };
 }
 
@@ -62,7 +63,7 @@ describe("createCloudflareSandbox", () => {
       egress: { kind: "allowlist", hosts: ["data.example"] },
       files: [{ path: "a1", text: "print('hi')" }],
     });
-    expect(result).toMatchObject({ status: "completed", exitCode: 0, cpuMs: 1000, costCents: 1 });
+    expect(result).toMatchObject({ status: "completed", exitCode: 0, cpuMs: 1000, costUsdNano: "30000" });
   });
 
   it("shortens the bound to what the run's remaining cost allows, and refuses a job it cannot afford", async () => {
@@ -71,12 +72,12 @@ describe("createCloudflareSandbox", () => {
       enabled: true,
       endpoint: ENDPOINT,
       fetch: runner.fetch,
-      pricing: { centsPerVcpuSecond: 1, centsPerGibSecond: 0 },
+      pricing: { usdNanoPerVcpuSecond: usdNanoFromCents(1), usdNanoPerGibSecond: "0" },
     });
-    await sandbox.run(job({ memoryMb: 256, cpuMs: 600_000 }, 1));
+    await sandbox.run(job({ memoryMb: 256, cpuMs: 600_000 }, usdNanoFromCents(1)));
     // lite: 1/16 cent per second, so 1 cent buys 16 s, well under the CPU bound.
     expect(runner.requests[0]?.wallClockMs).toBe(16_000);
-    expect(await sandbox.run(job({}, 0))).toMatchObject({ status: "limit-exceeded", limit: "cost" });
+    expect(await sandbox.run(job({}, "0"))).toMatchObject({ status: "limit-exceeded", limit: "cost" });
     expect(runner.requests).toHaveLength(1);
   });
 

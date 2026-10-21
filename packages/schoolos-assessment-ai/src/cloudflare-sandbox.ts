@@ -10,7 +10,7 @@
 // CPU time, a bound that keeps the job inside the run's remaining cost, and the egress rule. The
 // runner's answer is untrusted and parsed strictly; every limit is re-checked here.
 import { z } from "zod";
-import { SchoolOsError } from "@schoolos/contracts";
+import { compareUsdNano, SchoolOsError, usdNano, type UsdNano } from "@schoolos/contracts";
 import type { CiSandboxProfile } from "./profiles.ts";
 import { type ExecutionSandbox, type SandboxAvailability, type SandboxJob, type SandboxResult, unavailableSandbox } from "./sandbox.ts";
 
@@ -47,26 +47,27 @@ export const CONTAINER_INSTANCE_TYPES: readonly ContainerInstanceType[] = [
 ];
 
 /**
- * Containers list prices in cents, from https://developers.cloudflare.com/containers/pricing/
- * (2026-10-21): $0.000020 per vCPU-second and $0.0000025 per GiB-second. Disk and egress are left
- * out; the spike measures whether they matter for a test run.
+ * Containers list prices in nanodollars (ADR-0008), from
+ * https://developers.cloudflare.com/containers/pricing/ (2026-10-21): $0.000020 per vCPU-second and
+ * $0.0000025 per GiB-second. Disk and egress are left out; the spike measures whether they matter
+ * for a test run.
  */
 export interface ContainerPricing {
-  readonly centsPerVcpuSecond: number;
-  readonly centsPerGibSecond: number;
+  readonly usdNanoPerVcpuSecond: UsdNano;
+  readonly usdNanoPerGibSecond: UsdNano;
 }
 
 /** List prices at the time of writing. A district passes its own if its contract differs. */
-export const CONTAINER_LIST_PRICING: ContainerPricing = { centsPerVcpuSecond: 0.002, centsPerGibSecond: 0.00025 };
+export const CONTAINER_LIST_PRICING: ContainerPricing = { usdNanoPerVcpuSecond: "20000", usdNanoPerGibSecond: "2500" };
 
 /** The smallest instance type with at least `memoryMb` of memory, or undefined if none has. */
 export function instanceTypeFor(memoryMb: number): ContainerInstanceType | undefined {
   return CONTAINER_INSTANCE_TYPES.find((type) => type.memoryMib >= memoryMb);
 }
 
-/** The most an instance of `type` can cost per wall-clock second, in cents: active vCPU plus provisioned memory. */
-export function centsPerWallSecond(type: ContainerInstanceType, pricing: ContainerPricing): number {
-  return type.vcpu * pricing.centsPerVcpuSecond + (type.memoryMib / 1024) * pricing.centsPerGibSecond;
+/** The most an instance of `type` can cost per wall-clock second, in nanodollars: active vCPU plus provisioned memory. */
+export function usdNanoPerWallSecond(type: ContainerInstanceType, pricing: ContainerPricing): number {
+  return type.vcpu * Number(pricing.usdNanoPerVcpuSecond) + (type.memoryMib / 1024) * Number(pricing.usdNanoPerGibSecond);
 }
 
 /** What the adapter sends the runner Worker for one job. */
@@ -148,14 +149,14 @@ class CloudflareContainerSandbox implements ExecutionSandbox {
     const { profile } = job;
     const type = instanceTypeFor(profile.memoryMb);
     if (type === undefined) return { status: "unavailable", reason: `No container instance type has ${profile.memoryMb} MB of memory.` };
-    const perSecond = centsPerWallSecond(type, this.#pricing);
-    const costLimit = Math.min(profile.maxCostCents, job.remainingCostCents);
+    const perSecond = usdNanoPerWallSecond(type, this.#pricing);
+    const costLimit = compareUsdNano(profile.maxCostUsdNano, job.remainingCostUsdNano) <= 0 ? profile.maxCostUsdNano : job.remainingCostUsdNano;
     // Wall-clock time bounds CPU time from above (a job cannot use more than `vcpu` CPU-seconds per
     // second), so `cpuMs / vcpu` of wall clock is the most the CPU limit allows. The cost limit
     // allows `costLimit / perSecond` seconds. The job gets the smaller.
     const cpuBoundMs = Math.floor(profile.cpuMs / type.vcpu);
-    const costBoundMs = Math.floor((costLimit / perSecond) * 1000);
-    if (costBoundMs < 1) return limit("cost", profile, costLimit, 0, 0);
+    const costBoundMs = Math.floor((Number(costLimit) / perSecond) * 1000);
+    if (costBoundMs < 1) return limit("cost", profile, costLimit, 0, "0");
     const wallClockMs = Math.min(cpuBoundMs, costBoundMs);
     const request: RunnerJobRequest = {
       jobId: job.jobId,
@@ -174,15 +175,16 @@ class CloudflareContainerSandbox implements ExecutionSandbox {
     // running past its bound cannot make the result claim more than the profile allows.
     const wallMs = Math.min(answer.wallMs, wallClockMs);
     const cpuMs = Math.min(Math.ceil(wallMs * type.vcpu), profile.cpuMs);
-    const costCents = Math.min(Math.ceil((wallMs / 1000) * perSecond), costLimit);
+    const charged = usdNano(BigInt(Math.ceil((wallMs / 1000) * perSecond)));
+    const costUsdNano = compareUsdNano(charged, costLimit) <= 0 ? charged : costLimit;
     const clockLimit = wallClockMs === costBoundMs ? "cost" : "cpu";
     // A runner that ran past the bound it was given is not trusted with its own result.
-    if (answer.wallMs > wallClockMs) return limit(clockLimit, profile, costLimit, cpuMs, costCents);
+    if (answer.wallMs > wallClockMs) return limit(clockLimit, profile, costLimit, cpuMs, costUsdNano);
     if (answer.status === "limit-exceeded") {
-      return limit(answer.limit === "wall-clock" ? clockLimit : answer.limit, profile, costLimit, cpuMs, costCents);
+      return limit(answer.limit === "wall-clock" ? clockLimit : answer.limit, profile, costLimit, cpuMs, costUsdNano);
     }
-    if (answer.outputBytes > profile.maxOutputBytes) return limit("output", profile, costLimit, cpuMs, costCents);
-    return { status: "completed", exitCode: answer.exitCode, tests: answer.tests, outputBytes: answer.outputBytes, cpuMs, costCents };
+    if (answer.outputBytes > profile.maxOutputBytes) return limit("output", profile, costLimit, cpuMs, costUsdNano);
+    return { status: "completed", exitCode: answer.exitCode, tests: answer.tests, outputBytes: answer.outputBytes, cpuMs, costUsdNano };
   }
 
   async #post(request: RunnerJobRequest): Promise<RunnerJobResponse> {
@@ -203,13 +205,13 @@ class CloudflareContainerSandbox implements ExecutionSandbox {
   }
 }
 
-function limit(reached: "cpu" | "cost" | "memory" | "output" | "network", profile: CiSandboxProfile, costLimit: number, cpuMs: number, costCents: number): SandboxResult {
+function limit(reached: "cpu" | "cost" | "memory" | "output" | "network", profile: CiSandboxProfile, costLimit: UsdNano, cpuMs: number, costUsdNano: UsdNano): SandboxResult {
   const detail = {
     cpu: `The job used more than ${profile.cpuMs} ms of CPU time.`,
-    cost: `The job would cost more than the ${costLimit} cents the run has left.`,
+    cost: `The job would cost more than the ${costLimit} nanodollars the run has left.`,
     memory: `The job used more than ${profile.memoryMb} MB of memory.`,
     output: `The job wrote more than ${profile.maxOutputBytes} bytes of output.`,
     network: "The job tried to reach a host its profile does not allow.",
   }[reached];
-  return { status: "limit-exceeded", limit: reached, detail, cpuMs, costCents };
+  return { status: "limit-exceeded", limit: reached, detail, cpuMs, costUsdNano };
 }
