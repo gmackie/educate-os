@@ -1324,9 +1324,9 @@ it("starts each check's redeliveries where the last check's stopped, when more r
 
   await at(2 * HOUR, alarm);
   expect(github.pendingRedeliveries()).toMatchObject({ [left!]: 1 });
-  // Twenty-one repositories' enables and checks, which a loaded CI runner takes longer than the
-  // default five seconds over.
-}, 30_000);
+  // Twenty-one repositories' enables and checks, which have taken a loaded CI runner past 30 s.
+  // An explicit timeout is not raised by CI's VITEST_TEST_TIMEOUT floor, so it is set above it.
+}, 120_000);
 
 it("asks again at the next check for the redeliveries GitHub refused to make", async () => {
   const github = new FakeGitHub();

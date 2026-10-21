@@ -5641,7 +5641,7 @@ describe("Gmail pending sends", () => {
     await gatekeeper.rejectAction(1);
     expect(await snapshotKeys(values)).toEqual([]);
     expect(mailbox).toEqual([]);
-  }, 30_000);
+  }, 120_000);
 
   it("rejects oversized files without partial captures, orphan draft records or provider writes", async () => {
     const {gatekeeper, values, calls, mailbox} = mailHarness();

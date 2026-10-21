@@ -555,7 +555,7 @@ describe("Workspace Sheets XLSX", () => {
     } finally {
       vi.unstubAllGlobals();
     }
-  }, 30_000);
+  }, 120_000);
 
   it("deduplicates styles while supporting every format field and number-format category", async () => {
     const formats = {

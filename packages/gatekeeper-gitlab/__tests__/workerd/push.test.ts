@@ -378,7 +378,7 @@ describe("simulated reads over queued pushes", () => {
     await queuePush(name, props, "main", M, false, cache);
     const commits = await unwrap(await hooks().listCommitsAll(name, props, 20, stubOf(cache)));
     expect(commits.map(c => c.id)).toEqual([BASE]);
-  }, 30_000);
+  }, 120_000);
 
   it("still withholds a local merge's side parent when a restarted gatekeeper serves the stored comparison", async () => {
     // The merge request's comparison over the queued merge is stored for a while; a restart in

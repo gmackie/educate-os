@@ -279,7 +279,7 @@ describe("privacy", () => {
     expect(logged).not.toContain(secret);
     expect(logged).toContain("moderation_block");
     // Twelve full guard round trips through the ledger Durable Object: slow on shared CI runners.
-  }, 30_000);
+  }, 120_000);
 });
 
 describe("SchoolOsAiCallGuard", () => {
