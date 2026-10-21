@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // Identifiers and Codex boundaries use the Workers `crypto`, and the Content Studio sources this
+    // package type-checks through use the Workers fetch types.
+    "types": ["@cloudflare/workers-types"],
+    // Node runs these sources directly, so specifiers name the file on disk and only erasable
+    // TypeScript syntax is allowed.
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__"],
+  "exclude": ["dist", "node_modules"]
+}
