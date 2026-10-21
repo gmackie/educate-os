@@ -1,9 +1,18 @@
-import { CapabilityId, InstanceId, OpaqueCode, SemVer, UsdNano, usdNanoFromCents, UtcTimestamp } from "@schoolos/contracts";
+import {
+  CapabilityId,
+  CommercialAccountId,
+  InstanceId,
+  OpaqueCode,
+  SemVer,
+  UsdNano,
+  usdNanoFromCents,
+  UtcTimestamp,
+} from "@schoolos/contracts";
 import { z } from "zod";
 import { Base64Url } from "./encoding.ts";
 import { SignedEnvelope } from "./envelope.ts";
 import { Ed25519PublicKey, KeyId } from "./identity.ts";
-import { CommercialAccountId, SupportSessionId } from "./ids.ts";
+import { SupportSessionId } from "./ids.ts";
 
 // Every message here is a strict allow-list (ADR-0001): a field the schema doesn't name fails to
 // parse, so personal data can't ride along in an extra property. `__tests__/no-pii.test.ts` also
@@ -73,6 +82,37 @@ export const HealthProbe = z.strictObject({
 /** A health probe result. */
 export type HealthProbe = z.infer<typeof HealthProbe>;
 
+/**
+ * A district replacing its instance key, after rotating it or losing it. It is signed by the new
+ * key, which proves the district holds it, and authorized by the ownership token from the last
+ * registration or rekey, so it works even when the old key is gone. The root then revokes the old
+ * key and issues a fresh ownership token, so the same request can't be replayed.
+ */
+export const RekeyRequest = z.strictObject({
+  instanceId: InstanceId,
+  publicKey: Ed25519PublicKey,
+  ownershipToken: OwnershipToken,
+  requestedAt: UtcTimestamp,
+});
+/** A rekey request. */
+export type RekeyRequest = z.infer<typeof RekeyRequest>;
+
+/**
+ * The root's reply to a rekey. The new ownership token replaces the old one, and `lastSequence` is
+ * the highest sequence the root has accepted, so an agent that lost its counter with its key can
+ * resume above it instead of being refused as a replay.
+ */
+export const RekeyReceipt = z.strictObject({
+  instanceId: InstanceId,
+  keyId: KeyId,
+  retiredKeyId: KeyId,
+  ownershipToken: OwnershipToken,
+  lastSequence: z.number().int().min(0),
+  rekeyedAt: UtcTimestamp,
+});
+/** A rekey receipt. */
+export type RekeyReceipt = z.infer<typeof RekeyReceipt>;
+
 const HeartbeatFields = z.strictObject({
   instanceId: InstanceId,
   sequence: Sequence,
@@ -80,9 +120,10 @@ const HeartbeatFields = z.strictObject({
   releaseVersion: SemVer,
   probes: z.array(HealthProbe).max(64),
   /**
-   * The district's total AI spend for the current billing period, in nanodollars (ADR-0008).
-   * Present only when the district has opted in; it is one number for the whole instance, never
-   * per principal or class.
+   * The district's total spend on its own AI Gateway for the current billing period, in
+   * nanodollars (ADR-0008): the district's own Cloudflare bill, which SchoolOS neither funds nor
+   * resells (SCHO-98), so the root only ever reports it. Present only when the district has opted
+   * in; it is one number for the whole instance, never per principal or class.
    */
   aggregateAiSpendUsdNano: UsdNano.optional(),
   /**
@@ -173,6 +214,41 @@ export const ReleaseOffer = z
   });
 /** A release offer. */
 export type ReleaseOffer = z.infer<typeof ReleaseOffer>;
+
+/** What the district decided about a release offer. */
+export const ReleaseDecisionKind = z.enum(["approved", "declined", "deferred"]);
+/** A release decision kind. */
+export type ReleaseDecisionKind = z.infer<typeof ReleaseDecisionKind>;
+
+/**
+ * The district telling the root what it decided about one release offer, so the root's rollout
+ * view can count approvals, declines and deferrals. A decline or deferral carries a reason code,
+ * never free text, and nothing about who decided.
+ */
+export const ReleaseDecisionReport = z
+  .strictObject({
+    instanceId: InstanceId,
+    sequence: Sequence,
+    sentAt: UtcTimestamp,
+    /** The offer decided on, by the root's own offer sequence. */
+    offerSequence: Sequence,
+    releaseId: ReleaseOffer.shape.releaseId,
+    decision: ReleaseDecisionKind,
+    reasonCode: OpaqueCode.optional(),
+    /** For a deferral, when the district will look at the offer again. */
+    deferredUntil: UtcTimestamp.optional(),
+  })
+  .refine((report) => report.decision !== "declined" || report.reasonCode !== undefined, {
+    message: "expected a reason code on a decline",
+  })
+  .refine((report) => report.decision !== "approved" || report.reasonCode === undefined, {
+    message: "expected no reason code on an approval",
+  })
+  .refine((report) => (report.decision === "deferred") === (report.deferredUntil !== undefined), {
+    message: "expected deferredUntil on exactly a deferral",
+  });
+/** A release decision report. */
+export type ReleaseDecisionReport = z.infer<typeof ReleaseDecisionReport>;
 
 /**
  * The root asking for a support session on one instance. A shell for R03: the district approves

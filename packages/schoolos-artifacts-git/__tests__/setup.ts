@@ -9,7 +9,7 @@ import {
   InMemoryR2Bucket,
   LearningArtifacts,
 } from "@schoolos/learning-artifacts";
-import { directoryPolicyInformation, PolicyEngine, type PolicyAuditEvent, type PolicyAuditSink } from "@schoolos/policy";
+import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
 import { InMemoryWorkspaceStore, WorkspaceDirectory } from "@schoolos/workspaces";
 import {
   ArtifactsGitBackend,
@@ -19,14 +19,6 @@ import {
   type NewProject,
   type WorkingTree,
 } from "../src/index.ts";
-
-class MemoryAuditSink implements PolicyAuditSink {
-  readonly events: PolicyAuditEvent[] = [];
-
-  async record(event: PolicyAuditEvent): Promise<void> {
-    this.events.push(event);
-  }
-}
 
 const FLOOR: PolicySettings = {
   aiSpending: "capped",
@@ -48,7 +40,7 @@ export function setup(options: { artifacts?: boolean; snapshot?: DistrictDirecto
   const now = () => clock.now;
   const policy = new PolicyEngine({
     information: directoryPolicyInformation(academics, { effectivePolicy: async () => FLOOR }),
-    audit: new MemoryAuditSink(),
+    audit: new InMemoryPolicyAuditSink(),
   });
   const workspaces = new WorkspaceDirectory({
     workspaces: workspaceStore,

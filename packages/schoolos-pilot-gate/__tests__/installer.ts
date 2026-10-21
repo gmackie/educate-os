@@ -56,7 +56,8 @@ export interface InstallerRevocationOutcome {
  */
 export async function installerScenario(): Promise<InstallerRevocationOutcome> {
   const signer = new RootReleaseSigner(await SigningIdentity.generate());
-  const trust = await pinReleaseKeys([signer.identity.publicKey]);
+  const offline = await Promise.all([1, 2].map(() => SigningIdentity.generate()));
+  const trust = await pinReleaseKeys({ releaseKeys: [signer.identity.publicKey], root: { threshold: 2, publicKeys: offline.map((key) => key.publicKey) } });
   const artifacts = new InMemoryReleaseArtifacts();
   for (const file of filesUnder(join(TESTDATA, "fixture-bundles"))) await artifacts.addBlob(bytesOf(file));
   const goldenBytes = bytesOf(join(TESTDATA, "golden-manifest.json"));

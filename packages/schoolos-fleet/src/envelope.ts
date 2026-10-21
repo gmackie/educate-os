@@ -17,8 +17,10 @@ import {
  */
 export const FleetMessageKind = z.enum([
   "registration",
+  "rekey",
   "heartbeat",
   "management-revocation",
+  "release-decision",
   "release-offer",
   "support-session-request",
   "entitlement",
@@ -42,8 +44,9 @@ export type SignedEnvelope = z.infer<typeof SignedEnvelope>;
 
 const PROTOCOL_CONTEXT = "schoolos-fleet/v1";
 
+// `slice()` gives a view over a plain `ArrayBuffer` under every runtime's typings (ADR-0009).
 function signedBytes(kind: FleetMessageKind, payload: unknown): Uint8Array<ArrayBuffer> {
-  return new TextEncoder().encode(`${PROTOCOL_CONTEXT}\0${kind}\0${canonicalJson(payload)}`);
+  return new TextEncoder().encode(`${PROTOCOL_CONTEXT}\0${kind}\0${canonicalJson(payload)}`).slice();
 }
 
 /**

@@ -31,6 +31,7 @@ export const ID_PREFIXES = {
   learningUnit: "unt",
   evidenceContract: "evc",
   instance: "ins",
+  commercialAccount: "acct",
 } as const;
 
 /** The entity kinds that have their own identifier type. */
@@ -176,3 +177,12 @@ export type EvidenceContractId = z.infer<typeof EvidenceContractId>;
 export const InstanceId = idSchema("instance");
 /** An instance identifier. */
 export type InstanceId = z.infer<typeof InstanceId>;
+
+/**
+ * References a district's account in the root's commercial system. Contact details (names, emails,
+ * phone numbers) live only there; the fleet protocol, the installer, releases and commerce carry
+ * this opaque reference instead.
+ */
+export const CommercialAccountId = idSchema("commercialAccount");
+/** A commercial account identifier. */
+export type CommercialAccountId = z.infer<typeof CommercialAccountId>;

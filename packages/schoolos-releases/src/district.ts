@@ -1,9 +1,12 @@
 import { OpaqueCode, SchoolOsError, SemVer, UtcTimestamp, type InstanceId } from "@schoolos/contracts";
 import {
+  type EntitlementCache,
   parseWire,
+  type ReleaseDecisionDetails,
   ReleaseOffer,
   ReleaseOfferPurpose,
   Sequence,
+  SerialQueue,
   SignedEnvelope,
   verifyEnvelope,
 } from "@schoolos/fleet";
@@ -11,7 +14,7 @@ import { z } from "zod";
 import { MigrationNote, ReleaseId, ReleaseManifestStatement, Sha256Hex, verifySignedReleaseManifest } from "./manifest.ts";
 import { type DistrictReleasePolicy, DriftReport, requiredAcknowledgements } from "./policy.ts";
 import { compareSemVer } from "./semver.ts";
-import { acceptKeyAnnouncement, ReleaseTrust, trustedKey } from "./trust.ts";
+import { acceptReleaseKeySet, ReleaseTrust, trustedKey } from "./trust.ts";
 
 /** A release the district has installed. The last one in the history is what is running. */
 export const InstalledRelease = z.strictObject({
@@ -73,8 +76,10 @@ export const DistrictReleaseState = z.strictObject({
 export type DistrictReleaseState = z.infer<typeof DistrictReleaseState>;
 
 /**
- * Where the district keeps its release state. Production keeps it in a Durable Object, which
- * serializes the manager's read-modify-write cycles; it never leaves the district's account.
+ * Where the district keeps its release state. Production keeps it in a Durable Object
+ * (`DurableObjectDistrictReleaseStore`, `@schoolos/releases/durable-object-store`) that also hosts
+ * the manager; it never leaves the district's account. The manager serializes its own
+ * read-modify-write cycles, so a store only has to save atomically.
  */
 export interface DistrictReleaseStore {
   /** The stored state, if any. */
@@ -103,6 +108,11 @@ export interface DistrictReleaseManagerOptions {
   store: DistrictReleaseStore;
   /** The pinned release keys and the running release, used only when the store is empty. */
   initial: { trust: ReleaseTrust; installed: InstalledRelease };
+  /**
+   * The district's entitlement cache. While it blocks root-managed changes (lapsed or absent), the
+   * district may still review offers and roll back, but no upgrade is cleared to apply.
+   */
+  entitlement: Pick<EntitlementCache, "evaluate">;
   /** The clock. Defaults to the system clock. */
   now?: () => Date;
 }
@@ -137,13 +147,18 @@ export class DistrictReleaseManager {
   readonly #policy: DistrictReleasePolicy;
   readonly #store: DistrictReleaseStore;
   readonly #initial: DistrictReleaseManagerOptions["initial"];
+  readonly #entitlement: DistrictReleaseManagerOptions["entitlement"];
   readonly #now: () => Date;
+  // Every step that reads, changes and saves the state runs here, so two requests to the hosting
+  // Durable Object can't interleave and lose one's change (an offer's signatures are awaited).
+  readonly #queue = new SerialQueue();
 
   constructor(options: DistrictReleaseManagerOptions) {
     this.#instanceId = options.instanceId;
     this.#policy = options.policy;
     this.#store = options.store;
     this.#initial = options.initial;
+    this.#entitlement = options.entitlement;
     this.#now = options.now ?? (() => new Date());
   }
 
@@ -160,12 +175,17 @@ export class DistrictReleaseManager {
     });
   }
 
-  /** Accepts a key rotation announced by the root, signed by a key the district already trusts. */
-  async acceptKeyAnnouncement(input: unknown): Promise<ReleaseTrust> {
-    const state = await this.state();
-    state.trust = await acceptKeyAnnouncement(state.trust, input, this.#now());
-    await this.#save(state);
-    return state.trust;
+  /**
+   * Accepts a release key set signed by a threshold of the pinned offline root keys: a rotation,
+   * or an emergency revocation of a stolen release key (see {@link acceptReleaseKeySet}).
+   */
+  async acceptReleaseKeySet(input: unknown): Promise<ReleaseTrust> {
+    return this.#queue.run(async () => {
+      const state = await this.state();
+      state.trust = await acceptReleaseKeySet(state.trust, input, this.#now());
+      await this.#save(state);
+      return state.trust;
+    });
   }
 
   /**
@@ -178,52 +198,54 @@ export class DistrictReleaseManager {
    * the policy auto-applies it, and `pending` otherwise. Older open offers are superseded.
    */
   async receiveOffer(input: unknown): Promise<OfferRecord> {
-    const now = this.#now();
-    const state = await this.state();
-    const envelope = parseWire(SignedEnvelope, input, "envelope");
-    const offer = parseWire(ReleaseOffer, envelope.payload, "release offer");
-    const key = trustedKey(state.trust, envelope.keyId, now);
-    if (key === undefined || !(await verifyEnvelope(envelope, "release-offer", key.publicKey))) {
-      throw new SchoolOsError("unauthenticated", "release offer signature not accepted");
-    }
-    if (offer.instanceId !== this.#instanceId) throw new SchoolOsError("forbidden", "release offer is for another instance");
-    if (now.getTime() >= Date.parse(offer.expiresAt)) throw new SchoolOsError("unauthenticated", "release offer has expired");
-    if (offer.offerSequence <= state.lastOfferSequence) throw new SchoolOsError("conflict", "replayed or out-of-order release offer");
+    return this.#queue.run(async () => {
+      const now = this.#now();
+      const state = await this.state();
+      const envelope = parseWire(SignedEnvelope, input, "envelope");
+      const offer = parseWire(ReleaseOffer, envelope.payload, "release offer");
+      const key = trustedKey(state.trust, envelope.keyId, now);
+      if (key === undefined || !(await verifyEnvelope(envelope, "release-offer", key.publicKey))) {
+        throw new SchoolOsError("unauthenticated", "release offer signature not accepted");
+      }
+      if (offer.instanceId !== this.#instanceId) throw new SchoolOsError("forbidden", "release offer is for another instance");
+      if (now.getTime() >= Date.parse(offer.expiresAt)) throw new SchoolOsError("unauthenticated", "release offer has expired");
+      if (offer.offerSequence <= state.lastOfferSequence) throw new SchoolOsError("conflict", "replayed or out-of-order release offer");
 
-    const statement = await verifySignedReleaseManifest(offer.signedManifest, state.trust, { now });
-    if (
-      statement.releaseId !== offer.releaseId ||
-      statement.version !== offer.releaseVersion ||
-      statement.channel !== offer.channel ||
-      statement.manifestSha256 !== offer.manifestSha256
-    ) {
-      throw new SchoolOsError("unauthenticated", "release offer does not match its signed manifest");
-    }
-    if (offer.channel !== this.#policy.channel) {
-      throw new SchoolOsError("forbidden", `the district subscribes to ${this.#policy.channel}, not ${offer.channel}`);
-    }
-    assertVersionStep(offer.purpose, statement, state.installed);
+      const statement = await verifySignedReleaseManifest(offer.signedManifest, state.trust, { now });
+      if (
+        statement.releaseId !== offer.releaseId ||
+        statement.version !== offer.releaseVersion ||
+        statement.channel !== offer.channel ||
+        statement.manifestSha256 !== offer.manifestSha256
+      ) {
+        throw new SchoolOsError("unauthenticated", "release offer does not match its signed manifest");
+      }
+      if (offer.channel !== this.#policy.channel) {
+        throw new SchoolOsError("forbidden", `the district subscribes to ${this.#policy.channel}, not ${offer.channel}`);
+      }
+      assertVersionStep(offer.purpose, statement, state.installed);
 
-    for (const record of state.offers) if (OPEN.includes(record.status)) record.status = "superseded";
-    const declined = state.declined.find((d) => d.releaseId === statement.releaseId);
-    const record: OfferRecord = {
-      offerSequence: offer.offerSequence,
-      purpose: offer.purpose,
-      statement,
-      receivedAt: now.toISOString(),
-      expiresAt: offer.expiresAt,
-      status: "pending",
-      acknowledgedMigrations: [],
-    };
-    if (declined !== undefined) {
-      Object.assign(record, { status: "declined", decidedBy: "district", decidedAt: declined.declinedAt, declineReason: declined.reason });
-    } else if (this.#autoApplies(offer.purpose, statement)) {
-      Object.assign(record, { status: "approved", decidedBy: "policy", decidedAt: now.toISOString() });
-    }
-    state.lastOfferSequence = offer.offerSequence;
-    state.offers.push(record);
-    await this.#save(state);
-    return record;
+      for (const record of state.offers) if (OPEN.includes(record.status)) record.status = "superseded";
+      const declined = state.declined.find((d) => d.releaseId === statement.releaseId);
+      const record: OfferRecord = {
+        offerSequence: offer.offerSequence,
+        purpose: offer.purpose,
+        statement,
+        receivedAt: now.toISOString(),
+        expiresAt: offer.expiresAt,
+        status: "pending",
+        acknowledgedMigrations: [],
+      };
+      if (declined !== undefined) {
+        Object.assign(record, { status: "declined", decidedBy: "district", decidedAt: declined.declinedAt, declineReason: declined.reason });
+      } else if (this.#autoApplies(offer.purpose, statement)) {
+        Object.assign(record, { status: "approved", decidedBy: "policy", decidedAt: now.toISOString() });
+      }
+      state.lastOfferSequence = offer.offerSequence;
+      state.offers.push(record);
+      await this.#save(state);
+      return record;
+    });
   }
 
   /**
@@ -232,27 +254,29 @@ export class DistrictReleaseManager {
    * offer the policy already approved records the district's acknowledgements on it.
    */
   async approve(offerSequence: number, decision: ApprovalDecision): Promise<OfferRecord> {
-    const now = this.#now();
-    const state = await this.state();
-    const record = openRecord(state, offerSequence);
-    if (now.getTime() >= Date.parse(record.expiresAt)) throw new SchoolOsError("conflict", "release offer has expired");
-    if (record.purpose === "rollback" && decision.asRollback !== true) {
-      throw new SchoolOsError("policy-violation", "a rollback must be approved explicitly as a rollback");
-    }
-    const drift = checkedDrift(record, decision.drift);
-    const acknowledged = new Set(decision.acknowledgedMigrations ?? []);
-    const missing = requiredAcknowledgements(record.statement, drift).filter((id) => !acknowledged.has(id));
-    if (missing.length > 0) {
-      throw new SchoolOsError("policy-violation", `irreversible migrations need acknowledgement: ${missing.join(", ")}`);
-    }
-    Object.assign(record, {
-      status: "approved",
-      decidedBy: "district",
-      decidedAt: now.toISOString(),
-      acknowledgedMigrations: [...acknowledged].toSorted(),
+    return this.#queue.run(async () => {
+      const now = this.#now();
+      const state = await this.state();
+      const record = openRecord(state, offerSequence);
+      if (now.getTime() >= Date.parse(record.expiresAt)) throw new SchoolOsError("conflict", "release offer has expired");
+      if (record.purpose === "rollback" && decision.asRollback !== true) {
+        throw new SchoolOsError("policy-violation", "a rollback must be approved explicitly as a rollback");
+      }
+      const drift = checkedDrift(record, decision.drift);
+      const acknowledged = new Set(decision.acknowledgedMigrations ?? []);
+      const missing = requiredAcknowledgements(record.statement, drift).filter((id) => !acknowledged.has(id));
+      if (missing.length > 0) {
+        throw new SchoolOsError("policy-violation", `irreversible migrations need acknowledgement: ${missing.join(", ")}`);
+      }
+      Object.assign(record, {
+        status: "approved",
+        decidedBy: "district",
+        decidedAt: now.toISOString(),
+        acknowledgedMigrations: [...acknowledged].toSorted(),
+      });
+      await this.#save(state);
+      return record;
     });
-    await this.#save(state);
-    return record;
   }
 
   /**
@@ -261,79 +285,95 @@ export class DistrictReleaseManager {
    * rescinds it.
    */
   async decline(offerSequence: number, reason: string): Promise<OfferRecord> {
-    const reasonCode = parseWire(OpaqueCode, reason, "decline reason");
-    const now = this.#now().toISOString();
-    const state = await this.state();
-    const record = openRecord(state, offerSequence);
-    Object.assign(record, { status: "declined", decidedBy: "district", decidedAt: now, declineReason: reasonCode });
-    if (!state.declined.some((d) => d.releaseId === record.statement.releaseId)) {
-      state.declined.push({ releaseId: record.statement.releaseId, reason: reasonCode, declinedAt: now });
-    }
-    await this.#save(state);
-    return record;
+    return this.#queue.run(async () => {
+      const reasonCode = parseWire(OpaqueCode, reason, "decline reason");
+      const now = this.#now().toISOString();
+      const state = await this.state();
+      const record = openRecord(state, offerSequence);
+      Object.assign(record, { status: "declined", decidedBy: "district", decidedAt: now, declineReason: reasonCode });
+      if (!state.declined.some((d) => d.releaseId === record.statement.releaseId)) {
+        state.declined.push({ releaseId: record.statement.releaseId, reason: reasonCode, declinedAt: now });
+      }
+      await this.#save(state);
+      return record;
+    });
   }
 
   /** Defers an offer until a later time. A deferred offer is not applied, even under an auto-apply policy. */
   async defer(offerSequence: number, until: Date): Promise<OfferRecord> {
-    const state = await this.state();
-    const record = openRecord(state, offerSequence);
-    Object.assign(record, {
-      status: "deferred",
-      decidedBy: "district",
-      decidedAt: this.#now().toISOString(),
-      deferredUntil: until.toISOString(),
+    return this.#queue.run(async () => {
+      const state = await this.state();
+      const record = openRecord(state, offerSequence);
+      Object.assign(record, {
+        status: "deferred",
+        decidedBy: "district",
+        decidedAt: this.#now().toISOString(),
+        deferredUntil: until.toISOString(),
+      });
+      await this.#save(state);
+      return record;
     });
-    await this.#save(state);
-    return record;
   }
 
   /** Withdraws the district's decline of a release; its declined offers become pending again. */
   async rescindDecline(releaseId: string): Promise<void> {
-    const state = await this.state();
-    state.declined = state.declined.filter((d) => d.releaseId !== releaseId);
-    for (const record of state.offers) {
-      if (record.status === "declined" && record.statement.releaseId === releaseId) {
-        record.status = "pending";
-        delete record.declineReason;
+    return this.#queue.run(async () => {
+      const state = await this.state();
+      state.declined = state.declined.filter((d) => d.releaseId !== releaseId);
+      for (const record of state.offers) {
+        if (record.status === "declined" && record.statement.releaseId === releaseId) {
+          record.status = "pending";
+          delete record.declineReason;
+        }
       }
-    }
-    await this.#save(state);
+      await this.#save(state);
+    });
   }
 
   /**
    * Clears an approved offer to be applied now, against a fresh drift report: the account may have
    * changed since approval, and a pending migration nobody acknowledged stops the apply. This is
-   * the only way to an installable release; anything not `approved` is refused.
+   * the only way to an installable release; anything not `approved` is refused. While the
+   * entitlement cache blocks root-managed changes, an upgrade is refused (`policy-violation`) but a
+   * rollback still goes ahead: going back to a release the district already ran is never a new
+   * root-managed change, and it may be what keeps a broken instance usable.
    */
   async authorizeApply(offerSequence: number, drift: DriftReport): Promise<AuthorizedRelease> {
-    const state = await this.state();
-    const record = state.offers.find((r) => r.offerSequence === offerSequence);
-    if (record?.status !== "approved") throw new SchoolOsError("forbidden", "the district has not approved this release offer");
-    const checked = checkedDrift(record, drift);
-    const acknowledged = new Set(record.acknowledgedMigrations);
-    const missing = requiredAcknowledgements(record.statement, checked).filter((id) => !acknowledged.has(id));
-    if (missing.length > 0) {
-      throw new SchoolOsError("policy-violation", `irreversible migrations need acknowledgement: ${missing.join(", ")}`);
-    }
-    return { offerSequence, purpose: record.purpose, statement: record.statement };
+    return this.#queue.run(async () => {
+      const state = await this.state();
+      const record = state.offers.find((r) => r.offerSequence === offerSequence);
+      if (record?.status !== "approved") throw new SchoolOsError("forbidden", "the district has not approved this release offer");
+      const checked = checkedDrift(record, drift);
+      const acknowledged = new Set(record.acknowledgedMigrations);
+      const missing = requiredAcknowledgements(record.statement, checked).filter((id) => !acknowledged.has(id));
+      if (missing.length > 0) {
+        throw new SchoolOsError("policy-violation", `irreversible migrations need acknowledgement: ${missing.join(", ")}`);
+      }
+      if (record.purpose === "upgrade" && (await this.#entitlement.evaluate()).rootManagedChanges === "blocked") {
+        throw new SchoolOsError("policy-violation", "the entitlement has lapsed: only a rollback can be applied");
+      }
+      return { offerSequence, purpose: record.purpose, statement: record.statement };
+    });
   }
 
   /** Records that an authorized release was applied; it becomes the running release. */
   async recordInstalled(offerSequence: number): Promise<InstalledRelease> {
-    const state = await this.state();
-    const record = state.offers.find((r) => r.offerSequence === offerSequence);
-    if (record?.status !== "approved") throw new SchoolOsError("forbidden", "the district has not approved this release offer");
-    record.status = "installed";
-    const installed: InstalledRelease = {
-      releaseId: record.statement.releaseId,
-      version: record.statement.version,
-      minimumCompatibleVersion: record.statement.minimumCompatibleVersion,
-      manifestSha256: record.statement.manifestSha256,
-      installedAt: this.#now().toISOString(),
-    };
-    state.installed.push(installed);
-    await this.#save(state);
-    return installed;
+    return this.#queue.run(async () => {
+      const state = await this.state();
+      const record = state.offers.find((r) => r.offerSequence === offerSequence);
+      if (record?.status !== "approved") throw new SchoolOsError("forbidden", "the district has not approved this release offer");
+      record.status = "installed";
+      const installed: InstalledRelease = {
+        releaseId: record.statement.releaseId,
+        version: record.statement.version,
+        minimumCompatibleVersion: record.statement.minimumCompatibleVersion,
+        manifestSha256: record.statement.manifestSha256,
+        installedAt: this.#now().toISOString(),
+      };
+      state.installed.push(installed);
+      await this.#save(state);
+      return installed;
+    });
   }
 
   #autoApplies(purpose: ReleaseOfferPurpose, statement: ReleaseManifestStatement): boolean {
@@ -345,6 +385,25 @@ export class DistrictReleaseManager {
 
   async #save(state: DistrictReleaseState): Promise<void> {
     await this.#store.save(DistrictReleaseState.parse(state));
+  }
+}
+
+/**
+ * What the district reports to the root about an offer it has decided on (the fleet's signed
+ * `release-decision` message, sent with `DistrictAgent.reportReleaseDecision`), or undefined for an
+ * offer that awaits a decision or was superseded or installed. Reason codes only.
+ */
+export function releaseDecisionFor(record: OfferRecord): ReleaseDecisionDetails | undefined {
+  const base = { offerSequence: record.offerSequence, releaseId: record.statement.releaseId };
+  switch (record.status) {
+    case "approved":
+      return { ...base, decision: "approved" };
+    case "declined":
+      return { ...base, decision: "declined", reasonCode: record.declineReason };
+    case "deferred":
+      return { ...base, decision: "deferred", deferredUntil: record.deferredUntil };
+    default:
+      return undefined;
   }
 }
 

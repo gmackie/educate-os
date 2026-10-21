@@ -1,5 +1,4 @@
-import { InstanceId, OpaqueCode, UtcTimestamp } from "@schoolos/contracts";
-import { CommercialAccountId } from "@schoolos/fleet";
+import { CommercialAccountId, InstanceId, OpaqueCode, UtcTimestamp } from "@schoolos/contracts";
 import { z } from "zod";
 import { FinanceAuditEventId, GrantId, InvoiceId, PaymentId, PurchaseOrderId, SubscriptionId } from "./ids.ts";
 import { SignedCents } from "./money.ts";

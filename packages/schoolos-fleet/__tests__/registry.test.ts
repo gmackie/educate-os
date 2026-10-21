@@ -125,8 +125,12 @@ describe("registration", () => {
     await registry.register(registration);
 
     expect((await rejection(registry.register(registration))).code).toBe("conflict");
+    // Under its own account the commercial system never confirmed the instance; under Northfield's
+    // account (an ID is not a secret) the instance is already taken.
     const squatter = await makeDistrict(RIVERBEND, clock, { instanceId: northfield.instanceId });
-    expect((await rejection(registry.register(await squatter.registration()))).code).toBe("conflict");
+    expect((await rejection(registry.register(await squatter.registration()))).code).toBe("forbidden");
+    const impostor = await makeDistrict(NORTHFIELD, clock);
+    expect((await rejection(registry.register(await impostor.registration()))).code).toBe("conflict");
   });
 
   it("refuses a key already registered to another instance", async () => {

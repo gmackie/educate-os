@@ -111,7 +111,13 @@ export async function signReleaseManifest(
     issuedAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + (options.validDays ?? DEFAULT_STATEMENT_DAYS) * DAY_MS).toISOString(),
   });
-  await verifySignedReleaseManifest(signed, await pinReleaseKeys([identity.publicKey]), { now });
+  // A manifest verifies against the release keys alone; the root quorum only governs key sets, so
+  // the self-check pins the signing key in that slot too.
+  const trust = await pinReleaseKeys({
+    releaseKeys: [identity.publicKey],
+    root: { threshold: 1, publicKeys: [identity.publicKey] },
+  });
+  await verifySignedReleaseManifest(signed, trust, { now });
   return signed;
 }
 

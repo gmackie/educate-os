@@ -1,8 +1,10 @@
-import { CapabilityId, InstanceId, type DistrictDirectorySnapshot, SchoolOsError } from "@schoolos/contracts";
+import { CapabilityId, CommercialAccountId, InstanceId, type DistrictDirectorySnapshot, SchoolOsError } from "@schoolos/contracts";
 import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
 import {
-  CommercialAccountId,
   DistrictAgent,
+  type EntitlementEvaluation,
+  type EntitlementState,
+  FakeCommercialAccountVerifier,
   type HealthProbe,
   InMemoryInstanceRegistryStorage,
   InMemorySequenceCounter,
@@ -77,10 +79,32 @@ export function baseline(clock: Clock, overrides: Partial<InstalledRelease> = {}
   };
 }
 
-/** The root's release signer and the trust a district pins for it. */
-export async function makeSigner(): Promise<{ signer: RootReleaseSigner; trust: ReleaseTrust }> {
+/**
+ * The root's online release signer, its three offline root keys (any two of which sign a release
+ * key set), and the trust a district pins for them.
+ */
+export async function makeSigner(): Promise<{ signer: RootReleaseSigner; rootKeys: SigningIdentity[]; trust: ReleaseTrust }> {
   const identity = await SigningIdentity.generate();
-  return { signer: new RootReleaseSigner(identity), trust: await pinReleaseKeys([identity.publicKey]) };
+  const rootKeys = await Promise.all([1, 2, 3].map(() => SigningIdentity.generate()));
+  const trust = await pinReleaseKeys({
+    releaseKeys: [identity.publicKey],
+    root: { threshold: 2, publicKeys: rootKeys.map((key) => key.publicKey) },
+  });
+  return { signer: new RootReleaseSigner(identity), rootKeys, trust };
+}
+
+/** An entitlement cache stand-in whose state the test sets. */
+export function entitlementIn(initial: EntitlementState = "valid") {
+  let state = initial;
+  return {
+    set(next: EntitlementState) {
+      state = next;
+    },
+    async evaluate(): Promise<EntitlementEvaluation> {
+      const blocked = state === "lapsed" || state === "absent";
+      return { state, rootManagedChanges: blocked ? "blocked" : "allowed", classroom: "unaffected", capabilityIds: [] };
+    },
+  };
 }
 
 /** The instance ID of a synthetic district. */
@@ -95,14 +119,16 @@ export function makeManager(
   options: { policy?: DistrictReleasePolicy; installed?: InstalledRelease; instanceId?: InstanceId } = {},
 ) {
   const store = new InMemoryDistrictReleaseStore();
+  const entitlement = entitlementIn();
   const manager = new DistrictReleaseManager({
     instanceId: options.instanceId ?? instanceIdFor(NORTHFIELD),
     policy: options.policy ?? { channel: "stable", autoApply: false },
     store,
     initial: { trust, installed: options.installed ?? baseline(clock) },
+    entitlement,
     now: clock.now,
   });
-  return { manager, store };
+  return { manager, store, entitlement };
 }
 
 /** An offer signed directly by a signer, bypassing the registry, as a compromised root could. */
@@ -162,15 +188,20 @@ export async function registeredDistrict(
     contactRole: "district-technology-admin",
     commercialAccountId: CommercialAccountId.parse(`acct_${slug}`),
   }));
-  const { manager } = makeManager(clock, trust, { policy: { channel, autoApply: false }, instanceId });
+  const { manager, entitlement } = makeManager(clock, trust, { policy: { channel, autoApply: false }, instanceId });
   const heartbeat = (releaseVersion: string, probes: HealthProbe[]) => agent.heartbeat({ releaseVersion, probes });
   const revokeManagement = async () => registry.revoke(await agent.revokeManagement(receipt.ownershipToken));
-  return { instanceId, agent, manager, heartbeat, revokeManagement };
+  return { instanceId, agent, manager, entitlement, heartbeat, revokeManagement };
 }
 
-/** A root registry on in-memory storage. */
+/** A root registry on in-memory storage, whose commercial system vouches for both synthetic districts. */
 export function makeRegistry(clock: Clock): InstanceRegistry {
-  return new InstanceRegistry({ storage: new InMemoryInstanceRegistryStorage(), now: clock.now });
+  const accountVerifier = new FakeCommercialAccountVerifier([NORTHFIELD, RIVERBEND].map((snapshot) => ({
+    commercialAccountId: CommercialAccountId.parse(`acct_${snapshot.district.id.slice("dst_".length)}`),
+    verifiedContactRoles: ["district-technology-admin"],
+    confirmedInstanceIds: [instanceIdFor(snapshot)],
+  })));
+  return new InstanceRegistry({ storage: new InMemoryInstanceRegistryStorage(), accountVerifier, now: clock.now });
 }
 
 /** The SchoolOsError a promise rejects with. */

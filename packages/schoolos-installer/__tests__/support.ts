@@ -3,13 +3,14 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
 import {
+  FakeCommercialAccountVerifier,
   InMemoryInstanceRegistryStorage,
   InstanceRegistry,
   type SignedEnvelope,
   SigningIdentity,
 } from "@schoolos/fleet";
 import { pinReleaseKeys, RootReleaseSigner } from "@schoolos/releases";
-import type { DistrictDirectorySnapshot } from "@schoolos/contracts";
+import { CommercialAccountId, type DistrictDirectorySnapshot, InstanceId } from "@schoolos/contracts";
 import {
   DistrictInstallConfig,
   FakeCloudflare,
@@ -42,8 +43,13 @@ function filesUnder(dir: string): string[] {
 
 /** The synthetic root's release-signing key, and the trust every test district pins for it. */
 export const ROOT_SIGNER = new RootReleaseSigner(await SigningIdentity.generate());
+/** The root's offline keys, any two of which sign a release key set. */
+export const ROOT_OFFLINE_KEYS = await Promise.all([1, 2, 3].map(() => SigningIdentity.generate()));
 /** The release keys a test district pins. */
-export const ROOT_TRUST = await pinReleaseKeys([ROOT_SIGNER.identity.publicKey]);
+export const ROOT_TRUST = await pinReleaseKeys({
+  releaseKeys: [ROOT_SIGNER.identity.publicKey],
+  root: { threshold: 2, publicKeys: ROOT_OFFLINE_KEYS.map((key) => key.publicKey) },
+});
 
 /** A release as the installer receives it: manifest bytes, the root's signed statement and the blobs. */
 export interface TestRelease {
@@ -165,10 +171,18 @@ export function tokenFor(fake: FakeCloudflare, mode: TokenProvider["mode"]) {
   return { token, tokens: staticTokenProvider(mode, token) };
 }
 
-/** The root's registry, reachable in process until `shutDown`. */
+/** The root's registry, reachable in process until `shutDown`. Its commercial system vouches for both synthetic districts. */
 export function makeRoot() {
   const storage = new InMemoryInstanceRegistryStorage();
-  const registry = new InstanceRegistry({ storage });
+  const accountVerifier = new FakeCommercialAccountVerifier([NORTHFIELD, RIVERBEND].map((snapshot) => {
+    const slug = snapshot.district.id.slice("dst_".length);
+    return {
+      commercialAccountId: CommercialAccountId.parse(`acct_${slug}`),
+      verifiedContactRoles: ["district-technology-admin"],
+      confirmedInstanceIds: [InstanceId.parse(`ins_${slug}`)],
+    };
+  }));
+  const registry = new InstanceRegistry({ storage, accountVerifier });
   let up = true;
   const endpoint: RegistryEndpoint = {
     async register(envelope: SignedEnvelope) {

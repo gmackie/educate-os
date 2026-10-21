@@ -1,5 +1,4 @@
-import { CapabilityId, InstanceId, OpaqueCode, UtcTimestamp } from "@schoolos/contracts";
-import { CommercialAccountId } from "@schoolos/fleet";
+import { CapabilityId, CommercialAccountId, InstanceId, OpaqueCode, UtcTimestamp } from "@schoolos/contracts";
 import { z } from "zod";
 import {
   ContactRef,

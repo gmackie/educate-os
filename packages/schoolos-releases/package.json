@@ -2,10 +2,11 @@
   "name": "@schoolos/releases",
   "version": "0.1.0",
   "private": true,
-  "description": "SchoolOS signed releases (roadmap R03): root-signed release manifests with rotating pinned keys, release channels, signed offers the district verifies and approves, declines or defers, and the root's staged rollout that halts on failing fleet health and offers rollback. A library, not a deployable Worker.",
+  "description": "SchoolOS signed releases (roadmap R03): root-signed release manifests, release keys that change only through a key set signed by a threshold of offline root keys, release channels, signed offers the district verifies and approves, declines or defers, upgrades gated on the entitlement cache, and the root's staged rollout that halts on failing fleet health, offers rollback and counts district decisions. Its `./durable-object-store` entry point holds the Durable Object SQLite stores. A library, not a deployable Worker.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./durable-object-store": "./src/durable-object-store.ts"
   },
   "dependencies": {
     "@schoolos/contracts": "workspace:*",
@@ -13,6 +14,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
     "@gadgets/scripts": "workspace:*",
     "@schoolos/fixtures": "workspace:*",
     "@types/node": "^26.1.0",

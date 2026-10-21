@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { EnrollmentId, OfferingId, PrincipalId, TermId, type AuthorityMap, type Caller, type DistrictDirectorySnapshot } from "@schoolos/contracts";
 import { InMemoryAcademicStore } from "@schoolos/academics";
 import { NORTHFIELD } from "@schoolos/fixtures";
-import { createAcademicsWithPolicy } from "../src/index.ts";
-import { MemoryAuditSink, P, SHARING_FLOOR } from "./setup.ts";
+import { createAcademicsWithPolicy, InMemoryPolicyAuditSink } from "../src/index.ts";
+import { P, SHARING_FLOOR } from "./setup.ts";
 
 const ALL_LOCAL: AuthorityMap = {
   school: "local",
@@ -16,7 +16,7 @@ const ALL_LOCAL: AuthorityMap = {
 
 function academics(snapshot: DistrictDirectorySnapshot = NORTHFIELD) {
   const store = InMemoryAcademicStore.seeded(snapshot);
-  const audit = new MemoryAuditSink();
+  const audit = new InMemoryPolicyAuditSink();
   const built = createAcademicsWithPolicy({
     store,
     authority: ALL_LOCAL,

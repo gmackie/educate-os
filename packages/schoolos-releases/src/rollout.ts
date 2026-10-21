@@ -2,7 +2,10 @@ import { InstanceId, OpaqueCode, SchoolOsError, SemVer, UtcTimestamp } from "@sc
 import {
   type InstanceRegistry,
   ReleaseChannel,
+  ReleaseDecisionKind,
+  type ReleaseDecisionReport,
   type ReleaseOfferPurpose,
+  SerialQueue,
   SignedEnvelope,
 } from "@schoolos/fleet";
 import { z } from "zod";
@@ -42,6 +45,8 @@ export const Rollout = z.strictObject({
   previousReleaseId: ReleaseId.optional(),
   haltedAt: UtcTimestamp.optional(),
   haltReason: OpaqueCode.optional(),
+  /** What each instance last reported deciding about this rollout's release. */
+  decisions: z.record(InstanceId, ReleaseDecisionKind),
 });
 /** A rollout. */
 export type Rollout = z.infer<typeof Rollout>;
@@ -55,7 +60,12 @@ export const ChannelState = z.strictObject({
 /** A channel's state. */
 export type ChannelState = z.infer<typeof ChannelState>;
 
-/** Where the root keeps rollout state. The private root service implements it over its database. */
+/**
+ * Where the root keeps rollout state: `DurableObjectRolloutStore`
+ * (`@schoolos/releases/durable-object-store`) in a Durable Object that also hosts the controller.
+ * The controller serializes its read-modify-write cycles; the store must make
+ * {@link RolloutStore.nextOfferSequence} atomic on its own, so no two offers share a sequence.
+ */
 export interface RolloutStore {
   /** A channel's state; an empty one if nothing was stored. */
   channel(channel: ReleaseChannel): Promise<ChannelState>;
@@ -113,6 +123,8 @@ export class RolloutController {
   readonly #haltPolicy: HaltPolicy;
   readonly #offerTtlMs: number;
   readonly #now: () => Date;
+  // Every step that reads, changes and saves a channel runs here (see `SerialQueue`).
+  readonly #queue = new SerialQueue();
 
   constructor(options: RolloutControllerOptions) {
     this.#registry = options.registry;
@@ -125,11 +137,13 @@ export class RolloutController {
 
   /** Publishes a signed release manifest on the channel its statement names. */
   async publish(signedManifest: SignedEnvelope): Promise<ReleaseManifestStatement> {
-    const statement = ReleaseManifestStatement.parse(signedManifest.payload);
-    const state = await this.#store.channel(statement.channel);
-    state.releases[statement.releaseId] = signedManifest;
-    await this.#store.saveChannel(statement.channel, state);
-    return statement;
+    return this.#queue.run(async () => {
+      const statement = ReleaseManifestStatement.parse(signedManifest.payload);
+      const state = await this.#store.channel(statement.channel);
+      state.releases[statement.releaseId] = signedManifest;
+      await this.#store.saveChannel(statement.channel, state);
+      return statement;
+    });
   }
 
   /**
@@ -138,36 +152,59 @@ export class RolloutController {
    * own rollback target carries over.
    */
   async startRollout(channel: ReleaseChannel, releaseId: string, target: RolloutTarget): Promise<Rollout> {
-    const state = await this.#store.channel(channel);
-    const signed = state.releases[releaseId];
-    if (signed === undefined) throw new SchoolOsError("not-found", `release ${releaseId} is not published on ${channel}`);
-    const previous = state.rollout;
-    const previousReleaseId = previous?.status === "active" ? previous.releaseId : previous?.previousReleaseId;
-    state.rollout = Rollout.parse({
-      channel,
-      releaseId,
-      version: ReleaseManifestStatement.parse(signed.payload).version,
-      target: RolloutTarget.parse(target),
-      status: "active",
-      startedAt: this.#now().toISOString(),
-      ...(previousReleaseId === undefined ? {} : { previousReleaseId }),
+    return this.#queue.run(async () => {
+      const state = await this.#store.channel(channel);
+      const signed = state.releases[releaseId];
+      if (signed === undefined) throw new SchoolOsError("not-found", `release ${releaseId} is not published on ${channel}`);
+      const previous = state.rollout;
+      const previousReleaseId = previous?.status === "active" ? previous.releaseId : previous?.previousReleaseId;
+      state.rollout = Rollout.parse({
+        channel,
+        releaseId,
+        version: ReleaseManifestStatement.parse(signed.payload).version,
+        target: RolloutTarget.parse(target),
+        status: "active",
+        startedAt: this.#now().toISOString(),
+        decisions: {},
+        ...(previousReleaseId === undefined ? {} : { previousReleaseId }),
+      });
+      await this.#store.saveChannel(channel, state);
+      return state.rollout;
     });
-    await this.#store.saveChannel(channel, state);
-    return state.rollout;
   }
 
   /** Changes an active rollout's target, e.g. from a canary list to a percentage, then to 100%. */
   async widen(channel: ReleaseChannel, target: RolloutTarget): Promise<Rollout> {
-    const state = await this.#store.channel(channel);
-    if (state.rollout?.status !== "active") throw new SchoolOsError("conflict", `no active rollout on ${channel}`);
-    state.rollout.target = RolloutTarget.parse(target);
-    await this.#store.saveChannel(channel, state);
-    return state.rollout;
+    return this.#queue.run(async () => {
+      const state = await this.#store.channel(channel);
+      if (state.rollout?.status !== "active") throw new SchoolOsError("conflict", `no active rollout on ${channel}`);
+      state.rollout.target = RolloutTarget.parse(target);
+      await this.#store.saveChannel(channel, state);
+      return state.rollout;
+    });
   }
 
   /** The channel's current rollout, if any. */
   async rollout(channel: ReleaseChannel): Promise<Rollout | undefined> {
     return (await this.#store.channel(channel)).rollout;
+  }
+
+  /**
+   * Accepts a district's signed release decision into the registry, then counts it against the
+   * rollout of that release, if one is running on any channel. A later report from the same
+   * instance replaces its earlier one.
+   */
+  async acceptReleaseDecision(input: unknown): Promise<ReleaseDecisionReport> {
+    const report = await this.#registry.acceptReleaseDecision(input);
+    await this.#queue.run(async () => {
+      for (const channel of ReleaseChannel.options) {
+        const state = await this.#store.channel(channel);
+        if (state.rollout?.releaseId !== report.releaseId) continue;
+        state.rollout.decisions[report.instanceId] = report.decision;
+        await this.#store.saveChannel(channel, state);
+      }
+    });
+    return report;
   }
 
   /** Accepts a heartbeat into the registry, then re-evaluates rollout health. */
@@ -182,24 +219,26 @@ export class RolloutController {
    * version. Returns the rollouts it halted.
    */
   async evaluateHealth(): Promise<Rollout[]> {
-    const fleet = await this.#registry.fleetView();
-    const halted: Rollout[] = [];
-    for (const channel of ReleaseChannel.options) {
-      const state = await this.#store.channel(channel);
-      const rollout = state.rollout;
-      if (rollout?.status !== "active") continue;
-      const startedAt = Date.parse(rollout.startedAt);
-      const cohort = fleet.filter((entry) =>
-        entry.releaseVersion === rollout.version &&
-        entry.lastHeartbeatAt !== undefined &&
-        Date.parse(entry.lastHeartbeatAt) >= startedAt);
-      const failing = cohort.filter((entry) => entry.probes.some((probe) => probe.status === "failing"));
-      if (cohort.length === 0 || failing.length <= this.#haltPolicy.maxFailingFraction * cohort.length) continue;
-      Object.assign(rollout, { status: "halted", haltedAt: this.#now().toISOString(), haltReason: "health.failing" });
-      await this.#store.saveChannel(channel, state);
-      halted.push(rollout);
-    }
-    return halted;
+    return this.#queue.run(async () => {
+      const fleet = await this.#registry.fleetView();
+      const halted: Rollout[] = [];
+      for (const channel of ReleaseChannel.options) {
+        const state = await this.#store.channel(channel);
+        const rollout = state.rollout;
+        if (rollout?.status !== "active") continue;
+        const startedAt = Date.parse(rollout.startedAt);
+        const cohort = fleet.filter((entry) =>
+          entry.releaseVersion === rollout.version &&
+          entry.lastHeartbeatAt !== undefined &&
+          Date.parse(entry.lastHeartbeatAt) >= startedAt);
+        const failing = cohort.filter((entry) => entry.probes.some((probe) => probe.status === "failing"));
+        if (cohort.length === 0 || failing.length <= this.#haltPolicy.maxFailingFraction * cohort.length) continue;
+        Object.assign(rollout, { status: "halted", haltedAt: this.#now().toISOString(), haltReason: "health.failing" });
+        await this.#store.saveChannel(channel, state);
+        halted.push(rollout);
+      }
+      return halted;
+    });
   }
 
   /**
@@ -209,19 +248,21 @@ export class RolloutController {
    * that has revoked the root's management access.
    */
   async offerFor(instanceId: InstanceId, channel: ReleaseChannel): Promise<SignedEnvelope | undefined> {
-    const state = await this.#store.channel(channel);
-    const rollout = state.rollout;
-    if (rollout === undefined) return undefined;
-    const entry = (await this.#registry.fleetView()).find((e) => e.instanceId === instanceId);
-    if (entry === undefined) throw new SchoolOsError("not-found", "instance not registered");
+    return this.#queue.run(async () => {
+      const state = await this.#store.channel(channel);
+      const rollout = state.rollout;
+      if (rollout === undefined) return undefined;
+      const entry = (await this.#registry.fleetView()).find((e) => e.instanceId === instanceId);
+      if (entry === undefined) throw new SchoolOsError("not-found", "instance not registered");
 
-    if (rollout.status === "active") {
-      if (entry.releaseVersion === rollout.version || !(await this.#selected(rollout, instanceId))) return undefined;
-      return await this.#offer(instanceId, state.releases[rollout.releaseId]!, "upgrade");
-    }
-    const previous = rollout.previousReleaseId === undefined ? undefined : state.releases[rollout.previousReleaseId];
-    if (entry.releaseVersion !== rollout.version || previous === undefined) return undefined;
-    return await this.#offer(instanceId, previous, "rollback");
+      if (rollout.status === "active") {
+        if (entry.releaseVersion === rollout.version || !(await this.#selected(rollout, instanceId))) return undefined;
+        return await this.#offer(instanceId, state.releases[rollout.releaseId]!, "upgrade");
+      }
+      const previous = rollout.previousReleaseId === undefined ? undefined : state.releases[rollout.previousReleaseId];
+      if (entry.releaseVersion !== rollout.version || previous === undefined) return undefined;
+      return await this.#offer(instanceId, previous, "rollback");
+    });
   }
 
   async #selected(rollout: Rollout, instanceId: InstanceId): Promise<boolean> {

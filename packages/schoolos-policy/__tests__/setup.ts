@@ -15,20 +15,10 @@ import { InMemoryAcademicStore } from "@schoolos/academics";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import {
   directoryPolicyInformation,
+  InMemoryPolicyAuditSink,
   PolicyEngine,
-  type PolicyAuditEvent,
-  type PolicyAuditSink,
   type PolicyRule,
 } from "../src/index.ts";
-
-/** Collects audit events in memory. */
-export class MemoryAuditSink implements PolicyAuditSink {
-  readonly events: PolicyAuditEvent[] = [];
-
-  async record(event: PolicyAuditEvent): Promise<void> {
-    this.events.push(event);
-  }
-}
 
 /** A floor that lets students share conversations and teachers read what is shared. */
 export const SHARING_FLOOR: PolicySettings = {
@@ -53,7 +43,7 @@ export function engineFor(
   options: { floor?: PolicySettings; rules?: readonly PolicyRule[] } = {},
 ) {
   const store = InMemoryAcademicStore.seeded(snapshot);
-  const audit = new MemoryAuditSink();
+  const audit = new InMemoryPolicyAuditSink();
   const floor = options.floor ?? SHARING_FLOOR;
   const engine = new PolicyEngine({
     information: directoryPolicyInformation(store, { effectivePolicy: async () => floor }),

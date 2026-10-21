@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // The workerd suite imports `cloudflare:workers`, so it is checked against the Workers
+    // runtime's types (ADR-0009, point 5); the sources it hosts are checked again here.
+    "types": ["@cloudflare/workers-types"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__/workerd", "__tests__/support.ts"],
+  "exclude": ["dist", "node_modules"]
+}

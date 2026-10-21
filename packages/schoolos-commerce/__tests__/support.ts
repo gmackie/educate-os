@@ -1,8 +1,7 @@
-import { InstanceId } from "@schoolos/contracts";
+import { CommercialAccountId, InstanceId } from "@schoolos/contracts";
 import type { DistrictDirectorySnapshot } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import {
-  CommercialAccountId,
   EntitlementCache,
   InMemoryEntitlementStore,
   SigningIdentity,
