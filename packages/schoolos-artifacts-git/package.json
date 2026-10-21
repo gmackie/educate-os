@@ -1,0 +1,27 @@
+{
+  "name": "@schoolos/artifacts-git",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS project artifacts on Cloudflare Artifacts: multi-file notebooks, code and datasets saved as Git-backed revisions of @schoolos/learning-artifacts, with Save, History and Diff, short-lived per-principal Git credentials, and sanitized parentless forks of teacher baselines. Falls back to text or R2 storage where the district plan has no Artifacts. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./smart-http": "./src/smart-http.ts"
+  },
+  "dependencies": {
+    "@gadgets/gatekeeper-kit": "workspace:*",
+    "@schoolos/academics": "workspace:*",
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/learning-artifacts": "workspace:*",
+    "@schoolos/policy": "workspace:*",
+    "@schoolos/workspaces": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

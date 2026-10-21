@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // For the `crypto`, `TextEncoder`, `Blob` and `CompressionStream` globals, and `node:child_process`
+    // in the pack test. The library imports nothing from Node, so it runs unchanged under workerd.
+    "types": ["node"],
+    "paths": {
+      // See the file: a type-only stand-in for the Workers-typed module gatekeeper-kit imports.
+      "@gadgets/workshop-shared/gatekeeper": ["./types/workshop-shared-gatekeeper.d.ts"]
+    },
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__", "types"],
+  // The smart HTTP transport uses gatekeeper-kit's Workers-typed transport module; see tsconfig.transport.json.
+  "exclude": ["dist", "node_modules", "src/smart-http.ts", "__tests__/smart-http.test.ts"]
+}
