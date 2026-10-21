@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SigningIdentity } from "@schoolos/fleet";
 import { sha256Digest, type ArtifactView } from "@schoolos/learning-artifacts";
 import {
   consentGrantDigest,
@@ -10,7 +11,6 @@ import {
   LearnerCarriedChannel,
   receiveLearnerCarriedTransfer,
   revokeTransferConsent,
-  SigningIdentity,
   type TransferConsent,
   type TransferItemClass,
   type TransferPackage,

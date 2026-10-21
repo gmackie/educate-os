@@ -7,12 +7,15 @@ import {
   InMemoryInlineTextTable,
   InMemoryR2Bucket,
   LearningArtifacts,
+  type ArtifactStore,
 } from "@schoolos/learning-artifacts";
 import { directoryPolicyInformation, PolicyEngine } from "@schoolos/policy";
 import { InMemoryWorkspaceStore, WorkspaceDirectory } from "@schoolos/workspaces";
 import {
+  ConsentRevocationEndpoint,
   confirmIdentityLink,
   DirectTransferEndpoint,
+  InMemoryConsentRevocationList,
   InMemoryImportLedger,
   InMemoryPortableIdentityLinkStore,
   StudentArchiveImporter,
@@ -106,11 +109,40 @@ export class TestNetwork {
   };
 }
 
+/** The host of Riverbend's revocation endpoint. */
+export const RIVERBEND_REVOCATION_HOST = "revocations.riverbend.example";
+
+/**
+ * Content storage that fails every write after the first `writesBeforeFailure`, as an R2 outage
+ * part-way through an import would.
+ */
+export class FailingContentStore implements ArtifactStore {
+  readonly #inner: ArtifactStore;
+  writesBeforeFailure: number;
+
+  constructor(inner: ArtifactStore, writesBeforeFailure: number) {
+    this.#inner = inner;
+    this.writesBeforeFailure = writesBeforeFailure;
+  }
+
+  async write(...args: Parameters<ArtifactStore["write"]>) {
+    if (this.writesBeforeFailure <= 0) throw new Error("content storage is unavailable");
+    this.writesBeforeFailure--;
+    return this.#inner.write(...args);
+  }
+
+  async read(...args: Parameters<ArtifactStore["read"]>) {
+    return this.#inner.read(...args);
+  }
+}
+
 /** Riverbend: the destination district's services, with the import policy its admin set. */
 export function riverbend(options: {
   pinned?: DestinationImportPolicy["pinnedSources"];
   acceptedItemClasses?: TransferItemClass[];
   acceptUnverifiedSources?: boolean;
+  /** Fail content writes after this many, until the test raises it. */
+  contentWritesBeforeFailure?: number;
 } = {}) {
   const academics = InMemoryAcademicStore.seeded(riverbendWithAmara());
   const workspaceStore = new InMemoryWorkspaceStore();
@@ -120,9 +152,11 @@ export function riverbend(options: {
     audit: { record: async () => {} },
   });
   const workspaces = new WorkspaceDirectory({ workspaces: workspaceStore, directory: academics, policy, retention: { courseWorkspaceRetentionDays: 30 }, now: () => clock.now });
+  const records = new InMemoryArtifactRecordStore();
+  const content = new FailingContentStore(new BackendArtifactStore({ text: new InMemoryInlineTextTable(), r2: new InMemoryR2Bucket() }), options.contentWritesBeforeFailure ?? Infinity);
   const artifacts = new LearningArtifacts({
-    records: new InMemoryArtifactRecordStore(),
-    content: new BackendArtifactStore({ text: new InMemoryInlineTextTable(), r2: new InMemoryR2Bucket() }),
+    records,
+    content,
     workspaces: workspaceStore,
     directory: academics,
     policy,
@@ -132,20 +166,16 @@ export function riverbend(options: {
   });
   const links = new InMemoryPortableIdentityLinkStore();
   const ledger = new InMemoryImportLedger();
-  const importer = new StudentArchiveImporter({
-    artifacts,
-    workspaces,
-    links,
-    ledger,
-    now: () => clock.now,
-    policy: {
-      self: RIVERBEND_PARTY,
-      acceptedItemClasses: options.acceptedItemClasses ?? ["artifacts", "submissions", "feedback", "resources"],
-      pinnedSources: options.pinned ?? [],
-      acceptUnverifiedSources: options.acceptUnverifiedSources ?? false,
-    },
-  });
+  const revocations = new InMemoryConsentRevocationList();
+  const importPolicy: DestinationImportPolicy = {
+    self: RIVERBEND_PARTY,
+    acceptedItemClasses: options.acceptedItemClasses ?? ["artifacts", "submissions", "feedback", "resources"],
+    pinnedSources: options.pinned ?? [],
+    acceptUnverifiedSources: options.acceptUnverifiedSources ?? false,
+  };
+  const importer = new StudentArchiveImporter({ artifacts, workspaces, links, ledger, revocations, now: () => clock.now, policy: importPolicy });
   const endpoint = new DirectTransferEndpoint({ importer, links, districtId: RB });
+  const revocationEndpoint = new ConsentRevocationEndpoint({ self: importPolicy.self, pinnedSources: importPolicy.pinnedSources, revocations });
   const root = new FailingRoot();
 
   /** Riverbend's admin confirms that an archive's learner is `principal`. */
@@ -156,5 +186,5 @@ export function riverbend(options: {
       destinationPrincipalId: principal.principal.principalId,
     });
 
-  return { academics, workspaces, artifacts, links, ledger, importer, endpoint, root, clock, linkLearner };
+  return { academics, workspaces, artifacts, records, content, links, ledger, revocations, importer, endpoint, revocationEndpoint, root, clock, linkLearner };
 }

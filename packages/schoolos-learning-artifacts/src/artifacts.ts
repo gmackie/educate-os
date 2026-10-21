@@ -80,6 +80,23 @@ export const NewRevision = z.strictObject({
 /** A new revision. */
 export type NewRevision = z.infer<typeof NewRevision>;
 
+/** One artifact of an {@link ArtifactImportBatch}: its type, title and revisions, oldest first. */
+export const ImportedArtifact = z.strictObject({
+  type: ArtifactType,
+  title: z.string().trim().min(1).max(200),
+  revisions: z.array(NewRevision).min(1).max(10_000),
+});
+/** An imported artifact. */
+export type ImportedArtifact = z.infer<typeof ImportedArtifact>;
+
+/** Artifacts to create together in one of the caller's own workspaces. */
+export const ArtifactImportBatch = z.strictObject({
+  workspaceId: WorkspaceId,
+  artifacts: z.array(ImportedArtifact).min(1).max(10_000),
+});
+/** An artifact import batch. */
+export type ArtifactImportBatch = z.infer<typeof ArtifactImportBatch>;
+
 /** An artifact with its latest revision. */
 export interface ArtifactView {
   artifact: Artifact;
@@ -222,19 +239,7 @@ export class LearningArtifacts {
       if (workspace === undefined || workspace.ownerPrincipalId !== caller.principal.principalId) {
         throw notFound("workspace", input.workspaceId);
       }
-      const artifact: Artifact = {
-        id: `${ID_PREFIXES.artifact}_${crypto.randomUUID()}` as ArtifactId,
-        districtId: workspace.districtId,
-        workspaceId: workspace.id,
-        ownerPrincipalId: workspace.ownerPrincipalId,
-        type: input.type,
-        title: input.title,
-        classification: workspace.kind === "personal" ? "personal-private" : "course",
-        scope: workspace.kind === "personal"
-          ? { level: "district", districtId: workspace.districtId }
-          : { level: "offering", districtId: workspace.districtId, schoolId: workspace.schoolId, offeringId: workspace.offeringId },
-        createdAt: this.#now().toISOString(),
-      };
+      const artifact = newArtifactIn(workspace, input.type, input.title, this.#now());
       if (!(await decisions.allows("create", creationOf(artifactTarget(artifact, termStateOf(workspace, snapshot)))))) {
         throw new SchoolOsError("forbidden", "You may not add work to this workspace.");
       }
@@ -242,6 +247,62 @@ export class LearningArtifacts {
       const next = { ...state, artifacts: [...state.artifacts, artifact], revisions: [...state.revisions, revision] };
       return { next, result: { artifact, head: revision } };
     });
+  }
+
+  /**
+   * Creates every artifact of a batch, each with all its revisions, in one of the caller's own
+   * workspaces, as one commit: either all of them are stored or none is. Every revision's origin is
+   * `imported`, whatever its content. It is how another district's archive is brought in (roadmap
+   * P02), so a failure part-way leaves nothing to clean up. Content is written before the commit, as
+   * for any save; a failed batch's content is never referenced by a record.
+   *
+   * Results are in batch order.
+   */
+  async importArtifacts(caller: Caller, rawBatch: ArtifactImportBatch): Promise<ArtifactView[]> {
+    const batch = parse(ArtifactImportBatch, rawBatch);
+    const prepared = await Promise.all(batch.artifacts.map(async (item) => ({
+      item,
+      revisions: await Promise.all(item.revisions.map(async (revision) => ({
+        prepared: { ...(await this.#prepare(item.type, revision.content)), origin: "imported" as const },
+        aiAssistance: revision.aiAssistance,
+      }))),
+    })));
+    const decisions = this.#decisions(caller);
+    return this.#mutate(async ({ state, workspaces, snapshot }) => {
+      const workspace = workspaces.workspaces.find((w) => w.id === batch.workspaceId);
+      if (workspace === undefined || workspace.ownerPrincipalId !== caller.principal.principalId) {
+        throw notFound("workspace", batch.workspaceId);
+      }
+      const termState = termStateOf(workspace, snapshot);
+      const artifacts: Artifact[] = [];
+      const revisions: ArtifactRevision[] = [];
+      const views: ArtifactView[] = [];
+      for (const { item, revisions: itemRevisions } of prepared) {
+        const artifact = newArtifactIn(workspace, item.type, item.title, this.#now());
+        if (!(await decisions.allows("create", creationOf(artifactTarget(artifact, termState))))) {
+          throw new SchoolOsError("forbidden", "You may not add work to this workspace.");
+        }
+        let head: ArtifactRevision | undefined;
+        for (const { prepared: content, aiAssistance } of itemRevisions) {
+          head = await this.#revision(caller, artifact, content, aiAssistance, head);
+          revisions.push(head);
+        }
+        artifacts.push(artifact);
+        views.push({ artifact, head: head! });
+      }
+      const next = { ...state, artifacts: [...state.artifacts, ...artifacts], revisions: [...state.revisions, ...revisions] };
+      return { next, result: views };
+    });
+  }
+
+  /**
+   * Whether a link to `url` may be saved as an external reference: an `https` URL without
+   * credentials on one of the district's approved hosts.
+   */
+  approvesExternalUrl(url: string): boolean {
+    if (!URL.canParse(url)) return false;
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && parsed.username === "" && parsed.password === "" && this.#approvedHosts.has(parsed.hostname.toLowerCase());
   }
 
   /** Saves a new revision on top of the artifact's latest one. Earlier revisions are never changed. */
@@ -664,6 +725,23 @@ function artifactTarget(artifact: Artifact, termState: TermState | undefined): T
       ownerPrincipalId: artifact.ownerPrincipalId,
     },
     ...(termState === undefined ? {} : { termState }),
+  };
+}
+
+/** A new artifact in `workspace`, with the owner, classification and scope the workspace gives it. */
+function newArtifactIn(workspace: Workspace, type: ArtifactType, title: string, now: Date): Artifact {
+  return {
+    id: `${ID_PREFIXES.artifact}_${crypto.randomUUID()}` as ArtifactId,
+    districtId: workspace.districtId,
+    workspaceId: workspace.id,
+    ownerPrincipalId: workspace.ownerPrincipalId,
+    type,
+    title,
+    classification: workspace.kind === "personal" ? "personal-private" : "course",
+    scope: workspace.kind === "personal"
+      ? { level: "district", districtId: workspace.districtId }
+      : { level: "offering", districtId: workspace.districtId, schoolId: workspace.schoolId, offeringId: workspace.offeringId },
+    createdAt: now.toISOString(),
   };
 }
 

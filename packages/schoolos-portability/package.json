@@ -9,9 +9,14 @@
   },
   "dependencies": {
     "@schoolos/academics": "workspace:*",
+    "@schoolos/assessment": "workspace:*",
+    "@schoolos/config": "workspace:*",
+    "@schoolos/content-studio": "workspace:*",
     "@schoolos/contracts": "workspace:*",
+    "@schoolos/fleet": "workspace:*",
     "@schoolos/learning-artifacts": "workspace:*",
     "@schoolos/policy": "workspace:*",
+    "@schoolos/registry": "workspace:*",
     "@schoolos/workspaces": "workspace:*",
     "zod": "catalog:"
   },

@@ -2284,15 +2284,30 @@ importers:
       '@schoolos/academics':
         specifier: workspace:*
         version: link:../schoolos-academics
+      '@schoolos/assessment':
+        specifier: workspace:*
+        version: link:../schoolos-assessment
+      '@schoolos/config':
+        specifier: workspace:*
+        version: link:../schoolos-config
+      '@schoolos/content-studio':
+        specifier: workspace:*
+        version: link:../schoolos-content-studio
       '@schoolos/contracts':
         specifier: workspace:*
         version: link:../schoolos-contracts
+      '@schoolos/fleet':
+        specifier: workspace:*
+        version: link:../schoolos-fleet
       '@schoolos/learning-artifacts':
         specifier: workspace:*
         version: link:../schoolos-learning-artifacts
       '@schoolos/policy':
         specifier: workspace:*
         version: link:../schoolos-policy
+      '@schoolos/registry':
+        specifier: workspace:*
+        version: link:../schoolos-registry
       '@schoolos/workspaces':
         specifier: workspace:*
         version: link:../schoolos-workspaces

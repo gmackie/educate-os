@@ -90,14 +90,22 @@ export class IndiscriminateRecordSource implements StudentRecordSource {
 }
 
 /** The services an export runs over, on a fresh copy of `snapshot`. */
-export function setup(options: { extraRules?: PolicyRule[]; snapshot?: DistrictDirectorySnapshot; randomHex?: () => string } = {}) {
+export function setup(options: {
+  extraRules?: PolicyRule[];
+  /** The whole rule table, in place of the defaults and `extraRules`. */
+  rules?: PolicyRule[];
+  /** The record source the exporter reads, in place of an {@link IndiscriminateRecordSource}. */
+  source?: (academics: InMemoryAcademicStore) => StudentRecordSource;
+  snapshot?: DistrictDirectorySnapshot;
+  randomHex?: () => string;
+} = {}) {
   const academics = InMemoryAcademicStore.seeded(options.snapshot ?? NORTHFIELD);
   const workspaceStore = new InMemoryWorkspaceStore();
   const clock = { now: new Date("2026-10-20T12:00:00Z") };
   const policy = new PolicyEngine({
     information: directoryPolicyInformation(academics, { effectivePolicy: async () => FLOOR }),
     audit: { record: async () => {} },
-    rules: [...(options.extraRules ?? []), ...DEFAULT_POLICY_RULES],
+    rules: options.rules ?? [...(options.extraRules ?? []), ...DEFAULT_POLICY_RULES],
   });
   const workspaces = new WorkspaceDirectory({
     workspaces: workspaceStore,
@@ -122,7 +130,7 @@ export function setup(options: { extraRules?: PolicyRule[]; snapshot?: DistrictD
     workspaces,
     directory: academics,
     policy,
-    records,
+    records: options.source?.(academics) ?? records,
     mappings,
     now: () => clock.now,
     ...(options.randomHex === undefined ? {} : { randomHex: options.randomHex }),
@@ -142,7 +150,7 @@ export function setup(options: { extraRules?: PolicyRule[]; snapshot?: DistrictD
     });
   }
 
-  return { artifacts, workspaces, records, mappings, exporter, clock, changeDirectory, completeFallTerm };
+  return { academics, artifacts, workspaces, records, mappings, exporter, clock, changeDirectory, completeFallTerm };
 }
 
 /** An HTTP caller verified as `principalId`. */

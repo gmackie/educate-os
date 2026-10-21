@@ -153,10 +153,13 @@ export async function validateArchive(bytes: Uint8Array<ArrayBuffer>): Promise<V
       }
     }
   }
-  const submissionIds = new Set(submissions.map((s) => s.record.id));
+  const partCounts = new Map(submissions.map((s) => [s.record.id, s.record.parts.length]));
   for (const { path, record } of feedback) {
     unique(record.id, path, `feedback/${record.id}.json`);
-    if (record.submission !== undefined && !submissionIds.has(record.submission)) throw invalid(`${record.id} is about a submission the archive does not hold`);
+    if (record.submission !== undefined && !partCounts.has(record.submission)) throw invalid(`${record.id} is about a submission the archive does not hold`);
+    if (record.anchor !== undefined && record.anchor.part > (record.submission === undefined ? 0 : partCounts.get(record.submission)!)) {
+      throw invalid(`${record.id} points at a part its submission does not have`);
+    }
     if (!isPerson(record.author)) throw invalid(`${record.id} names an unknown learner`);
   }
   for (const { path, rights, record } of resources) {

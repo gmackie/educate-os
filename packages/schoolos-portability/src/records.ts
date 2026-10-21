@@ -1,13 +1,14 @@
 import { z } from "zod";
 import { ArtifactId, Classification, ContentDigest, OfferingId, PrincipalId, RevisionId, Scope, SubmissionId } from "@schoolos/contracts";
+import { FeedbackAnchor } from "@schoolos/assessment";
 import { MediaType } from "@schoolos/learning-artifacts";
 import { SourceRights } from "./archive.ts";
 
 /**
- * The district records an export reads besides artifacts. Submissions and feedback belong to E01
- * and resources to the Learning Registry, neither of which this package depends on, so they reach
- * the exporter through {@link StudentRecordSource}. These shapes may belong in those packages, or
- * in `@schoolos/contracts`, once they exist.
+ * The district records an export reads besides artifacts: submissions and feedback from the
+ * assessment service (E01) and the resources the learner's classes used from the Content Studio
+ * (C03). They reach the exporter through {@link StudentRecordSource}, which `sources.ts`
+ * implements over those packages' stores.
  *
  * The exporter trusts none of them for authorization: it re-checks ownership, derives scope and
  * term state from the academic directory, and asks the policy engine about every record.
@@ -48,11 +49,13 @@ export const FeedbackSourceRecord = z.strictObject({
   visibility: z.enum(["shared-with-learner", "teacher-only"]),
   createdAt: z.iso.datetime(),
   body: z.string().min(1).max(100_000),
+  /** Where in the submitted work it points, when it is anchored to one of the submission's revisions. */
+  anchor: FeedbackAnchor.optional(),
 });
 /** A feedback source record. */
 export type FeedbackSourceRecord = z.infer<typeof FeedbackSourceRecord>;
 
-/** A learning resource the learner's work cites, with the rights it was approved under (roadmap §5.3). */
+/** A learning resource the learner's classes used, with the rights it was approved under (roadmap §5.3). */
 export const ResourceSourceRecord = z.strictObject({
   id: z.string().min(1).max(128),
   title: z.string().min(1).max(200),
@@ -79,7 +82,7 @@ export interface StudentRecordSource {
   resourceContent(resourceId: string): Promise<Uint8Array<ArrayBuffer>>;
 }
 
-/** A {@link StudentRecordSource} held in memory, for tests and the local harness. */
+/** A {@link StudentRecordSource} held in memory, for tests and the pilot gate. */
 export class InMemoryStudentRecordSource implements StudentRecordSource {
   readonly #submissions: SubmissionSourceRecord[] = [];
   readonly #feedback: FeedbackSourceRecord[] = [];

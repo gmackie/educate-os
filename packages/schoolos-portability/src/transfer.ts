@@ -3,7 +3,7 @@ import { ContentDigest, SchoolOsError } from "@schoolos/contracts";
 import { sha256Digest } from "@schoolos/learning-artifacts";
 import { ExportId, SubjectRef } from "./archive.ts";
 import { consentGrantDigest, TransferConsent, TransferConsentId, TransferParty } from "./consent.ts";
-import { fromBase64Url, signEnvelope, SignedEnvelope, toBase64Url, type SigningIdentity } from "./signing.ts";
+import { fromBase64Url, signEnvelope, SignedEnvelope, toBase64Url, type SigningIdentity } from "@schoolos/fleet";
 import { validateArchive } from "./validate.ts";
 
 /**
@@ -34,8 +34,9 @@ export interface TransferPackage {
 }
 
 /**
- * Issues a signed transfer package at the source district. The archive is validated first, and the
- * consent must be for it, unrevoked and unexpired.
+ * Issues a signed transfer package at the source district, signed with its fleet agent identity as
+ * a `student-transfer` message (`@schoolos/fleet`). The archive is validated first, and the consent
+ * must be for it, unrevoked and unexpired.
  */
 export async function issueTransferPackage(identity: SigningIdentity, archive: Uint8Array<ArrayBuffer>, rawConsent: TransferConsent, now: Date): Promise<TransferPackage> {
   const consent = TransferConsent.parse(rawConsent);

@@ -1,4 +1,5 @@
 import { ArtifactType, ContentDigest } from "@schoolos/contracts";
+import { AnchorRegion } from "@schoolos/assessment";
 import { z } from "zod";
 import {
   AiAssistance,
@@ -248,6 +249,11 @@ export const FeedbackRecord = z.strictObject({
   author: PersonRef,
   createdAt: z.iso.datetime(),
   body: z.string().min(1).max(100_000),
+  /**
+   * Where in the submission it points: a place (a text range or an area) in one of its parts,
+   * numbered from 1 in the submission's order. Only present with `submission`.
+   */
+  anchor: z.strictObject({ part: z.int().min(1).max(100), region: AnchorRegion }).optional(),
 });
 /** A feedback record. */
 export type FeedbackRecord = z.infer<typeof FeedbackRecord>;
