@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@schoolos/contracts": "workspace:*",
+    "yaml": "^2.9.1",
     "zod": "catalog:"
   },
   "devDependencies": {

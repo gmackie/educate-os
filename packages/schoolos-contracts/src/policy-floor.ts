@@ -13,6 +13,11 @@ export const POLICY_ORDERINGS = {
   studentPersonalConversations: ["shared-by-student", "private"],
   teacherObservation: ["assigned-work-and-shared-conversations", "assigned-work-only"],
   automatedSelProfiling: ["permitted-with-review", "prohibited"],
+  /**
+   * How much an AI helper may do for a student on an activity: `full` helps with the work itself,
+   * `hints-only` may only point the way, and `none` offers no helper.
+   */
+  aiHelp: ["full", "hints-only", "none"],
 } as const;
 
 /** The name of an enumerated policy setting. */
@@ -28,6 +33,12 @@ export const PolicySettings = z.strictObject({
   studentPersonalConversations: z.enum(POLICY_ORDERINGS.studentPersonalConversations),
   teacherObservation: z.enum(POLICY_ORDERINGS.teacherObservation),
   automatedSelProfiling: z.enum(POLICY_ORDERINGS.automatedSelProfiling),
+  /**
+   * The AI-help level. Optional so that policies written before it existed still parse; the
+   * configuration compiler always sets it, and a reader that finds it absent applies the district's
+   * profile default.
+   */
+  aiHelp: z.enum(POLICY_ORDERINGS.aiHelp).optional(),
   /** Monthly AI spend cap per principal, in US cents. Lower is stricter. */
   aiMonthlyCapCentsPerPrincipal: z.int().nonnegative(),
 });

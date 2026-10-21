@@ -7,6 +7,7 @@ import type { CompetencyRef } from "@schoolos/registry";
 import { expect } from "vitest";
 import {
   type AiHelpLayers,
+  type AiHelpPolicySource,
   contentStudioReleases,
   CurriculumService,
   InMemoryCodexPublisher,
@@ -113,7 +114,7 @@ const alignments = {
 };
 
 /** A curriculum service over Northfield, with a real Content Studio holding its releases. */
-export async function setup(options: { directory?: DistrictDirectorySnapshot } = {}) {
+export async function setup(options: { directory?: DistrictDirectorySnapshot; aiHelpPolicy?: AiHelpPolicySource } = {}) {
   const directory = options.directory ?? NORTHFIELD;
   const { engine, audit } = policyEngine(directory);
   let tick = 0;
@@ -139,7 +140,7 @@ export async function setup(options: { directory?: DistrictDirectorySnapshot } =
     authorizer: engine,
     releases: contentStudioReleases(studioStorage),
     alignments,
-    aiHelpPolicy: { layersFor: async (scope) => ({ district: policy.district, ...policy.offerings[scope.offeringId] }) },
+    aiHelpPolicy: options.aiHelpPolicy ?? { layersFor: async (scope) => ({ district: policy.district, ...policy.offerings[scope.offeringId] }) },
     publisher,
     storage,
     now,

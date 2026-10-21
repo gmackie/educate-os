@@ -106,7 +106,7 @@ describe("planConfigurationChange (F03 acceptance)", () => {
   it("plans a rollback as the exact reverse, uninstalling what the change pulled in", async () => {
     const current = await draft(currentDocument());
     const next = await draft(nextDocument(), current);
-    const rollback = await createRollbackRevision({ target: current, head: next, actorPrincipalId: ADMIN });
+    const rollback = await createRollbackRevision({ target: current, head: next, history: [current, next], actorPrincipalId: ADMIN });
     const result = plan(next, rollback.revision);
 
     expect(result.packs.map((p) => [p.capabilityId, p.changes, p.withdrawnFrom.length])).toEqual([

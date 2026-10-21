@@ -33,6 +33,7 @@ describe("compileDistrictConfig", () => {
       studentPersonalConversations: "private",
       teacherObservation: "assigned-work-only",
       automatedSelProfiling: "prohibited",
+      aiHelp: "hints-only",
       aiMonthlyCapCentsPerPrincipal: 200,
     });
   });

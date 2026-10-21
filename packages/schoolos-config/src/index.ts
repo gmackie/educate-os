@@ -9,3 +9,5 @@ export * from "./compile.ts";
 export * from "./revisions.ts";
 export * from "./plan.ts";
 export * from "./forms.ts";
+export * from "./yaml.ts";
+export * from "./ai-help.ts";

@@ -1490,6 +1490,9 @@ importers:
       '@schoolos/assessment-ci':
         specifier: workspace:*
         version: link:../schoolos-assessment-ci
+      '@schoolos/config':
+        specifier: workspace:*
+        version: link:../schoolos-config
       '@schoolos/contracts':
         specifier: workspace:*
         version: link:../schoolos-contracts
@@ -1645,6 +1648,9 @@ importers:
       '@schoolos/contracts':
         specifier: workspace:*
         version: link:../schoolos-contracts
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1708,6 +1714,9 @@ importers:
 
   packages/schoolos-curriculum:
     dependencies:
+      '@schoolos/config':
+        specifier: workspace:*
+        version: link:../schoolos-config
       '@schoolos/content-studio':
         specifier: workspace:*
         version: link:../schoolos-content-studio

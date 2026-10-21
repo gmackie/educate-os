@@ -82,6 +82,18 @@ describe("resolvePolicy", () => {
     ]);
   });
 
+  it("lets AI help only narrow, toward none", () => {
+    const withHelp = { ...district, aiHelp: "hints-only" as const };
+    expect(resolvePolicy(withHelp, [{ level: "offering", settings: { aiHelp: "none" } }])).toEqual({
+      ok: true,
+      effective: { ...withHelp, aiHelp: "none" },
+    });
+    expect(resolvePolicy(withHelp, [{ level: "school", settings: { aiHelp: "full" } }])).toEqual({
+      ok: false,
+      violations: [{ level: "school", key: "aiHelp", floor: "hints-only", requested: "full" }],
+    });
+  });
+
   it("requires the district floor to be complete", () => {
     expect(PolicySettings.safeParse({ aiSpending: "capped" }).success).toBe(false);
   });

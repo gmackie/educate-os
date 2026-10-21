@@ -9,13 +9,15 @@ import {
   SemVer,
 } from "@schoolos/contracts";
 import { z } from "zod";
+import { parseRange } from "./semver.ts";
 
 /** The `apiVersion` of the district configuration document this package compiles. */
 export const CONFIG_API_VERSION = "schoolos.dev/v1alpha1";
 
 /**
  * Named policy defaults a document starts from. Every profile prohibits automated SEL profiling
- * (ADR-0004); they differ in how much AI spend and teacher visibility they allow.
+ * (ADR-0004); they differ in how much AI spend, AI help and teacher visibility they allow. Each sets
+ * every setting, including the optional `aiHelp`, so a compiled floor is always complete.
  */
 export const DEFAULTS_PROFILES = {
   "us-k12-conservative": {
@@ -24,6 +26,7 @@ export const DEFAULTS_PROFILES = {
     studentPersonalConversations: "private",
     teacherObservation: "assigned-work-only",
     automatedSelProfiling: "prohibited",
+    aiHelp: "hints-only",
     aiMonthlyCapCentsPerPrincipal: 200,
   },
   "us-k12-standard": {
@@ -32,9 +35,10 @@ export const DEFAULTS_PROFILES = {
     studentPersonalConversations: "private",
     teacherObservation: "assigned-work-and-shared-conversations",
     automatedSelProfiling: "prohibited",
+    aiHelp: "full",
     aiMonthlyCapCentsPerPrincipal: 500,
   },
-} as const satisfies Record<string, PolicySettings>;
+} as const satisfies Record<string, Required<PolicySettings>>;
 
 /** The name of a defaults profile. */
 export const DefaultsProfileName = z.enum(Object.keys(DEFAULTS_PROFILES) as [keyof typeof DEFAULTS_PROFILES]);
@@ -49,10 +53,22 @@ export const ModuleState = z.enum(["enabled", "advisory", "disabled"]);
 /** A module state. */
 export type ModuleState = z.infer<typeof ModuleState>;
 
-/** A module entry: the state alone, or the state with pack configuration. */
+/** A version range a document may select a pack version with: exact, caret or tilde (see `semver.ts`). */
+export const VersionRange = z.string().max(100).refine((range) => parseRange(range) !== undefined, {
+  message: "expected an exact, ^ or ~ version range",
+});
+
+/**
+ * A module entry: the state alone, or the state with pack configuration and, optionally, a version
+ * range. Without a range the pack's default version is selected (see `CapabilityRegistry.packs`).
+ */
 export const ModuleEntry = z.union([
   ModuleState,
-  z.strictObject({ state: ModuleState, config: z.record(z.string(), z.unknown()).optional() }),
+  z.strictObject({
+    state: ModuleState,
+    version: VersionRange.optional(),
+    config: z.record(z.string(), z.unknown()).optional(),
+  }),
 ]);
 /** A module entry. */
 export type ModuleEntry = z.infer<typeof ModuleEntry>;
@@ -67,6 +83,8 @@ export const PolicyDocument = z.strictObject({
     /** Whether AI Gateway may log prompts. */
     promptsInGatewayLogs: z.boolean().optional(),
     monthlyCapCentsPerPrincipal: z.int().nonnegative().optional(),
+    /** How much an AI helper may do for a student: `full`, `hints-only` or `none`. */
+    help: z.enum(POLICY_ORDERINGS.aiHelp).optional(),
   }).optional(),
   studentPersonalConversations: z.enum(POLICY_ORDERINGS.studentPersonalConversations).optional(),
   teacherObservation: z.enum(POLICY_ORDERINGS.teacherObservation).optional(),
@@ -85,6 +103,7 @@ export function toPolicyOverrides(policies: PolicyDocument): PolicyOverrides {
   if (policies.ai?.monthlyCapCentsPerPrincipal !== undefined) {
     overrides.aiMonthlyCapCentsPerPrincipal = policies.ai.monthlyCapCentsPerPrincipal;
   }
+  if (policies.ai?.help !== undefined) overrides.aiHelp = policies.ai.help;
   if (policies.studentPersonalConversations !== undefined) {
     overrides.studentPersonalConversations = policies.studentPersonalConversations;
   }

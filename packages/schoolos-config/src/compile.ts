@@ -24,6 +24,7 @@ import { findSecrets, pointerSegment } from "./secrets.ts";
 /** What a {@link ConfigProblem} is about. */
 export type ConfigProblemCode =
   | "invalid-document"
+  | "invalid-yaml"
   | "secret-in-config"
   | "invalid-pack-config"
   | "advisory-unsupported"
@@ -80,6 +81,12 @@ function resolutionProblem(problem: ResolutionProblem): ConfigProblem {
   switch (problem.kind) {
     case "unknown-capability":
       return { code: problem.kind, path: `/modules/${problem.capabilityId}`, message: `no capability pack named ${problem.capabilityId} is available` };
+    case "no-version-in-range":
+      return {
+        code: problem.kind,
+        path: `/modules/${problem.capabilityId}/version`,
+        message: `no version of ${problem.capabilityId} matches ${problem.versionRange}; available: ${problem.availableVersions.join(", ")}`,
+      };
     case "missing-dependency":
       return {
         code: problem.kind,
@@ -131,10 +138,18 @@ export function compileDistrictConfig(input: unknown, registry: CapabilityRegist
   if (!parsed.success) return { ok: false, problems: [...problems, ...zodProblems("invalid-document", "", parsed.error)] };
   const document = parsed.data;
 
+  const entries = Object.entries(document.modules) as [CapabilityId, ModuleEntry][];
+  const ranges = new Map(entries.flatMap(([id, entry]) =>
+    typeof entry !== "string" && entry.version !== undefined ? [[id, entry.version] as const] : []
+  ));
+  const resolution = resolveDependencies(registry, entries.map(([id]) => id), ranges);
+  problems.push(...resolution.problems.map(resolutionProblem));
+
+  // Each listed pack is validated against the version selected for it.
   const listed = new Map<CapabilityId, { state: ModuleState; config: Record<string, unknown> }>();
-  for (const [id, entry] of Object.entries(document.modules) as [CapabilityId, ModuleEntry][]) {
+  for (const [id, entry] of entries) {
     const state = typeof entry === "string" ? entry : entry.state;
-    const pack = registry.packs.get(id);
+    const pack = resolution.selected.get(id);
     if (pack === undefined) continue; // Reported by dependency resolution.
     if (state === "advisory" && !pack.supportsAdvisory) {
       problems.push({ code: "advisory-unsupported", path: `/modules/${id}`, message: `${id} cannot run in advisory mode` });
@@ -144,16 +159,13 @@ export function compileDistrictConfig(input: unknown, registry: CapabilityRegist
     else problems.push(...zodProblems("invalid-pack-config", `/modules/${id}/config`, config.error));
   }
 
-  const resolution = resolveDependencies(registry, Object.keys(document.modules) as CapabilityId[]);
-  problems.push(...resolution.problems.map(resolutionProblem));
-
   // A pack must be on wherever something on depends on it, and installed wherever anything does.
   const needsActive = new Set<CapabilityId>();
   const queue = [...listed].filter(([, module]) => isActive(module.state)).map(([id]) => id);
   while (queue.length > 0) {
     const id = queue.shift()!;
-    for (const { id: dependencyId } of registry.packs.get(id)?.manifest.dependencies ?? []) {
-      if (needsActive.has(dependencyId) || !registry.packs.has(dependencyId)) continue;
+    for (const { id: dependencyId } of resolution.selected.get(id)?.manifest.dependencies ?? []) {
+      if (needsActive.has(dependencyId) || !resolution.selected.has(dependencyId)) continue;
       needsActive.add(dependencyId);
       queue.push(dependencyId);
     }
@@ -161,7 +173,7 @@ export function compileDistrictConfig(input: unknown, registry: CapabilityRegist
 
   const modules: Record<string, DesiredModule> = {};
   for (const id of resolution.closure) {
-    const pack = registry.packs.get(id)!;
+    const pack = resolution.selected.get(id)!;
     const listedModule = listed.get(id);
     if (listedModule !== undefined) {
       if (!isActive(listedModule.state) && needsActive.has(id)) {
