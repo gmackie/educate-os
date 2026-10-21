@@ -148,6 +148,9 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   enrollments, for everyone. A `grading` term still accepts grades.
  * - **Co-teachers** have a teacher's read and course-management access, but their official-grade
  *   writes, like any grade write through an agent or MCP tool, wait for a teacher's approval.
+ * - **Class baselines** are unowned `course` artifacts at the offering: its instructors create and
+ *   publish them, and its actively enrolled students read them. A student's own work is never
+ *   unowned, so these rules never reach it.
  * - **Administrators** see the directory, governance records and course structure (activities,
  *   rubrics, the shared course workspace, official grades). They do not see student-authored work
  *   or any conversation, and no rule ever reaches `personal-private` content for anyone but its
@@ -292,6 +295,26 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
       classifications: [...COURSE_VISIBLE],
       actions: [...READS],
     },
+    effect: { effect: "allow" },
+  },
+
+  // Class baselines: starter material a teacher publishes to the whole offering (SCHO-81).
+  {
+    id: "course.instructor.baseline",
+    description: "Course staff create and publish unowned course baselines, such as assignment starter material, for their offering.",
+    when: {
+      kinds: ["artifact"],
+      ownership: ["unowned"],
+      roles: [...INSTRUCTORS],
+      classifications: ["course"],
+      actions: ["create", "publish"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "course.student.baseline-read",
+    description: "An actively enrolled student reads the unowned course baselines published to their offering, never another student's work.",
+    when: { kinds: ["artifact"], ownership: ["unowned"], roles: ["student"], classifications: ["course"], actions: [...READS] },
     effect: { effect: "allow" },
   },
 

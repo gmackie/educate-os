@@ -1,0 +1,24 @@
+{
+  "name": "@schoolos/assessment",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS assessment: assignments bound to offerings, immutable digest-pinned submission snapshots with receipts, anchored feedback with labelled suggested scores, and the teacher-approved official grade gate, each authorized by the ABAC policy engine. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/academics": "workspace:*",
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/learning-artifacts": "workspace:*",
+    "@schoolos/policy": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@schoolos/workspaces": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}
