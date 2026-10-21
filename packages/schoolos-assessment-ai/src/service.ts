@@ -7,7 +7,9 @@ import { z } from "zod";
 import { AssessmentRunId, compareUsdNano, SchoolOsError, SubmissionId, usdNano, usdNanoValue, type Caller, type UsdNano } from "@schoolos/contracts";
 import { submissionDigest, type AssessmentService, type AssignmentBinding, type RubricReleaseRef, type SubmissionSnapshot } from "@schoolos/assessment";
 import {
+  assertRubricAuthority,
   assessmentRunIdFor,
+  canonicalDigest,
   ExecutionProfileId,
   IdempotencyKey,
   verifyRubricRelease,
@@ -17,11 +19,11 @@ import {
   type EvaluationArtifact,
   type RubricRelease,
   type RubricReleaseStore,
+  type RubricSigningPolicy,
   type SubmittedWork,
 } from "@schoolos/assessment-ci";
 import { canonicalTextBytes, isTextMediaType, sha256Digest } from "@schoolos/learning-artifacts";
 import { AiFeedbackConfig, type AiFeedbackEvaluator, type AiOutcome } from "./ai-feedback.ts";
-import { canonicalDigest } from "./canonical.ts";
 import { modelLabel } from "./model-port.ts";
 import {
   AiRelease,
@@ -78,6 +80,12 @@ export interface AssessmentAiOptions {
   /** What the district's plan includes. A sandboxed run where the plan has no sandbox fails closed. */
   plan: DistrictAssessmentPlan;
   aiHelpPolicies: AiHelpPolicySource;
+  /**
+   * Who may sign rubric releases. With it, every run checks when it executes that its release is
+   * bound to the submission's offering and that the signer still teaches it, as deterministic runs
+   * do (`assertRubricAuthority`); without it, only the offering of a bound release is checked.
+   */
+  signing?: RubricSigningPolicy;
   /** How long a `running` run is left to its worker before another may reclaim it. Defaults to five minutes. */
   leaseMs?: number;
   now?: () => Date;
@@ -141,6 +149,9 @@ export class AssessmentAi {
     const rubric = await this.#rubricOf(reviewed.submission);
     for (const id of request.config.criteria ?? []) {
       if (!rubric.criteria.some((c) => c.id === id)) throw new SchoolOsError("validation-failed", `The rubric has no criterion ${id}.`);
+    }
+    if (rubric.aiInstructions !== undefined && request.config.instructions !== undefined) {
+      throw new SchoolOsError("validation-failed", "This rubric's release carries the signed AI instructions; they cannot be replaced for one run.");
     }
     const spec: OptionalRunSpec = { kind: "ai", evaluator: { id: ai.id, release: ai.release }, model: profile.model, config: request.config };
     return this.#requestAndExecute(caller, reviewed, rubric, spec, request);
@@ -411,6 +422,12 @@ export class AssessmentAi {
       if (error instanceof SchoolOsError) return failed("integrity", error.message);
       throw error;
     }
+    try {
+      await assertRubricAuthority(rubric, work.offeringId, this.#options.signing);
+    } catch (error) {
+      if (error instanceof SchoolOsError) return failed("rubric-not-authorized", error.message);
+      throw error;
+    }
     const read = await readWork(work, run.key.submissionDigest);
     if ("kind" in read) return read;
     if (run.spec.kind === "ai" && profile.kind === "ai") return this.#attemptAi(run, run.spec, profile, rubric, read.artifacts);
@@ -444,7 +461,7 @@ export class AssessmentAi {
         profile,
         criteria,
         artifacts,
-      }, spec.config);
+      }, rubric.aiInstructions === undefined ? spec.config : { ...spec.config, instructions: rubric.aiInstructions });
       return completed(evaluation.outcome, evaluation.costUsdNano);
     } catch {
       return { kind: "retry", message: "The model request did not complete." };
@@ -488,6 +505,7 @@ export class AssessmentAi {
   #work(caller: Caller, submission: SubmissionSnapshot): SubmittedWork {
     return {
       items: submission.items,
+      offeringId: submission.offeringId,
       readText: async (item) => {
         const { content } = await this.#options.assessment.readSubmittedContent(caller, submission.id, item.artifactId);
         if (content.kind !== "text") throw new SchoolOsError("unavailable", `Artifact ${item.artifactId} is not text.`);

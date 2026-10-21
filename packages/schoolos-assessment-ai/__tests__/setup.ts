@@ -1,5 +1,5 @@
 import { expect } from "vitest";
-import { ActivityId, DistrictId, OfferingId, PrincipalId, RubricId, type Caller, type PolicySettings, type RequestChannel } from "@schoolos/contracts";
+import { ActivityId, DistrictId, OfferingId, PrincipalId, RubricId, SchoolId, type Caller, type PolicySettings, type RequestChannel } from "@schoolos/contracts";
 import { InMemoryAcademicStore } from "@schoolos/academics";
 import { AssessmentService, InMemoryAssessmentRecordStore } from "@schoolos/assessment";
 import {
@@ -9,7 +9,9 @@ import {
   DETERMINISTIC_PROFILE,
   InMemoryAssessmentRunStore,
   InMemoryRubricReleaseStore,
+  policyRubricSigning,
   rubricRef,
+  signOfferingRubricRelease,
   signRubricRelease,
   type RubricDraft,
 } from "@schoolos/assessment-ci";
@@ -63,6 +65,7 @@ export const P = {
 };
 
 const ENG9 = OfferingId.parse("off_nf-eng9-fall-p3");
+const ENG9_SCOPE = { level: "offering", districtId: DistrictId.parse("dst_northfield"), schoolId: SchoolId.parse("sch_nf-high"), offeringId: ENG9 } as const;
 const ACTIVITY = ActivityId.parse("act_night-essay");
 
 /** An English 9 literary essay, in MLA. */
@@ -194,6 +197,10 @@ export async function setup(options: {
   policy?: AiHelpPolicy;
   plan?: DistrictAssessmentPlan;
   sandbox?: ExecutionSandbox;
+  /** Instructions for AI feedback, signed into the rubric release. */
+  aiInstructions?: string;
+  /** Sign the rubric for its offering and check its signer through policy on every run. */
+  boundRubric?: boolean;
 } = {}) {
   const now = () => NOW;
   const academics = InMemoryAcademicStore.seeded(NORTHFIELD);
@@ -208,6 +215,7 @@ export async function setup(options: {
   const deterministicRuns = new AssessmentRuns({ runs: new InMemoryAssessmentRunStore(), rubrics, registry, profiles: [DETERMINISTIC_PROFILE], now });
   const ci = new AssessmentCi({ assessment, runs: deterministicRuns });
 
+  const signing = policyRubricSigning({ policy: policyEngine, directory: academics });
   const model = new FakeModel();
   const policies = { current: options.policy ?? "releasable" as AiHelpPolicy };
   const store = new InMemoryOptionalRunStore();
@@ -221,10 +229,14 @@ export async function setup(options: {
     ...(options.sandbox === undefined ? {} : { sandbox: options.sandbox }),
     plan: options.plan ?? { sandbox: "available" },
     aiHelpPolicies: { aiHelpPolicy: async (activityId) => (activityId === ACTIVITY ? policies.current : undefined) },
+    ...(options.boundRubric === true ? { signing } : {}),
     now,
   });
 
-  const release = await signRubricRelease(essayRubric(), P.rivera, registry, NOW);
+  const draft = { ...essayRubric(), ...(options.aiInstructions === undefined ? {} : { aiInstructions: options.aiInstructions }) };
+  const release = options.boundRubric === true
+    ? await signOfferingRubricRelease(draft, { signer: P.rivera, offering: ENG9_SCOPE, policy: signing, registry, signedAt: NOW })
+    : await signRubricRelease(draft, P.rivera, registry, NOW);
   await rubrics.put(release);
   const assignment = await assessment.createAssignment(P.rivera, {
     offeringId: ENG9,
@@ -246,7 +258,7 @@ export async function setup(options: {
     aiAssistance: { level: "none" },
   });
   const receipt = await assessment.submit(P.amara, assignment.id, [{ artifactId: essay.artifact.id, revisionId: essay.head.id }]);
-  return { assessment, ci, ai, model, store, policies, release, assignment, essay, submissionId: receipt.submissionId };
+  return { academics, assessment, ci, ai, model, store, policies, release, assignment, essay, submissionId: receipt.submissionId };
 }
 
 /** Expects a promise to reject with a SchoolOS error code. */
