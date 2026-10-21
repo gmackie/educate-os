@@ -27,6 +27,7 @@ pnpm schoolos:harness -- --check # boot, check every /health over HTTP, exit
 Each district serves `GET /health`, `GET /me` and `POST /ai/complete`. The harness prints a
 ready-made `curl` command with a student token for each district. A token from one district's IdP is
 rejected by the other. `SCHOOLOS_HARNESS_PORT` moves the first port.
+| `packages/schoolos-identity` | `@schoolos/identity`: resolves verified `(issuer, subject)` claims to principals, the Cloudflare Access adapter, admin-confirmed identity linking and the email-keyed migration plan (F04). |
 
 ## Decisions
 

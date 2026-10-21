@@ -42,3 +42,32 @@ Existing users are keyed by email. F04 will:
 
 The fixtures include a Northfield teacher and a Riverbend teacher who share both an email address
 and an IdP subject. They must stay two principals.
+
+## Implementation notes (F04, SCHO-5)
+
+`@schoolos/identity` implements this decision as a library. The kernel is unchanged until its
+sign-in seam lands in a separate PR.
+
+- **Resolution.** `PrincipalResolver.resolve` reads only `issuer`, `subject` and the credential
+  kind. Every other claim (email, roles, groups) is ignored. An untrusted issuer, an unknown link
+  or the wrong credential kind all fail as `unauthenticated`.
+- **Cloudflare Access.** `identityFromAccessPayload` takes a payload `verifyCfAccessJwt` has
+  already verified. The issuer is Access's `iss`, the team domain
+  (`https://<team>.cloudflareaccess.com`), and it must equal the deployment's `CF_ACCESS_ISS`
+  exactly. A district that signs in through Access lists that string in `trustedIssuers`. The
+  subject is Access `sub`, the Access user ID, and never `email`. A token with a missing or empty
+  `sub` is rejected.
+- **Service tokens.** An Access service-token JWT carries `common_name` (the client ID) and no
+  `sub`. It becomes a `service` credential with subject `service-token:<common_name>`, which
+  resolves only when an administrator has linked it to a `service` principal. Person credentials
+  never resolve to service principals, and service credentials never resolve to people.
+- **Linking.** A new identity is linked only by a district administrator approving a pending link.
+  Approval re-runs every check, refuses an identity linked to anyone, and emits an audit event that
+  contains no email.
+- **Migration.** `planEmailKeyedMigration` sorts existing email-keyed Workshop users into
+  `exact-single` (a pending adoption awaiting confirmation), `ambiguous`, `cross-district` and
+  `unmatched`. It never links or merges anything itself.
+- **Caveat.** Access keeps one user record per email in a Zero Trust organization. If the IdP
+  reassigns an address and the old Access user is never removed, the new holder may receive the
+  same `sub`. District offboarding must therefore revoke departing users in Access, too. This
+  needs to be confirmed against a live organization before pilot.
