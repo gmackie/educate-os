@@ -6,5 +6,6 @@ export * from "./identity.ts";
 export * from "./envelope.ts";
 export * from "./protocol.ts";
 export * from "./agent.ts";
+export * from "./verification.ts";
 export * from "./registry.ts";
 export * from "./entitlement.ts";

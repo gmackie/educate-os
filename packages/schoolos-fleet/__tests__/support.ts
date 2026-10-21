@@ -1,6 +1,8 @@
 import { CapabilityId, CommercialAccountId, InstanceId, type DistrictDirectorySnapshot } from "@schoolos/contracts";
+import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
 import {
   DistrictAgent,
+  FakeCommercialAccountVerifier,
   InMemoryInstanceRegistryStorage,
   InMemorySequenceCounter,
   InstanceRegistry,
@@ -26,10 +28,27 @@ export function instanceIdFor(snapshot: DistrictDirectorySnapshot): InstanceId {
   return InstanceId.parse(`ins_${snapshot.district.id.slice("dst_".length)}`);
 }
 
-/** A registry with in-memory storage, plus the storage so tests can inspect what was kept. */
-export function makeRegistry(clock: ReturnType<typeof manualClock>) {
+/** The commercial account a synthetic district registers under. */
+export function commercialAccountIdFor(snapshot: DistrictDirectorySnapshot): CommercialAccountId {
+  return CommercialAccountId.parse(`acct_${snapshot.district.id.slice("dst_".length)}`);
+}
+
+/**
+ * A commercial system that vouches for NORTHFIELD's and RIVERBEND's instances: each account has a
+ * verified technology admin who confirmed the district's instance.
+ */
+export function verifierFor(snapshots: readonly DistrictDirectorySnapshot[] = [NORTHFIELD, RIVERBEND]) {
+  return new FakeCommercialAccountVerifier(snapshots.map((snapshot) => ({
+    commercialAccountId: commercialAccountIdFor(snapshot),
+    verifiedContactRoles: ["district-technology-admin"],
+    confirmedInstanceIds: [instanceIdFor(snapshot)],
+  })));
+}
+
+/** A registry with in-memory storage, plus the storage and verifier so tests can inspect them. */
+export function makeRegistry(clock: ReturnType<typeof manualClock>, accountVerifier = verifierFor()) {
   const storage = new InMemoryInstanceRegistryStorage();
-  return { storage, registry: new InstanceRegistry({ storage, now: clock.now }) };
+  return { storage, accountVerifier, registry: new InstanceRegistry({ storage, accountVerifier, now: clock.now }) };
 }
 
 /** A district instance: its key pair and its agent. */
@@ -53,7 +72,7 @@ export async function makeDistrict(
       releaseVersion: "0.1.0",
       capabilityIds: [CapabilityId.parse("core-learning")],
       contactRole: "district-technology-admin",
-      commercialAccountId: CommercialAccountId.parse(`acct_${snapshot.district.id.slice("dst_".length)}`),
+      commercialAccountId: commercialAccountIdFor(snapshot),
     });
   return { identity, instanceId, agent, registration };
 }

@@ -2,6 +2,7 @@ import { CapabilityId, CommercialAccountId, InstanceId, type DistrictDirectorySn
 import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
 import {
   DistrictAgent,
+  FakeCommercialAccountVerifier,
   type HealthProbe,
   InMemoryInstanceRegistryStorage,
   InMemorySequenceCounter,
@@ -167,9 +168,14 @@ export async function registeredDistrict(
   return { instanceId, agent, manager, heartbeat, revokeManagement };
 }
 
-/** A root registry on in-memory storage. */
+/** A root registry on in-memory storage, whose commercial system vouches for both synthetic districts. */
 export function makeRegistry(clock: Clock): InstanceRegistry {
-  return new InstanceRegistry({ storage: new InMemoryInstanceRegistryStorage(), now: clock.now });
+  const accountVerifier = new FakeCommercialAccountVerifier([NORTHFIELD, RIVERBEND].map((snapshot) => ({
+    commercialAccountId: CommercialAccountId.parse(`acct_${snapshot.district.id.slice("dst_".length)}`),
+    verifiedContactRoles: ["district-technology-admin"],
+    confirmedInstanceIds: [instanceIdFor(snapshot)],
+  })));
+  return new InstanceRegistry({ storage: new InMemoryInstanceRegistryStorage(), accountVerifier, now: clock.now });
 }
 
 /** The SchoolOsError a promise rejects with. */

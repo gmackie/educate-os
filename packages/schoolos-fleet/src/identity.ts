@@ -29,6 +29,11 @@ export const Ed25519PrivateJwk = z.strictObject({
 /** An Ed25519 private JWK. */
 export type Ed25519PrivateJwk = z.infer<typeof Ed25519PrivateJwk>;
 
+// What Web Crypto exports as a JWK, reduced to the key fields: `ext` and `key_ops` are dropped, and
+// `d` is present only for a private key. Parsing also narrows the export, which Workers' typings
+// return as a union with `ArrayBuffer`.
+const ExportedJwk = z.object({ kty: z.string(), crv: z.string(), x: z.string(), d: z.string().optional() });
+
 /** A 64-byte Ed25519 signature, base64url-encoded. */
 export const Ed25519Signature = Base64Url.length(86);
 
@@ -78,8 +83,9 @@ export class SigningIdentity {
     const pair = await crypto.subtle.generateKey(ED25519, true, ["sign", "verify"]);
     // Web Crypto's typings can't tell from the algorithm that Ed25519 yields a pair.
     if (!("privateKey" in pair)) throw new Error("Ed25519 key generation returned a single key");
-    const raw = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
-    const publicKey = Ed25519PublicKey.parse(toBase64Url(raw));
+    // The public JWK's `x` is the raw key, base64url-encoded already.
+    const { x } = ExportedJwk.parse(await crypto.subtle.exportKey("jwk", pair.publicKey));
+    const publicKey = Ed25519PublicKey.parse(x);
     return new SigningIdentity(await keyIdFor(publicKey), publicKey, pair.privateKey);
   }
 
@@ -93,8 +99,7 @@ export class SigningIdentity {
 
   /** Exports the private key as a JWK (which also carries the public key) for secret storage. */
   async exportJwk(): Promise<Ed25519PrivateJwk> {
-    const jwk = await crypto.subtle.exportKey("jwk", this.#privateKey);
-    return Ed25519PrivateJwk.parse({ kty: jwk.kty, crv: jwk.crv, x: jwk.x, d: jwk.d });
+    return Ed25519PrivateJwk.parse(ExportedJwk.parse(await crypto.subtle.exportKey("jwk", this.#privateKey)));
   }
 
   /** Signs bytes, returning the base64url signature. */
