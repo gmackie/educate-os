@@ -1,0 +1,21 @@
+{
+  "name": "@schoolos/harness",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Boots the synthetic SchoolOS districts locally as isolated instances with fake identity, roster and AI providers. Development tooling, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "node src/cli.ts"
+  },
+  "dependencies": {
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "vitest": "catalog:"
+  }
+}
