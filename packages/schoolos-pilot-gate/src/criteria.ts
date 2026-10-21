@@ -144,7 +144,12 @@ export const CRITERIA: readonly Criterion[] = z.array(Criterion).parse([
         name: "a school tool call naming another student is denied, and one with an untrusted readOnlyHint is authorized as its real action",
         direct: "The district app does not expose school tools; the tool runner is driven over the district app's own policy engine.",
       },
-      { id: "mcp-surface", status: "todo", name: "the same holds through the agent-facing MCP surface", blockedBy: ["SCHO-57"], reason: "The gatekeeper-schoolos Worker that exposes school tools to agents is not built yet." },
+      {
+        id: "mcp-surface",
+        status: "test",
+        name: "through the agent-facing gatekeeper, the subject is the connected account's principal, readOnlyHint is ignored, every write waits for a person, and another district's account reaches nothing",
+        direct: "The district app does not expose its school tools to the gatekeeper yet; the gatekeeper's session is driven over the district app's own policy engine through the in-process district service.",
+      },
     ],
   },
   {

@@ -361,6 +361,7 @@ const NO_DEFAULT_CRED_INPUTS = new Set([
   "gatekeeper-websearch",     // auto-provisioned; searches through the account's own AI Gateway
   "gatekeeper-mcp",           // MCP OAuth uses dynamic client registration, not a static app
   "gatekeeper-mcp-portal",    // same MCP OAuth chain as gatekeeper-mcp
+  "gatekeeper-schoolos",      // the district verifies its own sign-in; its service binding is injected
 ]);
 
 // Not installable on customer instances: Email Routing needs a zone, which workers.dev-hosted
@@ -397,6 +398,7 @@ const SINGLETON = new Set([
   "gatekeeper-homeassistant", // (2) no inputs; users connect their own URL + token in-app
   "gatekeeper-mcp",           // (2) no inputs; users paste their own endpoints in-app
   "gatekeeper-mcp-portal",    // (2) no inputs; the one portal comes from the deployment's vars
+  "gatekeeper-schoolos",      // (2) no inputs; the district's service binding is injected
 ]);
 
 /** Default wizard inputs for an installable gatekeeper that fronts a third-party OAuth app. */

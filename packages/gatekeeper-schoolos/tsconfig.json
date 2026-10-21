@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // A deployable Worker, so Workers' typings (ADR-0009). session.ts and district.ts import nothing
+    // Workers-only, so the pilot gate compiles them under the web-standard surface as well.
+    "types": ["./worker-configuration.d.ts"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__"],
+  "exclude": ["node_modules", ".wrangler"]
+}
