@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./routes": "./src/routes.ts"
+    "./routes": "./src/routes.ts",
+    "./guard-directory": "./src/guard-directory.ts"
   },
   "dependencies": {
     "@schoolos/academics": "workspace:*",

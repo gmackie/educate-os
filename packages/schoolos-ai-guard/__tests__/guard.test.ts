@@ -181,8 +181,8 @@ describe("beforeModelCall", () => {
   it("refuses unknown initiators, agent initiators and unpriced models before holding anything", async () => {
     const { guard, ledger } = setup();
     const stranger = call("stranger@example.com", ["hi"]);
-    expect(await guard.beforeModelCall(stranger)).toMatchObject({ action: "deny", reason: "unknown_principal" });
-    expect(await guard.beforeModelCall(call("gpt-5", ["hi"], { initiator: { type: "agent", id: USERS.student } }))).toMatchObject({ action: "deny", reason: "unknown_principal" });
+    expect(await guard.beforeModelCall(stranger)).toEqual({ action: "deny", reason: "unknown_principal", message: DEFAULT_GUARD_MESSAGES.unknownPrincipal });
+    expect(await guard.beforeModelCall(call("gpt-5", ["hi"], { initiator: { type: "agent", id: USERS.student } }))).toMatchObject({ action: "deny", reason: "agent_initiator" });
     const unpriced = call(USERS.student, ["hi"], { model: { provider: "openai", id: "gpt-unpriced" } });
     expect(await guard.beforeModelCall(unpriced)).toEqual({ action: "deny", reason: "model_unpriced", message: DEFAULT_GUARD_MESSAGES.notAllowed });
     expect(await ledger.request(stranger.callId)).toBeNull();

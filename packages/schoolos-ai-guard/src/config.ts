@@ -16,6 +16,8 @@ import {
   UsdNano,
 } from "@schoolos/ai-governance";
 import { GradeBand, MachineCode, OpaqueId } from "@gmacko/hall-monitor-contracts";
+import { WorkshopUserLink } from "@schoolos/identity";
+import { Workspace } from "@schoolos/workspaces";
 
 /**
  * One model's list rates, in nanodollars per million tokens, from one immutable price book, plus
@@ -68,8 +70,18 @@ export const GuardProfile = z.strictObject({
 export type GuardProfile = z.infer<typeof GuardProfile>;
 
 /**
+ * The audience classes a district-resolved call is moderated as, each a key every district-mode
+ * {@link GuardConfig.profiles} must have. A student's class is the youngest grade band their call
+ * is for; a student the directory places in no grade band is `student-k5`, the strictest.
+ */
+export const AUDIENCE_PROFILE_KEYS = ["student-k5", "student-6-8", "student-9-12", "educator"] as const;
+/** An audience class. */
+export type AudienceProfileKey = (typeof AUDIENCE_PROFILE_KEYS)[number];
+
+/**
  * Binds one Workshop user to a SchoolOS principal: the {@link GuardContext} the static resolver
- * returns for calls the Workshop makes on their behalf.
+ * returns for calls the Workshop makes on their behalf. For tests and local development only: in
+ * production the district's records say who a user is (`contextSource: "district"`).
  */
 export const PrincipalBinding = z.strictObject({
   /** The Workshop's authenticated user ID (`AiCallDescriptor.initiator.id`). */
@@ -99,8 +111,10 @@ export const GuardMessages = z.strictObject({
   aiUnavailable: z.string().min(1).max(1000),
   /** The generative budget refused the call. */
   budget: z.string().min(1).max(1000),
-  /** The call is not permitted (unknown user, unpriced model, policy). */
+  /** The call is not permitted (unpriced model, policy). */
   notAllowed: z.string().min(1).max(1000),
+  /** The Workshop user is no principal of this district: their account has not been linked yet. */
+  unknownPrincipal: z.string().min(1).max(1000),
 });
 /** The guard's user-facing messages. */
 export type GuardMessages = z.infer<typeof GuardMessages>;
@@ -114,14 +128,21 @@ export const DEFAULT_GUARD_MESSAGES: GuardMessages = {
   aiUnavailable: "The AI assistant isn't available right now. You can keep working without it, or ask your teacher.",
   budget: "The AI budget for this work has been used up. You can keep working without the assistant.",
   notAllowed: "The AI assistant isn't available for this request.",
+  unknownPrincipal:
+    "Your account isn't linked to your school's records yet, so the AI assistant is off. " +
+    "Ask your school's administrator to link it.",
 };
 
 /** The guard's whole configuration. */
 export const GuardConfig = z.strictObject({
   /** The district this deployment serves. Its ledger is one Durable Object named by this ID. */
   districtId: DistrictId,
-  /** The academic directory funding is resolved against. */
-  directory: DistrictDirectorySnapshot,
+  /**
+   * The academic directory, when the district app is not bound as `SCHOOLOS_DISTRICT`. With the
+   * binding, the guard reads the district's own (profile-free) directory instead and ignores this
+   * one. With neither, every call fails closed.
+   */
+  directory: DistrictDirectorySnapshot.optional(),
   /** The district's funding pools, including the protected safety pool moderation draws on. */
   fundingPools: FundingPoolSet,
   /** Terms already closed, whose course funding has ended. */
@@ -147,13 +168,29 @@ export const GuardConfig = z.strictObject({
     /** Deadline for one evaluation, retries included. */
     timeoutMs: z.int().min(100).max(14_000).default(8_000),
   }),
-  /** Guard profiles by key. */
+  /**
+   * Where a call's {@link GuardContext} comes from. `district` (the default) derives it from the
+   * district's records: the `SCHOOLOS_DISTRICT` binding when the deployment adds one, else the
+   * {@link directory}, {@link workspaces} and {@link workshopUserLinks} configured here. `static`
+   * reads {@link principals} instead, and is for tests and local development only.
+   */
+  contextSource: z.enum(["district", "static"]).default("district"),
+  /** Administrator-confirmed Workshop user links, when the district is not reached by binding. */
+  workshopUserLinks: z.array(WorkshopUserLink).default([]),
+  /** The district's workspaces, when it is not reached by binding. */
+  workspaces: z.array(Workspace).default([]),
+  /** Guard profiles by key. District mode requires one per {@link AUDIENCE_PROFILE_KEYS}. */
   profiles: z.record(z.string().min(1).max(64), GuardProfile),
-  /** The principals this deployment serves. */
-  principals: z.array(PrincipalBinding),
+  /** Static principal bindings, read only when `contextSource` is `static`. */
+  principals: z.array(PrincipalBinding).default([]),
   /** Overrides for any of {@link DEFAULT_GUARD_MESSAGES}. */
   messages: GuardMessages.partial().optional(),
 }).superRefine((config, ctx) => {
+  if (config.contextSource === "district") {
+    for (const key of AUDIENCE_PROFILE_KEYS) {
+      if (config.profiles[key] === undefined) ctx.addIssue({ code: "custom", message: `missing audience profile ${key}`, path: ["profiles", key] });
+    }
+  }
   for (const [index, binding] of config.principals.entries()) {
     if (config.profiles[binding.profile] === undefined) {
       ctx.addIssue({ code: "custom", message: `unknown profile ${binding.profile}`, path: ["principals", index, "profile"] });

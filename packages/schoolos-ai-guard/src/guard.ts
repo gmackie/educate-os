@@ -124,10 +124,21 @@ export class AiCallGuardService {
    */
   async beforeModelCall(call: AiCallDescriptor): Promise<AiCallDecision> {
     const log = logger.with({ callId: call.callId, callSite: call.callSite });
-    const context = await this.#resolver.resolve(call);
+    if (call.initiator.type === "agent") {
+      // An agent initiator names a model, not a person, so no principal can be billed or moderated.
+      log.info("AI call refused: agent initiators are no principal", { event: "ai_guard.denied", reason: "agent_initiator" });
+      return deny("agent_initiator", this.#messages.notAllowed);
+    }
+    let context: GuardContext | null;
+    try {
+      context = await this.#resolver.resolve(call);
+    } catch (error) {
+      log.error("AI call refused: the district directory could not say who the call is for", { event: "ai_guard.failed", reason: "context_unavailable", error: error instanceof Error ? error.name : "unknown" });
+      return deny("context_unavailable", this.#messages.aiUnavailable);
+    }
     if (context === null) {
       log.info("AI call refused: initiator is no principal of this deployment", { event: "ai_guard.denied", reason: "unknown_principal" });
-      return deny("unknown_principal", this.#messages.notAllowed);
+      return deny("unknown_principal", this.#messages.unknownPrincipal);
     }
     const model: ModelRef = { provider: call.model.provider, modelId: call.model.id };
     const rate = rateFor(this.#config, model);

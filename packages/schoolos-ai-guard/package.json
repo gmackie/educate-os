@@ -16,6 +16,9 @@
     "@gmacko/hall-monitor-contracts": "file:../../vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz",
     "@schoolos/ai-governance": "workspace:*",
     "@schoolos/contracts": "workspace:*",
+    "@schoolos/district-app": "workspace:*",
+    "@schoolos/identity": "workspace:*",
+    "@schoolos/workspaces": "workspace:*",
     "capnweb": "catalog:",
     "capnweb-validate": "catalog:",
     "zod": "catalog:"

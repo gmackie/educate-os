@@ -5,8 +5,8 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { validateRpc } from "capnweb-validate";
 import type { AiCallDecision, AiCallDescriptor, AiCallGuard, AiCallOutcome } from "@gadgets/workshop-shared/ai-call-guard";
-import { readGuardConfig } from "./config.ts";
-import { StaticGuardContextResolver } from "./context.ts";
+import { readGuardConfig, type GuardConfig } from "./config.ts";
+import { configuredGuardDirectory, DistrictGuardContextResolver, StaticGuardContextResolver, type GuardContextResolver } from "./context.ts";
 import { AiCallGuardService } from "./guard.ts";
 import { hallMonitorClient } from "./hall-monitor.ts";
 
@@ -30,10 +30,16 @@ export class SchoolOsAiCallGuard extends WorkerEntrypoint<Cloudflare.Env> implem
     return new AiCallGuardService({
       config,
       ledger: this.ctx.exports.DistrictAiLedger.getByName(config.districtId),
-      resolver: new StaticGuardContextResolver(config),
+      resolver: contextResolver(this.env, config),
       hallMonitor: hallMonitorClient(this.env, config),
     });
   }
+}
+
+/** The configured context resolver: the district's records, or static bindings in tests and development. */
+function contextResolver(env: Cloudflare.Env, config: GuardConfig): GuardContextResolver {
+  if (config.contextSource === "static") return new StaticGuardContextResolver(config);
+  return new DistrictGuardContextResolver(env.SCHOOLOS_DISTRICT ?? configuredGuardDirectory(config), config);
 }
 
 export default {

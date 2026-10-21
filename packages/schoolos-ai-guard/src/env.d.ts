@@ -10,6 +10,13 @@ declare namespace Cloudflare {
      * no Worker of this release, so it is added by the deployment rather than the config.
      */
     HALL_MONITOR?: Fetcher;
+    /**
+     * The district app's guard read model (`GuardDirectory` in `@schoolos/district-app`), bound by
+     * service binding to an entrypoint only the guard is given. Absent, the guard derives context
+     * from the directory in its configuration. Its target is no Worker of this release, so it is
+     * added by the deployment rather than the config.
+     */
+    SCHOOLOS_DISTRICT?: import("./context.ts").GuardDirectoryPort;
     /** Hall Monitor's HTTPS origin, for a managed tenant reaching it with a service token. */
     HALL_MONITOR_URL?: string;
     /** The private JWK (Ed25519 or P-256) service tokens are signed with. */

@@ -39,17 +39,51 @@ not a Worker in this release. `HALL_MONITOR_AUDIENCE` defaults to `hall-monitor`
 
 `AI_GUARD_CONFIG` holds:
 
-- the district's directory snapshot, funding pools (one of them the safety pool), model catalog
-  and policy floor;
+- the district's funding pools (one of them the safety pool), model catalog and policy floor;
+- the district's directory snapshot, only when no district app is bound as `SCHOOLOS_DISTRICT`.
+  With the binding, both the context resolver and the ledger read the district's own directory,
+  the ledger's with every principal's display name and email stripped (`ledgerDirectory`);
 - a rate table for each model;
 - the moderation model, the most one check may cost, and the Hall Monitor tenant and cost center;
 - guard profiles: a Hall Monitor policy profile revision, whether input is moderated, and a
-  `failureMode`;
-- principal bindings from Workshop user IDs to SchoolOS principals.
+  `failureMode`, one for each audience class (`student-k5`, `student-6-8`, `student-9-12`,
+  `educator`);
+- when no district app is bound, the district's workspaces and its administrator-confirmed
+  Workshop user links (see below);
+- `contextSource`, `district` by default. `static` reads hand-written `principals` bindings
+  instead, and is for tests and local development only.
 
 It is validated strictly, and an invalid config makes every call fail closed. Workers vars are
-limited in size, so a whole directory snapshot only fits a small district. The bindings and the
-snapshot stand in for `@schoolos/identity` and the district app (see follow-ups).
+limited in size, so a whole directory snapshot only fits a small district; a deployment that
+runs the district app should bind it instead (follow-ups).
+
+## Who a call is for (SCHO-132)
+
+The kernel names only its own authenticated user (`AiCallDescriptor.initiator`). The guard asks
+the district who that is, through the district app's guard read model (`GuardDirectory`, the
+`@schoolos/district-app/guard-directory` entry). It is reached by the `SCHOOLOS_DISTRICT` service
+binding when the deployment adds one, an entrypoint given to the guard alone and never on the
+`/api` surface; otherwise the same read model runs in the guard over the configured directory,
+workspaces and links.
+
+- **Principal.** A Workshop user reaches a principal only through a `WorkshopUserLink` a district
+  administrator confirmed (`confirmWorkshopUserLink` in `@schoolos/identity`). The key is matched
+  exactly and never against a principal's email, a Workshop user with two links resolves to no
+  one, and another district's links are ignored. Service principals are never Workshop users.
+- **Workspace.** A gadget whose Workshop storage handle names a course workspace bills that
+  course; any other gadget is the owner's personal workspace. A gadget whose workspace belongs to
+  someone else is refused.
+- **Audience and grade band.** Staff (teachers and administrators alike) are `educator`.
+  A student's grade bands come from the course workspace's course, else their active courses,
+  else their schools; the youngest decides the profile and the Hall Monitor band (`K-2`/`3-5` →
+  `student-k5`, `6-8` → `student-6-8`, `9-12` → `student-9-12`). A student the directory places
+  nowhere gets `student-k5`, the strictest, and no band is sent.
+- **Refusals.** An unlinked user is denied (`unknown_principal`) with a message asking them to
+  have an administrator link their account. An `agent` initiator names a model, not a person, and
+  is refused (`agent_initiator`). An answer for another district's principal is refused, and a
+  directory that fails or answers something malformed denies the call (`context_unavailable`)
+  before anything is held. Nothing in a call's content, or anything a browser sends, says what
+  role or grade a user has.
 
 ## Development and previews
 
@@ -124,8 +158,9 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
 
 - Output screening (`interaction.output`). The kernel shows the guard only inputs, so screening
   student-mode output needs a kernel seam that buffers output (ADR-0007, consequences).
-- Wiring the context resolver and governance source to `@schoolos/identity` and the district app,
-  in place of the configured bindings and snapshot. This also removes the var size limit.
+- Deploying the district app as a Worker with a guard-only entrypoint for `SCHOOLOS_DISTRICT`,
+  and an admin route that confirms Workshop user links into its `workshopUserLinks` store. Until
+  then the directory, links and workspaces are configured, and the var size limit remains.
 - Pricing generative calls from the AI Gateway log (`aiGatewayLogId`) or a shared price book
   (SCHO-115), and scheduled reconciliation against the provider's bill (SCHO-115/116).
 - Coaching prompts for `coach` decisions.

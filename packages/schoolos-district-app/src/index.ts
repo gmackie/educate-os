@@ -6,3 +6,4 @@ export * from "./policy.ts";
 export * from "./adapters.ts";
 export { CORRELATION_HEADER } from "./http.ts";
 export * from "./app.ts";
+export * from "./guard-directory.ts";

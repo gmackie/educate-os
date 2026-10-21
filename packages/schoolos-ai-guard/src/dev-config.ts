@@ -82,6 +82,9 @@ export const DEV_GUARD_CONFIG = {
     costCenterId: "cc_dev",
     timeoutMs: 2000,
   },
+  // Dev and preview user IDs are linked to no district record, so the dev entrypoint resolves
+  // context from the static bindings below (`DevGuardContextResolver`).
+  contextSource: "static",
   profiles: {
     student: { hallMonitorProfileId: "k12-student", revision: "dev", moderateInput: true, failureMode: "fail-closed" },
   },

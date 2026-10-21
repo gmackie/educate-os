@@ -22,6 +22,7 @@ import { InMemoryCodexPublisher, InMemoryCurriculumStorage, type CodexPublisher,
 import { InMemoryCatalogMirrorStorage, type CatalogMirrorStorage } from "@schoolos/catalog";
 import { InMemoryLedgerStore, type LedgerStore } from "@schoolos/ai-governance";
 import { oneroster } from "@schoolos/integrations";
+import type { WorkshopUserLink } from "@schoolos/identity";
 import type { FundingAllocationRevision } from "./routes.ts";
 
 /**
@@ -107,6 +108,30 @@ export class InMemoryRosterSourceStore implements RosterSourceStore {
   }
 }
 
+/**
+ * The district's administrator-confirmed Workshop user links (`@schoolos/identity`), oldest first.
+ * Append-only; `confirmWorkshopUserLink` checks a link against these before it is added.
+ */
+export interface WorkshopUserLinkStore {
+  /** Every link, oldest first. */
+  list(): Promise<WorkshopUserLink[]>;
+  /** Appends a confirmed link. */
+  add(link: WorkshopUserLink): Promise<void>;
+}
+
+/** A {@link WorkshopUserLinkStore} in memory. */
+export class InMemoryWorkshopUserLinkStore implements WorkshopUserLinkStore {
+  readonly #links: WorkshopUserLink[] = [];
+
+  async list(): Promise<WorkshopUserLink[]> {
+    return structuredClone(this.#links);
+  }
+
+  async add(link: WorkshopUserLink): Promise<void> {
+    this.#links.push(structuredClone(link));
+  }
+}
+
 /** A {@link PolicyAuditSink} that keeps events in memory, for tests and the local harness. */
 export class InMemoryPolicyAuditLog implements PolicyAuditSink {
   readonly #events: PolicyAuditEvent[] = [];
@@ -157,6 +182,8 @@ export interface DistrictAppStores {
   config: ConfigRevisionStore;
   /** Funding pool allocation revisions (UI-02). */
   fundingAllocations: FundingAllocationStore;
+  /** Administrator-confirmed Workshop user links (F04), which the AI call guard resolves through. */
+  workshopUserLinks: WorkshopUserLinkStore;
   /** The policy decision audit trail (A02). Every decision every service makes lands here. */
   audit: PolicyAuditSink;
 }
@@ -179,6 +206,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     ledger: new InMemoryLedgerStore(),
     config: new InMemoryConfigRevisionStore(),
     fundingAllocations: new InMemoryFundingAllocationStore(),
+    workshopUserLinks: new InMemoryWorkshopUserLinkStore(),
     audit: new InMemoryPolicyAuditLog(),
   };
 }

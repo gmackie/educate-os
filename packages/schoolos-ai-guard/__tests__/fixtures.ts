@@ -18,7 +18,16 @@ export const USERS = {
   educatorFailsClosed: "elena@northfield.example",
   /** A student whose profile does not moderate input. */
   unmoderated: "chidi@northfield.example",
+  /** A teacher, known to the district only through a confirmed Workshop user link. */
+  teacher: "morgan.lee@teachers.example",
+  /** A district administrator. */
+  admin: "avery@northfield.example",
+  /** A middle-school student. */
+  middleSchooler: "felix@northfield.example",
 } as const;
+
+/** The Workshop gadget that is Amara's Biology I course workspace. */
+export const AMARA_BIO_GADGET = "gadget-amara-bio";
 
 export const SONNET = { provider: "anthropic", modelId: "claude-sonnet-example" } as const;
 export const MODERATOR = { provider: "cloudflare", modelId: "clef-flash-example" } as const;
@@ -92,7 +101,38 @@ export const TEST_CONFIG = {
     costCenterId: "cc_northfield",
     timeoutMs: 2000,
   },
+  contextSource: "district",
+  workshopUserLinks: [
+    [USERS.student, "prn_nf-student-amara"],
+    [USERS.unmoderated, "prn_nf-student-chidi"],
+    [USERS.teacher, "prn_nf-morgan-lee"],
+    [USERS.admin, "prn_nf-district-admin"],
+    [USERS.middleSchooler, "prn_nf-student-felix"],
+  ].map(([workshopUser, principalId]) => ({
+    districtId: "dst_northfield",
+    workshopUser: workshopUser!,
+    principalId: principalId!,
+    confirmedBy: "prn_nf-district-admin",
+    confirmedAt: "2026-10-20T15:00:00Z",
+  })),
+  workspaces: [
+    {
+      kind: "course",
+      id: "wsp_nf-amara-bio",
+      districtId: "dst_northfield",
+      ownerPrincipalId: "prn_nf-student-amara",
+      createdAt: "2026-09-01T12:00:00Z",
+      storageHandle: { backend: "workshop", ref: AMARA_BIO_GADGET },
+      schoolId: "sch_nf-high",
+      offeringId: "off_nf-bio-fall-p2",
+      termId: "trm_nf-2026-fall",
+    },
+  ],
   profiles: {
+    "student-k5": { hallMonitorProfileId: "k12-elementary", revision: "r2", moderateInput: true, failureMode: "fail-closed" },
+    "student-6-8": { hallMonitorProfileId: "k12-middle", revision: "r2", moderateInput: true, failureMode: "fail-closed" },
+    "student-9-12": { hallMonitorProfileId: "k12-high", revision: "r2", moderateInput: true, failureMode: "fail-closed" },
+    educator: { hallMonitorProfileId: "educator", revision: "r1", moderateInput: true, failureMode: "proceed" },
     student: { hallMonitorProfileId: "k12-student", revision: "r3", moderateInput: true, failureMode: "fail-closed" },
     "student-misconfigured": { hallMonitorProfileId: "k12-student", revision: "r3", moderateInput: true, failureMode: "proceed" },
     "educator-proceeds": { hallMonitorProfileId: "educator", revision: "r1", moderateInput: true, failureMode: "proceed" },

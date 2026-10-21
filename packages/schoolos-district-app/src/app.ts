@@ -31,6 +31,7 @@ import { errorResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from
 import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./policy.ts";
 import { type ParsedRouteInput, type RouteName, type RouteResponse, type Surface } from "./routes.ts";
 import type { DistrictAppStores } from "./stores.ts";
+import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 
 /**
  * Verifies a request's credential (a bearer token, a Cloudflare Access assertion) and returns the
@@ -113,6 +114,12 @@ export interface DistrictApp {
   readonly ledger: AiLedger;
   /** The governor a kernel AI Gateway seam calls around every model request (G01). */
   readonly aiGovernor: AiRequestGovernor;
+  /**
+   * What the SchoolOS AI call guard may learn about a Workshop user (SCHO-132): their principal,
+   * roles, workspace and grade bands, read afresh from the district's stores. It is not on the
+   * `/api` surface; only a deployment that binds the guard to it can call it.
+   */
+  readonly guardDirectory: GuardDirectory;
   /** The district's framework catalog mirror. Callers authorize first; it records but does not decide. */
   readonly catalog: CatalogMirror;
   /** The stores, for operators and tests. */
@@ -630,6 +637,10 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     engine,
     ledger,
     aiGovernor: ledgerGovernor(ledger),
+    guardDirectory: guardDirectoryOver(async () => {
+      const [directory, workspaces, workshopUserLinks] = await Promise.all([stores.directory.load(), stores.workspaces.load(), stores.workshopUserLinks.list()]);
+      return { directory: directory.snapshot, workspaces: workspaces.state.workspaces, workshopUserLinks };
+    }),
     catalog,
     stores,
     async fetch(request) {

@@ -1348,6 +1348,15 @@ importers:
       '@schoolos/contracts':
         specifier: workspace:*
         version: link:../schoolos-contracts
+      '@schoolos/district-app':
+        specifier: workspace:*
+        version: link:../schoolos-district-app
+      '@schoolos/identity':
+        specifier: workspace:*
+        version: link:../schoolos-identity
+      '@schoolos/workspaces':
+        specifier: workspace:*
+        version: link:../schoolos-workspaces
       capnweb:
         specifier: 'catalog:'
         version: 0.12.0

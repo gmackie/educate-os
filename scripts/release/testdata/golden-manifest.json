@@ -1328,7 +1328,7 @@
       "compatibilityFlags": [],
       "inputs": [
         {
-          "help": "The district, its directory snapshot, funding pools (including the safety pool), model rates, Hall Monitor profiles and principal bindings. See packages/schoolos-ai-guard/README.md for the schema.",
+          "help": "The district, its funding pools (including the safety pool), model rates, Hall Monitor profiles per audience, and, unless the district app is bound as SCHOOLOS_DISTRICT, its directory snapshot, workspaces and confirmed Workshop user links. See packages/schoolos-ai-guard/README.md for the schema.",
           "kind": "var",
           "label": "Guard configuration (JSON)",
           "name": "AI_GUARD_CONFIG"

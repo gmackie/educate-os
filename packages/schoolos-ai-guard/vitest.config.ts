@@ -27,6 +27,7 @@ export default defineConfig({
         serviceBindings: {
           AI_CALL_GUARD: { name: kCurrentWorker, entrypoint: "SchoolOsAiCallGuard" },
           HALL_MONITOR: { name: kCurrentWorker, entrypoint: "FakeHallMonitor" },
+          SCHOOLOS_DISTRICT: { name: kCurrentWorker, entrypoint: "FakeDistrictDirectory" },
         },
       },
     }),

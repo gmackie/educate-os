@@ -4,7 +4,7 @@
 // policy or models apply.
 
 import { DurableObject } from "cloudflare:workers";
-import { SchoolOsError, type Scope } from "@schoolos/contracts";
+import { DistrictDirectorySnapshot, SchoolOsError, type Scope } from "@schoolos/contracts";
 import {
   AiLedger,
   type AiGovernanceSource,
@@ -21,19 +21,33 @@ import {
 } from "@schoolos/ai-governance";
 import { DurableObjectLedgerStore } from "@schoolos/ai-governance/durable-object-store";
 import { readGuardConfig, type GuardConfig } from "./config.ts";
+import type { GuardDirectoryPort } from "./context.ts";
 
 /**
- * An {@link AiGovernanceSource} over the deployment's configuration. Every scope resolves to the
- * district policy floor: narrower policy layers arrive with the district app's policy compiler.
+ * An {@link AiGovernanceSource} over the deployment's configuration. The directory is the district
+ * app's, through `district` (the `SCHOOLOS_DISTRICT` binding) when there is one, else the
+ * configured snapshot. Every scope resolves to the district policy floor: narrower policy layers
+ * arrive with the district app's policy compiler.
  */
 export class ConfiguredGovernanceSource implements AiGovernanceSource {
   readonly #config: GuardConfig;
+  readonly #district: GuardDirectoryPort | undefined;
 
-  constructor(config: GuardConfig) {
+  constructor(config: GuardConfig, district?: GuardDirectoryPort) {
     this.#config = config;
+    this.#district = district;
   }
 
-  async directory() {
+  async directory(): Promise<DistrictDirectorySnapshot> {
+    if (this.#district !== undefined) {
+      // Validated again: it crossed a service binding, and funding is decided against it.
+      const parsed = DistrictDirectorySnapshot.safeParse(await this.#district.ledgerDirectory());
+      if (!parsed.success || parsed.data.district.id !== this.#config.districtId) {
+        throw new SchoolOsError("unavailable", "The district directory is unavailable.");
+      }
+      return parsed.data;
+    }
+    if (this.#config.directory === undefined) throw new SchoolOsError("unavailable", "No district directory is configured.");
     return this.#config.directory;
   }
   async fundingPools() {
@@ -110,7 +124,7 @@ export class DistrictAiLedger extends DurableObject<Cloudflare.Env> {
     const text = this.env.AI_GUARD_CONFIG;
     if (this.#ledger?.text !== text) {
       const config = readGuardConfig(text);
-      this.#ledger = { text, ledger: new AiLedger({ districtId: config.districtId, store: this.#store, source: new ConfiguredGovernanceSource(config) }) };
+      this.#ledger = { text, ledger: new AiLedger({ districtId: config.districtId, store: this.#store, source: new ConfiguredGovernanceSource(config, this.env.SCHOOLOS_DISTRICT) }) };
     }
     return this.#ledger.ledger;
   }
