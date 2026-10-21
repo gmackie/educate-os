@@ -2,7 +2,7 @@
   "name": "@schoolos/admin-ui",
   "version": "0.1.0",
   "private": true,
-  "description": "The SchoolOS district admin console (U03): roster import, capability activation with dry-run previews, configuration history and rollback, district policies, AI usage and term rollover. A Vite React SPA that speaks only to the district API through @schoolos/api-client.",
+  "description": "The SchoolOS district admin console (U03): roster import, capability activation with dry-run previews, configuration history and rollback, district policies, AI usage, AI budgets and term rollover. A Vite React SPA that speaks only to the district API through @schoolos/api-client.",
   "type": "module",
   "scripts": {
     "dev": "vite"

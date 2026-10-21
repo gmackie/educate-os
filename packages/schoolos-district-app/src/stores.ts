@@ -22,6 +22,7 @@ import { InMemoryCodexPublisher, InMemoryCurriculumStorage, type CodexPublisher,
 import { InMemoryCatalogMirrorStorage, type CatalogMirrorStorage } from "@schoolos/catalog";
 import { InMemoryLedgerStore, type LedgerStore } from "@schoolos/ai-governance";
 import { oneroster } from "@schoolos/integrations";
+import type { FundingAllocationRevision } from "./routes.ts";
 
 /**
  * A district's configuration revisions, oldest first. Only applied revisions are kept: a draft or
@@ -46,6 +47,37 @@ export class InMemoryConfigRevisionStore implements ConfigRevisionStore {
   async append(revision: ConfigurationRevision, expectedHeadId: ConfigRevisionId | undefined): Promise<void> {
     if (this.#revisions.at(-1)?.id !== expectedHeadId) {
       throw new SchoolOsError("conflict", "The configuration changed since this plan was made; plan it again.");
+    }
+    this.#revisions.push(structuredClone(revision));
+  }
+}
+
+/**
+ * The district's funding pool allocations, as administrators set them, oldest revision first. The
+ * pools themselves (scope, purpose, allowed models) are deployment configuration
+ * (`DistrictAppOptions.fundingPools`); a revision records only the monthly allocation of each, and
+ * the head revision's allocations replace the configured ones wherever it names a pool. Revisions
+ * are append-only, so the history of who changed which allocation, and when, is never rewritten.
+ * As with configuration, a revision is appended only over the head the administrator saw.
+ */
+export interface FundingAllocationStore {
+  /** Every revision, oldest first. */
+  list(): Promise<FundingAllocationRevision[]>;
+  /** Appends `revision` if the head is still `expectedHeadId` (absent for none), else throws `conflict`. */
+  append(revision: FundingAllocationRevision, expectedHeadId: string | undefined): Promise<void>;
+}
+
+/** A {@link FundingAllocationStore} in memory. */
+export class InMemoryFundingAllocationStore implements FundingAllocationStore {
+  readonly #revisions: FundingAllocationRevision[] = [];
+
+  async list(): Promise<FundingAllocationRevision[]> {
+    return structuredClone(this.#revisions);
+  }
+
+  async append(revision: FundingAllocationRevision, expectedHeadId: string | undefined): Promise<void> {
+    if (this.#revisions.at(-1)?.id !== expectedHeadId) {
+      throw new SchoolOsError("conflict", "The funding allocations changed since you loaded them; review them again.");
     }
     this.#revisions.push(structuredClone(revision));
   }
@@ -123,6 +155,8 @@ export interface DistrictAppStores {
   ledger: LedgerStore;
   /** Applied configuration revisions (F03). */
   config: ConfigRevisionStore;
+  /** Funding pool allocation revisions (UI-02). */
+  fundingAllocations: FundingAllocationStore;
   /** The policy decision audit trail (A02). Every decision every service makes lands here. */
   audit: PolicyAuditSink;
 }
@@ -144,6 +178,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     catalog: new InMemoryCatalogMirrorStorage(),
     ledger: new InMemoryLedgerStore(),
     config: new InMemoryConfigRevisionStore(),
+    fundingAllocations: new InMemoryFundingAllocationStore(),
     audit: new InMemoryPolicyAuditLog(),
   };
 }

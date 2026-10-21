@@ -54,7 +54,7 @@ import { AlignmentInput, ContentItemId, type ContentItem, type QueueEntry, type 
 import { ActivityContent, ActivityDefinition, ActivityDefinitionId, ActivityInstallation, TemplateInput } from "@schoolos/curriculum";
 import { EvidenceContract } from "@schoolos/registry";
 import { AssessmentReport, IdempotencyKey, RubricDraft, RubricRelease, RunError, RunState } from "@schoolos/assessment-ci";
-import type { UsageReport } from "@schoolos/ai-governance";
+import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type AiProjectionReport, type UsageReport } from "@schoolos/ai-governance";
 import type { ConfigProblem, ConfigurationPlan } from "@schoolos/config";
 import type { oneroster } from "@schoolos/integrations";
 
@@ -253,6 +253,35 @@ export const ConfigPlanBody = z.discriminatedUnion("ok", [
 ]);
 /** A configuration plan. */
 export type ConfigPlanBody = z.infer<typeof ConfigPlanBody>;
+
+/**
+ * One revision of the district's funding pool allocations: every pool's monthly allocation after
+ * the change, who made it and when. Revisions are append-only (see `FundingAllocationStore`).
+ */
+export const FundingAllocationRevision = z.strictObject({
+  id: z.string().regex(/^far_[a-z0-9-]{1,64}$/),
+  /** 1 for the district's first revision. */
+  number: z.int().positive(),
+  /** Each pool's monthly allocation, by pool ID. */
+  allocations: z.record(FundingPoolId, UsdNano),
+  actorPrincipalId: PrincipalId,
+  appliedAt: z.iso.datetime(),
+  previousRevisionId: z.string().optional(),
+});
+/** A funding allocation revision. */
+export type FundingAllocationRevision = z.infer<typeof FundingAllocationRevision>;
+
+/** The most one pool may be allocated a month, in cents: $1,000,000. */
+export const MAX_POOL_ALLOCATION_CENTS = 100_000_000;
+
+/** Where the district's funding stands this month, and the allocation revision in force. */
+export const AiFundingBody = z.strictObject({
+  report: declared<AiFundingReport>(),
+  /** The allocation revision in force; absent while the deployment's configured allocations apply. */
+  revision: FundingAllocationRevision.optional(),
+});
+/** The funding report. */
+export type AiFundingBody = z.infer<typeof AiFundingBody>;
 
 const params = <S extends z.core.$ZodLooseShape>(shape: S) => z.strictObject(shape);
 const NoBody = z.strictObject({});
@@ -510,6 +539,27 @@ export const ROUTES = {
     response: ConfigurationRevision,
   }),
   "admin.aiUsage": route({ method: "GET", path: "/api/admin/ai/usage", surface: "admin", response: declared<UsageReport>() }),
+  "admin.aiFunding": route({ method: "GET", path: "/api/admin/ai/funding", surface: "admin", response: AiFundingBody }),
+  "admin.aiCostSummary": route({ method: "GET", path: "/api/admin/ai/cost-summary", surface: "admin", response: declared<AiCostSummary>() }),
+  "admin.aiProjection": route({ method: "GET", path: "/api/admin/ai/projection", surface: "admin", response: declared<AiProjectionReport>() }),
+  "admin.updateFundingPools": route({
+    method: "POST", path: "/api/admin/ai/funding", surface: "admin",
+    body: z.strictObject({
+      /** The pools to change. A pool not listed keeps its allocation. */
+      allocations: z.array(z.strictObject({
+        poolId: FundingPoolId,
+        monthlyAllocationCents: z.int().nonnegative().max(MAX_POOL_ALLOCATION_CENTS),
+      })).min(1).max(100),
+      /** The revision the administrator reviewed; the change is refused if another landed since. */
+      expectedRevisionId: z.string().optional(),
+    }),
+    response: AiFundingBody.extend({
+      /** Whether a new revision was recorded; false when nothing changed. */
+      changed: z.boolean(),
+      /** Advisories the change was accepted with, such as a safety reserve below its recommendation. */
+      warnings: z.array(z.string()),
+    }),
+  }),
   "admin.termRollover": route({
     method: "GET", path: "/api/admin/terms/:termId/rollover", surface: "admin",
     params: params({ termId: TermId }), response: declared<TermRolloverPreview>(),

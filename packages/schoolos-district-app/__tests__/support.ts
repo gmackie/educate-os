@@ -87,7 +87,7 @@ export interface TestDistrict {
 /** Boots a district application over in-memory stores, with the ELA and math catalog seeds approved. */
 export async function bootDistrict(
   directory: DistrictDirectorySnapshot = NORTHFIELD,
-  options: Partial<Pick<DistrictAppOptions, "projects">> = {},
+  options: Partial<Pick<DistrictAppOptions, "projects" | "fundingPools" | "modelCatalog" | "aiMonthlyDistrictCapUsdNano" | "cloudflareAccount" | "now">> = {},
 ): Promise<TestDistrict> {
   const idp = new TestIdentityProvider(directory.district.trustedIssuers[0]!);
   const stores = inMemoryDistrictStores(directory);

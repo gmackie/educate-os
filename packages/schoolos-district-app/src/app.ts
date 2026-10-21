@@ -17,11 +17,12 @@ import { AssessmentService } from "@schoolos/assessment";
 import { catalogAlignmentSource, ContentStudio, type AlignmentSource, type ContentReviewer, type ImportFetch } from "@schoolos/content-studio";
 import { contentStudioReleases, CurriculumService, type AiHelpPolicySource, type OfferingScope } from "@schoolos/curriculum";
 import { CatalogMirror, catalogSeedRelease, type VerifyRelease } from "@schoolos/catalog";
-import { AiLedger, ledgerGovernor, type AiRequestGovernor, type FundingPool, type GovernedModel } from "@schoolos/ai-governance";
+import { AiLedger, ledgerGovernor, type AiRequestGovernor, type CloudflareAccountFacts, type FundingPool, type GovernedModel, type UsdNano } from "@schoolos/ai-governance";
 import { createDraftRevision, planConfigurationChange, SHIPPED_REGISTRY, type CapabilityRegistry } from "@schoolos/config";
 import { oneroster } from "@schoolos/integrations";
 import { ArtifactsGitBackend, InMemoryCredentialLedger, ProjectArtifacts, type ArtifactsPlan } from "@schoolos/artifacts-git";
 import { AssessmentCi, AssessmentRuns, builtinRegistry, signRubricRelease, type EvaluatorRegistry } from "@schoolos/assessment-ci";
+import { changeAllocations, effectivePools } from "./funding.ts";
 import { applyRosterImport, contentBody, installAndAssign, keepArtifact, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
 import { errorResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
 import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./policy.ts";
@@ -57,8 +58,22 @@ export interface DistrictAppOptions {
   retention?: RetentionPolicy;
   /** Hosts students may save links to as external artifacts. Defaults to none. */
   approvedExternalHosts?: readonly string[];
-  /** The district's AI funding pools. Defaults to none, so no AI request is funded. */
+  /**
+   * The district's AI funding pools. Defaults to none, so no AI request is funded. Administrators
+   * change their monthly allocations through `admin.updateFundingPools`; the latest allocation
+   * revision overrides the allocation configured here.
+   */
   fundingPools?: readonly FundingPool[];
+  /**
+   * The district's overall monthly cap on its course and personal pools' allocations together, so
+   * the allowances it hands out never promise more than it funds. Defaults to none.
+   */
+  aiMonthlyDistrictCapUsdNano?: UsdNano;
+  /**
+   * The Cloudflare account the district's AI usage is billed to, for the net estimate in
+   * `admin.aiCostSummary`. Without it only the gross model cost is reported.
+   */
+  cloudflareAccount?: CloudflareAccountFacts;
   /** The district gateway's model catalog. */
   modelCatalog?: readonly GovernedModel[];
   /** The AI-help levels above each offering. Defaults to `full` help allowed district-wide. */
@@ -159,13 +174,21 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   });
   const catalog = new CatalogMirror({ storage: stores.catalog, verifyRelease: options.verifyCatalogRelease ?? seedReleasesOnly });
   const alignments = options.alignments ?? catalogAlignmentSource(catalog);
+  const fundingPools = async () => effectivePools(options.fundingPools ?? [], (await stores.fundingAllocations.list()).at(-1));
+  const fundingBody = async () => {
+    const [report, revision] = await Promise.all([
+      ledger.fundingReport(options.aiMonthlyDistrictCapUsdNano === undefined ? {} : { districtCapUsdNano: options.aiMonthlyDistrictCapUsdNano }),
+      stores.fundingAllocations.list().then((revisions) => revisions.at(-1)),
+    ]);
+    return { report, ...(revision === undefined ? {} : { revision }) };
+  };
   const ledger = new AiLedger({
     districtId,
     store: stores.ledger,
     now,
     source: {
       directory: async () => (await stores.directory.load()).snapshot,
-      fundingPools: async () => [...(options.fundingPools ?? [])],
+      fundingPools,
       termClosures: () => termClosedEvents(stores.workspaces, districtId),
       modelCatalog: async () => [...(options.modelCatalog ?? [])],
       effectivePolicy: (scope) => policySource.effectivePolicy(scope),
@@ -544,6 +567,32 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "admin.aiUsage": async (ctx) => {
       await ctx.requireDistrict("read", "ai-budget");
       return ledger.report();
+    },
+    "admin.aiFunding": async (ctx) => {
+      await ctx.requireDistrict("read", "ai-budget");
+      return fundingBody();
+    },
+    "admin.aiCostSummary": async (ctx) => {
+      await ctx.requireDistrict("read", "ai-budget");
+      return ledger.costSummary(options.cloudflareAccount);
+    },
+    "admin.aiProjection": async (ctx) => {
+      await ctx.requireDistrict("read", "ai-budget");
+      return ledger.projection();
+    },
+    "admin.updateFundingPools": async (ctx, { body }) => {
+      await ctx.requireDistrict("configure", "ai-budget");
+      const { changed, warnings } = await changeAllocations({
+        store: stores.fundingAllocations,
+        configured: options.fundingPools ?? [],
+        requests: body.allocations,
+        expectedRevisionId: body.expectedRevisionId,
+        actorPrincipalId: ctx.principal.principalId,
+        districtCapUsdNano: options.aiMonthlyDistrictCapUsdNano,
+        before: (await fundingBody()).report,
+        now: now(),
+      });
+      return { ...(await fundingBody()), changed, warnings };
     },
     "admin.termRollover": (ctx, { params }) => ctx.workspaces().previewTermRollover(ctx.caller, params.termId),
     "admin.closeTerm": (ctx, { params }) => ctx.workspaces().closeTerm(ctx.caller, params.termId),

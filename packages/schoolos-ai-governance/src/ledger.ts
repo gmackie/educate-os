@@ -41,6 +41,15 @@ import {
 import type { LedgerStore } from "./store.ts";
 import { usageEventsFrom, usageReport, type AiUsageEvent, type UsageReport } from "./usage.ts";
 import { planReconciliation, ReconciliationId, type BilledCost, type ReconciliationReport } from "./reconcile.ts";
+import type { CloudflareAccountFacts } from "./account-allocation.ts";
+import {
+  costSummary,
+  fundingReport,
+  projectMonthEnd,
+  type AiCostSummary,
+  type AiFundingReport,
+  type AiProjectionReport,
+} from "./budgets.ts";
 
 /**
  * The trusted district state the ledger decides against. Every read is server-side: nothing the
@@ -373,6 +382,31 @@ export class AiLedger {
       const remaining = usdNanoValue(pool.monthlyAllocationUsdNano) - usdNanoValue(chargedUsdNano);
       return [pool.id, { allocationUsdNano: pool.monthlyAllocationUsdNano, chargedUsdNano, remainingUsdNano: signedUsdNano(remaining) }];
     }));
+  }
+
+  /** Where every pool stands this month, with the safety reserve and its recommended minimum. */
+  async fundingReport(options: { districtCapUsdNano?: UsdNano } = {}): Promise<AiFundingReport> {
+    const [ledger, pools, snapshot, termClosures] = await Promise.all([
+      this.#store.read(),
+      this.#source.fundingPools(),
+      this.#source.directory(),
+      this.#source.termClosures(),
+    ]);
+    const period = billingPeriodOf(this.#now().toISOString());
+    return fundingReport({ ledger, pools, snapshot, termClosures, period, ...options });
+  }
+
+  /** Each pool's month-end projection by linear run rate (see `projectMonthEnd`). */
+  async projection(): Promise<AiProjectionReport> {
+    const [ledger, pools] = await Promise.all([this.#store.read(), this.#source.fundingPools()]);
+    return projectMonthEnd(ledger, pools, this.#now());
+  }
+
+  /** This month's gross model cost, safety spend and, given account facts, the net estimate (see `costSummary`). */
+  async costSummary(account?: CloudflareAccountFacts): Promise<AiCostSummary> {
+    const ledger = await this.#store.read();
+    const period = billingPeriodOf(this.#now().toISOString());
+    return costSummary({ ledger, events: usageEventsFrom(ledger), period, ...(account === undefined ? {} : { account }) });
   }
 
   async #route(principal: AiPrincipal, workspace: AiWorkspaceContext, model: ModelRef, purpose: FundingPurpose): Promise<Routing> {

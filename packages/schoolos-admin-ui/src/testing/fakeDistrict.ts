@@ -208,6 +208,61 @@ const totals = (requests: number, cents: number) => ({
   usageUsdNano: String(cents * 10_000_000), adjustmentUsdNano: "0", totalUsdNano: String(cents * 10_000_000),
 });
 
+/** A synthetic funding pool: its configuration and what it has charged and held this month, in cents. */
+interface FakePool {
+  poolId: string;
+  name: string;
+  purpose: "course" | "personal" | "safety";
+  allocationCents: number;
+  chargedUsdNano: bigint;
+  heldUsdNano: bigint;
+}
+
+const NANO_PER_CENT = 10_000_000n;
+
+/**
+ * The district's pools: $10 for classes (78% used, projected well over), $5 for personal spaces,
+ * and a $3 safety reserve that has paid for three moderation checks of $0.000038 each.
+ */
+function initialPools(): FakePool[] {
+  return [
+    { poolId: "fpl_fk-courses", name: "Course AI", purpose: "course", allocationCents: 1000, chargedUsdNano: 760n * NANO_PER_CENT, heldUsdNano: 20n * NANO_PER_CENT },
+    { poolId: "fpl_fk-personal", name: "Personal AI", purpose: "personal", allocationCents: 500, chargedUsdNano: 50n * NANO_PER_CENT, heldUsdNano: 0n },
+    { poolId: "fpl_fk-safety", name: "Safety reserve", purpose: "safety", allocationCents: 300, chargedUsdNano: 114_000n, heldUsdNano: 0n },
+  ];
+}
+
+/** The district's cap on its class and personal pools together: $20. */
+export const DISTRICT_CAP_CENTS = 2000;
+/** The safety reserve's recommended minimum: $0.10 for each of the 5 teachers and 91 students. */
+const RECOMMENDED_SAFETY_USD_NANO = 9_600_000_000n;
+
+function poolStatus(pool: FakePool) {
+  const allocation = BigInt(pool.allocationCents) * NANO_PER_CENT;
+  const used = pool.chargedUsdNano + pool.heldUsdNano;
+  const points = allocation === 0n ? undefined : Number(used * 10_000n / allocation);
+  const threshold = points === undefined ? (used > 0n ? "exhausted" : "none")
+    : points >= 10_000 ? "exhausted" : points >= 9_500 ? "critical" : points >= 8_500 ? "warning" : points >= 7_000 ? "info" : "none";
+  return {
+    poolId: pool.poolId,
+    name: pool.name,
+    purpose: pool.purpose,
+    scope: { level: "district", districtId: "dst_fake" },
+    monthlyAllocationUsdNano: allocation.toString(),
+    chargedUsdNano: pool.chargedUsdNano.toString(),
+    heldUsdNano: pool.heldUsdNano.toString(),
+    remainingUsdNano: (allocation - used).toString(),
+    utilizationPercent: points === undefined ? null : points / 100,
+    threshold,
+  };
+}
+
+/** Options for {@link fakeDistrict}. */
+export interface FakeDistrictOptions {
+  /** Whether the district has Cloudflare account facts, and so a net estimate. Defaults to false. */
+  netEstimate?: boolean;
+}
+
 /** The fake district: the client the console is given, and what it was asked. */
 export interface FakeDistrict {
   /** The client. */
@@ -216,11 +271,37 @@ export interface FakeDistrict {
   calls: { name: RouteName; input: unknown }[];
   /** The revisions applied, oldest first. */
   revisions: ConfigurationRevision[];
+  /** The funding allocation revisions recorded, oldest first. */
+  allocationRevisions: { id: string; allocations: Record<string, string> }[];
 }
 
 /** A fresh fake district whose first configuration has every module off. */
-export function fakeDistrict(): FakeDistrict {
+export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
   const calls: FakeDistrict["calls"] = [];
+  const pools = initialPools();
+  const allocationRevisions: FakeDistrict["allocationRevisions"] = [];
+  const funding = () => {
+    const statuses = pools.map(poolStatus);
+    const safety = statuses.find((p) => p.purpose === "safety");
+    const head = allocationRevisions.at(-1);
+    return {
+      report: {
+        period: "2026-10",
+        pools: statuses.filter((p) => p.purpose !== "safety"),
+        safety: {
+          ...(safety === undefined ? {} : { pool: safety }),
+          population: { activeTeachers: 5, aiEnabledStudents: 91 },
+          recommendedMinimumUsdNano: RECOMMENDED_SAFETY_USD_NANO.toString(),
+          belowRecommended: safety === undefined || BigInt(safety.monthlyAllocationUsdNano) < RECOMMENDED_SAFETY_USD_NANO,
+        },
+        generativeAllocationUsdNano: (BigInt(pools.filter((p) => p.purpose !== "safety").reduce((t, p) => t + p.allocationCents, 0)) * NANO_PER_CENT).toString(),
+        districtCapUsdNano: (BigInt(DISTRICT_CAP_CENTS) * NANO_PER_CENT).toString(),
+      },
+      ...(head === undefined ? {} : {
+        revision: { id: head.id, number: allocationRevisions.length, allocations: head.allocations, actorPrincipalId: "prn_fk-admin", appliedAt: "2026-10-05T15:00:00.000Z" },
+      }),
+    };
+  };
   let sequence = 1;
   const revision = (desired: DesiredStateView, previous?: ConfigurationRevision): ConfigurationRevision => ({
     id: `cfg_fake-${sequence++}` as ConfigurationRevision["id"],
@@ -254,6 +335,58 @@ export function fakeDistrict(): FakeDistrict {
         byModel: { "cloudflare/synthetic-model": totals(41, 860) },
         unattributed: totals(0, 0),
       } as never;
+    },
+    "admin.aiFunding": () => funding() as never,
+    "admin.aiCostSummary": () => ({
+      period: "2026-10",
+      requests: 44,
+      grossModelCostUsdNano: "8100114000",
+      reconciliationAdjustmentUsdNano: "0",
+      heldUsdNano: "200000000",
+      unknownCostRequests: 1,
+      safetySpendUsdNano: "114000",
+      net: options.netEstimate === true
+        ? {
+          status: "estimated",
+          accountId: "acct-fake",
+          grossUsageUsdNano: "13100114000",
+          freeAllowanceAppliedUsdNano: "110000000",
+          planFeeUsdNano: "5000000000",
+          netEstimatedUsdNano: "12990114000",
+          allocations: [],
+          unknownCostRequests: 1,
+        }
+        : { status: "unavailable", reason: "No Cloudflare account is configured for this district, so the included allowances and plan fee cannot be applied. Only the gross model cost is shown." },
+    }) as never,
+    "admin.aiProjection": () => ({
+      period: "2026-10",
+      asOf: "2026-10-05T15:00:00.000Z",
+      elapsedDays: 4.625,
+      monthDays: 31,
+      warningPercent: 80,
+      pools: [
+        { poolId: "fpl_fk-courses", name: "Course AI", purpose: "course", monthlyAllocationUsdNano: "10000000000", monthToDateUsdNano: "7800000000", projectedUsdNano: "52281081082", projectedUtilizationPercent: 522.81, flagged: true },
+        { poolId: "fpl_fk-personal", name: "Personal AI", purpose: "personal", monthlyAllocationUsdNano: "5000000000", monthToDateUsdNano: "500000000", projectedUsdNano: "3351351352", projectedUtilizationPercent: 67.02, flagged: false },
+        { poolId: "fpl_fk-safety", name: "Safety reserve", purpose: "safety", monthlyAllocationUsdNano: "3000000000", monthToDateUsdNano: "114000", projectedUsdNano: "764109", projectedUtilizationPercent: 0.02, flagged: false },
+      ],
+    }) as never,
+    "admin.updateFundingPools": (input) => {
+      const body = input.body as { allocations: { poolId: string; monthlyAllocationCents: number }[]; expectedRevisionId?: string };
+      if (body.expectedRevisionId !== allocationRevisions.at(-1)?.id) {
+        throw new DistrictApiError(409, { code: "conflict", message: "The funding allocations changed since you loaded them; review them again." });
+      }
+      const next = pools.map((pool) => body.allocations.find((a) => a.poolId === pool.poolId)?.monthlyAllocationCents ?? pool.allocationCents);
+      const generative = next.filter((_, i) => pools[i]!.purpose !== "safety").reduce((t, c) => t + c, 0);
+      if (generative > DISTRICT_CAP_CENTS) {
+        throw new DistrictApiError(400, { code: "validation-failed", message: "The course and personal pools would total more than the district's cap." });
+      }
+      next.forEach((cents, i) => { pools[i]!.allocationCents = cents; });
+      allocationRevisions.push({ id: `far_fake-${allocationRevisions.length + 1}`, allocations: Object.fromEntries(pools.map((p) => [p.poolId, (BigInt(p.allocationCents) * NANO_PER_CENT).toString()])) });
+      const safety = pools.find((p) => p.purpose === "safety")!;
+      const warnings = BigInt(safety.allocationCents) * NANO_PER_CENT < RECOMMENDED_SAFETY_USD_NANO
+        ? [`The safety reserve is $${(safety.allocationCents / 100).toFixed(2)} a month, below the recommended $9.60.`]
+        : [];
+      return { ...funding(), changed: true, warnings } as never;
     },
     "admin.getConfig": () => ({ head: revisions.at(-1)!, revisions: revisions.length, districtPolicy: headDesired().policies }) as never,
     "admin.planConfig": (input) => {
@@ -299,5 +432,5 @@ export function fakeDistrict(): FakeDistrict {
       return structuredClone(handler(input));
     },
   };
-  return { client, calls, revisions };
+  return { client, calls, revisions, allocationRevisions };
 }

@@ -5,6 +5,7 @@ import { AdminClientProvider } from "./app/AdminClientContext.tsx";
 import { AnnouncerProvider } from "./app/Announcer.tsx";
 import { SCREENS, useHashRoute, type ScreenPath } from "./app/useHashRoute.ts";
 import { useDistrictConfig } from "./app/useDistrictConfig.ts";
+import { AiBudgetsPage } from "./budgets/AiBudgetsPage.tsx";
 import { Dashboard } from "./dashboard/Dashboard.tsx";
 import { ModulesPage } from "./modules/ModulesPage.tsx";
 import { PoliciesPage } from "./policies/PoliciesPage.tsx";
@@ -20,6 +21,7 @@ const Screen = ({ path }: { path: ScreenPath }) => {
     case "modules": return <ModulesPage state={config} />;
     case "policies": return <PoliciesPage state={config} />;
     case "ai-usage": return <AiUsagePage state={config} />;
+    case "ai-budgets": return <AiBudgetsPage />;
     case "term-rollover": return <TermRolloverPage />;
   }
 };

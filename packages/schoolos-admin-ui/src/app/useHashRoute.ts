@@ -7,6 +7,7 @@ export const SCREENS = [
   { path: "modules", label: "Modules and activation" },
   { path: "policies", label: "Policies" },
   { path: "ai-usage", label: "AI usage" },
+  { path: "ai-budgets", label: "AI budgets" },
   { path: "term-rollover", label: "Term rollover" },
 ] as const;
 
