@@ -1,10 +1,9 @@
 import { z } from "zod";
-import { SchoolOsError, type DistrictDirectorySnapshot, type PrincipalId } from "@schoolos/contracts";
+import { SchoolOsError, type DistrictDirectorySnapshot, type PrincipalId, type VerifiedIdentity } from "@schoolos/contracts";
 import { identityFromAccessPayload, type CloudflareAccessConfig } from "./cloudflare-access.ts";
 import { createDirectoryPrincipalResolver } from "./directory-resolver.ts";
 import { requestIdentityLink, type PendingIdentityLink } from "./identity-linker.ts";
 import type { MigrationPlan, PendingWorkshopUserAdoption } from "./migration-plan.ts";
-import type { VerifiedIdentity } from "./verified-identity.ts";
 
 /**
  * One Access sign-in as the Workshop's principal resolver seam passes it: the shape of
