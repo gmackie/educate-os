@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   type HealthProbe,
   InstanceId,
+  KeyId,
   OwnershipToken,
   type SignedEnvelope,
   signEnvelope,
@@ -42,9 +43,14 @@ async function registered() {
 
 const offer = (instanceId: InstanceId) => ({
   instanceId,
+  releaseId: "r2-fixture",
   releaseVersion: "0.2.0",
   channel: "stable" as const,
+  purpose: "upgrade" as const,
+  offerSequence: 1,
   manifestSha256: "a".repeat(64),
+  signedManifest: { payload: {}, signature: "A".repeat(86), keyId: KeyId.parse(`ed25519-${"A".repeat(43)}`) },
+  expiresAt: "2026-10-27T12:00:00Z",
 });
 
 describe("R01 acceptance: two districts register and heartbeat without uploading PII", () => {

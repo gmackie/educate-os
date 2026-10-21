@@ -156,10 +156,15 @@ describe("extra fields can't ride along", () => {
     },
     ReleaseOffer: {
       instanceId: "ins_northfield",
+      releaseId: "r2-fixture",
       releaseVersion: "0.2.0",
       channel: "stable",
+      purpose: "upgrade",
+      offerSequence: 1,
       manifestSha256: "0".repeat(64),
+      signedManifest: { payload: {}, signature: "A".repeat(86), keyId: `ed25519-${"A".repeat(43)}` },
       offeredAt: "2026-10-20T12:00:00Z",
+      expiresAt: "2026-10-27T12:00:00Z",
     },
     SupportSessionRequest: {
       requestId: "sup_ticket-1",

@@ -1,0 +1,21 @@
+{
+  "name": "@schoolos/releases",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS signed releases (roadmap R03): root-signed release manifests with rotating pinned keys, release channels, signed offers the district verifies and approves, declines or defers, and the root's staged rollout that halts on failing fleet health and offers rollback. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/fleet": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@types/node": "^26.1.0",
+    "vitest": "catalog:"
+  }
+}

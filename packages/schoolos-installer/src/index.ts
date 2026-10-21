@@ -19,3 +19,4 @@ export * from "./preflight.ts";
 export * from "./rollback.ts";
 export * from "./fleet-registration.ts";
 export * from "./installer.ts";
+export * from "./drift.ts";

@@ -3,15 +3,15 @@ import { compileDesiredState, DistrictInstallConfig, loadPinnedManifest } from "
 import { configFor, deriveRelease, goldenRelease, NORTHFIELD } from "./support.ts";
 
 describe("release manifest", () => {
-  it("accepts the release pipeline's golden manifest against its pin", async () => {
+  it("accepts the release pipeline's golden manifest against the root's signed statement", async () => {
     const release = await goldenRelease();
     expect(Object.keys(release.manifest.workers)).toContain("workshop-backend");
   });
 
-  it("rejects bytes that do not match the pinned digest", async () => {
+  it("rejects bytes that do not match the signed digest", async () => {
     const release = await goldenRelease();
     const tampered = new TextEncoder().encode(new TextDecoder().decode(release.bytes).replace("server.js", "evil.js"));
-    await expect(loadPinnedManifest(tampered, { releaseId: release.manifest.releaseId, version: "0.1.0", manifestSha256: release.sha256 }))
+    await expect(loadPinnedManifest(tampered, configFor(NORTHFIELD, release).release, { signedManifest: release.signedManifest }))
       .rejects.toMatchObject({ code: "validation-failed", message: expect.stringContaining("SHA-256") });
   });
 

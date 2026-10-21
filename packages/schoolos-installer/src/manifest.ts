@@ -4,6 +4,12 @@
 // release bucket and must be validated, and because the installer must refuse a manifest whose
 // placeholder vocabulary it does not know (`manifestVersion`).
 import { SchoolOsError, SemVer } from "@schoolos/contracts";
+import {
+  RELEASE_INSTALL_GRACE_MS,
+  type ReleaseManifestStatement,
+  ReleaseTrust,
+  verifySignedReleaseManifest,
+} from "@schoolos/releases";
 import { z } from "zod";
 import { sha256Hex } from "./digest.ts";
 
@@ -146,28 +152,100 @@ export const ReleaseManifest = z.strictObject({
 export type ReleaseManifest = z.infer<typeof ReleaseManifest>;
 
 /**
- * Pins the release a district installs: its ID, the version the fleet registry is told, and the
- * SHA-256 of the exact manifest bytes. Manifests are not yet signed (the root signs releases from
- * R03 on), so this digest, which the district records in its install config, is what stops a
- * substituted manifest.
+ * Pins the release a district installs by the root release keys it trusts (`@schoolos/releases`).
+ * The manifest bytes are installable only with a root-signed manifest statement naming their
+ * SHA-256, this release ID and this version, signed by one of these keys.
  */
-export const ReleasePin = z.strictObject({
+export const SignedReleasePin = z.strictObject({
+  mode: z.literal("signed"),
+  releaseId: z.string().min(1),
+  version: SemVer,
+  trust: ReleaseTrust,
+});
+/** A signed release pin. */
+export type SignedReleasePin = z.infer<typeof SignedReleasePin>;
+
+/**
+ * Development only: pins a release by the SHA-256 of its manifest bytes, with no signature. It
+ * exists because the release pipeline does not sign manifests yet, so a locally built release
+ * has no root statement; the CLI also demands `--insecure-pin` before it accepts one.
+ */
+export const InsecureReleasePin = z.strictObject({
+  mode: z.literal("insecure-pin"),
   releaseId: z.string().min(1),
   version: SemVer,
   manifestSha256: Sha256Hex,
 });
+/** An insecure release pin. */
+export type InsecureReleasePin = z.infer<typeof InsecureReleasePin>;
+
+/** How the district pins the release it installs. */
+export const ReleasePin = z.discriminatedUnion("mode", [SignedReleasePin, InsecureReleasePin]);
 /** A release pin. */
 export type ReleasePin = z.infer<typeof ReleasePin>;
 
+/** What a signed pin needs besides the manifest bytes. */
+export interface ManifestVerificationInput {
+  /** The root's signed manifest statement for the release (a `SignedReleaseManifest`). */
+  signedManifest?: unknown;
+  /** The clock. Defaults to the system clock. */
+  now?: Date;
+}
+
 /**
- * Verifies manifest bytes against a pin and parses them. Fails with `validation-failed` on a
- * digest or release ID mismatch, an unsupported manifest version, or any unknown field.
+ * Verifies manifest bytes against the root's signed statement, entirely locally, and parses them.
+ * The statement may be up to {@link RELEASE_INSTALL_GRACE_MS} past its expiry, so a release the
+ * district already approved still installs, or is rolled back to, when the root can't re-sign.
+ * Fails with `unauthenticated` for an untrusted, retired or invalid signature or a long-expired
+ * statement, and `validation-failed` if the bytes don't match it.
  */
-export async function loadPinnedManifest(bytes: Uint8Array<ArrayBuffer>, pin: ReleasePin): Promise<ReleaseManifest> {
-  const digest = await sha256Hex(bytes);
-  if (digest !== pin.manifestSha256) {
+export async function verifyReleaseManifest(
+  bytes: Uint8Array<ArrayBuffer>,
+  signedManifest: unknown,
+  trust: ReleaseTrust,
+  now: Date = new Date(),
+): Promise<{ manifest: ReleaseManifest; statement: ReleaseManifestStatement }> {
+  const statement = await verifySignedReleaseManifest(signedManifest, trust, { now, graceMs: RELEASE_INSTALL_GRACE_MS });
+  if ((await sha256Hex(bytes)) !== statement.manifestSha256) {
+    throw new SchoolOsError("validation-failed", "release manifest does not match the signed SHA-256");
+  }
+  const manifest = parseManifest(bytes);
+  if (manifest.releaseId !== statement.releaseId) {
+    throw new SchoolOsError("validation-failed", "release manifest is for a different release than its signed statement");
+  }
+  return { manifest, statement };
+}
+
+/**
+ * Verifies manifest bytes against a pin and parses them. A signed pin needs the root's signed
+ * statement (see {@link verifyReleaseManifest}) naming the pinned release ID and version. Fails
+ * with `validation-failed` on a digest, release or version mismatch, an unsupported manifest
+ * version, or any unknown field.
+ */
+export async function loadPinnedManifest(
+  bytes: Uint8Array<ArrayBuffer>,
+  pin: ReleasePin,
+  input: ManifestVerificationInput = {},
+): Promise<ReleaseManifest> {
+  if (pin.mode === "signed") {
+    if (input.signedManifest === undefined) throw new SchoolOsError("validation-failed", "a signed release pin needs the signed manifest");
+    const { manifest, statement } = await verifyReleaseManifest(bytes, input.signedManifest, pin.trust, input.now);
+    if (statement.releaseId !== pin.releaseId || statement.version !== pin.version) {
+      throw new SchoolOsError("validation-failed", "the signed manifest is for a different release than the pin");
+    }
+    return manifest;
+  }
+  if ((await sha256Hex(bytes)) !== pin.manifestSha256) {
     throw new SchoolOsError("validation-failed", "release manifest does not match the pinned SHA-256");
   }
+  const manifest = parseManifest(bytes);
+  if (manifest.releaseId !== pin.releaseId) {
+    throw new SchoolOsError("validation-failed", "release manifest is for a different release than the pin");
+  }
+  return manifest;
+}
+
+function parseManifest(bytes: Uint8Array<ArrayBuffer>): ReleaseManifest {
   let json: unknown;
   try {
     json = JSON.parse(new TextDecoder().decode(bytes));
@@ -177,9 +255,6 @@ export async function loadPinnedManifest(bytes: Uint8Array<ArrayBuffer>, pin: Re
   const parsed = ReleaseManifest.safeParse(json);
   if (!parsed.success) {
     throw new SchoolOsError("validation-failed", `release manifest rejected: ${z.prettifyError(parsed.error)}`);
-  }
-  if (parsed.data.releaseId !== pin.releaseId) {
-    throw new SchoolOsError("validation-failed", "release manifest is for a different release than the pin");
   }
   return parsed.data;
 }

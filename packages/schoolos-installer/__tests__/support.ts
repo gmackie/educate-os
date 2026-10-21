@@ -6,7 +6,9 @@ import {
   InMemoryInstanceRegistryStorage,
   InstanceRegistry,
   type SignedEnvelope,
+  SigningIdentity,
 } from "@schoolos/fleet";
+import { pinReleaseKeys, RootReleaseSigner } from "@schoolos/releases";
 import type { DistrictDirectorySnapshot } from "@schoolos/contracts";
 import {
   DistrictInstallConfig,
@@ -38,12 +40,40 @@ function filesUnder(dir: string): string[] {
   });
 }
 
-/** A release as the installer receives it: manifest bytes, their pin digest and the blobs. */
+/** The synthetic root's release-signing key, and the trust every test district pins for it. */
+export const ROOT_SIGNER = new RootReleaseSigner(await SigningIdentity.generate());
+/** The release keys a test district pins. */
+export const ROOT_TRUST = await pinReleaseKeys([ROOT_SIGNER.identity.publicKey]);
+
+/** A release as the installer receives it: manifest bytes, the root's signed statement and the blobs. */
 export interface TestRelease {
   manifest: ReleaseManifest;
   bytes: Uint8Array<ArrayBuffer>;
   sha256: string;
+  version: string;
+  signedManifest: SignedEnvelope;
   artifacts: InMemoryReleaseArtifacts;
+}
+
+/** The root's signed statement for manifest bytes, valid for 30 days from `now`. */
+export async function signRelease(releaseId: string, version: string, sha256: string, now = new Date()): Promise<SignedEnvelope> {
+  return await ROOT_SIGNER.signManifest({
+    releaseId,
+    channel: "stable",
+    version,
+    minimumCompatibleVersion: "0.1.0",
+    manifestSha256: sha256,
+    migrations: [],
+    issuedAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60_000).toISOString(),
+  });
+}
+
+async function signedRelease(bytes: Uint8Array<ArrayBuffer>, releaseId: string, version: string, artifacts: InMemoryReleaseArtifacts): Promise<TestRelease> {
+  const sha256 = await sha256Hex(bytes);
+  const signedManifest = await signRelease(releaseId, version, sha256);
+  const manifest = await loadPinnedManifest(bytes, { mode: "signed", releaseId, version, trust: ROOT_TRUST }, { signedManifest });
+  return { manifest, bytes, sha256, version, signedManifest, artifacts };
 }
 
 /** The golden manifest from scripts/release, with its fixture bundles and assets as blobs. */
@@ -56,9 +86,7 @@ export async function goldenRelease(): Promise<TestRelease> {
   for (const [path, entry] of Object.entries(variant)) {
     artifacts.addAsset(entry.hash, bytesOf(join(TESTDATA, "fixture-assets", "access", path)));
   }
-  const sha256 = await sha256Hex(bytes);
-  const manifest = await loadPinnedManifest(bytes, { releaseId: parsed.releaseId, version: "0.1.0", manifestSha256: sha256 });
-  return { manifest, bytes, sha256, artifacts };
+  return await signedRelease(bytes, parsed.releaseId, "0.1.0", artifacts);
 }
 
 /** A new release derived from another: a new ID, edited by `edit`, sharing the same blob store. */
@@ -70,9 +98,7 @@ export async function deriveRelease(
   const manifest = structuredClone(base.manifest);
   manifest.releaseId = releaseId;
   await edit(manifest, base.artifacts);
-  const bytes = new TextEncoder().encode(JSON.stringify(manifest));
-  const sha256 = await sha256Hex(bytes);
-  return { manifest: await loadPinnedManifest(bytes, { releaseId, version: "0.2.0", manifestSha256: sha256 }), bytes, sha256, artifacts: base.artifacts };
+  return await signedRelease(new TextEncoder().encode(JSON.stringify(manifest)), releaseId, "0.2.0", base.artifacts);
 }
 
 /** Replaces a worker's entry module with new bytes, as a code-only release would. */
@@ -104,7 +130,7 @@ export function configFor(snapshot: DistrictDirectorySnapshot, release: TestRele
     baseDomain: domain,
     access: { teamName: slug, allowedEmailDomains: [domain] },
     admins: [snapshot.principals.find((p) => p.kind === "staff")!.email],
-    release: { releaseId: release.manifest.releaseId, version: "0.1.0", manifestSha256: release.sha256 },
+    release: { mode: "signed", releaseId: release.manifest.releaseId, version: release.version, trust: ROOT_TRUST },
     gatekeepers: ["gatekeeper-google"],
     aiGateway: true,
     fleet: {

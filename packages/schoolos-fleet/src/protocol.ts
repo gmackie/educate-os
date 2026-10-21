@@ -1,6 +1,7 @@
 import { CapabilityId, SemVer } from "@schoolos/contracts";
 import { z } from "zod";
 import { Base64Url } from "./encoding.ts";
+import { SignedEnvelope } from "./envelope.ts";
 import { Ed25519PublicKey, KeyId } from "./identity.ts";
 import { CommercialAccountId, InstanceId, OpaqueCode, SupportSessionId } from "./ids.ts";
 
@@ -106,23 +107,54 @@ export const ManagementRevocation = z.strictObject({
 /** A management revocation. */
 export type ManagementRevocation = z.infer<typeof ManagementRevocation>;
 
-/** A release channel. */
-export const ReleaseChannel = z.enum(["stable", "canary"]);
+/**
+ * A release channel a district subscribes to: `canary` gets releases first and always needs the
+ * district's approval, `stable` gets them once canary instances stayed healthy, and `lts` gets
+ * only long-term-support releases.
+ */
+export const ReleaseChannel = z.enum(["canary", "stable", "lts"]);
 /** A release channel name. */
 export type ReleaseChannel = z.infer<typeof ReleaseChannel>;
 
 /**
- * The root offering a release to one instance. A shell for R03, which adds signing, pinning and
- * the district's decision to accept or decline.
+ * Why the root offers a release: to move forward, or to return an instance to the previous signed
+ * release after a halted rollout. A district accepts a lower version only as a `rollback`, and
+ * only with its explicit approval.
  */
-export const ReleaseOffer = z.strictObject({
-  instanceId: InstanceId,
-  releaseVersion: SemVer,
-  channel: ReleaseChannel,
-  /** The SHA-256 of the release manifest, hex-encoded, so the district can pin exactly what it reviewed. */
-  manifestSha256: z.string().regex(/^[0-9a-f]{64}$/, "expected a hex SHA-256"),
-  offeredAt: UtcTimestamp,
-});
+export const ReleaseOfferPurpose = z.enum(["upgrade", "rollback"]);
+/** A release offer purpose. */
+export type ReleaseOfferPurpose = z.infer<typeof ReleaseOfferPurpose>;
+
+/**
+ * The root offering a release to one instance (roadmap R03). The root signs the offer with a
+ * release-signing key, and it carries the root's signed release manifest (`signedManifest`, a
+ * `SignedReleaseManifest` from `@schoolos/releases`), which the fields here must match. The
+ * district verifies both against the release keys it pins and decides; an offer never installs
+ * anything by itself.
+ */
+export const ReleaseOffer = z
+  .strictObject({
+    instanceId: InstanceId,
+    releaseId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/, "expected a release ID"),
+    releaseVersion: SemVer,
+    channel: ReleaseChannel,
+    purpose: ReleaseOfferPurpose,
+    /**
+     * Per instance, increasing with every offer the root makes. The district refuses a sequence
+     * at or below the highest it has seen, so an old offer can't be replayed.
+     */
+    offerSequence: Sequence,
+    /** The SHA-256 of the release manifest, hex-encoded, so the district can pin exactly what it reviewed. */
+    manifestSha256: z.string().regex(/^[0-9a-f]{64}$/, "expected a hex SHA-256"),
+    /** The root's signed statement about the release; its payload is checked by `@schoolos/releases`. */
+    signedManifest: SignedEnvelope,
+    offeredAt: UtcTimestamp,
+    /** After this the district refuses the offer. */
+    expiresAt: UtcTimestamp,
+  })
+  .refine((offer) => Date.parse(offer.offeredAt) < Date.parse(offer.expiresAt), {
+    message: "expected offeredAt < expiresAt",
+  });
 /** A release offer. */
 export type ReleaseOffer = z.infer<typeof ReleaseOffer>;
 

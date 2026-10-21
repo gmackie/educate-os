@@ -1,12 +1,19 @@
 // District-run installer CLI. The district runs it itself (or from its own CI) with an API token
 // it created; the root's OAuth path uses the library directly.
 //
-//   pnpm --filter @schoolos/installer start <command> --config install.json --manifest release/manifest.json
+//   pnpm --filter @schoolos/installer start <command> --config install.json --manifest release/manifest.json \
+//     --signed-manifest release/manifest.signed.json
 //
 //   preflight   check the account, products, quotas, DNS and Access setup
 //   plan        preflight, then observe and print the plan (changes nothing)
 //   apply       preflight, plan and apply; then register with the root if --registry-url is given
-//   rollback    return to a previous release: --previous-manifest <file> --previous-pin <releaseId>@<sha256>
+//   rollback    return to a previous release:
+//               --previous-manifest <file> --previous-signed-manifest <file>
+//
+// The manifest must come with the root's signed statement for it, verified against the release
+// keys the config pins. A config with an `insecure-pin` release (development builds, which the
+// release pipeline does not sign yet) is refused unless --insecure-pin is also given; its rollback
+// then takes --previous-pin <releaseId>@<sha256> instead of a signed manifest.
 //
 // The token is read from CLOUDFLARE_API_TOKEN. Gatekeeper secrets are read from
 // SCHOOLOS_SECRET_<PACKAGE>__<NAME>, e.g. SCHOOLOS_SECRET_GATEKEEPER_GOOGLE__CLIENT_ID. Neither is
@@ -23,7 +30,7 @@ import { DirectoryReleaseArtifacts } from "./directory-artifacts.ts";
 import { InstallerHaltedError } from "./errors.ts";
 import { httpRegistryEndpoint } from "./fleet-registration.ts";
 import { install, rollback } from "./installer.ts";
-import { loadPinnedManifest } from "./manifest.ts";
+import { loadPinnedManifest, type ReleaseManifest, verifyReleaseManifest } from "./manifest.ts";
 import type { PreflightReport } from "./preflight.ts";
 import { districtRunTokenProvider } from "./token.ts";
 
@@ -54,6 +61,30 @@ function printPreflight(report: PreflightReport): void {
   console.log(report.ok ? "preflight: ok" : "preflight: blocked");
 }
 
+async function readJson(path: string): Promise<unknown> {
+  try {
+    return JSON.parse(await readFile(path, "utf8"));
+  } catch {
+    throw new SchoolOsError("validation-failed", `${path} is not readable JSON`);
+  }
+}
+
+// The release a rollback returns to, verified the same way as the one being installed.
+async function previousManifest(
+  pin: DistrictInstallConfig["release"],
+  values: { "previous-manifest"?: string; "previous-signed-manifest"?: string; "previous-pin"?: string },
+): Promise<ReleaseManifest | undefined> {
+  if (!values["previous-manifest"]) return undefined;
+  const bytes = await readBytes(values["previous-manifest"]);
+  if (pin.mode === "signed") {
+    if (!values["previous-signed-manifest"]) return undefined;
+    return (await verifyReleaseManifest(bytes, await readJson(values["previous-signed-manifest"]), pin.trust)).manifest;
+  }
+  const [releaseId, manifestSha256] = (values["previous-pin"] ?? "").split("@");
+  if (!releaseId || !manifestSha256) return undefined;
+  return await loadPinnedManifest(bytes, { ...pin, releaseId, manifestSha256 });
+}
+
 async function main(): Promise<number> {
   const { positionals, values } = parseArgs({
     allowPositionals: true,
@@ -62,8 +93,11 @@ async function main(): Promise<number> {
       manifest: { type: "string" },
       "release-dir": { type: "string" },
       "registry-url": { type: "string" },
+      "signed-manifest": { type: "string" },
       "previous-manifest": { type: "string" },
+      "previous-signed-manifest": { type: "string" },
       "previous-pin": { type: "string" },
+      "insecure-pin": { type: "boolean" },
     },
   });
   const command = positionals[0] as (typeof COMMANDS)[number] | undefined;
@@ -78,20 +112,29 @@ async function main(): Promise<number> {
     return 2;
   }
   const config = parsed.data;
-  const manifest = await loadPinnedManifest(await readBytes(values.manifest), config.release);
+  if (config.release.mode === "insecure-pin" && !values["insecure-pin"]) {
+    console.error("the config pins the release by digest only (insecure-pin); pass --insecure-pin to accept an unsigned development release");
+    return 2;
+  }
+  if (config.release.mode === "signed" && !values["signed-manifest"]) {
+    console.error("--signed-manifest <file> is required: the root's signed statement for the release manifest");
+    return 2;
+  }
+  const manifest = await loadPinnedManifest(
+    await readBytes(values.manifest),
+    config.release,
+    values["signed-manifest"] ? { signedManifest: await readJson(values["signed-manifest"]) } : {},
+  );
   const api = new CloudflareHttpApi({ tokens: districtRunTokenProvider(process.env) });
 
   if (command === "rollback") {
-    const [releaseId, manifestSha256] = (values["previous-pin"] ?? "").split("@");
-    if (!values["previous-manifest"] || !releaseId || !manifestSha256) {
-      console.error("rollback needs --previous-manifest <file> and --previous-pin <releaseId>@<sha256>");
+    const previous = await previousManifest(config.release, values);
+    if (!previous) {
+      console.error(config.release.mode === "signed"
+        ? "rollback needs --previous-manifest <file> and --previous-signed-manifest <file>"
+        : "rollback needs --previous-manifest <file> and --previous-pin <releaseId>@<sha256>");
       return 2;
     }
-    const previous = await loadPinnedManifest(await readBytes(values["previous-manifest"]), {
-      ...config.release,
-      releaseId,
-      manifestSha256,
-    });
     const { plan, deployed } = await rollback({ api, config, current: manifest, previous });
     for (const step of plan.steps) console.log(`${step.action.padEnd(16)} ${step.scriptName}  ${step.reason}`);
     for (const note of plan.irreversible) console.log(`irreversible     ${note}`);

@@ -188,7 +188,10 @@ export class InstanceRegistry {
     });
   }
 
-  /** Builds a release offer for an instance whose management access is intact (signing comes with R03). */
+  /**
+   * Builds a release offer for an instance whose management access is intact. The caller (the
+   * root's rollout controller in `@schoolos/releases`) signs it with a release-signing key.
+   */
   async createReleaseOffer(offer: Omit<ReleaseOffer, "offeredAt">): Promise<ReleaseOffer> {
     await this.#assertManageable(offer.instanceId);
     return ReleaseOffer.parse({ ...offer, offeredAt: this.#now().toISOString() });

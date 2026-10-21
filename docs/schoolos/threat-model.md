@@ -47,7 +47,7 @@
 | T9 | AI overspend or double billing on retry | Reserve, then settle, with idempotency keys. Caps are enforced locally. | §14 row 9. G01 |
 | T10 | An AI score becomes an official grade | Grade writeback requires `require-approval` and a teacher decision. | §14 row 10. E03; LMS passback gate in I02 |
 | T11 | Expired course access persists | Term state is part of the authorization context. Course grants are revoked at close. | §14 row 12. W01 |
-| T12 | Root compromise pushes malicious code | Releases are signed and pinned. The district can decline or roll back. Root holds no data. | §14 rows 13-15. R03 |
+| T12 | Root compromise pushes malicious code | Releases are signed and pinned. The district verifies every offer locally, installs only what it approved, can decline (a decline the root can't override) or roll back. Root holds no data. A stolen release key can still announce a new key, so approval, not rotation, is the defence. | §14 rows 13-15. `@schoolos/releases` `root-compromise.test.ts`. R03 |
 | T13 | Policy loosened through delegation | `resolvePolicy` refuses any narrower setting looser than the floor. | Contracts tests. F03 |
 | T14 | Test data contains real people | Tests use only `@schoolos/fixtures` with `.example` domains, and a test enforces it. | Fixtures tests |
 
