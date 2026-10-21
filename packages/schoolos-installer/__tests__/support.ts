@@ -43,8 +43,13 @@ function filesUnder(dir: string): string[] {
 
 /** The synthetic root's release-signing key, and the trust every test district pins for it. */
 export const ROOT_SIGNER = new RootReleaseSigner(await SigningIdentity.generate());
+/** The root's offline keys, any two of which sign a release key set. */
+export const ROOT_OFFLINE_KEYS = await Promise.all([1, 2, 3].map(() => SigningIdentity.generate()));
 /** The release keys a test district pins. */
-export const ROOT_TRUST = await pinReleaseKeys([ROOT_SIGNER.identity.publicKey]);
+export const ROOT_TRUST = await pinReleaseKeys({
+  releaseKeys: [ROOT_SIGNER.identity.publicKey],
+  root: { threshold: 2, publicKeys: ROOT_OFFLINE_KEYS.map((key) => key.publicKey) },
+});
 
 /** A release as the installer receives it: manifest bytes, the root's signed statement and the blobs. */
 export interface TestRelease {

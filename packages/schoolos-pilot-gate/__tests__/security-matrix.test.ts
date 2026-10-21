@@ -639,9 +639,10 @@ criterion("s14.registry-compromised", {
       policy: { channel: "stable", autoApply: false },
       store: new InMemoryDistrictReleaseStore(),
       initial: {
-        trust: await pinReleaseKeys([rootKey.publicKey]),
+        trust: await pinReleaseKeys({ releaseKeys: [rootKey.publicKey], root: { threshold: 1, publicKeys: [(await SigningIdentity.generate()).publicKey] } }),
         installed: { releaseId: "r1-baseline", version: "0.1.0", minimumCompatibleVersion: "0.1.0", manifestSha256: "a".repeat(64), installedAt: issuedAt.toISOString() },
       },
+      entitlement: { evaluate: async () => ({ state: "valid", rootManagedChanges: "allowed", classroom: "unaffected", capabilityIds: [] }) },
     });
     const before = await manager.state();
     const statement = {

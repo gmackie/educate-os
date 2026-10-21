@@ -61,7 +61,8 @@ describe("release pipeline output", () => {
     const golden = await goldenRelease();
     const key = await SigningIdentity.generate();
     const signedManifest = await signReleaseManifest(golden.bytes, key, { version: "0.3.0", channel: "stable" });
-    const trust = await pinReleaseKeys([key.publicKey]);
+    const offline = await SigningIdentity.generate();
+    const trust = await pinReleaseKeys({ releaseKeys: [key.publicKey], root: { threshold: 1, publicKeys: [offline.publicKey] } });
     const pin = { mode: "signed", releaseId: golden.manifest.releaseId, version: "0.3.0", trust } as const;
 
     const manifest = await loadPinnedManifest(golden.bytes, pin, { signedManifest });

@@ -21,6 +21,12 @@ const GOLDEN = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "testd
 const NOW = new Date("2026-10-21T00:00:00.000Z");
 const OPTIONS = { version: "1.2.0", channel: "stable", now: NOW } as const;
 
+/** The trust a district pins for one release key, under a throwaway offline root key. */
+async function pinFor(releaseKey: SigningIdentity) {
+  const root = await SigningIdentity.generate();
+  return pinReleaseKeys({ releaseKeys: [releaseKey.publicKey], root: { threshold: 1, publicKeys: [root.publicKey] } });
+}
+
 async function keyEnv(identity: SigningIdentity) {
   return { [RELEASE_SIGNING_KEY_ENV]: JSON.stringify(await identity.exportJwk()) };
 }
@@ -30,7 +36,7 @@ test("a signed manifest verifies against the pinned root key and names the manif
   assert.ok(identity);
   const signed = await signReleaseManifest(GOLDEN, identity, OPTIONS);
 
-  const statement = await verifySignedReleaseManifest(signed, await pinReleaseKeys([identity.publicKey]), { now: NOW });
+  const statement = await verifySignedReleaseManifest(signed, await pinFor(identity), { now: NOW });
   assert.equal(statement.manifestSha256, sha256Hex(GOLDEN));
   assert.equal(statement.releaseId, "r000000-fixture");
   assert.equal(statement.version, "1.2.0");
@@ -42,14 +48,14 @@ test("a signed manifest verifies against the pinned root key and names the manif
 
 test("a district pinning a different key refuses the statement", async () => {
   const signed = await signReleaseManifest(GOLDEN, await SigningIdentity.generate(), OPTIONS);
-  const other = await pinReleaseKeys([(await SigningIdentity.generate()).publicKey]);
+  const other = await pinFor(await SigningIdentity.generate());
   await assert.rejects(verifySignedReleaseManifest(signed, other, { now: NOW }), { code: "unauthenticated" });
 });
 
 test("an expired statement is refused once the install grace has passed", async () => {
   const identity = await SigningIdentity.generate();
   const signed = await signReleaseManifest(GOLDEN, identity, { ...OPTIONS, validDays: 1 });
-  const trust = await pinReleaseKeys([identity.publicKey]);
+  const trust = await pinFor(identity);
   const later = new Date(NOW.getTime() + 24 * 60 * 60_000 + RELEASE_INSTALL_GRACE_MS);
   await assert.rejects(verifySignedReleaseManifest(signed, trust, { now: later, graceMs: RELEASE_INSTALL_GRACE_MS }),
       { code: "unauthenticated" });

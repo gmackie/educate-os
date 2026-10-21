@@ -76,6 +76,8 @@ async function northfieldOn(r1: TestRelease) {
         installedAt: new Date().toISOString(),
       },
     },
+    // A paid-up district: this suite is about the installer, not the entitlement gate.
+    entitlement: { evaluate: async () => ({ state: "valid", rootManagedChanges: "allowed", classroom: "unaffected", capabilityIds: [] }) },
   });
   return { fake, api, manager };
 }

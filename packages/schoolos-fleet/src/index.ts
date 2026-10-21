@@ -9,3 +9,4 @@ export * from "./agent.ts";
 export * from "./verification.ts";
 export * from "./registry.ts";
 export * from "./entitlement.ts";
+export * from "./serial.ts";
