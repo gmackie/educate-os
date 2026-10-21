@@ -10,6 +10,7 @@ import { test } from "node:test";
 import {
   gatekeeperShortName, isGatekeeperPackage, isServicePackage, readDeployablePackages, type BindingDecl,
 } from "../release/manifest-lib.ts";
+import { AI_GUARD_DEV_MAIN, AI_GUARD_PACKAGE } from "../ai-guard-dev.ts";
 import {
   MAX_PREVIEW_NAME_LENGTH,
   PACKAGES_DIR,
@@ -21,6 +22,7 @@ import {
   resolveAccess,
   resolveAiGateway,
   resolveGatekeeperSecrets,
+  resolvePreviewAiGuard,
   resolvePreviewName,
   resolveTarget,
   routerPreviewUrl,
@@ -105,13 +107,14 @@ function previewsOf(configs: Map<string, StagingConfig>, name: string): PreviewO
   return config.previews;
 }
 
-function buildAll() {
+function buildAll({ aiGuard }: { aiGuard?: boolean } = {}) {
   const packages = readDeployablePackages(PACKAGES_DIR);
   const configs = buildPreviewConfigs({
     previewName: PREVIEW_NAME,
     packages,
     accountId: ACCOUNT_ID,
     workersDevHost: WORKERS_DEV_HOST,
+    ...(aiGuard === undefined ? {} : { aiGuard }),
   });
   return { packages, configs };
 }
@@ -198,11 +201,11 @@ test("a reserved prefix shrinks the slug budget rather than overflowing it", () 
   assert.equal(slugifyPreviewName("feature/foo", { reserve: 9 }), "feature-foo");
 });
 
-test("every deployable package but the optional services gets a preview config, on the configured account", () => {
+test("every deployable package but the optional services other than the AI guard gets a preview config, on the configured account", () => {
   const { packages, configs } = buildAll();
 
-  const previewed = packages.filter((pkg) => !isServicePackage(pkg.name));
-  assert.ok(previewed.length < packages.length, "expected an optional service among the deployables");
+  const previewed = packages.filter((pkg) => !isServicePackage(pkg.name) || pkg.name === AI_GUARD_PACKAGE);
+  assert.ok(packages.some((pkg) => pkg.name === AI_GUARD_PACKAGE), "expected the AI guard among the deployables");
   assert.deepEqual([...configs.keys()].toSorted(), previewed.map((pkg) => pkg.name).toSorted());
   assert.ok(configs.has("router") && configs.has("workshop-backend"),
       "the router and backend are the two core non-gatekeeper deployables");
@@ -393,7 +396,7 @@ test("every gatekeeper is bound to the backend by RPC and to the router by HTTP"
 
   // A service binding names a worker, which is the package name; the binding name — what the
   // router and the backend actually scan for — is the uppercased form.
-  const backend = previewsOf(configs, "workshop-backend").services;
+  const backend = previewsOf(configs, "workshop-backend").services?.filter((service) => isGatekeeperPackage(service.service));
   assert.ok(backend, "the backend preview declares no service bindings");
   assert.deepEqual(backend.map((service) => service.service),
       gatekeepers);
@@ -523,4 +526,40 @@ test("every gatekeeper handed an OAuth app is a package that exists, and reads t
     // what the deploy wizard's DEFAULT_CRED_INPUTS asks a real instance for.
     assert.deepEqual(Object.keys(secrets).toSorted(), ["CLIENT_ID", "CLIENT_SECRET"]);
   }
+});
+
+test("a preview runs the AI call guard's development entrypoint, bound to the backend as a release binds it", () => {
+  const { configs } = buildAll();
+  const guard = configs.get(AI_GUARD_PACKAGE);
+  assert.ok(guard, "no AI guard preview config");
+
+  assert.equal(guard.main, AI_GUARD_DEV_MAIN, "the fake-Hall-Monitor entrypoint, not the release one");
+  assert.equal(guard.preview_urls, false);
+  assert.equal(guard.workers_dev, false);
+  assert.deepEqual(guard.migrations, [{ tag: "v1", new_sqlite_classes: ["DistrictAiLedger"] }]);
+  // Its config is built into the entrypoint: nothing a public log could print is needed here.
+  assert.equal(guard.vars?.AI_GUARD_CONFIG, undefined);
+  assert.equal(guard.previews?.vars, undefined);
+
+  const expected = { binding: "AI_CALL_GUARD", service: AI_GUARD_PACKAGE, entrypoint: "SchoolOsAiCallGuard" };
+  const backend = configs.get("workshop-backend");
+  assert.deepEqual(backend?.services?.find((service) => service.binding === "AI_CALL_GUARD"), expected);
+  // preview.ts patches this entry's preview_id with the guard preview's id, like a gatekeeper's.
+  assert.deepEqual(previewsOf(configs, "workshop-backend").services?.find((service) => service.binding === "AI_CALL_GUARD"), expected);
+  assert.ok(!previewsOf(configs, "router").services?.some((service) => service.service === AI_GUARD_PACKAGE),
+      "only the backend calls the guard");
+});
+
+test("PREVIEW_AI_GUARD=false leaves the guard out and the backend unguarded", () => {
+  const { configs } = buildAll({ aiGuard: false });
+  assert.equal(configs.has(AI_GUARD_PACKAGE), false);
+  assert.ok(!previewsOf(configs, "workshop-backend").services?.some((service) => service.binding === "AI_CALL_GUARD"));
+  assert.ok(!configs.get("workshop-backend")?.services?.some((service) => service.binding === "AI_CALL_GUARD"));
+
+  assert.equal(resolvePreviewAiGuard(undefined), true);
+  assert.equal(resolvePreviewAiGuard(""), true);
+  assert.equal(resolvePreviewAiGuard("true"), true);
+  assert.equal(resolvePreviewAiGuard("0"), false);
+  assert.equal(resolvePreviewAiGuard("FALSE"), false);
+  assert.throws(() => resolvePreviewAiGuard("off"), /PREVIEW_AI_GUARD must be/);
 });

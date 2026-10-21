@@ -27,7 +27,11 @@ const PERSONAL = { kind: "personal" } as const;
 
 /** The safety pool's monthly allocation: $1. */
 export const SAFETY_ALLOCATION = "1000000000";
-/** What one fake Hall Monitor evaluation costs: $0.000038. */
+/**
+ * What one fake Hall Monitor evaluation costs: $0.000038, the fake's `FAKE_CHECK_COST_USD_NANO`.
+ * Repeated rather than imported because vitest.config.ts loads this file in Node, which cannot
+ * strip types from the Hall Monitor contracts package the fake imports.
+ */
 export const CHECK_COST = "38000";
 
 /** The configuration, as JSON-ready data. */

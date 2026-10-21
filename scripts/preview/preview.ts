@@ -12,8 +12,10 @@
 // Deployment runs in three tiers, because each tier's service bindings must name the previews the
 // tier before it produced:
 //
-//   1. the 16 gatekeepers  (concurrently; nothing binds to anything)
-//   2. workshop-backend    (binds every gatekeeper preview via GatekeeperVendor)
+//   1. the 16 gatekeepers  (concurrently; nothing binds to anything), and the SchoolOS AI call
+//                          guard unless PREVIEW_AI_GUARD=false (its fake Hall Monitor is in process)
+//   2. workshop-backend    (binds every gatekeeper preview via GatekeeperVendor, and the guard
+//                          preview as AI_CALL_GUARD)
 //   3. router              (binds the backend preview and every gatekeeper preview, and owns the
 //                           public origin: it serves the frontend and proxies /api and
 //                           /gatekeeper/<short>)
@@ -37,7 +39,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import {
-  gatekeeperShortName, isGatekeeperPackage, type DeployablePackage,
+  gatekeeperShortName, isGatekeeperPackage, isServicePackage, type DeployablePackage,
 } from "../release/manifest-lib.ts";
 import {
   ROOT,
@@ -571,6 +573,8 @@ function writePreviewComment(
 
 function tiers(packages: readonly DeployablePackage[]): {
   gatekeepers: DeployablePackage[];
+  /** Optional backend services in this preview (the AI call guard), deployed with the gatekeepers. */
+  services: DeployablePackage[];
   backend: DeployablePackage;
   router: DeployablePackage;
 } {
@@ -581,6 +585,8 @@ function tiers(packages: readonly DeployablePackage[]): {
   };
   return {
     gatekeepers: packages.filter((pkg) => isGatekeeperPackage(pkg.name))
+        .toSorted((a, b) => a.name.localeCompare(b.name)),
+    services: packages.filter((pkg) => isServicePackage(pkg.name))
         .toSorted((a, b) => a.name.localeCompare(b.name)),
     backend: byName("workshop-backend"),
     router: byName("router"),
@@ -595,7 +601,7 @@ async function deploy({ dryRun }: { dryRun: boolean }): Promise<void> {
   const secrets = backendSecrets();
   const oauthApps = resolveGatekeeperSecrets();
   const { previewName, workersDevHost, baseUrl, packages } = generatePreviewConfigs();
-  const { gatekeepers, backend, router } = tiers(packages);
+  const { gatekeepers, services, backend, router } = tiers(packages);
 
   if (dryRun) {
     console.log(`\ndry-run plan for preview "${previewName}" at ${baseUrl}:`);
@@ -606,6 +612,11 @@ async function deploy({ dryRun }: { dryRun: boolean }): Promise<void> {
           `(no hostname; served at ${baseUrl}/gatekeeper/${gatekeeperShortName(pkg.name)})` +
           (oauth ? `, holding the ${Object.keys(oauth).join(", ")} secrets` : ""));
     }
+    for (const pkg of services) {
+      console.log(`    ${pkg.name} (no hostname; development entrypoint with a fake Hall Monitor, ` +
+          "bound to the backend)");
+    }
+    if (services.length === 0) console.log("    (no AI call guard: PREVIEW_AI_GUARD=false; the backend runs unguarded)");
     console.log(`  tier 2: ${backend.name} (no hostname; served at ` +
         `${baseUrl}/api), bound to the tier 1 previews, holding the ` +
         `${Object.keys(secrets).join(", ")} secrets`);
@@ -618,21 +629,28 @@ async function deploy({ dryRun }: { dryRun: boolean }): Promise<void> {
   try {
     await waitForAll([wrangler.ready, buildWorkspace()]);
 
-    // Keyed by worker name, because that is what a service binding names.
-    const gatekeeperPreviews = await mapWithConcurrency(gatekeepers, GATEKEEPER_CONCURRENCY,
-        async (pkg) => {
-          // Before this gatekeeper's preview, not after, and for the same reason the backend's go
-          // before its own: a preview inherits the Preview base config as it stands when it is
-          // created.
-          const oauth = oauthApps.get(pkg.name);
-          if (oauth) await uploadPreviewSecrets(pkg, wrangler.command, oauth);
-          const preview = await deployPreview(pkg, previewName, wrangler.command);
-          assertNoPreviewUrl(pkg, preview.url);
-          return [pkg.name, preview.id];
-        });
+    // Keyed by worker name, because that is what a service binding names. Services bind nothing
+    // and hold no secrets, so they go up alongside the gatekeepers; only the backend binds them.
+    const [gatekeeperPreviews, servicePreviews] = await Promise.all([
+      mapWithConcurrency(gatekeepers, GATEKEEPER_CONCURRENCY, async (pkg) => {
+        // Before this gatekeeper's preview, not after, and for the same reason the backend's go
+        // before its own: a preview inherits the Preview base config as it stands when it is
+        // created.
+        const oauth = oauthApps.get(pkg.name);
+        if (oauth) await uploadPreviewSecrets(pkg, wrangler.command, oauth);
+        const preview = await deployPreview(pkg, previewName, wrangler.command);
+        assertNoPreviewUrl(pkg, preview.url);
+        return [pkg.name, preview.id] as const;
+      }),
+      mapWithConcurrency(services, GATEKEEPER_CONCURRENCY, async (pkg) => {
+        const preview = await deployPreview(pkg, previewName, wrangler.command);
+        assertNoPreviewUrl(pkg, preview.url);
+        return [pkg.name, preview.id] as const;
+      }),
+    ]);
     const gatekeeperIds = Object.fromEntries(gatekeeperPreviews);
 
-    patchPreviewServiceBindings(backend, gatekeeperIds);
+    patchPreviewServiceBindings(backend, { ...gatekeeperIds, ...Object.fromEntries(servicePreviews) });
     patchPreviewServiceBindings(router, gatekeeperIds);
     // Before the backend's preview, not after: a preview inherits the Preview base config as it
     // stands when it is created.
@@ -657,13 +675,15 @@ async function deploy({ dryRun }: { dryRun: boolean }): Promise<void> {
 async function remove({ dryRun }: { dryRun: boolean }): Promise<void> {
   const previewName = resolvePreviewName();
   // Regenerate rather than assume: `delete` runs in its own CI job with a fresh checkout, and
-  // wrangler needs a config to know which worker and account the preview belongs to.
-  const { packages } = generatePreviewConfigs({ previewName });
-  const { gatekeepers, backend, router } = tiers(packages);
+  // wrangler needs a config to know which worker and account the preview belongs to. The guard is
+  // always included: a preview deployed with it is collected even if PREVIEW_AI_GUARD changed
+  // since, and deleting a guard preview that was never created is tolerated.
+  const { packages } = generatePreviewConfigs({ previewName, aiGuard: true });
+  const { gatekeepers, services, backend, router } = tiers(packages);
 
   if (dryRun) {
     console.log(`\ndry-run: would delete preview "${previewName}" for ` +
-        [router, backend, ...gatekeepers].map((pkg) => pkg.name).join(", "));
+        [router, backend, ...gatekeepers, ...services].map((pkg) => pkg.name).join(", "));
     return;
   }
 

@@ -19,6 +19,12 @@
 //     namespace / R2 bucket per preview, and where service bindings get patched to point at
 //     sibling previews rather than the baselines.
 //
+// The SchoolOS AI call guard (an optional backend service) is included by default, running its
+// development entrypoint: the production guard and ledger with an in-process fake Hall Monitor
+// and a synthetic config, so a preview's backend runs guarded, as a district's does, without
+// Hall Monitor credentials or a real budget. PREVIEW_AI_GUARD=false leaves it out, and the
+// backend then runs unguarded, as upstream's does. See resolvePreviewAiGuard.
+//
 // Gatekeeper OAuth app credentials (CLIENT_ID/CLIENT_SECRET) are absent from the generated configs
 // for the same reason the backend's secrets are — Wrangler prints what it finds in one, and this
 // workflow's logs are public. Where an OAuth app is configured for previews, preview.ts uploads the
@@ -29,6 +35,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { AI_GUARD_DEV_MAIN, AI_GUARD_PACKAGE, backendAiGuardBinding } from "../ai-guard-dev.ts";
 import {
   gatekeeperShortName, isGatekeeperPackage, isServicePackage, readDeployablePackages,
   type BindingDecl, type DeployablePackage, type ObservabilityConfig, type ServiceBinding,
@@ -103,6 +110,8 @@ interface PreviewContext {
   baseUrl: string;
   /** Every gatekeeper package name, sorted. */
   gatekeepers: string[];
+  /** Whether the AI call guard is part of this preview, bound to the backend. */
+  aiGuard: boolean;
 }
 
 /** The repository root. */
@@ -338,14 +347,22 @@ function applyGatekeeper(
   if (r2Buckets) config.previews.r2_buckets = r2Buckets;
 }
 
+// The backend's service bindings: every gatekeeper, plus the AI call guard when the preview has it.
+function backendServices(gatekeepers: string[], baseUrl: string, aiGuard: boolean): PreviewService[] {
+  return [
+    ...backendGatekeeperServices(gatekeepers, baseUrl),
+    ...aiGuard ? [backendAiGuardBinding()] : [],
+  ];
+}
+
 function applyBackend(
   config: StagingConfig,
-  { baseUrl, gatekeepers }: PreviewContext,
+  { baseUrl, gatekeepers, aiGuard }: PreviewContext,
 ): void {
   // Injected rather than read from wrangler.jsonc, mirroring what manifest-lib.ts hardcodes for
   // every deployed backend (webFetch's toMarkdown conversion depends on it).
   config.ai = { binding: "WORKERS_AI" };
-  config.services = backendGatekeeperServices(gatekeepers, baseUrl);
+  config.services = backendServices(gatekeepers, baseUrl, aiGuard);
   // The origin is the only value the backend needs that is safe to write down here: ADMINS and the
   // Cloudflare Access pair are uploaded as *secrets* instead, out of band, because Wrangler prints
   // every plain-text var's value in its deploy summary and this workflow's logs are public. See
@@ -358,13 +375,24 @@ function applyBackend(
     observability: previewObservability(config),
     vars: { ...config.vars },
     ...(config.unsafe ? { unsafe: config.unsafe } : {}),
-    // preview.ts patches each entry's preview_id once the gatekeeper previews exist.
-    services: backendGatekeeperServices(gatekeepers, baseUrl),
+    // preview.ts patches each entry's preview_id once the gatekeeper (and guard) previews exist.
+    services: backendServices(gatekeepers, baseUrl, aiGuard),
     kv_namespaces: previewResourceBindings(config.kv_namespaces),
     r2_buckets: previewResourceBindings(config.r2_buckets),
     worker_loaders: previewResourceBindings(config.worker_loaders),
     ai: config.ai,
     ...(config.browser ? { browser: config.browser } : {}),
+  };
+}
+
+// The guard runs its development entrypoint (see the header). It has no URL and binds nothing: the
+// fake Hall Monitor is in process, and its ledger is a Durable Object reached through ctx.exports.
+// Its default config is built into the entrypoint, so nothing here needs to be a secret.
+function applyAiGuard(config: StagingConfig): void {
+  config.main = AI_GUARD_DEV_MAIN;
+  config.previews = {
+    observability: previewObservability(config),
+    ...(config.unsafe ? { unsafe: config.unsafe } : {}),
   };
 }
 
@@ -394,24 +422,28 @@ export function buildPreviewConfigs({
   packages,
   accountId,
   workersDevHost,
+  aiGuard = true,
 }: {
   previewName: string;
   packages: readonly PackageConfig[];
   accountId: string;
   workersDevHost: string;
+  /** Include the AI call guard and bind it to the backend. Defaults to true; see the header. */
+  aiGuard?: boolean;
 }): Map<string, StagingConfig> {
   if (!accountId || !workersDevHost) {
     throw new Error("buildPreviewConfigs needs both accountId and workersDevHost");
   }
   const baseUrl = routerPreviewUrl(previewName, workersDevHost);
   const gatekeepers = packages.map((pkg) => pkg.name).filter(isGatekeeperPackage).toSorted();
-  const context: PreviewContext = { baseUrl, gatekeepers };
+  const withAiGuard = aiGuard && packages.some((pkg) => pkg.name === AI_GUARD_PACKAGE);
+  const context: PreviewContext = { baseUrl, gatekeepers, aiGuard: withAiGuard };
   const configs = new Map<string, StagingConfig>();
 
   for (const pkg of packages) {
-    // An optional backend service (the SchoolOS AI guard) needs deployment configuration a
-    // preview has none of, and the backend runs as upstream's without it, so previews leave it out.
-    if (isServicePackage(pkg.name)) continue;
+    // An optional backend service runs in a preview only if it has a development entrypoint that
+    // needs no deployment configuration; the AI call guard is the only one, and only when asked.
+    if (isServicePackage(pkg.name) && !(withAiGuard && pkg.name === AI_GUARD_PACKAGE)) continue;
     const config: StagingConfig = structuredClone(pkg.config);
     if (config.name !== pkg.name) {
       // Checked before the rename below, not after: every URL and service binding here is
@@ -438,6 +470,7 @@ export function buildPreviewConfigs({
     if (isGatekeeperPackage(pkg.name)) applyGatekeeper(pkg.name, config, context);
     else if (pkg.name === "workshop-backend") applyBackend(config, context);
     else if (pkg.name === "router") applyRouter(config, context);
+    else if (pkg.name === AI_GUARD_PACKAGE) applyAiGuard(config);
     else throw new Error(`cannot build a preview config for package: ${pkg.name}`);
 
     configs.set(pkg.name, config);
@@ -718,6 +751,20 @@ export function backendSecrets({
 }
 
 
+/**
+ * Whether previews include the AI call guard: `PREVIEW_AI_GUARD`, default on. On by default because
+ * a SchoolOS preview should run the backend as a district runs it, guarded, and the guard's
+ * development entrypoint needs no credentials, secrets or spend: its Hall Monitor is a fake and
+ * its config synthetic. `false` or `0` leaves it out (the backend then runs as upstream's); any
+ * other value is refused, so a typo can't silently deploy an unguarded preview.
+ */
+export function resolvePreviewAiGuard(value: string | undefined = process.env.PREVIEW_AI_GUARD): boolean {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized || normalized === "1" || normalized === "true") return true;
+  if (normalized === "0" || normalized === "false") return false;
+  throw new Error(`PREVIEW_AI_GUARD must be true, false, 1 or 0, not "${value}"`);
+}
+
 /** Write one package's generated preview config to its `wrangler.staging.jsonc`. */
 export function writePreviewConfig(pkgDir: string, config: StagingConfig): void {
   writeFileSync(join(pkgDir, STAGING_CONFIG_NAME), JSON.stringify(config, null, 2) + "\n");
@@ -729,6 +776,8 @@ export function writePreviewConfig(pkgDir: string, config: StagingConfig): void 
  */
 export function generatePreviewConfigs(options: {
   previewName?: string;
+  /** Defaults to {@link resolvePreviewAiGuard}. Deletion forces it on, to collect a guard preview either way. */
+  aiGuard?: boolean;
 } = {}): {
   previewName: string;
   workersDevHost: string;
@@ -737,12 +786,15 @@ export function generatePreviewConfigs(options: {
 } {
   const previewName = options.previewName ?? resolvePreviewName();
   const { accountId, workersDevHost } = resolveTarget();
-  const packages = readDeployablePackages(PACKAGES_DIR).filter((pkg) => !isServicePackage(pkg.name));
+  const aiGuard = options.aiGuard ?? resolvePreviewAiGuard();
+  const packages = readDeployablePackages(PACKAGES_DIR)
+      .filter((pkg) => !isServicePackage(pkg.name) || (aiGuard && pkg.name === AI_GUARD_PACKAGE));
   const configs = buildPreviewConfigs({
     previewName,
     packages,
     accountId,
     workersDevHost,
+    aiGuard,
   });
 
   for (const pkg of packages) {

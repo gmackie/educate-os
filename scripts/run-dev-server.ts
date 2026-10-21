@@ -7,9 +7,14 @@
 //   --use-workers-ai-binding   Include the Workers AI binding in workshop-backend and in the
 //                               gatekeepers that declare one (requires Cloudflare login).
 //   --port PORT                 Listen on PORT instead of 8787. Overrides VITE_BACKEND_HOST.
+//   --with-ai-guard             Also run the SchoolOS AI call guard (packages/schoolos-ai-guard)
+//                               and bind it to the backend as AI_CALL_GUARD, with a fake Hall
+//                               Monitor and a synthetic config (see the guard's README).
 //
 // Env:
 //   VITE_BACKEND_HOST=localhost:9000  Also pass --port 9000 to wrangler dev.
+//   SCHOOLOS_DEV_AI_GUARD=1           Same as --with-ai-guard.
+//   AI_GUARD_CONFIG={...}             With the guard, replaces its built-in dev config.
 
 import {
   existsSync, readFileSync, writeFileSync, readdirSync, statSync,
@@ -20,6 +25,9 @@ import { constants } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "jsonc-parser";
+import {
+  AI_GUARD_PACKAGE, aiGuardRequested, backendAiGuardBinding, devAiGuardConfig,
+} from "./ai-guard-dev.ts";
 import { resolveBinEntry } from "./bin-entry.ts";
 import { getDevServerConfig } from "./dev-server-config.ts";
 import { generateWorkerConfigs } from "./generate-worker-configs.ts";
@@ -64,6 +72,17 @@ function loadDevVars(): void {
 loadDevVars();
 
 const useWorkersAi = process.argv.includes("--use-workers-ai-binding");
+
+// Off by default, so the dev server stays upstream's: an unbound AI_CALL_GUARD leaves the backend
+// unguarded, as it is in an upstream deployment.
+let withAiGuard: boolean;
+try {
+  withAiGuard = aiGuardRequested(process.argv.slice(2), process.env);
+} catch (err) {
+  console.error((err as Error).message);
+  process.exit(1);
+}
+const AI_GUARD_DIR = join(PACKAGES_DIR, AI_GUARD_PACKAGE);
 
 // In `run-local` mode the backend serves the pre-built frontend bundle as static assets (there is no
 // Vite dev server). In normal dev mode we leave assets unconfigured so the frontend is served by
@@ -619,6 +638,8 @@ for (const gk of gatekeepers) {
     config.ai = { binding: "WORKERS_AI" };
   }
 
+  if (withAiGuard) config.services.push(backendAiGuardBinding());
+
   // In run-local mode, serve the pre-built frontend bundle as static assets directly from the
   // backend Worker (mirrors the production layout). The dev-router forwards all non-gatekeeper
   // requests here; `run_worker_first` ensures the Worker handles the API routes while everything
@@ -642,10 +663,24 @@ for (const gk of gatekeepers) {
 // Build the wrangler dev command and exec it.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Generate packages/schoolos-ai-guard/wrangler.dev.jsonc when the guard is requested: its
+// development entrypoint, which fakes Hall Monitor in process and defaults AI_GUARD_CONFIG to a
+// synthetic config that prices every suggested model.
+// ---------------------------------------------------------------------------
+if (withAiGuard) {
+  const config = devAiGuardConfig(parse(readFileSync(join(AI_GUARD_DIR, "wrangler.jsonc"), "utf8")), process.env);
+  config.build = devBuildConfig(config.build, AI_GUARD_DIR);
+  const outPath = join(AI_GUARD_DIR, "wrangler.dev.jsonc");
+  writeFileSync(outPath, JSON.stringify(config, null, 2) + "\n");
+  console.log(`generated: ${outPath} (AI_CALL_GUARD bound to the backend)`);
+}
+
 const configs = [
   "wrangler.dev.jsonc",
   join("packages", "workshop-backend", "wrangler.dev.jsonc"),
   ...gatekeepers.map(gk => join(gk.dir, "wrangler.dev.jsonc")),
+  ...withAiGuard ? [join(AI_GUARD_DIR, "wrangler.dev.jsonc")] : [],
 ];
 
 const args = configs.flatMap(c => ["-c", c]);

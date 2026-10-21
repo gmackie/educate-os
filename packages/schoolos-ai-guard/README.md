@@ -51,6 +51,31 @@ It is validated strictly, and an invalid config makes every call fail closed. Wo
 limited in size, so a whole directory snapshot only fits a small district. The bindings and the
 snapshot stand in for `@schoolos/identity` and the district app (see follow-ups).
 
+## Development and previews
+
+`src/dev-worker.ts` is the guard as `pnpm dev-server --with-ai-guard` (or `SCHOOLOS_DEV_AI_GUARD=1`)
+and PR previews run it. It is the production guard and ledger with three stand-ins, and is never
+part of a release, whose entry is `src/worker.ts`:
+
+- **Hall Monitor** is the in-process fake in `src/fake-hall-monitor.ts`, which the tests use too.
+  It allows everything unless the text carries a marker: `[[block]]`, `[[hold]]`, `[[support]]` or
+  `[[coach]]` picks that decision, `[[unpriced]]` reports an unpriced attempt, and `[[down]]`
+  fails as an unavailable service (a student call then fails closed). So typing
+  `[[support]] help` into a chat shows the supportive message.
+- **`AI_GUARD_CONFIG`** defaults to `src/dev-config.ts`: the synthetic Northfield district, a
+  personal pool and a safety pool, and a flat dev rate ($0.10 in, $0.40 out per million tokens)
+  for every model in `SUGGESTED_MODELS`. It is built in code because it is over the var size
+  limit. To price another model or try other pools, set `AI_GUARD_CONFIG` in the shell or the
+  root `.dev.vars`; the dev server passes it through.
+- **Every unbound user** resolves to the config's catch-all `"*"` binding, a moderated student,
+  because dev and preview user IDs can't be known in advance. The production resolver never does
+  this; it refuses unbound users.
+
+The dev server binds the guard only when asked, so its default stays upstream's. Previews include
+it unless `PREVIEW_AI_GUARD=false`: a SchoolOS preview should run guarded, as a district does, and
+the development entrypoint needs no credentials, secrets or real spend. The guard preview deploys
+alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
+
 ## Decisions
 
 - **Request IDs.** A generative reservation is keyed by the Workshop's `callId`, which is unique to
@@ -109,8 +134,8 @@ snapshot stand in for `@schoolos/identity` and the district app (see follow-ups)
   district installer already does (`services` in the install config, SCHO-131; see
   `docs/schoolos/installer-permissions.md`), but the upstream Cloudflare deploy service is external
   to this repo, so a guard it installs must still be bound to the backend by hand.
-- Including the guard in `pnpm dev-server` and previews. Both currently leave it out, so the
-  backend runs unguarded there.
+- Exercising a real Hall Monitor from previews. They run the fake (see below), so preview
+  moderation proves the wiring and the ledger, not Hall Monitor's classifiers.
 
 [ADR-0007]: ../../docs/schoolos/adr/0007-hall-monitor-and-ai-call-guard.md
 [Hall Monitor]: https://github.com/gmackie/hall-monitor

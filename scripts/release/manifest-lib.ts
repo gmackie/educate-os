@@ -440,6 +440,11 @@ export function isServicePackage(pkgName: string): boolean {
   return Object.hasOwn(SERVICE_PACKAGES, pkgName);
 }
 
+/** How the backend binds an optional service package, or undefined for any other package. */
+export function serviceBackendBinding(pkgName: string): BackendServiceBinding | undefined {
+  return isServicePackage(pkgName) ? { ...SERVICE_PACKAGES[pkgName]! } : undefined;
+}
+
 /** Read every deployable package and its Wrangler configuration, sorted by package name. */
 export function readDeployablePackages(packagesDir: string): DeployablePackage[] {
   return readdirSync(packagesDir)
