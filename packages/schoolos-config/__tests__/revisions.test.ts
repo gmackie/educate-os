@@ -7,6 +7,7 @@ import {
   createRollbackRevision,
   diffRevisions,
   revisionContentHash,
+  revisionLineage,
   type HashedRevision,
 } from "../src/index.ts";
 import { northfieldDocument } from "./support.ts";
@@ -95,7 +96,7 @@ describe("createRollbackRevision", () => {
     changed.modules["classroom-codex"] = "enabled";
     const second = await draft(changed, first.revision);
 
-    const rollback = await createRollbackRevision({ target: first.revision, head: second.revision, actorPrincipalId: ADMIN });
+    const rollback = await createRollbackRevision({ target: first.revision, head: second.revision, history: [first.revision, second.revision], actorPrincipalId: ADMIN });
     expect(rollback.revision.desired).toEqual(first.revision.desired);
     expect(rollback.contentHash).toBe(first.contentHash);
     expect(rollback.revision.id).not.toBe(first.revision.id);
@@ -108,7 +109,77 @@ describe("createRollbackRevision", () => {
   it("refuses a target from another scope, or the head itself", async () => {
     const first = await draft(northfieldDocument());
     const foreign = { ...first.revision, scope: { districtId: "dst_riverbend" } } as ConfigurationRevision;
-    await expect(createRollbackRevision({ target: foreign, head: first.revision, actorPrincipalId: ADMIN })).rejects.toThrow(SchoolOsError);
-    await expect(createRollbackRevision({ target: first.revision, head: first.revision, actorPrincipalId: ADMIN })).rejects.toThrow(SchoolOsError);
+    const history = [first.revision];
+    await expect(createRollbackRevision({ target: foreign, head: first.revision, history, actorPrincipalId: ADMIN })).rejects.toThrow(SchoolOsError);
+    await expect(createRollbackRevision({ target: first.revision, head: first.revision, history, actorPrincipalId: ADMIN })).rejects.toThrow(SchoolOsError);
+  });
+
+  it("refuses a target that is not an ancestor of the head, even one of the same district", async () => {
+    const root = await draft(northfieldDocument());
+    const branchDocument = northfieldDocument();
+    branchDocument.modules["classroom-codex"] = "enabled";
+    // A sibling of the head: chained after the same root, but never applied after it.
+    const sibling = await draft(branchDocument, root.revision);
+    const headDocument = northfieldDocument();
+    headDocument.modules["assessment-ci"] = "enabled";
+    const head = await draft(headDocument, root.revision);
+
+    const history = [root.revision, sibling.revision, head.revision];
+    await expect(createRollbackRevision({ target: sibling.revision, head: head.revision, history, actorPrincipalId: ADMIN }))
+      .rejects.toMatchObject({ code: "conflict", message: expect.stringContaining("earlier revision") });
+    // The real ancestor is accepted.
+    await expect(createRollbackRevision({ target: root.revision, head: head.revision, history, actorPrincipalId: ADMIN })).resolves.toBeDefined();
+  });
+
+  it("rolls back to the history's copy of the target, not a desired state the caller altered", async () => {
+    const root = await draft(northfieldDocument());
+    const changed = northfieldDocument();
+    changed.modules["assessment-ci"] = "enabled";
+    const head = await draft(changed, root.revision);
+    const doctored = structuredClone(root.revision);
+    doctored.desired = { ...doctored.desired, profile: "us-k12-standard" };
+
+    const rollback = await createRollbackRevision({
+      target: doctored,
+      head: head.revision,
+      history: [root.revision, head.revision],
+      actorPrincipalId: ADMIN,
+    });
+    expect(rollback.revision.desired).toEqual(root.revision.desired);
+  });
+});
+
+async function chain() {
+  const root = await draft(northfieldDocument());
+  const changed = northfieldDocument();
+  changed.modules["assessment-ci"] = "enabled";
+  const middle = await draft(changed, root.revision);
+  const changedAgain = northfieldDocument();
+  changedAgain.modules["classroom-codex"] = "enabled";
+  const head = await draft(changedAgain, middle.revision);
+  return { root: root.revision, middle: middle.revision, head: head.revision };
+}
+
+describe("revisionLineage", () => {
+  it("walks from the head to the first revision, whatever order the history is in", async () => {
+    const { root, middle, head } = await chain();
+    const lineage = await revisionLineage(head, [head, root, middle]);
+    expect(lineage.map((r) => r.id)).toEqual([head.id, middle.id, root.id]);
+  });
+
+  it("breaks on a missing link, an edited revision, or a revision spliced in from another chain", async () => {
+    const { root, middle, head } = await chain();
+    await expect(revisionLineage(head, [head, root])).rejects.toMatchObject({ code: "conflict", message: expect.stringContaining("missing") });
+
+    const edited = { ...middle, desired: { ...middle.desired, profile: "us-k12-standard" } };
+    await expect(revisionLineage(head, [root, edited, head])).rejects.toMatchObject({ message: expect.stringContaining("does not match its content") });
+
+    // A middle revision that names a different predecessor than it was derived from.
+    const otherRoot = (await draft({ ...northfieldDocument(), profile: "us-k12-standard" })).revision;
+    const respliced = { ...middle, previousRevisionId: otherRoot.id };
+    await expect(revisionLineage(head, [root, otherRoot, respliced, head])).rejects.toMatchObject({ code: "conflict" });
+
+    const twoCopies = [root, middle, { ...middle, status: "applied" as const }, head];
+    await expect(revisionLineage(head, twoCopies)).rejects.toMatchObject({ message: expect.stringContaining("two different revisions") });
   });
 });

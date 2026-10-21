@@ -11,6 +11,7 @@
     "@schoolos/academics": "workspace:*",
     "@schoolos/assessment": "workspace:*",
     "@schoolos/assessment-ci": "workspace:*",
+    "@schoolos/config": "workspace:*",
     "@schoolos/contracts": "workspace:*",
     "@schoolos/learning-artifacts": "workspace:*",
     "zod": "catalog:"

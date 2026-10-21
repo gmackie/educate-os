@@ -1,3 +1,5 @@
+import { SHIPPED_REGISTRY, createDraftRevision } from "@schoolos/config";
+import { PrincipalId } from "@schoolos/contracts";
 import { EvidenceContract } from "@schoolos/registry";
 import { describe, expect, it } from "vitest";
 import {
@@ -6,6 +8,7 @@ import {
   ActivityInstallation,
   checkActivityContent,
   codexCollectionKey,
+  compiledConfigAiHelpSource,
   generateActivity,
   resolveAiHelp,
   ResourceReleaseRef,
@@ -119,6 +122,35 @@ describe("resources must be released Content Studio releases", () => {
 });
 
 describe("the AI-help policy can only narrow", () => {
+  it("reads the district's compiled configuration, so a configured offering override refuses more help", async () => {
+    const compiled = await createDraftRevision({
+      document: {
+        apiVersion: "schoolos.dev/v1alpha1",
+        district: D,
+        profile: "us-k12-standard",
+        identity: { provider: "district-sso" },
+        rostering: { provider: "oneroster-csv", mode: "preview-before-apply" },
+        modules: { "core-learning": "enabled" },
+        rollout: { target: "all-active-offerings", requiresAdminActivation: false },
+        overrides: [
+          { scope: { level: "school", districtId: D, schoolId: BIO.schoolId }, policies: { ai: { help: "hints-only" } } },
+          { scope: BIO, policies: { ai: { help: "none" } } },
+        ],
+      },
+      registry: SHIPPED_REGISTRY,
+      actorPrincipalId: PrincipalId.parse("prn_nf-district-admin"),
+    });
+    if (!compiled.ok) throw new Error(JSON.stringify(compiled.problems));
+    const { service, release } = await setup({ aiHelpPolicy: compiledConfigAiHelpSource(async () => compiled.compiled.desired) });
+    const lab = await release(MORGAN, PAGES.cells, BIO);
+
+    await rejectsWith(service.createDraft(MORGAN, { scope: BIO, activity: biologyLab(lab, { aiHelp: "hints-only" }) }), "policy-violation");
+    // English 9 inherits only the school's hints-only.
+    const essayModel = await release(RIVERA, PAGES.essay, ENG9);
+    await rejectsWith(service.createDraft(RIVERA, { scope: ENG9, activity: englishEssay(essayModel, { aiHelp: "full" }) }), "policy-violation");
+    expect((await service.createDraft(RIVERA, { scope: ENG9, activity: englishEssay(essayModel, { aiHelp: "hints-only" }) })).id).toBeDefined();
+  });
+
   it("resolves district, school, offering and activity, reporting every loosening", () => {
     expect(resolveAiHelp({ district: "full", offering: "hints-only" }, "none")).toStrictEqual({ ok: true, effective: "none" });
     expect(resolveAiHelp({ district: "hints-only", school: "full" }, "full")).toStrictEqual({

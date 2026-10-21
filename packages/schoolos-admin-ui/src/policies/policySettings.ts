@@ -134,8 +134,12 @@ export function loosenedSettings(current: PolicySettings, next: PolicySettings):
   const loosened: LoosenedSetting[] = [];
   for (const { key, label } of ENUMERATED_POLICIES) {
     const order: readonly string[] = POLICY_ORDERINGS[key];
-    if (order.indexOf(next[key]) < order.indexOf(current[key])) {
-      loosened.push({ key, label, from: choiceLabel(key, current[key]), to: choiceLabel(key, next[key]) });
+    const before = current[key];
+    const after = next[key];
+    // A setting a stored policy may omit (aiHelp) is not loosened from nothing.
+    if (before === undefined || after === undefined) continue;
+    if (order.indexOf(after) < order.indexOf(before)) {
+      loosened.push({ key, label, from: choiceLabel(key, before), to: choiceLabel(key, after) });
     }
   }
   if (next.aiMonthlyCapCentsPerPrincipal > current.aiMonthlyCapCentsPerPrincipal) {

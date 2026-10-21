@@ -73,19 +73,76 @@ export async function createDraftRevision(input: {
 }
 
 /**
+ * The revisions from `head` back to the first, following `previousRevisionId` through `history`
+ * (the scope's revisions, in any order). Every link is checked: each revision must be in `history`
+ * exactly as given, belong to `head`'s scope, and carry the ID its content and predecessor derive,
+ * so a revision edited after it was made, or spliced in from another chain, breaks the lineage.
+ *
+ * @throws SchoolOsError `conflict` naming the first link that fails.
+ */
+export async function revisionLineage(
+  head: ConfigurationRevision,
+  history: readonly ConfigurationRevision[],
+): Promise<ConfigurationRevision[]> {
+  const byRevisionId = new Map<string, ConfigurationRevision>();
+  for (const revision of history) {
+    const known = byRevisionId.get(revision.id);
+    if (known !== undefined && canonicalJson(known) !== canonicalJson(revision)) {
+      throw new SchoolOsError("conflict", `the history holds two different revisions ${revision.id}`);
+    }
+    byRevisionId.set(revision.id, revision);
+  }
+  const lineage: ConfigurationRevision[] = [];
+  const visited = new Set<string>();
+  let previous: ConfigurationRevision | undefined;
+  for (let id: string | undefined = head.id; id !== undefined; id = previous?.previousRevisionId) {
+    const revision: ConfigurationRevision | undefined = id === head.id && lineage.length === 0 ? head : byRevisionId.get(id);
+    if (revision === undefined) throw new SchoolOsError("conflict", `revision ${id} is missing from the history`);
+    if (visited.has(id)) throw new SchoolOsError("conflict", `the revision chain loops at ${id}`);
+    visited.add(id);
+    const stored = byRevisionId.get(id);
+    if (stored !== undefined && canonicalJson(stored) !== canonicalJson(revision)) {
+      throw new SchoolOsError("conflict", `revision ${id} differs from the history's copy`);
+    }
+    if (canonicalJson(revision.scope) !== canonicalJson(head.scope)) {
+      throw new SchoolOsError("conflict", `revision ${id} belongs to a different configuration scope`);
+    }
+    lineage.push(revision);
+    previous = revision;
+  }
+  // IDs are derived from content and predecessor, so recomputing them checks the whole chain.
+  for (const [index, revision] of lineage.entries()) {
+    const expected = await revisionId(await revisionContentHash(revision), lineage[index + 1]);
+    if (expected !== revision.id) throw new SchoolOsError("conflict", `revision ${revision.id} does not match its content`);
+  }
+  return lineage;
+}
+
+/**
  * Rolls back by creating a new draft revision, chained after `head`, whose desired state equals
  * `target`'s. History is never rewritten: the rollback is itself an auditable revision.
+ *
+ * The target must be an earlier revision in `head`'s lineage, read from `history` (see
+ * {@link revisionLineage}); its copy in the history is the one used. Whether the packs it pins are
+ * still available is for the plan to report (`pack-version-unavailable`), since a rollback is
+ * planned like any other change.
+ *
+ * @throws SchoolOsError `conflict` when the target is the head, is not one of its ancestors, or the
+ *   lineage does not verify; `validation-failed` when the target does not hold a desired state.
  */
 export async function createRollbackRevision(input: {
   target: ConfigurationRevision;
   head: ConfigurationRevision;
+  history: readonly ConfigurationRevision[];
   actorPrincipalId: PrincipalId;
 }): Promise<HashedRevision> {
-  const { target, head } = input;
-  if (canonicalJson(target.scope) !== canonicalJson(head.scope)) {
+  const { head } = input;
+  if (canonicalJson(input.target.scope) !== canonicalJson(head.scope)) {
     throw new SchoolOsError("conflict", "a rollback target must belong to the same configuration scope");
   }
-  if (target.id === head.id) throw new SchoolOsError("conflict", "the configuration is already at this revision");
+  if (input.target.id === head.id) throw new SchoolOsError("conflict", "the configuration is already at this revision");
+  const target = (await revisionLineage(head, input.history)).find((revision) => revision.id === input.target.id);
+  if (target === undefined) throw new SchoolOsError("conflict", "a rollback target must be an earlier revision of the current configuration");
   const parsed = DesiredState.safeParse(target.desired);
   if (!parsed.success) throw new SchoolOsError("validation-failed", "the rollback target's desired state is not valid");
   const hash = await contentHash(parsed.data);

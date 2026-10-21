@@ -155,7 +155,7 @@ function plan(current: DesiredStateView, next: DesiredStateView): ConfigurationP
     }];
   }) as ConfigurationPlan["offerings"];
   const approvals = (Object.keys(POLICY_ORDERINGS) as (keyof typeof POLICY_ORDERINGS)[])
-    .filter((key) => (POLICY_ORDERINGS[key] as readonly string[]).indexOf(next.policies[key]) < (POLICY_ORDERINGS[key] as readonly string[]).indexOf(current.policies[key]))
+    .filter((key) => (POLICY_ORDERINGS[key] as readonly string[]).indexOf(next.policies[key] ?? "") < (POLICY_ORDERINGS[key] as readonly string[]).indexOf(current.policies[key] ?? ""))
     .map((key) => ({ role: "district-admin" as const, reason: "policy-loosened" as const, path: `/policies/${key}`, detail: `${key} loosens` }));
   if (next.policies.aiMonthlyCapCentsPerPrincipal > current.policies.aiMonthlyCapCentsPerPrincipal) {
     approvals.push({ role: "district-admin", reason: "policy-loosened", path: "/policies/aiMonthlyCapCentsPerPrincipal", detail: "the monthly cap rises" });
@@ -170,6 +170,8 @@ function plan(current: DesiredStateView, next: DesiredStateView): ConfigurationP
     offerings,
     policyViolations: [],
     approvals,
+    migrations: [],
+    cost: { packs: [], principals: 0, aiPrincipals: 0, aiMonthlyCeilingCents: 0, previousAiMonthlyCeilingCents: 0 },
     problems: [],
   };
 }

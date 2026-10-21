@@ -1,3 +1,5 @@
+import { aiHelpLayersAt, type DesiredState } from "@schoolos/config";
+import { POLICY_ORDERINGS } from "@schoolos/contracts";
 import { z } from "zod";
 import type { OfferingScope } from "./ids.ts";
 
@@ -6,10 +8,10 @@ import type { OfferingScope } from "./ids.ts";
  * `full` helps with the work itself, `hints-only` may only point the way, and `none` offers no
  * helper at all. The order is the rule: a narrower level may only move toward `none`.
  *
- * This is a policy floor setting like those in the contracts `PolicySettings`, and may join them
- * once the configuration compiler (F03) carries it.
+ * It is the `aiHelp` setting of the contracts policy floor, which the configuration compiler (F03)
+ * resolves per scope.
  */
-export const AI_HELP_LEVELS = ["full", "hints-only", "none"] as const;
+export const AI_HELP_LEVELS = POLICY_ORDERINGS.aiHelp;
 
 /** One of {@link AI_HELP_LEVELS}. */
 export const AiHelpLevel = z.enum(AI_HELP_LEVELS);
@@ -66,4 +68,13 @@ export function resolveAiHelp(layers: AiHelpLayers, requested: AiHelpLevel): AiH
  */
 export interface AiHelpPolicySource {
   layersFor(offering: OfferingScope): Promise<AiHelpLayers>;
+}
+
+/**
+ * The AI-help policy source backed by the district's compiled configuration (F03): the district
+ * floor's level and those its school and offering overrides set (see `aiHelpLayersAt`). `readConfig`
+ * returns the applied head revision's desired state, or `undefined` before the first one.
+ */
+export function compiledConfigAiHelpSource(readConfig: () => Promise<DesiredState | undefined>): AiHelpPolicySource {
+  return { layersFor: async (offering) => aiHelpLayersAt(await readConfig(), offering) };
 }

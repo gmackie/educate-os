@@ -100,16 +100,52 @@ describe("resolveDependencies", () => {
   });
 });
 
+describe("multi-version packs", () => {
+  const registry = registryOf([
+    pack("base", "1.0.0"),
+    pack("base", "1.4.0"),
+    pack("base", "2.0.0"),
+    pack("base", "2.1.0-beta.1"),
+    pack("old-client", "1.0.0", [["base", "^1.0.0"]]),
+    pack("new-client", "1.0.0", [["base", "^2.0.0"]]),
+  ]);
+
+  it("offers the newest release by default, never a prerelease", () => {
+    expect(registry.packs.get(id("base"))!.manifest.version).toBe("2.0.0");
+    expect(registry.versions.get(id("base"))!.map((p) => p.manifest.version)).toEqual(["1.0.0", "1.4.0", "2.0.0", "2.1.0-beta.1"]);
+  });
+
+  it("selects the newest version every range on a pack admits", () => {
+    const resolution = resolveDependencies(registry, [id("old-client")]);
+    expect(resolution.problems).toEqual([]);
+    expect(resolution.selected.get(id("base"))!.manifest.version).toBe("1.4.0");
+    expect(resolveDependencies(registry, [id("base")], new Map([[id("base"), "~1.0.0"]])).selected.get(id("base"))!.manifest.version)
+      .toBe("1.0.0");
+  });
+
+  it("reports ranges no version satisfies instead of quietly taking another version", () => {
+    const both = resolveDependencies(registry, [id("old-client"), id("new-client")]);
+    expect(both.installOrder).toEqual([]);
+    // No version admits both ranges, so the default version is taken and the range it misses is reported.
+    expect(both.problems).toEqual([
+      { kind: "version-mismatch", capabilityId: "old-client", dependencyId: "base", versionRange: "^1.0.0", availableVersion: "2.0.0" },
+    ]);
+    expect(resolveDependencies(registry, [id("base")], new Map([[id("base"), "^3.0.0"]])).problems).toEqual([
+      { kind: "no-version-in-range", capabilityId: "base", versionRange: "^3.0.0", availableVersions: ["1.0.0", "1.4.0", "2.0.0", "2.1.0-beta.1"] },
+    ]);
+  });
+});
+
 describe("createCapabilityRegistry", () => {
   it("rejects a manifest carrying an install script, and duplicates, reporting both", () => {
     const withScript = pack("scripted", "1.0.0");
     (withScript.manifest as Record<string, unknown>).installScript = "curl https://packs.example/run.sh | sh";
-    const result = createCapabilityRegistry([pack("dup", "1.0.0"), withScript, pack("dup", "1.1.0")]);
+    const result = createCapabilityRegistry([pack("dup", "1.0.0"), withScript, pack("dup", "1.1.0"), pack("dup", "1.0.0")]);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.problems).toEqual([
       { kind: "invalid-manifest", index: 1, issues: [expect.stringContaining("installScript")] },
-      { kind: "duplicate-capability", capabilityId: "dup" },
+      { kind: "duplicate-capability", capabilityId: "dup", version: "1.0.0" },
     ]);
   });
 

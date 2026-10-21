@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { ActivityId } from "@schoolos/contracts";
+import { aiHelpLayersAt, type AiHelpLevel, type DesiredState } from "@schoolos/config";
+import { POLICY_ORDERINGS, type ActivityId, type Scope } from "@schoolos/contracts";
 import { ExecutionProfileId } from "@schoolos/assessment-ci";
 import { ModelRef } from "./model-port.ts";
 
@@ -88,4 +89,44 @@ export type AiHelpPolicy = z.infer<typeof AiHelpPolicy>;
 /** Where an activity's AI-help policy comes from. An activity with none is treated as `none`. */
 export interface AiHelpPolicySource {
   aiHelpPolicy(activityId: ActivityId): Promise<AiHelpPolicy | undefined>;
+}
+
+/** {@link AiHelpPolicy} values from least to most restrictive. */
+const FEEDBACK_ORDER: readonly AiHelpPolicy[] = ["releasable", "teacher-only", "none"];
+
+/**
+ * The most an AI-help level allows. AI feedback on a student's work is help with the work itself, so
+ * only `full` lets it reach the student; under `hints-only` it stays advice to the teacher.
+ */
+const FEEDBACK_CEILING: Readonly<Record<AiHelpLevel, AiHelpPolicy>> = {
+  full: "releasable",
+  "hints-only": "teacher-only",
+  none: "none",
+};
+
+/**
+ * An activity's AI-help policy, capped by the district's compiled configuration (F03): its own
+ * policy from `activities`, tightened to what the strictest AI-help level at or above its offering
+ * allows. An activity whose offering cannot be found has no policy, which the service reads as
+ * `none`. `readConfig` returns the applied head revision's desired state, or `undefined` before the
+ * first one.
+ */
+export function compiledConfigAiHelpPolicies(input: {
+  activities: AiHelpPolicySource;
+  offeringOf(activityId: ActivityId): Promise<Extract<Scope, { level: "offering" }> | undefined>;
+  readConfig(): Promise<DesiredState | undefined>;
+}): AiHelpPolicySource {
+  return {
+    async aiHelpPolicy(activityId) {
+      const [own, offering] = await Promise.all([input.activities.aiHelpPolicy(activityId), input.offeringOf(activityId)]);
+      if (own === undefined || offering === undefined) return undefined;
+      const { district, school, offering: offeringLevel } = aiHelpLayersAt(await input.readConfig(), offering);
+      const order: readonly AiHelpLevel[] = POLICY_ORDERINGS.aiHelp;
+      const level = [district, school, offeringLevel]
+        .filter((l) => l !== undefined)
+        .reduce((a, b) => (order.indexOf(b) > order.indexOf(a) ? b : a));
+      const ceiling = FEEDBACK_CEILING[level];
+      return FEEDBACK_ORDER.indexOf(own) >= FEEDBACK_ORDER.indexOf(ceiling) ? own : ceiling;
+    },
+  };
 }

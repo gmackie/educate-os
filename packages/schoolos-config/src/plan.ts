@@ -19,8 +19,8 @@ import {
 } from "@schoolos/contracts";
 import { canonicalJson } from "./canonical.ts";
 import { DEFAULTS_PROFILES, DesiredState, type DesiredModule, type ModuleState } from "./document.ts";
-import { formFields } from "./forms.ts";
-import { resolveDependencies, type CapabilityRegistry, type ResolutionProblem } from "./registry.ts";
+import { formFields, type FormField } from "./forms.ts";
+import { packVersion, resolveDependencies, type CapabilityPack, type CapabilityRegistry, type ResolutionProblem } from "./registry.ts";
 import { diffDesired, type DiffEntry } from "./revisions.ts";
 import { pointerSegment } from "./secrets.ts";
 
@@ -156,13 +156,70 @@ export interface ConfigurationPlan {
   policyViolations: ScopedPolicyViolation[];
   /** Approvals required before applying. */
   approvals: RequiredApproval[];
+  /** Data migrations applying would run, pack by pack in install order. */
+  migrations: PlannedMigration[];
+  /** What the next state could cost, against the current one. */
+  cost: CostEstimate;
   /** Problems that block applying. */
   problems: PlanProblem[];
 }
 
+/** The migrations one pack's install or version change runs. */
+export interface PlannedMigration {
+  /** The pack. */
+  capabilityId: CapabilityId;
+  /** The version installed now; absent when the pack is being installed. */
+  fromVersion?: string;
+  /** The version being installed. */
+  toVersion: string;
+  /** Migrations the new version lists and the installed one does not, in the order listed. */
+  run: string[];
+  /**
+   * Migrations the installed version lists and the new one does not: a downgrade leaves them
+   * applied, so the older version meets data shaped by a newer one.
+   */
+  notReverted: string[];
+}
+
+/** One active pack's share of a {@link CostEstimate}. */
+export interface PackCostEstimate {
+  /** The pack. */
+  capabilityId: CapabilityId;
+  /** What the pack's manifest says its cost grows with. */
+  costDrivers: string[];
+  /** Distinct active principals the pack reaches. */
+  principals: number;
+  /** Whether the pack sends requests to AI providers as configured. */
+  usesAi: boolean;
+}
+
+/**
+ * An upper-bound cost estimate: who each active pack reaches, and the most AI could cost in a month
+ * if every person it reaches spent their whole cap. A pack exposed to offerings reaches the people
+ * actively enrolled in them; any other active pack reaches every active principal in the district.
+ */
+export interface CostEstimate {
+  /** The next state's active packs, by ID. */
+  packs: PackCostEstimate[];
+  /** Distinct active principals any active pack reaches. */
+  principals: number;
+  /** Distinct active principals an AI-using pack reaches where AI spending is not disabled. */
+  aiPrincipals: number;
+  /** The monthly AI ceiling: each such principal's highest effective cap, summed, in US cents. */
+  aiMonthlyCeilingCents: number;
+  /** The same ceiling under the current state, so the change can be read at a glance. */
+  previousAiMonthlyCeilingCents: number;
+}
+
 const byId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+/** The pack at the version a desired state pins, or its default version when that one is gone. */
+function pinnedPack(registry: CapabilityRegistry, id: CapabilityId, module: DesiredModule | undefined): CapabilityPack | undefined {
+  return (module === undefined ? undefined : packVersion(registry, id, module.version)) ?? registry.packs.get(id);
+}
 const POLICY_KEYS = [...Object.keys(POLICY_ORDERINGS), "aiMonthlyCapCentsPerPrincipal"] as (keyof PolicySettings)[];
 
+/** Whether `to` is looser than `from`. A setting absent from an older revision is never loosened from. */
 function isLooser(key: keyof PolicySettings, from: unknown, to: unknown): boolean {
   if (key === "aiMonthlyCapCentsPerPrincipal") return (to as number) > (from as number);
   const order: readonly unknown[] = POLICY_ORDERINGS[key];
@@ -217,7 +274,7 @@ function activations(
   const targets = exposureTargets(desired, directory, problems);
   for (const [id, module] of Object.entries(desired.modules) as [CapabilityId, DesiredModule][]) {
     const active = module.state !== "disabled";
-    const exposable = registry.packs.get(id)?.manifest.supportedScopes.includes("offering") ?? false;
+    const exposable = pinnedPack(registry, id, module)?.manifest.supportedScopes.includes("offering") ?? false;
     const exposedTo = active && exposable ? targets : [];
     result.set(id, {
       state: exposedTo.length > 0 ? "exposed" : active ? "enabled" : "installed",
@@ -312,22 +369,27 @@ export function planConfigurationChange(input: {
   }
 
   const problems: PlanProblem[] = [];
-  const resolution = resolveDependencies(registry, Object.keys(next.modules) as CapabilityId[]);
+  const pinned = Object.entries(next.modules) as [CapabilityId, DesiredModule][];
+  for (const [id, module] of pinned) {
+    if (registry.versions.has(id) && packVersion(registry, id, module.version) === undefined) {
+      problems.push({
+        code: "pack-version-unavailable",
+        path: `/modules/${id}/version`,
+        message: `${id} ${module.version} is pinned but no longer available; available: ${registry.versions.get(id)!.map((p) => p.manifest.version).join(", ")}`,
+      });
+    }
+  }
+  // The pinned versions are resolved as they are, so a revision applies exactly what it records.
+  const resolution = resolveDependencies(
+    registry,
+    pinned.map(([id]) => id),
+    new Map(pinned.filter(([id, m]) => packVersion(registry, id, m.version) !== undefined).map(([id, m]) => [id, m.version])),
+  );
   problems.push(...resolution.problems.map((problem): PlanProblem => ({
     code: problem.kind,
     path: `/modules/${"capabilityId" in problem ? problem.capabilityId : problem.path[0]}`,
     message: `the next revision's packs no longer resolve (${problem.kind})`,
   })));
-  for (const [id, module] of Object.entries(next.modules)) {
-    const available = registry.packs.get(id as CapabilityId)?.manifest.version;
-    if (available !== undefined && available !== module.version) {
-      problems.push({
-        code: "pack-version-unavailable",
-        path: `/modules/${id}/version`,
-        message: `${id} ${module.version} is pinned but ${available} is the version available`,
-      });
-    }
-  }
   const knownSchools = new Set(directory.schools.map((s) => s.id));
   const knownOfferings = new Set(directory.offerings.map((o) => o.id));
   next.overrides.forEach(({ scope }, index) => {
@@ -397,6 +459,11 @@ export function planConfigurationChange(input: {
     offerings,
     policyViolations,
     approvals: requiredApprovals(current, next, packs, offerings, loosenedAt, registry),
+    migrations: plannedMigrations(current, next, resolution.installOrder, registry),
+    cost: {
+      ...costOf(next, after, directory, registry),
+      previousAiMonthlyCeilingCents: current === undefined ? 0 : costOf(current, before, directory, registry).aiMonthlyCeilingCents,
+    },
     problems,
   };
 }
@@ -429,7 +496,7 @@ function requiredApprovals(
 
   for (const pack of packs) {
     const id = pack.capabilityId;
-    const manifest = registry.packs.get(id)?.manifest;
+    const manifest = pinnedPack(registry, id, next.modules[id])?.manifest;
     const nowActive = pack.after !== undefined && pack.after.state !== "installed";
     if (manifest === undefined || !nowActive) continue;
     if (pack.changes.includes("enabled") && manifest.requiredResources.includes("ai-gateway")) {
@@ -463,4 +530,105 @@ function requiredApprovals(
     }
   }
   return approvals;
+}
+
+/**
+ * The migrations each installed or re-versioned pack runs, in install order (or by ID when the
+ * packs do not resolve). A pinned version the registry no longer offers is reported as a problem
+ * instead, since its migrations cannot be known.
+ */
+function plannedMigrations(
+  current: DesiredState | undefined,
+  next: DesiredState,
+  installOrder: readonly CapabilityId[],
+  registry: CapabilityRegistry,
+): PlannedMigration[] {
+  const ids = installOrder.length > 0 ? installOrder : (Object.keys(next.modules) as CapabilityId[]).toSorted(byId);
+  const planned: PlannedMigration[] = [];
+  for (const id of ids) {
+    const to = next.modules[id]!;
+    const from = current?.modules[id];
+    if (from?.version === to.version) continue;
+    const toPack = packVersion(registry, id, to.version);
+    if (toPack === undefined) continue;
+    const fromMigrations = from === undefined ? [] : packVersion(registry, id, from.version)?.manifest.migrations ?? [];
+    const run = toPack.manifest.migrations.filter((m) => !fromMigrations.includes(m));
+    const notReverted = fromMigrations.filter((m) => !toPack.manifest.migrations.includes(m));
+    if (run.length === 0 && notReverted.length === 0) continue;
+    planned.push({ capabilityId: id, ...(from === undefined ? {} : { fromVersion: from.version }), toVersion: to.version, run, notReverted });
+  }
+  return planned;
+}
+
+/** Whether a pack, configured as it is, sends requests to AI providers. */
+function usesAi(pack: CapabilityPack, config: Record<string, unknown>): boolean {
+  const { manifest } = pack;
+  if (manifest.requiredResources.includes("ai-gateway")) return true;
+  if (!(manifest.optionalResources ?? []).includes("ai-gateway")) return false;
+  return formFields(manifest.configSchema).some((field: FormField) =>
+    field.governance === "ai" && !field.path.includes("[]") && field.path.split(".").reduce<unknown>(
+      (value, key) => (value as Record<string, unknown> | undefined)?.[key],
+      config,
+    ) === true
+  );
+}
+
+/** A principal's monthly AI cap under `policy`, or `undefined` where AI spending is disabled. */
+function capAt(policy: PolicySettings): number | undefined {
+  return policy.aiSpending === "disabled" ? undefined : policy.aiMonthlyCapCentsPerPrincipal;
+}
+
+/** The reach and AI ceiling of one desired state's active packs; see {@link CostEstimate}. */
+function costOf(
+  desired: DesiredState,
+  activation: ReadonlyMap<CapabilityId, PackActivation>,
+  directory: DistrictDirectorySnapshot,
+  registry: CapabilityRegistry,
+): Omit<CostEstimate, "previousAiMonthlyCeilingCents"> {
+  const active = new Set(directory.principals.filter((p) => p.status === "active").map((p) => p.id as string));
+  const offeringPrincipals = new Map<string, Set<string>>();
+  for (const enrollment of directory.enrollments) {
+    if (enrollment.status !== "active" || !active.has(enrollment.principalId)) continue;
+    const members = offeringPrincipals.get(enrollment.offeringId) ?? new Set<string>();
+    members.add(enrollment.principalId);
+    offeringPrincipals.set(enrollment.offeringId, members);
+  }
+  const offerings = new Map(directory.offerings.map((o) => [o.id as string, o]));
+
+  const reached = new Set<string>();
+  const aiCeiling = new Map<string, number>();
+  const raiseCeiling = (principalId: string, cap: number | undefined) => {
+    if (cap !== undefined) aiCeiling.set(principalId, Math.max(aiCeiling.get(principalId) ?? 0, cap));
+  };
+  const packs: PackCostEstimate[] = [];
+  for (const [id, state] of [...activation].toSorted(([a], [b]) => byId(a, b))) {
+    if (state.state === "installed") continue;
+    const pack = pinnedPack(registry, id, desired.modules[id]);
+    if (pack === undefined) continue;
+    const ai = usesAi(pack, desired.modules[id]!.config);
+    const exposable = pack.manifest.supportedScopes.includes("offering");
+    const principals = new Set<string>();
+    if (exposable) {
+      for (const offeringId of state.exposedTo) {
+        const cap = ai ? capAt(offeringPolicy(desired, offerings.get(offeringId)!).effective) : undefined;
+        for (const principalId of offeringPrincipals.get(offeringId) ?? []) {
+          principals.add(principalId);
+          if (ai) raiseCeiling(principalId, cap);
+        }
+      }
+    } else {
+      for (const principalId of active) {
+        principals.add(principalId);
+        if (ai) raiseCeiling(principalId, capAt(desired.policies));
+      }
+    }
+    for (const principalId of principals) reached.add(principalId);
+    packs.push({ capabilityId: id, costDrivers: pack.manifest.estimatedCostDrivers, principals: principals.size, usesAi: ai });
+  }
+  return {
+    packs,
+    principals: reached.size,
+    aiPrincipals: aiCeiling.size,
+    aiMonthlyCeilingCents: [...aiCeiling.values()].reduce((sum, cap) => sum + cap, 0),
+  };
 }
