@@ -1,8 +1,8 @@
 import { DurableObject, RpcStub, RpcTarget } from "cloudflare:workers";
 import { validateRpc } from "capnweb-validate";
 import type {
-  AnthropicMessagesCompat, Api, AssistantMessageEventStream, ClassifierApi, ClassifierContext,
-  ClassifierModel, ClassifierOptions, ClassifierResult, Context, FetchFunction, Model, ModelCost,
+  AnthropicMessagesCompat, Api, AssistantMessageEventStream, ClassifierApi,
+  ClassifierModel, ClassifierOptions, Context, FetchFunction, Model, ModelCost,
   OpenAICompletionsCompat, ProviderHeaders, SimpleStreamOptions, StreamFunction,
 } from "@earendil-works/pi-ai";
 import { clampThinkingLevel, getSupportedThinkingLevels, normalizeContext }
@@ -27,6 +27,7 @@ import { LanguageModelBinding } from "./ai-model-binding";
 import AI_MODEL_BINDING_TYPES from "./ai-model-binding.txt";
 import { DecisionAnswer, DecisionModelBinding, DecisionRequest } from "./decision-model-binding";
 import DECISION_MODEL_BINDING_TYPES from "./decision-model-binding.txt";
+import type { AiCallSite } from "@gadgets/workshop-shared/ai-call-guard";
 import {
   AiChatAuthorInfo, AiModelConfig, AiModelProvider, BuiltInReasoning, GatewayModelCapabilities,
   REASONING_LEVELS, ReasoningLevel, SUGGESTED_MODELS, WORKERS_AI_OUTPUT_LIMIT,
@@ -36,6 +37,8 @@ import {
   AiGatewayConfig, getAiGatewayConfig, getGatewayModels, type AiGatewayLogRoute,
 } from "./ai-gateway.js";
 import { completeText } from "./ai-invoke.js";
+import { guardDecisionModel, guardModelHandle, type AiCallScope, type DecisionModel }
+  from "./ai-call-guard.js";
 import { bridgePdfAttachments } from "./chat-attachment-pdf.js";
 import { hasGpt56PromptCaching, splitSystemPrompt } from "./system-prompt-blocks.js";
 
@@ -71,7 +74,29 @@ type ModelRoutingOptions = {
   sessionAffinity?: string;
   userGateway?: UserGatewayRouting;
   metadata?: GatewayMetadataContext;
+  // Where the call comes from, for the AI call guard. Defaults to the one `metadata.source` names.
+  callSite?: AiCallSite;
 };
+
+// The AI call guard's call site for each gateway metadata source.
+const CALL_SITES: Record<GatewayMetadataContext["source"], AiCallSite> = {
+  "chat": "chat.agent",
+  "thread-title": "chat.title",
+  "gadget-title": "gadget.title",
+  "model-binding": "gadget.llm",
+};
+
+// What every call through a model resolved for `initiator` has in common, for the AI call guard.
+function guardScope(config: AiModelConfig, initiator: AiChatAuthorInfo, callSite: AiCallSite,
+                    metadata?: GatewayMetadataContext): AiCallScope {
+  return {
+    callSite,
+    initiator: { type: initiator.type, id: initiator.id },
+    model: { provider: config.provider, id: config.model },
+    ...(metadata?.gadgetId !== undefined ? { gadgetId: metadata.gadgetId } : {}),
+    ...(metadata?.chatId !== undefined ? { chatId: metadata.chatId } : {}),
+  };
+}
 
 /**
  * Per-call stream options accepted by a ModelHandle, extending pi's own options with
@@ -594,11 +619,20 @@ function signGeminiFunctionCalls(model: Model<Api>, payload: unknown): object | 
  * Resolve an AiModelConfig to a ModelHandle, choosing among three routing modes: the user's own
  * AI Gateway (BYOK unified billing), the platform's AI Gateway (free tier), or direct provider
  * access with the config's own credentials. The handle carries the matching AI Gateway log route
- * for cost accounting, when there is one.
+ * for cost accounting, when there is one. Every request it streams goes through the deployment's
+ * AI call guard, when one is bound.
  */
 export function getModel(env: Cloudflare.Env, config: AiModelConfig,
                          initiator: AiChatAuthorInfo,
                          options: ModelRoutingOptions = {}): ModelHandle {
+  let callSite = options.callSite ??
+      (options.metadata ? CALL_SITES[options.metadata.source] : "unattributed");
+  return guardModelHandle(env.AI_CALL_GUARD, routeModel(env, config, initiator, options),
+      guardScope(config, initiator, callSite, options.metadata));
+}
+
+function routeModel(env: Cloudflare.Env, config: AiModelConfig, initiator: AiChatAuthorInfo,
+                    options: ModelRoutingOptions): ModelHandle {
   // BYOK: a connected user's own Cloudflare account pays for everything (all providers, including
   // Workers AI), routed through the user's own AI Gateway with unified billing. Honored regardless
   // of whether a platform AI Gateway is configured, so connected users are always billed correctly.
@@ -906,17 +940,23 @@ function workersAiAccountUrl(config: AiModelConfig): string {
   return `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/ai`;
 }
 
-/** Runs one resolved decision model; see getDecisionModel(). */
-type DecisionModel = (context: ClassifierContext) => Promise<ClassifierResult>;
-
 /**
  * Resolve a decision model config (see modelKind()) to a DecisionModel. It routes through the
  * platform's AI Gateway when one is configured, as getModel() routes language models, and
- * otherwise goes directly to Workers AI with the config's own Cloudflare credentials.
+ * otherwise goes directly to Workers AI with the config's own Cloudflare credentials. Like
+ * getModel(), it goes through the deployment's AI call guard, when one is bound.
  */
 export function getDecisionModel(env: Cloudflare.Env, config: AiModelConfig,
                                  initiator: AiChatAuthorInfo,
                                  metadataContext?: GatewayMetadataContext): DecisionModel {
+  return guardDecisionModel(env.AI_CALL_GUARD,
+      routeDecisionModel(env, config, initiator, metadataContext),
+      guardScope(config, initiator, "gadget.decision", metadataContext));
+}
+
+function routeDecisionModel(env: Cloudflare.Env, config: AiModelConfig,
+                            initiator: AiChatAuthorInfo,
+                            metadataContext?: GatewayMetadataContext): DecisionModel {
   // pi's catalog entry supplies the API, cost and window; only the address varies by route.
   const catalog = (CLOUDFLARE_WORKERS_AI_CLASSIFIER_MODELS as
       Record<string, ClassifierModel<ClassifierApi>>)[config.model];

@@ -857,7 +857,7 @@ export class AdminSettings extends DurableObject<Cloudflare.Env> {
     let failure: { status?: number, message: string } | undefined;
     try {
       let handle = getModel(this.env, config,
-          { type: "user", id: adminUserId, name: adminUserId });
+          { type: "user", id: adminUserId, name: adminUserId }, { callSite: "admin.model-test" });
       await completeText(handle, {
         prompt: "Reply with OK.", maxTokens: Math.min(test.maxTokens, handle.model.maxTokens),
         thinking: test.thinking, signal,

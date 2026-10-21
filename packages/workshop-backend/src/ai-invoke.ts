@@ -1,4 +1,4 @@
-import type { Message, ProviderHeaders, Usage } from "@earendil-works/pi-ai";
+import type { AssistantMessage, Message, ProviderHeaders, Usage } from "@earendil-works/pi-ai";
 import type { ModelHandle } from "./ai-models.js";
 
 /**
@@ -25,6 +25,38 @@ export class AgentTurnError extends Error {
   constructor(message: string, statusCode?: number) {
     super(message);
     this.statusCode = statusCode;
+  }
+}
+
+/** The `diagnostics` type that marks the failed response of a request the AI call guard denied. */
+export const AI_CALL_DENIED = "ai_call_denied";
+
+/**
+ * A model request the deployment's AI call guard denied (see ai-call-guard.ts). Its message is the
+ * guard's, written for the user. Not an AgentTurnError: nothing was sent, so there is no status to
+ * triage and nothing to retry.
+ */
+export class AiCallDeniedError extends Error {
+  override name = "AiCallDeniedError";
+
+  /** The guard's machine-readable reason. */
+  readonly reason: string;
+
+  constructor(message: string, reason: string) {
+    super(message);
+    this.reason = reason;
+  }
+}
+
+/**
+ * Throws AiCallDeniedError if `message`, the failed response of a request, stands for a request
+ * the AI call guard denied. Callers converting failed responses into errors call this first.
+ */
+export function throwIfAiCallDenied(message: AssistantMessage): void {
+  const denial = message.diagnostics?.find(diagnostic => diagnostic.type === AI_CALL_DENIED);
+  if (denial) {
+    throw new AiCallDeniedError(
+        message.errorMessage ?? "", String(denial.details?.reason ?? AI_CALL_DENIED));
   }
 }
 
@@ -89,6 +121,7 @@ export async function completeText(handle: ModelHandle, args: {
   if (message.stopReason === "error" || message.stopReason === "aborted") {
     // Surface a cancellation as the abort reason, like a directly-aborted request would.
     args.signal?.throwIfAborted();
+    throwIfAiCallDenied(message);
     const errorMessage = message.errorMessage ?? "The model request failed.";
     throw new AgentTurnError(errorMessage, httpStatusFromError(errorMessage, handle.lastResponse));
   }

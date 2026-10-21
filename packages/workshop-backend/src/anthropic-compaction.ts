@@ -14,7 +14,7 @@
 
 import type { Api, Context, Model } from "@earendil-works/pi-ai";
 import { z } from "zod";
-import { AgentTurnError, httpStatusFromError } from "./ai-invoke.js";
+import { AgentTurnError, httpStatusFromError, throwIfAiCallDenied } from "./ai-invoke.js";
 import type { ModelHandle, ModelStreamOptions } from "./ai-models.js";
 
 const COMPACTION_BETA = "compact-2026-09-04";
@@ -113,6 +113,7 @@ export async function requestAnthropicCompaction(
   });
   const result = await response.result();
   if (result.stopReason === "error" || result.stopReason === "aborted") {
+    throwIfAiCallDenied(result);
     const message = result.errorMessage ?? "The compaction request failed.";
     throw new AgentTurnError(message, httpStatusFromError(message, handle.lastResponse));
   }

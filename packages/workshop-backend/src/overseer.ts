@@ -37,7 +37,7 @@ import {
   getModel,
   UserGatewayRouting,
 } from "./ai-models";
-import { AgentTurnError, completeText } from "./ai-invoke";
+import { AI_CALL_DENIED, AgentTurnError, AiCallDeniedError, completeText } from "./ai-invoke";
 import {
   AiGatewayLogRetryableError,
   getAiGatewayConfig,
@@ -7263,6 +7263,14 @@ class OverseerImpl implements AgentHooks {
       });
     } catch (err: unknown) {
       if (!owns()) return;
+      // The AI call guard refused a request: an expected outcome with its own message for the user.
+      if (err instanceof AiCallDeniedError) {
+        failure = {message: err.message, code: AI_CALL_DENIED};
+        turnLogger.debug("agent run finished", {
+          event: "agent.run.finished", outcome: AI_CALL_DENIED, durationMs: Date.now() - startedAt,
+        });
+        return;
+      }
       // A failed model request surfaces as AgentTurnError (pi reports provider failures as data;
       // runAgent converts them back to a throw), carrying the failing request's HTTP status when
       // one was observed.
@@ -7747,7 +7755,8 @@ class OverseerImpl implements AgentHooks {
       subject: string, takenNames: Set<string>,
       quick: {config: AiModelConfig, initiator: AiChatAuthorInfo}): Promise<string | undefined> {
     try {
-      let model = getModel(this.env, quick.config, quick.initiator);
+      let model = getModel(this.env, quick.config, quick.initiator,
+          { callSite: "chat.binding-name" });
       let result = await completeText(model, {
         signal: AbortSignal.timeout(10_000),
         prompt:

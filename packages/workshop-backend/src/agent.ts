@@ -28,7 +28,9 @@ import { formatInstanceInstructions } from "./admin-config";
 import type { AiGatewayLogRoute } from "./ai-gateway";
 import type { SpawnCallableOptions } from "./agent-spawner-binding";
 import { traceRejectedToolCall, traceTool } from "./agent-tracing";
-import { AgentTurnError, completeText, httpStatusFromError, zeroUsage } from "./ai-invoke";
+import {
+  AgentTurnError, completeText, httpStatusFromError, throwIfAiCallDenied, zeroUsage,
+} from "./ai-invoke";
 import type { ModelHandle } from "./ai-models";
 import { blobOid } from "./git-store";
 import type {
@@ -4358,6 +4360,7 @@ async function runAgentPass(
   abortSignal.throwIfAborted();
 
   if (turnFailure) {
+    throwIfAiCallDenied(turnFailure);
     // Other failures become an AgentTurnError carrying the failing request's HTTP status (when
     // it can be determined) for the overseer's triage; runAgent retries a transient one first.
     let message = turnFailure.errorMessage ?? "The model request failed.";

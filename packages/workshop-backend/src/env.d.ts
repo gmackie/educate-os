@@ -53,6 +53,10 @@ declare global {
       >;
       FRONTEND_ERROR_RATE_LIMITER?: RateLimit;
 
+      // Optional AI call guard, consulted around every model call (see ai-call-guard.ts). The
+      // deployment binds it; when it is absent, model calls run unguarded.
+      AI_CALL_GUARD?: Service<import("@gadgets/workshop-shared/ai-call-guard").AiCallGuard>;
+
       // The Browser Run binding (BROWSER) used to render Gadget exports is intentionally NOT
       // redeclared here: wrangler's generated types make it required, and TypeScript 7 rejects
       // weakening it to optional in a merged augmentation. Self-hosted deployments may omit the

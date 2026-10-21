@@ -31,6 +31,10 @@
       "types": "./src/code-change.ts",
       "import": "./src/code-change.ts"
     },
+    "./ai-call-guard": {
+      "types": "./src/ai-call-guard.ts",
+      "import": "./src/ai-call-guard.ts"
+    },
     "./theme": {
       "types": "./src/theme.ts",
       "import": "./src/theme.ts"
