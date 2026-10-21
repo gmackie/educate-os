@@ -13,7 +13,7 @@ import {
 import { InMemoryAcademicStore } from "@schoolos/academics";
 import { AssessmentService, InMemoryAssessmentRecordStore, type SubmissionReceipt } from "@schoolos/assessment";
 import { NORTHFIELD } from "@schoolos/fixtures";
-import { directoryPolicyInformation, PolicyEngine, type PolicyAuditEvent, type PolicyAuditSink } from "@schoolos/policy";
+import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
 import { InMemoryWorkspaceStore, WorkspaceDirectory } from "@schoolos/workspaces";
 import {
   BackendArtifactStore,
@@ -37,14 +37,6 @@ import {
   type RubricDraft,
   type RubricRelease,
 } from "../src/index.ts";
-
-class MemoryAuditSink implements PolicyAuditSink {
-  readonly events: PolicyAuditEvent[] = [];
-
-  async record(event: PolicyAuditEvent): Promise<void> {
-    this.events.push(event);
-  }
-}
 
 const FLOOR: PolicySettings = {
   aiSpending: "capped",
@@ -87,7 +79,7 @@ export const O = {
 export function setup() {
   const academics = InMemoryAcademicStore.seeded(NORTHFIELD);
   const workspaceStore = new InMemoryWorkspaceStore();
-  const policy = new PolicyEngine({ information: directoryPolicyInformation(academics, { effectivePolicy: async () => FLOOR }), audit: new MemoryAuditSink() });
+  const policy = new PolicyEngine({ information: directoryPolicyInformation(academics, { effectivePolicy: async () => FLOOR }), audit: new InMemoryPolicyAuditSink() });
   const workspaces = new WorkspaceDirectory({ workspaces: workspaceStore, directory: academics, policy, retention: { courseWorkspaceRetentionDays: 30 }, now });
   const content = new BackendArtifactStore({ text: new InMemoryInlineTextTable(), r2: new InMemoryR2Bucket() });
   const artifacts = new LearningArtifacts({

@@ -1,9 +1,8 @@
-import { type CapabilityId, SchoolOsError, type InstanceId, type UsdNano } from "@schoolos/contracts";
+import { type CapabilityId, type CommercialAccountId, type InstanceId, SchoolOsError, type UsdNano } from "@schoolos/contracts";
 import type { z } from "zod";
 import { fromBase64Url, toBase64Url } from "./encoding.ts";
 import { type FleetMessageKind, parseWire, SignedEnvelope, verifyEnvelope } from "./envelope.ts";
 import { type Ed25519PublicKey, type KeyId, keyIdFor } from "./identity.ts";
-import type { CommercialAccountId } from "./ids.ts";
 import {
   type ContactRole,
   type FleetViewEntry,

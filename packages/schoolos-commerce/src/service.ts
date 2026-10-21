@@ -1,6 +1,5 @@
-import { ceilUsdNanoToCents, InstanceId, OpaqueCode, SchoolOsError, UtcTimestamp } from "@schoolos/contracts";
+import { ceilUsdNanoToCents, CommercialAccountId, InstanceId, OpaqueCode, SchoolOsError, UtcTimestamp } from "@schoolos/contracts";
 import {
-  CommercialAccountId,
   Entitlement,
   Heartbeat,
   parseWire,

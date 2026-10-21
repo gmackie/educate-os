@@ -15,10 +15,10 @@ import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
 import {
   defineSchoolTool,
   directoryPolicyInformation,
+  InMemoryPolicyAuditSink,
   InMemoryToolApprovalStore,
   PolicyEngine,
   SchoolToolRunner,
-  type PolicyAuditEvent,
   type ToolTarget,
 } from "@schoolos/policy";
 import { createSchoolToolService } from "../src/index.ts";
@@ -60,7 +60,7 @@ function courseTarget(offeringId: string, kind: ResourceKind, owner: string, id?
 /** Northfield's district service, composed in process, and what its tools did. */
 export function northfieldDistrict() {
   const directory = InMemoryAcademicStore.seeded(NORTHFIELD);
-  const audit: PolicyAuditEvent[] = [];
+  const audit = new InMemoryPolicyAuditSink();
   const engine = new PolicyEngine({
     information: directoryPolicyInformation(directory, {
       effectivePolicy: async () => ({
@@ -72,7 +72,7 @@ export function northfieldDistrict() {
         aiMonthlyCapCentsPerPrincipal: 500,
       }),
     }),
-    audit: { record: async (event) => void audit.push(event) },
+    audit,
   });
   const artifacts = new Map([
     ["art_amara-lab", { offeringId: BIO, owner: "prn_nf-student-amara", text: "Amara's lab report" }],
@@ -133,5 +133,5 @@ export function northfieldDistrict() {
       return signedIn === null ? null : principal(signedIn);
     },
   });
-  return { service, runner, approvals, audit, artifacts, ran, directory };
+  return { service, runner, approvals, audit: audit.events, artifacts, ran, directory };
 }

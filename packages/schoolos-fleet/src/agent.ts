@@ -1,7 +1,6 @@
-import { type CapabilityId, SchoolOsError, type InstanceId, type UsdNano } from "@schoolos/contracts";
+import { type CapabilityId, type CommercialAccountId, type InstanceId, SchoolOsError, type UsdNano } from "@schoolos/contracts";
 import { signEnvelope, type SignedEnvelope } from "./envelope.ts";
 import type { SigningIdentity } from "./identity.ts";
-import type { CommercialAccountId } from "./ids.ts";
 import {
   type ContactRole,
   type HealthProbe,

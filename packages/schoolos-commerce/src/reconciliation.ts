@@ -1,4 +1,4 @@
-import type { CommercialAccountId } from "@schoolos/fleet";
+import type { CommercialAccountId } from "@schoolos/contracts";
 import type { InvoiceId } from "./ids.ts";
 import type { CreditEntry, Grant, Invoice, Payment } from "./model.ts";
 import { subtractCents, sumCents } from "./money.ts";

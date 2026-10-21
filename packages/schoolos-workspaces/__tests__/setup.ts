@@ -10,17 +10,8 @@ import {
 } from "@schoolos/contracts";
 import { InMemoryAcademicStore } from "@schoolos/academics";
 import { NORTHFIELD } from "@schoolos/fixtures";
-import { directoryPolicyInformation, PolicyEngine, type PolicyAuditEvent, type PolicyAuditSink } from "@schoolos/policy";
+import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
 import { InMemoryWorkspaceStore, WorkspaceDirectory } from "../src/index.ts";
-
-/** Collects audit events in memory. */
-export class MemoryAuditSink implements PolicyAuditSink {
-  readonly events: PolicyAuditEvent[] = [];
-
-  async record(event: PolicyAuditEvent): Promise<void> {
-    this.events.push(event);
-  }
-}
 
 const FLOOR: PolicySettings = {
   aiSpending: "capped",
@@ -38,7 +29,7 @@ export const RETENTION_DAYS = 30;
 export function setup(snapshot: DistrictDirectorySnapshot = NORTHFIELD) {
   const academics = InMemoryAcademicStore.seeded(snapshot);
   const store = new InMemoryWorkspaceStore();
-  const audit = new MemoryAuditSink();
+  const audit = new InMemoryPolicyAuditSink();
   const clock = { now: new Date("2026-10-20T12:00:00Z") };
   const engine = new PolicyEngine({
     information: directoryPolicyInformation(academics, { effectivePolicy: async () => FLOOR }),

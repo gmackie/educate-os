@@ -2,7 +2,7 @@ import { expect } from "vitest";
 import { DistrictId, OfferingId, PrincipalId, type Caller, type DistrictDirectorySnapshot, type PolicySettings } from "@schoolos/contracts";
 import { InMemoryAcademicStore } from "@schoolos/academics";
 import { NORTHFIELD } from "@schoolos/fixtures";
-import { directoryPolicyInformation, PolicyEngine, type PolicyAuditEvent, type PolicyAuditSink } from "@schoolos/policy";
+import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
 import { InMemoryWorkspaceStore, WorkspaceDirectory } from "@schoolos/workspaces";
 import {
   artifactShareRelationships,
@@ -13,15 +13,6 @@ import {
   LearningArtifacts,
   type NewArtifact,
 } from "../src/index.ts";
-
-/** Collects audit events in memory. */
-class MemoryAuditSink implements PolicyAuditSink {
-  readonly events: PolicyAuditEvent[] = [];
-
-  async record(event: PolicyAuditEvent): Promise<void> {
-    this.events.push(event);
-  }
-}
 
 export const FLOOR: PolicySettings = {
   aiSpending: "capped",
@@ -43,7 +34,7 @@ export function setup(
   const academics = InMemoryAcademicStore.seeded(snapshot);
   const workspaceStore = new InMemoryWorkspaceStore();
   const records = new InMemoryArtifactRecordStore();
-  const audit = new MemoryAuditSink();
+  const audit = new InMemoryPolicyAuditSink();
   const clock = { now: new Date("2026-10-20T12:00:00Z") };
   const floor = options.floor ?? FLOOR;
   const policy = new PolicyEngine({

@@ -1,7 +1,6 @@
-import { CapabilityId, InstanceId, type DistrictDirectorySnapshot, SchoolOsError } from "@schoolos/contracts";
+import { CapabilityId, CommercialAccountId, InstanceId, type DistrictDirectorySnapshot, SchoolOsError } from "@schoolos/contracts";
 import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
 import {
-  CommercialAccountId,
   DistrictAgent,
   type HealthProbe,
   InMemoryInstanceRegistryStorage,

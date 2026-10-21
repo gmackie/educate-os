@@ -1,9 +1,18 @@
-import { CapabilityId, InstanceId, OpaqueCode, SemVer, UsdNano, usdNanoFromCents, UtcTimestamp } from "@schoolos/contracts";
+import {
+  CapabilityId,
+  CommercialAccountId,
+  InstanceId,
+  OpaqueCode,
+  SemVer,
+  UsdNano,
+  usdNanoFromCents,
+  UtcTimestamp,
+} from "@schoolos/contracts";
 import { z } from "zod";
 import { Base64Url } from "./encoding.ts";
 import { SignedEnvelope } from "./envelope.ts";
 import { Ed25519PublicKey, KeyId } from "./identity.ts";
-import { CommercialAccountId, SupportSessionId } from "./ids.ts";
+import { SupportSessionId } from "./ids.ts";
 
 // Every message here is a strict allow-list (ADR-0001): a field the schema doesn't name fails to
 // parse, so personal data can't ride along in an extra property. `__tests__/no-pii.test.ts` also

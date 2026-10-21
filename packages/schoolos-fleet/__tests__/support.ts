@@ -1,6 +1,5 @@
-import { CapabilityId, InstanceId, type DistrictDirectorySnapshot } from "@schoolos/contracts";
+import { CapabilityId, CommercialAccountId, InstanceId, type DistrictDirectorySnapshot } from "@schoolos/contracts";
 import {
-  CommercialAccountId,
   DistrictAgent,
   InMemoryInstanceRegistryStorage,
   InMemorySequenceCounter,

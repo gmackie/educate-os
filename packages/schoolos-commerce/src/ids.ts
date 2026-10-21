@@ -2,8 +2,8 @@ import { z } from "zod";
 
 // Commerce identifiers follow the SchoolOS `<prefix>_<body>` convention, so a value of one kind
 // never parses as another. They are root-side and opaque: nothing derives them from a person or
-// from a district-local identifier. Accounts and instances reuse the fleet's `CommercialAccountId`
-// and `InstanceId`, because the fleet registry already names accounts that way.
+// from a district-local identifier. Accounts and instances use the contracts' `CommercialAccountId`
+// and `InstanceId`, as the fleet registry does.
 
 const ID_BODY = "[a-z0-9][a-z0-9-]{0,62}";
 
