@@ -1,0 +1,94 @@
+import { SchoolOsError } from "@schoolos/contracts";
+import { z } from "zod";
+import { canonicalJson } from "./encoding.ts";
+import {
+  Ed25519PublicKey,
+  Ed25519Signature,
+  KeyId,
+  keyIdFor,
+  type SigningIdentity,
+  verifySignature,
+} from "./identity.ts";
+
+/**
+ * The kinds of signed fleet message. The kind is part of the signed bytes but not of the
+ * envelope, so a signature made for one kind (a heartbeat) never verifies as another (a
+ * revocation), whatever the payloads look like.
+ */
+export const FleetMessageKind = z.enum([
+  "registration",
+  "heartbeat",
+  "management-revocation",
+  "release-offer",
+  "support-session-request",
+  "entitlement",
+]);
+/** A fleet message kind. */
+export type FleetMessageKind = z.infer<typeof FleetMessageKind>;
+
+/**
+ * A signed fleet message. `signature` covers the protocol version, the message kind and the
+ * canonical JSON of `payload` (see {@link canonicalJson}), so whitespace or key order picked up in
+ * transit doesn't break it. `keyId` names the signing key; verifiers look the key up themselves
+ * and never trust a key carried alongside the signature.
+ */
+export const SignedEnvelope = z.strictObject({
+  payload: z.json(),
+  signature: Ed25519Signature,
+  keyId: KeyId,
+});
+/** A signed envelope. */
+export type SignedEnvelope = z.infer<typeof SignedEnvelope>;
+
+const PROTOCOL_CONTEXT = "schoolos-fleet/v1";
+
+function signedBytes(kind: FleetMessageKind, payload: unknown): Uint8Array<ArrayBuffer> {
+  return new TextEncoder().encode(`${PROTOCOL_CONTEXT}\0${kind}\0${canonicalJson(payload)}`);
+}
+
+/**
+ * Signs a payload as a message of the given kind. The envelope carries the canonical form of the
+ * payload, so it holds exactly the bytes that were signed and nothing else.
+ */
+export async function signEnvelope(
+  identity: SigningIdentity,
+  kind: FleetMessageKind,
+  payload: unknown,
+): Promise<SignedEnvelope> {
+  const bytes = signedBytes(kind, payload);
+  return {
+    payload: JSON.parse(canonicalJson(payload)),
+    signature: await identity.sign(bytes),
+    keyId: identity.keyId,
+  };
+}
+
+/**
+ * Whether the envelope is a message of `kind` signed by `publicKey`. The envelope's `keyId` must
+ * name that key, which stops a valid signature by one key being presented under another key's ID.
+ */
+export async function verifyEnvelope(
+  envelope: SignedEnvelope,
+  kind: FleetMessageKind,
+  publicKey: Ed25519PublicKey,
+): Promise<boolean> {
+  if (envelope.keyId !== (await keyIdFor(publicKey))) return false;
+  let bytes: Uint8Array<ArrayBuffer>;
+  try {
+    bytes = signedBytes(kind, envelope.payload);
+  } catch {
+    return false;
+  }
+  return await verifySignature(publicKey, envelope.signature, bytes);
+}
+
+/**
+ * Parses untrusted wire input against a schema, converting failure into a `validation-failed`
+ * error. The error names only what was being parsed, never the offending values, which could be
+ * exactly the personal data the schema exists to keep out.
+ */
+export function parseWire<T extends z.ZodType>(schema: T, input: unknown, what: string): z.infer<T> {
+  const result = schema.safeParse(input);
+  if (!result.success) throw new SchoolOsError("validation-failed", `malformed ${what}`);
+  return result.data;
+}

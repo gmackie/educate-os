@@ -1,0 +1,20 @@
+{
+  "name": "@schoolos/fleet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS fleet protocol (roadmap R01): allow-listed wire messages, Ed25519 signed envelopes, the district-side agent, a reference root instance registry and the district's offline entitlement cache. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@types/node": "^26.1.0",
+    "vitest": "catalog:"
+  }
+}

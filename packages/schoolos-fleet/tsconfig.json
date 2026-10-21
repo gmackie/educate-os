@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // Node's typings declare the Web Crypto, TextEncoder and base64 globals that workerd also
+    // provides. The sources use only those globals, never a `node:` module.
+    "types": ["node"],
+    // Node runs these sources directly (the F02 harness), so specifiers name the file on disk and
+    // only erasable TypeScript syntax is allowed.
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__"],
+  "exclude": ["dist", "node_modules"]
+}
