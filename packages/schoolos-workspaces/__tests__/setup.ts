@@ -4,6 +4,7 @@ import {
   OfferingId,
   PrincipalId,
   TermId,
+  type AuthorityMap,
   type Caller,
   type DistrictDirectorySnapshot,
   type PolicySettings,
@@ -20,6 +21,16 @@ const FLOOR: PolicySettings = {
   teacherObservation: "assigned-work-and-shared-conversations",
   automatedSelProfiling: "prohibited",
   aiMonthlyCapCentsPerPrincipal: 500,
+};
+
+/** SchoolOS owns every directory record type, principals included. */
+export const ALL_LOCAL: AuthorityMap = {
+  school: "local",
+  term: "local",
+  course: "local",
+  offering: "local",
+  enrollment: "local",
+  principal: "local",
 };
 
 /** Retention used throughout: course workspaces are kept 30 days after close. */
@@ -50,7 +61,7 @@ export function setup(snapshot: DistrictDirectorySnapshot = NORTHFIELD) {
     await academics.commit(current, version);
   }
 
-  return { workspaces, store, academics, audit, clock, changeDirectory };
+  return { workspaces, store, academics, engine, audit, clock, changeDirectory };
 }
 
 /** An HTTP caller verified as `principalId`. */

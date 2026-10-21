@@ -7,7 +7,8 @@ import { defineSchoolTool, InMemoryToolApprovalStore, SchoolToolRunner } from "@
 import { createSchoolToolService, SchoolToolsSessionCore, type SchoolChange } from "@schoolos/gatekeeper";
 import { AssessmentService } from "@schoolos/assessment";
 import { LearningArtifacts } from "@schoolos/learning-artifacts";
-import { RetentionPolicy, WorkspaceDirectory } from "@schoolos/workspaces";
+import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@schoolos/workspaces";
+import { AcademicDirectory } from "@schoolos/academics";
 import { ArtifactsGitBackend, InMemoryArtifacts, InMemoryCredentialLedger, ProjectArtifacts, type WorkingTree } from "@schoolos/artifacts-git";
 import { catalogSeedRelease, contentDigest } from "@schoolos/catalog";
 import { SigningIdentity } from "@schoolos/fleet";
@@ -38,6 +39,9 @@ import {
   usdNano,
   type PilotDistrict,
 } from "./support.ts";
+
+/** A directory that SchoolOS, not a roster, is the source of record for. */
+const ALL_LOCAL = { school: "local", term: "local", course: "local", offering: "local", enrollment: "local", principal: "local" } as const;
 
 /** The system clock, for the services this file builds directly. */
 const now = () => new Date();
@@ -583,6 +587,35 @@ criterion("s14.term-end", {
     await student.call("student.openPersonalWorkspace");
     expect(await student.call("student.keepArtifact", { params: { workspaceId: workspace.id, artifactId: artifact.id } })).toMatchObject({ artifactId: artifact.id });
     expect((await student.call("student.listSubmissions", { params: { assignmentId: assignment.id } })).map((s) => s.id)).toStrictEqual([receipt.submissionId]);
+  },
+  graduation: async () => {
+    // A district whose SchoolOS directory owns its principals; where a roster owns them, the
+    // roster's own drop is what ends access (s14.roster-removal).
+    const [entry] = await bootHarness();
+    const northfield = await bootDistrictFor(entry!, { authority: ALL_LOCAL });
+    const { assignment } = await teacherInstallsEssay(northfield, NF.rivera, NF.eng9);
+    const { student, artifact, head, workspace, receipt } = await studentSubmitsEssay(northfield, NF.amara, NF.eng9, assignment.id);
+
+    const admin = callerOf(northfield, NF.admin);
+    const academics = new AcademicDirectory({ store: northfield.stores.directory, authority: ALL_LOCAL, authorizer: northfield.app.engine });
+    const result = await transitionPrincipal({ academics, workspaces: workspacesOf(northfield) }, admin, PrincipalId.parse(NF.amara), "graduated");
+    expect(result).toMatchObject({ principal: { status: "graduated" }, grantsRevoked: 2 });
+    expect(northfield.audit.events()).toContainEqual(expect.objectContaining({ principalId: NF.admin, action: "update", resourceKind: "principal", resourceId: NF.amara, effect: "allow" }));
+
+    // Her class grants are revoked, and her class requests are denied on the next decision.
+    const grants = (await northfield.stores.workspaces.load()).state.grants.filter((g) => g.workspaceId === workspace.id);
+    expect(grants.map((g) => [g.kind, g.state === "revoked" && g.reason])).toStrictEqual([["course-tools", "principal-departed"], ["course-ai-funding", "principal-departed"]]);
+    await expectDenied(student.call("student.saveRevision", { params: { artifactId: artifact.id }, body: { content: { kind: "text", mediaType: "text/plain", text: "after graduating" } } }));
+    await expectDenied(student.call("student.listActivities", { params: { offeringId: NF.eng9 } }));
+
+    // Nothing is deleted: her workspace, her work and her submission stay with the district.
+    expect((await northfield.stores.workspaces.load()).state.workspaces.map((w) => w.id)).toContain(workspace.id);
+    const { state: artifacts } = await northfield.stores.artifactRecords.load();
+    expect(artifacts.artifacts.map((a) => a.id)).toContain(artifact.id);
+    expect(artifacts.revisions.map((r) => r.id)).toContain(head.id);
+    expect((await northfield.stores.directory.load()).snapshot.principals.find((p) => p.id === NF.amara)).toMatchObject({ status: "graduated" });
+    const rivera = await northfield.as(NF.rivera);
+    expect((await rivera.call("teacher.listSubmissions", { params: { assignmentId: assignment.id } })).map((s) => s.id)).toStrictEqual([receipt.submissionId]);
   },
 });
 

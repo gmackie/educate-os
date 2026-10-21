@@ -242,9 +242,11 @@ export class WorkspaceDirectory {
   // Roster changes and term close
 
   /**
-   * Revokes the live course grants of every student no longer actively enrolled in the grant's
-   * offering, and cancels their course AI funding. Their workspaces are kept and stay readable by
-   * them. Run after a roster sync; requires authority over the district's enrollments.
+   * Revokes the live course grants of every student who is no longer active in the district
+   * (graduated or inactive) or no longer actively enrolled in the grant's offering, and cancels
+   * their course AI funding. Their workspaces are kept and stay readable under retention. Run after
+   * a roster sync or a principal's lifecycle change; requires authority over the district's
+   * enrollments.
    */
   async reconcileCourseGrants(caller: Caller): Promise<{ revoked: number }> {
     const access = this.#access(caller);
@@ -253,15 +255,18 @@ export class WorkspaceDirectory {
         resource: { kind: "enrollment", scope: { level: "district", districtId: snapshot.district.id }, classification: "course" },
       };
       if (!(await access.allows("update", roster))) throw new SchoolOsError("forbidden", "You may not manage this district's enrollments.");
+      const active = new Set(snapshot.principals.filter((p) => p.status === "active").map((p) => p.id));
       const enrolled = (g: CourseGrant) =>
         snapshot.enrollments.some((e) =>
           e.principalId === g.principalId && e.offeringId === g.offeringId && e.role === "student" && e.status === "active",
         );
-      const dropped = state.grants.filter((g) => g.state === "live" && !enrolled(g));
-      if (dropped.length === 0) return { result: { revoked: 0 } };
+      const live = state.grants.filter((g) => g.state === "live");
+      const departed = live.filter((g) => !active.has(g.principalId));
+      const dropped = live.filter((g) => active.has(g.principalId) && !enrolled(g));
+      if (departed.length + dropped.length === 0) return { result: { revoked: 0 } };
       const now = this.#now().toISOString();
-      const next = revokeGrants(state, dropped, "roster-dropped", now);
-      return { next, result: { revoked: dropped.length } };
+      const next = revokeGrants(revokeGrants(state, departed, "principal-departed", now), dropped, "roster-dropped", now);
+      return { next, result: { revoked: departed.length + dropped.length } };
     });
   }
 

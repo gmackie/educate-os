@@ -93,8 +93,11 @@ export const CourseGrantKind = z.enum(["course-tools", "course-ai-funding"]);
 /** A course grant kind. */
 export type CourseGrantKind = z.infer<typeof CourseGrantKind>;
 
-/** Why a course grant was revoked. */
-export const GrantRevocationReason = z.enum(["term-closed", "roster-dropped"]);
+/**
+ * Why a course grant was revoked: its term closed, the roster dropped the student from the
+ * offering, or the student left the district (graduated or became inactive).
+ */
+export const GrantRevocationReason = z.enum(["term-closed", "roster-dropped", "principal-departed"]);
 /** A grant revocation reason. */
 export type GrantRevocationReason = z.infer<typeof GrantRevocationReason>;
 

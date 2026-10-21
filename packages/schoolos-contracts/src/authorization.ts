@@ -39,6 +39,8 @@ export const ResourceKind = z.enum([
   "course",
   "offering",
   "enrollment",
+  /** A principal's directory record: who they are in the district and their lifecycle status. */
+  "principal",
   "personal-workspace",
   "course-workspace",
   "personal-conversation",

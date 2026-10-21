@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ArtifactId, EnrollmentId, PrincipalId } from "@schoolos/contracts";
-import { O, P, RETENTION_DAYS, rejectsWith, setTermState, setup, T } from "./setup.ts";
+import { AcademicDirectory } from "@schoolos/academics";
+import { transitionPrincipal } from "../src/index.ts";
+import { ALL_LOCAL, O, P, RETENTION_DAYS, rejectsWith, setTermState, setup, T } from "./setup.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -207,5 +209,48 @@ describe("promotion to the personal workspace", () => {
       await rejectsWith(workspaces.promoteArtifact(caller, amaraBio.id, essay), "not-found");
     }
     expect((await store.load()).state.promotions).toEqual([]);
+  });
+});
+
+/** The academic directory over the same store and engine, owning its principals. */
+async function graduationSetup() {
+  const ctx = setup();
+  const directory = new AcademicDirectory({ store: ctx.academics, authority: ALL_LOCAL, authorizer: ctx.engine });
+  const bio = await ctx.workspaces.ensureCourseWorkspace(P.amara, O.bioFall);
+  await ctx.workspaces.ensureCourseWorkspace(P.elena, O.bioFall);
+  return { ...ctx, services: { academics: directory, workspaces: ctx.workspaces }, bio };
+}
+
+describe("a principal's graduation", () => {
+  it("revokes the graduate's grants and cancels their AI funding, keeping their workspaces and everyone else's grants", async () => {
+    const { services, workspaces, store, audit, bio } = await graduationSetup();
+    const result = await transitionPrincipal(services, P.nfAdmin, P.amara.principal.principalId, "graduated");
+    expect(result).toMatchObject({ principal: { id: P.amara.principal.principalId, status: "graduated" }, grantsRevoked: 2 });
+
+    const { state } = await store.load();
+    expect(state.workspaces.map((w) => w.id)).toContain(bio.id);
+    expect(state.grants.filter((g) => g.workspaceId === bio.id).map((g) => [g.state, g.state === "revoked" && g.reason])).toStrictEqual([
+      ["revoked", "principal-departed"],
+      ["revoked", "principal-departed"],
+    ]);
+    expect(state.grants.filter((g) => g.principalId === P.elena.principal.principalId).every((g) => g.state === "live")).toBe(true);
+    expect(state.events).toStrictEqual([
+      expect.objectContaining({ type: "course-ai-funding.cancelled", offeringId: O.bioFall, principalIds: [P.amara.principal.principalId], reason: "principal-departed" }),
+    ]);
+    // Her enrollment is untouched, and opening the class finds her kept workspace, but grants nothing.
+    expect((await workspaces.ensureCourseWorkspace(P.amara, O.bioFall)).id).toBe(bio.id);
+    expect((await store.load()).state.grants.filter((g) => g.principalId === P.amara.principal.principalId && g.state === "live")).toStrictEqual([]);
+    // Both steps were decided, and audited, as the administrator.
+    expect(audit.events.some((e) => e.resourceKind === "principal" && e.action === "update" && e.principalId === P.nfAdmin.principal.principalId && e.effect === "allow")).toBe(true);
+  });
+
+  it("is refused before anything changes for anyone but a district administrator", async () => {
+    const { services, store, academics } = await graduationSetup();
+    const before = { workspaces: await store.load(), directory: await academics.load() };
+    for (const caller of [P.rivera, P.amara, P.rbAdmin]) {
+      await rejectsWith(transitionPrincipal(services, caller, P.amara.principal.principalId, "graduated"), "not-found");
+    }
+    expect(await store.load()).toStrictEqual(before.workspaces);
+    expect(await academics.load()).toStrictEqual(before.directory);
   });
 });
