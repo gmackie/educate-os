@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // The report runs Vitest's Node API and the installer scenario reads the release pipeline's
+    // golden test data from disk; the scenarios themselves use only fetch-standard APIs.
+    "types": ["node"],
+    "paths": {
+      // The district app reaches @schoolos/artifacts-git; see that package's tsconfig.
+      "@gadgets/workshop-shared/gatekeeper": ["../schoolos-artifacts-git/types/workshop-shared-gatekeeper.d.ts"]
+    },
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__", "types", "../schoolos-district-app/types"],
+  "exclude": ["dist", "node_modules"]
+}
