@@ -13,8 +13,10 @@
   },
   "devDependencies": {
     "@gadgets/scripts": "workspace:*",
+    "@schoolos/academics": "workspace:*",
     "@schoolos/contracts": "workspace:*",
     "@schoolos/fixtures": "workspace:*",
+    "@schoolos/policy": "workspace:*",
     "@schoolos/portability": "workspace:*",
     "vitest": "catalog:"
   }

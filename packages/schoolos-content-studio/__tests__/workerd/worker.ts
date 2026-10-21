@@ -3,9 +3,11 @@
 // as separate requests to one object and survive its restarts.
 
 import { DurableObject } from "cloudflare:workers";
-import { DistrictDirectorySnapshot, DistrictId, PrincipalId, SchoolOsError, type ContentItemId, type ResourceId } from "@schoolos/contracts";
+import { InMemoryAcademicStore } from "@schoolos/academics";
+import { DistrictDirectorySnapshot, DistrictId, PrincipalId, SchoolOsError, type ContentItemId, type PolicySettings, type ResourceId } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
-import { ContentStudio, contentStudioAuthorizer, type ContentItem, type StudioAuditEvent, type StudioRelease } from "../../src/index.ts";
+import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
+import { ContentStudio, type ContentItem, type StudioAuditEvent, type StudioRelease } from "../../src/index.ts";
 import { DurableObjectContentStudioStorage } from "../../src/durable-object-store.ts";
 
 /** Northfield's ID. */
@@ -25,6 +27,22 @@ async function attempt<T>(run: () => Promise<T>): Promise<Result<T>> {
   }
 }
 
+/** The policy floor the suite decides under: the conservative district defaults. */
+const FLOOR: PolicySettings = {
+  aiSpending: "capped",
+  promptsInGatewayLogs: "prohibited",
+  studentPersonalConversations: "private",
+  teacherObservation: "assigned-work-only",
+  automatedSelProfiling: "prohibited",
+  aiMonthlyCapCentsPerPrincipal: 500,
+};
+
+/** The district's policy engine over Northfield's directory, as the studio decides with it. */
+const engine = () => new PolicyEngine({
+  information: directoryPolicyInformation(InMemoryAcademicStore.seeded(DistrictDirectorySnapshot.parse(NORTHFIELD)), { effectivePolicy: async () => FLOOR }),
+  audit: new InMemoryPolicyAuditSink(),
+});
+
 const caller = (principalId: string) => ({ principalId: PrincipalId.parse(principalId), districtId: NF });
 
 /** Northfield's Content Studio. */
@@ -38,7 +56,7 @@ export class TestStudio extends DurableObject {
     this.#studio = new ContentStudio({
       districtId: NF,
       storage: this.#storage,
-      authorizer: contentStudioAuthorizer(DistrictDirectorySnapshot.parse(NORTHFIELD)),
+      authorizer: engine(),
       fetch: async () => new Response(null, { status: 404 }),
       scanner: "none",
       alignments: { resolve: async () => undefined },

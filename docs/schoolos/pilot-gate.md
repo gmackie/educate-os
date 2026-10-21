@@ -174,7 +174,7 @@ because the store refuses a stale commit and the client retries. A durable artif
 | Gate | Criteria | MET | NOT MET |
 | --- | --- | --- | --- |
 | G0 | 2 | 2 | 0 |
-| G1 | 21 | 11 | 10 |
+| G1 | 21 | 12 | 9 |
 | G2 | 3 | 3 | 0 |
 | G3 | 3 | 2 | 1 |
 | G4 | 2 | 1 | 1 |

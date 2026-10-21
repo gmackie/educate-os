@@ -5,9 +5,11 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { TLSSocket } from "node:tls";
-import { ContentStudio, contentStudioAuthorizer, InMemoryContentStudioStorage } from "@schoolos/content-studio";
-import { DistrictDirectorySnapshot, DistrictId, PrincipalId } from "@schoolos/contracts";
+import { InMemoryAcademicStore } from "@schoolos/academics";
+import { ContentStudio, InMemoryContentStudioStorage } from "@schoolos/content-studio";
+import { DistrictDirectorySnapshot, DistrictId, type PolicySettings, PrincipalId } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
+import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
 import { describe, expect, it } from "vitest";
 import { createPinnedEgressFetch, httpsTransport, type PinnedRequest, type ResolveHost } from "../src/pinned-fetch.ts";
 
@@ -21,6 +23,20 @@ function recordingTransport() {
     return new Response("<!doctype html><html lang=\"en\"><title>ok</title></html>", { status: 200, headers: { "content-type": "text/html" } });
   };
   return { sent, transport };
+}
+
+/** The district's policy engine over Northfield's directory, under the conservative policy floor. */
+function northfieldPolicy(): PolicyEngine {
+  const floor: PolicySettings = {
+    aiSpending: "capped",
+    promptsInGatewayLogs: "prohibited",
+    studentPersonalConversations: "private",
+    teacherObservation: "assigned-work-only",
+    automatedSelProfiling: "prohibited",
+    aiMonthlyCapCentsPerPrincipal: 500,
+  };
+  const store = InMemoryAcademicStore.seeded(DistrictDirectorySnapshot.parse(NORTHFIELD));
+  return new PolicyEngine({ information: directoryPolicyInformation(store, { effectivePolicy: async () => floor }), audit: new InMemoryPolicyAuditSink() });
 }
 
 describe("createPinnedEgressFetch", () => {
@@ -69,7 +85,7 @@ describe("createPinnedEgressFetch", () => {
     const studio = new ContentStudio({
       districtId: D,
       storage,
-      authorizer: contentStudioAuthorizer(DistrictDirectorySnapshot.parse(NORTHFIELD)),
+      authorizer: northfieldPolicy(),
       fetch: createPinnedEgressFetch({ resolve: answers("10.1.2.3"), transport: recordingTransport().transport }),
       scanner: undefined,
       alignments: { resolve: async () => undefined },

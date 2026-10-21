@@ -23,6 +23,8 @@
   },
   "devDependencies": {
     "@gadgets/scripts": "workspace:*",
+    "@schoolos/academics": "workspace:*",
+    "@schoolos/policy": "workspace:*",
     "vitest": "catalog:"
   }
 }
