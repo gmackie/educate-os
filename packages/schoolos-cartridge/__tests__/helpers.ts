@@ -11,7 +11,7 @@ import { type DistrictDirectorySnapshot, DistrictId, type PolicySettings, Princi
 import { NORTHFIELD } from "@schoolos/fixtures";
 import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
 import { expect } from "vitest";
-import { CartridgeImporter, type CartridgeLimits, InMemoryCartridgeImportStorage } from "../src/index.ts";
+import { CartridgeImporter, type CartridgeImporterOptions, type CartridgeLimits, InMemoryCartridgeImportStorage } from "../src/index.ts";
 
 const D = DistrictId.parse("dst_northfield");
 
@@ -67,8 +67,8 @@ export function fakeWeb(): ImportFetch & { requested: string[] } {
   return Object.assign(fetch, { requested });
 }
 
-/** An importer over Northfield, its Content Studio and a synthetic web. */
-export function importer(limits?: CartridgeLimits) {
+/** An importer over Northfield, its Content Studio and a synthetic web, with any `extra` options. */
+export function importer(limits?: CartridgeLimits, extra: Pick<CartridgeImporterOptions, "toolRegistrations" | "catalog"> = {}) {
   const web = fakeWeb();
   const { engine: authorizer } = policyEngine(NORTHFIELD);
   const studioStorage = new InMemoryContentStudioStorage();
@@ -85,7 +85,7 @@ export function importer(limits?: CartridgeLimits) {
     now,
   });
   const storage = new InMemoryCartridgeImportStorage();
-  const instance = new CartridgeImporter({ districtId: D, storage, studio, authorizer, now, ...(limits === undefined ? {} : { limits }) });
+  const instance = new CartridgeImporter({ districtId: D, storage, studio, authorizer, now, ...extra, ...(limits === undefined ? {} : { limits }) });
   return { importer: instance, studio, studioStorage, storage, web };
 }
 

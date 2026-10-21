@@ -111,7 +111,7 @@ describe("reviewing imported links", () => {
     const { importer: cc, record, web } = await importValid();
     const { link, item } = await cc.submitLinkForReview(MORGAN, record.id, "lnk-3");
     expect(web.requested).toStrictEqual(["https://open-lessons.example/food-webs"]);
-    expect(item).toMatchObject({ state: "reviewed", targetScope: BIO_SCOPE, source: { kind: "url", submittedUrl: "https://open-lessons.example/food-webs" } });
+    expect(item).toMatchObject({ state: "reviewed", targetScope: BIO_SCOPE, source: { kind: "cartridge", submittedUrl: "https://open-lessons.example/food-webs" } });
     expect(link.review).toMatchObject({ status: "submitted", contentItemId: item.id, by: MORGAN.principalId });
 
     const stored = await cc.getImport(MORGAN, record.id);

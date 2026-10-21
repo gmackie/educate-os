@@ -2,6 +2,7 @@
 // Classroom adapter shell (I02). See docs/schoolos/lti.md.
 export * from "./claims.ts";
 export * from "./registration.ts";
+export * from "./tool-registration.ts";
 export * from "./stores.ts";
 export * from "./platform-jwks.ts";
 export * from "./tool-keys.ts";

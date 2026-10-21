@@ -13,8 +13,12 @@ import { type ContentItem, type ContentStudio, randomIdBody, snapshotDigest, USA
 import { CurriculumPack, LearningUnit, type LearningUnitItem } from "@schoolos/registry";
 import { z } from "zod";
 import { DEFAULT_CARTRIDGE_LIMITS, type CartridgeLimits, readCartridge } from "./package.ts";
-import { type CartridgeLink, type CartridgeProvenance, type ExternalToolReference, type OutlineNode, planCartridgeImport } from "./plan.ts";
+import type { CatalogMirror } from "@schoolos/catalog";
+import type { ToolRegistrationStore } from "@schoolos/lti";
+import { type CartridgeLink, type CartridgeProvenance, type OutlineNode, planCartridgeImport } from "./plan.ts";
 import { CartridgeImport, CartridgeImportId, type CartridgeImportStorage } from "./record.ts";
+import { type AlignmentSuggestion, suggestCaseAlignments } from "./suggestions.ts";
+import { resolveToolLaunch, type ToolLaunchResolution } from "./tools.ts";
 
 /** A package upload's description. The file name is kept for display only. */
 export const ImportCartridgeInput = z.strictObject({
@@ -34,6 +38,10 @@ export interface CartridgeImporterOptions {
   authorizer: Authorizer;
   channel?: RequestChannel;
   limits?: CartridgeLimits;
+  /** The district's approved LTI tools. Without it, no imported tool is launchable. */
+  toolRegistrations?: ToolRegistrationStore;
+  /** The district's catalog mirror, for suggesting alignments. Without it, nothing is suggested. */
+  catalog?: CatalogMirror;
   /** The current time as an ISO 8601 timestamp. */
   now?: () => string;
 }
@@ -132,7 +140,11 @@ export class CartridgeImporter {
     if (link === undefined) throw new SchoolOsError("not-found", "no such link in this import");
     if (link.review.status === "refused") throw new SchoolOsError("policy-violation", `the link's URL is refused (${link.review.reason})`);
     if (link.review.status === "submitted") throw new SchoolOsError("conflict", "the link has already been submitted for review");
-    const item = await this.#options.studio.submitUrl(subject, { url: link.url, targetScope: record.targetScope });
+    const item = await this.#options.studio.submitUrl(
+      subject,
+      { url: link.url, targetScope: record.targetScope },
+      { fileName: record.fileName, packageDigest: record.packageDigest, importId: record.id, linkId: link.id },
+    );
     link.review = { status: "submitted", contentItemId: item.id, by: subject.principalId, at: this.#now() };
     record.revision += 1;
     await this.#options.storage.putImport(record);
@@ -153,9 +165,29 @@ export class CartridgeImporter {
   }
 
   /**
+   * Whether each of an import's tools can launch: through the one approved registration covering
+   * its launch URL's host, or not at all. Resolved against the registrations as they are now; the
+   * import record itself never records a tool as launchable.
+   */
+  async toolLaunches(subject: VerifiedPrincipal, importId: unknown): Promise<ToolLaunchResolution[]> {
+    const record = await this.#import(subject, importId, "read");
+    const registrations = (await this.#options.toolRegistrations?.list(this.#options.districtId)) ?? [];
+    return record.tools.map((tool) => resolveToolLaunch(tool, registrations));
+  }
+
+  /**
+   * Catalog items the import's CASE-shaped standards GUIDs may name, for a reviewer to consider.
+   * They are never applied: an alignment exists only once a reviewer names it in an approval.
+   */
+  async suggestAlignments(subject: VerifiedPrincipal, importId: unknown): Promise<AlignmentSuggestion[]> {
+    const record = await this.#import(subject, importId, "read");
+    return this.#options.catalog === undefined ? [] : suggestCaseAlignments(record.links, this.#options.catalog);
+  }
+
+  /**
    * Proposes registry learning units and a curriculum pack from an import's hierarchy, using the
    * releases its submitted links have reached so far. Tools are never included: they have no
-   * release, and remain references until a registration exists.
+   * release; see {@link CartridgeImporter.toolLaunches} for whether one can launch.
    */
   async proposeCurriculum(subject: VerifiedPrincipal, importId: unknown): Promise<CurriculumProposal> {
     const record = await this.#import(subject, importId, "read");
@@ -247,16 +279,6 @@ export class CartridgeImporter {
   async #require(subject: VerifiedPrincipal, action: Action, scope: Scope, id?: string): Promise<void> {
     if (!(await this.#allowed(subject, action, scope, id))) throw new SchoolOsError("forbidden", `not permitted to ${action} here`);
   }
-}
-
-/**
- * Refuses to launch an imported tool. An import never grants launch rights; a tool launches only
- * through an approved LTI registration, which a later PR resolves from `@schoolos/lti`.
- *
- * @throws SchoolOsError `forbidden`, always.
- */
-export function assertToolLaunchable(tool: ExternalToolReference): never {
-  throw new SchoolOsError("forbidden", `${tool.domain} has no approved LTI registration; imported tools cannot be launched`);
 }
 
 async function digestOf(value: unknown): Promise<string> {

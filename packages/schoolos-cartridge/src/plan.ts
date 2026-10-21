@@ -64,7 +64,7 @@ export type CartridgeLink = z.infer<typeof CartridgeLink>;
  * A reference to an external LTI tool (`imsbasiclti_xmlv1p*`). It is recorded so the hierarchy
  * stays whole, but it is never launchable: the schema admits only `launchable: false`. Launching
  * needs an approved LTI registration for the tool (roadmap §5.3, threat model §14 "Imported Thin
- * CC references unregistered LTI tool"), which a later PR matches against `@schoolos/lti`.
+ * CC references unregistered LTI tool"). `resolveToolLaunch` matches it against the district's approved `@schoolos/lti` tool registrations each time it is asked; the record never changes.
  */
 export const ExternalToolReference = z.strictObject({
   id: z.string().regex(/^tool-\d{1,5}$/),

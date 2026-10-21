@@ -2,24 +2,31 @@
   "name": "@schoolos/ocs",
   "version": "0.1.0",
   "private": true,
-  "description": "SchoolOS Open Course Specification (roadmap \u00a75.3 and \u00a715.10, PR C06): the OCS course package contract (manifest, units, activities, resources, Codex, lockfile), a deterministic module resolver, the composer that flattens a locked course into one outline, friendly composition for teachers, and the export to curriculum activity installations. A library, not a deployable Worker. See docs/schoolos/rfc/0001-open-course-specification.md.",
+  "description": "SchoolOS Open Course Specification (roadmap \u00a75.3 and \u00a715.10, PR C06): the OCS course package contract (manifest, units, activities, resources, Codex, lockfile), a deterministic module resolver, the composer that flattens a locked course into one outline, friendly composition for teachers, the export to curriculum activity installations, the Thin CC adapter in both directions, publisher signatures against district-approved keys, and an immutable Durable Object SQLite library through its `./durable-object-library` entry point. A library, not a deployable Worker. See docs/schoolos/rfc/0001-open-course-specification.md.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./durable-object-library": "./src/durable-object-library.ts"
   },
   "dependencies": {
+    "@schoolos/cartridge": "workspace:*",
     "@schoolos/catalog": "workspace:*",
     "@schoolos/contracts": "workspace:*",
     "@schoolos/curriculum": "workspace:*",
+    "@schoolos/fleet": "workspace:*",
     "@schoolos/registry": "workspace:*",
+    "@schoolos/releases": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
     "@gadgets/scripts": "workspace:*",
     "@schoolos/academics": "workspace:*",
     "@schoolos/content-studio": "workspace:*",
     "@schoolos/fixtures": "workspace:*",
     "@schoolos/policy": "workspace:*",
+    "@schoolos/portability": "workspace:*",
     "vitest": "catalog:"
   }
 }

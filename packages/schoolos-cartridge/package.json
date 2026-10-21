@@ -2,14 +2,16 @@
   "name": "@schoolos/cartridge",
   "version": "0.1.0",
   "private": true,
-  "description": "SchoolOS Thin Common Cartridge importer (roadmap \u00a75.3, PR C04): a bounded .imscc reader and a DTD-free manifest parser that map web links into Content Studio quarantine, LTI links into never-launchable external-tool references, and the organization into a proposed curriculum outline. A library, not a deployable Worker.",
+  "description": "SchoolOS Thin Common Cartridge importer (roadmap \u00a75.3, PR C04): a bounded .imscc reader and a DTD-free manifest parser that map web links into Content Studio quarantine, LTI links into external-tool references launchable only through an approved @schoolos/lti tool registration, and the organization into a proposed curriculum outline. A library, not a deployable Worker.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@schoolos/catalog": "workspace:*",
     "@schoolos/content-studio": "workspace:*",
     "@schoolos/contracts": "workspace:*",
+    "@schoolos/lti": "workspace:*",
     "@schoolos/registry": "workspace:*",
     "@schoolos/zip": "workspace:*",
     "zod": "catalog:"
@@ -17,7 +19,6 @@
   "devDependencies": {
     "@gadgets/scripts": "workspace:*",
     "@schoolos/academics": "workspace:*",
-    "@schoolos/catalog": "workspace:*",
     "@schoolos/fixtures": "workspace:*",
     "@schoolos/policy": "workspace:*",
     "@types/node": "26.1.0",

@@ -2,7 +2,8 @@
 
 - Status: Draft (implemented by `@schoolos/ocs`)
 - Date: 2026-10-20
-- Issue: SCHO-18 (roadmap PR C06; roadmap §5.3 "OCS/course repository fast-follow" and §15 item 10)
+- Issue: SCHO-18 (roadmap PR C06; roadmap §5.3 "OCS/course repository fast-follow" and §15 item 10).
+  Decisions in §13 and the adapter, library and signatures: SCHO-96
 - Format version: `specVersion: "1.0"`
 
 ## 1. Summary
@@ -143,6 +144,11 @@ trusted. For every package it returns, the resolver recomputes the digest and ch
 the published digest, against any pin in the requiring module, and against the locked digest if the
 lockfile has that version. It checks that the manifest's ID and version are the ones requested.
 
+The district's own library is a Durable Object SQLite store (`DurableObjectPackageLibrary`). A
+published version is immutable: publishing it again succeeds only with identical content, and the
+table refuses any update or delete. Every publication passes the district's publication policy,
+which checks publisher signatures (§13.2).
+
 ### 6.2 Algorithm
 
 ```
@@ -261,7 +267,7 @@ Studio's permitted uses and the target class (C03, C05).
 
 | Format | Relation | What does not carry over |
 | --- | --- | --- |
-| Thin Common Cartridge (C04) | Import and export adapter. A Thin CC organization becomes units; weblinks and LTI links become resource references after Content Studio review. | Modules, lockfiles, overrides, rights caps, Codex notes, activity definitions and evidence. Thin CC carries links and hierarchy, never Gadget code. OCS is not "Thin CC with extras" and must not be described as Thin CC. |
+| Thin Common Cartridge (C04) | Import and export adapter (`ocsFromCartridge`, `cartridgeFromOcs`). Each top-level Thin CC module becomes a unit holding the web links beneath it that the Content Studio released. A unit becomes a Thin CC module of web links to its releases' locators. | Thin CC to OCS: LTI tools (no release), unreleased or refused links, nesting below the top level, standards claims (not reviewed alignments), descriptive metadata, and titles that are not plain text. OCS to Thin CC: modules, overrides, activities, Codex notes (answer keys never leave), Gadget Blueprints, releases without a public locator, rights uses and standards. Each direction returns the list of what it lost. Thin CC carries links and hierarchy, never Gadget code. OCS is not "Thin CC with extras" and must not be described as Thin CC. |
 | Common Cartridge 1.3 | Export adapter for LMS hand-off (later). | Module structure is flattened; activity semantics reduce to links or LTI placements. |
 | CASE 1.1 | Standards interchange. `standards` and unit alignments name competencies in the district catalog, which is mirrored from CASE packages (C01, C02). | OCS does not carry framework content, only references. |
 | LTI | External publishers' tools are resources (`lti-tool` releases) launched through an approved registration (I01). | Launch configuration and keys never appear in a package. |
@@ -278,19 +284,19 @@ Studio's permitted uses and the target class (C03, C05).
   `reorder`, `hide`, `rename`, `preview`, `publish`.
 - Export: `planInstallations` and `installCourse`, over `CurriculumService.install`.
 - Failures are `OcsError`, a `SchoolOsError` carrying a structured `OcsProblem`.
+- Thin CC adapter: `ocsFromCartridge`, `cartridgeFromOcs`, both returning `AdapterLoss` lists.
+- Publisher signatures: `PackagePublication`, `signPackagePublication`, `PublisherTrust`,
+  `checkPublication`, `publisherPolicy`.
+- Durable library: `DurableObjectPackageLibrary` (`@schoolos/ocs/durable-object-library`).
 
 ## 12. Open questions
 
-1. **Portable activity references.** Activity definition IDs are district-local today, so a package
-   that names them is portable only within its district. Cross-district sharing needs either an
-   exported definition format inside the package or a definition registry. Which, and does it
-   belong in OCS 1.1?
+1. **Portable activity references.** Decided; see §13.1.
 2. **Duplicate units across modules.** 1.0 shows a shared unit once, at its first position. Should a
    course be able to choose the position, or show both?
 3. **Pre-release versions.** Should publishers be able to offer `2.0.0-beta.1` to teachers who opt
    in, and how is that explained without developer vocabulary?
-4. **Signatures.** Digests prove integrity, not origin. Should packages from outside the district
-   carry publisher signatures (as R03 does for releases), and who holds the keys?
+4. **Signatures.** Decided and implemented; see §13.2.
 5. **Stable item identity.** Overrides currently name items by local ID. If a
    module renames an internal ID between versions, overrides break loudly (§7.2). Is a stable item
    identity across versions worth its cost?
@@ -298,3 +304,55 @@ Studio's permitted uses and the target class (C03, C05).
    narrow-only?
 7. **Naming.** "Open Course Specification" is a working name (roadmap §15 item 10). Confirm the name
    and whether to publish the format outside SchoolOS.
+
+## 13. Decisions
+
+### 13.1 Portable activity references (Q1, for OCS 1.1)
+
+**Decision.** An activity stays a pointer. OCS 1.1 adds a second, portable form of pointer. It
+names a published **activity definition export** by publisher-scoped ID, version and digest:
+`{ portable: { id: "<domain>/<name>", version, digest } }`. The district-local form
+`{ definitionId, version }` stays valid within its own district.
+
+- **The export is data only.** It holds the template, the evidence contract (alignments by CASE
+  URI, not by district catalog revision) and the rubric. It carries no scope, no principals, no
+  answer keys and no code. It is published to the same libraries as packages, under the same rules:
+  an immutable version, a digest, and a publisher signature (§13.2).
+- **Installing in another district never uses a foreign definition ID.** The destination's
+  curriculum service imports the export as a draft definition in its own district. Its teachers and
+  curriculum admins review and publish it like any definition they author, and its alignments
+  resolve only against the destination's approved catalog. The installation records the mapping
+  from the portable reference to the local `definitionId@version`. A package naming a district-local
+  ID that the destination does not hold fails to install, loudly.
+
+**Why not the alternatives.**
+
+- *Definitions inside the package* would make every course package carry rubrics and evidence
+  contracts that are not the package's own. It would also break "activities are pointers" (§3.2).
+  A package could no longer be shared without its activities' teacher-only material.
+- *A central definition registry* would be a service every district depends on, which ADR-0001
+  rules out. The district library already provides what a registry would: immutable versions,
+  digests and verified publishers.
+
+**What it does not change.** OCS 1.0 packages and lockfiles are unaffected. The portable form is
+additive, and `specVersion` becomes `"1.1"` only for packages that use it.
+
+### 13.2 Publisher signatures (Q4, implemented)
+
+**Decision.** A package from outside the district enters its library only with a publisher
+signature by a key the district approved for that publisher's domain. The domain is the part of the
+package ID before the slash. The district's own domains (`PublisherTrust.localDomains`) publish
+unsigned.
+
+- **Keys are pinned per publisher domain.** Each publisher has its own `ReleaseTrust` key set, with
+  retirement times, from `@schoolos/releases` (R03). A key approved for one publisher cannot sign
+  another publisher's packages. Nothing carried with a signature is trusted as a key.
+- **What is signed.** `PackagePublication { packageId, version, digest, publishedAt }`, as canonical
+  JSON in OCS's own signing context (`schoolos-ocs/v1`). A signature made for a release, an offer or
+  any fleet message never verifies as a package publication, and the reverse.
+- **Who holds the keys.** Each publisher holds its own private keys. A district approves a
+  publisher's public keys as a curriculum decision. The root holds none of them.
+- **Where it is enforced.** At publication, by the library's policy (`publisherPolicy`). The library
+  keeps the accepted signature with the version. The resolver still checks every package's digest,
+  so a signed version that changes in storage is refused as well.
+
