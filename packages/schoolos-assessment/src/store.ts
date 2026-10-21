@@ -1,5 +1,5 @@
 import { SchoolOsError } from "@schoolos/contracts";
-import { AssessmentState, type OfficialGradeVersion } from "./model.ts";
+import { AssessmentState, isPendingProposal, type OfficialGradeVersion } from "./model.ts";
 
 /** The assessment records as stored, with the version optimistic concurrency checks against. */
 export interface StoredAssessment {
@@ -31,7 +31,9 @@ const FEEDBACK_ORDER = ["draft", "shared-with-student", "final"] as const;
  * - starter material is never changed or removed;
  * - feedback only moves forward, and a final result never changes;
  * - an official grade version is never changed or removed, and each new one is the next number
- *   for its assignment and student.
+ *   for its assignment and student;
+ * - a grade proposal is never removed, nothing about it changes but how it ended, and once it has
+ *   ended (approved, declined or expired) it never changes again.
  */
 export function assertAssessmentInvariants(previous: AssessmentState, next: AssessmentState): void {
   const submissions = new Map(next.submissions.map((s) => [s.id, s]));
@@ -70,6 +72,18 @@ export function assertAssessmentInvariants(previous: AssessmentState, next: Asse
     }
     if (before.state === "final" && canonicalJson(after) !== canonicalJson(before)) {
       throw violation(`Feedback on ${before.submissionId} is final.`);
+    }
+  }
+
+  const proposals = new Map(next.gradeProposals.map((p) => [p.id, p]));
+  for (const before of previous.gradeProposals) {
+    const after = proposals.get(before.id);
+    if (after === undefined) throw violation(`Grade proposal ${before.id} cannot be removed.`);
+    if (isPendingProposal(before)) {
+      const { approvedAsVersion: _a, declined: _d, expired: _e, ...proposed } = after;
+      if (canonicalJson(proposed) !== canonicalJson(before)) throw violation(`Grade proposal ${before.id} is immutable.`);
+    } else if (canonicalJson(after) !== canonicalJson(before)) {
+      throw violation(`Grade proposal ${before.id} has been decided.`);
     }
   }
 

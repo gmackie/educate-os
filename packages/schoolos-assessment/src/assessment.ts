@@ -17,6 +17,7 @@ import {
   type TermState,
 } from "@schoolos/contracts";
 import type { AcademicStore } from "@schoolos/academics";
+import type { SigningIdentity } from "@schoolos/fleet";
 import type { PolicyDecider } from "@schoolos/policy";
 import {
   isTextMediaType,
@@ -31,8 +32,10 @@ import {
   AssignmentPatch,
   CriterionId,
   FeedbackAnchor,
+  GradeProposalDecline,
   GradeProposalId,
   GradeScore,
+  isPendingProposal,
   NewAssignment,
   Suggester,
   type AssessmentState,
@@ -50,6 +53,7 @@ import {
   type SubmissionSnapshot,
   type SubmissionTiming,
 } from "./model.ts";
+import { signSubmissionReceipt, type SignedSubmissionReceipt } from "./receipt.ts";
 import type { AssessmentRecordStore } from "./store.ts";
 
 /** One revision to submit. */
@@ -129,6 +133,8 @@ export interface AssessmentServiceOptions {
   directory: AcademicStore;
   /** Decides and audits every access. */
   policy: PolicyDecider;
+  /** The district's receipt signing key. Without one, {@link AssessmentService.signedReceipt} answers `unavailable`. */
+  receiptKey?: SigningIdentity;
   /** The clock. Defaults to the system clock. */
   now?: () => Date;
 }
@@ -183,6 +189,7 @@ export class AssessmentService {
   readonly #content: ArtifactStore;
   readonly #directory: AcademicStore;
   readonly #policy: PolicyDecider;
+  readonly #receiptKey: SigningIdentity | undefined;
   readonly #now: () => Date;
 
   constructor(options: AssessmentServiceOptions) {
@@ -191,6 +198,7 @@ export class AssessmentService {
     this.#content = options.content;
     this.#directory = options.directory;
     this.#policy = options.policy;
+    this.#receiptKey = options.receiptKey;
     this.#now = options.now ?? (() => new Date());
   }
 
@@ -277,7 +285,8 @@ export class AssessmentService {
   /**
    * Publishes one of the caller's own revisions to an assignment as starter material: an unowned
    * class baseline the offering's students can read (see `StarterMaterial`). Only the chosen
-   * revision's content is published, never the source artifact's history.
+   * revision's content is published, never the source artifact's history. The revision is pinned
+   * as the material's `baseline`, so its content outlives the source artifact.
    */
   async publishStarterMaterial(caller: Caller, rawAssignmentId: AssignmentId, rawInput: NewStarterMaterial): Promise<StarterMaterial> {
     const assignmentId = parse(AssignmentId, rawAssignmentId);
@@ -289,12 +298,14 @@ export class AssessmentService {
     const revision = (await this.#artifacts.history(caller, artifact.id)).find((r) => r.id === input.revisionId);
     if (revision === undefined) throw notFound("revision", input.revisionId);
     const decisions = this.#decisions(caller);
+    // Chosen once, so a commit retried after a conflict pins under the same baseline.
+    const id = `${ID_PREFIXES.artifact}_${crypto.randomUUID()}` as ArtifactId;
     return this.#mutate(async (loaded) => {
       const assignment = await this.#visibleAssignment(decisions, loaded, assignmentId);
-      const id = `${ID_PREFIXES.artifact}_${crypto.randomUUID()}` as ArtifactId;
       if (!(await decisions.allows("publish", starterTarget(this.#offering(loaded.snapshot, assignment.offeringId), id)))) {
         throw new SchoolOsError("forbidden", "Only the offering's teachers can publish material to this assignment.");
       }
+      await this.#artifacts.pin(caller, artifact.id, revision.id, { kind: "baseline", baselineId: id });
       const material: StarterMaterial = {
         id,
         assignmentId: assignment.id,
@@ -426,7 +437,8 @@ export class AssessmentService {
 
   /**
    * Withdraws one of the caller's submissions before the due date. It stays stored, pinned and
-   * readable, marked withdrawn, and no longer counts against the attempt limit. Idempotent.
+   * readable, marked withdrawn, and no longer counts against the attempt limit. Grade proposals
+   * still waiting on it expire. Idempotent.
    */
   async withdraw(caller: Caller, rawSubmissionId: SubmissionId): Promise<SubmissionSnapshot> {
     const submissionId = parse(SubmissionId, rawSubmissionId);
@@ -443,10 +455,27 @@ export class AssessmentService {
       if (now.getTime() > Date.parse(assignment.dueAt)) {
         throw new SchoolOsError("forbidden", "Work can only be withdrawn before the due date.");
       }
-      const withdrawn: SubmissionSnapshot = { ...submission, withdrawnAt: now.toISOString() };
-      const next = { ...loaded.state, submissions: loaded.state.submissions.map((s) => (s.id === submission.id ? withdrawn : s)) };
+      const withdrawnAt = now.toISOString();
+      const withdrawn: SubmissionSnapshot = { ...submission, withdrawnAt };
+      const next = {
+        ...loaded.state,
+        submissions: loaded.state.submissions.map((s) => (s.id === submission.id ? withdrawn : s)),
+        gradeProposals: loaded.state.gradeProposals.map((p) =>
+          p.submissionId === submission.id && isPendingProposal(p) ? { ...p, expired: { expiredAt: withdrawnAt, cause: "submission-withdrawn" as const } } : p),
+      };
       return { next, result: withdrawn };
     });
+  }
+
+  /**
+   * A submission's receipt signed with the district's key (see `SignedSubmissionReceipt`), for
+   * whoever may read the submission: its student, to keep, and the offering's teachers.
+   */
+  async signedReceipt(caller: Caller, rawSubmissionId: SubmissionId): Promise<SignedSubmissionReceipt> {
+    const submissionId = parse(SubmissionId, rawSubmissionId);
+    const submission = await this.#readableSubmission(this.#decisions(caller), await this.#load(), submissionId);
+    if (this.#receiptKey === undefined) throw new SchoolOsError("unavailable", "This district does not sign submission receipts.");
+    return signSubmissionReceipt(receiptOf(submission), submission.districtId, this.#receiptKey);
   }
 
   /** A submission, to its student and the offering's teachers. */
@@ -608,7 +637,7 @@ export class AssessmentService {
       const now = this.#now().toISOString();
       if (decision.effect === "allow") {
         const version = nextVersion(loaded.state, submission, input.score, caller, now, undefined);
-        return { next: { ...loaded.state, gradeVersions: [...loaded.state.gradeVersions, version] }, result: { status: "official", version } };
+        return { next: withVersion(loaded.state, version), result: { status: "official", version } };
       }
       if (decision.effect === "require-approval") {
         const proposal: GradeProposal = {
@@ -644,16 +673,39 @@ export class AssessmentService {
         if (existing === undefined) throw new Error(`proposal ${proposal.id} names a missing version`);
         return { result: existing };
       }
+      if (proposal.declined !== undefined) throw new SchoolOsError("conflict", "This grade proposal was declined.");
+      if (proposal.expired !== undefined) throw new SchoolOsError("conflict", "This grade proposal expired and can no longer be approved.");
       if (submission.withdrawnAt !== undefined) throw new SchoolOsError("conflict", "A withdrawn submission cannot be graded.");
       const decision = await decisions.decide("approve", gradeTarget(this.#offering(loaded.snapshot, submission.offeringId), submission));
       if (decision.effect !== "allow") throw new SchoolOsError("forbidden", "Only a teacher of the offering can approve this grade.");
       const version = nextVersion(loaded.state, submission, proposal.score, caller, this.#now().toISOString(), proposal);
-      const next = {
-        ...loaded.state,
-        gradeVersions: [...loaded.state.gradeVersions, version],
-        gradeProposals: loaded.state.gradeProposals.map((p) => (p.id === proposal.id ? { ...p, approvedAsVersion: version.version } : p)),
-      };
-      return { next, result: version };
+      const approved = { ...loaded.state, gradeProposals: loaded.state.gradeProposals.map((p) => (p.id === proposal.id ? { ...p, approvedAsVersion: version.version } : p)) };
+      return { next: withVersion(approved, version), result: version };
+    });
+  }
+
+  /**
+   * A teacher of the offering, acting directly, declines a proposed grade with a reason. It never
+   * becomes official and stops waiting. Declining it again returns it unchanged; a proposal already
+   * approved or expired answers `conflict`.
+   */
+  async declineGradeProposal(caller: Caller, rawProposalId: GradeProposalId, rawReason: string): Promise<GradeProposal> {
+    const proposalId = parse(GradeProposalId, rawProposalId);
+    const reason = parse(GradeProposalDecline.shape.reason, rawReason);
+    const decisions = this.#decisions(caller);
+    return this.#mutate(async (loaded) => {
+      const proposal = loaded.state.gradeProposals.find((p) => p.id === proposalId);
+      if (proposal === undefined) throw notFound("grade proposal", proposalId);
+      const submission = await this.#readableSubmission(decisions, loaded, proposal.submissionId);
+      await this.#assertMayReview(decisions, loaded, submission);
+      if (proposal.declined !== undefined) return { result: proposal };
+      if (!isPendingProposal(proposal)) throw new SchoolOsError("conflict", "This grade proposal is no longer waiting for a decision.");
+      if (caller.channel !== "http") throw new SchoolOsError("forbidden", "Only a teacher acting directly in SchoolOS can decline a grade.");
+      const decision = await decisions.decide("approve", gradeTarget(this.#offering(loaded.snapshot, submission.offeringId), submission));
+      if (decision.effect !== "allow") throw new SchoolOsError("forbidden", "Only a teacher of the offering can decide on this grade.");
+      const declined: GradeProposal = { ...proposal, declined: { declinedBy: caller.principal.principalId, declinedAt: this.#now().toISOString(), reason } };
+      const next = { ...loaded.state, gradeProposals: loaded.state.gradeProposals.map((p) => (p.id === proposal.id ? declined : p)) };
+      return { next, result: declined };
     });
   }
 
@@ -665,7 +717,7 @@ export class AssessmentService {
     await this.#visibleAssignment(decisions, loaded, assignmentId);
     const pending: GradeProposal[] = [];
     for (const proposal of loaded.state.gradeProposals) {
-      if (proposal.assignmentId !== assignmentId || proposal.approvedAsVersion !== undefined) continue;
+      if (proposal.assignmentId !== assignmentId || !isPendingProposal(proposal)) continue;
       const submission = loaded.state.submissions.find((s) => s.id === proposal.submissionId);
       if (submission === undefined) continue;
       const at = this.#offering(loaded.snapshot, submission.offeringId);
@@ -918,8 +970,21 @@ function withFeedback(state: AssessmentState, feedback: FeedbackRecord): Assessm
   };
 }
 
-function sameGrade(version: OfficialGradeVersion, submission: SubmissionSnapshot): boolean {
+function sameGrade(version: OfficialGradeVersion, submission: Pick<SubmissionSnapshot, "assignmentId" | "studentPrincipalId">): boolean {
   return version.assignmentId === submission.assignmentId && version.studentPrincipalId === submission.studentPrincipalId;
+}
+
+/**
+ * `state` with `version` official, and every proposal still waiting for the same assignment and
+ * student expired as superseded by it: approving one later would replace a newer teacher decision.
+ */
+function withVersion(state: AssessmentState, version: OfficialGradeVersion): AssessmentState {
+  const expired = { expiredAt: version.approval.approvedAt, cause: "superseded" as const, supersededBy: version.version };
+  return {
+    ...state,
+    gradeVersions: [...state.gradeVersions, version],
+    gradeProposals: state.gradeProposals.map((p) => (isPendingProposal(p) && sameGrade(version, p) ? { ...p, expired } : p)),
+  };
 }
 
 /** The next official version of a student's grade for an assignment, approved by `caller` at `now`. */
