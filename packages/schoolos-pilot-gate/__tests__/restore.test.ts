@@ -51,7 +51,8 @@ async function snapshot(stores: DistrictAppStores): Promise<DistrictSnapshot> {
   const artifactRecords = (await stores.artifactRecords.load()).state;
   const artifactContent = new Map<string, { backend: "text" | "r2"; bytes: Uint8Array<ArrayBuffer> }>();
   for (const revision of artifactRecords.revisions) {
-    if (revision.content.backend === "external") continue;
+    // External and registered content is held outside these stores, by its link or its provider.
+    if (revision.content.backend === "external" || revision.content.backend === "registered") continue;
     artifactContent.set(revision.content.digest, { backend: revision.content.backend, bytes: await stores.artifactContent.read(revision.content) });
   }
   const assessment = (await stores.assessment.load()).state;
