@@ -1,0 +1,9 @@
+{
+  // The tests run under Node and read and write fixture files, so they add Node's typings to the
+  // web-standard surface the library is checked against (ADR-0009).
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["."]
+}

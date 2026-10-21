@@ -9,6 +9,7 @@ import {
   type DistrictDirectorySnapshot,
   type DistrictId,
   type SubmissionId,
+  type VerifiedPrincipal,
   type WorkspaceId,
 } from "@schoolos/contracts";
 import { assertSyncWritable, DIRECTORY_ENTITY_KINDS, type AcademicStore } from "@schoolos/academics";
@@ -17,7 +18,7 @@ import type { LearningArtifacts, RevisionContent } from "@schoolos/learning-arti
 import type { AssessmentService, AssignmentBinding, CriterionScore } from "@schoolos/assessment";
 import type { AssessmentCi, RunView } from "@schoolos/assessment-ci";
 import type { ActivityInstallation, CurriculumService, OfferingScope } from "@schoolos/curriculum";
-import type { TermClosedEvent } from "@schoolos/ai-governance";
+import { drainCourseFundingCancellations, type CourseFundingCancellations, type TermClosedEvent } from "@schoolos/ai-governance";
 import { oneroster } from "@schoolos/integrations";
 import type { AssignmentSettingsInput, RevisionContentBody } from "./routes.ts";
 import type { RosterSourceStore } from "./stores.ts";
@@ -122,6 +123,44 @@ export async function applyRosterImport(input: {
   await input.sources.save(result.next.sources);
   const { revoked } = await input.workspaces.reconcileCourseGrants(input.caller);
   return { applied: true, preview: result.preview, grantsRevoked: revoked };
+}
+
+/** Where G01 keeps the course-funding cancellations it has drained. */
+export interface FundingCancellationStore {
+  /** The record as last saved, or `NO_FUNDING_CANCELLATIONS` before the first drain. */
+  load(): Promise<CourseFundingCancellations>;
+  /** Replaces the record. */
+  save(next: CourseFundingCancellations): Promise<void>;
+}
+
+/**
+ * A01 / A03 / A04 → W01 → G01: what follows every roster apply, whichever path applied it (a CSV
+ * import, or a REST complete or delta sync through `runStoredRosterSync`'s `afterApply`). W01
+ * revokes the course grants of everyone the roster dropped, acting as the district's roster
+ * service principal on the `system` channel, so a scheduled sync with nobody signed in does
+ * exactly what an administrator's import does; the principal needs authority over the district's
+ * enrollments, as a district-admin grant gives it. G01 then drains the `course-ai-funding.cancelled`
+ * events that emitted.
+ *
+ * Both steps are idempotent, so if either fails it is safely run again after the next apply. Call
+ * it once the directory the apply produced is committed.
+ */
+export async function reconcileAfterRosterApply(input: {
+  workspaces: WorkspaceDirectory;
+  workspaceStore: WorkspaceStore;
+  directory: AcademicStore;
+  rosterService: VerifiedPrincipal;
+  fundingCancellations: FundingCancellationStore;
+}): Promise<{ grantsRevoked: number; cancellationsDrained: number }> {
+  const { revoked } = await input.workspaces.reconcileCourseGrants({ principal: input.rosterService, channel: "system" });
+  const [{ state }, { snapshot }, record] = await Promise.all([
+    input.workspaceStore.load(),
+    input.directory.load(),
+    input.fundingCancellations.load(),
+  ]);
+  const { next, drained } = drainCourseFundingCancellations(record, state.events, snapshot);
+  await input.fundingCancellations.save(next);
+  return { grantsRevoked: revoked, cancellationsDrained: drained };
 }
 
 /**

@@ -27,6 +27,13 @@ const EMPTY: oneroster.RosterSyncState = {
   },
 };
 
+/** A timestamp moved back by the delta overlap window. */
+const overlapped = (at: string) => new Date(Date.parse(at) - oneroster.DELTA_OVERLAP_MS).toISOString();
+
+/** The cursors a sync leaves when every record of every REST collection was modified at `at`. */
+const cursorsAt = (at: string): oneroster.RosterCursors =>
+  Object.fromEntries(Object.values(oneroster.COLLECTION_FILES).map((file) => [file, overlapped(at)]));
+
 /** A clock that ticks one second per reading, so every run's timestamps are reproducible. */
 function tickingClock(start = START) {
   let now = start;
@@ -126,7 +133,7 @@ describe("swapping sources", () => {
     const fromCsv = await synced(EMPTY, oneroster.csvRosterSource(loadExport("northfield")));
     const fromRest = await synced(fromCsv.state, restSource(new FakeOneRosterServer()));
     expect(totalChanges(fromRest.run)).toBe(0);
-    expect(fromRest.state.cursor).toBe(MODIFIED);
+    expect(fromRest.state.cursors).toEqual(cursorsAt(MODIFIED));
   });
 
   it("is deterministic: the same state and source give the same run and state", async () => {
@@ -149,19 +156,19 @@ describe("swapping sources", () => {
 async function baseline() {
   const server = new FakeOneRosterServer();
   const { state } = await synced(EMPTY, restSource(server));
-  expect(state.cursor).toBe(MODIFIED);
+  expect(state.cursors).toEqual(cursorsAt(MODIFIED));
   return { server, state };
 }
 
 describe("a delta sync", () => {
   const LATER = "2026-10-15T08:30:00.000Z";
 
-  it("asks only for records modified since the cursor", async () => {
+  it("asks each collection only for records modified since its cursor, less the overlap window", async () => {
     const { server, state } = await baseline();
     server.received.length = 0;
     await synced(state, restSource(server), "delta");
     const filters = server.received.filter((r) => r.method === "GET").map((r) => r.url.searchParams.get("filter"));
-    expect(new Set(filters)).toEqual(new Set([`dateLastModified>='${MODIFIED}'`]));
+    expect(new Set(filters)).toEqual(new Set([`dateLastModified>='${overlapped(MODIFIED)}'`]));
   });
 
   it("updates the records it lists and advances the cursor", async () => {
@@ -170,8 +177,9 @@ describe("a delta sync", () => {
     const { state: next, run } = await synced(state, restSource(server), "delta");
     expect(principalOf(next, "u-amara").principal.displayName).toBe("Amarachi Okafor");
     expect(run.counts.principals).toEqual({ added: 0, updated: 1, deactivated: 0 });
-    expect(run.cursor).toBe(LATER);
-    expect(next.cursor).toBe(LATER);
+    // Only the users collection moved on; the run reports the earliest cursor.
+    expect(next.cursors).toEqual({ ...cursorsAt(MODIFIED), "users.csv": overlapped(LATER) });
+    expect(run.cursor).toBe(overlapped(MODIFIED));
   });
 
   it("never deactivates a record because the delta does not list it", async () => {
@@ -239,7 +247,7 @@ describe("a failed sync", () => {
     server.persistentFaults.push(usersOutage);
 
     const failed = await sync(state, restSource(server), "delta", "run-2");
-    expect(failed.run).toMatchObject({ outcome: "failed", errorCode: "source-unavailable", cursor: MODIFIED });
+    expect(failed.run).toMatchObject({ outcome: "failed", errorCode: "source-unavailable", cursor: overlapped(MODIFIED) });
     expect(failed.run.quarantined).toBeUndefined();
     expect(totalChanges(failed.run)).toBe(0);
     expect(failed.state).toBe(state);
@@ -247,7 +255,7 @@ describe("a failed sync", () => {
     server.persistentFaults.length = 0;
     const recovered = await synced(failed.state, restSource(server), "delta");
     expect(principalOf(recovered.state, "u-felix").active).toBe(false);
-    expect(recovered.state.cursor).toBe(LATER);
+    expect(recovered.state.cursors?.["users.csv"]).toBe(overlapped(LATER));
   });
 
   it("records a feed that does not apply as rejected, with nothing applied", async () => {
@@ -260,7 +268,7 @@ describe("a failed sync", () => {
       dateLastModified: LATER,
     });
     const { run, state: after, preview } = await sync(state, restSource(server), "delta");
-    expect(run).toMatchObject({ outcome: "failed", errorCode: "feed-rejected", cursor: MODIFIED, quarantined: 0 });
+    expect(run).toMatchObject({ outcome: "failed", errorCode: "feed-rejected", cursor: overlapped(MODIFIED), quarantined: 0 });
     expect(after).toBe(state);
     expect(preview?.issues).toContainEqual(expect.objectContaining({ file: "enrollments.csv", sourcedId: "e-13", column: "userSourcedId" }));
   });
@@ -271,5 +279,83 @@ describe("a failed sync", () => {
     const { run, preview } = await sync(EMPTY, restSource(server));
     expect(run.errorCode).toBe("feed-rejected");
     expect(preview?.issues).toContainEqual(expect.objectContaining({ severity: "error", file: "users.csv", sourcedId: "u-chen" }));
+  });
+});
+
+function offeringOf(state: oneroster.RosterSyncState, sourcedId: string) {
+  const id = Object.entries(state.roster.sources.offerings).find(([, s]) => s === sourcedId)![0];
+  return state.roster.snapshot.offerings.find((o) => o.id === id)!;
+}
+
+describe("a record modified while a sync is reading (SCHO-74)", () => {
+  const MID_SYNC = "2026-10-10T09:00:00.000Z";
+  const LATEST_USER = "2026-10-15T08:30:00.000Z";
+
+  it("is read by the next delta, though a collection read later holds newer records", async () => {
+    const server = new FakeOneRosterServer();
+    server.upsert("users", { ...server.record("users", "u-amara"), dateLastModified: LATEST_USER });
+    // Once classes have been read, while users are being read, a class is renamed. Its stamp is
+    // older than the newest user's, so a single roster-wide high-water mark would skip it.
+    server.faults.push((request) => {
+      if (!request.url.pathname.endsWith("/users")) return undefined;
+      server.upsert("classes", { ...server.record("classes", "cls-bio-fall-p2"), title: "Period 2 (Lab)", dateLastModified: MID_SYNC });
+      return undefined;
+    });
+    const { state } = await synced(EMPTY, restSource(server));
+    expect(offeringOf(state, "cls-bio-fall-p2").sectionName).toBe("Period 2");
+
+    const { state: next } = await synced(state, restSource(server), "delta");
+    expect(offeringOf(next, "cls-bio-fall-p2").sectionName).toBe("Period 2 (Lab)");
+  });
+
+  it("keeps a file's cursor where it was when a delta reads nothing new from it", () => {
+    const previous = { "classes.csv": "2026-10-01T11:55:00.000Z", "users.csv": "2026-10-01T11:55:00.000Z" };
+    const next = oneroster.nextCursors("delta", previous, { "users.csv": LATEST_USER });
+    expect(next).toEqual({ "classes.csv": previous["classes.csv"], "users.csv": overlapped(LATEST_USER) });
+    // A complete sync replaces the roster, so an older export moves the cursors back.
+    expect(oneroster.nextCursors("complete", { "users.csv": overlapped(LATEST_USER) }, { "users.csv": MODIFIED }))
+      .toEqual({ "users.csv": overlapped(MODIFIED) });
+  });
+});
+
+/** The Northfield export with every record stamped `at`. */
+function datedExport(at: string): Record<string, string | Uint8Array> {
+  const files: Record<string, string | Uint8Array> = { ...loadExport("northfield") };
+  for (const file of oneroster.ONEROSTER_FILES) {
+    const content = files[file]!;
+    const text = typeof content === "string" ? content : new TextDecoder().decode(content);
+    const [header, ...rows] = text.trimEnd().split("\n");
+    const column = header!.split(",").indexOf("dateLastModified");
+    // The fixture leaves every dateLastModified blank, and no field before it is quoted.
+    files[file] = [header, ...rows.map((row) => {
+      const fields = row.split(",");
+      fields[column] = at;
+      return fields.join(",");
+    })].join("\n") + "\n";
+  }
+  return files;
+}
+
+describe("a REST delta after a CSV import (SCHO-75)", () => {
+  it("starts from the dates the CSV export lists, so the REST server need not be read whole", async () => {
+    const { state } = await synced(EMPTY, oneroster.csvRosterSource(datedExport(MODIFIED)));
+    expect(state.cursors?.["users.csv"]).toBe(overlapped(MODIFIED));
+
+    const server = new FakeOneRosterServer();
+    server.upsert("users", { ...server.record("users", "u-amara"), givenName: "Amarachi", dateLastModified: "2026-10-15T08:30:00.000Z" });
+    const { state: next } = await synced(state, restSource(server), "delta");
+    expect(principalOf(next, "u-amara").principal.displayName).toBe("Amarachi Okafor");
+    const filters = server.received.filter((r) => r.url.pathname.endsWith("/users")).map((r) => r.url.searchParams.get("filter"));
+    expect(filters[0]).toBe(`dateLastModified>='${overlapped(MODIFIED)}'`);
+  });
+
+  it("words import issues in the source's own terms", async () => {
+    const server = new FakeOneRosterServer();
+    server.upsert("enrollments", {
+      ...server.record("enrollments", "e-13"),
+      user: { ...(server.record("enrollments", "e-13").user as object), sourcedId: "u-nobody" },
+    });
+    const { preview } = await sync(EMPTY, restSource(server));
+    expect(preview?.issues).toContainEqual(expect.objectContaining({ sourcedId: "e-13", message: "names u-nobody, which is not in the users collection" }));
   });
 });

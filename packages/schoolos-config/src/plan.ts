@@ -133,7 +133,13 @@ export interface ScopedPolicyViolation extends PolicyViolation {
 /** A reason the next revision cannot be applied to this district as it stands. */
 export interface PlanProblem {
   /** What the problem is. */
-  code: "unknown-offering" | "offering-term-closed" | "unknown-scope" | "pack-version-unavailable" | ResolutionProblem["kind"];
+  code:
+    | "unknown-offering"
+    | "offering-term-closed"
+    | "unknown-scope"
+    | "pack-version-unavailable"
+    | "untrusted-roster-issuer"
+    | ResolutionProblem["kind"];
   /** JSON Pointer into the next desired state. */
   path: string;
   /** Safe to show an administrator. */
@@ -390,6 +396,14 @@ export function planConfigurationChange(input: {
     path: `/modules/${"capabilityId" in problem ? problem.capabilityId : problem.path[0]}`,
     message: `the next revision's packs no longer resolve (${problem.kind})`,
   })));
+  const rosterIssuer = next.rostering.identityMapping?.issuer;
+  if (rosterIssuer !== undefined && !directory.district.trustedIssuers.includes(rosterIssuer)) {
+    problems.push({
+      code: "untrusted-roster-issuer",
+      path: "/rostering/identityMapping/issuer",
+      message: `the roster's issuer ${rosterIssuer} is not one of the district's trusted issuers`,
+    });
+  }
   const knownSchools = new Set(directory.schools.map((s) => s.id));
   const knownOfferings = new Set(directory.offerings.map((o) => o.id));
   next.overrides.forEach(({ scope }, index) => {

@@ -11,6 +11,7 @@
     "@schoolos/content-studio": "workspace:*",
     "@schoolos/contracts": "workspace:*",
     "@schoolos/registry": "workspace:*",
+    "@schoolos/zip": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -358,11 +358,26 @@ describe("safe apply", () => {
     expect("next" in result).toBe(false);
   });
 
+  it("refuses an issuer the district does not trust before mapping anything", async () => {
+    await expect(apply(EMPTY, exportOf("northfield"), { config: { issuer: "https://other-idp.example", subject: { field: "username" } } }))
+      .rejects.toMatchObject({ code: "validation-failed", message: expect.stringContaining("not one of the district's trusted issuers") });
+  });
+
   it("refuses a result that fails checkDirectoryIntegrity", async () => {
-    const result = await apply(EMPTY, exportOf("northfield"), { config: { issuer: "https://other-idp.example", subject: { field: "username" } } });
+    // A local grant naming a principal and school the directory does not have survives the import.
+    const dangling = DistrictDirectorySnapshot.parse({
+      ...EMPTY.snapshot,
+      roleAssignments: [{
+        principalId: "prn_nf-ghost",
+        role: "school-admin",
+        scope: { level: "school", districtId: NORTHFIELD.district.id, schoolId: "sch_nf-ghost" },
+        source: "local-grant",
+      }],
+    });
+    const result = await apply({ snapshot: dangling, sources: EMPTY.sources }, exportOf("northfield"));
     expect(result.applied).toBe(false);
     expect(result.preview.issues.filter((i) => i.severity === "error")).toEqual([]);
-    expect(result.preview.integrity[0]?.message).toContain("is not trusted");
+    expect(result.preview.integrity.map((i) => i.message)).toContain("refers to unknown principal prn_nf-ghost");
   });
 
   it("previews without applying", async () => {
