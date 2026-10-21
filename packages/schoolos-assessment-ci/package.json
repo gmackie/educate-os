@@ -1,0 +1,25 @@
+{
+  "name": "@schoolos/assessment-ci",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS Assessment CI (roadmap E02): a deterministic evaluator SDK with pinned releases, built-in evaluators for writing, citations, spreadsheets, datasets and math, teacher-signed rubric releases, and durable idempotent assessment runs whose evidence reaches feedback only as labelled suggestions. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/academics": "workspace:*",
+    "@schoolos/assessment": "workspace:*",
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/learning-artifacts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@schoolos/policy": "workspace:*",
+    "@schoolos/workspaces": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

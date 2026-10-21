@@ -238,10 +238,17 @@ export const FeedbackAnchor = z.strictObject({
 /** A feedback anchor. */
 export type FeedbackAnchor = z.infer<typeof FeedbackAnchor>;
 
-/** What suggested a score or comment: an AI model or a deterministic evaluator release (E02). */
+/**
+ * What suggested a score or comment: an AI model or a deterministic evaluator release (E02). An
+ * evaluator is named `<evaluator>@<release>`, where the release is a semantic version such as
+ * `citation.format@1.2.0` (or, from before E02, a bare major version).
+ */
 export const Suggester = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("ai"), modelId: z.string().regex(/^[A-Za-z0-9_.:/@-]{1,200}$/) }),
-  z.strictObject({ kind: z.literal("evaluator"), evaluatorId: z.string().regex(/^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*@[0-9]+$/, "expected <evaluator>@<version>") }),
+  z.strictObject({
+    kind: z.literal("evaluator"),
+    evaluatorId: z.string().regex(/^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*@[0-9]+(\.[0-9]+\.[0-9]+)?$/, "expected <evaluator>@<release>"),
+  }),
 ]);
 /** A suggester. */
 export type Suggester = z.infer<typeof Suggester>;
