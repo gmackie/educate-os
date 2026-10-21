@@ -1,6 +1,5 @@
-import type { DistrictId, PrincipalId, Scope } from "@schoolos/contracts";
-import type { ResourceDescriptor, ResourceId, RightsMode } from "@schoolos/registry";
-import type { ContentItemId } from "./ids.ts";
+import type { ContentItemId, DistrictId, PrincipalId, ResourceId, Scope } from "@schoolos/contracts";
+import type { ResourceDescriptor, RightsMode } from "@schoolos/registry";
 import type { LicenseEvidence } from "./license.ts";
 import type { PipelineState } from "./pipeline.ts";
 import type { AiReview, ChecksReport } from "./review.ts";

@@ -60,8 +60,9 @@ MET for these reasons:
   decision reads it (SCHO-120).
 - **One content source is missing.** There is no path from a native Blueprint into the registry
   resource model (SCHO-121).
-- **Two lifecycle steps are missing.** Graduation needs principal lifecycle status (SCHO-51). An
-  export offer at term end needs the export route (SCHO-90).
+- **Two lifecycle steps are missing.** Principals have a `graduated` status that holds no roles,
+  but no district app route moves a principal to it yet (SCHO-145). An export offer at term end
+  needs the export route (SCHO-90).
 - **School tools have no MCP surface yet.** Tool-identity rules are checked on the tool runner over
   the district app's engine. The gatekeeper Worker that will expose them is SCHO-57.
 
@@ -114,7 +115,7 @@ because the store refuses a stale commit and the client retries. A durable artif
 | Stale course AI budget, underfunded student or retry duplication | New inference denied or billed idempotently | G1 | test: a closed term's course budget and an exhausted student cap deny new inference, and a retried request is billed once (direct) | `security-matrix.test.ts` | **MET** |  |
 | AI grader suggests a score, teacher has not reviewed | Cannot write consequential official grade by default | G1 | test: evaluator suggestions stay suggestions, a co-teacher's grade waits for the teacher, and the student sees no grade until one is official<br>test: a grade written on an agent's behalf is held for teacher approval (direct)<br>todo: an AI feedback run's suggested score cannot become official over the API (SCHO-107) | `security-matrix.test.ts` | **NOT MET** | SCHO-107 |
 | Source content deleted/updated | Immutable prior approved revision remains or unavailability is clearly reported | G1 | test: after its source changes or disappears, the approved release and the activity built on it are unchanged, and a failed re-import says the source is unavailable | `security-matrix.test.ts` | **MET** |  |
-| Semester end / graduation | Classroom integration grants revoked; eligible work retained or export offered per retention policy | G1 | test: closing a term revokes class grants and course AI funding, and keeps the students' work readable and keepable<br>todo: a graduating student's grants end while their eligible work is kept (SCHO-51)<br>todo: the student is offered an export of eligible work (SCHO-90) | `security-matrix.test.ts` | **NOT MET** | SCHO-51, SCHO-90 |
+| Semester end / graduation | Classroom integration grants revoked; eligible work retained or export offered per retention policy | G1 | test: closing a term revokes class grants and course AI funding, and keeps the students' work readable and keepable<br>todo: a graduating student's grants end while their eligible work is kept (SCHO-145)<br>todo: the student is offered an export of eligible work (SCHO-90) | `security-matrix.test.ts` | **NOT MET** | SCHO-145, SCHO-90 |
 | Root `schoolos.dev` unavailable | Existing district login, work, grading and local budgets continue | G2 | test: with the root unreachable, the entitlement cache holds and sign-in, work, grading and AI budgets continue (direct) | `security-matrix.test.ts` | **MET** |  |
 | Installer OAuth revoked | No new root deployment action; district app and data remain under owner control | G2 | test: a revoked installer credential halts the upgrade with no further change to the account, and the district app keeps serving its data (direct) | `security-matrix.test.ts` | **MET** |  |
 | Public registry catalog compromised | Untrusted/unapproved signatures are rejected; pinned district data unaffected | G3 | test: a release signed by an unpinned key and a tampered framework release are rejected, and the district's pinned release and approved catalog are unchanged (direct) | `security-matrix.test.ts` | **MET** |  |

@@ -1,8 +1,7 @@
 import { expect } from "vitest";
-import { SchoolOsErrorBody, type DistrictDirectorySnapshot, type PrincipalId } from "@schoolos/contracts";
+import { SchoolOsErrorBody, type DistrictDirectorySnapshot, type PrincipalId, type VerifiedIdentity } from "@schoolos/contracts";
 import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
 import { usdNanoFromCents } from "@schoolos/ai-governance";
-import type { VerifiedIdentity } from "@schoolos/identity";
 import { catalogSeedRelease } from "@schoolos/catalog";
 import type { ImportFetch } from "@schoolos/content-studio";
 import type { TemplateInput } from "@schoolos/curriculum";

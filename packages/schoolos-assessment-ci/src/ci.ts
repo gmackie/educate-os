@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { AssessmentRunId, SchoolOsError, SubmissionId } from "@schoolos/contracts";
-import type { Caller } from "@schoolos/academics";
+import { AssessmentRunId, SchoolOsError, SubmissionId, type Caller } from "@schoolos/contracts";
 import { RubricReleaseRef, type AssessmentService, type CriterionScore, type SubmissionSnapshot } from "@schoolos/assessment";
 import { DETERMINISTIC_PROFILE, ExecutionProfileId, IdempotencyKey, type AssessmentReport, type AssessmentRun, type RunError, type RunState, type StudentAssessmentReport } from "./model.ts";
 import { studentReport, type AssessmentRuns, type SubmittedWork } from "./runs.ts";

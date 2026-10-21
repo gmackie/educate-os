@@ -4,9 +4,9 @@
 // failing check fails the whole run with a stated reason, because a report missing a check would
 // read as evidence that was never gathered.
 import { z } from "zod";
-import { AssessmentRunId, SchoolOsError } from "@schoolos/contracts";
+import { AssessmentRunId, ContentDigest, SchoolOsError } from "@schoolos/contracts";
 import { RubricReleaseRef, submissionDigest, type SubmissionItem } from "@schoolos/assessment";
-import { canonicalTextBytes, ContentDigest, isTextMediaType, sha256Digest } from "@schoolos/learning-artifacts";
+import { canonicalTextBytes, isTextMediaType, sha256Digest } from "@schoolos/learning-artifacts";
 import { canonicalDigest } from "./canonical.ts";
 import { deepFreeze, runDeterministically } from "./determinism.ts";
 import {

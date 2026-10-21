@@ -1,5 +1,6 @@
+import type { VerifiedPrincipal } from "@schoolos/contracts";
 import { describe, expect, it } from "vitest";
-import { createContentStudioHandler, type StudioSubject } from "../src/index.ts";
+import { createContentStudioHandler } from "../src/index.ts";
 import { BIO_SCOPE, MORGAN, RIVERA, studio } from "./helpers.ts";
 
 const BASE = "https://studio.northfield.example";
@@ -7,7 +8,7 @@ const BASE = "https://studio.northfield.example";
 /** A handler whose subject comes from a test header, standing in for a verified Access token. */
 async function handler() {
   const { studio: s, catalog } = await studio({ scanner: "none" });
-  const subjects: Record<string, StudioSubject> = { morgan: MORGAN, rivera: RIVERA };
+  const subjects: Record<string, VerifiedPrincipal> = { morgan: MORGAN, rivera: RIVERA };
   const handle = createContentStudioHandler({
     studio: s,
     resolveSubject: async (request) => subjects[request.headers.get("x-test-subject") ?? ""],

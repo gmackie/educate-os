@@ -1,8 +1,7 @@
+import { ArtifactType, ContentDigest } from "@schoolos/contracts";
 import { z } from "zod";
 import {
   AiAssistance,
-  ArtifactType,
-  ContentDigest,
   MediaType,
   ProvenanceRecord,
   sha256Digest,

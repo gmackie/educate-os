@@ -1,7 +1,7 @@
 // Roadmap §14, the security and production acceptance matrix: one criterion per row.
 import { expect } from "vitest";
 import { z } from "zod";
-import { ArtifactId, OfferingId, PrincipalId, type ResourceRef } from "@schoolos/contracts";
+import { ArtifactId, InstanceId, OfferingId, PrincipalId, type ResourceRef } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import { defineSchoolTool, SchoolToolRunner } from "@schoolos/policy";
 import { AssessmentService } from "@schoolos/assessment";
@@ -9,7 +9,7 @@ import { LearningArtifacts } from "@schoolos/learning-artifacts";
 import { RetentionPolicy, WorkspaceDirectory } from "@schoolos/workspaces";
 import { ArtifactsGitBackend, InMemoryArtifacts, InMemoryCredentialLedger, ProjectArtifacts, type WorkingTree } from "@schoolos/artifacts-git";
 import { catalogSeedRelease, contentDigest } from "@schoolos/catalog";
-import { InstanceId, SigningIdentity } from "@schoolos/fleet";
+import { SigningIdentity } from "@schoolos/fleet";
 import { DistrictReleaseManager, InMemoryDistrictReleaseStore, pinReleaseKeys, RootReleaseSigner } from "@schoolos/releases";
 import { InMemoryExportMappingStore, InMemoryStudentRecordSource, readZip, StudentArchiveExporter } from "@schoolos/portability";
 import { bootHarness } from "@schoolos/harness";

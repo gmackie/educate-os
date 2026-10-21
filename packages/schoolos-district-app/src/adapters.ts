@@ -2,18 +2,21 @@
 // one of them left open, and authorizes nothing itself beyond what the services it calls decide.
 import {
   SchoolOsError,
+  type ActivityDefinitionId,
   type ArtifactId,
+  type AuthorityMap,
+  type Caller,
   type DistrictDirectorySnapshot,
   type DistrictId,
   type SubmissionId,
   type WorkspaceId,
 } from "@schoolos/contracts";
-import { assertSyncWritable, DIRECTORY_ENTITY_KINDS, type AcademicStore, type AuthorityMap, type Caller } from "@schoolos/academics";
+import { assertSyncWritable, DIRECTORY_ENTITY_KINDS, type AcademicStore } from "@schoolos/academics";
 import type { PromotionLink, WorkspaceDirectory, WorkspaceStore } from "@schoolos/workspaces";
 import type { LearningArtifacts, RevisionContent } from "@schoolos/learning-artifacts";
 import type { AssessmentService, AssignmentBinding, CriterionScore } from "@schoolos/assessment";
 import type { AssessmentCi, RunView } from "@schoolos/assessment-ci";
-import type { ActivityDefinitionId, ActivityInstallation, CurriculumService, OfferingScope } from "@schoolos/curriculum";
+import type { ActivityInstallation, CurriculumService, OfferingScope } from "@schoolos/curriculum";
 import type { TermClosedEvent } from "@schoolos/ai-governance";
 import { oneroster } from "@schoolos/integrations";
 import type { AssignmentSettingsInput, RevisionContentBody } from "./routes.ts";

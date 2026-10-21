@@ -15,6 +15,7 @@ import {
   SchoolOsError,
   checkDirectoryIntegrity,
   externalIdentityKey,
+  type SourceLink,
 } from "@schoolos/contracts";
 import type {
   CourseId,
@@ -268,6 +269,8 @@ interface ImportContext {
   districtId: DistrictId;
   /** The import date in the district's time zone, as YYYY-MM-DD. */
   today: string;
+  /** The time of the import: the `lastSeenAt` of every principal source link it confirms. */
+  seenAt: string;
   issues: OneRosterIssue[];
   /**
    * The ID of a record in the feed: the one the source map already gives its sourcedId, else a
@@ -338,6 +341,7 @@ async function createContext(input: OneRosterFeedImportInput): Promise<ImportCon
     feed,
     districtId,
     today,
+    seenAt: input.now.toISOString(),
     issues,
     idFor: (kind, sourcedId) => known[kind].get(sourcedId) ?? derived[kind].get(sourcedId)!,
     retainedId: (kind, sourcedId) => {
@@ -632,6 +636,8 @@ function linkUsers(ctx: ImportContext): People {
       id,
       districtId,
       kind,
+      // The roster owns a roster principal's status: one it lists is active again.
+      status: "active",
       displayName: `${user.givenName} ${user.familyName}`,
       ...(email?.success ? { email: email.data } : {}),
     }));
@@ -716,8 +722,8 @@ function mapEnrollments(ctx: ImportContext, catalog: Catalog, people: People): E
 }
 
 /**
- * The source map after the import. Entries are only ever added: a roster principal the feed no
- * longer lists is marked inactive, unless it is held.
+ * The source map after the import. Entries are only ever added; a principal the feed lists has its
+ * link's `lastSeenAt` moved to this import.
  */
 function nextSourceMap(ctx: ImportContext, catalog: Catalog, people: People, enrollments: Enrollments): OneRosterSourceMap {
   const next = structuredClone(ctx.sources);
@@ -728,12 +734,9 @@ function nextSourceMap(ctx: ImportContext, catalog: Catalog, people: People, enr
   const enrollmentSources: Record<string, string> = next.enrollments;
   for (const [id, sourcedId] of enrollments.sources) enrollmentSources[id] = sourcedId;
 
-  const principals: Record<string, { sourcedId: string; active: boolean }> = next.principals;
+  const principals: Record<string, SourceLink> = next.principals;
   for (const [sourcedId, outcome] of people.outcomes) {
-    if (outcome.kind === "import") principals[outcome.id] = { sourcedId, active: true };
-  }
-  for (const [id, source] of Object.entries(principals)) {
-    if (!people.principals.has(id) && !people.held.has(id)) source.active = false;
+    if (outcome.kind === "import") principals[outcome.id] = { system: "oneroster", sourcedId, lastSeenAt: ctx.seenAt };
   }
   return next;
 }
@@ -813,19 +816,22 @@ function assemble(
   const enrollmentMerge = merge(current.enrollments, [...enrollments.records.values()], ctx.sources.enrollments, (before, after) =>
     before.status === "active" && after.status === "inactive"
   );
-  // A principal's activity lives in the source map, not the record, so its changes come from both.
-  const principals = merge(current.principals, [...people.principals.values()], ctx.sources.principals);
-  const added = new Set<string>(principals.changes.added);
-  const updated = new Set<string>(principals.changes.updated);
-  const principalChanges: EntityChanges<PrincipalId> = { added: [], updated: [], deactivated: [], retained: [] };
-  for (const [key, { active }] of Object.entries(sources.principals)) {
-    const id = key as PrincipalId;
-    const wasActive = ctx.sources.principals[id]?.active;
-    if (added.has(id)) principalChanges.added.push(id);
-    else if (wasActive === true && !active) principalChanges.deactivated.push(id);
-    else if ((wasActive === false && active) || updated.has(id)) principalChanges.updated.push(id);
-    else if (!active) principalChanges.retained.push(id);
-  }
+  // A roster principal the feed no longer lists becomes inactive, unless it is held. It is never
+  // removed, and one that is already inactive or graduated stays as it is.
+  const dropped = current.principals.flatMap((p) =>
+    Object.hasOwn(ctx.sources.principals, p.id) && !people.principals.has(p.id) && !people.held.has(p.id) && p.status === "active"
+      ? [{ ...p, status: "inactive" as const }]
+      : [],
+  );
+  const principals = merge(current.principals, [...people.principals.values(), ...dropped], ctx.sources.principals, (before, after) =>
+    before.status === "active" && after.status !== "active"
+  );
+  const statusOf = new Map(principals.records.map((p) => [p.id, p.status]));
+  // A held principal keeps its record and status, and is reported as nothing.
+  const principalChanges: EntityChanges<PrincipalId> = {
+    ...principals.changes,
+    retained: principals.changes.retained.filter((id) => statusOf.get(id) !== "active"),
+  };
 
   const snapshot: DistrictDirectorySnapshot = {
     district: current.district,

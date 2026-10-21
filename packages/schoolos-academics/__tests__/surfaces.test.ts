@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SchoolOsErrorBody } from "@schoolos/contracts";
+import { SchoolOsErrorBody, type Caller, type VerifiedPrincipal } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import {
   ACADEMIC_OPERATIONS,
@@ -7,8 +7,6 @@ import {
   createAcademicTools,
   ERROR_STATUS,
   type AcademicDirectory,
-  type Caller,
-  type VerifiedPrincipal,
 } from "../src/index.ts";
 import { directoryFor, NF, RB_ADMIN, ROSTER_EXTERNAL } from "./setup.ts";
 

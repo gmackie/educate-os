@@ -8,9 +8,10 @@ import {
   SchoolOsError,
   TermId,
   TermState,
+  type Caller,
   type SchoolOsErrorBody,
 } from "@schoolos/contracts";
-import type { AcademicDirectory, Caller } from "./directory.ts";
+import type { AcademicDirectory } from "./directory.ts";
 import {
   CoursePatch,
   NewCourse,

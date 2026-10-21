@@ -2,14 +2,17 @@ import { z } from "zod";
 import {
   ActivityId,
   ArtifactId,
+  ArtifactType,
+  ContentDigest,
   DistrictId,
   OfferingId,
   PrincipalId,
   RequestChannel,
+  RevisionId,
   RubricId,
   SubmissionId,
 } from "@schoolos/contracts";
-import { AiAssistance, ArtifactType, ContentDigest, ContentRef, MediaType, RevisionId } from "@schoolos/learning-artifacts";
+import { AiAssistance, ContentRef, MediaType } from "@schoolos/learning-artifacts";
 
 const idBody = "[a-z0-9][a-z0-9-]{0,62}";
 

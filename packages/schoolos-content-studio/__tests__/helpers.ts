@@ -1,5 +1,5 @@
 import { CatalogMirror, catalogSeedRelease, InMemoryCatalogMirrorStorage } from "@schoolos/catalog";
-import { DistrictDirectorySnapshot, DistrictId, PrincipalId, type Scope } from "@schoolos/contracts";
+import { DistrictDirectorySnapshot, DistrictId, PrincipalId, type Scope, type VerifiedPrincipal } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import { expect } from "vitest";
 import {
@@ -9,7 +9,6 @@ import {
   contentStudioAuthorizer,
   type ImportFetch,
   InMemoryContentStudioStorage,
-  type StudioSubject,
 } from "../src/index.ts";
 
 const D = DistrictId.parse("dst_northfield");
@@ -26,7 +25,7 @@ export const DIRECTORY = DistrictDirectorySnapshot.parse({
   ],
 });
 
-const subject = (id: string): StudioSubject => ({ principalId: PrincipalId.parse(id), districtId: D });
+const subject = (id: string): VerifiedPrincipal => ({ principalId: PrincipalId.parse(id), districtId: D });
 
 /** Teaches Biology, fall period 2. */
 export const MORGAN = subject("prn_nf-morgan-lee");

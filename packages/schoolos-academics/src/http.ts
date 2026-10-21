@@ -1,5 +1,5 @@
-import { SchoolOsError, type ErrorCode, type SchoolOsErrorBody } from "@schoolos/contracts";
-import type { AcademicDirectory, VerifiedPrincipal } from "./directory.ts";
+import { SchoolOsError, type ErrorCode, type SchoolOsErrorBody, type VerifiedPrincipal } from "@schoolos/contracts";
+import type { AcademicDirectory } from "./directory.ts";
 import { ACADEMIC_OPERATIONS, invokeOperation, type AcademicOperationName } from "./operations.ts";
 
 /** The HTTP status each error code is returned with. */

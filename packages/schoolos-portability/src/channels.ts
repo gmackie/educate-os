@@ -1,5 +1,4 @@
-import { DistrictId, ErrorCode, SchoolOsError, SchoolOsErrorBody } from "@schoolos/contracts";
-import type { Caller } from "@schoolos/academics";
+import { DistrictId, ErrorCode, SchoolOsError, SchoolOsErrorBody, type Caller } from "@schoolos/contracts";
 import { z } from "zod";
 import type { PortableIdentityLinkStore } from "./identity-link.ts";
 import type { ImportResult, StudentArchiveImporter, TransferChannelKind } from "./importer.ts";

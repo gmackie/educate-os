@@ -1,6 +1,5 @@
-import { PrincipalId, SchoolOsError } from "@schoolos/contracts";
+import { ContentItemId, PrincipalId, SchoolOsError } from "@schoolos/contracts";
 import { z } from "zod";
-import { ContentItemId } from "./ids.ts";
 
 /**
  * Where a content item stands in the ingest pipeline (roadmap §5.3). Nothing is usable by a class

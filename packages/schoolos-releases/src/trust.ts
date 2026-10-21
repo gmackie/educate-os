@@ -1,4 +1,4 @@
-import { SchoolOsError } from "@schoolos/contracts";
+import { SchoolOsError, UtcTimestamp } from "@schoolos/contracts";
 import {
   canonicalJson,
   Ed25519PublicKey,
@@ -7,7 +7,6 @@ import {
   parseWire,
   SignedEnvelope,
   type SigningIdentity,
-  UtcTimestamp,
   verifySignature,
 } from "@schoolos/fleet";
 import { z } from "zod";

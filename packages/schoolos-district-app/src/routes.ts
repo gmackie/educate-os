@@ -3,12 +3,16 @@
 // is written against the same table, so the two cannot drift.
 import { z } from "zod";
 import {
+  ActivityDefinitionId,
   ActivityId,
   ArtifactId,
+  ArtifactType,
   AssessmentRunId,
   CatalogCourse,
   ConfigRevisionId,
   ConfigurationRevision,
+  ContentDigest,
+  ContentItemId,
   CourseOffering,
   DistrictId,
   Enrollment,
@@ -16,6 +20,7 @@ import {
   PolicySettings,
   PrincipalId,
   PrincipalKind,
+  RevisionId,
   RoleAssignment,
   SubmissionId,
   TermId,
@@ -26,10 +31,7 @@ import {
   AiAssistance,
   Artifact,
   ArtifactRevision,
-  ArtifactType,
-  ContentDigest,
   RevisionContentInput,
-  RevisionId,
 } from "@schoolos/learning-artifacts";
 import {
   AssignmentBinding,
@@ -50,8 +52,8 @@ import {
   SubmissionReceipt,
   SubmissionSnapshot,
 } from "@schoolos/assessment";
-import { AlignmentInput, ContentItemId, type ContentItem, type QueueEntry, type StudioRelease } from "@schoolos/content-studio";
-import { ActivityContent, ActivityDefinition, ActivityDefinitionId, ActivityInstallation, TemplateInput } from "@schoolos/curriculum";
+import { AlignmentInput, type ContentItem, type QueueEntry, type StudioRelease } from "@schoolos/content-studio";
+import { ActivityContent, ActivityDefinition, ActivityInstallation, TemplateInput } from "@schoolos/curriculum";
 import { EvidenceContract } from "@schoolos/registry";
 import { AssessmentReport, IdempotencyKey, RubricDraft, RubricRelease, RunError, RunState } from "@schoolos/assessment-ci";
 import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type AiProjectionReport, type UsageReport } from "@schoolos/ai-governance";

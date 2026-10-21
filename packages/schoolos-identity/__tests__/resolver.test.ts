@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { SchoolOsError } from "@schoolos/contracts";
+import { SchoolOsError, type VerifiedIdentity } from "@schoolos/contracts";
 import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
-import { createDirectoryPrincipalResolver, type VerifiedIdentity } from "../src/index.ts";
+import { createDirectoryPrincipalResolver } from "../src/index.ts";
 import { NF_IDP, RB_IDP } from "./helpers.ts";
 
 const nf = createDirectoryPrincipalResolver(NORTHFIELD);

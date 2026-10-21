@@ -1,5 +1,6 @@
+import { ContentDigest } from "@schoolos/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { chooseBackend, ContentDigest, INLINE_TEXT_LIMIT_BYTES, MediaType } from "../src/index.ts";
+import { chooseBackend, INLINE_TEXT_LIMIT_BYTES, MediaType } from "../src/index.ts";
 import { DOCS_HOST, O, P, rejectsWith, setup } from "./setup.ts";
 
 const csv = MediaType.parse("text/csv");

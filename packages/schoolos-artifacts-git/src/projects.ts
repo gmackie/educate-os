@@ -3,15 +3,16 @@ import type { GitOid } from "@gadgets/gatekeeper-kit/git-objects";
 import { diffGitTrees, parseGitTreePayload, type GitDiffHunk, type TreeDiffSource } from "@gadgets/gatekeeper-kit/git-diff";
 import {
   ArtifactId,
+  RevisionId,
   SchoolOsError,
   WorkspaceId,
   type AuthorizationRequest,
+  type Caller,
   type TermState,
 } from "@schoolos/contracts";
-import type { AcademicStore, Caller } from "@schoolos/academics";
+import type { AcademicStore } from "@schoolos/academics";
 import {
   AiAssistance,
-  RevisionId,
   type Artifact,
   type ArtifactRevision,
   type LearningArtifacts,

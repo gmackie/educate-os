@@ -1,31 +1,5 @@
 import { z } from "zod";
-import { DistrictId, ExternalIdentity, PrincipalId, PrincipalKind } from "@schoolos/contracts";
-
-/**
- * What kind of credential proved an identity. A person signs in through an IdP; a service presents
- * a machine credential such as an Access service token. The two never resolve to each other's
- * principals, so a leaked service credential cannot act as a person and a person's sign-in cannot
- * pick up a service's grants.
- */
-export const CredentialKind = z.enum(["person", "service"]);
-/** A credential kind. */
-export type CredentialKind = z.infer<typeof CredentialKind>;
-
-/**
- * The only facts a principal resolver accepts from a token whose signature, issuer, audience and
- * expiry a verifier has already checked. Everything else a token carries (email, name, roles,
- * groups) is deliberately absent: it is not trusted for identity or authorization (ADR-0003).
- */
-export const VerifiedIdentity = z.strictObject({
-  /** The verified `iss`, exactly as the token carried it. */
-  issuer: ExternalIdentity.shape.issuer,
-  /** The verified stable subject. Opaque; never parsed or compared case-insensitively. */
-  subject: ExternalIdentity.shape.subject,
-  /** Which kind of credential produced the identity. */
-  credential: CredentialKind,
-});
-/** A verified identity. */
-export type VerifiedIdentity = z.infer<typeof VerifiedIdentity>;
+import { DistrictId, ExternalIdentity, PrincipalId, PrincipalKind, type CredentialKind, type VerifiedIdentity } from "@schoolos/contracts";
 
 /** The principal a verified identity resolved to, and the link that matched. */
 export const ResolvedPrincipal = z.strictObject({

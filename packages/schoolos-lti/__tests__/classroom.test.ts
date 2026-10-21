@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { DistrictId } from "@schoolos/contracts";
+import { DistrictId, RosterProjection } from "@schoolos/contracts";
 import { createDirectoryPrincipalResolver } from "@schoolos/identity";
 import {
   CLASSROOM_ISSUER,
   ClassroomAdapter,
   ClassroomGradeSink,
-  RosterProjection,
   type ClassroomCourseWork,
   type ClassroomProvider,
   type ClassroomRosterEntry,

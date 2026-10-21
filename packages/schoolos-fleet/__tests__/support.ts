@@ -1,10 +1,9 @@
-import { CapabilityId, type DistrictDirectorySnapshot } from "@schoolos/contracts";
+import { CapabilityId, InstanceId, type DistrictDirectorySnapshot } from "@schoolos/contracts";
 import {
   CommercialAccountId,
   DistrictAgent,
   InMemoryInstanceRegistryStorage,
   InMemorySequenceCounter,
-  InstanceId,
   InstanceRegistry,
   SigningIdentity,
 } from "../src/index.ts";

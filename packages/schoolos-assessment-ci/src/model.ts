@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { AssessmentRunId, RubricId } from "@schoolos/contracts";
+import { AssessmentRunId, ContentDigest, RubricId } from "@schoolos/contracts";
 import { CriterionId, RubricReleaseRef } from "@schoolos/assessment";
-import { ContentDigest } from "@schoolos/learning-artifacts";
 import { CheckVisibility } from "./rubric.ts";
 import { CriterionEvidence, EvaluatorRelease } from "./sdk.ts";
 

@@ -1,5 +1,5 @@
-import { checkImportUrl, ContentItemId } from "@schoolos/content-studio";
-import { PrincipalId } from "@schoolos/contracts";
+import { checkImportUrl } from "@schoolos/content-studio";
+import { ContentItemId, PrincipalId } from "@schoolos/contracts";
 import { z } from "zod";
 import { CartridgeRefusedError } from "./errors.ts";
 import { CartridgeMetadata, CartridgeProfile, type ManifestResource, type OrganizationItem, parseLtiLink, parseWebLink } from "./manifest.ts";

@@ -1,9 +1,8 @@
-import { CapabilityId, SchoolOsError } from "@schoolos/contracts";
+import { CapabilityId, InstanceId, SchoolOsError, UtcTimestamp } from "@schoolos/contracts";
 import { z } from "zod";
 import { parseWire, SignedEnvelope, verifyEnvelope } from "./envelope.ts";
 import type { Ed25519PublicKey } from "./identity.ts";
-import { InstanceId } from "./ids.ts";
-import { Sequence, UtcTimestamp } from "./protocol.ts";
+import { Sequence } from "./protocol.ts";
 
 /**
  * What the root has entitled an instance to, signed by the root. `revision` only ever increases,

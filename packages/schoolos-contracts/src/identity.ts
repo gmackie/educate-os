@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DistrictId, PrincipalId } from "./ids.ts";
+import { ProviderName, UtcTimestamp } from "./primitives.ts";
 import { Scope } from "./scope.ts";
 
 /**
@@ -35,11 +36,21 @@ export const PrincipalKind = z.enum(["student", "staff", "service"]);
 /** A principal kind. */
 export type PrincipalKind = z.infer<typeof PrincipalKind>;
 
+/**
+ * Where a principal is in its life. Only an `active` principal holds roles: an `inactive` one (a
+ * roster dropped them) or a `graduated` one keeps its identity, workspaces and work for retention,
+ * but no grant reaches it (roadmap §14, "Semester end / graduation"). No status deletes anything.
+ */
+export const PrincipalStatus = z.enum(["active", "inactive", "graduated"]);
+/** A principal status. */
+export type PrincipalStatus = z.infer<typeof PrincipalStatus>;
+
 /** A person or service that can be authenticated in a district and then authorized. */
 export const Principal = z.strictObject({
   id: PrincipalId,
   districtId: DistrictId,
   kind: PrincipalKind,
+  status: PrincipalStatus,
   displayName: z.string().min(1).max(200),
   /**
    * Profile metadata for display and notifications only. Never an authentication or lookup key,
@@ -50,6 +61,57 @@ export const Principal = z.strictObject({
 });
 /** A district principal. */
 export type Principal = z.infer<typeof Principal>;
+
+/**
+ * What kind of credential proved an identity. A person signs in through an IdP; a service presents
+ * a machine credential such as an Access service token. The two never resolve to each other's
+ * principals, so a leaked service credential cannot act as a person and a person's sign-in cannot
+ * pick up a service's grants.
+ */
+export const CredentialKind = z.enum(["person", "service"]);
+/** A credential kind. */
+export type CredentialKind = z.infer<typeof CredentialKind>;
+
+/**
+ * The only facts a principal resolver accepts from a token whose signature, issuer, audience and
+ * expiry a verifier has already checked. Everything else a token carries (email, name, roles,
+ * groups) is deliberately absent: it is not trusted for identity or authorization (ADR-0003).
+ */
+export const VerifiedIdentity = z.strictObject({
+  /** The verified `iss`, exactly as the token carried it. */
+  issuer: ExternalIdentity.shape.issuer,
+  /** The verified stable subject. Opaque; never parsed or compared case-insensitively. */
+  subject: ExternalIdentity.shape.subject,
+  /** Which kind of credential produced the identity. */
+  credential: CredentialKind,
+});
+/** A verified identity. */
+export type VerifiedIdentity = z.infer<typeof VerifiedIdentity>;
+
+/**
+ * Identifies an existing Workshop user: the string form of its `UserDurableObject` ID, which the
+ * kernel derives today from `idFromName(email)`. Opaque here. It is not a principal ID and never
+ * becomes one; migration only links a Workshop user to a principal once an administrator confirms.
+ */
+export const WorkshopUserId = z.string().regex(/^[0-9a-f]{1,128}$/, "expected a Workshop user Durable Object ID").brand<"workshopUser">();
+/** A Workshop user identifier. */
+export type WorkshopUserId = z.infer<typeof WorkshopUserId>;
+
+/**
+ * Links a SchoolOS record to the record an external roster or platform (OneRoster, an LTI
+ * platform's NRPS) holds for it. It is provenance, not identity: a person is found only through
+ * an {@link ExternalIdentity}, and a source link never authenticates or authorizes anyone.
+ */
+export const SourceLink = z.strictObject({
+  /** The external system, as named in the district's authority map (`external:<system>`). */
+  system: ProviderName,
+  /** The system's own identifier for the record (a OneRoster `sourcedId`). Opaque; never parsed. */
+  sourcedId: z.string().min(1).max(255),
+  /** When an applied sync last saw the system list the record. */
+  lastSeenAt: UtcTimestamp,
+});
+/** A source link. */
+export type SourceLink = z.infer<typeof SourceLink>;
 
 /**
  * Roles a principal can hold at a scope. Holding a role never grants anything on its own; the

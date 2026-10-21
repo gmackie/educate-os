@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { ArtifactId, Classification, OfferingId, PrincipalId, Scope, SubmissionId } from "@schoolos/contracts";
-import { ContentDigest, MediaType, RevisionId } from "@schoolos/learning-artifacts";
+import { ArtifactId, Classification, ContentDigest, OfferingId, PrincipalId, RevisionId, Scope, SubmissionId } from "@schoolos/contracts";
+import { MediaType } from "@schoolos/learning-artifacts";
 import { SourceRights } from "./archive.ts";
 
 /**

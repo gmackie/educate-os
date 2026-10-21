@@ -1,12 +1,12 @@
-import { type ErrorCode, Scope, SchoolOsError } from "@schoolos/contracts";
-import type { ContentStudio, StudioSubject } from "./service.ts";
+import { type ErrorCode, Scope, SchoolOsError, type VerifiedPrincipal } from "@schoolos/contracts";
+import type { ContentStudio } from "./service.ts";
 
 /**
  * Resolves the verified principal behind a request, from trusted server-side identity such as a
  * verified Cloudflare Access token (F04). Returns undefined when the request is not authenticated.
  * Nothing in the request body or query can name the subject.
  */
-export type ResolveSubject = (request: Request) => Promise<StudioSubject | undefined>;
+export type ResolveSubject = (request: Request) => Promise<VerifiedPrincipal | undefined>;
 
 /** The HTTP status each error code is returned with. */
 export const ERROR_STATUS: Readonly<Record<ErrorCode, number>> = {
@@ -105,7 +105,7 @@ export function createContentStudioHandler(options: {
   const { studio, resolveSubject } = options;
   const maxUploadBytes = options.maxUploadBytes ?? 20 * 1024 * 1024;
 
-  async function route(request: Request, subject: StudioSubject): Promise<Response> {
+  async function route(request: Request, subject: VerifiedPrincipal): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "");
     const method = request.method;

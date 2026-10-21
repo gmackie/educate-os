@@ -1,35 +1,10 @@
-import { z } from "zod";
-import { SchoolOsError } from "@schoolos/contracts";
+import { SchoolOsError, type AuthorityMap } from "@schoolos/contracts";
 
-/** The record types an {@link AuthorityMap} assigns a source of record to. */
+/** The record types an `AuthorityMap` assigns a source of record to. */
 export const DIRECTORY_ENTITY_KINDS = ["school", "term", "course", "offering", "enrollment", "principal"] as const;
 
 /** One of {@link DIRECTORY_ENTITY_KINDS}. */
 export type DirectoryEntityKind = (typeof DIRECTORY_ENTITY_KINDS)[number];
-
-/**
- * Which system owns a record type. `local` means SchoolOS is authoritative and the fallback service
- * accepts user writes. `external:<provider>` means a roster or LMS is, and only that provider's sync
- * adapter may write: SchoolOS keeps a projection, never a competing copy (roadmap §6.3).
- */
-export const Authority = z.union([
-  z.literal("local"),
-  z.templateLiteral(["external:", z.string().regex(/^[a-z][a-z0-9-]{0,62}$/)]),
-]);
-/** A source of record. */
-export type Authority = z.infer<typeof Authority>;
-
-/** The source of record for every directory record type. Every type must be stated; none defaults. */
-export const AuthorityMap = z.strictObject({
-  school: Authority,
-  term: Authority,
-  course: Authority,
-  offering: Authority,
-  enrollment: Authority,
-  principal: Authority,
-});
-/** The source of record for each directory record type. */
-export type AuthorityMap = z.infer<typeof AuthorityMap>;
 
 const PLURALS: Record<DirectoryEntityKind, string> = {
   school: "Schools",

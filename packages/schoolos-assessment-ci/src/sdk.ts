@@ -4,9 +4,9 @@
 // per rubric criterion, quotes the submitted work by revision and range rather than by copied
 // text, and an evaluator is a pinned, versioned release with a config schema and a step budget.
 import { z } from "zod";
-import { ArtifactId } from "@schoolos/contracts";
+import { ArtifactId, ArtifactType, ContentDigest, RevisionId } from "@schoolos/contracts";
 import { CriterionId } from "@schoolos/assessment";
-import { ArtifactType, ContentDigest, MediaType, RevisionId } from "@schoolos/learning-artifacts";
+import { MediaType } from "@schoolos/learning-artifacts";
 
 /**
  * Identifies an evaluator, independent of its release: lowercase dot-separated words such as

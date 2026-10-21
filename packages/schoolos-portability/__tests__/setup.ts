@@ -4,10 +4,11 @@ import {
   OfferingId,
   PrincipalId,
   SubmissionId,
+  type Caller,
   type DistrictDirectorySnapshot,
   type PolicySettings,
 } from "@schoolos/contracts";
-import { InMemoryAcademicStore, type Caller } from "@schoolos/academics";
+import { InMemoryAcademicStore } from "@schoolos/academics";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import {
   BackendArtifactStore,

@@ -1,4 +1,5 @@
 import {
+  ContentItemId,
   type Action,
   type AuthorizationRequest,
   type Authorizer,
@@ -6,8 +7,9 @@ import {
   type RequestChannel,
   Scope,
   SchoolOsError,
+  type VerifiedPrincipal,
 } from "@schoolos/contracts";
-import { type ContentItem, ContentItemId, type ContentStudio, randomIdBody, snapshotDigest, type StudioSubject, USABLE_STATES } from "@schoolos/content-studio";
+import { type ContentItem, type ContentStudio, randomIdBody, snapshotDigest, USABLE_STATES } from "@schoolos/content-studio";
 import { CurriculumPack, LearningUnit, type LearningUnitItem } from "@schoolos/registry";
 import { z } from "zod";
 import { DEFAULT_CARTRIDGE_LIMITS, type CartridgeLimits, readCartridge } from "./package.ts";
@@ -93,7 +95,7 @@ export class CartridgeImporter {
    *   and CartridgeRefusedError (`policy-violation`) for an unsafe or malformed package, in which
    *   case nothing is recorded.
    */
-  async importPackage(subject: StudioSubject, input: unknown, bytes: Uint8Array): Promise<CartridgeImport> {
+  async importPackage(subject: VerifiedPrincipal, input: unknown, bytes: Uint8Array): Promise<CartridgeImport> {
     const { fileName, targetScope } = parseInput(ImportCartridgeInput, input);
     await this.#require(subject, "create", targetScope);
     const plan = planCartridgeImport(await readCartridge(bytes, this.#options.limits ?? DEFAULT_CARTRIDGE_LIMITS));
@@ -112,7 +114,7 @@ export class CartridgeImporter {
   }
 
   /** An import's record: its links and their review status, tool references, outline and skipped report. */
-  async getImport(subject: StudioSubject, importId: unknown): Promise<CartridgeImport> {
+  async getImport(subject: VerifiedPrincipal, importId: unknown): Promise<CartridgeImport> {
     return this.#import(subject, importId, "read");
   }
 
@@ -124,7 +126,7 @@ export class CartridgeImporter {
    *   whose URL was refused at import, `conflict` for one already submitted, and whatever
    *   {@link ContentStudio.submitUrl} throws, in which case the link stays quarantined.
    */
-  async submitLinkForReview(subject: StudioSubject, importId: unknown, linkId: unknown): Promise<{ link: CartridgeLink; item: ContentItem }> {
+  async submitLinkForReview(subject: VerifiedPrincipal, importId: unknown, linkId: unknown): Promise<{ link: CartridgeLink; item: ContentItem }> {
     const record = await this.#import(subject, importId, "read");
     const link = record.links.find((candidate) => candidate.id === linkId);
     if (link === undefined) throw new SchoolOsError("not-found", "no such link in this import");
@@ -138,7 +140,7 @@ export class CartridgeImporter {
   }
 
   /** The cartridge a Content Studio item was submitted from, if any, among imports the subject can read. */
-  async findItemOrigin(subject: StudioSubject, contentItemId: unknown): Promise<ItemCartridgeOrigin | undefined> {
+  async findItemOrigin(subject: VerifiedPrincipal, contentItemId: unknown): Promise<ItemCartridgeOrigin | undefined> {
     const id = ContentItemId.safeParse(contentItemId);
     if (!id.success) return undefined;
     for (const record of await this.#options.storage.listImports()) {
@@ -155,7 +157,7 @@ export class CartridgeImporter {
    * releases its submitted links have reached so far. Tools are never included: they have no
    * release, and remain references until a registration exists.
    */
-  async proposeCurriculum(subject: StudioSubject, importId: unknown): Promise<CurriculumProposal> {
+  async proposeCurriculum(subject: VerifiedPrincipal, importId: unknown): Promise<CurriculumProposal> {
     const record = await this.#import(subject, importId, "read");
     const at = this.#now();
     const unresolved: CurriculumProposal["unresolved"] = [];
@@ -222,7 +224,7 @@ export class CartridgeImporter {
     return { units, pack, unresolved };
   }
 
-  async #import(subject: StudioSubject, importId: unknown, action: Action): Promise<CartridgeImport> {
+  async #import(subject: VerifiedPrincipal, importId: unknown, action: Action): Promise<CartridgeImport> {
     const id = CartridgeImportId.safeParse(importId);
     if (!id.success) throw NOT_FOUND();
     const record = await this.#options.storage.getImport(id.data);
@@ -232,7 +234,7 @@ export class CartridgeImporter {
     return record;
   }
 
-  async #allowed(subject: StudioSubject, action: Action, scope: Scope, id?: string): Promise<boolean> {
+  async #allowed(subject: VerifiedPrincipal, action: Action, scope: Scope, id?: string): Promise<boolean> {
     const decision = await this.#options.authorizer.authorize({
       subject,
       action,
@@ -242,7 +244,7 @@ export class CartridgeImporter {
     return decision.effect === "allow";
   }
 
-  async #require(subject: StudioSubject, action: Action, scope: Scope, id?: string): Promise<void> {
+  async #require(subject: VerifiedPrincipal, action: Action, scope: Scope, id?: string): Promise<void> {
     if (!(await this.#allowed(subject, action, scope, id))) throw new SchoolOsError("forbidden", `not permitted to ${action} here`);
   }
 }

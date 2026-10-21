@@ -1,9 +1,8 @@
-import { SchoolOsError } from "@schoolos/contracts";
+import { InstanceId, SchoolOsError } from "@schoolos/contracts";
 import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
 import { describe, expect, it } from "vitest";
 import {
   type HealthProbe,
-  InstanceId,
   KeyId,
   OwnershipToken,
   type SignedEnvelope,

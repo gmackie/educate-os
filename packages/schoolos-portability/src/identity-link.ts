@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { PrincipalId, SchoolOsError } from "@schoolos/contracts";
-import type { AcademicStore, Caller } from "@schoolos/academics";
+import { PrincipalId, SchoolOsError, type Caller } from "@schoolos/contracts";
+import type { AcademicStore } from "@schoolos/academics";
 import type { PolicyDecider } from "@schoolos/policy";
 import { SubjectRef } from "./archive.ts";
 import { DistrictLabel } from "./consent.ts";

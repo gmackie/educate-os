@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { ArtifactId, ID_PREFIXES, PrincipalId, SchoolOsError, WorkspaceId } from "@schoolos/contracts";
-import type { Caller } from "@schoolos/academics";
-import { ContentDigest, sha256Digest, type AiAssistance, type ArtifactType, type LearningArtifacts, type RevisionContentInput } from "@schoolos/learning-artifacts";
+import { ArtifactId, ContentDigest, ID_PREFIXES, PrincipalId, SchoolOsError, WorkspaceId, type ArtifactType, type Caller } from "@schoolos/contracts";
+import { sha256Digest, type AiAssistance, type LearningArtifacts, type RevisionContentInput } from "@schoolos/learning-artifacts";
 import type { WorkspaceDirectory } from "@schoolos/workspaces";
 import { ExportId, type ArtifactRecord, type WorkContext } from "./archive.ts";
 import { consentGrantDigest, sameParty, TransferConsent, TransferConsentId, TransferItemClass, TransferParty } from "./consent.ts";

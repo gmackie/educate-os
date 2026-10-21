@@ -1,5 +1,6 @@
+import type { VerifiedPrincipal } from "@schoolos/contracts";
 import { z } from "zod";
-import type { AcademicDirectory, VerifiedPrincipal } from "./directory.ts";
+import type { AcademicDirectory } from "./directory.ts";
 import { ACADEMIC_OPERATIONS, invokeOperation, type OperationOutcome } from "./operations.ts";
 
 /**

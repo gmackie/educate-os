@@ -2,12 +2,12 @@ import {
   checkDirectoryIntegrity,
   externalIdentityKey,
   SchoolOsError,
+  VerifiedIdentity,
   type DistrictDirectorySnapshot,
   type Principal,
 } from "@schoolos/contracts";
 import {
   credentialMatchesPrincipal,
-  VerifiedIdentity,
   type PrincipalResolver,
   type ResolvedPrincipal,
 } from "./verified-identity.ts";

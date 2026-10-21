@@ -4,8 +4,10 @@ import {
   SchoolOsError,
   type AcademicTerm,
   type Action,
+  type AuthorityMap,
   type AuthorizationRequest,
   type Authorizer,
+  type Caller,
   type CatalogCourse,
   type CourseId,
   type CourseOffering,
@@ -16,14 +18,13 @@ import {
   type IdKind,
   type OfferingId,
   type PrincipalId,
-  type RequestChannel,
   type ResourceRef,
   type School,
   type SchoolId,
   type TermId,
   type TermState,
 } from "@schoolos/contracts";
-import { assertLocallyWritable, type AuthorityMap } from "./authority.ts";
+import { assertLocallyWritable } from "./authority.ts";
 import {
   CoursePatch,
   NewCourse,
@@ -39,21 +40,6 @@ import {
 import type { AcademicStore } from "./store.ts";
 import type { z } from "zod";
 import { assertTermTransition, DirectoryValidationError, validateDirectory, zodIssues } from "./validation.ts";
-
-/** A principal whose identity the transport has already verified. */
-export type VerifiedPrincipal = AuthorizationRequest["subject"];
-
-/**
- * Who is calling and through which surface. `principal` must come from verified authentication
- * (the HTTP handler's `resolvePrincipal`, the MCP session), never from a request body or a tool
- * argument.
- */
-export interface Caller {
-  /** The verified principal. */
-  principal: VerifiedPrincipal;
-  /** The surface the request arrived through. Every surface is authorized identically. */
-  channel: RequestChannel;
-}
 
 /** What {@link AcademicDirectory} is built from. */
 export interface AcademicDirectoryOptions {

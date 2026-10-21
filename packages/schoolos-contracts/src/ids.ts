@@ -23,6 +23,14 @@ export const ID_PREFIXES = {
   rubric: "rbr",
   assessmentRun: "asr",
   configRevision: "cfg",
+  revision: "rev",
+  activityDefinition: "adf",
+  contentItem: "cit",
+  resource: "rsc",
+  curriculumPack: "pck",
+  learningUnit: "unt",
+  evidenceContract: "evc",
+  instance: "ins",
 } as const;
 
 /** The entity kinds that have their own identifier type. */
@@ -118,3 +126,53 @@ export type CapabilityId = z.infer<typeof CapabilityId>;
 export const ConfigRevisionId = idSchema("configRevision");
 /** A configuration revision identifier. */
 export type ConfigRevisionId = z.infer<typeof ConfigRevisionId>;
+
+/**
+ * Identifies one immutable revision of a learning artifact. A submission snapshot and a receipt
+ * name the revision they cover, so a later save cannot change what was submitted.
+ */
+export const RevisionId = idSchema("revision");
+/** A revision identifier. */
+export type RevisionId = z.infer<typeof RevisionId>;
+
+/**
+ * Identifies an activity definition, across all of its versions. An installed activity is
+ * identified separately, by {@link ActivityId}.
+ */
+export const ActivityDefinitionId = idSchema("activityDefinition");
+/** An activity definition identifier. */
+export type ActivityDefinitionId = z.infer<typeof ActivityDefinitionId>;
+
+/** Identifies one content item: one imported revision of a source as it moves through ingest. */
+export const ContentItemId = idSchema("contentItem");
+/** A content item identifier. */
+export type ContentItemId = z.infer<typeof ContentItemId>;
+
+/** Identifies a resource in the learning resource registry. Each of its releases is versioned separately. */
+export const ResourceId = idSchema("resource");
+/** A resource identifier. */
+export type ResourceId = z.infer<typeof ResourceId>;
+
+/** Identifies a curriculum pack in the registry. */
+export const CurriculumPackId = idSchema("curriculumPack");
+/** A curriculum pack identifier. */
+export type CurriculumPackId = z.infer<typeof CurriculumPackId>;
+
+/** Identifies a learning unit in the registry. */
+export const LearningUnitId = idSchema("learningUnit");
+/** A learning unit identifier. */
+export type LearningUnitId = z.infer<typeof LearningUnitId>;
+
+/** Identifies an evidence contract in the registry. Each of its versions is numbered separately. */
+export const EvidenceContractId = idSchema("evidenceContract");
+/** An evidence contract identifier. */
+export type EvidenceContractId = z.infer<typeof EvidenceContractId>;
+
+/**
+ * Identifies one SchoolOS deployment in the root's fleet registry. The district chooses it, and it
+ * is opaque to the root: nothing derives it from a person, and it is distinct from the district's
+ * own {@link DistrictId}, so the root never learns district-local identifiers.
+ */
+export const InstanceId = idSchema("instance");
+/** An instance identifier. */
+export type InstanceId = z.infer<typeof InstanceId>;

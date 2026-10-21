@@ -6,15 +6,14 @@ import {
   contentStudioAuthorizer,
   type ImportFetch,
   InMemoryContentStudioStorage,
-  type StudioSubject,
 } from "@schoolos/content-studio";
-import { DistrictId, PrincipalId, type Scope } from "@schoolos/contracts";
+import { DistrictId, PrincipalId, type Scope, type VerifiedPrincipal } from "@schoolos/contracts";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import { expect } from "vitest";
 import { CartridgeImporter, type CartridgeLimits, InMemoryCartridgeImportStorage } from "../src/index.ts";
 
 const D = DistrictId.parse("dst_northfield");
-const subject = (id: string): StudioSubject => ({ principalId: PrincipalId.parse(id), districtId: D });
+const subject = (id: string): VerifiedPrincipal => ({ principalId: PrincipalId.parse(id), districtId: D });
 
 /** Teaches Biology, fall period 2. */
 export const MORGAN = subject("prn_nf-morgan-lee");

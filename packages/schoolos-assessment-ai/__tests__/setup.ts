@@ -1,6 +1,6 @@
 import { expect } from "vitest";
-import { ActivityId, DistrictId, OfferingId, PrincipalId, RubricId, type PolicySettings, type RequestChannel } from "@schoolos/contracts";
-import { InMemoryAcademicStore, type Caller } from "@schoolos/academics";
+import { ActivityId, DistrictId, OfferingId, PrincipalId, RubricId, type Caller, type PolicySettings, type RequestChannel } from "@schoolos/contracts";
+import { InMemoryAcademicStore } from "@schoolos/academics";
 import { AssessmentService, InMemoryAssessmentRecordStore } from "@schoolos/assessment";
 import {
   AssessmentCi,

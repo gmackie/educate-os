@@ -1,27 +1,20 @@
 import type {
   DistrictDirectorySnapshot,
-  DistrictId,
   PolicySettings,
+  PrincipalFacts,
   PrincipalId,
-  PrincipalKind,
-  RoleAssignment,
   Scope,
 } from "@schoolos/contracts";
 import type { AcademicStore } from "@schoolos/academics";
 
-/** What the engine knows about a subject. It comes from the directory, never from the request. */
-export interface SubjectFacts {
+/**
+ * What the engine knows about a subject. It comes from the directory, never from the request. The
+ * roles in force are the role assignments that still hold, plus one role at each offering the
+ * principal is actively enrolled in.
+ */
+export interface SubjectFacts extends PrincipalFacts {
   /** The principal. */
   principalId: PrincipalId;
-  /** The principal's district. */
-  districtId: DistrictId;
-  /** Whether the principal is a student, staff member or service. */
-  kind: PrincipalKind;
-  /**
-   * The roles in force: role assignments that still hold, plus one role at each offering the
-   * principal is actively enrolled in.
-   */
-  roles: RoleAssignment[];
 }
 
 /**
@@ -51,6 +44,8 @@ export interface PolicySource {
  *   active enrollment in that offering with the same role. Otherwise a teacher or student dropped
  *   by a roster sync would keep live access through a stale assignment (A01 open question).
  * - Local grants, and roster assignments at school or district level, hold as stored.
+ * - A principal that is not `active` (inactive or graduated) holds none of them: its classroom and
+ *   local grants end with its status, while its records and work are kept.
  */
 export function subjectFactsFrom(
   snapshot: DistrictDirectorySnapshot,
@@ -58,6 +53,7 @@ export function subjectFactsFrom(
 ): SubjectFacts | undefined {
   const principal = snapshot.principals.find((p) => p.id === principalId);
   if (principal === undefined) return undefined;
+  if (principal.status !== "active") return { principalId, districtId: principal.districtId, kind: principal.kind, roles: [] };
   const active = snapshot.enrollments.filter((e) => e.principalId === principalId && e.status === "active");
 
   const roles = snapshot.roleAssignments.filter(({ principalId: holder, role, scope, source }) => {

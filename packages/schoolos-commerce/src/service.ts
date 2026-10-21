@@ -1,15 +1,12 @@
-import { SchoolOsError } from "@schoolos/contracts";
+import { InstanceId, OpaqueCode, SchoolOsError, UtcTimestamp } from "@schoolos/contracts";
 import {
   CommercialAccountId,
   Entitlement,
   Heartbeat,
-  InstanceId,
-  OpaqueCode,
   parseWire,
   type SignedEnvelope,
   signEnvelope,
   type SigningIdentity,
-  UtcTimestamp,
 } from "@schoolos/fleet";
 import { z } from "zod";
 import {

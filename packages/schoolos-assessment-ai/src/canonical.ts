@@ -1,6 +1,7 @@
 // Canonical JSON digests, as `@schoolos/assessment-ci` takes them (its `canonical.ts`, which that
 // package does not export).
-import { sha256Digest, type ContentDigest } from "@schoolos/learning-artifacts";
+import type { ContentDigest } from "@schoolos/contracts";
+import { sha256Digest } from "@schoolos/learning-artifacts";
 
 const encoder = new TextEncoder();
 

@@ -64,6 +64,7 @@ export function northfieldWithAccess(): DistrictDirectorySnapshot {
         id: NF_SERVICE,
         districtId: base.district.id,
         kind: "service",
+        status: "active",
         displayName: "Roster sync",
         externalIdentities: [
           { districtId: base.district.id, issuer: NF_ACCESS, subject: accessServiceTokenSubject(NF_SERVICE_CLIENT_ID) },

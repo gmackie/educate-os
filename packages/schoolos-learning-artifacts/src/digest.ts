@@ -1,4 +1,4 @@
-import { ContentDigest } from "./model.ts";
+import { ContentDigest } from "@schoolos/contracts";
 
 const encoder = new TextEncoder();
 

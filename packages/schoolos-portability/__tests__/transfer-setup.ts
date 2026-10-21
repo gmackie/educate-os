@@ -1,5 +1,5 @@
-import { DistrictDirectorySnapshot, DistrictId, PrincipalId, type PolicySettings } from "@schoolos/contracts";
-import { InMemoryAcademicStore, type Caller } from "@schoolos/academics";
+import { DistrictDirectorySnapshot, DistrictId, PrincipalId, type Caller, type PolicySettings } from "@schoolos/contracts";
+import { InMemoryAcademicStore } from "@schoolos/academics";
 import { RIVERBEND } from "@schoolos/fixtures";
 import {
   BackendArtifactStore,
@@ -63,6 +63,7 @@ function riverbendWithAmara(): DistrictDirectorySnapshot {
     id: PrincipalId.parse("prn_rb-student-amara"),
     districtId: RB,
     kind: "student",
+    status: "active",
     displayName: "Amara Okafor",
     externalIdentities: [{ districtId: RB, issuer: "https://login.riverbend.example", subject: "rb-s-777" }],
   } as DistrictDirectorySnapshot["principals"][number]);

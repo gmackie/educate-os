@@ -1,7 +1,8 @@
 // The root side of an outage: a district's entitlement cache holding a valid entitlement from the
 // root, and a root client that fails every call.
+import { InstanceId } from "@schoolos/contracts";
 import type { DistrictId } from "@schoolos/contracts";
-import { EntitlementCache, InMemoryEntitlementStore, InstanceId, signEnvelope, SigningIdentity } from "@schoolos/fleet";
+import { EntitlementCache, InMemoryEntitlementStore, signEnvelope, SigningIdentity } from "@schoolos/fleet";
 
 const DAY_MS = 86_400_000;
 

@@ -1,15 +1,18 @@
 import {
+  AuthorityMap,
   SchoolOsError,
   type Action,
   type Authorizer,
+  type Caller,
   type DistrictDirectorySnapshot,
   type DistrictId,
   type OfferingId,
   type PolicySettings,
   type ResourceRef,
+  type VerifiedIdentity,
 } from "@schoolos/contracts";
-import { createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal, type VerifiedIdentity } from "@schoolos/identity";
-import { AcademicDirectory, AuthorityMap, type Caller } from "@schoolos/academics";
+import { createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@schoolos/identity";
+import { AcademicDirectory } from "@schoolos/academics";
 import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule } from "@schoolos/policy";
 import { RetentionPolicy, WorkspaceDirectory } from "@schoolos/workspaces";
 import { LearningArtifacts } from "@schoolos/learning-artifacts";

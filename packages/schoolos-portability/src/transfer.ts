@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { SchoolOsError } from "@schoolos/contracts";
-import { ContentDigest, sha256Digest } from "@schoolos/learning-artifacts";
+import { ContentDigest, SchoolOsError } from "@schoolos/contracts";
+import { sha256Digest } from "@schoolos/learning-artifacts";
 import { ExportId, SubjectRef } from "./archive.ts";
 import { consentGrantDigest, TransferConsent, TransferConsentId, TransferParty } from "./consent.ts";
 import { fromBase64Url, signEnvelope, SignedEnvelope, toBase64Url, type SigningIdentity } from "./signing.ts";
