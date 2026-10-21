@@ -128,6 +128,7 @@ export class AssessmentCi {
   #work(caller: Caller, submission: SubmissionSnapshot): SubmittedWork {
     return {
       items: submission.items,
+      offeringId: submission.offeringId,
       readText: async (item) => {
         const { content } = await this.#assessment.readSubmittedContent(caller, submission.id, item.artifactId);
         if (content.kind !== "text") throw new SchoolOsError("unavailable", `Artifact ${item.artifactId} is not text.`);

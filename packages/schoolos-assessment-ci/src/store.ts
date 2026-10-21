@@ -13,6 +13,17 @@ export interface AssessmentRunStore {
   insert(run: AssessmentRun): Promise<AssessmentRun>;
   /** Stores `next` if the stored run is still at `expectedRevision`, and throws `conflict` if not. */
   replace(next: AssessmentRun, expectedRevision: number): Promise<void>;
+  /**
+   * The queue: runs waiting for a worker, oldest queued first, at most `limit`. That is every
+   * `queued` run, and every `running` run that started before `staleBefore`, whose worker's lease
+   * has expired.
+   */
+  runnable(staleBefore: Date, limit: number): Promise<AssessmentRun[]>;
+}
+
+/** Whether `run` waits for a worker: queued, or running on a lease that expired before `staleBefore`. */
+export function isRunnable(run: AssessmentRun, staleBefore: Date): boolean {
+  return run.state === "queued" || (run.state === "running" && Date.parse(run.startedAt ?? run.queuedAt) < staleBefore.getTime());
 }
 
 /** What a run is, which never changes. */
@@ -67,5 +78,13 @@ export class InMemoryAssessmentRunStore implements AssessmentRunStore {
     if (current.revision !== expectedRevision) throw new SchoolOsError("conflict", `Run ${next.id} changed since it was read.`);
     assertRunTransition(current, next);
     this.#runs.set(next.id, JSON.stringify(AssessmentRun.parse(next)));
+  }
+
+  async runnable(staleBefore: Date, limit: number): Promise<AssessmentRun[]> {
+    return [...this.#runs.values()]
+      .map((stored) => AssessmentRun.parse(JSON.parse(stored)))
+      .filter((run) => isRunnable(run, staleBefore))
+      .toSorted((a, b) => a.queuedAt.localeCompare(b.queuedAt) || a.id.localeCompare(b.id))
+      .slice(0, limit);
   }
 }

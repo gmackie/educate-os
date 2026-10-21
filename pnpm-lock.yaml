@@ -1557,25 +1557,34 @@ importers:
       '@schoolos/assessment':
         specifier: workspace:*
         version: link:../schoolos-assessment
+      '@schoolos/cartridge':
+        specifier: workspace:*
+        version: link:../schoolos-cartridge
       '@schoolos/contracts':
         specifier: workspace:*
         version: link:../schoolos-contracts
       '@schoolos/learning-artifacts':
         specifier: workspace:*
         version: link:../schoolos-learning-artifacts
+      '@schoolos/policy':
+        specifier: workspace:*
+        version: link:../schoolos-policy
       zod:
         specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
+      '@cloudflare/vitest-plugin':
+        specifier: 'catalog:'
+        version: 1.4.3(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)(vitest@5.0.5)
+      '@cloudflare/workers-types':
+        specifier: 'catalog:'
+        version: 5.20261005.1
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
       '@schoolos/fixtures':
         specifier: workspace:*
         version: link:../schoolos-fixtures
-      '@schoolos/policy':
-        specifier: workspace:*
-        version: link:../schoolos-policy
       '@schoolos/workspaces':
         specifier: workspace:*
         version: link:../schoolos-workspaces

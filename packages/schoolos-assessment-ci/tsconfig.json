@@ -13,6 +13,7 @@
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true
   },
-  "include": ["src", "__tests__"],
-  "exclude": ["dist", "node_modules"]
+  "include": ["src", "__tests__", "vitest.worker.config.ts"],
+  // The workerd suite runs on the Workers runtime; see vite.config.ts.
+  "exclude": ["dist", "node_modules", "__tests__/workerd"]
 }

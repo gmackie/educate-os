@@ -36,6 +36,7 @@ import {
   type ExecutionProfile,
   type RubricDraft,
   type RubricRelease,
+  type RubricSigningPolicy,
 } from "../src/index.ts";
 
 const FLOOR: PolicySettings = {
@@ -97,8 +98,15 @@ export function setup() {
   const registry = builtinRegistry();
 
   /** Assessment CI over the shared stores with `registry` and `profiles`, as a district would after changing them. */
-  function ciWith(options: { registry?: EvaluatorRegistry; profiles?: readonly ExecutionProfile[] } = {}) {
-    const runs = new AssessmentRuns({ runs: runStore, rubrics, registry: options.registry ?? registry, profiles: options.profiles ?? [DETERMINISTIC_PROFILE], now });
+  function ciWith(options: { registry?: EvaluatorRegistry; profiles?: readonly ExecutionProfile[]; signing?: RubricSigningPolicy } = {}) {
+    const runs = new AssessmentRuns({
+      runs: runStore,
+      rubrics,
+      registry: options.registry ?? registry,
+      profiles: options.profiles ?? [DETERMINISTIC_PROFILE],
+      ...(options.signing === undefined ? {} : { signing: options.signing }),
+      now,
+    });
     return { runs, ci: new AssessmentCi({ assessment, runs }) };
   }
 
@@ -147,7 +155,7 @@ export function setup() {
     return { release, receipt, artifacts: created, workspaceId: workspace.id };
   }
 
-  return { assessment, artifacts, workspaces, rubrics, runStore, registry, publishRubric, submitWork, ciWith, ...ciWith() };
+  return { academics, policy, assessment, artifacts, workspaces, rubrics, runStore, registry, publishRubric, submitWork, ciWith, ...ciWith() };
 }
 
 /** Expects a promise to reject with a SchoolOS error code. */
