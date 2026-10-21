@@ -1,0 +1,26 @@
+{
+  "name": "@schoolos/assessment-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS optional Assessment CI backends (roadmap E03): AI semantic feedback through a governed model port with excerpt-verified, ai-suggested evidence; an optional execution sandbox that fails closed where the district plan lacks it; teacher overrides and releases; and pure teacher and student rubric report view models. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@schoolos/academics": "workspace:*",
+    "@schoolos/assessment": "workspace:*",
+    "@schoolos/assessment-ci": "workspace:*",
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/learning-artifacts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@schoolos/policy": "workspace:*",
+    "@schoolos/workspaces": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}
