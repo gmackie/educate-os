@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { LTI_CLAIM } from "../src/index.ts";
+import { LTI_CLAIM, STATE_COOKIE_BINDING } from "../src/index.ts";
 import type { ClaimOverrides, FakePlatform } from "./fake-platform.ts";
 import { createWorld, rejection, SHARED_SUB, startLogin, TOOL, type World } from "./helpers.ts";
 
 async function launch(world: World, platform: FakePlatform, sub: string, contextId: string, overrides: ClaimOverrides = {}) {
   const { state, nonce } = await startLogin(world, platform);
   const idToken = await platform.idToken({ sub, contextId, nonce, targetLinkUri: `${TOOL}/lti/launch`, overrides });
-  return (await world.broker.launch(idToken, state)).launch;
+  return (await world.broker.launch(idToken, state, STATE_COOKIE_BINDING)).launch;
 }
 
 const ROLE = "http://purl.imsglobal.org/vocab/lis/v2/";

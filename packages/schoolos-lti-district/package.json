@@ -1,0 +1,29 @@
+{
+  "name": "@schoolos/lti-district",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The district side of SchoolOS's LTI integration: the broker's stores (login state, deep linking sessions, registrations, pending dynamic registrations, the passback ledger, context services, grade routes and columns) over one keyed record table, with a Durable Object SQLite table at `./durable-object`; NRPS roster projections applied through AcademicSync; teacher approvals read from E01 official grade versions; and the policy-authorized admin service that approves registrations and builds grade routes. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./durable-object": "./src/durable-object.ts"
+  },
+  "dependencies": {
+    "@schoolos/academics": "workspace:*",
+    "@schoolos/assessment": "workspace:*",
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/curriculum": "workspace:*",
+    "@schoolos/identity": "workspace:*",
+    "@schoolos/lti": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@schoolos/policy": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

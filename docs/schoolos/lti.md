@@ -32,10 +32,35 @@ A launch resolves to `ResolvedLaunch { principal, offeringId, activity?, message
 ## Registrations
 
 A `PlatformRegistration` is owned by one district and identified by `(issuer, clientId)`, because
-Canvas Cloud uses one issuer (`https://canvas.instructure.com`) for every customer. It lists the
-deployment IDs launches may come through, the platform's endpoints, the LTI contexts it maps to
-offerings, and the links it maps to activities. The district must also list the platform issuer in
+Canvas Cloud uses one issuer (`https://canvas.instructure.com`) for every customer. It names the
+`provider` the platform is in the district's authority map (`external:canvas`) and grade
+authorities (`lms:canvas`), and lists the deployment IDs launches may come through, the platform's
+endpoints, the LTI contexts it maps to offerings, and the links it maps to activities (each inside
+an offering the registration maps). The district must also list the platform issuer in
 `trustedIssuers`, and each person must hold an identity link `(district, issuer, sub)`.
+
+### Dynamic registration
+
+A platform can register itself (LTI Dynamic Registration 1.0) instead of an administrator copying
+five URLs, but only by invitation, and only into a waiting room:
+
+1. A district admin asks `LtiAdminService.inviteRegistration` for a URL. It carries a single-use
+   invitation that expires in an hour, bound to the district and the admin.
+2. The LMS administrator pastes it into the platform, which opens it with its own
+   `openid_configuration` and `registration_token`. `GET /lti/register` consumes the invitation,
+   reads the platform's configuration, and registers the tool asking only for `iss` and `sub` (and
+   Canvas's `anonymous` privacy level). Every URL must be https, redirects are never followed, and a
+   platform's error body is never repeated.
+3. The result is a `PendingPlatformRegistration`, kept apart from registrations; the broker never
+   reads it, so it cannot start a login. The platform must return a non-empty client ID and
+   deployment ID, or nothing is recorded.
+4. A district admin approves it with `approveRegistration(id, { provider, offerings, activityLinks })`,
+   or rejects it. Only then is it saved as a `PlatformRegistration`, after the directory checks:
+   the issuer must be trusted and every mapped offering and linked activity must exist.
+
+PlayTrek's version of this endpoint was first open to anyone and later guarded by one
+operator-wide secret, stored the platform immediately with a `pending` flag the launch route had to
+remember to check, and accepted a missing deployment ID as `""`.
 
 An activity is selected only by an explicit link in the registration, matched inside the launch's
 offering:
@@ -88,11 +113,42 @@ through the broker in `canvas.test.ts`.
 - The state, nonce and deep linking session stores must take values atomically
   (`SingleUseStore.take`): a Durable Object or a `DELETE … RETURNING` row, not eventually consistent
   KV. The in-memory stores are for tests and a single isolate.
-- `/lti/launch` requires the `__Host-lti-state-<state>` cookie set by `/lti/login`, which stops an
-  attacker from signing a victim's browser into the attacker's account. It is `SameSite=None;
-  Partitioned` so it works in the Canvas iframe in browsers with partitioned cookies. Browsers that
-  block third-party cookies outright will refuse launches in an iframe until the LTI client-side
-  storage fallback lands; until then, place the tool to open in a new window there.
+- `/lti/launch` requires proof that it is posted by the browser that started the login, which
+  stops an attacker from signing a victim's browser into the attacker's account (login CSRF). The
+  proof is the `__Host-lti-state-<state>` cookie set by `/lti/login` (`SameSite=None;
+  Partitioned`, so it works in the Canvas iframe where cookies are partitioned) or, where cookies
+  are blocked outright, the platform storage fallback below.
+
+## Blocked cookies: the platform storage fallback
+
+When login initiation carries `lti_storage_target` (Canvas sends `post_message_forwarding`), the
+platform offers client-side storage over `postMessage` (1EdTech "LTI Client Side postMessages").
+The broker then binds the launch to the browser through it:
+
+```text
+/lti/login    state + nonce + a fresh secret; the login state keeps only SHA-256(secret)
+   ◀── page: lti.put_data {key: schoolos_lti_<state>, value: secret} to the platform frame,
+             then follow the OIDC redirect (also sets the state cookie, in case it works)
+/lti/launch   platform's form post, no cookie, lti_storage_target present: nothing is consumed
+   ◀── page: lti.get_data {key} from the platform frame, then re-post the launch with the value
+/lti/launch   re-post with lti_storage_value, Origin = the tool: the state is consumed and the
+              value's digest must match the login's
+```
+
+- The platform keeps that storage per tool origin, in that browser. A secret put during an
+  attacker's login is in the attacker's browser, not the victim's.
+- The attacker does know their own secret, so a value counts only on a post whose `Origin` is the
+  tool's own (and `Sec-Fetch-Site`, when sent, is `same-origin`): only the tool's page can make
+  that post, and a browser cannot forge `Origin`. The page therefore uses
+  `Referrer-Policy: same-origin`, because `no-referrer` would make the browser send `Origin: null`.
+- Messages go only to, and replies are read only from, the origin of the registration's OIDC
+  endpoint (`authLoginUrl`), from the target frame, for the request's message ID and key.
+- The page script is a fixed string admitted by its CSP hash (`PLATFORM_STORAGE_SCRIPT_HASH`;
+  a test recomputes it). Each page passes its settings in a JSON `<script type="application/json">`
+  element, escaped so nothing in it can close the element.
+- If the platform does not answer within five seconds, the login page follows the redirect anyway
+  (the cookie may still work) and the launch page asks the person to open the tool in a new window.
+- A wrong secret burns the state, as any failed launch does.
 
 # LTI Advantage services and grade passback (I02)
 
@@ -183,7 +239,8 @@ score even if two sends race. Progress-only updates are never sent.
 **Deployment requirement.** `PassbackLedger.claim` must be atomic per key (a Durable Object or a
 single transaction). A claim is a two-minute lease: if the process dies after the platform accepted
 a score but before the ledger recorded it, a retry after the lease sends it again with the same
-timestamp. The in-memory ledger, approval store and route store are for tests and one isolate.
+timestamp. The in-memory ledger, approval store and route store are for tests and one isolate;
+`@schoolos/lti-district` provides the durable ones (below).
 
 ## Google Classroom adapter shell
 
@@ -198,3 +255,65 @@ There is no real Google client and nothing in SchoolOS calls Google. The real in
 on verified Google API access (OAuth verification of the Classroom scopes) and Google's partner
 terms. Classroom only lets a project grade coursework the same project created, so a real client
 will also create the coursework it grades. Tests use an in-memory fake provider.
+
+# District wiring (SCHO-60, SCHO-76)
+
+`@schoolos/lti-district` (`packages/schoolos-lti-district`) is what a district Worker hosts around
+the broker. Mounting `createLtiHandler` in the district Worker is a later change (SCHO-108); this
+package supplies every piece it needs.
+
+## Durable stores
+
+Every store is written once over a `RecordTable`: synchronous keyed JSON records in named
+collections, with `atomically(step)` for read-decide-write steps that have no `await` inside. In the
+district Worker the table is `DurableObjectRecordTable` (`@schoolos/lti-district/durable-object`),
+one SQLite table in the district's Durable Object; `InMemoryRecordTable` is for tests.
+
+| Store | What makes it safe |
+| --- | --- |
+| `TableSingleUseStore` (login states, deep linking sessions, registration invitations) | `take` is one `DELETE … RETURNING`; of 50 concurrent takes one gets the value. Expired rows are purged on `put`. |
+| `TableRegistrationStore` | `save` and `addActivityLink` check the directory first (`directoryRegistrationTargets`): trusted issuer, existing offerings, activities installed in the link's offering. Links are appended in one atomic step, so concurrent deep links never overwrite each other. |
+| `TablePendingRegistrationStore` | Separate from registrations; the broker never reads it. |
+| `TablePassbackLedger` | `claim` runs the shared `decidePassbackClaim` rule and records it atomically. |
+| `TableContextServicesStore` | Keeps the newest services per (offering, platform context); an older launch cannot bring back replaced URLs. |
+| `TableGradeRouteStore`, `TableGradeColumnStore` | A column bound to one assignment cannot be moved to another. |
+| `TableRosterSourceStore` | A projection no newer than the last applied is refused. |
+
+A stored record that does not match its schema is an error (`LtiStoredRecordError`), never a
+default. The workerd suite (`__tests__/workerd/`) runs the stores against real Durable Object
+SQLite, concurrent requests to one object and restarts.
+
+## Rosters
+
+`LtiRosterSync.apply(projection)` applies an NRPS `RosterProjection` through `AcademicSync`, only
+where the authority map names the registration's `provider` for enrollments. Members are found by
+identity link; roles come from the district (`districtRosterRoles`: an existing enrollment, a
+roster role assignment at the offering, or `student` for a student principal), so a staff member the
+district has not placed in the offering is held back. An enrollment is active only while the
+platform lists the member as active and the principal's own `status` is `active`. Every enrollment
+the roster writes gets a contracts `SourceLink` (system = provider, `sourcedId` = the platform
+subject); one the roster later drops, or lists as inactive or deleted, becomes inactive. Nothing is
+deleted, and a principal's own status is never changed by one course's roster. An enrollment that
+existed before the first sync is adopted by the source once the roster lists it.
+
+## Approvals and grade routes
+
+`OfficialGradeApprovals` is the passback gate's approval store: a column is bound to an E01
+assignment (`bindGradeColumn`), and the approval is that assignment's `OfficialGradeVersion` for the
+student and version, read from the assessment records at passback time.
+
+`recordLaunchServices` (called from the launch callbacks) records `LtiContextServices` per
+offering. `LtiAdminService.routeGradesToPlatform` builds an `LtiGradeRoute`
+(`authority: lms:<provider>`) from them, for a context the registration maps to the offering and
+that offers AGS; `keepGradesLocal` sets a local route.
+
+## Authorization
+
+`LtiAdminService` decides every call with the policy engine: registrations (invite, list, approve,
+reject) need `update` (or `read`) on the district, which the default rules give a district admin;
+grade routes, columns and the services list need `update` on the offering (a district admin, or a
+school admin in their school). `policySelectActivities` is the handler's `selectActivities`: each
+chosen activity must be installed in the launch's offering, and the principal must be allowed to
+`assign` it there. `districtPrincipalResolver` resolves launches against the directory as it is at
+each launch.
+

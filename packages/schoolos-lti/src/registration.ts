@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ActivityId, DistrictId, ExternalIdentity, OfferingId } from "@schoolos/contracts";
+import { ActivityId, DistrictId, ExternalIdentity, OfferingId, ProviderName } from "@schoolos/contracts";
 
 const LtiId = z.string().min(1).max(255);
 const HttpsUrl = z.url({ protocol: /^https$/ });
@@ -39,6 +39,11 @@ export type ActivityLink = z.infer<typeof ActivityLink>;
 export const PlatformRegistration = z
   .strictObject({
     districtId: DistrictId,
+    /**
+     * The system this platform is in the district's authority map (`external:<provider>`) and grade
+     * authorities (`lms:<provider>`), such as `canvas`. An administrator names it at approval.
+     */
+    provider: ProviderName,
     /** The platform's `iss`, exactly as its tokens carry it. The district must trust it. */
     issuer: ExternalIdentity.shape.issuer,
     /** The tool's client ID at the platform; launches carry it as `aud`. */
@@ -65,6 +70,10 @@ export const PlatformRegistration = z
     const links = registration.activityLinks.map((link) => JSON.stringify([link.offeringId, link.linkId]));
     if (new Set(links).size !== links.length) {
       ctx.addIssue({ code: "custom", path: ["activityLinks"], message: "a link maps to one activity per offering" });
+    }
+    const offerings = new Set(registration.offerings.map((mapping) => mapping.offeringId));
+    if (registration.activityLinks.some((link) => !offerings.has(link.offeringId))) {
+      ctx.addIssue({ code: "custom", path: ["activityLinks"], message: "a link belongs to an offering this registration maps" });
     }
   });
 /** A platform registration. */

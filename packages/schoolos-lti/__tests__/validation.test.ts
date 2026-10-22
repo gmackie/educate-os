@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SignJWT } from "jose";
-import { LTI_CLAIM } from "../src/index.ts";
+import { LTI_CLAIM, STATE_COOKIE_BINDING } from "../src/index.ts";
 import { generatePlatformKey, type ClaimOverrides, type FakePlatform } from "./fake-platform.ts";
 import { createWorld, rejection, SHARED_SUB, startLogin, TOOL, type World } from "./helpers.ts";
 
@@ -10,7 +10,7 @@ const BIO = "nf-canvas-course-bio-p2";
 async function launchWith(world: World, overrides: ClaimOverrides = {}, platform: FakePlatform = world.platforms.nfCanvas) {
   const { state, nonce } = await startLogin(world, platform);
   const idToken = await platform.idToken({ sub: SHARED_SUB, contextId: BIO, nonce, targetLinkUri: `${TOOL}/lti/launch`, overrides });
-  return world.broker.launch(idToken, state);
+  return world.broker.launch(idToken, state, STATE_COOKIE_BINDING);
 }
 
 describe("id_token validation", () => {
@@ -28,7 +28,7 @@ describe("id_token validation", () => {
     const forged = await new SignJWT(claims)
       .setProtectedHeader({ alg: "RS256", kid: world.platforms.nfCanvas.signingKey.kid })
       .sign(forger.privateKey);
-    expect(await rejection(world.broker.launch(forged, state))).toBe("unauthenticated");
+    expect(await rejection(world.broker.launch(forged, state, STATE_COOKIE_BINDING))).toBe("unauthenticated");
   });
 
   it("refuses a token whose payload was altered after signing", async () => {
@@ -39,7 +39,7 @@ describe("id_token validation", () => {
     const claims = JSON.parse(Buffer.from(payload!, "base64url").toString()) as Record<string, unknown>;
     claims.sub = "canvas-admin-avery";
     const tampered = [header, Buffer.from(JSON.stringify(claims)).toString("base64url"), signature].join(".");
-    expect(await rejection(world.broker.launch(tampered, state))).toBe("unauthenticated");
+    expect(await rejection(world.broker.launch(tampered, state, STATE_COOKIE_BINDING))).toBe("unauthenticated");
   });
 
   it("refuses alg none and HS256 tokens", async () => {
@@ -47,13 +47,13 @@ describe("id_token validation", () => {
     const { state, nonce } = await startLogin(world, world.platforms.nfCanvas);
     const claims = world.platforms.nfCanvas.claims({ sub: SHARED_SUB, contextId: BIO, nonce, targetLinkUri: `${TOOL}/lti/launch` });
     const none = `${Buffer.from(JSON.stringify({ alg: "none", kid: world.platforms.nfCanvas.signingKey.kid })).toString("base64url")}.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.`;
-    expect(await rejection(world.broker.launch(none, state))).toBe("unauthenticated");
+    expect(await rejection(world.broker.launch(none, state, STATE_COOKIE_BINDING))).toBe("unauthenticated");
 
     const second = await startLogin(world, world.platforms.nfCanvas);
     const hs = await new SignJWT({ ...claims, nonce: second.nonce })
       .setProtectedHeader({ alg: "HS256", kid: world.platforms.nfCanvas.signingKey.kid })
       .sign(new TextEncoder().encode("a-shared-secret-of-at-least-32-bytes!!"));
-    expect(await rejection(world.broker.launch(hs, second.state))).toBe("unauthenticated");
+    expect(await rejection(world.broker.launch(hs, second.state, STATE_COOKIE_BINDING))).toBe("unauthenticated");
   });
 
   it("refuses the wrong audience", async () => {
@@ -75,7 +75,7 @@ describe("id_token validation", () => {
     const { state, nonce } = await startLogin(world, world.platforms.nfCanvas);
     // Moodle signs a perfectly valid token for itself; the login was for Northfield's Canvas.
     const moodle = await world.platforms.nfMoodle.idToken({ sub: SHARED_SUB, contextId: "moodle-bio", nonce, targetLinkUri: `${TOOL}/lti/launch` });
-    expect(await rejection(world.broker.launch(moodle, state))).toBe("unauthenticated");
+    expect(await rejection(world.broker.launch(moodle, state, STATE_COOKIE_BINDING))).toBe("unauthenticated");
   });
 
   it("refuses an unknown deployment", async () => {
@@ -88,7 +88,7 @@ describe("id_token validation", () => {
       targetLinkUri: `${TOOL}/lti/launch`,
       deploymentId: "rogue-deployment",
     });
-    expect(await rejection(world.broker.launch(token, state))).toBe("unauthenticated");
+    expect(await rejection(world.broker.launch(token, state, STATE_COOKIE_BINDING))).toBe("unauthenticated");
   });
 
   it("refuses a launch through a different deployment than its login named", async () => {
@@ -103,7 +103,7 @@ describe("id_token validation", () => {
       targetLinkUri: `${TOOL}/lti/launch`,
       deploymentId: "nf-canvas-deploy-2",
     });
-    await expect(world.broker.launch(token, state)).resolves.toBeDefined();
+    await expect(world.broker.launch(token, state, STATE_COOKIE_BINDING)).resolves.toBeDefined();
   });
 
   it("refuses an expired token, within and beyond the skew limit", async () => {
@@ -126,14 +126,14 @@ describe("id_token validation", () => {
     const world = await createWorld();
     const first = await startLogin(world, world.platforms.nfCanvas);
     const token = await world.platforms.nfCanvas.idToken({ sub: SHARED_SUB, contextId: BIO, nonce: first.nonce, targetLinkUri: `${TOOL}/lti/launch` });
-    await world.broker.launch(token, first.state);
+    await world.broker.launch(token, first.state, STATE_COOKIE_BINDING);
 
     // Replaying the captured token against a new login: the state is fresh but the nonce is not.
     const second = await startLogin(world, world.platforms.nfCanvas);
-    expect(await rejection(world.broker.launch(token, second.state))).toBe("unauthenticated");
+    expect(await rejection(world.broker.launch(token, second.state, STATE_COOKIE_BINDING))).toBe("unauthenticated");
     // And the second login's state was consumed by the failed attempt, so it cannot be retried.
     const retry = await world.platforms.nfCanvas.idToken({ sub: SHARED_SUB, contextId: BIO, nonce: second.nonce, targetLinkUri: `${TOOL}/lti/launch` });
-    expect(await rejection(world.broker.launch(retry, second.state))).toBe("unauthenticated");
+    expect(await rejection(world.broker.launch(retry, second.state, STATE_COOKIE_BINDING))).toBe("unauthenticated");
   });
 
   it("refuses a state that has expired", async () => {
@@ -141,7 +141,7 @@ describe("id_token validation", () => {
     const { state, nonce } = await startLogin(world, world.platforms.nfCanvas);
     world.clock.advance(11 * 60);
     const token = await world.platforms.nfCanvas.idToken({ sub: SHARED_SUB, contextId: BIO, nonce, targetLinkUri: `${TOOL}/lti/launch` });
-    expect(await rejection(world.broker.launch(token, state))).toBe("unauthenticated");
+    expect(await rejection(world.broker.launch(token, state, STATE_COOKIE_BINDING))).toBe("unauthenticated");
   });
 
   it("refuses an unknown or missing message type or version, never defaulting them", async () => {
