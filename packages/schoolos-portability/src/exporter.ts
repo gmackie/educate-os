@@ -40,7 +40,7 @@ import {
   type SubmissionRecord,
   type WorkContext,
 } from "./archive.ts";
-import type { ResourceSourceRecord, StudentRecordSource } from "./records.ts";
+import type { ResourceSourceRecord, StudentRecordSource, SubmittedRevision } from "./records.ts";
 import { findSecretShapes } from "./secrets.ts";
 
 /**
@@ -359,6 +359,7 @@ export class StudentArchiveExporter {
         files.push({ path, kind: "submission-file", mediaType: file.mediaType, rights: { mode: "learner-work" }, bytes: file.bytes });
         parts.push({ digest: submitted.digest, content: { kind: "file", path, mediaType: file.mediaType, sizeBytes: file.bytes.byteLength } });
       }
+      run.submittedRevisions.set(submission.id, submission.revisions);
       const record: SubmissionRecord = { id: local, activity: submission.activityTitle, context: facts.context, submittedAt: submission.submittedAt, parts };
       run.files.push(...files, { path: `submissions/${local}/submission.json`, kind: "submission", mediaType: JSON_MEDIA_TYPE, rights: { mode: "learner-work" }, bytes: canonicalJsonBytes(record) });
       run.decisions.push({ item: local, action: "export", ruleId });
@@ -407,9 +408,14 @@ export class StudentArchiveExporter {
       }
       const local = run.assign("f", note.id);
       const submission = note.submissionId === undefined ? undefined : run.localOf(note.submissionId);
+      // A submission's parts are its revisions in order, so an anchor's revision names its part.
+      const anchoredPart = note.anchor === undefined || note.submissionId === undefined || submission === undefined
+        ? -1
+        : (run.submittedRevisions.get(note.submissionId) ?? []).findIndex((r) => r.artifactId === note.anchor!.artifactId && r.revisionId === note.anchor!.revisionId);
       const record: FeedbackRecord = {
         id: local,
         ...(submission === undefined ? {} : { submission }),
+        ...(anchoredPart < 0 ? {} : { anchor: { part: anchoredPart + 1, region: note.anchor!.region } }),
         author: run.person(note.authorPrincipalId),
         createdAt: note.createdAt,
         body: note.body,
@@ -462,6 +468,8 @@ class ExportRun {
   readonly withheld: WithheldItem[] = [];
   readonly mapping: ExportMappingEntry[] = [];
   readonly exportedRevisions: ExportedRevision[] = [];
+  /** The revisions of each exported submission, in part order, by district submission ID. */
+  readonly submittedRevisions = new Map<string, readonly SubmittedRevision[]>();
   readonly #policy: PolicyDecider;
   readonly #counters = new Map<string, number>();
   readonly #local = new Map<string, string>();

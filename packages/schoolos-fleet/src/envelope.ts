@@ -14,6 +14,10 @@ import {
  * The kinds of signed fleet message. The kind is part of the signed bytes but not of the
  * envelope, so a signature made for one kind (a heartbeat) never verifies as another (a
  * revocation), whatever the payloads look like.
+ *
+ * `student-transfer` and `consent-revocation` are signed with a district agent's key but sent
+ * district to district, never through the root (ADR-0001): a transfer package's statement and the
+ * notice that withdraws its consent (`@schoolos/portability`).
  */
 export const FleetMessageKind = z.enum([
   "registration",
@@ -24,6 +28,8 @@ export const FleetMessageKind = z.enum([
   "release-offer",
   "support-session-request",
   "entitlement",
+  "student-transfer",
+  "consent-revocation",
 ]);
 /** A fleet message kind. */
 export type FleetMessageKind = z.infer<typeof FleetMessageKind>;

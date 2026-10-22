@@ -176,3 +176,18 @@ describe("archive validation", () => {
     await rejectsWith(validateArchive(tampered), "validation-failed", /linear chain/);
   });
 });
+
+describe("a feedback anchor", () => {
+  it("must point at a part its submission has", async () => {
+    const bytes = await amarasArchive();
+    const anchored = (part: number) => rewrite(bytes, (entries) => {
+      const feedback = entries.find((e) => e.path.startsWith("feedback/"))!;
+      editJson(entries, feedback.path, (f) => {
+        f.anchor = { part, region: { kind: "text-range", start: 0, end: 5 } };
+      });
+    }, { refreshManifest: true });
+
+    await expect(validateArchive(await anchored(1))).resolves.toBeDefined();
+    await rejectsWith(validateArchive(await anchored(2)), "validation-failed", /part its submission does not have/);
+  });
+});

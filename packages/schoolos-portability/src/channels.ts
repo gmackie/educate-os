@@ -1,7 +1,9 @@
 import { DistrictId, ErrorCode, SchoolOsError, SchoolOsErrorBody, type Caller } from "@schoolos/contracts";
 import { z } from "zod";
 import type { PortableIdentityLinkStore } from "./identity-link.ts";
+import type { SignedEnvelope } from "@schoolos/fleet";
 import type { ImportResult, StudentArchiveImporter, TransferChannelKind } from "./importer.ts";
+import { acceptConsentRevocationNotice, type RevocationAcceptance } from "./revocation.ts";
 import { decodeTransfer, encodeTransfer, MAX_TRANSFER_BYTES, TRANSFER_FILE_MEDIA_TYPE, type TransferPackage } from "./transfer.ts";
 
 /**
@@ -60,11 +62,7 @@ export class DirectTransferChannel implements TransferChannel {
   readonly #fetch: (request: Request) => Promise<Response>;
 
   constructor(options: DirectTransferChannelOptions) {
-    const endpoint = new URL(options.endpoint);
-    if (endpoint.protocol !== "https:" || endpoint.username !== "" || endpoint.password !== "") {
-      throw new SchoolOsError("validation-failed", "A transfer endpoint is an https URL without credentials.");
-    }
-    this.#endpoint = endpoint;
+    this.#endpoint = httpsEndpoint(options.endpoint);
     this.#fetch = options.fetch;
   }
 
@@ -76,11 +74,8 @@ export class DirectTransferChannel implements TransferChannel {
       body: encodeTransfer(pkg),
       redirect: "error",
     }));
+    if (!response.ok) throw await failureOf(response, "The destination district did not accept the transfer.");
     const body: unknown = await response.json().catch(() => undefined);
-    if (!response.ok) {
-      const error = SchoolOsErrorBody.safeParse(body);
-      throw error.success ? new SchoolOsError(error.data.code, error.data.message) : new SchoolOsError("unavailable", "The destination district did not accept the transfer.");
-    }
     const parsed = PushResponse.safeParse(body);
     if (!parsed.success) throw new SchoolOsError("unavailable", "The destination district gave an unexpected answer.");
     return { kind: "pushed", ...parsed.data };
@@ -128,29 +123,114 @@ export class DirectTransferEndpoint {
   async handle(request: Request): Promise<Response> {
     try {
       if (request.method !== "POST") throw new SchoolOsError("validation-failed", "Transfers are pushed with POST.");
-      const declared = Number(request.headers.get("content-length") ?? "0");
-      if (declared > MAX_TRANSFER_BYTES) throw new SchoolOsError("validation-failed", "This transfer is too large.");
-      const pkg = decodeTransfer(await readBounded(request));
+      const pkg = decodeTransfer(await readBounded(request, MAX_TRANSFER_BYTES, "This transfer is too large."));
       const link = await this.#links.find(pkg.consent.source.label, pkg.consent.subject);
       if (link === undefined) throw new SchoolOsError("forbidden", "A direct transfer needs an administrator-confirmed link to the learner.");
       const learner: Caller = { principal: { principalId: link.destinationPrincipalId, districtId: this.#districtId }, channel: "system" };
       const { outcome, record } = await this.#importer.importStudentArchive(pkg.archive, pkg.signature, pkg.consent, { principal: learner, channel: "direct" });
       return Response.json({ outcome, imported: record.imported.length, skipped: record.skipped.length });
     } catch (error) {
-      const failure = error instanceof SchoolOsError ? error : new SchoolOsError("unavailable", "The transfer could not be imported.");
-      return Response.json(failure.toBody(), { status: STATUS[failure.code] });
+      return errorResponse(error, "The transfer could not be imported.");
     }
   }
 }
 
-/** Reads a request body, stopping as soon as it passes {@link MAX_TRANSFER_BYTES}. */
-async function readBounded(request: Request): Promise<Uint8Array<ArrayBuffer>> {
+/**
+ * Pushes signed consent revocation notices (`issueConsentRevocationNotice`) from the source district
+ * straight to a destination's revocation endpoint over HTTPS, as the source pushes a direct
+ * transfer. The destination records a notice once it verifies against the key its admin pinned.
+ */
+export class ConsentRevocationChannel {
+  readonly #endpoint: URL;
+  readonly #fetch: (request: Request) => Promise<Response>;
+
+  /** `endpoint` is the destination's revocation endpoint, `https` only. */
+  constructor(options: DirectTransferChannelOptions) {
+    this.#endpoint = httpsEndpoint(options.endpoint);
+    this.#fetch = options.fetch;
+  }
+
+  /** Pushes one notice. */
+  async send(notice: SignedEnvelope): Promise<void> {
+    const response = await this.#fetch(new Request(this.#endpoint, {
+      method: "POST",
+      headers: { "content-type": REVOCATION_MEDIA_TYPE },
+      body: JSON.stringify(notice),
+      redirect: "error",
+    }));
+    if (!response.ok) throw await failureOf(response, "The destination district did not accept the revocation notice.");
+  }
+}
+
+/** The media type of a pushed consent revocation notice: a signed envelope as JSON. */
+export const REVOCATION_MEDIA_TYPE = "application/vnd.schoolos.consent-revocation+json";
+
+/** The largest revocation notice body accepted, in bytes. */
+export const MAX_REVOCATION_BYTES = 16 * 1024;
+
+/**
+ * The destination's endpoint for consent revocation notices pushed by source districts. A notice
+ * is recorded only once it verifies against a key the admin pinned for its source (see
+ * `acceptConsentRevocationNotice`); the importer then refuses that consent. The response carries
+ * nothing about the learner.
+ */
+export class ConsentRevocationEndpoint {
+  readonly #acceptance: RevocationAcceptance;
+
+  constructor(acceptance: RevocationAcceptance) {
+    this.#acceptance = acceptance;
+  }
+
+  /** Handles one push. */
+  async handle(request: Request): Promise<Response> {
+    try {
+      if (request.method !== "POST") throw new SchoolOsError("validation-failed", "Revocation notices are pushed with POST.");
+      const bytes = await readBounded(request, MAX_REVOCATION_BYTES, "This revocation notice is too large.");
+      let envelope: unknown;
+      try {
+        envelope = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+      } catch {
+        throw new SchoolOsError("validation-failed", "This is not a revocation notice.");
+      }
+      await acceptConsentRevocationNotice(this.#acceptance, envelope);
+      return Response.json({ outcome: "recorded" });
+    } catch (error) {
+      return errorResponse(error, "The revocation notice could not be recorded.");
+    }
+  }
+}
+
+/** An `https` endpoint without credentials, or `validation-failed`. */
+function httpsEndpoint(raw: string): URL {
+  const endpoint = new URL(raw);
+  if (endpoint.protocol !== "https:" || endpoint.username !== "" || endpoint.password !== "") {
+    throw new SchoolOsError("validation-failed", "A transfer endpoint is an https URL without credentials.");
+  }
+  return endpoint;
+}
+
+/** The error a destination answered with, or `unavailable` with `fallback` when its answer is not one. */
+async function failureOf(response: Response, fallback: string): Promise<SchoolOsError> {
+  const error = SchoolOsErrorBody.safeParse(await response.json().catch(() => undefined));
+  return error.success ? new SchoolOsError(error.data.code, error.data.message) : new SchoolOsError("unavailable", fallback);
+}
+
+/** A SchoolOS error as a JSON response; anything else as `unavailable` with `fallback`. */
+function errorResponse(error: unknown, fallback: string): Response {
+  const failure = error instanceof SchoolOsError ? error : new SchoolOsError("unavailable", fallback);
+  return Response.json(failure.toBody(), { status: STATUS[failure.code] });
+}
+
+/** Reads a request body, stopping as soon as it passes `limit` bytes. */
+async function readBounded(request: Request, limit: number, tooLarge: string): Promise<Uint8Array<ArrayBuffer>> {
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (declared > limit) throw new SchoolOsError("validation-failed", tooLarge);
   if (request.body === null) return new Uint8Array(0);
   const chunks: Uint8Array[] = [];
   let total = 0;
   for await (const chunk of request.body) {
     total += chunk.byteLength;
-    if (total > MAX_TRANSFER_BYTES) throw new SchoolOsError("validation-failed", "This transfer is too large.");
+    if (total > limit) throw new SchoolOsError("validation-failed", tooLarge);
     chunks.push(chunk);
   }
   const bytes = new Uint8Array(total);

@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { ArtifactId, ContentDigest, ID_PREFIXES, PrincipalId, SchoolOsError, WorkspaceId, type ArtifactType, type Caller } from "@schoolos/contracts";
-import { sha256Digest, type AiAssistance, type LearningArtifacts, type RevisionContentInput } from "@schoolos/learning-artifacts";
+import { SignedEnvelope, verifyEnvelope } from "@schoolos/fleet";
+import { sha256Digest, type ImportedArtifact, type LearningArtifacts, type NewRevision } from "@schoolos/learning-artifacts";
 import type { WorkspaceDirectory } from "@schoolos/workspaces";
-import { ExportId, type ArtifactRecord, type WorkContext } from "./archive.ts";
+import { ExportId, type FeedbackRecord, type WorkContext } from "./archive.ts";
 import { consentGrantDigest, sameParty, TransferConsent, TransferConsentId, TransferItemClass, TransferParty } from "./consent.ts";
 import type { PortableIdentityLinkStore } from "./identity-link.ts";
+import { PinnedSource, pinnedFor, type ConsentRevocationList } from "./revocation.ts";
 import { findSecretShapes } from "./secrets.ts";
-import { Ed25519PublicKey, SignedEnvelope, verifyEnvelope } from "./signing.ts";
 import { TransferStatement } from "./transfer.ts";
 import { validateArchive, type ValidatedArchive } from "./validate.ts";
 
@@ -14,15 +15,6 @@ import { validateArchive, type ValidatedArchive } from "./validate.ts";
 export const TransferChannelKind = z.enum(["learner-carried", "direct"]);
 /** A transfer channel kind. */
 export type TransferChannelKind = z.infer<typeof TransferChannelKind>;
-
-/** A source district whose agent key the destination admin has pinned. */
-export const PinnedSource = z.strictObject({
-  label: TransferParty.shape.label,
-  instanceId: TransferParty.shape.instanceId,
-  publicKey: Ed25519PublicKey,
-});
-/** A pinned source. */
-export type PinnedSource = z.infer<typeof PinnedSource>;
 
 /** The destination admin's import policy. */
 export const DestinationImportPolicy = z.strictObject({
@@ -136,6 +128,8 @@ export interface StudentArchiveImporterOptions {
   links: PortableIdentityLinkStore;
   /** Import records. */
   ledger: ImportLedger;
+  /** The revocation notices received from pinned sources (see `acceptConsentRevocationNotice`). */
+  revocations: ConsentRevocationList;
   /** The clock. Defaults to the system clock. */
   now?: () => Date;
 }
@@ -163,6 +157,7 @@ export class StudentArchiveImporter {
   readonly #policy: DestinationImportPolicy;
   readonly #links: PortableIdentityLinkStore;
   readonly #ledger: ImportLedger;
+  readonly #revocations: ConsentRevocationList;
   readonly #now: () => Date;
 
   constructor(options: StudentArchiveImporterOptions) {
@@ -171,6 +166,7 @@ export class StudentArchiveImporter {
     this.#policy = DestinationImportPolicy.parse(options.policy);
     this.#links = options.links;
     this.#ledger = options.ledger;
+    this.#revocations = options.revocations;
     this.#now = options.now ?? (() => new Date());
   }
 
@@ -182,14 +178,16 @@ export class StudentArchiveImporter {
    * 2. the source's signature, required when the source is pinned. An unsigned or unpinned file is
    *    accepted only if it was learner-carried and the policy accepts unverified sources, and it is
    *    marked `unverified-source`;
-   * 3. the consent: for this archive and this district, unrevoked and unexpired;
+   * 3. the consent: for this archive and this district, unexpired, and revoked neither in the copy
+   *    that arrived nor by a revocation notice the source sent;
    * 4. the destination policy, which with the consent decides which item classes are imported;
    * 5. the target: a confirmed identity link for the archive's learner must name the target, and a
    *    direct push needs one.
    *
    * Every item becomes a new artifact with a fresh local ID in the target's personal workspace, so
-   * it is `personal-private`: never course work, and not visible to teachers. Importing the same
-   * archive again returns the first import.
+   * it is `personal-private`: never course work, and not visible to teachers. Every artifact is
+   * created in one batch (`LearningArtifacts.importArtifacts`), so an import either creates all of
+   * them or none. Importing the same archive again returns the first import.
    */
   async importStudentArchive(
     bytes: Uint8Array<ArrayBuffer>,
@@ -212,7 +210,9 @@ export class StudentArchiveImporter {
     if (consent.exportId !== manifest.exportId || consent.subject !== manifest.subject) refuse("forbidden", "This consent is for another archive.");
     if (consent.source.label !== manifest.district.displayName) refuse("forbidden", "This consent was given in another district.");
     if (!sameParty(consent.destination, this.#policy.self)) refuse("forbidden", "This consent is for a transfer to another district.");
-    if (consent.revokedAt !== undefined) refuse("forbidden", "This consent has been withdrawn.");
+    if (consent.revokedAt !== undefined || (await this.#revocations.find(consent.source, consent.id)) !== undefined) {
+      refuse("forbidden", "This consent has been withdrawn.");
+    }
     if (now < consent.grantedAt || now >= consent.expiresAt) refuse("forbidden", "This consent is not in effect.");
 
     const accepted = new Set(this.#policy.acceptedItemClasses);
@@ -231,13 +231,16 @@ export class StudentArchiveImporter {
     }
     if (!(await this.#ledger.reserve(archiveDigest))) refuse("conflict", "This archive is already being imported.");
 
-    const created: ArtifactId[] = [];
+    let record: ImportRecord;
     try {
       const workspace = await this.#workspaces.ensurePersonalWorkspace(target.principal);
-      const run = new ImportRun(this.#artifacts, target.principal, workspace.id, archive, created);
       const classOf = (itemClass: TransferItemClass): SkipReason | undefined =>
         !consented.has(itemClass) ? "not-consented" : !accepted.has(itemClass) ? "not-accepted-by-district" : undefined;
-      const record: ImportRecord = ImportRecord.parse({
+      const plan = planImport(archive, classOf, (url) => this.#artifacts.approvesExternalUrl(url));
+      const views = plan.creates.length === 0
+        ? []
+        : await this.#artifacts.importArtifacts(target.principal, { workspaceId: workspace.id, artifacts: plan.creates.map((c) => c.artifact) });
+      record = ImportRecord.parse({
         archiveDigest,
         exportId: manifest.exportId,
         source: consent.source,
@@ -247,23 +250,23 @@ export class StudentArchiveImporter {
         targetPrincipalId: learner,
         workspaceId: workspace.id,
         importedAt: now,
-        ...(await run.importAll(classOf)),
+        imported: plan.creates.map(({ item, itemClass }, i) => ({ item, itemClass, artifactId: views[i]!.artifact.id })),
+        skipped: plan.skipped,
       });
-      await this.#ledger.complete(record);
-      return { outcome: "imported", record };
     } catch (error) {
-      for (const id of created) await this.#artifacts.deleteArtifact(target.principal, id).catch(() => {});
+      // Nothing was created: the batch commits all of the archive's artifacts or none.
       await this.#ledger.release(archiveDigest);
       throw error;
     }
+    // The artifacts are committed now, so the reservation is kept even if recording fails: releasing
+    // it would let the same archive be imported twice.
+    await this.#ledger.complete(record);
+    return { outcome: "imported", record };
   }
 
   /** Checks the package's signature when the source is pinned, and decides whether an unverified source is acceptable. */
   async #verifySource(signature: SignedEnvelope | undefined, consent: TransferConsent, archiveDigest: ContentDigest, channel: TransferChannelKind): Promise<SourceVerification> {
-    // A source counts as pinned if either its label or its instance ID is, so a file cannot dodge
-    // the signature requirement by claiming a pinned district's name under another instance ID.
-    const pinned = this.#policy.pinnedSources.filter((p) =>
-      p.label === consent.source.label || (p.instanceId !== undefined && p.instanceId === consent.source.instanceId));
+    const pinned = pinnedFor(this.#policy.pinnedSources, consent.source);
     if (pinned.length === 0) {
       if (channel === "direct") refuse("forbidden", "Direct transfers are accepted only from pinned districts.");
       if (!this.#policy.acceptUnverifiedSources) refuse("policy-violation", "This district accepts transfers only from districts it has pinned.");
@@ -325,108 +328,100 @@ function contentPaths(archive: ValidatedArchive): string[] {
   ];
 }
 
-type Imported = Pick<ImportRecord, "imported" | "skipped">;
-
-/** One import's writes into the target's personal workspace. */
-class ImportRun {
-  readonly #artifacts: LearningArtifacts;
-  readonly #caller: Caller;
-  readonly #workspaceId: WorkspaceId;
-  readonly #archive: ValidatedArchive;
-  readonly #created: ArtifactId[];
-  readonly #result: Imported = { imported: [], skipped: [] };
-
-  constructor(artifacts: LearningArtifacts, caller: Caller, workspaceId: WorkspaceId, archive: ValidatedArchive, created: ArtifactId[]) {
-    this.#artifacts = artifacts;
-    this.#caller = caller;
-    this.#workspaceId = workspaceId;
-    this.#archive = archive;
-    this.#created = created;
-  }
-
-  async importAll(skipReason: (itemClass: TransferItemClass) => SkipReason | undefined): Promise<Imported> {
-    const archive = this.#archive;
-    const source = archive.manifest.district.displayName;
-    const titles = new Map(archive.artifacts.map((a) => [a.id, a.title]));
-    const activities = new Map(archive.submissions.map((s) => [s.id, s.activity]));
-    const each = async <T extends { id: string }>(itemClass: TransferItemClass, items: T[], write: (item: T) => Promise<void>) => {
-      const reason = skipReason(itemClass);
-      for (const item of items) {
-        if (reason === undefined) await write(item);
-        else this.#result.skipped.push({ item: item.id, itemClass, reason });
-      }
-    };
-
-    await each("artifacts", archive.artifacts, (a) => this.#artifact(a));
-    await each("submissions", archive.submissions, async (s) => {
-      const lines = [`# Submission: ${s.activity}`, "", `Submitted ${s.submittedAt}, ${describe(s.context)}, at ${source}.`, ""];
-      for (const [index, part] of s.parts.entries()) {
-        const n = index + 1;
-        if (part.content.kind === "revision") {
-          lines.push(`- Part ${n}: "${titles.get(part.content.artifact) ?? part.content.artifact}", revision ${part.content.revision.split("-r")[1]} (${part.digest})`);
-        } else if (part.content.kind === "file") {
-          const title = clip(`${s.activity}, submitted part ${n}`);
-          await this.#create(s.id, "submissions", typeFor(part.content.mediaType), title, [this.#file(part.content.path, part.content.mediaType)]);
-          lines.push(`- Part ${n}: imported as "${title}" (${part.digest})`);
-        } else {
-          lines.push(`- Part ${n}: not included in the archive (${part.digest})`);
-        }
-      }
-      await this.#create(s.id, "submissions", "evidence", clip(`Submission: ${s.activity}`), [markdown(lines)]);
-    });
-    await each("feedback", archive.feedback, async (f) => {
-      const about = f.submission === undefined ? undefined : activities.get(f.submission);
-      const heading = about === undefined ? "Feedback" : `Feedback on ${about}`;
-      await this.#create(f.id, "feedback", "document", clip(heading), [markdown([`# ${heading}`, "", `Shared by ${f.author} at ${source}, ${f.createdAt}.`, "", f.body])]);
-    });
-    await each("resources", archive.resources, async (r) => {
-      if (r.content !== undefined) {
-        await this.#create(r.id, "resources", typeFor(r.content.mediaType), r.title, [this.#file(r.content.path, r.content.mediaType)]);
-      } else if (r.reference !== undefined) {
-        await this.#create(r.id, "resources", "document", r.title, [markdown([`# ${r.title}`, "", `A resource cited at ${source}: ${r.reference.url}`])]);
-      }
-    });
-    return this.#result;
-  }
-
-  async #artifact(record: ArtifactRecord): Promise<void> {
-    const revisions = record.revisions.map((revision) => ({
-      content: revision.content.kind === "file"
-        ? this.#file(revision.content.path, revision.mediaType).content
-        : { kind: "external" as const, url: revision.content.url, ...(revision.content.snapshotDigest === undefined ? {} : { snapshotDigest: revision.content.snapshotDigest }) },
-      aiAssistance: revision.aiAssistance,
-    }));
-    try {
-      await this.#create(record.id, "artifacts", record.type, record.title, revisions);
-    } catch (error) {
-      // The destination decides which document hosts a link may point at; a link to a host it has
-      // not approved is reported rather than failing the whole import.
-      if (record.type === "external-ref" && error instanceof SchoolOsError && error.code === "validation-failed") {
-        this.#result.skipped.push({ item: record.id, itemClass: "artifacts", reason: "link-host-not-approved" });
-        return;
-      }
-      throw error;
-    }
-  }
-
-  /** Creates one artifact from its revisions, oldest first, and records it. */
-  async #create(item: string, itemClass: TransferItemClass, type: ArtifactType, title: string, revisions: { content: RevisionContentInput; aiAssistance: AiAssistance }[]): Promise<void> {
-    const [first, ...rest] = revisions;
-    if (first === undefined) return;
-    const view = await this.#artifacts.createArtifact(this.#caller, { workspaceId: this.#workspaceId, type, title, ...first });
-    this.#created.push(view.artifact.id);
-    for (const revision of rest) await this.#artifacts.saveRevision(this.#caller, view.artifact.id, revision);
-    this.#result.imported.push({ item, itemClass, artifactId: view.artifact.id });
-  }
-
-  #file(path: string, mediaType: string): { content: RevisionContentInput; aiAssistance: { level: "none" } } {
-    const bytes = this.#archive.content(path);
-    const content: RevisionContentInput = mediaType.startsWith("text/") ? { kind: "text", mediaType, text: utf8.decode(bytes) } : { kind: "bytes", mediaType, bytes };
-    return { content, aiAssistance: { level: "none" } };
-  }
+/** One artifact to create for an archive item. */
+interface PlannedArtifact {
+  item: string;
+  itemClass: TransferItemClass;
+  artifact: ImportedArtifact;
 }
 
-function markdown(lines: string[]): { content: RevisionContentInput; aiAssistance: { level: "none" } } {
+/** What an import will create, and what it skips, before anything is written. */
+interface ImportPlan {
+  creates: PlannedArtifact[];
+  skipped: ImportRecord["skipped"];
+}
+
+/**
+ * Plans an archive's import into new artifacts, in archive order. Nothing is written here, so the
+ * whole plan can then be created in one batch. A link to a document host the destination has not
+ * approved (`approvesUrl`) is skipped and reported rather than failing the import.
+ */
+function planImport(
+  archive: ValidatedArchive,
+  skipReason: (itemClass: TransferItemClass) => SkipReason | undefined,
+  approvesUrl: (url: string) => boolean,
+): ImportPlan {
+  const plan: ImportPlan = { creates: [], skipped: [] };
+  const source = archive.manifest.district.displayName;
+  const titles = new Map(archive.artifacts.map((a) => [a.id, a.title]));
+  const submissions = new Map(archive.submissions.map((s) => [s.id, s]));
+  const create = (item: string, itemClass: TransferItemClass, type: ArtifactType, title: string, revisions: NewRevision[]) => {
+    plan.creates.push({ item, itemClass, artifact: { type, title, revisions } });
+  };
+  const file = (path: string, mediaType: string): NewRevision => {
+    const bytes = archive.content(path);
+    return {
+      content: mediaType.startsWith("text/") ? { kind: "text", mediaType, text: utf8.decode(bytes) } : { kind: "bytes", mediaType, bytes },
+      aiAssistance: { level: "none" },
+    };
+  };
+  const each = <T extends { id: string }>(itemClass: TransferItemClass, items: T[], add: (item: T) => void) => {
+    const reason = skipReason(itemClass);
+    for (const item of items) {
+      if (reason === undefined) add(item);
+      else plan.skipped.push({ item: item.id, itemClass, reason });
+    }
+  };
+
+  each("artifacts", archive.artifacts, (record) => {
+    const revisions: NewRevision[] = [];
+    for (const revision of record.revisions) {
+      if (revision.content.kind === "file") {
+        revisions.push({ content: file(revision.content.path, revision.mediaType).content, aiAssistance: revision.aiAssistance });
+        continue;
+      }
+      if (!approvesUrl(revision.content.url)) {
+        plan.skipped.push({ item: record.id, itemClass: "artifacts", reason: "link-host-not-approved" });
+        return;
+      }
+      const { url, snapshotDigest } = revision.content;
+      revisions.push({ content: { kind: "external", url, ...(snapshotDigest === undefined ? {} : { snapshotDigest }) }, aiAssistance: revision.aiAssistance });
+    }
+    create(record.id, "artifacts", record.type, record.title, revisions);
+  });
+  each("submissions", archive.submissions, (s) => {
+    const lines = [`# Submission: ${s.activity}`, "", `Submitted ${s.submittedAt}, ${describe(s.context)}, at ${source}.`, ""];
+    for (const [index, part] of s.parts.entries()) {
+      const n = index + 1;
+      if (part.content.kind === "revision") {
+        lines.push(`- Part ${n}: "${titles.get(part.content.artifact) ?? part.content.artifact}", revision ${part.content.revision.split("-r")[1]} (${part.digest})`);
+      } else if (part.content.kind === "file") {
+        const title = clip(`${s.activity}, submitted part ${n}`);
+        create(s.id, "submissions", typeFor(part.content.mediaType), title, [file(part.content.path, part.content.mediaType)]);
+        lines.push(`- Part ${n}: imported as "${title}" (${part.digest})`);
+      } else {
+        lines.push(`- Part ${n}: not included in the archive (${part.digest})`);
+      }
+    }
+    create(s.id, "submissions", "evidence", clip(`Submission: ${s.activity}`), [markdown(lines)]);
+  });
+  each("feedback", archive.feedback, (f) => {
+    const about = f.submission === undefined ? undefined : submissions.get(f.submission)?.activity;
+    const heading = about === undefined ? "Feedback" : `Feedback on ${about}`;
+    const where = f.anchor === undefined ? [] : [`On part ${f.anchor.part}, ${describeRegion(f.anchor.region)}.`, ""];
+    create(f.id, "feedback", "document", clip(heading), [markdown([`# ${heading}`, "", `Shared by ${f.author} at ${source}, ${f.createdAt}.`, "", ...where, f.body])]);
+  });
+  each("resources", archive.resources, (r) => {
+    if (r.content !== undefined) {
+      create(r.id, "resources", typeFor(r.content.mediaType), r.title, [file(r.content.path, r.content.mediaType)]);
+    } else if (r.reference !== undefined) {
+      create(r.id, "resources", "document", r.title, [markdown([`# ${r.title}`, "", `A resource cited at ${source}: ${r.reference.url}`])]);
+    }
+  });
+  return plan;
+}
+
+function markdown(lines: string[]): NewRevision {
   return { content: { kind: "text", mediaType: "text/markdown", text: lines.join("\n") }, aiAssistance: { level: "none" } };
 }
 
@@ -435,6 +430,16 @@ function typeFor(mediaType: string): ArtifactType {
   if (mediaType.startsWith("audio/")) return "audio";
   if (mediaType.startsWith("video/")) return "video";
   return "document";
+}
+
+function describeRegion(region: NonNullable<FeedbackRecord["anchor"]>["region"]): string {
+  if (region.kind === "text-range") return `characters ${region.start + 1} to ${region.end}`;
+  const page = region.page === undefined ? "" : `page ${region.page}, `;
+  return `${page}the area from ${percent(region.x)} across and ${percent(region.y)} down, ${percent(region.width)} wide and ${percent(region.height)} high`;
+}
+
+function percent(fraction: number): string {
+  return `${Math.round(fraction * 100)}%`;
 }
 
 function describe(context: WorkContext): string {

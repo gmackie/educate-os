@@ -140,7 +140,8 @@ license permits redistribution. Every content item must be redistributable (`may
 course, section and term names), its creation time, and its whole stored lineage, oldest first.
 Each revision records its number, its parent, its time, its author (the subject or a staff
 pseudonym), its media type, digest and size, the AI-assistance declaration, its origin (`authored`,
-`uploaded`, `external-reference` or `baseline`), and its content. The content is either
+`uploaded`, `external-reference`, `baseline`, or `imported` for work brought in from another
+district's archive), and its content. The content is either
 `{ "kind": "file", "path": … }` or, for an `external-ref` artifact,
 `{ "kind": "reference", "url": … }`. The history must be one linear chain: each revision's parent
 is the one before it.
@@ -153,7 +154,11 @@ Each part has the submitted digest and one of three forms of content:
   identifies it.
 
 `fN.json` holds feedback a teacher shared with the learner: the submission it is about, when that
-submission is in the archive, its author's pseudonym, its time and its text.
+submission is in the archive, its author's pseudonym, its time and its text. Feedback anchored to a
+place in the submitted work also has an `anchor`: the part, numbered from 1 in the submission's
+order, and the region in it (`text-range`, `[start, end)` in UTF-16 code units of the part's text,
+or `area`, a rectangle in fractions of the page or image), as the assessment service records it.
+Validation refuses an anchor to a part the submission does not have.
 
 `resource.json` holds a cited learning resource's title and a reference (`{ "url": … }`), its
 content (`{ "path", "mediaType", "digest", "sizeBytes" }`), or both.
@@ -172,14 +177,31 @@ builds every request from stored records. It collects:
 - every artifact in a course workspace whose term is over (`completed`, `retained` or
   `eligible-for-deletion`). While a course is running, the learner's work in it travels only
   through their submissions;
-- the learner's own submissions. A submitted revision whose artifact is not in the archive is
-  exported, through the artifact service, as the submission's own file;
-- feedback marked as shared with the learner;
-- resources the learner's work cites. A resource is carried as content only when policy allows
-  exporting it and its rights permit redistribution. Otherwise it is carried as a reference to its
-  canonical `https` URL, if the learner may read the resource. A link-only resource is therefore
-  always a reference. The v1 rule table has no `export` grant for learning resources, so until a
-  district adds one, every cited resource is a reference.
+- the learner's own live submissions (a withdrawn one is left out). A submitted revision whose
+  artifact is not in the archive is exported, through the artifact service, as the submission's
+  own file;
+- feedback shared with the learner: the teacher's own comments once the assignment's feedback
+  visibility releases them, exactly what the assessment service shows the learner. A suggested
+  score or comment is never shown, so it is never exported;
+- resources the learner's work cites. The Content Studio keeps no per-work citations yet, so a
+  resource counts as cited when one of its releases was bound to a class the learner was enrolled
+  in. A resource is carried as content only when policy allows exporting it and its rights permit
+  redistribution. Otherwise it is carried as a reference to its canonical `https` URL, if the
+  learner may read the resource. A link-only resource is therefore always a reference.
+
+`DistrictStudentRecordSource` reads these records from the assessment service's store (E01) and
+the Content Studio's storage (C03). A release's rights are the widest use its license permits;
+redistribution is `permitted` only under a license the studio recognized (a Creative Commons
+license or a public-domain mark), never under a bare claim.
+
+**The district's resource export grant.** The v1 rule table has no `export` grant for learning
+resources, so by default every cited resource is a reference. A district turns copies on with the
+`student-portability` pack's `redistributableResourceExport` setting (off by default).
+`learnerResourceExportEnabled` reads it from the compiled configuration and
+`withLearnerResourceExport` then appends the rule `portability.learner.resource-export`: an
+actively enrolled student may export their class's `course` resources. Appended, it can only turn
+the default deny into an allow. The exporter still copies a resource only when its rights permit
+redistribution.
 
 ## What an export never includes
 
@@ -257,8 +279,9 @@ The learner's age is used for that check and never stored. A consent can be revo
 (`revokeTransferConsent`), which sets `revokedAt` and nothing else.
 
 **Transfer package.** `issueTransferPackage` validates the archive and signs a detached
-`TransferStatement` with the source district's agent key (Ed25519, context
-`schoolos-transfer/v1`, kind `student-transfer`). The statement covers the archive's SHA-256
+`TransferStatement` with the source district's fleet agent identity (`@schoolos/fleet`: Ed25519,
+context `schoolos-fleet/v1`, message kind `student-transfer`). The kind is in the signed bytes, so
+no other fleet message, and no revocation notice, verifies as a transfer. The statement covers the archive's SHA-256
 digest, the export ID and pseudonym, the consent's ID and the digest of its grant (every field but
 `revokedAt`), and both districts. The archive bytes are unchanged.
 
@@ -278,7 +301,8 @@ the destination:
    unpinned file is accepted only if it was learner-carried and the admin's policy accepts
    unverified sources; it is then marked `unverified-source`;
 3. checks the consent is for this archive, from the archive's district, to this district,
-   unrevoked and unexpired;
+   unexpired, and revoked neither in the copy that arrived nor by a revocation notice the source
+   sent (see below);
 4. applies the admin's `DestinationImportPolicy`: only item classes both consented and accepted
    are imported, and the rest are recorded as skipped;
 5. checks the target against any admin-confirmed `PortableIdentityLink` for the archive's learner.
@@ -287,7 +311,11 @@ the destination:
 Each item becomes a new artifact, with a fresh local ID, in the target's personal workspace. It is
 therefore `personal-private`: never course work, and not visible to teachers. Submissions arrive as
 `evidence` summaries, feedback and cited references as documents. A link to a document host the
-destination has not approved is skipped. The `ImportRecord` keeps the source district's label, the
+destination has not approved is skipped. Every artifact is created in one batch
+(`LearningArtifacts.importArtifacts`), a single commit, so an import that fails part-way creates
+nothing and needs no cleanup; every revision it creates has the origin `imported`. Once the batch
+has committed, the archive's ledger reservation is never released, even if recording the import
+fails, so the same archive is never imported twice. The `ImportRecord` keeps the source district's label, the
 archive digest, how the source was verified, and the map from archive-local IDs to new artifact
 IDs. Import is idempotent on the archive digest.
 
@@ -299,8 +327,14 @@ pseudonym, and a person at the destination makes the link.
 
 **Revocation.** The source refuses to sign or push under a revoked consent, and the destination
 refuses a consent marked revoked. A learner-carried file downloaded before revocation carries the
-consent as it was then; the destination cannot learn of the revocation without a notice from the
-source.
+consent as it was then, so the source also sends a notice: `issueConsentRevocationNotice` signs a
+`ConsentRevocationNotice` (the consent's ID and grant digest, the export, the pseudonym, both
+districts and the time, kind `consent-revocation`) and `ConsentRevocationChannel` pushes it over
+HTTPS to the destination's `ConsentRevocationEndpoint`. The destination records it in its
+`ConsentRevocationList` only when it verifies against a key pinned for the notice's source and
+names this district as the destination; the importer checks that list before every import. A
+district the destination has not pinned cannot revoke there, just as its signatures are not
+verified there. As with transfers, the root is never on the path.
 
 ## Versioning
 

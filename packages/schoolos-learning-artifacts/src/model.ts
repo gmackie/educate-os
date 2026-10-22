@@ -73,11 +73,12 @@ export type AiAssistance = z.infer<typeof AiAssistance>;
 
 /**
  * How a revision came to exist, recorded by the service from the request it handled, never taken
- * from the caller: `authored` text, `uploaded` bytes, an `external-reference`, or a sanitized
- * `baseline` copy.
+ * from the caller: `authored` text, `uploaded` bytes, an `external-reference`, a sanitized
+ * `baseline` copy, or `imported` from another district's archive (see
+ * `LearningArtifacts.importArtifacts`).
  */
 export const ProvenanceRecord = z.strictObject({
-  origin: z.enum(["authored", "uploaded", "external-reference", "baseline"]),
+  origin: z.enum(["authored", "uploaded", "external-reference", "baseline", "imported"]),
   /** The surface the revision was saved through. */
   channel: RequestChannel,
 });

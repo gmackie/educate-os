@@ -267,6 +267,10 @@ const studentPortability: PackDefinition = {
   config: z.strictObject({
     exportFormats: z.array(z.enum(["zip", "open-badges"])).min(1).default(["zip"]),
     exportLinkDays: z.int().min(1).max(30).default(7),
+    redistributableResourceExport: z.boolean().default(false).meta({
+      title: "Copies of openly licensed class resources",
+      description: "Let students take copies of the class resources whose license permits it, such as Creative Commons material, when they export. Other resources are always exported as links.",
+    }),
   }),
   supportsAdvisory: false,
 };

@@ -7,7 +7,8 @@ export const Base64Url = z.string().regex(/^[A-Za-z0-9_-]*$/, "expected unpadded
 /** Encodes bytes as unpadded base64url. */
 export function toBase64Url(bytes: Uint8Array): string {
   let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
+  // In chunks, since a transfer archive (`@schoolos/portability`) can run to tens of megabytes.
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
 }
 
