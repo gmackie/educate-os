@@ -1,10 +1,10 @@
 // Publisher signatures on OCS packages (RFC 0001 §12 Q4, SCHO-96). Built on the R03 primitives: the
-// fleet's Ed25519 identities, envelopes and canonical JSON, and `@schoolos/releases`' pinned key sets
-// with retirement. The signing context is OCS's own, so a signature made for a release, an offer or
+// fleet's Ed25519 identities, envelopes and canonical JSON, and `@schoolos/releases`' pinned key
+// entries with retirement. The signing context is OCS's own, so a signature made for a release, an offer or
 // any other SchoolOS message never verifies as a package publication, and the reverse.
 import { SchoolOsError, UtcTimestamp } from "@schoolos/contracts";
 import { canonicalJson, keyIdFor, SignedEnvelope, type SigningIdentity, verifySignature } from "@schoolos/fleet";
-import { ReleaseTrust, trustedKey } from "@schoolos/releases";
+import { TrustedReleaseKey } from "@schoolos/releases";
 import { z } from "zod";
 import type { PublicationPolicy } from "./durable-object-library.ts";
 import type { OcsPackage } from "./package.ts";
@@ -29,13 +29,14 @@ export function publisherDomain(packageId: OcsPackageId): string {
 }
 
 /**
- * The publisher keys a district approved. Each key set is pinned to one publisher domain, so a key
- * approved for one publisher can never sign another's packages. `localDomains` are the district's
- * own publishing domains, whose packages it writes itself and does not need signed.
+ * The publisher keys a district approved. Each key list is pinned to one publisher domain, so a key
+ * approved for one publisher can never sign another's packages. The district alone changes the
+ * list: unlike release trust, no root key set rotates it. `localDomains` are the district's own
+ * publishing domains, whose packages it writes itself and does not need signed.
  */
 export const PublisherTrust = z.strictObject({
   localDomains: z.array(z.string().min(1).max(200)).max(20),
-  publishers: z.array(z.strictObject({ domain: z.string().min(1).max(200), keys: ReleaseTrust })).max(200),
+  publishers: z.array(z.strictObject({ domain: z.string().min(1).max(200), keys: z.array(TrustedReleaseKey).min(1).max(16) })).max(200),
 });
 /** A district's approved publisher keys. */
 export type PublisherTrust = z.infer<typeof PublisherTrust>;
@@ -72,9 +73,10 @@ export async function checkPublication(
   if (signature === undefined) return { ok: false, reason: "unsigned" };
   const envelope = SignedEnvelope.safeParse(signature);
   if (!envelope.success) return { ok: false, reason: "bad-signature" };
-  const keys = trust.publishers.find((publisher) => publisher.domain === domain)?.keys;
-  const key = keys === undefined ? undefined : trustedKey(keys, envelope.data.keyId, now);
-  if (key === undefined) return { ok: false, reason: "unknown-publisher" };
+  const key = trust.publishers
+    .find((publisher) => publisher.domain === domain)
+    ?.keys.find((candidate) => candidate.keyId === envelope.data.keyId);
+  if (key === undefined || (key.retiresAt !== undefined && now.getTime() >= Date.parse(key.retiresAt))) return { ok: false, reason: "unknown-publisher" };
   if ((await keyIdFor(key.publicKey)) !== key.keyId) return { ok: false, reason: "unknown-publisher" };
   let bytes: Uint8Array<ArrayBuffer>;
   try {

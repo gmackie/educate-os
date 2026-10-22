@@ -1,10 +1,12 @@
-import { SigningIdentity, signEnvelope } from "@schoolos/fleet";
-import { pinReleaseKeys, signReleaseMessage } from "@schoolos/releases";
+import { type Ed25519PublicKey, keyIdFor, SigningIdentity, signEnvelope } from "@schoolos/fleet";
+import { signReleaseMessage } from "@schoolos/releases";
 import { describe, expect, it } from "vitest";
 import { checkPublication, publisherPolicy, type PublisherTrust, readPackage, signPackagePublication } from "../src/index.ts";
 import { IDS, packageFiles, resource, unit } from "./helpers.ts";
 
 const NOW = new Date("2026-10-21T09:00:00Z");
+
+const approved = async (publicKey: Ed25519PublicKey) => [{ keyId: await keyIdFor(publicKey), publicKey }];
 
 const bioPackage = (title = "Membranes") => readPackage(packageFiles({
   manifest: { id: IDS.bio, version: "2.0.0", outline: [{ kind: "unit", unit: "membranes" }] },
@@ -20,8 +22,8 @@ async function setup() {
   const trust: PublisherTrust = {
     localDomains: ["northfield.example"],
     publishers: [
-      { domain: "openbio.example", keys: await pinReleaseKeys([publisher.publicKey]) },
-      { domain: "labsafe.example", keys: await pinReleaseKeys([other.publicKey]) },
+      { domain: "openbio.example", keys: await approved(publisher.publicKey) },
+      { domain: "labsafe.example", keys: await approved(other.publicKey) },
     ],
   };
   return { publisher, other, pkg, statement, trust };
@@ -67,8 +69,8 @@ describe("publisher signatures", () => {
 
   it("refuse a key the district has retired", async () => {
     const { publisher, pkg, statement, trust } = await setup();
-    const keys = trust.publishers[0]!.keys.keys.map((key) => ({ ...key, retiresAt: "2026-10-01T00:00:00Z" }));
-    const retired = { ...trust, publishers: [{ domain: "openbio.example", keys: { keys } }] };
+    const keys = trust.publishers[0]!.keys.map((key) => ({ ...key, retiresAt: "2026-10-01T00:00:00Z" }));
+    const retired = { ...trust, publishers: [{ domain: "openbio.example", keys }] };
     expect(await checkPublication(pkg, await signPackagePublication(publisher, statement), retired, NOW)).toStrictEqual({ ok: false, reason: "unknown-publisher" });
   });
 

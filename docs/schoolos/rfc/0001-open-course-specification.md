@@ -344,8 +344,9 @@ signature by a key the district approved for that publisher's domain. The domain
 package ID before the slash. The district's own domains (`PublisherTrust.localDomains`) publish
 unsigned.
 
-- **Keys are pinned per publisher domain.** Each publisher has its own `ReleaseTrust` key set, with
-  retirement times, from `@schoolos/releases` (R03). A key approved for one publisher cannot sign
+- **Keys are pinned per publisher domain.** Each publisher has its own list of approved keys, in
+  `@schoolos/releases`' `TrustedReleaseKey` shape with retirement times (R03). Only the district
+  changes the list; no root key set rotates it. A key approved for one publisher cannot sign
   another publisher's packages. Nothing carried with a signature is trusted as a key.
 - **What is signed.** `PackagePublication { packageId, version, digest, publishedAt }`, as canonical
   JSON in OCS's own signing context (`schoolos-ocs/v1`). A signature made for a release, an offer or
