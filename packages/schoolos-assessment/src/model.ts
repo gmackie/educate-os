@@ -325,9 +325,34 @@ export const GradeScore = z.strictObject({
 /** A grade score. */
 export type GradeScore = z.infer<typeof GradeScore>;
 
+/** A teacher's refusal of a grade proposal, with their reason. */
+export const GradeProposalDecline = z.strictObject({
+  declinedBy: PrincipalId,
+  declinedAt: z.iso.datetime(),
+  reason: z.string().trim().min(1).max(1000),
+});
+/** A grade proposal decline. */
+export type GradeProposalDecline = z.infer<typeof GradeProposalDecline>;
+
+/**
+ * Why a proposal stopped waiting without a teacher deciding it:
+ * - `submission-withdrawn`: its student withdrew the work it grades.
+ * - `superseded`: a teacher approved a newer official grade version for the same assignment and
+ *   student, which `supersededBy` names, so approving the proposal would overwrite it.
+ */
+export const GradeProposalExpiry = z.strictObject({
+  expiredAt: z.iso.datetime(),
+  cause: z.enum(["submission-withdrawn", "superseded"]),
+  supersededBy: z.int().positive().optional(),
+}).refine((e) => (e.cause === "superseded") === (e.supersededBy !== undefined), "a superseded proposal names the version that superseded it");
+/** A grade proposal expiry. */
+export type GradeProposalExpiry = z.infer<typeof GradeProposalExpiry>;
+
 /**
  * A proposed official grade waiting for a teacher: what policy answers `require-approval` for,
- * such as a grade written through an agent or tool, or by a co-teacher or administrator.
+ * such as a grade written through an agent or tool, or by a co-teacher or administrator. It waits
+ * until exactly one of these ends it, after which it never changes: a teacher approves it
+ * (`approvedAsVersion`), declines it (`declined`), or it expires (`expired`).
  */
 export const GradeProposal = z.strictObject({
   id: GradeProposalId,
@@ -340,9 +365,19 @@ export const GradeProposal = z.strictObject({
   proposedAt: z.iso.datetime(),
   /** The official version its approval created, once a teacher approved it. */
   approvedAsVersion: z.int().positive().optional(),
-});
+  declined: GradeProposalDecline.optional(),
+  expired: GradeProposalExpiry.optional(),
+}).refine(
+  (p) => [p.approvedAsVersion, p.declined, p.expired].filter((end) => end !== undefined).length <= 1,
+  "a proposal is approved, declined or expired, never more than one",
+);
 /** A grade proposal. */
 export type GradeProposal = z.infer<typeof GradeProposal>;
+
+/** Whether a proposal still waits for a teacher. */
+export function isPendingProposal(proposal: GradeProposal): boolean {
+  return proposal.approvedAsVersion === undefined && proposal.declined === undefined && proposal.expired === undefined;
+}
 
 /**
  * One version of a student's official grade for an assignment, and the teacher approval that made

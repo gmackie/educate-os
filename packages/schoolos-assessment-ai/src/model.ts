@@ -67,10 +67,19 @@ export type OptionalRunReport = z.infer<typeof OptionalRunReport>;
 
 /**
  * Why an optional run failed. `sandbox-unavailable` is the closed failure of a sandboxed run where
- * the district plan or the configured sandbox does not provide one. An AI run that governance or
- * policy refuses does not fail: it completes with `skipped` evidence.
+ * the district plan or the configured sandbox does not provide one; `rubric-not-authorized` that of
+ * a run whose rubric release may not assess this offering's work (see `assertRubricAuthority`). An
+ * AI run that governance or policy refuses does not fail: it completes with `skipped` evidence.
  */
-export const OptionalRunErrorCode = z.enum(["sandbox-unavailable", "sandbox-error", "model-unavailable", "integrity", "input-too-large", "retries-exhausted"]);
+export const OptionalRunErrorCode = z.enum([
+  "sandbox-unavailable",
+  "sandbox-error",
+  "model-unavailable",
+  "integrity",
+  "input-too-large",
+  "rubric-not-authorized",
+  "retries-exhausted",
+]);
 /** An optional run error code. */
 export type OptionalRunErrorCode = z.infer<typeof OptionalRunErrorCode>;
 

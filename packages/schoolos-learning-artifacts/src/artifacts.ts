@@ -378,7 +378,8 @@ export class LearningArtifacts {
 
   /**
    * Pins a revision for a consumer, so it is never collected. A submission pin is authorized as
-   * submitting the artifact; keeping a version is authorized as changing it. Idempotent.
+   * submitting the artifact; keeping a version, or publishing it as a baseline, is authorized as
+   * changing it. Idempotent.
    */
   async pin(caller: Caller, artifactId: ArtifactId, revisionId: RevisionId, rawConsumer: PinConsumer): Promise<Pin> {
     const consumer = parse(PinConsumer, rawConsumer);
@@ -803,6 +804,7 @@ function lineageOf(state: ArtifactState, revision: ArtifactRevision): ArtifactRe
 
 function samePinHolder(pin: Pin, consumer: PinConsumer, pinnedBy: PrincipalId): boolean {
   if (consumer.kind === "submission") return pin.consumer.kind === "submission" && pin.consumer.submissionId === consumer.submissionId;
+  if (consumer.kind === "baseline") return pin.consumer.kind === "baseline" && pin.consumer.baselineId === consumer.baselineId;
   return pin.consumer.kind === "keep" && pin.pinnedBy === pinnedBy;
 }
 

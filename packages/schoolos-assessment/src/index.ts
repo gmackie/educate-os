@@ -4,4 +4,5 @@
 export * from "./model.ts";
 export * from "./digest.ts";
 export * from "./store.ts";
+export * from "./receipt.ts";
 export * from "./assessment.ts";

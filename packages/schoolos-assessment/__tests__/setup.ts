@@ -11,6 +11,7 @@ import {
   type RequestChannel,
 } from "@schoolos/contracts";
 import { InMemoryAcademicStore } from "@schoolos/academics";
+import type { SigningIdentity } from "@schoolos/fleet";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
 import { InMemoryWorkspaceStore, WorkspaceDirectory } from "@schoolos/workspaces";
@@ -40,7 +41,7 @@ export const NOW = new Date("2026-10-20T12:00:00Z");
 export const DUE = "2026-10-25T23:59:00Z";
 
 /** An assessment service over the learning artifacts and workspaces of a fresh copy of `snapshot`. */
-export function setup(snapshot: DistrictDirectorySnapshot = NORTHFIELD) {
+export function setup(snapshot: DistrictDirectorySnapshot = NORTHFIELD, options: { receiptKey?: SigningIdentity } = {}) {
   const academics = InMemoryAcademicStore.seeded(snapshot);
   const workspaceStore = new InMemoryWorkspaceStore();
   const audit = new InMemoryPolicyAuditSink();
@@ -69,7 +70,7 @@ export function setup(snapshot: DistrictDirectorySnapshot = NORTHFIELD) {
     now,
   });
   const records = new InMemoryAssessmentRecordStore();
-  const assessment = new AssessmentService({ records, artifacts, content, directory: academics, policy, now });
+  const assessment = new AssessmentService({ records, artifacts, content, directory: academics, policy, now, ...options });
 
   /** Applies a change to the academic directory, as a roster sync or term transition would. */
   async function changeDirectory(change: (draft: DistrictDirectorySnapshot) => void) {

@@ -137,11 +137,15 @@ export type ArtifactRevision = z.infer<typeof ArtifactRevision>;
 /**
  * Who pinned a revision, which keeps it from ever being garbage-collected:
  * - `submission`: an E01 submission snapshot that captured the revision.
- * - `keep`: the pinning principal keeping that version, such as a teacher's chosen baseline source.
+ * - `keep`: the pinning principal keeping that version.
+ * - `baseline`: starter material a teacher published from the revision (`@schoolos/assessment`),
+ *   which reads the revision's content for as long as the material exists, so the content is kept
+ *   even after the teacher deletes their source artifact. `baselineId` is the material's ID.
  */
 export const PinConsumer = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("submission"), submissionId: SubmissionId }),
   z.strictObject({ kind: z.literal("keep") }),
+  z.strictObject({ kind: z.literal("baseline"), baselineId: ArtifactId }),
 ]);
 /** A pin consumer. */
 export type PinConsumer = z.infer<typeof PinConsumer>;

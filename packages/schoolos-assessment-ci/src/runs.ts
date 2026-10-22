@@ -4,7 +4,7 @@
 // failing check fails the whole run with a stated reason, because a report missing a check would
 // read as evidence that was never gathered.
 import { z } from "zod";
-import { AssessmentRunId, ContentDigest, SchoolOsError } from "@schoolos/contracts";
+import { AssessmentRunId, ContentDigest, SchoolOsError, type OfferingId } from "@schoolos/contracts";
 import { RubricReleaseRef, submissionDigest, type SubmissionItem } from "@schoolos/assessment";
 import { canonicalTextBytes, isTextMediaType, sha256Digest } from "@schoolos/learning-artifacts";
 import { canonicalDigest } from "./canonical.ts";
@@ -25,7 +25,7 @@ import {
   type StudentAssessmentReport,
 } from "./model.ts";
 import type { EvaluatorRegistry } from "./registry.ts";
-import { verifyRubricRelease, type RubricCriterion, type RubricRelease, type RubricReleaseStore } from "./rubric.ts";
+import { assertRubricAuthority, verifyRubricRelease, type RubricCriterion, type RubricRelease, type RubricReleaseStore, type RubricSigningPolicy } from "./rubric.ts";
 import { CriterionEvidence, StepBudgetExceeded, StepMeter, evaluatorLabel, type EvaluationArtifact, type EvaluationKit, type EvaluatorRelease } from "./sdk.ts";
 import type { AssessmentRunStore } from "./store.ts";
 
@@ -42,6 +42,11 @@ export type RunRequest = z.infer<typeof RunRequest>;
 /** The submitted work a run reads: the submission's items, and a way to read each text item's content. */
 export interface SubmittedWork {
   readonly items: readonly SubmissionItem[];
+  /**
+   * The offering the work was done in. A rubric release bound to an offering assesses only that
+   * offering's work, so it fails a run whose work names no offering or another one.
+   */
+  readonly offeringId?: OfferingId;
   /** The canonical text of one item. A failure here is treated as transient and retried. */
   readText(item: SubmissionItem): Promise<string>;
 }
@@ -51,6 +56,12 @@ export interface AssessmentRunsOptions {
   runs: AssessmentRunStore;
   rubrics: RubricReleaseStore;
   registry: EvaluatorRegistry;
+  /**
+   * Who may sign rubric releases. With it, every run checks when it executes that its release is
+   * bound to the work's offering and that the signer still teaches it (see
+   * `assertRubricAuthority`); without it, only the offering of a bound release is checked.
+   */
+  signing?: RubricSigningPolicy;
   /** The profiles runs may name. Defaults to {@link DETERMINISTIC_PROFILE}. */
   profiles?: readonly ExecutionProfile[];
   /** How long a `running` run is left to its worker before another may reclaim it. Defaults to five minutes. */
@@ -104,6 +115,7 @@ export class AssessmentRuns {
   readonly #runs: AssessmentRunStore;
   readonly #rubrics: RubricReleaseStore;
   readonly #registry: EvaluatorRegistry;
+  readonly #signing: RubricSigningPolicy | undefined;
   readonly #profiles: ReadonlyMap<string, ExecutionProfile>;
   readonly #leaseMs: number;
   readonly #now: () => Date;
@@ -112,6 +124,7 @@ export class AssessmentRuns {
     this.#runs = options.runs;
     this.#rubrics = options.rubrics;
     this.#registry = options.registry;
+    this.#signing = options.signing;
     this.#profiles = new Map((options.profiles ?? [DETERMINISTIC_PROFILE]).map((p) => [p.id, p]));
     this.#leaseMs = options.leaseMs ?? 5 * 60 * 1000;
     this.#now = options.now ?? (() => new Date());
@@ -194,6 +207,21 @@ export class AssessmentRuns {
     throw new SchoolOsError("conflict", `Assessment run ${id} kept changing while it was executed.`);
   }
 
+  /**
+   * Works through the queue: executes up to `limit` runs that are queued, or whose worker's lease
+   * expired, against the work `workFor` finds for each, and returns them as they ended up. A run
+   * whose work cannot be found now is left queued for a later pass.
+   */
+  async drain(workFor: (run: AssessmentRun) => Promise<SubmittedWork | undefined>, limit = 20): Promise<AssessmentRun[]> {
+    const due = await this.#runs.runnable(new Date(this.#now().getTime() - this.#leaseMs), limit);
+    const results: AssessmentRun[] = [];
+    for (const run of due) {
+      const work = await workFor(run);
+      if (work !== undefined) results.push(await this.execute(run.id, work));
+    }
+    return results;
+  }
+
   #profile(id: string): ExecutionProfile {
     const profile = this.#profiles.get(id);
     if (profile === undefined) throw new SchoolOsError("validation-failed", `No execution profile ${id} is available.`);
@@ -235,6 +263,12 @@ export class AssessmentRuns {
       rubric = await this.#rubric(run.key.rubricRelease);
     } catch (error) {
       if (error instanceof SchoolOsError) return failed("integrity", error.message);
+      throw error;
+    }
+    try {
+      await assertRubricAuthority(rubric, work.offeringId, this.#signing);
+    } catch (error) {
+      if (error instanceof SchoolOsError) return failed("rubric-not-authorized", error.message);
       throw error;
     }
 

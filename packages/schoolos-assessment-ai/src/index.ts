@@ -3,6 +3,7 @@
 // releases, and the teacher and student rubric report view models.
 export * from "./model-port.ts";
 export * from "./profiles.ts";
+export * from "./activity-ai-help.ts";
 export * from "./ai-feedback.ts";
 export * from "./sandbox.ts";
 export * from "./cloudflare-sandbox.ts";

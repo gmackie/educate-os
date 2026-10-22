@@ -107,8 +107,7 @@ export function assessmentPlanFromPack(
  * - `teacher-only`: AI feedback is advice to the teacher and is never released to the student.
  * - `releasable`: the teacher may release reviewed AI feedback to the student.
  *
- * It may belong with the activity definition in `@schoolos/contracts` once the curriculum service
- * (C05) owns activities.
+ * {@link activityAiHelpPolicies} reads it from the curriculum's installed activity (C05).
  */
 export const AiHelpPolicy = z.enum(["none", "teacher-only", "releasable"]);
 /** An AI-help policy. */

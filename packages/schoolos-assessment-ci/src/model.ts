@@ -82,6 +82,7 @@ export const RunErrorCode = z.enum([
   "evaluator-unavailable",
   "evaluator-error",
   "nondeterministic-evaluator",
+  "rubric-not-authorized",
   "retries-exhausted",
 ]);
 /** A run error code. */

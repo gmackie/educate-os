@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { ContentDigest, PrincipalId, RubricId, SchoolOsError, type Caller } from "@schoolos/contracts";
+import { ContentDigest, DistrictId, OfferingId, PrincipalId, RubricId, SchoolId, SchoolOsError, type Caller } from "@schoolos/contracts";
+import type { AcademicStore } from "@schoolos/academics";
+import type { PolicyDecider } from "@schoolos/policy";
 import { CriterionId, type RubricReleaseRef } from "@schoolos/assessment";
 import { canonicalDigest } from "./canonical.ts";
 import type { EvaluatorRegistry } from "./registry.ts";
@@ -53,7 +55,18 @@ const rubricBody = {
   version: z.int().positive(),
   title: z.string().trim().min(1).max(200),
   criteria: z.array(RubricCriterion).min(1).max(50),
+  /**
+   * The teacher's instructions for AI feedback on work assessed against this release: a
+   * non-deterministic check, which the deterministic engine never runs. Signed with the release, so
+   * the instructions an AI run follows are exactly the ones the teacher approved.
+   */
+  aiInstructions: z.string().trim().min(1).max(4000).optional(),
 };
+
+/** The offering a rubric release is bound to: the one class whose work it assesses. */
+export const RubricOffering = z.strictObject({ level: z.literal("offering"), districtId: DistrictId, schoolId: SchoolId, offeringId: OfferingId });
+/** A rubric offering. */
+export type RubricOffering = z.infer<typeof RubricOffering>;
 
 function uniqueIds(rubric: { criteria: readonly RubricCriterion[] }): boolean {
   const criteria = rubric.criteria.map((c) => c.id);
@@ -91,15 +104,33 @@ export type RubricSignature = z.infer<typeof RubricSignature>;
 export const RubricRelease = z.strictObject({
   format: z.literal("schoolos.rubric-release.v1"),
   ...rubricBody,
+  /**
+   * The offering the release was signed for, by one of its teachers (see
+   * {@link signOfferingRubricRelease}). It assesses that offering's work only. A release from
+   * before the binding has none.
+   */
+  offering: RubricOffering.optional(),
   signature: RubricSignature,
 }).refine(uniqueIds, "criterion IDs, and check IDs, are unique within a rubric");
 /** A rubric release. */
 export type RubricRelease = z.infer<typeof RubricRelease>;
 
-/** The digest a rubric signature covers: everything in the release except the signature. */
-export async function rubricDigest(release: RubricDraft): Promise<ContentDigest> {
-  const { rubricId, version, title, criteria } = release;
-  return canonicalDigest({ format: "schoolos.rubric-release.v1", rubricId, version, title, criteria });
+/**
+ * The digest a rubric signature covers: everything in the release except the signature. Fields
+ * added since the first release format (`aiInstructions`, `offering`) are covered when present and
+ * left out when absent, so a release signed before them keeps its digest.
+ */
+export async function rubricDigest(release: RubricDraft & { offering?: RubricOffering }): Promise<ContentDigest> {
+  const { rubricId, version, title, criteria, aiInstructions, offering } = release;
+  return canonicalDigest({
+    format: "schoolos.rubric-release.v1",
+    rubricId,
+    version,
+    title,
+    criteria,
+    ...(aiInstructions === undefined ? {} : { aiInstructions }),
+    ...(offering === undefined ? {} : { offering }),
+  });
 }
 
 /** The reference a submission uses to name `release`. */
@@ -114,6 +145,90 @@ export function rubricRef(release: RubricDraft): RubricReleaseRef {
  * answer-keyed evaluator must be `teacher-only`.
  */
 export async function signRubricRelease(rawDraft: RubricDraft, signer: Caller, registry: EvaluatorRegistry, signedAt: Date): Promise<RubricRelease> {
+  return sign(rawDraft, signer, registry, signedAt, undefined);
+}
+
+/** Decides whether a principal may sign, and so whether its signature still holds for, an offering's rubric releases. */
+export interface RubricSigningPolicy {
+  /** Whether `signer` may sign rubric releases for `offering` now. */
+  maySign(signer: Caller, offering: RubricOffering): Promise<boolean>;
+}
+
+/** What signing a release for an offering takes. */
+export interface OfferingRubricSigning {
+  signer: Caller;
+  offering: RubricOffering;
+  policy: RubricSigningPolicy;
+  registry: EvaluatorRegistry;
+  signedAt: Date;
+}
+
+/**
+ * Signs a teacher's rubric draft for one offering, as {@link signRubricRelease} does, after `policy`
+ * confirms the signer is a teacher of that offering. The release is bound to the offering: it
+ * assesses only that offering's work, and only while its signer still teaches it (see
+ * {@link assertRubricAuthority}).
+ */
+export async function signOfferingRubricRelease(rawDraft: RubricDraft, signing: OfferingRubricSigning): Promise<RubricRelease> {
+  const offering = RubricOffering.parse(signing.offering);
+  if (!(await signing.policy.maySign(signing.signer, offering))) {
+    throw new SchoolOsError("forbidden", "Only a teacher of this class can sign its rubrics.");
+  }
+  return sign(rawDraft, signing.signer, signing.registry, signing.signedAt, offering);
+}
+
+/**
+ * Checks, when work is assessed, that `release` may assess work done in `offeringId`: a release
+ * bound to an offering assesses only that offering's work, and only while `policy` still lets its
+ * signer sign for it. With a `policy`, an unbound release is refused too, since nothing says whose
+ * class it belongs to. Answers `forbidden` with the reason.
+ */
+export async function assertRubricAuthority(
+  release: RubricRelease,
+  offeringId: OfferingId | undefined,
+  policy: RubricSigningPolicy | undefined,
+): Promise<void> {
+  const label = `Rubric ${release.rubricId} version ${release.version}`;
+  if (release.offering === undefined) {
+    if (policy !== undefined) throw new SchoolOsError("forbidden", `${label} is not bound to a class, so it cannot assess work.`);
+    return;
+  }
+  if (release.offering.offeringId !== offeringId) throw new SchoolOsError("forbidden", `${label} belongs to another class.`);
+  if (policy === undefined) return;
+  const signer: Caller = {
+    principal: { principalId: release.signature.signedBy, districtId: release.offering.districtId },
+    channel: release.signature.channel,
+  };
+  if (!(await policy.maySign(signer, release.offering))) {
+    throw new SchoolOsError("forbidden", `${label} was signed by someone who no longer teaches this class.`);
+  }
+}
+
+/**
+ * The {@link RubricSigningPolicy} the policy engine decides: whether the signer may `publish` a
+ * teacher-only rubric in the offering, in the offering's current term state. Under the v1 rule
+ * table that is the offering's teachers and co-teachers. An offering the directory does not have,
+ * or one whose school or district differs, is refused.
+ */
+export function policyRubricSigning(options: { policy: PolicyDecider; directory: AcademicStore }): RubricSigningPolicy {
+  return {
+    async maySign(signer, offering) {
+      const { snapshot } = await options.directory.load();
+      const known = snapshot.offerings.find((o) => o.id === offering.offeringId);
+      if (known === undefined || known.districtId !== offering.districtId || known.schoolId !== offering.schoolId) return false;
+      const term = snapshot.terms.find((t) => t.id === known.termId);
+      const { decision } = await options.policy.decide({
+        subject: signer.principal,
+        action: "publish",
+        resource: { kind: "rubric", scope: offering, classification: "teacher-only" },
+        context: { channel: signer.channel, ...(term === undefined ? {} : { termState: term.state }) },
+      });
+      return decision.effect === "allow";
+    },
+  };
+}
+
+async function sign(rawDraft: RubricDraft, signer: Caller, registry: EvaluatorRegistry, signedAt: Date, offering: RubricOffering | undefined): Promise<RubricRelease> {
   if (signer.channel !== "http") throw new SchoolOsError("forbidden", "A rubric is signed only by a teacher acting directly in SchoolOS.");
   const parsed = RubricDraft.safeParse(rawDraft);
   if (!parsed.success) throw new SchoolOsError("validation-failed", z.prettifyError(parsed.error).slice(0, 1000));
@@ -130,10 +245,11 @@ export async function signRubricRelease(rawDraft: RubricDraft, signer: Caller, r
       }
     }
   }
+  const bound = offering === undefined ? draft : { ...draft, offering };
   return {
     format: "schoolos.rubric-release.v1",
-    ...draft,
-    signature: { signedBy: signer.principal.principalId, signedAt: signedAt.toISOString(), channel: "http", digest: await rubricDigest(draft) },
+    ...bound,
+    signature: { signedBy: signer.principal.principalId, signedAt: signedAt.toISOString(), channel: "http", digest: await rubricDigest(bound) },
   };
 }
 
