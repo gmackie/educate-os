@@ -7,6 +7,7 @@ import { z } from "zod";
 import { DistrictDirectorySnapshot, DistrictId, PolicySettings, PrincipalId } from "@schoolos/contracts";
 import {
   AiWorkspaceContext,
+  CloudflareAccountFacts,
   FundingPoolSet,
   GovernedModel,
   ModelRef,
@@ -19,23 +20,31 @@ import { GradeBand, MachineCode, OpaqueId } from "@gmacko/hall-monitor-contracts
 import { WorkshopUserLink } from "@schoolos/identity";
 import { Workspace } from "@schoolos/workspaces";
 
+const LISTED_PRICE_FIELDS = ["priceBookId", "inputUsdNanoPerMTok", "outputUsdNanoPerMTok", "cacheReadUsdNanoPerMTok", "cacheWriteUsdNanoPerMTok"] as const;
+
 /**
- * One model's list rates, in nanodollars per million tokens, from one immutable price book, plus
- * what the guard assumes about a call before it runs. Rates are integers over a million, so a
- * charge is a rational amount rounded up (ADR-0008), never a float.
+ * One model the guard may reserve for: what it assumes about a call before it runs, and,
+ * optionally, the deployment's own rates for it, in nanodollars per million tokens from one
+ * immutable price book. Rates are integers over a million, so a charge is a rational amount
+ * rounded up (ADR-0008), never a float.
+ *
+ * This is the deployment's rate table, merged with the shared Cloudflare price book
+ * (`PRICE_BOOK_CLOUDFLARE_2026_10_20`): a model listed with rates is priced at them (a contract
+ * price wins over a list price), and a model listed without rates is priced from the shared book,
+ * which must then price it. Its price fields are all present or all absent.
  */
 export const ModelRate = z.strictObject({
   ...ModelRef.shape,
   /** The price book the rates come from; recorded on every settlement priced with them. */
-  priceBookId: PriceBookId,
+  priceBookId: PriceBookId.optional(),
   /** Uncached input tokens. */
-  inputUsdNanoPerMTok: UsdNano,
+  inputUsdNanoPerMTok: UsdNano.optional(),
   /** Response tokens, reasoning included. */
-  outputUsdNanoPerMTok: UsdNano,
+  outputUsdNanoPerMTok: UsdNano.optional(),
   /** Input tokens read from the provider's prompt cache. */
-  cacheReadUsdNanoPerMTok: UsdNano,
+  cacheReadUsdNanoPerMTok: UsdNano.optional(),
   /** Input tokens written to the provider's prompt cache. */
-  cacheWriteUsdNanoPerMTok: UsdNano,
+  cacheWriteUsdNanoPerMTok: UsdNano.optional(),
   /**
    * The prompt size a reservation assumes. The guard sees only the messages new to it, not the
    * whole prompt, so this should be near the model's context window: an under-estimate is
@@ -44,6 +53,8 @@ export const ModelRate = z.strictObject({
   reserveInputTokens: z.int().positive(),
   /** The output a reservation assumes when the call names no response cap (decision models). */
   defaultMaxOutputTokens: z.int().positive(),
+}).refine((rate) => new Set(LISTED_PRICE_FIELDS.map((field) => rate[field] === undefined)).size === 1, {
+  message: "a model's price book and rates are all given or all omitted",
 });
 /** A model's rates. */
 export type ModelRate = z.infer<typeof ModelRate>;
@@ -151,8 +162,13 @@ export const GuardConfig = z.strictObject({
   modelCatalog: z.array(GovernedModel),
   /** The district policy floor, applied at every scope. */
   policy: PolicySettings,
-  /** Rates for every model the guard may reserve for. A model with none is refused. */
+  /** Every model the guard may reserve for, with the deployment's rates. A model not listed is refused. */
   modelRates: z.array(ModelRate).min(1),
+  /**
+   * The Cloudflare account the district's AI usage is billed to, for the net estimate the nightly
+   * allocation snapshot records. Without it the snapshot carries the gross cost only.
+   */
+  cloudflareAccount: CloudflareAccountFacts.optional(),
   /** How moderation is called and funded. */
   moderation: z.strictObject({
     /** The model the safety pool pays for, named on every safety reservation. */

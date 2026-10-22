@@ -387,9 +387,11 @@ function applyBackend(
 
 // The guard runs its development entrypoint (see the header). It has no URL and binds nothing: the
 // fake Hall Monitor is in process, and its ledger is a Durable Object reached through ctx.exports.
-// Its default config is built into the entrypoint, so nothing here needs to be a secret.
+// Its default config is built into the entrypoint, so nothing here needs to be a secret. The
+// release's nightly Cron Trigger is dropped: the development entrypoint has no scheduled handler.
 function applyAiGuard(config: StagingConfig): void {
   config.main = AI_GUARD_DEV_MAIN;
+  delete config.triggers;
   config.previews = {
     observability: previewObservability(config),
     ...(config.unsafe ? { unsafe: config.unsafe } : {}),

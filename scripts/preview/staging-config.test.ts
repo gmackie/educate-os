@@ -537,6 +537,7 @@ test("a preview runs the AI call guard's development entrypoint, bound to the ba
   assert.equal(guard.preview_urls, false);
   assert.equal(guard.workers_dev, false);
   assert.deepEqual(guard.migrations, [{ tag: "v1", new_sqlite_classes: ["DistrictAiLedger"] }]);
+  assert.equal(guard.triggers, undefined, "no nightly reconciliation: the dev entrypoint has no scheduled handler");
   // Its config is built into the entrypoint: nothing a public log could print is needed here.
   assert.equal(guard.vars?.AI_GUARD_CONFIG, undefined);
   assert.equal(guard.previews?.vars, undefined);

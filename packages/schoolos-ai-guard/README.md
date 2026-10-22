@@ -37,6 +37,14 @@ A district that runs Hall Monitor in its own account can instead add a `HALL_MON
 binding, which the guard prefers. The config can't declare that binding, because its target is
 not a Worker in this release. `HALL_MONITOR_AUDIENCE` defaults to `hall-monitor`.
 
+A deployment that lets the guard read its AI Gateway's logs sets `AI_GATEWAY_ACCOUNT_ID`,
+`AI_GATEWAY_ID` (vars) and `AI_GATEWAY_LOGS_TOKEN` (a secret API token with AI Gateway read
+permission). They are optional, so they are not wizard inputs; without all three, settlements are
+estimated and nightly reconciliation only records snapshots.
+
+The Worker has one Cron Trigger, `17 3 * * *` (nightly, UTC), declared in `cloudflare.config.ts`.
+The release manifest carries it as the entry's `crons`.
+
 `AI_GUARD_CONFIG` holds:
 
 - the district's funding pools (one of them the safety pool), model catalog and policy floor;
@@ -119,8 +127,14 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
 - **Order.** Generative funds are held first, so a call over budget costs no moderation. Checks
   then run in message order and stop at the first `hold`, `block` or `support`. A denied call has
   its generative hold voided. Moderation spend stays charged, because it was spent.
+- **Rates.** `modelRates` is the deployment's rate table, merged with the shared Cloudflare price
+  book (`PRICE_BOOK_CLOUDFLARE_2026_10_20`, SCHO-115). A model listed with a price book and rates
+  is priced at them, since a contract price wins over a list price. A model listed without rates
+  (a Workers AI model, say) is priced from the shared book, and is refused if the book has no
+  rate for it.
 - **Estimates.** A hold assumes `reserveInputTokens` of prompt at the dearer of the input and
-  cache-write rates, plus the call's `maxOutputTokens` at the output rate. Calls with no output
+  cache-write rates, plus the call's `maxOutputTokens` at the output rate (a shared-book model is
+  held at the book's price for the same tokens). Calls with no output
   cap, such as decision models, use `defaultMaxOutputTokens` instead. The guard sees only new
   messages, never the whole prompt, so the hold is deliberately conservative. Settlement records
   the actual cost even when it is larger than the hold.
@@ -143,9 +157,12 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   - An attempt with no price stays `unknown`.
   - A priced attempt with no token counts, such as one billed in neurons, is recorded with zero
     tokens and its reported cost.
-- **Settlement.** The Workshop reports usage but no cost, so `afterModelCall` prices usage from
-  the rate table (`estimated`, with the rate's `priceBookId`). With no usage, or no rate, the
-  attempt is `unknown`. A failed or aborted call that reported no tokens is voided. Settlement
+- **Settlement.** The Workshop reports usage but no cost (SCHO-134). When the guard can read the
+  gateway's logs and the call's log (`aiGatewayLogId`) already reports a cost, the attempt is
+  `provider_reported` at that cost. Otherwise usage is priced from the merged rate table
+  (`estimated`, with the rate's or the shared book's `priceBookId`). The Workshop's token counts
+  are used either way, since only they split out the prompt cache. A log lookup that fails or
+  times out (3 s) falls back to the estimate. With no usage, or no rate, the attempt is `unknown`. A failed or aborted call that reported no tokens is voided. Settlement
   happens exactly once per `callId`: a repeated outcome finds the call already settled, and
   concurrent repeats replay in the ledger.
 - **Privacy.** Message text goes only to Hall Monitor. It is never logged or stored. Logs carry
@@ -153,6 +170,19 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   to check this. Hall Monitor error messages aren't logged either, only their codes.
 - **Initiators.** `user` and `gadget` initiators resolve by Workshop user ID; a gadget's calls are
   its owner's. An `agent` initiator names a model, not a person, so it is refused.
+- **Nightly reconciliation** (`src/reconciliation.ts`). The Cron Trigger runs two idempotent
+  steps against the district ledger:
+  1. With gateway logs readable, up to 200 settled requests whose cost is still unknown, and whose
+     attempts all name a log, are looked up. Those whose logs now report a cost are reconciled by
+     request ID under `gateway-logs-<day>`. The hold they were charged as a liability is replaced
+     by the billed cost through an adjustment entry, and their unknown flag clears; the settlement
+     itself is never rewritten. Logs with no cost yet are retried on a later night.
+  2. The month of the day just ended gets its cost and allocation snapshot (`costSummary`, with
+     the net allocation when `cloudflareAccount` is configured), stored in the ledger object by
+     month. It holds pool IDs and amounts only. An unchanged snapshot is not rewritten.
+
+  Re-running a night appends and writes nothing. Importing the provider's or Cloudflare's bill
+  is out of scope.
 
 ## Out of scope and follow-ups
 
@@ -161,8 +191,10 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
 - Deploying the district app as a Worker with a guard-only entrypoint for `SCHOOLOS_DISTRICT`,
   and an admin route that confirms Workshop user links into its `workshopUserLinks` store. Until
   then the directory, links and workspaces are configured, and the var size limit remains.
-- Pricing generative calls from the AI Gateway log (`aiGatewayLogId`) or a shared price book
-  (SCHO-115), and scheduled reconciliation against the provider's bill (SCHO-115/116).
+- Importing the provider's and Cloudflare's bills on a schedule, and reading the nightly
+  allocation snapshot from the admin console.
+- Teaching the deploy service to set a worker's `crons`. Until then, the guard's Cron Trigger must
+  be added by hand on an installed guard.
 - Coaching prompts for `coach` decisions.
 - Moderating attachments. Image parts are skipped; Hall Monitor accepts them only as digests.
 - Teaching the hosted deploy service the `service` kind and its `backendBinding`. The SchoolOS

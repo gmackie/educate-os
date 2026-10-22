@@ -45,6 +45,8 @@ test("the dev config runs the development entrypoint and keeps everything else",
   readFileSync(join(GUARD_DIR, "src", "dev-worker.ts"));
   assert.deepEqual(config.migrations, base.migrations, "the ledger's Durable Object migrations");
   assert.deepEqual(config.build, base.build);
+  assert.ok(base.triggers?.crons?.length, "the release runs a nightly reconciliation");
+  assert.equal(config.triggers, undefined, "the development entrypoint has no scheduled handler");
   assert.equal(config.vars?.AI_GUARD_CONFIG, undefined, "the entrypoint's own dev config applies");
   assert.notEqual(base.main, AI_GUARD_DEV_MAIN, "the committed config is not modified");
 });

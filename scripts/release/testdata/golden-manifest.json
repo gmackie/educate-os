@@ -1326,6 +1326,9 @@
       ],
       "compatibilityDate": "2026-09-04",
       "compatibilityFlags": [],
+      "crons": [
+        "17 3 * * *"
+      ],
       "inputs": [
         {
           "help": "The district, its funding pools (including the safety pool), model rates, Hall Monitor profiles per audience, and, unless the district app is bound as SCHOOLOS_DISTRICT, its directory snapshot, workspaces and confirmed Workshop user links. See packages/schoolos-ai-guard/README.md for the schema.",

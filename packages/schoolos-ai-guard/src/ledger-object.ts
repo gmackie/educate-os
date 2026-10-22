@@ -7,7 +7,11 @@ import { DurableObject } from "cloudflare:workers";
 import { DistrictDirectorySnapshot, SchoolOsError, type Scope } from "@schoolos/contracts";
 import {
   AiLedger,
+  billingPeriodOf,
+  type AiCostSummary,
   type AiGovernanceSource,
+  type BilledCost,
+  type BillingPeriod,
   type AiPrincipal,
   type AiSettlement,
   type AiWorkspaceContext,
@@ -75,6 +79,30 @@ export interface ReserveRequest {
   fundingPurpose: FundingPurpose;
 }
 
+/** A settled request with an unknown cost that its AI Gateway logs may settle. */
+export interface OutstandingUnknownCost {
+  /** The request. */
+  requestId: string;
+  /** The model it reserved for. */
+  model: ModelRef;
+  /** The UTC day it was reserved. */
+  day: string;
+  /** The gateway log of each of its attempts, in attempt order. */
+  gatewayLogIds: string[];
+}
+
+/** One month's cost summary as the nightly run last recorded it. Content-free. */
+export interface AllocationSnapshot {
+  /** The UTC month. */
+  period: BillingPeriod;
+  /** The instant it describes. */
+  asOf: string;
+  /** Gross cost, safety spend, unknown-cost liabilities and, with account facts, the net allocation. */
+  summary: AiCostSummary;
+}
+
+const ALLOCATION_SNAPSHOT_PREFIX = "allocation-snapshot:";
+
 /** How a settlement ended, with a settlement the ledger refused reported rather than thrown. */
 export type LedgerSettleResult = SettleResult | { outcome: "not-found" } | { outcome: "conflict" };
 
@@ -118,13 +146,73 @@ export class DistrictAiLedger extends DurableObject<Cloudflare.Env> {
     return (await this.#store.read()).request(requestId) ?? null;
   }
 
+  /**
+   * Up to `limit` settled requests whose cost is still unknown and whose every attempt names an AI
+   * Gateway log, oldest first: what the nightly reconciliation can settle from the gateway.
+   */
+  async outstandingUnknownCosts(limit: number): Promise<OutstandingUnknownCost[]> {
+    const ledger = await this.#store.read();
+    const outstanding: OutstandingUnknownCost[] = [];
+    for (const { reservation, settlement } of ledger.requests) {
+      if (outstanding.length >= limit) break;
+      if (settlement === undefined || !ledger.hasOutstandingUnknownCost(reservation.requestId)) continue;
+      const gatewayLogIds = settlement.attempts.map((attempt) => attempt.gatewayLogId);
+      if (gatewayLogIds.length === 0 || gatewayLogIds.some((id) => id === undefined)) continue;
+      outstanding.push({ requestId: reservation.requestId, model: reservation.model, day: reservation.reservedAt.slice(0, 10), gatewayLogIds: gatewayLogIds as string[] });
+    }
+    return outstanding;
+  }
+
+  /**
+   * Reconciles billed costs into adjustment entries (`AiLedger.reconcile`). Idempotent on
+   * `reconciliationId`: a re-run appends nothing it already appended. A run ID reused for a changed
+   * bill is reported as a conflict rather than thrown.
+   */
+  async reconcile(reconciliationId: string, billed: BilledCost[]): Promise<{ outcome: "reconciled"; adjustments: number } | { outcome: "conflict" }> {
+    try {
+      const report = await this.#current().reconcile(reconciliationId, billed);
+      return { outcome: "reconciled", adjustments: report.adjustments.length };
+    } catch (error) {
+      if (error instanceof SchoolOsError && error.code === "conflict") return { outcome: "conflict" };
+      throw error;
+    }
+  }
+
+  /**
+   * Records the month's cost and allocation snapshot (`AiLedger.costSummary`, with the configured
+   * Cloudflare account's allowance and plan fee when there is one) as it stood at `asOf`, keyed by
+   * month so the latest run's snapshot replaces the last. Content-free: pool IDs and amounts only.
+   * Recording the same snapshot again writes nothing.
+   */
+  async recordAllocationSnapshot(period: BillingPeriod, asOf: string): Promise<{ written: boolean; snapshot: AllocationSnapshot }> {
+    const at = new Date(asOf);
+    if (Number.isNaN(at.getTime()) || billingPeriodOf(asOf) !== period) throw new SchoolOsError("validation-failed", "asOf must fall in the period");
+    const config = readGuardConfig(this.env.AI_GUARD_CONFIG);
+    const ledger = new AiLedger({ districtId: config.districtId, store: this.#store, source: this.#source(config), now: () => at });
+    const snapshot: AllocationSnapshot = { period, asOf: at.toISOString(), summary: await ledger.costSummary(config.cloudflareAccount) };
+    const key = `${ALLOCATION_SNAPSHOT_PREFIX}${period}`;
+    const previous = await this.ctx.storage.get<AllocationSnapshot>(key);
+    if (previous !== undefined && JSON.stringify(previous) === JSON.stringify(snapshot)) return { written: false, snapshot };
+    await this.ctx.storage.put(key, snapshot);
+    return { written: true, snapshot };
+  }
+
+  /** The month's last recorded allocation snapshot, if any. */
+  async allocationSnapshot(period: BillingPeriod): Promise<AllocationSnapshot | null> {
+    return (await this.ctx.storage.get<AllocationSnapshot>(`${ALLOCATION_SNAPSHOT_PREFIX}${period}`)) ?? null;
+  }
+
+  #source(config: GuardConfig): ConfiguredGovernanceSource {
+    return new ConfiguredGovernanceSource(config, this.env.SCHOOLOS_DISTRICT);
+  }
+
   // The ledger over the current configuration. The store outlives a configuration change: entries
   // are history, and only the state new decisions are made against changes.
   #current(): AiLedger {
     const text = this.env.AI_GUARD_CONFIG;
     if (this.#ledger?.text !== text) {
       const config = readGuardConfig(text);
-      this.#ledger = { text, ledger: new AiLedger({ districtId: config.districtId, store: this.#store, source: new ConfiguredGovernanceSource(config, this.env.SCHOOLOS_DISTRICT) }) };
+      this.#ledger = { text, ledger: new AiLedger({ districtId: config.districtId, store: this.#store, source: this.#source(config) }) };
     }
     return this.#ledger.ledger;
   }

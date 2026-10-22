@@ -16,12 +16,13 @@ import {
   type EvaluationRequest,
   type EvaluationResult,
 } from "@gmacko/hall-monitor-contracts";
-import { denialErrorCode, type AiAttempt, type AiDenialReason, type ModelRef } from "@schoolos/ai-governance";
+import { denialErrorCode, type AiDenialReason, type ModelRef } from "@schoolos/ai-governance";
 import { guardMessages, type GuardConfig, type GuardMessages } from "./config.ts";
 import type { GuardContext, GuardContextResolver } from "./context.ts";
 import { receiptAttempts } from "./hall-monitor.ts";
 import type { DistrictAiLedger } from "./ledger-object.ts";
-import { estimateMaxUsdNano, priceUsage, rateFor, tokenUsageOf } from "./pricing.ts";
+import type { GatewayLogSource } from "./gateway-logs.ts";
+import { estimateMaxUsdNano, priceSettlement, rateFor, tokenUsageOf } from "./pricing.ts";
 
 type GuardLogFields = {
   callId: string;
@@ -37,6 +38,7 @@ type GuardLogFields = {
   status: string;
   outcome: string;
   degraded: string;
+  gatewayLookup: string;
 };
 
 const logger = createLogger<GuardLogFields>({ component: "schoolos.ai-guard" });
@@ -51,6 +53,8 @@ export interface GuardDependencies {
   resolver: GuardContextResolver;
   /** Hall Monitor, or `null` when none is configured (moderation is then unavailable). */
   hallMonitor: HallMonitorClient | null;
+  /** The AI Gateway's logs, when the deployment can read them; settlements then use their costs. */
+  gatewayLogs?: GatewayLogSource | null;
 }
 
 /** Hall Monitor decisions the guard stops a call for, most protective first. */
@@ -98,6 +102,7 @@ export class AiCallGuardService {
   readonly #ledger: DurableObjectStub<DistrictAiLedger>;
   readonly #resolver: GuardContextResolver;
   readonly #hallMonitor: HallMonitorClient | null;
+  readonly #gatewayLogs: GatewayLogSource | null;
   readonly #messages: GuardMessages;
 
   constructor(dependencies: GuardDependencies) {
@@ -105,6 +110,7 @@ export class AiCallGuardService {
     this.#ledger = dependencies.ledger;
     this.#resolver = dependencies.resolver;
     this.#hallMonitor = dependencies.hallMonitor;
+    this.#gatewayLogs = dependencies.gatewayLogs ?? null;
     this.#messages = guardMessages(dependencies.config);
   }
 
@@ -187,9 +193,11 @@ export class AiCallGuardService {
   /**
    * Settles an admitted call's generative hold, exactly once per `callId`. A call that ended
    * without billing anything (failed or aborted with no reported tokens) is released instead.
-   * The Workshop reports tokens but no cost, so the cost is priced from the configured rate table
-   * (`estimated`); usage that is missing, or a model with no rate, is settled as `unknown`, which
-   * the ledger carries as a liability at the hold until reconciliation, never as $0.
+   * The Workshop reports tokens but no cost, so the cost is the AI Gateway log's when the guard can
+   * read one (`provider_reported`), else priced from the rate table merged with the shared price
+   * book (`estimated`; see `priceSettlement`). Usage that is missing, or a model nothing prices, is
+   * settled as `unknown`, which the ledger carries as a liability at the hold until reconciliation,
+   * never as $0.
    */
   async afterModelCall(outcome: AiCallOutcome): Promise<void> {
     const log = logger.with({ callId: outcome.callId, status: outcome.status });
@@ -214,19 +222,17 @@ export class AiCallGuardService {
     const gatewayLogId = outcome.aiGatewayLogId !== undefined && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(outcome.aiGatewayLogId)
       ? { gatewayLogId: outcome.aiGatewayLogId }
       : {};
-    const rate = rateFor(this.#config, record.reservation.model);
-    let attempt: AiAttempt;
-    let priceBook: { priceBookId?: string } = {};
-    if (usage !== undefined && rate !== undefined) {
-      attempt = { attemptIndex: 0, ...gatewayLogId, state: "estimated", usage, actualUsdNano: priceUsage(rate, usage) };
-      priceBook = { priceBookId: rate.priceBookId };
-    } else {
-      attempt = { attemptIndex: 0, ...gatewayLogId, state: "unknown", ...(usage === undefined ? {} : { usage }) };
-    }
-    const result = await this.#ledger.settle(outcome.callId, { attempts: [attempt], ...priceBook });
+    const priced = await priceSettlement(this.#config, this.#gatewayLogs, {
+      model: record.reservation.model,
+      usage,
+      at: record.reservation.reservedAt,
+      ...gatewayLogId,
+    });
+    const { attempt } = priced;
+    const result = await this.#ledger.settle(outcome.callId, { attempts: [attempt], ...(priced.priceBookId === undefined ? {} : { priceBookId: priced.priceBookId }) });
     const log2 = log.with({ outcome: result.outcome });
     if (result.outcome === "settled" || result.outcome === "already-voided") {
-      log2.info("AI call settled", { event: "ai_guard.settled", reason: attempt.state });
+      log2.info("AI call settled", { event: "ai_guard.settled", reason: attempt.state, gatewayLookup: priced.gateway });
     } else {
       log2.warn("AI call settlement refused by the ledger", { event: "ai_guard.settle.refused" });
     }

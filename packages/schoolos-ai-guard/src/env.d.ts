@@ -17,6 +17,12 @@ declare namespace Cloudflare {
      * added by the deployment rather than the config.
      */
     SCHOOLOS_DISTRICT?: import("./context.ts").GuardDirectoryPort;
+    /** The Cloudflare account owning the district's AI Gateway, for reading its logs' costs. */
+    AI_GATEWAY_ACCOUNT_ID?: string;
+    /** The district's AI Gateway ID. */
+    AI_GATEWAY_ID?: string;
+    /** An API token that may read the gateway's logs. Without all three, costs are estimated. */
+    AI_GATEWAY_LOGS_TOKEN?: string;
     /** Hall Monitor's HTTPS origin, for a managed tenant reaching it with a service token. */
     HALL_MONITOR_URL?: string;
     /** The private JWK (Ed25519 or P-256) service tokens are signed with. */

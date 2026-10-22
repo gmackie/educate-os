@@ -1,6 +1,7 @@
 // The SchoolOS AI call guard Worker (SCH-01b, ADR-0007). The Workshop backend binds its
 // `SchoolOsAiCallGuard` entrypoint as `AI_CALL_GUARD`; the district ledger is the
-// `DistrictAiLedger` Durable Object, reached through `ctx.exports`. README.md explains the design.
+// `DistrictAiLedger` Durable Object, reached through `ctx.exports`. A nightly Cron Trigger runs the
+// ledger's reconciliation. README.md explains the design.
 
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { validateRpc } from "capnweb-validate";
@@ -8,7 +9,9 @@ import type { AiCallDecision, AiCallDescriptor, AiCallGuard, AiCallOutcome } fro
 import { readGuardConfig, type GuardConfig } from "./config.ts";
 import { configuredGuardDirectory, DistrictGuardContextResolver, StaticGuardContextResolver, type GuardContextResolver } from "./context.ts";
 import { AiCallGuardService } from "./guard.ts";
+import { gatewayLogSource } from "./gateway-logs.ts";
 import { hallMonitorClient } from "./hall-monitor.ts";
+import { runReconciliation } from "./reconciliation.ts";
 
 export { DistrictAiLedger } from "./ledger-object.ts";
 
@@ -32,6 +35,7 @@ export class SchoolOsAiCallGuard extends WorkerEntrypoint<Cloudflare.Env> implem
       ledger: this.ctx.exports.DistrictAiLedger.getByName(config.districtId),
       resolver: contextResolver(this.env, config),
       hallMonitor: hallMonitorClient(this.env, config),
+      gatewayLogs: gatewayLogSource(this.env),
     });
   }
 }
@@ -46,5 +50,15 @@ export default {
   /** The guard has no HTTP surface. */
   async fetch(): Promise<Response> {
     return new Response(null, { status: 404 });
+  },
+
+  /** The nightly reconciliation (see `runReconciliation`), on the Cron Trigger in cloudflare.config.ts. */
+  async scheduled(controller, env, ctx): Promise<void> {
+    const config = readGuardConfig(env.AI_GUARD_CONFIG);
+    await runReconciliation({
+      ledger: ctx.exports.DistrictAiLedger.getByName(config.districtId),
+      gatewayLogs: gatewayLogSource(env),
+      scheduledTime: new Date(controller.scheduledTime),
+    });
   },
 } satisfies ExportedHandler<Cloudflare.Env>;

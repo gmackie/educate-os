@@ -31,6 +31,8 @@ export const AMARA_BIO_GADGET = "gadget-amara-bio";
 
 export const SONNET = { provider: "anthropic", modelId: "claude-sonnet-example" } as const;
 export const MODERATOR = { provider: "cloudflare", modelId: "clef-flash-example" } as const;
+/** A Workers AI model the deployment lists without rates, so the shared Cloudflare price book prices it. */
+export const WORKERS_AI = { provider: "cloudflare", modelId: "@cf/cloudflare/clef-flash" } as const;
 const BIO_FALL = { kind: "course", offeringId: "off_nf-bio-fall-p2" } as const;
 const PERSONAL = { kind: "personal" } as const;
 
@@ -62,7 +64,7 @@ export const TEST_CONFIG = {
       purpose: "personal",
       scope: { level: "district", districtId: "dst_northfield" },
       monthlyAllocationUsdNano: "10000000000",
-      allowedModels: [SONNET],
+      allowedModels: [SONNET, WORKERS_AI],
     },
     {
       id: "fpl_nf-safety",
@@ -73,7 +75,7 @@ export const TEST_CONFIG = {
       allowedModels: [MODERATOR],
     },
   ],
-  modelCatalog: [{ ...SONNET, mode: "enabled" }, { ...MODERATOR, mode: "hidden" }],
+  modelCatalog: [{ ...SONNET, mode: "enabled" }, { ...WORKERS_AI, mode: "enabled" }, { ...MODERATOR, mode: "hidden" }],
   policy: {
     aiSpending: "capped",
     promptsInGatewayLogs: "prohibited",
@@ -93,6 +95,7 @@ export const TEST_CONFIG = {
       reserveInputTokens: 100_000,
       defaultMaxOutputTokens: 4096,
     },
+    { ...WORKERS_AI, reserveInputTokens: 10_000, defaultMaxOutputTokens: 16 },
   ],
   moderation: {
     model: MODERATOR,

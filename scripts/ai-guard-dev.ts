@@ -43,10 +43,13 @@ export function backendAiGuardBinding(): ServiceBinding {
 /**
  * The guard's config for the dev server: the committed one, running the development entrypoint.
  * `AI_GUARD_CONFIG` from the shell or `.dev.vars` replaces the built-in dev config, for example to
- * price a model the dev config does not know; unset, the dev entrypoint uses its own.
+ * price a model the dev config does not know; unset, the dev entrypoint uses its own. The release's
+ * Cron Triggers are dropped: the nightly reconciliation reads AI Gateway logs, and the development
+ * entrypoint has no scheduled handler.
  */
 export function devAiGuardConfig(committed: WranglerConfig, env: NodeJS.ProcessEnv): WranglerConfig {
   const config: WranglerConfig = { ...structuredClone(committed), main: AI_GUARD_DEV_MAIN };
+  delete config.triggers;
   if (env.AI_GUARD_CONFIG) config.vars = { ...config.vars, AI_GUARD_CONFIG: env.AI_GUARD_CONFIG };
   return config;
 }

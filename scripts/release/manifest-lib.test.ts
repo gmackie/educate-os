@@ -414,3 +414,16 @@ test("D1 migrations the installer would refuse fail the release build", () => {
   orphan.d1Migrations = orphan.d1Migrations?.map((m) => ({ ...m, binding: "OTHER_DB" }));
   assert.throws(() => buildTestManifest([orphan]), /0001_init is for OTHER_DB, which it does not bind/);
 });
+
+// Cron Triggers pass through verbatim for the deploy service to schedule; any other trigger
+// (routes, queues, email) is account-specific and fails closed until someone decides how.
+test("a worker's Cron Triggers reach its manifest entry, and no other trigger is accepted", () => {
+  const builds = readTestWorkerBuilds();
+  assert.deepEqual(buildTestManifest(builds).workers["schoolos-ai-guard"]?.crons, ["17 3 * * *"]);
+  assert.equal(buildTestManifest(builds).workers["gatekeeper-google"]?.crons, undefined);
+
+  const guard = builds.find((w) => w.pkgName === "schoolos-ai-guard")!;
+  const routed = { ...guard, config: { ...guard.config, triggers: { crons: [], routes: ["example.com/*"] } } };
+  assert.throws(() => buildTestManifest([...builds.filter((w) => w !== guard), routed]),
+      /trigger\(s\) this generator doesn't handle: routes/);
+});

@@ -5,7 +5,7 @@
 import { defineConfig, type WorkerConfig } from "@cloudflare/config";
 import type { DurableObjectMigration, WranglerBuild } from "./release/manifest-lib.ts";
 
-export { bindings } from "@cloudflare/config";
+export { bindings, triggers } from "@cloudflare/config";
 export type { DurableObjectMigration };
 
 /** Workers runtime compatibility date of every Worker here, and of the vitest pools that model them. */

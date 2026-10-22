@@ -208,6 +208,8 @@ export interface WranglerConfig {
   build?: WranglerBuild;
   /** Module resolution rules for non-JS imports. */
   rules?: unknown[];
+  /** Event triggers. Only Cron Triggers are understood; see `buildWorkerEntry`. */
+  triggers?: { crons?: string[] };
 }
 
 /** A deployable workspace package and its parsed Wrangler configuration. */
@@ -278,6 +280,11 @@ export interface WorkerEntry {
   vars: Record<string, unknown>;
   /** Workers observability settings. */
   observability: ObservabilityConfig;
+  /**
+   * Cron Trigger schedules the deploy service sets on the worker, verbatim from wrangler.jsonc
+   * (the SchoolOS AI call guard's nightly reconciliation). Absent when it has none.
+   */
+  crons?: string[];
   /** How the deploy service expands installed gatekeepers into `GATEKEEPER_*` bindings. */
   gatekeeperBindingExpansion?: {
     entrypoint?: string;
@@ -348,6 +355,9 @@ const HANDLED_CONFIG_KEYS = new Set([
   // gatekeeper-context's Artifacts binding is closed-beta and cannot be provisioned in arbitrary
   // user accounts; it is dropped from customer manifests (the gatekeeper degrades gracefully).
   "artifacts",
+  // Cron Triggers (the SchoolOS AI call guard's nightly reconciliation). Only `crons` is handled:
+  // routes and other triggers are account-specific and fail closed below.
+  "triggers",
 ]);
 
 const ARTIFACTS_CUT_ALLOWED = new Set(["gatekeeper-context"]);
@@ -577,6 +587,12 @@ export function buildWorkerEntry(
     throw new Error(`${pkgName}/wrangler.jsonc has key(s) this generator doesn't handle: ` +
         unknownKeys.join(", "));
   }
+  const unknownTriggers = Object.keys(config.triggers ?? {}).filter((k) => k !== "crons");
+  if (unknownTriggers.length > 0) {
+    throw new Error(`${pkgName}/wrangler.jsonc has trigger(s) this generator doesn't handle: ` +
+        unknownTriggers.join(", "));
+  }
+  const crons = config.triggers?.crons ?? [];
   if (config.artifacts && !ARTIFACTS_CUT_ALLOWED.has(pkgName)) {
     throw new Error(`${pkgName} declares an artifacts binding; only gatekeeper-context's is ` +
         `known (and cut). Decide how customer instances should handle this one.`);
@@ -724,6 +740,7 @@ export function buildWorkerEntry(
     bindings,
     vars,
     observability: config.observability ?? { enabled: false },
+    ...(crons.length > 0 ? { crons: [...crons] } : {}),
     ...(gatekeeperBindingExpansion ? { gatekeeperBindingExpansion } : {}),
     ...(assetsConfig ? { assetsConfig } : {}),
     ...(inputs ? { inputs } : {}),
