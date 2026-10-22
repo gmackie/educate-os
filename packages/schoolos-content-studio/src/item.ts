@@ -1,5 +1,6 @@
 import type { ContentItemId, DistrictId, PrincipalId, ResourceId, Scope } from "@schoolos/contracts";
 import type { ResourceDescriptor, RightsMode } from "@schoolos/registry";
+import type { ExtractionRecord } from "./extraction.ts";
 import type { LicenseEvidence } from "./license.ts";
 import type { PipelineState } from "./pipeline.ts";
 import type { AiReview, CheckFlagCode, ChecksReport } from "./review.ts";
@@ -9,7 +10,19 @@ import type { ContentType } from "./sniff.ts";
 /** Where an item's content came from. */
 export type ItemSource =
   | { kind: "url"; submittedUrl: string; finalUrl: string; hops: string[] }
-  | { kind: "upload"; fileName: string };
+  | { kind: "upload"; fileName: string }
+  | {
+    kind: "blueprint";
+    /** What the release was submitted as, for display. */
+    fileName: string;
+    /** The district's name for the blueprint. Never its Workshop ID, which is a bearer link. */
+    name: string;
+    version: number;
+    /** The release commit, checked against the release's files. */
+    commitId: string;
+    /** Whether the commit is a snapshot release, which the files alone determine. */
+    snapshot: boolean;
+  };
 
 /** One change to an item's rights mode. Every change is kept, including the importer's proposal. */
 export interface RightsChange {
@@ -69,6 +82,8 @@ export interface ContentItem {
   lang: string | undefined;
   license: LicenseEvidence;
   rights: ItemRights;
+  /** For a PDF or DOCX: whether its text was extracted for review. The text itself is never stored. */
+  extraction?: ExtractionRecord;
   checks: ChecksReport | undefined;
   ai: AiReview | undefined;
   decision: ItemDecision | undefined;

@@ -58,8 +58,6 @@ MET for these reasons:
 - **Capabilities are not enforced.** Configuration `modules` and `rollout` reach only plan and
   apply. Disabling a capability for some classes predicts its impact and records a revision, but no
   decision reads it (SCHO-120).
-- **One content source is missing.** There is no path from a native Blueprint into the registry
-  resource model (SCHO-121).
 - **Two lifecycle steps are missing.** Principals have a `graduated` status that holds no roles,
   but no district app route moves a principal to it yet (SCHO-145). An export offer at term end
   needs the export route (SCHO-90).
@@ -131,7 +129,7 @@ because the store refuses a stale commit and the client retries. A durable artif
 | --- | --- | --- | --- | --- | --- | --- |
 | Two synthetic districts, at least two schools per district, three subject scenarios, multiple student principals | Both districts run isolated, each with two schools and writing, science and history work by several students | G0 | test: both harness districts serve the full app in isolation, each with two schools, three subjects of installed activities and submissions from several students | `exit-criteria.test.ts` | **MET** |  |
 | Unauthorized student A cannot read B's work or teacher-only materials; a teacher cannot read a student's personal workspace | Every such read is refused | G1 | test: student A cannot read student B's work or feedback<br>test: a student sees an activity without its teacher-only material, and cannot reach teacher routes<br>test: a teacher cannot list or read a student's personal workspace | `exit-criteria.test.ts` | **MET** |  |
-| One content source imported via a generic URL, one via Thin CC, and one native Blueprint; all normalize into the same resource model | Each source becomes a reviewed release of the same resource descriptor | G1 | test: a generic URL becomes an approved resource release over the API<br>test: a Thin CC web link becomes an approved release of the same resource descriptor (direct)<br>todo: a native Blueprint becomes an approved release of the same resource descriptor (SCHO-121) | `exit-criteria.test.ts` | **NOT MET** | SCHO-121 |
+| One content source imported via a generic URL, one via Thin CC, and one native Blueprint; all normalize into the same resource model | Each source becomes a reviewed release of the same resource descriptor | G1 | test: a generic URL becomes an approved resource release over the API<br>test: a Thin CC web link becomes an approved release of the same resource descriptor (direct)<br>test: a native Blueprint becomes an approved release of the same resource descriptor (direct) | `exit-criteria.test.ts` | **MET** |  |
 | One assignment produces a persistent submission snapshot and deterministic CI report; no unreviewed official grade writeback | Pinned snapshot, reproducible report, no official grade without a teacher | G1 | test: a submission pins its revision digests through later edits, its CI report is reproducible, and no grade is official until the teacher records it | `exit-criteria.test.ts` | **MET** |  |
 | Admin can enable/disable a capability for a subset of classes, predict impacted users, and roll back configuration | Predicted impact per class, an auditable revision, and a working rollback | G1 | test: planning a capability for two classes predicts each class's students and staff without changing anything<br>test: narrowing to a subset and then rolling back records each step as a revision and restores the earlier desired state<br>todo: a class outside the rollout is refused the capability on its next request (SCHO-120) | `exit-criteria.test.ts` | **NOT MET** | SCHO-120 |
 | Artificial root outage does not interrupt existing district student/teacher activity | Students and teachers keep working while the root is down | G1 | test: while every root call fails, students save and submit and teachers review and grade, and the entitlement leaves the classroom unaffected (direct) | `exit-criteria.test.ts` | **MET** |  |
@@ -167,6 +165,7 @@ because the store refuses a stale commit and the client retries. A durable artif
 | Public registry catalog compromised | a release signed by an unpinned key and a tampered framework release are rejected, and the district's pinned release and approved catalog are unchanged | Release offers and catalog installs have no district route yet (SCHO-107 adds the catalog routes), so the release manager and the app's catalog mirror are called directly. |
 | Import from another district | a student's archive from the district app's own records carries no peer work, teacher-only material or credentials | The district app has no export route, so the P01 exporter is built over the app's stores and engine. |
 | One content source imported via a generic URL, one via Thin CC, and one native Blueprint; all normalize into the same resource model | a Thin CC web link becomes an approved release of the same resource descriptor | The district app has no cartridge import route, so the importer is driven directly against the app's Content Studio storage; review and approval are over HTTP. |
+| One content source imported via a generic URL, one via Thin CC, and one native Blueprint; all normalize into the same resource model | a native Blueprint becomes an approved release of the same resource descriptor | The district app has no Blueprint import route, so the release is submitted directly to the app's Content Studio storage; review and approval are over HTTP. |
 | Artificial root outage does not interrupt existing district student/teacher activity | while every root call fails, students save and submit and teachers review and grade, and the entitlement leaves the classroom unaffected | The root client and entitlement cache are fleet components with no district route; they are driven directly. |
 | Full district-local metering reports accurate per-principal and per-funding-pool AI use; no root content transmission | the district's heartbeat to the root carries no names, IDs or content | The heartbeat is built by the fleet agent, which has no district route. |
 
@@ -175,7 +174,7 @@ because the store refuses a stale commit and the client retries. A durable artif
 | Gate | Criteria | MET | NOT MET |
 | --- | --- | --- | --- |
 | G0 | 2 | 2 | 0 |
-| G1 | 21 | 11 | 10 |
+| G1 | 21 | 12 | 9 |
 | G2 | 3 | 3 | 0 |
 | G3 | 3 | 2 | 1 |
 | G4 | 2 | 1 | 1 |

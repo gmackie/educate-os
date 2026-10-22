@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 /**
- * The content types the studio accepts. DOCX is detected so it can be stored and linked, but the
- * studio does not parse it: it yields no text for review.
+ * The content types the studio accepts. PDF and DOCX text is read for review only through an
+ * injected extractor (`ContentStudioOptions.extractText`); without one they are stored unread.
  */
-export const ContentType = z.enum(["pdf", "text", "html", "png", "jpeg", "docx"]);
+export const ContentType = z.enum(["pdf", "text", "html", "png", "jpeg", "docx", "blueprint-release"]);
 /** An accepted content type. */
 export type ContentType = z.infer<typeof ContentType>;
 
@@ -16,11 +16,13 @@ export const MEDIA_TYPES: Readonly<Record<ContentType, string>> = {
   png: "image/png",
   jpeg: "image/jpeg",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  // The manifest the studio writes for a Blueprint release (`blueprintReleaseManifest`). Never accepted from a sender.
+  "blueprint-release": "application/vnd.schoolos.blueprint-release+json",
 };
 
 /** Media types a URL import may declare, and the content type each must turn out to be. */
 const DECLARED_MEDIA_TYPES: Readonly<Record<string, ContentType>> = {
-  ...Object.fromEntries(Object.entries(MEDIA_TYPES).map(([type, media]) => [media, type])),
+  ...Object.fromEntries(Object.entries(MEDIA_TYPES).filter(([type]) => type !== "blueprint-release").map(([type, media]) => [media, type])),
   "application/xhtml+xml": "html",
 };
 

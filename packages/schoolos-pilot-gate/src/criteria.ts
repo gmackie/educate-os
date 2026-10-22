@@ -381,7 +381,12 @@ export const CRITERIA: readonly Criterion[] = z.array(Criterion).parse([
         name: "a Thin CC web link becomes an approved release of the same resource descriptor",
         direct: "The district app has no cartridge import route, so the importer is driven directly against the app's Content Studio storage; review and approval are over HTTP.",
       },
-      { id: "blueprint", status: "todo", name: "a native Blueprint becomes an approved release of the same resource descriptor", blockedBy: ["SCHO-121"], reason: "There is no ingest path from a native Gadgets Blueprint into the registry resource model." },
+      {
+        id: "blueprint",
+        status: "test",
+        name: "a native Blueprint becomes an approved release of the same resource descriptor",
+        direct: "The district app has no Blueprint import route, so the release is submitted directly to the app's Content Studio storage; review and approval are over HTTP.",
+      },
     ],
   },
   {

@@ -7,6 +7,7 @@ import { createDistrictApiClient, type DistrictApiClient } from "@schoolos/api-c
 import { bootDistrictApp, bootHarness, harnessFetch, seedDemo, type HarnessDistrict } from "@schoolos/harness";
 import { criterion } from "./gate.ts";
 import { importThinCartridge } from "./cartridge.ts";
+import { submitSyntheticBlueprint, SYNTHETIC_BLUEPRINT } from "./blueprint.ts";
 import { entitlementWithRootDown } from "./root.ts";
 import {
   applyNorthfieldRoster,
@@ -181,6 +182,30 @@ criterion("x34.content-sources", {
     expect(proposal.units.flatMap((unit) => unit.items)).toContainEqual({ kind: "resource", resourceId: viaCartridge.id, releaseVersion: viaCartridge.release.version });
     const releases = await morgan.call("teacher.listReleases", { params: { offeringId: NF.bio } }) as { descriptor: { id: string } }[];
     expect(releases.map((r) => r.descriptor.id).toSorted()).toStrictEqual([viaUrl.id, viaCartridge.id].toSorted());
+  },
+
+  blueprint: async () => {
+    const { northfield } = await bootPilot();
+    const viaUrl = ResourceDescriptor.parse((await teacherInstallsEssay(northfield, NF.morgan, NF.bio, "https://open-lessons.example/persuasive-writing")).release.descriptor);
+
+    const { item, release } = await submitSyntheticBlueprint(northfield, NF.morgan, NF.bio);
+    // The teacher reviews and approves it from the class's ordinary queue, over the API.
+    const morgan = await northfield.as(NF.morgan);
+    const queue = await morgan.call("teacher.reviewQueue", { params: { offeringId: NF.bio } }) as { itemId: string }[];
+    expect(queue.map((entry) => entry.itemId)).toContain(item.id);
+    const approved = await morgan.call("teacher.approveResource", { params: { itemId: item.id }, body: {} }) as { descriptor: unknown };
+    const viaBlueprint = ResourceDescriptor.parse(approved.descriptor);
+    expect(Object.keys(viaBlueprint).toSorted()).toStrictEqual(Object.keys(viaUrl).toSorted());
+    expect(viaBlueprint).toMatchObject({
+      kind: "interactive",
+      locator: `urn:schoolos:blueprint:${SYNTHETIC_BLUEPRINT.name}:release:${release.commitId}`,
+      provenance: { sourceRevision: release.commitId },
+      review: { status: "approved" },
+    });
+    // The release pins the commit; the gadget's code is in no registry record.
+    expect(JSON.stringify(approved)).not.toContain("osmosis-explorer-client");
+    const releases = await morgan.call("teacher.listReleases", { params: { offeringId: NF.bio } }) as { descriptor: { id: string } }[];
+    expect(releases.map((r) => r.descriptor.id).toSorted()).toStrictEqual([viaUrl.id, viaBlueprint.id].toSorted());
   },
 });
 
