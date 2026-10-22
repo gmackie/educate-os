@@ -51,6 +51,8 @@ interface TestThing {
   readValue(): Promise<number>;
   writeValue(value: number): Promise<number>;
   writeValues(values: number[]): Promise<number[]>;
+  /** Resolves once the integration test opens \`key\` through \`/control/open-gate\`. */
+  waitForGate(key: string): Promise<void>;
   /** Binds a hook the integration test fires through \`/control/fire-hook\`. */
   watch(key: string, callback: ValueHook): Promise<void>;
 }
@@ -244,6 +246,15 @@ export class TestControl extends DurableObject<Cloudflare.Env> {
 
   isApplyReleased(label: string): boolean {
     return this.ctx.storage.kv.get<boolean>(`release-apply:${label}`) ?? false;
+  }
+
+  /** Opens `key` for every `TestSession.waitForGate(key)` on `label`, so code can wait on a test. */
+  openGate(label: string, key: string): void {
+    this.ctx.storage.kv.put(`gate:${label}:${key}`, true);
+  }
+
+  isGateOpen(label: string, key: string): boolean {
+    return this.ctx.storage.kv.get<boolean>(`gate:${label}:${key}`) ?? false;
   }
 
   enableHook(
@@ -595,6 +606,11 @@ export interface TestSession {
   /** `incomplete` omits the `descriptionIsComplete` claim, as a summary-only gatekeeper would. */
   writeValue(value: number, opts?: { autoApprovable?: boolean; incomplete?: boolean }): Promise<number>;
   writeValues(values: number[]): Promise<number[]>;
+  /**
+   * Resolves once the test opens `key` on this connection through `/control/open-gate`, so a tool
+   * stays running until the test has done what it must do while the tool runs.
+   */
+  waitForGate(key: string): Promise<void>;
   watch(key: string, callback: RpcStub<ValueHook>): Promise<void>;
   /** Stores a persistent stub to this connection under `key`, for `/control/call-self-stub`. */
   keepSelfStub(key: string): Promise<void>;
@@ -656,6 +672,10 @@ class TestSessionTarget extends RpcTarget implements TestSession {
     return Promise.all(values.map(value => this.writeValue(value)));
   }
 
+  async waitForGate(key: string): Promise<void> {
+    await pollUntil(() => this.state.isGateOpen(this.label, key), `The test gate ${key} was never opened.`);
+  }
+
   async watch(key: string, callback: RpcStub<ValueHook>): Promise<void> {
     await this.approvalQueue.bindHook(
         // @ts-expect-error Workers currently widens the controller's hook type across bindHook RPC.
@@ -675,10 +695,14 @@ class TestSessionTarget extends RpcTarget implements TestSession {
 
 const SET_VALUE_ACTION_KIND: ActionKind = { tag: "set-value", label: "Set value" };
 
-/** Polls rather than parks a promise: the release arrives on another request to TestControl. */
 async function waitForApplyRelease(state: DurableObjectStub<TestControl>, label: string) {
-  for (const deadline = Date.now() + 30_000; !await state.isApplyReleased(label);) {
-    if (Date.now() > deadline) throw new Error("The held test apply was never released.");
+  await pollUntil(() => state.isApplyReleased(label), "The held test apply was never released.");
+}
+
+/** Polls rather than parks a promise: the release arrives on another request to TestControl. */
+async function pollUntil(released: () => Promise<boolean>, neverMessage: string) {
+  for (const deadline = Date.now() + 30_000; !await released();) {
+    if (Date.now() > deadline) throw new Error(neverMessage);
     await scheduler.wait(25);
   }
 }
@@ -983,6 +1007,15 @@ export default {
       const { label } = body as Record<string, unknown>;
       if (!isNonEmptyString(label)) return badRequest("`label` must be a non-empty string");
       await control(ctx.exports).releaseApply(label);
+      return new Response(null, { status: 204 });
+    }
+
+    // Resolves every TestSession.waitForGate(key) on `label`. Body: {"label": "...", "key": "..."}
+    if (url.pathname === "/control/open-gate" && req.method === "POST") {
+      const { label, key } = body as Record<string, unknown>;
+      if (!isNonEmptyString(label)) return badRequest("`label` must be a non-empty string");
+      if (!isNonEmptyString(key)) return badRequest("`key` must be a non-empty string");
+      await control(ctx.exports).openGate(label, key);
       return new Response(null, { status: 204 });
     }
 

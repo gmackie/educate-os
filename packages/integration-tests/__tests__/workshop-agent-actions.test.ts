@@ -156,9 +156,10 @@ it.concurrent("approving every held write applies each and resumes the agent onc
 it.concurrent("approving a held write while its code runs lets the agent carry on", async () => {
   const model = models.script([
     { toolCall: { id: "write-then-wait", name: "executeCode", arguments: {
-      // The wait keeps the tool running while the test approves the write.
+      // The gate keeps the tool running until the test has approved the write. A timed wait here
+      // raced a slow approval: a tool that ends first suspends the turn on the pending write.
       code: "export default async function(self, env) { " +
-          "await env.TEST_AMBIENT.writeValue(7); await scheduler.wait(2000); }",
+          "await env.TEST_AMBIENT.writeValue(7); await env.TEST_AMBIENT.waitForGate(\"approved\"); }",
     } } },
     { text: "The value is applied." },
   ]);
@@ -167,6 +168,7 @@ it.concurrent("approving a held write while its code runs lets the agent carry o
   const turn = session.runTurn("Set the test value to 7.");
   const [action] = await waitForPendingActions(session, 1);
   await withOwnerWorkspace(harness.url, session.username, ws => ws.approveAction(action.id));
+  await control("open-gate", { label: labelOf(session), key: "approved" });
   expect(agentSaid((await turn).history, "The value is applied.")).toBe(1);
 });
 
