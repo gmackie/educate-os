@@ -13,6 +13,7 @@
 import { SchoolOsError } from "@schoolos/contracts";
 import type { z } from "zod";
 import { RegistryIdentifier } from "../framework.ts";
+import { type Adapted, adaptCaseDocumentSet, adaptCasePackage, type CaseAdapter } from "./adapter.ts";
 import {
   CaseAssociationSet,
   CaseDocument,
@@ -94,16 +95,28 @@ export class CaseClient {
 
   /** Lists published frameworks: `GET /CFDocuments`. */
   async listDocuments(page: { limit?: number; offset?: number } = {}): Promise<CaseDocumentSet> {
-    const params = new URLSearchParams();
-    if (page.limit !== undefined) params.set("limit", String(page.limit));
-    if (page.offset !== undefined) params.set("offset", String(page.offset));
-    const query = params.size > 0 ? `?${params}` : "";
-    return this.#get(`/CFDocuments${query}`, CaseDocumentSet);
+    return this.#get(`/CFDocuments${pageQuery(page)}`, CaseDocumentSet);
+  }
+
+  /**
+   * Lists published frameworks from a publisher with known deviations, normalized by `adapter`
+   * (ADR-0011). Everything the adapter does not name must still be CASE 1.1.
+   */
+  async listAdaptedDocuments(adapter: CaseAdapter, page: { limit?: number; offset?: number } = {}): Promise<Adapted<CaseDocumentSet>> {
+    return this.#getWith(`/CFDocuments${pageQuery(page)}`, (body) => adaptCaseDocumentSet(body, adapter));
   }
 
   /** Fetches one framework document: `GET /CFDocuments/{id}`. */
   async getDocument(identifier: string): Promise<CaseDocument> {
     return this.#get(`/CFDocuments/${pathIdentifier(identifier)}`, CaseDocument);
+  }
+
+  /**
+   * Fetches a package from a publisher with known deviations, normalized by `adapter`. Pass the
+   * returned adaptations to `decodeCasePackage`, which records them on each record's provenance.
+   */
+  async getAdaptedPackage(adapter: CaseAdapter, identifier: string): Promise<Adapted<CasePackage>> {
+    return this.#getWith(`/CFPackages/${pathIdentifier(identifier)}`, (body) => adaptCasePackage(body, adapter));
   }
 
   /** Fetches a framework's full package: `GET /CFPackages/{id}`. */
@@ -122,6 +135,18 @@ export class CaseClient {
   }
 
   async #get<T extends z.ZodType>(path: string, schema: T): Promise<z.infer<T>> {
+    return this.#getWith(path, (body) => {
+      const parsed = schema.safeParse(body);
+      if (!parsed.success) {
+        const paths = parsed.error.issues.slice(0, 5).map((issue) => issue.path.join(".") || "(root)");
+        throw new SchoolOsError("validation-failed", `CASE response does not match CASE 1.1 at ${paths.join(", ")}`);
+      }
+      return parsed.data;
+    });
+  }
+
+  /** Fetches `path` and hands its JSON body to `read`, which validates it. */
+  async #getWith<T>(path: string, read: (body: unknown) => T): Promise<T> {
     const url = `${this.#baseUrl}${path}`;
     const signal = AbortSignal.timeout(this.#timeoutMs);
     let text: string;
@@ -151,12 +176,7 @@ export class CaseClient {
     } catch {
       throw new SchoolOsError("validation-failed", "CASE response is not JSON");
     }
-    const parsed = schema.safeParse(body);
-    if (!parsed.success) {
-      const paths = parsed.error.issues.slice(0, 5).map((issue) => issue.path.join(".") || "(root)");
-      throw new SchoolOsError("validation-failed", `CASE response does not match CASE 1.1 at ${paths.join(", ")}`);
-    }
-    return parsed.data;
+    return read(body);
   }
 
   /** Sends the request, retrying transient failures until the attempts or the deadline run out. */
@@ -185,6 +205,13 @@ export class CaseClient {
   #backoff(attempt: number): number {
     return Math.min(this.#baseDelayMs * 2 ** (attempt - 1), MAX_RETRY_DELAY_MS);
   }
+}
+
+function pageQuery(page: { limit?: number; offset?: number }): string {
+  const params = new URLSearchParams();
+  if (page.limit !== undefined) params.set("limit", String(page.limit));
+  if (page.offset !== undefined) params.set("offset", String(page.offset));
+  return params.size > 0 ? `?${params}` : "";
 }
 
 /** Encodes an identifier for a request path, refusing anything that is not a UUID. */

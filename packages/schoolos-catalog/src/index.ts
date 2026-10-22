@@ -8,4 +8,5 @@ export * from "./digest.ts";
 export * from "./playtrek/mapping.ts";
 export * from "./release.ts";
 export * from "./mirror.ts";
+export * from "./signature.ts";
 export * from "./coverage.ts";

@@ -161,10 +161,13 @@ and is not declared.
 **Decision: metadata and pointer only.** TEA runs its own CASE service at
 `https://teks-api.texasgateway.org/ims/case/v1p0` (CASE 1.0). The catalog declares the chapters for
 ELA and reading (110), mathematics (111), science (112), social studies (113) and the 2022
-Prekindergarten Guidelines. Imports from it are `official`. **Known problem:** TEA's packages give
+Prekindergarten Guidelines. Imports from it are `official`. TEA's packages give
 `CFDocument.subject` as a string instead of a list, and their items carry no `educationLevel`, so
-they do not pass the registry's strict CASE 1.1 decoder (SCHO-45). Chapter 111 and Chapter 115
-both fail on `CFDocument.subject`.
+the catalog's TEKS sources name the registry's `tea-teks-api` adapter (ADR-0011, SCHO-61). It
+fixes the subject, derives education levels from each item's grade or course, and records both on
+the provenance of every record it changed. The registry's tests use fixtures hand-authored to the
+shape of TEA's responses with synthetic text, because TEA's terms do not let this repository ship
+TEKS text, even as test data.
 
 ## Michigan
 
@@ -188,4 +191,5 @@ Decoding real packages with `decodeCasePackage`:
 
 So the fail-closed rule for unknown fields has not been the obstacle. The obstacle is named,
 publisher-specific deviations in known fields. Handling them belongs in an explicit adapter that
-records what it changed, not in a looser decoder.
+records what it changed, not in a looser decoder. ADR-0011 records the decision: the decoder stays
+strict, and publisher deviations go through named adapters whose changes are kept in provenance.

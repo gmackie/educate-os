@@ -1,4 +1,4 @@
-import { FrameworkDefinition, RegistryDate, RegistryIdentifier, RegistryUri } from "@schoolos/registry";
+import { CaseAdapterName, FrameworkDefinition, RegistryDate, RegistryIdentifier, RegistryUri } from "@schoolos/registry";
 import { z } from "zod";
 import { CatalogKey, CatalogSubject, GRADE_BANDS, GradeBand } from "./vocabulary.ts";
 
@@ -49,6 +49,11 @@ export const CaseSource = z.strictObject({
   host: z.enum(["publisher", "mirror"]),
   /** When SchoolOS last fetched the document from `serviceBaseUrl`. */
   verifiedAt: RegistryDate,
+  /**
+   * The named adapter for this publisher's known deviations from CASE 1.1 (ADR-0011). Absent for
+   * a source that serves strict CASE 1.1.
+   */
+  adapter: CaseAdapterName.optional(),
   /** What an install should expect, such as deviations from CASE 1.1. */
   notes: z.string().max(2000).optional(),
 });

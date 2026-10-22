@@ -16,9 +16,11 @@ import { z } from "zod";
  * The kinds of message signed in this package's own signing context: release manifests (by a
  * release key) and release key sets (by offline root keys). Offers are signed in the fleet
  * protocol's context instead (kind `release-offer`), and because the contexts and kinds differ, no
- * signature made for one ever verifies as another.
+ * signature made for one ever verifies as another. `catalog-release` is a framework catalog release
+ * statement (`@schoolos/catalog`), signed by a release key: the kind is part of the signed bytes, so
+ * a catalog signature can never pass as a manifest's, or the reverse.
  */
-export const ReleaseMessageKind = z.enum(["release-manifest", "release-key-set"]);
+export const ReleaseMessageKind = z.enum(["release-manifest", "release-key-set", "catalog-release"]);
 /** A release message kind. */
 export type ReleaseMessageKind = z.infer<typeof ReleaseMessageKind>;
 

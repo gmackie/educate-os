@@ -128,7 +128,7 @@ const MICHIGAN_LICENSE: FrameworkLicense = {
 
 const TEKS_API = "https://teks-api.texasgateway.org/ims/case/v1p0";
 const TEKS_NOTE =
-  "TEA's CASE 1.0 service. Its packages give CFDocument.subject as a string rather than a list, and their items carry no educationLevel, so they do not yet pass the registry's CASE 1.1 decoder (SCHO-45).";
+  "TEA's CASE 1.0 service, read through the registry's tea-teks-api adapter (ADR-0011): it turns CFDocument.subject from a string into a list and derives each item's education levels from the grade or course it sits under. Each record's provenance lists what the adapter changed.";
 const teks = (title: string, identifier: string): CaseSource => ({
   title,
   serviceBaseUrl: TEKS_API,
@@ -136,6 +136,7 @@ const teks = (title: string, identifier: string): CaseSource => ({
   documentUri: `${TEKS_API}/CFDocuments/${identifier}`,
   host: "publisher",
   verifiedAt: REVIEWED_ON,
+  adapter: "tea-teks-api",
   notes: TEKS_NOTE,
 });
 
@@ -336,7 +337,7 @@ const ENTRIES: readonly CatalogEntry[] = [
       "9-12": "pointer",
     }, {
       "PK": "Texas Prekindergarten Guidelines.",
-      "9-12": "TEKS chapters include the high-school courses, but their items carry no education levels, so band coverage after import cannot be checked item by item.",
+      "9-12": "TEKS chapters include the high-school courses. TEA publishes no education levels, so an import derives them from course structure; high-school courses name no grade and are read as grades 9-12.",
     }),
   },
   {

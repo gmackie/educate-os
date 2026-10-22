@@ -151,6 +151,26 @@ describe("catalog mirror", () => {
   });
 });
 
+// Shaped like TEA's teks-api responses: a string subject, no education levels, and a course item.
+const teaId = (n: number) => `5a0f6a0e-0000-4000-8000-0000000001${String(n).padStart(2, "0")}`;
+const teaUri = (kind: string, n: number) => `https://teks-api.texasgateway.example/ims/case/v1p0/${kind}/${teaId(n)}`;
+const teaItem = (n: number, type: string, statement: string) => ({
+  identifier: teaId(n),
+  uri: teaUri("CFItems", n),
+  fullStatement: statement,
+  CFItemType: type,
+  humanCodingScheme: `900.${n}`,
+  lastChangeDateTime: "2022-04-11T13:11:45+00:00",
+});
+const teaChild = (n: number, parent: number) => ({
+  identifier: teaId(50 + n),
+  uri: teaUri("CFAssociations", 50 + n),
+  associationType: "isChildOf",
+  originNodeURI: { title: "", identifier: teaId(n), uri: teaUri("CFItems", n) },
+  destinationNodeURI: { title: "", identifier: teaId(parent), uri: teaUri("CFItems", parent) },
+  lastChangeDateTime: "2022-04-11T13:11:45+00:00",
+});
+
 describe("importing from a CASE source", () => {
   const document = {
     identifier: "5a0f6a0e-0000-4000-8000-000000000001",
@@ -187,6 +207,29 @@ describe("importing from a CASE source", () => {
     const fromMirror = await importCaseRelease(ngss, ngss.caseSources[0]!.documentIdentifier, options);
     expect(fromMirror.content.nodes!.map((n) => n.provenance.source)).toStrictEqual(["derived"]);
     expect(fromMirror.content.framework.provenance).toMatchObject({ source: "derived", sourceUri: ngss.caseSources[0]!.documentUri });
+  });
+
+  it("reads TEA's deviations through the TEKS source's named adapter, and nowhere else", async () => {
+    const teaShaped = {
+      CFDocument: { ...document, subject: "Mathematics" },
+      CFItems: [teaItem(1, "Grade/Course", "Grade 4, Adopted 2012."), teaItem(2, "Student Expectation", "a synthetic expectation;")],
+      CFAssociations: [teaChild(2, 1)],
+    };
+    const teaFetch = async () => new Response(JSON.stringify(teaShaped), { headers: { "content-type": "application/json" } });
+
+    const teks = catalogEntry("teks");
+    const release = await importCaseRelease(teks, teks.caseSources[1]!.documentIdentifier, { ...options, fetch: teaFetch });
+    expect(release.content.framework.subjects).toStrictEqual(["Mathematics"]);
+    const expectation = release.content.nodes!.find((n) => n.humanCodingScheme === "900.2")!;
+    expect(expectation.educationLevels).toStrictEqual(["04"]);
+    expect(expectation.provenance).toMatchObject({
+      source: "official",
+      adaptations: [{ adapter: "tea-teks-api@1", change: "derived-education-level", detail: "from Grade/Course 900.1" }],
+    });
+
+    // A source without the adapter still refuses the same package.
+    const ngss = catalogEntry("ngss");
+    await rejectsWith(importCaseRelease(ngss, ngss.caseSources[0]!.documentIdentifier, { ...options, fetch: teaFetch }), "validation-failed");
   });
 
   it("imports only from a source the catalog entry declares", async () => {

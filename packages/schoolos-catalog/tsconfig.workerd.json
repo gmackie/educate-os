@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // The workerd suite imports `cloudflare:workers` and runs on the Workers runtime (ADR-0009,
+    // point 5); the library itself stays on the web-standard surface in tsconfig.json. Only the
+    // modules the suite imports are checked here, and it does not import the signature verifier.
+    "types": ["@cloudflare/workers-types"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["__tests__/workerd"],
+  "exclude": ["dist", "node_modules"]
+}

@@ -1,0 +1,744 @@
+{
+  "CFDocument": {
+    "adoptionStatus": "adopted",
+    "creator": "Synthetic Education Agency",
+    "description": "Chapter 900. Synthetic Mathematics",
+    "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+    "language": "en",
+    "lastChangeDateTime": "2019-08-26T15:21:18+00:00",
+    "notes": "Synthetic shape-only fixture modelled on TEA teks-api packages; no TEKS text.",
+    "officialSourceURL": "https://rules.texasgateway.example/chapter900",
+    "publisher": "Synthetic Education Agency",
+    "subject": "Mathematics",
+    "subjectURI": [
+      {
+        "identifier": "949ccfd2-9c86-5b15-b11c-6714e04903ff",
+        "title": "Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFSubjects/949ccfd2-9c86-5b15-b11c-6714e04903ff"
+      }
+    ],
+    "title": "Chapter 900. Synthetic Mathematics",
+    "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9",
+    "version": "1.1.2"
+  },
+  "CFItems": [
+    {
+      "alternativeLabel": "900.1 Synthetic general requirements for the chapter.",
+      "fullStatement": "Synthetic general requirements for the chapter.",
+      "identifier": "f64e60b7-ed6c-539b-bd35-7de64185ffe1",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "0",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/f64e60b7-ed6c-539b-bd35-7de64185ffe1",
+      "CFItemType": "General Requirements",
+      "CFItemTypeURI": {
+        "identifier": "a75a484b-9dd8-55db-8486-f55cc193f402",
+        "title": "General Requirements",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/a75a484b-9dd8-55db-8486-f55cc193f402"
+      },
+      "humanCodingScheme": "900.1"
+    },
+    {
+      "alternativeLabel": "900 Subchapter A. Elementary",
+      "fullStatement": "Subchapter A. Elementary",
+      "identifier": "f61753d0-c66a-5624-be7b-a94b73e16301",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "1",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/f61753d0-c66a-5624-be7b-a94b73e16301",
+      "CFItemType": "Subchapter",
+      "CFItemTypeURI": {
+        "identifier": "34d4dd15-c8cf-5b46-96c8-74569113cdfc",
+        "title": "Subchapter",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/34d4dd15-c8cf-5b46-96c8-74569113cdfc"
+      },
+      "humanCodingScheme": "900"
+    },
+    {
+      "alternativeLabel": "900 Subchapter B. Middle School",
+      "fullStatement": "Subchapter B. Middle School",
+      "identifier": "d2bfe986-b2a6-50e8-af29-5430ef9f5c74",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "2",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/d2bfe986-b2a6-50e8-af29-5430ef9f5c74",
+      "CFItemType": "Subchapter",
+      "CFItemTypeURI": {
+        "identifier": "34d4dd15-c8cf-5b46-96c8-74569113cdfc",
+        "title": "Subchapter",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/34d4dd15-c8cf-5b46-96c8-74569113cdfc"
+      },
+      "humanCodingScheme": "900"
+    },
+    {
+      "alternativeLabel": "900 Subchapter C. High School",
+      "fullStatement": "Subchapter C. High School",
+      "identifier": "fe0af654-e492-51b5-a02c-dd00e605343a",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "3",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/fe0af654-e492-51b5-a02c-dd00e605343a",
+      "CFItemType": "Subchapter",
+      "CFItemTypeURI": {
+        "identifier": "34d4dd15-c8cf-5b46-96c8-74569113cdfc",
+        "title": "Subchapter",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/34d4dd15-c8cf-5b46-96c8-74569113cdfc"
+      },
+      "humanCodingScheme": "900"
+    },
+    {
+      "alternativeLabel": "900.2 Kindergarten, Adopted 2012.",
+      "fullStatement": "Kindergarten, Adopted 2012.",
+      "identifier": "117d3cbb-3394-52d2-9f42-1797528cffaf",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "4",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/117d3cbb-3394-52d2-9f42-1797528cffaf",
+      "CFItemType": "Grade/Course",
+      "CFItemTypeURI": {
+        "identifier": "fae1acf9-1631-58b5-a070-7df2232c3fdf",
+        "title": "Grade/Course",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/fae1acf9-1631-58b5-a070-7df2232c3fdf"
+      },
+      "humanCodingScheme": "900.2"
+    },
+    {
+      "alternativeLabel": "900.2.b.1 Synthetic knowledge and skills statement.",
+      "fullStatement": "Synthetic knowledge and skills statement.",
+      "identifier": "b0d73221-3ab3-5739-8472-a5f1ed2385e9",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "5",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/b0d73221-3ab3-5739-8472-a5f1ed2385e9",
+      "CFItemType": "Knowledge and Skills",
+      "CFItemTypeURI": {
+        "identifier": "e4e1a5c9-5326-5d88-9e74-73836dafabe9",
+        "title": "Knowledge and Skills",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/e4e1a5c9-5326-5d88-9e74-73836dafabe9"
+      },
+      "humanCodingScheme": "900.2.b.1"
+    },
+    {
+      "alternativeLabel": "900.2.b.1.A synthetic expectation for kindergarten;",
+      "fullStatement": "synthetic expectation for kindergarten;",
+      "identifier": "d60f442b-68ec-5e4a-a00d-29480505a138",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "6",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/d60f442b-68ec-5e4a-a00d-29480505a138",
+      "CFItemType": "Student Expectation",
+      "CFItemTypeURI": {
+        "identifier": "6db9c82f-f866-5d33-995a-f49d9acda692",
+        "title": "Student Expectation",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/6db9c82f-f866-5d33-995a-f49d9acda692"
+      },
+      "humanCodingScheme": "900.2.b.1.A"
+    },
+    {
+      "alternativeLabel": "900.5 Synthetic Mathematics, Grade 3, Adopted 2012.",
+      "fullStatement": "Synthetic Mathematics, Grade 3, Adopted 2012.",
+      "identifier": "150bb103-1a0c-506c-a976-d6fe74db657c",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "7",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/150bb103-1a0c-506c-a976-d6fe74db657c",
+      "CFItemType": "Grade/Course",
+      "CFItemTypeURI": {
+        "identifier": "fae1acf9-1631-58b5-a070-7df2232c3fdf",
+        "title": "Grade/Course",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/fae1acf9-1631-58b5-a070-7df2232c3fdf"
+      },
+      "humanCodingScheme": "900.5"
+    },
+    {
+      "alternativeLabel": "900.5.b.1.A synthetic expectation for grade 3;",
+      "fullStatement": "synthetic expectation for grade 3;",
+      "identifier": "9ee710a8-9c74-51bc-a506-f0eb6e58f9c0",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "8",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/9ee710a8-9c74-51bc-a506-f0eb6e58f9c0",
+      "CFItemType": "Student Expectation",
+      "CFItemTypeURI": {
+        "identifier": "6db9c82f-f866-5d33-995a-f49d9acda692",
+        "title": "Student Expectation",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/6db9c82f-f866-5d33-995a-f49d9acda692"
+      },
+      "humanCodingScheme": "900.5.b.1.A"
+    },
+    {
+      "alternativeLabel": "900.27 Grades 7-8, Adopted 2020.",
+      "fullStatement": "Grades 7-8, Adopted 2020.",
+      "identifier": "634ebdfd-6fb8-5440-9d8c-63d3b7b25c3e",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "9",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/634ebdfd-6fb8-5440-9d8c-63d3b7b25c3e",
+      "CFItemType": "Grade/Course",
+      "CFItemTypeURI": {
+        "identifier": "fae1acf9-1631-58b5-a070-7df2232c3fdf",
+        "title": "Grade/Course",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/fae1acf9-1631-58b5-a070-7df2232c3fdf"
+      },
+      "humanCodingScheme": "900.27"
+    },
+    {
+      "alternativeLabel": "900.27.b.1.A synthetic expectation for grades 7 and 8;",
+      "fullStatement": "synthetic expectation for grades 7 and 8;",
+      "identifier": "1f52f20d-616c-5446-ad50-9b4dc5b732fc",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "10",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/1f52f20d-616c-5446-ad50-9b4dc5b732fc",
+      "CFItemType": "Student Expectation",
+      "CFItemTypeURI": {
+        "identifier": "6db9c82f-f866-5d33-995a-f49d9acda692",
+        "title": "Student Expectation",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/6db9c82f-f866-5d33-995a-f49d9acda692"
+      },
+      "humanCodingScheme": "900.27.b.1.A"
+    },
+    {
+      "alternativeLabel": "900.31. 900.31. Grade 8, Middle School Advanced Synthetic Mathematics, Adopted 2025.",
+      "fullStatement": "900.31. Grade 8, Middle School Advanced Synthetic Mathematics, Adopted 2025.",
+      "identifier": "5e8b493f-3d05-583e-b1ee-86b21f022162",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "11",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/5e8b493f-3d05-583e-b1ee-86b21f022162",
+      "CFItemType": "Grade/Course",
+      "CFItemTypeURI": {
+        "identifier": "fae1acf9-1631-58b5-a070-7df2232c3fdf",
+        "title": "Grade/Course",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/fae1acf9-1631-58b5-a070-7df2232c3fdf"
+      },
+      "humanCodingScheme": "900.31."
+    },
+    {
+      "alternativeLabel": "900.39 Synthetic Algebra I, Adopted 2012 (One Credit).",
+      "fullStatement": "Synthetic Algebra I, Adopted 2012 (One Credit).",
+      "identifier": "fd4b3581-a273-5eda-b43d-cd4d9a605e60",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "12",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/fd4b3581-a273-5eda-b43d-cd4d9a605e60",
+      "CFItemType": "Grade/Course",
+      "CFItemTypeURI": {
+        "identifier": "fae1acf9-1631-58b5-a070-7df2232c3fdf",
+        "title": "Grade/Course",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/fae1acf9-1631-58b5-a070-7df2232c3fdf"
+      },
+      "humanCodingScheme": "900.39"
+    },
+    {
+      "alternativeLabel": "900.39.b.1.A synthetic expectation for a high-school course;",
+      "fullStatement": "synthetic expectation for a high-school course;",
+      "identifier": "fa0315ce-ad40-54ab-8bee-94af7685ba83",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "13",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/fa0315ce-ad40-54ab-8bee-94af7685ba83",
+      "CFItemType": "Student Expectation",
+      "CFItemTypeURI": {
+        "identifier": "6db9c82f-f866-5d33-995a-f49d9acda692",
+        "title": "Student Expectation",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/6db9c82f-f866-5d33-995a-f49d9acda692"
+      },
+      "humanCodingScheme": "900.39.b.1.A"
+    },
+    {
+      "alternativeLabel": "900.30. 900.30. Implementation of Synthetic Knowledge and Skills, High School.",
+      "fullStatement": "900.30. Implementation of Synthetic Knowledge and Skills, High School.",
+      "identifier": "59837db2-2a16-5f80-8a26-c50e39d1479f",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "14",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/59837db2-2a16-5f80-8a26-c50e39d1479f",
+      "CFItemType": "Introduction",
+      "CFItemTypeURI": {
+        "identifier": "f5e73bc5-d5be-58dd-9eda-b22e2db81612",
+        "title": "Introduction",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/f5e73bc5-d5be-58dd-9eda-b22e2db81612"
+      },
+      "humanCodingScheme": "900.30."
+    },
+    {
+      "alternativeLabel": "900.41. 900.41. Synthetic Elective Studies (One Credit), Adopted 2022.",
+      "fullStatement": "900.41. Synthetic Elective Studies (One Credit), Adopted 2022.",
+      "identifier": "943428f7-a885-58ec-a7c8-a81aaa41bc37",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "15",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/943428f7-a885-58ec-a7c8-a81aaa41bc37",
+      "CFItemType": "Grade/Course",
+      "CFItemTypeURI": {
+        "identifier": "fae1acf9-1631-58b5-a070-7df2232c3fdf",
+        "title": "Grade/Course",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/fae1acf9-1631-58b5-a070-7df2232c3fdf"
+      },
+      "humanCodingScheme": "900.41."
+    },
+    {
+      "alternativeLabel": "900.41.c.1.A synthetic expectation for an elective;",
+      "fullStatement": "synthetic expectation for an elective;",
+      "identifier": "023635e1-3d50-54b9-a0db-bd87ebc05fc7",
+      "language": "en",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "listEnumeration": "16",
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/023635e1-3d50-54b9-a0db-bd87ebc05fc7",
+      "CFItemType": "Student Expectation",
+      "CFItemTypeURI": {
+        "identifier": "6db9c82f-f866-5d33-995a-f49d9acda692",
+        "title": "Student Expectation",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/6db9c82f-f866-5d33-995a-f49d9acda692"
+      },
+      "humanCodingScheme": "900.41.c.1.A"
+    }
+  ],
+  "CFAssociations": [
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "identifier": "a8e4af8e-cbba-52f5-81a8-7bc661438914",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "f64e60b7-ed6c-539b-bd35-7de64185ffe1",
+        "title": "900.1 Synthetic general requirements for the chapter.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/f64e60b7-ed6c-539b-bd35-7de64185ffe1"
+      },
+      "sequenceNumber": 0,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/a8e4af8e-cbba-52f5-81a8-7bc661438914"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "identifier": "18934420-e993-58c8-a639-97a4645696e8",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "f61753d0-c66a-5624-be7b-a94b73e16301",
+        "title": "900 Subchapter A. Elementary",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/f61753d0-c66a-5624-be7b-a94b73e16301"
+      },
+      "sequenceNumber": 1,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/18934420-e993-58c8-a639-97a4645696e8"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "identifier": "6f0db542-2e36-5746-8017-9de9f33ee6c2",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "d2bfe986-b2a6-50e8-af29-5430ef9f5c74",
+        "title": "900 Subchapter B. Middle School",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/d2bfe986-b2a6-50e8-af29-5430ef9f5c74"
+      },
+      "sequenceNumber": 2,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/6f0db542-2e36-5746-8017-9de9f33ee6c2"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "identifier": "9e609174-275b-502e-a904-e7d7872a8797",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "fe0af654-e492-51b5-a02c-dd00e605343a",
+        "title": "900 Subchapter C. High School",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/fe0af654-e492-51b5-a02c-dd00e605343a"
+      },
+      "sequenceNumber": 3,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/9e609174-275b-502e-a904-e7d7872a8797"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "f61753d0-c66a-5624-be7b-a94b73e16301",
+        "title": "900 Subchapter A. Elementary",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/f61753d0-c66a-5624-be7b-a94b73e16301"
+      },
+      "identifier": "d6669832-a131-5872-b9d2-98360f098383",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "117d3cbb-3394-52d2-9f42-1797528cffaf",
+        "title": "900.2 Kindergarten, Adopted 2012.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/117d3cbb-3394-52d2-9f42-1797528cffaf"
+      },
+      "sequenceNumber": 4,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/d6669832-a131-5872-b9d2-98360f098383"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "117d3cbb-3394-52d2-9f42-1797528cffaf",
+        "title": "900.2 Kindergarten, Adopted 2012.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/117d3cbb-3394-52d2-9f42-1797528cffaf"
+      },
+      "identifier": "a58e81f4-3177-59f9-80ea-657b08740c8a",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "b0d73221-3ab3-5739-8472-a5f1ed2385e9",
+        "title": "900.2.b.1 Synthetic knowledge and skills statement.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/b0d73221-3ab3-5739-8472-a5f1ed2385e9"
+      },
+      "sequenceNumber": 5,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/a58e81f4-3177-59f9-80ea-657b08740c8a"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "b0d73221-3ab3-5739-8472-a5f1ed2385e9",
+        "title": "900.2.b.1 Synthetic knowledge and skills statement.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/b0d73221-3ab3-5739-8472-a5f1ed2385e9"
+      },
+      "identifier": "83e73c69-1ba1-5761-b2fb-aa363fa433e6",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "d60f442b-68ec-5e4a-a00d-29480505a138",
+        "title": "900.2.b.1.A synthetic expectation for kindergarten;",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/d60f442b-68ec-5e4a-a00d-29480505a138"
+      },
+      "sequenceNumber": 6,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/83e73c69-1ba1-5761-b2fb-aa363fa433e6"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "f61753d0-c66a-5624-be7b-a94b73e16301",
+        "title": "900 Subchapter A. Elementary",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/f61753d0-c66a-5624-be7b-a94b73e16301"
+      },
+      "identifier": "7de1ab31-8c54-5b23-b4d3-8babe5982964",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "150bb103-1a0c-506c-a976-d6fe74db657c",
+        "title": "900.5 Synthetic Mathematics, Grade 3, Adopted 2012.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/150bb103-1a0c-506c-a976-d6fe74db657c"
+      },
+      "sequenceNumber": 7,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/7de1ab31-8c54-5b23-b4d3-8babe5982964"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "150bb103-1a0c-506c-a976-d6fe74db657c",
+        "title": "900.5 Synthetic Mathematics, Grade 3, Adopted 2012.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/150bb103-1a0c-506c-a976-d6fe74db657c"
+      },
+      "identifier": "2c060439-7e6e-55f9-8b79-19f1137895ce",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "9ee710a8-9c74-51bc-a506-f0eb6e58f9c0",
+        "title": "900.5.b.1.A synthetic expectation for grade 3;",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/9ee710a8-9c74-51bc-a506-f0eb6e58f9c0"
+      },
+      "sequenceNumber": 8,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/2c060439-7e6e-55f9-8b79-19f1137895ce"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "d2bfe986-b2a6-50e8-af29-5430ef9f5c74",
+        "title": "900 Subchapter B. Middle School",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/d2bfe986-b2a6-50e8-af29-5430ef9f5c74"
+      },
+      "identifier": "4bd1be7a-b91c-52f3-a807-3a22a4575a81",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "634ebdfd-6fb8-5440-9d8c-63d3b7b25c3e",
+        "title": "900.27 Grades 7-8, Adopted 2020.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/634ebdfd-6fb8-5440-9d8c-63d3b7b25c3e"
+      },
+      "sequenceNumber": 9,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/4bd1be7a-b91c-52f3-a807-3a22a4575a81"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "634ebdfd-6fb8-5440-9d8c-63d3b7b25c3e",
+        "title": "900.27 Grades 7-8, Adopted 2020.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/634ebdfd-6fb8-5440-9d8c-63d3b7b25c3e"
+      },
+      "identifier": "914a99ef-75e3-52af-b20d-1a824a5f6bce",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "1f52f20d-616c-5446-ad50-9b4dc5b732fc",
+        "title": "900.27.b.1.A synthetic expectation for grades 7 and 8;",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/1f52f20d-616c-5446-ad50-9b4dc5b732fc"
+      },
+      "sequenceNumber": 10,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/914a99ef-75e3-52af-b20d-1a824a5f6bce"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "d2bfe986-b2a6-50e8-af29-5430ef9f5c74",
+        "title": "900 Subchapter B. Middle School",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/d2bfe986-b2a6-50e8-af29-5430ef9f5c74"
+      },
+      "identifier": "2553ab9d-81f5-5cb7-bfcc-bc74c1b66beb",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "5e8b493f-3d05-583e-b1ee-86b21f022162",
+        "title": "900.31. 900.31. Grade 8, Middle School Advanced Synthetic Mathematics, Adopted 2025.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/5e8b493f-3d05-583e-b1ee-86b21f022162"
+      },
+      "sequenceNumber": 11,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/2553ab9d-81f5-5cb7-bfcc-bc74c1b66beb"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "fe0af654-e492-51b5-a02c-dd00e605343a",
+        "title": "900 Subchapter C. High School",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/fe0af654-e492-51b5-a02c-dd00e605343a"
+      },
+      "identifier": "5d3811aa-5e59-5a0a-8c1d-001ebaa75235",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "fd4b3581-a273-5eda-b43d-cd4d9a605e60",
+        "title": "900.39 Synthetic Algebra I, Adopted 2012 (One Credit).",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/fd4b3581-a273-5eda-b43d-cd4d9a605e60"
+      },
+      "sequenceNumber": 12,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/5d3811aa-5e59-5a0a-8c1d-001ebaa75235"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "fd4b3581-a273-5eda-b43d-cd4d9a605e60",
+        "title": "900.39 Synthetic Algebra I, Adopted 2012 (One Credit).",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/fd4b3581-a273-5eda-b43d-cd4d9a605e60"
+      },
+      "identifier": "2a8e2bc8-bb5c-5394-8277-f289991ae4ea",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "fa0315ce-ad40-54ab-8bee-94af7685ba83",
+        "title": "900.39.b.1.A synthetic expectation for a high-school course;",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/fa0315ce-ad40-54ab-8bee-94af7685ba83"
+      },
+      "sequenceNumber": 13,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/2a8e2bc8-bb5c-5394-8277-f289991ae4ea"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "identifier": "8f3e501e-d253-50ff-a193-b9665aea8708",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "59837db2-2a16-5f80-8a26-c50e39d1479f",
+        "title": "900.30. 900.30. Implementation of Synthetic Knowledge and Skills, High School.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/59837db2-2a16-5f80-8a26-c50e39d1479f"
+      },
+      "sequenceNumber": 14,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/8f3e501e-d253-50ff-a193-b9665aea8708"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "59837db2-2a16-5f80-8a26-c50e39d1479f",
+        "title": "900.30. 900.30. Implementation of Synthetic Knowledge and Skills, High School.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/59837db2-2a16-5f80-8a26-c50e39d1479f"
+      },
+      "identifier": "ac1c6604-627a-503c-8f89-30db36fffc0b",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "943428f7-a885-58ec-a7c8-a81aaa41bc37",
+        "title": "900.41. 900.41. Synthetic Elective Studies (One Credit), Adopted 2022.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/943428f7-a885-58ec-a7c8-a81aaa41bc37"
+      },
+      "sequenceNumber": 15,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/ac1c6604-627a-503c-8f89-30db36fffc0b"
+    },
+    {
+      "CFDocumentURI": {
+        "identifier": "83e57449-b81f-589d-abe7-01351202ccc9",
+        "title": "Chapter 900. Synthetic Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFDocuments/83e57449-b81f-589d-abe7-01351202ccc9"
+      },
+      "associationType": "isChildOf",
+      "destinationNodeURI": {
+        "identifier": "943428f7-a885-58ec-a7c8-a81aaa41bc37",
+        "title": "900.41. 900.41. Synthetic Elective Studies (One Credit), Adopted 2022.",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/943428f7-a885-58ec-a7c8-a81aaa41bc37"
+      },
+      "identifier": "23568d52-0bf9-57b3-8d0b-25e89c22a042",
+      "lastChangeDateTime": "2022-04-11T13:11:45+00:00",
+      "originNodeURI": {
+        "identifier": "023635e1-3d50-54b9-a0db-bd87ebc05fc7",
+        "title": "900.41.c.1.A synthetic expectation for an elective;",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItems/023635e1-3d50-54b9-a0db-bd87ebc05fc7"
+      },
+      "sequenceNumber": 16,
+      "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFAssociations/23568d52-0bf9-57b3-8d0b-25e89c22a042"
+    }
+  ],
+  "CFDefinitions": {
+    "CFAssociationGroupings": [],
+    "CFConcepts": [],
+    "CFItemTypes": [
+      {
+        "description": "Subchapter",
+        "hierarchyCode": "Subchapter",
+        "identifier": "34d4dd15-c8cf-5b46-96c8-74569113cdfc",
+        "lastChangeDateTime": "2022-04-09T00:20:05+00:00",
+        "title": "Subchapter",
+        "typeCode": "Subchapter",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/34d4dd15-c8cf-5b46-96c8-74569113cdfc"
+      },
+      {
+        "description": "Grade/Course",
+        "hierarchyCode": "Grade/Course",
+        "identifier": "fae1acf9-1631-58b5-a070-7df2232c3fdf",
+        "lastChangeDateTime": "2022-04-09T00:20:05+00:00",
+        "title": "Grade/Course",
+        "typeCode": "Grade/Course",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/fae1acf9-1631-58b5-a070-7df2232c3fdf"
+      },
+      {
+        "description": "Introduction",
+        "hierarchyCode": "Introduction",
+        "identifier": "f5e73bc5-d5be-58dd-9eda-b22e2db81612",
+        "lastChangeDateTime": "2022-04-09T00:20:05+00:00",
+        "title": "Introduction",
+        "typeCode": "Introduction",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/f5e73bc5-d5be-58dd-9eda-b22e2db81612"
+      },
+      {
+        "description": "Knowledge and Skills",
+        "hierarchyCode": "Knowledge and Skills",
+        "identifier": "e4e1a5c9-5326-5d88-9e74-73836dafabe9",
+        "lastChangeDateTime": "2022-04-09T00:20:05+00:00",
+        "title": "Knowledge and Skills",
+        "typeCode": "Knowledge and Skills",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/e4e1a5c9-5326-5d88-9e74-73836dafabe9"
+      },
+      {
+        "description": "Student Expectation",
+        "hierarchyCode": "Student Expectation",
+        "identifier": "6db9c82f-f866-5d33-995a-f49d9acda692",
+        "lastChangeDateTime": "2022-04-09T00:20:05+00:00",
+        "title": "Student Expectation",
+        "typeCode": "Student Expectation",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/6db9c82f-f866-5d33-995a-f49d9acda692"
+      },
+      {
+        "description": "General Requirements",
+        "hierarchyCode": "General Requirements",
+        "identifier": "a75a484b-9dd8-55db-8486-f55cc193f402",
+        "lastChangeDateTime": "2022-04-09T00:20:05+00:00",
+        "title": "General Requirements",
+        "typeCode": "General Requirements",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFItemTypes/a75a484b-9dd8-55db-8486-f55cc193f402"
+      }
+    ],
+    "CFLicenses": [],
+    "CFSubjects": [
+      {
+        "hierarchyCode": "1",
+        "identifier": "949ccfd2-9c86-5b15-b11c-6714e04903ff",
+        "lastChangeDateTime": "2022-04-09T00:20:05+00:00",
+        "title": "Mathematics",
+        "uri": "https://teks-api.texasgateway.example/ims/case/v1p0/CFSubjects/949ccfd2-9c86-5b15-b11c-6714e04903ff"
+      }
+    ]
+  }
+}
