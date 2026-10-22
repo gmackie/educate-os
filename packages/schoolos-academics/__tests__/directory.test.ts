@@ -363,3 +363,47 @@ describe("authorization", () => {
     });
   });
 });
+
+describe("principal lifecycle", () => {
+  const AMARA = PrincipalId.parse("prn_nf-student-amara");
+
+  it("graduates a principal without deleting anything, ending the roles they held", async () => {
+    const { store, directory } = directoryFor();
+    const before = (await store.load()).snapshot;
+    const graduated = await directory.setPrincipalStatus(NF.admin, NF.morgan.principal.principalId, "graduated");
+    expect(graduated.status).toBe("graduated");
+
+    const after = (await store.load()).snapshot;
+    expect(after.principals.find((p) => p.id === graduated.id)).toStrictEqual(graduated);
+    // Their enrollments and role assignments stay on record...
+    expect(after.enrollments).toStrictEqual(before.enrollments);
+    expect(after.roleAssignments).toStrictEqual(before.roleAssignments);
+    // ...but grant nothing from the next decision on.
+    await rejectsWith(directory.roster(NF.morgan, BIO_FALL), "not-found");
+    // Repeating it changes nothing, and inactive is reachable from graduated too.
+    const { version } = await store.load();
+    await directory.setPrincipalStatus(NF.admin, graduated.id, "graduated");
+    expect((await store.load()).version).toBe(version);
+    expect((await directory.setPrincipalStatus(NF.admin, graduated.id, "inactive")).status).toBe("inactive");
+  });
+
+  it("is a district administrator's decision alone", async () => {
+    const { store, directory } = directoryFor();
+    const before = await store.load();
+    // A school admin, a teacher and the student themselves cannot, and only learn that it exists
+    // where they could already see it.
+    await rejectsWith(directory.setPrincipalStatus(NF.highPrincipal, AMARA, "graduated"), "not-found");
+    await rejectsWith(directory.setPrincipalStatus(NF.morgan, AMARA, "graduated"), "not-found");
+    await rejectsWith(directory.setPrincipalStatus(NF.amara, AMARA, "graduated"), "not-found");
+    await rejectsWith(directory.setPrincipalStatus(RB_ADMIN, AMARA, "graduated"), "not-found");
+    expect(await store.load()).toStrictEqual(before);
+  });
+
+  it("leaves principals a roster owns to that roster, and never reactivates", async () => {
+    const roster = directoryFor(NORTHFIELD, { authority: ROSTER_EXTERNAL });
+    await rejectsWith(roster.directory.setPrincipalStatus(NF.admin, AMARA, "graduated"), "conflict");
+    const local = directoryFor();
+    await rejectsWith(local.directory.setPrincipalStatus(NF.admin, AMARA, "active" as never), "validation-failed");
+    await rejectsWith(local.directory.setPrincipalStatus(NF.admin, PrincipalId.parse("prn_nobody"), "graduated"), "not-found");
+  });
+});

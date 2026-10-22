@@ -2,10 +2,11 @@
   "name": "@schoolos/policy",
   "version": "0.1.0",
   "private": true,
-  "description": "SchoolOS ABAC policy engine: a named, data-driven rule table over trusted directory facts, content-free decision audit, and the school tool contract that re-authorizes every MCP/agent tool call. A library, not a deployable Worker.",
+  "description": "SchoolOS ABAC policy engine: a named, data-driven rule table over trusted directory facts, content-free decision audit, and the school tool contract that re-authorizes every MCP/agent tool call. Its `./durable-object-audit-sink` entry point is the append-only Durable Object SQLite audit trail. A library, not a deployable Worker.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./durable-object-audit-sink": "./src/durable-object-audit-sink.ts"
   },
   "dependencies": {
     "@schoolos/academics": "workspace:*",
@@ -13,6 +14,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
     "@gadgets/scripts": "workspace:*",
     "@schoolos/fixtures": "workspace:*",
     "@types/node": "26.1.0",

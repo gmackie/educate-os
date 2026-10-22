@@ -432,9 +432,9 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
   // Administration.
   {
     id: "admin.district.directory",
-    description: "A district admin manages the district's schools, terms, catalog courses, offerings and enrollments.",
+    description: "A district admin manages the district's schools, terms, catalog courses, offerings and enrollments, and moves principals between lifecycle statuses.",
     when: {
-      kinds: ["district", "school", "term", "course", "offering", "enrollment"],
+      kinds: ["district", "school", "term", "course", "offering", "enrollment", "principal"],
       roles: ["district-admin"],
       actions: ["read", "list", "create", "update"],
     },

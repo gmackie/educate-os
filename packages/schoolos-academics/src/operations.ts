@@ -14,6 +14,7 @@ import {
 import type { AcademicDirectory } from "./directory.ts";
 import {
   CoursePatch,
+  DepartedStatus,
   NewCourse,
   NewEnrollment,
   NewOffering,
@@ -198,6 +199,12 @@ export const ACADEMIC_OPERATIONS = {
     input: withEnrollment,
     run: (d, c, i) => d.deactivateEnrollment(c, i.enrollmentId),
   }),
+  set_principal_status: defineOperation({
+    name: "set_principal_status",
+    description: "Mark a principal graduated or inactive. Their records and work are kept; their class access ends.",
+    input: z.strictObject({ principalId: PrincipalId, status: DepartedStatus }),
+    run: (d, c, i) => d.setPrincipalStatus(c, i.principalId, i.status),
+  }),
 } satisfies Record<string, AcademicOperation>;
 
 /** The name of an operation in {@link ACADEMIC_OPERATIONS}. */
@@ -207,9 +214,11 @@ export type AcademicOperationName = keyof typeof ACADEMIC_OPERATIONS;
 export type OperationOutcome = { ok: true; value: unknown } | { ok: false; error: SchoolOsErrorBody };
 
 /**
- * Parses `input` and runs the operation, converting failures to error bodies. Unexpected errors
- * become `unavailable` with a generic message, so internal detail never reaches the caller; they
- * are logged instead.
+ * Parses `input` and runs the operation, converting failures to error bodies. Every decision the
+ * operation makes is audited under one correlation ID, the caller's if it brings one, and every
+ * error body names it, so a refusal a user reports leads straight to the audit entries behind it.
+ * Unexpected errors become `unavailable` with a generic message, so internal detail never reaches
+ * the caller; they are logged under the same ID instead.
  */
 export async function invokeOperation(
   operation: AcademicOperation,
@@ -217,14 +226,18 @@ export async function invokeOperation(
   caller: Caller,
   input: unknown,
 ): Promise<OperationOutcome> {
+  const correlationId = caller.correlationId ?? crypto.randomUUID();
   try {
     const parsed = operation.input.safeParse(input);
     if (!parsed.success) throw new DirectoryValidationError("the request is invalid", zodIssues(parsed.error));
-    return { ok: true, value: await operation.run(directory, caller, parsed.data) };
+    return { ok: true, value: await operation.run(directory, { ...caller, correlationId }, parsed.data) };
   } catch (error) {
-    if (error instanceof SchoolOsError) return { ok: false, error: error.toBody() };
+    if (error instanceof SchoolOsError) return { ok: false, error: { ...error.toBody(), correlationId } };
     // The caller gets nothing internal, so this log line is the only record of what went wrong.
-    console.error("academics operation failed", { operation: operation.name, error });
-    return { ok: false, error: { code: "unavailable", message: "The academic directory could not complete the request." } };
+    console.error("academics operation failed", { operation: operation.name, correlationId, error });
+    return {
+      ok: false,
+      error: { code: "unavailable", message: "The academic directory could not complete the request.", correlationId },
+    };
   }
 }

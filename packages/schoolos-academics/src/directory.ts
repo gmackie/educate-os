@@ -17,6 +17,7 @@ import {
   type EnrollmentId,
   type IdKind,
   type OfferingId,
+  type Principal,
   type PrincipalId,
   type ResourceRef,
   type School,
@@ -27,6 +28,7 @@ import {
 import { assertLocallyWritable } from "./authority.ts";
 import {
   CoursePatch,
+  DepartedStatus,
   NewCourse,
   NewEnrollment,
   NewOffering,
@@ -161,6 +163,18 @@ class Targets {
         ...(ownerPrincipalId === undefined ? {} : { ownerPrincipalId }),
       },
       ...this.#termState(offering.termId),
+    };
+  }
+
+  principal(principal: Principal): Target {
+    return {
+      resource: {
+        kind: "principal",
+        id: principal.id,
+        scope: { level: "district", districtId: principal.districtId },
+        classification: "district-internal",
+        ownerPrincipalId: principal.id,
+      },
     };
   }
 
@@ -495,6 +509,30 @@ export class AcademicDirectory {
     if (enrollment.status === "inactive") return enrollment;
     const updated: Enrollment = { ...enrollment, status: "inactive" };
     await this.#commit({ ...snapshot, enrollments: replace(snapshot.enrollments, updated) }, version);
+    return updated;
+  }
+
+  // Principals
+
+  /**
+   * Moves a principal to `graduated` or `inactive` (roadmap §14, "Semester end / graduation").
+   * Nothing is deleted: the principal, their enrollments and their role assignments stay on record,
+   * but a principal that is not active holds no roles, so every class decision about them is denied
+   * from the next one on. Their course grants are revoked by the workspace directory's
+   * `reconcileCourseGrants`, which `transitionPrincipal` in `@schoolos/workspaces` runs after this.
+   * Refused with `conflict` when another system owns principals: there the change belongs in that
+   * system, whose next sync would otherwise undo it. Moving to the current status changes nothing.
+   */
+  async setPrincipalStatus(caller: Caller, principalId: PrincipalId, rawStatus: DepartedStatus): Promise<Principal> {
+    const status = parseInput(DepartedStatus, rawStatus);
+    const { snapshot, version } = await this.#store.load();
+    const principal = snapshot.principals.find((p) => p.id === principalId);
+    if (principal === undefined) throw notFound("principal", principalId);
+    await this.#requireWrite(caller, "update", new Targets(snapshot).principal(principal), "principal", principalId);
+    assertLocallyWritable(this.#authority, "principal");
+    if (principal.status === status) return principal;
+    const updated: Principal = { ...principal, status };
+    await this.#commit({ ...snapshot, principals: replace(snapshot.principals, updated) }, version);
     return updated;
   }
 

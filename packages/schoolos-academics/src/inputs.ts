@@ -5,6 +5,7 @@ import {
   CourseOffering,
   Enrollment,
   PrincipalId,
+  PrincipalStatus,
   School,
   SchoolId,
   TermId,
@@ -70,3 +71,12 @@ export type OfferingFilter = z.infer<typeof OfferingFilter>;
 export const NewEnrollment = Enrollment.pick({ offeringId: true, principalId: true, role: true });
 /** Input for creating an enrollment. */
 export type NewEnrollment = z.infer<typeof NewEnrollment>;
+
+/**
+ * The statuses an administrator may move a principal to: graduation and departure. Neither deletes
+ * anything. Making a principal active again is the source of record's job (an enrollment or roster
+ * sync), not an administrator's override.
+ */
+export const DepartedStatus = PrincipalStatus.exclude(["active"]);
+/** A departed status. */
+export type DepartedStatus = z.infer<typeof DepartedStatus>;

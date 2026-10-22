@@ -3,12 +3,14 @@ import { SchoolOsErrorBody, type Caller, type VerifiedPrincipal } from "@schoolo
 import { NORTHFIELD } from "@schoolos/fixtures";
 import {
   ACADEMIC_OPERATIONS,
+  AcademicDirectory,
   createAcademicsHandler,
   createAcademicTools,
   ERROR_STATUS,
-  type AcademicDirectory,
+  RoleTableAuthorizer,
+  storePrincipalFacts,
 } from "../src/index.ts";
-import { directoryFor, NF, RB_ADMIN, ROSTER_EXTERNAL } from "./setup.ts";
+import { ALL_LOCAL, directoryFor, NF, RB_ADMIN, ROSTER_EXTERNAL } from "./setup.ts";
 
 const BASE = "https://academics.northfield.example";
 
@@ -59,6 +61,7 @@ const CASES: Case[] = [
   { name: "school admin creates a term", caller: NF.highPrincipal, http: ["POST", "/terms", { name: "T", startsOn: "2026-09-01", endsOn: "2026-12-01" }], tool: ["create_term", { name: "T", startsOn: "2026-09-01", endsOn: "2026-12-01" }] },
   { name: "cross-district admin reads a term", caller: RB_ADMIN, http: ["GET", "/terms/trm_nf-2026-fall"], tool: ["get_term", { termId: "trm_nf-2026-fall" }] },
   { name: "unknown field is rejected", caller: NF.admin, http: ["PATCH", "/terms/trm_nf-2026-fall", { state: "completed" }], tool: ["update_term", { termId: "trm_nf-2026-fall", state: "completed" }] },
+  { name: "admin graduates a roster-owned principal", caller: NF.admin, http: ["POST", "/principals/prn_nf-student-amara/status", { status: "graduated" }], tool: ["set_principal_status", { principalId: "prn_nf-student-amara", status: "graduated" }] },
   { name: "malformed ID is rejected", caller: NF.admin, http: ["GET", "/offerings/sch_nf-high"], tool: ["get_offering", { offeringId: "sch_nf-high" }] },
 ];
 
@@ -77,7 +80,11 @@ describe("the HTTP handler and the tools", () => {
       expect(http.status).toBeLessThan(300);
       expect(http.body).toEqual(outcome.value);
     } else {
-      expect(SchoolOsErrorBody.parse(http.body)).toEqual(outcome.error);
+      // Each invocation has its own correlation ID; everything else is identical.
+      const { correlationId: httpId, ...httpError } = SchoolOsErrorBody.parse(http.body);
+      const { correlationId: toolId, ...toolError } = outcome.error;
+      expect(httpError).toEqual(toolError);
+      expect([httpId, toolId]).toEqual([expect.any(String), expect.any(String)]);
       expect(http.status).toBe(ERROR_STATUS[outcome.error.code]);
     }
     // And they leave the two stores in the same state.
@@ -111,6 +118,7 @@ describe("the HTTP handler and the tools", () => {
       "school admin creates a term": "forbidden",
       "cross-district admin reads a term": "not-found",
       "unknown field is rejected": "validation-failed",
+      "admin graduates a roster-owned principal": "conflict",
       "malformed ID is rejected": "validation-failed",
     });
   });
@@ -122,7 +130,7 @@ describe("the HTTP handler", () => {
     const handler = handlerFor(directory, [NF.admin]);
     for (const path of ["/terms", "/no-such-route"]) {
       const response = await call(handler, undefined, "GET", path);
-      expect(response).toEqual({ status: 401, body: { code: "unauthenticated", message: expect.any(String) } });
+      expect(response).toEqual({ status: 401, body: { code: "unauthenticated", message: expect.any(String), correlationId: expect.any(String) } });
     }
   });
 
@@ -159,5 +167,28 @@ describe("the HTTP handler", () => {
     const response = await call(handler, NF.admin, "DELETE", "/enrollments/enr_nf-02");
     expect(response.status).toBe(404);
     expect(SchoolOsErrorBody.parse(response.body).code).toBe("not-found");
+  });
+
+  it("names in every error body the correlation ID its decisions were audited under", async () => {
+    const audited: { request: unknown; correlationId: string | undefined }[] = [];
+    const store = directoryFor().store;
+    const facts = new RoleTableAuthorizer(storePrincipalFacts(store));
+    const directory = new AcademicDirectory({
+      store,
+      authority: ALL_LOCAL,
+      authorizer: {
+        authorize: async (request, options) => {
+          audited.push({ request, correlationId: options?.correlationId });
+          return facts.authorize(request);
+        },
+      },
+    });
+    const handler = handlerFor(directory, [NF.amara]);
+    const refused = await call(handler, NF.amara, "POST", "/enrollments/enr_nf-02/deactivate", {});
+    expect(refused.status).toBe(403);
+    const { correlationId } = SchoolOsErrorBody.parse(refused.body);
+    expect(correlationId).toEqual(expect.any(String));
+    expect(audited.length).toBeGreaterThan(0);
+    expect(audited.every((entry) => entry.correlationId === correlationId)).toBe(true);
   });
 });

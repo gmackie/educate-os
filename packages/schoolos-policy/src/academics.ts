@@ -74,7 +74,7 @@ export function academicSchoolTools(store: AcademicStore, directory: AcademicDir
         // audited under the same ID as the runner's.
         const caller = { principal: context.principal, channel: context.channel, correlationId: context.correlationId };
         const outcome = await invokeOperation(operation, directory, caller, input);
-        if (!outcome.ok) throw new SchoolOsError(outcome.error.code, outcome.error.message);
+        if (!outcome.ok) throw new SchoolOsError(outcome.error.code, outcome.error.message, outcome.error.correlationId);
         return outcome.value;
       },
     });
