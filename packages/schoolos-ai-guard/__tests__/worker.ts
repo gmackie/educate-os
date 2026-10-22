@@ -3,7 +3,7 @@
 // the fake's decision by a marker in what it sends (`[[block]]`, `[[support]]`, `[[down]]`, ...).
 
 import { WorkerEntrypoint } from "cloudflare:workers";
-import type { GuardSubjectRequest } from "@schoolos/district-app/guard-directory";
+import type { AdmittedSubjectRequest, GuardSubjectRequest } from "@schoolos/district-app/guard-directory";
 import { readGuardConfig } from "../src/config.ts";
 import { configuredGuardDirectory } from "../src/context.ts";
 import { fakeHallMonitor } from "../src/fake-hall-monitor.ts";
@@ -26,6 +26,10 @@ export class FakeHallMonitor extends WorkerEntrypoint {
 export class FakeDistrictDirectory extends WorkerEntrypoint<Cloudflare.Env> {
   async guardSubject(request: GuardSubjectRequest): Promise<unknown> {
     return configuredGuardDirectory(readGuardConfig(this.env.AI_GUARD_CONFIG)).guardSubject(request);
+  }
+
+  async admittedSubject(request: AdmittedSubjectRequest): Promise<unknown> {
+    return configuredGuardDirectory(readGuardConfig(this.env.AI_GUARD_CONFIG)).admittedSubject(request);
   }
 
   async ledgerDirectory(): Promise<unknown> {

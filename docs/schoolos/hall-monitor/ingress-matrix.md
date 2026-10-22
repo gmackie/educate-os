@@ -48,6 +48,34 @@ carries `clientUserId` and `clientProfileId` (`overseer.ts:11054-11062`).
   `:6661`), `spawnAgent` (`:10677`), agent-callback draining (`:7489`) and `LanguageModelBindingImpl.run`
   stop unmoderated text from being stored, and give the user a clear decision before a turn starts.
 
+## Output screening (SCHO-133)
+
+The rows above are about what reaches a model. What a model sends back is screened at one place,
+the stream guard (`guardModelHandle` in `ai-call-guard.ts`), so every row that streams from a
+language model (all but row 12) is covered alike:
+
+- When `beforeModelCall` answers `{ action: "proceed", screenOutput: true }`, the guarded stream
+  forwards nothing while the model answers. Once the response is complete it calls
+  `screenModelOutput(callId, { parts })` with the response's text blocks and its unredacted
+  reasoning, which the Workshop shows the user, as text parts. `release` replays the held events
+  exactly; `withhold` ends the stream with the same error a denial does (so
+  `throwIfAiCallDenied()` and the turn's error path treat it as one), and none of the response is
+  forwarded.
+- Tool calls are not screened: a response with no text is released without asking, and a
+  response's tool-call arguments are passed on with its text when that is released. Their
+  effects reach a model again as tool results, which `beforeModelCall` moderates as input.
+- A guard that asks for screening and then fails, times out (15 s), lacks `screenModelOutput`, or
+  is still screening when the call is stopped has the response withheld. Without `screenOutput`
+  the stream is unchanged and nothing is buffered.
+- Decision models (row 12) are never screened: their answers are probabilities read by gadget
+  code, not text shown to a person.
+- `screenModelOutput` runs before `afterModelCall`, so a withheld response is still settled with
+  the usage the provider billed.
+
+The SchoolOS guard asks for screening when the resolved profile's `outputModeration` is `required`
+(student profiles), and screens with Hall Monitor's `interaction.output`, funded from the safety
+pool.
+
 ## Metering facts
 
 - Usage returns via `hooks.commitAgentStep` (`agent.ts:4168`) into `addChatMessages`

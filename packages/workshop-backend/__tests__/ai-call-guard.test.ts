@@ -5,13 +5,14 @@ import { describe, expect, it, vi } from "vitest";
 import { env as testEnv } from "cloudflare:workers";
 import { runInDurableObject } from "cloudflare:test";
 import {
-  createAssistantMessageEventStream, createFauxCore, fauxAssistantMessage, fauxText, fauxToolCall,
-  type AssistantMessage,
+  createAssistantMessageEventStream, createFauxCore, fauxAssistantMessage, fauxText, fauxThinking,
+  fauxToolCall,
+  type AssistantMessage, type AssistantMessageEvent,
   type ClassifierResult, type Context,
 } from "@earendil-works/pi-ai";
 import type { AiChatAuthorInfo, AiChatMetadata, AiChatMessage } from "@gadgets/workshop-shared/api";
 import type {
-  AiCallDecision, AiCallDescriptor, AiCallOutcome,
+  AiCallDecision, AiCallDescriptor, AiCallModelOutput, AiCallOutcome, AiCallOutputDecision,
 } from "@gadgets/workshop-shared/ai-call-guard";
 import { runAgent, type AgentHooks } from "../src/agent";
 import { guardDecisionModel, guardModelHandle, type AiCallScope } from "../src/ai-call-guard.js";
@@ -238,6 +239,180 @@ describe("guardModelHandle", () => {
     }]);
     expect(texts(calls[0])).toEqual(["Name this chat"]);
     await vi.waitFor(() => expect(outcomes).toMatchObject([{ status: "failed" }]));
+  });
+});
+
+describe("output screening", () => {
+  const SCREEN: AiCallDecision = { action: "proceed", screenOutput: true };
+  const WITHHOLD: AiCallOutputDecision =
+      { action: "withhold", reason: "moderation_block", message: "That reply was held back." };
+
+  // A provider the test feeds by hand, so it can see what the guarded stream forwards mid-response.
+  function manualHandle() {
+    let inner = createAssistantMessageEventStream();
+    let handle: ModelHandle = { model: fauxHandle().handle.model, stream: () => inner };
+    return { inner, handle };
+  }
+
+  // A faux provider answering `answer` that records each event it streams.
+  function recordingHandle(answer: AssistantMessage) {
+    let faux = fauxHandle([answer]).handle;
+    let sent: AssistantMessageEvent[] = [];
+    let handle: ModelHandle = {
+      model: faux.model,
+      stream: (...args) => {
+        let out = createAssistantMessageEventStream();
+        void (async () => {
+          for await (let event of faux.stream(...args)) {
+            sent.push(event);
+            out.push(event);
+          }
+        })();
+        return out;
+      },
+    };
+    return { handle, sent };
+  }
+
+  function screeningGuard(
+      screen: (output: AiCallModelOutput) => Promise<AiCallOutputDecision>,
+      decision: AiCallDecision = SCREEN) {
+    let fake = fakeGuard(() => decision);
+    let screened: { callId: string; output: AiCallModelOutput }[] = [];
+    let guard = {
+      ...fake.guard,
+      async screenModelOutput(callId: string, output: AiCallModelOutput) {
+        screened.push({ callId, output });
+        return screen(output);
+      },
+    };
+    return { ...fake, guard, screened };
+  }
+
+  async function collectFrom(handle: ModelHandle, signal?: AbortSignal) {
+    let stream = handle.stream(handle.model, { messages: [user("Hi")] }, { signal });
+    let events: AssistantMessageEvent[] = [];
+    let done = (async () => { for await (let event of stream) events.push(event); })();
+    return { events, done, result: () => stream.result() };
+  }
+
+  it("forwards events as they arrive when the guard does not ask to screen", async () => {
+    let { inner, handle } = manualHandle();
+    let { guard, screened } = screeningGuard(async () => WITHHOLD, PROCEED);
+    guardModelHandle(guard, handle, scope());
+    let answer = fauxAssistantMessage(fauxText("Streaming."));
+
+    let { events, done } = await collectFrom(handle);
+    inner.push({ type: "start", partial: answer });
+    await vi.waitFor(() => expect(events).toHaveLength(1));
+    inner.push({ type: "done", reason: "stop", message: answer });
+    await done;
+
+    expect(events.map(event => event.type)).toEqual(["start", "done"]);
+    expect(screened).toEqual([]);
+  });
+
+  it("holds every event until the guard releases the finished response", async () => {
+    let { inner, handle } = manualHandle();
+    let release = Promise.withResolvers<AiCallOutputDecision>();
+    let { guard, screened } = screeningGuard(() => release.promise);
+    guardModelHandle(guard, handle, scope());
+    let answer = fauxAssistantMessage(fauxText("Held."));
+
+    let { events, done } = await collectFrom(handle);
+    inner.push({ type: "start", partial: answer });
+    inner.push({ type: "done", reason: "stop", message: answer });
+    await vi.waitFor(() => expect(screened).toHaveLength(1));
+    expect(events).toEqual([]);
+    release.resolve({ action: "release" });
+    await done;
+
+    expect(events.map(event => event.type)).toEqual(["start", "done"]);
+  });
+
+  it("replays exactly the events the provider streamed, and screens text and reasoning", async () => {
+    let answer = fauxAssistantMessage(
+        [fauxThinking("Mitosis first."), fauxText("Cells divide."), fauxToolCall("noSuchTool", {})]);
+    let { handle, sent } = recordingHandle(answer);
+    let { calls, outcomes, guard, screened } = screeningGuard(async () => ({ action: "release" }));
+    guardModelHandle(guard, handle, scope());
+
+    let events = await Array.fromAsync(handle.stream(handle.model, { messages: [user("Hi")] }));
+
+    expect(sent.length).toBeGreaterThan(5);
+    expect(events).toEqual(sent);
+    expect(screened).toEqual([{ callId: calls[0].callId, output: { parts: [
+      { type: "text", text: "Mitosis first." }, { type: "text", text: "Cells divide." },
+    ] } }]);
+    await vi.waitFor(() => expect(outcomes).toMatchObject([{ status: "completed" }]));
+  });
+
+  it("forwards nothing of a withheld response, and fails as a denial", async () => {
+    let { handle } = fauxHandle([fauxAssistantMessage(fauxText("Something unsafe."))]);
+    let { outcomes, guard } = screeningGuard(async () => WITHHOLD);
+    guardModelHandle(guard, handle, scope());
+
+    let { events, done, result } = await collectFrom(handle);
+    await done;
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ type: "error", error: { content: [] } });
+    expect(JSON.stringify(events)).not.toContain("unsafe");
+    expect(await result()).toMatchObject(
+        { stopReason: "error", errorMessage: "That reply was held back." });
+    // The provider still billed the call, so it settles as completed.
+    await vi.waitFor(() => expect(outcomes).toMatchObject([{ status: "completed" }]));
+
+    let next = fauxHandle([fauxAssistantMessage(fauxText("Unsafe again."))]).handle;
+    guardModelHandle(guard, next, scope());
+    await expect(completeText(next, { prompt: "Hi" })).rejects.toMatchObject(
+        { name: "AiCallDeniedError", message: "That reply was held back.", reason: "moderation_block" });
+  });
+
+  it("releases a response with no text without asking", async () => {
+    let { handle } = fauxHandle([fauxAssistantMessage(fauxToolCall("noSuchTool", {}))]);
+    let { guard, screened } = screeningGuard(async () => WITHHOLD);
+    guardModelHandle(guard, handle, scope());
+
+    expect(await handle.stream(handle.model, { messages: [user("Hi")] }).result())
+        .toMatchObject({ content: [{ type: "toolCall" }] });
+    expect(screened).toEqual([]);
+  });
+
+  it.each([
+    ["fails", () => Promise.reject(new Error("guard down"))],
+    ["answers nonsense", async () => ({ action: "maybe" }) as unknown as AiCallOutputDecision],
+  ])("withholds the response when the guard %s", async (_case, screen) => {
+    let { handle } = fauxHandle([fauxAssistantMessage(fauxText("Unchecked."))]);
+    guardModelHandle(screeningGuard(screen).guard, handle, scope());
+
+    let { events, done } = await collectFrom(handle);
+    await done;
+
+    expect(events).toMatchObject([{ type: "error" }]);
+    expect(JSON.stringify(events)).not.toContain("Unchecked");
+  });
+
+  it("withholds the response when a guard asks to screen but cannot", async () => {
+    let { handle } = fauxHandle([fauxAssistantMessage(fauxText("Unchecked."))]);
+    guardModelHandle(fakeGuard(() => SCREEN).guard, handle, scope());
+
+    await expect(completeText(handle, { prompt: "Hi" }))
+        .rejects.toMatchObject({ name: "AiCallDeniedError", reason: "guard_unavailable" });
+  });
+
+  it("withholds the response when the call is stopped while it is being screened", async () => {
+    let { handle } = fauxHandle([fauxAssistantMessage(fauxText("Unchecked."))]);
+    let { guard, screened } = screeningGuard(() => new Promise(() => {}));
+    guardModelHandle(guard, handle, scope());
+    let stop = new AbortController();
+
+    let { events, done } = await collectFrom(handle, stop.signal);
+    await vi.waitFor(() => expect(screened).toHaveLength(1));
+    stop.abort();
+    await done;
+
+    expect(events).toMatchObject([{ type: "error" }]);
   });
 });
 

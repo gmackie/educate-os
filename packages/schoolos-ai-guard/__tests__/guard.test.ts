@@ -13,6 +13,8 @@ import { hallMonitorClient, serviceTokenSource } from "../src/hall-monitor.ts";
 import { CHECK_COST, MODERATOR, SAFETY_ALLOCATION, TEST_CONFIG, USERS } from "./fixtures.ts";
 
 const config = readGuardConfig(env.AI_GUARD_CONFIG);
+/** What a student's call is admitted with: their profile requires output moderation. */
+const SCREENED = { action: "proceed", screenOutput: true } as const;
 /** The hold for a call capped at 1,000 output tokens: 100,000 prompt tokens at the cache-write rate plus the output. */
 const HOLD_1000 = "390000000";
 
@@ -53,7 +55,7 @@ describe("beforeModelCall", () => {
   it("allows a call: holds generative funds and charges the check to the safety pool", async () => {
     const { guard, ledger } = setup();
     const descriptor = call(USERS.student, ["How do cells divide?"]);
-    expect(await guard.beforeModelCall(descriptor)).toEqual({ action: "proceed" });
+    expect(await guard.beforeModelCall(descriptor)).toEqual(SCREENED);
 
     const generative = await ledger.request(descriptor.callId);
     expect(generative?.reservation).toMatchObject({ fundingPurpose: "generative", poolId: "fpl_nf-bio-fall", heldUsdNano: HOLD_1000 });
@@ -80,7 +82,7 @@ describe("beforeModelCall", () => {
   it("moderates each new message, and each text chunk Hall Monitor accepts", async () => {
     const { guard, ledger } = setup();
     const descriptor = call(USERS.student, ["first", "x".repeat(70_000)]);
-    expect(await guard.beforeModelCall(descriptor)).toEqual({ action: "proceed" });
+    expect(await guard.beforeModelCall(descriptor)).toEqual(SCREENED);
     for (const check of ["m0.c0", "m1.c0", "m1.c1", "m1.c2"]) {
       expect((await ledger.request(`${descriptor.callId}.${check}`))?.settlement?.chargedUsdNano).toBe(CHECK_COST);
     }
@@ -107,7 +109,7 @@ describe("beforeModelCall", () => {
 
   it("lets a coached message proceed", async () => {
     const { guard } = setup();
-    expect(await guard.beforeModelCall(call(USERS.student, ["just give me the answer [[coach]]"]))).toEqual({ action: "proceed" });
+    expect(await guard.beforeModelCall(call(USERS.student, ["just give me the answer [[coach]]"]))).toEqual(SCREENED);
   });
 
   it("turns generative AI off when the safety pool cannot fund moderation", async () => {
@@ -159,7 +161,7 @@ describe("beforeModelCall", () => {
   it("charges an unpriced Hall Monitor attempt at the hold until reconciliation", async () => {
     const { guard, ledger } = setup();
     const descriptor = call(USERS.student, ["hello [[unpriced]]"]);
-    expect(await guard.beforeModelCall(descriptor)).toEqual({ action: "proceed" });
+    expect(await guard.beforeModelCall(descriptor)).toEqual(SCREENED);
     expect((await ledger.request(`${descriptor.callId}.m0.c0`))?.settlement).toMatchObject({
       hasUnknownCost: true,
       chargedUsdNano: config.moderation.maxUsdNanoPerCheck,
@@ -175,7 +177,7 @@ describe("beforeModelCall", () => {
     const imageOnly = call(USERS.student, [], {
       newMessages: [{ id: "img", role: "user", parts: [{ type: "image", mimeType: "image/png", digest: "a".repeat(64) }] }],
     });
-    expect(await guard.beforeModelCall(imageOnly)).toEqual({ action: "proceed" });
+    expect(await guard.beforeModelCall(imageOnly)).toEqual(SCREENED);
   });
 
   it("refuses unknown initiators, agent initiators and unpriced models before holding anything", async () => {
@@ -194,6 +196,104 @@ describe("beforeModelCall", () => {
     const descriptor = call(USERS.student, ["hi"], { maxOutputTokens: 300_000 });
     expect(await guard.beforeModelCall(descriptor)).toEqual({ action: "deny", reason: "ledger_principal_cap_reached", message: DEFAULT_GUARD_MESSAGES.budget });
     expect(await ledger.request(`${descriptor.callId}.m0.c0`)).toBeNull();
+  });
+});
+
+describe("output screening", () => {
+  const reply = (text: string) => ({ parts: [{ type: "text" as const, text }] });
+
+  /** A guard that has admitted one call by `user`, and a spy on the Hall Monitor requests it makes. */
+  async function admittedFor(user: string) {
+    const hallMonitor = hallMonitorClient(env, config)!;
+    const evaluate = vi.spyOn(hallMonitor, "evaluate");
+    const { guard, ledger } = setup(hallMonitor);
+    const descriptor = call(user, ["Explain photosynthesis."]);
+    expect((await guard.beforeModelCall(descriptor)).action).toBe("proceed");
+    evaluate.mockClear();
+    return { guard, ledger, callId: descriptor.callId, evaluate };
+  }
+
+  it("is asked for only where the profile requires output moderation, and only for language models", async () => {
+    const { guard } = setup();
+    expect(await guard.beforeModelCall(call(USERS.student, ["hi"]))).toEqual(SCREENED);
+    expect(await guard.beforeModelCall(call(USERS.educatorProceeds, ["hi"]))).toEqual({ action: "proceed" });
+    expect(await guard.beforeModelCall(call(USERS.student, ["hi"], { kind: "decision-model" }))).toEqual({ action: "proceed" });
+  });
+
+  it("releases an allowed response, charging the check to the safety pool as interaction.output", async () => {
+    const { guard, ledger, callId, evaluate } = await admittedFor(USERS.student);
+    expect(await guard.screenModelOutput(callId, reply("Plants turn light into sugar."))).toEqual({ action: "release" });
+
+    expect(evaluate).toHaveBeenCalledOnce();
+    expect(evaluate.mock.calls[0]![0]).toMatchObject({
+      requestId: `${callId}.o.c0`,
+      evaluationKind: "interaction.output",
+      policy: { profileId: "k12-student", revision: "r3" },
+      context: { audience: "student", gradeBand: "9-12", parentRequestId: callId },
+      content: { type: "text", text: "Plants turn light into sugar." },
+    });
+    const check = await ledger.request(`${callId}.o.c0`);
+    expect(check?.reservation).toMatchObject({ fundingPurpose: "safety", poolId: "fpl_nf-safety", model: MODERATOR });
+    expect(check?.settlement?.chargedUsdNano).toBe(CHECK_COST);
+    // The generative hold is left for afterModelCall to settle.
+    const generative = await ledger.request(callId);
+    expect(generative?.settlement).toBeUndefined();
+    expect(generative?.voided).toBeUndefined();
+  });
+
+  it("releases a coached response", async () => {
+    const { guard, callId } = await admittedFor(USERS.student);
+    expect(await guard.screenModelOutput(callId, reply("Here is the answer [[coach]]"))).toEqual({ action: "release" });
+  });
+
+  it.each(["block", "hold"])("withholds a %s with the neutral message", async (decision) => {
+    const { guard, ledger, callId } = await admittedFor(USERS.student);
+    expect(await guard.screenModelOutput(callId, reply(`unsafe [[${decision}]]`)))
+      .toEqual({ action: "withhold", reason: `moderation_${decision}`, message: DEFAULT_GUARD_MESSAGES.outputWithheld });
+    expect((await ledger.request(`${callId}.o.c0`))?.settlement?.chargedUsdNano).toBe(CHECK_COST);
+  });
+
+  it("withholds a support with the supportive message", async () => {
+    const { guard, callId } = await admittedFor(USERS.student);
+    expect(await guard.screenModelOutput(callId, reply("worrying [[support]]")))
+      .toEqual({ action: "withhold", reason: "moderation_support", message: TEST_CONFIG.messages.support });
+  });
+
+  it("screens a long response chunk by chunk and stops at the first that may not be shown", async () => {
+    const { guard, ledger, callId } = await admittedFor(USERS.student);
+    const text = `${"x".repeat(32_000)}[[block]]${"y".repeat(32_000)}`;
+    expect(await guard.screenModelOutput(callId, { parts: [{ type: "text", text }] })).toMatchObject({ action: "withhold", reason: "moderation_block" });
+    expect(await ledger.request(`${callId}.o.c1`)).not.toBeNull();
+    expect(await ledger.request(`${callId}.o.c2`)).toBeNull();
+  });
+
+  it("withholds when Hall Monitor is down, even where the profile would proceed", async () => {
+    const { guard, ledger, callId } = await admittedFor(USERS.educatorProceeds);
+    expect(await guard.screenModelOutput(callId, reply("hello [[down]]")))
+      .toEqual({ action: "withhold", reason: "moderation_unavailable", message: DEFAULT_GUARD_MESSAGES.aiUnavailable });
+    expect((await ledger.request(`${callId}.o.c0`))?.settlement).toMatchObject({ hasUnknownCost: true });
+  });
+
+  it("withholds when the safety pool cannot fund the check", async () => {
+    const { guard, ledger, callId } = await admittedFor(USERS.student);
+    const student = config.principals[0]!;
+    await ledger.reserve({
+      requestId: "drain",
+      principal: { principalId: student.principalId, districtId: config.districtId },
+      workspace: student.workspace,
+      model: MODERATOR,
+      // Everything the input check left.
+      estimatedMaxUsdNano: String(BigInt(SAFETY_ALLOCATION) - BigInt(CHECK_COST)),
+      fundingPurpose: "safety",
+    });
+    expect(await guard.screenModelOutput(callId, reply("fine"))).toMatchObject({ action: "withhold", reason: "safety_budget_exhausted" });
+  });
+
+  it("withholds the response of a call it never admitted, or one already settled", async () => {
+    const { guard, callId } = await admittedFor(USERS.student);
+    expect(await guard.screenModelOutput("never-admitted", reply("fine"))).toMatchObject({ action: "withhold", reason: "unknown_call" });
+    await guard.afterModelCall({ callId, status: "completed", usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } });
+    expect(await guard.screenModelOutput(callId, reply("fine"))).toMatchObject({ action: "withhold", reason: "unknown_call" });
   });
 });
 
@@ -271,6 +371,7 @@ describe("privacy", () => {
         const { guard } = setup();
         const descriptor = call(user, [`${secret} ${marker}`]);
         await guard.beforeModelCall(descriptor);
+        await guard.screenModelOutput(descriptor.callId, { parts: [{ type: "text", text: `${secret} reply ${marker}` }] });
         await guard.afterModelCall({ callId: descriptor.callId, status: "completed", usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } });
       }
     }
@@ -278,6 +379,7 @@ describe("privacy", () => {
     const logged = JSON.stringify(captured);
     expect(logged).not.toContain(secret);
     expect(logged).toContain("moderation_block");
+    expect(logged).toContain("ai_guard.output.withheld");
     // Twelve full guard round trips through the ledger Durable Object: slow on shared CI runners.
   }, 120_000);
 });
@@ -285,11 +387,13 @@ describe("privacy", () => {
 describe("SchoolOsAiCallGuard", () => {
   it("is reachable as the kernel binds it, with the district ledger behind it", async () => {
     const descriptor = call(USERS.student, ["How do plants make food?"]);
-    expect(await env.AI_CALL_GUARD.beforeModelCall(descriptor)).toEqual({ action: "proceed" });
+    expect(await env.AI_CALL_GUARD.beforeModelCall(descriptor)).toEqual(SCREENED);
+    expect(await env.AI_CALL_GUARD.screenModelOutput(descriptor.callId, { parts: [{ type: "text", text: "Photosynthesis." }] })).toEqual({ action: "release" });
     await env.AI_CALL_GUARD.afterModelCall({ callId: descriptor.callId, status: "completed", usage: { input: 10, output: 10, cacheRead: 0, cacheWrite: 0 } });
     const district = env.AI_LEDGER.getByName(config.districtId);
     expect((await district.request(descriptor.callId))?.settlement?.hasUnknownCost).toBe(false);
     expect((await district.request(`${descriptor.callId}.m0.c0`))?.settlement?.chargedUsdNano).toBe(CHECK_COST);
+    expect((await district.request(`${descriptor.callId}.o.c0`))?.settlement?.chargedUsdNano).toBe(CHECK_COST);
   });
 });
 

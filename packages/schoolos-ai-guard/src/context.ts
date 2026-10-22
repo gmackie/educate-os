@@ -4,8 +4,8 @@
 import type { AiCallDescriptor } from "@gadgets/workshop-shared/ai-call-guard";
 import type { AiPrincipal, AiWorkspaceContext } from "@schoolos/ai-governance";
 import type { GradeBand } from "@gmacko/hall-monitor-contracts";
-import { GuardSubject, guardDirectoryOver, type GuardDirectory, type GuardSubjectRequest } from "@schoolos/district-app/guard-directory";
-import type { AudienceProfileKey, GuardConfig, GuardProfile } from "./config.ts";
+import { GuardSubject, guardDirectoryOver, type AdmittedSubjectRequest, type GuardDirectory, type GuardSubjectRequest } from "@schoolos/district-app/guard-directory";
+import type { AudienceProfileKey, GuardConfig, GuardProfile, PrincipalBinding } from "./config.ts";
 
 /** Everything the guard needs to know about who a call is for. Labels only, never learner data. */
 export interface GuardContext {
@@ -29,6 +29,12 @@ export interface GuardContext {
 export interface GuardContextResolver {
   /** The context of `call`, or `null`. */
   resolve(call: Pick<AiCallDescriptor, "initiator" | "gadgetId">): Promise<GuardContext | null>;
+
+  /**
+   * The context of a call already admitted for `principal` and billed to `workspace`, as its
+   * reservation records them, or `null` when the principal is no longer one this deployment serves.
+   */
+  resolveAdmitted(principal: AiPrincipal, workspace: AiWorkspaceContext): Promise<GuardContext | null>;
 }
 
 /** The lowest grade a published band (`K`, `7`, `9-12`, `K-8`) covers; kindergarten is 0. */
@@ -60,6 +66,8 @@ export function audienceOf(subject: GuardSubject): { key: AudienceProfileKey; gr
 export interface GuardDirectoryPort {
   /** What the district says about `request`'s Workshop user, or `null`. */
   guardSubject(request: GuardSubjectRequest): Promise<unknown>;
+  /** What the district says now about an admitted call's principal, or `null`. */
+  admittedSubject(request: AdmittedSubjectRequest): Promise<unknown>;
   /** The profile-free directory the ledger resolves funding against. */
   ledgerDirectory(): Promise<unknown>;
 }
@@ -73,7 +81,9 @@ export interface GuardDirectoryPort {
  * initiator names a model, not a person, and resolves to nothing.
  *
  * The directory's answer is validated again here, since it may arrive over a service binding, and
- * an answer for a principal of any other district is refused.
+ * an answer for a principal of any other district is refused. An admitted call's output is
+ * screened under the principal's current audience, looked up by the principal its reservation
+ * names.
  */
 export class DistrictGuardContextResolver implements GuardContextResolver {
   readonly #directory: GuardDirectoryPort;
@@ -87,7 +97,15 @@ export class DistrictGuardContextResolver implements GuardContextResolver {
   async resolve(call: Pick<AiCallDescriptor, "initiator" | "gadgetId">): Promise<GuardContext | null> {
     if (call.initiator.type === "agent") return null;
     const request: GuardSubjectRequest = { workshopUser: call.initiator.id, ...(call.gadgetId === undefined ? {} : { gadgetId: call.gadgetId }) };
-    const answer: unknown = await this.#directory.guardSubject(request);
+    return this.#context(await this.#directory.guardSubject(request));
+  }
+
+  async resolveAdmitted(principal: AiPrincipal, workspace: AiWorkspaceContext): Promise<GuardContext | null> {
+    if (principal.districtId !== this.#config.districtId) return null;
+    return this.#context(await this.#directory.admittedSubject({ principal, workspace }));
+  }
+
+  #context(answer: unknown): GuardContext | null {
     if (answer === null) return null;
     const parsed = GuardSubject.safeParse(answer);
     if (!parsed.success) throw new Error("the district directory answered with a malformed subject");
@@ -135,12 +153,21 @@ export class StaticGuardContextResolver implements GuardContextResolver {
   async resolve(call: Pick<AiCallDescriptor, "initiator" | "gadgetId">): Promise<GuardContext | null> {
     if (call.initiator.type === "agent") return null;
     const binding = this.#config.principals.find((candidate) => candidate.workshopUserId === call.initiator.id);
+    const gadgetWorkspace = call.gadgetId === undefined ? undefined : binding?.gadgetWorkspaces?.[call.gadgetId];
+    return this.#context(binding, gadgetWorkspace ?? binding?.workspace);
+  }
+
+  async resolveAdmitted(principal: AiPrincipal, workspace: AiWorkspaceContext): Promise<GuardContext | null> {
+    if (principal.districtId !== this.#config.districtId) return null;
+    return this.#context(this.#config.principals.find((candidate) => candidate.principalId === principal.principalId), workspace);
+  }
+
+  #context(binding: PrincipalBinding | undefined, workspace: AiWorkspaceContext | undefined): GuardContext | null {
     const profile = binding === undefined ? undefined : this.#config.profiles[binding.profile];
-    if (binding === undefined || profile === undefined) return null;
-    const gadgetWorkspace = call.gadgetId === undefined ? undefined : binding.gadgetWorkspaces?.[call.gadgetId];
+    if (binding === undefined || profile === undefined || workspace === undefined) return null;
     return {
       principal: { principalId: binding.principalId, districtId: this.#config.districtId },
-      workspace: gadgetWorkspace ?? binding.workspace,
+      workspace,
       audience: binding.audience,
       ...(binding.gradeBand === undefined ? {} : { gradeBand: binding.gradeBand }),
       profile,

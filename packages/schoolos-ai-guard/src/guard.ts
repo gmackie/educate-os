@@ -1,11 +1,19 @@
 // What the guard decides around one model call (ADR-0007): reserve generative funds, moderate the
 // call's new messages with Hall Monitor out of the protected safety pool, apply Hall Monitor's
-// decision, and settle the call's spend once it has ended.
+// decision, screen the model's response before release when the profile requires it, and settle
+// the call's spend once it has ended.
 //
-// Privacy: message text goes to Hall Monitor and nowhere else. It is never logged or stored; logs
+// Privacy: message and response text goes to Hall Monitor and nowhere else. It is never logged or stored; logs
 // carry identifiers, decisions and machine reason codes only.
 
-import type { AiCallDecision, AiCallDescriptor, AiCallMessage, AiCallOutcome } from "@gadgets/workshop-shared/ai-call-guard";
+import type {
+  AiCallDecision,
+  AiCallDescriptor,
+  AiCallMessagePart,
+  AiCallModelOutput,
+  AiCallOutcome,
+  AiCallOutputDecision,
+} from "@gadgets/workshop-shared/ai-call-guard";
 import { createLogger, type Logger } from "@gadgets/observability/logger";
 import { HallMonitorError, type HallMonitorClient } from "@gmacko/hall-monitor-client";
 import {
@@ -13,6 +21,7 @@ import {
   SCHEMA_VERSION,
   type CostReceipt,
   type Decision,
+  type EvaluationKind,
   type EvaluationRequest,
   type EvaluationResult,
 } from "@gmacko/hall-monitor-contracts";
@@ -61,11 +70,12 @@ export interface GuardDependencies {
 const STOPPING: readonly Decision[] = ["support", "block", "hold"];
 
 const deny = (reason: string, message: string): AiCallDecision => ({ action: "deny", reason, message });
-const PROCEED: AiCallDecision = { action: "proceed" };
+const withhold = (reason: string, message: string): AiCallOutputDecision => ({ action: "withhold", reason, message });
+const RELEASE: AiCallOutputDecision = { action: "release" };
 
-/** The text Hall Monitor evaluates for one message, in chunks it accepts. Attachments are skipped. */
-function textChunks(message: AiCallMessage): string[] {
-  const text = message.parts.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n\n");
+/** The text Hall Monitor evaluates for one message or response, in chunks it accepts. Attachments are skipped. */
+function textChunks(parts: AiCallMessagePart[]): string[] {
+  const text = parts.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n\n");
   const chunks: string[] = [];
   for (let start = 0; start < text.length;) {
     let end = Math.min(start + MAX_TEXT_LENGTH, text.length);
@@ -88,7 +98,7 @@ function receiptPriceBook(receipt: CostReceipt): { priceBookId?: string } {
   return books.size === 1 && book !== undefined ? { priceBookId: book } : {};
 }
 
-/** The verdict of moderating a call's new input. */
+/** The verdict of moderating a call's new input or its response. */
 type Moderation =
   | { kind: "proceed" }
   | { kind: "deny"; reason: string; message: string };
@@ -127,6 +137,8 @@ export class AiCallGuardService {
    *   money, and the user is offered a way to keep working without AI.
    * - Hall Monitor unreachable: a student audience fails closed; an educator audience follows its
    *   profile's `failureMode`.
+   * - A language-model call whose profile requires output moderation proceeds with `screenOutput`,
+   *   so the Workshop holds the response for {@link screenModelOutput}.
    */
   async beforeModelCall(call: AiCallDescriptor): Promise<AiCallDecision> {
     const log = logger.with({ callId: call.callId, callSite: call.callSite });
@@ -186,8 +198,50 @@ export class AiCallGuardService {
       log.info("AI call refused by moderation", { event: "ai_guard.denied", reason: moderation.reason });
       return deny(moderation.reason, moderation.message);
     }
-    log.debug("AI call admitted", { event: "ai_guard.admitted" });
-    return PROCEED;
+    const screenOutput = call.kind === "language-model" && context.profile.outputModeration === "required";
+    log.debug("AI call admitted", { event: "ai_guard.admitted", ...(screenOutput ? { decision: "screen_output" } : {}) });
+    return screenOutput ? { action: "proceed", screenOutput } : { action: "proceed" };
+  }
+
+  /**
+   * Screens the response of a call it admitted with `screenOutput`, before the Workshop shows any
+   * of it. The call is found by its generative reservation, which names who it was for; each chunk
+   * of the response is evaluated as `interaction.output` (check `j` is `<callId>.o.c<j>`), held from
+   * and settled to the safety pool as input checks are.
+   *
+   * - `allow` and `coach` release the response.
+   * - `hold` and `block` withhold it with a neutral message; `support` with the supportive one.
+   * - Everything else withholds: an unknown or already settled call, a safety pool that cannot
+   *   fund the check, or Hall Monitor unreachable, whatever the profile's `failureMode`, since the
+   *   response was meant to be screened.
+   */
+  async screenModelOutput(callId: string, output: AiCallModelOutput): Promise<AiCallOutputDecision> {
+    const log = logger.with({ callId });
+    const record = await this.#ledger.request(callId);
+    const reservation = record?.reservation;
+    if (reservation === undefined || reservation.fundingPurpose !== "generative" || record?.settlement !== undefined || record?.voided !== undefined) {
+      log.warn("AI response withheld: its call is not one awaiting release", { event: "ai_guard.output.withheld", reason: "unknown_call" });
+      return withhold("unknown_call", this.#messages.notAllowed);
+    }
+    const context = await this.#resolver.resolveAdmitted({ principalId: reservation.principalId, districtId: reservation.districtId }, reservation.workspace);
+    if (context === null) {
+      log.warn("AI response withheld: its principal is no longer served", { event: "ai_guard.output.withheld", reason: "unknown_principal" });
+      return withhold("unknown_principal", this.#messages.notAllowed);
+    }
+    const checks = textChunks(output.parts).map((text, c) => ({ checkId: `${callId}.o.c${c}`, text }));
+    let moderation: Moderation;
+    try {
+      moderation = await this.#evaluate(callId, context, checks, "interaction.output", log.with({ audience: context.audience }));
+    } catch (error) {
+      log.error("AI response withheld: the guard failed while screening it", { event: "ai_guard.failed", reason: "guard_error", error: error instanceof Error ? error.name : "unknown" });
+      return withhold("guard_error", this.#messages.aiUnavailable);
+    }
+    if (moderation.kind === "deny") {
+      log.info("AI response withheld by moderation", { event: "ai_guard.output.withheld", reason: moderation.reason });
+      return withhold(moderation.reason, moderation.message);
+    }
+    log.debug("AI response released", { event: "ai_guard.output.released" });
+    return RELEASE;
   }
 
   /**
@@ -240,9 +294,23 @@ export class AiCallGuardService {
 
   async #moderate(call: AiCallDescriptor, context: GuardContext, log: Logger<GuardLogFields>): Promise<Moderation> {
     if (!context.profile.moderateInput) return { kind: "proceed" };
-    const checks = call.newMessages.flatMap((message, m) => textChunks(message).map((text, c) => ({ checkId: `${call.callId}.m${m}.c${c}`, text })));
+    const checks = call.newMessages.flatMap((message, m) => textChunks(message.parts).map((text, c) => ({ checkId: `${call.callId}.m${m}.c${c}`, text })));
+    return this.#evaluate(call.callId, context, checks, "interaction.input", log);
+  }
+
+  // Has Hall Monitor evaluate each check in order, funding each from the safety pool, and stops at
+  // the first that may not proceed. Input follows the profile when Hall Monitor is unavailable;
+  // output, which was meant to be screened, always fails closed.
+  async #evaluate(
+    callId: string,
+    context: GuardContext,
+    checks: { checkId: string; text: string }[],
+    kind: Extract<EvaluationKind, "interaction.input" | "interaction.output">,
+    log: Logger<GuardLogFields>,
+  ): Promise<Moderation> {
     if (checks.length === 0) return { kind: "proceed" };
-    if (this.#hallMonitor === null) return this.#unavailable(context, log, undefined);
+    const output = kind === "interaction.output";
+    if (this.#hallMonitor === null) return this.#unavailable(context, log, undefined, output);
 
     let coached = false;
     for (const { checkId, text } of checks) {
@@ -264,11 +332,11 @@ export class AiCallGuardService {
 
       let result: EvaluationResult;
       try {
-        result = await this.#hallMonitor.evaluate(this.#evaluationRequest(call, context, checkId, text));
+        result = await this.#hallMonitor.evaluate(this.#evaluationRequest(callId, context, checkId, text, kind));
       } catch (error) {
         // The call may have reached Hall Monitor and been billed, so its cost is unknown, not $0.
         await this.#ledger.settle(checkId, { attempts: [{ attemptIndex: 0, state: "unknown" }] });
-        return this.#unavailable(context, checkLog, error);
+        return this.#unavailable(context, checkLog, error, output);
       }
       if (result.receipt === null) {
         await this.#ledger.void(checkId);
@@ -286,7 +354,7 @@ export class AiCallGuardService {
         checkLog.info("moderation stopped an AI call", { event: "ai_guard.moderation.stopped", ...fields });
         return result.decision === "support"
           ? { kind: "deny", reason: "moderation_support", message: this.#messages.support }
-          : { kind: "deny", reason: `moderation_${result.decision}`, message: this.#messages.blocked };
+          : { kind: "deny", reason: `moderation_${result.decision}`, message: output ? this.#messages.outputWithheld : this.#messages.blocked };
       }
       if (result.decision === "coach") {
         coached = true;
@@ -297,7 +365,7 @@ export class AiCallGuardService {
     return { kind: "proceed" };
   }
 
-  #evaluationRequest(call: AiCallDescriptor, context: GuardContext, checkId: string, text: string): EvaluationRequest {
+  #evaluationRequest(callId: string, context: GuardContext, checkId: string, text: string, kind: EvaluationKind): EvaluationRequest {
     const { moderation } = this.#config;
     return {
       schemaVersion: SCHEMA_VERSION,
@@ -310,19 +378,20 @@ export class AiCallGuardService {
         audience: context.audience,
         ...(context.gradeBand === undefined ? {} : { gradeBand: context.gradeBand }),
         costCenterId: moderation.costCenterId,
-        parentRequestId: call.callId,
+        parentRequestId: callId,
       },
-      evaluationKind: "interaction.input",
+      evaluationKind: kind,
       content: { type: "text", text },
     };
   }
 
-  // Hall Monitor could not answer. A student audience fails closed; an educator's profile decides.
-  #unavailable(context: GuardContext, log: Logger<GuardLogFields>, error: unknown): Moderation {
+  // Hall Monitor could not answer. Output and a student audience fail closed; otherwise an
+  // educator's profile decides.
+  #unavailable(context: GuardContext, log: Logger<GuardLogFields>, error: unknown, output: boolean): Moderation {
     const fields = error instanceof HallMonitorError
       ? { hallMonitorCode: error.code, ...(error.status === undefined ? {} : { hallMonitorStatus: error.status }) }
       : {};
-    if (context.audience === "educator" && context.profile.failureMode === "proceed") {
+    if (!output && context.audience === "educator" && context.profile.failureMode === "proceed") {
       log.warn("Hall Monitor unavailable; educator profile proceeds unmoderated", { event: "ai_guard.moderation.unavailable", reason: "moderation_unavailable_proceed", ...fields });
       return { kind: "proceed" };
     }

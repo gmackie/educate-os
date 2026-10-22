@@ -5,13 +5,13 @@
 // wrappers return what they were given.
 
 import type {
-  AssistantMessage, ClassifierContext, ClassifierResult, Context,
+  AssistantMessage, AssistantMessageEvent, ClassifierContext, ClassifierResult, Context,
   Message, Usage,
 } from "@earendil-works/pi-ai";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import type {
   AiCallDecision, AiCallDescriptor, AiCallGuard, AiCallMessage, AiCallMessagePart, AiCallOutcome,
-  AiCallSite,
+  AiCallOutputDecision, AiCallSite, AiCallTextPart,
 } from "@gadgets/workshop-shared/ai-call-guard";
 import { createLogger } from "@gadgets/observability/logger";
 import { AI_CALL_DENIED, AiCallDeniedError, zeroUsage } from "./ai-invoke.js";
@@ -20,8 +20,9 @@ import type { ModelHandle } from "./ai-models.js";
 type GuardLogFields = { callId?: string; callSite?: string; reason?: string };
 const logger = createLogger<GuardLogFields>({ component: "workshop.ai-call-guard" });
 
-/** The two guard methods the kernel calls. */
-export type AiCallGuardClient = Pick<AiCallGuard, "beforeModelCall" | "afterModelCall">;
+/** The guard methods the kernel calls. A guard written before output screening lacks the last. */
+export type AiCallGuardClient = Pick<AiCallGuard, "beforeModelCall" | "afterModelCall">
+    & Partial<Pick<AiCallGuard, "screenModelOutput">>;
 
 /** What every call through one handle has in common: everything but the call and its messages. */
 export type AiCallScope = Omit<AiCallDescriptor,
@@ -113,13 +114,12 @@ async function describeContext(context: Context): Promise<AiCallMessage[]> {
   return described;
 }
 
-/** How long a guard may take to decide before the call is denied. */
+/** How long a guard may take to decide before the call is denied or its response withheld. */
 const GUARD_DECISION_TIMEOUT_MS = 15_000;
 
 // Settles with the guard's decision, or rejects once the call is aborted or the guard takes longer
 // than GUARD_DECISION_TIMEOUT_MS, so a hung guard can neither stall a turn nor outlive its Stop.
-function decisionWithin(
-    decision: Promise<AiCallDecision>, signal: AbortSignal | undefined): Promise<AiCallDecision> {
+function decisionWithin<T>(decision: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
   let deadline = AbortSignal.timeout(GUARD_DECISION_TIMEOUT_MS);
   let stop = signal ? AbortSignal.any([signal, deadline]) : deadline;
   return new Promise((resolve, reject) => {
@@ -131,13 +131,14 @@ function decisionWithin(
 
 /**
  * Asks the guard whether the call `call` describes may run, passing the messages of `messages` not
- * yet passed for its scope. Returns the call's id, or the denial. A guard that fails, times out or
- * is still deciding when the call is aborted denies.
+ * yet passed for its scope. Returns the call's id and whether its output must be screened, or the
+ * denial. A guard that fails, times out or is still deciding when the call is aborted denies.
  */
 async function admit(
     guard: AiCallGuardClient, scope: AiCallScope,
     call: Pick<AiCallDescriptor, "kind" | "maxOutputTokens">,
-    messages: AiCallMessage[], signal?: AbortSignal): Promise<{ callId: string } | AiCallDeniedError> {
+    messages: AiCallMessage[],
+    signal?: AbortSignal): Promise<{ callId: string; screenOutput: boolean } | AiCallDeniedError> {
   let passed = passedMessages(scope);
   let newMessages = messages.filter(message => !passed.has(message.id));
   let callId = crypto.randomUUID();
@@ -164,7 +165,48 @@ async function admit(
         decision.action === "deny" ? decision.message : "This request was not allowed.", reason);
   }
   remember(passed, newMessages.map(message => message.id));
-  return { callId };
+  return { callId, screenOutput: decision.screenOutput === true };
+}
+
+// What a response shows its reader: its text and its unredacted reasoning. Tool calls pass.
+function visibleOutput(response: AssistantMessage): AiCallTextPart[] {
+  return response.content.flatMap((block): AiCallTextPart[] =>
+      block.type === "text" && block.text ? [{ type: "text", text: block.text }]
+      : block.type === "thinking" && !block.redacted && block.thinking
+          ? [{ type: "text", text: block.thinking }]
+      : []);
+}
+
+/**
+ * Asks the guard whether `response`, the finished response of the admitted call `callId`, may be
+ * passed on. Returns the denial that withholds it, or undefined to release it. A response with no
+ * text is released without asking. A guard that cannot screen, fails, times out or is still
+ * deciding when the call is aborted withholds.
+ */
+async function screen(
+    guard: AiCallGuardClient, callId: string, callSite: AiCallSite, response: AssistantMessage,
+    signal?: AbortSignal): Promise<AiCallDeniedError | undefined> {
+  let parts = visibleOutput(response);
+  if (parts.length === 0) return undefined;
+  let decision: AiCallOutputDecision;
+  try {
+    if (!guard.screenModelOutput) throw new Error("the guard asked for screening it cannot do");
+    decision = await decisionWithin(guard.screenModelOutput(callId, { parts }), signal);
+  } catch (error) {
+    logger.error("AI call guard failed to screen a response; withholding it", {
+      event: "ai_call_guard.screen.failed", callId, callSite, error,
+    });
+    return new AiCallDeniedError(
+        "This response could not be checked, so it was not shown. Try again later.",
+        "guard_unavailable");
+  }
+  if (decision.action === "release") return undefined;
+  let reason = decision.action === "withhold" ? decision.reason : "invalid_decision";
+  logger.info("AI call guard withheld a model response", {
+    event: "ai_call_guard.withheld", callId, callSite, reason,
+  });
+  return new AiCallDeniedError(
+      decision.action === "withhold" ? decision.message : "This response was not allowed.", reason);
 }
 
 // Reports how an admitted call ended. Not awaited by the call: the request's own pending I/O keeps
@@ -185,8 +227,11 @@ function reportedUsage(usage: Usage | undefined): AiCallOutcome["usage"] {
 /**
  * Makes `handle.stream` consult `guard` around every request, as one from `scope`'s call site
  * unless the request names its own (ModelStreamOptions.callSite). A denied request is never sent:
- * its stream ends at once with an error response that throwIfAiCallDenied() recognizes. Returns
- * `handle` itself, modified, so `lastResponse` stays where the handle's own stream writes it.
+ * its stream ends at once with an error response that throwIfAiCallDenied() recognizes. When the
+ * guard asks to screen a request's output, its stream forwards nothing until the response is
+ * complete and released; a withheld response ends the stream with the same error, and none of its
+ * events are forwarded. Returns `handle` itself, modified, so `lastResponse` stays where the
+ * handle's own stream writes it.
  */
 export function guardModelHandle(
     guard: AiCallGuardClient | undefined, handle: ModelHandle, scope: AiCallScope): ModelHandle {
@@ -212,8 +257,18 @@ export function guardModelHandle(
       let response: AssistantMessage | undefined;
       try {
         let inner = stream(model, context, options);
-        for await (let event of inner) guarded.push(event);
+        let held: AssistantMessageEvent[] | undefined = admitted.screenOutput ? [] : undefined;
+        for await (let event of inner) {
+          if (held) held.push(event);
+          else guarded.push(event);
+        }
         response = await inner.result();
+        if (held) {
+          let withheld = await screen(guard, admitted.callId, callScope.callSite, response,
+              options.signal);
+          if (withheld) return fail(withheld.message, withheld);
+          for (let event of held) guarded.push(event);
+        }
       } finally {
         let aiGatewayLogId = handle.lastResponse?.aiGatewayLogId;
         settle(guard, {

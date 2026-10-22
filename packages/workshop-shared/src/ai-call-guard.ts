@@ -112,13 +112,47 @@ export type AiCallDescriptor = {
 /** The guard's answer to {@link AiCallGuard.beforeModelCall}. */
 export type AiCallDecision =
   /** Send the request. */
-  | { action: "proceed" }
+  | {
+      action: "proceed";
+      /**
+       * Hold the model's response until {@link AiCallGuard.screenModelOutput} releases it. Nothing
+       * of a screened response reaches its reader before then. Honoured for language-model calls
+       * only: a decision model answers with probabilities, not text. A Workshop that predates
+       * output screening ignores it, so a guard must not rely on it being honoured.
+       */
+      screenOutput?: boolean;
+    }
   /**
    * Do not send it. The request fails as a model failure would, before reaching the provider.
    */
   | {
       action: "deny";
       /** Machine-readable reason, e.g. `"budget_exhausted"`. Logged; must hold no message text. */
+      reason: string;
+      /** Shown to the user in place of the model's response. */
+      message: string;
+    };
+
+/** A text part of a model's response: what {@link AiCallModelOutput} is made of. */
+export type AiCallTextPart = Extract<AiCallMessagePart, { type: "text" }>;
+
+/**
+ * What a model's response shows its reader, passed to {@link AiCallGuard.screenModelOutput}: its
+ * text and its reasoning that is not redacted, as text parts in order. Tool calls are not part of it.
+ */
+export type AiCallModelOutput = {
+  /** The response's text, never empty: a response with no text is released unscreened. */
+  parts: AiCallTextPart[];
+};
+
+/** The guard's answer to {@link AiCallGuard.screenModelOutput}. */
+export type AiCallOutputDecision =
+  /** Pass the response on as the model sent it. */
+  | { action: "release" }
+  /** Discard it. The request fails as a denied one does, and none of the response is shown. */
+  | {
+      action: "withhold";
+      /** Machine-readable reason, e.g. `"moderation_block"`. Logged; must hold no response text. */
       reason: string;
       /** Shown to the user in place of the model's response. */
       message: string;
@@ -172,4 +206,13 @@ export interface AiCallGuard extends WorkerEntrypoint {
    * failure here is logged and does not affect the call.
    */
   afterModelCall(outcome: AiCallOutcome): Promise<void>;
+
+  /**
+   * Called once a call whose decision asked for `screenOutput` has finished, with what its response
+   * shows the reader, before any of it is passed on. A rejection, or no answer within the
+   * Workshop's deadline, withholds the response; so does asking for screening without implementing
+   * this method, which guards written before it existed lack. Called before
+   * {@link afterModelCall} for the same call.
+   */
+  screenModelOutput(callId: string, output: AiCallModelOutput): Promise<AiCallOutputDecision>;
 }

@@ -5,7 +5,7 @@ import { DistrictDirectorySnapshot, type PrincipalId } from "@schoolos/contracts
 import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
 import { confirmWorkshopUserLink, type WorkshopUserLink } from "@schoolos/identity";
 import type { Workspace } from "@schoolos/workspaces";
-import { createDistrictApp, guardSubjectFrom, ledgerDirectory, inMemoryDistrictStores, type GuardDirectorySource } from "../src/index.ts";
+import { admittedSubjectFrom, createDistrictApp, guardSubjectFrom, ledgerDirectory, inMemoryDistrictStores, type GuardDirectorySource } from "../src/index.ts";
 
 const AT = "2026-10-20T15:00:00Z";
 const NF_ADMIN = "prn_nf-district-admin" as PrincipalId;
@@ -90,6 +90,25 @@ describe("guardSubjectFrom", () => {
 
   it("refuses a gadget whose workspace belongs to someone else", () => {
     expect(guardSubjectFrom(SOURCE, { workshopUser: "chidi@northfield.example", gadgetId: "gadget-amara-bio" })).toBeNull();
+  });
+});
+
+describe("admittedSubjectFrom", () => {
+  const amara = { principalId: "prn_nf-student-amara", districtId: "dst_northfield" };
+  const bio = { kind: "course", offeringId: "off_nf-bio-fall-p2" } as const;
+
+  it("derives the same subject from an admitted call's principal and workspace as from its Workshop user", () => {
+    expect(admittedSubjectFrom(SOURCE, { principal: amara, workspace: bio }))
+      .toEqual(guardSubjectFrom(SOURCE, { workshopUser: "amara@northfield.example", gadgetId: "gadget-amara-bio" }));
+    expect(admittedSubjectFrom(SOURCE, { principal: { principalId: "prn_nf-morgan-lee", districtId: "dst_northfield" }, workspace: { kind: "personal" } }))
+      .toEqual(guardSubjectFrom(SOURCE, { workshopUser: "morgan@northfield.example" }));
+  });
+
+  it("has no subject for another district's principal, an unknown one, or one no longer active", () => {
+    expect(admittedSubjectFrom(SOURCE, { principal: { ...amara, districtId: "dst_riverbend" }, workspace: bio })).toBeNull();
+    expect(admittedSubjectFrom(SOURCE, { principal: { ...amara, principalId: "prn_nf-nobody" }, workspace: bio })).toBeNull();
+    const directory = { ...NORTHFIELD, principals: NORTHFIELD.principals.map((p) => (p.id === amara.principalId ? { ...p, status: "graduated" as const } : p)) };
+    expect(admittedSubjectFrom({ ...SOURCE, directory }, { principal: amara, workspace: bio })).toBeNull();
   });
 });
 

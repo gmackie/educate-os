@@ -19,6 +19,19 @@ export const GuardSubjectRequest = z.strictObject({
 export type GuardSubjectRequest = z.input<typeof GuardSubjectRequest>;
 
 /**
+ * Whom the guard asks about once a call is admitted: the principal and workspace its reservation
+ * records, which the guard itself resolved from the Workshop user when it admitted the call.
+ */
+export const AdmittedSubjectRequest = z.strictObject({
+  /** The principal the call was admitted for. */
+  principal: AiPrincipal,
+  /** The workspace the call is billed to. */
+  workspace: AiWorkspaceContext,
+});
+/** An admitted subject request. */
+export type AdmittedSubjectRequest = z.input<typeof AdmittedSubjectRequest>;
+
+/**
  * What the district says about a Workshop user, for the guard: who they are, what they hold, and
  * which workspace and grade bands a call of theirs belongs to. Labels only, never learner data.
  */
@@ -48,6 +61,11 @@ export type GuardSubject = z.infer<typeof GuardSubject>;
 export interface GuardDirectory {
   /** What the district says about `request`'s Workshop user, or `null`. */
   guardSubject(request: GuardSubjectRequest): Promise<GuardSubject | null>;
+  /**
+   * What the district says now about the principal of a call already admitted, or `null` when
+   * they are no longer an active principal of this district. Used to screen the call's output.
+   */
+  admittedSubject(request: AdmittedSubjectRequest): Promise<GuardSubject | null>;
   /**
    * The directory the guard's ledger resolves funding against, with each principal's profile
    * (display name, email) stripped: `ledgerDirectory` of the current snapshot.
@@ -89,22 +107,46 @@ export function guardSubjectFrom(source: GuardDirectorySource, input: GuardSubje
     throw error;
   }
   if (resolved.kind === "service") return null;
-  // Only an active principal holds grants (`PrincipalStatus`); district AI funding is one. An
-  // inactive or graduated principal keeps its link and its work, but its calls are refused.
-  if (directory.principals.find((p) => p.id === resolved.principalId)?.status !== "active") return null;
+  if (!isActive(directory, resolved.principalId)) return null;
 
   const workspaceRecord = request.gadgetId === undefined
     ? undefined
     : source.workspaces.find((w) => w.districtId === directory.district.id && w.storageHandle?.backend === "workshop" && w.storageHandle.ref === request.gadgetId);
   if (workspaceRecord !== undefined && workspaceRecord.ownerPrincipalId !== resolved.principalId) return null;
   const workspace: AiWorkspaceContext = workspaceRecord?.kind === "course" ? { kind: "course", offeringId: workspaceRecord.offeringId } : { kind: "personal" };
+  return subjectOf(directory, resolved.principalId, resolved.kind, workspace);
+}
 
+/**
+ * Derives the {@link GuardSubject} of an admitted call's principal from the district's records, or
+ * `null` when they are not an active student or member of staff of this district. The workspace is
+ * the one the call was admitted for and is not re-checked; the principal's kind, roles and grade
+ * bands are read afresh, as for {@link guardSubjectFrom}.
+ */
+export function admittedSubjectFrom(source: GuardDirectorySource, input: AdmittedSubjectRequest): GuardSubject | null {
+  const parsed = AdmittedSubjectRequest.safeParse(input);
+  if (!parsed.success) return null;
+  const { principal, workspace } = parsed.data;
+  const { directory } = source;
+  if (principal.districtId !== directory.district.id) return null;
+  const kind = directory.principals.find((p) => p.id === principal.principalId)?.kind;
+  if ((kind !== "student" && kind !== "staff") || !isActive(directory, principal.principalId)) return null;
+  return subjectOf(directory, principal.principalId, kind, workspace);
+}
+
+// Only an active principal holds grants (`PrincipalStatus`); district AI funding is one. An
+// inactive or graduated principal keeps its link and its work, but its calls are refused.
+function isActive(directory: DistrictDirectorySnapshot, principalId: PrincipalId): boolean {
+  return directory.principals.find((p) => p.id === principalId)?.status === "active";
+}
+
+function subjectOf(directory: DistrictDirectorySnapshot, principalId: PrincipalId, kind: "student" | "staff", workspace: AiWorkspaceContext): GuardSubject {
   return {
-    principal: { principalId: resolved.principalId, districtId: resolved.districtId },
-    kind: resolved.kind,
-    roles: unique(directory.roleAssignments.filter((a) => a.principalId === resolved.principalId).map((a) => a.role)),
+    principal: { principalId, districtId: directory.district.id },
+    kind,
+    roles: unique(directory.roleAssignments.filter((a) => a.principalId === principalId).map((a) => a.role)),
     workspace,
-    gradeBands: resolved.kind === "student" ? studentGradeBands(directory, resolved.principalId, workspace) : [],
+    gradeBands: kind === "student" ? studentGradeBands(directory, principalId, workspace) : [],
   };
 }
 
@@ -144,6 +186,9 @@ export function guardDirectoryOver(load: () => Promise<GuardDirectorySource>): G
   return {
     async guardSubject(request) {
       return guardSubjectFrom(await load(), request);
+    },
+    async admittedSubject(request) {
+      return admittedSubjectFrom(await load(), request);
     },
     async ledgerDirectory() {
       return ledgerDirectory((await load()).directory);

@@ -60,8 +60,8 @@ export const ModelRate = z.strictObject({
 export type ModelRate = z.infer<typeof ModelRate>;
 
 /**
- * How one class of principal is moderated: the Hall Monitor policy profile revision its input is
- * evaluated under, and what happens when Hall Monitor cannot answer.
+ * How one class of principal is moderated: the Hall Monitor policy profile revision its input and
+ * the model's output are evaluated under, and what happens when Hall Monitor cannot answer.
  */
 export const GuardProfile = z.strictObject({
   /** The pinned Hall Monitor policy profile. */
@@ -76,6 +76,13 @@ export const GuardProfile = z.strictObject({
    * student audience always fails closed, whatever its profile says.
    */
   failureMode: z.enum(["fail-closed", "proceed"]),
+  /**
+   * The Hall Monitor profile's output moderation. `required` has the Workshop hold each model
+   * response until Hall Monitor has screened it (`interaction.output`), and withhold it when that
+   * cannot happen, whatever `failureMode` says. `optional` and `off` let responses stream
+   * unscreened.
+   */
+  outputModeration: z.enum(["required", "optional", "off"]).default("off"),
 });
 /** A guard profile. */
 export type GuardProfile = z.infer<typeof GuardProfile>;
@@ -118,6 +125,8 @@ export const GuardMessages = z.strictObject({
   support: z.string().min(1).max(1000),
   /** The input was held or blocked. */
   blocked: z.string().min(1).max(1000),
+  /** The model's response was held or blocked, so it is not shown. */
+  outputWithheld: z.string().min(1).max(1000),
   /** Moderation cannot run (its budget is spent, or Hall Monitor is down), so AI is off for now. */
   aiUnavailable: z.string().min(1).max(1000),
   /** The generative budget refused the call. */
@@ -136,6 +145,7 @@ export const DEFAULT_GUARD_MESSAGES: GuardMessages = {
     "It sounds like this might be a hard moment. You are not in trouble. Please talk to a teacher, " +
     "counselor or another adult you trust; they can help right now.",
   blocked: "This message can't be sent to the AI assistant. Try rephrasing it, or ask your teacher for help.",
+  outputWithheld: "The AI assistant's reply can't be shown. Try asking in a different way, or ask your teacher for help.",
   aiUnavailable: "The AI assistant isn't available right now. You can keep working without it, or ask your teacher.",
   budget: "The AI budget for this work has been used up. You can keep working without the assistant.",
   notAllowed: "The AI assistant isn't available for this request.",
@@ -213,11 +223,17 @@ export const GuardConfig = z.strictObject({
     }
   }
   const users = new Set<string>();
+  const principals = new Set<string>();
   for (const [index, binding] of config.principals.entries()) {
     if (users.has(binding.workshopUserId)) {
       ctx.addIssue({ code: "custom", message: "a Workshop user is bound to one principal", path: ["principals", index, "workshopUserId"] });
     }
+    // Output screening finds a call's context from the principal its reservation names.
+    if (principals.has(binding.principalId)) {
+      ctx.addIssue({ code: "custom", message: "a principal is bound to one Workshop user", path: ["principals", index, "principalId"] });
+    }
     users.add(binding.workshopUserId);
+    principals.add(binding.principalId);
   }
 });
 /** The guard's configuration. */

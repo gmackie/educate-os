@@ -11,7 +11,15 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { validateRpc } from "capnweb-validate";
 import { createHallMonitorClient, serviceBindingTransport } from "@gmacko/hall-monitor-client";
-import type { AiCallDecision, AiCallDescriptor, AiCallGuard, AiCallOutcome } from "@gadgets/workshop-shared/ai-call-guard";
+import type {
+  AiCallDecision,
+  AiCallDescriptor,
+  AiCallGuard,
+  AiCallModelOutput,
+  AiCallOutcome,
+  AiCallOutputDecision,
+} from "@gadgets/workshop-shared/ai-call-guard";
+import type { AiPrincipal, AiWorkspaceContext } from "@schoolos/ai-governance";
 import { type GuardConfig, readGuardConfig } from "./config.ts";
 import { type GuardContext, type GuardContextResolver, StaticGuardContextResolver } from "./context.ts";
 import { DEV_ANY_USER, DEV_GUARD_CONFIG } from "./dev-config.ts";
@@ -42,6 +50,14 @@ export class DevGuardContextResolver implements GuardContextResolver {
     if (bound !== null || call.initiator.type === "agent") return bound;
     return this.#static.resolve({ ...call, initiator: { ...call.initiator, id: DEV_ANY_USER } });
   }
+
+  /**
+   * The static lookup by principal. A call admitted through the catch-all is recorded under that
+   * binding's principal, so this finds it too.
+   */
+  async resolveAdmitted(principal: AiPrincipal, workspace: AiWorkspaceContext): Promise<GuardContext | null> {
+    return this.#static.resolveAdmitted(principal, workspace);
+  }
 }
 
 /** The production ledger, reading the dev config when `AI_GUARD_CONFIG` is unset. */
@@ -62,6 +78,11 @@ export class SchoolOsAiCallGuard extends WorkerEntrypoint<Cloudflare.Env> implem
   /** Settles the call's spend exactly once; see `AiCallGuardService`. */
   async afterModelCall(outcome: AiCallOutcome): Promise<void> {
     return this.#service().afterModelCall(outcome);
+  }
+
+  /** Screens a held response before the Workshop releases it; see `AiCallGuardService`. */
+  async screenModelOutput(callId: string, output: AiCallModelOutput): Promise<AiCallOutputDecision> {
+    return this.#service().screenModelOutput(callId, output);
   }
 
   #service(): AiCallGuardService {

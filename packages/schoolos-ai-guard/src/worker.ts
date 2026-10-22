@@ -5,7 +5,14 @@
 
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { validateRpc } from "capnweb-validate";
-import type { AiCallDecision, AiCallDescriptor, AiCallGuard, AiCallOutcome } from "@gadgets/workshop-shared/ai-call-guard";
+import type {
+  AiCallDecision,
+  AiCallDescriptor,
+  AiCallGuard,
+  AiCallModelOutput,
+  AiCallOutcome,
+  AiCallOutputDecision,
+} from "@gadgets/workshop-shared/ai-call-guard";
 import { readGuardConfig, type GuardConfig } from "./config.ts";
 import { configuredGuardDirectory, DistrictGuardContextResolver, StaticGuardContextResolver, type GuardContextResolver } from "./context.ts";
 import { AiCallGuardService } from "./guard.ts";
@@ -26,6 +33,11 @@ export class SchoolOsAiCallGuard extends WorkerEntrypoint<Cloudflare.Env> implem
   /** Settles the call's spend exactly once; see `AiCallGuardService`. */
   async afterModelCall(outcome: AiCallOutcome): Promise<void> {
     return this.#service().afterModelCall(outcome);
+  }
+
+  /** Screens a held response before the Workshop releases it; see `AiCallGuardService`. */
+  async screenModelOutput(callId: string, output: AiCallModelOutput): Promise<AiCallOutputDecision> {
+    return this.#service().screenModelOutput(callId, output);
   }
 
   #service(): AiCallGuardService {

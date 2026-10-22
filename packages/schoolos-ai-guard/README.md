@@ -8,7 +8,9 @@ call. The guard does three things:
 1. It holds the call's maximum cost against the principal's generative funding on the district
    ledger, and settles it with the actual usage once the call ends.
 2. It sends each new message's text to [Hall Monitor] and applies the decision.
-3. It pays for each Hall Monitor check from the protected safety pool, never from a student's
+3. When the profile requires output moderation, it has the Workshop hold each model response and
+   screens it with Hall Monitor (`interaction.output`) before any of it is shown.
+4. It pays for each Hall Monitor check from the protected safety pool, never from a student's
    allowance.
 
 The ADR names this package `@schoolos/hall-monitor`. It ships as `@schoolos/ai-guard` because it is
@@ -50,11 +52,14 @@ The release manifest carries it as the entry's `crons`.
 - the district's funding pools (one of them the safety pool), model catalog and policy floor;
 - the district's directory snapshot, only when no district app is bound as `SCHOOLOS_DISTRICT`.
   With the binding, both the context resolver and the ledger read the district's own directory,
-  the ledger's with every principal's display name and email stripped (`ledgerDirectory`);
+  the ledger's with every principal's display name and email stripped (`ledgerDirectory`). The
+  resolver looks a call up by its Workshop user (`guardSubject`), and a screened response by the
+  principal and workspace its reservation records (`admittedSubject`);
 - a rate table for each model;
 - the moderation model, the most one check may cost, and the Hall Monitor tenant and cost center;
-- guard profiles: a Hall Monitor policy profile revision, whether input is moderated, and a
-  `failureMode`, one for each audience class (`student-k5`, `student-6-8`, `student-9-12`,
+- guard profiles: a Hall Monitor policy profile revision, whether input is moderated, a
+  `failureMode`, and `outputModeration` (`required`, `optional` or `off`, default `off`, mirroring
+  the Hall Monitor profile), one for each audience class (`student-k5`, `student-6-8`, `student-9-12`,
   `educator`);
 - when no district app is bound, the district's workspaces and its administrator-confirmed
   Workshop user links (see below);
@@ -165,6 +170,17 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   times out (3 s) falls back to the estimate. With no usage, or no rate, the attempt is `unknown`. A failed or aborted call that reported no tokens is voided. Settlement
   happens exactly once per `callId`: a repeated outcome finds the call already settled, and
   concurrent repeats replay in the ledger.
+- **Output screening.** A language-model call whose profile's `outputModeration` is `required` is
+  admitted with `screenOutput`, so the Workshop buffers its response and calls
+  `screenModelOutput(callId, output)` before showing any of it. `optional` and `off` stream
+  unscreened. The guard finds the call by its generative reservation, which names the principal
+  and workspace (so a principal may be bound to only one Workshop user), and evaluates each
+  32,000-character chunk as `interaction.output` under check ID `<callId>.o.c<j>`, funded from the
+  safety pool like an input check. `allow` and `coach` release the response; `hold` and `block`
+  withhold it with the `outputWithheld` message; `support` withholds it with the supportive one.
+  Hall Monitor unavailable, a safety pool that can't fund the check, or a call that isn't awaiting
+  release withholds, whatever the profile's `failureMode`. The generative hold is left for
+  `afterModelCall`, since the model billed the call either way.
 - **Privacy.** Message text goes only to Hall Monitor. It is never logged or stored. Logs carry
   IDs, decisions, Hall Monitor reason codes and error codes only, and a test spies on the console
   to check this. Hall Monitor error messages aren't logged either, only their codes.
@@ -186,8 +202,8 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
 
 ## Out of scope and follow-ups
 
-- Output screening (`interaction.output`). The kernel shows the guard only inputs, so screening
-  student-mode output needs a kernel seam that buffers output (ADR-0007, consequences).
+- Passing an answer key with output checks, for Hall Monitor's answer-leakage evaluator. The
+  Workshop knows no answer keys yet.
 - Deploying the district app as a Worker with a guard-only entrypoint for `SCHOOLOS_DISTRICT`,
   and an admin route that confirms Workshop user links into its `workshopUserLinks` store. Until
   then the directory, links and workspaces are configured, and the var size limit remains.

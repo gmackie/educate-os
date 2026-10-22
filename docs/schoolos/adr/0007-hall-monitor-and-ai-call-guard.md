@@ -55,7 +55,13 @@ SchoolOS already has a reserve/settle ledger (`@schoolos/ai-governance`, SCHO-25
   chat, which messages have been moderated, and caches results by content digest, policy revision
   and evaluator version.
 - Student modes that need output screening buffer the model's output until it is released.
-  Educator modes keep streaming.
+  Educator modes keep streaming. SCHO-133 adds this to the seam: a `proceed` decision may ask for
+  `screenOutput`, and the kernel then holds the whole response and calls the guard's
+  `screenModelOutput` before forwarding any of it, withholding it if the guard withholds, fails or
+  times out. Only text and unredacted reasoning are screened; tool calls pass. A screened student
+  reply therefore arrives all at once rather than streaming, and its latency includes one Hall
+  Monitor evaluation per 32,000 characters. A Workshop older than the seam ignores `screenOutput`,
+  so a guard cannot rely on it being honoured there.
 
 ## Note (2026-10-21, ADR-0011)
 
