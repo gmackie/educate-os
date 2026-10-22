@@ -1,5 +1,5 @@
 import { expect } from "vitest";
-import { DistrictId, OfferingId, PrincipalId, type Caller, type DistrictDirectorySnapshot, type PolicySettings } from "@schoolos/contracts";
+import { DistrictId, OfferingId, PrincipalId, TermId, type Caller, type DistrictDirectorySnapshot, type PolicySettings } from "@schoolos/contracts";
 import { InMemoryAcademicStore } from "@schoolos/academics";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import { directoryPolicyInformation, InMemoryPolicyAuditSink, PolicyEngine } from "@schoolos/policy";
@@ -11,6 +11,8 @@ import {
   InMemoryInlineTextTable,
   InMemoryR2Bucket,
   LearningArtifacts,
+  type ArtifactRecordStore,
+  type ContentProvider,
   type NewArtifact,
 } from "../src/index.ts";
 
@@ -26,14 +28,23 @@ export const FLOOR: PolicySettings = {
 /** The district's approved external document host. */
 export const DOCS_HOST = "docs.northfield.example";
 
-/** An artifact service over a fresh copy of `snapshot`, with the workspace directory that provisions its workspaces. */
+/**
+ * An artifact service over a fresh copy of `snapshot`, with the workspace directory that provisions
+ * its workspaces and promotes through it. `records` replaces the in-memory record store, and
+ * `providers` are registered as content providers.
+ */
 export function setup(
   snapshot: DistrictDirectorySnapshot = NORTHFIELD,
-  options: { floor?: PolicySettings; shares?: "wired" | "unwired" } = {},
+  options: {
+    floor?: PolicySettings;
+    shares?: "wired" | "unwired";
+    records?: ArtifactRecordStore;
+    providers?: ContentProvider[];
+  } = {},
 ) {
   const academics = InMemoryAcademicStore.seeded(snapshot);
   const workspaceStore = new InMemoryWorkspaceStore();
-  const records = new InMemoryArtifactRecordStore();
+  const records = options.records ?? new InMemoryArtifactRecordStore();
   const audit = new InMemoryPolicyAuditSink();
   const clock = { now: new Date("2026-10-20T12:00:00Z") };
   const floor = options.floor ?? FLOOR;
@@ -45,23 +56,25 @@ export function setup(
     ),
     audit,
   });
+  const now = () => clock.now;
+  const bucket = new InMemoryR2Bucket({ now });
+  const text = new InMemoryInlineTextTable({ now });
+  const artifacts = new LearningArtifacts({
+    records,
+    content: new BackendArtifactStore({ text, r2: bucket, providers: options.providers ?? [] }),
+    workspaces: workspaceStore,
+    directory: academics,
+    policy,
+    approvedExternalHosts: [DOCS_HOST],
+    now,
+  });
   const workspaces = new WorkspaceDirectory({
     workspaces: workspaceStore,
     directory: academics,
     policy,
     retention: { courseWorkspaceRetentionDays: 30 },
-    now: () => clock.now,
-  });
-  const bucket = new InMemoryR2Bucket();
-  const text = new InMemoryInlineTextTable();
-  const artifacts = new LearningArtifacts({
-    records,
-    content: new BackendArtifactStore({ text, r2: bucket }),
-    workspaces: workspaceStore,
-    directory: academics,
-    policy,
-    approvedExternalHosts: [DOCS_HOST],
-    now: () => clock.now,
+    promoter: artifacts,
+    now,
   });
 
   /** Applies a change to the academic directory, as a roster sync or term transition would. */
@@ -71,7 +84,7 @@ export function setup(
     await academics.commit(current, version);
   }
 
-  return { artifacts, workspaces, records, bucket, text, audit, clock, changeDirectory };
+  return { artifacts, workspaces, workspaceStore, records, bucket, text, audit, clock, changeDirectory };
 }
 
 /** An HTTP caller verified as `principalId`. */
@@ -88,10 +101,13 @@ export const P = {
   elena: as("prn_nf-student-elena"),
 };
 
-/** Well-known offerings. */
+/** Well-known offerings and terms. */
 export const O = {
   bioFall: OfferingId.parse("off_nf-bio-fall-p2"),
 };
+
+/** The fall term, Biology's. */
+export const FALL = TermId.parse("trm_nf-2026-fall");
 
 /** A plain essay. */
 export function essay(workspaceId: string, text: string, title = "Cell membranes essay"): NewArtifact {

@@ -25,9 +25,11 @@ import type { RosterSourceStore } from "./stores.ts";
 import type { z } from "zod";
 
 /**
- * W01 → W02: keeping work from a closed class. W01's `promoteArtifact` records the link but leaves
- * it to W02 to confirm the artifact is really the caller's and in that workspace, so the check runs
- * first and the link is written only if it passes.
+ * W01 → W02: keeping work from a closed class. W02 confirms the artifact is really the caller's and
+ * in that workspace, W01 records the link only if it is, and W02 then copies the work into the
+ * personal workspace. A `WorkspaceDirectory` built with `promoter: artifacts` does all three itself;
+ * this does the same for one built without it. Both steps after the check are idempotent, so
+ * keeping the same work again completes a copy that failed.
  */
 export async function keepArtifact(
   artifacts: LearningArtifacts,
@@ -37,7 +39,9 @@ export async function keepArtifact(
   artifactId: ArtifactId,
 ): Promise<PromotionLink> {
   await artifacts.confirmPromotable(caller, fromWorkspaceId, artifactId);
-  return workspaces.promoteArtifact(caller, fromWorkspaceId, artifactId);
+  const link = await workspaces.promoteArtifact(caller, fromWorkspaceId, artifactId);
+  await artifacts.copyPromoted(caller, link);
+  return link;
 }
 
 /**

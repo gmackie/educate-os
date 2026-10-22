@@ -10,9 +10,10 @@ export interface StoredWorkspaces {
 }
 
 /**
- * Where one district's workspace directory is kept. A write replaces the state as a whole, and
- * only if nothing else committed since it was loaded, so two concurrent first accesses cannot
- * provision two workspaces for the same key.
+ * Where one district's workspace directory is kept. A write replaces the state as a whole, only if
+ * nothing else committed since it was loaded, and only if it keeps the invariants
+ * {@link assertWorkspaceInvariants} checks, so two concurrent first accesses cannot provision two
+ * workspaces for the same key.
  */
 export interface WorkspaceStore {
   /** Reads the current state. */
@@ -21,9 +22,37 @@ export interface WorkspaceStore {
   commit(next: WorkspaceState, expectedVersion: number): Promise<void>;
 }
 
+/** A district's workspace state before anything is stored. */
+export function emptyWorkspaceState(): WorkspaceState {
+  return { workspaces: [], grants: [], closures: [], promotions: [], events: [], deletions: [] };
+}
+
+/**
+ * Refuses a state that breaks a workspace key. Every store implementation calls it before writing:
+ * workspace IDs are unique, a principal has at most one personal workspace (the personal key), and
+ * at most one course workspace per offering (the course key, principal and offering).
+ */
+export function assertWorkspaceInvariants(state: WorkspaceState): void {
+  const ids = new Set<string>();
+  const keys = new Set<string>();
+  for (const workspace of state.workspaces) {
+    const key = workspaceKey(workspace);
+    if (ids.has(workspace.id) || keys.has(key)) {
+      throw new SchoolOsError("policy-violation", `Workspace ${workspace.id} duplicates an existing workspace.`);
+    }
+    ids.add(workspace.id);
+    keys.add(key);
+  }
+}
+
+/** The key a workspace is unique by: its owner, and for a course workspace its offering. */
+function workspaceKey(workspace: WorkspaceState["workspaces"][number]): string {
+  return workspace.kind === "personal" ? `personal ${workspace.ownerPrincipalId}` : `course ${workspace.ownerPrincipalId} ${workspace.offeringId}`;
+}
+
 /** A {@link WorkspaceStore} held in memory, for tests and the local harness. */
 export class InMemoryWorkspaceStore implements WorkspaceStore {
-  #state: WorkspaceState = { workspaces: [], grants: [], closures: [], promotions: [], events: [] };
+  #state: WorkspaceState = emptyWorkspaceState();
   #version = 0;
 
   async load(): Promise<StoredWorkspaces> {
@@ -34,7 +63,9 @@ export class InMemoryWorkspaceStore implements WorkspaceStore {
     if (expectedVersion !== this.#version) {
       throw new SchoolOsError("conflict", "The workspace directory changed while this request was in progress; retry it.");
     }
-    this.#state = structuredClone(WorkspaceState.parse(next));
+    const parsed = WorkspaceState.parse(next);
+    assertWorkspaceInvariants(parsed);
+    this.#state = structuredClone(parsed);
     this.#version += 1;
   }
 }

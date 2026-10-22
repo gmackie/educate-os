@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { SchoolOsError } from "@schoolos/contracts";
-import { InMemoryArtifactRecordStore, type ArtifactImportBatch, type ArtifactState } from "../src/index.ts";
+import type { ArtifactImportBatch, ArtifactRecordStore, ArtifactState } from "../src/index.ts";
 import { DOCS_HOST, P, rejectsWith, setup } from "./setup.ts";
 
 const text = (value: string) => ({ content: { kind: "text", mediaType: "text/markdown", text: value } as const, aiAssistance: { level: "none" } as const });
 
 /** Every artifact and revision the store holds. */
-async function stored(records: InMemoryArtifactRecordStore): Promise<ArtifactState> {
+async function stored(records: ArtifactRecordStore): Promise<ArtifactState> {
   return (await records.load()).state;
 }
 

@@ -11,7 +11,7 @@ import type {
   GitAccess,
   GitTransport,
 } from "./artifacts-api.ts";
-import { NO_COMMIT } from "./artifacts-api.ts";
+import { NO_COMMIT, VERSION_REF_PREFIX } from "./artifacts-api.ts";
 import { gitObjectId, type GitObject } from "./git-objects.ts";
 
 interface FakeToken {
@@ -37,13 +37,20 @@ interface FakeRepository {
  * the service it stands in for, the remote accepts a token only for the repository it was minted
  * for, within its scope, before it expires and until it is revoked; and a push only if every object
  * hashes to its ID, the new commit's whole graph is present, and the branch has not moved.
+ *
+ * Given `isServiceToken`, it also enforces the ref protection SchoolOS needs and Cloudflare
+ * Artifacts does not yet offer: a push that creates, moves or deletes a version ref
+ * (`VERSION_REF_PREFIX`) is refused unless its token is the service's own. Without it, like
+ * Artifacts today, any write token may move any ref.
  */
 export class InMemoryArtifacts implements ArtifactsNamespace, GitTransport {
   readonly #repositories = new Map<string, FakeRepository>();
   readonly #now: () => Date;
+  readonly #isServiceToken: ((tokenId: string) => boolean) | undefined;
 
-  constructor(options: { now?: () => Date } = {}) {
+  constructor(options: { now?: () => Date; isServiceToken?: (tokenId: string) => boolean } = {}) {
     this.#now = options.now ?? (() => new Date());
+    this.#isServiceToken = options.isServiceToken;
   }
 
   // The binding
@@ -77,12 +84,15 @@ export class InMemoryArtifacts implements ArtifactsNamespace, GitTransport {
   // The Git remote
 
   async readBranch(remote: string, token: string, branch: string): Promise<GitOid | null> {
-    const repository = this.#authorize(remote, token, "read");
+    const { repository } = this.#authorize(remote, token, "read");
     return repository.branches.get(branch) ?? null;
   }
 
   async push(remote: string, token: string, update: BranchUpdate, objects: readonly GitObject[]): Promise<void> {
-    const repository = this.#authorize(remote, token, "write");
+    const { repository, minted } = this.#authorize(remote, token, "write");
+    if (update.branch.startsWith(VERSION_REF_PREFIX) && this.#isServiceToken !== undefined && !this.#isServiceToken(minted.id)) {
+      throw new SchoolOsError("forbidden", `push rejected for refs/heads/${update.branch}: saved versions are protected`);
+    }
     for (const object of objects) {
       if ((await gitObjectId(object.type, object.payload)) !== object.oid) throw new Error(`push rejected: object ${object.oid} is corrupt`);
     }
@@ -111,6 +121,11 @@ export class InMemoryArtifacts implements ArtifactsNamespace, GitTransport {
   /** The commit a branch points at. */
   branchHead(name: string, branch = "main"): GitOid | undefined {
     return this.#repositories.get(name)?.branches.get(branch);
+  }
+
+  /** Every branch of a repository and the commit it points at. */
+  branches(name: string): Map<string, GitOid> {
+    return new Map(this.#repositories.get(name)?.branches);
   }
 
   /** Every commit reachable from a branch, by any parent, newest first by discovery. */
@@ -183,8 +198,8 @@ export class InMemoryArtifacts implements ArtifactsNamespace, GitTransport {
     return token;
   }
 
-  /** The repository at `remote`, if `token` was minted for it, is live, and allows `access`. */
-  #authorize(remote: string, token: string, access: GitAccess): FakeRepository {
+  /** The repository at `remote` and the token, if it was minted for that repository, is live, and allows `access`. */
+  #authorize(remote: string, token: string, access: GitAccess): { repository: FakeRepository; minted: FakeToken } {
     const repository = [...this.#repositories.values()].find((r) => r.remote === remote);
     const minted = repository?.tokens.find((t) => t.plaintext === token);
     if (
@@ -193,7 +208,7 @@ export class InMemoryArtifacts implements ArtifactsNamespace, GitTransport {
     ) {
       throw new SchoolOsError("forbidden", "The project's storage refused this access.");
     }
-    return repository;
+    return { repository, minted };
   }
 }
 

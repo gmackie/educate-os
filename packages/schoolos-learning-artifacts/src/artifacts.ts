@@ -17,11 +17,12 @@ import {
 } from "@schoolos/contracts";
 import type { AcademicStore } from "@schoolos/academics";
 import type { PolicyDecider } from "@schoolos/policy";
-import type { Workspace, WorkspaceState, WorkspaceStore } from "@schoolos/workspaces";
-import { chooseBackend, isTextMediaType, type ArtifactStore } from "./content.ts";
+import type { PromotionLink, Workspace, WorkspaceState, WorkspaceStore } from "@schoolos/workspaces";
+import { chooseBackend, heldKey, isTextMediaType, type ArtifactStore } from "./content.ts";
 import { canonicalTextBytes, sha256Digest } from "./digest.ts";
 import {
   AiAssistance,
+  ContentProviderName,
   EXTERNAL_REFERENCE_MEDIA_TYPE,
   MediaType,
   PinConsumer,
@@ -31,6 +32,7 @@ import {
   type ContentRef,
   type Pin,
   type ProvenanceRecord,
+  type RegisteredContentRef,
   type ShareGrant,
 } from "./model.ts";
 import type { ArtifactRecordStore } from "./store.ts";
@@ -40,6 +42,9 @@ import type { ArtifactRecordStore } from "./store.ts";
  * - `text`: a `text/*` document, canonicalized before it is hashed (see `canonicalTextBytes`).
  * - `bytes`: any other media type, stored exactly as given.
  * - `external`: an `https` link to an approved host, with the digest of a snapshot if one was taken.
+ * - `registered`: content a registered provider already holds (see `ContentProvider`), named by its
+ *   key and the digest of the bytes the provider will return. It is read back and checked before
+ *   the revision is recorded.
  */
 export const RevisionContentInput = z.discriminatedUnion("kind", [
   z.strictObject({
@@ -56,6 +61,13 @@ export const RevisionContentInput = z.discriminatedUnion("kind", [
     kind: z.literal("external"),
     url: z.url({ protocol: /^https$/ }).max(2048),
     snapshotDigest: ContentDigest.optional(),
+  }),
+  z.strictObject({
+    kind: z.literal("registered"),
+    provider: ContentProviderName,
+    key: z.string().min(1).max(512),
+    mediaType: MediaType,
+    digest: ContentDigest,
   }),
 ]);
 /** New revision content. */
@@ -136,6 +148,12 @@ export interface ArtifactExport {
  */
 export type PromotionCheck = (caller: Caller, fromWorkspaceId: WorkspaceId, artifactId: ArtifactId) => Promise<void>;
 
+/**
+ * The copy `@schoolos/workspaces`' `promoteArtifact` asks this package for once a promotion link
+ * is recorded: the linked artifact's latest revision, as a new personal-private artifact.
+ */
+export type PromotionCopy = (caller: Caller, link: PromotionLink) => Promise<ArtifactView>;
+
 /** What a {@link LearningArtifacts} service is built from. */
 export interface LearningArtifactsOptions {
   /** Where the district's artifact records are kept. */
@@ -180,6 +198,8 @@ interface PreparedContent {
   mediaType: MediaType;
   origin: ProvenanceRecord["origin"];
   external?: { url: string; snapshotDigest?: ContentDigest };
+  /** Content a registered provider holds, already read back and checked against its digest. */
+  registered?: RegisteredContentRef;
 }
 
 /** Commit attempts before a write gives up on concurrent changes and reports the conflict. */
@@ -243,7 +263,7 @@ export class LearningArtifacts {
       if (!(await decisions.allows("create", creationOf(artifactTarget(artifact, termStateOf(workspace, snapshot)))))) {
         throw new SchoolOsError("forbidden", "You may not add work to this workspace.");
       }
-      const revision = await this.#revision(caller, artifact, prepared, input.aiAssistance, undefined);
+      const revision = await this.#revision(caller, artifact, prepared, input.aiAssistance, undefined, state.sweeping);
       const next = { ...state, artifacts: [...state.artifacts, artifact], revisions: [...state.revisions, revision] };
       return { next, result: { artifact, head: revision } };
     });
@@ -284,7 +304,7 @@ export class LearningArtifacts {
         }
         let head: ArtifactRevision | undefined;
         for (const { prepared: content, aiAssistance } of itemRevisions) {
-          head = await this.#revision(caller, artifact, content, aiAssistance, head);
+          head = await this.#revision(caller, artifact, content, aiAssistance, head, state.sweeping);
           revisions.push(head);
         }
         artifacts.push(artifact);
@@ -316,7 +336,7 @@ export class LearningArtifacts {
         throw new SchoolOsError("forbidden", "This work can no longer be changed.");
       }
       const parent = headOf(loaded.state, artifact.id);
-      const revision = await this.#revision(caller, artifact, prepared, input.aiAssistance, parent);
+      const revision = await this.#revision(caller, artifact, prepared, input.aiAssistance, parent, loaded.state.sweeping);
       return { next: { ...loaded.state, revisions: [...loaded.state.revisions, revision] }, result: { artifact, head: revision } };
     });
   }
@@ -401,8 +421,8 @@ export class LearningArtifacts {
   }
 
   /**
-   * Releases the caller's own `keep` pin on a revision. Submission pins belong to their submission
-   * and are released only by it. If the artifact was deleted and nothing else pins the revision, it
+   * Releases the caller's own `keep` pin on a revision. Submission and baseline pins belong to their
+   * submission or starter material and are released only by it. If the artifact was deleted and nothing else pins the revision, it
    * is then collected.
    */
   async unpin(caller: Caller, artifactId: ArtifactId, revisionId: RevisionId): Promise<void> {
@@ -566,6 +586,71 @@ export class LearningArtifacts {
     }
   };
 
+  /**
+   * The copy `@schoolos/workspaces`' `promoteArtifact` makes once its link is recorded (see
+   * {@link PromotionCopy}): the linked artifact's latest revision, saved as the first revision of a
+   * new `personal-private` artifact in the link's personal workspace, with provenance naming the
+   * revision it came from. The content is shared by digest, never re-uploaded, so the copy keeps
+   * it referenced after the class's workspace is deleted. Only a link the workspace directory
+   * recorded for the caller is honored. Idempotent per link. Bound, so it can be handed over.
+   */
+  readonly copyPromoted: PromotionCopy = async (caller, rawLink) => {
+    const decisions = this.#decisions(caller);
+    const me = caller.principal.principalId;
+    return this.#mutate(async (loaded) => {
+      const link = loaded.workspaces.promotions.find(
+        (p) => p.principalId === me && p.fromWorkspaceId === rawLink.fromWorkspaceId && p.artifactId === rawLink.artifactId,
+      );
+      if (link === undefined) throw notFound("artifact", rawLink.artifactId);
+      const copied = loaded.state.revisions.find((r) => r.provenance.origin === "promoted" && r.provenance.source?.artifactId === link.artifactId);
+      const copy = copied === undefined ? undefined : loaded.state.artifacts.find((a) => a.id === copied.artifactId && a.workspaceId === link.toWorkspaceId);
+      if (copy !== undefined && copy.deletedAt === undefined) return { result: { artifact: copy, head: headOf(loaded.state, copy.id) } };
+
+      const source = await this.#readable(decisions, loaded, link.artifactId);
+      if (source.workspaceId !== link.fromWorkspaceId || source.ownerPrincipalId !== me) throw notFound("artifact", link.artifactId);
+      if (!(await decisions.allows("export", this.#target(source, loaded)))) throw new SchoolOsError("forbidden", "This work cannot be kept.");
+      const chosen = headOf(loaded.state, source.id);
+      if (chosen.content.backend === "registered") {
+        throw new SchoolOsError("unavailable", "This kind of work cannot be kept in your personal workspace yet.");
+      }
+      const personal = loaded.workspaces.workspaces.find((w) => w.id === link.toWorkspaceId);
+      if (personal?.kind !== "personal" || personal.ownerPrincipalId !== me) throw notFound("workspace", link.toWorkspaceId);
+      const artifact: Artifact = {
+        id: `${ID_PREFIXES.artifact}_${crypto.randomUUID()}` as ArtifactId,
+        districtId: personal.districtId,
+        workspaceId: personal.id,
+        ownerPrincipalId: me,
+        type: source.type,
+        title: source.title,
+        classification: "personal-private",
+        scope: { level: "district", districtId: personal.districtId },
+        createdAt: this.#now().toISOString(),
+      };
+      if (!(await decisions.allows("create", creationOf(this.#target(artifact, loaded))))) {
+        throw new SchoolOsError("forbidden", "This work cannot be kept.");
+      }
+      const revision: ArtifactRevision = {
+        id: newRevisionId(),
+        artifactId: artifact.id,
+        number: 1,
+        content: chosen.content,
+        sizeBytes: chosen.sizeBytes,
+        mediaType: chosen.mediaType,
+        authorPrincipalId: chosen.authorPrincipalId,
+        createdAt: artifact.createdAt,
+        aiAssistance: chosen.aiAssistance,
+        provenance: { origin: "promoted", channel: caller.channel, source: { workspaceId: source.workspaceId, artifactId: source.id, revisionId: chosen.id } },
+      };
+      const next = { ...loaded.state, artifacts: [...loaded.state.artifacts, artifact], revisions: [...loaded.state.revisions, revision] };
+      return { next, result: { artifact, head: revision } };
+    });
+  };
+
+  /** Whether a content provider of this name is registered, so content it holds can be recorded. */
+  hasContentProvider(name: ContentProviderName): boolean {
+    return this.#content.hasProvider(name);
+  }
+
   // Internals
 
   #decisions(caller: Caller): Decisions {
@@ -593,6 +678,15 @@ export class LearningArtifacts {
     if ((type === "external-ref") !== (content.kind === "external")) {
       throw new SchoolOsError("validation-failed", "An external-ref artifact holds a link, and only it does.");
     }
+    if (content.kind === "registered") {
+      if (!this.#content.hasProvider(content.provider)) {
+        throw new SchoolOsError("validation-failed", `No content provider named ${content.provider} is registered.`);
+      }
+      const registered: RegisteredContentRef = { backend: "registered", provider: content.provider, key: content.key, digest: content.digest };
+      // Read back, so a revision never records a reference to bytes the provider does not have.
+      const bytes = await this.#content.read(registered);
+      return { bytes, digest: content.digest, mediaType: content.mediaType, origin: "registered", registered };
+    }
     if (content.kind === "external") {
       const url = new URL(content.url);
       if (url.username !== "" || url.password !== "" || !this.#approvedHosts.has(url.hostname.toLowerCase())) {
@@ -611,20 +705,30 @@ export class LearningArtifacts {
     };
   }
 
-  /** Stores prepared content and builds the revision that points at it. */
+  /**
+   * Stores prepared content and builds the revision that points at it. `sweeping` is the content
+   * the sweep was deleting in the state this revision will be committed against.
+   */
   async #revision(
     caller: Caller,
     artifact: Artifact,
     prepared: PreparedContent,
     aiAssistance: AiAssistance,
     parent: ArtifactRevision | undefined,
+    sweeping: ArtifactState["sweeping"],
   ): Promise<ArtifactRevision> {
     let content: ContentRef;
-    if (prepared.external !== undefined) {
+    if (prepared.registered !== undefined) {
+      content = prepared.registered;
+    } else if (prepared.external !== undefined) {
       content = { backend: "external", key: prepared.external.url, digest: prepared.digest, ...(prepared.external.snapshotDigest === undefined ? {} : { snapshotDigest: prepared.external.snapshotDigest }) };
     } else {
       const backend = chooseBackend({ type: artifact.type, mediaType: prepared.mediaType, sizeBytes: prepared.bytes.byteLength });
       if (backend === "external") throw new Error("held content cannot use the external backend");
+      // Content the sweep is deleting cannot be written until it is gone; then the retry writes it afresh.
+      if (sweeping?.some((c) => c.backend === backend && c.key === heldKey(backend, prepared.digest)) === true) {
+        throw new SchoolOsError("conflict", "This content is being cleaned up from storage; save again in a moment.");
+      }
       content = await this.#content.write(backend, prepared.bytes, prepared.digest);
     }
     return {

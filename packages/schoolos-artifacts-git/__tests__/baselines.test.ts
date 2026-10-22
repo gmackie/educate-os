@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ProjectManifest, type WorkingTree } from "../src/index.ts";
+import type { WorkingTree } from "../src/index.ts";
 import { notebook, P, rejectsWith, saving, setup } from "./setup.ts";
 
 const RULES = { answerKeyGlobs: ["answers/**", "**/*.key.ipynb"] };
@@ -12,13 +12,8 @@ const withKey: WorkingTree = [...starter, { path: "answers/solution.py", text: "
 
 type Env = ReturnType<typeof setup>;
 
-async function manifestOf(env: Env, revisionId: string) {
-  const { state } = await env.records.load();
-  const revision = state.revisions.find((r) => r.id === revisionId)!;
-  const text = revision.content.backend === "text"
-    ? (await env.text.get(revision.content.key))!
-    : new TextDecoder().decode(await (await env.bucket.get(revision.content.key))!.arrayBuffer());
-  return ProjectManifest.parse(JSON.parse(text));
+function manifestOf(env: Env, revisionId: string) {
+  return env.manifestOf(revisionId);
 }
 
 /** Morgan's baseline: written with the answer key, which a later version deletes. */
@@ -113,11 +108,12 @@ describe("a sanitized fork", () => {
     expect(commits[0]!.treeHash).toBe(source.tree);
     expect(fork.project.latest.contentDigest).toBe(cleaned.contentDigest);
 
-    // The new repository holds the chosen tree's objects and its commit, and not one object more.
+    // The new repository holds the chosen tree's objects, its commit and the version commit holding
+    // the manifest (which lists only the chosen files), and not one object more.
     const answerKey = (await manifestOf(env, project.latest.revisionId)).files.find((f) => f.path === "answers/solution.py")!;
     const objects = env.storage.objectIds(forked.storage.repository);
     expect(objects).not.toContain(answerKey.blob);
-    expect(objects).toHaveLength(source.files.length + 2 /* trees: root, data/ */ + 1 /* commit */);
+    expect(objects).toHaveLength(source.files.length + 2 /* trees: root, data/ */ + 1 /* commit */ + 3 /* manifest, its tree, the version commit */);
     expect((await env.projects.history(P.morgan, fork.project.artifact.id)).map((v) => v.number)).toEqual([1]);
   });
 

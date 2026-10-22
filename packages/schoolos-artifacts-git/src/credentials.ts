@@ -12,8 +12,14 @@ export const CREDENTIAL_TTL_SECONDS = 15 * 60;
 export const INTERNAL_TOKEN_TTL_SECONDS = 60;
 
 /**
+ * Who holds a token: the `service`, for one push it makes itself, or a `principal`'s own Git client.
+ * Only service tokens may write the protected version refs (see `VERSION_REF_PREFIX`).
+ */
+export type TokenHolder = "service" | "principal";
+
+/**
  * The record of one minted token: who it was minted for, which repository and workspace it opens,
- * and its scope. Never the token itself, which is shown once and never stored.
+ * its scope and its holder. Never the token itself, which is shown once and never stored.
  */
 export interface CredentialGrant {
   tokenId: string;
@@ -21,6 +27,7 @@ export interface CredentialGrant {
   workspaceId: WorkspaceId;
   principalId: PrincipalId;
   scope: GitAccess;
+  holder: TokenHolder;
   expiresAt: string;
 }
 
@@ -48,6 +55,14 @@ export class InMemoryCredentialLedger implements CredentialLedger {
 
   async remove(tokenIds: readonly string[]): Promise<void> {
     for (const id of tokenIds) this.#grants.delete(id);
+  }
+
+  /**
+   * Who holds a recorded token, if it is still recorded. Synchronous, so `InMemoryArtifacts` can
+   * ask it while deciding a push, as a real ref-protection rule would ask the token's issuer.
+   */
+  holderOf(tokenId: string): TokenHolder | undefined {
+    return this.#grants.get(tokenId)?.holder;
   }
 
   /** Every recorded grant, for tests. */
@@ -110,12 +125,16 @@ export class GitCredentialBroker {
     this.#ledger = options.ledger;
   }
 
-  /** Mints and records a token for `principalId` on `repository`, which belongs to `workspaceId`. */
+  /**
+   * Mints and records a token on `repository`, which belongs to `workspaceId`: for `principalId`'s
+   * own Git client, or for one push the service makes on their behalf.
+   */
   async mint(input: {
     repository: RepositoryName;
     workspaceId: WorkspaceId;
     principalId: PrincipalId;
     scope: GitAccess;
+    holder: TokenHolder;
     ttlSeconds: number;
   }): Promise<MintedToken> {
     const repo = await this.#artifacts.get(input.repository);
@@ -127,6 +146,7 @@ export class GitCredentialBroker {
         workspaceId: input.workspaceId,
         principalId: input.principalId,
         scope: input.scope,
+        holder: input.holder,
         expiresAt: token.expiresAt,
       });
       return { id: token.id, plaintext: token.plaintext, expiresAt: token.expiresAt };

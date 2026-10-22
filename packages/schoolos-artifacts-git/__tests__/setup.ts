@@ -16,6 +16,7 @@ import {
   InMemoryArtifacts,
   InMemoryCredentialLedger,
   ProjectArtifacts,
+  ProjectManifest,
   type NewProject,
   type WorkingTree,
 } from "../src/index.ts";
@@ -31,9 +32,11 @@ const FLOOR: PolicySettings = {
 
 /**
  * A project service over a fresh copy of `snapshot`. With `artifacts: false` the district's plan
- * has no Cloudflare Artifacts, so versions fall back to learning-artifacts' own storage.
+ * has no Cloudflare Artifacts, so versions fall back to learning-artifacts' own storage. With
+ * `provider: false`, learning-artifacts has no `artifacts-git` content provider registered, so Git
+ * versions record their manifests as inline text, as a district app that has not registered it does.
  */
-export function setup(options: { artifacts?: boolean; snapshot?: DistrictDirectorySnapshot } = {}) {
+export function setup(options: { artifacts?: boolean; provider?: boolean; snapshot?: DistrictDirectorySnapshot } = {}) {
   const academics = InMemoryAcademicStore.seeded(options.snapshot ?? NORTHFIELD);
   const workspaceStore = new InMemoryWorkspaceStore();
   const clock = { now: new Date("2026-10-20T12:00:00Z") };
@@ -49,23 +52,24 @@ export function setup(options: { artifacts?: boolean; snapshot?: DistrictDirecto
     retention: { courseWorkspaceRetentionDays: 30 },
     now,
   });
+  const ledger = new InMemoryCredentialLedger();
+  const storage = new InMemoryArtifacts({ now, isServiceToken: (tokenId) => ledger.holderOf(tokenId) === "service" });
+  const git = new ArtifactsGitBackend({
+    plan: options.artifacts === false ? undefined : { artifacts: storage, transport: storage },
+    ledger,
+  });
   const records = new InMemoryArtifactRecordStore();
-  const text = new InMemoryInlineTextTable();
-  const bucket = new InMemoryR2Bucket();
+  const text = new InMemoryInlineTextTable({ now });
+  const bucket = new InMemoryR2Bucket({ now });
+  const content = new BackendArtifactStore({ text, r2: bucket, providers: options.provider === false ? [] : [git.contentProvider] });
   const artifacts = new LearningArtifacts({
     records,
-    content: new BackendArtifactStore({ text, r2: bucket }),
+    content,
     workspaces: workspaceStore,
     directory: academics,
     policy,
     approvedExternalHosts: [],
     now,
-  });
-  const storage = new InMemoryArtifacts({ now });
-  const ledger = new InMemoryCredentialLedger();
-  const git = new ArtifactsGitBackend({
-    plan: options.artifacts === false ? undefined : { artifacts: storage, transport: storage },
-    ledger,
   });
   const projects = new ProjectArtifacts({ artifacts, git, workspaces: workspaceStore, directory: academics, policy, now });
 
@@ -76,7 +80,15 @@ export function setup(options: { artifacts?: boolean; snapshot?: DistrictDirecto
     await academics.commit(snapshot, version);
   }
 
-  return { projects, artifacts, workspaces, git, storage, ledger, records, text, bucket, clock, changeDirectory };
+  /** A version's manifest, read through learning-artifacts' content store whichever backend holds it. */
+  async function manifestOf(revisionId: string): Promise<ProjectManifest> {
+    const { state } = await records.load();
+    const revision = state.revisions.find((r) => r.id === revisionId);
+    if (revision === undefined) throw new Error(`no revision ${revisionId}`);
+    return ProjectManifest.parse(JSON.parse(new TextDecoder().decode(await content.read(revision.content))));
+  }
+
+  return { projects, artifacts, workspaces, workspaceStore, git, storage, ledger, records, content, text, bucket, clock, changeDirectory, manifestOf };
 }
 
 /** A caller verified as `principalId`, through `channel`. */

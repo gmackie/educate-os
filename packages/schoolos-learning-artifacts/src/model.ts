@@ -24,8 +24,12 @@ export type MediaType = z.infer<typeof MediaType>;
  */
 export const EXTERNAL_REFERENCE_MEDIA_TYPE: MediaType = "application/vnd.schoolos.external-ref+json";
 
-/** Where a revision's content is: inline text, an R2 object, or a document SchoolOS does not hold. */
-export const ContentBackendKind = z.enum(["text", "r2", "external"]);
+/**
+ * Where a revision's content is: inline text, an R2 object, a document SchoolOS does not hold, or a
+ * content backend registered by another package (see {@link ContentProvider}). The list of
+ * registered providers is open; the four kinds here are what learning-artifacts itself interprets.
+ */
+export const ContentBackendKind = z.enum(["text", "r2", "external", "registered"]);
 /** A content backend kind. */
 export type ContentBackendKind = z.infer<typeof ContentBackendKind>;
 
@@ -57,8 +61,31 @@ export const ExternalContentRef = z.strictObject({
 /** An external content reference. */
 export type ExternalContentRef = z.infer<typeof ExternalContentRef>;
 
+/** The name a registered content backend is known by, such as `artifacts-git`. */
+export const ContentProviderName = z.string().regex(/^[a-z][a-z0-9-]{1,62}$/, "expected a lowercase provider name");
+/** A content provider name. */
+export type ContentProviderName = z.infer<typeof ContentProviderName>;
+
+/**
+ * A pointer to content a registered backend holds, such as a project version in Cloudflare
+ * Artifacts. learning-artifacts never interprets `key`: it asks the named provider for the bytes
+ * and checks them against `digest` on every read, exactly as for held content. The provider owns
+ * the content's retention, so the content sweep never touches it.
+ */
+export const RegisteredContentRef = z.strictObject({
+  backend: z.literal("registered"),
+  /** The provider that understands `key`. */
+  provider: ContentProviderName,
+  /** The provider's own identifier for the content. */
+  key: z.string().min(1).max(512),
+  /** The digest of the bytes the provider returns, checked on every read. */
+  digest: ContentDigest,
+});
+/** A registered content reference. */
+export type RegisteredContentRef = z.infer<typeof RegisteredContentRef>;
+
 /** Where one revision's content is. */
-export const ContentRef = z.discriminatedUnion("backend", [HeldContentRef, ExternalContentRef]);
+export const ContentRef = z.discriminatedUnion("backend", [HeldContentRef, ExternalContentRef, RegisteredContentRef]);
 /** A content reference. */
 export type ContentRef = z.infer<typeof ContentRef>;
 
@@ -74,13 +101,16 @@ export type AiAssistance = z.infer<typeof AiAssistance>;
 /**
  * How a revision came to exist, recorded by the service from the request it handled, never taken
  * from the caller: `authored` text, `uploaded` bytes, an `external-reference`, a sanitized
- * `baseline` copy, or `imported` from another district's archive (see
- * `LearningArtifacts.importArtifacts`).
+ * `baseline` copy, `imported` from another district's archive (see
+ * `LearningArtifacts.importArtifacts`), a `promoted` copy of work kept from a closed class, or
+ * `registered` content a registered backend holds.
  */
 export const ProvenanceRecord = z.strictObject({
-  origin: z.enum(["authored", "uploaded", "external-reference", "baseline", "imported"]),
+  origin: z.enum(["authored", "uploaded", "external-reference", "baseline", "imported", "promoted", "registered"]),
   /** The surface the revision was saved through. */
   channel: RequestChannel,
+  /** For a `promoted` copy, the revision it was copied from and where that lived. */
+  source: z.strictObject({ workspaceId: WorkspaceId, artifactId: ArtifactId, revisionId: RevisionId }).optional(),
 });
 /** A provenance record. */
 export type ProvenanceRecord = z.infer<typeof ProvenanceRecord>;
@@ -135,7 +165,7 @@ export const ArtifactRevision = z.strictObject({
 export type ArtifactRevision = z.infer<typeof ArtifactRevision>;
 
 /**
- * Who pinned a revision, which keeps it from ever being garbage-collected:
+ * Who pinned a revision, which keeps it, and the content it points at, from ever being collected:
  * - `submission`: an E01 submission snapshot that captured the revision.
  * - `keep`: the pinning principal keeping that version.
  * - `baseline`: starter material a teacher published from the revision (`@schoolos/assessment`),
@@ -177,6 +207,19 @@ export const ShareGrant = z.strictObject({
 /** A share grant. */
 export type ShareGrant = z.infer<typeof ShareGrant>;
 
+/**
+ * Held content the sweep is deleting (see `ArtifactContentSweeper`): committed before any byte is
+ * deleted, against a state in which no revision referenced it, and removed once it is gone. A save
+ * whose content has one of these keys is refused with `conflict` until then, and its retry writes
+ * the content afresh, so a sweep never deletes content a concurrent save has just referenced.
+ */
+export const SweepingContent = z.strictObject({
+  backend: z.enum(["text", "r2"]),
+  key: z.string().min(1).max(256),
+});
+/** Held content being swept. */
+export type SweepingContent = z.infer<typeof SweepingContent>;
+
 /** Everything the artifact service stores for one district, apart from content. */
 export const ArtifactState = z.strictObject({
   artifacts: z.array(Artifact),
@@ -184,6 +227,8 @@ export const ArtifactState = z.strictObject({
   revisions: z.array(ArtifactRevision),
   pins: z.array(Pin),
   shares: z.array(ShareGrant),
+  /** Held content the sweep is deleting right now. Absent when it is not running. */
+  sweeping: z.array(SweepingContent).optional(),
 });
 /** The artifact service's stored state. */
 export type ArtifactState = z.infer<typeof ArtifactState>;

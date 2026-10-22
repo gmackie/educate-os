@@ -134,6 +134,10 @@ export class FailingContentStore implements ArtifactStore {
   async read(...args: Parameters<ArtifactStore["read"]>) {
     return this.#inner.read(...args);
   }
+
+  hasProvider(...args: Parameters<ArtifactStore["hasProvider"]>) {
+    return this.#inner.hasProvider(...args);
+  }
 }
 
 /** Riverbend: the destination district's services, with the import policy its admin set. */

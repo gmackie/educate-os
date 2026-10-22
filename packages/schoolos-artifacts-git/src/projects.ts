@@ -13,14 +13,16 @@ import {
 import type { AcademicStore } from "@schoolos/academics";
 import {
   AiAssistance,
+  sha256Digest,
   type Artifact,
   type ArtifactRevision,
   type LearningArtifacts,
+  type RevisionContentInput,
 } from "@schoolos/learning-artifacts";
 import type { PolicyDecider } from "@schoolos/policy";
-import type { WorkspaceStore } from "@schoolos/workspaces";
+import type { WorkspaceState, WorkspaceStore } from "@schoolos/workspaces";
 import { ARTIFACTS_TOKEN_USERNAME, type GitAccess } from "./artifacts-api.ts";
-import type { ArtifactsGitBackend } from "./backend.ts";
+import { ARTIFACTS_GIT_PROVIDER, ArtifactsGitBackend, type PushedVersion } from "./backend.ts";
 import { CREDENTIAL_TTL_SECONDS, GitCredential } from "./credentials.ts";
 import { globMatcher, TeacherOnlyRules } from "./globs.ts";
 import { gitObject } from "./git-objects.ts";
@@ -123,6 +125,18 @@ export interface BaselineReport {
 /** A fork: made from a clean baseline, or refused with the report saying why. */
 export type ForkResult = { status: "forked"; project: ProjectView } | { status: "blocked"; report: BaselineReport };
 
+/** What {@link ProjectArtifacts.revokeEndedCourseAccess} did. */
+export interface CourseAccessRevocation {
+  /** Credentials revoked. */
+  revoked: number;
+  /** Workspaces some of whose credentials still could not be revoked. Run it again to finish them. */
+  pending: WorkspaceId[];
+}
+
+/** Attempts per workspace before `revokeEndedCourseAccess` leaves it pending, and the pause between them. */
+const REVOKE_ATTEMPTS = 3;
+const REVOKE_RETRY_MS = 200;
+
 /** What a {@link ProjectArtifacts} service is built from. */
 export interface ProjectArtifactsOptions {
   /** The learning artifact service that records every version and decides every read. */
@@ -143,8 +157,10 @@ export interface ProjectArtifactsOptions {
  * Projects (roadmap W03): multi-file artifacts with Save, History and Diff. Each version is a
  * learning-artifacts revision whose content is a {@link ProjectManifest}, so pinning, submission,
  * export and every policy decision work as for any artifact. With Artifacts on the plan the files
- * are a commit in the project's own repository; without it they are a bundle inside the manifest.
- * No Git term appears here: students save versions, see history and compare versions.
+ * are a commit in the project's own repository, kept reachable by a protected version ref whose
+ * commit also holds the manifest (registered `artifacts-git` content where learning-artifacts has
+ * the provider); without it they are a bundle inside the manifest. No Git term appears here:
+ * students save versions, see history and compare versions.
  */
 export class ProjectArtifacts {
   readonly #artifacts: LearningArtifacts;
@@ -172,23 +188,13 @@ export class ProjectArtifacts {
     const input = parse(NewProject, rawInput);
     const built = await buildTree(input.files);
     if (this.#git.availability().status === "unavailable") {
-      return this.#record(caller, input, bundleManifest(built, input.message));
+      const manifest = bundleManifest(built, input.message);
+      return this.#record(caller, input, manifest, manifestText(manifest));
     }
     const repository = await this.#git.createRepository();
     try {
-      const commit = await this.#git.commit({
-        repository,
-        workspaceId: input.workspaceId,
-        principalId: caller.principal.principalId,
-        built,
-        parent: undefined,
-        message: input.message,
-        at: this.#now(),
-      });
-      return await this.#record(caller, input, {
-        ...manifestBase(built, input.message),
-        storage: { kind: "artifacts-git", repository, commit },
-      });
+      const { manifest, pushed } = await this.#pushVersion(caller, { repository, workspaceId: input.workspaceId, built, parent: undefined, message: input.message });
+      return await this.#record(caller, input, manifest, await this.#versionContent(manifest, pushed));
     } catch (error) {
       await this.#git.deleteRepository(repository).catch(() => {});
       throw error;
@@ -206,24 +212,17 @@ export class ProjectArtifacts {
     await this.#assertMayChange(caller, artifact);
     const built = await buildTree(input.files);
     let manifest: ProjectManifest;
+    let content: RevisionContentInput;
     if (latest.storage.kind === "bundle") {
       manifest = bundleManifest(built, input.message);
+      content = manifestText(manifest);
     } else {
-      const commit = await this.#git.commit({
-        repository: latest.storage.repository,
-        workspaceId: artifact.workspaceId,
-        principalId: caller.principal.principalId,
-        built,
-        parent: latest.storage.commit,
-        message: input.message,
-        at: this.#now(),
-      });
-      manifest = { ...manifestBase(built, input.message), storage: { kind: "artifacts-git", repository: latest.storage.repository, commit } };
+      const repository = latest.storage.repository;
+      const version = await this.#pushVersion(caller, { repository, workspaceId: artifact.workspaceId, built, parent: latest.storage.commit, message: input.message });
+      manifest = version.manifest;
+      content = await this.#versionContent(manifest, version.pushed);
     }
-    const saved = await this.#artifacts.saveRevision(caller, artifact.id, {
-      content: { kind: "text", mediaType: PROJECT_MANIFEST_MEDIA_TYPE, text: JSON.stringify(manifest) },
-      aiAssistance: input.aiAssistance,
-    });
+    const saved = await this.#artifacts.saveRevision(caller, artifact.id, { content, aiAssistance: input.aiAssistance });
     return versionOf(saved.head, manifest);
   }
 
@@ -283,6 +282,7 @@ export class ProjectArtifacts {
       workspaceId: artifact.workspaceId,
       principalId: caller.principal.principalId,
       scope: access,
+      holder: "principal",
       ttlSeconds: CREDENTIAL_TTL_SECONDS,
     });
     return new GitCredential({
@@ -295,12 +295,41 @@ export class ProjectArtifacts {
   }
 
   /**
-   * Revokes every credential minted for a workspace's projects. Call it when the workspace's course
-   * closes, beside the workspace directory's own grant revocation.
+   * Revokes every credential minted for a workspace's projects. {@link revokeEndedCourseAccess}
+   * calls it for every course workspace whose course access has ended.
    */
   async revokeAll(workspaceId: WorkspaceId): Promise<{ revoked: number }> {
     if (this.#git.availability().status === "unavailable") return { revoked: 0 };
     return this.#git.credentials.revokeAll(workspaceId);
+  }
+
+  /**
+   * W01's grant revocation, applied to Git access: revokes every credential minted for a course
+   * workspace whose course grants the workspace directory has revoked and not reissued, which is
+   * what `closeTerm` does to a closed term's workspaces and `reconcileCourseGrants` to a dropped
+   * student's. Run it right after either. A workspace whose revocation answers `unavailable` is
+   * retried, then reported `pending`; running it again is safe and finishes the job.
+   */
+  async revokeEndedCourseAccess(): Promise<CourseAccessRevocation> {
+    const result: CourseAccessRevocation = { revoked: 0, pending: [] };
+    if (this.#git.availability().status === "unavailable") return result;
+    const { state } = await this.#workspaces.load();
+    for (const workspaceId of endedCourseWorkspaces(state)) {
+      for (let attempt = 1; ; attempt++) {
+        try {
+          result.revoked += (await this.#git.credentials.revokeAll(workspaceId)).revoked;
+          break;
+        } catch (error) {
+          if (!(error instanceof SchoolOsError && error.code === "unavailable")) throw error;
+          if (attempt >= REVOKE_ATTEMPTS) {
+            result.pending.push(workspaceId);
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, REVOKE_RETRY_MS * attempt));
+        }
+      }
+    }
+    return result;
   }
 
   // Baselines
@@ -412,16 +441,56 @@ export class ProjectArtifacts {
     return { artifact, chosen, manifests };
   }
 
-  /** Writes a project's first version through learning-artifacts. */
-  async #record(caller: Caller, input: z.output<typeof NewProject>, manifest: ProjectManifest): Promise<ProjectView> {
+  /** Writes a project's first version, whose content describes `manifest`, through learning-artifacts. */
+  async #record(caller: Caller, input: z.output<typeof NewProject>, manifest: ProjectManifest, content: RevisionContentInput): Promise<ProjectView> {
     const view = await this.#artifacts.createArtifact(caller, {
       workspaceId: input.workspaceId,
       type: input.type,
       title: input.title,
-      content: { kind: "text", mediaType: PROJECT_MANIFEST_MEDIA_TYPE, text: JSON.stringify(manifest) },
+      content,
       aiAssistance: input.aiAssistance,
     });
     return { artifact: view.artifact, latest: versionOf(view.head, manifest) };
+  }
+
+  /** Builds and pushes a version to Git: the project commit, its manifest, and the protected version ref. */
+  async #pushVersion(
+    caller: Caller,
+    input: { repository: string; workspaceId: WorkspaceId; built: BuiltTree; parent: GitOid | undefined; message: string },
+  ): Promise<{ manifest: ProjectManifest; pushed: PushedVersion }> {
+    const at = this.#now();
+    const principalId = caller.principal.principalId;
+    const commit = await this.#git.projectCommit({ built: input.built, parent: input.parent, principalId, message: input.message, at });
+    const manifest: ProjectManifest = {
+      ...manifestBase(input.built, input.message),
+      storage: { kind: "artifacts-git", repository: input.repository, commit: commit.oid },
+    };
+    const pushed = await this.#git.pushVersion({
+      repository: input.repository,
+      workspaceId: input.workspaceId,
+      principalId,
+      built: input.built,
+      commit,
+      manifest: encoder.encode(JSON.stringify(manifest)),
+      at,
+    });
+    return { manifest, pushed };
+  }
+
+  /**
+   * The content learning-artifacts records for a pushed version: the manifest in its version
+   * commit, registered as `artifacts-git` content, where learning-artifacts has that provider; the
+   * same manifest as inline text where it does not.
+   */
+  async #versionContent(manifest: ProjectManifest, pushed: PushedVersion): Promise<RevisionContentInput> {
+    if (manifest.storage.kind !== "artifacts-git" || !this.#artifacts.hasContentProvider(ARTIFACTS_GIT_PROVIDER)) return manifestText(manifest);
+    return {
+      kind: "registered",
+      provider: ARTIFACTS_GIT_PROVIDER,
+      key: ArtifactsGitBackend.versionKey(manifest.storage.repository, pushed.version),
+      mediaType: PROJECT_MANIFEST_MEDIA_TYPE,
+      digest: await sha256Digest(encoder.encode(JSON.stringify(manifest))),
+    };
   }
 
   async #readManifest(caller: Caller, artifactId: ArtifactId, revisionId?: RevisionId) {
@@ -504,6 +573,19 @@ export class ProjectArtifacts {
     if (term === undefined) throw new Error(`term ${workspace.termId} is missing from the directory`);
     return { termState: term.state };
   }
+}
+
+const encoder = new TextEncoder();
+
+/** A manifest as inline text content. Its JSON has no raw line breaks, so canonicalization leaves it unchanged. */
+function manifestText(manifest: ProjectManifest): RevisionContentInput {
+  return { kind: "text", mediaType: PROJECT_MANIFEST_MEDIA_TYPE, text: JSON.stringify(manifest) };
+}
+
+/** Course workspaces whose course grants have all been revoked: a closed term's, or a dropped student's. */
+function endedCourseWorkspaces(state: WorkspaceState): WorkspaceId[] {
+  const live = new Set(state.grants.filter((g) => g.state === "live").map((g) => g.workspaceId));
+  return [...new Set(state.grants.filter((g) => g.state === "revoked" && !live.has(g.workspaceId)).map((g) => g.workspaceId))];
 }
 
 function manifestBase(built: BuiltTree, message: string): Omit<ProjectManifest, "storage"> {

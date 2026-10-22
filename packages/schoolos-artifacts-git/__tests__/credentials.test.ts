@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTree, encodeCommit, gitObject, NO_COMMIT, ProjectManifest } from "../src/index.ts";
+import { buildTree, encodeCommit, gitObject, NO_COMMIT } from "../src/index.ts";
 import { as, notebook, O, P, rejectsWith, saving, setup } from "./setup.ts";
 
 const files = [{ path: "lab.py", text: "print('hello')\n" }];
@@ -12,9 +12,7 @@ async function twoStudents() {
   const amara = await env.projects.createProject(P.amara, notebook(amaraBio.id, files));
   const elena = await env.projects.createProject(P.elena, notebook(elenaBio.id, files));
   const repositoryOf = async (revisionId: string) => {
-    const { state } = await env.records.load();
-    const revision = state.revisions.find((r) => r.id === revisionId)!;
-    const manifest = ProjectManifest.parse(JSON.parse((await env.text.get(revision.content.key))!));
+    const manifest = await env.manifestOf(revisionId);
     if (manifest.storage.kind !== "artifacts-git") throw new Error("expected Git storage");
     return { name: manifest.storage.repository, head: manifest.storage.commit, remote: (await (await env.storage.get(manifest.storage.repository)).info()).remote };
   };
