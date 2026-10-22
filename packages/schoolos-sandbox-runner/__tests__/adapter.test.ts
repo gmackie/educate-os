@@ -8,6 +8,12 @@ import { FakeJobContainer, type FakeProgram } from "./fake-container.ts";
 
 const ENDPOINT = "https://sandbox-runner.internal/v1/jobs";
 
+/** Fresh in-memory storage for one job object. */
+function storage(): JobObjectState["storage"] {
+  const values = new Map<string, unknown>();
+  return { get: async (key) => structuredClone(values.get(key)), put: async (key, value) => void values.set(key, structuredClone(value)) };
+}
+
 /** The Worker over in-memory job objects whose containers run `program`. */
 function runner(program: FakeProgram) {
   const containers: FakeJobContainer[] = [];
@@ -19,10 +25,6 @@ function runner(program: FakeProgram) {
     }
   }
   const objects = new Map<string, InMemoryJob>();
-  const storage = (): JobObjectState["storage"] => {
-    const values = new Map<string, unknown>();
-    return { get: async (key) => structuredClone(values.get(key)), put: async (key, value) => void values.set(key, structuredClone(value)) };
-  };
   const env: RunnerEnv = {
     JOBS: {
       getByName: (name) => {

@@ -5,6 +5,12 @@ import type { RunnerJobRequest } from "@schoolos/assessment-ai/cloudflare-sandbo
 import { OOM_KILL_EXIT_CODE, REPORT_PATH, RunnerRequestError, WORK_DIR, runJob } from "../src/index.ts";
 import { FakeJobContainer, type FakeProgram } from "./fake-container.ts";
 
+/** A program that tries to reach `data.example`. */
+const tryHosts: FakeProgram = async (ctx) => {
+  ctx.connect("data.example");
+  return 0;
+};
+
 function job(overrides: Partial<RunnerJobRequest> = {}): RunnerJobRequest {
   return {
     jobId: "asr_run:unit-tests",
@@ -67,10 +73,6 @@ describe("runJob", () => {
   });
 
   it("applies the egress rule: none reaches nothing, an allowlist only its hosts", async () => {
-    const tryHosts: FakeProgram = async (ctx) => {
-      ctx.connect("data.example");
-      return 0;
-    };
     expect((await run(tryHosts)).response).toMatchObject({ status: "limit-exceeded", limit: "network" });
     const allowed = await run(tryHosts, { egress: { kind: "allowlist", hosts: ["data.example"] } });
     expect(allowed.response).toMatchObject({ status: "completed", exitCode: 0 });
