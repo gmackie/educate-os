@@ -10,3 +10,5 @@ export * from "./package.ts";
 export * from "./plan.ts";
 export * from "./record.ts";
 export * from "./importer.ts";
+export * from "./tools.ts";
+export * from "./suggestions.ts";

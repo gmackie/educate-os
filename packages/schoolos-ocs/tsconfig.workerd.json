@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // The workerd suite runs on the Workers runtime, not Node (ADR-0009, item 5).
+    "types": ["@cloudflare/workers-types"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  // The Durable Object library and its suite only: the signing code is checked against the
+  // web-standard surface by tsconfig.json, and the library takes it as an injected policy.
+  "include": ["src/durable-object-library.ts", "__tests__/workerd"],
+  "exclude": ["dist", "node_modules"]
+}

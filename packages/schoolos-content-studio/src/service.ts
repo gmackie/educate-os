@@ -49,6 +49,17 @@ export const SubmitUrlInput = z.strictObject({
 /** A URL submission. */
 export type SubmitUrlInput = z.infer<typeof SubmitUrlInput>;
 
+/**
+ * Where a URL submission came from, when a cartridge import submits one of its links. It is
+ * provenance, not authority: the submission is authorized and fetched like any other URL.
+ */
+export interface CartridgeOrigin {
+  fileName: string;
+  packageDigest: string;
+  importId: string;
+  linkId: string;
+}
+
 /** An upload's description. Its declared media type must agree with the bytes' magic numbers. */
 export const SubmitUploadInput = z.strictObject({
   fileName: z.string().trim().min(1).max(255),
@@ -170,17 +181,19 @@ export class ContentStudio {
 
   /**
    * Imports a URL. The source is fetched before any item exists, so a refused URL records nothing.
+   * `origin` records that a cartridge import submitted it; the HTTP API never passes one.
    *
    * @throws SchoolOsError `forbidden` if the subject may not submit at the target scope, and
    *   whatever {@link fetchForImport} throws for a refused or failed fetch.
    */
-  async submitUrl(subject: VerifiedPrincipal, input: unknown): Promise<ContentItem> {
+  async submitUrl(subject: VerifiedPrincipal, input: unknown, origin?: CartridgeOrigin): Promise<ContentItem> {
     const { url, targetScope, updatesResourceId } = parseInput(SubmitUrlInput, input);
     await this.#require(subject, "create", targetScope);
     const update = await this.#updateTarget(subject, updatesResourceId, targetScope);
     const fetched = await fetchForImport(url, this.#options.fetch, this.#options.urlLimits ?? DEFAULT_URL_IMPORT_LIMITS);
+    const retrieved = { submittedUrl: url, finalUrl: fetched.finalUrl, hops: fetched.hops };
     return this.#ingest(subject, {
-      source: { kind: "url", submittedUrl: url, finalUrl: fetched.finalUrl, hops: fetched.hops },
+      source: origin === undefined ? { kind: "url", ...retrieved } : { kind: "cartridge", ...origin, ...retrieved },
       contentType: fetched.contentType,
       bytes: fetched.bytes,
       targetScope,
@@ -355,7 +368,7 @@ export class ContentStudio {
       id: item.resourceId,
       release: { version, releasedAt: at, contentDigest: item.snapshotDigest },
       kind: resourceKindOf(item),
-      title: (item.title ?? (item.source.kind === "url" ? item.source.finalUrl : item.source.fileName)).slice(0, 500),
+      title: (item.title ?? (item.source.kind === "url" ? item.source.finalUrl : fetchedFrom(item.source) ?? item.source.fileName)).slice(0, 500),
       locator: locatorOf(item),
       license: {
         name: item.license.status === "recognized" ? item.license.license.name : "No recognized license",
@@ -372,7 +385,7 @@ export class ContentStudio {
       alignments: resolved.map(({ alignment, competency }) => ({ competency, purpose: alignment.purpose, review: { status: "reviewed", ...review } })),
       review: { status: "approved", ...review },
       provenance: {
-        // A URL import is the publisher's own page, and a Blueprint release the publisher's own commit;
+        // A URL import or cartridge link is the publisher's own page, and a Blueprint release the publisher's own commit;
         // an upload's publisher is unknown, so it is recorded as the district's.
         source: item.source.kind === "upload" ? "district-authored" : "official",
         sourceUri: locatorOf(item),
@@ -525,7 +538,7 @@ export class ContentStudio {
     } else if (input.contentType === "html" || input.contentType === "text") {
       const decoded = new TextDecoder().decode(input.bytes);
       if (input.contentType === "html") {
-        metadata = extractPageMetadata(decoded, input.source.kind === "url" ? input.source.finalUrl : "https://upload.invalid/");
+        metadata = extractPageMetadata(decoded, fetchedFrom(input.source) ?? "https://upload.invalid/");
         text = metadata.text;
         item.title = metadata.title ?? item.title;
         item.lang = metadata.lang;
@@ -536,8 +549,8 @@ export class ContentStudio {
     await this.#transition(item, "parsed", "system", at);
 
     item.license = interpretLicenseHints(metadata?.licenseHints ?? []);
-    if (input.source.kind === "url" && metadata?.canonicalUrl !== undefined
-      && new URL(metadata.canonicalUrl).origin === new URL(input.source.finalUrl).origin) {
+    const finalUrl = fetchedFrom(input.source);
+    if (finalUrl !== undefined && metadata?.canonicalUrl !== undefined && new URL(metadata.canonicalUrl).origin === new URL(finalUrl).origin) {
       // A page may only name a canonical URL on its own origin, or it could claim another publisher's identity.
       item.canonicalUrl = metadata.canonicalUrl;
     }
@@ -546,7 +559,7 @@ export class ContentStudio {
     await this.#transition(item, "provenance-resolved", "system", at);
 
     item.checks = runChecks({ contentType: input.contentType, metadata, text, license: item.license, ageHooks: this.#options.ageHooks ?? [], extraction });
-    item.ai = await runAiReview(this.#options.reviewer, { title: item.title, sourceUrl: input.source.kind === "url" ? input.source.finalUrl : undefined, text }, randomIdBody());
+    item.ai = await runAiReview(this.#options.reviewer, { title: item.title, sourceUrl: fetchedFrom(input.source), text }, randomIdBody());
     await this.#transition(item, "reviewed", "system", this.#now());
     await this.#save(item);
     return item;
@@ -601,9 +614,15 @@ export class ContentStudio {
   }
 }
 
+/** The URL a fetched source was finally served from, for a URL import or a cartridge link. */
+function fetchedFrom(source: ItemSource): string | undefined {
+  return source.kind === "url" || source.kind === "cartridge" ? source.finalUrl : undefined;
+}
+
 /** Where a release's resource lives: the canonical or final URL, the Blueprint release, or the upload's snapshot. */
 function locatorOf(item: ContentItem): string {
-  if (item.source.kind === "url") return item.canonicalUrl ?? item.source.finalUrl;
+  const finalUrl = fetchedFrom(item.source);
+  if (finalUrl !== undefined) return item.canonicalUrl ?? finalUrl;
   if (item.source.kind === "blueprint") return blueprintLocator(item.source.name, item.source.commitId);
   return `urn:schoolos:snapshot:${item.snapshotDigest}`;
 }

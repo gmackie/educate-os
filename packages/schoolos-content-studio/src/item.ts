@@ -12,6 +12,19 @@ export type ItemSource =
   | { kind: "url"; submittedUrl: string; finalUrl: string; hops: string[] }
   | { kind: "upload"; fileName: string }
   | {
+    kind: "cartridge";
+    /** The cartridge package's file name, for display. */
+    fileName: string;
+    /** The `sha256:` digest of the package the link was read from. */
+    packageDigest: string;
+    /** The cartridge import and the link within it. */
+    importId: string;
+    linkId: string;
+    submittedUrl: string;
+    finalUrl: string;
+    hops: string[];
+  }
+  | {
     kind: "blueprint";
     /** What the release was submitted as, for display. */
     fileName: string;

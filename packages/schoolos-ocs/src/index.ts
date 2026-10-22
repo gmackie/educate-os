@@ -12,3 +12,5 @@ export * from "./library.ts";
 export * from "./composer.ts";
 export * from "./drafts.ts";
 export * from "./export.ts";
+export * from "./signatures.ts";
+export * from "./thin-cc.ts";
