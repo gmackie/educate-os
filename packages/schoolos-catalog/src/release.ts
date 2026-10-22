@@ -15,7 +15,7 @@ import { PLAYTREK_SEEDED_FRAMEWORKS, type PlayTrekSeededFramework, playTrekSeedR
 import { CatalogKey } from "./vocabulary.ts";
 
 /**
- * A root release key's signature over a catalog release's statement (its framework key, version,
+ * A release key's signature over a catalog release's statement (its framework key, version,
  * release time and content digest; see `signature.ts`). The digest binds the content, which the
  * mirror checks against it before it asks whether the signature is genuine. Only the shape is
  * checked here; the key ID and signature are judged by the verifier, which refuses any it cannot

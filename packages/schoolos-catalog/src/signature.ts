@@ -1,6 +1,7 @@
 // Catalog release signatures, wired to the release-signing trust of `@schoolos/releases` (roadmap
-// R03, SCHO-64). The root signs a catalog release with the same release keys it signs manifests
-// with, under its own message kind, and a district verifies it against the keys it already pins.
+// R03, SCHO-64). The root signs a catalog release with the same online release keys it signs
+// manifests with, under its own message kind, and a district verifies it against the release keys it
+// already pins. The offline root keys only sign release key sets, so they never sign a catalog.
 import { SignedEnvelope, type SigningIdentity } from "@schoolos/fleet";
 import { ImmutableRelease } from "@schoolos/registry";
 import { openReleaseMessage, type ReleaseTrust, signReleaseMessage } from "@schoolos/releases";
@@ -27,7 +28,7 @@ const statementOf = (release: CatalogRelease): CatalogReleaseStatement => ({
   contentDigest: release.contentDigest,
 });
 
-/** Signs a catalog release with a root release key, returning the release with its signature. */
+/** Signs a catalog release with a release key, returning the release with its signature. */
 export async function signCatalogRelease(identity: SigningIdentity, release: CatalogRelease): Promise<CatalogRelease> {
   const envelope = await signReleaseMessage(identity, "catalog-release", CatalogReleaseStatement.parse(statementOf(release)));
   return { ...release, signature: { keyId: envelope.keyId, signature: envelope.signature } };
@@ -35,14 +36,14 @@ export async function signCatalogRelease(identity: SigningIdentity, release: Cat
 
 /** What {@link catalogReleaseVerifier} checks signatures against. */
 export interface CatalogReleaseVerifierOptions {
-  /** The root release keys the district pins now; rotation changes them, so they are read per check. */
+  /** The district's pinned release trust now; an accepted release key set changes it, so it is read per check. */
   trust: () => Promise<ReleaseTrust>;
   now: () => Date;
 }
 
 /**
- * The mirror's `verifyRelease` hook: accepts a release only if a root release key the district
- * trusts at `now` signed its statement as a `catalog-release`. An unsigned release, a malformed
+ * The mirror's `verifyRelease` hook: accepts a release only if a release key the district trusts
+ * at `now` signed its statement as a `catalog-release`. An unsigned release, a malformed
  * key ID or signature, an unknown or retired key, or a signature over any other statement (another
  * version, another digest, or a release manifest) is refused.
  */

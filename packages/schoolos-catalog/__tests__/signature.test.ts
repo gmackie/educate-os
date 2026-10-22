@@ -1,7 +1,7 @@
 // Catalog release signatures against `@schoolos/releases` trust (SCHO-64): the mirror installs a
-// release only if a root release key the district pins signed exactly that release.
+// release only if a release key the district pins signed exactly that release.
 import { PrincipalId } from "@schoolos/contracts";
-import { SigningIdentity } from "@schoolos/fleet";
+import { type Ed25519PublicKey, SigningIdentity } from "@schoolos/fleet";
 import { pinReleaseKeys, type ReleaseTrust, signReleaseMessage } from "@schoolos/releases";
 import { describe, expect, it } from "vitest";
 import {
@@ -16,7 +16,14 @@ import {
 const ADMIN = { by: PrincipalId.parse("prn_nf-district-admin"), at: "2026-10-20T09:00:00Z" };
 const NOW = new Date("2026-10-21T00:00:00Z");
 
-async function setup(trustOf: (root: SigningIdentity) => Promise<ReleaseTrust> = async (root) => pinReleaseKeys([root.publicKey])) {
+// Catalog releases verify against the release keys alone; the offline root quorum only governs
+// release key sets, so a throwaway root fills that slot.
+async function pin(releaseKey: Ed25519PublicKey): Promise<ReleaseTrust> {
+  const offlineRoot = await SigningIdentity.generate();
+  return pinReleaseKeys({ releaseKeys: [releaseKey], root: { threshold: 1, publicKeys: [offlineRoot.publicKey] } });
+}
+
+async function setup(trustOf: (releaseKey: SigningIdentity) => Promise<ReleaseTrust> = async (releaseKey) => pin(releaseKey.publicKey)) {
   const root = await SigningIdentity.generate();
   const trust = await trustOf(root);
   const verify = catalogReleaseVerifier({ trust: async () => trust, now: () => NOW });
@@ -24,7 +31,7 @@ async function setup(trustOf: (root: SigningIdentity) => Promise<ReleaseTrust> =
 }
 
 describe("catalog release signatures", () => {
-  it("accepts a release a pinned root release key signed", async () => {
+  it("accepts a release a pinned release key signed", async () => {
     const { root, verify, release } = await setup();
     expect(await verify(await signCatalogRelease(root, release))).toBe(true);
   });
@@ -53,8 +60,8 @@ describe("catalog release signatures", () => {
 
   it("refuses a key once its pinned trust has retired it", async () => {
     const { root, verify, release } = await setup(async (key) => {
-      const trust = await pinReleaseKeys([key.publicKey]);
-      return { keys: trust.keys.map((k) => ({ ...k, retiresAt: "2026-10-20T00:00:00.000Z" })) };
+      const trust = await pin(key.publicKey);
+      return { ...trust, keys: trust.keys.map((k) => ({ ...k, retiresAt: "2026-10-20T00:00:00.000Z" })) };
     });
     expect(await verify(await signCatalogRelease(root, release))).toBe(false);
   });
