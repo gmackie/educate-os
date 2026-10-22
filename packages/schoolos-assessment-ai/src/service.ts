@@ -36,7 +36,14 @@ import {
   type SandboxCheckResult,
   type TeacherOverride,
 } from "./model.ts";
-import type { AiExecutionProfile, AiHelpPolicySource, DistrictAssessmentPlan, OptionalExecutionProfile, SandboxExecutionProfile } from "./profiles.ts";
+import {
+  assessmentPlanFromPack,
+  type AiExecutionProfile,
+  type AiHelpPolicySource,
+  type InstalledAssessmentPack,
+  type OptionalExecutionProfile,
+  type SandboxExecutionProfile,
+} from "./profiles.ts";
 import { SANDBOX_EVALUATOR, SandboxCheck, SandboxResult, sandboxEvidence, sandboxFiles, unavailableSandbox, type ExecutionSandbox } from "./sandbox.ts";
 import type { OptionalRunStore } from "./store.ts";
 import { aiSuggestedLevel, studentReportView, teacherReportView, type StudentReportView, type TeacherReportView } from "./views.ts";
@@ -77,8 +84,12 @@ export interface AssessmentAiOptions {
   ai?: AiFeedbackEvaluator;
   /** The execution sandbox. Defaults to {@link unavailableSandbox}. */
   sandbox?: ExecutionSandbox;
-  /** What the district's plan includes. A sandboxed run where the plan has no sandbox fails closed. */
-  plan: DistrictAssessmentPlan;
+  /**
+   * The installed Assessment CI capability pack's manifest and the optional resources the district
+   * provisioned for it. The sandbox plan is read from them (`assessmentPlanFromPack`), never asserted
+   * by whoever wires the service; a sandboxed run where the plan has no sandbox fails closed.
+   */
+  assessmentPack: InstalledAssessmentPack;
   aiHelpPolicies: AiHelpPolicySource;
   /**
    * Who may sign rubric releases. With it, every run checks when it executes that its release is
@@ -469,7 +480,7 @@ export class AssessmentAi {
   }
 
   async #attemptSandbox(run: OptionalRun, spec: Extract<OptionalRunSpec, { kind: "sandbox" }>, profile: SandboxExecutionProfile, artifacts: EvaluationArtifact[]): Promise<Outcome> {
-    if (this.#options.plan.sandbox !== "available") return failed("sandbox-unavailable", "This district's plan does not include the CI sandbox, so executable checks do not run.");
+    if (assessmentPlanFromPack(this.#options.assessmentPack.manifest, this.#options.assessmentPack.provisionedOptionalResources).sandbox !== "available") return failed("sandbox-unavailable", "This district's plan does not include the CI sandbox, so executable checks do not run.");
     const availability = this.#sandbox.availability();
     if (!availability.available) return failed("sandbox-unavailable", availability.reason);
     const files = sandboxFiles(artifacts);
