@@ -102,7 +102,7 @@ describe("catalog mirror", () => {
 
     const [first, second] = v1.content.nodes!;
     await m.setOverlay("ccss-math", { nodeUri: second!.uri, localLabel: "Local label", author: ADMIN.by, updatedAt: ADMIN.at });
-    const v2 = await revised(v1, "1.1.0", (c) => {
+    const v2 = await revised(v1, "1.2.0", (c) => {
       c.nodes![0]!.fullStatement = "A revised statement.";
       c.nodes = c.nodes!.filter((n) => n.uri !== second!.uri);
       c.nodes.push({ ...first!, uri: "urn:schoolos:catalog:ccss-math:EXAMPLE.NEW", identifier: "0d4c2a5e-1111-4222-8333-444455556666", humanCodingScheme: "EXAMPLE.NEW" });
@@ -112,19 +112,19 @@ describe("catalog mirror", () => {
 
     const { diff } = await m.install(v2, LATER);
     expect(diff).toStrictEqual({
-      fromVersion: "1.0.0",
-      toVersion: "1.1.0",
+      fromVersion: "1.1.0",
+      toVersion: "1.2.0",
       added: [{ uri: "urn:schoolos:catalog:ccss-math:EXAMPLE.NEW", humanCodingScheme: "EXAMPLE.NEW" }],
       changed: [{ uri: first!.uri, humanCodingScheme: first!.humanCodingScheme, fields: ["fullStatement"] }],
       retired: [{ uri: second!.uri, humanCodingScheme: second!.humanCodingScheme }],
       orphanedOverlays: [second!.uri],
     });
     // The old release stays in use until the upgrade is approved.
-    expect((await m.approvedRelease("ccss-math"))?.version).toBe("1.0.0");
-    expect(await m.approve("ccss-math", "1.1.0", LATER)).toStrictEqual(diff);
+    expect((await m.approvedRelease("ccss-math"))?.version).toBe("1.1.0");
+    expect(await m.approve("ccss-math", "1.2.0", LATER)).toStrictEqual(diff);
     const state = await m.get("ccss-math");
-    expect(state?.releases.map((r) => [r.release.version, r.status])).toStrictEqual([["1.0.0", "retired"], ["1.1.0", "approved"]]);
-    expect(await m.diff("ccss-math", "1.0.0", "1.1.0")).toStrictEqual(diff);
+    expect(state?.releases.map((r) => [r.release.version, r.status])).toStrictEqual([["1.1.0", "retired"], ["1.2.0", "approved"]]);
+    expect(await m.diff("ccss-math", "1.1.0", "1.2.0")).toStrictEqual(diff);
   });
 
   it("only overlays items of the approved release, and never changes the release", async () => {
@@ -238,15 +238,15 @@ describe("importing from a CASE source", () => {
 
   it("brings imported text into coverage once the district approves it", async () => {
     const { mirror: m } = mirror();
-    await m.select("ccss-math", ADMIN);
+    await m.select("ngss", ADMIN);
     const before = coverageReport(await m.selections());
-    expect(before.cells.find((c) => c.subject === "mathematics" && c.band === "9-12")?.status).toBe("import-required");
+    expect(before.cells.find((c) => c.subject === "science" && c.band === "9-12")?.status).toBe("import-required");
 
-    const entry = catalogEntry("ccss-math");
+    const entry = catalogEntry("ngss");
     const imported = await importCaseRelease(entry, entry.caseSources[0]!.documentIdentifier, options);
     await m.install(imported, ADMIN);
-    await m.approve("ccss-math", imported.version, ADMIN);
+    await m.approve("ngss", imported.version, ADMIN);
     const after = coverageReport(await m.selections());
-    expect(after.cells.find((c) => c.subject === "mathematics" && c.band === "9-12")?.status).toBe("covered");
+    expect(after.cells.find((c) => c.subject === "science" && c.band === "9-12")?.status).toBe("covered");
   });
 });

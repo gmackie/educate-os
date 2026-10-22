@@ -4,20 +4,23 @@
 //
 // - CCSS statements are kept only where they match the publisher's own text on
 //   thecorestandards.org word for word. The license grants copying and distribution, not
-//   modification, so a transcription that differs ships with its text withheld.
+//   modification, so a transcription that differs is never shipped. Its row takes the publisher's
+//   own statement instead (SCHO-63), read from the page by `ccss-publisher-text.ts`, when that
+//   statement also matches the publisher's PDF edition; otherwise its text is withheld.
 // - PlayTrek's CASEL indicators are PlayTrek's own writing organized under CASEL's competencies.
 //   CASEL's terms are non-commercial and claim ownership of derivative materials, so their text
 //   and sub-competency labels are withheld; codes, hierarchy and grade bands remain.
 // - PlayTrek's ELOF goals paraphrase a U.S. federal publication and ship as written.
 //
-// Usage (authoring time only, never in a Worker):
+// Usage (authoring time only, never in a Worker; needs poppler's `pdftotext`):
 //   node scripts/generate-playtrek-seeds.ts --playtrek <PlayTrek seed dir> --pages <cache dir>
-// The publisher pages are downloaded into the cache directory unless already there. Nothing from
+// The publisher pages and PDFs are downloaded into the cache directory unless already there. Nothing from
 // PlayTrek other than these seed modules is read; the modules only declare data.
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
+import { CCSS_NOTICE, CCSS_PDFS, CCSS_SITE, inPdf, pdfReference, publisherPage, type PageStatement } from "./ccss-publisher-text.ts";
 
 interface PlayTrekRow {
   code: string;
@@ -30,12 +33,16 @@ interface PlayTrekRow {
   parentCode: string;
 }
 
-type TextCheck = "verbatim" | "formatting-only" | "differs" | "missing-from-reference" | "paraphrase" | "withheld-by-license";
+type TextCheck =
+  | "verbatim"
+  | "formatting-only"
+  | "replaced-from-publisher"
+  | "differs"
+  | "missing-from-reference"
+  | "paraphrase"
+  | "withheld-by-license";
 
 const SOURCE_COMMIT = "7258e4347";
-const CCSS_SITE = "https://www.thecorestandards.org";
-const CCSS_NOTICE =
-  "© Copyright 2010. National Governors Association Center for Best Practices and Council of Chief State School Officers. All rights reserved.";
 
 const { values } = parseArgs({ options: { playtrek: { type: "string" }, pages: { type: "string" } } });
 if (values.playtrek === undefined || values.pages === undefined) {
@@ -136,32 +143,61 @@ const FRAMEWORK_BY_FILE: ReadonlyArray<[RegExp, string]> = [
   [/^elof-prek\.ts$/, "head-start-elof"],
 ];
 
+/**
+ * The publisher's own statement for a row PlayTrek got wrong, in the form the row covers: the
+ * statement alone, or followed by its lettered parts when PlayTrek's row included them. Undefined
+ * unless it also matches the publisher's PDF edition.
+ */
+async function publisherReplacement(row: PlayTrekRow): Promise<string | undefined> {
+  const page = await publisherPage(ccssPage(row.code).url.slice(CCSS_SITE.length + 1), pageDir);
+  const code = row.code.toUpperCase();
+  const byCode = new Map<string, PageStatement>(page.statements.map((s) => [s.anchor.toUpperCase(), s]));
+  const statement = byCode.get(code);
+  if (statement === undefined) return undefined;
+  const parts = [...byCode].filter(([k]) => k.startsWith(`${code}.`) && /^[A-Z]$/.test(k.slice(code.length + 1)))
+    .toSorted(([a], [b]) => (a < b ? -1 : 1));
+  const withParts = /(^|\s)\(?[a-z][.)]\s/.test(row.description) && parts.length > 0;
+  const text = withParts
+    ? `${statement.text}${parts.map(([k, s]) => ` ${k.slice(-1).toLowerCase()}. ${s.text}`).join("")}`
+    : statement.text;
+  const pdf = row.code.split(".")[1] === "MATH" ? mathPdf : elaPdf;
+  const verified = inPdf(statement.text, pdf) && parts.every(([, s]) => !withParts || inPdf(s.text, pdf));
+  return verified ? text : undefined;
+}
+
 const seeds = await loadSeeds();
 const ccssCodes = [...seeds].filter(([file]) => file.startsWith("ccss-")).flatMap(([, rows]) => rows.map((r) => r.code));
 const reference = await loadReference(ccssCodes);
+const [mathPdf, elaPdf] = [
+  await pdfReference(CCSS_PDFS.math, pageDir, "Math_Standards1.pdf"),
+  await pdfReference(CCSS_PDFS.ela, pageDir, "ELA_Standards1.pdf"),
+];
 
-const rows = [...seeds].flatMap(([file, fileRows]) => {
+const rows = [];
+for (const [file, fileRows] of seeds) {
   const framework = FRAMEWORK_BY_FILE.find(([pattern]) => pattern.test(file))?.[1];
   if (framework === undefined) throw new Error(`no catalog framework for ${file}`);
-  return fileRows.map((row) => {
-    const textCheck: TextCheck = framework.startsWith("ccss-")
+  for (const row of fileRows) {
+    let textCheck: TextCheck = framework.startsWith("ccss-")
       ? checkCcss(row, reference)
       : framework === "casel-5" ? "withheld-by-license" : "paraphrase";
+    const replacement = textCheck === "differs" ? await publisherReplacement(row) : undefined;
+    if (replacement !== undefined) textCheck = "replaced-from-publisher";
     const shipsText = textCheck === "verbatim" || textCheck === "formatting-only" || textCheck === "paraphrase";
-    return {
+    rows.push({
       framework,
       code: row.code,
       shortCode: row.shortCode,
       domain: row.domain,
       cluster: framework === "casel-5" ? null : row.cluster,
-      statement: shipsText ? row.description : null,
+      statement: shipsText ? row.description : replacement ?? null,
       textCheck,
       gradeLevel: row.gradeLevel,
       subject: row.subject,
       parentCode: row.parentCode,
-    };
-  });
-});
+    });
+  }
+}
 
 const header = {
   // The CCSS license requires this notice on any publication of the standards, this file included.
@@ -171,7 +207,7 @@ const header = {
     "head-start-elof": "Paraphrased from the Head Start Early Learning Outcomes Framework: Ages Birth to Five (U.S. Department of Health and Human Services, Office of Head Start, 2015).",
   },
   source: { path: "packages/db/src/seed/standards/", commit: SOURCE_COMMIT },
-  ccssReference: { site: CCSS_SITE, retrievedOn: new Date().toLocaleDateString("en-CA") },
+  ccssReference: { site: CCSS_SITE, pdfs: Object.values(CCSS_PDFS), retrievedOn: new Date().toLocaleDateString("en-CA") },
 };
 // One row per line, so a regenerated file diffs row by row.
 const json = `${JSON.stringify(header).slice(0, -1)},"rows":[\n${rows.map((r) => JSON.stringify(r)).join(",\n")}\n]}\n`;

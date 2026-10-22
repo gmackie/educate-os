@@ -24,9 +24,9 @@ describe("coverage report", () => {
 
     expect(status(report, "mathematics", "K-2")).toBe("covered");
     expect(status(report, "mathematics", "6-8")).toBe("covered");
-    expect(status(report, "mathematics", "9-12")).toBe("import-required");
+    expect(status(report, "mathematics", "9-12")).toBe("covered");
     expect(status(report, "english-language-arts", "3-5")).toBe("install-required");
-    expect(status(report, "english-language-arts", "9-12")).toBe("gap");
+    expect(status(report, "english-language-arts", "9-12")).toBe("install-required");
     expect(status(report, "science", "9-12")).toBe("import-required");
     expect(status(report, "social-emotional-learning", "K-2")).toBe("text-withheld");
     expect(status(report, "social-emotional-learning", "9-12")).toBe("gap");

@@ -4,12 +4,13 @@ import { SchoolOsError } from "@schoolos/contracts";
 import type { FrameworkDefinition } from "@schoolos/registry";
 import { CatalogEntry, type CaseSource, type CoverageRow, type FrameworkLicense } from "./entry.ts";
 import { PLAYTREK_SEED_COMMIT, PLAYTREK_SEED_PATH } from "./playtrek/mapping.ts";
+import { C3_SOURCE, CCSS_PUBLISHER_REFERENCE } from "./publisher/mapping.ts";
 import { CatalogKey, type CatalogSubject, GRADE_BANDS, type GradeBand } from "./vocabulary.ts";
 
 /** The version of the catalog's own content. A change to any entry or seed is a new version. */
-export const CATALOG_VERSION = "1.0.0";
+export const CATALOG_VERSION = "1.1.0";
 /** When this catalog version was reviewed. */
-export const CATALOG_RELEASED_AT = "2026-10-20T00:00:00Z";
+export const CATALOG_RELEASED_AT = "2026-10-21T00:00:00Z";
 
 const REVIEWED_ON = "2026-10-20";
 
@@ -50,6 +51,12 @@ function coverage(
 }
 
 const seed = { transcriber: "PlayTrek", sourcePath: PLAYTREK_SEED_PATH, sourceCommit: PLAYTREK_SEED_COMMIT } as const;
+const ccssTranscription = {
+  transcriber: "SchoolOS",
+  sources: [CCSS_PUBLISHER_REFERENCE.site, ...CCSS_PUBLISHER_REFERENCE.pdfs],
+  generator: "packages/schoolos-catalog/scripts/generate-ccss-publisher-rows.ts",
+  retrievedOn: CCSS_PUBLISHER_REFERENCE.retrievedOn,
+} as const;
 
 const CCSS_LICENSE: FrameworkLicense = {
   name: "Common Core State Standards Public License",
@@ -61,7 +68,9 @@ const CCSS_LICENSE: FrameworkLicense = {
 };
 
 const CCSS_SOURCE_NOTE =
-  "Statements a transcription got wrong are withheld; import the official text to fill them in.";
+  "PlayTrek's transcription where it matched the publisher's text, and the publisher's own statement where it did not. A few statements the publisher's page and PDF disagree on are withheld; import the official text to fill them in.";
+const CCSS_HIGH_SCHOOL_NOTE =
+  "Read from the publisher's pages and matched word for word against its PDF edition. The few statements where the two differ are withheld; import the official text to fill them in.";
 
 const CCSS_MATH_CASE: CaseSource = {
   title: "Common Core State Standards for Math (CASE Network record, served by OpenSALT)",
@@ -89,7 +98,8 @@ const C3_LICENSE: FrameworkLicense = {
   attribution:
     "National Council for the Social Studies (NCSS), The College, Career, and Civic Life (C3) Framework for Social Studies State Standards: Guidance for Enhancing the Rigor of K-12 Civics, Economics, Geography, and History (Silver Spring, MD: NCSS, 2013).",
   textRedistribution: "permitted",
-  verifiedAt: REVIEWED_ON,
+  // Re-read from the publication's title page when the indicators were transcribed (SCHO-63).
+  verifiedAt: "2026-10-21",
 };
 
 const CASEL_LICENSE: FrameworkLicense = {
@@ -152,20 +162,21 @@ const ENTRIES: readonly CatalogEntry[] = [
       subjects: ["Mathematics"],
       jurisdiction: "United States (multi-state)",
       version: "2010",
-      notes: "Catalog items are PlayTrek's K-8 transcription. High school is not in the catalog.",
+      notes: "Catalog items are PlayTrek's K-8 transcription, corrected from the publisher's text, and the high-school standards read from the publisher's pages.",
     }, CCSS_LICENSE),
     status: "available",
     license: CCSS_LICENSE,
     caseSources: [CCSS_MATH_CASE],
     subjects: ["mathematics"],
-    coverage: coverage(["mathematics"], { "PK": "gap", "K-2": "items", "3-5": "items", "6-8": "items", "9-12": "pointer" }, {
+    coverage: coverage(["mathematics"], { "PK": "gap", "K-2": "items", "3-5": "items", "6-8": "items", "9-12": "items" }, {
       "PK": "CCSS begins at kindergarten.",
       "K-2": CCSS_SOURCE_NOTE,
       "3-5": CCSS_SOURCE_NOTE,
       "6-8": CCSS_SOURCE_NOTE,
-      "9-12": "Gap in the catalog: no high-school items ship. The CASE source covers the high-school conceptual categories.",
+      "9-12": `The high-school conceptual categories. ${CCSS_HIGH_SCHOOL_NOTE}`,
     }),
     seed,
+    transcription: ccssTranscription,
   },
   {
     key: CatalogKey.parse("ccss-ela"),
@@ -179,20 +190,21 @@ const ENTRIES: readonly CatalogEntry[] = [
       jurisdiction: "United States (multi-state)",
       version: "2010",
       notes:
-        "Catalog items are PlayTrek's K-8 transcription of the RL, RI, RF, W, SL and L strands. Grades 9-12 and the 6-12 literacy standards for history/social studies, science and technical subjects are not in the catalog.",
+        "Catalog items are PlayTrek's K-8 transcription of the RL, RI, RF, W, SL and L strands, corrected from the publisher's text, and the grade 9-12 standards and the grade 6-12 literacy standards (RH, RST, WHST) read from the publisher's pages.",
     }, CCSS_LICENSE),
     status: "available",
     license: CCSS_LICENSE,
     caseSources: [],
     subjects: ["english-language-arts"],
-    coverage: coverage(["english-language-arts"], { "PK": "gap", "K-2": "items", "3-5": "items", "6-8": "items", "9-12": "gap" }, {
+    coverage: coverage(["english-language-arts"], { "PK": "gap", "K-2": "items", "3-5": "items", "6-8": "items", "9-12": "items" }, {
       "PK": "CCSS begins at kindergarten.",
       "K-2": CCSS_SOURCE_NOTE,
       "3-5": CCSS_SOURCE_NOTE,
-      "6-8": `${CCSS_SOURCE_NOTE} The grade 6-8 literacy standards (RH, RST, WHST) are not included.`,
-      "9-12": "Gap: no high-school items ship, and no public CASE source for CCSS ELA/Literacy was verified.",
+      "6-8": `${CCSS_SOURCE_NOTE} The grade 6-8 literacy standards (RH, RST, WHST): ${CCSS_HIGH_SCHOOL_NOTE}`,
+      "9-12": `The grade 9-10 and 11-12 standards and the literacy standards (RH, RST, WHST). ${CCSS_HIGH_SCHOOL_NOTE}`,
     }),
     seed,
+    transcription: ccssTranscription,
   },
   {
     key: CatalogKey.parse("ngss"),
@@ -235,18 +247,21 @@ const ENTRIES: readonly CatalogEntry[] = [
       jurisdiction: "United States (multi-state)",
       version: "2013",
       notes:
-        "NCSS permits free reproduction, but no machine-readable source was found, and SchoolOS does not generate standards text. Transcribing it from the NCSS PDF is sourced editorial work still to do.",
+        "The Dimension 1-4 grade-band indicators, transcribed by SchoolOS from the NCSS publication (which permits free reproduction) and matched word for word against a second reading of it. The companion documents for other disciplines in its appendices are not included.",
     }, C3_LICENSE),
-    status: "gap",
+    status: "available",
     license: C3_LICENSE,
     caseSources: [],
     subjects: ["social-studies"],
-    coverage: coverage(["social-studies"], { "PK": "gap", "K-2": "gap", "3-5": "gap", "6-8": "gap", "9-12": "gap" }, {
-      "K-2": "No CASE source; text not yet transcribed.",
-      "3-5": "No CASE source; text not yet transcribed.",
-      "6-8": "No CASE source; text not yet transcribed.",
-      "9-12": "No CASE source; text not yet transcribed.",
+    coverage: coverage(["social-studies"], { "PK": "gap", "K-2": "items", "3-5": "items", "6-8": "items", "9-12": "items" }, {
+      "PK": "C3 begins at kindergarten.",
     }),
+    transcription: {
+      transcriber: "SchoolOS",
+      sources: [C3_SOURCE.pdf],
+      generator: "packages/schoolos-catalog/scripts/generate-c3-rows.ts",
+      retrievedOn: C3_SOURCE.retrievedOn,
+    },
   },
   {
     key: CatalogKey.parse("casel-5"),
