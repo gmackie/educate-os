@@ -34,7 +34,7 @@ import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
 import { exportCourseCartridge, importCourseCartridge, previewCourseCartridge } from "./course-authoring.ts";
 // Guardians (ADR-0012, SCHO-188)
-import { guardianRelationships, GuardianRelationships, type GuardianRelationshipStore } from "@schoolos/policy";
+import { guardianRelationships, GuardianRelationships } from "@schoolos/policy";
 import { GuardianInvitations, IdentityLinkAdminService } from "@schoolos/identity-links";
 import { guardianHandlers, type GuardianRouteName } from "./guardians.ts";
 // Communication (SCHO-189)
@@ -125,8 +125,6 @@ export interface DistrictAppOptions {
   mail?: MailSender;
   /** The district's SchoolOS address, linked from emails. */
   appUrl?: string;
-  /** The district's guardian relationships, which the weekly family digest goes out over. Without them no digest is sent. */
-  guardianRelationships?: GuardianRelationshipStore;
 }
 
 /** The district's communication jobs, which the district Worker runs on its Cron Triggers (SCHO-189). */
@@ -451,18 +449,18 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     });
     return new AssessmentService({ records: stores.assessment, artifacts, content: stores.artifactContent, directory: stores.directory, policy: decider, now });
   }
+  // The weekly family digest goes out over the district's own guardian relationships (ADR-0012,
+  // SCHO-188): the store the guardian routes and the policy engine read.
   const familyDigest = (communication: CommunicationService) =>
-    options.guardianRelationships === undefined
-      ? undefined
-      : new FamilyDigest({
-        communication,
-        stores: stores.communication,
-        directory: stores.directory,
-        guardians: options.guardianRelationships,
-        ...(options.mail === undefined ? {} : { mail: options.mail }),
-        ...(options.appUrl === undefined ? {} : { appUrl: options.appUrl }),
-        now,
-      });
+    new FamilyDigest({
+      communication,
+      stores: stores.communication,
+      directory: stores.directory,
+      guardians: stores.guardianRelationships,
+      ...(options.mail === undefined ? {} : { mail: options.mail }),
+      ...(options.appUrl === undefined ? {} : { appUrl: options.appUrl }),
+      now,
+    });
   const jobDecider: PolicyDecider = { decide: (request, decideOptions) => engine.decide(request, decideOptions) };
   /** The calendar feed: the one route a token alone authorizes, so it is served before sign-in. */
   async function serveCalendarFeed(request: Request, correlationId: string): Promise<Response | undefined> {
@@ -879,7 +877,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       // The preview shows what a guardian would be told about a child, so it is the decision of the
       // one who decides guardian relationships: a district administrator.
       await ctx.require("read", { kind: "guardian-relationship", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can preview a family digest.");
-      const digest = await familyDigest(communicationFor(ctx.decider, ctx.assessment()))?.build(params.guardianPrincipalId);
+      const digest = await familyDigest(communicationFor(ctx.decider, ctx.assessment())).build(params.guardianPrincipalId);
       if (digest === undefined) throw new SchoolOsError("not-found", `guardian ${params.guardianPrincipalId} was not found.`);
       return { digest, ...renderDigest(digest, options.appUrl), empty: isEmpty(digest) };
     },
@@ -933,10 +931,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     stores,
     communication: {
       runNotificationJob: () => communicationFor(jobDecider).runNotificationJob(),
-      runWeeklyDigest: async () => {
-        const digest = familyDigest(communicationFor(jobDecider));
-        return digest === undefined ? { week: digestWeekOf(now()), sent: 0, skipped: 0, failed: 0, alreadyDone: 0 } : digest.runWeeklyJob();
-      },
+      runWeeklyDigest: () => familyDigest(communicationFor(jobDecider)).runWeeklyJob(),
     },
     async fetch(request) {
       const correlationId = crypto.randomUUID();

@@ -75,8 +75,8 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(config.modelCatalog === undefined ? {} : { modelCatalog: config.modelCatalog }),
     ...(config.approvedExternalHosts === undefined ? {} : { approvedExternalHosts: config.approvedExternalHosts }),
     ...(config.retention === undefined ? {} : { retention: config.retention }),
-    // Communication (SCHO-189): email only with both the binding and a configured sender. Guardian
-    // relationships are not stored by this Worker yet (SCHO-188), so no family digest is sent.
+    // Communication (SCHO-189): email only with both the binding and a configured sender. The family
+    // digest goes out over the guardian relationships this object stores (SCHO-188).
     ...(seams.sendEmail === undefined || config.email === undefined
       ? {}
       : { mail: cloudflareEmailSender(seams.sendEmail, { from: config.email.from, fromName: config.email.fromName }) }),

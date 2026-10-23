@@ -265,5 +265,10 @@ describe("guardian onboarding in the district Worker", () => {
     expect((await ok(gina, "guardian.childOfferings", { params: { studentId: NF.amara } })).map((o) => o.offering.id)).toContain(NF.eng9);
     const course = await ok(gina, "guardian.childCourse", { params: { studentId: NF.amara, offeringId: NF.eng9 } });
     expect(course.course.title).toBe("English 9");
+
+    // Communication (SCHO-189): the weekly family digest goes out over the same stored relationship.
+    const preview = await ok(admin, "admin.previewDigest", { params: { guardianPrincipalId: invited.invitation.reservedGuardianPrincipalId } });
+    expect(preview.digest.children.map((child) => child.studentPrincipalId)).toEqual([NF.amara]);
+    expect(preview.digest.children[0]!.offerings.map((offering) => offering.offeringId)).toContain(NF.eng9);
   });
 });

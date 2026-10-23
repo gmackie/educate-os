@@ -2,7 +2,6 @@
 // email, and the weekly family digest, over the district's HTTP surface, each with who it refuses.
 import { describe, expect, it } from "vitest";
 import { GuardianRelationship, type DistrictDirectorySnapshot, type PrincipalId } from "@schoolos/contracts";
-import { InMemoryGuardianRelationshipStore } from "@schoolos/policy";
 import { InMemoryMailSender, calendarFeedPath, type DistrictAppOptions } from "../src/index.ts";
 import { bootDistrict, expectError, NF, NORTHFIELD, RB, RIVERBEND, studentSubmitsEssay, teacherSetsUpEssay, type TestDistrict } from "./support.ts";
 
@@ -52,7 +51,7 @@ function relationship(id: string, guardian: string, student: string, overrides: 
   });
 }
 
-async function boot(options: Partial<Pick<DistrictAppOptions, "mail" | "guardianRelationships" | "appUrl">> = {}, start?: string) {
+async function boot(options: Partial<Pick<DistrictAppOptions, "mail" | "appUrl">> = {}, start?: string) {
   const clock = testClock(start);
   const district = await bootDistrict(withGuardians(), { now: clock.now, ...options });
   return { district, clock };
@@ -284,12 +283,18 @@ describe("notifications", () => {
   });
 });
 
-/** A district with mail, the given guardian relationships, and an essay due Thursday of the coming week. */
+/**
+ * A district with mail, the given guardian relationships, and an essay due Thursday of the coming
+ * week. The relationships are recorded in the district's own guardian relationship store (ADR-0012,
+ * SCHO-188), the one its guardian routes and policy engine read, which is all the digest goes out over.
+ */
 async function digestDistrict(relationships: GuardianRelationship[]) {
   const mail = new InMemoryMailSender();
-  const guardians = new InMemoryGuardianRelationshipStore();
-  for (const r of relationships) await guardians.put(r);
-  const { district, clock } = await boot({ mail, guardianRelationships: guardians, appUrl: "https://learn.northfield.example" });
+  const { district, clock } = await boot({ mail, appUrl: "https://learn.northfield.example" });
+  for (const r of relationships) {
+    const target = { relationshipId: r.id, guardianPrincipalId: r.guardianPrincipalId, studentPrincipalId: r.studentPrincipalId };
+    await district.app.stores.guardianRelationships.commit(r, { districtId: r.districtId, actor: { principalId: NF.admin as PrincipalId }, action: "guardian-relationship.recorded", target, at: r.created.at }, undefined);
+  }
   const { assignment } = await teacherSetsUpEssay(district);
   const rivera = district.tokenFor(NF.rivera);
   // Due Thursday of the coming week.
@@ -297,7 +302,7 @@ async function digestDistrict(relationships: GuardianRelationship[]) {
   await post(district, "Library <visit> & forms");
   await post(district, "Next month's trip", { publishAt: "2026-11-20T12:00:00Z" });
   await district.ok(rivera, "teacher.setWeeklyNote", { params: { offeringId: NF.eng9 }, body: { text: "Read chapters 1-3." } });
-  return { district, clock, mail, assignment, guardians };
+  return { district, clock, mail, assignment };
 }
 
 const OKAFOR_AMARA = relationship("grl_okafor-amara", GUARDIAN.okafor, NF.amara);

@@ -123,10 +123,6 @@ entrypoint, because each of those is for one consumer only.
   district installer does not apply Cron Triggers yet (SCHO-148). Until it does, set them on the
   Worker by hand, or nothing is emailed on a schedule. In-app notifications still update whenever
   a student opens them.
-- **Family digest.** The digest is built against the policy layer's `GuardianRelationshipStore`,
-  but this Worker does not store guardian relationships yet (SCHO-188), so it passes none and the
-  weekly job sends nothing. Wiring the durable store into `startDistrict` as
-  `guardianRelationships` turns it on.
 - **Email Service.** The deploy service must learn the manifest's `send_email` binding type before
   it can install this Worker; the installer's manifest schema accepts it.
 

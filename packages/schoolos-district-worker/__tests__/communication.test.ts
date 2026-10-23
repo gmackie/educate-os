@@ -88,7 +88,7 @@ describe("communication through the Worker", () => {
       from: { name: "Northfield SchoolOS", email: "schoolos@northfield.example" },
       text: expect.stringContaining("https://learn.northfield.example"),
     });
-    // A second run has nothing more to send; the digest trigger has no guardians to send to.
+    // A second run has nothing more to send; no guardian is related to anyone here, so the digest trigger sends nothing.
     await district().runScheduled(NOTIFICATION_CRON);
     await district().runScheduled(DIGEST_CRON);
     expect((await district().sentEmail()).slice(before)).toHaveLength(sent.length);
