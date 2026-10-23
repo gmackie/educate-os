@@ -87,7 +87,7 @@ describe("the family view (ADR-0012)", () => {
   it("never offers a student the family view", async () => {
     await renderApp(fakeDistrict(), "/family/children/prn_nf-student-amara");
     expect(await screen.findByText("There's nothing here")).toBeTruthy();
-    expect(within(screen.getByRole("navigation", { name: "Main" })).getAllByRole("link").map((l) => l.textContent)).toStrictEqual(["Home", "My space"]);
+    expect(within(screen.getByRole("navigation", { name: "Main" })).getAllByRole("link").map((l) => l.textContent)).toStrictEqual(["Home", "My space", "Grades"]);
   });
 });
 
