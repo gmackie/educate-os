@@ -82,7 +82,8 @@ const Choices = z.array(QuizChoice).min(2).max(20).refine((choices) => new Set(c
 export function isSafePattern(pattern: string): boolean {
   if (pattern.length === 0 || pattern.length > MAX_PATTERN_LENGTH) return false;
   try {
-    new RegExp(pattern, "iu");
+    // Throws if the pattern does not compile.
+    RegExp(pattern, "iu");
   } catch {
     return false;
   }
@@ -451,6 +452,8 @@ export type StudentAttemptSummary = z.infer<typeof StudentAttemptSummary>;
 export const StudentQuizView = z.strictObject({
   id: QuizId,
   offeringId: OfferingId,
+  /** The title of the course the quiz's class is a section of. */
+  courseTitle: z.string(),
   title: z.string(),
   description: z.string(),
   moduleId: z.string().optional(),
@@ -512,6 +515,8 @@ export type StudentItemResult = z.infer<typeof StudentItemResult>;
 export const StudentAttemptResult = z.strictObject({
   attemptId: QuizAttemptId,
   quizId: QuizId,
+  /** The title of the course the quiz's class is a section of. */
+  courseTitle: z.string(),
   title: z.string(),
   number: z.int().positive(),
   status: z.enum(["submitted", "expired"]),
@@ -532,6 +537,8 @@ export type StudentAttemptResult = z.infer<typeof StudentAttemptResult>;
 /** One quiz in a staff listing, with counts of what needs them. */
 export const QuizSummary = z.strictObject({
   quiz: Quiz,
+  /** Attempts started, in progress or not. Once any is, the quiz's questions can no longer change. */
+  started: z.int().nonnegative(),
   /** Submitted attempts. */
   submitted: z.int().nonnegative(),
   /** Submitted attempts with an essay waiting for a teacher. */

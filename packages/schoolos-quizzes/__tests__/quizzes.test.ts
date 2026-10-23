@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { OfferingId } from "@schoolos/contracts";
-import { StudentAttemptResult, StudentAttemptView, StudentQuizView, type QuizItem } from "../src/index.ts";
+import { StudentAttemptResult, StudentAttemptView, StudentQuizView } from "../src/index.ts";
 import {
   ADMIN,
   AMARA,
@@ -42,7 +42,7 @@ describe("building quizzes (SCHO-191)", () => {
     // Publishing readies the assignment to take every attempt as a submission.
     expect(prepared).toEqual([{ assignmentId: ASSIGNMENT, attemptsAllowed: 3 }]);
     const listing = await service.listQuizzes(AMARA, BIO);
-    expect(listing.view === "student" && listing.quizzes.map((q) => [q.title, q.questionCount, q.availability, q.canStart])).toEqual([["Cells", 1, "open", true]]);
+    expect(listing.view === "student" && listing.quizzes.map((q) => [q.courseTitle, q.title, q.questionCount, q.availability, q.canStart])).toEqual([["Biology I", "Cells", 1, "open", true]]);
   });
 
   it("binds quizzes only to the class's own assignments and modules, and keeps a draft module's quiz from students", async () => {
@@ -66,6 +66,8 @@ describe("building quizzes (SCHO-191)", () => {
     const { service } = setup();
     const quiz = await publishedQuiz(service);
     await service.startAttempt(AMARA, BIO, quiz.id);
+    // An attempt in progress already locks the questions, and the listing says so.
+    expect(await service.listQuizzes(MORGAN, BIO)).toMatchObject({ quizzes: [{ started: 1, submitted: 0 }] });
     expect(await code(service.updateQuiz(MORGAN, BIO, quiz.id, { items: [ITEMS.tf] }))).toBe("conflict");
     const changed = await service.updateQuiz(MORGAN, BIO, quiz.id, { title: "Cells quiz (v2)", settings: { ...quiz.settings, attemptsAllowed: 1 } });
     expect(changed.items).toEqual(quiz.items);

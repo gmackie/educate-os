@@ -189,6 +189,7 @@ export class QuizService {
           const submitted = book.attempts.filter((a) => a.quizId === quiz.id && a.status === "submitted");
           return {
             quiz,
+            started: book.attempts.filter((a) => a.quizId === quiz.id).length,
             submitted: submitted.length,
             needsGrading: submitted.filter((a) => totalOf(a.itemScores ?? []).points === null).length,
             ...this.#lastRelease(book, quiz.id),
@@ -571,6 +572,7 @@ export class QuizService {
     return StudentQuizView.parse({
       id: quiz.id,
       offeringId: quiz.offeringId,
+      courseTitle: this.#courseTitle(quiz.offeringId),
       title: quiz.title,
       description: quiz.description,
       ...(quiz.moduleId === undefined ? {} : { moduleId: quiz.moduleId }),
@@ -631,6 +633,7 @@ export class QuizService {
     return StudentAttemptResult.parse({
       attemptId: attempt.id,
       quizId: quiz.id,
+      courseTitle: this.#courseTitle(quiz.offeringId),
       title: quiz.title,
       number: attempt.number,
       status: status === "in-progress" ? "submitted" : status,
@@ -685,6 +688,13 @@ export class QuizService {
         }),
       };
     });
+  }
+
+  /** The title of the course an offering is a section of, from the directory. */
+  #courseTitle(offeringId: string): string {
+    const { offerings, courses } = this.#options.directory;
+    const courseId = offerings.find((o) => o.id === offeringId)?.courseId;
+    return courses.find((c) => c.id === courseId)?.title ?? "";
   }
 
   #lastRelease(book: QuizBook, quizId: string): { lastReleasedAt?: string } {
