@@ -112,6 +112,42 @@ describe("identity linking", () => {
     }
   });
 
+  it("refuses a decision made outside the administrator's dated role (ADR-0012)", () => {
+    const pending = requestIdentityLink(directory, { principalId: MORGAN, identity: morganAccess, requestedAt: AT });
+    const dated = (dates: { validFrom?: string; validUntil?: string }) => ({
+      ...directory,
+      roleAssignments: directory.roleAssignments.map((a) => (a.principalId === NF_ADMIN && a.role === "district-admin" ? { ...a, ...dates } : a)),
+    });
+    const at = Date.parse(AT);
+    const expired = dated({ validUntil: new Date(at).toISOString() });
+    const notYet = dated({ validFrom: new Date(at + 1000).toISOString() });
+    for (const snapshot of [expired, notYet]) {
+      expect(codeOf(() => approveIdentityLink(snapshot, pending, decision))).toBe("forbidden");
+      expect(codeOf(() => rejectIdentityLink(snapshot, pending, decision))).toBe("forbidden");
+    }
+    expect(() => approveIdentityLink(dated({ validFrom: new Date(at).toISOString() }), pending, decision)).not.toThrow();
+  });
+
+  it("links a guardian as a person: through a person credential an administrator approves, never a service one", () => {
+    const guardian = "prn_nf-guardian-gina" as PrincipalId;
+    const withGuardian = {
+      ...directory,
+      principals: [...directory.principals, {
+        id: guardian,
+        districtId: directory.district.id,
+        kind: "guardian" as const,
+        status: "active" as const,
+        displayName: "Gina Okafor",
+        externalIdentities: [{ districtId: directory.district.id, issuer: NF_IDP, subject: "gina-idp" }],
+      }],
+    };
+    const ginaAccess: VerifiedIdentity = { issuer: NF_ACCESS, subject: "access-uuid-gina", credential: "person" };
+    const pending = requestIdentityLink(withGuardian, { principalId: guardian, identity: ginaAccess, requestedAt: AT });
+    expect(approveIdentityLink(withGuardian, pending, decision).directory.principals.find((p) => p.id === guardian)?.externalIdentities).toHaveLength(2);
+    expect(codeOf(() => requestIdentityLink(withGuardian, { principalId: guardian, identity: { ...ginaAccess, credential: "service" }, requestedAt: AT })))
+      .toBe("validation-failed");
+  });
+
   it("rejects a malformed pending link or decision", () => {
     const pending = requestIdentityLink(directory, { principalId: MORGAN, identity: morganAccess, requestedAt: AT });
     expect(codeOf(() => approveIdentityLink(directory, { ...pending, roles: ["district-admin"] } as typeof pending, decision)))

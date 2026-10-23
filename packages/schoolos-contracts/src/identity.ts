@@ -31,8 +31,14 @@ export function externalIdentityKey(identity: ExternalIdentity): string {
   return JSON.stringify([identity.districtId, identity.issuer, identity.subject]);
 }
 
-/** What a principal is. This is not a role: a staff member may teach one offering and not another. */
-export const PrincipalKind = z.enum(["student", "staff", "service"]);
+/**
+ * What a principal is. This is not a role: a staff member may teach one offering and not another.
+ *
+ * A `guardian` (a parent or other caregiver) is neither staff nor student. A guardian holds no
+ * roles and no enrollments; everything they may read comes from `GuardianRelationship` records an
+ * administrator confirmed, one per student (ADR-0012).
+ */
+export const PrincipalKind = z.enum(["student", "staff", "guardian", "service"]);
 /** A principal kind. */
 export type PrincipalKind = z.infer<typeof PrincipalKind>;
 
@@ -131,12 +137,32 @@ export type SchoolRole = z.infer<typeof SchoolRole>;
 /**
  * A role held by a principal at a scope, with where the assignment came from. Roles projected from
  * a roster are replaced on sync; locally granted ones are not.
+ *
+ * An assignment may be dated, such as a substitute teacher's cover for two weeks. The dates are
+ * enforced when each decision is made ({@link roleAssignmentInForce}), not by a job that removes
+ * the assignment, so an expired assignment stops granting anything at once and stays on record.
+ * `checkDirectoryIntegrity` refuses one whose `validFrom` is not before its `validUntil` (ADR-0012).
  */
 export const RoleAssignment = z.strictObject({
   principalId: PrincipalId,
   role: SchoolRole,
   scope: Scope,
   source: z.enum(["roster", "local-grant"]),
+  /** When the role starts to hold. Absent, it holds from when it was assigned. */
+  validFrom: UtcTimestamp.optional(),
+  /** When the role stops holding (exclusive). Absent, it holds until it is removed. */
+  validUntil: UtcTimestamp.optional(),
 });
 /** A role assignment. */
 export type RoleAssignment = z.infer<typeof RoleAssignment>;
+
+/**
+ * Whether a role assignment holds at `at`: on or after its `validFrom` and before its `validUntil`.
+ * An undated assignment always holds; one whose dates are inverted never does.
+ */
+export function roleAssignmentInForce(assignment: Pick<RoleAssignment, "validFrom" | "validUntil">, at: Date): boolean {
+  const time = at.getTime();
+  if (assignment.validFrom !== undefined && time < Date.parse(assignment.validFrom)) return false;
+  if (assignment.validUntil !== undefined && time >= Date.parse(assignment.validUntil)) return false;
+  return true;
+}

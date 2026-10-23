@@ -4,6 +4,7 @@ import {
   DistrictId,
   PrincipalId,
   PrincipalKind,
+  roleAssignmentInForce,
   SchoolOsError,
   type DistrictDirectorySnapshot,
   type Principal,
@@ -132,7 +133,8 @@ export function confirmWorkshopUserLink(
   if (!parsed.success) throw new SchoolOsError("validation-failed", "The Workshop user link is malformed.");
   const link = parsed.data;
   const isAdmin = directory.roleAssignments.some((a) =>
-    a.principalId === link.confirmedBy && a.role === "district-admin" && a.scope.level === "district" && a.scope.districtId === districtId);
+    a.principalId === link.confirmedBy && a.role === "district-admin" && a.scope.level === "district" && a.scope.districtId === districtId
+    && roleAssignmentInForce(a, new Date(link.confirmedAt)));
   if (!isAdmin) throw new SchoolOsError("forbidden", "Only a district administrator can link Workshop accounts.");
   if (linkablePrincipal(directory, link.principalId) === undefined) throw new SchoolOsError("not-found", "No such person in this district.");
   const local = existing.filter((other) => other.districtId === districtId);

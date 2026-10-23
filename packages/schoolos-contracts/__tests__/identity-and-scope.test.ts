@@ -2,12 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
   DistrictId,
   ExternalIdentity,
+  GUARDIAN_READABLE_KINDS,
+  GuardianRelationship,
+  GuardianRelationshipId,
+  guardianRelationshipInForce,
   ID_PREFIXES,
   InstanceId,
   OfferingId,
   Principal,
+  PrincipalKind,
   ResourceId,
   RevisionId,
+  RoleAssignment,
+  roleAssignmentInForce,
   Scope,
   SchoolId,
   externalIdentityKey,
@@ -122,5 +129,63 @@ describe("principal lifecycle", () => {
     expect(SourceLink.safeParse(link).success).toBe(true);
     expect(SourceLink.safeParse({ ...link, email: "x@one.example" }).success).toBe(false);
     expect(SourceLink.safeParse({ ...link, system: "OneRoster" }).success).toBe(false);
+  });
+});
+
+describe("guardians and dated roles (ADR-0012)", () => {
+  const relationship = {
+    id: "grl_one",
+    districtId: "dst_one",
+    guardianPrincipalId: "prn_parent",
+    studentPrincipalId: "prn_child",
+    status: "active",
+    readableKinds: ["official-grade"],
+    consent: "not-required",
+    validFrom: "2026-09-01T00:00:00Z",
+    validUntil: "2027-06-30T00:00:00Z",
+    created: { by: "prn_admin", at: "2026-08-30T00:00:00Z" },
+    confirmed: { by: "prn_admin", at: "2026-08-31T00:00:00Z" },
+  };
+  const parsed = GuardianRelationship.parse(relationship);
+
+  it("is a principal kind of its own, with an ID of its own", () => {
+    expect(PrincipalKind.options).toContain("guardian");
+    expect(GuardianRelationshipId.safeParse("grl_one").success).toBe(true);
+    expect(GuardianRelationshipId.safeParse("prn_one").success).toBe(false);
+  });
+
+  it("grants only while active, in date, unsuspended and with consent not withdrawn", () => {
+    expect(guardianRelationshipInForce(parsed, new Date("2026-10-01T00:00:00Z"))).toBe(true);
+    expect(guardianRelationshipInForce(parsed, new Date("2026-08-31T23:59:59Z"))).toBe(false);
+    expect(guardianRelationshipInForce(parsed, new Date("2027-06-30T00:00:00Z"))).toBe(false);
+    const at = new Date("2026-10-01T00:00:00Z");
+    expect(guardianRelationshipInForce({ ...parsed, consent: "withdrawn" }, at)).toBe(false);
+    expect(guardianRelationshipInForce({ ...parsed, suspended: { ...parsed.created, reason: "court-order" } }, at)).toBe(false);
+    expect(guardianRelationshipInForce({ ...parsed, status: "revoked", revoked: parsed.created }, at)).toBe(false);
+  });
+
+  it("refuses kinds a guardian may never read, and free-text suspension reasons", () => {
+    for (const kind of ["submission", "artifact", "personal-workspace", "personal-conversation", "shared-conversation", "enrollment"]) {
+      expect(GuardianRelationship.safeParse({ ...relationship, readableKinds: [kind] }).success, kind).toBe(false);
+    }
+    expect(GUARDIAN_READABLE_KINDS).toEqual(["offering", "activity", "feedback", "official-grade", "announcement"]);
+    const suspended = { by: "prn_admin", at: "2026-10-01T00:00:00Z", reason: "Custody dispute with father" };
+    expect(GuardianRelationship.safeParse({ ...relationship, suspended }).success).toBe(false);
+  });
+
+  it("dates a role assignment, inclusive of validFrom and exclusive of validUntil", () => {
+    const role = RoleAssignment.parse({
+      principalId: "prn_sub",
+      role: "teacher",
+      scope: { level: "district", districtId: "dst_one" },
+      source: "local-grant",
+      validFrom: "2026-10-01T00:00:00Z",
+      validUntil: "2026-10-15T00:00:00Z",
+    });
+    expect(roleAssignmentInForce(role, new Date("2026-10-01T00:00:00Z"))).toBe(true);
+    expect(roleAssignmentInForce(role, new Date("2026-09-30T23:59:59Z"))).toBe(false);
+    expect(roleAssignmentInForce(role, new Date("2026-10-15T00:00:00Z"))).toBe(false);
+    expect(roleAssignmentInForce({}, new Date())).toBe(true);
+    expect(roleAssignmentInForce({ validFrom: role.validUntil, validUntil: role.validFrom }, new Date("2026-10-10T00:00:00Z"))).toBe(false);
   });
 });

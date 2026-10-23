@@ -14,7 +14,8 @@ export interface DirectoryIssue {
  * The checks a parsed snapshot must pass before anything is applied from it, beyond what its
  * schema can say about one record at a time: every record belongs to the snapshot's district,
  * every reference resolves, no ID repeats, every identity comes from an issuer the district trusts
- * and no two principals share an identity link. Roster imports (A03) refuse a snapshot with any
+ * and no two principals share an identity link. A guardian principal holds no enrollment or role
+ * (ADR-0012), and a dated role assignment ends after it starts. Roster imports (A03) refuse a snapshot with any
  * issue rather than applying the parts that look valid.
  */
 export function checkDirectoryIntegrity(snapshot: DistrictDirectorySnapshot): DirectoryIssue[] {
@@ -92,6 +93,8 @@ export function checkDirectoryIntegrity(snapshot: DistrictDirectorySnapshot): Di
     const kind = principalKind.get(enrollment.principalId);
     if (kind === undefined) {
       missing(`enrollments[${i}].principalId`, "principal", enrollment.principalId);
+    } else if (kind === "guardian") {
+      issues.push({ path: `enrollments[${i}].principalId`, message: "a guardian principal cannot enroll; a guardian relationship covers their child" });
     } else if ((enrollment.role === "student") !== (kind === "student")) {
       issues.push({ path: `enrollments[${i}].role`, message: `a ${kind} principal cannot enroll as ${enrollment.role}` });
     }
@@ -113,8 +116,17 @@ export function checkDirectoryIntegrity(snapshot: DistrictDirectorySnapshot): Di
   };
 
   snapshot.roleAssignments.forEach((assignment, i) => {
-    if (!principalKind.has(assignment.principalId)) {
+    const kind = principalKind.get(assignment.principalId);
+    if (kind === undefined) {
       missing(`roleAssignments[${i}].principalId`, "principal", assignment.principalId);
+    } else if (kind === "guardian") {
+      issues.push({ path: `roleAssignments[${i}].role`, message: "a guardian principal holds no roles; a guardian relationship covers their child" });
+    }
+    if (
+      assignment.validFrom !== undefined && assignment.validUntil !== undefined
+      && Date.parse(assignment.validUntil) <= Date.parse(assignment.validFrom)
+    ) {
+      issues.push({ path: `roleAssignments[${i}].validUntil`, message: "validUntil must be after validFrom" });
     }
     checkScope(`roleAssignments[${i}].scope`, assignment.scope);
   });

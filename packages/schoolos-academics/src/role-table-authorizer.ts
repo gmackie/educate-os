@@ -1,5 +1,6 @@
 import {
   precheckAuthorization,
+  roleAssignmentInForce,
   scopeContains,
   type Authorizer,
   type Decision,
@@ -18,16 +19,18 @@ export interface PrincipalFactsSource {
 /**
  * The facts a directory holds about one principal. An active teacher or co-teacher enrollment
  * counts as that role at the offering, so a teacher enrolled through the fallback service can read
- * the roster without a separate grant; an inactive one counts for nothing.
+ * the roster without a separate grant; an inactive one counts for nothing. A dated role assignment
+ * counts only while in force at `at`, and a guardian holds no roles (ADR-0012).
  */
 export function principalFactsFrom(
   snapshot: DistrictDirectorySnapshot,
   principalId: PrincipalId,
+  at: Date = new Date(),
 ): PrincipalFacts | undefined {
   const principal = snapshot.principals.find((p) => p.id === principalId);
   if (principal === undefined) return undefined;
-  if (principal.status !== "active") return { districtId: principal.districtId, kind: principal.kind, roles: [] };
-  const roles = snapshot.roleAssignments.filter((assignment) => assignment.principalId === principalId);
+  if (principal.status !== "active" || principal.kind === "guardian") return { districtId: principal.districtId, kind: principal.kind, roles: [] };
+  const roles = snapshot.roleAssignments.filter((assignment) => assignment.principalId === principalId && roleAssignmentInForce(assignment, at));
   for (const enrollment of snapshot.enrollments) {
     if (enrollment.principalId !== principalId || enrollment.status !== "active" || enrollment.role === "student") {
       continue;

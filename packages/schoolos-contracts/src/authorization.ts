@@ -52,6 +52,8 @@ export const ResourceKind = z.enum([
   "assessment-run",
   "feedback",
   "official-grade",
+  /** A notice course staff post to an offering, read by its students and their guardians. */
+  "announcement",
   "learning-resource",
   "capability-config",
   "ai-budget",
@@ -60,6 +62,8 @@ export const ResourceKind = z.enum([
   "access-grant",
   /** A pending request to link a sign-in identity, or adopt an existing Workshop user, into a principal. */
   "identity-link",
+  /** A record that lets one guardian read one student's course records (ADR-0012). */
+  "guardian-relationship",
 ]);
 /** A resource kind. */
 export type ResourceKind = z.infer<typeof ResourceKind>;
@@ -143,9 +147,9 @@ export interface Caller {
 export interface PrincipalFacts {
   /** The principal's district. */
   districtId: DistrictId;
-  /** Whether the principal is a student, staff member or service. */
+  /** Whether the principal is a student, staff member, guardian or service. */
   kind: PrincipalKind;
-  /** The roles in force at the time of the lookup. */
+  /** The roles in force at the time of the lookup. A guardian holds none. */
   roles: RoleAssignment[];
 }
 
