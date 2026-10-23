@@ -28,6 +28,7 @@
     "@schoolos/integrations": "workspace:*",
     "@schoolos/learning-artifacts": "workspace:*",
     "@schoolos/policy": "workspace:*",
+    "@schoolos/quizzes": "workspace:*",
     "@schoolos/registry": "workspace:*",
     "@schoolos/workspaces": "workspace:*",
     "zod": "catalog:"

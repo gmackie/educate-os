@@ -30,6 +30,8 @@ import { InMemoryCatalogMirrorStorage, type CatalogMirrorStorage } from "@school
 import { InMemoryLedgerStore, type LedgerStore } from "@schoolos/ai-governance";
 import { oneroster } from "@schoolos/integrations";
 import { InMemoryDiscussionStorage, type DiscussionStorage } from "@schoolos/discussions";
+// Quizzes (SCHO-191)
+import { InMemoryQuizStorage, type QuizStorage } from "@schoolos/quizzes";
 import type { WorkshopUserLink } from "@schoolos/identity";
 import { InMemoryGuardianRelationshipStore, type GuardianRelationshipStore } from "@schoolos/policy";
 import { InMemoryGuardianInvitationStore, InMemoryIdentityLinkStore, type GuardianInvitationStore, type IdentityLinkStore } from "@schoolos/identity-links";
@@ -217,6 +219,9 @@ export interface DistrictAppStores {
   // Discussions (SCHO-190).
   /** Each offering's discussion topics, posts, settings and moderation trail. */
   discussions: DiscussionStorage;
+  // Quizzes (SCHO-191)
+  /** Each offering's quizzes, attempts and score releases. */
+  quizzes: QuizStorage;
 }
 
 /** In-memory stores for one district, seeded with its directory. */
@@ -250,5 +255,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     communication: inMemoryCommunicationStores(),
     // Discussions (SCHO-190).
     discussions: new InMemoryDiscussionStorage(),
+    // Quizzes (SCHO-191)
+    quizzes: new InMemoryQuizStorage(),
   };
 }

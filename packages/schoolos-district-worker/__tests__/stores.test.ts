@@ -12,6 +12,7 @@ import {
   DurableObjectCourseContentStorage,
   DISTRICT_TABLES,
   DurableObjectDiscussionStorage,
+  DurableObjectQuizStorage,
   DurableObjectFundingAllocationStore,
   DurableObjectGuardianInvitationStore,
   DurableObjectGuardianRelationshipStore,
@@ -395,6 +396,72 @@ describe("DurableObjectDiscussionStorage", () => {
       const store = new DurableObjectDiscussionStorage(state.storage);
       await store.commit(BIO, write(1, { topics: [topic("dtp_a")], posts: [post("dps_1", "dtp_a", "Hi")] }), 0);
       state.storage.sql.exec("UPDATE schoolos_discussion_posts SET post_json = ?", JSON.stringify({ ...post("dps_1", "dtp_a", "Hi"), status: "public" }));
+      await expect(store.load(BIO)).rejects.toThrow(/do not match|does not match/);
+    });
+  });
+});
+
+// Quizzes (SCHO-191)
+describe("DurableObjectQuizStorage", () => {
+  const BIO = "off_nf-bio-fall-p2" as never;
+  const at = "2026-10-23T12:00:00.000Z";
+  const quiz = (id: string, title = "Cells quiz") => ({
+    id, offeringId: BIO, title, description: "", status: "draft",
+    items: [{ id: "qzi_tf", type: "true-false", prompt: "Viruses are cells.", points: 1, correct: false }],
+    settings: { attemptsAllowed: 2, shuffleQuestions: true, shuffleChoices: false, showAnswers: "after-release", scorePolicy: "best" },
+    createdBy: "prn_nf-morgan-lee", createdAt: at, updatedAt: at,
+  });
+  const attempt = (id: string, quizId: string, essay = "") => ({
+    id, quizId, offeringId: BIO, studentId: "prn_nf-student-amara", number: 1, seed: "0123456789abcdef", startedAt: at,
+    answers: essay === "" ? [] : [{ itemId: "qzi_essay", response: { type: "essay", text: essay } }], status: "in-progress",
+  });
+  const release = (id: string, quizId: string) => ({ id, quizId, by: "prn_nf-morgan-lee", at, grades: [] });
+  const write = (revision: number, parts: Record<string, unknown>) =>
+    ({ revision, quizzes: [], deletedQuizIds: [], attempts: [], releases: [], ...parts }) as never;
+
+  it("keeps quizzes, attempts and releases across a restart, writing only what changed", async () => {
+    const object = fresh();
+    // An essay at the length limit, in characters that take three bytes each in UTF-8.
+    const long = "\u2603".repeat(20_000);
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectQuizStorage(state.storage);
+      expect(await store.load(BIO)).toBeUndefined();
+      await store.commit(BIO, write(1, { quizzes: [quiz("qz_a"), quiz("qz_b", "Spare")], attempts: [attempt("qza_1", "qz_a", long)] }), 0);
+      await expect(store.commit(BIO, write(2, {}), 0)).rejects.toMatchObject({ code: "conflict" });
+      await store.commit(BIO, write(2, {
+        quizzes: [{ ...quiz("qz_a"), status: "published" }],
+        attempts: [{ ...attempt("qza_1", "qz_a", long), status: "submitted", submittedAt: at }, attempt("qza_2", "qz_a")],
+        releases: [release("qzr_1", "qz_a")],
+      }), 1);
+      // A quiz with attempts is never deleted, whatever the service asked.
+      await expect(store.commit(BIO, write(3, { deletedQuizIds: ["qz_a"] }), 2)).rejects.toMatchObject({ code: "conflict" });
+      await store.commit(BIO, write(3, { deletedQuizIds: ["qz_b"], releases: [release("qzr_2", "qz_a")] }), 2);
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      const book = await new DurableObjectQuizStorage(state.storage).load(BIO);
+      expect(book).toMatchObject({ revision: 3, quizzes: [{ id: "qz_a", status: "published" }] });
+      expect(book!.attempts.map((a) => [a.id, a.status])).toStrictEqual([["qza_1", "submitted"], ["qza_2", "in-progress"]]);
+      expect(book!.attempts[0]!.answers[0]!.response).toStrictEqual({ type: "essay", text: long });
+      expect(book!.releases.map((r) => r.id)).toStrictEqual(["qzr_1", "qzr_2"]);
+      expect(await new DurableObjectQuizStorage(state.storage).load("off_nf-eng9-fall-p3" as never)).toBeUndefined();
+    });
+  });
+
+  it("refuses a record that does not match its schema or names another offering, and stores nothing of the write", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = new DurableObjectQuizStorage(state.storage);
+      await expect(store.commit(BIO, write(1, { quizzes: [{ ...quiz("qz_a"), items: [{ id: "qzi_s", type: "short-answer", prompt: "x", points: 1, acceptedAnswers: [], pattern: "(a+)+" }] }] }), 0)).rejects.toThrow();
+      await expect(store.commit(BIO, write(1, { attempts: [{ ...attempt("qza_1", "qz_a"), offeringId: "off_nf-eng9-fall-p3" }] }), 0)).rejects.toThrow();
+      expect(await store.load(BIO)).toBeUndefined();
+    });
+  });
+
+  it("refuses to read a book whose stored rows were tampered with", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = new DurableObjectQuizStorage(state.storage);
+      await store.commit(BIO, write(1, { quizzes: [quiz("qz_a")], attempts: [attempt("qza_1", "qz_a")] }), 0);
+      state.storage.sql.exec("UPDATE schoolos_quiz_attempts SET attempt_json = ?", JSON.stringify({ ...attempt("qza_1", "qz_a"), status: "graded" }));
       await expect(store.load(BIO)).rejects.toThrow(/do not match|does not match/);
     });
   });

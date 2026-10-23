@@ -1911,6 +1911,9 @@ importers:
       '@schoolos/policy':
         specifier: workspace:*
         version: link:../schoolos-policy
+      '@schoolos/quizzes':
+        specifier: workspace:*
+        version: link:../schoolos-quizzes
       '@schoolos/registry':
         specifier: workspace:*
         version: link:../schoolos-registry

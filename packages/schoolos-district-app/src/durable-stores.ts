@@ -102,6 +102,8 @@ import {
   type BoardWrite,
   type DiscussionStorage,
 } from "@schoolos/discussions";
+// Quizzes (SCHO-191)
+import { QUIZ_CONFLICT, Quiz, QuizAttempt, QuizBook, QuizRelease, type QuizBookWrite, type QuizStorage } from "@schoolos/quizzes";
 import { FundingAllocationRevision } from "./routes.ts";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, WorkshopUserLinkStore } from "./stores.ts";
 // Communication (SCHO-189)
@@ -172,6 +174,11 @@ export const DISTRICT_TABLES = {
   discussionTopics: "schoolos_discussion_topics",
   discussionPosts: "schoolos_discussion_posts",
   discussionModeration: "schoolos_discussion_moderation",
+  // Quizzes (SCHO-191)
+  quizBooks: "schoolos_quiz_books",
+  quizzes: "schoolos_quizzes",
+  quizAttempts: "schoolos_quiz_attempts",
+  quizReleases: "schoolos_quiz_releases",
 } as const;
 
 /** Thrown when a stored row cannot be read. Nothing is decided on state that cannot be read. */
@@ -1010,6 +1017,8 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     communication: durableCommunicationStores(storage),
     // Discussions (SCHO-190).
     discussions: new DurableObjectDiscussionStorage(storage),
+    // Quizzes (SCHO-191)
+    quizzes: new DurableObjectQuizStorage(storage),
   };
 }
 
@@ -1466,6 +1475,95 @@ export class DurableObjectDiscussionStorage implements DiscussionStorage {
       posts: sql.exec(`SELECT post_json FROM ${t.discussionPosts} WHERE offering_id = ? ORDER BY rowid`, offeringId).toArray()
         .map((row) => parseStored(DiscussionPost, row.post_json, what)),
       moderation: moderation.map((row) => parseStored(ModerationEvent, row.event_json, what)),
+    });
+    if (!parsed.success) throw new DistrictStoreCorruptionError(`${what} do not match their schema`);
+    return parsed.data;
+  }
+}
+
+// Quizzes (SCHO-191)
+
+/**
+ * {@link QuizStorage} in a Durable Object's SQLite: per offering, a book row holding its revision,
+ * one row per quiz, one per attempt and one per release, so a student's autosave writes only their
+ * attempt's row and no single value approaches SQLite's row limit. Rows are read in the order they
+ * were first written (an upsert keeps its row). A commit checks the revision and applies its write
+ * in one transaction.
+ */
+export class DurableObjectQuizStorage implements QuizStorage {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    const t = DISTRICT_TABLES;
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${t.quizBooks} (offering_id TEXT PRIMARY KEY, revision INTEGER NOT NULL)`,
+      `CREATE TABLE IF NOT EXISTS ${t.quizzes} (offering_id TEXT NOT NULL, quiz_id TEXT NOT NULL, quiz_json TEXT NOT NULL, PRIMARY KEY (offering_id, quiz_id))`,
+      `CREATE TABLE IF NOT EXISTS ${t.quizAttempts} (
+        offering_id TEXT NOT NULL, attempt_id TEXT NOT NULL, quiz_id TEXT NOT NULL, attempt_json TEXT NOT NULL, PRIMARY KEY (offering_id, attempt_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${t.quizReleases} (offering_id TEXT NOT NULL, position INTEGER NOT NULL, release_json TEXT NOT NULL, PRIMARY KEY (offering_id, position))`,
+    ]);
+  }
+
+  async load(offeringId: OfferingId): Promise<QuizBook | undefined> {
+    return this.#tables.transaction((sql) => this.#read(sql, offeringId));
+  }
+
+  async commit(offeringId: OfferingId, write: QuizBookWrite, expectedRevision: number): Promise<void> {
+    const t = DISTRICT_TABLES;
+    const quizzes = write.quizzes.map((quiz) => Quiz.parse(quiz));
+    const attempts = write.attempts.map((attempt) => QuizAttempt.parse(attempt));
+    const releases = write.releases.map((release) => QuizRelease.parse(release));
+    if ([...quizzes, ...attempts].some((record) => record.offeringId !== offeringId)) throw new Error("a quiz write names another offering");
+    this.#tables.transaction((sql) => {
+      const [head] = sql.exec(`SELECT revision FROM ${t.quizBooks} WHERE offering_id = ?`, offeringId).toArray();
+      if (Number(head?.revision ?? 0) !== expectedRevision) throw new SchoolOsError("conflict", QUIZ_CONFLICT);
+      for (const quizId of write.deletedQuizIds) {
+        const [{ count }] = sql.exec(`SELECT COUNT(*) AS count FROM ${t.quizAttempts} WHERE offering_id = ? AND quiz_id = ?`, offeringId, quizId).toArray() as [{ count: number }];
+        if (Number(count) > 0) throw new SchoolOsError("conflict", "A quiz students have started can't be deleted.");
+        sql.exec(`DELETE FROM ${t.quizzes} WHERE offering_id = ? AND quiz_id = ?`, offeringId, quizId);
+      }
+      for (const quiz of quizzes) {
+        sql.exec(
+          `INSERT INTO ${t.quizzes} (offering_id, quiz_id, quiz_json) VALUES (?, ?, ?)
+           ON CONFLICT (offering_id, quiz_id) DO UPDATE SET quiz_json = excluded.quiz_json`,
+          offeringId, quiz.id, JSON.stringify(quiz),
+        );
+      }
+      for (const attempt of attempts) {
+        sql.exec(
+          `INSERT INTO ${t.quizAttempts} (offering_id, attempt_id, quiz_id, attempt_json) VALUES (?, ?, ?, ?)
+           ON CONFLICT (offering_id, attempt_id) DO UPDATE SET quiz_id = excluded.quiz_id, attempt_json = excluded.attempt_json`,
+          offeringId, attempt.id, attempt.quizId, JSON.stringify(attempt),
+        );
+      }
+      const [{ count }] = sql.exec(`SELECT COUNT(*) AS count FROM ${t.quizReleases} WHERE offering_id = ?`, offeringId).toArray() as [{ count: number }];
+      for (const [i, release] of releases.entries()) {
+        sql.exec(`INSERT INTO ${t.quizReleases} (offering_id, position, release_json) VALUES (?, ?, ?)`, offeringId, Number(count) + i, JSON.stringify(release));
+      }
+      sql.exec(
+        `INSERT INTO ${t.quizBooks} (offering_id, revision) VALUES (?, ?)
+         ON CONFLICT (offering_id) DO UPDATE SET revision = excluded.revision`,
+        offeringId, write.revision,
+      );
+    });
+  }
+
+  #read(sql: DistrictSqlStorage["sql"], offeringId: OfferingId): QuizBook | undefined {
+    const t = DISTRICT_TABLES;
+    const [head] = sql.exec(`SELECT revision FROM ${t.quizBooks} WHERE offering_id = ?`, offeringId).toArray();
+    if (head === undefined) return undefined;
+    const what = `the quizzes of ${offeringId}`;
+    const releases = sql.exec(`SELECT position, release_json FROM ${t.quizReleases} WHERE offering_id = ? ORDER BY position`, offeringId).toArray();
+    if (releases.some((row, i) => row.position !== i)) throw new DistrictStoreCorruptionError(`${what} have an incomplete release history`);
+    const parsed = QuizBook.safeParse({
+      offeringId,
+      revision: head.revision,
+      quizzes: sql.exec(`SELECT quiz_json FROM ${t.quizzes} WHERE offering_id = ? ORDER BY rowid`, offeringId).toArray()
+        .map((row) => parseStored(Quiz, row.quiz_json, what)),
+      attempts: sql.exec(`SELECT attempt_json FROM ${t.quizAttempts} WHERE offering_id = ? ORDER BY rowid`, offeringId).toArray()
+        .map((row) => parseStored(QuizAttempt, row.attempt_json, what)),
+      releases: releases.map((row) => parseStored(QuizRelease, row.release_json, what)),
     });
     if (!parsed.success) throw new DistrictStoreCorruptionError(`${what} do not match their schema`);
     return parsed.data;

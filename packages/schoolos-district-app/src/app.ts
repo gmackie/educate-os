@@ -42,6 +42,9 @@ import { calendarFeedPath } from "./routes.ts";
 import { CommunicationService, digestWeekOf, FamilyDigest, isEmpty, renderDigest, type MailSender } from "./communication/index.ts";
 // Discussions (SCHO-190)
 import { DiscussionService, studentPostView, type DiscussionScreening } from "@schoolos/discussions";
+// Quizzes (SCHO-191)
+import { QuizService } from "@schoolos/quizzes";
+import { quizGrading } from "./quizzes.ts";
 
 /**
  * Verifies a request's credential (a bearer token, a Cloudflare Access assertion) and returns the
@@ -438,6 +441,32 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         ...(options.discussionScreening === undefined ? {} : { screening: options.discussionScreening }),
         now: () => now().toISOString(),
       });
+    }
+
+    // Quizzes (SCHO-191)
+    quizzes(): QuizService {
+      return new QuizService({
+        districtId,
+        directory: this.snapshot,
+        authorizer: this.authorizer,
+        channel: "http",
+        storage: stores.quizzes,
+        courseContent: stores.courseContent,
+        grading: quizGrading({
+          records: stores.assessment,
+          assessment: this.assessment(),
+          artifacts: this.artifacts(),
+          workspaces: this.workspaces(),
+          correlationId: this.correlationId,
+        }),
+        now: () => now().toISOString(),
+      });
+    }
+
+    /** The display names of principals, by ID, for those the directory knows. */
+    namesOf(ids: Iterable<string>) {
+      const wanted = new Set(ids);
+      return this.snapshot.principals.filter((p) => wanted.has(p.id)).map((p) => ({ principalId: p.id, displayName: p.displayName }));
     }
 
     /** The display names of the principals who wrote `posts`, and of those who reported them (which only staff views carry). */
@@ -964,6 +993,46 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       // Reading the assignment is the teacher's check that it is theirs, and names its offering.
       const { assignment } = await ctx.assessment().getAssignment(ctx.caller, params.assignmentId);
       return ctx.discussions().participation(ctx.subject, assignment.offeringId, assignment.id, params.principalId);
+    },
+
+    // Quizzes (SCHO-191). Kept in one block, apart from the handlers above.
+    "student.listQuizzes": async (ctx, { params }) => {
+      const listing = await ctx.quizzes().listQuizzes(ctx.subject, params.offeringId);
+      // The student surface answers students only, who always get the student view.
+      if (listing.view !== "student") throw new SchoolOsError("not-found", "no such quiz");
+      return listing.quizzes;
+    },
+    "student.getQuiz": (ctx, { params }) => ctx.quizzes().studentQuiz(ctx.subject, params.offeringId, params.quizId),
+    "student.startQuizAttempt": (ctx, { params }) => ctx.quizzes().startAttempt(ctx.subject, params.offeringId, params.quizId),
+    "student.quizAttempt": (ctx, { params }) => ctx.quizzes().attempt(ctx.subject, params.offeringId, params.attemptId),
+    "student.saveQuizAnswers": (ctx, { params, body }) => ctx.quizzes().saveAnswers(ctx.subject, params.offeringId, params.attemptId, body),
+    "student.submitQuizAttempt": (ctx, { params, body }) => ctx.quizzes().submitAttempt(ctx.subject, params.offeringId, params.attemptId, body),
+    "student.quizAttemptResult": (ctx, { params }) => ctx.quizzes().attemptResult(ctx.subject, params.offeringId, params.attemptId),
+    "teacher.listQuizzes": async (ctx, { params }) => {
+      const listing = await ctx.quizzes().listQuizzes(ctx.subject, params.offeringId);
+      if (listing.view !== "staff") throw new SchoolOsError("not-found", "no such quiz");
+      return { canManage: listing.canManage, quizzes: listing.quizzes };
+    },
+    "teacher.getQuiz": (ctx, { params }) => ctx.quizzes().getQuiz(ctx.subject, params.offeringId, params.quizId),
+    "teacher.createQuiz": (ctx, { params, body }) => ctx.quizzes().createQuiz(ctx.subject, params.offeringId, body),
+    "teacher.updateQuiz": (ctx, { params, body }) => ctx.quizzes().updateQuiz(ctx.subject, params.offeringId, params.quizId, body),
+    "teacher.publishQuiz": (ctx, { params, body }) => ctx.quizzes().setPublished(ctx.subject, params.offeringId, params.quizId, body),
+    "teacher.deleteQuiz": async (ctx, { params }) => {
+      await ctx.quizzes().deleteQuiz(ctx.subject, params.offeringId, params.quizId);
+      return { deleted: true as const };
+    },
+    "teacher.quizResults": async (ctx, { params }) => {
+      const results = await ctx.quizzes().results(ctx.subject, params.offeringId, params.quizId);
+      return { ...results, names: ctx.namesOf(results.students.map((row) => row.studentId)) };
+    },
+    "teacher.releaseQuizScores": (ctx, { params }) => ctx.quizzes().release(ctx.subject, params.offeringId, params.quizId),
+    "teacher.quizAttempt": async (ctx, { params }) => {
+      const view = await ctx.quizzes().staffAttempt(ctx.subject, params.offeringId, params.attemptId);
+      return { ...view, studentName: ctx.namesOf([view.attempt.studentId])[0]?.displayName ?? "" };
+    },
+    "teacher.gradeQuizItem": async (ctx, { params, body }) => {
+      const view = await ctx.quizzes().gradeItem(ctx.subject, params.offeringId, params.attemptId, params.itemId, body);
+      return { ...view, studentName: ctx.namesOf([view.attempt.studentId])[0]?.displayName ?? "" };
     },
   };
 
