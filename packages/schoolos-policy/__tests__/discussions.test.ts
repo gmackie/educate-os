@@ -110,7 +110,7 @@ describe("discussions (SCHO-190)", () => {
       });
     });
     const relationships = new InMemoryGuardianRelationshipStore();
-    await relationships.put(GuardianRelationship.parse({
+    const relationship = GuardianRelationship.parse({
       id: "grl_gina-amara",
       districtId: "dst_northfield",
       guardianPrincipalId: gina.principalId,
@@ -121,7 +121,10 @@ describe("discussions (SCHO-190)", () => {
       validFrom: "2026-08-01T00:00:00Z",
       created: { by: P.nfAdmin.principalId, at: "2026-08-01T00:00:00Z" },
       confirmed: { by: P.nfAdmin.principalId, at: "2026-08-02T00:00:00Z" },
-    }));
+    });
+    // Recorded as every guardian relationship is: with its audit event (ADR-0012, SCHO-188).
+    const target = { relationshipId: relationship.id, guardianPrincipalId: relationship.guardianPrincipalId, studentPrincipalId: relationship.studentPrincipalId };
+    await relationships.commit(relationship, { districtId: relationship.districtId, actor: { principalId: P.nfAdmin.principalId }, action: "guardian-relationship.recorded", target, at: "2026-08-01T00:00:00Z" }, undefined);
     const now = () => new Date("2026-10-23T12:00:00Z");
     const directory = InMemoryAcademicStore.seeded(snapshot);
     const audit = new InMemoryPolicyAuditSink();
