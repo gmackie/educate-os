@@ -1,7 +1,7 @@
 # ForgeGraph delivery for the schoolos.gmac.io production instance (SCHO-192). A merge to main
 # deploys every target once CI is green: the agent installs dependencies at the repository root,
-# runs `buildCommand` and then `deployCommand` in the directory of `configPath`, and probes
-# `healthCheckUrl`. See docs/schoolos/runbooks/production-instance.md.
+# runs `buildCommand` and then `deployCommand` in `appDir` (which must be set: without it the agent
+# guesses one Wrangler directory for the whole repository), and probes `healthCheckUrl`. See docs/schoolos/runbooks/production-instance.md.
 #
 # This app holds the router, the backend and the three preinstalled gatekeepers. The AI call guard
 # is the separate app `schoolos-ai-guard` (same repository), because `syncSecrets` copies every
@@ -31,6 +31,7 @@ stages:
         nodeId: bf11e7b1-b9de-45be-a89d-ae08049c7598  # hetzner-fg
         config:
           workerName: gatekeeper-context
+          appDir: packages/gatekeeper-context
           configPath: packages/gatekeeper-context/wrangler.production.jsonc
           buildCommand: pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:app
           deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
@@ -40,6 +41,7 @@ stages:
         nodeId: bf11e7b1-b9de-45be-a89d-ae08049c7598  # hetzner-fg
         config:
           workerName: gatekeeper-scheduler
+          appDir: packages/gatekeeper-scheduler
           configPath: packages/gatekeeper-scheduler/wrangler.production.jsonc
           buildCommand: pnpm exec vp run --no-cache build:app
           deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
@@ -49,6 +51,7 @@ stages:
         nodeId: bf11e7b1-b9de-45be-a89d-ae08049c7598  # hetzner-fg
         config:
           workerName: gatekeeper-websearch
+          appDir: packages/gatekeeper-websearch
           configPath: packages/gatekeeper-websearch/wrangler.production.jsonc
           # Wrangler's own build (capnweb-validate) is the whole build.
           buildCommand: "true"
@@ -59,6 +62,7 @@ stages:
         nodeId: bf11e7b1-b9de-45be-a89d-ae08049c7598  # hetzner-fg
         config:
           workerName: workshop-backend
+          appDir: packages/workshop-backend
           configPath: packages/workshop-backend/wrangler.production.jsonc
           buildCommand: pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:bundled-blueprints
           deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
@@ -69,6 +73,7 @@ stages:
         nodeId: bf11e7b1-b9de-45be-a89d-ae08049c7598  # hetzner-fg
         config:
           workerName: router
+          appDir: packages/router
           configPath: packages/router/wrangler.production.jsonc
           buildCommand: VITE_CF_ACCESS_MODE=true pnpm exec vp run --no-cache -F @gadgets/workshop-frontend build
           deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
