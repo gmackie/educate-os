@@ -48,7 +48,8 @@ describe("course discussions (SCHO-190)", () => {
     await district.ok(elena, "student.reportPost", { params: { offeringId: NF.eng9, postId: root.id }, body: { reason: "unkind" } });
     const queue = await district.ok(rivera, "teacher.moderationQueue", { params: { offeringId: NF.eng9 } });
     expect(queue.flagged.map((p) => p.id)).toStrictEqual([root.id]);
-    expect(queue.authors.map((a) => a.principalId)).toStrictEqual([NF.amara]);
+    // The queue names the post's author and the student who reported it.
+    expect(queue.authors.map((a) => a.principalId).toSorted()).toStrictEqual([NF.amara, NF.elena].toSorted());
     await district.ok(rivera, "teacher.moderatePost", { params: { offeringId: NF.eng9, postId: root.id }, body: { decision: "hide" } });
     const after = await district.ok(elena, "student.discussionThread", { params: { offeringId: NF.eng9, topicId: topic.id } });
     expect(after.posts[0]).toStrictEqual({ status: "withdrawn", id: root.id, topicId: topic.id, createdAt: root.createdAt });

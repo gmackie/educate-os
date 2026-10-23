@@ -100,8 +100,9 @@ const POST_CLASSIFICATION: Record<PostStatus, Classification> = {
   removed: "restricted",
 };
 
-const byCreation = (a: { createdAt: string; id: string }, b: { createdAt: string; id: string }) =>
-  a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
+// Posts written in the same millisecond keep the order they were stored in: the sort is stable,
+// and both stores keep a board's records in the order they were first written.
+const byCreation = (a: { createdAt: string }, b: { createdAt: string }) => a.createdAt.localeCompare(b.createdAt);
 
 /** A post as a student reads it. See {@link StudentPostView}. */
 export function studentPostView(post: DiscussionPost, readerId: string): StudentPostView {
@@ -148,7 +149,7 @@ export class DiscussionService {
     const ownPending = viewer === "student" && (await this.#allowed(subject, "read", scope, "discussion-post", "teacher-only", subject.principalId));
     const topics = board.topics
       .filter((topic) => viewer === "staff" || this.#topicClassification(topic, outline) === "course")
-      .toSorted((a, b) => Number(b.pinned) - Number(a.pinned) || b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id))
+      .toSorted((a, b) => Number(b.pinned) - Number(a.pinned) || b.createdAt.localeCompare(a.createdAt))
       .map((topic) => {
         const posts = board.posts.filter((p) => p.topicId === topic.id && p.deletedAt === undefined);
         const readable = posts.filter((p) => viewer === "staff" || p.status === "visible" || (ownPending && p.status === "pending" && p.authorId === subject.principalId));

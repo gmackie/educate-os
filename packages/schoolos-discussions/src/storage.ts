@@ -37,7 +37,11 @@ export interface DiscussionStorage {
 /** The message a conflicting commit fails with. */
 export const DISCUSSION_CONFLICT = "The discussion changed while this request was in progress; reload it and try again.";
 
-/** Applies a write to a board as stored (the in-memory and the durable stores apply it alike). */
+/**
+ * Applies a write to a board as stored (the in-memory and the durable stores apply it alike). A
+ * changed record keeps its place; new ones go last, so a board lists records in the order they
+ * were first written.
+ */
 export function applyBoardWrite(board: DiscussionBoard, write: BoardWrite): DiscussionBoard {
   const deleted = new Set(write.deletedTopicIds);
   const topics = new Map(board.topics.filter((t) => !deleted.has(t.id)).map((t) => [t.id, t]));

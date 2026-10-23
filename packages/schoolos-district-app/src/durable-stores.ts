@@ -1387,8 +1387,9 @@ export function durableCommunicationStores(storage: DistrictSqlStorage): Communi
 /**
  * {@link DiscussionStorage} in a Durable Object's SQLite: per offering, a board row holding its
  * revision and settings, one row per topic, one per post and one per moderation trail entry, so no
- * single value approaches SQLite's row limit and a change writes only the rows it touched. A commit
- * checks the revision and applies its write in one transaction.
+ * single value approaches SQLite's row limit and a change writes only the rows it touched. Rows are
+ * read in the order they were first written (an upsert keeps its row). A commit checks the revision
+ * and applies its write in one transaction.
  */
 export class DurableObjectDiscussionStorage implements DiscussionStorage {
   readonly #tables: Tables;
@@ -1460,9 +1461,9 @@ export class DurableObjectDiscussionStorage implements DiscussionStorage {
       offeringId,
       revision: head.revision,
       settings: parseStored(DiscussionSettings, head.settings_json, what),
-      topics: sql.exec(`SELECT topic_json FROM ${t.discussionTopics} WHERE offering_id = ? ORDER BY topic_id`, offeringId).toArray()
+      topics: sql.exec(`SELECT topic_json FROM ${t.discussionTopics} WHERE offering_id = ? ORDER BY rowid`, offeringId).toArray()
         .map((row) => parseStored(DiscussionTopic, row.topic_json, what)),
-      posts: sql.exec(`SELECT post_json FROM ${t.discussionPosts} WHERE offering_id = ? ORDER BY post_id`, offeringId).toArray()
+      posts: sql.exec(`SELECT post_json FROM ${t.discussionPosts} WHERE offering_id = ? ORDER BY rowid`, offeringId).toArray()
         .map((row) => parseStored(DiscussionPost, row.post_json, what)),
       moderation: moderation.map((row) => parseStored(ModerationEvent, row.event_json, what)),
     });
