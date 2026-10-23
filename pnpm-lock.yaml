@@ -1893,6 +1893,9 @@ importers:
       '@schoolos/curriculum':
         specifier: workspace:*
         version: link:../schoolos-curriculum
+      '@schoolos/discussions':
+        specifier: workspace:*
+        version: link:../schoolos-discussions
       '@schoolos/identity':
         specifier: workspace:*
         version: link:../schoolos-identity

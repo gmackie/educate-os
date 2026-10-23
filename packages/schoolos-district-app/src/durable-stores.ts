@@ -92,6 +92,16 @@ import {
   type GuardianInvitationStore,
 } from "@schoolos/identity-links";
 import { DurableObjectIdentityLinkStore } from "@schoolos/identity-links/durable-object-store";
+import {
+  DISCUSSION_CONFLICT,
+  DiscussionBoard,
+  DiscussionPost,
+  DiscussionSettings,
+  DiscussionTopic,
+  ModerationEvent,
+  type BoardWrite,
+  type DiscussionStorage,
+} from "@schoolos/discussions";
 import { FundingAllocationRevision } from "./routes.ts";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, WorkshopUserLinkStore } from "./stores.ts";
 // Communication (SCHO-189)
@@ -157,6 +167,11 @@ export const DISTRICT_TABLES = {
   // Gradebook (SCHO-187)
   gradebookSettings: "schoolos_gradebook_settings",
   gradebookMarkers: "schoolos_gradebook_markers",
+  // Discussions (SCHO-190).
+  discussionBoards: "schoolos_discussion_boards",
+  discussionTopics: "schoolos_discussion_topics",
+  discussionPosts: "schoolos_discussion_posts",
+  discussionModeration: "schoolos_discussion_moderation",
 } as const;
 
 /** Thrown when a stored row cannot be read. Nothing is decided on state that cannot be read. */
@@ -993,6 +1008,8 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     gradebooks: new DurableObjectGradebookStore(storage),
     // Communication (SCHO-189)
     communication: durableCommunicationStores(storage),
+    // Discussions (SCHO-190).
+    discussions: new DurableObjectDiscussionStorage(storage),
   };
 }
 
@@ -1363,4 +1380,93 @@ export function durableCommunicationStores(storage: DistrictSqlStorage): Communi
     preferences: new DurableObjectPreferenceStore(storage),
     digestLedger: new DurableObjectDigestLedgerStore(storage),
   };
+}
+
+// Discussions (SCHO-190).
+
+/**
+ * {@link DiscussionStorage} in a Durable Object's SQLite: per offering, a board row holding its
+ * revision and settings, one row per topic, one per post and one per moderation trail entry, so no
+ * single value approaches SQLite's row limit and a change writes only the rows it touched. A commit
+ * checks the revision and applies its write in one transaction.
+ */
+export class DurableObjectDiscussionStorage implements DiscussionStorage {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    const t = DISTRICT_TABLES;
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${t.discussionBoards} (offering_id TEXT PRIMARY KEY, revision INTEGER NOT NULL, settings_json TEXT NOT NULL)`,
+      `CREATE TABLE IF NOT EXISTS ${t.discussionTopics} (offering_id TEXT NOT NULL, topic_id TEXT NOT NULL, topic_json TEXT NOT NULL, PRIMARY KEY (offering_id, topic_id))`,
+      `CREATE TABLE IF NOT EXISTS ${t.discussionPosts} (
+        offering_id TEXT NOT NULL, post_id TEXT NOT NULL, topic_id TEXT NOT NULL, post_json TEXT NOT NULL, PRIMARY KEY (offering_id, post_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${t.discussionModeration} (offering_id TEXT NOT NULL, position INTEGER NOT NULL, event_json TEXT NOT NULL, PRIMARY KEY (offering_id, position))`,
+    ]);
+  }
+
+  async load(offeringId: OfferingId): Promise<DiscussionBoard | undefined> {
+    return this.#tables.transaction((sql) => this.#read(sql, offeringId));
+  }
+
+  async commit(offeringId: OfferingId, write: BoardWrite, expectedRevision: number): Promise<void> {
+    const t = DISTRICT_TABLES;
+    const settings = DiscussionSettings.parse(write.settings);
+    const topics = write.topics.map((topic) => DiscussionTopic.parse(topic));
+    const posts = write.posts.map((post) => DiscussionPost.parse(post));
+    const moderation = write.moderation.map((event) => ModerationEvent.parse(event));
+    if ([...topics, ...posts].some((record) => record.offeringId !== offeringId)) throw new Error("a discussion write names another offering");
+    this.#tables.transaction((sql) => {
+      const [head] = sql.exec(`SELECT revision FROM ${t.discussionBoards} WHERE offering_id = ?`, offeringId).toArray();
+      if (Number(head?.revision ?? 0) !== expectedRevision) throw new SchoolOsError("conflict", DISCUSSION_CONFLICT);
+      for (const topicId of write.deletedTopicIds) {
+        sql.exec(`DELETE FROM ${t.discussionTopics} WHERE offering_id = ? AND topic_id = ?`, offeringId, topicId);
+        sql.exec(`DELETE FROM ${t.discussionPosts} WHERE offering_id = ? AND topic_id = ?`, offeringId, topicId);
+      }
+      for (const topic of topics) {
+        sql.exec(
+          `INSERT INTO ${t.discussionTopics} (offering_id, topic_id, topic_json) VALUES (?, ?, ?)
+           ON CONFLICT (offering_id, topic_id) DO UPDATE SET topic_json = excluded.topic_json`,
+          offeringId, topic.id, JSON.stringify(topic),
+        );
+      }
+      for (const post of posts) {
+        sql.exec(
+          `INSERT INTO ${t.discussionPosts} (offering_id, post_id, topic_id, post_json) VALUES (?, ?, ?, ?)
+           ON CONFLICT (offering_id, post_id) DO UPDATE SET topic_id = excluded.topic_id, post_json = excluded.post_json`,
+          offeringId, post.id, post.topicId, JSON.stringify(post),
+        );
+      }
+      const [{ count }] = sql.exec(`SELECT COUNT(*) AS count FROM ${t.discussionModeration} WHERE offering_id = ?`, offeringId).toArray() as [{ count: number }];
+      for (const [i, event] of moderation.entries()) {
+        sql.exec(`INSERT INTO ${t.discussionModeration} (offering_id, position, event_json) VALUES (?, ?, ?)`, offeringId, Number(count) + i, JSON.stringify(event));
+      }
+      sql.exec(
+        `INSERT INTO ${t.discussionBoards} (offering_id, revision, settings_json) VALUES (?, ?, ?)
+         ON CONFLICT (offering_id) DO UPDATE SET revision = excluded.revision, settings_json = excluded.settings_json`,
+        offeringId, write.revision, JSON.stringify(settings),
+      );
+    });
+  }
+
+  #read(sql: DistrictSqlStorage["sql"], offeringId: OfferingId): DiscussionBoard | undefined {
+    const t = DISTRICT_TABLES;
+    const [head] = sql.exec(`SELECT revision, settings_json FROM ${t.discussionBoards} WHERE offering_id = ?`, offeringId).toArray();
+    if (head === undefined) return undefined;
+    const what = `the discussions of ${offeringId}`;
+    const moderation = sql.exec(`SELECT position, event_json FROM ${t.discussionModeration} WHERE offering_id = ? ORDER BY position`, offeringId).toArray();
+    if (moderation.some((row, i) => row.position !== i)) throw new DistrictStoreCorruptionError(`${what} have an incomplete moderation trail`);
+    const parsed = DiscussionBoard.safeParse({
+      offeringId,
+      revision: head.revision,
+      settings: parseStored(DiscussionSettings, head.settings_json, what),
+      topics: sql.exec(`SELECT topic_json FROM ${t.discussionTopics} WHERE offering_id = ? ORDER BY topic_id`, offeringId).toArray()
+        .map((row) => parseStored(DiscussionTopic, row.topic_json, what)),
+      posts: sql.exec(`SELECT post_json FROM ${t.discussionPosts} WHERE offering_id = ? ORDER BY post_id`, offeringId).toArray()
+        .map((row) => parseStored(DiscussionPost, row.post_json, what)),
+      moderation: moderation.map((row) => parseStored(ModerationEvent, row.event_json, what)),
+    });
+    if (!parsed.success) throw new DistrictStoreCorruptionError(`${what} do not match their schema`);
+    return parsed.data;
+  }
 }

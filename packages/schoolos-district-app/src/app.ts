@@ -40,6 +40,8 @@ import { guardianHandlers, type GuardianRouteName } from "./guardians.ts";
 // Communication (SCHO-189)
 import { calendarFeedPath } from "./routes.ts";
 import { CommunicationService, digestWeekOf, FamilyDigest, isEmpty, renderDigest, type MailSender } from "./communication/index.ts";
+// Discussions (SCHO-190)
+import { DiscussionService, studentPostView, type DiscussionScreening } from "@schoolos/discussions";
 
 /**
  * Verifies a request's credential (a bearer token, a Cloudflare Access assertion) and returns the
@@ -125,6 +127,14 @@ export interface DistrictAppOptions {
   mail?: MailSender;
   /** The district's SchoolOS address, linked from emails. */
   appUrl?: string;
+
+  // Discussions (SCHO-190).
+  /**
+   * Hall Monitor screening for students' discussion posts: the district's Hall Monitor client and
+   * the policy profile posts are evaluated under. Without it, student posts are published
+   * unscreened, and teachers moderate them after (or approve each first, under pre-moderation).
+   */
+  discussionScreening?: DiscussionScreening;
 }
 
 /** The district's communication jobs, which the district Worker runs on its Cron Triggers (SCHO-189). */
@@ -413,6 +423,27 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     // Gradebook (SCHO-187)
     gradebook(): GradebookService {
       return new GradebookService({ records: stores.assessment, gradebooks: stores.gradebooks, directory: stores.directory, policy: this.decider, now });
+    }
+
+    // Discussions (SCHO-190).
+    discussions(): DiscussionService {
+      return new DiscussionService({
+        districtId,
+        directory: this.snapshot,
+        authorizer: this.authorizer,
+        channel: "http",
+        storage: stores.discussions,
+        courseContent: stores.courseContent,
+        assignmentsIn: async (offeringId) => (await stores.assessment.load()).state.assignments.filter((a) => a.offeringId === offeringId).map((a) => a.id),
+        ...(options.discussionScreening === undefined ? {} : { screening: options.discussionScreening }),
+        now: () => now().toISOString(),
+      });
+    }
+
+    /** The display names of the principals who wrote `posts`. */
+    discussionAuthors(posts: readonly ({ authorId: string } | object)[]) {
+      const ids = new Set(posts.flatMap((post) => ("authorId" in post ? [post.authorId] : [])));
+      return this.snapshot.principals.filter((p) => ids.has(p.id)).map((p) => ({ principalId: p.id, displayName: p.displayName }));
     }
   }
 
@@ -787,13 +818,14 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     },
     "teacher.reorderModuleItems": (ctx, { params, body }) => ctx.courseContent().reorderItems(ctx.subject, params.offeringId, params.moduleId, body),
     "teacher.previewCartridge": (ctx, { params, body }) => previewCourseCartridge(ctx.courseContent(), ctx.subject, params.offeringId, body.base64),
-    "teacher.importCartridge": (ctx, { params, body }) => importCourseCartridge(ctx.courseContent(), ctx.subject, { offeringId: params.offeringId, ...body }),
+    "teacher.importCartridge": (ctx, { params, body }) => importCourseCartridge(ctx.courseContent(), ctx.subject, { offeringId: params.offeringId, ...body }, ctx.discussions()),
     "teacher.exportCartridge": async (ctx, { params }) => {
       const { view, outline } = await ctx.courseContent().outline(ctx.subject, params.offeringId);
       if (view !== "teacher") throw new SchoolOsError("forbidden", "Only the class's teachers can export its content.");
       const offering = ctx.snapshot.offerings.find((o) => o.id === params.offeringId)!;
       const course = ctx.snapshot.courses.find((c) => c.id === offering.courseId);
-      return exportCourseCartridge(outline, course?.title ?? "Course", offering.sectionName);
+      const { topics } = await ctx.discussions().listTopics(ctx.subject, params.offeringId);
+      return exportCourseCartridge(outline, course?.title ?? "Course", offering.sectionName, topics.map((t) => t.topic));
     },
     "admin.authoring": async (ctx) => {
       await ctx.requireDistrict("list", "principal");
@@ -880,6 +912,56 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       const digest = await familyDigest(communicationFor(ctx.decider, ctx.assessment())).build(params.guardianPrincipalId);
       if (digest === undefined) throw new SchoolOsError("not-found", `guardian ${params.guardianPrincipalId} was not found.`);
       return { digest, ...renderDigest(digest, options.appUrl), empty: isEmpty(digest) };
+    },
+
+    // Discussions (SCHO-190). Kept in one block, apart from the handlers above.
+    "student.listDiscussions": (ctx, { params }) => ctx.discussions().listTopics(ctx.subject, params.offeringId),
+    "student.discussionThread": async (ctx, { params }) => {
+      const thread = await ctx.discussions().thread(ctx.subject, params.offeringId, params.topicId);
+      // The student surface answers students only, who always get the student view.
+      if (thread.view !== "student") throw new SchoolOsError("not-found", "no such discussion");
+      return { topic: thread.topic, posts: thread.posts, authors: ctx.discussionAuthors(thread.posts) };
+    },
+    "student.createPost": async (ctx, { params, body }) =>
+      studentPostView(await ctx.discussions().createPost(ctx.subject, params.offeringId, params.topicId, body), ctx.subject.principalId),
+    "student.editPost": async (ctx, { params, body }) =>
+      studentPostView(await ctx.discussions().editPost(ctx.subject, params.offeringId, params.postId, body), ctx.subject.principalId),
+    "student.deletePost": async (ctx, { params }) => {
+      await ctx.discussions().deletePost(ctx.subject, params.offeringId, params.postId);
+      return { deleted: true as const };
+    },
+    "student.reportPost": async (ctx, { params, body }) => {
+      await ctx.discussions().report(ctx.subject, params.offeringId, params.postId, body);
+      return { reported: true as const };
+    },
+    "teacher.listDiscussions": (ctx, { params }) => ctx.discussions().listTopics(ctx.subject, params.offeringId),
+    "teacher.discussionThread": async (ctx, { params }) => {
+      const thread = await ctx.discussions().thread(ctx.subject, params.offeringId, params.topicId);
+      if (thread.view !== "staff") throw new SchoolOsError("not-found", "no such discussion");
+      return { topic: thread.topic, posts: thread.posts, authors: ctx.discussionAuthors(thread.posts) };
+    },
+    "teacher.createTopic": (ctx, { params, body }) => ctx.discussions().createTopic(ctx.subject, params.offeringId, body),
+    "teacher.updateTopic": (ctx, { params, body }) => ctx.discussions().updateTopic(ctx.subject, params.offeringId, params.topicId, body),
+    "teacher.deleteTopic": async (ctx, { params }) => {
+      await ctx.discussions().deleteTopic(ctx.subject, params.offeringId, params.topicId);
+      return { deleted: true as const };
+    },
+    "teacher.createPost": (ctx, { params, body }) => ctx.discussions().createPost(ctx.subject, params.offeringId, params.topicId, body),
+    "teacher.editPost": (ctx, { params, body }) => ctx.discussions().editPost(ctx.subject, params.offeringId, params.postId, body),
+    "teacher.deletePost": async (ctx, { params }) => {
+      await ctx.discussions().deletePost(ctx.subject, params.offeringId, params.postId);
+      return { deleted: true as const };
+    },
+    "teacher.moderatePost": (ctx, { params, body }) => ctx.discussions().moderate(ctx.subject, params.offeringId, params.postId, body),
+    "teacher.moderationQueue": async (ctx, { params }) => {
+      const queue = await ctx.discussions().moderationQueue(ctx.subject, params.offeringId);
+      return { ...queue, authors: ctx.discussionAuthors([...queue.pending, ...queue.flagged]) };
+    },
+    "teacher.discussionSettings": (ctx, { params, body }) => ctx.discussions().updateSettings(ctx.subject, params.offeringId, body),
+    "teacher.discussionParticipation": async (ctx, { params }) => {
+      // Reading the assignment is the teacher's check that it is theirs, and names its offering.
+      const { assignment } = await ctx.assessment().getAssignment(ctx.caller, params.assignmentId);
+      return ctx.discussions().participation(ctx.subject, assignment.offeringId, assignment.id, params.principalId);
     },
   };
 

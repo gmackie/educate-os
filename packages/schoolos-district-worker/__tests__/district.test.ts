@@ -237,6 +237,23 @@ describe("the district Worker", () => {
     expect(await env.TOOLS.declineChange(admin!, approvalId, "Terms come from the roster.")).toMatchObject({ status: "declined", approvalId });
     expect(await env.TOOLS.approveChange(admin!, approvalId)).toMatchObject({ status: "error" });
   });
+
+  // Discussions (SCHO-190).
+  it("keeps a class discussion and its moderation across a restart", async () => {
+    const teacher = await signIn(NF.rivera);
+    const student = await signIn(NF.amara);
+    const topic = await ok(teacher, "teacher.createTopic", { params: { offeringId: NF.eng9 }, body: { title: "Later start?", prompt: "Say why." } });
+    const post = await ok(student, "student.createPost", { params: { offeringId: NF.eng9, topicId: topic.id }, body: { body: "Sleep matters." } });
+    await ok(student, "student.createPost", { params: { offeringId: NF.eng9, topicId: topic.id }, body: { body: "Also, buses.", parentId: post.id } });
+    await ok(teacher, "teacher.moderatePost", { params: { offeringId: NF.eng9, postId: post.id }, body: { decision: "hide" } });
+
+    await evictDurableObject(district());
+    const thread = await ok(teacher, "teacher.discussionThread", { params: { offeringId: NF.eng9, topicId: topic.id } });
+    expect(thread.posts.map((p) => [p.body, p.status])).toStrictEqual([["Sleep matters.", "hidden"], ["Also, buses.", "visible"]]);
+    const seen = await ok(student, "student.discussionThread", { params: { offeringId: NF.eng9, topicId: topic.id } });
+    expect(seen.posts.map((p) => p.status)).toStrictEqual(["withdrawn", "visible"]);
+    expect((await ok(teacher, "teacher.moderationQueue", { params: { offeringId: NF.eng9 } })).recent.map((e) => e.action)).toStrictEqual(["hide"]);
+  });
 });
 
 // Guardians (ADR-0012, SCHO-188)
