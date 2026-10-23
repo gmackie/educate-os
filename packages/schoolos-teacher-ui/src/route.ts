@@ -12,7 +12,9 @@ export type Route =
   | { screen: "review"; offeringId: string; assignmentId: string; submissionId: string }
   // Gradebook (SCHO-187)
   | { screen: "gradebook"; offeringId: string }
-  | { screen: "announcements"; offeringId: string };
+  | { screen: "announcements"; offeringId: string }
+  // Discussions (SCHO-190).
+  | { screen: "discussions"; offeringId: string };
 
 /** The sections of a class, in navigation order. */
 export const CLASS_SECTIONS = [
@@ -24,6 +26,8 @@ export const CLASS_SECTIONS = [
   // Gradebook (SCHO-187)
   { screen: "gradebook", label: "Gradebook" },
   { screen: "announcements", label: "Announcements" },
+  // Discussions (SCHO-190).
+  { screen: "discussions", label: "Discussions" },
 ] as const;
 
 /** The hash a route lives at. */
@@ -37,6 +41,7 @@ export const routeHref = (route: Route): string => {
     case "create":
     case "gradebook":
     case "announcements":
+    case "discussions":
       return `#/classes/${encodeURIComponent(route.offeringId)}/${route.screen}`;
     case "resource":
       return `#/classes/${encodeURIComponent(route.offeringId)}/resources/${encodeURIComponent(route.itemId)}`;
@@ -55,7 +60,7 @@ export const parseRoute = (hash: string): Route => {
   if (parts[0] !== "classes" || parts[1] === undefined) return { screen: "classes" };
   const offeringId = parts[1];
   const [section, id, child, childId] = parts.slice(2);
-  if (section === "roster" || section === "modules" || section === "create" || section === "gradebook" || section === "announcements") return { screen: section, offeringId };
+  if (section === "roster" || section === "modules" || section === "create" || section === "gradebook" || section === "announcements" || section === "discussions") return { screen: section, offeringId };
   if (section === "resources") return id === undefined ? { screen: "resources", offeringId } : { screen: "resource", offeringId, itemId: id };
   if (section === "submissions") return { screen: "submissions", offeringId };
   if (section === "assignments" && id !== undefined) {

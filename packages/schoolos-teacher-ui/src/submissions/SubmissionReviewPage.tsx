@@ -13,6 +13,7 @@ import { OfficialGrade } from "./OfficialGrade.tsx";
 import { reviewCriteria, teacherTotal } from "./rubricCriteria.ts";
 import { RubricScores } from "./RubricScores.tsx";
 import { SubmittedWork } from "./SubmittedWork.tsx";
+import { DiscussionParticipation } from "../discussions/DiscussionParticipation.tsx";
 
 /**
  * One student's submission: their work as turned in, the automatic checks, the rubric with
@@ -75,6 +76,8 @@ export const SubmissionReviewPage = ({ teaching, assignmentId, submissionId }: {
           <SubmittedWork key={submitted.item.artifactId} submissionId={submissionId} submitted={submitted} index={index} onCommented={feedback.reload} />
         ))}
       </section>
+
+      <DiscussionParticipation offeringId={offeringId} assignmentId={assignmentId} studentPrincipalId={submission.studentPrincipalId} student={student} />
 
       <CheckResults
         submissionId={submissionId}
