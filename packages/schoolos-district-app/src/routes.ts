@@ -85,7 +85,7 @@ import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type 
 import type { ConfigProblem, ConfigurationPlan } from "@schoolos/config";
 import type { oneroster } from "@schoolos/integrations";
 // Guardians (ADR-0012, SCHO-188)
-import { AcademicTerm, GuardianRelationship, GuardianRelationshipId, OpaqueCode, PrincipalStatus } from "@schoolos/contracts";
+import { GuardianRelationship, GuardianRelationshipId, OpaqueCode, PrincipalStatus } from "@schoolos/contracts";
 import { GuardianRelationshipAuditEvent, GuardianRelationshipScope } from "@schoolos/policy";
 import { GuardianInvitationId, GuardianInvitationRedemption, IdentityRequestId, NewGuardianInvitation } from "@schoolos/identity-links";
 
