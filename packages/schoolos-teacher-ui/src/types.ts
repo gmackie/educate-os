@@ -80,3 +80,7 @@ export type GradebookRow = Gradebook["rows"][number];
 export type GradebookCell = GradebookRow["cells"][number];
 /** What a teacher marks on a cell. */
 export type GradeMarker = NonNullable<GradebookCell["marker"]>;
+/** An announcement to a class, with whether students can see it yet (SCHO-189). */
+export type ClassAnnouncement = RouteResponse<"teacher.listAnnouncements">[number];
+/** A class's note to families for one week (SCHO-189). */
+export type WeeklyNoteView = RouteResponse<"teacher.weeklyNote">;

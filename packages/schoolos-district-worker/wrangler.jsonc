@@ -11,6 +11,17 @@
       "invocation_logs": false
     }
   },
+  "send_email": [
+    {
+      "name": "SEND_EMAIL"
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "7 * * * *",
+      "0 14 * * SUN"
+    ]
+  },
   "build": {
     "command": "pnpm exec capnweb-validate build --out .wrangler/validate --tsconfig tsconfig.validate.json",
     "watch_dir": "src"

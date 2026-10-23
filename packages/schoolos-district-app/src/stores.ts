@@ -33,6 +33,8 @@ import type { WorkshopUserLink } from "@schoolos/identity";
 import { InMemoryGuardianRelationshipStore, type GuardianRelationshipStore } from "@schoolos/policy";
 import { InMemoryGuardianInvitationStore, InMemoryIdentityLinkStore, type GuardianInvitationStore, type IdentityLinkStore } from "@schoolos/identity-links";
 import type { FundingAllocationRevision } from "./routes.ts";
+// Communication (SCHO-189)
+import { inMemoryCommunicationStores, type CommunicationStores } from "./communication/stores.ts";
 
 /**
  * A district's configuration revisions, oldest first. Only applied revisions are kept: a draft or
@@ -208,6 +210,9 @@ export interface DistrictAppStores {
   // Gradebook (SCHO-187)
   /** Each offering's gradebook settings and cell markers. */
   gradebooks: GradebookStore;
+  // Communication (SCHO-189)
+  /** Announcements, weekly notes, notifications, calendar feeds, email preferences and the digest ledger. */
+  communication: CommunicationStores;
 }
 
 /** In-memory stores for one district, seeded with its directory. */
@@ -237,5 +242,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     identityLinks: new InMemoryIdentityLinkStore(directory.district.id),
     // Gradebook (SCHO-187)
     gradebooks: new InMemoryGradebookStore(),
+    // Communication (SCHO-189)
+    communication: inMemoryCommunicationStores(),
   };
 }

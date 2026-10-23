@@ -101,7 +101,12 @@ export interface FakeDistrict extends DistrictApiClient {
 }
 
 /** A Northfield student with an English and a science class this term and a finished art class. */
-export function fakeDistrict(options: { aiHelp?: "full" | "hints-only" | "none"; modules?: Record<string, unknown> } = {}): FakeDistrict {
+export function fakeDistrict(options: {
+  aiHelp?: "full" | "hints-only" | "none";
+  modules?: Record<string, unknown>;
+  /** Whether English has posted its library announcement (SCHO-189). */
+  announcements?: boolean;
+} = {}): FakeDistrict {
   let counter = 0;
   const next = (prefix: string) => `${prefix}_${(++counter).toString().padStart(4, "0")}`;
   const time = () => new Date(Date.parse(NOW) + counter * 60_000).toISOString();
@@ -205,7 +210,50 @@ export function fakeDistrict(options: { aiHelp?: "full" | "hints-only" | "none";
     return stored;
   };
 
+  // Communication (SCHO-189): one English announcement, two notifications, a calendar, preferences
+  // and a calendar feed whose token is kept only as the path it was last shown at.
+  const ANNOUNCEMENT = {
+    announcement: {
+      id: "ann_library", districtId: DISTRICT, offeringId: ENGLISH, title: "Library visit <Friday>", body: "Bring your card.\nWe meet at the door.",
+      publishAt: "2026-10-19T13:00:00.000Z", created: { by: "prn_nf-teacher-rivera", at: "2026-10-19T13:00:00.000Z" },
+    },
+    courseLabel: "English 9 (Period 3)",
+    published: true,
+  };
+  const notifications: (Record<string, unknown> & { id: string; readAt?: string })[] = [
+    { id: `ntf_${"1".repeat(32)}`, principalId: ME, kind: "announcement", offeringId: ENGLISH, title: "New announcement in English 9 (Period 3): Library visit <Friday>", ref: { announcementId: "ann_library" }, occurredAt: "2026-10-19T13:00:00.000Z", createdAt: NOW },
+    { id: `ntf_${"2".repeat(32)}`, principalId: ME, kind: "assignment-due-soon", offeringId: SCIENCE, title: "Due soon in Biology (Period 1): Osmosis in potato cores", ref: { assignmentId: OSMOSIS }, occurredAt: "2026-10-18T13:00:00.000Z", createdAt: NOW, readAt: NOW },
+  ];
+  let preferences = { email: { announcements: true, assignments: true, feedback: true, grades: true, digest: true }, hasEmailAddress: true, emailEnabled: true };
+  let feed: { createdAt: string; path: string } | undefined;
+  const CALENDAR = [
+    { uid: "term-start-trm_fall@dst_northfield.schoolos", kind: "term-start", title: "Fall 2026 begins", start: "2026-10-19", allDay: true },
+    { uid: `due-${ESSAY}@dst_northfield.schoolos`, kind: "assignment-due", title: "Due: Should the school day start later? — English 9 (Period 3)", start: "2026-10-22T21:00:00.000Z", allDay: false, offeringId: ENGLISH, assignmentId: ESSAY },
+    { uid: `due-${LAB_REPORT}@dst_northfield.schoolos`, kind: "assignment-due", title: "Due: Osmosis lab report — Biology (Period 1)", start: "2026-11-12T21:00:00.000Z", allDay: false, offeringId: SCIENCE, assignmentId: LAB_REPORT },
+  ];
+
   const handlers: Handlers = {
+    "student.announcements": () => (options.announcements === true ? [ANNOUNCEMENT] : []),
+    "student.courseAnnouncements": ({ params }) => (options.announcements === true && params.offeringId === ENGLISH ? [ANNOUNCEMENT] : []),
+    "me.notifications": () => ({ notifications, unread: notifications.filter((n) => n.readAt === undefined).length }),
+    "me.markNotificationsRead": ({ body }) => {
+      for (const n of notifications) if (body?.all === true || body?.ids?.includes(n.id)) n.readAt = NOW;
+      return { unread: notifications.filter((n) => n.readAt === undefined).length };
+    },
+    // The whole calendar, whatever the range: the screen places each event on its own day.
+    "me.calendar": ({ query }) => ({ from: query?.from ?? NOW, to: query?.to ?? NOW, events: CALENDAR }),
+    "me.preferences": () => preferences,
+    "me.updatePreferences": ({ body }) => (preferences = { ...preferences, email: { ...preferences.email, ...body.email } }),
+    "me.calendarFeed": () => (feed === undefined ? { active: false } : { active: true, createdAt: feed.createdAt }),
+    "me.rotateCalendarFeed": () => {
+      const token = `${next("tok").replace("_", "")}${"x".repeat(35)}`;
+      feed = { createdAt: NOW, path: `/api/calendar/${token}.ics` };
+      return { token, path: feed.path, createdAt: NOW };
+    },
+    "me.revokeCalendarFeed": () => {
+      feed = undefined;
+      return { active: false };
+    },
     "me.get": () => ({ principalId: ME, districtId: DISTRICT, kind: "student", displayName: "Amara Okafor", roles: [], enrollments: [{ offeringId: ENGLISH, role: "student" }, { offeringId: SCIENCE, role: "student" }] }),
     "student.listWorkspaces": () => workspaces,
     "student.openPersonalWorkspace": () => workspaces[0],

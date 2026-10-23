@@ -94,6 +94,24 @@ import {
 import { DurableObjectIdentityLinkStore } from "@schoolos/identity-links/durable-object-store";
 import { FundingAllocationRevision } from "./routes.ts";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, WorkshopUserLinkStore } from "./stores.ts";
+// Communication (SCHO-189)
+import {
+  Announcement,
+  CalendarFeed,
+  DigestLedgerEntry,
+  EmailPreferences,
+  Notification,
+  WeeklyNote,
+  type AnnouncementId,
+  type IsoWeek,
+  type AnnouncementStore,
+  type CalendarFeedStore,
+  type CommunicationStores,
+  type DigestLedgerStore,
+  type NotificationStore,
+  type PreferenceStore,
+  type WeeklyNoteStore,
+} from "./communication/index.ts";
 
 /** A value SQLite stores in one column. */
 export type DistrictSqlValue = string | number | null | ArrayBuffer;
@@ -973,6 +991,8 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     identityLinks: new DurableObjectIdentityLinkStore(storage, seed.district.id),
     // Gradebook (SCHO-187)
     gradebooks: new DurableObjectGradebookStore(storage),
+    // Communication (SCHO-189)
+    communication: durableCommunicationStores(storage),
   };
 }
 
@@ -1056,4 +1076,291 @@ export class DurableObjectGradebookStore implements GradebookStore {
       );
     });
   }
+}
+
+// Communication (SCHO-189): announcements, weekly notes, notifications, calendar feeds, email
+// preferences and the digest ledger, one row per record in the district's object.
+
+/** The communication stores' tables. Exported so tests and operators can name them. */
+export const COMMUNICATION_TABLES = {
+  announcements: "schoolos_comm_announcements",
+  weeklyNotes: "schoolos_comm_weekly_notes",
+  notifications: "schoolos_comm_notifications",
+  calendarFeeds: "schoolos_comm_calendar_feeds",
+  preferences: "schoolos_comm_preferences",
+  digestLedger: "schoolos_comm_digest_ledger",
+} as const;
+
+/** An {@link AnnouncementStore} in a Durable Object's SQLite: one row per announcement. */
+export class DurableObjectAnnouncementStore implements AnnouncementStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${COMMUNICATION_TABLES.announcements} (
+        id TEXT PRIMARY KEY, offering_id TEXT NOT NULL, publish_at TEXT NOT NULL, announcement_json TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${COMMUNICATION_TABLES.announcements}_offering ON ${COMMUNICATION_TABLES.announcements} (offering_id, publish_at)`,
+    ]);
+  }
+
+  async list(offeringId: OfferingId): Promise<Announcement[]> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`SELECT announcement_json FROM ${COMMUNICATION_TABLES.announcements} WHERE offering_id = ? ORDER BY publish_at, id`, offeringId).toArray()
+        .map((row) => parseStored(Announcement, row.announcement_json, "an announcement"))
+    );
+  }
+
+  async get(id: AnnouncementId): Promise<Announcement | undefined> {
+    const [row] = this.#tables.transaction((sql) => sql.exec(`SELECT announcement_json FROM ${COMMUNICATION_TABLES.announcements} WHERE id = ?`, id).toArray());
+    return row === undefined ? undefined : parseStored(Announcement, row.announcement_json, "an announcement");
+  }
+
+  async put(announcement: Announcement): Promise<void> {
+    const parsed = Announcement.parse(announcement);
+    this.#tables.transaction((sql) =>
+      sql.exec(
+        `INSERT INTO ${COMMUNICATION_TABLES.announcements} (id, offering_id, publish_at, announcement_json) VALUES (?, ?, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET offering_id = excluded.offering_id, publish_at = excluded.publish_at, announcement_json = excluded.announcement_json`,
+        parsed.id,
+        parsed.offeringId,
+        parsed.publishAt,
+        JSON.stringify(parsed),
+      )
+    );
+  }
+}
+
+/** A {@link WeeklyNoteStore} in a Durable Object's SQLite: one row per offering and week. */
+export class DurableObjectWeeklyNoteStore implements WeeklyNoteStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${COMMUNICATION_TABLES.weeklyNotes} (
+        offering_id TEXT NOT NULL, week TEXT NOT NULL, note_json TEXT NOT NULL, PRIMARY KEY (offering_id, week)
+      )`,
+    ]);
+  }
+
+  async get(offeringId: OfferingId, week: IsoWeek): Promise<WeeklyNote | undefined> {
+    const [row] = this.#tables.transaction((sql) =>
+      sql.exec(`SELECT note_json FROM ${COMMUNICATION_TABLES.weeklyNotes} WHERE offering_id = ? AND week = ?`, offeringId, week).toArray()
+    );
+    return row === undefined ? undefined : parseStored(WeeklyNote, row.note_json, "a weekly note");
+  }
+
+  async put(note: WeeklyNote): Promise<void> {
+    const parsed = WeeklyNote.parse(note);
+    this.#tables.transaction((sql) =>
+      sql.exec(
+        `INSERT INTO ${COMMUNICATION_TABLES.weeklyNotes} (offering_id, week, note_json) VALUES (?, ?, ?)
+         ON CONFLICT (offering_id, week) DO UPDATE SET note_json = excluded.note_json`,
+        parsed.offeringId,
+        parsed.week,
+        JSON.stringify(parsed),
+      )
+    );
+  }
+
+  async delete(offeringId: OfferingId, week: IsoWeek): Promise<void> {
+    this.#tables.transaction((sql) => sql.exec(`DELETE FROM ${COMMUNICATION_TABLES.weeklyNotes} WHERE offering_id = ? AND week = ?`, offeringId, week));
+  }
+}
+
+/**
+ * A {@link NotificationStore} in a Durable Object's SQLite: one row per notification, keyed by its
+ * derived ID, so adding one already stored is a no-op inside the same transaction as the check.
+ */
+export class DurableObjectNotificationStore implements NotificationStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${COMMUNICATION_TABLES.notifications} (
+        id TEXT PRIMARY KEY, principal_id TEXT NOT NULL, occurred_at TEXT NOT NULL, email_pending INTEGER NOT NULL, notification_json TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${COMMUNICATION_TABLES.notifications}_principal ON ${COMMUNICATION_TABLES.notifications} (principal_id, occurred_at)`,
+      `CREATE INDEX IF NOT EXISTS ${COMMUNICATION_TABLES.notifications}_pending ON ${COMMUNICATION_TABLES.notifications} (email_pending, occurred_at)`,
+    ]);
+  }
+
+  async list(principalId: PrincipalId): Promise<Notification[]> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`SELECT notification_json FROM ${COMMUNICATION_TABLES.notifications} WHERE principal_id = ? ORDER BY occurred_at DESC, id`, principalId).toArray()
+        .map((row) => parseStored(Notification, row.notification_json, "a notification"))
+    );
+  }
+
+  async addIfAbsent(notifications: readonly Notification[]): Promise<Notification[]> {
+    const parsed = notifications.map((n) => Notification.parse(n));
+    return this.#tables.transaction((sql) =>
+      parsed.filter((n) =>
+        sql.exec(
+          `INSERT INTO ${COMMUNICATION_TABLES.notifications} (id, principal_id, occurred_at, email_pending, notification_json) VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT (id) DO NOTHING RETURNING id`,
+          n.id,
+          n.principalId,
+          n.occurredAt,
+          n.email === undefined ? 1 : 0,
+          JSON.stringify(n),
+        ).toArray().length > 0
+      )
+    );
+  }
+
+  async update(notifications: readonly Notification[]): Promise<void> {
+    const parsed = notifications.map((n) => Notification.parse(n));
+    this.#tables.transaction((sql) => {
+      for (const n of parsed) {
+        sql.exec(
+          `UPDATE ${COMMUNICATION_TABLES.notifications} SET email_pending = ?, notification_json = ? WHERE id = ? AND principal_id = ?`,
+          n.email === undefined ? 1 : 0,
+          JSON.stringify(n),
+          n.id,
+          n.principalId,
+        );
+      }
+    });
+  }
+
+  async pendingEmail(): Promise<Notification[]> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`SELECT notification_json FROM ${COMMUNICATION_TABLES.notifications} WHERE email_pending = 1 ORDER BY occurred_at, id`).toArray()
+        .map((row) => parseStored(Notification, row.notification_json, "a notification"))
+    );
+  }
+}
+
+/** A {@link CalendarFeedStore} in a Durable Object's SQLite: one row per principal, the token hash unique. */
+export class DurableObjectCalendarFeedStore implements CalendarFeedStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${COMMUNICATION_TABLES.calendarFeeds} (
+        principal_id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE, feed_json TEXT NOT NULL
+      )`,
+    ]);
+  }
+
+  async get(principalId: PrincipalId): Promise<CalendarFeed | undefined> {
+    const [row] = this.#tables.transaction((sql) => sql.exec(`SELECT feed_json FROM ${COMMUNICATION_TABLES.calendarFeeds} WHERE principal_id = ?`, principalId).toArray());
+    return row === undefined ? undefined : parseStored(CalendarFeed, row.feed_json, "a calendar feed");
+  }
+
+  async findByHash(tokenHash: string): Promise<CalendarFeed | undefined> {
+    const [row] = this.#tables.transaction((sql) => sql.exec(`SELECT feed_json FROM ${COMMUNICATION_TABLES.calendarFeeds} WHERE token_hash = ?`, tokenHash).toArray());
+    return row === undefined ? undefined : parseStored(CalendarFeed, row.feed_json, "a calendar feed");
+  }
+
+  async put(feed: CalendarFeed): Promise<void> {
+    const parsed = CalendarFeed.parse(feed);
+    this.#tables.transaction((sql) => {
+      const [taken] = sql.exec(`SELECT principal_id FROM ${COMMUNICATION_TABLES.calendarFeeds} WHERE token_hash = ?`, parsed.tokenHash).toArray();
+      if (taken !== undefined && taken.principal_id !== parsed.principalId) throw new SchoolOsError("conflict", "That calendar token is already in use.");
+      sql.exec(
+        `INSERT INTO ${COMMUNICATION_TABLES.calendarFeeds} (principal_id, token_hash, feed_json) VALUES (?, ?, ?)
+         ON CONFLICT (principal_id) DO UPDATE SET token_hash = excluded.token_hash, feed_json = excluded.feed_json`,
+        parsed.principalId,
+        parsed.tokenHash,
+        JSON.stringify(parsed),
+      );
+    });
+  }
+
+  async delete(principalId: PrincipalId): Promise<void> {
+    this.#tables.transaction((sql) => sql.exec(`DELETE FROM ${COMMUNICATION_TABLES.calendarFeeds} WHERE principal_id = ?`, principalId));
+  }
+}
+
+/** A {@link PreferenceStore} in a Durable Object's SQLite: one row per principal. */
+export class DurableObjectPreferenceStore implements PreferenceStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${COMMUNICATION_TABLES.preferences} (principal_id TEXT PRIMARY KEY, preferences_json TEXT NOT NULL)`,
+    ]);
+  }
+
+  async get(principalId: PrincipalId): Promise<EmailPreferences | undefined> {
+    const [row] = this.#tables.transaction((sql) => sql.exec(`SELECT preferences_json FROM ${COMMUNICATION_TABLES.preferences} WHERE principal_id = ?`, principalId).toArray());
+    return row === undefined ? undefined : parseStored(EmailPreferences, row.preferences_json, "email preferences");
+  }
+
+  async put(principalId: PrincipalId, preferences: EmailPreferences): Promise<void> {
+    const json = JSON.stringify(EmailPreferences.parse(preferences));
+    this.#tables.transaction((sql) =>
+      sql.exec(
+        `INSERT INTO ${COMMUNICATION_TABLES.preferences} (principal_id, preferences_json) VALUES (?, ?)
+         ON CONFLICT (principal_id) DO UPDATE SET preferences_json = excluded.preferences_json`,
+        principalId,
+        json,
+      )
+    );
+  }
+}
+
+/**
+ * A {@link DigestLedgerStore} in a Durable Object's SQLite: one row per guardian and week. A claim
+ * checks and writes in one transaction, so of two runs exactly one claims a week.
+ */
+export class DurableObjectDigestLedgerStore implements DigestLedgerStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${COMMUNICATION_TABLES.digestLedger} (
+        guardian_id TEXT NOT NULL, week TEXT NOT NULL, status TEXT NOT NULL, entry_json TEXT NOT NULL, PRIMARY KEY (guardian_id, week)
+      )`,
+    ]);
+  }
+
+  async get(guardianPrincipalId: PrincipalId, week: IsoWeek): Promise<DigestLedgerEntry | undefined> {
+    return this.#tables.transaction((sql) => this.#read(sql, guardianPrincipalId, week));
+  }
+
+  async claim(entry: DigestLedgerEntry): Promise<boolean> {
+    const parsed = DigestLedgerEntry.parse(entry);
+    return this.#tables.transaction((sql) => {
+      const existing = this.#read(sql, parsed.guardianPrincipalId, parsed.week);
+      if (existing !== undefined && existing.status !== "failed") return false;
+      this.#write(sql, parsed);
+      return true;
+    });
+  }
+
+  async finish(entry: DigestLedgerEntry): Promise<void> {
+    const parsed = DigestLedgerEntry.parse(entry);
+    this.#tables.transaction((sql) => this.#write(sql, parsed));
+  }
+
+  #read(sql: DistrictSqlStorage["sql"], guardianPrincipalId: string, week: string): DigestLedgerEntry | undefined {
+    const [row] = sql.exec(`SELECT entry_json FROM ${COMMUNICATION_TABLES.digestLedger} WHERE guardian_id = ? AND week = ?`, guardianPrincipalId, week).toArray();
+    return row === undefined ? undefined : parseStored(DigestLedgerEntry, row.entry_json, "a digest ledger entry");
+  }
+
+  #write(sql: DistrictSqlStorage["sql"], entry: DigestLedgerEntry): void {
+    sql.exec(
+      `INSERT INTO ${COMMUNICATION_TABLES.digestLedger} (guardian_id, week, status, entry_json) VALUES (?, ?, ?, ?)
+       ON CONFLICT (guardian_id, week) DO UPDATE SET status = excluded.status, entry_json = excluded.entry_json`,
+      entry.guardianPrincipalId,
+      entry.week,
+      entry.status,
+      JSON.stringify(entry),
+    );
+  }
+}
+
+/** Every communication store in one Durable Object's SQLite storage. */
+export function durableCommunicationStores(storage: DistrictSqlStorage): CommunicationStores {
+  return {
+    announcements: new DurableObjectAnnouncementStore(storage),
+    weeklyNotes: new DurableObjectWeeklyNoteStore(storage),
+    notifications: new DurableObjectNotificationStore(storage),
+    calendarFeeds: new DurableObjectCalendarFeedStore(storage),
+    preferences: new DurableObjectPreferenceStore(storage),
+    digestLedger: new DurableObjectDigestLedgerStore(storage),
+  };
 }

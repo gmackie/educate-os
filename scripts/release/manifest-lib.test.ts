@@ -357,13 +357,17 @@ test("a service package carries its backend binding and only its own inputs", ()
 // hosted deploy service does not yet accept a service's D1 or R2 placeholders. The backend is bound
 // to the district's authenticated `/api` surface only, never to the guard's or the gatekeeper's
 // SCHOOLOS_DISTRICT entrypoints, each of which is for its one consumer.
-test("the district service declares no D1 or R2, and binds the backend to its /api surface only", () => {
+test("the district service declares no D1 or R2, sends email through Email Service, and binds the backend to its /api surface only", () => {
   const district = buildTestManifest().workers["schoolos-district-worker"];
   assert.ok(district, "expected schoolos-district-worker among the deployable packages");
   assert.equal(district.kind, "service");
   assert.deepEqual(district.backendBinding, { name: "SCHOOLOS_DISTRICT_API", entrypoint: "DistrictApi" });
   assert.equal(district.d1Migrations, undefined);
   assert.ok(!district.bindings.some((b) => b.type === "d1" || b.type === "r2_bucket"));
+  // SCHO-189: its email leaves through Email Service in the installing account, and its
+  // notification and digest jobs run on Cron Triggers.
+  assert.deepEqual(district.bindings, [{ type: "send_email", name: "SEND_EMAIL" }]);
+  assert.deepEqual(district.crons, ["7 * * * *", "0 14 * * SUN"]);
   assert.deepEqual(district.migrations, [{ tag: "v1", new_sqlite_classes: ["DistrictObject"] }]);
   assert.deepEqual(district.inputs?.map((input) => [input.name, input.kind]),
       [["DISTRICT_CONFIG", "var"], ["CF_ACCESS_ISS", "var"], ["CF_ACCESS_AUD", "var"]]);

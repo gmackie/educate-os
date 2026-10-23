@@ -21,7 +21,7 @@ function outline(root: Element): string[] {
     else if (tag === "main") line = "main";
     else if (tag === "nav") line = `navigation "${label}"`;
     else if (/^h[1-6]$/.test(tag)) line = `heading ${tag.slice(1)} "${text}"`;
-    else if (tag === "a") line = `link "${text}" → ${element.getAttribute("href")}`;
+    else if (tag === "a") line = `link "${label ?? text}" → ${element.getAttribute("href")}`;
     else if (tag === "button") line = `button "${label ?? text}"`;
     if (line !== undefined) lines.push(`${"  ".repeat(depth)}${line}`);
     for (const child of element.children) walk(child, line === undefined ? depth : depth + 1);

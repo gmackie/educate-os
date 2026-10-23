@@ -5,6 +5,8 @@ exports[`layout > puts the navigation along the bottom on a phone 1`] = `
   "layout=phone",
   "  link "Skip to content" → #main",
   "  banner",
+  "    link "Notifications, 1 unread" → /notifications",
+  "    link "Settings" → /settings",
   "  main",
   "    heading 1 "Hi, Amara Okafor"",
   "    heading 2 "My courses"",
@@ -21,5 +23,6 @@ exports[`layout > puts the navigation along the bottom on a phone 1`] = `
   "    link "Home" → /",
   "    link "My space" → /my-space",
   "    link "Grades" → /grades",
+  "    link "Calendar" → /calendar",
 ]
 `;

@@ -36,6 +36,19 @@ export const DistrictWorkerConfig = z.strictObject({
   approvedExternalHosts: z.array(z.string().min(1).max(253)).max(100).optional(),
   /** How long course workspaces are kept after their term closes. */
   retention: RetentionPolicy.optional(),
+  /**
+   * Email (SCHO-189): notification and family digest email, sent through the Worker's own
+   * `SEND_EMAIL` Cloudflare Email Service binding in the district's account. Absent, or without the
+   * binding, nothing is emailed; in-app notifications work either way.
+   */
+  email: z.strictObject({
+    /** The sender address: on a domain the district has onboarded to Email Service. */
+    from: z.email().max(254),
+    /** The sender's display name. */
+    fromName: z.string().trim().min(1).max(100).regex(/^[^\r\n<>"]+$/, "no line breaks, angle brackets or quotes").optional(),
+    /** The district's SchoolOS address, linked from every email. */
+    appUrl: z.url({ protocol: /^https$/ }).max(2048).optional(),
+  }).optional(),
 });
 /** The district Worker's configuration. */
 export type DistrictWorkerConfig = z.infer<typeof DistrictWorkerConfig>;

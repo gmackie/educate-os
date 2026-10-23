@@ -1,6 +1,7 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import { Link, Text } from "@cloudflare/kumo";
-import { BookOpenIcon, ExamIcon, HouseIcon, LockSimpleIcon, UsersThreeIcon } from "@phosphor-icons/react";
+import { BookOpenIcon, CalendarBlankIcon, ExamIcon, GearIcon, HouseIcon, LockSimpleIcon, UsersThreeIcon } from "@phosphor-icons/react";
+import { NotificationsLink } from "./communication/NotificationsLink.tsx";
 
 const DESKTOP_QUERY = "(min-width: 48rem)";
 
@@ -41,6 +42,12 @@ const MainNav = ({ label, audience }: { label: string; audience: Audience }) => 
               Grades
             </Link>
           </li>
+          <li>
+            <Link href="/calendar" variant="plain" className="flex items-center gap-2 py-2">
+              <CalendarBlankIcon aria-hidden size={20} />
+              Calendar
+            </Link>
+          </li>
         </>
       ) : (
         <li>
@@ -76,7 +83,17 @@ export const Layout = ({ studentName, audience, children }: { studentName: strin
             </span>
           </Text>
           {isPhone || audience === undefined ? null : <MainNav label="Main" audience={audience} />}
-          {studentName === undefined ? null : <Text variant="secondary">{studentName}</Text>}
+          <div className="flex items-center gap-3">
+            {audience === "student" ? (
+              <>
+                <NotificationsLink />
+                <Link href="/settings" variant="plain" className="flex items-center py-2" aria-label="Settings">
+                  <GearIcon aria-hidden size={20} />
+                </Link>
+              </>
+            ) : null}
+            {studentName === undefined ? null : <Text variant="secondary">{studentName}</Text>}
+          </div>
         </div>
       </header>
       <main id="main" tabIndex={-1} className={`mx-auto max-w-4xl px-4 py-6 outline-none ${isPhone ? "pb-28" : ""}`}>

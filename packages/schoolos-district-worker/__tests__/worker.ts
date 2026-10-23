@@ -7,6 +7,7 @@ import { createLocalJWKSet, type JWK, type JWTVerifyGetKey } from "jose";
 import { catalogSeedRelease } from "@schoolos/catalog";
 import type { PrincipalId } from "@schoolos/contracts";
 import { DistrictObject as DeployedDistrictObject } from "../src/district-object.ts";
+import type { SendEmailBinding } from "../src/mail.ts";
 
 // Named rather than `export *`: the pool finds entrypoints from the module's named exports.
 export { DistrictApi, DistrictGuardDirectory, DistrictSchoolTools } from "../src/worker.ts";
@@ -19,6 +20,24 @@ export const PAGES: Readonly<Record<string, string>> = {
 
 /** The district's object, as deployed apart from its Access keys and its web. */
 export class DistrictObject extends DeployedDistrictObject {
+  /** What the district handed its Email Service binding, since this instance started (SCHO-189). */
+  readonly #sent: Parameters<SendEmailBinding["send"]>[0][] = [];
+
+  /** Records email instead of sending it: the deployed sender is unchanged, only the binding is a recorder. */
+  protected override sendEmail(): SendEmailBinding {
+    return {
+      send: async (message) => {
+        this.#sent.push(structuredClone(message));
+        return { messageId: `test-${this.#sent.length}` };
+      },
+    };
+  }
+
+  /** The email recorded so far. */
+  async sentEmail(): Promise<Parameters<SendEmailBinding["send"]>[0][]> {
+    return structuredClone(this.#sent);
+  }
+
   protected override accessKeys(): JWTVerifyGetKey {
     return createLocalJWKSet({ keys: [JSON.parse(this.env.TEST_ACCESS_PUBLIC_JWK) as JWK] });
   }

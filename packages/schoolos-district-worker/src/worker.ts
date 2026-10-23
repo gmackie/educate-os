@@ -104,4 +104,8 @@ export default {
   async fetch(request, env, ctx): Promise<Response> {
     return serveApi(request, env, ctx.exports);
   },
+  /** The district's Cron Triggers (SCHO-189): notifications hourly, the family digest weekly. See schedule.ts. */
+  async scheduled(controller, env, ctx): Promise<void> {
+    ctx.waitUntil(districtObject(env, ctx.exports).runScheduled(controller.cron));
+  },
 } satisfies ExportedHandler<Cloudflare.Env>;

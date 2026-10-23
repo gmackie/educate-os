@@ -24,6 +24,10 @@ import { ChildCoursePage } from "./family/ChildCoursePage.tsx";
 import { ChildPage } from "./family/ChildPage.tsx";
 import { FamilyHomePage } from "./family/FamilyHomePage.tsx";
 import { InvitationPage } from "./family/InvitationPage.tsx";
+// Communication (SCHO-189)
+import { CalendarPage } from "./communication/CalendarPage.tsx";
+import { NotificationsPage } from "./communication/NotificationsPage.tsx";
+import { SettingsPage } from "./communication/SettingsPage.tsx";
 
 /** Where a guardian's invitation link opens. It is the one page that needs no SchoolOS account. */
 export const INVITATION_PATH = "/family/invitation";
@@ -70,6 +74,12 @@ const mySpaceRoute = createRoute({ getParentRoute: () => rootRoute, path: "/my-s
 
 const gradesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/grades", component: GradesPage });
 
+const calendarRoute = createRoute({ getParentRoute: () => rootRoute, path: "/calendar", component: () => <CalendarPage /> });
+
+const notificationsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/notifications", component: NotificationsPage });
+
+const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/settings", component: () => <SettingsPage /> });
+
 const courseRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/courses/$offeringId",
@@ -111,7 +121,7 @@ const childCourseRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, courseRoute, activityRoute, familyRoute, invitationRoute, childRoute, childCourseRoute]);
+const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, calendarRoute, notificationsRoute, settingsRoute, courseRoute, activityRoute, familyRoute, invitationRoute, childRoute, childCourseRoute]);
 
 /** The Learning Home's router: on the browser's history, or on a memory history in tests. */
 export const createStudentRouter = (history?: RouterHistory) =>

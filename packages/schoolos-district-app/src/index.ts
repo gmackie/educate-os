@@ -9,3 +9,5 @@ export * from "./app.ts";
 export * from "./authority.ts";
 export * from "./guard-directory.ts";
 export * from "./guardians.ts";
+// Communication (SCHO-189)
+export * from "./communication/index.ts";

@@ -195,6 +195,12 @@ export interface WranglerConfig {
   ai?: BindingDecl;
   /** Artifacts binding — closed beta, cut from customer manifests. */
   artifacts?: BindingDecl;
+  /**
+   * Cloudflare Email Service bindings (the SchoolOS district's notification and digest email,
+   * SCHO-189). Placeholder-free; a destination or sender restriction would be account-specific,
+   * so `buildWorkerEntry` refuses one.
+   */
+  send_email?: ({ name: string } & Record<string, unknown>)[];
   /** Static-asset serving config (the router). */
   assets?: {
     binding?: string;
@@ -358,6 +364,9 @@ const HANDLED_CONFIG_KEYS = new Set([
   // Cron Triggers (the SchoolOS AI call guard's nightly reconciliation). Only `crons` is handled:
   // routes and other triggers are account-specific and fail closed below.
   "triggers",
+  // Cloudflare Email Service (the SchoolOS district's email, SCHO-189). Like ai and browser it is
+  // placeholder-free: mail leaves from the installing account, from the sender its config names.
+  "send_email",
 ]);
 
 const ARTIFACTS_CUT_ALLOWED = new Set(["gatekeeper-context"]);
@@ -639,6 +648,15 @@ export function buildWorkerEntry(
   if (config.ai) {
     // Like browser: `remote` is dev-only.
     bindings.push({ type: "ai", name: config.ai.binding });
+  }
+  for (const email of config.send_email ?? []) {
+    const restrictions = Object.keys(email).filter((k) => k !== "name" && k !== "remote");
+    if (restrictions.length > 0) {
+      throw new Error(`${pkgName}/wrangler.jsonc send_email[${email.name}] has account-specific ` +
+          `key(s) this generator doesn't handle: ${restrictions.join(", ")}`);
+    }
+    // `remote` is dev-only, as for browser and ai.
+    bindings.push({ type: "send_email", name: email.name });
   }
   for (const loader of config.worker_loaders ?? []) {
     bindings.push({ type: "worker_loader", name: loader.binding });
