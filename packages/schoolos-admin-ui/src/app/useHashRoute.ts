@@ -6,6 +6,7 @@ export const SCREENS = [
   { path: "roster", label: "Roster" },
   { path: "classes", label: "Classes" },
   { path: "classes-people", label: "Classes and people" },
+  { path: "guardians", label: "Guardians" },
   { path: "modules", label: "Modules and activation" },
   { path: "policies", label: "Policies" },
   { path: "ai-usage", label: "AI usage" },
