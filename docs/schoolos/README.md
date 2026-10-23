@@ -109,6 +109,7 @@ districts) landing on a different principal in each. `SCHOOLOS_HARNESS_PORT` mov
 11. [Open-source charter and module ownership](adr/0011-open-source-charter-and-module-ownership.md)
 9. [Comprehensive Learner Record issuer](adr/0009-clr-issuer.md) (Proposed)
 11. [CASE imports stay strict; publisher deviations go through named adapters](adr/0011-case-publisher-adapters.md)
+12. [Guardians read through confirmed relationships, and roles can be dated](adr/0012-guardians-and-dated-roles.md)
 
 ## Rules every SchoolOS change follows
 

@@ -189,7 +189,7 @@ export class AppealGrants {
     await this.#require(caller, "create", id);
     const input = parse(NewAppealGrant, rawInput);
     const { snapshot } = await this.#directory.load();
-    const grantee = subjectFactsFrom(snapshot, input.granteePrincipalId);
+    const grantee = subjectFactsFrom(snapshot, input.granteePrincipalId, this.#now());
     if (grantee === undefined || !grantee.roles.some((r) => r.role === "district-admin" || r.role === "school-admin")) {
       throw new SchoolOsError("validation-failed", "An appeal grant can only name an administrator of this district.");
     }

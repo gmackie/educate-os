@@ -3,7 +3,7 @@
 // surface: no browser reaches it, and nothing a caller sends says what role or grade a user has.
 
 import { z } from "zod";
-import { GradeBand, SchoolOsError, SchoolRole, type DistrictDirectorySnapshot, type PrincipalId } from "@schoolos/contracts";
+import { GradeBand, roleAssignmentInForce, SchoolOsError, SchoolRole, type DistrictDirectorySnapshot, type PrincipalId } from "@schoolos/contracts";
 import { createWorkshopUserResolver, WorkshopUserKey, type WorkshopUserLink, type WorkshopUserPrincipal } from "@schoolos/identity";
 import type { Workspace } from "@schoolos/workspaces";
 import { AiPrincipal, AiWorkspaceContext } from "@schoolos/ai-governance";
@@ -106,7 +106,9 @@ export function guardSubjectFrom(source: GuardDirectorySource, input: GuardSubje
     if (error instanceof SchoolOsError && error.code === "unauthenticated") return null;
     throw error;
   }
-  if (resolved.kind === "service") return null;
+  // Only students and staff draw on district AI funding; a guardian or service has no subject.
+  const { kind } = resolved;
+  if (kind !== "student" && kind !== "staff") return null;
   if (!isActive(directory, resolved.principalId)) return null;
 
   const workspaceRecord = request.gadgetId === undefined
@@ -114,7 +116,7 @@ export function guardSubjectFrom(source: GuardDirectorySource, input: GuardSubje
     : source.workspaces.find((w) => w.districtId === directory.district.id && w.storageHandle?.backend === "workshop" && w.storageHandle.ref === request.gadgetId);
   if (workspaceRecord !== undefined && workspaceRecord.ownerPrincipalId !== resolved.principalId) return null;
   const workspace: AiWorkspaceContext = workspaceRecord?.kind === "course" ? { kind: "course", offeringId: workspaceRecord.offeringId } : { kind: "personal" };
-  return subjectOf(directory, resolved.principalId, resolved.kind, workspace);
+  return subjectOf(directory, resolved.principalId, kind, workspace);
 }
 
 /**
@@ -144,7 +146,7 @@ function subjectOf(directory: DistrictDirectorySnapshot, principalId: PrincipalI
   return {
     principal: { principalId, districtId: directory.district.id },
     kind,
-    roles: unique(directory.roleAssignments.filter((a) => a.principalId === principalId).map((a) => a.role)),
+    roles: unique(directory.roleAssignments.filter((a) => a.principalId === principalId && roleAssignmentInForce(a, new Date())).map((a) => a.role)),
     workspace,
     gradeBands: kind === "student" ? studentGradeBands(directory, principalId, workspace) : [],
   };

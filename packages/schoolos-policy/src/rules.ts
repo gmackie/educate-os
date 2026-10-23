@@ -3,7 +3,9 @@ import {
   Action,
   Classification,
   Decision,
+  GUARDIAN_READABLE_KINDS,
   PolicySettings,
+  PrincipalKind,
   RequestChannel,
   ResourceKind,
   SchoolRole,
@@ -31,6 +33,8 @@ const policyValues = <K extends keyof typeof PolicySettings.shape>(key: K) =>
  * service from stored records), the subject's directory roles, and the effective policy floor.
  */
 export const RuleCondition = z.strictObject({
+  /** The kinds of principal the subject may be, read from the directory (a guardian, a student). */
+  principalKinds: z.array(PrincipalKind).min(1).optional(),
   /** The requested actions. */
   actions: z.array(Action).min(1).optional(),
   /** The resource kinds. */
@@ -127,6 +131,7 @@ export const COURSE_RESOURCE_KINDS = [
   "assessment-run",
   "feedback",
   "official-grade",
+  "announcement",
 ] as const satisfies ResourceKind[];
 
 const OFFICIAL_GRADE_WRITES = ["create", "update", "grade"] as const satisfies Action[];
@@ -177,8 +182,36 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   teacher imports and approves for the classes they teach; a curriculum admin works at any scope
  *   their grant covers, reviews items a teacher may not approve alone, and alone widens rights
  *   (SCHO-87, from C03's local rules).
+ * - **Guardians** read, and only read, their child's offerings, course assignments, released
+ *   feedback, official grades and announcements, through a confirmed guardian relationship that is
+ *   in force (ADR-0012). Their two rules come first, so no other rule (a district-wide reference
+ *   read, a tool, a share) can ever match a guardian; anything else a guardian asks is denied.
+ * - **Announcements** are unowned `course` notices at an offering: its instructors post them, and
+ *   its actively enrolled students, their guardians and administrators over it read them.
  */
 export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse([
+  // Guardians (ADR-0012). Their authority is a relationship record to one child, never a role, and
+  // read-only; the catch-all below keeps every other rule in the table from reaching them.
+  {
+    id: "guardian.child.read",
+    description: "A guardian reads their child's offerings, assignments, released feedback, official grades and announcements through a confirmed, in-force guardian relationship; each read is audited with it.",
+    when: {
+      principalKinds: ["guardian"],
+      kinds: [...GUARDIAN_READABLE_KINDS],
+      ownership: ["others", "unowned"],
+      relationships: ["guardian-of"],
+      classifications: [...COURSE_VISIBLE],
+      actions: [...READS],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "guard.guardian.child-records-only",
+    description: "A guardian may do nothing else: no writes, no personal spaces or conversations, no submissions, no other children, no tools or directory.",
+    when: { principalKinds: ["guardian"] },
+    effect: { effect: "deny", reason: "no-matching-grant" },
+  },
+
   // Exceptions to the personal guards, each narrower than the guard it precedes: a metadata-only
   // listing for retention, and a read the owner consented to by sharing (SCHO-56, SCHO-103).
   {
@@ -345,7 +378,7 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "course.student.read",
     description: "An actively enrolled student reads the offering and its class material, never other students' work or teacher-only material.",
     when: {
-      kinds: ["offering", "course-workspace", "activity", "rubric", "learning-resource"],
+      kinds: ["offering", "course-workspace", "activity", "rubric", "learning-resource", "announcement"],
       ownership: ["unowned", "own"],
       roles: ["student"],
       classifications: [...COURSE_VISIBLE],
@@ -391,6 +424,7 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
         "feedback",
         "official-grade",
         "learning-resource",
+        "announcement",
       ],
       roles: [...INSTRUCTORS],
       classifications: [...STAFF_VISIBLE],
@@ -400,9 +434,9 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
   },
   {
     id: "course.instructor.manage",
-    description: "Course staff create and publish their offering's rubrics, class workspace and feedback.",
+    description: "Course staff create and publish their offering's rubrics, class workspace, feedback and announcements.",
     when: {
-      kinds: ["rubric", "course-workspace", "feedback", "assessment-run"],
+      kinds: ["rubric", "course-workspace", "feedback", "assessment-run", "announcement"],
       ownership: ["unowned", "own"],
       roles: [...INSTRUCTORS],
       classifications: ["course", "teacher-only"],
@@ -450,7 +484,7 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "admin.course-oversight",
     description: "Administrators read course structure and official grades in their scope, but not student-authored work or conversations.",
     when: {
-      kinds: ["activity", "rubric", "course-workspace", "assessment-run", "official-grade"],
+      kinds: ["activity", "rubric", "course-workspace", "assessment-run", "official-grade", "announcement"],
       ownership: ["unowned", "others"],
       roles: [...ADMINS],
       classifications: [...STAFF_VISIBLE],
@@ -487,6 +521,12 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "admin.district.identity-links",
     description: "Only a district admin lists and decides pending identity links and Workshop user adoptions: they decide who a sign-in is.",
     when: { kinds: ["identity-link"], roles: ["district-admin"], actions: ["read", "list", "approve"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.district.guardian-relationships",
+    description: "Only a district admin records, confirms, suspends and revokes guardian relationships: they decide who may read a child's records.",
+    when: { kinds: ["guardian-relationship"], roles: ["district-admin"], classifications: ["restricted"], actions: ["create", "list", "read", "update", "approve"] },
     effect: { effect: "allow" },
   },
   {

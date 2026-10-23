@@ -3,6 +3,7 @@ export * from "./ids.ts";
 export * from "./primitives.ts";
 export * from "./scope.ts";
 export * from "./identity.ts";
+export * from "./guardians.ts";
 export * from "./academic.ts";
 export * from "./authority.ts";
 export * from "./authorization.ts";

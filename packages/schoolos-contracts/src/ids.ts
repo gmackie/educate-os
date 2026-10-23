@@ -32,6 +32,7 @@ export const ID_PREFIXES = {
   evidenceContract: "evc",
   instance: "ins",
   commercialAccount: "acct",
+  guardianRelationship: "grl",
 } as const;
 
 /** The entity kinds that have their own identifier type. */
@@ -186,3 +187,11 @@ export type InstanceId = z.infer<typeof InstanceId>;
 export const CommercialAccountId = idSchema("commercialAccount");
 /** A commercial account identifier. */
 export type CommercialAccountId = z.infer<typeof CommercialAccountId>;
+
+/**
+ * Identifies one guardian relationship: the record that lets one guardian read one student's
+ * course records (ADR-0012). It is the ID a guardian's every allowed read is audited under.
+ */
+export const GuardianRelationshipId = idSchema("guardianRelationship");
+/** A guardian relationship identifier. */
+export type GuardianRelationshipId = z.infer<typeof GuardianRelationshipId>;

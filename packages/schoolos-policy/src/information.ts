@@ -1,11 +1,12 @@
 import { z } from "zod";
-import type {
-  DistrictDirectorySnapshot,
-  PolicySettings,
-  PrincipalFacts,
-  PrincipalId,
-  ResourceRef,
-  Scope,
+import {
+  roleAssignmentInForce,
+  type DistrictDirectorySnapshot,
+  type PolicySettings,
+  type PrincipalFacts,
+  type PrincipalId,
+  type ResourceRef,
+  type Scope,
 } from "@schoolos/contracts";
 import type { AcademicStore } from "@schoolos/academics";
 
@@ -29,8 +30,11 @@ export interface SubjectFacts extends PrincipalFacts {
  *   `ShareGrant`).
  * - `appeal-reviewer`: an unexpired, unrevoked purpose-bound grant names the subject as reviewing
  *   this resource of this student (an {@link AppealAccessGrant}).
+ * - `guardian-of`: a confirmed, in-force `GuardianRelationship` makes the subject a guardian of the
+ *   student who owns the resource, or who is actively enrolled in the offering an unowned resource
+ *   belongs to (ADR-0012, {@link guardianRelationships}).
  */
-export const Relationship = z.enum(["share-grantee", "appeal-reviewer"]);
+export const Relationship = z.enum(["share-grantee", "appeal-reviewer", "guardian-of"]);
 /** A relationship. */
 export type Relationship = z.infer<typeof Relationship>;
 
@@ -44,8 +48,10 @@ export interface RelationshipFact {
 
 /**
  * Where relationships come from: the service that keeps the records. It must read trusted stored
- * state only, answer for the exact resource (`kind`, `id` and owner), and return nothing for a
- * resource with no `id`.
+ * state only and answer for the exact resource (`kind`, `id`, scope and owner). A source whose
+ * records name one resource (a share, an appeal grant) returns nothing for a resource with no
+ * `id`; a source whose records relate the subject to a person (a guardian relationship) may also
+ * answer for a `list` at a scope, since the request's owner and scope are what it checks.
  */
 export interface RelationshipSource {
   /** The relationships `subject` holds to `resource`. */
@@ -87,20 +93,27 @@ export interface PolicySource {
  *   active enrollment in that offering with the same role. Otherwise a teacher or student dropped
  *   by a roster sync would keep live access through a stale assignment (A01 open question).
  * - Local grants, and roster assignments at school or district level, hold as stored.
+ * - A dated assignment holds only between its `validFrom` and `validUntil`, judged at `at`.
  * - A principal that is not `active` (inactive or graduated) holds none of them: its classroom and
  *   local grants end with its status, while its records and work are kept.
+ * - A guardian holds none of them either: what a guardian may read comes only from guardian
+ *   relationships (ADR-0012).
  */
 export function subjectFactsFrom(
   snapshot: DistrictDirectorySnapshot,
   principalId: PrincipalId,
+  at: Date = new Date(),
 ): SubjectFacts | undefined {
   const principal = snapshot.principals.find((p) => p.id === principalId);
   if (principal === undefined) return undefined;
   if (principal.status !== "active") return { principalId, districtId: principal.districtId, kind: principal.kind, active: false, roles: [] };
+  // A guardian's authority is their relationships, never a role or enrollment (ADR-0012).
+  if (principal.kind === "guardian") return { principalId, districtId: principal.districtId, kind: principal.kind, active: true, roles: [] };
   const active = snapshot.enrollments.filter((e) => e.principalId === principalId && e.status === "active");
 
-  const roles = snapshot.roleAssignments.filter(({ principalId: holder, role, scope, source }) => {
-    if (holder !== principalId) return false;
+  const roles = snapshot.roleAssignments.filter((assignment) => {
+    const { principalId: holder, role, scope, source } = assignment;
+    if (holder !== principalId || !roleAssignmentInForce(assignment, at)) return false;
     if (source !== "roster" || scope.level !== "offering") return true;
     return active.some((e) => e.offeringId === scope.offeringId && e.role === role);
   });
@@ -128,14 +141,16 @@ export function scopeExistsIn(snapshot: DistrictDirectorySnapshot, scope: Scope)
 
 /** What {@link directoryPolicyInformation} reads besides the directory and the policy floor. */
 export interface DirectoryPolicyInformationOptions {
-  /** The services whose records establish relationships, such as artifact shares and appeal grants. */
+  /** The services whose records establish relationships, such as artifact shares, appeal and guardian grants. */
   relationships?: readonly RelationshipSource[];
+  /** The clock dated role assignments are judged by. Defaults to the system clock. */
+  now?: () => Date;
 }
 
 /**
  * A {@link PolicyInformationPoint} over an academic store, reading the current directory on every
- * lookup so a deactivated enrollment or revoked grant takes effect on the next decision. Each
- * relationship source is asked only about a resource with an `id`.
+ * lookup so a deactivated enrollment, an expired role or a revoked grant takes effect on the next
+ * decision. Every relationship source is asked; each decides which resources its records can name.
  */
 export function directoryPolicyInformation(
   store: AcademicStore,
@@ -143,16 +158,16 @@ export function directoryPolicyInformation(
   options: DirectoryPolicyInformationOptions = {},
 ): PolicyInformationPoint {
   const sources = options.relationships ?? [];
+  const now = options.now ?? (() => new Date());
   return {
     async subjectFacts(principalId) {
-      return subjectFactsFrom((await store.load()).snapshot, principalId);
+      return subjectFactsFrom((await store.load()).snapshot, principalId, now());
     },
     effectivePolicy: (scope) => policy.effectivePolicy(scope),
     async scopeExists(scope) {
       return scopeExistsIn((await store.load()).snapshot, scope);
     },
     async relationships(subject, resource) {
-      if (resource.id === undefined) return [];
       return (await Promise.all(sources.map((source) => source.relationships(subject, resource)))).flat();
     },
   };

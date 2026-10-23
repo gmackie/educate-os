@@ -6,6 +6,7 @@ import {
   PrincipalId,
   RequestChannel,
   ResourceKind,
+  roleAssignmentInForce,
   scopeContains,
   type AuthorizationRequest,
   type AuthorizeOptions,
@@ -46,6 +47,8 @@ export interface PolicyEngineOptions {
   audit: PolicyAuditSink;
   /** The ordered rule table. Defaults to {@link DEFAULT_POLICY_RULES}. */
   rules?: readonly PolicyRule[];
+  /** The clock dated role assignments are judged by at each decision. Defaults to the system clock. */
+  now?: () => Date;
 }
 
 /** The rule IDs recorded for decisions made before the rule table is consulted. */
@@ -64,16 +67,22 @@ export const PSEUDO_RULE_IDS = {
  * decides. A request no rule matches is denied with `no-matching-grant`. Every decision, including
  * prechecks, is written to the audit sink with the deciding rule's ID and, when that rule relied on
  * a relationship, the ID of the record that established it.
+ *
+ * A dated role assignment counts only while it is in force when the decision is made, whatever
+ * the information point returned, so an expired assignment grants nothing even through a cached or
+ * hand-built set of facts (ADR-0012).
  */
 export class PolicyEngine implements Authorizer, PolicyDecider {
   readonly #information: PolicyInformationPoint;
   readonly #audit: PolicyAuditSink;
   readonly #rules: readonly PolicyRule[];
+  readonly #now: () => Date;
 
   constructor(options: PolicyEngineOptions) {
     this.#information = options.information;
     this.#audit = options.audit;
     this.#rules = options.rules === undefined ? DEFAULT_POLICY_RULES : PolicyRuleTable.parse(options.rules);
+    this.#now = options.now ?? (() => new Date());
   }
 
   async authorize(request: unknown, options: AuthorizeOptions = {}): Promise<Decision> {
@@ -96,10 +105,12 @@ export class PolicyEngine implements Authorizer, PolicyDecider {
       return { decision: precheck.decision, ruleId };
     }
     const request = precheck.request;
-    const facts = await this.#information.subjectFacts(request.subject.principalId);
-    if (facts === undefined || facts.districtId !== request.subject.districtId) {
+    const found = await this.#information.subjectFacts(request.subject.principalId);
+    if (found === undefined || found.districtId !== request.subject.districtId) {
       return { decision: { effect: "deny", reason: "no-matching-grant" }, ruleId: PSEUDO_RULE_IDS.unknownSubject };
     }
+    const at = this.#now();
+    const facts: SubjectFacts = { ...found, roles: found.roles.filter((role) => roleAssignmentInForce(role, at)) };
     if (!(await this.#information.scopeExists(request.resource.scope))) {
       return { decision: { effect: "deny", reason: "no-matching-grant" }, ruleId: PSEUDO_RULE_IDS.unknownScope };
     }
@@ -146,7 +157,8 @@ async function matches(
 ): Promise<false | { grantId?: string }> {
   const { action, resource, context } = request;
   if (
-    !includes(when.actions, action)
+    !includes(when.principalKinds, facts.kind)
+    || !includes(when.actions, action)
     || !includes(when.kinds, resource.kind)
     || !includes(when.classifications, resource.classification)
     || !includes(when.channels, context.channel)

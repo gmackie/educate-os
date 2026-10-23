@@ -7,6 +7,7 @@ import {
   ExternalIdentity,
   externalIdentityKey,
   PrincipalId,
+  roleAssignmentInForce,
   SchoolOsError,
   WorkshopUserId,
   type DistrictDirectorySnapshot,
@@ -118,12 +119,13 @@ function checkLinkable(
   return principal;
 }
 
-/** Throws unless `actorId` holds `district-admin` at district scope in `directory`. */
-function requireDistrictAdmin(directory: DistrictDirectorySnapshot, actorId: PrincipalId): void {
+/** Throws unless `actorId` holds `district-admin` at district scope in `directory` at `at`. */
+function requireDistrictAdmin(directory: DistrictDirectorySnapshot, actorId: PrincipalId, at: string): void {
   const districtId = directory.district.id;
   const isAdmin = directory.roleAssignments.some((a) =>
     a.principalId === actorId && a.role === "district-admin"
-      && a.scope.level === "district" && a.scope.districtId === districtId);
+      && a.scope.level === "district" && a.scope.districtId === districtId
+      && roleAssignmentInForce(a, new Date(at)));
   if (!isAdmin) throw new SchoolOsError("forbidden", "Only a district administrator can decide identity links.");
 }
 
@@ -161,7 +163,7 @@ export function approveIdentityLink(
   const pending = parseOrFail(PendingIdentityLink, pendingLink, "pending link");
   const { actorId, decidedAt } = parseOrFail(IdentityLinkDecision, decision, "decision");
   if (pending.districtId !== directory.district.id) throw new SchoolOsError("not-found", "No such pending link in this district.");
-  requireDistrictAdmin(directory, actorId);
+  requireDistrictAdmin(directory, actorId, decidedAt);
   checkLinkable(directory, pending.principalId, pending.identity, pending.credential);
 
   const next: DistrictDirectorySnapshot = {
@@ -188,7 +190,7 @@ export function rejectIdentityLink(
   const pending = parseOrFail(PendingIdentityLink, pendingLink, "pending link");
   const { actorId, decidedAt } = parseOrFail(IdentityLinkDecision, decision, "decision");
   if (pending.districtId !== directory.district.id) throw new SchoolOsError("not-found", "No such pending link in this district.");
-  requireDistrictAdmin(directory, actorId);
+  requireDistrictAdmin(directory, actorId, decidedAt);
   return auditEvent(directory, "identity-link.rejected", actorId, pending, decidedAt);
 }
 
