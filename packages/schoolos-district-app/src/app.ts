@@ -15,7 +15,7 @@ import { AcademicDirectory } from "@schoolos/academics";
 import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule } from "@schoolos/policy";
 import { RetentionPolicy, WorkspaceDirectory } from "@schoolos/workspaces";
 import { LearningArtifacts } from "@schoolos/learning-artifacts";
-import { AssessmentService, type AssignmentId } from "@schoolos/assessment";
+import { AssessmentService, GradebookService, type AssignmentId } from "@schoolos/assessment";
 import { catalogAlignmentSource, ContentStudio, type AlignmentSource, type ContentReviewer, type ImportFetch } from "@schoolos/content-studio";
 import { contentStudioReleases, CourseContentService, CurriculumService, type AiHelpPolicySource, type OfferingScope } from "@schoolos/curriculum";
 import { CatalogMirror, catalogSeedRelease, type VerifyRelease } from "@schoolos/catalog";
@@ -390,6 +390,11 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     rosterConfig(): oneroster.OneRosterImportConfig {
       return options.roster ?? { issuer: this.snapshot.district.trustedIssuers[0]!, subject: { field: "username" } };
     }
+
+    // Gradebook (SCHO-187)
+    gradebook(): GradebookService {
+      return new GradebookService({ records: stores.assessment, gradebooks: stores.gradebooks, directory: stores.directory, policy: this.decider, now });
+    }
   }
 
   const guardianInvitationsFor = (decider: PolicyDecider) => new GuardianInvitations({
@@ -756,6 +761,13 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       const { id, kind, status, displayName, email } = await ctx.academics().createPrincipal(ctx.caller, body);
       return { id, kind, status, displayName, ...(email === undefined ? {} : { email }) };
     },
+
+    // Gradebook (SCHO-187). Kept in one block, apart from the handlers above.
+    "teacher.gradebook": (ctx, { params }) => ctx.gradebook().grid(ctx.caller, params.offeringId),
+    "teacher.updateGradebookSettings": (ctx, { params, body }) => ctx.gradebook().updateSettings(ctx.caller, params.offeringId, body),
+    "teacher.setGradeMarker": (ctx, { params, body }) => ctx.gradebook().setMarker(ctx.caller, params.offeringId, body),
+    "teacher.exportGradebookCsv": (ctx, { params }) => ctx.gradebook().exportCsv(ctx.caller, params.offeringId),
+    "student.gradeSummary": (ctx, { params }) => ctx.gradebook().studentSummary(ctx.caller, params.offeringId),
   };
 
   // Guardians (ADR-0012, SCHO-188)
