@@ -1385,6 +1385,64 @@
       "singleton": true,
       "vars": {}
     },
+    "schoolos-district-worker": {
+      "backendBinding": {
+        "entrypoint": "DistrictApi",
+        "name": "SCHOOLOS_DISTRICT_API"
+      },
+      "bindings": [],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [],
+      "inputs": [
+        {
+          "help": "The directory the district starts from (the district, its trusted issuers, and at least the administrators who will import the roster), and optionally its funding pools, model catalog, record authority and retention. Read only on first start, apart from the district ID. See packages/schoolos-district-worker/README.md for the schema.",
+          "kind": "var",
+          "label": "District configuration (JSON)",
+          "name": "DISTRICT_CONFIG"
+        },
+        {
+          "help": "https://<team>.cloudflareaccess.com, no trailing slash: the issuer of the Access assertions the district accepts. The district must list it in its trustedIssuers.",
+          "kind": "var",
+          "label": "Cloudflare Access team domain",
+          "name": "CF_ACCESS_ISS"
+        },
+        {
+          "help": "The audience tag of the Access application in front of the district's /api, and of the instance whose gatekeeper forwards sign-ins to it.",
+          "kind": "var",
+          "label": "Cloudflare Access audience",
+          "name": "CF_ACCESS_AUD"
+        }
+      ],
+      "installable": true,
+      "kind": "service",
+      "mainModule": "worker.js",
+      "migrations": [
+        {
+          "new_sqlite_classes": [
+            "DistrictObject"
+          ],
+          "tag": "v1"
+        }
+      ],
+      "modules": [
+        {
+          "name": "worker.js",
+          "r2Key": "blobs/modules/f04203b5b57b50244190f7cba216f36dc8506926e0258975339993463c906cd7",
+          "sha256": "f04203b5b57b50244190f7cba216f36dc8506926e0258975339993463c906cd7",
+          "size": 66,
+          "type": "esm"
+        }
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "singleton": true,
+      "vars": {}
+    },
     "workshop-backend": {
       "bindings": [
         {

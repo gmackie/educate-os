@@ -353,6 +353,22 @@ test("a service package carries its backend binding and only its own inputs", ()
   assert.deepEqual(entry?.bindings, []);
 });
 
+// SCHO-171/SCHO-138: the district keeps every store in its own SQLite Durable Object, because the
+// hosted deploy service does not yet accept a service's D1 or R2 placeholders. The backend is bound
+// to the district's authenticated `/api` surface only, never to the guard's or the gatekeeper's
+// SCHOOLOS_DISTRICT entrypoints, each of which is for its one consumer.
+test("the district service declares no D1 or R2, and binds the backend to its /api surface only", () => {
+  const district = buildTestManifest().workers["schoolos-district-worker"];
+  assert.ok(district, "expected schoolos-district-worker among the deployable packages");
+  assert.equal(district.kind, "service");
+  assert.deepEqual(district.backendBinding, { name: "SCHOOLOS_DISTRICT_API", entrypoint: "DistrictApi" });
+  assert.equal(district.d1Migrations, undefined);
+  assert.ok(!district.bindings.some((b) => b.type === "d1" || b.type === "r2_bucket"));
+  assert.deepEqual(district.migrations, [{ tag: "v1", new_sqlite_classes: ["DistrictObject"] }]);
+  assert.deepEqual(district.inputs?.map((input) => [input.name, input.kind]),
+      [["DISTRICT_CONFIG", "var"], ["CF_ACCESS_ISS", "var"], ["CF_ACCESS_AUD", "var"]]);
+});
+
 // No deployable package declares D1 yet, so the golden file cannot show it. These pin the shape
 // @schoolos/installer accepts (its D1Migration and `d1` binding schemas), which its own suite
 // checks against a manifest generated here.

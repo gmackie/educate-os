@@ -57,15 +57,15 @@ release and an organization turns them on. Tooling never runs in an organization
 
 | Group | Packages |
 | --- | --- |
-| Kernel and core runtime (required) | `schoolos-contracts`, `schoolos-identity`, `schoolos-identity-links`, `schoolos-policy`, `schoolos-config`, `schoolos-academics`, `schoolos-workspaces`, `schoolos-learning-artifacts`, `schoolos-assessment`, `schoolos-curriculum`, `schoolos-content-studio`, `schoolos-registry`, `schoolos-catalog`, `schoolos-ai-governance`, `schoolos-zip`, `schoolos-district-app`, `schoolos-api-client`, `schoolos-student-ui`, `schoolos-teacher-ui`, `schoolos-admin-ui` |
+| Kernel and core runtime (required) | `schoolos-contracts`, `schoolos-identity`, `schoolos-identity-links`, `schoolos-policy`, `schoolos-config`, `schoolos-academics`, `schoolos-workspaces`, `schoolos-learning-artifacts`, `schoolos-assessment`, `schoolos-curriculum`, `schoolos-content-studio`, `schoolos-registry`, `schoolos-catalog`, `schoolos-ai-governance`, `schoolos-zip`, `schoolos-district-app`, `schoolos-district-worker`, `schoolos-api-client`, `schoolos-student-ui`, `schoolos-teacher-ui`, `schoolos-admin-ui` |
 | Optional runtime | `schoolos-ai-guard` (required whenever student-facing AI is on, ADR-0007), `gatekeeper-schoolos`, `schoolos-lti`, `schoolos-integrations`, `schoolos-cartridge`, `schoolos-ocs`, `schoolos-portability`, `schoolos-artifacts-git`, `schoolos-assessment-ci`, `schoolos-assessment-ai` |
 | Optional, non-default reference code | `schoolos-commerce`, `schoolos-fleet` |
 | Tooling, release and test | `schoolos-installer`, `schoolos-releases`, `schoolos-fixtures`, `schoolos-harness`, `schoolos-pilot-gate` |
 
 `schoolos-releases` also holds the district-side verification the installer runs; that part is
 required at install time, and its staged-rollout half is reference code for whoever publishes
-releases. `schoolos-district-app` is listed as core although it has no Worker configuration yet
-([maturity.md](../maturity.md)).
+releases. `schoolos-district-app` is deployed by `schoolos-district-worker` (SCHO-171), which the release
+ships as an optional service until an installer routes and binds it ([maturity.md](../maturity.md)).
 
 ## Consequences
 
