@@ -382,9 +382,10 @@ export class QuizService {
     const scope = this.#scope(offeringId);
     const book = await this.#load(scope.offeringId);
     const attempt = await this.#ownAttempt(subject, scope, book, attemptId, "read");
+    const quiz = await this.#studentReadable(subject, scope, book, attempt.quizId);
     const now = this.#now();
     if (attemptStatus(attempt, now) !== "in-progress") throw new SchoolOsError("conflict", "This attempt is over.");
-    return this.#attemptView(this.#quiz(book, attempt.quizId), attempt, now);
+    return this.#attemptView(quiz, attempt, now);
   }
 
   /**
@@ -398,7 +399,8 @@ export class QuizService {
     const scope = this.#scope(offeringId);
     return this.#change(scope, async (book) => {
       const attempt = await this.#ownAttempt(subject, scope, book, attemptId, "update");
-      const quiz = this.#quiz(book, attempt.quizId);
+      // A quiz its teacher took back (or whose module they unpublished) takes no more answers.
+      const quiz = await this.#studentReadable(subject, scope, book, attempt.quizId);
       const now = this.#now();
       this.#assertOpen(attempt, now);
       const saved: QuizAttempt = { ...attempt, answers: mergeAnswers(quiz, attempt.answers, answers), savedAt: now };
@@ -420,6 +422,7 @@ export class QuizService {
     const attempt = await this.#ownAttempt(subject, scope, book, attemptId, "submit");
     const quiz = this.#quiz(book, attempt.quizId);
     if (attempt.status === "submitted") return this.#result(book, quiz, attempt);
+    await this.#studentReadable(subject, scope, book, quiz.id);
     this.#assertOpen(attempt, this.#now());
     if (quiz.assignmentId === undefined) throw new SchoolOsError("conflict", "This quiz is not set up to take submissions.");
     const final = mergeAnswers(quiz, attempt.answers, answers);

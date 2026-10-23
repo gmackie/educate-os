@@ -195,6 +195,16 @@ describe("taking a quiz (SCHO-191)", () => {
     expect(await code(service.saveAnswers(AMARA, BIO, attempt.attemptId, { answers: [RIGHT[0]] }))).toBe("conflict");
   });
 
+  it("takes no more answers once the teacher takes the quiz back", async () => {
+    const { service } = setup();
+    const quiz = await publishedQuiz(service);
+    const attempt = await service.startAttempt(AMARA, BIO, quiz.id);
+    await service.setPublished(MORGAN, BIO, quiz.id, { published: false });
+    expect(await code(service.saveAnswers(AMARA, BIO, attempt.attemptId, { answers: [RIGHT[0]] }))).toBe("not-found");
+    expect(await code(service.submitAttempt(AMARA, BIO, attempt.attemptId))).toBe("not-found");
+    expect(await code(service.attempt(AMARA, BIO, attempt.attemptId))).toBe("not-found");
+  });
+
   it("keeps attempts their student's: another student, another offering or another district finds nothing", async () => {
     const { service } = setup();
     const quiz = await publishedQuiz(service);
