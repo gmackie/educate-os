@@ -202,6 +202,41 @@ describe("guardian isolation", () => {
     expectError(await d.call(d.tokenFor(NF.rivera), "guardian.childOfferings", { params: { studentId: NF.amara } }), 403, "forbidden");
   });
 
+  // Discussions (SCHO-190). Guardians are not given discussions (ADR-0012): not the class's topics,
+  // not their own child's posts, and nothing to write, report or moderate.
+  it("gives a guardian no discussion, even of a class their child takes and posts in", async () => {
+    const d = await district();
+    const { guardian, guardianId } = await onboard(d, NF.amara, "gina");
+    const rivera = d.tokenFor(NF.rivera);
+    const topic = await d.ok(rivera, "teacher.createTopic", { params: { offeringId: NF.eng9 }, body: { title: "Warm-up", prompt: "Say hi." } });
+    const post = await d.ok(d.tokenFor(NF.amara), "student.createPost", { params: { offeringId: NF.eng9, topicId: topic.id }, body: { body: "Hello from Amara" } });
+    const at = { offeringId: NF.eng9, topicId: topic.id };
+    const on = { offeringId: NF.eng9, postId: post.id };
+    for (const result of [
+      await d.call(guardian, "student.listDiscussions", { params: { offeringId: NF.eng9 } }),
+      await d.call(guardian, "student.discussionThread", { params: at }),
+      await d.call(guardian, "student.createPost", { params: at, body: { body: "Hi from Gina" } }),
+      await d.call(guardian, "student.editPost", { params: on, body: { body: "Edited by Gina" } }),
+      await d.call(guardian, "student.deletePost", { params: on }),
+      await d.call(guardian, "student.reportPost", { params: on, body: { reason: "unkind" } }),
+      await d.call(guardian, "teacher.listDiscussions", { params: { offeringId: NF.eng9 } }),
+      await d.call(guardian, "teacher.discussionThread", { params: at }),
+      await d.call(guardian, "teacher.moderationQueue", { params: { offeringId: NF.eng9 } }),
+      await d.call(guardian, "teacher.moderatePost", { params: on, body: { decision: "hide" } }),
+      await d.call(guardian, "teacher.createTopic", { params: { offeringId: NF.eng9 }, body: { title: "Mine", prompt: "x" } }),
+    ]) {
+      expectError(result, 403, "forbidden");
+    }
+    // The family view of the child's class carries none of it either.
+    const course = await d.ok(guardian, "guardian.childCourse", { params: { studentId: NF.amara, offeringId: NF.eng9 } });
+    expect(JSON.stringify(course)).not.toMatch(/Warm-up|Say hi|Hello from Amara/);
+    // No decision ever allowed the guardian a discussion topic or post.
+    const discussionReads = d.audit.events().filter((e) => e.principalId === guardianId && e.effect === "allow" && e.ruleId.startsWith("discussion."));
+    expect(discussionReads).toEqual([]);
+    // The thread is untouched.
+    expect((await d.ok(rivera, "teacher.discussionThread", { params: at })).posts.map((p) => p.id)).toEqual([post.id]);
+  });
+
   it("keeps districts apart: a Northfield guardian is no one at Riverbend, and Riverbend cannot manage Northfield's students", async () => {
     const northfield = await district();
     const riverbend = await district(RIVERBEND);
