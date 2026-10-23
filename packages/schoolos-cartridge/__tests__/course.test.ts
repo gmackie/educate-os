@@ -82,3 +82,50 @@ describe("course cartridges (SCHO-186)", () => {
     expect(pageTextFromHtml(`<pre class="schoolos-markdown">a &#60;b&#62; &#38; c</pre>`)).toBe("a <b> & c");
   });
 });
+
+// Discussions (SCHO-190).
+describe("course cartridge discussion topics (SCHO-190)", () => {
+  it("round-trips a module's discussion topics, prompts verbatim", async () => {
+    const course: CourseCartridgeExport = {
+      title: "Biology",
+      language: "en",
+      modules: [{
+        title: "Unit 1",
+        items: [{ kind: "page", title: "Welcome", body: "Hi." }],
+        discussions: [{ title: "Is a virus alive?", prompt: "Argue **one** side.\n\n- Cite the reading <1>" }],
+      }],
+    };
+    const plan = planCourseCartridge(await readCartridge(await courseCartridgePackage(course)));
+    expect(plan.skipped).toStrictEqual([]);
+    expect(plan.modules).toHaveLength(1);
+    expect(plan.modules[0]!.items.map((i) => i.title)).toStrictEqual(["Welcome"]);
+    expect(plan.modules[0]!.discussions.map(({ identifier: _, ...topic }) => topic)).toStrictEqual(course.modules[0]!.discussions);
+  });
+
+  it("reads another LMS's HTML discussions as text, keeps a module holding only topics, and skips unreadable ones", async () => {
+    const manifest = `<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="M1" xmlns="http://www.imsglobal.org/xsd/imsccv1p3/imscp_v1p1">
+  <metadata><schema>IMS Common Cartridge</schema><schemaversion>1.3.0</schemaversion></metadata>
+  <organizations><organization identifier="O1" structure="rooted-hierarchy"><item identifier="root">
+    <item identifier="W1"><title>Week 1</title>
+      <item identifier="D1" identifierref="R1"><title>Item title</title></item>
+      <item identifier="D2" identifierref="R2"><title>Broken</title></item>
+      <item identifier="D3" identifierref="R3"><title>Missing</title></item>
+    </item>
+  </item></organization></organizations>
+  <resources>
+    <resource identifier="R1" type="imsdt_xmlv1p1"><file href="d1.xml"/></resource>
+    <resource identifier="R2" type="imsdt_xmlv1p3"><file href="d2.xml"/></resource>
+    <resource identifier="R3" type="imsdt_xmlv1p3"><file href="d3.xml"/></resource>
+  </resources>
+</manifest>`;
+    const bytes = await buildZip([
+      { path: "imsmanifest.xml", content: manifest },
+      { path: "d1.xml", content: `<topic xmlns="http://www.imsglobal.org/xsd/imsccv1p1/imsdt_v1p1"><title>Photosynthesis</title><text texttype="text/html">&lt;p&gt;Why are &lt;b&gt;leaves&lt;/b&gt; green?&lt;/p&gt;&lt;script&gt;alert(1)&lt;/script&gt;</text></topic>` },
+      { path: "d2.xml", content: "<topic><title>Unclosed" },
+    ]);
+    const plan = planCourseCartridge(await readCartridge(bytes));
+    expect(plan.modules).toStrictEqual([{ identifier: "W1", title: "Week 1", items: [], discussions: [{ identifier: "D1", title: "Photosynthesis", prompt: "Why are leaves green?" }] }]);
+    expect(plan.skipped.map((s) => [s.identifier, s.reason])).toStrictEqual([["D2", "invalid-discussion"], ["D3", "missing-file"]]);
+  });
+});
