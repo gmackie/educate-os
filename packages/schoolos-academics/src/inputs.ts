@@ -4,6 +4,8 @@ import {
   CatalogCourse,
   CourseOffering,
   Enrollment,
+  ExternalIdentity,
+  Principal,
   PrincipalId,
   PrincipalStatus,
   School,
@@ -80,3 +82,20 @@ export type NewEnrollment = z.infer<typeof NewEnrollment>;
 export const DepartedStatus = PrincipalStatus.exclude(["active"]);
 /** A departed status. */
 export type DepartedStatus = z.infer<typeof DepartedStatus>;
+
+/**
+ * The fields a caller supplies to create a principal locally (SCHO-186), for a district whose
+ * authority map makes SchoolOS the source of record for principals, such as a homeschool co-op
+ * with no roster. The principal starts `active`. `identity` is the sign-in that resolves to them:
+ * the issuer (one the district trusts) and that issuer's stable subject, never an email address
+ * (ADR-0003). Guardians and services are not created here: guardians come through guardian
+ * relationships, services through deployment configuration.
+ */
+export const NewPrincipal = z.strictObject({
+  kind: z.enum(["student", "staff"]),
+  displayName: Principal.shape.displayName,
+  email: Principal.shape.email,
+  identity: ExternalIdentity.pick({ issuer: true, subject: true }),
+});
+/** Input for creating a principal. */
+export type NewPrincipal = z.infer<typeof NewPrincipal>;

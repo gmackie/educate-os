@@ -16,6 +16,7 @@
     "@schoolos/artifacts-git": "workspace:*",
     "@schoolos/assessment": "workspace:*",
     "@schoolos/assessment-ci": "workspace:*",
+    "@schoolos/cartridge": "workspace:*",
     "@schoolos/catalog": "workspace:*",
     "@schoolos/config": "workspace:*",
     "@schoolos/content-studio": "workspace:*",

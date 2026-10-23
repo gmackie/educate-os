@@ -2,6 +2,7 @@ import { Empty } from "@cloudflare/kumo";
 import { Question } from "@phosphor-icons/react";
 import { CreateActivityPage } from "../activities/CreateActivityPage.tsx";
 import { Loading } from "../Loading.tsx";
+import { ModulesPage } from "../modules/ModulesPage.tsx";
 import { Problem } from "../Problem.tsx";
 import { ResourceReviewPage } from "../resources/ResourceReviewPage.tsx";
 import { ResourcesPage } from "../resources/ResourcesPage.tsx";
@@ -76,6 +77,8 @@ const ClassSection = ({ route, teaching }: { route: ClassRoute; teaching: Teachi
   switch (route.screen) {
     case "roster":
       return <RosterPage teaching={teaching} />;
+    case "modules":
+      return <ModulesPage teaching={teaching} />;
     case "resources":
       return <ResourcesPage teaching={teaching} />;
     case "resource":

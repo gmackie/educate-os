@@ -18,6 +18,7 @@ import {
   NewCourse,
   NewEnrollment,
   NewOffering,
+  NewPrincipal,
   NewSchool,
   NewTerm,
   OfferingFilter,
@@ -139,6 +140,12 @@ export const ACADEMIC_OPERATIONS = {
     input: withCourse.extend(CoursePatch.shape),
     run: (d, c, { courseId, ...patch }) => d.updateCourse(c, courseId, patch),
   }),
+  set_course_archived: defineOperation({
+    name: "set_course_archived",
+    description: "Archive a catalog course, or restore an archived one. Archived courses accept no new offerings.",
+    input: withCourse.extend({ archived: z.boolean() }),
+    run: (d, c, i) => d.setCourseArchived(c, i.courseId, i.archived),
+  }),
   list_offerings: defineOperation({
     name: "list_offerings",
     description: "List course offerings, by school, term or a principal's active enrollments.",
@@ -162,6 +169,12 @@ export const ACADEMIC_OPERATIONS = {
     description: "Rename a course offering's section.",
     input: withOffering.extend(OfferingPatch.shape),
     run: (d, c, { offeringId, ...patch }) => d.updateOffering(c, offeringId, patch),
+  }),
+  set_offering_archived: defineOperation({
+    name: "set_offering_archived",
+    description: "Archive a course offering, or restore an archived one. Archived offerings accept no new enrollments.",
+    input: withOffering.extend({ archived: z.boolean() }),
+    run: (d, c, i) => d.setOfferingArchived(c, i.offeringId, i.archived),
   }),
   get_roster: defineOperation({
     name: "get_roster",
@@ -198,6 +211,12 @@ export const ACADEMIC_OPERATIONS = {
     description: "Remove a principal from a course offering. The enrollment is kept, marked inactive.",
     input: withEnrollment,
     run: (d, c, i) => d.deactivateEnrollment(c, i.enrollmentId),
+  }),
+  create_principal: defineOperation({
+    name: "create_principal",
+    description: "Create a student or staff principal with the sign-in identity that resolves to them, where SchoolOS owns principals.",
+    input: NewPrincipal,
+    run: (d, c, i) => d.createPrincipal(c, i),
   }),
   set_principal_status: defineOperation({
     name: "set_principal_status",

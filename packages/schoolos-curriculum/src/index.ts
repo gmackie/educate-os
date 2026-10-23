@@ -10,3 +10,4 @@ export * from "./releases.ts";
 export * from "./codex.ts";
 export * from "./storage.ts";
 export * from "./service.ts";
+export * from "./course-content.ts";

@@ -266,6 +266,83 @@ function poolStatus(pool: FakePool) {
 export interface FakeDistrictOptions {
   /** Whether the district has Cloudflare account facts, and so a net estimate. Defaults to false. */
   netEstimate?: boolean;
+  /** Who owns the directory: the roster (the default) or SchoolOS, as for a co-op with no roster. */
+  authority?: "oneroster" | "local";
+}
+
+const ISSUER = "https://fake.cloudflareaccess.com";
+
+/**
+ * A directory the classes screen authors, enforcing what the district does where the screen
+ * depends on it: writes to a type the roster owns are refused naming it, archived sections take
+ * no one new, and removing someone keeps their enrollment, inactive.
+ */
+function fakeAuthoring(owner: "oneroster" | "local") {
+  const authority = Object.fromEntries(["school", "term", "course", "offering", "enrollment", "principal"].map((kind) => [kind, owner === "local" ? "local" : "external:oneroster"]));
+  const directory = {
+    authority,
+    trustedIssuers: [ISSUER],
+    schools: [] as Record<string, unknown>[],
+    terms: [] as Record<string, unknown>[],
+    courses: [] as Record<string, unknown>[],
+    offerings: [] as Record<string, unknown>[],
+    principals: [{ id: "prn_fk-admin", kind: "staff", status: "active", displayName: "Avery Admin" }] as Record<string, unknown>[],
+  };
+  const enrollments: Record<string, unknown>[] = [];
+  let n = 0;
+  const id = (prefix: string) => `${prefix}_fk-${++n}`;
+  const local = (kind: string) => {
+    if (authority[kind] !== "local") throw new DistrictApiError(409, { code: "conflict", message: `Records of this kind are owned by ${authority[kind]}; change them there and let its sync update SchoolOS.` });
+  };
+  const add = (kind: string, list: Record<string, unknown>[], record: Record<string, unknown>) => {
+    local(kind);
+    list.push(record);
+    return record;
+  };
+  const find = (list: Record<string, unknown>[], recordId: unknown) => list.find((r) => r.id === recordId)!;
+  const params = (input: Record<string, unknown>) => input.params as Record<string, string>;
+  const body = (input: Record<string, unknown>) => input.body as Record<string, unknown>;
+  const archive = (kind: string, list: Record<string, unknown>[], recordId: string, archived: boolean) => {
+    local(kind);
+    const record = find(list, recordId);
+    if (archived) record.archivedAt = "2026-10-23T12:00:00.000Z";
+    else delete record.archivedAt;
+    return record;
+  };
+  return {
+    "admin.authoring": () => directory,
+    "admin.createSchool": (input: Record<string, unknown>) => add("school", directory.schools, { id: id("sch"), districtId: "dst_fake", ...body(input) }),
+    "admin.createTerm": (input: Record<string, unknown>) => add("term", directory.terms, { id: id("trm"), districtId: "dst_fake", ...body(input), state: "planned" }),
+    "admin.transitionTerm": (input: Record<string, unknown>) => {
+      local("term");
+      return Object.assign(find(directory.terms, params(input).termId), { state: body(input).to });
+    },
+    "admin.createCourse": (input: Record<string, unknown>) => add("course", directory.courses, { id: id("crs"), districtId: "dst_fake", ...body(input) }),
+    "admin.archiveCourse": (input: Record<string, unknown>) => archive("course", directory.courses, params(input).courseId!, body(input).archived === true),
+    "admin.createOffering": (input: Record<string, unknown>) => add("offering", directory.offerings, { id: id("off"), districtId: "dst_fake", ...body(input) }),
+    "admin.archiveOffering": (input: Record<string, unknown>) => archive("offering", directory.offerings, params(input).offeringId!, body(input).archived === true),
+    "admin.createPrincipal": (input: Record<string, unknown>) => {
+      const { identity: _, ...person } = body(input);
+      return add("principal", directory.principals, { id: id("prn"), status: "active", ...person });
+    },
+    "admin.offeringRoster": (input: Record<string, unknown>) => enrollments
+      .filter((e) => e.offeringId === params(input).offeringId && e.status === "active")
+      .map((enrollment) => ({ enrollment, displayName: find(directory.principals, enrollment.principalId).displayName })),
+    "admin.enroll": (input: Record<string, unknown>) => {
+      local("enrollment");
+      if (find(directory.offerings, params(input).offeringId).archivedAt !== undefined) {
+        throw new DistrictApiError(409, { code: "conflict", message: "This section is archived; restore it before enrolling anyone." });
+      }
+      const enrollment = { id: id("enr"), districtId: "dst_fake", offeringId: params(input).offeringId, ...body(input), status: "active" };
+      enrollments.push(enrollment);
+      return enrollment;
+    },
+    "admin.unenroll": (input: Record<string, unknown>) => {
+      local("enrollment");
+      const enrollment = Object.assign(find(enrollments, params(input).enrollmentId), { status: "inactive" });
+      return { enrollment, grantsRevoked: 1 };
+    },
+  };
 }
 
 /** The fake district: the client the console is given, and what it was asked. */
@@ -321,6 +398,8 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
   const headDesired = () => revisions.at(-1)!.desired as DesiredStateView;
 
   const handlers: { [N in RouteName]?: (input: Record<string, unknown>) => RouteResponse<N> } = {
+    // Loosely typed, like the other handlers' `as never` answers.
+    ...(fakeAuthoring(options.authority ?? "oneroster") as object),
     "me.get": () => ({ principalId: "prn_fk-admin", districtId: "dst_fake", kind: "staff", displayName: "Avery Admin", roles: [], enrollments: [] }) as never,
     "admin.health": () => ({
       districtId: "dst_fake",

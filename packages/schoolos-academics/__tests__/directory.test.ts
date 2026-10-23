@@ -9,7 +9,7 @@ import {
   type DistrictDirectorySnapshot,
 } from "@schoolos/contracts";
 import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
-import { AcademicSync, DirectoryValidationError, InMemoryAcademicStore, RoleTableAuthorizer, storePrincipalFacts } from "../src/index.ts";
+import { AcademicDirectory, AcademicSync, DirectoryValidationError, InMemoryAcademicStore, RoleTableAuthorizer, storePrincipalFacts } from "../src/index.ts";
 import { ALL_LOCAL, directoryFor, NF, nf, RB_ADMIN, rejectsWith, ROSTER_EXTERNAL } from "./setup.ts";
 
 const BIO_FALL = OfferingId.parse("off_nf-bio-fall-p2");
@@ -405,5 +405,58 @@ describe("principal lifecycle", () => {
     const local = directoryFor();
     await rejectsWith(local.directory.setPrincipalStatus(NF.admin, AMARA, "active" as never), "validation-failed");
     await rejectsWith(local.directory.setPrincipalStatus(NF.admin, PrincipalId.parse("prn_nobody"), "graduated"), "not-found");
+  });
+});
+
+describe("local authoring (SCHO-186)", () => {
+  const ISSUER = NORTHFIELD.district.trustedIssuers[0]!;
+
+  it("archives and restores a course and an offering, refusing new offerings and enrollments while archived", async () => {
+    const at = new Date("2026-11-02T10:00:00.000Z");
+    const store = InMemoryAcademicStore.seeded(NORTHFIELD);
+    const directory = new AcademicDirectory({ store, authority: ALL_LOCAL, authorizer: new RoleTableAuthorizer(storePrincipalFacts(store)), now: () => at });
+    const course = NORTHFIELD.courses[0]!;
+    const archived = await directory.setCourseArchived(NF.admin, course.id, true);
+    expect(archived.archivedAt).toBe(at.toISOString());
+    expect(await directory.setCourseArchived(NF.admin, course.id, true)).toStrictEqual(archived);
+    const offering = NORTHFIELD.offerings.find((o) => o.courseId === course.id)!;
+    await rejectsWith(
+      directory.createOffering(NF.admin, { schoolId: offering.schoolId, termId: offering.termId, courseId: course.id, sectionName: "Period 9" }),
+      "conflict",
+    );
+    // Archiving keeps the record readable.
+    expect((await directory.getCourse(NF.admin, course.id)).archivedAt).toBe(at.toISOString());
+    expect(await directory.setCourseArchived(NF.admin, course.id, false)).toStrictEqual(course);
+
+    await directory.setOfferingArchived(NF.admin, BIO_FALL, true);
+    await rejectsWith(
+      directory.createEnrollment(NF.admin, { offeringId: BIO_FALL, principalId: PrincipalId.parse("prn_nf-student-felix"), role: "student" }),
+      "conflict",
+    );
+    await directory.setOfferingArchived(NF.admin, BIO_FALL, false);
+    await directory.createEnrollment(NF.admin, { offeringId: BIO_FALL, principalId: PrincipalId.parse("prn_nf-student-felix"), role: "student" });
+  });
+
+  it("refuses to archive what an external system owns, naming it", async () => {
+    const { directory } = directoryFor(NORTHFIELD, { authority: ROSTER_EXTERNAL });
+    const error = await rejectsWith(directory.setOfferingArchived(NF.admin, BIO_FALL, true), "conflict");
+    expect(error.message).toContain("external:oneroster");
+  });
+
+  it("creates a local principal who can then be enrolled, with an identity from a trusted issuer only", async () => {
+    const { directory } = directoryFor(emptyNorthfield());
+    const robin = await directory.createPrincipal(NF.admin, { kind: "student", displayName: "Robin Park", identity: { issuer: ISSUER, subject: "co-op-robin" } });
+    expect(robin).toMatchObject({ kind: "student", status: "active", externalIdentities: [{ districtId: "dst_northfield", issuer: ISSUER, subject: "co-op-robin" }] });
+    await rejectsWith(directory.createPrincipal(NF.admin, { kind: "student", displayName: "Robin Again", identity: { issuer: ISSUER, subject: "co-op-robin" } }), "validation-failed");
+    await rejectsWith(directory.createPrincipal(NF.admin, { kind: "staff", displayName: "Elsewhere", identity: { issuer: "https://untrusted.example", subject: "x" } }), "validation-failed");
+    await rejectsWith(directory.createPrincipal(NF.admin, { kind: "guardian", displayName: "Parent", identity: { issuer: ISSUER, subject: "p" } } as never), "validation-failed");
+  });
+
+  it("leaves principal creation to the roster where it owns principals, and to administrators", async () => {
+    const roster = directoryFor(NORTHFIELD, { authority: ROSTER_EXTERNAL });
+    const error = await rejectsWith(roster.directory.createPrincipal(NF.admin, { kind: "student", displayName: "Robin", identity: { issuer: ISSUER, subject: "r" } }), "conflict");
+    expect(error.message).toContain("external:oneroster");
+    const local = directoryFor();
+    await rejectsWith(local.directory.createPrincipal(NF.morgan, { kind: "student", displayName: "Robin", identity: { issuer: ISSUER, subject: "r" } }), "forbidden");
   });
 });

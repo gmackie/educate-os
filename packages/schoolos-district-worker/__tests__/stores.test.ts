@@ -9,6 +9,7 @@ import { DurableObjectAcademicStore } from "@schoolos/academics/durable-object-s
 import {
   DurableObjectArtifactRecordStore,
   DurableObjectBlobBucket,
+  DurableObjectCourseContentStorage,
   DurableObjectFundingAllocationStore,
   DurableObjectToolApprovalStore,
   DurableObjectWorkshopUserLinkStore,
@@ -147,6 +148,46 @@ describe("DurableObjectToolApprovalStore", () => {
       expect(await store.transition("apr_one" as never, "claimed", declined)).toBe(true);
       expect(await store.insertUnlessOpen(action("apr_two"))).toMatchObject({ id: "apr_two", state: "pending" });
       expect((await store.list()).map((a) => a.id)).toEqual(["apr_one", "apr_two"]);
+    });
+  });
+});
+
+describe("DurableObjectCourseContentStorage", () => {
+  const outline = (revision: number, body: string) => ({
+    offeringId: "off_nf-bio-fall-p2",
+    revision,
+    modules: [
+      { id: "cmod_b", title: "Unit 2", published: false, items: [{ kind: "page", id: "cit_2", pageId: "cpg_z" }] },
+      { id: "cmod_a", title: "Unit 1", published: true, items: [{ kind: "page", id: "cit_1", pageId: "cpg_a" }, { kind: "activity", id: "cit_3", activityId: "act_bio-cells" }] },
+    ],
+    pages: [{ id: "cpg_z", title: "Later", body }, { id: "cpg_a", title: "First", body: "# Hello" }],
+    updated: { by: "prn_nf-morgan-lee", at: "2026-10-23T12:00:00.000Z" },
+  }) as never;
+
+  it("keeps modules and pages in order across a restart, and commits only over the revision it read", async () => {
+    const object = fresh();
+    // A page near the length limit, in characters that take three bytes each in UTF-8.
+    const long = "\u2603".repeat(19_000);
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectCourseContentStorage(state.storage);
+      expect(await store.load("off_nf-bio-fall-p2" as never)).toBeUndefined();
+      await store.commit(outline(1, long), 0);
+      await expect(store.commit(outline(2, "x"), 0)).rejects.toMatchObject({ code: "conflict" });
+      await store.commit(outline(2, long), 1);
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      const stored = await new DurableObjectCourseContentStorage(state.storage).load("off_nf-bio-fall-p2" as never);
+      expect(stored).toStrictEqual(outline(2, long));
+      expect(await new DurableObjectCourseContentStorage(state.storage).load("off_nf-eng9-fall-p3" as never)).toBeUndefined();
+    });
+  });
+
+  it("refuses an outline that does not match its schema, and stores nothing of it", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = new DurableObjectCourseContentStorage(state.storage);
+      await expect(store.commit({ ...(outline(1, "<script>x</script>") as object), revision: 1 } as never, 0)).rejects.toThrow();
+      expect(await store.load("off_nf-bio-fall-p2" as never)).toBeUndefined();
     });
   });
 });

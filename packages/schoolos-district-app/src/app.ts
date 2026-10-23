@@ -1,5 +1,4 @@
 import {
-  AuthorityMap,
   SchoolOsError,
   type Action,
   type Authorizer,
@@ -18,7 +17,7 @@ import { RetentionPolicy, WorkspaceDirectory } from "@schoolos/workspaces";
 import { LearningArtifacts } from "@schoolos/learning-artifacts";
 import { AssessmentService, type AssignmentId } from "@schoolos/assessment";
 import { catalogAlignmentSource, ContentStudio, type AlignmentSource, type ContentReviewer, type ImportFetch } from "@schoolos/content-studio";
-import { contentStudioReleases, CurriculumService, type AiHelpPolicySource, type OfferingScope } from "@schoolos/curriculum";
+import { contentStudioReleases, CourseContentService, CurriculumService, type AiHelpPolicySource, type OfferingScope } from "@schoolos/curriculum";
 import { CatalogMirror, catalogSeedRelease, type VerifyRelease } from "@schoolos/catalog";
 import { AiLedger, ledgerGovernor, type AiRequestGovernor, type CloudflareAccountFacts, type FundingPool, type GovernedModel, type UsdNano } from "@schoolos/ai-governance";
 import { createDraftRevision, planConfigurationChange, SHIPPED_REGISTRY, type CapabilityRegistry } from "@schoolos/config";
@@ -32,6 +31,8 @@ import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./
 import { type AssignmentViewBody, type ParsedRouteInput, type RouteName, type RouteResponse, type Surface } from "./routes.ts";
 import type { DistrictAppStores } from "./stores.ts";
 import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
+import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
+import { exportCourseCartridge, importCourseCartridge, previewCourseCartridge } from "./course-authoring.ts";
 
 /**
  * Verifies a request's credential (a bearer token, a Cloudflare Access assertion) and returns the
@@ -54,8 +55,12 @@ export interface DistrictAppOptions {
   resolverFor?: (directory: DistrictDirectorySnapshot) => PrincipalResolver;
   /** The fetch the Content Studio imports URLs with. Its SSRF guard runs before every call. */
   importFetch: ImportFetch;
-  /** Which system owns each directory record type. Defaults to the OneRoster roster for every type. */
-  authority?: AuthorityMap;
+  /**
+   * Which system owns each directory record type: a profile (`oneroster`, or `local` for a district
+   * with no roster that authors its own classes) or a full map. Defaults to the OneRoster roster
+   * for every type.
+   */
+  authority?: AuthoritySetting;
   /** How the roster relates to the IdP. Defaults to the district's first trusted issuer, keyed by `username`. */
   roster?: oneroster.OneRosterImportConfig;
   /** How long course workspaces are kept after their term closes. Defaults to a year. */
@@ -127,14 +132,7 @@ export interface DistrictApp {
 }
 
 /** The default `DistrictAppOptions.authority`: the OneRoster roster owns every directory record type. */
-export const DEFAULT_AUTHORITY: AuthorityMap = {
-  school: "external:oneroster",
-  term: "external:oneroster",
-  course: "external:oneroster",
-  offering: "external:oneroster",
-  enrollment: "external:oneroster",
-  principal: "external:oneroster",
-};
+export const DEFAULT_AUTHORITY = ONEROSTER_AUTHORITY;
 
 /** Which principal kinds a surface answers. */
 const SURFACE_KINDS: Record<Surface, readonly ResolvedPrincipal["kind"][]> = {
@@ -174,7 +172,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const { stores } = options;
   const districtId = (await stores.directory.load()).snapshot.district.id;
   const now = options.now ?? (() => new Date());
-  const authority = AuthorityMap.parse(options.authority ?? DEFAULT_AUTHORITY);
+  const authority = authorityFor(options.authority);
   const retention = RetentionPolicy.parse(options.retention ?? { courseWorkspaceRetentionDays: 365 });
   const registry = options.registry ?? SHIPPED_REGISTRY;
   const policySource = configPolicySource(stores.config, options.defaultPolicy ?? DEFAULT_POLICY_FLOOR);
@@ -235,7 +233,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     }
 
     academics(): AcademicDirectory {
-      return new AcademicDirectory({ store: stores.directory, authority, authorizer: this.authorizer });
+      return new AcademicDirectory({ store: stores.directory, authority, authorizer: this.authorizer, now });
     }
 
     workspaces(): WorkspaceDirectory {
@@ -337,6 +335,27 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       await this.require(action, { kind, scope: { level: "district", districtId }, classification: "district-internal" }, "Only a district administrator can do this.");
     }
 
+    courseContent(): CourseContentService {
+      return new CourseContentService({
+        districtId,
+        directory: this.snapshot,
+        authorizer: this.authorizer,
+        channel: "http",
+        storage: stores.courseContent,
+        installations: stores.curriculum,
+        now: () => now().toISOString(),
+      });
+    }
+
+    /** An offering's roster with each enrolled principal's display name. */
+    async rosterWithNames(offeringId: OfferingId) {
+      const roster = await this.academics().roster(this.caller, offeringId);
+      return roster.map((enrollment) => ({
+        enrollment,
+        displayName: this.snapshot.principals.find((p) => p.id === enrollment.principalId)?.displayName ?? "",
+      }));
+    }
+
     rosterConfig(): oneroster.OneRosterImportConfig {
       return options.roster ?? { issuer: this.snapshot.district.trustedIssuers[0]!, subject: { field: "username" } };
     }
@@ -423,13 +442,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         return role === undefined || course === undefined ? [] : [{ offering, course, role }];
       });
     },
-    "teacher.roster": async (ctx, { params }) => {
-      const roster = await ctx.academics().roster(ctx.caller, params.offeringId);
-      return roster.map((enrollment) => ({
-        enrollment,
-        displayName: ctx.snapshot.principals.find((p) => p.id === enrollment.principalId)?.displayName ?? "",
-      }));
-    },
+    "teacher.roster": (ctx, { params }) => ctx.rosterWithNames(params.offeringId),
     "teacher.listWorkspaces": (ctx, { params }) => ctx.workspaces().listOfferingWorkspaces(ctx.caller, params.offeringId),
     "teacher.listWorkspaceArtifacts": (ctx, { params }) => ctx.artifacts().listArtifacts(ctx.caller, params.workspaceId),
     "teacher.importResource": (ctx, { params, body }) =>
@@ -639,6 +652,70 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     },
     "admin.termRollover": (ctx, { params }) => ctx.workspaces().previewTermRollover(ctx.caller, params.termId),
     "admin.closeTerm": (ctx, { params }) => ctx.workspaces().closeTerm(ctx.caller, params.termId),
+
+    // Course authoring (SCHO-186). Kept in one block, apart from the handlers above.
+    "student.listModules": (ctx, { params }) => ctx.courseContent().outline(ctx.subject, params.offeringId),
+    "teacher.listModules": (ctx, { params }) => ctx.courseContent().outline(ctx.subject, params.offeringId),
+    "teacher.createModule": (ctx, { params, body }) => ctx.courseContent().createModule(ctx.subject, params.offeringId, body),
+    "teacher.updateModule": (ctx, { params, body }) => ctx.courseContent().updateModule(ctx.subject, params.offeringId, params.moduleId, body),
+    "teacher.deleteModule": async (ctx, { params }) => {
+      await ctx.courseContent().deleteModule(ctx.subject, params.offeringId, params.moduleId);
+      return { deleted: true as const };
+    },
+    "teacher.reorderModules": (ctx, { params, body }) => ctx.courseContent().reorderModules(ctx.subject, params.offeringId, body),
+    "teacher.addPage": (ctx, { params, body }) => ctx.courseContent().addPage(ctx.subject, params.offeringId, params.moduleId, body),
+    "teacher.updatePage": (ctx, { params, body }) => ctx.courseContent().updatePage(ctx.subject, params.offeringId, params.pageId, body),
+    "teacher.placeActivity": (ctx, { params, body }) => ctx.courseContent().placeActivity(ctx.subject, params.offeringId, params.moduleId, body),
+    "teacher.removeModuleItem": async (ctx, { params }) => {
+      await ctx.courseContent().removeItem(ctx.subject, params.offeringId, params.moduleId, params.itemId);
+      return { removed: true as const };
+    },
+    "teacher.reorderModuleItems": (ctx, { params, body }) => ctx.courseContent().reorderItems(ctx.subject, params.offeringId, params.moduleId, body),
+    "teacher.previewCartridge": (ctx, { params, body }) => previewCourseCartridge(ctx.courseContent(), ctx.subject, params.offeringId, body.base64),
+    "teacher.importCartridge": (ctx, { params, body }) => importCourseCartridge(ctx.courseContent(), ctx.subject, { offeringId: params.offeringId, ...body }),
+    "teacher.exportCartridge": async (ctx, { params }) => {
+      const { view, outline } = await ctx.courseContent().outline(ctx.subject, params.offeringId);
+      if (view !== "teacher") throw new SchoolOsError("forbidden", "Only the class's teachers can export its content.");
+      const offering = ctx.snapshot.offerings.find((o) => o.id === params.offeringId)!;
+      const course = ctx.snapshot.courses.find((c) => c.id === offering.courseId);
+      return exportCourseCartridge(outline, course?.title ?? "Course", offering.sectionName);
+    },
+    "admin.authoring": async (ctx) => {
+      await ctx.requireDistrict("list", "principal");
+      const academics = ctx.academics();
+      const [schools, terms, courses, offerings] = await Promise.all([
+        academics.listSchools(ctx.caller),
+        academics.listTerms(ctx.caller),
+        academics.listCourses(ctx.caller),
+        academics.listOfferings(ctx.caller),
+      ]);
+      const principals = ctx.snapshot.principals
+        .filter((p) => p.kind === "student" || p.kind === "staff")
+        .map(({ id, kind, status, displayName, email }) => ({ id, kind, status, displayName, ...(email === undefined ? {} : { email }) }));
+      return { authority, trustedIssuers: ctx.snapshot.district.trustedIssuers, schools, terms, courses, offerings, principals };
+    },
+    "admin.createSchool": (ctx, { body }) => ctx.academics().createSchool(ctx.caller, body),
+    "admin.createTerm": (ctx, { body }) => ctx.academics().createTerm(ctx.caller, body),
+    "admin.updateTerm": (ctx, { params, body }) => ctx.academics().updateTerm(ctx.caller, params.termId, body),
+    "admin.transitionTerm": (ctx, { params, body }) => ctx.academics().transitionTerm(ctx.caller, params.termId, body.to),
+    "admin.createCourse": (ctx, { body }) => ctx.academics().createCourse(ctx.caller, body),
+    "admin.updateCourse": (ctx, { params, body }) => ctx.academics().updateCourse(ctx.caller, params.courseId, body),
+    "admin.archiveCourse": (ctx, { params, body }) => ctx.academics().setCourseArchived(ctx.caller, params.courseId, body.archived),
+    "admin.createOffering": (ctx, { body }) => ctx.academics().createOffering(ctx.caller, body),
+    "admin.updateOffering": (ctx, { params, body }) => ctx.academics().updateOffering(ctx.caller, params.offeringId, body),
+    "admin.archiveOffering": (ctx, { params, body }) => ctx.academics().setOfferingArchived(ctx.caller, params.offeringId, body.archived),
+    "admin.offeringRoster": (ctx, { params }) => ctx.rosterWithNames(params.offeringId),
+    "admin.enroll": (ctx, { params, body }) => ctx.academics().createEnrollment(ctx.caller, { ...body, offeringId: params.offeringId }),
+    "admin.unenroll": async (ctx, { params }) => {
+      const enrollment = await ctx.academics().deactivateEnrollment(ctx.caller, params.enrollmentId);
+      // A dropped student keeps their course workspace and work, but not live access to it.
+      const { revoked } = await ctx.workspaces().reconcileCourseGrants(ctx.caller);
+      return { enrollment, grantsRevoked: revoked };
+    },
+    "admin.createPrincipal": async (ctx, { body }) => {
+      const { id, kind, status, displayName, email } = await ctx.academics().createPrincipal(ctx.caller, body);
+      return { id, kind, status, displayName, ...(email === undefined ? {} : { email }) };
+    },
   };
 
   async function handle(request: Request, correlationId: string): Promise<Response> {

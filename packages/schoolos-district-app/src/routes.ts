@@ -3,12 +3,15 @@
 // is written against the same table, so the two cannot drift.
 import { z } from "zod";
 import {
+  AcademicTerm,
   ActivityDefinitionId,
   ActivityId,
   ArtifactId,
   ArtifactType,
   AssessmentRunId,
+  AuthorityMap,
   CatalogCourse,
+  CourseId,
   ConfigRevisionId,
   ConfigurationRevision,
   ContentDigest,
@@ -16,14 +19,18 @@ import {
   CourseOffering,
   DistrictId,
   Enrollment,
+  EnrollmentId,
   OfferingId,
   PolicySettings,
+  Principal,
   PrincipalId,
   PrincipalKind,
   RevisionId,
   RoleAssignment,
+  School,
   SubmissionId,
   TermId,
+  TermState,
   WorkspaceId,
 } from "@schoolos/contracts";
 import { CourseWorkspace, PersonalWorkspace, PromotionLink, WorkspaceLifecycle, type TermRolloverPreview } from "@schoolos/workspaces";
@@ -54,7 +61,24 @@ import {
   SubmissionSnapshot,
 } from "@schoolos/assessment";
 import { AlignmentInput, type ContentItem, type QueueEntry, type StudioRelease } from "@schoolos/content-studio";
-import { ActivityContent, ActivityDefinition, ActivityInstallation, TemplateInput } from "@schoolos/curriculum";
+import {
+  ActivityContent,
+  ActivityDefinition,
+  ActivityInstallation,
+  ContentTitle,
+  CourseModule,
+  CourseModuleId,
+  CourseOutline,
+  CoursePage,
+  CoursePageId,
+  ModuleItem,
+  ModuleItemId,
+  ModulePatch,
+  NewPage,
+  PagePatch,
+  TemplateInput,
+} from "@schoolos/curriculum";
+import { CoursePatch, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, TermPatch } from "@schoolos/academics";
 import { EvidenceContract } from "@schoolos/registry";
 import { AssessmentReport, IdempotencyKey, RubricDraft, RubricRelease, RunError, RunState } from "@schoolos/assessment-ci";
 import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type AiProjectionReport, type UsageReport } from "@schoolos/ai-governance";
@@ -370,6 +394,79 @@ export const AiFundingBody = z.strictObject({
 });
 /** The funding report. */
 export type AiFundingBody = z.infer<typeof AiFundingBody>;
+
+
+// Course authoring (SCHO-186): local directory records, modules and pages, Common Cartridge.
+
+/** A principal as the authoring screens list them: who they are, never their sign-in identities. */
+export const AuthoringPrincipalBody = Principal.pick({ id: true, kind: true, status: true, displayName: true, email: true });
+/** An authoring principal. */
+export type AuthoringPrincipalBody = z.infer<typeof AuthoringPrincipalBody>;
+
+/**
+ * The directory as an administrator authors it: which system owns each record type, and the
+ * records they may read. Writes to a type another system owns are refused, naming the owner.
+ */
+export const AuthoringDirectoryBody = z.strictObject({
+  authority: AuthorityMap,
+  /** The sign-in issuers the district trusts: a local principal's identity must come from one. */
+  trustedIssuers: z.array(z.string()),
+  schools: z.array(School),
+  terms: z.array(AcademicTerm),
+  courses: z.array(CatalogCourse),
+  offerings: z.array(CourseOffering),
+  principals: z.array(AuthoringPrincipalBody),
+});
+/** The authoring directory. */
+export type AuthoringDirectoryBody = z.infer<typeof AuthoringDirectoryBody>;
+
+/** An offering's course content as one reader may see it: staff in full, students published modules only. */
+export const CourseOutlineBody = z.strictObject({ view: z.enum(["teacher", "student"]), outline: CourseOutline });
+/** A course outline view. */
+export type CourseOutlineBody = z.infer<typeof CourseOutlineBody>;
+
+/** The largest Common Cartridge a teacher may upload, in bytes: it travels as base64 inside the JSON body. */
+export const MAX_CARTRIDGE_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+/** An uploaded `.imscc` package. */
+export const CartridgeUploadInput = z.strictObject({
+  fileName: z.string().trim().min(1).max(255),
+  /** The package bytes, base64-encoded. */
+  base64: z.base64().max(Math.ceil(MAX_CARTRIDGE_UPLOAD_BYTES / 3) * 4),
+});
+/** A cartridge upload. */
+export type CartridgeUploadInput = z.infer<typeof CartridgeUploadInput>;
+
+/** What importing a cartridge would add: modules of pages and links, and what it would leave behind. Nothing is stored. */
+export const CartridgePreviewBody = z.strictObject({
+  packageDigest: z.string(),
+  title: z.string(),
+  modules: z.array(z.strictObject({
+    title: z.string(),
+    items: z.array(z.discriminatedUnion("kind", [
+      z.strictObject({ kind: z.literal("page"), title: z.string(), characters: z.int().nonnegative() }),
+      z.strictObject({ kind: z.literal("link"), title: z.string(), url: z.string() }),
+    ])),
+  })),
+  /** Placements not carried, with why: tools, refused links, other resource types, unacceptable text. */
+  skipped: z.array(z.strictObject({ identifier: z.string(), reason: z.string(), type: z.string().optional() })),
+  /** Nested modules whose items were flattened into their top-level module. */
+  flattened: z.array(z.string()),
+  /** Pages cut to the page length limit. */
+  truncated: z.array(z.string()),
+});
+/** A cartridge preview. */
+export type CartridgePreviewBody = z.infer<typeof CartridgePreviewBody>;
+
+/** A course exported as a Common Cartridge 1.3 package, and what it could not carry. */
+export const CartridgeExportBody = z.strictObject({
+  fileName: z.string(),
+  base64: z.string(),
+  /** Items a cartridge cannot carry, such as SchoolOS activities, by module and item. */
+  losses: z.array(z.strictObject({ kind: z.enum(["activity"]), module: z.string(), item: z.string() })),
+});
+/** A cartridge export. */
+export type CartridgeExportBody = z.infer<typeof CartridgeExportBody>;
 
 const params = <S extends z.core.$ZodLooseShape>(shape: S) => z.strictObject(shape);
 const NoBody = z.strictObject({});
@@ -688,6 +785,115 @@ export const ROUTES = {
     method: "POST", path: "/api/admin/terms/:termId/close", surface: "admin",
     params: params({ termId: TermId }), body: NoBody,
     response: z.strictObject({ retained: z.int(), grantsRevoked: z.int(), fundingCancellations: z.int() }),
+  }),
+
+  // Course authoring (SCHO-186). Kept in one block, apart from the routes above.
+  "student.listModules": route({
+    method: "GET", path: "/api/student/offerings/:offeringId/modules", surface: "student",
+    params: params({ offeringId: OfferingId }), response: CourseOutlineBody,
+  }),
+  "teacher.listModules": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/modules", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: CourseOutlineBody,
+  }),
+  "teacher.createModule": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/modules", surface: "teacher", status: 201,
+    params: params({ offeringId: OfferingId }), body: z.strictObject({ title: ContentTitle }), response: CourseModule,
+  }),
+  "teacher.updateModule": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/modules/:moduleId", surface: "teacher",
+    params: params({ offeringId: OfferingId, moduleId: CourseModuleId }), body: ModulePatch, response: CourseModule,
+  }),
+  "teacher.deleteModule": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/modules/:moduleId/delete", surface: "teacher",
+    params: params({ offeringId: OfferingId, moduleId: CourseModuleId }), body: NoBody, response: z.strictObject({ deleted: z.literal(true) }),
+  }),
+  "teacher.reorderModules": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/module-order", surface: "teacher",
+    params: params({ offeringId: OfferingId }), body: z.strictObject({ moduleIds: z.array(CourseModuleId).max(100) }), response: CourseOutline,
+  }),
+  "teacher.addPage": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/modules/:moduleId/pages", surface: "teacher", status: 201,
+    params: params({ offeringId: OfferingId, moduleId: CourseModuleId }), body: NewPage,
+    response: z.strictObject({ page: CoursePage, item: ModuleItem }),
+  }),
+  "teacher.updatePage": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/pages/:pageId", surface: "teacher",
+    params: params({ offeringId: OfferingId, pageId: CoursePageId }), body: PagePatch, response: CoursePage,
+  }),
+  "teacher.placeActivity": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/modules/:moduleId/activities", surface: "teacher", status: 201,
+    params: params({ offeringId: OfferingId, moduleId: CourseModuleId }), body: z.strictObject({ activityId: ActivityId }), response: ModuleItem,
+  }),
+  "teacher.removeModuleItem": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/modules/:moduleId/items/:itemId/remove", surface: "teacher",
+    params: params({ offeringId: OfferingId, moduleId: CourseModuleId, itemId: ModuleItemId }), body: NoBody,
+    response: z.strictObject({ removed: z.literal(true) }),
+  }),
+  "teacher.reorderModuleItems": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/modules/:moduleId/item-order", surface: "teacher",
+    params: params({ offeringId: OfferingId, moduleId: CourseModuleId }), body: z.strictObject({ itemIds: z.array(ModuleItemId).max(100) }),
+    response: CourseModule,
+  }),
+  "teacher.previewCartridge": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/cartridge/preview", surface: "teacher",
+    params: params({ offeringId: OfferingId }), body: CartridgeUploadInput, response: CartridgePreviewBody,
+  }),
+  "teacher.importCartridge": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/cartridge/import", surface: "teacher", status: 201,
+    params: params({ offeringId: OfferingId }),
+    body: CartridgeUploadInput.extend({
+      /** The digest the preview reported; the import is refused if the package is not the one previewed. */
+      packageDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+    }),
+    response: z.strictObject({ modules: z.array(CourseModule), preview: CartridgePreviewBody }),
+  }),
+  "teacher.exportCartridge": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/cartridge/export", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: CartridgeExportBody,
+  }),
+  "admin.authoring": route({ method: "GET", path: "/api/admin/authoring", surface: "admin", response: AuthoringDirectoryBody }),
+  "admin.createSchool": route({ method: "POST", path: "/api/admin/schools", surface: "admin", status: 201, body: NewSchool, response: School }),
+  "admin.createTerm": route({ method: "POST", path: "/api/admin/terms", surface: "admin", status: 201, body: NewTerm, response: AcademicTerm }),
+  "admin.updateTerm": route({
+    method: "POST", path: "/api/admin/terms/:termId", surface: "admin", params: params({ termId: TermId }), body: TermPatch, response: AcademicTerm,
+  }),
+  "admin.transitionTerm": route({
+    method: "POST", path: "/api/admin/terms/:termId/transition", surface: "admin",
+    params: params({ termId: TermId }), body: z.strictObject({ to: TermState }), response: AcademicTerm,
+  }),
+  "admin.createCourse": route({ method: "POST", path: "/api/admin/courses", surface: "admin", status: 201, body: NewCourse, response: CatalogCourse }),
+  "admin.updateCourse": route({
+    method: "POST", path: "/api/admin/courses/:courseId", surface: "admin", params: params({ courseId: CourseId }), body: CoursePatch, response: CatalogCourse,
+  }),
+  "admin.archiveCourse": route({
+    method: "POST", path: "/api/admin/courses/:courseId/archived", surface: "admin",
+    params: params({ courseId: CourseId }), body: z.strictObject({ archived: z.boolean() }), response: CatalogCourse,
+  }),
+  "admin.createOffering": route({ method: "POST", path: "/api/admin/offerings", surface: "admin", status: 201, body: NewOffering, response: CourseOffering }),
+  "admin.updateOffering": route({
+    method: "POST", path: "/api/admin/offerings/:offeringId", surface: "admin",
+    params: params({ offeringId: OfferingId }), body: OfferingPatch, response: CourseOffering,
+  }),
+  "admin.archiveOffering": route({
+    method: "POST", path: "/api/admin/offerings/:offeringId/archived", surface: "admin",
+    params: params({ offeringId: OfferingId }), body: z.strictObject({ archived: z.boolean() }), response: CourseOffering,
+  }),
+  "admin.offeringRoster": route({
+    method: "GET", path: "/api/admin/offerings/:offeringId/roster", surface: "admin",
+    params: params({ offeringId: OfferingId }), response: z.array(RosterEntryBody),
+  }),
+  "admin.enroll": route({
+    method: "POST", path: "/api/admin/offerings/:offeringId/enrollments", surface: "admin", status: 201,
+    params: params({ offeringId: OfferingId }), body: NewEnrollment.omit({ offeringId: true }), response: Enrollment,
+  }),
+  "admin.unenroll": route({
+    method: "POST", path: "/api/admin/enrollments/:enrollmentId/deactivate", surface: "admin",
+    params: params({ enrollmentId: EnrollmentId }), body: NoBody,
+    response: z.strictObject({ enrollment: Enrollment, grantsRevoked: z.int().nonnegative() }),
+  }),
+  "admin.createPrincipal": route({
+    method: "POST", path: "/api/admin/principals", surface: "admin", status: 201, body: NewPrincipal, response: AuthoringPrincipalBody,
   }),
 } as const satisfies Record<string, RouteSpec>;
 

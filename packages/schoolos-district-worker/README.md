@@ -77,6 +77,12 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   `authority`, `fundingPools`, `aiMonthlyDistrictCapUsdNano`, `cloudflareAccount`, `modelCatalog`,
   `approvedExternalHosts` and `retention`. Workers vars are limited in size, so the seed should be
   small. The roster arrives through `admin.applyRoster`.
+- `authority` names who owns the directory: `"oneroster"` (the default) or `"local"`, or a full
+  `AuthorityMap` for a mixed district. A district with no roster, such as a homeschool co-op, sets
+  `"local"`: its administrators then create schools, terms, courses, sections and students and enroll
+  them through the admin API (`admin.createCourse`, `admin.enroll`, `admin.createPrincipal` and the
+  rest, SCHO-186), and a roster import is refused. A local principal is created with the Access
+  subject that signs them in; inviting someone by email before they have signed in is not built yet.
 - `CF_ACCESS_ISS` and `CF_ACCESS_AUD`.
 
 The release lists the package in `SERVICE_PACKAGES` (`scripts/release/manifest-lib.ts`), which

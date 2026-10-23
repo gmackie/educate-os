@@ -1,6 +1,5 @@
-import { writeZip } from "@schoolos/portability";
 import { describe, expect, it } from "vitest";
-import { readZip, ZipRefusedError, type ZipLimits } from "../src/index.ts";
+import { readZip, writeZip, ZipRefusedError, type ZipLimits } from "../src/index.ts";
 
 const LIMITS: ZipLimits = { maxEntries: 10, maxEntryBytes: 64 * 1024, maxTotalBytes: 128 * 1024, maxCompressionRatio: 100 };
 const encoder = new TextEncoder();
@@ -53,5 +52,15 @@ describe("readZip include filter", () => {
     const big = "a,b\n".repeat(20_000);
     expect((await refusal(readZip(await zip({ "users.csv": big }), LIMITS))).reason).toBe("entry-too-large");
     expect((await refusal(readZip(await zip({ "a.csv": "1", "b.csv": "2" }), { ...LIMITS, maxEntries: 1 }))).reason).toBe("too-many-entries");
+  });
+});
+
+describe("writeZip (SCHO-186)", () => {
+  it("writes the same bytes for the same entries, which the bounded reader reads back exactly", async () => {
+    const files = { "imsmanifest.xml": "<manifest/>".repeat(50), "pages/one.html": "<p>One</p>" };
+    const first = await zip(files);
+    expect(await zip(files)).toStrictEqual(first);
+    const archive = await readZip(first, LIMITS);
+    expect(Object.fromEntries([...archive.files].map(([path, bytes]) => [path, new TextDecoder().decode(bytes)]))).toStrictEqual(files);
   });
 });

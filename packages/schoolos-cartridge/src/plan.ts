@@ -300,7 +300,7 @@ export function planCartridgeImport(pkg: CartridgePackage): CartridgePlan {
  *
  * @throws CartridgeRefusedError `unsafe-path` for an absolute, external or escaping reference.
  */
-function packagePath(href: string): string {
+export function packagePath(href: string): string {
   if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(href) || href.startsWith("//")) {
     throw new CartridgeRefusedError("unsafe-path", `the manifest references ${JSON.stringify(href.slice(0, 200))} outside the package`);
   }

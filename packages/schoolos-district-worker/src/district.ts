@@ -3,12 +3,11 @@
 // with the rest of the SchoolOS libraries it composes (ADR-0009); `district-object.ts` is the
 // Durable Object shell around it.
 import type { JWTVerifyGetKey } from "jose";
-import { AuthorityMap } from "@schoolos/contracts";
 import { AcademicDirectory } from "@schoolos/academics";
 import type { ImportFetch } from "@schoolos/content-studio";
 import { createDirectoryPrincipalResolver } from "@schoolos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@schoolos/policy";
-import { createDistrictApp, DEFAULT_AUTHORITY, type DistrictApp } from "@schoolos/district-app";
+import { authorityFor, createDistrictApp, type DistrictApp } from "@schoolos/district-app";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@schoolos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@schoolos/gatekeeper";
 import { accessRequestVerifier } from "./access.ts";
@@ -60,7 +59,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     audience: settings.accessAudience ?? "",
     ...(seams.accessKeys === undefined ? {} : { keys: seams.accessKeys }),
   });
-  const authority = AuthorityMap.parse(config.authority ?? DEFAULT_AUTHORITY);
+  const authority = authorityFor(config.authority);
   const app = await createDistrictApp({
     stores,
     verifyRequest,

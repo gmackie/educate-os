@@ -8,6 +8,7 @@ import { LoadingSkeleton } from "./LoadingSkeleton.tsx";
 import type { AssignedActivity } from "./model.ts";
 import { PrivacyNote } from "./PrivacyNote.tsx";
 import { activityPath } from "./router.tsx";
+import { CourseModules } from "./modules/CourseModules.tsx";
 
 const STATUS_VARIANT = {
   "not-started": "neutral",
@@ -94,6 +95,7 @@ export const CoursePage = ({ offeringId }: { offeringId: string }) => {
           description="You can look back at your work. To keep a copy of something, use My space."
         />
       ) : null}
+      <CourseModules offeringId={offeringId} activities={activities} />
       <section aria-labelledby="activities" className="flex flex-col gap-3">
         <Text variant="heading" as="h2">
           <span id="activities">Activities</span>

@@ -46,3 +46,12 @@ globalThis.ResizeObserver ??= class {
   unobserve(): void {}
   disconnect(): void {}
 };
+// jsdom's Blob (and so File) lacks arrayBuffer(); read it the way jsdom can.
+Blob.prototype.arrayBuffer ??= function arrayBuffer(this: Blob) {
+  return new Promise<ArrayBuffer>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(reader.result as ArrayBuffer));
+    reader.addEventListener("error", () => reject(reader.error));
+    reader.readAsArrayBuffer(this);
+  });
+};

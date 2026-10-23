@@ -50,3 +50,15 @@ export type RubricRef = NonNullable<Assignment["rubric"]>;
 export type GradeProposal = RouteResponse<"teacher.pendingGrades">[number];
 /** One version of a student's official grade. */
 export type OfficialGrade = RouteResponse<"teacher.approveGrade">;
+/** A class's modules and pages, as its teachers see them. */
+export type CourseOutline = RouteResponse<"teacher.listModules">["outline"];
+/** One module of a class. */
+export type CourseModule = CourseOutline["modules"][number];
+/** One item in a module: a page, an activity or a link. */
+export type ModuleItem = CourseModule["items"][number];
+/** A page of a class's content. */
+export type CoursePage = CourseOutline["pages"][number];
+/** What importing a Common Cartridge would add to a class. */
+export type CartridgePreview = RouteResponse<"teacher.previewCartridge">;
+/** A class's content exported as a Common Cartridge. */
+export type CartridgeExport = RouteResponse<"teacher.exportCartridge">;

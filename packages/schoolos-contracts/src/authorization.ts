@@ -54,6 +54,11 @@ export const ResourceKind = z.enum([
   "official-grade",
   /** A notice course staff post to an offering, read by its students and their guardians. */
   "announcement",
+  /**
+   * An offering's authored course content: its ordered modules and their pages (SCHO-186). A
+   * published module is `course` material; a draft is `teacher-only`.
+   */
+  "course-content",
   "learning-resource",
   "capability-config",
   "ai-budget",
