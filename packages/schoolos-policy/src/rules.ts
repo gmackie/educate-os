@@ -132,6 +132,7 @@ export const COURSE_RESOURCE_KINDS = [
   "feedback",
   "official-grade",
   "announcement",
+  "course-content",
 ] as const satisfies ResourceKind[];
 
 const OFFICIAL_GRADE_WRITES = ["create", "update", "grade"] as const satisfies Action[];
@@ -188,6 +189,10 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   read, a tool, a share) can ever match a guardian; anything else a guardian asks is denied.
  * - **Announcements** are unowned `course` notices at an offering: its instructors post them, and
  *   its actively enrolled students, their guardians and administrators over it read them.
+ * - **Course content** (SCHO-186) is an offering's modules and pages: unowned, authored by all of
+ *   its staff. A draft module is `teacher-only`, so only staff and administrators over the offering
+ *   see it; publishing makes it `course` material its actively enrolled students read. Guardians
+ *   are not given it: what they read stays the ADR-0012 list.
  */
 export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse([
   // Guardians (ADR-0012). Their authority is a relationship record to one child, never a role, and
@@ -378,7 +383,7 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "course.student.read",
     description: "An actively enrolled student reads the offering and its class material, never other students' work or teacher-only material.",
     when: {
-      kinds: ["offering", "course-workspace", "activity", "rubric", "learning-resource", "announcement"],
+      kinds: ["offering", "course-workspace", "activity", "rubric", "learning-resource", "announcement", "course-content"],
       ownership: ["unowned", "own"],
       roles: ["student"],
       classifications: [...COURSE_VISIBLE],
@@ -425,10 +430,23 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
         "official-grade",
         "learning-resource",
         "announcement",
+        "course-content",
       ],
       roles: [...INSTRUCTORS],
       classifications: [...STAFF_VISIBLE],
       actions: [...READS, "export"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "course.instructor.content",
+    description: "Course staff author their offering's modules and pages: create, edit, publish, unpublish and remove them.",
+    when: {
+      kinds: ["course-content"],
+      ownership: ["unowned"],
+      roles: [...INSTRUCTORS],
+      classifications: ["course", "teacher-only"],
+      actions: ["create", "update", "publish", "delete"],
     },
     effect: { effect: "allow" },
   },
@@ -484,7 +502,7 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "admin.course-oversight",
     description: "Administrators read course structure and official grades in their scope, but not student-authored work or conversations.",
     when: {
-      kinds: ["activity", "rubric", "course-workspace", "assessment-run", "official-grade", "announcement"],
+      kinds: ["activity", "rubric", "course-workspace", "assessment-run", "official-grade", "announcement", "course-content"],
       ownership: ["unowned", "others"],
       roles: [...ADMINS],
       classifications: [...STAFF_VISIBLE],

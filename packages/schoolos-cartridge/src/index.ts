@@ -12,3 +12,4 @@ export * from "./record.ts";
 export * from "./importer.ts";
 export * from "./tools.ts";
 export * from "./suggestions.ts";
+export * from "./course.ts";

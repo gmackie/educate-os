@@ -32,6 +32,7 @@ import {
   NewCourse,
   NewEnrollment,
   NewOffering,
+  NewPrincipal,
   NewSchool,
   NewTerm,
   OfferingPatch,
@@ -55,6 +56,8 @@ export interface AcademicDirectoryOptions {
    * `precheckAuthorization` refuses, whatever the authorizer answers.
    */
   authorizer: Authorizer;
+  /** The clock archive times are stamped with. Defaults to the system clock. */
+  now?: () => Date;
 }
 
 /** A resource to authorize against, with the state of the term it belongs to, if any. */
@@ -218,11 +221,13 @@ export class AcademicDirectory {
   readonly #store: AcademicStore;
   readonly #authority: AuthorityMap;
   readonly #authorizer: Authorizer;
+  readonly #now: () => Date;
 
   constructor(options: AcademicDirectoryOptions) {
     this.#store = options.store;
     this.#authority = options.authority;
     this.#authorizer = options.authorizer;
+    this.#now = options.now ?? (() => new Date());
   }
 
   // Schools
@@ -368,6 +373,24 @@ export class AcademicDirectory {
     return updated;
   }
 
+  /**
+   * Archives a catalog course, or restores an archived one (SCHO-186). The course and its
+   * offerings are kept and stay readable; an archived course only refuses new offerings.
+   * Archiving an archived course, or restoring a current one, changes nothing.
+   */
+  async setCourseArchived(caller: Caller, courseId: CourseId, archived: boolean): Promise<CatalogCourse> {
+    const { snapshot, version } = await this.#store.load();
+    const course = snapshot.courses.find((c) => c.id === courseId);
+    if (course === undefined) throw notFound("course", courseId);
+    await this.#requireWrite(caller, "update", new Targets(snapshot).course(course), "course", courseId);
+    assertLocallyWritable(this.#authority, "course");
+    if ((course.archivedAt !== undefined) === archived) return course;
+    const { archivedAt: _, ...current } = course;
+    const updated: CatalogCourse = archived ? { ...current, archivedAt: this.#now().toISOString() } : current;
+    await this.#commit({ ...snapshot, courses: replace(snapshot.courses, updated) }, version);
+    return updated;
+  }
+
   // Offerings
 
   /**
@@ -411,6 +434,9 @@ export class AcademicDirectory {
     const targets = new Targets(snapshot);
     await this.#requireWrite(caller, "create", targets.inSchool("offering", school, input.termId), "school", school.id, targets.school(school));
     assertLocallyWritable(this.#authority, "offering");
+    if (snapshot.courses.find((c) => c.id === input.courseId)?.archivedAt !== undefined) {
+      throw new SchoolOsError("conflict", `${input.courseId} is archived; restore it before adding an offering.`);
+    }
     const offering: CourseOffering = { id: newId("offering") as OfferingId, districtId: snapshot.district.id, ...input };
     await this.#commit({ ...snapshot, offerings: [...snapshot.offerings, offering] }, version);
     return offering;
@@ -425,6 +451,24 @@ export class AcademicDirectory {
     await this.#requireWrite(caller, "update", new Targets(snapshot).offering(offering), "offering", offeringId);
     assertLocallyWritable(this.#authority, "offering");
     const updated: CourseOffering = { ...offering, ...patch };
+    await this.#commit({ ...snapshot, offerings: replace(snapshot.offerings, updated) }, version);
+    return updated;
+  }
+
+  /**
+   * Archives a course offering, or restores an archived one (SCHO-186). Its enrollments, workspaces
+   * and work are kept and readable; an archived offering only refuses new enrollments. Archiving an
+   * archived offering, or restoring a current one, changes nothing.
+   */
+  async setOfferingArchived(caller: Caller, offeringId: OfferingId, archived: boolean): Promise<CourseOffering> {
+    const { snapshot, version } = await this.#store.load();
+    const offering = snapshot.offerings.find((o) => o.id === offeringId);
+    if (offering === undefined) throw notFound("offering", offeringId);
+    await this.#requireWrite(caller, "update", new Targets(snapshot).offering(offering), "offering", offeringId);
+    assertLocallyWritable(this.#authority, "offering");
+    if ((offering.archivedAt !== undefined) === archived) return offering;
+    const { archivedAt: _, ...current } = offering;
+    const updated: CourseOffering = archived ? { ...current, archivedAt: this.#now().toISOString() } : current;
     await this.#commit({ ...snapshot, offerings: replace(snapshot.offerings, updated) }, version);
     return updated;
   }
@@ -478,6 +522,9 @@ export class AcademicDirectory {
       targets.offering(offering),
     );
     assertLocallyWritable(this.#authority, "enrollment");
+    if (offering.archivedAt !== undefined) {
+      throw new SchoolOsError("conflict", `${offering.id} is archived; restore it before enrolling anyone.`);
+    }
     const existing = snapshot.enrollments.find(
       (e) => e.offeringId === input.offeringId && e.principalId === input.principalId && e.status === "active",
     );
@@ -513,6 +560,30 @@ export class AcademicDirectory {
   }
 
   // Principals
+
+  /**
+   * Creates an active student or staff principal whose sign-in is `identity` (SCHO-186). Only where
+   * SchoolOS owns principals: a roster district refuses it with `conflict`, naming the roster. The
+   * identity's issuer must be one the district trusts, and the identity must not already be linked
+   * to anyone; either is refused with `validation-failed` (`checkDirectoryIntegrity`).
+   */
+  async createPrincipal(caller: Caller, rawInput: NewPrincipal): Promise<Principal> {
+    const input = parseInput(NewPrincipal, rawInput);
+    const { snapshot, version } = await this.#store.load();
+    await this.#require(caller, "create", new Targets(snapshot).district("principal"));
+    assertLocallyWritable(this.#authority, "principal");
+    const principal: Principal = {
+      id: newId("principal") as PrincipalId,
+      districtId: snapshot.district.id,
+      kind: input.kind,
+      status: "active",
+      displayName: input.displayName,
+      ...(input.email === undefined ? {} : { email: input.email }),
+      externalIdentities: [{ districtId: snapshot.district.id, ...input.identity }],
+    };
+    await this.#commit({ ...snapshot, principals: [...snapshot.principals, principal] }, version);
+    return principal;
+  }
 
   /**
    * Moves a principal to `graduated` or `inactive` (roadmap §14, "Semester end / graduation").

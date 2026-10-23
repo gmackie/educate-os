@@ -9,6 +9,15 @@ import {
   TermId,
 } from "./ids.ts";
 import { Principal, RoleAssignment } from "./identity.ts";
+import { UtcTimestamp } from "./primitives.ts";
+
+/**
+ * When a locally owned course or offering was archived (SCHO-186). An archived record is kept and
+ * stays readable, with everything beneath it; it only stops accepting new offerings or
+ * enrollments. Absent, the record is current. A roster never sets it: an externally owned record
+ * leaves through its source of record instead.
+ */
+export const ArchivedAt = UtcTimestamp;
 
 /** A district: the tenant, and the owner of every record beneath it. */
 export const District = z.strictObject({
@@ -86,6 +95,7 @@ export const CatalogCourse = z.strictObject({
   title: z.string().min(1).max(200),
   subject: Subject,
   gradeBand: GradeBand,
+  archivedAt: ArchivedAt.optional(),
 });
 /** A catalog course. */
 export type CatalogCourse = z.infer<typeof CatalogCourse>;
@@ -98,6 +108,7 @@ export const CourseOffering = z.strictObject({
   termId: TermId,
   courseId: CourseId,
   sectionName: z.string().min(1).max(100),
+  archivedAt: ArchivedAt.optional(),
 });
 /** A course offering. */
 export type CourseOffering = z.infer<typeof CourseOffering>;
