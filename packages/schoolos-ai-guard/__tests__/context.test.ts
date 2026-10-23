@@ -17,7 +17,7 @@ import { AMARA_BIO_GADGET, TEST_CONFIG, USERS } from "./fixtures.ts";
 
 const config = readGuardConfig(env.AI_GUARD_CONFIG);
 const resolver = new DistrictGuardContextResolver(configuredGuardDirectory(config), config);
-const PROFILES = TEST_CONFIG.profiles;
+const PROFILES = config.profiles;
 const AMARA = AiPrincipal.parse({ principalId: "prn_nf-student-amara", districtId: "dst_northfield" });
 const BIO_WORKSPACE = AiWorkspaceContext.parse({ kind: "course", offeringId: "off_nf-bio-fall-p2" });
 

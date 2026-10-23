@@ -147,7 +147,7 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   nothing to hold, and the spend would escape every budget.
 - **Decisions.**
   - `allow` proceeds.
-  - `coach` proceeds and is logged. Coaching prompts are a follow-up.
+  - `coach` proceeds with coaching instructions (below).
   - `hold` and `block` deny with a neutral message.
   - `support` denies with the configured supportive message, which points to a trusted adult and
     never scolds.
@@ -170,6 +170,16 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   times out (3 s) falls back to the estimate. With no usage, or no rate, the attempt is `unknown`. A failed or aborted call that reported no tokens is voided. Settlement
   happens exactly once per `callId`: a repeated outcome finds the call already settled, and
   concurrent repeats replay in the ledger.
+- **Coaching.** A `coach` decision on a language-model call's input, or, under a profile whose
+  `answerAssistance` is `contextual` or `scaffolded`, an `academic_integrity.*` reason code on an
+  allowed input, admits the call with `instructions`: `coachingInstructions` from
+  `AI_GUARD_CONFIG` (plain text, at most 4,000 characters), or by default guidance to ask for the
+  learner's attempt first and give hints rather than final answers for graded work. The Workshop
+  appends them to that request alone as a final system message; they are never stored in the chat
+  or shown to the learner. `answerAssistance` (`direct`, `contextual` or `scaffolded`, default
+  `direct`) mirrors the Hall Monitor profile. The guard knows nothing about whether work is graded
+  beyond what Hall Monitor's reason codes say, and it coaches only the request whose new input was
+  flagged: later steps of the same agent turn (after tool calls) are not coached.
 - **Output screening.** A language-model call whose profile's `outputModeration` is `required` is
   admitted with `screenOutput`, so the Workshop buffers its response and calls
   `screenModelOutput(callId, output)` before showing any of it. `optional` and `off` stream
@@ -211,7 +221,10 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   allocation snapshot from the admin console.
 - Teaching the deploy service to set a worker's `crons`. Until then, the guard's Cron Trigger must
   be added by hand on an installed guard.
-- Coaching prompts for `coach` decisions.
+- Keeping coaching across an agent turn's later steps, which the guard sees only as tool results.
+  That needs per-chat state in the guard, or a Workshop signal for the turn.
+- Telling the guard whether work is graded (the descriptor carries no assignment context), so
+  `answerAssistance` can apply without Hall Monitor's `academic_integrity.*` codes.
 - Moderating attachments. Image parts are skipped; Hall Monitor accepts them only as digests.
 - Teaching the hosted deploy service the `service` kind and its `backendBinding`. The SchoolOS
   district installer already does (`services` in the install config, SCHO-131; see

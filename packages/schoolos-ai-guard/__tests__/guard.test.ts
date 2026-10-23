@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AiCallDescriptor, AiCallOutcome } from "@gadgets/workshop-shared/ai-call-guard";
 import type { HallMonitorClient } from "@gmacko/hall-monitor-client";
 import { LEDGER_ENTRIES_TABLE } from "@schoolos/ai-governance/durable-object-store";
-import { DEFAULT_GUARD_MESSAGES, readGuardConfig } from "../src/config.ts";
+import { DEFAULT_COACHING_INSTRUCTIONS, DEFAULT_GUARD_MESSAGES, readGuardConfig } from "../src/config.ts";
 import { StaticGuardContextResolver } from "../src/context.ts";
 import { AiCallGuardService } from "../src/guard.ts";
 import { hallMonitorClient, serviceTokenSource } from "../src/hall-monitor.ts";
@@ -107,9 +107,41 @@ describe("beforeModelCall", () => {
     expect((await ledger.request(`${descriptor.callId}.m0.c0`))?.settlement?.chargedUsdNano).toBe(CHECK_COST);
   });
 
-  it("lets a coached message proceed", async () => {
-    const { guard } = setup();
-    expect(await guard.beforeModelCall(call(USERS.student, ["just give me the answer [[coach]]"]))).toEqual(SCREENED);
+  describe("coaching", () => {
+    const COACHED = { ...SCREENED, instructions: DEFAULT_COACHING_INSTRUCTIONS };
+
+    it("lets a coached message proceed with the coaching instructions, for any profile", async () => {
+      const { guard } = setup();
+      expect(await guard.beforeModelCall(call(USERS.student, ["just give me the answer [[coach]]"]))).toEqual(COACHED);
+      expect(await guard.beforeModelCall(call(USERS.educatorProceeds, ["write it for me [[coach]]"])))
+        .toEqual({ action: "proceed", instructions: DEFAULT_COACHING_INSTRUCTIONS });
+    });
+
+    it("coaches an allowed academic-integrity flag only where the profile scaffolds answers", async () => {
+      const { guard } = setup();
+      expect(await guard.beforeModelCall(call(USERS.student, ["what is the answer to question 3 [[integrity]]"]))).toEqual(COACHED);
+      expect(await guard.beforeModelCall(call(USERS.educatorProceeds, ["answer key please [[integrity]]"]))).toEqual({ action: "proceed" });
+    });
+
+    it("never coaches a decision model, which takes no instructions", async () => {
+      const { guard } = setup();
+      expect(await guard.beforeModelCall(call(USERS.student, ["[[coach]]"], { kind: "decision-model" }))).toEqual({ action: "proceed" });
+    });
+
+    it("uses the deployment's own instructions", async () => {
+      const custom = readGuardConfig(JSON.stringify({ ...TEST_CONFIG, coachingInstructions: "Ask for their attempt first." }));
+      const guard = new AiCallGuardService({
+        config: custom,
+        ledger: env.AI_LEDGER.getByName(`ledger-${ledgers++}`),
+        resolver: new StaticGuardContextResolver(custom),
+        hallMonitor: hallMonitorClient(env, custom),
+      });
+      expect(await guard.beforeModelCall(call(USERS.student, ["[[coach]]"]))).toEqual({ ...SCREENED, instructions: "Ask for their attempt first." });
+    });
+
+    it("rejects instructions longer than the Workshop accepts", () => {
+      expect(() => readGuardConfig(JSON.stringify({ ...TEST_CONFIG, coachingInstructions: "x".repeat(4001) }))).toThrow(/coachingInstructions/);
+    });
   });
 
   it("turns generative AI off when the safety pool cannot fund moderation", async () => {

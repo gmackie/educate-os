@@ -109,6 +109,9 @@ export type AiCallDescriptor = {
   newMessages: AiCallMessage[];
 };
 
+/** The longest {@link AiCallDecision} `instructions` the Workshop accepts, in UTF-16 code units. */
+export const MAX_AI_CALL_INSTRUCTIONS_LENGTH = 4000;
+
 /** The guard's answer to {@link AiCallGuard.beforeModelCall}. */
 export type AiCallDecision =
   /** Send the request. */
@@ -121,6 +124,15 @@ export type AiCallDecision =
        * output screening ignores it, so a guard must not rely on it being honoured.
        */
       screenOutput?: boolean;
+      /**
+       * Guidance for the model on this request only, such as how to coach a learner: plain text of
+       * at most {@link MAX_AI_CALL_INSTRUCTIONS_LENGTH} characters, or the call is denied as an
+       * invalid decision. The Workshop appends it to the request as a final system message (pi's
+       * "additional instructions"), after the newest message, so the prompt before it, and its
+       * cache, are unchanged. It is never stored in the chat's history, shown to the user, or
+       * passed to the guard again as a new message. Honoured for language-model calls only.
+       */
+      instructions?: string;
     }
   /**
    * Do not send it. The request fails as a model failure would, before reaching the provider.

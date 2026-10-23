@@ -13,6 +13,7 @@ import type {
   AiCallDecision, AiCallDescriptor, AiCallGuard, AiCallMessage, AiCallMessagePart, AiCallOutcome,
   AiCallOutputDecision, AiCallSite, AiCallTextPart,
 } from "@gadgets/workshop-shared/ai-call-guard";
+import { MAX_AI_CALL_INSTRUCTIONS_LENGTH } from "@gadgets/workshop-shared/ai-call-guard";
 import { createLogger } from "@gadgets/observability/logger";
 import { AI_CALL_DENIED, AiCallDeniedError, zeroUsage } from "./ai-invoke.js";
 import type { ModelHandle } from "./ai-models.js";
@@ -131,14 +132,16 @@ function decisionWithin<T>(decision: Promise<T>, signal: AbortSignal | undefined
 
 /**
  * Asks the guard whether the call `call` describes may run, passing the messages of `messages` not
- * yet passed for its scope. Returns the call's id and whether its output must be screened, or the
- * denial. A guard that fails, times out or is still deciding when the call is aborted denies.
+ * yet passed for its scope. Returns the call's id, whether its output must be screened and its
+ * instructions, or the denial. A guard that fails, times out, is still deciding when the call is
+ * aborted, or sends instructions that are too long denies.
  */
 async function admit(
     guard: AiCallGuardClient, scope: AiCallScope,
     call: Pick<AiCallDescriptor, "kind" | "maxOutputTokens">,
     messages: AiCallMessage[],
-    signal?: AbortSignal): Promise<{ callId: string; screenOutput: boolean } | AiCallDeniedError> {
+    signal?: AbortSignal,
+): Promise<{ callId: string; screenOutput: boolean; instructions?: string } | AiCallDeniedError> {
   let passed = passedMessages(scope);
   let newMessages = messages.filter(message => !passed.has(message.id));
   let callId = crypto.randomUUID();
@@ -156,7 +159,8 @@ async function admit(
         "This request could not be checked, so it was not sent. Try again later.",
         "guard_unavailable");
   }
-  if (decision.action !== "proceed") {
+  if (decision.action !== "proceed"
+      || (decision.instructions?.length ?? 0) > MAX_AI_CALL_INSTRUCTIONS_LENGTH) {
     let reason = decision.action === "deny" ? decision.reason : "invalid_decision";
     logger.info("AI call guard denied a model call", {
       event: "ai_call_guard.denied", callId, callSite: scope.callSite, reason,
@@ -165,7 +169,8 @@ async function admit(
         decision.action === "deny" ? decision.message : "This request was not allowed.", reason);
   }
   remember(passed, newMessages.map(message => message.id));
-  return { callId, screenOutput: decision.screenOutput === true };
+  return { callId, screenOutput: decision.screenOutput === true,
+           ...(decision.instructions ? { instructions: decision.instructions } : {}) };
 }
 
 // What a response shows its reader: its text and its unredacted reasoning. Tool calls pass.
@@ -230,8 +235,9 @@ function reportedUsage(usage: Usage | undefined): AiCallOutcome["usage"] {
  * its stream ends at once with an error response that throwIfAiCallDenied() recognizes. When the
  * guard asks to screen a request's output, its stream forwards nothing until the response is
  * complete and released; a withheld response ends the stream with the same error, and none of its
- * events are forwarded. Returns `handle` itself, modified, so `lastResponse` stays where the
- * handle's own stream writes it.
+ * events are forwarded. Instructions the guard gives are appended to that request alone, as a final
+ * system message. Returns `handle` itself, modified, so `lastResponse` stays where the handle's own
+ * stream writes it.
  */
 export function guardModelHandle(
     guard: AiCallGuardClient | undefined, handle: ModelHandle, scope: AiCallScope): ModelHandle {
@@ -256,7 +262,11 @@ export function guardModelHandle(
       if (admitted instanceof AiCallDeniedError) return fail(admitted.message, admitted);
       let response: AssistantMessage | undefined;
       try {
-        let inner = stream(model, context, options);
+        let inner = stream(model, admitted.instructions === undefined ? context : {
+          ...context,
+          messages: [...context.messages,
+                     { role: "system", content: admitted.instructions, timestamp: Date.now() }],
+        }, options);
         let held: AssistantMessageEvent[] | undefined = admitted.screenOutput ? [] : undefined;
         for await (let event of inner) {
           if (held) held.push(event);

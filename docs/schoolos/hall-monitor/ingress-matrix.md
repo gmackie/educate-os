@@ -72,6 +72,16 @@ language model (all but row 12) is covered alike:
 - `screenModelOutput` runs before `afterModelCall`, so a withheld response is still settled with
   the usage the provider billed.
 
+## Request instructions (SCHO-135)
+
+A `proceed` decision may also carry `instructions`, plain text of at most
+`MAX_AI_CALL_INSTRUCTIONS_LENGTH` (4,000) characters; longer is an invalid decision and denies the
+call. The stream guard appends them to that one request as a final `system` message after the
+newest message (pi's "additional instructions"), so the cached prompt prefix is unchanged. They are
+never added to the agent's transcript, stored in the chat's history, shown to the user, or passed
+back to the guard as a new message. Decision models ignore them. The SchoolOS guard uses them to
+coach a learner on a `coach` decision.
+
 The SchoolOS guard asks for screening when the resolved profile's `outputModeration` is `required`
 (student profiles), and screens with Hall Monitor's `interaction.output`, funded from the safety
 pool.

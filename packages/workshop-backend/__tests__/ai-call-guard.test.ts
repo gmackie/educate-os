@@ -416,6 +416,77 @@ describe("output screening", () => {
   });
 });
 
+describe("instructions", () => {
+  const COACH = "Ask for their attempt before helping.";
+
+  // A faux provider that records the context each request reaches it with.
+  function seeingHandle(steps: AssistantMessage[]) {
+    let { faux, handle: inner } = fauxHandle(steps);
+    let seen: Context[] = [];
+    let handle: ModelHandle = {
+      model: inner.model,
+      stream: (model, context, options) => {
+        seen.push(structuredClone(context));
+        return inner.stream(model, context, options);
+      },
+    };
+    return { faux, handle, seen };
+  }
+
+  it("appends them to that request alone, as a final system message", async () => {
+    let { handle, seen } = seeingHandle([
+      fauxAssistantMessage(fauxText("Coached.")), fauxAssistantMessage(fauxText("Plain.")),
+    ]);
+    let { calls, guard } = fakeGuard(call =>
+        texts(call).includes("Help") ? { action: "proceed", instructions: COACH } : PROCEED);
+    guardModelHandle(guard, handle, scope());
+    let context: Context = { systemPrompt: "Be brief.", messages: [user("Help")] };
+
+    let first = await handle.stream(handle.model, context).result();
+    context.messages.push(first, user("Thanks"));
+    await handle.stream(handle.model, context).result();
+
+    expect(seen[0]).toMatchObject({ systemPrompt: "Be brief.", messages: [
+      { role: "user", content: "Help" }, { role: "system", content: COACH },
+    ] });
+    expect(seen[1].messages.map(message => message.role)).toEqual(["user", "assistant", "user"]);
+    expect(context.messages).toHaveLength(3);
+    // The guard is never shown its own instructions as something new.
+    expect(calls.map(texts)).toEqual([["Be brief.", "Help"], ["Thanks"]]);
+  });
+
+  it("denies a call whose instructions are too long, without sending it", async () => {
+    let { faux, handle } = seeingHandle([fauxAssistantMessage(fauxText("Never."))]);
+    guardModelHandle(fakeGuard(() => ({ action: "proceed", instructions: "x".repeat(4001) })).guard,
+        handle, scope());
+
+    await expect(completeText(handle, { prompt: "Hi" }))
+        .rejects.toMatchObject({ name: "AiCallDeniedError", reason: "invalid_decision" });
+    expect(faux.state.callCount).toBe(0);
+  });
+
+  it("are not kept in an agent turn's transcript or the chat's history", () =>
+    withImpl(async impl => {
+      let { handle, seen } = seeingHandle([
+        fauxAssistantMessage(fauxToolCall("noSuchTool", {})),
+        fauxAssistantMessage(fauxText("Done.")),
+      ]);
+      let { guard } = fakeGuard(call =>
+          call.newMessages.some(message => message.role === "user")
+              ? { action: "proceed", instructions: COACH } : PROCEED);
+      guardModelHandle(guard, handle, scope());
+
+      await runTurn(impl, handle);
+
+      expect(seen).toHaveLength(2);
+      expect(seen[0].messages.at(-1)).toMatchObject({ role: "system", content: COACH });
+      expect(JSON.stringify(seen[1])).not.toContain(COACH);
+      let history = [...impl.storage.chats.list()];
+      expect(history.length).toBeGreaterThan(1);
+      expect(JSON.stringify(history)).not.toContain(COACH);
+    }));
+});
+
 describe("guardDecisionModel", () => {
   const CONTEXT = {
     state: { message: "My order never arrived." },
@@ -458,7 +529,7 @@ interface OverseerInternals extends AgentHooks {
   storage: {
     gadgets: { put(record: GadgetRecord): void };
     chatMeta: { put(meta: AiChatMetadata): void };
-    chats: { put(message: AiChatMessage): void };
+    chats: { put(message: AiChatMessage): void; list(): Iterable<AiChatMessage> };
   };
   nextChatSequence(chatId: number): number;
 }

@@ -62,6 +62,10 @@ SchoolOS already has a reserve/settle ledger (`@schoolos/ai-governance`, SCHO-25
   reply therefore arrives all at once rather than streaming, and its latency includes one Hall
   Monitor evaluation per 32,000 characters. A Workshop older than the seam ignores `screenOutput`,
   so a guard cannot rely on it being honoured there.
+- A `coach` decision changes how the model answers, not whether it does. SCHO-135 lets a `proceed`
+  decision carry `instructions` that the kernel appends to that request only, as a final system
+  message that is never stored or shown, and the SchoolOS guard sends configurable coaching
+  guidance through it.
 
 ## Note (2026-10-21, ADR-0011)
 

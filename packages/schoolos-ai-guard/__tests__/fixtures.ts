@@ -136,7 +136,7 @@ export const TEST_CONFIG = {
     "student-6-8": { hallMonitorProfileId: "k12-middle", revision: "r2", moderateInput: true, failureMode: "fail-closed", outputModeration: "required" },
     "student-9-12": { hallMonitorProfileId: "k12-high", revision: "r2", moderateInput: true, failureMode: "fail-closed", outputModeration: "required" },
     educator: { hallMonitorProfileId: "educator", revision: "r1", moderateInput: true, failureMode: "proceed" },
-    student: { hallMonitorProfileId: "k12-student", revision: "r3", moderateInput: true, failureMode: "fail-closed", outputModeration: "required" },
+    student: { hallMonitorProfileId: "k12-student", revision: "r3", moderateInput: true, failureMode: "fail-closed", outputModeration: "required", answerAssistance: "scaffolded" },
     "student-misconfigured": { hallMonitorProfileId: "k12-student", revision: "r3", moderateInput: true, failureMode: "proceed", outputModeration: "required" },
     "educator-proceeds": { hallMonitorProfileId: "educator", revision: "r1", moderateInput: true, failureMode: "proceed" },
     "educator-fails-closed": { hallMonitorProfileId: "educator", revision: "r1", moderateInput: true, failureMode: "fail-closed" },

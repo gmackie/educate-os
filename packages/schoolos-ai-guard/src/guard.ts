@@ -100,7 +100,8 @@ function receiptPriceBook(receipt: CostReceipt): { priceBookId?: string } {
 
 /** The verdict of moderating a call's new input or its response. */
 type Moderation =
-  | { kind: "proceed" }
+  /** It may proceed; `coach` when the model should coach rather than answer. */
+  | { kind: "proceed"; coach: boolean }
   | { kind: "deny"; reason: string; message: string };
 
 /**
@@ -130,7 +131,9 @@ export class AiCallGuardService {
    * each evaluation held from and settled to the safety pool. A refused call has its generative
    * hold released; moderation spend is kept, since it was spent.
    *
-   * - `allow` and `coach` proceed. (Coaching prompts are a follow-up; a `coach` is logged.)
+   * - `allow` and `coach` proceed. A `coach`, or under a `contextual` or `scaffolded` profile an
+   *   `academic_integrity.*` reason code, adds the configured coaching instructions to a
+   *   language-model call, for that request only.
    * - `hold` and `block` deny with a neutral message; `support` denies with a supportive one that
    *   points to a person, never a reprimand.
    * - A safety pool too low to fund a check denies the call: moderation is never skipped to save
@@ -198,9 +201,15 @@ export class AiCallGuardService {
       log.info("AI call refused by moderation", { event: "ai_guard.denied", reason: moderation.reason });
       return deny(moderation.reason, moderation.message);
     }
-    const screenOutput = call.kind === "language-model" && context.profile.outputModeration === "required";
-    log.debug("AI call admitted", { event: "ai_guard.admitted", ...(screenOutput ? { decision: "screen_output" } : {}) });
-    return screenOutput ? { action: "proceed", screenOutput } : { action: "proceed" };
+    const languageModel = call.kind === "language-model";
+    const screenOutput = languageModel && context.profile.outputModeration === "required";
+    const coach = languageModel && moderation.coach;
+    log.debug("AI call admitted", { event: "ai_guard.admitted", ...(coach ? { decision: "coach" } : {}) });
+    return {
+      action: "proceed",
+      ...(screenOutput ? { screenOutput } : {}),
+      ...(coach ? { instructions: this.#config.coachingInstructions } : {}),
+    };
   }
 
   /**
@@ -293,7 +302,7 @@ export class AiCallGuardService {
   }
 
   async #moderate(call: AiCallDescriptor, context: GuardContext, log: Logger<GuardLogFields>): Promise<Moderation> {
-    if (!context.profile.moderateInput) return { kind: "proceed" };
+    if (!context.profile.moderateInput) return { kind: "proceed", coach: false };
     const checks = call.newMessages.flatMap((message, m) => textChunks(message.parts).map((text, c) => ({ checkId: `${call.callId}.m${m}.c${c}`, text })));
     return this.#evaluate(call.callId, context, checks, "interaction.input", log);
   }
@@ -308,7 +317,7 @@ export class AiCallGuardService {
     kind: Extract<EvaluationKind, "interaction.input" | "interaction.output">,
     log: Logger<GuardLogFields>,
   ): Promise<Moderation> {
-    if (checks.length === 0) return { kind: "proceed" };
+    if (checks.length === 0) return { kind: "proceed", coach: false };
     const output = kind === "interaction.output";
     if (this.#hallMonitor === null) return this.#unavailable(context, log, undefined, output);
 
@@ -356,13 +365,14 @@ export class AiCallGuardService {
           ? { kind: "deny", reason: "moderation_support", message: this.#messages.support }
           : { kind: "deny", reason: `moderation_${result.decision}`, message: output ? this.#messages.outputWithheld : this.#messages.blocked };
       }
-      if (result.decision === "coach") {
+      const integrity = context.profile.answerAssistance !== "direct" && result.reasonCodes.some((code) => code.startsWith("academic_integrity."));
+      if (result.decision === "coach" || integrity) {
         coached = true;
         checkLog.info("moderation coached an AI call; it proceeds", { event: "ai_guard.moderation.coach", ...fields });
       }
     }
     log.debug("moderation allowed an AI call", { event: "ai_guard.moderation.allowed", decision: coached ? "coach" : "allow" });
-    return { kind: "proceed" };
+    return { kind: "proceed", coach: coached };
   }
 
   #evaluationRequest(callId: string, context: GuardContext, checkId: string, text: string, kind: EvaluationKind): EvaluationRequest {
@@ -393,7 +403,7 @@ export class AiCallGuardService {
       : {};
     if (!output && context.audience === "educator" && context.profile.failureMode === "proceed") {
       log.warn("Hall Monitor unavailable; educator profile proceeds unmoderated", { event: "ai_guard.moderation.unavailable", reason: "moderation_unavailable_proceed", ...fields });
-      return { kind: "proceed" };
+      return { kind: "proceed", coach: false };
     }
     log.warn("Hall Monitor unavailable; failing closed", { event: "ai_guard.moderation.unavailable", reason: "moderation_unavailable", ...fields });
     return { kind: "deny", reason: "moderation_unavailable", message: this.#messages.aiUnavailable };

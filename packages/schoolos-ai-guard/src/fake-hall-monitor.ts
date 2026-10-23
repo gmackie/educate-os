@@ -4,8 +4,8 @@
 // It speaks Hall Monitor's real HTTP API with real wire shapes: it validates each request against
 // `EvaluationRequest` and answers with an `EvaluationResult` carrying a cost receipt. It allows
 // everything unless the evaluated text carries a marker: `[[block]]`, `[[hold]]`, `[[support]]` or
-// `[[coach]]` picks that decision, `[[unpriced]]` reports an attempt with no price, and `[[down]]`
-// fails as an unavailable service.
+// `[[coach]]` picks that decision, `[[integrity]]` adds an academic-integrity reason code to it,
+// `[[unpriced]]` reports an attempt with no price, and `[[down]]` fails as an unavailable service.
 
 import { EvaluationRequest, EvaluationResult, type Decision } from "@gmacko/hall-monitor-contracts";
 
@@ -34,7 +34,10 @@ export async function fakeHallMonitor(request: Request): Promise<Response> {
     evaluationId: `ev-${evaluation.requestId}`,
     requestId: evaluation.requestId,
     decision,
-    reasonCodes: decision === "allow" ? [] : [`moderation.${decision}`],
+    reasonCodes: [
+      ...(decision === "allow" ? [] : [`moderation.${decision}`]),
+      ...(text.includes("[[integrity]]") ? ["academic_integrity.direct_answer_request"] : []),
+    ],
     findings: [],
     uncertain: false,
     policyRevision: evaluation.policy.revision,

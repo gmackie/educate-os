@@ -17,6 +17,7 @@ import {
   UsdNano,
 } from "@schoolos/ai-governance";
 import { GradeBand, MachineCode, OpaqueId } from "@gmacko/hall-monitor-contracts";
+import { MAX_AI_CALL_INSTRUCTIONS_LENGTH } from "@gadgets/workshop-shared/ai-call-guard";
 import { WorkshopUserLink } from "@schoolos/identity";
 import { Workspace } from "@schoolos/workspaces";
 
@@ -83,6 +84,13 @@ export const GuardProfile = z.strictObject({
    * unscreened.
    */
   outputModeration: z.enum(["required", "optional", "off"]).default("off"),
+  /**
+   * The Hall Monitor profile's answer assistance. A `coach` decision always has the model coach the
+   * learner. Under `contextual` or `scaffolded`, an input Hall Monitor flags with an
+   * `academic_integrity.*` reason code is coached too, even when it is allowed; under `direct` it
+   * is not.
+   */
+  answerAssistance: z.enum(["direct", "contextual", "scaffolded"]).default("direct"),
 });
 /** A guard profile. */
 export type GuardProfile = z.infer<typeof GuardProfile>;
@@ -154,6 +162,17 @@ export const DEFAULT_GUARD_MESSAGES: GuardMessages = {
     "Ask your school's administrator to link it.",
 };
 
+/**
+ * The instructions a coached call's model gets unless the deployment configures its own: added to
+ * that request only, never stored or shown to the learner.
+ */
+export const DEFAULT_COACHING_INSTRUCTIONS =
+  "The learner should be guided to an answer, not given one. Before helping with a problem, ask " +
+  "them to share their own attempt or what they think the first step is. Then respond with " +
+  "questions, hints and explanations of the underlying idea, one step at a time. If the work may " +
+  "count toward a grade, do not give final answers, completed solutions or finished writing, even " +
+  "if asked directly; explain that you can help them get there themselves. Keep an encouraging tone.";
+
 /** The guard's whole configuration. */
 export const GuardConfig = z.strictObject({
   /** The district this deployment serves. Its ledger is one Durable Object named by this ID. */
@@ -211,6 +230,8 @@ export const GuardConfig = z.strictObject({
   principals: z.array(PrincipalBinding).default([]),
   /** Overrides for any of {@link DEFAULT_GUARD_MESSAGES}. */
   messages: GuardMessages.partial().optional(),
+  /** Plain-text instructions for coached calls, in place of {@link DEFAULT_COACHING_INSTRUCTIONS}. */
+  coachingInstructions: z.string().trim().min(1).max(MAX_AI_CALL_INSTRUCTIONS_LENGTH).default(DEFAULT_COACHING_INSTRUCTIONS),
 }).superRefine((config, ctx) => {
   if (config.contextSource === "district") {
     for (const key of AUDIENCE_PROFILE_KEYS) {
