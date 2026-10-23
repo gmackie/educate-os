@@ -11,6 +11,7 @@ import {
   DurableObjectBlobBucket,
   DurableObjectCourseContentStorage,
   DISTRICT_TABLES,
+  DurableObjectDiscussionStorage,
   DurableObjectFundingAllocationStore,
   DurableObjectGuardianInvitationStore,
   DurableObjectGuardianRelationshipStore,
@@ -333,6 +334,68 @@ describe("DurableObjectGradebookStore", () => {
       await expect(store.saveSettings(BIO, { ...(settings(50) as object), scale: [] } as never, updated, 0)).rejects.toThrow();
       await expect(store.setMarker(BIO, "asg_lab-1" as never, "prn_nf-student-amara" as never, marker("asg_lab-2", "prn_nf-student-amara", "late"))).rejects.toMatchObject({ code: "validation-failed" });
       expect(await store.load(BIO)).toStrictEqual({ revision: 0, markers: [] });
+    });
+  });
+});
+
+// Discussions (SCHO-190).
+describe("DurableObjectDiscussionStorage", () => {
+  const BIO = "off_nf-bio-fall-p2" as never;
+  const at = "2026-10-23T12:00:00.000Z";
+  const topic = (id: string, title = "Is a virus alive?") => ({
+    id, offeringId: BIO, title, prompt: "Argue **one** side.", locked: false, pinned: false, settings: { allowReplies: true },
+    createdBy: "prn_nf-morgan-lee", createdAt: at, updatedAt: at,
+  });
+  const post = (id: string, topicId: string, body: string, parentId?: string) => ({
+    id, offeringId: BIO, topicId, ...(parentId === undefined ? {} : { parentId }), authorId: "prn_nf-student-amara", authorRole: "student",
+    body, status: "visible", flags: [], createdAt: at,
+  });
+  const event = (id: string, action: string) => ({ id, action, by: "prn_nf-morgan-lee", at });
+  const write = (revision: number, parts: Record<string, unknown>) =>
+    ({ revision, settings: { premoderation: false }, topics: [], deletedTopicIds: [], posts: [], moderation: [], ...parts }) as never;
+
+  it("keeps topics, posts and the moderation trail across a restart, writing only what changed", async () => {
+    const object = fresh();
+    // A post at the length limit, in characters that take three bytes each in UTF-8.
+    const long = "\u2603".repeat(10_000);
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectDiscussionStorage(state.storage);
+      expect(await store.load(BIO)).toBeUndefined();
+      await store.commit(BIO, write(1, { topics: [topic("dtp_a"), topic("dtp_b", "Lab")], posts: [post("dps_1", "dtp_a", long)] }), 0);
+      await expect(store.commit(BIO, write(2, {}), 0)).rejects.toMatchObject({ code: "conflict" });
+      await store.commit(BIO, write(2, {
+        settings: { premoderation: true },
+        posts: [{ ...post("dps_1", "dtp_a", long), status: "hidden" }, post("dps_2", "dtp_a", "Reply", "dps_1"), post("dps_3", "dtp_b", "Lab post")],
+        moderation: [event("dme_1", "hide"), event("dme_2", "premoderation-on")],
+      }), 1);
+      await store.commit(BIO, write(3, { settings: { premoderation: true }, deletedTopicIds: ["dtp_b"], moderation: [event("dme_3", "lock")] }), 2);
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      const board = await new DurableObjectDiscussionStorage(state.storage).load(BIO);
+      expect(board).toMatchObject({ revision: 3, settings: { premoderation: true }, topics: [{ id: "dtp_a" }] });
+      expect(board!.posts.map((p) => [p.id, p.status, p.parentId])).toStrictEqual([["dps_1", "hidden", undefined], ["dps_2", "visible", "dps_1"]]);
+      expect(board!.posts[0]!.body).toBe(long);
+      expect(board!.moderation.map((e) => e.id)).toStrictEqual(["dme_1", "dme_2", "dme_3"]);
+      expect(await new DurableObjectDiscussionStorage(state.storage).load("off_nf-eng9-fall-p3" as never)).toBeUndefined();
+    });
+  });
+
+  it("refuses a post that does not match its schema or names another offering, and stores nothing of the write", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = new DurableObjectDiscussionStorage(state.storage);
+      await expect(store.commit(BIO, write(1, { topics: [topic("dtp_a")], posts: [post("dps_1", "dtp_a", "<script>x</script>")] }), 0)).rejects.toThrow();
+      await expect(store.commit(BIO, write(1, { posts: [{ ...post("dps_1", "dtp_a", "Hi"), offeringId: "off_nf-eng9-fall-p3" }] }), 0)).rejects.toThrow();
+      expect(await store.load(BIO)).toBeUndefined();
+    });
+  });
+
+  it("refuses to read a board whose stored rows were tampered with", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = new DurableObjectDiscussionStorage(state.storage);
+      await store.commit(BIO, write(1, { topics: [topic("dtp_a")], posts: [post("dps_1", "dtp_a", "Hi")] }), 0);
+      state.storage.sql.exec("UPDATE schoolos_discussion_posts SET post_json = ?", JSON.stringify({ ...post("dps_1", "dtp_a", "Hi"), status: "public" }));
+      await expect(store.load(BIO)).rejects.toThrow(/do not match|does not match/);
     });
   });
 });

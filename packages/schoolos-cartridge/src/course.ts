@@ -8,25 +8,40 @@ import { writeZip } from "@schoolos/zip";
 import type { ManifestResource, OrganizationItem } from "./manifest.ts";
 import type { CartridgePackage } from "./package.ts";
 import { packagePath, planCartridgeImport } from "./plan.ts";
+import { childElement, parseXml, type XmlElement, type XmlNode } from "./xml.ts";
 
 /** One item of an imported or exported module. */
 export type CourseCartridgeItem =
   | { kind: "page"; identifier: string; title: string; body: string }
   | { kind: "link"; identifier: string; title: string; url: string };
 
-/** A module: a titled, ordered list of pages and links. */
+/**
+ * A discussion topic a module carries (`imsdt_xmlv1p*`, SCHO-190): its title and prompt, the prompt
+ * reduced to text as a page is. It becomes a discussion topic in the module, not a module item.
+ */
+export interface CourseCartridgeDiscussion {
+  identifier: string;
+  title: string;
+  prompt: string;
+}
+
+/** A module: a titled, ordered list of pages and links, and the discussion topics placed in it. */
 export interface CourseCartridgeModule {
   identifier: string;
   title: string;
   items: CourseCartridgeItem[];
+  /** Its discussion topics, in order (SCHO-190). */
+  discussions: CourseCartridgeDiscussion[];
 }
 
 /** Why a placement in the cartridge was not carried into a module. */
 export type CourseCartridgeSkipReason =
   /** An LTI tool, which launches only through an approved registration and has no place in a module. */
   | "lti-tool"
-  /** A resource type a module cannot hold: QTI, discussions, files other than HTML pages. */
+  /** A resource type a module cannot hold: QTI, files other than HTML pages. */
   | "unsupported-type"
+  /** A discussion topic whose file is not a readable `<topic>` (SCHO-190). */
+  | "invalid-discussion"
   /** A web link whose URL the Content Studio's checks refuse, such as a non-https or private address. */
   | "link-refused"
   /** A web link with no usable URL. */
@@ -54,12 +69,25 @@ export interface CourseCartridgePlan {
   skipped: CourseCartridgeSkip[];
   /** Modules nested below the top level, whose items were flattened into their top-level module. */
   flattened: string[];
-  /** Pages cut to {@link MAX_IMPORTED_PAGE_LENGTH} characters. */
+  /** Pages cut to {@link MAX_IMPORTED_PAGE_LENGTH} characters, and prompts to {@link MAX_IMPORTED_PROMPT_LENGTH}. */
   truncated: string[];
 }
 
 /** The longest page an import keeps, in characters; longer pages are cut and listed. */
 export const MAX_IMPORTED_PAGE_LENGTH = 20_000;
+
+/** The longest discussion prompt an import keeps, in characters (SCHO-190); longer ones are cut and listed. */
+export const MAX_IMPORTED_PROMPT_LENGTH = 10_000;
+
+const DISCUSSION_TOPIC = /^imsdt_xmlv1p[0-3]$/;
+const DISCUSSION_NAMESPACE = "http://www.imsglobal.org/xsd/imsccv1p3/imsdt_v1p3";
+
+/** An element's character data exactly as written, entity references decoded: line breaks matter in a prompt. */
+function rawText(element: XmlElement | undefined): string {
+  if (element === undefined) return "";
+  const walk = (node: XmlNode): string => (typeof node === "string" ? node : node.children.map(walk).join(""));
+  return walk(element);
+}
 
 const WEB_LINK = /^imswl_xmlv1p[0-3]$/;
 const LTI_LINK = /^imsbasiclti_xmlv1p[0-3]$/;
@@ -115,13 +143,39 @@ export function planCourseCartridge(pkg: CartridgePackage): CourseCartridgePlan 
   const decoder = new TextDecoder("utf-8", { fatal: true });
   const title = (plan.metadata.title ?? "").trim() || UNTITLED;
 
-  const itemFor = (item: OrganizationItem): CourseCartridgeItem | undefined => {
+  // A discussion topic: its `<topic>` file's title and prompt. An HTML prompt is reduced to text;
+  // a plain one (as SchoolOS writes them) is kept verbatim, so a prompt survives the round trip.
+  const discussionFor = (identifier: string, itemTitle: string, resource: ManifestResource): CourseCartridgeDiscussion | undefined => {
+    const type = resource.type.slice(0, 200);
+    const href = resource.files[0] ?? resource.href;
+    const bytes = href === undefined ? undefined : pkg.files.get(packagePath(href));
+    if (bytes === undefined) return void skipped.push({ identifier, reason: "missing-file", type });
+    let topic: XmlElement;
+    try {
+      topic = parseXml(decoder.decode(bytes));
+    } catch {
+      return void skipped.push({ identifier, reason: "invalid-discussion", type });
+    }
+    if (topic.local !== "topic") return void skipped.push({ identifier, reason: "invalid-discussion", type });
+    const text = childElement(topic, "text");
+    const html = text === undefined || (text.attributes.get("texttype") ?? "text/html") !== "text/plain";
+    let prompt = html ? pageTextFromHtml(rawText(text)) : rawText(text).trim();
+    if (prompt.length > MAX_IMPORTED_PROMPT_LENGTH) {
+      prompt = prompt.slice(0, MAX_IMPORTED_PROMPT_LENGTH);
+      truncated.push(identifier);
+    }
+    const title = rawText(childElement(topic, "title")).replace(/\s+/g, " ").trim().slice(0, 200) || itemTitle;
+    return { identifier, title, prompt };
+  };
+
+  const itemFor = (item: OrganizationItem): CourseCartridgeItem | CourseCartridgeDiscussion | undefined => {
     const identifier = item.identifier.slice(0, 200);
     const resource = resources.get(item.resourceRef!);
     if (resource === undefined) return void skipped.push({ identifier, reason: "missing-resource" });
     const type = resource.type.slice(0, 200);
     const itemTitle = (item.title ?? resource.metadata.title ?? "").trim().slice(0, 200) || UNTITLED;
     if (LTI_LINK.test(resource.type)) return void skipped.push({ identifier, reason: "lti-tool", type });
+    if (DISCUSSION_TOPIC.test(resource.type)) return discussionFor(identifier, itemTitle, resource);
     if (WEB_LINK.test(resource.type)) {
       const link = links.get(resource.identifier.slice(0, 200));
       if (link === undefined) return void skipped.push({ identifier, reason: "invalid-link", type });
@@ -146,22 +200,28 @@ export function planCourseCartridge(pkg: CartridgePackage): CourseCartridgePlan 
     return { kind: "page", identifier, title: itemTitle, body };
   };
 
-  const collect = (items: readonly OrganizationItem[], nested: boolean): CourseCartridgeItem[] =>
+  const collect = (items: readonly OrganizationItem[], nested: boolean): (CourseCartridgeItem | CourseCartridgeDiscussion)[] =>
     items.flatMap((item) => {
       const own = item.resourceRef === undefined ? [] : [itemFor(item)].filter((i) => i !== undefined);
       if (item.children.length === 0) return own;
       if (nested) flattened.push(item.identifier.slice(0, 200));
       return [...own, ...collect(item.children, true)];
     });
+  const moduleOf = (identifier: string, moduleTitle: string, placed: (CourseCartridgeItem | CourseCartridgeDiscussion)[]): CourseCartridgeModule => ({
+    identifier,
+    title: moduleTitle,
+    items: placed.filter((entry): entry is CourseCartridgeItem => "kind" in entry),
+    discussions: placed.filter((entry): entry is CourseCartridgeDiscussion => !("kind" in entry)),
+  });
 
   const modules: CourseCartridgeModule[] = [];
   const loose = pkg.manifest.items.filter((item) => item.children.length === 0);
-  if (loose.length > 0) modules.push({ identifier: plan.manifestIdentifier || "top-level", title, items: collect(loose, false) });
+  if (loose.length > 0) modules.push(moduleOf(plan.manifestIdentifier || "top-level", title, collect(loose, false)));
   for (const item of pkg.manifest.items) {
     if (item.children.length === 0) continue;
-    modules.push({ identifier: item.identifier.slice(0, 200), title: (item.title ?? "").trim().slice(0, 200) || UNTITLED, items: collect([item], false) });
+    modules.push(moduleOf(item.identifier.slice(0, 200), (item.title ?? "").trim().slice(0, 200) || UNTITLED, collect([item], false)));
   }
-  return { packageDigest: plan.packageDigest, title, modules: modules.filter((m) => m.items.length > 0), skipped, flattened, truncated };
+  return { packageDigest: plan.packageDigest, title, modules: modules.filter((m) => m.items.length > 0 || m.discussions.length > 0), skipped, flattened, truncated };
 }
 
 const escapeXml = (text: string) => text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
@@ -171,7 +231,12 @@ export interface CourseCartridgeExport {
   title: string;
   /** A BCP 47 language tag for the package metadata. */
   language: string;
-  modules: readonly { title: string; items: readonly ({ kind: "page"; title: string; body: string } | { kind: "link"; title: string; url: string })[] }[];
+  modules: readonly {
+    title: string;
+    items: readonly ({ kind: "page"; title: string; body: string } | { kind: "link"; title: string; url: string })[];
+    /** The module's discussion topics, written after its items (SCHO-190). */
+    discussions?: readonly { title: string; prompt: string }[];
+  }[];
 }
 
 /**
@@ -210,6 +275,20 @@ export function courseCartridgeFiles(course: CourseCartridgeExport): Map<string,
         resources.push(`    <resource identifier="R_${n}" type="imswl_xmlv1p3"><file href="${path}"/></resource>`);
       }
       items.push(`          <item identifier="I_${n}" identifierref="R_${n}"><title>${escapeXml(item.title)}</title></item>`);
+    }
+    for (const topic of module.discussions ?? []) {
+      n++;
+      const path = `discussions/topic-${n}.xml`;
+      files.set(path, [
+        `<?xml version="1.0" encoding="UTF-8"?>`,
+        `<topic xmlns="${DISCUSSION_NAMESPACE}">`,
+        `  <title>${escapeXml(topic.title)}</title>`,
+        `  <text texttype="text/plain">${escapeXml(topic.prompt)}</text>`,
+        `</topic>`,
+        ``,
+      ].join("\n"));
+      resources.push(`    <resource identifier="R_${n}" type="imsdt_xmlv1p3"><file href="${path}"/></resource>`);
+      items.push(`          <item identifier="I_${n}" identifierref="R_${n}"><title>${escapeXml(topic.title)}</title></item>`);
     }
     organization.push(`        <item identifier="M_${m + 1}"><title>${escapeXml(module.title)}</title>`, ...items, `        </item>`);
   }

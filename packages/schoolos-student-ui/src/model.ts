@@ -49,3 +49,13 @@ export type NotificationView = RouteResponse<"me.notifications">["notifications"
 export type CalendarEvent = RouteResponse<"me.calendar">["events"][number];
 /** The student's email preferences (SCHO-189). */
 export type Preferences = RouteResponse<"me.preferences">;
+
+// Discussions (SCHO-190).
+/** A class's discussion topics, as a student sees them. */
+export type DiscussionListing = RouteResponse<"student.listDiscussions">;
+/** One discussion topic. */
+export type DiscussionTopic = DiscussionListing["topics"][number]["topic"];
+/** A topic's thread as a student reads it, with its authors' names. */
+export type DiscussionThread = RouteResponse<"student.discussionThread">;
+/** One post as a student reads it: with its text, or a placeholder for one withdrawn. */
+export type DiscussionPostView = DiscussionThread["posts"][number];

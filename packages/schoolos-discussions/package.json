@@ -1,0 +1,25 @@
+{
+  "name": "@schoolos/discussions",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SchoolOS course discussions (LMS-lite L6, SCHO-190): an offering's discussion topics and threaded posts, decided by the district's policy engine. Student posts are screened by Hall Monitor where the district enables it and are visible once screened; teachers moderate after, or approve each post first under per-offering pre-moderation. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@gmacko/hall-monitor-contracts": "file:../../vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz",
+    "@schoolos/assessment": "workspace:*",
+    "@schoolos/content-studio": "workspace:*",
+    "@schoolos/contracts": "workspace:*",
+    "@schoolos/curriculum": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@schoolos/academics": "workspace:*",
+    "@schoolos/fixtures": "workspace:*",
+    "@schoolos/policy": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

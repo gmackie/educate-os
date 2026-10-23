@@ -29,6 +29,7 @@ import {
 import { InMemoryCatalogMirrorStorage, type CatalogMirrorStorage } from "@schoolos/catalog";
 import { InMemoryLedgerStore, type LedgerStore } from "@schoolos/ai-governance";
 import { oneroster } from "@schoolos/integrations";
+import { InMemoryDiscussionStorage, type DiscussionStorage } from "@schoolos/discussions";
 import type { WorkshopUserLink } from "@schoolos/identity";
 import { InMemoryGuardianRelationshipStore, type GuardianRelationshipStore } from "@schoolos/policy";
 import { InMemoryGuardianInvitationStore, InMemoryIdentityLinkStore, type GuardianInvitationStore, type IdentityLinkStore } from "@schoolos/identity-links";
@@ -213,6 +214,9 @@ export interface DistrictAppStores {
   // Communication (SCHO-189)
   /** Announcements, weekly notes, notifications, calendar feeds, email preferences and the digest ledger. */
   communication: CommunicationStores;
+  // Discussions (SCHO-190).
+  /** Each offering's discussion topics, posts, settings and moderation trail. */
+  discussions: DiscussionStorage;
 }
 
 /** In-memory stores for one district, seeded with its directory. */
@@ -244,5 +248,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     gradebooks: new InMemoryGradebookStore(),
     // Communication (SCHO-189)
     communication: inMemoryCommunicationStores(),
+    // Discussions (SCHO-190).
+    discussions: new InMemoryDiscussionStorage(),
   };
 }

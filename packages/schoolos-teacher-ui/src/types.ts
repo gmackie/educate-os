@@ -84,3 +84,17 @@ export type GradeMarker = NonNullable<GradebookCell["marker"]>;
 export type ClassAnnouncement = RouteResponse<"teacher.listAnnouncements">[number];
 /** A class's note to families for one week (SCHO-189). */
 export type WeeklyNoteView = RouteResponse<"teacher.weeklyNote">;
+
+// Discussions (SCHO-190).
+/** A class's discussion topics as its teachers see them, with the class's discussion settings. */
+export type DiscussionListing = RouteResponse<"teacher.listDiscussions">;
+/** One discussion topic. */
+export type DiscussionTopic = DiscussionListing["topics"][number]["topic"];
+/** A topic and every post in it, moderation status and flags included. */
+export type StaffThread = RouteResponse<"teacher.discussionThread">;
+/** One post as its teachers see it. */
+export type DiscussionPost = StaffThread["posts"][number];
+/** Posts waiting for approval or flagged, and the latest moderation. */
+export type ModerationQueue = RouteResponse<"teacher.moderationQueue">;
+/** A teacher's decision on a post. */
+export type ModerationDecision = RouteInput<"teacher.moderatePost">["body"]["decision"];

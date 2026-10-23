@@ -134,6 +134,8 @@ export const COURSE_RESOURCE_KINDS = [
   "announcement",
   "course-content",
   "gradebook",
+  "discussion-topic",
+  "discussion-post",
 ] as const satisfies ResourceKind[];
 
 const OFFICIAL_GRADE_WRITES = ["create", "update", "grade"] as const satisfies Action[];
@@ -199,6 +201,13 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   teacher acting directly sets its groups, weights, scale and markers, because those change every
  *   computed total (never an official grade). A student's own row is a `course` record they own and
  *   read, even after a drop; no student reads the grid. Guardians are not given it.
+ * - **Discussions** (SCHO-190) are an offering's topics and the posts in them. Its staff open,
+ *   lock, pin and remove topics and moderate every post; its actively enrolled students read the
+ *   topics and the visible posts, and write, edit, delete and report posts. A post's classification
+ *   is its moderation status: visible posts are `course`, posts waiting for approval `teacher-only`
+ *   (read by their author and staff), and hidden or removed posts `restricted` (staff only).
+ *   Administrators over the offering read topics and visible posts for oversight. Guardians are
+ *   not given discussions: what they read stays the ADR-0012 list. There is no private messaging.
  */
 export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse([
   // Guardians (ADR-0012). Their authority is a relationship record to one child, never a role, and
@@ -660,6 +669,98 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "directory.reference.read",
     description: "Any principal of the district reads its academic terms and catalog courses.",
     when: { kinds: ["term", "course"], classifications: ["public", "district-internal"], actions: [...READS] },
+    effect: { effect: "allow" },
+  },
+
+  // Discussions (SCHO-190). Every rule names a discussion kind, so none reaches anything else, and
+  // the guards above (guardians, completed terms) still come first.
+  {
+    id: "discussion.student.read",
+    description: "An actively enrolled student reads their offering's open discussion topics and the visible posts in them.",
+    when: {
+      kinds: ["discussion-topic", "discussion-post"],
+      ownership: ["unowned", "own", "others"],
+      roles: ["student"],
+      classifications: ["course"],
+      actions: [...READS],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "discussion.student.own-pending",
+    description: "A student reads their own post while it waits for a teacher's approval; never a hidden or removed one.",
+    when: { kinds: ["discussion-post"], ownership: ["own"], roles: ["student"], classifications: ["teacher-only"], actions: [...READS] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "discussion.student.own-posts",
+    description: "An actively enrolled student writes, edits and deletes their own posts, visible or waiting for approval; never anyone else's.",
+    when: {
+      kinds: ["discussion-post"],
+      ownership: ["own"],
+      roles: ["student"],
+      classifications: ["course", "teacher-only"],
+      actions: ["create", "update", "delete"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "discussion.student.report",
+    description: "An actively enrolled student reports another person's visible post to the class's teachers (submits a report).",
+    when: { kinds: ["discussion-post"], ownership: ["others"], roles: ["student"], classifications: ["course"], actions: ["submit"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "discussion.instructor.read",
+    description: "Course staff read every topic and post in their offering's discussions: waiting, hidden and removed posts included.",
+    when: {
+      kinds: ["discussion-topic", "discussion-post"],
+      roles: [...INSTRUCTORS],
+      classifications: ["course", "teacher-only", "restricted"],
+      actions: [...READS, "export"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "discussion.instructor.topics",
+    description: "Course staff open, edit, lock, pin and delete their offering's discussion topics, and set whether students' posts wait for approval.",
+    when: {
+      kinds: ["discussion-topic"],
+      ownership: ["unowned"],
+      roles: [...INSTRUCTORS],
+      classifications: ["course", "teacher-only"],
+      actions: ["create", "update", "delete", "publish", "configure"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "discussion.instructor.own-posts",
+    description: "Course staff write, edit and delete their own posts in their offering's discussions.",
+    when: { kinds: ["discussion-post"], ownership: ["own"], roles: [...INSTRUCTORS], classifications: ["course"], actions: ["create", "update", "delete"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "discussion.instructor.moderate",
+    description: "Course staff moderate posts in their offering's discussions: approve, hide, unhide and remove them, and clear their flags.",
+    when: {
+      kinds: ["discussion-post"],
+      ownership: ["own", "others"],
+      roles: [...INSTRUCTORS],
+      classifications: ["course", "teacher-only", "restricted"],
+      actions: ["review"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.discussion-oversight",
+    description: "Administrators over an offering read its discussion topics and visible posts; never posts waiting for approval, hidden or removed.",
+    when: {
+      kinds: ["discussion-topic", "discussion-post"],
+      ownership: ["unowned", "others"],
+      roles: [...ADMINS],
+      classifications: ["course"],
+      actions: [...READS],
+    },
     effect: { effect: "allow" },
   },
 ]);

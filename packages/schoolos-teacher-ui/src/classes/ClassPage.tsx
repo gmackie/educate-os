@@ -3,6 +3,7 @@ import { Question } from "@phosphor-icons/react";
 import { CreateActivityPage } from "../activities/CreateActivityPage.tsx";
 import { GradebookPage } from "../gradebook/GradebookPage.tsx";
 import { AnnouncementsPage } from "../announcements/AnnouncementsPage.tsx";
+import { DiscussionsPage } from "../discussions/DiscussionsPage.tsx";
 import { Loading } from "../Loading.tsx";
 import { ModulesPage } from "../modules/ModulesPage.tsx";
 import { Problem } from "../Problem.tsx";
@@ -96,5 +97,7 @@ const ClassSection = ({ route, teaching }: { route: ClassRoute; teaching: Teachi
       return <GradebookPage teaching={teaching} />;
     case "announcements":
       return <AnnouncementsPage teaching={teaching} />;
+    case "discussions":
+      return <DiscussionsPage teaching={teaching} />;
   }
 };

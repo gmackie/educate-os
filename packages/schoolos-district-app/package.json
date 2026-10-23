@@ -22,6 +22,7 @@
     "@schoolos/content-studio": "workspace:*",
     "@schoolos/contracts": "workspace:*",
     "@schoolos/curriculum": "workspace:*",
+    "@schoolos/discussions": "workspace:*",
     "@schoolos/identity": "workspace:*",
     "@schoolos/identity-links": "workspace:*",
     "@schoolos/integrations": "workspace:*",

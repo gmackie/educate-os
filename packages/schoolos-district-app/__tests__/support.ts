@@ -88,7 +88,9 @@ export async function bootDistrict(
   directory: DistrictDirectorySnapshot = NORTHFIELD,
   options: Partial<Pick<DistrictAppOptions, "projects" | "fundingPools" | "modelCatalog" | "aiMonthlyDistrictCapUsdNano" | "cloudflareAccount" | "now" | "authority"
     // Communication (SCHO-189)
-    | "mail" | "appUrl">> = {},
+    | "mail" | "appUrl"
+    // Discussions (SCHO-190)
+    | "discussionScreening">> = {},
 ): Promise<TestDistrict> {
   const idp = new TestIdentityProvider(directory.district.trustedIssuers[0]!);
   const stores = inMemoryDistrictStores(directory);

@@ -10,6 +10,7 @@ import { PrivacyNote } from "./PrivacyNote.tsx";
 import { activityPath } from "./router.tsx";
 import { CourseModules } from "./modules/CourseModules.tsx";
 import { CourseAnnouncements } from "./communication/CourseAnnouncements.tsx";
+import { CourseDiscussions } from "./discussions/CourseDiscussions.tsx";
 
 const STATUS_VARIANT = {
   "not-started": "neutral",
@@ -98,6 +99,7 @@ export const CoursePage = ({ offeringId }: { offeringId: string }) => {
       ) : null}
       <CourseAnnouncements offeringId={offeringId} />
       <CourseModules offeringId={offeringId} activities={activities} />
+      <CourseDiscussions offeringId={offeringId} />
       <section aria-labelledby="activities" className="flex flex-col gap-3">
         <Text variant="heading" as="h2">
           <span id="activities">Activities</span>

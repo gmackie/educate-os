@@ -84,6 +84,22 @@ import {
   PagePatch,
   TemplateInput,
 } from "@schoolos/curriculum";
+import {
+  DiscussionPost,
+  DiscussionPostId,
+  DiscussionSettings,
+  DiscussionTopic,
+  DiscussionTopicId,
+  ModerationDecision,
+  ModerationQueue,
+  NewPost,
+  NewTopic,
+  PostBody,
+  PostReport,
+  StudentPostView,
+  TopicListing,
+  TopicPatch,
+} from "@schoolos/discussions";
 import { CoursePatch, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, TermPatch } from "@schoolos/academics";
 import { EvidenceContract } from "@schoolos/registry";
 import { AssessmentReport, IdempotencyKey, RubricDraft, RubricRelease, RunError, RunState } from "@schoolos/assessment-ci";
@@ -471,6 +487,8 @@ export const CartridgePreviewBody = z.strictObject({
       z.strictObject({ kind: z.literal("page"), title: z.string(), characters: z.int().nonnegative() }),
       z.strictObject({ kind: z.literal("link"), title: z.string(), url: z.string() }),
     ])),
+    /** The discussion topics that would be opened in the module, drafts with it (SCHO-190). */
+    discussions: z.array(z.strictObject({ title: z.string(), characters: z.int().nonnegative() })).optional(),
   })),
   /** Placements not carried, with why: tools, refused links, other resource types, unacceptable text. */
   skipped: z.array(z.strictObject({ identifier: z.string(), reason: z.string(), type: z.string().optional() })),
@@ -616,6 +634,34 @@ export const DigestPreviewBody = z.strictObject({
 });
 /** A digest preview. */
 export type DigestPreviewBody = z.infer<typeof DigestPreviewBody>;
+
+
+// Discussions (SCHO-190): topics, threaded posts and their moderation.
+
+/** The display name of each author a thread names, so a reader sees who wrote what. */
+export const DiscussionAuthorsBody = z.array(z.strictObject({ principalId: PrincipalId, displayName: z.string() }));
+/** Discussion authors. */
+export type DiscussionAuthorsBody = z.infer<typeof DiscussionAuthorsBody>;
+
+/** A topic and its posts as a student reads them, with their authors' names. */
+export const StudentThreadBody = z.strictObject({ topic: DiscussionTopic, posts: z.array(StudentPostView), authors: DiscussionAuthorsBody });
+/** A student thread. */
+export type StudentThreadBody = z.infer<typeof StudentThreadBody>;
+
+/** A topic and every post in it as its staff read them, flags and moderation status included, with their authors' names. */
+export const StaffThreadBody = z.strictObject({ topic: DiscussionTopic, posts: z.array(DiscussionPost), authors: DiscussionAuthorsBody });
+/** A staff thread. */
+export type StaffThreadBody = z.infer<typeof StaffThreadBody>;
+
+/** A teacher's moderation queue, with the names of the authors it lists. */
+export const ModerationQueueBody = ModerationQueue.extend({ authors: DiscussionAuthorsBody });
+/** A moderation queue body. */
+export type ModerationQueueBody = z.infer<typeof ModerationQueueBody>;
+
+/** One student's posts in the topics graded under an assignment, for the teacher grading it. */
+export const DiscussionParticipationBody = z.strictObject({ topics: z.array(DiscussionTopic), posts: z.array(DiscussionPost) });
+/** Discussion participation. */
+export type DiscussionParticipationBody = z.infer<typeof DiscussionParticipationBody>;
 
 const params = <S extends z.core.$ZodLooseShape>(shape: S) => z.strictObject(shape);
 const NoBody = z.strictObject({});
@@ -995,7 +1041,12 @@ export const ROUTES = {
       /** The digest the preview reported; the import is refused if the package is not the one previewed. */
       packageDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
     }),
-    response: z.strictObject({ modules: z.array(CourseModule), preview: CartridgePreviewBody }),
+    response: z.strictObject({
+      modules: z.array(CourseModule),
+      /** The discussion topics opened in the imported modules (SCHO-190). */
+      topics: z.array(DiscussionTopic).optional(),
+      preview: CartridgePreviewBody,
+    }),
   }),
   "teacher.exportCartridge": route({
     method: "GET", path: "/api/teacher/offerings/:offeringId/cartridge/export", surface: "teacher",
@@ -1210,6 +1261,80 @@ export const ROUTES = {
   "admin.previewDigest": route({
     method: "GET", path: "/api/admin/guardians/:guardianPrincipalId/digest-preview", surface: "admin",
     params: params({ guardianPrincipalId: PrincipalId }), response: DigestPreviewBody,
+  }),
+
+  // Discussions (SCHO-190). Kept in one block, apart from the routes above.
+  "student.listDiscussions": route({
+    method: "GET", path: "/api/student/offerings/:offeringId/discussions", surface: "student",
+    params: params({ offeringId: OfferingId }), response: TopicListing,
+  }),
+  "student.discussionThread": route({
+    method: "GET", path: "/api/student/offerings/:offeringId/discussions/:topicId", surface: "student",
+    params: params({ offeringId: OfferingId, topicId: DiscussionTopicId }), response: StudentThreadBody,
+  }),
+  "student.createPost": route({
+    method: "POST", path: "/api/student/offerings/:offeringId/discussions/:topicId/posts", surface: "student", status: 201,
+    params: params({ offeringId: OfferingId, topicId: DiscussionTopicId }), body: NewPost, response: StudentPostView,
+  }),
+  "student.editPost": route({
+    method: "POST", path: "/api/student/offerings/:offeringId/posts/:postId", surface: "student",
+    params: params({ offeringId: OfferingId, postId: DiscussionPostId }), body: z.strictObject({ body: PostBody }), response: StudentPostView,
+  }),
+  "student.deletePost": route({
+    method: "POST", path: "/api/student/offerings/:offeringId/posts/:postId/delete", surface: "student",
+    params: params({ offeringId: OfferingId, postId: DiscussionPostId }), body: NoBody, response: z.strictObject({ deleted: z.literal(true) }),
+  }),
+  "student.reportPost": route({
+    method: "POST", path: "/api/student/offerings/:offeringId/posts/:postId/report", surface: "student",
+    params: params({ offeringId: OfferingId, postId: DiscussionPostId }), body: PostReport, response: z.strictObject({ reported: z.literal(true) }),
+  }),
+  "teacher.listDiscussions": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/discussions", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: TopicListing,
+  }),
+  "teacher.discussionThread": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/discussions/:topicId", surface: "teacher",
+    params: params({ offeringId: OfferingId, topicId: DiscussionTopicId }), response: StaffThreadBody,
+  }),
+  "teacher.createTopic": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/discussions", surface: "teacher", status: 201,
+    params: params({ offeringId: OfferingId }), body: NewTopic, response: DiscussionTopic,
+  }),
+  "teacher.updateTopic": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/discussions/:topicId", surface: "teacher",
+    params: params({ offeringId: OfferingId, topicId: DiscussionTopicId }), body: TopicPatch, response: DiscussionTopic,
+  }),
+  "teacher.deleteTopic": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/discussions/:topicId/delete", surface: "teacher",
+    params: params({ offeringId: OfferingId, topicId: DiscussionTopicId }), body: NoBody, response: z.strictObject({ deleted: z.literal(true) }),
+  }),
+  "teacher.createPost": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/discussions/:topicId/posts", surface: "teacher", status: 201,
+    params: params({ offeringId: OfferingId, topicId: DiscussionTopicId }), body: NewPost, response: DiscussionPost,
+  }),
+  "teacher.editPost": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/posts/:postId", surface: "teacher",
+    params: params({ offeringId: OfferingId, postId: DiscussionPostId }), body: z.strictObject({ body: PostBody }), response: DiscussionPost,
+  }),
+  "teacher.deletePost": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/posts/:postId/delete", surface: "teacher",
+    params: params({ offeringId: OfferingId, postId: DiscussionPostId }), body: NoBody, response: z.strictObject({ deleted: z.literal(true) }),
+  }),
+  "teacher.moderatePost": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/posts/:postId/moderation", surface: "teacher",
+    params: params({ offeringId: OfferingId, postId: DiscussionPostId }), body: z.strictObject({ decision: ModerationDecision }), response: DiscussionPost,
+  }),
+  "teacher.moderationQueue": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/discussion-moderation", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: ModerationQueueBody,
+  }),
+  "teacher.discussionSettings": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/discussion-settings", surface: "teacher",
+    params: params({ offeringId: OfferingId }), body: DiscussionSettings, response: DiscussionSettings,
+  }),
+  "teacher.discussionParticipation": route({
+    method: "GET", path: "/api/teacher/assignments/:assignmentId/discussion-posts/:principalId", surface: "teacher",
+    params: params({ assignmentId: AssignmentId, principalId: PrincipalId }), response: DiscussionParticipationBody,
   }),
 } as const satisfies Record<string, RouteSpec>;
 

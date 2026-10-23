@@ -72,7 +72,7 @@ export const CartridgePanel = ({ offeringId, onImported }: { offeringId: string;
           <Text>{`${upload.fileName} would add ${plural(modules.length, "module")} with ${plural(modules.reduce((n, m) => n + m.items.length, 0), "item")}.`}</Text>
           <ul className="list-disc pl-6">
             {modules.map((module, index) => (
-              <li key={index}>{`${module.title}: ${module.items.map((item) => item.title).join(", ")}`}</li>
+              <li key={index}>{`${module.title}: ${[...module.items.map((item) => item.title), ...(module.discussions ?? []).map((topic) => `${topic.title} (discussion)`)].join(", ")}`}</li>
             ))}
           </ul>
           {upload.preview.skipped.length > 0 && (
@@ -95,7 +95,8 @@ export const CartridgePanel = ({ offeringId, onImported }: { offeringId: string;
                     body: { fileName: upload.fileName, base64: upload.base64, packageDigest: upload.preview.packageDigest },
                   });
                   setUpload(undefined);
-                  return `Imported ${plural(result.modules.length, "module")} as drafts.`;
+                  const topics = result.topics?.length ?? 0;
+                  return `Imported ${plural(result.modules.length, "module")} as drafts${topics === 0 ? "" : `, with ${plural(topics, "discussion")}`}.`;
                 })}
             >
               {`Import ${plural(modules.length, "module")}`}
