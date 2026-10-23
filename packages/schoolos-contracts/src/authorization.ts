@@ -65,6 +65,17 @@ export const ResourceKind = z.enum([
    * is a `course` record that student owns.
    */
   "gradebook",
+  /**
+   * A discussion topic an offering's staff open for its class (SCHO-190): unowned `course`
+   * material, or `teacher-only` while the module it sits in is unpublished.
+   */
+  "discussion-topic",
+  /**
+   * One post in a discussion topic, owned by its author (SCHO-190). Its classification follows its
+   * moderation status: a visible post is `course`, a post waiting for a teacher's approval
+   * `teacher-only`, and a hidden or removed post `restricted`.
+   */
+  "discussion-post",
   "learning-resource",
   "capability-config",
   "ai-budget",
