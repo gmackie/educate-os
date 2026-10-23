@@ -7,6 +7,12 @@ import { withVitestTask } from "@gadgets/scripts/vitest-task";
 
 const district = process.env.SCHOOLOS_DISTRICT_URL ?? "http://127.0.0.1:4801";
 
+// The path the app is served under. `/` unless SCHOOLOS_UI_BASE says otherwise: a deployment that
+// serves several SchoolOS UIs from one origin gives each its own (scripts/production/
+// assemble-district-ui.ts). The app routes by hash, so only its asset URLs depend on it.
+const base = process.env.SCHOOLOS_UI_BASE ?? "/";
+if (!/^\/([\w-]+\/)*$/.test(base)) throw new Error(`SCHOOLOS_UI_BASE must start and end with "/", not ${JSON.stringify(base)}`);
+
 export default defineConfig(withVitestTask({
   run: {
     tasks: {
@@ -14,10 +20,11 @@ export default defineConfig(withVitestTask({
       // fails the build rather than the first teacher.
       build: {
         command: ["tsc", "vite build"],
-        cache: { input: [{ auto: true }, { pattern: "!dist/**", base: "package" }], output: ["dist/**"] },
+        cache: { env: ["SCHOOLOS_UI_BASE"], input: [{ auto: true }, { pattern: "!dist/**", base: "package" }], output: ["dist/**"] },
       },
     },
   },
+  base,
   plugins: [react(), tailwindcss()],
   server: { port: 4811, proxy: { "/api": district } },
   // The client validates every response with the district's own route schemas, which is most of

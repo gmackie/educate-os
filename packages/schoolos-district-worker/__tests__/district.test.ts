@@ -129,6 +129,13 @@ describe("the district Worker", () => {
     expect((await SELF.fetch(new Request("https://district.example/health"))).status).toBe(404);
   });
 
+  it("answers the liveness probe without a sign-in, and nothing else beside /api", async () => {
+    const live = await SELF.fetch(new Request("https://district.example/healthz"));
+    expect(live.status).toBe(200);
+    expect(await live.text()).toBe("ok");
+    expect((await SELF.fetch(new Request("https://district.example/healthz/me"))).status).toBe(404);
+  });
+
   it("writes the roster, an assignment and a submission through /api", async () => {
     const admin = await signIn(NF.admin);
     const applied = await ok(admin, "admin.applyRoster", { body: { files: rosterExport() } });

@@ -11,6 +11,12 @@ import { withVitestTask } from "@gadgets/scripts/vitest-task";
 // present before it loads this config. The Node launcher is shell-neutral.
 const viteBuild = `node --input-type=module -e "process.env.NODE_ENV='production'; await (await import('vite')).build()"`;
 
+// The path the app is served under. `/` unless SCHOOLOS_UI_BASE says otherwise: a deployment that
+// serves several SchoolOS UIs from one origin gives each its own (scripts/production/
+// assemble-district-ui.ts). The app routes by hash, so only its asset URLs depend on it.
+const base = process.env.SCHOOLOS_UI_BASE ?? "/";
+if (!/^\/([\w-]+\/)*$/.test(base)) throw new Error(`SCHOOLOS_UI_BASE must start and end with "/", not ${JSON.stringify(base)}`);
+
 const tasks = withVitestTask({
   run: {
     tasks: {
@@ -19,7 +25,7 @@ const tasks = withVitestTask({
       build: {
         command: ["tsc", "tsc -p tsconfig.vite.json", viteBuild],
         cache: {
-          env: ["VITE_*", "SCHOOLOS_ADMIN_API"],
+          env: ["VITE_*", "SCHOOLOS_ADMIN_API", "SCHOOLOS_UI_BASE"],
           input: [{ auto: true }, { pattern: "!dist/**", base: "package" } as const],
           output: ["dist/**"],
         },
@@ -31,6 +37,7 @@ const tasks = withVitestTask({
 export default defineConfig({
   // Spread: `run` is Vite+'s field, which vite's own `defineConfig` does not declare.
   ...tasks,
+  base,
   plugins: [react(), tailwindcss()],
   server: {
     port: 5183,

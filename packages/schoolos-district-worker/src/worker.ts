@@ -100,8 +100,13 @@ function serveApi(request: Request, env: Cloudflare.Env, exports: Cloudflare.Exp
 }
 
 export default {
-  /** The district's `/api` surface. Nothing else is served. */
+  /**
+   * The district's `/api` surface, and `/healthz`, a liveness probe that reads nothing and needs no
+   * sign-in (a deployment exempts it from Access). Nothing else is served; a deployment that serves
+   * the district's UIs does so as static assets in front of this handler.
+   */
   async fetch(request, env, ctx): Promise<Response> {
+    if (new URL(request.url).pathname === "/healthz") return new Response("ok", { headers: { "content-type": "text/plain" } });
     return serveApi(request, env, ctx.exports);
   },
   /** The district's Cron Triggers (SCHO-189): notifications hourly, the family digest weekly. See schedule.ts. */

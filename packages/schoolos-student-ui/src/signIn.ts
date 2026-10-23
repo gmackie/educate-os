@@ -1,6 +1,7 @@
 // Development sign-in: `?token=<a token the harness printed>` signs this tab in. The token moves
 // into sessionStorage and out of the address bar at once, so it never sits in history, a bookmark
-// or a screenshot. Real sign-in arrives with the kernel seam, which attaches the credential itself.
+// or a screenshot. Behind Cloudflare Access (main.tsx) no token is taken: Access attaches the
+// credential itself.
 
 const TOKEN_KEY = "schoolos.student.token";
 

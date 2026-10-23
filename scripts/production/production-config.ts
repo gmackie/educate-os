@@ -17,6 +17,9 @@
 //   - the AI call guard's production entrypoint, its nightly Cron Trigger and a `HALL_MONITOR`
 //     service binding to the account's Hall Monitor Worker, where a preview runs the development
 //     entrypoint with an in-process fake and no cron;
+//   - when the instance has a district, the district Worker (SCHO-193) at its own custom domain,
+//     serving the district's `/api` and, as static assets, the student, admin and teacher UIs
+//     (assembled by assemble-district-ui.ts at deploy time);
 //   - no `previews` blocks.
 //
 // Secrets are never part of a generated config (Wrangler prints vars, and these files are
@@ -55,8 +58,20 @@ export const MAX_VAR_BYTES = 5000;
  */
 const SECRET_NAMES = new Set([
   "ADMINS", "AI_GUARD_CONFIG", "CF_ACCESS_AUD", "CF_ACCESS_ISS", "CF_AI_GATEWAY_API_TOKEN", "HALL_MONITOR_SIGNING_KEY",
-  "AI_GATEWAY_LOGS_TOKEN", "CLIENT_ID", "CLIENT_SECRET",
+  "AI_GATEWAY_LOGS_TOKEN", "CLIENT_ID", "CLIENT_SECRET", "DISTRICT_CONFIG",
 ]);
+
+/** The district Worker's package (and worker) name. */
+export const DISTRICT_PACKAGE = "schoolos-district-worker";
+
+/**
+ * Where the district Worker's static assets are, relative to its package: the three UIs as
+ * assemble-district-ui.ts lays them out (student at `/`, admin at `/admin/`, teacher at `/teach/`).
+ */
+export const DISTRICT_UI_DIR = "./dist/ui";
+
+/** The district Worker's own routes, which run before its assets: the API and the liveness probe. */
+export const DISTRICT_WORKER_ROUTES = ["/api/*", "/healthz"];
 
 /** One long-lived instance: where it runs and the account resources its Workers bind. */
 export interface ProductionInstance {
@@ -76,6 +91,15 @@ export interface ProductionInstance {
   aiGuard: {
     /** The Worker the guard binds as `HALL_MONITOR`. */
     hallMonitorService: string;
+  };
+  /**
+   * The district Worker, when the instance runs one. Its `DISTRICT_CONFIG` and Access pair are
+   * secrets the deployer delivers. It has its own hostname, behind its own Access application,
+   * because the router sends `/api/*` to the backend.
+   */
+  district?: {
+    /** The district's public hostname: the district Worker's custom domain. */
+    hostname: string;
   };
 }
 
@@ -97,15 +121,19 @@ export interface ProductionConfig extends Omit<StagingConfig, "previews" | "rout
   kv_namespaces?: KvNamespace[];
   /** R2 buckets, with the instance's bucket names. */
   r2_buckets?: R2Bucket[];
-  /** The router's custom domain. */
+  /** The router's, or the district Worker's, custom domain. */
   routes?: { pattern: string; custom_domain: true }[];
 }
 
 type PackageConfig = Pick<DeployablePackage, "name" | "config">;
 
-/** The packages an instance deploys: router, backend, AI call guard and its gatekeepers, sorted. */
+/**
+ * The packages an instance deploys: router, backend, AI call guard, its gatekeepers and, if it has
+ * one, the district Worker, sorted.
+ */
 export function productionPackageNames(instance: ProductionInstance): string[] {
-  return ["router", "workshop-backend", AI_GUARD_PACKAGE, ...instance.gatekeepers].toSorted();
+  return ["router", "workshop-backend", AI_GUARD_PACKAGE, ...instance.gatekeepers,
+    ...instance.district ? [DISTRICT_PACKAGE] : []].toSorted();
 }
 
 // Give each declared resource binding the instance's value, failing on a binding the instance does
@@ -232,6 +260,18 @@ export function buildProductionConfigs({
       const hallMonitor: ServiceBinding =
           { binding: "HALL_MONITOR", service: instance.aiGuard.hallMonitorService };
       config.services = [...config.services ?? [], hallMonitor];
+      withVars(pkgName, config, vars);
+    } else if (pkgName === DISTRICT_PACKAGE && instance.district) {
+      if ((config.triggers?.crons?.length ?? 0) < 2) {
+        throw new Error(`${pkgName}/wrangler.jsonc has lost its notification and digest Cron Triggers`);
+      }
+      if (config.assets) throw new Error(`${pkgName}/wrangler.jsonc declares assets; the generator owns them`);
+      config.routes = [{ pattern: instance.district.hostname, custom_domain: true }];
+      config.assets = {
+        directory: DISTRICT_UI_DIR,
+        not_found_handling: "single-page-application",
+        run_worker_first: DISTRICT_WORKER_ROUTES,
+      };
       withVars(pkgName, config, vars);
     } else {
       throw new Error(`cannot build a production config for package: ${pkgName}`);

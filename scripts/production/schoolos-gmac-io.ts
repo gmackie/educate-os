@@ -2,7 +2,8 @@
 // gmacko Cloudflare account, deployed Worker by Worker by ForgeGraph from the configs
 // production-config.ts generates. Everything here is non-secret: resource ids and names, the
 // origin, and plain-text vars. Secrets (the backend's ADMINS and Cloudflare Access pair, the guard's
-// Hall Monitor signing key) are delivered by ForgeGraph and never written down here; see
+// Hall Monitor signing key, the district's DISTRICT_CONFIG and Access pair) are delivered by
+// ForgeGraph and never written down here; see
 // docs/schoolos/runbooks/production-instance.md.
 
 import type { ProductionInstance } from "./production-config.ts";
@@ -47,5 +48,9 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
   aiGuard: {
     // The Hall Monitor Worker already deployed in the same account.
     hallMonitorService: "hall-monitor",
+  },
+  // LMS-lite (SCHO-193): the demo co-op district, behind its own Access application.
+  district: {
+    hostname: "district.schoolos.gmac.io",
   },
 };

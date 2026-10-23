@@ -1,6 +1,6 @@
 # Runbook: the schoolos.gmac.io production instance
 
-- Issue: SCHO-192.
+- Issues: SCHO-192 (the instance), SCHO-193 (the LMS-lite district).
 - Instance: <https://schoolos.gmac.io>, one long-lived SchoolOS deployment on the gmacko Cloudflare
   account (`c07a7e704db1808e1fff91bed2b1cd49`), deployed by ForgeGraph.
 - Configs: `packages/<worker>/wrangler.production.jsonc`, generated and committed.
@@ -11,11 +11,12 @@
 The instance is synthetic. Its AI call guard serves a demo district with a single staff principal,
 and legal review (SCHO-118) must pass before any real student uses it.
 
-## The six Workers
+## The Workers
 
-Every Worker is named after its package, has `workers_dev` and `preview_urls` off, and is reached
-only through the router. The router is the only Worker with a hostname: the custom domain
-`schoolos.gmac.io`.
+Every Worker is named after its package and has `workers_dev` and `preview_urls` off. Two have a
+hostname, each a custom domain behind its own Access application: the router at `schoolos.gmac.io`,
+and the district Worker at `district.schoolos.gmac.io` (see [The district](#the-district-lms-lite)).
+Every other Worker is reached only through the router.
 
 | Worker | Config | Binds |
 |---|---|---|
@@ -25,6 +26,7 @@ only through the router. The router is the only Worker with a hostname: the cust
 | `gatekeeper-scheduler` | `packages/gatekeeper-scheduler/wrangler.production.jsonc` | none |
 | `gatekeeper-websearch` | `packages/gatekeeper-websearch/wrangler.production.jsonc` | `AI`, with `CF_AI_GATEWAY=default` |
 | `schoolos-ai-guard` | `packages/schoolos-ai-guard/wrangler.production.jsonc` | `HALL_MONITOR` → `hall-monitor` (already in the account). It runs its production entrypoint `src/worker.ts` with the nightly `17 3 * * *` reconciliation cron. |
+| `schoolos-district-worker` | `packages/schoolos-district-worker/wrangler.production.jsonc` | `SEND_EMAIL` (Email Service), the district's UIs as static assets, and its two Cron Triggers. Its Durable Object needs no binding. |
 
 The backend's vars are `PUBLIC_BASE_URL`, plus `CF_AI_GATEWAY=default`, `CF_AI_GATEWAY_ACCOUNT_ID`
 and `CF_AI_GATEWAY_PROVIDERS=cloudflare`. With these, Workers AI is server-managed through the
@@ -47,10 +49,12 @@ reconciliation only records snapshots.
 |---|---|---|
 | `workshop-backend` | `ADMINS` (a JSON array of Access emails), `CF_ACCESS_AUD`, `CF_ACCESS_ISS` | `school-os` |
 | `schoolos-ai-guard` | `HALL_MONITOR_SIGNING_KEY` (private Ed25519 or P-256 JWK, with a `kid`), `AI_GUARD_CONFIG` (the example config with the admin's Access email in place of `admin@example.com`, minified) | `schoolos-ai-guard` |
+| `schoolos-district-worker` | `DISTRICT_CONFIG` (the demo district's seed, minified), `CF_ACCESS_AUD` (the district Access application's audience), `CF_ACCESS_ISS` | `schoolos-district` |
 
-The guard is its own ForgeGraph app because ForgeGraph's `syncSecrets` copies every secret of a
-stage onto each target that sets it: in one app, the backend would also receive the guard's signing
-key. `AI_GUARD_CONFIG` is a secret rather than a var because it names the admin's Workshop user,
+The guard and the district are each their own ForgeGraph app because ForgeGraph's `syncSecrets`
+copies every secret of a stage onto each target that sets it: in one app, the backend would also
+receive the guard's signing key, and the district would receive the backend's Access audience in
+place of its own. `AI_GUARD_CONFIG` is a secret rather than a var because it names the admin's Workshop user,
 and this repository is public.
 
 Setting the Access pair also closes password sign-in. The generator refuses to emit any of these
@@ -98,6 +102,7 @@ version (`wrangler deployments list`).
 | `packages/gatekeeper-websearch` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc` (Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/schoolos-ai-guard` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc` (Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/workshop-backend` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:bundled-blueprints` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
+| `packages/schoolos-district-worker` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && VITE_CF_ACCESS_MODE=true pnpm exec vp run --no-cache -F @schoolos/student-ui build && SCHOOLOS_UI_BASE=/admin/ pnpm exec vp run --no-cache -F @schoolos/admin-ui build && SCHOOLOS_UI_BASE=/teach/ pnpm exec vp run --no-cache -F @schoolos/teacher-ui build && node ../../scripts/production/assemble-district-ui.ts` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/router` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && VITE_CF_ACCESS_MODE=true pnpm exec vp run --no-cache -F @gadgets/workshop-frontend build` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 
 `VITE_CF_ACCESS_MODE=true` is a build-time flag. Without it, the frontend serves a password form
@@ -112,6 +117,8 @@ A service binding needs its target to exist, so deploy in tiers:
 2. `workshop-backend`, after setting its secrets.
 3. `router`, which creates the `schoolos.gmac.io` custom domain. The `gmac.io` zone must be on the
    account.
+
+The district Worker binds no other Worker and nothing binds it, so it can go at any point.
 
 Later deploys can go in any order, as long as no binding is renamed.
 
@@ -138,3 +145,40 @@ deploy fails. Enable the product rather than editing the generated config.
 4. Check each config with
    `pnpm exec wrangler deploy -c wrangler.production.jsonc --dry-run --outdir <tmp>`, run from the
    package directory after its `buildCommand`.
+
+## The district (LMS-lite)
+
+SCHO-193 adds the LMS-lite district application: `schoolos-district-worker`, for the demo co-op,
+at `https://district.schoolos.gmac.io`. The router sends `/api/*` to the Workshop backend, so the
+district has its own hostname, behind its own Access application.
+
+- **What it serves.** The Worker runs first for `/api/*` (the district's API, verified against its
+  own Access audience) and `/healthz` (a liveness probe that reads nothing). Everything else is
+  static assets, laid out at deploy time by `scripts/production/assemble-district-ui.ts`. The student
+  Learning Home, path-routed, is at `/` with the single-page fallback. The admin console is at
+  `/admin/` and Teacher Studio at `/teach/`. Both route by hash and are built with
+  `SCHOOLOS_UI_BASE` set to their prefix. The student build sets `VITE_CF_ACCESS_MODE=true`, so it
+  takes no development `?token=`: Access signs its requests. Guardians use the student app's family
+  view.
+- **State.** One SQLite Durable Object holds the district (see the package README), so a deploy
+  never touches its data.
+- **Access.** The application `SchoolOS district (demo co-op)` covers the hostname, with a bypass
+  application for `district.schoolos.gmac.io/healthz`. Its audience is the district's
+  `CF_ACCESS_AUD`. The issuer is the same team domain as the instance's.
+- **Who it knows.** `DISTRICT_CONFIG` seeds the directory on first start only: the district
+  (`authority: "local"`, so its administrators build classes rather than importing a roster) and its
+  administrator, matched by the Access subject (`sub`) their sign-in carries, not by email. Every
+  other principal is created through the admin console after they first sign in, since inviting by
+  email before a first sign-in is not built yet. The demo's test identities are plus aliases of the
+  owner's address.
+- **Not bound yet.** The guard keeps its configured directory: binding its `SCHOOLOS_DISTRICT` to
+  `DistrictGuardDirectory` would resolve Workshop users through the district's identity links, which
+  the instance's admin does not have (SCHO-147). The backend's `SCHOOLOS_DISTRICT_API` is left out
+  too, since nothing routes to it.
+- **Email.** `DISTRICT_CONFIG.email.from` must be on a domain onboarded to Cloudflare Email Service
+  in the account. Without `email`, notifications stay in-app and the digest is not mailed.
+- **ForgeGraph.** App `schoolos-district`, stage `production`, one `cloudflare-workers` target
+  `schoolos-district-worker` on hetzner-fg: `appDir` `packages/schoolos-district-worker`,
+  `configPath` `packages/schoolos-district-worker/wrangler.production.jsonc`, the `buildCommand`
+  and `deployCommand` in the table above, `syncSecrets: true`, and `healthCheckUrl`
+  `https://district.schoolos.gmac.io/healthz`.
