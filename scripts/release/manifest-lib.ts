@@ -443,6 +443,11 @@ export interface BackendServiceBinding {
 const SERVICE_PACKAGES: Record<string, BackendServiceBinding> = {
   // ADR-0007: SchoolOS budgets and Hall Monitor moderation around every model call.
   "schoolos-ai-guard": { name: "AI_CALL_GUARD", entrypoint: "SchoolOsAiCallGuard" },
+  // SCHO-171: the district application. Its real consumers are the AI call guard and the SchoolOS
+  // gatekeeper, each through its own `SCHOOLOS_DISTRICT` entrypoint (DistrictGuardDirectory,
+  // DistrictSchoolTools), which a backend binding must never reach: each is for its one consumer.
+  // The backend is bound only to the `/api` surface, which every request must authenticate to.
+  "schoolos-district-worker": { name: "SCHOOLOS_DISTRICT_API", entrypoint: "DistrictApi" },
 };
 
 /** True when a deployable package is an optional backend service (see `SERVICE_PACKAGES`). */
