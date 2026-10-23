@@ -4,12 +4,12 @@ import { createMemoryHistory } from "@tanstack/react-router";
 import { afterEach } from "vitest";
 import { StudentApp } from "../src/App.tsx";
 import type { StudentFeatures } from "../src/AppContext.tsx";
-import type { FakeDistrict } from "./fakeDistrict.ts";
+import type { DistrictApiClient } from "@schoolos/api-client";
 
 let mounted: { root: Root; container: HTMLElement }[] = [];
 
 /** Renders the Learning Home at `path` against `district`, and returns its container. */
-export async function renderApp(district: FakeDistrict, path = "/", features: StudentFeatures = { aiHelp: false }): Promise<{ container: HTMLElement; unmount: () => void }> {
+export async function renderApp(district: DistrictApiClient, path = "/", features: StudentFeatures = { aiHelp: false }): Promise<{ container: HTMLElement; unmount: () => void }> {
   const container = document.body.appendChild(document.createElement("div"));
   const root = createRoot(container);
   const entry = { root, container };

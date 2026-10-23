@@ -1,6 +1,6 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import { Link, Text } from "@cloudflare/kumo";
-import { BookOpenIcon, ExamIcon, HouseIcon, LockSimpleIcon } from "@phosphor-icons/react";
+import { BookOpenIcon, ExamIcon, HouseIcon, LockSimpleIcon, UsersThreeIcon } from "@phosphor-icons/react";
 
 const DESKTOP_QUERY = "(min-width: 48rem)";
 
@@ -15,27 +15,41 @@ const subscribeToViewport = (listener: () => void) => {
 const useIsPhone = (): boolean =>
   useSyncExternalStore(subscribeToViewport, () => typeof window.matchMedia === "function" && !window.matchMedia(DESKTOP_QUERY).matches);
 
-const MainNav = ({ label }: { label: string }) => (
+/** Who the Learning Home is showing: a student, or a guardian's family view (ADR-0012). */
+export type Audience = "student" | "family";
+
+const MainNav = ({ label, audience }: { label: string; audience: Audience }) => (
   <nav aria-label={label}>
     <ul className="flex items-center gap-6">
-      <li>
-        <Link href="/" variant="plain" className="flex items-center gap-2 py-2">
-          <HouseIcon aria-hidden size={20} />
-          Home
-        </Link>
-      </li>
-      <li>
-        <Link href="/my-space" variant="plain" className="flex items-center gap-2 py-2">
-          <LockSimpleIcon aria-hidden size={20} />
-          My space
-        </Link>
-      </li>
-      <li>
-        <Link href="/grades" variant="plain" className="flex items-center gap-2 py-2">
-          <ExamIcon aria-hidden size={20} />
-          Grades
-        </Link>
-      </li>
+      {audience === "student" ? (
+        <>
+          <li>
+            <Link href="/" variant="plain" className="flex items-center gap-2 py-2">
+              <HouseIcon aria-hidden size={20} />
+              Home
+            </Link>
+          </li>
+          <li>
+            <Link href="/my-space" variant="plain" className="flex items-center gap-2 py-2">
+              <LockSimpleIcon aria-hidden size={20} />
+              My space
+            </Link>
+          </li>
+          <li>
+            <Link href="/grades" variant="plain" className="flex items-center gap-2 py-2">
+              <ExamIcon aria-hidden size={20} />
+              Grades
+            </Link>
+          </li>
+        </>
+      ) : (
+        <li>
+          <Link href="/family" variant="plain" className="flex items-center gap-2 py-2">
+            <UsersThreeIcon aria-hidden size={20} />
+            My children
+          </Link>
+        </li>
+      )}
     </ul>
   </nav>
 );
@@ -43,9 +57,10 @@ const MainNav = ({ label }: { label: string }) => (
 /**
  * The frame every screen sits in: a skip link, the header, the main landmark, and the navigation,
  * which sits in the header on a wide screen and along the bottom on a phone, within thumb reach.
- * `data-layout` names the arrangement in force.
+ * `data-layout` names the arrangement in force. The navigation waits for the `audience`, so a
+ * guardian is never offered a student's places, nor a student a family's.
  */
-export const Layout = ({ studentName, children }: { studentName: string | undefined; children: ReactNode }) => {
+export const Layout = ({ studentName, audience, children }: { studentName: string | undefined; audience: Audience | undefined; children: ReactNode }) => {
   const isPhone = useIsPhone();
   return (
     <div data-layout={isPhone ? "phone" : "desktop"} className="min-h-dvh bg-kumo-base text-kumo-default">
@@ -60,16 +75,16 @@ export const Layout = ({ studentName, children }: { studentName: string | undefi
               Learning Home
             </span>
           </Text>
-          {isPhone ? null : <MainNav label="Main" />}
+          {isPhone || audience === undefined ? null : <MainNav label="Main" audience={audience} />}
           {studentName === undefined ? null : <Text variant="secondary">{studentName}</Text>}
         </div>
       </header>
       <main id="main" tabIndex={-1} className={`mx-auto max-w-4xl px-4 py-6 outline-none ${isPhone ? "pb-28" : ""}`}>
         {children}
       </main>
-      {isPhone ? (
+      {isPhone && audience !== undefined ? (
         <div className="fixed inset-x-0 bottom-0 border-t border-kumo-hairline bg-kumo-elevated px-6 pb-[env(safe-area-inset-bottom)]">
-          <MainNav label="Main" />
+          <MainNav label="Main" audience={audience} />
         </div>
       ) : null}
     </div>

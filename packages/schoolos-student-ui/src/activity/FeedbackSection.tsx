@@ -5,9 +5,16 @@ import { criterionLabel, formatDateTime, receiptCode } from "../labels.ts";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import type { Feedback } from "../model.ts";
 
-const FeedbackBody = ({ feedback }: { feedback: Feedback }) => (
+/**
+ * Released feedback as its student was given it: the teacher's comments and criterion scores.
+ * A guardian's family view shows the same record (ADR-0012), worded for a reader who is not the
+ * student.
+ */
+export const FeedbackBody = ({ feedback, reader = "student" }: { feedback: Feedback; reader?: "student" | "guardian" }) => (
   <div className="flex flex-col gap-4">
-    <Badge variant={feedback.state === "final" ? "success" : "info"}>{feedback.state === "final" ? "Final feedback" : "Shared by your teacher"}</Badge>
+    <Badge variant={feedback.state === "final" ? "success" : "info"}>
+      {feedback.state === "final" ? "Final feedback" : reader === "student" ? "Shared by your teacher" : "Shared by the teacher"}
+    </Badge>
     {feedback.comments.length === 0 ? null : (
       <div className="flex flex-col gap-2">
         <Text variant="heading" as="h3">
@@ -51,7 +58,9 @@ const FeedbackBody = ({ feedback }: { feedback: Feedback }) => (
         </div>
       </div>
     )}
-    {feedback.comments.length === 0 && feedback.scores.length === 0 ? <Text>Your teacher hasn't added comments or scores.</Text> : null}
+    {feedback.comments.length === 0 && feedback.scores.length === 0 ? (
+      <Text>{reader === "student" ? "Your teacher hasn't added comments or scores." : "The teacher hasn't added comments or scores."}</Text>
+    ) : null}
   </div>
 );
 

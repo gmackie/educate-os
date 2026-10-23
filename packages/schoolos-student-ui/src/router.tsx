@@ -2,10 +2,12 @@ import { forwardRef, type AnchorHTMLAttributes } from "react";
 import { Empty } from "@cloudflare/kumo";
 import {
   Link as RouterLink,
+  Navigate,
   Outlet,
   createRootRoute,
   createRoute,
   createRouter,
+  useRouterState,
   type RouterHistory,
 } from "@tanstack/react-router";
 import { useQuery } from "./api.tsx";
@@ -15,15 +17,46 @@ import { ErrorState } from "./ErrorState.tsx";
 import { GradesPage } from "./GradesPage.tsx";
 import { HomePage } from "./HomePage.tsx";
 import { Layout } from "./Layout.tsx";
+import { LoadingSkeleton } from "./LoadingSkeleton.tsx";
 import { MySpacePage } from "./MySpacePage.tsx";
+// Family view (ADR-0012, SCHO-188)
+import { ChildCoursePage } from "./family/ChildCoursePage.tsx";
+import { ChildPage } from "./family/ChildPage.tsx";
+import { FamilyHomePage } from "./family/FamilyHomePage.tsx";
+import { InvitationPage } from "./family/InvitationPage.tsx";
+
+/** Where a guardian's invitation link opens. It is the one page that needs no SchoolOS account. */
+export const INVITATION_PATH = "/family/invitation";
+
+const isFamilyPath = (pathname: string) => pathname === "/family" || pathname.startsWith("/family/");
+
+/**
+ * The signed-in frame. Who the principal is decides which places exist: a guardian has only the
+ * family view and is taken there from anywhere else, and the family view does not exist for a
+ * student. The district refuses each the other's routes too; this keeps either from being offered.
+ */
+const SignedIn = ({ pathname }: { pathname: string }) => {
+  const [me] = useQuery("me", (api) => api.call("me.get"));
+  const audience = me.status === "ready" ? (me.data.kind === "guardian" ? "family" : "student") : undefined;
+  const content = me.status === "loading" ? (
+    <LoadingSkeleton label="Opening your Learning Home" />
+  ) : me.status === "error" ? (
+    <ErrorState error={me.error} title="We couldn't open your Learning Home" />
+  ) : audience === "family" && !isFamilyPath(pathname) ? (
+    <Navigate to="/family" replace />
+  ) : audience === "student" && isFamilyPath(pathname) ? (
+    <Empty title="There's nothing here" description="Use Home to find your classes." />
+  ) : (
+    <Outlet />
+  );
+  return <Layout studentName={me.status === "ready" ? me.data.displayName : undefined} audience={audience}>{content}</Layout>;
+};
 
 const Root = () => {
-  const [me] = useQuery("me", (api) => api.call("me.get"));
-  return (
-    <Layout studentName={me.status === "ready" ? me.data.displayName : undefined}>
-      {me.status === "error" ? <ErrorState error={me.error} title="We couldn't open your Learning Home" /> : <Outlet />}
-    </Layout>
-  );
+  // The location the rendered matches belong to: during a navigation `location` already names the
+  // next page while the previous one is still what an outlet would render.
+  const pathname = useRouterState({ select: (state) => (state.resolvedLocation ?? state.location).pathname });
+  return pathname === INVITATION_PATH ? <Layout studentName={undefined} audience={undefined}><Outlet /></Layout> : <SignedIn pathname={pathname} />;
 };
 
 const rootRoute = createRootRoute({
@@ -55,7 +88,30 @@ const activityRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, courseRoute, activityRoute]);
+// Family view (ADR-0012, SCHO-188)
+const familyRoute = createRoute({ getParentRoute: () => rootRoute, path: "/family", component: FamilyHomePage });
+
+const invitationRoute = createRoute({ getParentRoute: () => rootRoute, path: INVITATION_PATH, component: InvitationPage });
+
+const childRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/family/children/$studentId",
+  component: () => {
+    const { studentId } = childRoute.useParams();
+    return <ChildPage key={studentId} studentId={studentId} />;
+  },
+});
+
+const childCourseRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/family/children/$studentId/courses/$offeringId",
+  component: () => {
+    const { studentId, offeringId } = childCourseRoute.useParams();
+    return <ChildCoursePage key={`${studentId}:${offeringId}`} studentId={studentId} offeringId={offeringId} />;
+  },
+});
+
+const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, courseRoute, activityRoute, familyRoute, invitationRoute, childRoute, childCourseRoute]);
 
 /** The Learning Home's router: on the browser's history, or on a memory history in tests. */
 export const createStudentRouter = (history?: RouterHistory) =>
@@ -67,6 +123,13 @@ export const coursePath = (offeringId: string): string => `/courses/${encodeURIC
 /** The path of an activity's screen. */
 export const activityPath = (offeringId: string, assignmentId: string): string =>
   `${coursePath(offeringId)}/activities/${encodeURIComponent(assignmentId)}`;
+
+/** The path of a guardian's child's screen. */
+export const childPath = (studentId: string): string => `/family/children/${encodeURIComponent(studentId)}`;
+
+/** The path of one of a guardian's child's classes. */
+export const childCoursePath = (studentId: string, offeringId: string): string =>
+  `${childPath(studentId)}/courses/${encodeURIComponent(offeringId)}`;
 
 /**
  * What every Kumo link renders through: in-app paths go through the router, so following one keeps
