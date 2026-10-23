@@ -94,6 +94,8 @@ export interface FakeDistrict extends DistrictApiClient {
   addArtifact(workspaceId: string, title: string, type: string, mediaType: string, content: unknown): string;
   /** Records an official grade version for an assignment, as the teacher's approval does. */
   recordGrade(assignmentId: string, score: { points: number; maxPoints: number }): void;
+  /** Marks one of the student's assignments in the teacher's gradebook (SCHO-187). */
+  markAssignment(assignmentId: string, marker: "excused" | "missing" | "late"): void;
   /** The submissions made so far. */
   submissions: { id: string; assignmentId: string; submissionDigest: string }[];
 }
@@ -128,6 +130,41 @@ export function fakeDistrict(options: { aiHelp?: "full" | "hints-only" | "none";
   const submissions: (Record<string, unknown> & { id: string; assignmentId: string; submissionDigest: string; attempt: number })[] = [];
   const feedback = new Map<string, unknown>();
   const grades: (Record<string, unknown> & { assignmentId: string })[] = [];
+  const markers = new Map<string, "excused" | "missing" | "late">();
+  // The gradebook's default settings: points earned over points possible, letters from A at 90%.
+  const gradeSummary = (offeringId: string) => {
+    const assigned = (activities[offeringId] ?? []).map((a) => a.assignment);
+    const latest = (assignmentId: string) => grades.filter((g) => g.assignmentId === assignmentId).at(-1) as { score: { points: number; maxPoints: number }; version: number } | undefined;
+    const cells = assigned.map((a) => {
+      const grade = latest(a.id);
+      const marker = markers.get(a.id);
+      const counted = grade !== undefined && marker !== "excused";
+      return {
+        assignmentId: a.id,
+        ...(grade === undefined ? {} : { score: grade.score, version: grade.version }),
+        ...(marker === undefined ? {} : { marker }),
+        percent: grade === undefined ? null : (grade.score.points / grade.score.maxPoints) * 100,
+        counted,
+        dropped: false,
+      };
+    });
+    const earned = cells.reduce((sum, c) => sum + (c.counted ? c.score!.points : 0), 0);
+    const possible = cells.reduce((sum, c) => sum + (c.counted ? c.score!.maxPoints : 0), 0);
+    const final = possible === 0 ? null : Math.round((earned / possible) * 10_000) / 100;
+    const letter = final === null ? null : final >= 90 ? "A" : final >= 80 ? "B" : final >= 70 ? "C" : final >= 60 ? "D" : "F";
+    return {
+      offeringId,
+      settings: { weighting: "none", calculation: "points", missing: "zero", groups: [], scale: [{ letter: "A", minPercent: 90 }, { letter: "F", minPercent: 0 }] },
+      columns: assigned.map((a) => ({ offeringId, assignmentId: a.id, title: a.title, dueAt: a.dueAt, pointsPossible: latest(a.id)?.score.maxPoints ?? null })),
+      row: {
+        studentPrincipalId: ME,
+        displayName: "Amara Okafor",
+        cells,
+        groups: [],
+        totals: { points: { earned, possible }, unweighted: final, weighted: null, final, letter },
+      },
+    };
+  };
   const failures = new Map<RouteName, InjectedFailure>();
   const calls: FakeDistrict["calls"] = [];
 
@@ -220,6 +257,7 @@ export function fakeDistrict(options: { aiHelp?: "full" | "hints-only" | "none";
     },
     "student.listSubmissions": ({ params }) => submissions.filter((s) => s.assignmentId === params.assignmentId),
     "student.officialGrades": ({ params }) => grades.filter((g) => g.assignmentId === params.assignmentId),
+    "student.gradeSummary": ({ params }) => gradeSummary(params.offeringId),
     "student.getFeedback": ({ params }) => {
       const released = feedback.get(params.submissionId);
       if (released === undefined) throw notFound("feedback");
@@ -232,6 +270,7 @@ export function fakeDistrict(options: { aiHelp?: "full" | "hints-only" | "none";
     submissions,
     addArtifact,
     failNext: (name, failure) => void failures.set(name, failure),
+    markAssignment: (assignmentId, marker) => void markers.set(assignmentId, marker),
     recordGrade(assignmentId, score) {
       const course = Object.values(activities).flat().find((a) => a.assignment.id === assignmentId)!.assignment;
       grades.push({

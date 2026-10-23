@@ -24,6 +24,7 @@ export const IDS = {
   teacher: "prn_nf-teacher-rivera",
   amara: "prn_nf-student-amara",
   elena: "prn_nf-student-elena",
+  noah: "prn_nf-student-noah",
   existingAssignment: "asg_persuasive-paragraph",
   existingActivity: "act_persuasive-paragraph",
 } as const;
@@ -157,6 +158,39 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
     skipped: [{ identifier: "I_TOOL", reason: "lti-tool" }],
     flattened: [],
     truncated: [],
+  };
+
+  // Gradebook (SCHO-187): a fixed grid of official grades whose markers and settings the UI changes.
+  const QUIZ = "asg_claim-quiz";
+  const gradebook = {
+    offeringId: IDS.offering,
+    revision: 0,
+    settings: {
+      weighting: "none", calculation: "points", missing: "zero", groups: [] as Body[],
+      scale: [{ letter: "A", minPercent: 90 }, { letter: "B", minPercent: 80 }, { letter: "C", minPercent: 70 }, { letter: "D", minPercent: 60 }, { letter: "F", minPercent: 0 }],
+    } as Body,
+    columns: [
+      { offeringId: IDS.offering, assignmentId: IDS.existingAssignment, title: "Persuasive paragraph", dueAt: "2026-11-03T23:59:00.000Z", pointsPossible: 10 },
+      { offeringId: IDS.offering, assignmentId: QUIZ, title: "=Claim quiz", dueAt: "2026-11-10T23:59:00.000Z", pointsPossible: 5 },
+    ],
+    rows: [
+      {
+        studentPrincipalId: IDS.amara, displayName: "Amara Okafor",
+        cells: [
+          { assignmentId: IDS.existingAssignment, score: { points: 8, maxPoints: 10 }, version: 1, percent: 80, counted: true, dropped: false },
+          { assignmentId: QUIZ, score: { points: 5, maxPoints: 5 }, version: 2, percent: 100, counted: true, dropped: false },
+        ] as Body[],
+        groups: [], totals: { points: { earned: 13, possible: 15 }, unweighted: 86.67, weighted: null, final: 86.67, letter: "B" },
+      },
+      {
+        studentPrincipalId: IDS.noah, displayName: "Noah Brooks",
+        cells: [
+          { assignmentId: IDS.existingAssignment, percent: null, counted: false, dropped: false },
+          { assignmentId: QUIZ, score: { points: 3, maxPoints: 5 }, version: 1, percent: 60, counted: true, dropped: false },
+        ] as Body[],
+        groups: [], totals: { points: { earned: 3, possible: 5 }, unweighted: 60, weighted: null, final: 60, letter: "D" },
+      },
+    ],
   };
 
   const handlers: Partial<Record<RouteName, (input: Input) => unknown>> = {
@@ -365,6 +399,29 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
       outline.modules.push(module);
       return changed({ modules: [module], preview: CARTRIDGE_PREVIEW });
     },
+    "teacher.gradebook": () => gradebook,
+    "teacher.updateGradebookSettings": ({ body }) => {
+      if (body!.revision !== gradebook.revision) {
+        throw new DistrictApiError(409, { code: "conflict", message: "The gradebook settings changed while you were editing them; reload them and try again." });
+      }
+      gradebook.revision++;
+      gradebook.settings = body!.settings as Body;
+      return gradebook;
+    },
+    "teacher.setGradeMarker": ({ body }) => {
+      const row = gradebook.rows.find((r) => r.studentPrincipalId === body!.studentPrincipalId)!;
+      row.cells = row.cells.map((cell) => {
+        if (cell.assignmentId !== body!.assignmentId) return cell;
+        const { marker: _previous, ...rest } = cell;
+        return body!.marker === null ? rest : { ...rest, marker: body!.marker };
+      });
+      return row;
+    },
+    "teacher.exportGradebookCsv": () => ({
+      fileName: "english-9-period-3-gradebook.csv",
+      mediaType: "text/csv",
+      csv: "Student,Student ID,Persuasive paragraph (10 pts),'=Claim quiz (5 pts),Points earned,Points possible,Unweighted %,Weighted %,Final %,Letter\r\nAmara Okafor,prn_nf-student-amara,8,5,13,15,86.67,,86.67,B\r\n",
+    }),
     "teacher.exportCartridge": () => ({
       fileName: "english-9-period-3.imscc",
       base64: "UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==",
@@ -437,6 +494,7 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
     rubricFor: (key: string) => rubrics.get(key),
     assignments,
     outline,
+    gradebook,
   };
 };
 

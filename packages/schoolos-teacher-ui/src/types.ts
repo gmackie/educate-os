@@ -62,3 +62,21 @@ export type CoursePage = CourseOutline["pages"][number];
 export type CartridgePreview = RouteResponse<"teacher.previewCartridge">;
 /** A class's content exported as a Common Cartridge. */
 export type CartridgeExport = RouteResponse<"teacher.exportCartridge">;
+
+// Gradebook (SCHO-187)
+/** A class's gradebook: its columns, every enrolled student's row, and the settings behind the totals. */
+export type Gradebook = RouteResponse<"teacher.gradebook">;
+/** How a class's gradebook adds up. */
+export type GradebookSettings = Gradebook["settings"];
+/** One assignment group. */
+export type AssignmentGroup = GradebookSettings["groups"][number];
+/** One letter on the grade scale and the lowest percentage that earns it. */
+export type GradeCutoff = GradebookSettings["scale"][number];
+/** One assignment column. */
+export type GradebookColumn = Gradebook["columns"][number];
+/** One student's row. */
+export type GradebookRow = Gradebook["rows"][number];
+/** One student's assignment. */
+export type GradebookCell = GradebookRow["cells"][number];
+/** What a teacher marks on a cell. */
+export type GradeMarker = NonNullable<GradebookCell["marker"]>;

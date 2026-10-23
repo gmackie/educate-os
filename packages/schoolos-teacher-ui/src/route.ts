@@ -9,7 +9,9 @@ export type Route =
   | { screen: "resource"; offeringId: string; itemId: string }
   | { screen: "create"; offeringId: string }
   | { screen: "submissions"; offeringId: string; assignmentId?: string }
-  | { screen: "review"; offeringId: string; assignmentId: string; submissionId: string };
+  | { screen: "review"; offeringId: string; assignmentId: string; submissionId: string }
+  // Gradebook (SCHO-187)
+  | { screen: "gradebook"; offeringId: string };
 
 /** The sections of a class, in navigation order. */
 export const CLASS_SECTIONS = [
@@ -18,6 +20,8 @@ export const CLASS_SECTIONS = [
   { screen: "resources", label: "Resources" },
   { screen: "create", label: "Create activity" },
   { screen: "submissions", label: "Submissions" },
+  // Gradebook (SCHO-187)
+  { screen: "gradebook", label: "Gradebook" },
 ] as const;
 
 /** The hash a route lives at. */
@@ -29,6 +33,7 @@ export const routeHref = (route: Route): string => {
     case "modules":
     case "resources":
     case "create":
+    case "gradebook":
       return `#/classes/${encodeURIComponent(route.offeringId)}/${route.screen}`;
     case "resource":
       return `#/classes/${encodeURIComponent(route.offeringId)}/resources/${encodeURIComponent(route.itemId)}`;
@@ -47,7 +52,7 @@ export const parseRoute = (hash: string): Route => {
   if (parts[0] !== "classes" || parts[1] === undefined) return { screen: "classes" };
   const offeringId = parts[1];
   const [section, id, child, childId] = parts.slice(2);
-  if (section === "roster" || section === "modules" || section === "create") return { screen: section, offeringId };
+  if (section === "roster" || section === "modules" || section === "create" || section === "gradebook") return { screen: section, offeringId };
   if (section === "resources") return id === undefined ? { screen: "resources", offeringId } : { screen: "resource", offeringId, itemId: id };
   if (section === "submissions") return { screen: "submissions", offeringId };
   if (section === "assignments" && id !== undefined) {
