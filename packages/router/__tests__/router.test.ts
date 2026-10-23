@@ -32,6 +32,14 @@ describe('router fetch', () => {
     expect(await route(env, '/blueprint-screenshot/abc')).toBe('backend');
   });
 
+  it('answers /healthz itself, without the backend or assets', async () => {
+    const env = makeEnv({ ASSETS: stubFetcher('assets') });
+    const res = await router.fetch!(new Request('https://example.com/healthz'), env, {} as ExecutionContext);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('ok');
+    expect(await route(env, '/healthz/more')).toBe('assets');
+  });
+
   it('does not treat /api-lookalike paths as backend routes', async () => {
     const env = makeEnv({ ASSETS: stubFetcher('assets') });
     expect(await route(env, '/apiary')).toBe('assets');
