@@ -26,7 +26,7 @@ import { ArtifactsGitBackend, InMemoryCredentialLedger, ProjectArtifacts, type A
 import { AssessmentCi, AssessmentRuns, builtinRegistry, signRubricRelease, type EvaluatorRegistry } from "@schoolos/assessment-ci";
 import { changeAllocations, effectivePools } from "./funding.ts";
 import { applyRosterImport, contentBody, installAndAssign, keepArtifact, publishStarterMaterial, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
-import { errorResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
+import { CORRELATION_HEADER, errorResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
 import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./policy.ts";
 import { type AssignmentViewBody, type ParsedRouteInput, type RouteName, type RouteResponse, type Surface } from "./routes.ts";
 import type { DistrictAppStores } from "./stores.ts";
@@ -34,9 +34,12 @@ import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
 import { exportCourseCartridge, importCourseCartridge, previewCourseCartridge } from "./course-authoring.ts";
 // Guardians (ADR-0012, SCHO-188)
-import { guardianRelationships, GuardianRelationships } from "@schoolos/policy";
+import { guardianRelationships, GuardianRelationships, type GuardianRelationshipStore } from "@schoolos/policy";
 import { GuardianInvitations, IdentityLinkAdminService } from "@schoolos/identity-links";
 import { guardianHandlers, type GuardianRouteName } from "./guardians.ts";
+// Communication (SCHO-189)
+import { calendarFeedPath } from "./routes.ts";
+import { CommunicationService, digestWeekOf, FamilyDigest, isEmpty, renderDigest, type MailSender } from "./communication/index.ts";
 
 /**
  * Verifies a request's credential (a bearer token, a Cloudflare Access assertion) and returns the
@@ -116,6 +119,22 @@ export interface DistrictAppOptions {
    * hands the link over.
    */
   guardianInvitationPage?: string;
+
+  // Communication (SCHO-189)
+  /** Where notification and digest email goes, through a provider in the district's own account. Without it nothing is emailed. */
+  mail?: MailSender;
+  /** The district's SchoolOS address, linked from emails. */
+  appUrl?: string;
+  /** The district's guardian relationships, which the weekly family digest goes out over. Without them no digest is sent. */
+  guardianRelationships?: GuardianRelationshipStore;
+}
+
+/** The district's communication jobs, which the district Worker runs on its Cron Triggers (SCHO-189). */
+export interface CommunicationJobs {
+  /** Brings every student's notifications up to date and emails those owed an email. */
+  runNotificationJob(): Promise<{ added: number; emailed: number; skipped: number; failed: number }>;
+  /** Sends this week's family digest to every guardian not yet sent it. */
+  runWeeklyDigest(): Promise<{ week: string; sent: number; skipped: number; failed: number; alreadyDone: number }>;
 }
 
 /** One district's running application. */
@@ -140,6 +159,8 @@ export interface DistrictApp {
   readonly catalog: CatalogMirror;
   /** The stores, for operators and tests. */
   readonly stores: DistrictAppStores;
+  /** The communication jobs (SCHO-189). Not on the `/api` surface. */
+  readonly communication: CommunicationJobs;
 }
 
 /** The default `DistrictAppOptions.authority`: the OneRoster roster owns every directory record type. */
@@ -405,6 +426,56 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     directory: stores.directory,
     now,
   });
+
+  // Communication (SCHO-189): the service over a decider, and its assessment reads through the same one.
+  const communicationFor = (decider: PolicyDecider, assessment: AssessmentService = systemAssessment(decider)) =>
+    new CommunicationService({
+      districtId,
+      stores: stores.communication,
+      directory: stores.directory,
+      decider,
+      assessment,
+      ...(options.mail === undefined ? {} : { mail: options.mail }),
+      ...(options.appUrl === undefined ? {} : { appUrl: options.appUrl }),
+      now,
+    });
+  function systemAssessment(decider: PolicyDecider): AssessmentService {
+    const artifacts = new LearningArtifacts({
+      records: stores.artifactRecords,
+      content: stores.artifactContent,
+      workspaces: stores.workspaces,
+      directory: stores.directory,
+      policy: decider,
+      approvedExternalHosts: options.approvedExternalHosts ?? [],
+      now,
+    });
+    return new AssessmentService({ records: stores.assessment, artifacts, content: stores.artifactContent, directory: stores.directory, policy: decider, now });
+  }
+  const familyDigest = (communication: CommunicationService) =>
+    options.guardianRelationships === undefined
+      ? undefined
+      : new FamilyDigest({
+        communication,
+        stores: stores.communication,
+        directory: stores.directory,
+        guardians: options.guardianRelationships,
+        ...(options.mail === undefined ? {} : { mail: options.mail }),
+        ...(options.appUrl === undefined ? {} : { appUrl: options.appUrl }),
+        now,
+      });
+  const jobDecider: PolicyDecider = { decide: (request, decideOptions) => engine.decide(request, decideOptions) };
+  /** The calendar feed: the one route a token alone authorizes, so it is served before sign-in. */
+  async function serveCalendarFeed(request: Request, correlationId: string): Promise<Response | undefined> {
+    const match = /^\/api\/calendar\/([^/]+)\.ics$/.exec(new URL(request.url).pathname);
+    if (match === null || request.method !== "GET") return undefined;
+    const decider: PolicyDecider = { decide: (decision) => engine.decide(decision, { correlationId }) };
+    const ics = await communicationFor(decider).feedIcs(decodeURIComponent(match[1]!));
+    if (ics === undefined) throw new SchoolOsError("not-found", "No such calendar.");
+    return new Response(ics, {
+      status: 200,
+      headers: { "content-type": "text/calendar; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex", [CORRELATION_HEADER]: correlationId },
+    });
+  }
 
   type Handlers = { [N in Exclude<RouteName, GuardianRouteName | "onboarding.redeemGuardianInvitation">]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
 
@@ -768,6 +839,49 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "teacher.setGradeMarker": (ctx, { params, body }) => ctx.gradebook().setMarker(ctx.caller, params.offeringId, body),
     "teacher.exportGradebookCsv": (ctx, { params }) => ctx.gradebook().exportCsv(ctx.caller, params.offeringId),
     "student.gradeSummary": (ctx, { params }) => ctx.gradebook().studentSummary(ctx.caller, params.offeringId),
+
+    // Communication (SCHO-189). Kept in one block, apart from the handlers above.
+    "student.announcements": async (ctx) => (await communicationFor(ctx.decider, ctx.assessment()).studentAnnouncements(ctx.caller)),
+    "student.courseAnnouncements": async (ctx, { params }) =>
+      (await communicationFor(ctx.decider, ctx.assessment()).listAnnouncements(ctx.caller, params.offeringId)).announcements,
+    "teacher.listAnnouncements": async (ctx, { params }) =>
+      (await communicationFor(ctx.decider, ctx.assessment()).listAnnouncements(ctx.caller, params.offeringId)).announcements,
+    "teacher.createAnnouncement": (ctx, { params, body }) => communicationFor(ctx.decider, ctx.assessment()).createAnnouncement(ctx.caller, params.offeringId, body),
+    "teacher.updateAnnouncement": (ctx, { params, body }) => communicationFor(ctx.decider, ctx.assessment()).updateAnnouncement(ctx.caller, params.announcementId, body),
+    "teacher.deleteAnnouncement": (ctx, { params }) => communicationFor(ctx.decider, ctx.assessment()).deleteAnnouncement(ctx.caller, params.announcementId),
+    "teacher.weeklyNote": async (ctx, { params, query }) => {
+      const week = query.week ?? digestWeekOf(now());
+      return { week, note: await communicationFor(ctx.decider, ctx.assessment()).weeklyNote(ctx.caller, params.offeringId, week) };
+    },
+    "teacher.setWeeklyNote": async (ctx, { params, body }) => {
+      const week = body.week ?? digestWeekOf(now());
+      return { week, note: await communicationFor(ctx.decider, ctx.assessment()).setWeeklyNote(ctx.caller, params.offeringId, week, body.text) };
+    },
+    "me.calendar": async (ctx, { query }) => {
+      const at = now().getTime();
+      const from = new Date(query.from ?? at - 7 * 86_400_000);
+      const to = new Date(query.to ?? at + 56 * 86_400_000);
+      const events = await communicationFor(ctx.decider, ctx.assessment()).calendar(ctx.caller, from, to);
+      return { from: from.toISOString(), to: to.toISOString(), events };
+    },
+    "me.calendarFeed": (ctx) => communicationFor(ctx.decider).feedStatus(ctx.caller),
+    "me.rotateCalendarFeed": async (ctx) => {
+      const { token, createdAt } = await communicationFor(ctx.decider).rotateFeed(ctx.caller);
+      return { token, path: calendarFeedPath(token), createdAt };
+    },
+    "me.revokeCalendarFeed": (ctx) => communicationFor(ctx.decider).revokeFeed(ctx.caller),
+    "me.notifications": (ctx) => communicationFor(ctx.decider, ctx.assessment()).listNotifications(ctx.caller),
+    "me.markNotificationsRead": (ctx, { body }) => communicationFor(ctx.decider).markRead(ctx.caller, body),
+    "me.preferences": (ctx) => communicationFor(ctx.decider).preferences(ctx.caller),
+    "me.updatePreferences": (ctx, { body }) => communicationFor(ctx.decider).setPreferences(ctx.caller, body.email),
+    "admin.previewDigest": async (ctx, { params }) => {
+      // The preview shows what a guardian would be told about a child, so it is the decision of the
+      // one who decides guardian relationships: a district administrator.
+      await ctx.require("read", { kind: "guardian-relationship", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can preview a family digest.");
+      const digest = await familyDigest(communicationFor(ctx.decider, ctx.assessment()))?.build(params.guardianPrincipalId);
+      if (digest === undefined) throw new SchoolOsError("not-found", `guardian ${params.guardianPrincipalId} was not found.`);
+      return { digest, ...renderDigest(digest, options.appUrl), empty: isEmpty(digest) };
+    },
   };
 
   // Guardians (ADR-0012, SCHO-188)
@@ -816,9 +930,18 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     }),
     catalog,
     stores,
+    communication: {
+      runNotificationJob: () => communicationFor(jobDecider).runNotificationJob(),
+      runWeeklyDigest: async () => {
+        const digest = familyDigest(communicationFor(jobDecider));
+        return digest === undefined ? { week: digestWeekOf(now()), sent: 0, skipped: 0, failed: 0, alreadyDone: 0 } : digest.runWeeklyJob();
+      },
+    },
     async fetch(request) {
       const correlationId = crypto.randomUUID();
       try {
+        const feed = await serveCalendarFeed(request, correlationId);
+        if (feed !== undefined) return feed;
         return await handle(request, correlationId);
       } catch (error) {
         return errorResponse(error, correlationId, new URL(request.url).pathname);

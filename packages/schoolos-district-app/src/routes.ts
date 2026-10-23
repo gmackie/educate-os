@@ -94,6 +94,19 @@ import type { oneroster } from "@schoolos/integrations";
 import { GuardianRelationship, GuardianRelationshipId, OpaqueCode, PrincipalStatus } from "@schoolos/contracts";
 import { GuardianRelationshipAuditEvent, GuardianRelationshipScope } from "@schoolos/policy";
 import { GuardianInvitationId, GuardianInvitationRedemption, IdentityRequestId, NewGuardianInvitation } from "@schoolos/identity-links";
+// Communication (SCHO-189). Imported from the model alone, which this browser-safe module can carry.
+import {
+  Announcement,
+  AnnouncementId,
+  AnnouncementText,
+  AnnouncementTitle,
+  EmailPreferences,
+  IsoWeek,
+  Notification,
+  NotificationId,
+  WeeklyNote,
+} from "./communication/model.ts";
+import type { GuardianDigest } from "./communication/digest.ts";
 
 /**
  * Which part of SchoolOS a route belongs to. Student routes answer only student principals,
@@ -539,6 +552,70 @@ export const StudentGuardiansBody = z.strictObject({
 });
 /** A student's guardians. */
 export type StudentGuardiansBody = z.infer<typeof StudentGuardiansBody>;
+
+// Communication (SCHO-189): announcements, weekly notes, calendar, notifications, email preferences,
+// and the family digest preview.
+
+/** An announcement with the course it was posted to, and whether students can see it yet. */
+export const AnnouncementBody = z.strictObject({ announcement: Announcement, courseLabel: z.string(), published: z.boolean() });
+/** An announcement in a response. */
+export type AnnouncementBody = z.infer<typeof AnnouncementBody>;
+
+/** A new announcement. Without `publishAt` it is published at once; a time in the past means now. */
+export const AnnouncementInput = z.strictObject({
+  title: AnnouncementTitle,
+  body: AnnouncementText,
+  publishAt: z.iso.datetime({ offset: true }).optional(),
+});
+
+/** A change to an announcement. `publishAt` reschedules one that is not yet published. */
+export const AnnouncementPatchInput = z.strictObject({
+  title: AnnouncementTitle.optional(),
+  body: AnnouncementText.optional(),
+  publishAt: z.iso.datetime({ offset: true }).optional(),
+}).refine((patch) => Object.keys(patch).length > 0, "change at least one field");
+
+/** An offering's weekly note to families for one week; `note` is null when there is none. */
+export const WeeklyNoteBody = z.strictObject({ week: IsoWeek, note: WeeklyNote.nullable() });
+/** A weekly note in a response. */
+export type WeeklyNoteBody = z.infer<typeof WeeklyNoteBody>;
+
+/** One calendar event. Term dates are all-day `YYYY-MM-DD`; everything else is a UTC timestamp. */
+export const CalendarEventBody = z.strictObject({
+  uid: z.string(),
+  kind: z.enum(["assignment-due", "announcement", "term-start", "term-end"]),
+  title: z.string(),
+  start: z.string(),
+  allDay: z.boolean(),
+  offeringId: OfferingId.optional(),
+  assignmentId: AssignmentId.optional(),
+  announcementId: AnnouncementId.optional(),
+});
+/** A calendar event. */
+export type CalendarEventBody = z.infer<typeof CalendarEventBody>;
+
+/** A principal's calendar feed, without its token, which is shown only when it is made. */
+export const CalendarFeedBody = z.strictObject({ active: z.boolean(), createdAt: z.iso.datetime().optional() });
+
+/** The path a calendar feed token is subscribed at. The token is its only authority. */
+export const calendarFeedPath = (token: string): `/api/calendar/${string}.ics` => `/api/calendar/${token}.ics`;
+
+/** The principal's email preferences, whether the district has an address for them, and whether it sends email at all. */
+export const PreferencesBody = z.strictObject({ email: EmailPreferences, hasEmailAddress: z.boolean(), emailEnabled: z.boolean() });
+/** Email preferences in a response. */
+export type PreferencesBody = z.infer<typeof PreferencesBody>;
+
+/** A guardian's digest for the coming week, as it would be emailed. */
+export const DigestPreviewBody = z.strictObject({
+  digest: declared<GuardianDigest>(),
+  subject: z.string(),
+  text: z.string(),
+  html: z.string(),
+  /** Whether the weekly job would skip it for having nothing to say. */
+  empty: z.boolean(),
+});
+/** A digest preview. */
+export type DigestPreviewBody = z.infer<typeof DigestPreviewBody>;
 
 const params = <S extends z.core.$ZodLooseShape>(shape: S) => z.strictObject(shape);
 const NoBody = z.strictObject({});
@@ -1059,6 +1136,80 @@ export const ROUTES = {
   "student.gradeSummary": route({
     method: "GET", path: "/api/student/offerings/:offeringId/grade-summary", surface: "student",
     params: params({ offeringId: OfferingId }), response: StudentGradeSummary,
+  }),
+
+  // Communication (SCHO-189). Kept in one block, apart from the routes above.
+  "student.announcements": route({
+    method: "GET", path: "/api/student/announcements", surface: "student", response: z.array(AnnouncementBody),
+  }),
+  "student.courseAnnouncements": route({
+    method: "GET", path: "/api/student/offerings/:offeringId/announcements", surface: "student",
+    params: params({ offeringId: OfferingId }), response: z.array(AnnouncementBody),
+  }),
+  "teacher.listAnnouncements": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/announcements", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: z.array(AnnouncementBody),
+  }),
+  "teacher.createAnnouncement": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/announcements", surface: "teacher", status: 201,
+    params: params({ offeringId: OfferingId }), body: AnnouncementInput, response: AnnouncementBody,
+  }),
+  "teacher.updateAnnouncement": route({
+    method: "POST", path: "/api/teacher/announcements/:announcementId", surface: "teacher",
+    params: params({ announcementId: AnnouncementId }), body: AnnouncementPatchInput, response: AnnouncementBody,
+  }),
+  "teacher.deleteAnnouncement": route({
+    method: "POST", path: "/api/teacher/announcements/:announcementId/delete", surface: "teacher",
+    params: params({ announcementId: AnnouncementId }), body: NoBody, response: z.strictObject({ deleted: z.literal(true) }),
+  }),
+  "teacher.weeklyNote": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/weekly-note", surface: "teacher",
+    params: params({ offeringId: OfferingId }),
+    /** Defaults to the week the next family digest covers. */
+    query: z.strictObject({ week: IsoWeek.optional() }),
+    response: WeeklyNoteBody,
+  }),
+  "teacher.setWeeklyNote": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/weekly-note", surface: "teacher",
+    params: params({ offeringId: OfferingId }),
+    /** Empty text removes the note. `week` defaults to the week the next family digest covers. */
+    body: z.strictObject({ week: IsoWeek.optional(), text: z.string().max(2_000) }),
+    response: WeeklyNoteBody,
+  }),
+  "me.calendar": route({
+    method: "GET", path: "/api/me/calendar", surface: "me",
+    /** Defaults to the week before now through eight weeks after. */
+    query: z.strictObject({ from: z.iso.datetime({ offset: true }).optional(), to: z.iso.datetime({ offset: true }).optional() }),
+    response: z.strictObject({ from: z.iso.datetime(), to: z.iso.datetime(), events: z.array(CalendarEventBody) }),
+  }),
+  "me.calendarFeed": route({ method: "GET", path: "/api/me/calendar-feed", surface: "me", response: CalendarFeedBody }),
+  "me.rotateCalendarFeed": route({
+    method: "POST", path: "/api/me/calendar-feed/rotate", surface: "me", body: NoBody,
+    /** The token and its path, shown this once. Any earlier feed URL stops working. */
+    response: z.strictObject({ token: z.string(), path: z.string(), createdAt: z.iso.datetime() }),
+  }),
+  "me.revokeCalendarFeed": route({
+    method: "POST", path: "/api/me/calendar-feed/revoke", surface: "me", body: NoBody, response: CalendarFeedBody,
+  }),
+  "me.notifications": route({
+    method: "GET", path: "/api/me/notifications", surface: "me",
+    response: z.strictObject({ notifications: z.array(Notification), unread: z.int().nonnegative() }),
+  }),
+  "me.markNotificationsRead": route({
+    method: "POST", path: "/api/me/notifications/read", surface: "me",
+    body: z.strictObject({ ids: z.array(NotificationId).max(200).optional(), all: z.boolean().optional() })
+      .refine((body) => body.all === true || (body.ids?.length ?? 0) > 0, "name notifications or set all"),
+    response: z.strictObject({ unread: z.int().nonnegative() }),
+  }),
+  "me.preferences": route({ method: "GET", path: "/api/me/preferences", surface: "me", response: PreferencesBody }),
+  "me.updatePreferences": route({
+    method: "POST", path: "/api/me/preferences", surface: "me",
+    body: z.strictObject({ email: EmailPreferences.partial() }).refine((body) => Object.keys(body.email).length > 0, "change at least one preference"),
+    response: PreferencesBody,
+  }),
+  "admin.previewDigest": route({
+    method: "GET", path: "/api/admin/guardians/:guardianPrincipalId/digest-preview", surface: "admin",
+    params: params({ guardianPrincipalId: PrincipalId }), response: DigestPreviewBody,
   }),
 } as const satisfies Record<string, RouteSpec>;
 
