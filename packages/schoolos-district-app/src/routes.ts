@@ -409,6 +409,8 @@ export type AuthoringPrincipalBody = z.infer<typeof AuthoringPrincipalBody>;
  */
 export const AuthoringDirectoryBody = z.strictObject({
   authority: AuthorityMap,
+  /** The sign-in issuers the district trusts: a local principal's identity must come from one. */
+  trustedIssuers: z.array(z.string()),
   schools: z.array(School),
   terms: z.array(AcademicTerm),
   courses: z.array(CatalogCourse),

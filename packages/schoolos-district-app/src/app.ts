@@ -692,7 +692,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       const principals = ctx.snapshot.principals
         .filter((p) => p.kind === "student" || p.kind === "staff")
         .map(({ id, kind, status, displayName, email }) => ({ id, kind, status, displayName, ...(email === undefined ? {} : { email }) }));
-      return { authority, schools, terms, courses, offerings, principals };
+      return { authority, trustedIssuers: ctx.snapshot.district.trustedIssuers, schools, terms, courses, offerings, principals };
     },
     "admin.createSchool": (ctx, { body }) => ctx.academics().createSchool(ctx.caller, body),
     "admin.createTerm": (ctx, { body }) => ctx.academics().createTerm(ctx.caller, body),

@@ -56,6 +56,7 @@ describe("a co-op with no roster builds a class from scratch (SCHO-186)", () => 
 
     const authoring = await district.ok(admin, "admin.authoring");
     expect(authoring.authority).toStrictEqual(LOCAL_AUTHORITY);
+    expect(authoring.trustedIssuers).toStrictEqual([ISSUER]);
     expect(authoring.principals.map((p) => p.displayName).toSorted()).toStrictEqual(["Avery Admin", "Jo Parent-Teacher", "Sky Learner"].toSorted());
     expect((await district.ok(admin, "admin.offeringRoster", { params: { offeringId: offering.id } })).map((r) => r.displayName)).toStrictEqual(["Jo Parent-Teacher", "Sky Learner"]);
 
