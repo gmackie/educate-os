@@ -80,14 +80,25 @@ ForgeGraph runs `buildCommand` and then `deployCommand`, both in the config's di
 configs call `pnpm` (capnweb-validate, the backend's `build:worker`), so `pnpm` must be on `PATH`.
 Deploys rebuild from source, so every `vp run` is `--no-cache`.
 
+Every `buildCommand` starts by stamping the commit being deployed into the config, as
+`vars.FG_COMMIT_HASH` (`scripts/production/stamp-commit.ts`, from `git rev-parse HEAD` in the
+deploy checkout). ForgeGraph's source-order guard refuses to deploy over a serving version that has
+no `FG_COMMIT_HASH`, and its agent stamps the var only into `wrangler.jsonc`, never into the
+`-c wrangler.production.jsonc` these targets deploy (FORGE-212). Without the stamp, every deploy
+after the first is refused with `cloudflare_worker_source_order_refused`. The committed configs never
+carry the var. A Worker already serving an unstamped version needs a one-time admin recovery:
+`forge deploy create production --target <name> --ref <full sha> --recover-source-reason <why>
+--recover-serving-deployment <id> --recover-serving-version <id>`, using the IDs of its sole 100%
+version (`wrangler deployments list`).
+
 | Worker (cwd) | `buildCommand` | `deployCommand` |
 |---|---|---|
-| `packages/gatekeeper-context` | `pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:app` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
-| `packages/gatekeeper-scheduler` | `pnpm exec vp run --no-cache build:app` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
-| `packages/gatekeeper-websearch` | none (Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
-| `packages/schoolos-ai-guard` | none (Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
-| `packages/workshop-backend` | `pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:bundled-blueprints` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
-| `packages/router` | `VITE_CF_ACCESS_MODE=true pnpm exec vp run --no-cache -F @gadgets/workshop-frontend build` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
+| `packages/gatekeeper-context` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:app` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
+| `packages/gatekeeper-scheduler` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache build:app` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
+| `packages/gatekeeper-websearch` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc` (Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
+| `packages/schoolos-ai-guard` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc` (Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
+| `packages/workshop-backend` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:bundled-blueprints` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
+| `packages/router` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && VITE_CF_ACCESS_MODE=true pnpm exec vp run --no-cache -F @gadgets/workshop-frontend build` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 
 `VITE_CF_ACCESS_MODE=true` is a build-time flag. Without it, the frontend serves a password form
 that the backend rejects. The release build sets it the same way (`build-release.ts`).

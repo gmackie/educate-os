@@ -3,6 +3,11 @@
 # runs `buildCommand` and then `deployCommand` in `appDir` (which must be set: without it the agent
 # guesses one Wrangler directory for the whole repository), and probes `healthCheckUrl`. See docs/schoolos/runbooks/production-instance.md.
 #
+# Every buildCommand first stamps the deployed commit into the config as FG_COMMIT_HASH
+# (scripts/production/stamp-commit.ts): the agent stamps only wrangler.jsonc, not the
+# `-c wrangler.production.jsonc` deployed here, and its source-order guard refuses to deploy over a
+# version with no FG_COMMIT_HASH (FORGE-212).
+#
 # This app holds the router, the backend and the three preinstalled gatekeepers. The AI call guard
 # is the separate app `schoolos-ai-guard` (same repository), because `syncSecrets` copies every
 # secret of a stage to each target that sets it. Only the backend syncs secrets here: ADMINS,
@@ -33,7 +38,7 @@ stages:
           workerName: gatekeeper-context
           appDir: packages/gatekeeper-context
           configPath: packages/gatekeeper-context/wrangler.production.jsonc
-          buildCommand: pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:app
+          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:app
           deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
           healthCheckUrl: https://schoolos.gmac.io/healthz
       - name: gatekeeper-scheduler
@@ -43,7 +48,7 @@ stages:
           workerName: gatekeeper-scheduler
           appDir: packages/gatekeeper-scheduler
           configPath: packages/gatekeeper-scheduler/wrangler.production.jsonc
-          buildCommand: pnpm exec vp run --no-cache build:app
+          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache build:app
           deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
           healthCheckUrl: https://schoolos.gmac.io/healthz
       - name: gatekeeper-websearch
@@ -53,8 +58,8 @@ stages:
           workerName: gatekeeper-websearch
           appDir: packages/gatekeeper-websearch
           configPath: packages/gatekeeper-websearch/wrangler.production.jsonc
-          # Wrangler's own build (capnweb-validate) is the whole build.
-          buildCommand: "true"
+          # Wrangler's own build (capnweb-validate) is the rest of the build.
+          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc
           deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
           healthCheckUrl: https://schoolos.gmac.io/healthz
       - name: workshop-backend
@@ -64,7 +69,7 @@ stages:
           workerName: workshop-backend
           appDir: packages/workshop-backend
           configPath: packages/workshop-backend/wrangler.production.jsonc
-          buildCommand: pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:bundled-blueprints
+          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:bundled-blueprints
           deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
           syncSecrets: true
           healthCheckUrl: https://schoolos.gmac.io/healthz
@@ -75,7 +80,7 @@ stages:
           workerName: router
           appDir: packages/router
           configPath: packages/router/wrangler.production.jsonc
-          buildCommand: VITE_CF_ACCESS_MODE=true pnpm exec vp run --no-cache -F @gadgets/workshop-frontend build
+          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && VITE_CF_ACCESS_MODE=true pnpm exec vp run --no-cache -F @gadgets/workshop-frontend build
           deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
           healthCheckUrl: https://schoolos.gmac.io/healthz
 
