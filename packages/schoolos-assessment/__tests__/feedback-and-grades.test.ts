@@ -179,6 +179,31 @@ describe("the official grade gate", () => {
     await rejectsWith(assessment.recordOfficialGrade(P.elena, { submissionId, score: SCORE }), "not-found");
   });
 
+  it("records several grades as one action, all or none, each decided as one grade (SCHO-191)", async () => {
+    const { assessment, assignment, submissionId, artifacts, workspaces, audit } = await submitted();
+    const elenaSpace = await workspaces.ensureCourseWorkspace(P.elena, O.bioFall);
+    const elenaEssay = await artifacts.createArtifact(P.elena, doc(elenaSpace.id, "Cholesterol keeps the membrane fluid."));
+    const elena = await assessment.submit(P.elena, assignment.id, [ref(elenaEssay)]);
+
+    // One refused grade refuses the action: nothing is recorded.
+    await rejectsWith(assessment.recordOfficialGrades(P.morgan, [{ submissionId, score: SCORE }, { submissionId, score: SCORE }]), "validation-failed");
+    await rejectsWith(assessment.recordOfficialGrades(P.amara, [{ submissionId, score: SCORE }]), "forbidden");
+    expect(await assessment.officialGrades(P.morgan, assignment.id, P.amara.principal.principalId)).toEqual([]);
+
+    const before = audit.events.length;
+    const outcomes = await assessment.recordOfficialGrades(P.morgan, [{ submissionId, score: SCORE }, { submissionId: elena.submissionId, score: { points: 20, maxPoints: 20 } }]);
+    expect(outcomes.map((o) => (o.status === "official" ? [o.version.studentPrincipalId, o.version.version] : o.status))).toEqual([
+      [P.amara.principal.principalId, 1],
+      [P.elena.principal.principalId, 1],
+    ]);
+    const grades = audit.events.slice(before).filter((e) => e.action === "grade");
+    expect(grades).toHaveLength(2);
+    expect(new Set(grades.map((e) => e.correlationId)).size).toBe(1);
+    // Recording again makes the next versions.
+    const again = await assessment.recordOfficialGrades(P.morgan, [{ submissionId, score: { points: 19, maxPoints: 20 } }]);
+    expect(again[0]).toMatchObject({ status: "official", version: { version: 2 } });
+  });
+
   it("keeps a student's grades from their classmates", async () => {
     const { assessment, assignment, submissionId } = await submitted();
     await assessment.recordOfficialGrade(P.morgan, { submissionId, score: SCORE });

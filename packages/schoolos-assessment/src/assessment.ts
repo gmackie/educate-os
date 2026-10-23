@@ -658,31 +658,56 @@ export class AssessmentService {
    * becomes a {@link GradeProposal} that waits for {@link approveGradeProposal}.
    */
   async recordOfficialGrade(caller: Caller, rawInput: NewOfficialGrade): Promise<GradeOutcome> {
-    const input = parse(NewOfficialGrade, rawInput);
+    const [outcome] = await this.#recordGrades(caller, [parse(NewOfficialGrade, rawInput)]);
+    return outcome!;
+  }
+
+  /**
+   * Records several official grades as one action, such as releasing a quiz's scores (SCHO-191):
+   * each is decided and recorded exactly as {@link recordOfficialGrade} records one, every decision
+   * is audited under one correlation ID, and they are committed together or not at all. At most one
+   * grade per student and assignment.
+   */
+  async recordOfficialGrades(caller: Caller, rawInputs: readonly NewOfficialGrade[]): Promise<GradeOutcome[]> {
+    return this.#recordGrades(caller, parse(z.array(NewOfficialGrade).min(1).max(1000), rawInputs));
+  }
+
+  async #recordGrades(caller: Caller, inputs: readonly NewOfficialGrade[]): Promise<GradeOutcome[]> {
     const decisions = this.#decisions(caller);
-    return this.#mutate<GradeOutcome>(async (loaded) => {
-      const submission = await this.#readableSubmission(decisions, loaded, input.submissionId);
-      if (submission.withdrawnAt !== undefined) throw new SchoolOsError("conflict", "A withdrawn submission cannot be graded.");
-      const decision = await decisions.decide("grade", gradeTarget(this.#offering(loaded.snapshot, submission.offeringId), submission));
-      const now = this.#now().toISOString();
-      if (decision.effect === "allow") {
-        const version = nextVersion(loaded.state, submission, input.score, caller, now, undefined);
-        return { next: withVersion(loaded.state, version), result: { status: "official", version } };
+    return this.#mutate<GradeOutcome[]>(async (loaded) => {
+      let state = loaded.state;
+      const graded = new Set<string>();
+      const outcomes: GradeOutcome[] = [];
+      for (const input of inputs) {
+        const submission = await this.#readableSubmission(decisions, { ...loaded, state }, input.submissionId);
+        const key = JSON.stringify([submission.assignmentId, submission.studentPrincipalId]);
+        if (graded.has(key)) throw new SchoolOsError("validation-failed", "Each student is graded once per assignment in one action.");
+        graded.add(key);
+        if (submission.withdrawnAt !== undefined) throw new SchoolOsError("conflict", "A withdrawn submission cannot be graded.");
+        const decision = await decisions.decide("grade", gradeTarget(this.#offering(loaded.snapshot, submission.offeringId), submission));
+        const now = this.#now().toISOString();
+        if (decision.effect === "allow") {
+          const version = nextVersion(state, submission, input.score, caller, now, undefined);
+          state = withVersion(state, version);
+          outcomes.push({ status: "official", version });
+        } else if (decision.effect === "require-approval") {
+          const proposal: GradeProposal = {
+            id: `gpr_${crypto.randomUUID()}` as GradeProposalId,
+            assignmentId: submission.assignmentId,
+            studentPrincipalId: submission.studentPrincipalId,
+            submissionId: submission.id,
+            score: input.score,
+            proposedBy: caller.principal.principalId,
+            proposedVia: caller.channel,
+            proposedAt: now,
+          };
+          state = { ...state, gradeProposals: [...state.gradeProposals, proposal] };
+          outcomes.push({ status: "pending-approval", proposal });
+        } else {
+          throw new SchoolOsError("forbidden", "You cannot grade this work.");
+        }
       }
-      if (decision.effect === "require-approval") {
-        const proposal: GradeProposal = {
-          id: `gpr_${crypto.randomUUID()}` as GradeProposalId,
-          assignmentId: submission.assignmentId,
-          studentPrincipalId: submission.studentPrincipalId,
-          submissionId: submission.id,
-          score: input.score,
-          proposedBy: caller.principal.principalId,
-          proposedVia: caller.channel,
-          proposedAt: now,
-        };
-        return { next: { ...loaded.state, gradeProposals: [...loaded.state.gradeProposals, proposal] }, result: { status: "pending-approval", proposal } };
-      }
-      throw new SchoolOsError("forbidden", "You cannot grade this work.");
+      return { next: state, result: outcomes };
     });
   }
 

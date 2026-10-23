@@ -4,3 +4,4 @@
 export * from "./model.ts";
 export * from "./scoring.ts";
 export * from "./storage.ts";
+export * from "./service.ts";
