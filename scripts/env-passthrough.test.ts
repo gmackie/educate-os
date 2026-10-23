@@ -88,16 +88,17 @@ const EXPECTED: Record<string, ExpectedArea> = {
   // frontend's does. The district URL each one reads is only the `vite` dev server's `/api` proxy
   // target: `pnpm dev` is a script with the ambient environment, and a build never uses the proxy.
   "packages/schoolos-admin-ui": {
-    forwarded: ["SCHOOLOS_ADMIN_API"],
+    forwarded: ["SCHOOLOS_ADMIN_API", "SCHOOLOS_UI_BASE"],
     injected: ["NODE_ENV"],
   },
   "packages/schoolos-student-ui": {
-    forwarded: ["VITE_SCHOOLOS_AI_HELP"],
+    forwarded: ["VITE_CF_ACCESS_MODE", "VITE_SCHOOLOS_AI_HELP"],
     injected: ["NODE_ENV"],
     external: ["SCHOOLOS_DISTRICT_URL"],
   },
   // CHROME is read by `scripts/screenshots.ts`, which is run directly.
   "packages/schoolos-teacher-ui": {
+    forwarded: ["SCHOOLOS_UI_BASE"],
     external: ["CHROME", "SCHOOLOS_DISTRICT_URL"],
   },
   // Read by the harness CLI (`pnpm schoolos:harness`), never by a task.
