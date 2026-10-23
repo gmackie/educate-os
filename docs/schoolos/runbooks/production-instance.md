@@ -170,7 +170,13 @@ district has its own hostname, behind its own Access application.
   administrator, matched by the Access subject (`sub`) their sign-in carries, not by email. Every
   other principal is created through the admin console after they first sign in, since inviting by
   email before a first sign-in is not built yet. The demo's test identities are plus aliases of the
-  owner's address.
+  owner's address, which sign in with the one-time PIN. The public example is
+  `deploy/schoolos-gmac-io/district-config.example.json`. The deployed copy puts the administrator's
+  Access `user_uuid` (from `/cdn-cgi/access/get-identity`, which is the assertion's `sub`) in place
+  of the zero subject, minified:
+  `forge secret set DISTRICT_CONFIG --stage production --stdin` for app `schoolos-district`.
+  `__tests__/demo-config.test.ts` in the package checks that the example parses and fits in a
+  secret. The seed is read only on the object's first start.
 - **Not bound yet.** The guard keeps its configured directory: binding its `SCHOOLOS_DISTRICT` to
   `DistrictGuardDirectory` would resolve Workshop users through the district's identity links, which
   the instance's admin does not have (SCHO-147). The backend's `SCHOOLOS_DISTRICT_API` is left out
