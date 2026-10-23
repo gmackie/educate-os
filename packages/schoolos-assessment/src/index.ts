@@ -6,3 +6,6 @@ export * from "./digest.ts";
 export * from "./store.ts";
 export * from "./receipt.ts";
 export * from "./assessment.ts";
+// The gradebook (SCHO-187): columns, totals and CSV computed from official grade versions only.
+export * from "./gradebook.ts";
+export * from "./gradebook-service.ts";

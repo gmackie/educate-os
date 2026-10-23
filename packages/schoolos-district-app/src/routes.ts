@@ -59,6 +59,12 @@ import {
   SubmissionItem,
   SubmissionReceipt,
   SubmissionSnapshot,
+  GradebookCsvExport,
+  GradebookRow,
+  GradebookSettingsInput,
+  GradebookView,
+  GradeMarkerInput,
+  StudentGradeSummary,
 } from "@schoolos/assessment";
 import { AlignmentInput, type ContentItem, type QueueEntry, type StudioRelease } from "@schoolos/content-studio";
 import {
@@ -1031,6 +1037,29 @@ export const ROUTES = {
     response: z.strictObject({ requestId: IdentityRequestId, status: z.enum(["approved", "rejected"]) }),
   }),
   // End guardians.
+
+  // Gradebook (SCHO-187). Kept in one block, apart from the routes above.
+  "teacher.gradebook": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/gradebook", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: GradebookView,
+  }),
+  "teacher.updateGradebookSettings": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/gradebook/settings", surface: "teacher",
+    params: params({ offeringId: OfferingId }), body: GradebookSettingsInput, response: GradebookView,
+  }),
+  "teacher.setGradeMarker": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/gradebook/markers", surface: "teacher",
+    params: params({ offeringId: OfferingId }), body: GradeMarkerInput, response: GradebookRow,
+  }),
+  /** The grid as CSV text, in a JSON envelope like every other route. */
+  "teacher.exportGradebookCsv": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/gradebook/export", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: GradebookCsvExport,
+  }),
+  "student.gradeSummary": route({
+    method: "GET", path: "/api/student/offerings/:offeringId/grade-summary", surface: "student",
+    params: params({ offeringId: OfferingId }), response: StudentGradeSummary,
+  }),
 } as const satisfies Record<string, RouteSpec>;
 
 /** The routes. */

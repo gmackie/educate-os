@@ -1,6 +1,7 @@
 import { Empty } from "@cloudflare/kumo";
 import { Question } from "@phosphor-icons/react";
 import { CreateActivityPage } from "../activities/CreateActivityPage.tsx";
+import { GradebookPage } from "../gradebook/GradebookPage.tsx";
 import { Loading } from "../Loading.tsx";
 import { ModulesPage } from "../modules/ModulesPage.tsx";
 import { Problem } from "../Problem.tsx";
@@ -89,5 +90,8 @@ const ClassSection = ({ route, teaching }: { route: ClassRoute; teaching: Teachi
       return <SubmissionsPage teaching={teaching} {...(route.assignmentId === undefined ? {} : { assignmentId: route.assignmentId })} />;
     case "review":
       return <SubmissionReviewPage teaching={teaching} assignmentId={route.assignmentId} submissionId={route.submissionId} />;
+    // Gradebook (SCHO-187)
+    case "gradebook":
+      return <GradebookPage teaching={teaching} />;
   }
 };

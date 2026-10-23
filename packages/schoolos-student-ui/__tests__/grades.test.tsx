@@ -30,6 +30,22 @@ describe("my grades", () => {
     expect(district.calls.filter((call) => call.name === "student.officialGrades").map((call) => (call.input as { params: { assignmentId: string } }).params.assignmentId)).toContain(ESSAY);
   });
 
+  it("shows each class's running total and letter, and what the teacher marked (SCHO-187)", async () => {
+    const district = fakeDistrict();
+    district.recordGrade(ESSAY, { points: 17, maxPoints: 20 });
+    district.markAssignment(ESSAY, "late");
+    await renderApp(district, "/grades");
+
+    const english = await screen.findByRole("region", { name: /English Language Arts/ });
+    expect(within(english).getByText("Course grade: 85.0%")).toBeTruthy();
+    expect(within(english).getByText("· B")).toBeTruthy();
+    const essay = within(english).getByRole("row", { name: /Should the school day start later\?/ });
+    expect(within(essay).getByText("Late")).toBeTruthy();
+    // A class with nothing graded has no total yet.
+    expect(within(screen.getByRole("region", { name: /Science/ })).getByText("No course grade yet.")).toBeTruthy();
+    expect(district.calls.filter((call) => call.name === "student.gradeSummary")).not.toHaveLength(0);
+  });
+
   it("says when grades could not load, and loads them again on Try again", async () => {
     const district = fakeDistrict();
     district.failNext("student.officialGrades", "network");

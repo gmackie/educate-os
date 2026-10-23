@@ -15,7 +15,7 @@ import {
   type ArtifactRecordStore,
   type ArtifactStore,
 } from "@schoolos/learning-artifacts";
-import { InMemoryAssessmentRecordStore, type AssessmentRecordStore } from "@schoolos/assessment";
+import { InMemoryAssessmentRecordStore, InMemoryGradebookStore, type AssessmentRecordStore, type GradebookStore } from "@schoolos/assessment";
 import { InMemoryAssessmentRunStore, InMemoryRubricReleaseStore, type AssessmentRunStore, type RubricReleaseStore } from "@schoolos/assessment-ci";
 import { InMemoryContentStudioStorage, type ContentStudioStorage } from "@schoolos/content-studio";
 import {
@@ -204,6 +204,10 @@ export interface DistrictAppStores {
   guardianInvitations: GuardianInvitationStore;
   /** Pending identity links and Workshop user adoptions (ADR-0003, SCHO-38), which guardian sign-ins wait in. */
   identityLinks: IdentityLinkStore;
+
+  // Gradebook (SCHO-187)
+  /** Each offering's gradebook settings and cell markers. */
+  gradebooks: GradebookStore;
 }
 
 /** In-memory stores for one district, seeded with its directory. */
@@ -231,5 +235,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     guardianRelationships: new InMemoryGuardianRelationshipStore(),
     guardianInvitations: new InMemoryGuardianInvitationStore(),
     identityLinks: new InMemoryIdentityLinkStore(directory.district.id),
+    // Gradebook (SCHO-187)
+    gradebooks: new InMemoryGradebookStore(),
   };
 }

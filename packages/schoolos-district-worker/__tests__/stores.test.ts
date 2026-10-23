@@ -14,6 +14,7 @@ import {
   DurableObjectFundingAllocationStore,
   DurableObjectGuardianInvitationStore,
   DurableObjectGuardianRelationshipStore,
+  DurableObjectGradebookStore,
   DurableObjectToolApprovalStore,
   DurableObjectWorkshopUserLinkStore,
 } from "@schoolos/district-app/durable-stores";
@@ -286,6 +287,52 @@ describe("DurableObjectGuardianInvitationStore", () => {
       expect(await store.findByTokenDigest("a".repeat(64))).toMatchObject({ redeemed: { outcome: "awaiting-approval", requestId: "idr_one" } });
       expect(await store.findByTokenDigest("b".repeat(64))).toBeUndefined();
       expect((await store.listForStudent("prn_nf-student-amara" as never)).map((i) => i.id)).toEqual([(invitation as { id: string }).id]);
+    });
+  });
+});
+
+// Gradebook (SCHO-187)
+describe("DurableObjectGradebookStore", () => {
+  const BIO = "off_nf-bio-fall-p2" as never;
+  const settings = (weight: number) => ({
+    weighting: "group-weights",
+    calculation: "points",
+    missing: "zero",
+    groups: [{ id: "grp_labs", name: "Labs", weight, dropLowest: 1, assignmentIds: ["asg_lab-1", "asg_lab-2"] }],
+    scale: [{ letter: "A", minPercent: 90 }, { letter: "F", minPercent: 0 }],
+  }) as never;
+  const updated = { by: "prn_nf-morgan-lee", at: "2026-10-23T12:00:00.000Z" } as never;
+  const marker = (assignmentId: string, studentPrincipalId: string, kind: string) =>
+    ({ assignmentId, studentPrincipalId, marker: kind, setBy: "prn_nf-morgan-lee", setAt: "2026-10-23T12:00:00.000Z" }) as never;
+
+  it("keeps settings and markers across a restart, and saves settings only over the revision read", async () => {
+    const object = fresh();
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectGradebookStore(state.storage);
+      expect(await store.load(BIO)).toStrictEqual({ revision: 0, markers: [] });
+      expect(await store.saveSettings(BIO, settings(60), updated, 0)).toBe(1);
+      await expect(store.saveSettings(BIO, settings(70), updated, 0)).rejects.toMatchObject({ code: "conflict" });
+      expect(await store.saveSettings(BIO, settings(80), updated, 1)).toBe(2);
+      await store.setMarker(BIO, "asg_lab-2" as never, "prn_nf-student-amara" as never, marker("asg_lab-2", "prn_nf-student-amara", "late"));
+      await store.setMarker(BIO, "asg_lab-1" as never, "prn_nf-student-elena" as never, marker("asg_lab-1", "prn_nf-student-elena", "excused"));
+      // A second marker on a cell replaces the first; clearing removes it.
+      await store.setMarker(BIO, "asg_lab-2" as never, "prn_nf-student-amara" as never, marker("asg_lab-2", "prn_nf-student-amara", "missing"));
+      await store.setMarker(BIO, "asg_lab-1" as never, "prn_nf-student-elena" as never, undefined);
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectGradebookStore(state.storage);
+      expect(await store.load(BIO)).toStrictEqual({ revision: 2, settings: settings(80), updated, markers: [marker("asg_lab-2", "prn_nf-student-amara", "missing")] });
+      expect(await store.load("off_nf-eng9-fall-p3" as never)).toStrictEqual({ revision: 0, markers: [] });
+    });
+  });
+
+  it("refuses settings that do not match their schema and a marker for another cell, storing nothing", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = new DurableObjectGradebookStore(state.storage);
+      await expect(store.saveSettings(BIO, { ...(settings(50) as object), scale: [] } as never, updated, 0)).rejects.toThrow();
+      await expect(store.setMarker(BIO, "asg_lab-1" as never, "prn_nf-student-amara" as never, marker("asg_lab-2", "prn_nf-student-amara", "late"))).rejects.toMatchObject({ code: "validation-failed" });
+      expect(await store.load(BIO)).toStrictEqual({ revision: 0, markers: [] });
     });
   });
 });

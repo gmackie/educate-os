@@ -41,7 +41,16 @@ import {
   type StoredArtifacts,
   type StoredContent,
 } from "@schoolos/learning-artifacts";
-import type { RubricReleaseRef } from "@schoolos/assessment";
+import {
+  GradebookSettings,
+  GradebookUpdate,
+  GradeMarkerRecord,
+  settingsConflict,
+  type AssignmentId,
+  type GradebookStore,
+  type RubricReleaseRef,
+  type StoredGradebook,
+} from "@schoolos/assessment";
 import { DurableObjectAssessmentRecordStore } from "@schoolos/assessment/durable-object-store";
 import { RubricRelease, verifyRubricRelease, type RubricReleaseStore } from "@schoolos/assessment-ci";
 import { DurableObjectAssessmentRunStore } from "@schoolos/assessment-ci/durable-object-store";
@@ -127,6 +136,9 @@ export const DISTRICT_TABLES = {
   guardianRelationships: "schoolos_guardian_relationships",
   guardianRelationshipEvents: "schoolos_guardian_relationship_events",
   guardianInvitations: "schoolos_guardian_invitations",
+  // Gradebook (SCHO-187)
+  gradebookSettings: "schoolos_gradebook_settings",
+  gradebookMarkers: "schoolos_gradebook_markers",
 } as const;
 
 /** Thrown when a stored row cannot be read. Nothing is decided on state that cannot be read. */
@@ -959,5 +971,89 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     guardianRelationships: new DurableObjectGuardianRelationshipStore(storage),
     guardianInvitations: new DurableObjectGuardianInvitationStore(storage),
     identityLinks: new DurableObjectIdentityLinkStore(storage, seed.district.id),
+    // Gradebook (SCHO-187)
+    gradebooks: new DurableObjectGradebookStore(storage),
   };
+}
+
+// Gradebook (SCHO-187)
+
+/**
+ * A {@link GradebookStore} in a Durable Object's SQLite: per offering, one settings row carrying
+ * the revision a save checks, and one row per marked cell, so a large class never makes one value
+ * approach SQLite's row limit and setting a marker rewrites only its own row.
+ */
+export class DurableObjectGradebookStore implements GradebookStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.gradebookSettings} (
+        offering_id TEXT PRIMARY KEY, revision INTEGER NOT NULL, settings_json TEXT NOT NULL, updated_json TEXT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.gradebookMarkers} (
+        offering_id TEXT NOT NULL, assignment_id TEXT NOT NULL, student_id TEXT NOT NULL, marker_json TEXT NOT NULL,
+        PRIMARY KEY (offering_id, assignment_id, student_id)
+      )`,
+    ]);
+  }
+
+  async load(offeringId: OfferingId): Promise<StoredGradebook> {
+    return this.#tables.transaction((sql) => {
+      const what = `the gradebook of ${offeringId}`;
+      const [head] = sql.exec(`SELECT revision, settings_json, updated_json FROM ${DISTRICT_TABLES.gradebookSettings} WHERE offering_id = ?`, offeringId).toArray();
+      const markers = sql.exec(
+        `SELECT marker_json FROM ${DISTRICT_TABLES.gradebookMarkers} WHERE offering_id = ? ORDER BY assignment_id, student_id`,
+        offeringId,
+      ).toArray().map((row) => parseStored(GradeMarkerRecord, row.marker_json, what));
+      if (head === undefined) return { revision: 0, markers };
+      if (typeof head.revision !== "number") throw new DistrictStoreCorruptionError(`${what} has an unexpected shape`);
+      return {
+        revision: head.revision,
+        settings: parseStored(GradebookSettings, head.settings_json, what),
+        updated: parseStored(GradebookUpdate, head.updated_json, what),
+        markers,
+      };
+    });
+  }
+
+  async saveSettings(offeringId: OfferingId, settings: GradebookSettings, updated: GradebookUpdate, expectedRevision: number): Promise<number> {
+    const parsed = GradebookSettings.parse(settings);
+    const by = GradebookUpdate.parse(updated);
+    return this.#tables.transaction((sql) => {
+      const [head] = sql.exec(`SELECT revision FROM ${DISTRICT_TABLES.gradebookSettings} WHERE offering_id = ?`, offeringId).toArray();
+      const current = head === undefined ? 0 : Number(head.revision);
+      if (current !== expectedRevision) throw settingsConflict();
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.gradebookSettings} (offering_id, revision, settings_json, updated_json) VALUES (?, ?, ?, ?)
+         ON CONFLICT (offering_id) DO UPDATE SET revision = excluded.revision, settings_json = excluded.settings_json, updated_json = excluded.updated_json`,
+        offeringId,
+        current + 1,
+        JSON.stringify(parsed),
+        JSON.stringify(by),
+      );
+      return current + 1;
+    });
+  }
+
+  async setMarker(offeringId: OfferingId, assignmentId: AssignmentId, studentPrincipalId: PrincipalId, marker: GradeMarkerRecord | undefined): Promise<void> {
+    const parsed = marker === undefined ? undefined : GradeMarkerRecord.parse(marker);
+    if (parsed !== undefined && (parsed.assignmentId !== assignmentId || parsed.studentPrincipalId !== studentPrincipalId)) {
+      throw new SchoolOsError("validation-failed", "A marker is stored on its own cell.");
+    }
+    this.#tables.transaction((sql) => {
+      if (parsed === undefined) {
+        sql.exec(`DELETE FROM ${DISTRICT_TABLES.gradebookMarkers} WHERE offering_id = ? AND assignment_id = ? AND student_id = ?`, offeringId, assignmentId, studentPrincipalId);
+        return;
+      }
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.gradebookMarkers} (offering_id, assignment_id, student_id, marker_json) VALUES (?, ?, ?, ?)
+         ON CONFLICT (offering_id, assignment_id, student_id) DO UPDATE SET marker_json = excluded.marker_json`,
+        offeringId,
+        assignmentId,
+        studentPrincipalId,
+        JSON.stringify(parsed),
+      );
+    });
+  }
 }

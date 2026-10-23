@@ -133,6 +133,7 @@ export const COURSE_RESOURCE_KINDS = [
   "official-grade",
   "announcement",
   "course-content",
+  "gradebook",
 ] as const satisfies ResourceKind[];
 
 const OFFICIAL_GRADE_WRITES = ["create", "update", "grade"] as const satisfies Action[];
@@ -193,6 +194,11 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   its staff. A draft module is `teacher-only`, so only staff and administrators over the offering
  *   see it; publishing makes it `course` material its actively enrolled students read. Guardians
  *   are not given it: what they read stays the ADR-0012 list.
+ * - **Gradebooks** (SCHO-187) are computed from official grades. An offering's class grid is
+ *   `teacher-only`: its staff read and export it and administrators over it read it, but only a
+ *   teacher acting directly sets its groups, weights, scale and markers, because those change every
+ *   computed total (never an official grade). A student's own row is a `course` record they own and
+ *   read, even after a drop; no student reads the grid. Guardians are not given it.
  */
 export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse([
   // Guardians (ADR-0012). Their authority is a relationship record to one child, never a role, and
@@ -360,7 +366,7 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "course.owner.read-own",
     description: "A principal reads and exports their own course work, feedback, grades and enrollments, even after leaving the offering.",
     when: {
-      kinds: ["enrollment", "course-workspace", "artifact", "submission", "feedback", "official-grade"],
+      kinds: ["enrollment", "course-workspace", "artifact", "submission", "feedback", "official-grade", "gradebook"],
       ownership: ["own"],
       classifications: ["course"],
       actions: ["read", "list", "export"],
@@ -431,6 +437,7 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
         "learning-resource",
         "announcement",
         "course-content",
+        "gradebook",
       ],
       roles: [...INSTRUCTORS],
       classifications: [...STAFF_VISIBLE],
@@ -475,6 +482,19 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     effect: { effect: "allow" },
   },
   {
+    id: "course.teacher.gradebook",
+    description: "A teacher of the offering, acting directly, sets its gradebook's groups, weights, grade scale and missing, excused and late markers; these change computed totals, never an official grade.",
+    when: {
+      kinds: ["gradebook"],
+      ownership: ["unowned"],
+      roles: ["teacher"],
+      channels: ["http"],
+      classifications: ["teacher-only"],
+      actions: ["update"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
     id: "course.instructor.review",
     description: "Course staff review students' submitted work in their offering.",
     when: { kinds: ["artifact", "submission"], roles: [...INSTRUCTORS], classifications: ["course"], actions: ["review"] },
@@ -502,7 +522,7 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "admin.course-oversight",
     description: "Administrators read course structure and official grades in their scope, but not student-authored work or conversations.",
     when: {
-      kinds: ["activity", "rubric", "course-workspace", "assessment-run", "official-grade", "announcement", "course-content"],
+      kinds: ["activity", "rubric", "course-workspace", "assessment-run", "official-grade", "announcement", "course-content", "gradebook"],
       ownership: ["unowned", "others"],
       roles: [...ADMINS],
       classifications: [...STAFF_VISIBLE],

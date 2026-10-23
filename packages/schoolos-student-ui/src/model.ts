@@ -33,6 +33,10 @@ export type Submission = RouteResponse<"student.listSubmissions">[number];
 export type Feedback = RouteResponse<"student.getFeedback">;
 /** One version of the student's official grade for an assignment. */
 export type OfficialGrade = RouteResponse<"student.officialGrades">[number];
+/** The student's own gradebook row in a class: course totals and letter grade (SCHO-187). */
+export type GradeSummary = RouteResponse<"student.gradeSummary">;
+/** What the teacher marked on one of the student's assignments. */
+export type GradeMarker = NonNullable<GradeSummary["row"]["cells"][number]["marker"]>;
 /** A class's published modules and their pages, as a student sees them. */
 export type CourseOutline = RouteResponse<"student.listModules">["outline"];
 /** One published module of a class. */

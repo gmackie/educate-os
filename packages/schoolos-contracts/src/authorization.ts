@@ -59,6 +59,12 @@ export const ResourceKind = z.enum([
    * published module is `course` material; a draft is `teacher-only`.
    */
   "course-content",
+  /**
+   * An offering's gradebook (SCHO-187): its settings, the markers teachers set on cells, and the
+   * totals computed from official grades. The class grid is `teacher-only`; one student's own row
+   * is a `course` record that student owns.
+   */
+  "gradebook",
   "learning-resource",
   "capability-config",
   "ai-budget",
