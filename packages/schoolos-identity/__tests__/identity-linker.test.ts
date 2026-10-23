@@ -7,6 +7,7 @@ import {
   IdentityLinkAuditEvent,
   rejectIdentityLink,
   requestIdentityLink,
+  requestNewPrincipalLink,
 } from "../src/index.ts";
 import { AT, NF_ACCESS, NF_ADMIN, NF_IDP, RB_ADMIN, withAccess } from "./helpers.ts";
 
@@ -159,5 +160,53 @@ describe("identity linking", () => {
     const workshopUserId = "a".repeat(64) as WorkshopUserId;
     expect(requestIdentityLink(directory, { principalId: MORGAN, identity: morganAccess, requestedAt: AT, workshopUserId }))
       .toMatchObject({ workshopUserId, credential: "person" });
+  });
+
+  it("creates a guardian principal from its first approved link, and nothing before (ADR-0012)", async () => {
+    const guardian = "prn_g-new-guardian" as PrincipalId;
+    const ginaAccess: VerifiedIdentity = { issuer: NF_ACCESS, subject: "access-uuid-gina", credential: "person" };
+    const pending = requestNewPrincipalLink(directory, {
+      principalId: guardian,
+      newPrincipal: { kind: "guardian", displayName: "Gina Okafor" },
+      identity: ginaAccess,
+      requestedAt: AT,
+    });
+    expect(directory.principals.some((p) => p.id === guardian)).toBe(false);
+    await expect(createDirectoryPrincipalResolver(directory).resolve(ginaAccess)).rejects.toMatchObject({ code: "unauthenticated" });
+
+    const { directory: next, event } = approveIdentityLink(directory, pending, decision);
+    expect(checkDirectoryIntegrity(next)).toEqual([]);
+    expect(next.principals.find((p) => p.id === guardian)).toEqual({
+      id: guardian,
+      districtId: "dst_northfield",
+      kind: "guardian",
+      status: "active",
+      displayName: "Gina Okafor",
+      externalIdentities: [{ districtId: "dst_northfield", issuer: NF_ACCESS, subject: "access-uuid-gina" }],
+    });
+    await expect(createDirectoryPrincipalResolver(next).resolve(ginaAccess)).resolves.toMatchObject({ principalId: guardian, kind: "guardian" });
+    expect(event.target.principalId).toBe(guardian);
+
+    // Approving again, or creating over a principal that exists, takes nothing over.
+    expect(codeOf(() => approveIdentityLink(next, pending, decision))).toBe("conflict");
+    expect(codeOf(() => requestNewPrincipalLink(directory, {
+      principalId: MORGAN,
+      newPrincipal: { kind: "guardian", displayName: "Not Morgan" },
+      identity: ginaAccess,
+      requestedAt: AT,
+    }))).toBe("conflict");
+    // A service credential never becomes a guardian, and only a guardian is ever created.
+    expect(codeOf(() => requestNewPrincipalLink(directory, {
+      principalId: guardian,
+      newPrincipal: { kind: "guardian", displayName: "Gina Okafor" },
+      identity: { ...ginaAccess, credential: "service" },
+      requestedAt: AT,
+    }))).toBe("validation-failed");
+    expect(codeOf(() => requestNewPrincipalLink(directory, {
+      principalId: guardian,
+      newPrincipal: { kind: "staff", displayName: "Gina Okafor" } as never,
+      identity: ginaAccess,
+      requestedAt: AT,
+    }))).toBe("validation-failed");
   });
 });
