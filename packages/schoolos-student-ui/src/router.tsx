@@ -12,6 +12,7 @@ import { useQuery } from "./api.tsx";
 import { ActivityPage } from "./activity/ActivityPage.tsx";
 import { CoursePage } from "./CoursePage.tsx";
 import { ErrorState } from "./ErrorState.tsx";
+import { GradesPage } from "./GradesPage.tsx";
 import { HomePage } from "./HomePage.tsx";
 import { Layout } from "./Layout.tsx";
 import { MySpacePage } from "./MySpacePage.tsx";
@@ -34,6 +35,8 @@ const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", comp
 
 const mySpaceRoute = createRoute({ getParentRoute: () => rootRoute, path: "/my-space", component: MySpacePage });
 
+const gradesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/grades", component: GradesPage });
+
 const courseRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/courses/$offeringId",
@@ -52,7 +55,7 @@ const activityRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, courseRoute, activityRoute]);
+const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, courseRoute, activityRoute]);
 
 /** The Learning Home's router: on the browser's history, or on a memory history in tests. */
 export const createStudentRouter = (history?: RouterHistory) =>

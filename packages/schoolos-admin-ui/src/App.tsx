@@ -6,6 +6,7 @@ import { AnnouncerProvider } from "./app/Announcer.tsx";
 import { SCREENS, useHashRoute, type ScreenPath } from "./app/useHashRoute.ts";
 import { useDistrictConfig } from "./app/useDistrictConfig.ts";
 import { AiBudgetsPage } from "./budgets/AiBudgetsPage.tsx";
+import { ClassesPage } from "./classes/ClassesPage.tsx";
 import { Dashboard } from "./dashboard/Dashboard.tsx";
 import { ModulesPage } from "./modules/ModulesPage.tsx";
 import { PoliciesPage } from "./policies/PoliciesPage.tsx";
@@ -18,6 +19,7 @@ const Screen = ({ path }: { path: ScreenPath }) => {
   switch (path) {
     case "dashboard": return <Dashboard state={config} />;
     case "roster": return <RosterPage />;
+    case "classes": return <ClassesPage />;
     case "modules": return <ModulesPage state={config} />;
     case "policies": return <PoliciesPage state={config} />;
     case "ai-usage": return <AiUsagePage state={config} />;

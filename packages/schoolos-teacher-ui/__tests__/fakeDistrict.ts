@@ -128,6 +128,8 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
   const assignments: ReturnType<typeof assignment>[] = [assignment(IDS.existingAssignment, IDS.existingActivity, "Persuasive paragraph")];
   const submissions: Body[] = [];
   const texts = new Map<string, string>();
+  const files = new Map<string, { mediaType: string; base64: string }>();
+  const proposals: Body[] = [];
   const feedback = new Map<string, { submissionId: string; state: string; comments: Body[]; scores: Body[]; updatedAt: string }>();
   const rubrics = new Map<string, { rubricId: string; version: number; title: string; criteria: { id: string; title: string; levels: { id: string; label: string; points: number }[] }[] }>();
   let counter = 0;
@@ -228,7 +230,8 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
     "teacher.listSubmissions": ({ params }) => submissions.filter((s) => s.assignmentId === params!.assignmentId),
     "teacher.submittedContent": ({ params }) => {
       const submission = submissions.find((s) => s.id === params!.submissionId)! as { items: Body[] };
-      return { item: submission.items[0], content: { kind: "text", text: texts.get(params!.submissionId!) } };
+      const file = files.get(params!.submissionId!);
+      return { item: submission.items[0], content: file === undefined ? { kind: "text", text: texts.get(params!.submissionId!) } : { kind: "bytes", base64: file.base64 } };
     },
     "teacher.getFeedback": ({ params }) => feedbackFor(params!.submissionId!),
     "teacher.runCi": ({ params }) => {
@@ -286,7 +289,18 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
         },
       };
     },
-    "teacher.pendingGrades": () => [],
+    "teacher.pendingGrades": ({ params }) => proposals.filter((p) => p.assignmentId === params!.assignmentId && p.declined === undefined),
+    "teacher.declineGradeProposal": ({ params, body }) => {
+      const proposal = proposals.find((p) => p.id === params!.proposalId)!;
+      proposal.declined = { declinedBy: IDS.teacher, declinedAt: NOW, reason: body!.reason };
+      return proposal;
+    },
+    "teacher.updateAssignment": ({ params, body }) => {
+      const index = assignments.findIndex((a) => a.id === params!.assignmentId);
+      const updated = { ...assignments[index]!, ...body, updatedAt: NOW };
+      assignments[index] = updated;
+      return updated;
+    },
   };
 
   const client: DistrictApiClient = {
@@ -321,6 +335,27 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
         submissionDigest: DIGEST, ...(assigned.rubric === undefined ? {} : { rubric: assigned.rubric }), submittedAt: NOW, timing: "on-time", channel: "http",
       });
       return id;
+    },
+    /** A student turns in a file for an assignment. */
+    studentSubmitsFile: (assignmentId: string, file: { mediaType: string; base64: string }) => {
+      const id = next("sub");
+      files.set(id, file);
+      submissions.push({
+        id, districtId: IDS.district, assignmentId, offeringId: IDS.offering, studentPrincipalId: IDS.amara, attempt: 1,
+        items: [{ artifactId: "art_report", revisionId: "rev_report-1", digest: DIGEST, artifactType: "document", mediaType: file.mediaType, sizeBytes: file.base64.length, aiAssistance: { level: "none" } }],
+        submissionDigest: DIGEST, submittedAt: NOW, timing: "on-time", channel: "http",
+      });
+      return id;
+    },
+    /** A co-teacher proposes a grade, which waits for the lead teacher. */
+    propose: (submissionId: string, score: { points: number; maxPoints: number }) => {
+      const submission = submissions.find((s) => s.id === submissionId)!;
+      const proposal: Body = {
+        id: next("gpr"), assignmentId: submission.assignmentId, studentPrincipalId: submission.studentPrincipalId, submissionId,
+        score, proposedBy: "prn_nf-teacher-chen", proposedVia: "http", proposedAt: NOW,
+      };
+      proposals.push(proposal);
+      return String(proposal.id);
     },
     /** Puts a suggested score on a submission's feedback, as an AI model or an evaluator would. */
     suggest: (submissionId: string, score: { criterionId: string; points: number; maxPoints: number; suggester: { kind: "ai"; modelId: string } | { kind: "evaluator"; evaluatorId: string } }) => {

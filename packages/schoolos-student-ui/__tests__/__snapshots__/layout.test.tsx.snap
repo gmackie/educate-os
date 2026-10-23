@@ -20,5 +20,6 @@ exports[`layout > puts the navigation along the bottom on a phone 1`] = `
   "  navigation "Main"",
   "    link "Home" → /",
   "    link "My space" → /my-space",
+  "    link "Grades" → /grades",
 ]
 `;

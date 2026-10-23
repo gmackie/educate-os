@@ -5,11 +5,12 @@ import { useDistrictApi } from "../DistrictApi.tsx";
 import { Problem } from "../Problem.tsx";
 import type { GradeProposal, OfficialGrade as OfficialGradeVersion } from "../types.ts";
 import { ApproveGradeDialog } from "./ApproveGradeDialog.tsx";
+import { DeclineGradeDialog } from "./DeclineGradeDialog.tsx";
 
 /**
  * The official grade. It starts from the teacher's own criterion scores and is recorded only
  * through {@link ApproveGradeDialog}. A co-teacher's grade waits for the lead teacher, who
- * approves it the same way.
+ * approves it the same way or declines it with a reason.
  */
 export const OfficialGrade = ({ submissionId, student, suggestedTotal, proposals, onChanged }: {
   submissionId: string;
@@ -24,7 +25,7 @@ export const OfficialGrade = ({ submissionId, student, suggestedTotal, proposals
   const [points, setPoints] = useState<string | undefined>(undefined);
   const [maxPoints, setMaxPoints] = useState<string | undefined>(undefined);
   const [result, setResult] = useState<
-    { status: "idle" | "sending" } | { status: "official"; version: OfficialGradeVersion } | { status: "proposed" } | { status: "failed"; error: unknown }
+    { status: "idle" | "sending" } | { status: "official"; version: OfficialGradeVersion } | { status: "proposed" } | { status: "declined" } | { status: "failed"; error: unknown }
   >({ status: "idle" });
 
   const pointsText = points ?? (suggestedTotal === undefined ? "" : String(suggestedTotal.points));
@@ -61,6 +62,18 @@ export const OfficialGrade = ({ submissionId, student, suggestedTotal, proposals
     }
   };
 
+  const decline = async (proposal: GradeProposal, reason: string) => {
+    setResult({ status: "sending" });
+    try {
+      await client.call("teacher.declineGradeProposal", { params: { proposalId: proposal.id }, body: { reason } });
+      setResult({ status: "declined" });
+      announce("Proposed grade declined. It won't become official.");
+      onChanged();
+    } catch (error) {
+      setResult({ status: "failed", error });
+    }
+  };
+
   return (
     <LayerCard className="flex flex-col gap-3 p-4">
       <h2><Text variant="heading" as="span">Official grade</Text></h2>
@@ -71,10 +84,14 @@ export const OfficialGrade = ({ submissionId, student, suggestedTotal, proposals
         </p>
       )}
       {result.status === "proposed" && <Text>Your grade is waiting for the lead teacher to approve it.</Text>}
+      {result.status === "declined" && <Text>You declined the proposed grade. It won't become official.</Text>}
       {proposals.filter((p) => p.approvedAsVersion === undefined).map((proposal) => (
         <div key={proposal.id} className="flex flex-col gap-2 rounded border border-kumo-line p-3">
           <Text>{`A co-teacher proposed ${proposal.score.points} out of ${proposal.score.maxPoints}. It isn't official until you approve it.`}</Text>
-          <ApproveGradeDialog student={student} points={proposal.score.points} maxPoints={proposal.score.maxPoints} disabled={false} busy={result.status === "sending"} onApprove={() => void approve(proposal)} />
+          <div className="flex flex-wrap gap-2">
+            <ApproveGradeDialog student={student} points={proposal.score.points} maxPoints={proposal.score.maxPoints} disabled={false} busy={result.status === "sending"} onApprove={() => void approve(proposal)} />
+            <DeclineGradeDialog student={student} points={proposal.score.points} maxPoints={proposal.score.maxPoints} busy={result.status === "sending"} onDecline={(reason) => void decline(proposal, reason)} />
+          </div>
         </div>
       ))}
       <Text variant="secondary" size="sm">Starts from your own rubric scores. Suggested scores aren't included until you save them as yours.</Text>

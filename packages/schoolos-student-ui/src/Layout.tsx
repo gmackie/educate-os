@@ -1,6 +1,6 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import { Link, Text } from "@cloudflare/kumo";
-import { BookOpenIcon, HouseIcon, LockSimpleIcon } from "@phosphor-icons/react";
+import { BookOpenIcon, ExamIcon, HouseIcon, LockSimpleIcon } from "@phosphor-icons/react";
 
 const DESKTOP_QUERY = "(min-width: 48rem)";
 
@@ -28,6 +28,12 @@ const MainNav = ({ label }: { label: string }) => (
         <Link href="/my-space" variant="plain" className="flex items-center gap-2 py-2">
           <LockSimpleIcon aria-hidden size={20} />
           My space
+        </Link>
+      </li>
+      <li>
+        <Link href="/grades" variant="plain" className="flex items-center gap-2 py-2">
+          <ExamIcon aria-hidden size={20} />
+          Grades
         </Link>
       </li>
     </ul>

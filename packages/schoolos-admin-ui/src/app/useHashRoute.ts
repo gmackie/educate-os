@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 export const SCREENS = [
   { path: "dashboard", label: "Dashboard" },
   { path: "roster", label: "Roster" },
+  { path: "classes", label: "Classes" },
   { path: "modules", label: "Modules and activation" },
   { path: "policies", label: "Policies" },
   { path: "ai-usage", label: "AI usage" },

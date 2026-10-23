@@ -31,3 +31,5 @@ export type SubmissionReceipt = RouteResponse<"student.submit">;
 export type Submission = RouteResponse<"student.listSubmissions">[number];
 /** Released feedback on one submission. */
 export type Feedback = RouteResponse<"student.getFeedback">;
+/** One version of the student's official grade for an assignment. */
+export type OfficialGrade = RouteResponse<"student.officialGrades">[number];
