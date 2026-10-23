@@ -1,0 +1,13 @@
+// The program capnweb-validate generates the entrypoints' RPC validators from (the `build` command in
+// cloudflare.config.ts, and the vite plugin in vitest.config.ts). It covers every source under
+// Workers' typings, which is what the entrypoints are written against; it is not a typecheck,
+// since those typings reject the web-standard libraries (see tsconfig.json).
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "types": ["./worker-configuration.d.ts"]
+  },
+  "include": ["src", "__tests__"],
+  "exclude": ["node_modules", ".wrangler"]
+}

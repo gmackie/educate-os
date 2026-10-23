@@ -1,0 +1,152 @@
+// The district's durable stores against real Durable Object SQLite storage, for the paths the
+// journeys in district.test.ts do not reach: refused commits store nothing, conflicts are detected
+// in storage, and large content is split and reassembled.
+
+import { env, evictDurableObject, runInDurableObject } from "cloudflare:test";
+import { describe, expect, it } from "vitest";
+import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
+import { DurableObjectAcademicStore } from "@schoolos/academics/durable-object-store";
+import {
+  DurableObjectArtifactRecordStore,
+  DurableObjectBlobBucket,
+  DurableObjectFundingAllocationStore,
+  DurableObjectToolApprovalStore,
+  DurableObjectWorkshopUserLinkStore,
+} from "@schoolos/district-app/durable-stores";
+
+let objects = 0;
+/** A district object no other test has touched, whose storage the tests use directly. */
+const fresh = () => env.DISTRICT.getByName(`stores-${objects++}`);
+
+/** A funding allocation revision, over `previousRevisionId` when there is one. */
+const revision = (id: string, number: number, previousRevisionId?: string) => ({
+  id,
+  number,
+  allocations: { fpl_courses: "1000" },
+  actorPrincipalId: "prn_nf-district-admin",
+  appliedAt: "2026-10-22T12:00:00.000Z",
+  ...(previousRevisionId === undefined ? {} : { previousRevisionId }),
+}) as never;
+
+/** A queued `create_term` call. */
+const action = (id: string, idempotencyKey = "a".repeat(64)) => ({
+  id,
+  tool: "create_term",
+  input: { name: "Spring 2027" },
+  subject: { principalId: "prn_nf-district-admin", districtId: "dst_northfield" },
+  channel: "agent",
+  correlationId: "corr-1",
+  needs: "confirmation",
+  idempotencyKey,
+  createdAt: "2026-10-22T12:00:00.000Z",
+  expiresAt: "2026-10-29T12:00:00.000Z",
+  state: "pending",
+}) as never;
+
+describe("DurableObjectAcademicStore", () => {
+  it("is seeded once, keeps its directory across a restart, and holds one district", async () => {
+    const object = fresh();
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = DurableObjectAcademicStore.open(state.storage, NORTHFIELD);
+      const { version, snapshot } = await store.load();
+      expect(version).toBe(0);
+      await store.commit({ ...snapshot, terms: snapshot.terms.map((t) => ({ ...t, name: `${t.name} (renamed)` })) }, 0);
+      await expect(store.commit(snapshot, 0)).rejects.toMatchObject({ code: "conflict" });
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      // A second open keeps what is stored rather than reseeding.
+      const { version, snapshot } = await DurableObjectAcademicStore.open(state.storage, NORTHFIELD).load();
+      expect(version).toBe(1);
+      expect(snapshot.terms.every((t) => t.name.endsWith("(renamed)"))).toBe(true);
+      expect(snapshot.enrollments).toEqual(NORTHFIELD.enrollments);
+      expect(() => DurableObjectAcademicStore.open(state.storage, RIVERBEND)).toThrow(/another district/);
+    });
+  });
+
+  it("refuses a directory row edited outside the store", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = DurableObjectAcademicStore.open(state.storage, NORTHFIELD);
+      state.storage.sql.exec("UPDATE academic_terms SET record_json = '{\"id\":\"nope\"}'");
+      await expect(store.load()).rejects.toThrow(/unreadable at terms/);
+    });
+  });
+});
+
+describe("DurableObjectArtifactRecordStore", () => {
+  it("commits only over the version it was planned against", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = new DurableObjectArtifactRecordStore(state.storage);
+      const { version, state: records } = await store.load();
+      expect(version).toBe(0);
+      await store.commit(records, 0);
+      await expect(store.commit(records, 0)).rejects.toMatchObject({ code: "conflict" });
+      expect((await store.load()).version).toBe(1);
+    });
+  });
+});
+
+describe("DurableObjectBlobBucket", () => {
+  it("splits a large object into parts and reads back exactly its bytes", async () => {
+    const object = fresh();
+    const bytes = new Uint8Array(2.5 * 1024 * 1024).map((_, i) => i % 251);
+    const hex = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)).toHex();
+    await runInDurableObject(object, async (_instance, state) => {
+      const bucket = new DurableObjectBlobBucket(state.storage);
+      await bucket.put("sha256/large", bytes, { sha256: hex });
+      await expect(bucket.put("sha256/wrong", bytes, { sha256: "0".repeat(64) })).rejects.toThrow(/do not match/);
+      expect(Number(state.storage.sql.exec("SELECT COUNT(*) AS n FROM schoolos_artifact_blob_parts WHERE key = 'sha256/large'").one().n)).toBe(3);
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      const bucket = new DurableObjectBlobBucket(state.storage);
+      expect(await bucket.head("sha256/large")).toEqual({ size: bytes.byteLength });
+      expect(new Uint8Array(await (await bucket.get("sha256/large"))!.arrayBuffer())).toEqual(bytes);
+      expect(await bucket.get("sha256/wrong")).toBeNull();
+      await bucket.put("other/x", new Uint8Array([1]));
+      expect((await bucket.list({ prefix: "sha256/" })).objects.map((o) => o.key)).toEqual(["sha256/large"]);
+      await bucket.delete("sha256/large");
+      expect(await bucket.head("sha256/large")).toBeNull();
+    });
+  });
+});
+
+describe("DurableObjectFundingAllocationStore", () => {
+  it("appends a revision only over the head the administrator saw", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = new DurableObjectFundingAllocationStore(state.storage);
+      await store.append(revision("far_one", 1), undefined);
+      await expect(store.append(revision("far_two", 2), undefined)).rejects.toMatchObject({ code: "conflict" });
+      await store.append(revision("far_two", 2, "far_one"), "far_one");
+      expect((await store.list()).map((r) => r.id)).toEqual(["far_one", "far_two"]);
+    });
+  });
+});
+
+describe("DurableObjectWorkshopUserLinkStore", () => {
+  it("refuses a link that does not match its schema, and stores nothing of it", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = new DurableObjectWorkshopUserLinkStore(state.storage);
+      await expect(store.add({ nope: true } as never)).rejects.toThrow();
+      expect(await store.list()).toEqual([]);
+    });
+  });
+});
+
+describe("DurableObjectToolApprovalStore", () => {
+  it("returns the open action for a repeated call, and lets one of two transitions win", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = new DurableObjectToolApprovalStore(state.storage);
+      const first = await store.insertUnlessOpen(action("apr_one"));
+      expect(await store.insertUnlessOpen(action("apr_two"))).toEqual(first);
+      const claimed = { ...(first as object), state: "claimed" } as never;
+      expect(await store.transition("apr_one" as never, "pending", claimed)).toBe(true);
+      expect(await store.transition("apr_one" as never, "pending", claimed)).toBe(false);
+      // Once it is no longer open, the same call queues a new action.
+      const declined = { ...(first as object), state: "declined" } as never;
+      expect(await store.transition("apr_one" as never, "claimed", declined)).toBe(true);
+      expect(await store.insertUnlessOpen(action("apr_two"))).toMatchObject({ id: "apr_two", state: "pending" });
+      expect((await store.list()).map((a) => a.id)).toEqual(["apr_one", "apr_two"]);
+    });
+  });
+});

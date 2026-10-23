@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // The web-standard surface (ADR-0009): the district's composition (district.ts), its
+    // configuration and its Access verifier are checked with the SchoolOS libraries they compose.
+    "types": [],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__/fixtures.ts"],
+  // The Workers-only shells and the workerd suite import `cloudflare:workers`, whose typings reject
+  // those libraries' web-standard sources. They are checked by running them (`vitest run`), as the
+  // other SchoolOS workerd suites are.
+  "exclude": ["node_modules", ".wrangler", "src/worker.ts", "src/district-object.ts", "src/env.d.ts"]
+}
