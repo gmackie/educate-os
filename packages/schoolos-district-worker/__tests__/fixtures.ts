@@ -19,4 +19,6 @@ export const TEST_CONFIG: DistrictWorkerConfig = {
     allowedModels: [{ provider: "cloudflare", modelId: "synthetic-model" }],
   }],
   modelCatalog: [{ provider: "cloudflare", modelId: "synthetic-model", mode: "enabled" }],
+  // SCHO-189: email through the (recorded) Email Service binding.
+  email: { from: "schoolos@northfield.example", fromName: "Northfield SchoolOS", appUrl: "https://learn.northfield.example" },
 };

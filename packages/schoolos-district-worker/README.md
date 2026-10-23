@@ -18,6 +18,8 @@ and the SchoolOS gatekeeper take. Maturity: workerd-tested, not deployed
   SchoolOS workerd suites. capnweb-validate builds their RPC validators from a Workers-typed program,
   `tsconfig.validate.json`.
 - `src/config.ts` is the `DISTRICT_CONFIG` schema. `src/access.ts` is the Access verifier.
+- `src/mail.ts` is the district app's `MailSender` over the `SEND_EMAIL` binding, and
+  `src/schedule.ts` names the Cron Triggers and the job each runs (SCHO-189).
 
 ## Storage: one SQLite Durable Object per district
 
@@ -86,6 +88,29 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   rest, SCHO-186), and a roster import is refused. A local principal is created with the Access
   subject that signs them in; inviting someone by email before they have signed in is not built yet.
 - `CF_ACCESS_ISS` and `CF_ACCESS_AUD`.
+- `email` (optional, in `DISTRICT_CONFIG`): `from`, an address on a domain the district has
+  onboarded to Cloudflare Email Service in this account, an optional `fromName`, and an optional
+  `appUrl` linked from every email. Without it, or without the binding, nothing is emailed.
+
+## Email and scheduled jobs (SCHO-189)
+
+Notification and family digest email leaves through the `SEND_EMAIL` binding, a
+[Cloudflare Email Service](https://developers.cloudflare.com/email-service/) `send_email` binding
+in the district's own account. SchoolOS hosts no sender (ADR-0011). The binding is unrestricted,
+because recipients are the district's own principals, read from its directory. The sender is
+`DISTRICT_CONFIG.email.from`, and its domain must be onboarded to Email Service before mail is
+accepted. The district app sees only the `MailSender` interface, so an SMTP relay or another
+provider can replace the adapter in `src/mail.ts`.
+
+Two Cron Triggers run the district's communication jobs (`src/schedule.ts`):
+
+| Cron | Job |
+| --- | --- |
+| `7 * * * *` | Brings every active student's in-app notifications up to date (new announcements and assignments, work due within 48 hours and not submitted, released feedback and grades), then emails those owed an email, honouring each principal's preferences. Notifications are keyed by what they are about, so a rerun adds and sends nothing twice. |
+| `0 14 * * SUN` | Sends the weekly family digest for the week starting the next morning. Each guardian's week is claimed in a send ledger before the send, so it goes out at most once; a provider refusal is retried on the next run. |
+
+The scheduled handler hands each trigger to the district's object (`DistrictObject.runScheduled`).
+An expression it does not know runs nothing.
 
 The release lists the package in `SERVICE_PACKAGES` (`scripts/release/manifest-lib.ts`), which
 makes it kind `service`, singleton, and absent from previews. The backend binds it as
@@ -93,6 +118,17 @@ makes it kind `service`, singleton, and absent from previews. The backend binds 
 entrypoint, because each of those is for one consumer only.
 
 ## Not done yet
+
+- **Cron Triggers on install.** The release manifest carries the two schedules as `crons`, but the
+  district installer does not apply Cron Triggers yet (SCHO-148). Until it does, set them on the
+  Worker by hand, or nothing is emailed on a schedule. In-app notifications still update whenever
+  a student opens them.
+- **Family digest.** The digest is built against the policy layer's `GuardianRelationshipStore`,
+  but this Worker does not store guardian relationships yet (SCHO-188), so it passes none and the
+  weekly job sends nothing. Wiring the durable store into `startDistrict` as
+  `guardianRelationships` turns it on.
+- **Email Service.** The deploy service must learn the manifest's `send_email` binding type before
+  it can install this Worker; the installer's manifest schema accepts it.
 
 - **Routing.** Nothing routes browsers to the district's `/api`. The instance router sends `/api/*`
   to the Workshop backend. Until that changes, the district needs its own hostname behind an Access

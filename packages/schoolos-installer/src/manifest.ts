@@ -61,6 +61,7 @@ export const ManifestBinding = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("d1"), name: BindingName, id: z.string() }),
   z.strictObject({ type: z.literal("browser"), name: BindingName }),
   z.strictObject({ type: z.literal("ai"), name: BindingName }),
+  z.strictObject({ type: z.literal("send_email"), name: BindingName }),
   z.strictObject({ type: z.literal("worker_loader"), name: BindingName }),
   z.strictObject({
     type: z.literal("service"),

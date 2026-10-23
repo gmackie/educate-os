@@ -3,7 +3,7 @@
     "name": "DISTRICT_CONFIG",
     "kind": "var",
     "label": "District configuration (JSON)",
-    "help": "The directory the district starts from (the district, its trusted issuers, and at least the administrators who will import the roster), and optionally its funding pools, model catalog, record authority and retention. Read only on first start, apart from the district ID. See packages/schoolos-district-worker/README.md for the schema."
+    "help": "The directory the district starts from (the district, its trusted issuers, and at least the administrators who will import the roster), and optionally its funding pools, model catalog, record authority, retention and email sender (email.from, on a domain onboarded to Cloudflare Email Service in this account). Read only on first start, apart from the district ID. See packages/schoolos-district-worker/README.md for the schema."
   },
   {
     "name": "CF_ACCESS_ISS",

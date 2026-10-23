@@ -26,8 +26,22 @@ import type { DistrictApp } from "@schoolos/district-app";
 import type { AdmittedSubjectRequest, GuardSubject, GuardSubjectRequest } from "@schoolos/district-app/guard-directory";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@schoolos/policy";
 import { startDistrict, type District } from "./district.ts";
+import type { SendEmailBinding } from "./mail.ts";
+import { jobForCron } from "./schedule.ts";
 
-const logger = createLogger<{ districtId: string }>({ component: "schoolos.district" });
+/** What the district logs: its ID, and a scheduled job's counts (SCHO-189). */
+interface DistrictLogFields {
+  districtId: string;
+  week?: string;
+  added?: number;
+  emailed?: number;
+  sent?: number;
+  skipped?: number;
+  failed?: number;
+  alreadyDone?: number;
+}
+
+const logger = createLogger<DistrictLogFields>({ component: "schoolos.district" });
 
 /** One district's state and application. */
 export class DistrictObject extends DurableObject<Cloudflare.Env> {
@@ -47,6 +61,14 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
    */
   protected importFetch(url: string, init: RequestInit): Promise<Response> {
     return fetch(url, init);
+  }
+
+  /**
+   * The Email Service binding notification and digest email is sent through (`SEND_EMAIL`,
+   * declared in cloudflare.config.ts). Tests replace it with a recorder.
+   */
+  protected sendEmail(): SendEmailBinding | undefined {
+    return this.env.SEND_EMAIL as SendEmailBinding | undefined;
   }
 
   /** The running application, for subclasses that drive it directly (the tests). */
@@ -99,6 +121,22 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return (await this.#boot()).tools.declineChange(decider, approvalId, reason);
   }
 
+  /**
+   * Runs the job a Cron Trigger names (SCHO-189): the hourly notification sweep, or the weekly
+   * family digest. An expression the district does not schedule runs nothing.
+   */
+  async runScheduled(cron: string): Promise<void> {
+    const { app } = await this.#boot();
+    const log = logger.with({ districtId: app.districtId });
+    const job = jobForCron(cron);
+    if (job === undefined) {
+      log.warn("a Cron Trigger named no district job", { event: "district.cron.unknown" });
+      return;
+    }
+    const result = job === "notifications" ? await app.communication.runNotificationJob() : await app.communication.runWeeklyDigest();
+    log.info("a scheduled district job ran", { event: `district.cron.${job}`, ...result });
+  }
+
   #boot(): Promise<District> {
     // A failed start is not kept, so the next request tries again (after a configuration fix, say).
     this.#district ??= this.#start().catch((error: unknown) => {
@@ -111,10 +149,15 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
 
   async #start(): Promise<District> {
     const keys = this.accessKeys();
+    const sendEmail = this.sendEmail();
     const district = await startDistrict(
       this.ctx.storage,
       { config: this.env.DISTRICT_CONFIG, accessIssuer: this.env.CF_ACCESS_ISS, accessAudience: this.env.CF_ACCESS_AUD },
-      { importFetch: (url, init) => this.importFetch(url, init), ...(keys === undefined ? {} : { accessKeys: keys }) },
+      {
+        importFetch: (url, init) => this.importFetch(url, init),
+        ...(keys === undefined ? {} : { accessKeys: keys }),
+        ...(sendEmail === undefined ? {} : { sendEmail }),
+      },
     );
     logger.with({ districtId: district.app.districtId }).info("the district started", { event: "district.started" });
     return district;

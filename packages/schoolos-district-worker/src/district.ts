@@ -12,6 +12,8 @@ import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSql
 import { createSchoolToolService, type SchoolToolService } from "@schoolos/gatekeeper";
 import { accessRequestVerifier } from "./access.ts";
 import { readDistrictWorkerConfig } from "./config.ts";
+// Communication (SCHO-189)
+import { cloudflareEmailSender, type SendEmailBinding } from "./mail.ts";
 
 /** The district application and its school tools. */
 export interface District {
@@ -37,6 +39,8 @@ export interface DistrictSeams {
   importFetch: ImportFetch;
   /** The keys Access assertions are verified with. Defaults to the team's published certs. */
   accessKeys?: JWTVerifyGetKey;
+  /** The Worker's Cloudflare Email Service binding (`SEND_EMAIL`), if it has one (SCHO-189). */
+  sendEmail?: SendEmailBinding;
 }
 
 /** The district ID `DISTRICT_CONFIG` names, which its Durable Object is named by. */
@@ -71,6 +75,12 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(config.modelCatalog === undefined ? {} : { modelCatalog: config.modelCatalog }),
     ...(config.approvedExternalHosts === undefined ? {} : { approvedExternalHosts: config.approvedExternalHosts }),
     ...(config.retention === undefined ? {} : { retention: config.retention }),
+    // Communication (SCHO-189): email only with both the binding and a configured sender. Guardian
+    // relationships are not stored by this Worker yet (SCHO-188), so no family digest is sent.
+    ...(seams.sendEmail === undefined || config.email === undefined
+      ? {}
+      : { mail: cloudflareEmailSender(seams.sendEmail, { from: config.email.from, fromName: config.email.fromName }) }),
+    ...(config.email?.appUrl === undefined ? {} : { appUrl: config.email.appUrl }),
   });
 
   const directory = new AcademicDirectory({ store: stores.directory, authority, authorizer: app.engine });
