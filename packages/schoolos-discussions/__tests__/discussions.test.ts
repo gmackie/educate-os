@@ -287,6 +287,8 @@ describe("screening student posts with Hall Monitor (SCHO-190)", () => {
     const queue = await service.moderationQueue(MORGAN, BIO);
     expect(queue.pending.map((p) => p.id)).toStrictEqual([held.id]);
     expect(queue.flagged.map((p) => p.id)).toStrictEqual([coached.id, held.id]);
+    // Approving the held post is the teacher's review of it, so its flag goes with it.
+    expect((await service.moderate(MORGAN, BIO, held.id, { decision: "approve" })).flags).toStrictEqual([]);
   });
 
   it("screens a student's edit, and refuses it when Hall Monitor does, keeping the post as it was", async () => {

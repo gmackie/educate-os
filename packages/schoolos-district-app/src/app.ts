@@ -440,9 +440,11 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       });
     }
 
-    /** The display names of the principals who wrote `posts`. */
-    discussionAuthors(posts: readonly ({ authorId: string } | object)[]) {
-      const ids = new Set(posts.flatMap((post) => ("authorId" in post ? [post.authorId] : [])));
+    /** The display names of the principals who wrote `posts`, and of those who reported them (which only staff views carry). */
+    discussionAuthors(posts: readonly ({ authorId: string; flags?: readonly ({ kind: string; by?: string })[] } | object)[]) {
+      const ids = new Set(posts.flatMap((post) => ("authorId" in post
+        ? [post.authorId, ...(post.flags ?? []).flatMap((flag) => (flag.kind === "report" && flag.by !== undefined ? [flag.by] : []))]
+        : [])));
       return this.snapshot.principals.filter((p) => ids.has(p.id)).map((p) => ({ principalId: p.id, displayName: p.displayName }));
     }
   }

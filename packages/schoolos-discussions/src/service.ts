@@ -371,8 +371,8 @@ export class DiscussionService {
   }
 
   /**
-   * A teacher's decision on a post: approve one waiting, hide or restore it, remove it for good, or
-   * dismiss its flags. Trailed.
+   * A teacher's decision on a post: approve one waiting (clearing the flags it waited with), hide
+   * or restore it, remove it for good, or dismiss its flags. Trailed.
    *
    * @throws SchoolOsError `conflict` for a decision that does not apply to the post's status.
    */
@@ -388,7 +388,8 @@ export class DiscussionService {
         throw NOT_FOUND();
       }
       const status = nextStatus(post, decision);
-      updated = { ...post, status, ...(decision === "dismiss-flags" ? { flags: [] } : {}) };
+      // Approving a post is the teacher's review of it, so it clears the flags it waited with.
+      updated = { ...post, status, ...(decision === "dismiss-flags" || decision === "approve" ? { flags: [] } : {}) };
       return { posts: [updated], moderation: [this.#event(subject, decision, { topicId: post.topicId, postId: post.id, authorId: post.authorId })] };
     });
     return updated!;
