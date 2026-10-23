@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" identifier="extended" title="Osmosis" adaptive="false" timeDependent="false">
+  <responseDeclaration identifier="RESPONSE" cardinality="single" baseType="string"/>
+  <outcomeDeclaration identifier="MAXSCORE" cardinality="single" baseType="float"><defaultValue><value>5</value></defaultValue></outcomeDeclaration>
+  <itemBody>
+    <extendedTextInteraction responseIdentifier="RESPONSE" expectedLines="6">
+      <prompt>Explain osmosis in your own words.</prompt>
+    </extendedTextInteraction>
+  </itemBody>
+</assessmentItem>

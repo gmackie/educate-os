@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" identifier="hotspot" title="Find the stanza" adaptive="false" time-dependent="false">
+  <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="identifier">
+    <qti-correct-response><qti-value>A</qti-value></qti-correct-response>
+  </qti-response-declaration>
+  <qti-item-body>
+    <qti-hotspot-interaction response-identifier="RESPONSE" max-choices="1">
+      <qti-prompt>Click the final stanza.</qti-prompt>
+      <object type="image/png" data="poem.png" width="200" height="300"/>
+      <qti-hotspot-choice identifier="A" shape="rect" coords="0,200,200,300"/>
+    </qti-hotspot-interaction>
+  </qti-item-body>
+</qti-assessment-item>

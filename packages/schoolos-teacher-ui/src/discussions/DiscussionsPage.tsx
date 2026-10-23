@@ -9,7 +9,7 @@ import type { DiscussionListing, TeachingOffering } from "../types.ts";
 import { ModerationPanel } from "./ModerationPanel.tsx";
 import { TopicCard } from "./TopicCard.tsx";
 import { TopicComposer } from "./TopicComposer.tsx";
-import { useSteadyLoad } from "./useSteadyLoad.ts";
+import { useSteadyLoad } from "../useSteadyLoad.ts";
 
 const PremoderationSwitch = ({ offeringId, settings, onChanged }: { offeringId: string; settings: DiscussionListing["settings"]; onChanged: () => void }) => {
   const action = useAction(onChanged);

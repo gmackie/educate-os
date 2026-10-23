@@ -28,6 +28,7 @@
     "@schoolos/integrations": "workspace:*",
     "@schoolos/learning-artifacts": "workspace:*",
     "@schoolos/policy": "workspace:*",
+    "@schoolos/quizzes": "workspace:*",
     "@schoolos/registry": "workspace:*",
     "@schoolos/workspaces": "workspace:*",
     "zod": "catalog:"
@@ -35,6 +36,7 @@
   "devDependencies": {
     "@gadgets/scripts": "workspace:*",
     "@schoolos/fixtures": "workspace:*",
+    "@schoolos/zip": "workspace:*",
     "@types/node": "26.1.0",
     "vitest": "catalog:"
   }

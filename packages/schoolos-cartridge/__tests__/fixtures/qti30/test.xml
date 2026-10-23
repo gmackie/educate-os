@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<qti-assessment-test xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" identifier="POETRY" title="Poetry terms">
+  <qti-test-part identifier="P1" navigation-mode="nonlinear" submission-mode="simultaneous">
+    <qti-assessment-section identifier="S1" title="Terms" visible="true">
+      <qti-assessment-item-ref identifier="choice" href="items/choice.xml"/>
+      <qti-assessment-item-ref identifier="text-entry" href="items/text-entry.xml"/>
+      <qti-assessment-item-ref identifier="numeric" href="items/numeric.xml"/>
+      <qti-assessment-item-ref identifier="extended" href="items/extended.xml"/>
+      <qti-assessment-item-ref identifier="hotspot" href="items/hotspot.xml"/>
+    </qti-assessment-section>
+  </qti-test-part>
+</qti-assessment-test>

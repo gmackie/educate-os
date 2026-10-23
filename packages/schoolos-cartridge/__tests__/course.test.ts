@@ -125,7 +125,7 @@ describe("course cartridge discussion topics (SCHO-190)", () => {
       { path: "d2.xml", content: "<topic><title>Unclosed" },
     ]);
     const plan = planCourseCartridge(await readCartridge(bytes));
-    expect(plan.modules).toStrictEqual([{ identifier: "W1", title: "Week 1", items: [], discussions: [{ identifier: "D1", title: "Photosynthesis", prompt: "Why are leaves green?" }] }]);
+    expect(plan.modules).toStrictEqual([{ identifier: "W1", title: "Week 1", items: [], discussions: [{ identifier: "D1", title: "Photosynthesis", prompt: "Why are leaves green?" }], quizzes: [] }]);
     expect(plan.skipped.map((s) => [s.identifier, s.reason])).toStrictEqual([["D2", "invalid-discussion"], ["D3", "missing-file"]]);
   });
 });

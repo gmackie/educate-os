@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assessmentTest xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" identifier="CELLS_TEST" title="Cells check-in">
+  <testPart identifier="P1" navigationMode="linear" submissionMode="individual">
+    <assessmentSection identifier="S1" title="Organelles" visible="true">
+      <assessmentItemRef identifier="choice" href="items/choice.xml"/>
+      <assessmentItemRef identifier="choice-multiple" href="items/choice-multiple.xml"/>
+      <assessmentItemRef identifier="true-false" href="items/true-false.xml"/>
+    </assessmentSection>
+    <assessmentSection identifier="S2" title="Numbers and words" visible="true">
+      <assessmentItemRef identifier="numeric" href="items/numeric.xml"/>
+      <assessmentItemRef identifier="text-entry" href="items/text-entry.xml"/>
+      <assessmentItemRef identifier="extended" href="items/extended-text.xml"/>
+      <assessmentItemRef identifier="order" href="items/order.xml"/>
+      <assessmentItemRef identifier="no-key" href="items/no-key.xml"/>
+      <assessmentItemRef identifier="gone" href="items/gone.xml"/>
+    </assessmentSection>
+  </testPart>
+</assessmentTest>

@@ -237,6 +237,50 @@ describe("guardian isolation", () => {
     expect((await d.ok(rivera, "teacher.discussionThread", { params: at })).posts.map((p) => p.id)).toEqual([post.id]);
   });
 
+  // Quizzes (SCHO-191). Guardians are not given quizzes (ADR-0012): not the quiz, not their child's
+  // attempts, and nothing to take or grade. A released score reaches them only as the official grade.
+  it("gives a guardian no quiz or attempt, only the official grade a release made", async () => {
+    const d = await district();
+    const { guardian, guardianId } = await onboard(d, NF.amara, "gina");
+    const rivera = d.tokenFor(NF.rivera);
+    const { assignment } = await teacherSetsUpEssay(d, rivera);
+    const draft = await d.ok(rivera, "teacher.createQuiz", {
+      params: { offeringId: NF.eng9 },
+      body: { title: "Poetry terms", assignmentId: assignment.id, items: [{ type: "true-false", prompt: "A sonnet has 14 lines.", points: 2, correct: true }] },
+    });
+    const quiz = await d.ok(rivera, "teacher.publishQuiz", { params: { offeringId: NF.eng9, quizId: draft.id }, body: { published: true } });
+    const amara = d.tokenFor(NF.amara);
+    const attempt = await d.ok(amara, "student.startQuizAttempt", { params: { offeringId: NF.eng9, quizId: quiz.id } });
+    await d.ok(amara, "student.submitQuizAttempt", {
+      params: { offeringId: NF.eng9, attemptId: attempt.attemptId },
+      body: { answers: [{ itemId: quiz.items[0]!.id, response: { type: "true-false", value: true } }] },
+    });
+    const q = { offeringId: NF.eng9, quizId: quiz.id };
+    const a = { offeringId: NF.eng9, attemptId: attempt.attemptId };
+    for (const result of [
+      await d.call(guardian, "student.listQuizzes", { params: { offeringId: NF.eng9 } }),
+      await d.call(guardian, "student.getQuiz", { params: q }),
+      await d.call(guardian, "student.startQuizAttempt", { params: q }),
+      await d.call(guardian, "student.quizAttemptResult", { params: a }),
+      await d.call(guardian, "student.submitQuizAttempt", { params: a, body: { answers: [] } }),
+      await d.call(guardian, "teacher.getQuiz", { params: q }),
+      await d.call(guardian, "teacher.quizResults", { params: q }),
+      await d.call(guardian, "teacher.quizAttempt", { params: a }),
+      await d.call(guardian, "teacher.releaseQuizScores", { params: q, body: {} }),
+    ]) {
+      expectError(result, 403, "forbidden");
+    }
+    const gradesOf = async () => (await d.ok(guardian, "guardian.childCourse", { params: { studentId: NF.amara, offeringId: NF.eng9 } }))
+      .assignments.find((entry) => entry.assignment.id === assignment.id)!.grades;
+    // Before release the guardian sees no score; after it, the official grade and nothing of the quiz.
+    expect(await gradesOf()).toEqual([]);
+    await d.ok(rivera, "teacher.releaseQuizScores", { params: q, body: {} });
+    expect((await gradesOf()).map((g) => g.score)).toEqual([{ points: 2, maxPoints: 2 }]);
+    const course = await d.ok(guardian, "guardian.childCourse", { params: { studentId: NF.amara, offeringId: NF.eng9 } });
+    expect(JSON.stringify(course)).not.toMatch(/sonnet has 14 lines|qza_/);
+    expect(d.audit.events().filter((e) => e.principalId === guardianId && e.effect === "allow" && e.ruleId.startsWith("quiz."))).toEqual([]);
+  });
+
   it("keeps districts apart: a Northfield guardian is no one at Riverbend, and Riverbend cannot manage Northfield's students", async () => {
     const northfield = await district();
     const riverbend = await district(RIVERBEND);

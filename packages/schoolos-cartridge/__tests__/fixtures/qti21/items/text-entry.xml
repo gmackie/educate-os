@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" identifier="text-entry" title="Sugar" adaptive="false" timeDependent="false">
+  <responseDeclaration identifier="RESPONSE" cardinality="single" baseType="string">
+    <correctResponse><value>photosynthesis</value></correctResponse>
+    <mapping defaultValue="0" caseSensitive="false">
+      <mapEntry mapKey="photosynthesis" mappedValue="1"/>
+      <mapEntry mapKey="photo-synthesis" mappedValue="1"/>
+      <mapEntry mapKey="respiration" mappedValue="0"/>
+    </mapping>
+  </responseDeclaration>
+  <itemBody>
+    <p>Plants make sugar by <textEntryInteraction responseIdentifier="RESPONSE"/>.</p>
+  </itemBody>
+  <responseProcessing template="http://www.imsglobal.org/question/qti_v2p1/rptemplates/map_response"/>
+</assessmentItem>

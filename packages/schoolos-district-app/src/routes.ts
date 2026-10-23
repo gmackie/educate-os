@@ -100,6 +100,24 @@ import {
   TopicListing,
   TopicPatch,
 } from "@schoolos/discussions";
+// Quizzes (SCHO-191)
+import {
+  ItemGradeInput,
+  NewQuiz,
+  Quiz,
+  QuizAnswer,
+  QuizAttemptId,
+  QuizId,
+  QuizItemId,
+  QuizPatch,
+  QuizResults,
+  QuizSummary,
+  ReleaseOutcome,
+  StaffAttemptView,
+  StudentAttemptResult,
+  StudentAttemptView,
+  StudentQuizView,
+} from "@schoolos/quizzes";
 import { CoursePatch, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, TermPatch } from "@schoolos/academics";
 import { EvidenceContract } from "@schoolos/registry";
 import { AssessmentReport, IdempotencyKey, RubricDraft, RubricRelease, RunError, RunState } from "@schoolos/assessment-ci";
@@ -489,6 +507,8 @@ export const CartridgePreviewBody = z.strictObject({
     ])),
     /** The discussion topics that would be opened in the module, drafts with it (SCHO-190). */
     discussions: z.array(z.strictObject({ title: z.string(), characters: z.int().nonnegative() })).optional(),
+    /** The quizzes, from QTI assessments, that would be added to the module as drafts (SCHO-191). */
+    quizzes: z.array(z.strictObject({ title: z.string(), questions: z.int().nonnegative() })).optional(),
   })),
   /** Placements not carried, with why: tools, refused links, other resource types, unacceptable text. */
   skipped: z.array(z.strictObject({ identifier: z.string(), reason: z.string(), type: z.string().optional() })),
@@ -505,7 +525,7 @@ export const CartridgeExportBody = z.strictObject({
   fileName: z.string(),
   base64: z.string(),
   /** Items a cartridge cannot carry, such as SchoolOS activities, by module and item. */
-  losses: z.array(z.strictObject({ kind: z.enum(["activity"]), module: z.string(), item: z.string() })),
+  losses: z.array(z.strictObject({ kind: z.enum(["activity", "quiz"]), module: z.string(), item: z.string() })),
 });
 /** A cartridge export. */
 export type CartridgeExportBody = z.infer<typeof CartridgeExportBody>;
@@ -662,6 +682,37 @@ export type ModerationQueueBody = z.infer<typeof ModerationQueueBody>;
 export const DiscussionParticipationBody = z.strictObject({ topics: z.array(DiscussionTopic), posts: z.array(DiscussionPost) });
 /** Discussion participation. */
 export type DiscussionParticipationBody = z.infer<typeof DiscussionParticipationBody>;
+
+
+// Quizzes (SCHO-191): quizzes, attempts on the server's clock, grading and score release.
+
+/** An offering's quizzes as its staff see them. */
+export const StaffQuizListingBody = z.strictObject({ canManage: z.boolean(), quizzes: z.array(QuizSummary) });
+/** A staff quiz listing. */
+export type StaffQuizListingBody = z.infer<typeof StaffQuizListingBody>;
+
+/** Answers a student saves or submits; each replaces any earlier answer to the same question. */
+export const QuizAnswersInput = z.strictObject({ answers: z.array(QuizAnswer).max(500) });
+/** Quiz answers. */
+export type QuizAnswersInput = z.infer<typeof QuizAnswersInput>;
+
+/** What saving answers did, with the server's clock so the student's timer stays honest. */
+export const QuizSaveBody = z.strictObject({ savedAt: z.string(), deadline: z.string().optional(), serverNow: z.string() });
+/** A quiz save. */
+export type QuizSaveBody = z.infer<typeof QuizSaveBody>;
+
+/** The display name of each student a quiz's results name. */
+export const QuizStudentsBody = z.array(z.strictObject({ principalId: PrincipalId, displayName: z.string() }));
+
+/** A quiz's results, with its students' names. */
+export const QuizResultsBody = QuizResults.extend({ names: QuizStudentsBody });
+/** Quiz results. */
+export type QuizResultsBody = z.infer<typeof QuizResultsBody>;
+
+/** A student's attempt as staff grade it, with the student's name. */
+export const StaffAttemptBody = StaffAttemptView.extend({ studentName: z.string() });
+/** A staff attempt. */
+export type StaffAttemptBody = z.infer<typeof StaffAttemptBody>;
 
 const params = <S extends z.core.$ZodLooseShape>(shape: S) => z.strictObject(shape);
 const NoBody = z.strictObject({});
@@ -1045,6 +1096,8 @@ export const ROUTES = {
       modules: z.array(CourseModule),
       /** The discussion topics opened in the imported modules (SCHO-190). */
       topics: z.array(DiscussionTopic).optional(),
+      /** The draft quizzes added to the imported modules, from their QTI assessments (SCHO-191). */
+      quizzes: z.array(Quiz).optional(),
       preview: CartridgePreviewBody,
     }),
   }),
@@ -1335,6 +1388,76 @@ export const ROUTES = {
   "teacher.discussionParticipation": route({
     method: "GET", path: "/api/teacher/assignments/:assignmentId/discussion-posts/:principalId", surface: "teacher",
     params: params({ assignmentId: AssignmentId, principalId: PrincipalId }), response: DiscussionParticipationBody,
+  }),
+
+  // Quizzes (SCHO-191). Kept in one block, apart from the routes above.
+  "student.listQuizzes": route({
+    method: "GET", path: "/api/student/offerings/:offeringId/quizzes", surface: "student",
+    params: params({ offeringId: OfferingId }), response: z.array(StudentQuizView),
+  }),
+  "student.getQuiz": route({
+    method: "GET", path: "/api/student/offerings/:offeringId/quizzes/:quizId", surface: "student",
+    params: params({ offeringId: OfferingId, quizId: QuizId }), response: StudentQuizView,
+  }),
+  "student.startQuizAttempt": route({
+    method: "POST", path: "/api/student/offerings/:offeringId/quizzes/:quizId/attempts", surface: "student", status: 201,
+    params: params({ offeringId: OfferingId, quizId: QuizId }), body: NoBody, response: StudentAttemptView,
+  }),
+  "student.quizAttempt": route({
+    method: "GET", path: "/api/student/offerings/:offeringId/quiz-attempts/:attemptId", surface: "student",
+    params: params({ offeringId: OfferingId, attemptId: QuizAttemptId }), response: StudentAttemptView,
+  }),
+  "student.saveQuizAnswers": route({
+    method: "POST", path: "/api/student/offerings/:offeringId/quiz-attempts/:attemptId/answers", surface: "student",
+    params: params({ offeringId: OfferingId, attemptId: QuizAttemptId }), body: QuizAnswersInput, response: QuizSaveBody,
+  }),
+  "student.submitQuizAttempt": route({
+    method: "POST", path: "/api/student/offerings/:offeringId/quiz-attempts/:attemptId/submit", surface: "student",
+    params: params({ offeringId: OfferingId, attemptId: QuizAttemptId }), body: QuizAnswersInput, response: StudentAttemptResult,
+  }),
+  "student.quizAttemptResult": route({
+    method: "GET", path: "/api/student/offerings/:offeringId/quiz-attempts/:attemptId/result", surface: "student",
+    params: params({ offeringId: OfferingId, attemptId: QuizAttemptId }), response: StudentAttemptResult,
+  }),
+  "teacher.listQuizzes": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/quizzes", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: StaffQuizListingBody,
+  }),
+  "teacher.getQuiz": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/quizzes/:quizId", surface: "teacher",
+    params: params({ offeringId: OfferingId, quizId: QuizId }), response: Quiz,
+  }),
+  "teacher.createQuiz": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/quizzes", surface: "teacher", status: 201,
+    params: params({ offeringId: OfferingId }), body: NewQuiz, response: Quiz,
+  }),
+  "teacher.updateQuiz": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/quizzes/:quizId", surface: "teacher",
+    params: params({ offeringId: OfferingId, quizId: QuizId }), body: QuizPatch, response: Quiz,
+  }),
+  "teacher.publishQuiz": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/quizzes/:quizId/publish", surface: "teacher",
+    params: params({ offeringId: OfferingId, quizId: QuizId }), body: z.strictObject({ published: z.boolean() }), response: Quiz,
+  }),
+  "teacher.deleteQuiz": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/quizzes/:quizId/delete", surface: "teacher",
+    params: params({ offeringId: OfferingId, quizId: QuizId }), body: NoBody, response: z.strictObject({ deleted: z.literal(true) }),
+  }),
+  "teacher.quizResults": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/quizzes/:quizId/results", surface: "teacher",
+    params: params({ offeringId: OfferingId, quizId: QuizId }), response: QuizResultsBody,
+  }),
+  "teacher.releaseQuizScores": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/quizzes/:quizId/release", surface: "teacher",
+    params: params({ offeringId: OfferingId, quizId: QuizId }), body: NoBody, response: ReleaseOutcome,
+  }),
+  "teacher.quizAttempt": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/quiz-attempts/:attemptId", surface: "teacher",
+    params: params({ offeringId: OfferingId, attemptId: QuizAttemptId }), response: StaffAttemptBody,
+  }),
+  "teacher.gradeQuizItem": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/quiz-attempts/:attemptId/items/:itemId/grade", surface: "teacher",
+    params: params({ offeringId: OfferingId, attemptId: QuizAttemptId, itemId: QuizItemId }), body: ItemGradeInput, response: StaffAttemptBody,
   }),
 } as const satisfies Record<string, RouteSpec>;
 

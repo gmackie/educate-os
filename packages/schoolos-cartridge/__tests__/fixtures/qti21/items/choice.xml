@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" identifier="choice" title="Powerhouse" adaptive="false" timeDependent="false">
+  <responseDeclaration identifier="RESPONSE" cardinality="single" baseType="identifier">
+    <correctResponse><value>ChoiceB</value></correctResponse>
+  </responseDeclaration>
+  <outcomeDeclaration identifier="SCORE" cardinality="single" baseType="float"/>
+  <outcomeDeclaration identifier="MAXSCORE" cardinality="single" baseType="float"><defaultValue><value>2</value></defaultValue></outcomeDeclaration>
+  <itemBody>
+    <p>Look at the diagram <img src="cell.png" alt="an animal cell"/> carefully.</p>
+    <choiceInteraction responseIdentifier="RESPONSE" shuffle="true" maxChoices="1">
+      <prompt>Which organelle makes <b>most</b> of a cell's ATP?</prompt>
+      <simpleChoice identifier="ChoiceA">Nucleus</simpleChoice>
+      <simpleChoice identifier="ChoiceB">Mitochondrion</simpleChoice>
+      <simpleChoice identifier="ChoiceC">Ribosome</simpleChoice>
+    </choiceInteraction>
+  </itemBody>
+  <responseProcessing template="http://www.imsglobal.org/question/qti_v2p1/rptemplates/match_correct"/>
+</assessmentItem>

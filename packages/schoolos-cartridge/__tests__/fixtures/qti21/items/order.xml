@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" identifier="order" title="Mitosis order" adaptive="false" timeDependent="false">
+  <responseDeclaration identifier="RESPONSE" cardinality="ordered" baseType="identifier">
+    <correctResponse><value>P</value><value>M</value><value>A</value><value>T</value></correctResponse>
+  </responseDeclaration>
+  <itemBody>
+    <orderInteraction responseIdentifier="RESPONSE" shuffle="true">
+      <prompt>Put the phases in order.</prompt>
+      <simpleChoice identifier="A">Anaphase</simpleChoice>
+      <simpleChoice identifier="M">Metaphase</simpleChoice>
+      <simpleChoice identifier="P">Prophase</simpleChoice>
+      <simpleChoice identifier="T">Telophase</simpleChoice>
+    </orderInteraction>
+  </itemBody>
+</assessmentItem>

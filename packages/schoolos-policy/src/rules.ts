@@ -136,6 +136,8 @@ export const COURSE_RESOURCE_KINDS = [
   "gradebook",
   "discussion-topic",
   "discussion-post",
+  "quiz",
+  "quiz-attempt",
 ] as const satisfies ResourceKind[];
 
 const OFFICIAL_GRADE_WRITES = ["create", "update", "grade"] as const satisfies Action[];
@@ -208,6 +210,14 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   (read by their author and staff), and hidden or removed posts `restricted` (staff only).
  *   Administrators over the offering read topics and visible posts for oversight. Guardians are
  *   not given discussions: what they read stays the ADR-0012 list. There is no private messaging.
+ * - **Quizzes** (SCHO-191) are an offering's quizzes and its students' attempts at them. A quiz's
+ *   full definition, answer keys included, is `teacher-only`: its staff build, publish and grade it,
+ *   and administrators over the offering read it for oversight. A published quiz in a published
+ *   module is `course` material its actively enrolled students read, as a view that never carries a
+ *   key. An attempt is a `course` record its student owns: they start, save and submit it while
+ *   enrolled, and read it even after a drop; the offering's staff read and grade every attempt.
+ *   Administrators do not read attempts (student work), and guardians are not given quizzes: a
+ *   released score reaches them as the official grade they already read.
  */
 export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse([
   // Guardians (ADR-0012). Their authority is a relationship record to one child, never a role, and
@@ -761,6 +771,58 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
       classifications: ["course"],
       actions: [...READS],
     },
+    effect: { effect: "allow" },
+  },
+
+  // Quizzes (SCHO-191). Every rule names a quiz kind, so none reaches anything else, and the guards
+  // above (guardians, completed terms) still come first. Time windows and attempt limits are the
+  // quiz service's, decided on the server's clock.
+  {
+    id: "quiz.student.read",
+    description: "An actively enrolled student reads their offering's published quizzes, as a view without answer keys.",
+    when: { kinds: ["quiz"], ownership: ["unowned"], roles: ["student"], classifications: ["course"], actions: [...READS] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "quiz.student.own-attempts",
+    description: "An actively enrolled student starts, saves and submits their own attempts at their offering's quizzes; never anyone else's.",
+    when: { kinds: ["quiz-attempt"], ownership: ["own"], roles: ["student"], classifications: ["course"], actions: ["create", "update", "submit"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "quiz.owner.read-own-attempts",
+    description: "A student reads their own quiz attempts and results, even after leaving the offering.",
+    when: { kinds: ["quiz-attempt"], ownership: ["own"], classifications: ["course"], actions: [...READS, "export"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "quiz.instructor.read",
+    description: "Course staff read their offering's quizzes, answer keys included, and every student's attempts at them.",
+    when: { kinds: ["quiz", "quiz-attempt"], roles: [...INSTRUCTORS], classifications: ["course", "teacher-only"], actions: [...READS, "export"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "quiz.instructor.manage",
+    description: "Course staff build, edit, publish and delete their offering's quizzes, and release their scores (each official grade is then decided as one).",
+    when: {
+      kinds: ["quiz"],
+      ownership: ["unowned"],
+      roles: [...INSTRUCTORS],
+      classifications: ["course", "teacher-only"],
+      actions: ["create", "update", "delete", "publish", "grade"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "quiz.instructor.grade-attempts",
+    description: "Course staff grade students' attempts in their offering: essay answers, and any item they rescore.",
+    when: { kinds: ["quiz-attempt"], ownership: ["others"], roles: [...INSTRUCTORS], classifications: ["course"], actions: ["review"] },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.quiz-oversight",
+    description: "Administrators over an offering read its quizzes for oversight; never students' attempts.",
+    when: { kinds: ["quiz"], ownership: ["unowned"], roles: [...ADMINS], classifications: ["course", "teacher-only"], actions: [...READS] },
     effect: { effect: "allow" },
   },
 ]);

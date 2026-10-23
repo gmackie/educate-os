@@ -28,6 +28,9 @@ import { InvitationPage } from "./family/InvitationPage.tsx";
 import { CalendarPage } from "./communication/CalendarPage.tsx";
 import { NotificationsPage } from "./communication/NotificationsPage.tsx";
 import { SettingsPage } from "./communication/SettingsPage.tsx";
+// Quizzes (SCHO-191)
+import { QuizPage } from "./quizzes/QuizPage.tsx";
+import { QuizResultPage } from "./quizzes/QuizResultPage.tsx";
 
 /** Where a guardian's invitation link opens. It is the one page that needs no SchoolOS account. */
 export const INVITATION_PATH = "/family/invitation";
@@ -98,6 +101,25 @@ const activityRoute = createRoute({
   },
 });
 
+// Quizzes (SCHO-191)
+const quizRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/courses/$offeringId/quizzes/$quizId",
+  component: () => {
+    const { offeringId, quizId } = quizRoute.useParams();
+    return <QuizPage key={quizId} offeringId={offeringId} quizId={quizId} />;
+  },
+});
+
+const quizResultRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/courses/$offeringId/quizzes/$quizId/attempts/$attemptId",
+  component: () => {
+    const { offeringId, quizId, attemptId } = quizResultRoute.useParams();
+    return <QuizResultPage key={attemptId} offeringId={offeringId} quizId={quizId} attemptId={attemptId} />;
+  },
+});
+
 // Family view (ADR-0012, SCHO-188)
 const familyRoute = createRoute({ getParentRoute: () => rootRoute, path: "/family", component: FamilyHomePage });
 
@@ -121,7 +143,7 @@ const childCourseRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, calendarRoute, notificationsRoute, settingsRoute, courseRoute, activityRoute, familyRoute, invitationRoute, childRoute, childCourseRoute]);
+const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, calendarRoute, notificationsRoute, settingsRoute, courseRoute, activityRoute, quizRoute, quizResultRoute, familyRoute, invitationRoute, childRoute, childCourseRoute]);
 
 /** The Learning Home's router: on the browser's history, or on a memory history in tests. */
 export const createStudentRouter = (history?: RouterHistory) =>
@@ -133,6 +155,13 @@ export const coursePath = (offeringId: string): string => `/courses/${encodeURIC
 /** The path of an activity's screen. */
 export const activityPath = (offeringId: string, assignmentId: string): string =>
   `${coursePath(offeringId)}/activities/${encodeURIComponent(assignmentId)}`;
+
+/** The path of a quiz's screen (SCHO-191). */
+export const quizPath = (offeringId: string, quizId: string): string => `${coursePath(offeringId)}/quizzes/${encodeURIComponent(quizId)}`;
+
+/** The path of one finished attempt's results (SCHO-191). */
+export const quizResultPath = (offeringId: string, quizId: string, attemptId: string): string =>
+  `${quizPath(offeringId, quizId)}/attempts/${encodeURIComponent(attemptId)}`;
 
 /** The path of a guardian's child's screen. */
 export const childPath = (studentId: string): string => `/family/children/${encodeURIComponent(studentId)}`;

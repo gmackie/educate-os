@@ -4,6 +4,9 @@ import { CreateActivityPage } from "../activities/CreateActivityPage.tsx";
 import { GradebookPage } from "../gradebook/GradebookPage.tsx";
 import { AnnouncementsPage } from "../announcements/AnnouncementsPage.tsx";
 import { DiscussionsPage } from "../discussions/DiscussionsPage.tsx";
+import { QuizBuilderPage } from "../quizzes/QuizBuilderPage.tsx";
+import { QuizResultsPage } from "../quizzes/QuizResultsPage.tsx";
+import { QuizzesPage } from "../quizzes/QuizzesPage.tsx";
 import { Loading } from "../Loading.tsx";
 import { ModulesPage } from "../modules/ModulesPage.tsx";
 import { Problem } from "../Problem.tsx";
@@ -25,6 +28,9 @@ const sectionOf = (route: ClassRoute): (typeof CLASS_SECTIONS)[number]["screen"]
       return "resources";
     case "review":
       return "submissions";
+    case "quiz":
+    case "quiz-results":
+      return "quizzes";
     default:
       return route.screen;
   }
@@ -99,5 +105,12 @@ const ClassSection = ({ route, teaching }: { route: ClassRoute; teaching: Teachi
       return <AnnouncementsPage teaching={teaching} />;
     case "discussions":
       return <DiscussionsPage teaching={teaching} />;
+    // Quizzes (SCHO-191).
+    case "quizzes":
+      return <QuizzesPage teaching={teaching} />;
+    case "quiz":
+      return <QuizBuilderPage key={route.quizId} teaching={teaching} quizId={route.quizId} />;
+    case "quiz-results":
+      return <QuizResultsPage key={route.quizId} teaching={teaching} quizId={route.quizId} />;
   }
 };

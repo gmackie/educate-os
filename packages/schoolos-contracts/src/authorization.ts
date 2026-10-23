@@ -76,6 +76,14 @@ export const ResourceKind = z.enum([
    * `teacher-only`, and a hidden or removed post `restricted`.
    */
   "discussion-post",
+  /**
+   * A quiz an offering's staff build (SCHO-191): unowned. Its full definition, answer keys
+   * included, is `teacher-only`; the student's view of a published, placed quiz, which never carries
+   * a key, is `course`.
+   */
+  "quiz",
+  /** One student's attempt at a quiz, owned by that student (SCHO-191): their answers and how they scored. `course`. */
+  "quiz-attempt",
   "learning-resource",
   "capability-config",
   "ai-budget",

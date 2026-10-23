@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { DistrictApiClient } from "@schoolos/api-client";
-import { useLoad } from "../useLoad.ts";
+import { useLoad } from "./useLoad.ts";
 
 /**
  * {@link useLoad} that keeps showing the last data it loaded for `key` while a reload is under way,
