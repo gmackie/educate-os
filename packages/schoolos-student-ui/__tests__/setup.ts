@@ -44,3 +44,16 @@ afterEach(() => {
   setViewport("desktop");
 });
 window.scrollTo = () => {};
+// jsdom's Blob has neither of the readers every browser has; FileReader stands in for them.
+const readBlob = <T,>(read: (reader: FileReader) => void) => new Promise<T>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.addEventListener("load", () => resolve(reader.result as T));
+  reader.addEventListener("error", () => reject(reader.error));
+  read(reader);
+});
+Blob.prototype.arrayBuffer ??= function (this: Blob) {
+  return readBlob<ArrayBuffer>((reader) => reader.readAsArrayBuffer(this));
+};
+Blob.prototype.text ??= function (this: Blob) {
+  return readBlob<string>((reader) => reader.readAsText(this));
+};

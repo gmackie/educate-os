@@ -5,6 +5,7 @@ import type { RouteResponse } from "@schoolos/api-client";
 import { useAnnounce } from "../Announcer.tsx";
 import { useDistrictApi } from "../DistrictApi.tsx";
 import { Problem } from "../Problem.tsx";
+import { SubmittedFile } from "./SubmittedFile.tsx";
 
 type Submitted = RouteResponse<"teacher.submittedContent">;
 
@@ -75,7 +76,7 @@ export const SubmittedWork = ({ submissionId, submitted, index, onCommented }: {
         </div>
       )}
       {content.kind === "external" && <Text>{`A link the student turned in: ${content.url}`}</Text>}
-      {content.kind === "bytes" && <Text variant="secondary">This work is a file, which can't be shown here yet.</Text>}
+      {content.kind === "bytes" && <SubmittedFile base64={content.base64} mediaType={item.mediaType} label={`Submitted work ${index + 1}`} />}
       <form
         aria-label={`Comment on work ${index + 1}`}
         className="flex flex-col gap-2"

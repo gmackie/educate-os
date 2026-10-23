@@ -11,6 +11,7 @@ import type { ActivityStep, ArtifactView } from "../model.ts";
 import { ArtifactViewer } from "../viewers/ArtifactViewer.tsx";
 import { CsvTable } from "../viewers/CsvTable.tsx";
 import { DatasetGrid } from "./DatasetGrid.tsx";
+import { FileWork } from "./FileWork.tsx";
 import { HistoryPanel } from "./HistoryPanel.tsx";
 import { UploadField } from "./UploadField.tsx";
 import { editableValue, type WorkMode } from "./workMode.ts";
@@ -32,7 +33,7 @@ export interface WorkItemProps {
   onSaved: (view: ArtifactView) => void;
 }
 
-type EditorProps = Omit<WorkItemProps, "saved"> & { saved: ArtifactView | undefined; savedValue: string };
+type EditorProps = Omit<WorkItemProps, "saved" | "mode"> & { mode: Exclude<WorkMode, { input: "file" }>; saved: ArtifactView | undefined; savedValue: string };
 
 const WorkEditor = ({ step, mode, title, draftKey, saved, savedValue: initialSaved, readOnly, ensureWorkspace, onSaved }: EditorProps) => {
   const api = useApi();
@@ -96,14 +97,8 @@ const WorkEditor = ({ step, mode, title, draftKey, saved, savedValue: initialSav
       ) : null}
       {mode.input === "upload" ? (
         <div className="flex flex-col gap-2">
-          {readOnly ? null : <UploadField id={fieldId} accept={mode.accept} disabled={saving} onLoaded={(text) => change(text)} />}
-          {value === "" ? (
-            <Text variant="secondary">Nothing uploaded yet.</Text>
-          ) : mode.mediaType === "text/csv" ? (
-            <CsvTable text={value} caption={label} />
-          ) : (
-            <div className="whitespace-pre-wrap rounded-lg border border-kumo-hairline bg-kumo-elevated p-4">{value}</div>
-          )}
+          {readOnly ? null : <UploadField id={fieldId} formats={mode.formats} disabled={saving} onPicked={(file) => file.kind === "text" && change(file.text)} />}
+          {value === "" ? <Text variant="secondary">Nothing uploaded yet.</Text> : <CsvTable text={value} caption={label} />}
         </div>
       ) : null}
       {mode.input === "link" ? (
@@ -174,11 +169,13 @@ export const WorkItem = (props: WorkItemProps) => {
       <Text variant="secondary">{step.prompt}</Text>
       {mode.input === "unsupported" ? (
         <Text>Hand this in the way your teacher asked. This kind of file can't be added here yet.</Text>
+      ) : mode.input === "file" ? (
+        <FileWork {...props} mode={mode} saved={read.data} />
       ) : savedValue === undefined ? (
         // A file saved some other way: shown as it is, since it isn't text this editor can change.
         <ArtifactViewer read={read.data!} />
       ) : (
-        <WorkEditor {...props} saved={initial} savedValue={savedValue} />
+        <WorkEditor {...props} mode={mode} saved={initial} savedValue={savedValue} />
       )}
     </div>
   );

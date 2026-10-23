@@ -48,6 +48,7 @@ import {
   FeedbackVisibility,
   OfficialGradeVersion,
   RubricReleaseRef,
+  StarterMaterial,
   SubmissionItem,
   SubmissionReceipt,
   SubmissionSnapshot,
@@ -92,10 +93,55 @@ const declared = <T>() => z.custom<T>((value) => typeof value === "object" && va
 
 // Shared shapes
 
-/** Artifact content a JSON client can send: text, or a link to an approved external document. */
-export const JsonRevisionContent = z.discriminatedUnion("kind", [RevisionContentInput.options[0], RevisionContentInput.options[2]]);
-/** JSON artifact content. */
-export type JsonRevisionContent = z.infer<typeof JsonRevisionContent>;
+/** The file types a JSON client may upload as bytes. Text files are sent as `text` content instead. */
+export const UPLOAD_MEDIA_TYPES = ["application/pdf", "image/png", "image/jpeg"] as const;
+/** An uploadable file type. */
+export type UploadMediaType = (typeof UPLOAD_MEDIA_TYPES)[number];
+
+/**
+ * The largest file a JSON client may upload, in bytes. Its base64 form, about 6.7 MiB, fits the
+ * district app's request body limit with room for the rest of the request.
+ */
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+/** The bytes each uploadable type starts with, so a file is stored only if it is what it claims to be. */
+const UPLOAD_SIGNATURES: Record<UploadMediaType, readonly number[]> = {
+  "application/pdf": [0x25, 0x50, 0x44, 0x46, 0x2d], // %PDF-
+  "image/png": [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  "image/jpeg": [0xff, 0xd8, 0xff],
+};
+
+/**
+ * An uploaded file as a JSON client sends it: an allowed media type and its bytes as base64. It
+ * parses to the `bytes` content the artifact service stores in R2, refusing a file over
+ * {@link MAX_UPLOAD_BYTES} or one whose leading bytes do not match its media type.
+ */
+export const UploadedFileContent = z.strictObject({
+  kind: z.literal("bytes"),
+  mediaType: z.enum(UPLOAD_MEDIA_TYPES),
+  base64: z.base64().min(1).max(Math.ceil(MAX_UPLOAD_BYTES / 3) * 4),
+}).transform(({ mediaType, base64 }, ctx) => {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  if (bytes.byteLength > MAX_UPLOAD_BYTES) {
+    ctx.addIssue({ code: "too_big", origin: "file", maximum: MAX_UPLOAD_BYTES, inclusive: true, path: ["base64"], message: "the file is too large" });
+    return z.NEVER;
+  }
+  if (!UPLOAD_SIGNATURES[mediaType].every((byte, i) => bytes[i] === byte)) {
+    ctx.addIssue({ code: "custom", path: ["base64"], message: "the file's contents do not match its media type" });
+    return z.NEVER;
+  }
+  return { kind: "bytes" as const, mediaType, bytes };
+});
+
+/**
+ * Artifact content a JSON client can send: text, an uploaded file (see {@link UploadedFileContent}),
+ * or a link to an approved external document.
+ */
+export const JsonRevisionContent = z.discriminatedUnion("kind", [RevisionContentInput.options[0], UploadedFileContent, RevisionContentInput.options[2]]);
+/** JSON artifact content, as a client sends it. */
+export type JsonRevisionContent = z.input<typeof JsonRevisionContent>;
 
 /** A revision's content as the API returns it. Bytes travel as base64. */
 export const RevisionContentBody = z.discriminatedUnion("kind", [
@@ -200,6 +246,46 @@ export const AssignmentSettingsInput = z.strictObject({
 });
 /** Assignment settings. */
 export type AssignmentSettingsInput = z.input<typeof AssignmentSettingsInput>;
+
+/**
+ * A change to an assignment's settings while it is open. An omitted field is unchanged. Its rubric
+ * and permitted artifact types are fixed by the activity it was installed from.
+ */
+export const AssignmentUpdateInput = z.strictObject({
+  title: z.string().trim().min(1).max(200).optional(),
+  /** Stored in UTC. */
+  dueAt: z.iso.datetime({ offset: true }).optional(),
+  latePolicy: LatePolicy.optional(),
+  attemptsAllowed: z.int().min(1).max(100).optional(),
+  feedbackVisibility: FeedbackVisibility.optional(),
+}).refine((patch) => Object.keys(patch).length > 0, "change at least one setting");
+/** An assignment update. */
+export type AssignmentUpdateInput = z.input<typeof AssignmentUpdateInput>;
+
+/**
+ * Starter material as the API returns it: everything but where its content is stored, which is
+ * read through the starter material route.
+ */
+export const StarterMaterialBody = StarterMaterial.omit({ content: true });
+/** Starter material in a response. */
+export type StarterMaterialBody = z.infer<typeof StarterMaterialBody>;
+
+/** An assignment with the starter material published to it. */
+export const AssignmentViewBody = z.strictObject({ assignment: AssignmentBinding, starterMaterials: z.array(StarterMaterialBody) });
+/** An assignment view. */
+export type AssignmentViewBody = z.infer<typeof AssignmentViewBody>;
+
+/** A class in the district, as its administrators see it: who teaches it and how many it reaches. */
+export const AdminOfferingBody = z.strictObject({
+  offering: CourseOffering,
+  course: CatalogCourse,
+  /** The display names of its actively enrolled teachers and co-teachers. */
+  teachers: z.array(z.string()),
+  /** Students actively enrolled. */
+  students: z.int().nonnegative(),
+});
+/** An administrator's class row. */
+export type AdminOfferingBody = z.infer<typeof AdminOfferingBody>;
 
 /** An Assessment CI run as a teacher sees it, and the suggested scores it posted to the submission's feedback. */
 export const CiRunBody = z.strictObject({
@@ -319,6 +405,15 @@ export const ROUTES = {
     method: "GET", path: "/api/student/activities/:activityId", surface: "student",
     params: params({ activityId: ActivityId }), response: ActivityViewBody,
   }),
+  "student.getAssignment": route({
+    method: "GET", path: "/api/student/assignments/:assignmentId", surface: "student",
+    params: params({ assignmentId: AssignmentId }), response: AssignmentViewBody,
+  }),
+  "student.readStarterMaterial": route({
+    method: "GET", path: "/api/student/assignments/:assignmentId/starter-materials/:materialId", surface: "student",
+    params: params({ assignmentId: AssignmentId, materialId: ArtifactId }),
+    response: z.strictObject({ material: StarterMaterialBody, content: RevisionContentBody }),
+  }),
   // Student: artifacts
   "student.listArtifacts": route({
     method: "GET", path: "/api/student/workspaces/:workspaceId/artifacts", surface: "student",
@@ -391,6 +486,10 @@ export const ROUTES = {
     method: "GET", path: "/api/student/submissions/:submissionId/feedback", surface: "student",
     params: params({ submissionId: SubmissionId }), response: FeedbackRecord,
   }),
+  "student.withdrawSubmission": route({
+    method: "POST", path: "/api/student/submissions/:submissionId/withdraw", surface: "student",
+    params: params({ submissionId: SubmissionId }), body: NoBody, response: SubmissionSnapshot,
+  }),
   "student.officialGrades": route({
     method: "GET", path: "/api/student/assignments/:assignmentId/grades", surface: "student",
     params: params({ assignmentId: AssignmentId }), response: z.array(OfficialGradeVersion),
@@ -450,6 +549,20 @@ export const ROUTES = {
   "teacher.listAssignments": route({
     method: "GET", path: "/api/teacher/offerings/:offeringId/assignments", surface: "teacher",
     params: params({ offeringId: OfferingId }), response: z.array(AssignmentBinding),
+  }),
+  "teacher.getAssignment": route({
+    method: "GET", path: "/api/teacher/assignments/:assignmentId", surface: "teacher",
+    params: params({ assignmentId: AssignmentId }), response: AssignmentViewBody,
+  }),
+  "teacher.updateAssignment": route({
+    method: "POST", path: "/api/teacher/assignments/:assignmentId", surface: "teacher",
+    params: params({ assignmentId: AssignmentId }), body: AssignmentUpdateInput, response: AssignmentBinding,
+  }),
+  "teacher.publishStarterMaterial": route({
+    method: "POST", path: "/api/teacher/assignments/:assignmentId/starter-materials", surface: "teacher", status: 201,
+    params: params({ assignmentId: AssignmentId }),
+    body: z.strictObject({ title: z.string().trim().min(1).max(200), content: JsonRevisionContent }),
+    response: StarterMaterialBody,
   }),
   "teacher.getActivity": route({
     method: "GET", path: "/api/teacher/activities/:activityId", surface: "teacher",
@@ -515,9 +628,14 @@ export const ROUTES = {
     method: "POST", path: "/api/teacher/grade-proposals/:proposalId/approve", surface: "teacher",
     params: params({ proposalId: GradeProposalId }), body: NoBody, response: OfficialGradeVersion,
   }),
+  "teacher.declineGradeProposal": route({
+    method: "POST", path: "/api/teacher/grade-proposals/:proposalId/decline", surface: "teacher",
+    params: params({ proposalId: GradeProposalId }), body: z.strictObject({ reason: z.string().trim().min(1).max(1000) }), response: GradeProposal,
+  }),
 
   // Admin
   "admin.health": route({ method: "GET", path: "/api/admin/health", surface: "admin", response: DistrictHealthBody }),
+  "admin.listOfferings": route({ method: "GET", path: "/api/admin/offerings", surface: "admin", response: z.array(AdminOfferingBody) }),
   "admin.previewRoster": route({
     method: "POST", path: "/api/admin/roster/preview", surface: "admin", body: RosterFilesInput, response: declared<oneroster.OneRosterPreview>(),
   }),

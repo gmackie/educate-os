@@ -1,10 +1,11 @@
 // The classes an administrator can roll modules out to, with how many people each reaches.
 //
-// The district API has no route that lists classes to an administrator yet, but its dry-run plans
-// report every class a change would reach, with its student and staff counts. Two dry runs reach
-// every active class: one exposing every module to all active classes (the classes not yet using
-// SchoolOS), and one turning every module off (the classes using it now). Plans change nothing, so
-// this is safe to run at any time; a class-listing route would replace it.
+// Whether modules are visible to a class is known only to the configuration compiler, so this
+// asks it: its dry-run plans report every class a change would reach, with its student and staff
+// counts. Two dry runs reach every active class: one exposing every module to all active classes
+// (the classes not yet using SchoolOS), and one turning every module off (the classes using it
+// now). Plans change nothing, so this is safe to run at any time. The Classes screen lists every
+// class, active or not, from `admin.listOfferings`.
 import type { DistrictApiClient } from "@schoolos/api-client";
 import type { OfferingId, SchoolId } from "@schoolos/contracts";
 import { documentFromDesired, type DesiredStateView } from "../configDocument.ts";

@@ -1,4 +1,5 @@
 import type { ActivityStep, ArtifactRead, ArtifactType } from "../model.ts";
+import { FORMATS, type UploadFormat } from "./uploadFormats.ts";
 
 /** A dataset column a lab step asks for. */
 export type DatasetColumn = Extract<ActivityStep["response"], { kind: "dataset" }>["columns"][number];
@@ -7,14 +8,17 @@ export type DatasetColumn = Extract<ActivityStep["response"], { kind: "dataset" 
  * How the student produces a step's work, and what it is saved as:
  * - `writing`: typed text, saved as a plain-text document.
  * - `dataset`: a table of observations, saved as CSV.
- * - `upload`: a text or CSV file from the device, saved as its text.
+ * - `upload`: a CSV file from the device, saved as its text and shown as a table.
+ * - `file`: a file from the device, saved as soon as it is chosen: a text file as text, a PDF or
+ *   picture as the file itself.
  * - `link`: a link to work kept in the school's approved document service.
- * - `unsupported`: a file kind the district API cannot take yet (photos, recordings, slides).
+ * - `unsupported`: a file kind the district API cannot take yet (recordings, notebooks).
  */
 export type WorkMode =
   | { input: "writing"; artifactType: "document"; mediaType: "text/plain" }
   | { input: "dataset"; artifactType: "dataset"; mediaType: "text/csv"; columns: DatasetColumn[] }
-  | { input: "upload"; artifactType: ArtifactType; mediaType: "text/plain" | "text/csv"; accept: string }
+  | { input: "upload"; artifactType: ArtifactType; mediaType: "text/csv"; formats: readonly UploadFormat[] }
+  | { input: "file"; artifactType: ArtifactType; formats: readonly UploadFormat[] }
   | { input: "link"; artifactType: "external-ref" }
   | { input: "unsupported"; artifactType: ArtifactType };
 
@@ -31,10 +35,17 @@ export const workModeFor = (step: ActivityStep): WorkMode | undefined => {
     case "artifact":
       switch (response.artifactType) {
         case "document":
-          return { input: "upload", artifactType: "document", mediaType: "text/plain", accept: ".txt,.md,text/plain,text/markdown" };
+          return { input: "file", artifactType: "document", formats: [FORMATS.pdf, FORMATS.text, FORMATS.markdown] };
+        case "image":
+          return { input: "file", artifactType: "image", formats: [FORMATS.png, FORMATS.jpeg] };
+        case "presentation":
+          return { input: "file", artifactType: "presentation", formats: [FORMATS.pdf] };
+        case "evidence":
+        case "portfolio":
+          return { input: "file", artifactType: response.artifactType, formats: [FORMATS.pdf, FORMATS.png, FORMATS.jpeg, FORMATS.text] };
         case "dataset":
         case "spreadsheet":
-          return { input: "upload", artifactType: response.artifactType, mediaType: "text/csv", accept: ".csv,text/csv" };
+          return { input: "upload", artifactType: response.artifactType, mediaType: "text/csv", formats: [FORMATS.csv] };
         case "external-ref":
           return { input: "link", artifactType: "external-ref" };
         default:

@@ -14,13 +14,13 @@ import {
 } from "@schoolos/contracts";
 import { assertSyncWritable, DIRECTORY_ENTITY_KINDS, type AcademicStore } from "@schoolos/academics";
 import type { PromotionLink, WorkspaceDirectory, WorkspaceStore } from "@schoolos/workspaces";
-import type { LearningArtifacts, RevisionContent } from "@schoolos/learning-artifacts";
-import type { AssessmentService, AssignmentBinding, CriterionScore } from "@schoolos/assessment";
+import type { LearningArtifacts, RevisionContent, RevisionContentInput } from "@schoolos/learning-artifacts";
+import type { AssessmentService, AssignmentBinding, AssignmentId, CriterionScore, StarterMaterial } from "@schoolos/assessment";
 import type { AssessmentCi, RunView } from "@schoolos/assessment-ci";
 import type { ActivityInstallation, CurriculumService, OfferingScope } from "@schoolos/curriculum";
 import { drainCourseFundingCancellations, type CourseFundingCancellations, type TermClosedEvent } from "@schoolos/ai-governance";
 import { oneroster } from "@schoolos/integrations";
-import type { AssignmentSettingsInput, RevisionContentBody } from "./routes.ts";
+import type { AssignmentSettingsInput, RevisionContentBody, StarterMaterialBody } from "./routes.ts";
 import type { RosterSourceStore } from "./stores.ts";
 import type { z } from "zod";
 
@@ -98,6 +98,36 @@ export async function installAndAssign(input: {
     ...(settings.rubric === undefined ? {} : { rubric: settings.rubric }),
   });
   return { installation, assignment };
+}
+
+/**
+ * W01 → W02 → E01: publishing new starter material to an assignment. E01 publishes only one of the
+ * teacher's own revisions, so the content is first saved as an artifact in the teacher's personal
+ * workspace (W01 opens it on first use, W02 saves it) and its first revision is then published.
+ * The assignment is read first, so a teacher who cannot see it saves nothing. E01 refuses anyone
+ * who may see the assignment but not publish to it, such as an administrator; the saved artifact
+ * then stays in their own personal workspace. The response leaves out where the content is stored.
+ */
+export async function publishStarterMaterial(input: {
+  artifacts: LearningArtifacts;
+  workspaces: WorkspaceDirectory;
+  assessment: AssessmentService;
+  caller: Caller;
+  assignmentId: AssignmentId;
+  title: string;
+  content: RevisionContentInput;
+}): Promise<StarterMaterialBody> {
+  const { artifacts, assessment, caller, title, content } = input;
+  await assessment.getAssignment(caller, input.assignmentId);
+  const personal = await input.workspaces.ensurePersonalWorkspace(caller);
+  const type = content.kind === "external" ? "external-ref" : content.kind === "bytes" && content.mediaType.startsWith("image/") ? "image" : "document";
+  const { artifact, head } = await artifacts.createArtifact(caller, { workspaceId: personal.id, type, title, content, aiAssistance: { level: "none" } });
+  const { content: _stored, ...material }: StarterMaterial = await assessment.publishStarterMaterial(caller, input.assignmentId, {
+    artifactId: artifact.id,
+    revisionId: head.id,
+    title,
+  });
+  return material;
 }
 
 /**

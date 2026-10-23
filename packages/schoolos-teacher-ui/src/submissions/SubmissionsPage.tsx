@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Badge, Empty, LayerCard, Table, Text } from "@cloudflare/kumo";
 import { ClipboardText, Tray } from "@phosphor-icons/react";
 import { classLabel } from "../classes/classLabel.ts";
@@ -5,19 +6,25 @@ import { Loading } from "../Loading.tsx";
 import { PageHeading } from "../PageHeading.tsx";
 import { Problem } from "../Problem.tsx";
 import { routeHref } from "../route.ts";
-import type { TeachingOffering } from "../types.ts";
+import type { Assignment, TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
+import { DueDateEditor } from "./DueDateEditor.tsx";
 
 /** The class's assigned activities and, for the one chosen, every student's submitted work. */
 export const SubmissionsPage = ({ teaching, assignmentId }: { teaching: TeachingOffering; assignmentId?: string }) => {
   const offeringId = teaching.offering.id;
   const assignments = useLoad(`assignments:${offeringId}`, (client) => client.call("teacher.listAssignments", { params: { offeringId } }));
+  // Settings saved here, shown in place of the loaded ones without reloading the list (which would
+  // take focus away from the form the teacher just used).
+  const [edited, setEdited] = useState<Readonly<Record<string, Assignment>>>({});
+  const list = assignments.status === "ready" ? assignments.data.map((a) => edited[a.id] ?? a) : [];
+  const chosen = list.find((a) => a.id === assignmentId);
   return (
     <div className="flex flex-col gap-6">
       <PageHeading>{`Submissions · ${classLabel(teaching)}`}</PageHeading>
       {assignments.status === "loading" && <Loading label="Loading activities…" />}
       {assignments.status === "error" && <Problem error={assignments.error} onRetry={assignments.reload} />}
-      {assignments.status === "ready" && assignments.data.length === 0 && (
+      {assignments.status === "ready" && list.length === 0 && (
         <Empty
           icon={<ClipboardText size={32} aria-hidden />}
           title="Nothing assigned yet"
@@ -25,11 +32,11 @@ export const SubmissionsPage = ({ teaching, assignmentId }: { teaching: Teaching
           contents={<a href={routeHref({ screen: "create", offeringId })}>Create an activity</a>}
         />
       )}
-      {assignments.status === "ready" && assignments.data.length > 0 && (
+      {assignments.status === "ready" && list.length > 0 && (
         <div className="grid gap-6 md:grid-cols-[16rem_1fr]">
           <nav aria-label="Activities">
             <ul className="flex flex-col gap-1">
-              {assignments.data.map((a) => (
+              {list.map((a) => (
                 <li key={a.id}>
                   <a
                     href={routeHref({ screen: "submissions", offeringId, assignmentId: a.id })}
@@ -45,7 +52,16 @@ export const SubmissionsPage = ({ teaching, assignmentId }: { teaching: Teaching
           </nav>
           {assignmentId === undefined
             ? <Text variant="secondary">Choose an activity to see what students turned in.</Text>
-            : <SubmissionList offeringId={offeringId} assignmentId={assignmentId} title={assignments.data.find((a) => a.id === assignmentId)?.title ?? "This activity"} />}
+            : (
+              <div className="flex flex-col gap-6">
+                {chosen !== undefined && (
+                  <LayerCard className="p-4">
+                    <DueDateEditor key={chosen.id} assignment={chosen} onChanged={(updated) => setEdited((previous) => ({ ...previous, [updated.id]: updated }))} />
+                  </LayerCard>
+                )}
+                <SubmissionList offeringId={offeringId} assignmentId={assignmentId} title={chosen?.title ?? "This activity"} />
+              </div>
+            )}
         </div>
       )}
     </div>

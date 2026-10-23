@@ -17,6 +17,9 @@ export interface FakeClass {
   staff: number;
 }
 
+const COURSE_TITLES: Readonly<Record<string, string>> = { bio: "Biology", eng: "English 9", math: "Math 7", art: "Art 6" };
+const TEACHERS = ["Sam Rivera", "Wen Chen"];
+
 /** The synthetic students' names. They exist only so tests can prove the aggregates never show them. */
 export const STUDENT_NAMES = ["Amara Okafor", "Jonah Pike", "Lena Ortiz"] as const;
 
@@ -419,6 +422,15 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
       workspaces: { toRetain: 4, onLegalHold: 1 },
       grants: { toRevoke: 9 },
       principals: { students: 91, staff: 5 },
+    }) as never,
+    "admin.listOfferings": () => CLASSES.map((c) => {
+      const [, code, section] = /^off_fk-([a-z]+)\d*-([a-z])$/.exec(c.offeringId)!;
+      return {
+        offering: { id: c.offeringId, districtId: "dst_fake", schoolId: c.schoolId, termId: "trm_fk-2026-fall", courseId: `crs_fk-${code}`, sectionName: `Section ${section!.toUpperCase()}` },
+        course: { id: `crs_fk-${code}`, districtId: "dst_fake", title: COURSE_TITLES[code!]!, subject: "other", gradeBand: "9" },
+        teachers: TEACHERS.slice(0, c.staff),
+        students: c.students,
+      };
     }) as never,
     // A route that names students. The aggregate screens must never call it.
     "teacher.roster": () => STUDENT_NAMES.map((displayName) => ({ displayName })) as never,

@@ -17,6 +17,7 @@ export const ART_SPRING = "off_nf-art-spring-p2";
 export const ESSAY = "asg_essay-later-start";
 export const OSMOSIS = "asg_osmosis-lab";
 export const COLOR = "asg_color-painting";
+export const LAB_REPORT = "asg_osmosis-report";
 
 const notFound = (what: string) => new DistrictApiError(404, { code: "not-found", message: `${what} not found` });
 
@@ -91,6 +92,8 @@ export interface FakeDistrict extends DistrictApiClient {
   releaseFeedback(submissionId: string, feedback: { comments: string[]; scores: { criterionId: string; points: number; maxPoints?: number }[] }): void;
   /** Adds a saved artifact directly, as if made earlier. */
   addArtifact(workspaceId: string, title: string, type: string, mediaType: string, content: unknown): string;
+  /** Records an official grade version for an assignment, as the teacher's approval does. */
+  recordGrade(assignmentId: string, score: { points: number; maxPoints: number }): void;
   /** The submissions made so far. */
   submissions: { id: string; assignmentId: string; submissionDigest: string }[];
 }
@@ -114,6 +117,8 @@ export function fakeDistrict(options: { aiHelp?: "full" | "hints-only" | "none" 
     [SCIENCE]: [activity(SCIENCE, OSMOSIS, "Osmosis in potato cores", "2026-11-05T21:00:00.000Z", "science", [
       step("hypothesis", "Your hypothesis", "What do you expect to happen?", { kind: "writing" }),
       step("data", "Record your data", "Weigh each core before and after.", { kind: "dataset", columns: [{ name: "Concentration", unit: "M" }, { name: "Mass change", unit: "%" }] }),
+    ], options.aiHelp), activity(SCIENCE, LAB_REPORT, "Osmosis lab report", "2026-11-12T21:00:00.000Z", "science", [
+      step("report", "Upload your lab report", "Upload your report as a PDF or a text file.", { kind: "artifact", artifactType: "document" }),
     ], options.aiHelp)],
     [ART_SPRING]: [activity(ART_SPRING, COLOR, "Color in a painting you love", "2026-04-01T21:00:00.000Z", "arts", [
       step("essay", "Describe the colors", "How does color shape the mood?", { kind: "writing" }),
@@ -122,17 +127,18 @@ export function fakeDistrict(options: { aiHelp?: "full" | "hints-only" | "none" 
   const artifacts = new Map<string, StoredArtifact>();
   const submissions: (Record<string, unknown> & { id: string; assignmentId: string; submissionDigest: string; attempt: number })[] = [];
   const feedback = new Map<string, unknown>();
+  const grades: (Record<string, unknown> & { assignmentId: string })[] = [];
   const failures = new Map<RouteName, InjectedFailure>();
   const calls: FakeDistrict["calls"] = [];
 
   const view = (stored: StoredArtifact) => ({ artifact: stored.artifact, head: stored.revisions.at(-1)! });
-  const saveRevision = (stored: StoredArtifact, content: { kind: string; mediaType?: string; text?: string; url?: string }) => {
+  const saveRevision = (stored: StoredArtifact, content: { kind: string; mediaType?: string; text?: string; url?: string; base64?: string }) => {
     const revision = {
       id: next("rev"),
       artifactId: stored.artifact.id,
       number: stored.revisions.length + 1,
       content: { backend: "text", key: "k", digest: `sha256:${"a".repeat(64)}` },
-      sizeBytes: (content.text ?? content.url ?? "").length,
+      sizeBytes: (content.text ?? content.url ?? content.base64 ?? "").length,
       mediaType: content.kind === "external" ? "application/vnd.schoolos.external-ref+json" : content.mediaType!,
       authorPrincipalId: ME,
       createdAt: time(),
@@ -140,7 +146,7 @@ export function fakeDistrict(options: { aiHelp?: "full" | "hints-only" | "none" 
       provenance: { origin: "authored", channel: "ui" },
     };
     stored.revisions.push(revision);
-    stored.contents.set(revision.id, content.kind === "external" ? { kind: "external", url: content.url } : { kind: "text", text: content.text });
+    stored.contents.set(revision.id, content.kind === "external" ? { kind: "external", url: content.url } : content.kind === "bytes" ? { kind: "bytes", base64: content.base64 } : { kind: "text", text: content.text });
     return view(stored);
   };
   const addArtifact = (workspaceId: string, title: string, type: string, mediaType: string, content: unknown) => {
@@ -212,6 +218,7 @@ export function fakeDistrict(options: { aiHelp?: "full" | "hints-only" | "none" 
       return { format: "schoolos.submission-receipt.v1", submissionId: id, assignmentId: params.assignmentId, studentPrincipalId: ME, attempt, submittedAt, timing: "on-time", items, submissionDigest };
     },
     "student.listSubmissions": ({ params }) => submissions.filter((s) => s.assignmentId === params.assignmentId),
+    "student.officialGrades": ({ params }) => grades.filter((g) => g.assignmentId === params.assignmentId),
     "student.getFeedback": ({ params }) => {
       const released = feedback.get(params.submissionId);
       if (released === undefined) throw notFound("feedback");
@@ -224,6 +231,21 @@ export function fakeDistrict(options: { aiHelp?: "full" | "hints-only" | "none" 
     submissions,
     addArtifact,
     failNext: (name, failure) => void failures.set(name, failure),
+    recordGrade(assignmentId, score) {
+      const course = Object.values(activities).flat().find((a) => a.assignment.id === assignmentId)!.assignment;
+      grades.push({
+        format: "schoolos.official-grade.v1",
+        districtId: DISTRICT,
+        offeringId: course.offeringId,
+        assignmentId,
+        studentPrincipalId: ME,
+        submissionId: submissions.find((s) => s.assignmentId === assignmentId)?.id ?? "sub_graded",
+        submissionDigest: `sha256:${"d".repeat(64)}`,
+        version: grades.filter((g) => g.assignmentId === assignmentId).length + 1,
+        score,
+        approval: { approvedBy: "prn_nf-teacher-rivera", approvedAt: time(), channel: "http" },
+      });
+    },
     releaseFeedback(submissionId, { comments, scores }) {
       feedback.set(submissionId, {
         submissionId,
