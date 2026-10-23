@@ -30,6 +30,8 @@ describe("the family view (ADR-0012)", () => {
     // A family's navigation, never a student's places.
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(within(nav).getAllByRole("link").map((l) => l.textContent)).toStrictEqual(["My children"]);
+    // Notifications and settings are a student's (SCHO-189); a guardian is not offered them.
+    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
     // Only the routes a guardian may call.
     expect(new Set(family.calls.map((c) => c.name))).toStrictEqual(new Set(["me.get", "guardian.listChildren", "guardian.childOfferings"]));
   });
@@ -87,7 +89,7 @@ describe("the family view (ADR-0012)", () => {
   it("never offers a student the family view", async () => {
     await renderApp(fakeDistrict(), "/family/children/prn_nf-student-amara");
     expect(await screen.findByText("There's nothing here")).toBeTruthy();
-    expect(within(screen.getByRole("navigation", { name: "Main" })).getAllByRole("link").map((l) => l.textContent)).toStrictEqual(["Home", "My space", "Grades"]);
+    expect(within(screen.getByRole("navigation", { name: "Main" })).getAllByRole("link").map((l) => l.textContent)).toStrictEqual(["Home", "My space", "Grades", "Calendar"]);
   });
 });
 
