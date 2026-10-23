@@ -2,12 +2,13 @@
   "name": "@schoolos/district-app",
   "version": "0.1.0",
   "private": true,
-  "description": "The SchoolOS district application: the merged domain services composed behind one typed, fetch-standard /api surface for the Student, Teacher and Admin UIs. A library, not a deployable Worker.",
+  "description": "The SchoolOS district application: the merged domain services composed behind one typed, fetch-standard /api surface for the Student, Teacher and Admin UIs, with in-memory stores and, at `./durable-stores`, every store in one Durable Object's SQLite. A library: `@schoolos/district-worker` deploys it.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./routes": "./src/routes.ts",
-    "./guard-directory": "./src/guard-directory.ts"
+    "./guard-directory": "./src/guard-directory.ts",
+    "./durable-stores": "./src/durable-stores.ts"
   },
   "dependencies": {
     "@schoolos/academics": "workspace:*",

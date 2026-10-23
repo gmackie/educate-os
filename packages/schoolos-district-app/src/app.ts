@@ -126,7 +126,8 @@ export interface DistrictApp {
   readonly stores: DistrictAppStores;
 }
 
-const ALL_ROSTER: AuthorityMap = {
+/** The default `DistrictAppOptions.authority`: the OneRoster roster owns every directory record type. */
+export const DEFAULT_AUTHORITY: AuthorityMap = {
   school: "external:oneroster",
   term: "external:oneroster",
   course: "external:oneroster",
@@ -173,7 +174,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const { stores } = options;
   const districtId = (await stores.directory.load()).snapshot.district.id;
   const now = options.now ?? (() => new Date());
-  const authority = AuthorityMap.parse(options.authority ?? ALL_ROSTER);
+  const authority = AuthorityMap.parse(options.authority ?? DEFAULT_AUTHORITY);
   const retention = RetentionPolicy.parse(options.retention ?? { courseWorkspaceRetentionDays: 365 });
   const registry = options.registry ?? SHIPPED_REGISTRY;
   const policySource = configPolicySource(stores.config, options.defaultPolicy ?? DEFAULT_POLICY_FLOOR);

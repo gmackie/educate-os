@@ -2,10 +2,11 @@
   "name": "@schoolos/academics",
   "version": "0.1.0",
   "private": true,
-  "description": "SchoolOS AcademicDirectory: schools, terms, catalog courses, offerings and enrollments behind a storage interface (in memory, or on D1 with the migrations in `migrations/`), with source-of-record enforcement and a fetch-standard local fallback HTTP service and MCP-style tools over the same rules. A library, not a deployable Worker.",
+  "description": "SchoolOS AcademicDirectory: schools, terms, catalog courses, offerings and enrollments behind a storage interface (in memory, on D1 with the migrations in `migrations/`, or in a Durable Object's SQLite at `./durable-object-store`), with source-of-record enforcement and a fetch-standard local fallback HTTP service and MCP-style tools over the same rules. A library, not a deployable Worker.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./durable-object-store": "./src/durable-object-store.ts"
   },
   "dependencies": {
     "@schoolos/contracts": "workspace:*",

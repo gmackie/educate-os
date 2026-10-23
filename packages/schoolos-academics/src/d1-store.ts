@@ -1,6 +1,7 @@
-import { DistrictDirectorySnapshot, SchoolOsError } from "@schoolos/contracts";
+import { SchoolOsError, type DistrictDirectorySnapshot } from "@schoolos/contracts";
 import type { AcademicStore, StoredDirectory } from "./store.ts";
 import { validateDirectory } from "./validation.ts";
+import { canonicalJson, parseStoredDirectory, RECORD_LISTS, RECORD_TABLES, rowChanges, rowsOf, type RecordList, type Row } from "./directory-rows.ts";
 
 /**
  * The part of a D1 prepared statement the store uses. A Workers `D1PreparedStatement` satisfies
@@ -20,59 +21,7 @@ export interface D1DatabaseLike {
   batch(statements: D1StatementLike[]): Promise<{ results?: unknown[] }[]>;
 }
 
-/** The record lists of a directory and the table each is stored in. */
-const RECORD_TABLES = {
-  schools: "academic_schools",
-  terms: "academic_terms",
-  courses: "academic_courses",
-  offerings: "academic_offerings",
-  principals: "academic_principals",
-  enrollments: "academic_enrollments",
-  roleAssignments: "academic_role_assignments",
-} as const satisfies Record<Exclude<keyof DistrictDirectorySnapshot, "district">, string>;
-
-type RecordList = keyof typeof RECORD_TABLES;
-const RECORD_LISTS = Object.keys(RECORD_TABLES) as RecordList[];
-
 const VERSION_CONFLICT = "schoolos: academic directory version conflict";
-
-/**
- * JSON with object keys sorted, so a record serializes the same however it was built and the
- * store can tell a changed row from an unchanged one by comparing strings.
- */
-function canonicalJson(value: unknown): string {
-  return JSON.stringify(value, (_key, inner: unknown) =>
-    inner !== null && typeof inner === "object" && !Array.isArray(inner)
-      ? Object.fromEntries(Object.entries(inner).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
-      : inner,
-  );
-}
-
-/** A record's key in its table: its ID, or for a role assignment (which has none) its JSON. */
-function keyOf(record: object, json: string): string {
-  return "id" in record && typeof record.id === "string" ? record.id : json;
-}
-
-interface Row {
-  position: number;
-  json: string;
-}
-
-/** Each list's rows by key, as the store holds them. */
-type Rows = Record<RecordList, Map<string, Row>>;
-
-function rowsOf(snapshot: DistrictDirectorySnapshot): Rows {
-  const rows = {} as Rows;
-  for (const list of RECORD_LISTS) {
-    rows[list] = new Map(
-      (snapshot[list] as object[]).map((record, position) => {
-        const json = canonicalJson(record);
-        return [keyOf(record, json), { position, json }];
-      }),
-    );
-  }
-  return rows;
-}
 
 function isVersionConflict(error: unknown): boolean {
   return error instanceof Error && error.message.includes(VERSION_CONFLICT);
@@ -135,17 +84,11 @@ export class D1AcademicStore implements AcademicStore {
     const head = meta?.results?.[0] as { version: number; district_json: string } | undefined;
     if (head === undefined) throw new Error("the academic directory database has not been seeded");
 
-    const raw: Record<string, unknown> = { district: JSON.parse(head.district_json) };
-    RECORD_LISTS.forEach((list, i) => {
-      raw[list] = (lists[i]?.results ?? []).map((row) => JSON.parse((row as { record_json: string }).record_json));
-    });
-    const parsed = DistrictDirectorySnapshot.safeParse(raw);
-    // Paths only: the rows hold personal data, and an unreadable row is not trusted to be safe to log.
-    if (!parsed.success) {
-      throw new Error(`the stored academic directory is unreadable at ${parsed.error.issues.map((i) => i.path.join(".")).join(", ")}`);
-    }
-    this.#known = { version: head.version, snapshot: parsed.data };
-    return { version: head.version, snapshot: structuredClone(parsed.data) };
+    const rows = Object.fromEntries(RECORD_LISTS.map((list, i) =>
+      [list, (lists[i]?.results ?? []).map((row) => (row as { record_json: string }).record_json)])) as Record<RecordList, string[]>;
+    const snapshot = parseStoredDirectory(head.district_json, rows);
+    this.#known = { version: head.version, snapshot };
+    return { version: head.version, snapshot: structuredClone(snapshot) };
   }
 
   async commit(next: DistrictDirectorySnapshot, expectedVersion: number): Promise<void> {
@@ -164,21 +107,11 @@ export class D1AcademicStore implements AcademicStore {
     if (districtJson !== canonicalJson(current.district)) {
       statements.push(db.prepare("UPDATE academic_directory SET district_json = ? WHERE singleton = 1").bind(districtJson));
     }
-    const before = rowsOf(current);
-    const after = rowsOf(next);
-    for (const list of RECORD_LISTS) {
-      for (const key of before[list].keys()) {
-        if (!after[list].has(key)) statements.push(db.prepare(`DELETE FROM ${RECORD_TABLES[list]} WHERE id = ?`).bind(key));
-      }
-      for (const [key, row] of after[list]) {
-        const was = before[list].get(key);
-        if (was === undefined) statements.push(insertRow(db, list, key, row));
-        else if (was.json !== row.json || was.position !== row.position) {
-          statements.push(
-            db.prepare(`UPDATE ${RECORD_TABLES[list]} SET position = ?, record_json = ? WHERE id = ?`).bind(row.position, row.json, key),
-          );
-        }
-      }
+    for (const change of rowChanges(current, next)) {
+      const table = RECORD_TABLES[change.list];
+      if (change.kind === "delete") statements.push(db.prepare(`DELETE FROM ${table} WHERE id = ?`).bind(change.key));
+      else if (change.kind === "insert") statements.push(insertRow(db, change.list, change.key, change.row));
+      else statements.push(db.prepare(`UPDATE ${table} SET position = ?, record_json = ? WHERE id = ?`).bind(change.row.position, change.row.json, change.key));
     }
 
     try {
