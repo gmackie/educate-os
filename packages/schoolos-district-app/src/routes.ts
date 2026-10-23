@@ -84,13 +84,18 @@ import { AssessmentReport, IdempotencyKey, RubricDraft, RubricRelease, RunError,
 import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type AiProjectionReport, type UsageReport } from "@schoolos/ai-governance";
 import type { ConfigProblem, ConfigurationPlan } from "@schoolos/config";
 import type { oneroster } from "@schoolos/integrations";
+// Guardians (ADR-0012, SCHO-188)
+import { AcademicTerm, GuardianRelationship, GuardianRelationshipId, OpaqueCode, PrincipalStatus } from "@schoolos/contracts";
+import { GuardianRelationshipAuditEvent, GuardianRelationshipScope } from "@schoolos/policy";
+import { GuardianInvitationId, GuardianInvitationRedemption, IdentityRequestId, NewGuardianInvitation } from "@schoolos/identity-links";
 
 /**
- * Which part of SchoolOS a route belongs to. Student routes answer only student principals, and
- * teacher and admin routes only staff; within a surface, every decision is still the policy
- * engine's.
+ * Which part of SchoolOS a route belongs to. Student routes answer only student principals,
+ * teacher and admin routes only staff, and guardian routes only guardians; within a surface, every
+ * decision is still the policy engine's. Onboarding routes answer a verified sign-in that may not
+ * be anyone's principal yet, such as a guardian redeeming an invitation, and grant nothing.
  */
-export type Surface = "me" | "student" | "teacher" | "admin";
+export type Surface = "me" | "student" | "teacher" | "admin" | "guardian" | "onboarding";
 
 /** One route of the district API. */
 export interface RouteSpec {
@@ -467,6 +472,67 @@ export const CartridgeExportBody = z.strictObject({
 });
 /** A cartridge export. */
 export type CartridgeExportBody = z.infer<typeof CartridgeExportBody>;
+// Guardians (ADR-0012, SCHO-188): shapes
+
+/** One of a guardian's children, through a relationship in force. */
+export const GuardianChildBody = z.strictObject({ studentPrincipalId: PrincipalId, displayName: z.string() });
+/** A guardian's child. */
+export type GuardianChildBody = z.infer<typeof GuardianChildBody>;
+
+/** One of a child's classes, as their guardian may see it, with its term (a completed term's class is past). */
+export const GuardianOfferingBody = z.strictObject({ offering: CourseOffering, course: CatalogCourse, term: AcademicTerm });
+/** A child's class. */
+export type GuardianOfferingBody = z.infer<typeof GuardianOfferingBody>;
+
+/**
+ * One assignment in a child's class, with what the child has been given on it: the feedback
+ * released to the child, as the child sees it, and their official grades. Never the submission.
+ */
+export const GuardianAssignmentBody = z.strictObject({
+  assignment: z.strictObject({ id: AssignmentId, offeringId: OfferingId, title: z.string(), dueAt: z.string() }),
+  feedback: z.array(FeedbackRecord),
+  grades: z.array(OfficialGradeVersion),
+});
+/** A child's assignment. */
+export type GuardianAssignmentBody = z.infer<typeof GuardianAssignmentBody>;
+
+/** A child's class with its assignments. */
+export const GuardianCourseBody = GuardianOfferingBody.extend({ assignments: z.array(GuardianAssignmentBody) });
+/** A child's class in full. */
+export type GuardianCourseBody = z.infer<typeof GuardianCourseBody>;
+
+/** A guardian invitation as an administrator reviews it: never its token. */
+export const GuardianInvitationBody = z.strictObject({
+  id: GuardianInvitationId,
+  districtId: DistrictId,
+  studentPrincipalId: PrincipalId,
+  relationshipId: GuardianRelationshipId,
+  reservedGuardianPrincipalId: PrincipalId,
+  guardianDisplayName: z.string(),
+  created: z.strictObject({ by: PrincipalId, at: z.string() }),
+  expiresAt: z.string(),
+  redeemed: GuardianInvitationRedemption.optional(),
+});
+/** A guardian invitation. */
+export type GuardianInvitationBody = z.infer<typeof GuardianInvitationBody>;
+
+/** A student's guardians, invitations and waiting sign-ins, for a district administrator. */
+export const StudentGuardiansBody = z.strictObject({
+  student: z.strictObject({ principalId: PrincipalId, displayName: z.string() }),
+  relationships: z.array(z.strictObject({
+    relationship: GuardianRelationship,
+    /** The guardian's name, once their sign-in has been approved. */
+    guardianDisplayName: z.string().optional(),
+    /** Whether the guardian's principal exists and is active, which confirming needs. */
+    guardianActive: z.boolean(),
+    history: z.array(GuardianRelationshipAuditEvent),
+  })),
+  invitations: z.array(GuardianInvitationBody),
+  /** Redeemed invitations' sign-ins awaiting a district admin's approval. */
+  pendingSignIns: z.array(z.strictObject({ requestId: IdentityRequestId, invitationId: GuardianInvitationId, guardianDisplayName: z.string() })),
+});
+/** A student's guardians. */
+export type StudentGuardiansBody = z.infer<typeof StudentGuardiansBody>;
 
 const params = <S extends z.core.$ZodLooseShape>(shape: S) => z.strictObject(shape);
 const NoBody = z.strictObject({});
@@ -895,6 +961,76 @@ export const ROUTES = {
   "admin.createPrincipal": route({
     method: "POST", path: "/api/admin/principals", surface: "admin", status: 201, body: NewPrincipal, response: AuthoringPrincipalBody,
   }),
+  // Guardians (ADR-0012, SCHO-188). Guardian routes are read-only; every read is decided by the
+  // policy engine with the guardian as subject, and built from the child's own view.
+  "guardian.listChildren": route({ method: "GET", path: "/api/guardian/children", surface: "guardian", response: z.array(GuardianChildBody) }),
+  "guardian.childOfferings": route({
+    method: "GET", path: "/api/guardian/children/:studentId/offerings", surface: "guardian",
+    params: params({ studentId: PrincipalId }), response: z.array(GuardianOfferingBody),
+  }),
+  "guardian.childCourse": route({
+    method: "GET", path: "/api/guardian/children/:studentId/offerings/:offeringId", surface: "guardian",
+    params: params({ studentId: PrincipalId, offeringId: OfferingId }), response: GuardianCourseBody,
+  }),
+  "onboarding.redeemGuardianInvitation": route({
+    method: "POST", path: "/api/onboarding/guardian-invitations/redeem", surface: "onboarding",
+    body: z.strictObject({ token: z.string().min(1).max(100) }),
+    response: z.strictObject({ outcome: GuardianInvitationRedemption.shape.outcome }),
+  }),
+  "admin.guardianStudents": route({
+    method: "GET", path: "/api/admin/guardians/students", surface: "admin",
+    response: z.array(z.strictObject({ principalId: PrincipalId, displayName: z.string(), status: PrincipalStatus })),
+  }),
+  "admin.studentGuardians": route({
+    method: "GET", path: "/api/admin/students/:studentId/guardians", surface: "admin",
+    params: params({ studentId: PrincipalId }), response: StudentGuardiansBody,
+  }),
+  "admin.inviteGuardian": route({
+    method: "POST", path: "/api/admin/students/:studentId/guardians/invitations", surface: "admin", status: 201,
+    params: params({ studentId: PrincipalId }), body: NewGuardianInvitation.omit({ studentPrincipalId: true }),
+    response: z.strictObject({
+      invitation: GuardianInvitationBody,
+      relationship: GuardianRelationship,
+      /** The single-use link to hand the guardian. It is shown once and never stored. */
+      invitationUrl: z.string(),
+      /**
+       * How the link reaches the guardian: `share-link`, the administrator hands it over. Email
+       * delivery (L5) will add a value.
+       */
+      delivery: z.literal("share-link"),
+    }),
+  }),
+  "admin.confirmGuardian": route({
+    method: "POST", path: "/api/admin/guardian-relationships/:relationshipId/confirm", surface: "admin",
+    params: params({ relationshipId: GuardianRelationshipId }), body: NoBody, response: GuardianRelationship,
+  }),
+  "admin.updateGuardianScope": route({
+    method: "POST", path: "/api/admin/guardian-relationships/:relationshipId/scope", surface: "admin",
+    params: params({ relationshipId: GuardianRelationshipId }), body: GuardianRelationshipScope, response: GuardianRelationship,
+  }),
+  "admin.suspendGuardian": route({
+    method: "POST", path: "/api/admin/guardian-relationships/:relationshipId/suspend", surface: "admin",
+    params: params({ relationshipId: GuardianRelationshipId }), body: z.strictObject({ reason: OpaqueCode }), response: GuardianRelationship,
+  }),
+  "admin.resumeGuardian": route({
+    method: "POST", path: "/api/admin/guardian-relationships/:relationshipId/resume", surface: "admin",
+    params: params({ relationshipId: GuardianRelationshipId }), body: NoBody, response: GuardianRelationship,
+  }),
+  "admin.revokeGuardian": route({
+    method: "POST", path: "/api/admin/guardian-relationships/:relationshipId/revoke", surface: "admin",
+    params: params({ relationshipId: GuardianRelationshipId }), body: NoBody, response: GuardianRelationship,
+  }),
+  "admin.approveIdentityRequest": route({
+    method: "POST", path: "/api/admin/identity-requests/:requestId/approve", surface: "admin",
+    params: params({ requestId: IdentityRequestId }), body: NoBody,
+    response: z.strictObject({ requestId: IdentityRequestId, status: z.enum(["approved", "rejected"]) }),
+  }),
+  "admin.rejectIdentityRequest": route({
+    method: "POST", path: "/api/admin/identity-requests/:requestId/reject", surface: "admin",
+    params: params({ requestId: IdentityRequestId }), body: NoBody,
+    response: z.strictObject({ requestId: IdentityRequestId, status: z.enum(["approved", "rejected"]) }),
+  }),
+  // End guardians.
 } as const satisfies Record<string, RouteSpec>;
 
 /** The routes. */

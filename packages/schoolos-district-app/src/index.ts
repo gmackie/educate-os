@@ -8,3 +8,4 @@ export { CORRELATION_HEADER } from "./http.ts";
 export * from "./app.ts";
 export * from "./authority.ts";
 export * from "./guard-directory.ts";
+export * from "./guardians.ts";

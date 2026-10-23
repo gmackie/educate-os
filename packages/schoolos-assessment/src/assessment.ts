@@ -607,11 +607,41 @@ export class AssessmentService {
     if (!(await decisions.allows("read", feedbackTarget(at, submission)))) throw notFound("feedback", submissionId);
     const feedback = loaded.state.feedback.find((f) => f.submissionId === submission.id);
     if (submission.studentPrincipalId !== caller.principal.principalId) return feedback ?? emptyFeedback(submission.id, this.#now());
+    const released = this.#asReleasedToStudent(loaded, submission, feedback);
+    if (released === undefined) throw notFound("feedback", submissionId);
+    return released;
+  }
 
-    const visibleFrom: FeedbackState = this.#assignmentOf(loaded, submission).feedbackVisibility === "when-final" ? "final" : "shared-with-student";
-    if (feedback === undefined || FEEDBACK_ORDER.indexOf(feedback.state) < FEEDBACK_ORDER.indexOf(visibleFrom)) {
-      throw notFound("feedback", submissionId);
+  /**
+   * The feedback a student has been given on an assignment, exactly as the student sees it: the
+   * teacher's own comments and scores, once the assignment's `feedbackVisibility` releases them,
+   * one record per submission that has released feedback, oldest first. This is the student's view
+   * for someone the policy engine lets read the student's feedback without being their teacher, a
+   * guardian (ADR-0012): it never shows more than the student sees, and it reveals nothing about a
+   * submission whose feedback is not released. Each record is decided as a `read` of `feedback`.
+   */
+  async releasedFeedback(caller: Caller, rawAssignmentId: AssignmentId, rawStudentId: PrincipalId): Promise<FeedbackRecord[]> {
+    const assignmentId = parse(AssignmentId, rawAssignmentId);
+    const studentId = parse(PrincipalId, rawStudentId);
+    const loaded = await this.#load();
+    const decisions = this.#decisions(caller);
+    const assignment = loaded.state.assignments.find((a) => a.id === assignmentId);
+    if (assignment === undefined) throw notFound("assignment", assignmentId);
+    const at = this.#offering(loaded.snapshot, assignment.offeringId);
+    const released: FeedbackRecord[] = [];
+    for (const submission of loaded.state.submissions) {
+      if (submission.assignmentId !== assignmentId || submission.studentPrincipalId !== studentId) continue;
+      const view = this.#asReleasedToStudent(loaded, submission, loaded.state.feedback.find((f) => f.submissionId === submission.id));
+      // Unreleased feedback is not decided at all, so it leaves no trace a reader could learn from.
+      if (view !== undefined && (await decisions.allows("read", feedbackTarget(at, submission)))) released.push(view);
     }
+    return released;
+  }
+
+  /** Feedback as its student sees it, or `undefined` while the assignment has not released it to them. */
+  #asReleasedToStudent(loaded: Loaded, submission: SubmissionSnapshot, feedback: FeedbackRecord | undefined): FeedbackRecord | undefined {
+    const visibleFrom: FeedbackState = this.#assignmentOf(loaded, submission).feedbackVisibility === "when-final" ? "final" : "shared-with-student";
+    if (feedback === undefined || FEEDBACK_ORDER.indexOf(feedback.state) < FEEDBACK_ORDER.indexOf(visibleFrom)) return undefined;
     return {
       ...feedback,
       comments: feedback.comments.filter((c) => c.source.kind === "teacher"),
@@ -732,7 +762,7 @@ export class AssessmentService {
     const studentId = parse(PrincipalId, rawStudentId);
     const loaded = await this.#load();
     const decisions = this.#decisions(caller);
-    const assignment = await this.#visibleAssignment(decisions, loaded, assignmentId, { forOwnRecords: true });
+    const assignment = await this.#visibleAssignment(decisions, loaded, assignmentId, { recordsOf: studentId });
     const target = gradeTarget(this.#offering(loaded.snapshot, assignment.offeringId), { assignmentId, studentPrincipalId: studentId });
     if (!(await decisions.allows("read", target))) throw notFound("grade", assignmentId);
     return loaded.state.gradeVersions.filter((v) => v.assignmentId === assignmentId && v.studentPrincipalId === studentId);
@@ -761,19 +791,22 @@ export class AssessmentService {
   }
 
   /**
-   * The assignment, if it exists and the caller may read it; else `not-found`. With
-   * `forOwnRecords`, a student who has left the offering still reaches it to read their own grades.
+   * The assignment, if it exists and the caller may read it; else `not-found`. With `recordsOf`,
+   * an assignment that student submitted to is reached even once they have left the offering, so
+   * their own records stay readable to whoever the policy engine lets read them.
    */
   async #visibleAssignment(
     decisions: Decisions,
     loaded: Loaded,
     id: AssignmentId,
-    options: { forOwnRecords?: boolean } = {},
+    options: { recordsOf?: PrincipalId } = {},
   ): Promise<AssignmentBinding> {
     const assignment = loaded.state.assignments.find((a) => a.id === id);
     if (assignment === undefined) throw notFound("assignment", id);
     if (await decisions.allows("read", this.#assignmentTarget(loaded, assignment))) return assignment;
-    if (options.forOwnRecords === true && loaded.state.submissions.some((s) => s.assignmentId === id && s.studentPrincipalId === decisions.principalId)) {
+    // A student keeps their own records of an assignment after leaving its offering, and so does
+    // whoever may read those records (a guardian): the caller still needs the record's own decision.
+    if (options.recordsOf !== undefined && loaded.state.submissions.some((s) => s.assignmentId === id && s.studentPrincipalId === options.recordsOf)) {
       return assignment;
     }
     throw notFound("assignment", id);
@@ -848,10 +881,6 @@ class Decisions {
     this.#caller = caller;
     this.#policy = policy;
     this.#correlationId = correlationId;
-  }
-
-  get principalId(): PrincipalId {
-    return this.#caller.principal.principalId;
   }
 
   async decide(action: Action, target: Target): Promise<Decision> {

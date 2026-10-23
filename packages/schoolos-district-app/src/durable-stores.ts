@@ -14,7 +14,18 @@
 // service Worker's D1 database or R2 bucket would need (SCHO-138), so revision content that would
 // be an R2 object is kept in chunked SQLite rows (`DurableObjectBlobBucket`).
 import { z } from "zod";
-import { ConfigurationRevision, SchoolOsError, type ActivityDefinitionId, type ActivityId, type ConfigRevisionId, type DistrictDirectorySnapshot, type OfferingId } from "@schoolos/contracts";
+import {
+  ConfigurationRevision,
+  GuardianRelationship,
+  SchoolOsError,
+  type ActivityDefinitionId,
+  type ActivityId,
+  type ConfigRevisionId,
+  type DistrictDirectorySnapshot,
+  type GuardianRelationshipId,
+  type OfferingId,
+  type PrincipalId,
+} from "@schoolos/contracts";
 import { DurableObjectAcademicStore } from "@schoolos/academics/durable-object-store";
 import { DurableObjectWorkspaceStore } from "@schoolos/workspaces/durable-object-store";
 import {
@@ -50,10 +61,28 @@ import {
 } from "@schoolos/curriculum";
 import { DurableObjectCatalogMirrorStorage } from "@schoolos/catalog/durable-object-storage";
 import { DurableObjectLedgerStore } from "@schoolos/ai-governance/durable-object-store";
-import { OPEN_APPROVAL_STATES, PendingToolAction, type ToolApprovalId, type ToolApprovalState, type ToolApprovalStore } from "@schoolos/policy";
+import {
+  checkGuardianRelationshipCommit,
+  GUARDIAN_RELATIONSHIP_CONFLICT,
+  GuardianRelationshipAuditEvent,
+  OPEN_APPROVAL_STATES,
+  PendingToolAction,
+  sameGuardianRelationship,
+  type GuardianRelationshipStore,
+  type ToolApprovalId,
+  type ToolApprovalState,
+  type ToolApprovalStore,
+} from "@schoolos/policy";
 import { DurableObjectPolicyAuditSink } from "@schoolos/policy/durable-object-audit-sink";
 import { oneroster } from "@schoolos/integrations";
 import { WorkshopUserLink } from "@schoolos/identity";
+import {
+  GuardianInvitation,
+  GuardianInvitationRedemption,
+  type GuardianInvitationId,
+  type GuardianInvitationStore,
+} from "@schoolos/identity-links";
+import { DurableObjectIdentityLinkStore } from "@schoolos/identity-links/durable-object-store";
 import { FundingAllocationRevision } from "./routes.ts";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, WorkshopUserLinkStore } from "./stores.ts";
 
@@ -94,6 +123,10 @@ export const DISTRICT_TABLES = {
   coursePages: "schoolos_course_pages",
   codexDocuments: "schoolos_codex_documents",
   toolApprovals: "schoolos_tool_approvals",
+  // Guardians (ADR-0012, SCHO-188)
+  guardianRelationships: "schoolos_guardian_relationships",
+  guardianRelationshipEvents: "schoolos_guardian_relationship_events",
+  guardianInvitations: "schoolos_guardian_invitations",
 } as const;
 
 /** Thrown when a stored row cannot be read. Nothing is decided on state that cannot be read. */
@@ -758,6 +791,142 @@ export class DurableObjectToolApprovalStore implements ToolApprovalStore {
   }
 }
 
+// Guardians (ADR-0012, SCHO-188)
+
+/**
+ * A {@link GuardianRelationshipStore} in a Durable Object's SQLite: one row per relationship, and
+ * an append-only table of its audit events. A commit checks the stored relationship is the one the
+ * caller planned against, writes it and appends its event, in one `transactionSync`.
+ */
+export class DurableObjectGuardianRelationshipStore implements GuardianRelationshipStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.guardianRelationships} (
+        id TEXT PRIMARY KEY, guardian_id TEXT NOT NULL, student_id TEXT NOT NULL, relationship_json TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${DISTRICT_TABLES.guardianRelationships}_guardian ON ${DISTRICT_TABLES.guardianRelationships} (guardian_id)`,
+      `CREATE INDEX IF NOT EXISTS ${DISTRICT_TABLES.guardianRelationships}_student ON ${DISTRICT_TABLES.guardianRelationships} (student_id)`,
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.guardianRelationshipEvents} (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, relationship_id TEXT NOT NULL, event_json TEXT NOT NULL
+      )`,
+      `CREATE TRIGGER IF NOT EXISTS ${DISTRICT_TABLES.guardianRelationshipEvents}_no_update BEFORE UPDATE ON ${DISTRICT_TABLES.guardianRelationshipEvents}
+        BEGIN SELECT RAISE(ABORT, 'guardian relationship events are append-only'); END`,
+      `CREATE TRIGGER IF NOT EXISTS ${DISTRICT_TABLES.guardianRelationshipEvents}_no_delete BEFORE DELETE ON ${DISTRICT_TABLES.guardianRelationshipEvents}
+        BEGIN SELECT RAISE(ABORT, 'guardian relationship events are append-only'); END`,
+    ]);
+  }
+
+  async get(id: GuardianRelationshipId): Promise<GuardianRelationship | undefined> {
+    return this.#tables.transaction((sql) => this.#read(sql, id));
+  }
+
+  async listForGuardian(guardianPrincipalId: PrincipalId): Promise<GuardianRelationship[]> {
+    return this.#list("guardian_id", guardianPrincipalId);
+  }
+
+  async listForStudent(studentPrincipalId: PrincipalId): Promise<GuardianRelationship[]> {
+    return this.#list("student_id", studentPrincipalId);
+  }
+
+  async commit(next: GuardianRelationship, event: GuardianRelationshipAuditEvent, expected: GuardianRelationship | undefined): Promise<void> {
+    const checked = checkGuardianRelationshipCommit(next, event);
+    this.#tables.transaction((sql) => {
+      if (!sameGuardianRelationship(this.#read(sql, checked.relationship.id), expected)) throw new SchoolOsError("conflict", GUARDIAN_RELATIONSHIP_CONFLICT);
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.guardianRelationships} (id, guardian_id, student_id, relationship_json) VALUES (?, ?, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET guardian_id = excluded.guardian_id, student_id = excluded.student_id, relationship_json = excluded.relationship_json`,
+        checked.relationship.id,
+        checked.relationship.guardianPrincipalId,
+        checked.relationship.studentPrincipalId,
+        JSON.stringify(checked.relationship),
+      );
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.guardianRelationshipEvents} (relationship_id, event_json) VALUES (?, ?)`,
+        checked.relationship.id,
+        JSON.stringify(checked.event),
+      );
+    });
+  }
+
+  async history(id: GuardianRelationshipId): Promise<GuardianRelationshipAuditEvent[]> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`SELECT event_json FROM ${DISTRICT_TABLES.guardianRelationshipEvents} WHERE relationship_id = ? ORDER BY seq`, id).toArray()
+        .map((row) => parseStored(GuardianRelationshipAuditEvent, row.event_json, "a guardian relationship event"))
+    );
+  }
+
+  #list(column: "guardian_id" | "student_id", principalId: PrincipalId): GuardianRelationship[] {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`SELECT relationship_json FROM ${DISTRICT_TABLES.guardianRelationships} WHERE ${column} = ? ORDER BY id`, principalId).toArray()
+        .map((row) => parseStored(GuardianRelationship, row.relationship_json, "a guardian relationship"))
+    );
+  }
+
+  #read(sql: DistrictSqlStorage["sql"], id: string): GuardianRelationship | undefined {
+    const [row] = sql.exec(`SELECT relationship_json FROM ${DISTRICT_TABLES.guardianRelationships} WHERE id = ?`, id).toArray();
+    return row === undefined ? undefined : parseStored(GuardianRelationship, row.relationship_json, "a guardian relationship");
+  }
+}
+
+/**
+ * A {@link GuardianInvitationStore} in a Durable Object's SQLite: one row per invitation, found by
+ * its token's digest. A claim reads and writes the invitation in one `transactionSync`, so of two
+ * redemptions racing for one invitation exactly one claims it.
+ */
+export class DurableObjectGuardianInvitationStore implements GuardianInvitationStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.guardianInvitations} (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, token_digest TEXT NOT NULL UNIQUE, student_id TEXT NOT NULL, invitation_json TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${DISTRICT_TABLES.guardianInvitations}_student ON ${DISTRICT_TABLES.guardianInvitations} (student_id)`,
+    ]);
+  }
+
+  async findByTokenDigest(tokenDigest: string): Promise<GuardianInvitation | undefined> {
+    const [row] = this.#tables.transaction((sql) =>
+      sql.exec(`SELECT invitation_json FROM ${DISTRICT_TABLES.guardianInvitations} WHERE token_digest = ?`, tokenDigest).toArray()
+    );
+    return row === undefined ? undefined : parseStored(GuardianInvitation, row.invitation_json, "a guardian invitation");
+  }
+
+  async listForStudent(studentPrincipalId: PrincipalId): Promise<GuardianInvitation[]> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`SELECT invitation_json FROM ${DISTRICT_TABLES.guardianInvitations} WHERE student_id = ? ORDER BY seq`, studentPrincipalId).toArray()
+        .map((row) => parseStored(GuardianInvitation, row.invitation_json, "a guardian invitation"))
+    );
+  }
+
+  async add(invitation: GuardianInvitation): Promise<void> {
+    const parsed = GuardianInvitation.parse(invitation);
+    this.#tables.transaction((sql) =>
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.guardianInvitations} (id, token_digest, student_id, invitation_json) VALUES (?, ?, ?, ?)`,
+        parsed.id,
+        parsed.tokenDigest,
+        parsed.studentPrincipalId,
+        JSON.stringify(parsed),
+      )
+    );
+  }
+
+  async claim(id: GuardianInvitationId, redemption: GuardianInvitationRedemption): Promise<boolean> {
+    const redeemed = GuardianInvitationRedemption.parse(redemption);
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT invitation_json FROM ${DISTRICT_TABLES.guardianInvitations} WHERE id = ?`, id).toArray();
+      if (row === undefined) return false;
+      const invitation = parseStored(GuardianInvitation, row.invitation_json, "a guardian invitation");
+      if (invitation.redeemed !== undefined) return false;
+      sql.exec(`UPDATE ${DISTRICT_TABLES.guardianInvitations} SET invitation_json = ? WHERE id = ?`, JSON.stringify(GuardianInvitation.parse({ ...invitation, redeemed })), id);
+      return true;
+    });
+  }
+}
+
 /**
  * Every store of one district in one Durable Object's SQLite storage. The directory is seeded with
  * `seed` the first time, and kept thereafter (see `DurableObjectAcademicStore.open`). Create them
@@ -765,8 +934,9 @@ export class DurableObjectToolApprovalStore implements ToolApprovalStore {
  * object is the one writer.
  */
 export function durableDistrictStores(storage: DistrictSqlStorage, seed: DistrictDirectorySnapshot): DistrictAppStores {
+  const directory = DurableObjectAcademicStore.open(storage, seed);
   return {
-    directory: DurableObjectAcademicStore.open(storage, seed),
+    directory,
     rosterSources: new DurableObjectRosterSourceStore(storage),
     workspaces: new DurableObjectWorkspaceStore(storage),
     artifactRecords: new DurableObjectArtifactRecordStore(storage),
@@ -784,5 +954,10 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     fundingAllocations: new DurableObjectFundingAllocationStore(storage),
     workshopUserLinks: new DurableObjectWorkshopUserLinkStore(storage),
     audit: new DurableObjectPolicyAuditSink(storage),
+    // Guardians (ADR-0012, SCHO-188). The identity-link log is named by the seed's district, which
+    // the stored directory is checked against when it opens.
+    guardianRelationships: new DurableObjectGuardianRelationshipStore(storage),
+    guardianInvitations: new DurableObjectGuardianInvitationStore(storage),
+    identityLinks: new DurableObjectIdentityLinkStore(storage, seed.district.id),
   };
 }

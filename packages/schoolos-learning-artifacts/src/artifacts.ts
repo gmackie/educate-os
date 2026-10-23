@@ -462,6 +462,12 @@ export class LearningArtifacts {
       }
       const principal = loaded.snapshot.principals.find((p) => p.id === grantee && p.districtId === artifact.districtId);
       if (principal === undefined || principal.kind === "service") throw notFound("principal", grantee);
+      // A guardian reads only their child's course records through a confirmed relationship
+      // (ADR-0012), and the policy engine would never let a share reach one; refusing here keeps a
+      // grant that can only ever be dead out of the record.
+      if (principal.kind === "guardian") {
+        throw new SchoolOsError("validation-failed", "Learning work cannot be shared with a guardian.");
+      }
       if (principal.id === artifact.ownerPrincipalId) {
         throw new SchoolOsError("validation-failed", "An artifact cannot be shared with its owner.");
       }

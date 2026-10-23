@@ -60,6 +60,26 @@ describe("feedback", () => {
     await rejectsWith(assessment.getFeedback(P.nfAdmin, submissionId), "not-found");
   });
 
+  it("gives the student's view of released feedback to those who may read the student's feedback, and nothing unreleased", async () => {
+    const { assessment, assignment, submissionId } = await submitted();
+    await assessment.addComment(P.morganAgent, submissionId, { body: "AI: consider citing your lab data.", suggestedBy: AI });
+    await assessment.addComment(P.morgan, submissionId, { body: "Strong opening." });
+    const student = P.amara.principal.principalId;
+    // Unreleased, it is not there for anyone, the teacher included.
+    expect(await assessment.releasedFeedback(P.amara, assignment.id, student)).toEqual([]);
+    expect(await assessment.releasedFeedback(P.morgan, assignment.id, student)).toEqual([]);
+
+    await assessment.advanceFeedback(P.morgan, submissionId, "shared-with-student");
+    const studentView = await assessment.getFeedback(P.amara, submissionId);
+    expect(await assessment.releasedFeedback(P.amara, assignment.id, student)).toEqual([studentView]);
+    // A teacher asking for the student's view gets the student's view, without the suggestion.
+    expect(await assessment.releasedFeedback(P.morgan, assignment.id, student)).toEqual([studentView]);
+    // Another student, an administrator and a student with no submission see nothing.
+    expect(await assessment.releasedFeedback(P.elena, assignment.id, student)).toEqual([]);
+    expect(await assessment.releasedFeedback(P.nfAdmin, assignment.id, student)).toEqual([]);
+    expect(await assessment.releasedFeedback(P.amara, assignment.id, P.elena.principal.principalId)).toEqual([]);
+  });
+
   it("moves draft, shared-with-student, final, and never back; a final result is frozen", async () => {
     const { assessment, submissionId } = await submitted({ feedbackVisibility: "when-final" });
     await assessment.addComment(P.morgan, submissionId, { body: "Good." });

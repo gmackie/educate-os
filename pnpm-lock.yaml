@@ -1859,6 +1859,9 @@ importers:
       '@schoolos/identity':
         specifier: workspace:*
         version: link:../schoolos-identity
+      '@schoolos/identity-links':
+        specifier: workspace:*
+        version: link:../schoolos-identity-links
       '@schoolos/integrations':
         specifier: workspace:*
         version: link:../schoolos-integrations

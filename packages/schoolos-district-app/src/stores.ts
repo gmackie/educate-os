@@ -30,6 +30,8 @@ import { InMemoryCatalogMirrorStorage, type CatalogMirrorStorage } from "@school
 import { InMemoryLedgerStore, type LedgerStore } from "@schoolos/ai-governance";
 import { oneroster } from "@schoolos/integrations";
 import type { WorkshopUserLink } from "@schoolos/identity";
+import { InMemoryGuardianRelationshipStore, type GuardianRelationshipStore } from "@schoolos/policy";
+import { InMemoryGuardianInvitationStore, InMemoryIdentityLinkStore, type GuardianInvitationStore, type IdentityLinkStore } from "@schoolos/identity-links";
 import type { FundingAllocationRevision } from "./routes.ts";
 
 /**
@@ -195,6 +197,13 @@ export interface DistrictAppStores {
   workshopUserLinks: WorkshopUserLinkStore;
   /** The policy decision audit trail (A02). Every decision every service makes lands here. */
   audit: PolicyAuditSink;
+  // Guardians (ADR-0012, SCHO-188)
+  /** Guardian relationships and their change history. */
+  guardianRelationships: GuardianRelationshipStore;
+  /** Single-use guardian invitations. */
+  guardianInvitations: GuardianInvitationStore;
+  /** Pending identity links and Workshop user adoptions (ADR-0003, SCHO-38), which guardian sign-ins wait in. */
+  identityLinks: IdentityLinkStore;
 }
 
 /** In-memory stores for one district, seeded with its directory. */
@@ -218,5 +227,9 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     fundingAllocations: new InMemoryFundingAllocationStore(),
     workshopUserLinks: new InMemoryWorkshopUserLinkStore(),
     audit: new InMemoryPolicyAuditLog(),
+    // Guardians (ADR-0012, SCHO-188)
+    guardianRelationships: new InMemoryGuardianRelationshipStore(),
+    guardianInvitations: new InMemoryGuardianInvitationStore(),
+    identityLinks: new InMemoryIdentityLinkStore(directory.district.id),
   };
 }
