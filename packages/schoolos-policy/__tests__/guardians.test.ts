@@ -65,13 +65,24 @@ function relationship(id: string, guardian: PrincipalId, student: string, overri
   });
 }
 
+/** The audit event of recording `r`, as a district admin. */
+function recordedEvent(r: GuardianRelationship) {
+  return {
+    districtId: r.districtId,
+    actor: { principalId: P.nfAdmin.principalId },
+    action: "guardian-relationship.recorded" as const,
+    target: { relationshipId: r.id, guardianPrincipalId: r.guardianPrincipalId, studentPrincipalId: r.studentPrincipalId },
+    at: r.created.at,
+  };
+}
+
 const GINA_AMARA = relationship("grl_gina-amara", G.gina.principalId, "prn_nf-student-amara");
 const GUS_ELENA = relationship("grl_gus-elena", G.gus.principalId, "prn_nf-student-elena");
 
 /** An engine whose information point reads the given guardian relationships, at {@link NOW}. */
 async function guardians(relationships: GuardianRelationship[] = [GINA_AMARA, GUS_ELENA], snapshot: DistrictDirectorySnapshot = WITH_GUARDIANS) {
   const store = new InMemoryGuardianRelationshipStore();
-  for (const r of relationships) await store.put(r);
+  for (const r of relationships) await store.commit(r, recordedEvent(r), undefined);
   const directory = InMemoryAcademicStore.seeded(snapshot);
   const audit = new InMemoryPolicyAuditSink();
   const engine = new PolicyEngine({
