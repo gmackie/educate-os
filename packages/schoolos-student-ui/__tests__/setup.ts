@@ -57,3 +57,7 @@ Blob.prototype.arrayBuffer ??= function (this: Blob) {
 Blob.prototype.text ??= function (this: Blob) {
   return readBlob<string>((reader) => reader.readAsText(this));
 };
+if (globalThis.PointerEvent === undefined) {
+  // Base UI builds PointerEvents when a switch is activated (the settings screen's email switches).
+  globalThis.PointerEvent = class PointerEvent extends MouseEvent {} as typeof globalThis.PointerEvent;
+}

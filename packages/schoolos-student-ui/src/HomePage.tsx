@@ -6,6 +6,7 @@ import { groupCourses, type CourseEntry } from "./courses.ts";
 import { ErrorState } from "./ErrorState.tsx";
 import { LoadingSkeleton } from "./LoadingSkeleton.tsx";
 import { PrivacyNote } from "./PrivacyNote.tsx";
+import { RecentAnnouncements } from "./communication/RecentAnnouncements.tsx";
 
 const CourseList = ({ courses, past }: { courses: CourseEntry[]; past: boolean }) => (
   <ul className="grid gap-3 sm:grid-cols-2">
@@ -33,6 +34,8 @@ export const HomePage = () => {
       <Text variant="heading" size="lg" as="h1">
         Hi, {me.displayName}
       </Text>
+
+      <RecentAnnouncements />
 
       <section aria-labelledby="my-courses" className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">

@@ -41,3 +41,11 @@ export type GradeMarker = NonNullable<GradeSummary["row"]["cells"][number]["mark
 export type CourseOutline = RouteResponse<"student.listModules">["outline"];
 /** One published module of a class. */
 export type CourseModule = CourseOutline["modules"][number];
+/** A class announcement, with its class's name (SCHO-189). */
+export type AnnouncementView = RouteResponse<"student.announcements">[number];
+/** One of the student's notifications (SCHO-189). */
+export type NotificationView = RouteResponse<"me.notifications">["notifications"][number];
+/** One event on the student's calendar (SCHO-189). */
+export type CalendarEvent = RouteResponse<"me.calendar">["events"][number];
+/** The student's email preferences (SCHO-189). */
+export type Preferences = RouteResponse<"me.preferences">;
