@@ -296,8 +296,13 @@ function previewObservability(config: StagingConfig): ObservabilityConfig {
   };
 }
 
-// How the backend calls gatekeepers: the GatekeeperVendor RPC entrypoint.
-function backendGatekeeperServices(gatekeepers: string[], baseUrl: string): PreviewService[] {
+/**
+ * How the backend calls gatekeepers: the GatekeeperVendor RPC entrypoint. Shared with the
+ * production-instance generator (scripts/production/production-config.ts), as are
+ * {@link routerServices} and {@link gatekeeperBaseUrl}: an instance is wired the same way whoever
+ * deploys it.
+ */
+export function backendGatekeeperServices(gatekeepers: string[], baseUrl: string): PreviewService[] {
   return gatekeepers.map((pkgName) => ({
     binding: gatekeeperBindingName(pkgName),
     service: pkgName,
@@ -310,13 +315,26 @@ function backendGatekeeperServices(gatekeepers: string[], baseUrl: string): Prev
   }));
 }
 
-// How the router calls gatekeepers: the default entrypoint, since it forwards whole HTTP
-// requests rather than making vendor RPC calls.
-function routerGatekeeperServices(gatekeepers: string[]): PreviewService[] {
-  return gatekeepers.map((pkgName) => ({
-    binding: gatekeeperBindingName(pkgName),
-    service: pkgName,
-  }));
+/**
+ * The router's service bindings: the backend, and every gatekeeper through its default entrypoint,
+ * since the router forwards whole HTTP requests rather than making vendor RPC calls.
+ */
+export function routerServices(gatekeepers: string[]): PreviewService[] {
+  return [
+    { binding: "WORKSHOP_BACKEND", service: "workshop-backend" },
+    ...gatekeepers.map((pkgName) => ({
+      binding: gatekeeperBindingName(pkgName),
+      service: pkgName,
+    })),
+  ];
+}
+
+/**
+ * A gatekeeper's BASE_URL: every gatekeeper is mounted under the router's origin, exactly as
+ * manifest-lib.ts templates it for real instances ($PUBLIC_BASE_URL/gatekeeper/<short>).
+ */
+export function gatekeeperBaseUrl(baseUrl: string, pkgName: string): string {
+  return `${baseUrl}/gatekeeper/${gatekeeperShortName(pkgName)}`;
 }
 
 function applyGatekeeper(
@@ -324,12 +342,7 @@ function applyGatekeeper(
   config: StagingConfig,
   { baseUrl }: PreviewContext,
 ): void {
-  config.vars = {
-    ...config.vars,
-    // Every gatekeeper is mounted under the router's origin, exactly as manifest-lib.ts
-    // templates it for real instances ($PUBLIC_BASE_URL/gatekeeper/<short>).
-    BASE_URL: `${baseUrl}/gatekeeper/${gatekeeperShortName(pkgName)}`,
-  };
+  config.vars = { ...config.vars, BASE_URL: gatekeeperBaseUrl(baseUrl, pkgName) };
   config.previews = {
     observability: previewObservability(config),
     vars: { ...config.vars },
@@ -403,10 +416,7 @@ function applyRouter(config: StagingConfig, { gatekeepers }: PreviewContext): vo
   // reached through it. See routerPreviewUrl.
   config.workers_dev = true;
   config.preview_urls = true;
-  config.services = [
-    { binding: "WORKSHOP_BACKEND", service: "workshop-backend" },
-    ...routerGatekeeperServices(gatekeepers),
-  ];
+  config.services = routerServices(gatekeepers);
   config.previews = {
     observability: previewObservability(config),
     // Patched with preview_ids for the backend and every gatekeeper by preview.ts. Static
