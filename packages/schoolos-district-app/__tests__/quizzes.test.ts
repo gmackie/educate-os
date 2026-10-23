@@ -3,6 +3,7 @@
 // scores in one action, and only then does the gradebook show them.
 import { describe, expect, it } from "vitest";
 import type { QuizItemDraft } from "@schoolos/quizzes";
+import { writeZip } from "@schoolos/zip";
 import { bootDistrict, expectError, NF, RB, RIVERBEND, teacherSetsUpEssay, type TestDistrict } from "./support.ts";
 
 const ITEMS: QuizItemDraft[] = [
@@ -129,5 +130,46 @@ describe("quizzes over HTTP (SCHO-191)", () => {
     const riverbend = await bootDistrict(RIVERBEND);
     expectError(await riverbend.call(riverbend.tokenFor(RB.student), "student.listQuizzes", { params: { offeringId: NF.eng9 } }), 404, "not-found");
     expectError(await riverbend.call(riverbend.tokenFor(RB.teacher), "teacher.getQuiz", { params: { offeringId: NF.eng9, quizId: quiz.id } }), 404, "not-found");
+  });
+
+  it("imports a cartridge's QTI assessment as a draft quiz in its module, listing the items it could not carry", async () => {
+    const { district, rivera, assignment } = await classWithQuiz();
+    const text = (content: string) => new TextEncoder().encode(content);
+    const manifest = `<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="M1" xmlns="http://www.imsglobal.org/xsd/imsccv1p3/imscp_v1p1">
+  <metadata><schema>IMS Common Cartridge</schema><schemaversion>1.3.0</schemaversion></metadata>
+  <organizations><organization identifier="O1" structure="rooted-hierarchy"><item identifier="root">
+    <item identifier="W1"><title>Week 1</title><item identifier="Q1" identifierref="R1"><title>Check-in</title></item></item>
+  </item></organization></organizations>
+  <resources><resource identifier="R1" type="imsqti_test_xmlv3p0"><file href="qti/test.xml"/></resource></resources>
+</manifest>`;
+    const test = `<qti-assessment-test identifier="T" title="Poetry check-in"><qti-test-part identifier="P"><qti-assessment-section identifier="S" title="S">
+  <qti-assessment-item-ref identifier="tf" href="tf.xml"/><qti-assessment-item-ref identifier="order" href="order.xml"/>
+</qti-assessment-section></qti-test-part></qti-assessment-test>`;
+    const tf = `<qti-assessment-item identifier="tf" title="Sonnet"><qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="identifier"><qti-correct-response><qti-value>t</qti-value></qti-correct-response></qti-response-declaration>
+<qti-item-body><qti-choice-interaction response-identifier="RESPONSE" max-choices="1"><qti-prompt>A sonnet has fourteen lines.</qti-prompt><qti-simple-choice identifier="t">True</qti-simple-choice><qti-simple-choice identifier="f">False</qti-simple-choice></qti-choice-interaction></qti-item-body></qti-assessment-item>`;
+    const order = `<qti-assessment-item identifier="order" title="Order"><qti-item-body><qti-order-interaction response-identifier="RESPONSE"><qti-simple-choice identifier="a">A</qti-simple-choice><qti-simple-choice identifier="b">B</qti-simple-choice></qti-order-interaction></qti-item-body></qti-assessment-item>`;
+    const bytes = await writeZip([
+      { path: "imsmanifest.xml", bytes: text(manifest) },
+      { path: "qti/test.xml", bytes: text(test) },
+      { path: "qti/tf.xml", bytes: text(tf) },
+      { path: "qti/order.xml", bytes: text(order) },
+    ]);
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    const upload = { fileName: "poetry.imscc", base64: btoa(binary) };
+    const preview = await district.ok(rivera, "teacher.previewCartridge", { params: { offeringId: NF.eng9 }, body: upload });
+    expect(preview.modules).toEqual([{ title: "Week 1", items: [], quizzes: [{ title: "Poetry check-in", questions: 1 }] }]);
+    expect(preview.skipped).toEqual([{ identifier: "Q1/order", reason: "unsupported-qti-item", type: "orderInteraction" }]);
+    const imported = await district.ok(rivera, "teacher.importCartridge", { params: { offeringId: NF.eng9 }, body: { ...upload, packageDigest: preview.packageDigest } });
+    expect(imported.quizzes).toMatchObject([{ title: "Poetry check-in", status: "draft", moduleId: imported.modules[0]!.id, items: [{ type: "true-false", correct: true }], source: { kind: "cartridge", identifier: "Q1" } }]);
+    // A draft until the teacher binds it to an assignment and publishes it; students see nothing yet.
+    const quizId = imported.quizzes![0]!.id;
+    expect((await district.ok(district.tokenFor(NF.amara), "student.listQuizzes", { params: { offeringId: NF.eng9 } })).map((q) => q.id)).not.toContain(quizId);
+    await district.ok(rivera, "teacher.updateQuiz", { params: { offeringId: NF.eng9, quizId }, body: { assignmentId: assignment.id } });
+    expect((await district.ok(rivera, "teacher.publishQuiz", { params: { offeringId: NF.eng9, quizId }, body: { published: true } })).status).toBe("published");
+    // An export says the quiz stayed behind: cartridges carry no quizzes yet.
+    const exported = await district.ok(rivera, "teacher.exportCartridge", { params: { offeringId: NF.eng9 } });
+    expect(exported.losses).toContainEqual({ kind: "quiz", module: imported.modules[0]!.id, item: quizId });
   });
 });

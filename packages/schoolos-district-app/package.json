@@ -36,6 +36,7 @@
   "devDependencies": {
     "@gadgets/scripts": "workspace:*",
     "@schoolos/fixtures": "workspace:*",
+    "@schoolos/zip": "workspace:*",
     "@types/node": "26.1.0",
     "vitest": "catalog:"
   }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" identifier="extended" title="The turn" adaptive="false" time-dependent="false">
+  <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="string"/>
+  <qti-item-body>
+    <div><p>Read the poem.</p><ul><li>Note the volta.</li><li>Note the couplet.</li></ul></div>
+    <qti-extended-text-interaction response-identifier="RESPONSE">
+      <qti-prompt>Explain where the poem turns.</qti-prompt>
+    </qti-extended-text-interaction>
+  </qti-item-body>
+</qti-assessment-item>

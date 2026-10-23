@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" identifier="no-key" title="Survey" adaptive="false" timeDependent="false">
+  <responseDeclaration identifier="RESPONSE" cardinality="single" baseType="identifier"/>
+  <itemBody>
+    <choiceInteraction responseIdentifier="RESPONSE" maxChoices="1">
+      <prompt>How confident do you feel?</prompt>
+      <simpleChoice identifier="hi">Very</simpleChoice>
+      <simpleChoice identifier="lo">Not very</simpleChoice>
+    </choiceInteraction>
+  </itemBody>
+</assessmentItem>

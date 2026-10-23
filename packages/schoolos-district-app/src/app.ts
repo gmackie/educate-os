@@ -849,14 +849,15 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     },
     "teacher.reorderModuleItems": (ctx, { params, body }) => ctx.courseContent().reorderItems(ctx.subject, params.offeringId, params.moduleId, body),
     "teacher.previewCartridge": (ctx, { params, body }) => previewCourseCartridge(ctx.courseContent(), ctx.subject, params.offeringId, body.base64),
-    "teacher.importCartridge": (ctx, { params, body }) => importCourseCartridge(ctx.courseContent(), ctx.subject, { offeringId: params.offeringId, ...body }, ctx.discussions()),
+    "teacher.importCartridge": (ctx, { params, body }) => importCourseCartridge(ctx.courseContent(), ctx.subject, { offeringId: params.offeringId, ...body }, ctx.discussions(), ctx.quizzes()),
     "teacher.exportCartridge": async (ctx, { params }) => {
       const { view, outline } = await ctx.courseContent().outline(ctx.subject, params.offeringId);
       if (view !== "teacher") throw new SchoolOsError("forbidden", "Only the class's teachers can export its content.");
       const offering = ctx.snapshot.offerings.find((o) => o.id === params.offeringId)!;
       const course = ctx.snapshot.courses.find((c) => c.id === offering.courseId);
       const { topics } = await ctx.discussions().listTopics(ctx.subject, params.offeringId);
-      return exportCourseCartridge(outline, course?.title ?? "Course", offering.sectionName, topics.map((t) => t.topic));
+      const quizzes = await ctx.quizzes().listQuizzes(ctx.subject, params.offeringId);
+      return exportCourseCartridge(outline, course?.title ?? "Course", offering.sectionName, topics.map((t) => t.topic), quizzes.view === "staff" ? quizzes.quizzes.map((q) => q.quiz) : []);
     },
     "admin.authoring": async (ctx) => {
       await ctx.requireDistrict("list", "principal");

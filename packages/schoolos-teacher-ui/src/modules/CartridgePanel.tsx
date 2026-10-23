@@ -10,7 +10,11 @@ type Upload = { fileName: string; base64: string; preview: CartridgePreview };
 
 const SKIP_REASONS: Record<string, string> = {
   "lti-tool": "an external tool",
-  "unsupported-type": "a kind of content modules can't hold, such as a quiz or a file",
+  "unsupported-type": "a kind of content modules can't hold, such as a file or an older (QTI 1.2) quiz",
+  // Quizzes (SCHO-191)
+  "unsupported-qti-item": "a quiz question of a kind SchoolOS doesn't score, or one without an answer key",
+  "invalid-qti": "a quiz file SchoolOS couldn't read",
+  "quiz-without-items": "a quiz with no questions SchoolOS can score",
   "link-refused": "a link to an address SchoolOS won't open",
   "invalid-link": "a link with no usable address",
   "missing-resource": "something the package names but doesn't contain",
@@ -20,6 +24,16 @@ const SKIP_REASONS: Record<string, string> = {
 };
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
+
+/** What an export left behind: activities other systems can't run, and quizzes not written as QTI yet (SCHO-191). */
+const lossText = (losses: CartridgeExport["losses"]) => {
+  const activities = losses.filter((loss) => loss.kind === "activity").length;
+  const quizzes = losses.filter((loss) => loss.kind === "quiz").length;
+  return [
+    activities === 0 ? "" : `${activities} ${activities === 1 ? "activity" : "activities"} stayed behind: other systems can't run SchoolOS activities.`,
+    quizzes === 0 ? "" : `${quizzes} ${quizzes === 1 ? "quiz" : "quizzes"} stayed behind: cartridges don't carry SchoolOS quizzes yet.`,
+  ].filter((text) => text !== "").join(" ");
+};
 
 /**
  * Moving a class's content in and out as a Common Cartridge (.imscc), the format other learning
@@ -72,7 +86,11 @@ export const CartridgePanel = ({ offeringId, onImported }: { offeringId: string;
           <Text>{`${upload.fileName} would add ${plural(modules.length, "module")} with ${plural(modules.reduce((n, m) => n + m.items.length, 0), "item")}.`}</Text>
           <ul className="list-disc pl-6">
             {modules.map((module, index) => (
-              <li key={index}>{`${module.title}: ${[...module.items.map((item) => item.title), ...(module.discussions ?? []).map((topic) => `${topic.title} (discussion)`)].join(", ")}`}</li>
+              <li key={index}>{`${module.title}: ${[
+                ...module.items.map((item) => item.title),
+                ...(module.discussions ?? []).map((topic) => `${topic.title} (discussion)`),
+                ...(module.quizzes ?? []).map((quiz) => `${quiz.title} (quiz, ${plural(quiz.questions, "question")})`),
+              ].join(", ")}`}</li>
             ))}
           </ul>
           {upload.preview.skipped.length > 0 && (
@@ -96,7 +114,9 @@ export const CartridgePanel = ({ offeringId, onImported }: { offeringId: string;
                   });
                   setUpload(undefined);
                   const topics = result.topics?.length ?? 0;
-                  return `Imported ${plural(result.modules.length, "module")} as drafts${topics === 0 ? "" : `, with ${plural(topics, "discussion")}`}.`;
+                  const quizzes = result.quizzes?.length ?? 0;
+                  const extras = [topics === 0 ? "" : plural(topics, "discussion"), quizzes === 0 ? "" : `${quizzes} draft ${quizzes === 1 ? "quiz" : "quizzes"}`].filter((part) => part !== "");
+                  return `Imported ${plural(result.modules.length, "module")} as drafts${extras.length === 0 ? "" : `, with ${extras.join(" and ")}`}.`;
                 })}
             >
               {`Import ${plural(modules.length, "module")}`}
@@ -127,7 +147,7 @@ export const CartridgePanel = ({ offeringId, onImported }: { offeringId: string;
             <a href={`data:application/zip;base64,${exported.base64}`} download={exported.fileName}>{`Download ${exported.fileName}`}</a>
             {exported.losses.length > 0 && (
               <Text variant="secondary" size="sm" as="span">
-                {`${plural(exported.losses.length, "activity")} stayed behind: other systems can't run SchoolOS activities.`}
+                {lossText(exported.losses)}
               </Text>
             )}
           </div>

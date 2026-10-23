@@ -507,6 +507,8 @@ export const CartridgePreviewBody = z.strictObject({
     ])),
     /** The discussion topics that would be opened in the module, drafts with it (SCHO-190). */
     discussions: z.array(z.strictObject({ title: z.string(), characters: z.int().nonnegative() })).optional(),
+    /** The quizzes, from QTI assessments, that would be added to the module as drafts (SCHO-191). */
+    quizzes: z.array(z.strictObject({ title: z.string(), questions: z.int().nonnegative() })).optional(),
   })),
   /** Placements not carried, with why: tools, refused links, other resource types, unacceptable text. */
   skipped: z.array(z.strictObject({ identifier: z.string(), reason: z.string(), type: z.string().optional() })),
@@ -523,7 +525,7 @@ export const CartridgeExportBody = z.strictObject({
   fileName: z.string(),
   base64: z.string(),
   /** Items a cartridge cannot carry, such as SchoolOS activities, by module and item. */
-  losses: z.array(z.strictObject({ kind: z.enum(["activity"]), module: z.string(), item: z.string() })),
+  losses: z.array(z.strictObject({ kind: z.enum(["activity", "quiz"]), module: z.string(), item: z.string() })),
 });
 /** A cartridge export. */
 export type CartridgeExportBody = z.infer<typeof CartridgeExportBody>;
@@ -1094,6 +1096,8 @@ export const ROUTES = {
       modules: z.array(CourseModule),
       /** The discussion topics opened in the imported modules (SCHO-190). */
       topics: z.array(DiscussionTopic).optional(),
+      /** The draft quizzes added to the imported modules, from their QTI assessments (SCHO-191). */
+      quizzes: z.array(Quiz).optional(),
       preview: CartridgePreviewBody,
     }),
   }),

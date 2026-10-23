@@ -1930,6 +1930,9 @@ importers:
       '@schoolos/fixtures':
         specifier: workspace:*
         version: link:../schoolos-fixtures
+      '@schoolos/zip':
+        specifier: workspace:*
+        version: link:../schoolos-zip
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0

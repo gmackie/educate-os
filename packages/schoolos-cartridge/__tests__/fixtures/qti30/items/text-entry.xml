@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" identifier="text-entry" title="Alliteration" adaptive="false" time-dependent="false">
+  <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="string">
+    <qti-correct-response><qti-value>alliteration</qti-value></qti-correct-response>
+  </qti-response-declaration>
+  <qti-item-body>
+    <p>The repetition of initial consonant sounds is called <qti-text-entry-interaction response-identifier="RESPONSE"/>.</p>
+  </qti-item-body>
+</qti-assessment-item>

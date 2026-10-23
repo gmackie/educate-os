@@ -13,6 +13,8 @@ import {
 } from "@schoolos/cartridge";
 import { ContentTitle, ModuleLinkUrl, PageMarkdown, type CourseContentService, type CourseModule, type CourseOutline, type ImportedModule } from "@schoolos/curriculum";
 import { DiscussionMarkdown, type DiscussionService, type DiscussionTopic } from "@schoolos/discussions";
+// Quizzes (SCHO-191)
+import { QuizItemDraft, type Quiz, type QuizService } from "@schoolos/quizzes";
 import { MAX_CARTRIDGE_UPLOAD_BYTES, type CartridgeExportBody, type CartridgePreviewBody } from "./routes.ts";
 
 /**
@@ -22,6 +24,8 @@ import { MAX_CARTRIDGE_UPLOAD_BYTES, type CartridgeExportBody, type CartridgePre
 interface CheckedCartridge {
   modules: ImportedModule[];
   discussions: { module: number; identifier: string; title: string; prompt: string }[];
+  /** The QTI quizzes each module carries (SCHO-191), each item checked as a teacher's own would be. */
+  quizzes: { module: number; identifier: string; title: string; items: QuizItemDraft[] }[];
   preview: CartridgePreviewBody;
 }
 
@@ -43,6 +47,7 @@ function check(plan: CourseCartridgePlan): CheckedCartridge {
   const skipped: CartridgePreviewBody["skipped"] = plan.skipped.map((skip) => ({ ...skip }));
   const modules: ImportedModule[] = [];
   const discussions: CheckedCartridge["discussions"] = [];
+  const quizzes: CheckedCartridge["quizzes"] = [];
   for (const module of plan.modules) {
     const items = module.items.filter((item) => {
       const ok = ContentTitle.safeParse(item.title).success
@@ -56,23 +61,38 @@ function check(plan: CourseCartridgePlan): CheckedCartridge {
       if (!ok) skipped.push({ identifier: topic.identifier, reason: "not-acceptable" });
       return ok;
     });
-    if (items.length === 0 && topics.length === 0) continue;
+    // Quizzes (SCHO-191): each item is checked as a teacher's own item would be; a quiz with none left is skipped.
+    const moduleQuizzes = module.quizzes.flatMap((quiz) => {
+      const items = quiz.items.flatMap((item, index) => {
+        const parsed = QuizItemDraft.safeParse(item);
+        if (!parsed.success) skipped.push({ identifier: `${quiz.identifier}/${index + 1}`, reason: "not-acceptable" });
+        return parsed.success ? [parsed.data] : [];
+      });
+      const title = ContentTitle.safeParse(quiz.title).success ? quiz.title : "Imported quiz";
+      if (items.length === 0) skipped.push({ identifier: quiz.identifier, reason: "not-acceptable" });
+      return items.length === 0 ? [] : [{ identifier: quiz.identifier, title, items }];
+    });
+    if (items.length === 0 && topics.length === 0 && moduleQuizzes.length === 0) continue;
     for (const topic of topics) discussions.push({ module: modules.length, identifier: topic.identifier, title: topic.title, prompt: topic.prompt });
+    for (const quiz of moduleQuizzes) quizzes.push({ module: modules.length, ...quiz });
     const title = ContentTitle.safeParse(module.title).success ? module.title : "Imported module";
     modules.push({ title, items: items.map((item) => (item.kind === "page" ? { kind: "page", title: item.title, body: item.body } : { kind: "link", title: item.title, url: item.url })) });
   }
   return {
     modules,
     discussions,
+    quizzes,
     preview: {
       packageDigest: plan.packageDigest,
       title: plan.title,
       modules: modules.map((module, index) => {
         const topics = discussions.filter((topic) => topic.module === index).map((topic) => ({ title: topic.title, characters: topic.prompt.length }));
+        const moduleQuizzes = quizzes.filter((quiz) => quiz.module === index).map((quiz) => ({ title: quiz.title, questions: quiz.items.length }));
         return {
           title: module.title,
           items: module.items.map((item) => (item.kind === "page" ? { kind: "page", title: item.title, characters: item.body.length } : { kind: "link", title: item.title, url: item.url })),
           ...(topics.length === 0 ? {} : { discussions: topics }),
+          ...(moduleQuizzes.length === 0 ? {} : { quizzes: moduleQuizzes }),
         };
       }),
       skipped,
@@ -109,7 +129,8 @@ export async function importCourseCartridge(
   subject: VerifiedPrincipal,
   input: { offeringId: string; fileName: string; base64: string; packageDigest: string },
   discussions?: DiscussionService,
-): Promise<{ modules: CourseModule[]; topics: DiscussionTopic[]; preview: CartridgePreviewBody }> {
+  quizService?: QuizService,
+): Promise<{ modules: CourseModule[]; topics: DiscussionTopic[]; quizzes: Quiz[]; preview: CartridgePreviewBody }> {
   const checked = await readUpload(input.base64);
   if (checked.preview.packageDigest !== input.packageDigest) throw new SchoolOsError("conflict", "This is not the package you previewed; preview it again.");
   if (checked.modules.length === 0) throw new SchoolOsError("validation-failed", "The package holds no pages or links a module can store.");
@@ -126,21 +147,34 @@ export async function importCourseCartridge(
     prompt: topic.prompt,
     source: { kind: "cartridge", fileName: input.fileName, packageDigest: checked.preview.packageDigest, identifier: topic.identifier },
   })));
-  return { modules, topics, preview: checked.preview };
+  // Quizzes (SCHO-191): each goes into its module as a draft, for the teacher to bind to an
+  // assignment and publish.
+  const quizzes = quizService === undefined || checked.quizzes.length === 0 ? [] : await quizService.importQuizzes(subject, input.offeringId, checked.quizzes.map((quiz) => ({
+    moduleId: modules[quiz.module]!.id,
+    title: quiz.title,
+    items: quiz.items,
+    source: { kind: "cartridge" as const, fileName: input.fileName, packageDigest: checked.preview.packageDigest, identifier: quiz.identifier },
+  })));
+  return { modules, topics, quizzes, preview: checked.preview };
 }
 
 /**
  * Exports an offering's modules (drafts included: only staff can export) as a Common Cartridge
- * 1.3 package. Activities are SchoolOS assignments a cartridge cannot carry; each is listed.
+ * 1.3 package. Activities are SchoolOS assignments a cartridge cannot carry, and quizzes are not
+ * written as QTI yet (SCHO-191); each is listed.
  */
 export async function exportCourseCartridge(
   outline: CourseOutline,
   courseTitle: string,
   sectionName: string,
   topics: readonly DiscussionTopic[] = [],
+  quizzes: readonly Quiz[] = [],
 ): Promise<CartridgeExportBody> {
   const pages = new Map(outline.pages.map((page) => [page.id, page]));
   const losses: CartridgeExportBody["losses"] = [];
+  for (const quiz of quizzes) {
+    if (quiz.moduleId !== undefined && outline.modules.some((m) => m.id === quiz.moduleId)) losses.push({ kind: "quiz", module: quiz.moduleId, item: quiz.id });
+  }
   const course: CourseCartridgeExport = {
     title: `${courseTitle} (${sectionName})`,
     language: "en",

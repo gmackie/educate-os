@@ -13,3 +13,5 @@ export * from "./importer.ts";
 export * from "./tools.ts";
 export * from "./suggestions.ts";
 export * from "./course.ts";
+// Quizzes (SCHO-191)
+export * from "./qti.ts";
