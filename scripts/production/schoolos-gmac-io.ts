@@ -45,8 +45,6 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
     },
   },
   aiGuard: {
-    // Synthetic: legal review (SCHO-118) gates real students.
-    configPath: "deploy/schoolos-gmac-io/ai-guard-config.json",
     // The Hall Monitor Worker already deployed in the same account.
     hallMonitorService: "hall-monitor",
   },

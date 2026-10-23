@@ -1,8 +1,9 @@
-// The guard configuration the schoolos.gmac.io production instance runs with
-// (deploy/schoolos-gmac-io/ai-guard-config.json, inlined into its Wrangler config by
-// scripts/production/production-config.ts). Synthetic: one staff principal in a demo district, bound
-// statically to the instance admin's Cloudflare Access email, which is the Workshop user ID an
-// Access sign-in gets (workshop-backend's authenticateFromCfAccess).
+// The guard configuration the schoolos.gmac.io production instance runs with, as its public example
+// (deploy/schoolos-gmac-io/ai-guard-config.example.json). The deployed copy differs only in the
+// admin's Access email, and is the guard's AI_GUARD_CONFIG secret (see
+// docs/schoolos/runbooks/production-instance.md). Synthetic: one staff principal in a demo
+// district, bound statically to the admin's Access email, which is the Workshop user ID an Access
+// sign-in gets (workshop-backend's authenticateFromCfAccess).
 
 import { describe, expect, it } from "vitest";
 import { SUGGESTED_MODELS } from "@gadgets/workshop-shared/api";
@@ -11,16 +12,22 @@ import { readGuardConfig } from "../src/config.ts";
 import { StaticGuardContextResolver } from "../src/context.ts";
 import { ConfiguredGovernanceSource } from "../src/ledger-object.ts";
 import { estimateMaxUsdNano, rateFor } from "../src/pricing.ts";
-import demoConfig from "../../../deploy/schoolos-gmac-io/ai-guard-config.json";
+import demoConfig from "../../../deploy/schoolos-gmac-io/ai-guard-config.example.json";
 
-const ADMIN = "graham.mackie@gmail.com";
+const ADMIN = "admin@example.com";
 const text = JSON.stringify(demoConfig);
 const config = readGuardConfig(text);
 
 describe("schoolos.gmac.io demo guard config", () => {
-  it("fits in one Workers var", () => {
-    // Cloudflare limits a plain-text var to 5 KB.
+  it("fits in one Workers secret", () => {
+    // Cloudflare limits a secret, like a plain-text var, to 5 KB.
     expect(new TextEncoder().encode(text).byteLength).toBeLessThan(5000);
+  });
+
+  it("names Hall Monitor's built-in profiles", () => {
+    expect(Object.values(config.profiles).map((profile) => [profile.hallMonitorProfileId, profile.revision]))
+      .toEqual(expect.arrayContaining([["educator", "builtin-1"], ["student-6-8", "builtin-1"], ["student-9-12", "builtin-1"]]));
+    expect(Object.values(config.profiles).every((profile) => profile.revision === "builtin-1")).toBe(true);
   });
 
   it("binds the admin's Access email as a staff educator in a personal workspace", async () => {

@@ -5,8 +5,8 @@
   account (`c07a7e704db1808e1fff91bed2b1cd49`), deployed by ForgeGraph.
 - Configs: `packages/<worker>/wrangler.production.jsonc`, generated and committed.
 - Generator: `scripts/production/production-config.ts`. The instance's values are in
-  `scripts/production/schoolos-gmac-io.ts`, and the guard's configuration is in
-  `deploy/schoolos-gmac-io/ai-guard-config.json`.
+  `scripts/production/schoolos-gmac-io.ts`. The guard's configuration is the `AI_GUARD_CONFIG`
+  secret, whose public example is `deploy/schoolos-gmac-io/ai-guard-config.example.json`.
 
 The instance is synthetic. Its AI call guard serves a demo district with a single staff principal,
 and legal review (SCHO-118) must pass before any real student uses it.
@@ -33,9 +33,11 @@ gets `BASE_URL=https://schoolos.gmac.io/gatekeeper/<short>`.
 
 The guard reaches Hall Monitor by service binding, which it prefers over `HALL_MONITOR_URL`, so that
 var is not set. It signs its service tokens as `iss=schoolos`, `aud=hall-monitor`, for tenant
-`schoolos-gmacko-demo`. Hall Monitor must trust that issuer with the public half of the signing key,
-and must have the profiles the guard config names (`educator`, `k12-elementary`, `k12-middle` and
-`k12-high`, all at revision `r1`). The guard's optional AI Gateway log reader (`AI_GATEWAY_ACCOUNT_ID`,
+`schoolos-gmacko-demo`. Hall Monitor (hall-monitor.gmac.io, HM-12) trusts that issuer with the
+public half of the signing key (`kid` `schoolos-1`). The guard config names Hall Monitor's built-in
+profiles at revision `builtin-1`: `educator`, `student-9-12`, and `student-6-8` for both the 6-8 and
+K-5 audience classes (Hall Monitor has no younger profile and moderates younger bands under the
+stricter 6-8 one). The guard's optional AI Gateway log reader (`AI_GATEWAY_ACCOUNT_ID`,
 `AI_GATEWAY_ID`, `AI_GATEWAY_LOGS_TOKEN`) is left unset, so settlements are estimated, and the nightly
 reconciliation only records snapshots.
 
@@ -44,7 +46,12 @@ reconciliation only records snapshots.
 | Worker | Secret | ForgeGraph app |
 |---|---|---|
 | `workshop-backend` | `ADMINS` (a JSON array of Access emails), `CF_ACCESS_AUD`, `CF_ACCESS_ISS` | `school-os` |
-| `schoolos-ai-guard` | `HALL_MONITOR_SIGNING_KEY` (private Ed25519 or P-256 JWK, with a `kid`) | `schoolos-ai-guard` |
+| `schoolos-ai-guard` | `HALL_MONITOR_SIGNING_KEY` (private Ed25519 or P-256 JWK, with a `kid`), `AI_GUARD_CONFIG` (the example config with the admin's Access email in place of `admin@example.com`, minified) | `schoolos-ai-guard` |
+
+The guard is its own ForgeGraph app because ForgeGraph's `syncSecrets` copies every secret of a
+stage onto each target that sets it: in one app, the backend would also receive the guard's signing
+key. `AI_GUARD_CONFIG` is a secret rather than a var because it names the admin's Workshop user,
+and this repository is public.
 
 Setting the Access pair also closes password sign-in. The generator refuses to emit any of these
 names as a var.
@@ -55,7 +62,7 @@ Without a principal resolver bound, an Access sign-in's Workshop user ID is the 
 claim, verbatim (`authenticateFromCfAccess` in `workshop-backend/src/server.ts`, then
 `users.idFromName(email)`; the user's profile `id` is that email). The kernel sends this ID as
 `AiCallDescriptor.initiator.id`. A gadget's calls carry its owner's ID. So the guard config
-(`contextSource: "static"`) binds `graham.mackie@gmail.com` to `prn_gmacko-demo-admin`. That is an
+(`contextSource: "static"`) binds the admin's Access email to `prn_gmacko-demo-admin`. That is an
 `educator`-audience staff principal in the synthetic district `dst_gmacko-demo`, billed to a
 personal workspace. Its profile moderates input and proceeds if Hall Monitor is down; output is not
 moderated. Any other Workshop user is refused with `unknown_principal`. The match is exact, so if
@@ -105,14 +112,16 @@ deploy fails. Enable the product rather than editing the generated config.
 
 ## Changing the instance
 
-1. Edit `scripts/production/schoolos-gmac-io.ts` (resources, vars, gatekeepers) or
-   `deploy/schoolos-gmac-io/ai-guard-config.json`. A Worker's own bindings change in its
+1. Edit `scripts/production/schoolos-gmac-io.ts` (resources, vars, gatekeepers). For the guard
+   config, edit `deploy/schoolos-gmac-io/ai-guard-config.example.json`, then set the deployed copy
+   with the admin's email substituted:
+   `forge secret set AI_GUARD_CONFIG --stage production --stdin` for app `schoolos-ai-guard`. A Worker's own bindings change in its
    `cloudflare.config.ts`, as usual (`pnpm configs:generate` first).
 2. Run `pnpm production:configs` and commit the regenerated `wrangler.production.jsonc` files.
    `pnpm production:check`, which is part of `pnpm lint`, fails on drift. The generator fails
    closed in three cases: a Worker declares a KV or R2 binding the instance names no resource for,
    the instance names one the Worker does not declare, or a var has a secret's name.
-3. The guard config must stay under 5 KB, the limit for one Workers var. It must also parse with
+3. The guard config must stay under 5 KB, the limit for one Workers secret. It must also parse with
    `readGuardConfig`. `packages/schoolos-ai-guard/__tests__/demo-config.test.ts` checks both, and
    checks that every suggested Workers AI model is priced.
 4. Check each config with

@@ -45,10 +45,7 @@ const HEADER =
   "// Change scripts/production/ (or the package's cloudflare.config.ts) and run " +
   "`pnpm production:configs`.\n";
 
-/**
- * Cloudflare's limit on one plain-text var. The guard's whole configuration is one var, so a demo
- * district that outgrows it fails here rather than at upload.
- */
+/** Cloudflare's limit on one plain-text var. */
 export const MAX_VAR_BYTES = 5000;
 
 /**
@@ -57,7 +54,7 @@ export const MAX_VAR_BYTES = 5000;
  * secret and a var cannot share a name), so it is refused.
  */
 const SECRET_NAMES = new Set([
-  "ADMINS", "CF_ACCESS_AUD", "CF_ACCESS_ISS", "CF_AI_GATEWAY_API_TOKEN", "HALL_MONITOR_SIGNING_KEY",
+  "ADMINS", "AI_GUARD_CONFIG", "CF_ACCESS_AUD", "CF_ACCESS_ISS", "CF_AI_GATEWAY_API_TOKEN", "HALL_MONITOR_SIGNING_KEY",
   "AI_GATEWAY_LOGS_TOKEN", "CLIENT_ID", "CLIENT_SECRET",
 ]);
 
@@ -75,10 +72,8 @@ export interface ProductionInstance {
   r2Buckets: Record<string, Record<string, string>>;
   /** Plain-text vars added to a package's own, by package. Never secrets. */
   vars: Record<string, Record<string, string>>;
-  /** The AI call guard. */
+  /** The AI call guard. Its `AI_GUARD_CONFIG` is a secret the deployer delivers. */
   aiGuard: {
-    /** Its `AI_GUARD_CONFIG`, a JSON file, relative to the repository root. */
-    configPath: string;
     /** The Worker the guard binds as `HALL_MONITOR`. */
     hallMonitorService: string;
   };
@@ -157,24 +152,16 @@ function withVars(
   }
 }
 
-/** The guard's `AI_GUARD_CONFIG` var: the JSON file, minified so it fits one var. */
-export function aiGuardConfigVar(text: string): string {
-  return JSON.stringify(JSON.parse(text));
-}
-
 /**
  * Build every package's production config. Pure: `packages` are the parsed wrangler.jsonc files
- * (the instance's own subset is picked from them), `aiGuardConfig` the text of the guard's config
- * file; the result maps package name to its config.
+ * (the instance's own subset is picked from them); the result maps package name to its config.
  */
 export function buildProductionConfigs({
   instance,
   packages,
-  aiGuardConfig,
 }: {
   instance: ProductionInstance;
   packages: readonly PackageConfig[];
-  aiGuardConfig: string;
 }): Map<string, ProductionConfig> {
   const baseUrl = `https://${instance.hostname}`;
   const gatekeepers = instance.gatekeepers.toSorted();
@@ -245,7 +232,7 @@ export function buildProductionConfigs({
       const hallMonitor: ServiceBinding =
           { binding: "HALL_MONITOR", service: instance.aiGuard.hallMonitorService };
       config.services = [...config.services ?? [], hallMonitor];
-      withVars(pkgName, config, { ...vars, AI_GUARD_CONFIG: aiGuardConfigVar(aiGuardConfig) });
+      withVars(pkgName, config, vars);
     } else {
       throw new Error(`cannot build a production config for package: ${pkgName}`);
     }
@@ -267,11 +254,7 @@ export function generateProductionConfigs(
   { check, instance = SCHOOLOS_GMAC_IO }: { check: boolean; instance?: ProductionInstance },
 ): string[] {
   const packages = readDeployablePackages(PACKAGES_DIR);
-  const configs = buildProductionConfigs({
-    instance,
-    packages,
-    aiGuardConfig: readFileSync(join(ROOT, instance.aiGuard.configPath), "utf8"),
-  });
+  const configs = buildProductionConfigs({ instance, packages });
   return [...configs].flatMap(([pkgName, config]) => {
     const pkg = packages.find((candidate) => candidate.name === pkgName)!;
     const path = join(pkg.dir, PRODUCTION_CONFIG_NAME);

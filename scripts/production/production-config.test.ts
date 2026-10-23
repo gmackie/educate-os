@@ -10,7 +10,7 @@ import { test } from "node:test";
 import { parse } from "jsonc-parser";
 import { AI_GUARD_DEV_MAIN, AI_GUARD_PACKAGE } from "../ai-guard-dev.ts";
 import { readDeployablePackages } from "../release/manifest-lib.ts";
-import { PACKAGES_DIR, ROOT } from "../preview/staging-config.ts";
+import { PACKAGES_DIR } from "../preview/staging-config.ts";
 import {
   PRODUCTION_CONFIG_NAME, buildProductionConfigs, generateProductionConfigs, productionPackageNames,
   renderProductionConfig, type ProductionConfig, type ProductionInstance,
@@ -18,11 +18,10 @@ import {
 import { SCHOOLOS_GMAC_IO } from "./schoolos-gmac-io.ts";
 
 const PACKAGES = readDeployablePackages(PACKAGES_DIR);
-const GUARD_CONFIG = readFileSync(join(ROOT, SCHOOLOS_GMAC_IO.aiGuard.configPath), "utf8");
 const BASE_URL = "https://schoolos.gmac.io";
 
 function build(instance: ProductionInstance = SCHOOLOS_GMAC_IO, packages = PACKAGES) {
-  return buildProductionConfigs({ instance, packages, aiGuardConfig: GUARD_CONFIG });
+  return buildProductionConfigs({ instance, packages });
 }
 
 function configFor(configs: Map<string, ProductionConfig>, pkgName: string): ProductionConfig {
@@ -116,11 +115,12 @@ test("the guard runs its production entrypoint and cron, reaching Hall Monitor b
   assert.deepEqual(guard.services, [{ binding: "HALL_MONITOR", service: "hall-monitor" }]);
   assert.equal(guard.vars?.HALL_MONITOR_URL, undefined, "the service binding is preferred");
   assert.equal(guard.vars?.HALL_MONITOR_ISSUER, "schoolos");
-  assert.deepEqual(JSON.parse(guard.vars?.AI_GUARD_CONFIG as string), JSON.parse(GUARD_CONFIG));
+  // A secret: it names the admin's Workshop user, and this repository is public.
+  assert.equal(guard.vars?.AI_GUARD_CONFIG, undefined);
 });
 
 test("no generated config carries a secret", () => {
-  const secrets = ["ADMINS", "CF_ACCESS_AUD", "CF_ACCESS_ISS", "HALL_MONITOR_SIGNING_KEY"];
+  const secrets = ["ADMINS", "AI_GUARD_CONFIG", "CF_ACCESS_AUD", "CF_ACCESS_ISS", "HALL_MONITOR_SIGNING_KEY"];
   for (const [pkgName, config] of build()) {
     for (const name of secrets) assert.equal(config.vars?.[name], undefined, `${pkgName} ${name}`);
   }
@@ -141,10 +141,3 @@ test("fails closed on a resource binding the instance does not name, or one it n
   assert.throws(() => build(stale), /names R2 bucket GONE/);
 });
 
-test("refuses a guard config that is not JSON, or too large for one var", () => {
-  assert.throws(() => buildProductionConfigs(
-      { instance: SCHOOLOS_GMAC_IO, packages: PACKAGES, aiGuardConfig: "{" }), SyntaxError);
-  const huge = JSON.stringify({ padding: "x".repeat(6000) });
-  assert.throws(() => buildProductionConfigs(
-      { instance: SCHOOLOS_GMAC_IO, packages: PACKAGES, aiGuardConfig: huge }), /var limit/);
-});
