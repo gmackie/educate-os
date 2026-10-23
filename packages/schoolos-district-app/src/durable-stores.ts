@@ -14,7 +14,7 @@
 // service Worker's D1 database or R2 bucket would need (SCHO-138), so revision content that would
 // be an R2 object is kept in chunked SQLite rows (`DurableObjectBlobBucket`).
 import { z } from "zod";
-import { ConfigurationRevision, SchoolOsError, type ActivityDefinitionId, type ActivityId, type ConfigRevisionId, type DistrictDirectorySnapshot } from "@schoolos/contracts";
+import { ConfigurationRevision, SchoolOsError, type ActivityDefinitionId, type ActivityId, type ConfigRevisionId, type DistrictDirectorySnapshot, type OfferingId } from "@schoolos/contracts";
 import { DurableObjectAcademicStore } from "@schoolos/academics/durable-object-store";
 import { DurableObjectWorkspaceStore } from "@schoolos/workspaces/durable-object-store";
 import {
@@ -39,9 +39,13 @@ import {
   ActivityDefinition,
   ActivityInstallation,
   codexCollectionKey,
+  CourseModule,
+  CourseOutline,
+  CoursePage,
   StudentCodex,
   type CodexPublication,
   type CodexPublisher,
+  type CourseContentStorage,
   type CurriculumStorage,
 } from "@schoolos/curriculum";
 import { DurableObjectCatalogMirrorStorage } from "@schoolos/catalog/durable-object-storage";
@@ -85,6 +89,9 @@ export const DISTRICT_TABLES = {
   definitions: "schoolos_curriculum_definitions",
   installations: "schoolos_curriculum_installations",
   codexCollections: "schoolos_codex_collections",
+  courseOutlines: "schoolos_course_outlines",
+  courseModules: "schoolos_course_modules",
+  coursePages: "schoolos_course_pages",
   codexDocuments: "schoolos_codex_documents",
   toolApprovals: "schoolos_tool_approvals",
 } as const;
@@ -612,6 +619,74 @@ export class DurableObjectCodexPublisher implements CodexPublisher {
 }
 
 /**
+ * {@link CourseContentStorage} in a Durable Object's SQLite (SCHO-186): per offering, a revision
+ * row, one row per module in order and one row per page, so no single value approaches SQLite's
+ * row limit. A commit checks the revision and replaces the offering's rows in one transaction.
+ */
+export class DurableObjectCourseContentStorage implements CourseContentStorage {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.courseOutlines} (offering_id TEXT PRIMARY KEY, revision INTEGER NOT NULL, updated_json TEXT)`,
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.courseModules} (
+        offering_id TEXT NOT NULL, position INTEGER NOT NULL, module_json TEXT NOT NULL, PRIMARY KEY (offering_id, position)
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.coursePages} (
+        offering_id TEXT NOT NULL, position INTEGER NOT NULL, page_json TEXT NOT NULL, PRIMARY KEY (offering_id, position)
+      )`,
+    ]);
+  }
+
+  async load(offeringId: OfferingId): Promise<CourseOutline | undefined> {
+    return this.#tables.transaction((sql) => this.#read(sql, offeringId));
+  }
+
+  async commit(outline: CourseOutline, expectedRevision: number): Promise<void> {
+    const parsed = CourseOutline.parse(outline);
+    this.#tables.transaction((sql) => {
+      if ((this.#read(sql, parsed.offeringId)?.revision ?? 0) !== expectedRevision) {
+        throw new SchoolOsError("conflict", "The course content changed while this request was in progress; reload it and try again.");
+      }
+      sql.exec(`DELETE FROM ${DISTRICT_TABLES.courseModules} WHERE offering_id = ?`, parsed.offeringId);
+      sql.exec(`DELETE FROM ${DISTRICT_TABLES.coursePages} WHERE offering_id = ?`, parsed.offeringId);
+      for (const [position, module] of parsed.modules.entries()) {
+        sql.exec(`INSERT INTO ${DISTRICT_TABLES.courseModules} (offering_id, position, module_json) VALUES (?, ?, ?)`, parsed.offeringId, position, JSON.stringify(module));
+      }
+      for (const [position, page] of parsed.pages.entries()) {
+        sql.exec(`INSERT INTO ${DISTRICT_TABLES.coursePages} (offering_id, position, page_json) VALUES (?, ?, ?)`, parsed.offeringId, position, JSON.stringify(page));
+      }
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.courseOutlines} (offering_id, revision, updated_json) VALUES (?, ?, ?)
+         ON CONFLICT (offering_id) DO UPDATE SET revision = excluded.revision, updated_json = excluded.updated_json`,
+        parsed.offeringId,
+        parsed.revision,
+        parsed.updated === undefined ? null : JSON.stringify(parsed.updated),
+      );
+    });
+  }
+
+  #read(sql: DistrictSqlStorage["sql"], offeringId: OfferingId): CourseOutline | undefined {
+    const [head] = sql.exec(`SELECT revision, updated_json FROM ${DISTRICT_TABLES.courseOutlines} WHERE offering_id = ?`, offeringId).toArray();
+    if (head === undefined) return undefined;
+    const what = `the course content of ${offeringId}`;
+    const modules = sql.exec(`SELECT position, module_json FROM ${DISTRICT_TABLES.courseModules} WHERE offering_id = ? ORDER BY position`, offeringId).toArray();
+    if (modules.some((row, i) => row.position !== i)) throw new DistrictStoreCorruptionError(`${what} is incomplete`);
+    const pages = sql.exec(`SELECT position, page_json FROM ${DISTRICT_TABLES.coursePages} WHERE offering_id = ? ORDER BY position`, offeringId).toArray();
+    if (pages.some((row, i) => row.position !== i)) throw new DistrictStoreCorruptionError(`${what} is incomplete`);
+    const parsed = CourseOutline.safeParse({
+      offeringId,
+      revision: head.revision,
+      modules: modules.map((row) => parseStored(CourseModule, row.module_json, what)),
+      pages: pages.map((row) => parseStored(CoursePage, row.page_json, what)),
+      ...(head.updated_json === null ? {} : { updated: JSON.parse(String(head.updated_json)) as unknown }),
+    });
+    if (!parsed.success) throw new DistrictStoreCorruptionError(`${what} does not match its schema`);
+    return parsed.data;
+  }
+}
+
+/**
  * A {@link ToolApprovalStore} in a Durable Object's SQLite: the queue of school tool calls waiting
  * for a person (SCHO-55). Each method is one transaction, so of two approvals racing for one
  * action exactly one transitions it.
@@ -702,6 +777,7 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     contentStudio: new DurableObjectContentStudioStorage(storage),
     curriculum: new DurableObjectCurriculumStorage(storage),
     codex: new DurableObjectCodexPublisher(storage),
+    courseContent: new DurableObjectCourseContentStorage(storage),
     catalog: new DurableObjectCatalogMirrorStorage(storage),
     ledger: new DurableObjectLedgerStore(storage),
     config: new DurableObjectConfigRevisionStore(storage),

@@ -18,7 +18,14 @@ import {
 import { InMemoryAssessmentRecordStore, type AssessmentRecordStore } from "@schoolos/assessment";
 import { InMemoryAssessmentRunStore, InMemoryRubricReleaseStore, type AssessmentRunStore, type RubricReleaseStore } from "@schoolos/assessment-ci";
 import { InMemoryContentStudioStorage, type ContentStudioStorage } from "@schoolos/content-studio";
-import { InMemoryCodexPublisher, InMemoryCurriculumStorage, type CodexPublisher, type CurriculumStorage } from "@schoolos/curriculum";
+import {
+  InMemoryCodexPublisher,
+  InMemoryCourseContentStorage,
+  InMemoryCurriculumStorage,
+  type CodexPublisher,
+  type CourseContentStorage,
+  type CurriculumStorage,
+} from "@schoolos/curriculum";
 import { InMemoryCatalogMirrorStorage, type CatalogMirrorStorage } from "@schoolos/catalog";
 import { InMemoryLedgerStore, type LedgerStore } from "@schoolos/ai-governance";
 import { oneroster } from "@schoolos/integrations";
@@ -174,6 +181,8 @@ export interface DistrictAppStores {
   curriculum: CurriculumStorage;
   /** Where published class Codex documents go (C05). */
   codex: CodexPublisher;
+  /** Each offering's modules and pages (SCHO-186). */
+  courseContent: CourseContentStorage;
   /** The district's framework catalog mirror (C02). */
   catalog: CatalogMirrorStorage;
   /** The AI spend ledger (G01). */
@@ -202,6 +211,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     contentStudio: new InMemoryContentStudioStorage(),
     curriculum: new InMemoryCurriculumStorage(),
     codex: new InMemoryCodexPublisher(),
+    courseContent: new InMemoryCourseContentStorage(),
     catalog: new InMemoryCatalogMirrorStorage(),
     ledger: new InMemoryLedgerStore(),
     config: new InMemoryConfigRevisionStore(),
