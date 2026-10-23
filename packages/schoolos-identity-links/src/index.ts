@@ -6,3 +6,4 @@ export * from "./log-index.ts";
 export * from "./store.ts";
 export * from "./recording.ts";
 export * from "./admin-service.ts";
+export * from "./guardian-invitations.ts";

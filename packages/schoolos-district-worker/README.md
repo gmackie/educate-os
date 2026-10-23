@@ -27,7 +27,9 @@ binding. It holds every `DistrictAppStores` member in its SQLite storage
 own Durable Object store, that store is used: workspaces, assessment records, CI runs, the Content
 Studio, the catalog mirror, the AI ledger and the policy audit trail. The academic directory uses
 `@schoolos/academics/durable-object-store`, which keeps the same rows and tables as
-`D1AcademicStore`. The rest are implemented in `durable-stores.ts`. All of them use prefixed table
+`D1AcademicStore`. Guardian relationships and invitations (SCHO-188) and the identity-link log
+(`@schoolos/identity-links/durable-object-store`) are kept there too. The rest are implemented in
+`durable-stores.ts`. All of them use prefixed table
 names, and each commits in its own `transactionSync`.
 
 - **Why one object.** Every store is optimistic: a commit names the version it was planned against.

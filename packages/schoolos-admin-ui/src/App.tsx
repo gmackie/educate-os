@@ -9,6 +9,7 @@ import { AiBudgetsPage } from "./budgets/AiBudgetsPage.tsx";
 import { ClassesAndPeoplePage } from "./classes/ClassesAndPeoplePage.tsx";
 import { ClassesPage } from "./classes/ClassesPage.tsx";
 import { Dashboard } from "./dashboard/Dashboard.tsx";
+import { GuardiansPage } from "./guardians/GuardiansPage.tsx";
 import { ModulesPage } from "./modules/ModulesPage.tsx";
 import { PoliciesPage } from "./policies/PoliciesPage.tsx";
 import { TermRolloverPage } from "./rollover/TermRolloverPage.tsx";
@@ -22,6 +23,7 @@ const Screen = ({ path }: { path: ScreenPath }) => {
     case "roster": return <RosterPage />;
     case "classes": return <ClassesPage />;
     case "classes-people": return <ClassesAndPeoplePage />;
+    case "guardians": return <GuardiansPage />;
     case "modules": return <ModulesPage state={config} />;
     case "policies": return <PoliciesPage state={config} />;
     case "ai-usage": return <AiUsagePage state={config} />;

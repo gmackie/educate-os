@@ -140,3 +140,27 @@ cannot assert a kind; it is read from the directory like everything else in a re
 - A guardian UI, and an announcements store and routes.
 - Pilot-gate rows for guardian isolation, once the routes exist to test over HTTP.
 - A policy-floor setting for guardian access to discussions, if districts want it.
+
+## Implementation (SCHO-188, guardian routes and UI)
+
+- **Store and service.** `GuardianRelationshipStore` keeps each relationship with an append-only
+  history of `GuardianRelationshipAuditEvent`s, written in the same commit, and refuses a commit
+  planned against a record that has since changed. `GuardianRelationships` (`@schoolos/policy`)
+  records, confirms, changes the scope of, suspends, resumes and revokes relationships, each decided
+  on a `guardian-relationship`. The district Worker's object holds the durable store
+  (`DurableObjectGuardianRelationshipStore`).
+- **Onboarding.** `GuardianInvitations` (`@schoolos/identity-links`) issues a single-use token
+  (only its digest is kept) with a `pending` relationship naming a reserved principal ID. Redeeming
+  it records a pending identity link whose `newPrincipal` makes approval create the guardian's
+  principal (`requestNewPrincipalLink` in `@schoolos/identity`); a sign-in that is already an
+  active guardian's joins the relationship instead. Email delivery waits for L5: the admin route
+  returns the link, with the token in its fragment, for the administrator to hand over.
+- **Routes.** The district app wires `guardianRelationships` into its information point. The
+  `guardian` surface lists a guardian's children, a child's classes, and one class's assignments
+  with the feedback released to the child (`AssessmentService.releasedFeedback`, the child's own
+  view) and official grades. The `onboarding` surface answers a verified sign-in with no principal
+  yet, for redeeming an invitation only. Admin routes manage relationships and decide sign-ins.
+- **Sharing.** Learning-artifacts refuses a guardian as a share grantee.
+- **Still to come.** Announcements (no store yet), a child's classes from completed enrollments
+  the child has left (the policy allows reading those grades; the routes list active enrollments
+  only), and pilot-gate rows for guardian isolation.

@@ -11,19 +11,35 @@ import {
   SchoolOsError,
   WorkshopUserId,
   type DistrictDirectorySnapshot,
-  type Principal,
   type VerifiedIdentity,
 } from "@schoolos/contracts";
 import { credentialMatchesPrincipal } from "./verified-identity.ts";
 
 /**
- * A request to link a new external identity to an existing principal. It changes nothing until a
- * district administrator approves it ({@link approveIdentityLink}), and approval re-checks it
- * against the directory as it is then, so a request that went stale while waiting cannot apply.
+ * The principal a link creates when it is approved, for a person who has no principal yet. Only a
+ * guardian is ever created this way (ADR-0012): students and staff come from the roster, and a
+ * service principal is set up by an administrator. Its ID is chosen when the request is made, so a
+ * guardian relationship recorded in the meantime can name it.
+ */
+export const NewPrincipal = z.strictObject({
+  kind: z.literal("guardian"),
+  displayName: z.string().trim().min(1).max(200),
+});
+/** A principal a link creates. */
+export type NewPrincipal = z.infer<typeof NewPrincipal>;
+
+/**
+ * A request to link a new external identity to a principal: an existing one, or, with
+ * `newPrincipal`, one its approval creates. It changes nothing until a district administrator
+ * approves it ({@link approveIdentityLink}), and approval re-checks it against the directory as it
+ * is then, so a request that went stale while waiting cannot apply.
  */
 export const PendingIdentityLink = z.strictObject({
   districtId: DistrictId,
+  /** The principal the identity is linked to. With `newPrincipal`, the ID the approval creates it under. */
   principalId: PrincipalId,
+  /** Present when no principal exists yet and approving the link creates it (a guardian, ADR-0012). */
+  newPrincipal: NewPrincipal.optional(),
   identity: ExternalIdentity,
   /** The kind of credential the identity was verified from. It must suit the principal's kind. */
   credential: CredentialKind,
@@ -92,21 +108,23 @@ function parseOrFail<T>(schema: z.ZodType<T>, value: unknown, what: string): T {
  */
 function checkLinkable(
   directory: DistrictDirectorySnapshot,
-  principalId: PrincipalId,
-  identity: ExternalIdentity,
-  credential: CredentialKind,
-): Principal {
+  link: Pick<PendingIdentityLink, "principalId" | "identity" | "credential" | "newPrincipal">,
+): void {
+  const { principalId, identity, credential } = link;
   const districtId = directory.district.id;
   if (identity.districtId !== districtId) {
     throw new SchoolOsError("forbidden", "The identity belongs to another district.");
   }
   const principal = directory.principals.find((p) => p.id === principalId);
-  if (principal === undefined) throw new SchoolOsError("not-found", "No such principal in this district.");
+  if (link.newPrincipal === undefined && principal === undefined) throw new SchoolOsError("not-found", "No such principal in this district.");
+  // A link that creates its principal must not take over one that exists under the chosen ID.
+  if (link.newPrincipal !== undefined && principal !== undefined) throw new SchoolOsError("conflict", "A principal with this ID already exists.");
   if (!directory.district.trustedIssuers.includes(identity.issuer)) {
     throw new SchoolOsError("forbidden", "This district does not trust the identity's issuer.");
   }
-  if (!credentialMatchesPrincipal(credential, principal.kind)) {
-    throw new SchoolOsError("validation-failed", `A ${credential} credential cannot be linked to a ${principal.kind} principal.`);
+  const kind = principal?.kind ?? link.newPrincipal!.kind;
+  if (!credentialMatchesPrincipal(credential, kind)) {
+    throw new SchoolOsError("validation-failed", `A ${credential} credential cannot be linked to a ${kind} principal.`);
   }
   const key = externalIdentityKey(identity);
   const owner = directory.principals.find((p) => p.externalIdentities.some((i) => externalIdentityKey(i) === key));
@@ -116,7 +134,6 @@ function checkLinkable(
       owner.id === principalId ? "The identity is already linked to this principal." : "The identity is already linked to another principal.",
     );
   }
-  return principal;
 }
 
 /** Throws unless `actorId` holds `district-admin` at district scope in `directory` at `at`. */
@@ -144,15 +161,47 @@ export function requestIdentityLink(directory: DistrictDirectorySnapshot, reques
     requestedAt: request.requestedAt,
     ...(request.workshopUserId === undefined ? {} : { workshopUserId: request.workshopUserId }),
   }, "link request");
-  checkLinkable(directory, pending.principalId, pending.identity, pending.credential);
+  checkLinkable(directory, pending);
+  return pending;
+}
+
+/** What a caller supplies to request a link that creates its principal. */
+export interface NewPrincipalLinkRequest {
+  /** The ID the principal is created under when the link is approved. No principal may hold it. */
+  principalId: PrincipalId;
+  /** The principal to create. */
+  newPrincipal: NewPrincipal;
+  /** The verified identity to link. Its district is the directory's. */
+  identity: VerifiedIdentity;
+  /** When the request was made, as an ISO 8601 date-time. */
+  requestedAt: string;
+}
+
+/**
+ * Records a request to link a verified identity to a principal that does not exist yet, which
+ * approving the link creates (a guardian's first sign-in, ADR-0012). Refuses as
+ * {@link requestIdentityLink} does, and also when a principal already holds `principalId`.
+ */
+export function requestNewPrincipalLink(directory: DistrictDirectorySnapshot, request: NewPrincipalLinkRequest): PendingIdentityLink {
+  requireIntact(directory);
+  const pending = parseOrFail(PendingIdentityLink, {
+    districtId: directory.district.id,
+    principalId: request.principalId,
+    newPrincipal: request.newPrincipal,
+    identity: { districtId: directory.district.id, issuer: request.identity.issuer, subject: request.identity.subject },
+    credential: request.identity.credential,
+    requestedAt: request.requestedAt,
+  }, "link request");
+  checkLinkable(directory, pending);
   return pending;
 }
 
 /**
  * Approves a pending link as `decision.actorId`, a district administrator. Every request check is
  * re-run against `directory` first, so this also refuses to take an identity that was linked to
- * someone else while the request waited. Returns a new snapshot (the input is not modified) and the
- * audit event.
+ * someone else while the request waited. A link with `newPrincipal` creates that principal, active
+ * and holding only this identity. Returns a new snapshot (the input is not modified) and the audit
+ * event.
  */
 export function approveIdentityLink(
   directory: DistrictDirectorySnapshot,
@@ -164,15 +213,24 @@ export function approveIdentityLink(
   const { actorId, decidedAt } = parseOrFail(IdentityLinkDecision, decision, "decision");
   if (pending.districtId !== directory.district.id) throw new SchoolOsError("not-found", "No such pending link in this district.");
   requireDistrictAdmin(directory, actorId, decidedAt);
-  checkLinkable(directory, pending.principalId, pending.identity, pending.credential);
+  checkLinkable(directory, pending);
 
   const next: DistrictDirectorySnapshot = {
     ...directory,
-    principals: directory.principals.map((p) =>
-      p.id === pending.principalId ? { ...p, externalIdentities: [...p.externalIdentities, pending.identity] } : p),
+    principals: pending.newPrincipal === undefined
+      ? directory.principals.map((p) =>
+        p.id === pending.principalId ? { ...p, externalIdentities: [...p.externalIdentities, pending.identity] } : p)
+      : [...directory.principals, {
+        id: pending.principalId,
+        districtId: directory.district.id,
+        kind: pending.newPrincipal.kind,
+        status: "active",
+        displayName: pending.newPrincipal.displayName,
+        externalIdentities: [pending.identity],
+      }],
   };
   if (checkDirectoryIntegrity(next).length > 0) {
-    // checkLinkable rules out every way a single added link could break integrity.
+    // checkLinkable rules out every way a single added link (or new principal) could break integrity.
     throw new Error("approving an identity link produced an inconsistent directory");
   }
   return { directory: next, event: auditEvent(directory, "identity-link.approved", actorId, pending, decidedAt) };

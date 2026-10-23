@@ -23,6 +23,7 @@
     "@schoolos/contracts": "workspace:*",
     "@schoolos/curriculum": "workspace:*",
     "@schoolos/identity": "workspace:*",
+    "@schoolos/identity-links": "workspace:*",
     "@schoolos/integrations": "workspace:*",
     "@schoolos/learning-artifacts": "workspace:*",
     "@schoolos/policy": "workspace:*",

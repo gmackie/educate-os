@@ -33,6 +33,10 @@ import type { DistrictAppStores } from "./stores.ts";
 import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
 import { exportCourseCartridge, importCourseCartridge, previewCourseCartridge } from "./course-authoring.ts";
+// Guardians (ADR-0012, SCHO-188)
+import { guardianRelationships, GuardianRelationships } from "@schoolos/policy";
+import { GuardianInvitations, IdentityLinkAdminService } from "@schoolos/identity-links";
+import { guardianHandlers, type GuardianRouteName } from "./guardians.ts";
 
 /**
  * Verifies a request's credential (a bearer token, a Cloudflare Access assertion) and returns the
@@ -105,6 +109,13 @@ export interface DistrictAppOptions {
   rules?: readonly PolicyRule[];
   /** The clock. Defaults to the system clock. */
   now?: () => Date;
+  /**
+   * Where a guardian redeems an invitation: the family app's invitation page. The token is added
+   * as the URL's fragment, so it never reaches a server's logs. Defaults to `/family/invitation`
+   * on the request's origin. Email delivery is still to come (L5); until then the administrator
+   * hands the link over.
+   */
+  guardianInvitationPage?: string;
 }
 
 /** One district's running application. */
@@ -135,11 +146,12 @@ export interface DistrictApp {
 export const DEFAULT_AUTHORITY = ONEROSTER_AUTHORITY;
 
 /** Which principal kinds a surface answers. */
-const SURFACE_KINDS: Record<Surface, readonly ResolvedPrincipal["kind"][]> = {
-  me: ["student", "staff"],
+const SURFACE_KINDS: Record<Exclude<Surface, "onboarding">, readonly ResolvedPrincipal["kind"][]> = {
+  me: ["student", "staff", "guardian"],
   student: ["student"],
   teacher: ["staff"],
   admin: ["staff"],
+  guardian: ["guardian"],
 };
 
 /** Accepts a framework release only if it is byte-for-byte the catalog's own seed release. */
@@ -177,9 +189,13 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const registry = options.registry ?? SHIPPED_REGISTRY;
   const policySource = configPolicySource(stores.config, options.defaultPolicy ?? DEFAULT_POLICY_FLOOR);
   const engine = new PolicyEngine({
-    information: directoryPolicyInformation(stores.directory, policySource),
+    information: directoryPolicyInformation(stores.directory, policySource, {
+      relationships: [guardianRelationships(stores.guardianRelationships, stores.directory, now)],
+      now,
+    }),
     audit: stores.audit,
     rules: options.rules ?? DISTRICT_APP_RULES,
+    now,
   });
   const catalog = new CatalogMirror({ storage: stores.catalog, verifyRelease: options.verifyCatalogRelease ?? seedReleasesOnly });
   const alignments = options.alignments ?? catalogAlignmentSource(catalog);
@@ -218,11 +234,13 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     readonly caller: Caller;
     readonly decider: PolicyDecider;
     readonly authorizer: Authorizer;
+    readonly origin: string;
 
-    constructor(correlationId: string, principal: ResolvedPrincipal, snapshot: DistrictDirectorySnapshot) {
+    constructor(correlationId: string, principal: ResolvedPrincipal, snapshot: DistrictDirectorySnapshot, origin: string) {
       this.correlationId = correlationId;
       this.principal = principal;
       this.snapshot = snapshot;
+      this.origin = origin;
       this.caller = { principal: { principalId: principal.principalId, districtId: principal.districtId }, channel: "http" };
       this.decider = { decide: (request) => engine.decide(request, { correlationId }) };
       this.authorizer = { authorize: async (request) => (await this.decider.decide(request)).decision };
@@ -309,6 +327,19 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       });
     }
 
+    // Guardians (ADR-0012, SCHO-188)
+    guardianRelationships(): GuardianRelationships {
+      return new GuardianRelationships({ store: stores.guardianRelationships, directory: stores.directory, policy: this.decider, now });
+    }
+
+    guardianInvitations(): GuardianInvitations {
+      return guardianInvitationsFor(this.decider);
+    }
+
+    identityLinks(): IdentityLinkAdminService {
+      return new IdentityLinkAdminService({ store: stores.identityLinks, directory: stores.directory, policy: this.decider, now });
+    }
+
     /** The offering's full scope, from the directory. */
     offeringScope(offeringId: OfferingId): OfferingScope {
       const offering = this.snapshot.offerings.find((o) => o.id === offeringId);
@@ -361,7 +392,16 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     }
   }
 
-  type Handlers = { [N in RouteName]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
+  const guardianInvitationsFor = (decider: PolicyDecider) => new GuardianInvitations({
+    store: stores.guardianInvitations,
+    relationships: new GuardianRelationships({ store: stores.guardianRelationships, directory: stores.directory, policy: decider, now }),
+    relationshipStore: stores.guardianRelationships,
+    identityLinks: stores.identityLinks,
+    directory: stores.directory,
+    now,
+  });
+
+  type Handlers = { [N in Exclude<RouteName, GuardianRouteName | "onboarding.redeemGuardianInvitation">]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
 
   const handlers: Handlers = {
     "me.get": async (ctx) => {
@@ -718,6 +758,9 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     },
   };
 
+  // Guardians (ADR-0012, SCHO-188)
+  const guardianRoutes = guardianHandlers<RequestContext>({ stores, invitationPage: options.guardianInvitationPage, now });
+
   async function handle(request: Request, correlationId: string): Promise<Response> {
     const url = new URL(request.url);
     const matched = matchRoute(request.method, url.pathname);
@@ -725,20 +768,28 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
 
     const identity = await options.verifyRequest(request);
     if (identity === undefined) throw new SchoolOsError("unauthenticated", "Sign in with this district's identity provider.");
-    const { snapshot } = await stores.directory.load();
-    const principal = await resolverFor(snapshot).resolve(identity);
-    if (!SURFACE_KINDS[matched.spec.surface].includes(principal.kind)) {
-      throw new SchoolOsError("forbidden", "This part of SchoolOS is not available to your account.");
-    }
-
     const { spec } = matched;
-    const input = {
+    const parseInput = async () => ({
       params: spec.params === undefined ? undefined : parsePart("path", spec.params, matched.params),
       query: spec.query === undefined ? undefined : parsePart("query", spec.query, Object.fromEntries(url.searchParams)),
       body: spec.body === undefined ? undefined : parsePart("body", spec.body, await readJsonBody(request)),
-    };
-    const ctx = new RequestContext(correlationId, principal, snapshot);
-    const handler = handlers[matched.name] as (ctx: RequestContext, input: unknown) => Promise<unknown>;
+    });
+    // Onboarding answers a verified sign-in that is nobody's principal yet. Its one route only
+    // starts a request an administrator decides, so it needs no principal and grants nothing.
+    if (spec.surface === "onboarding") {
+      const { body } = await parseInput() as { body: { token: string } };
+      return jsonResponse(await guardianInvitationsFor(engine).redeem(identity, body.token), spec.status ?? 200, correlationId);
+    }
+
+    const { snapshot } = await stores.directory.load();
+    const principal = await resolverFor(snapshot).resolve(identity);
+    if (!SURFACE_KINDS[spec.surface].includes(principal.kind)) {
+      throw new SchoolOsError("forbidden", "This part of SchoolOS is not available to your account.");
+    }
+
+    const input = await parseInput();
+    const ctx = new RequestContext(correlationId, principal, snapshot, url.origin);
+    const handler = (handlers[matched.name as keyof Handlers] ?? guardianRoutes[matched.name as GuardianRouteName]) as (ctx: RequestContext, input: unknown) => Promise<unknown>;
     return jsonResponse(await handler(ctx, input), spec.status ?? 200, correlationId);
   }
 

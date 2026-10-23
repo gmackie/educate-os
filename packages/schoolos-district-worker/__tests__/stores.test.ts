@@ -10,7 +10,10 @@ import {
   DurableObjectArtifactRecordStore,
   DurableObjectBlobBucket,
   DurableObjectCourseContentStorage,
+  DISTRICT_TABLES,
   DurableObjectFundingAllocationStore,
+  DurableObjectGuardianInvitationStore,
+  DurableObjectGuardianRelationshipStore,
   DurableObjectToolApprovalStore,
   DurableObjectWorkshopUserLinkStore,
 } from "@schoolos/district-app/durable-stores";
@@ -188,6 +191,101 @@ describe("DurableObjectCourseContentStorage", () => {
       const store = new DurableObjectCourseContentStorage(state.storage);
       await expect(store.commit({ ...(outline(1, "<script>x</script>") as object), revision: 1 } as never, 0)).rejects.toThrow();
       expect(await store.load("off_nf-bio-fall-p2" as never)).toBeUndefined();
+    });
+  });
+});
+
+// Guardians (ADR-0012, SCHO-188)
+
+/** A guardian relationship of Amara's, in `status`. */
+const relationship = (status: "pending" | "active", guardian = "prn_nf-guardian-gina") => ({
+  id: "grl_gina-amara",
+  districtId: "dst_northfield",
+  guardianPrincipalId: guardian,
+  studentPrincipalId: "prn_nf-student-amara",
+  status,
+  readableKinds: ["offering", "activity", "feedback", "official-grade", "announcement"],
+  consent: "not-required",
+  validFrom: "2026-10-22T12:00:00.000Z",
+  created: { by: "prn_nf-district-admin", at: "2026-10-22T12:00:00.000Z" },
+  ...(status === "active" ? { confirmed: { by: "prn_nf-district-admin", at: "2026-10-22T13:00:00.000Z" } } : {}),
+}) as never;
+
+/** The audit event of `change` on {@link relationship}. */
+const event = (change: string, guardian = "prn_nf-guardian-gina") => ({
+  districtId: "dst_northfield",
+  actor: { principalId: "prn_nf-district-admin" },
+  action: `guardian-relationship.${change}`,
+  target: { relationshipId: "grl_gina-amara", guardianPrincipalId: guardian, studentPrincipalId: "prn_nf-student-amara" },
+  at: "2026-10-22T13:00:00.000Z",
+}) as never;
+
+describe("DurableObjectGuardianRelationshipStore", () => {
+  it("commits a change with its audit event only over the record it was planned against, and keeps both across a restart", async () => {
+    const object = fresh();
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectGuardianRelationshipStore(state.storage);
+      await store.commit(relationship("pending"), event("recorded"), undefined);
+      // A second "first" commit, and one planned against a record that has since changed, are refused.
+      await expect(store.commit(relationship("pending"), event("recorded"), undefined)).rejects.toMatchObject({ code: "conflict" });
+      await store.commit(relationship("active"), event("confirmed"), relationship("pending"));
+      await expect(store.commit(relationship("active"), event("confirmed"), relationship("pending"))).rejects.toMatchObject({ code: "conflict" });
+      // An event that names another relationship is refused before anything is written.
+      await expect(store.commit(relationship("active"), event("revoked", "prn_nf-guardian-gus"), relationship("active"))).rejects.toThrow();
+      // The history is append-only in storage, whatever writes to it.
+      expect(() => state.storage.sql.exec(`DELETE FROM ${DISTRICT_TABLES.guardianRelationshipEvents}`)).toThrow(/append-only/);
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectGuardianRelationshipStore(state.storage);
+      expect(await store.get("grl_gina-amara" as never)).toMatchObject({ status: "active" });
+      expect((await store.listForGuardian("prn_nf-guardian-gina" as never)).map((r) => r.id)).toEqual(["grl_gina-amara"]);
+      expect((await store.listForStudent("prn_nf-student-amara" as never)).map((r) => r.id)).toEqual(["grl_gina-amara"]);
+      expect(await store.listForGuardian("prn_nf-guardian-gus" as never)).toEqual([]);
+      expect((await store.history("grl_gina-amara" as never)).map((e) => e.action)).toEqual(["guardian-relationship.recorded", "guardian-relationship.confirmed"]);
+    });
+  });
+
+  it("refuses to decide on a stored relationship that no longer matches its schema", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = new DurableObjectGuardianRelationshipStore(state.storage);
+      await store.commit(relationship("pending"), event("recorded"), undefined);
+      state.storage.sql.exec(`UPDATE ${DISTRICT_TABLES.guardianRelationships} SET relationship_json = ?`, JSON.stringify({ status: "active" }));
+      await expect(store.listForGuardian("prn_nf-guardian-gina" as never)).rejects.toThrow(/schema/);
+    });
+  });
+});
+
+describe("DurableObjectGuardianInvitationStore", () => {
+  const invitation = {
+    id: "gin_00000000-0000-4000-8000-000000000001",
+    districtId: "dst_northfield",
+    studentPrincipalId: "prn_nf-student-amara",
+    relationshipId: "grl_gina-amara",
+    reservedGuardianPrincipalId: "prn_g-gina",
+    guardianDisplayName: "Gina Okafor",
+    tokenDigest: "a".repeat(64),
+    created: { by: "prn_nf-district-admin", at: "2026-10-22T12:00:00.000Z" },
+    expiresAt: "2026-10-29T12:00:00.000Z",
+  } as never;
+  const redemption = { at: "2026-10-23T12:00:00.000Z", outcome: "awaiting-approval", guardianPrincipalId: "prn_g-gina", requestId: "idr_one" } as never;
+
+  it("is found by its token's digest, and claimed exactly once, across a restart", async () => {
+    const object = fresh();
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectGuardianInvitationStore(state.storage);
+      await store.add(invitation);
+      await expect(store.add(invitation)).rejects.toThrow();
+      expect(await store.claim((invitation as { id: never }).id, redemption)).toBe(true);
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectGuardianInvitationStore(state.storage);
+      expect(await store.claim((invitation as { id: never }).id, redemption)).toBe(false);
+      expect(await store.claim("gin_00000000-0000-4000-8000-000000000002" as never, redemption)).toBe(false);
+      expect(await store.findByTokenDigest("a".repeat(64))).toMatchObject({ redeemed: { outcome: "awaiting-approval", requestId: "idr_one" } });
+      expect(await store.findByTokenDigest("b".repeat(64))).toBeUndefined();
+      expect((await store.listForStudent("prn_nf-student-amara" as never)).map((i) => i.id)).toEqual([(invitation as { id: string }).id]);
     });
   });
 });

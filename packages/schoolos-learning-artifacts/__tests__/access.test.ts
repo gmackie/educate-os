@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ArtifactId, PrincipalId, SubmissionId } from "@schoolos/contracts";
+import { NORTHFIELD } from "@schoolos/fixtures";
 import { essay, FLOOR, O, P, rejectsWith, setup } from "./setup.ts";
 
 /** Amara with a personal journal entry and a Biology essay. */
@@ -89,6 +90,25 @@ describe("sharing", () => {
     await rejectsWith(artifacts.readRevision(P.elena, journal.artifact.id), "not-found");
     await rejectsWith(artifacts.share(P.amara, journal.artifact.id, PrincipalId.parse("prn_nf-nobody")), "not-found");
     await rejectsWith(artifacts.share(P.amara, journal.artifact.id, P.amara.principal.principalId), "validation-failed");
+  });
+
+  it("refuses to share work with a guardian, even the student's own (ADR-0012)", async () => {
+    const guardianId = PrincipalId.parse("prn_nf-guardian-okafor");
+    const ctx = setup({
+      ...NORTHFIELD,
+      principals: [...NORTHFIELD.principals, {
+        id: guardianId,
+        districtId: NORTHFIELD.district.id,
+        kind: "guardian",
+        status: "active",
+        displayName: "Ngozi Okafor",
+        externalIdentities: [{ districtId: NORTHFIELD.district.id, issuer: NORTHFIELD.district.trustedIssuers[0]!, subject: "nf-guardian-okafor" }],
+      }],
+    });
+    const personal = await ctx.workspaces.ensurePersonalWorkspace(P.amara);
+    const journal = await ctx.artifacts.createArtifact(P.amara, essay(personal.id, "Private reflections.", "Journal"));
+    await rejectsWith(ctx.artifacts.share(P.amara, journal.artifact.id, guardianId), "validation-failed");
+    expect((await ctx.records.load()).state.shares).toEqual([]);
   });
 
   it("lets the grantee read shared personal work once the policy information point reads shares, under a sharing floor", async () => {

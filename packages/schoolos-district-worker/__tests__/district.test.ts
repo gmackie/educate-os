@@ -238,3 +238,32 @@ describe("the district Worker", () => {
     expect(await env.TOOLS.approveChange(admin!, approvalId)).toMatchObject({ status: "error" });
   });
 });
+
+// Guardians (ADR-0012, SCHO-188)
+describe("guardian onboarding in the district Worker", () => {
+  it("keeps an invitation, the guardian's sign-in request and the relationship across restarts, until the guardian reads their child's classes", async () => {
+    const admin = await signIn(NF.admin);
+    const invited = await ok(admin, "admin.inviteGuardian", { params: { studentId: NF.amara }, body: { guardianDisplayName: "Gina Okafor" } });
+    const token = new URLSearchParams(new URL(invited.invitationUrl).hash.slice(1)).get("invitation")!;
+    const gina = await assertion("access-gina-okafor");
+    expect(await ok(gina, "onboarding.redeemGuardianInvitation", { body: { token } })).toEqual({ outcome: "awaiting-approval" });
+
+    await evictDurableObject(district());
+    const { pendingSignIns } = await ok(admin, "admin.studentGuardians", { params: { studentId: NF.amara } });
+    expect(pendingSignIns).toHaveLength(1);
+    await ok(admin, "admin.approveIdentityRequest", { params: { requestId: pendingSignIns[0]!.requestId } });
+
+    await evictDurableObject(district());
+    await ok(admin, "admin.confirmGuardian", { params: { relationshipId: invited.relationship.id } });
+    // The spent invitation stays spent after a restart.
+    const spent = await SELF.fetch(request(await assertion("someone-else"), "onboarding.redeemGuardianInvitation", { body: { token } }));
+    expect({ status: spent.status, body: await spent.json() }).toMatchObject({ status: 404, body: { code: "not-found" } });
+
+    await evictDurableObject(district());
+    expect(await ok(gina, "me.get")).toMatchObject({ kind: "guardian", principalId: invited.invitation.reservedGuardianPrincipalId });
+    expect(await ok(gina, "guardian.listChildren")).toEqual([{ studentPrincipalId: NF.amara, displayName: "Amara Okafor" }]);
+    expect((await ok(gina, "guardian.childOfferings", { params: { studentId: NF.amara } })).map((o) => o.offering.id)).toContain(NF.eng9);
+    const course = await ok(gina, "guardian.childCourse", { params: { studentId: NF.amara, offeringId: NF.eng9 } });
+    expect(course.course.title).toBe("English 9");
+  });
+});
