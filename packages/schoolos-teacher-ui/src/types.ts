@@ -98,3 +98,21 @@ export type DiscussionPost = StaffThread["posts"][number];
 export type ModerationQueue = RouteResponse<"teacher.moderationQueue">;
 /** A teacher's decision on a post. */
 export type ModerationDecision = RouteInput<"teacher.moderatePost">["body"]["decision"];
+
+// Quizzes (SCHO-191).
+/** A class's quizzes as its teachers see them, with whether they may build them. */
+export type QuizListing = RouteResponse<"teacher.listQuizzes">;
+/** A quiz whole, answer keys included. */
+export type Quiz = RouteResponse<"teacher.getQuiz">;
+/** One quiz item, answer key included. */
+export type QuizItem = Quiz["items"][number];
+/** A quiz's settings. */
+export type QuizSettings = Quiz["settings"];
+/** An item as the builder sends it: its ID is assigned by the district when it has none. */
+export type QuizItemDraft = NonNullable<NonNullable<RouteInput<"teacher.updateQuiz">["body"]>["items"]>[number];
+/** A quiz's results: each student's attempts and score, item analysis and releases. */
+export type QuizResults = RouteResponse<"teacher.quizResults">;
+/** A student's attempt as its teachers grade it. */
+export type StaffAttempt = RouteResponse<"teacher.quizAttempt">;
+/** What releasing a quiz's scores did. */
+export type ReleaseOutcome = RouteResponse<"teacher.releaseQuizScores">;

@@ -59,3 +59,15 @@ export type DiscussionTopic = DiscussionListing["topics"][number]["topic"];
 export type DiscussionThread = RouteResponse<"student.discussionThread">;
 /** One post as a student reads it: with its text, or a placeholder for one withdrawn. */
 export type DiscussionPostView = DiscussionThread["posts"][number];
+
+// Quizzes (SCHO-191).
+/** A published quiz as a student sees it: its settings and their own attempts, never its questions. */
+export type QuizView = RouteResponse<"student.getQuiz">;
+/** An attempt in progress: its questions in this attempt's order, the saved answers, and the time. */
+export type QuizAttemptView = RouteResponse<"student.startQuizAttempt">;
+/** One question as the student taking the quiz sees it. No answer key. */
+export type QuizQuestion = QuizAttemptView["questions"][number];
+/** A response to one question. */
+export type QuizResponse = QuizAttemptView["answers"][number]["response"];
+/** A finished attempt as its student sees it. */
+export type QuizAttemptResult = RouteResponse<"student.quizAttemptResult">;

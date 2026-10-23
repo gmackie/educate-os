@@ -7,7 +7,7 @@ import { useAction } from "../modules/useAction.ts";
 import type { DiscussionPost, DiscussionTopic } from "../types.ts";
 import { PostActions } from "./PostActions.tsx";
 import { PostSummary } from "./PostSummary.tsx";
-import { useSteadyLoad } from "./useSteadyLoad.ts";
+import { useSteadyLoad } from "../useSteadyLoad.ts";
 
 interface Node {
   post: DiscussionPost;
