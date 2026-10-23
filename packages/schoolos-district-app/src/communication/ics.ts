@@ -18,8 +18,10 @@ export function escapeIcsText(value: string): string {
     .replace(/;/g, "\\;")
     .replace(/,/g, "\\,")
     .replace(/\r\n|\r|\n/g, "\\n")
-    // Other control characters are not allowed in TEXT.
-    .replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "");
+    // Other control characters (a tab aside) are not allowed in TEXT.
+    .split("")
+    .filter((char) => char === "\t" || (char >= " " && char !== "\u007f"))
+    .join("");
 }
 
 const encoder = new TextEncoder();

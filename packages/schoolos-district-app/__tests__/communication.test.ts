@@ -204,6 +204,7 @@ describe("calendar", () => {
     expect(await district.ok(amara, "me.revokeCalendarFeed")).toStrictEqual({ active: false });
     expect((await feed(rotated.path)).status).toBe(404);
     expect((await feed("/api/calendar/not-a-token.ics")).status).toBe(404);
+    expect((await feed("/api/calendar/%E0%A4%A.ics")).status).toBe(404);
     // The feed belongs to Amara alone: Elena's own feed shows her classes, not Amara's token.
     const elena = await district.ok(district.tokenFor(NF.elena), "me.rotateCalendarFeed");
     expect(elena.token).not.toBe(rotated.token);
@@ -283,23 +284,25 @@ describe("notifications", () => {
   });
 });
 
-describe("weekly family digest", () => {
-  async function digestDistrict(relationships: GuardianRelationship[]) {
-    const mail = new InMemoryMailSender();
-    const guardians = new InMemoryGuardianRelationshipStore();
-    for (const r of relationships) await guardians.put(r);
-    const { district, clock } = await boot({ mail, guardianRelationships: guardians, appUrl: "https://learn.northfield.example" });
-    const { assignment } = await teacherSetsUpEssay(district);
-    const rivera = district.tokenFor(NF.rivera);
-    // Due Thursday of the coming week.
-    await district.ok(rivera, "teacher.updateAssignment", { params: { assignmentId: assignment.id }, body: { dueAt: "2026-10-29T15:00:00Z" } });
-    await post(district, "Library <visit> & forms");
-    await post(district, "Next month's trip", { publishAt: "2026-11-20T12:00:00Z" });
-    await district.ok(rivera, "teacher.setWeeklyNote", { params: { offeringId: NF.eng9 }, body: { text: "Read chapters 1-3." } });
-    return { district, clock, mail, assignment, guardians };
-  }
-  const OKAFOR_AMARA = relationship("grl_okafor-amara", GUARDIAN.okafor, NF.amara);
+/** A district with mail, the given guardian relationships, and an essay due Thursday of the coming week. */
+async function digestDistrict(relationships: GuardianRelationship[]) {
+  const mail = new InMemoryMailSender();
+  const guardians = new InMemoryGuardianRelationshipStore();
+  for (const r of relationships) await guardians.put(r);
+  const { district, clock } = await boot({ mail, guardianRelationships: guardians, appUrl: "https://learn.northfield.example" });
+  const { assignment } = await teacherSetsUpEssay(district);
+  const rivera = district.tokenFor(NF.rivera);
+  // Due Thursday of the coming week.
+  await district.ok(rivera, "teacher.updateAssignment", { params: { assignmentId: assignment.id }, body: { dueAt: "2026-10-29T15:00:00Z" } });
+  await post(district, "Library <visit> & forms");
+  await post(district, "Next month's trip", { publishAt: "2026-11-20T12:00:00Z" });
+  await district.ok(rivera, "teacher.setWeeklyNote", { params: { offeringId: NF.eng9 }, body: { text: "Read chapters 1-3." } });
+  return { district, clock, mail, assignment, guardians };
+}
 
+const OKAFOR_AMARA = relationship("grl_okafor-amara", GUARDIAN.okafor, NF.amara);
+
+describe("weekly family digest", () => {
   it("tells a guardian their child's coming week from the child's own view, escaped, once per week", async () => {
     const { district, mail, assignment } = await digestDistrict([OKAFOR_AMARA]);
     // Amara and Elena submit; only Amara's feedback is released, and Elena's is not her guardian's business anyway.

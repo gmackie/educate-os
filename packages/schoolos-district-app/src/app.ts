@@ -469,7 +469,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     const match = /^\/api\/calendar\/([^/]+)\.ics$/.exec(new URL(request.url).pathname);
     if (match === null || request.method !== "GET") return undefined;
     const decider: PolicyDecider = { decide: (decision) => engine.decide(decision, { correlationId }) };
-    const ics = await communicationFor(decider).feedIcs(decodeURIComponent(match[1]!));
+    // A token is base64url, so it needs no decoding; anything else is simply not a token.
+    const ics = await communicationFor(decider).feedIcs(match[1]!);
     if (ics === undefined) throw new SchoolOsError("not-found", "No such calendar.");
     return new Response(ics, {
       status: 200,
