@@ -16,7 +16,7 @@ import { AcademicDirectory } from "@schoolos/academics";
 import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule } from "@schoolos/policy";
 import { RetentionPolicy, WorkspaceDirectory } from "@schoolos/workspaces";
 import { LearningArtifacts } from "@schoolos/learning-artifacts";
-import { AssessmentService } from "@schoolos/assessment";
+import { AssessmentService, type AssignmentId } from "@schoolos/assessment";
 import { catalogAlignmentSource, ContentStudio, type AlignmentSource, type ContentReviewer, type ImportFetch } from "@schoolos/content-studio";
 import { contentStudioReleases, CurriculumService, type AiHelpPolicySource, type OfferingScope } from "@schoolos/curriculum";
 import { CatalogMirror, catalogSeedRelease, type VerifyRelease } from "@schoolos/catalog";
@@ -26,10 +26,10 @@ import { oneroster } from "@schoolos/integrations";
 import { ArtifactsGitBackend, InMemoryCredentialLedger, ProjectArtifacts, type ArtifactsPlan } from "@schoolos/artifacts-git";
 import { AssessmentCi, AssessmentRuns, builtinRegistry, signRubricRelease, type EvaluatorRegistry } from "@schoolos/assessment-ci";
 import { changeAllocations, effectivePools } from "./funding.ts";
-import { applyRosterImport, contentBody, installAndAssign, keepArtifact, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
+import { applyRosterImport, contentBody, installAndAssign, keepArtifact, publishStarterMaterial, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
 import { errorResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
 import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./policy.ts";
-import { type ParsedRouteInput, type RouteName, type RouteResponse, type Surface } from "./routes.ts";
+import { type AssignmentViewBody, type ParsedRouteInput, type RouteName, type RouteResponse, type Surface } from "./routes.ts";
 import type { DistrictAppStores } from "./stores.ts";
 import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 
@@ -382,6 +382,11 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       return assigned;
     },
     "student.getActivity": (ctx, { params }) => ctx.curriculum().getActivity(ctx.subject, params.activityId),
+    "student.getAssignment": (ctx, { params }) => assignmentView(ctx.assessment(), ctx.caller, params.assignmentId),
+    "student.readStarterMaterial": async (ctx, { params }) => {
+      const { material: { content: _stored, ...material }, content } = await ctx.assessment().readStarterMaterial(ctx.caller, params.assignmentId, params.materialId);
+      return { material, content: contentBody(content) };
+    },
     "student.listArtifacts": (ctx, { params }) => ctx.artifacts().listArtifacts(ctx.caller, params.workspaceId),
     "student.createArtifact": (ctx, { body }) => ctx.artifacts().createArtifact(ctx.caller, body),
     "student.saveRevision": (ctx, { params, body }) => ctx.artifacts().saveRevision(ctx.caller, params.artifactId, body),
@@ -400,6 +405,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "student.submit": (ctx, { params, body }) => ctx.assessment().submit(ctx.caller, params.assignmentId, body.revisions),
     "student.listSubmissions": (ctx, { params }) => ctx.assessment().listSubmissions(ctx.caller, params.assignmentId),
     "student.getFeedback": (ctx, { params }) => ctx.assessment().getFeedback(ctx.caller, params.submissionId),
+    "student.withdrawSubmission": (ctx, { params }) => ctx.assessment().withdraw(ctx.caller, params.submissionId),
     "student.officialGrades": (ctx, { params }) =>
       ctx.assessment().officialGrades(ctx.caller, params.assignmentId, ctx.principal.principalId),
 
@@ -447,6 +453,18 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         settings: body.assignment,
       }),
     "teacher.listAssignments": (ctx, { params }) => ctx.assessment().listAssignments(ctx.caller, params.offeringId),
+    "teacher.getAssignment": (ctx, { params }) => assignmentView(ctx.assessment(), ctx.caller, params.assignmentId),
+    "teacher.updateAssignment": (ctx, { params, body: { dueAt, ...settings } }) =>
+      ctx.assessment().updateAssignment(ctx.caller, params.assignmentId, { ...settings, ...(dueAt === undefined ? {} : { dueAt: new Date(dueAt).toISOString() }) }),
+    "teacher.publishStarterMaterial": (ctx, { params, body }) =>
+      publishStarterMaterial({
+        artifacts: ctx.artifacts(),
+        workspaces: ctx.workspaces(),
+        assessment: ctx.assessment(),
+        caller: ctx.caller,
+        assignmentId: params.assignmentId,
+        ...body,
+      }),
     "teacher.getActivity": (ctx, { params }) => ctx.curriculum().getActivity(ctx.subject, params.activityId),
     "teacher.listSubmissions": (ctx, { params }) => ctx.assessment().listSubmissions(ctx.caller, params.assignmentId),
     "teacher.submittedContent": async (ctx, { params }) => {
@@ -469,6 +487,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       ctx.assessment().recordOfficialGrade(ctx.caller, { submissionId: params.submissionId, score: body.score }),
     "teacher.pendingGrades": (ctx, { params }) => ctx.assessment().pendingGradeProposals(ctx.caller, params.assignmentId),
     "teacher.approveGrade": (ctx, { params }) => ctx.assessment().approveGradeProposal(ctx.caller, params.proposalId),
+    "teacher.declineGradeProposal": (ctx, { params, body }) => ctx.assessment().declineGradeProposal(ctx.caller, params.proposalId, body.reason),
 
     // Admin
     "admin.health": async (ctx) => {
@@ -503,6 +522,19 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         config: { ...(head === undefined ? {} : { headRevisionId: head.id }), revisions: revisions.length },
         aiRequests: (await ledger.usageEvents()).length,
       };
+    },
+    "admin.listOfferings": async (ctx) => {
+      await ctx.requireDistrict("list", "offering");
+      const offerings = await ctx.academics().listOfferings(ctx.caller);
+      return offerings.flatMap((offering) => {
+        const course = ctx.snapshot.courses.find((c) => c.id === offering.courseId);
+        if (course === undefined) return [];
+        const active = ctx.snapshot.enrollments.filter((e) => e.offeringId === offering.id && e.status === "active");
+        const teachers = active
+          .filter((e) => e.role !== "student")
+          .map((e) => ctx.snapshot.principals.find((p) => p.id === e.principalId)?.displayName ?? "");
+        return [{ offering, course, teachers, students: active.filter((e) => e.role === "student").length }];
+      });
     },
     "admin.previewRoster": async (ctx, { body }) => {
       await ctx.requireDistrict("update", "enrollment");
@@ -653,4 +685,10 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       }
     },
   };
+}
+
+/** An assignment and its starter material, without where the material's content is stored. */
+async function assignmentView(assessment: AssessmentService, caller: Caller, assignmentId: AssignmentId): Promise<AssignmentViewBody> {
+  const { assignment, starterMaterials } = await assessment.getAssignment(caller, assignmentId);
+  return { assignment, starterMaterials: starterMaterials.map(({ content: _stored, ...material }) => material) };
 }

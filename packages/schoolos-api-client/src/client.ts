@@ -8,7 +8,9 @@ import {
   type RouteSpec,
 } from "@schoolos/district-app/routes";
 
-export type { RouteInput, RouteName, RouteResponse } from "@schoolos/district-app/routes";
+export type { RouteInput, RouteName, RouteResponse, UploadMediaType } from "@schoolos/district-app/routes";
+/** The file types and size a district accepts as uploaded work, so a UI can refuse a file before sending it. */
+export { MAX_UPLOAD_BYTES, UPLOAD_MEDIA_TYPES } from "@schoolos/district-app/routes";
 
 /** The header the district app returns each request's correlation ID in. */
 const CORRELATION_HEADER = "x-correlation-id";

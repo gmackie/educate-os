@@ -31,6 +31,17 @@ describe("the district API client", () => {
     expect(read.content).toStrictEqual({ kind: "text", text: "Hello" });
   });
 
+  it("uploads a file as base64 and reads the same bytes back", async () => {
+    const client = (await northfield())("token-nf-s-2001");
+    const workspace = await client.call("student.openCourseWorkspace", { params: { offeringId: "off_nf-eng9-fall-p3" } });
+    const base64 = btoa("%PDF-1.7\n%%EOF\n");
+    const created = await client.call("student.createArtifact", {
+      body: { workspaceId: workspace.id, type: "document", title: "Essay.pdf", content: { kind: "bytes", mediaType: "application/pdf", base64 } },
+    });
+    const read = await client.call("student.getArtifact", { params: { artifactId: created.artifact.id } });
+    expect(read).toMatchObject({ revision: { mediaType: "application/pdf" }, content: { kind: "bytes", base64 } });
+  });
+
   it("rejects with the server's error code, status and correlation ID", async () => {
     const connect = await northfield();
     await expect(connect().call("me.get")).rejects.toMatchObject({ name: "DistrictApiError", code: "unauthenticated", status: 401 });
