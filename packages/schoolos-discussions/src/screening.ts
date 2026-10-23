@@ -4,8 +4,22 @@
 //
 // Privacy: the post's text goes to Hall Monitor and nowhere else; what is kept of a screening is
 // its decision and machine reason codes.
-import { MAX_TEXT_LENGTH, OpaqueId, SCHEMA_VERSION, type Decision, type EvaluationRequest, type EvaluationResult, type GradeBand } from "@gmacko/hall-monitor-contracts";
+import type { Decision, EvaluationRequest, EvaluationResult, GradeBand } from "@gmacko/hall-monitor-contracts";
 import { z } from "zod";
+
+// Hall Monitor's contract values, copied rather than imported: the vendored contracts package ships
+// TypeScript sources, which Node refuses to strip under node_modules, so a value import would stop
+// the district app (and the harness CLI) from running outside a bundler. `screening.test.ts` keeps
+// the copies equal to the vendored package.
+
+/** Hall Monitor's evaluation request schema version. */
+export const SCHEMA_VERSION = "1.0" satisfies EvaluationRequest["schemaVersion"];
+
+/** The longest text Hall Monitor evaluates in one request. */
+export const MAX_TEXT_LENGTH = 32_000;
+
+/** Hall Monitor's opaque identifier: a restricted alphabet that keeps content out of ID fields. */
+export const OpaqueId = z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
 
 /**
  * How a district screens student posts: its Hall Monitor client, reached the way the AI call guard
