@@ -7,4 +7,5 @@ export * from "./engine.ts";
 export * from "./approvals.ts";
 export * from "./tools.ts";
 export * from "./grants.ts";
+export * from "./guardians.ts";
 export * from "./academics.ts";
