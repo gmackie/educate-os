@@ -11,7 +11,8 @@ export type Route =
   | { screen: "submissions"; offeringId: string; assignmentId?: string }
   | { screen: "review"; offeringId: string; assignmentId: string; submissionId: string }
   // Gradebook (SCHO-187)
-  | { screen: "gradebook"; offeringId: string };
+  | { screen: "gradebook"; offeringId: string }
+  | { screen: "announcements"; offeringId: string };
 
 /** The sections of a class, in navigation order. */
 export const CLASS_SECTIONS = [
@@ -22,6 +23,7 @@ export const CLASS_SECTIONS = [
   { screen: "submissions", label: "Submissions" },
   // Gradebook (SCHO-187)
   { screen: "gradebook", label: "Gradebook" },
+  { screen: "announcements", label: "Announcements" },
 ] as const;
 
 /** The hash a route lives at. */
@@ -34,6 +36,7 @@ export const routeHref = (route: Route): string => {
     case "resources":
     case "create":
     case "gradebook":
+    case "announcements":
       return `#/classes/${encodeURIComponent(route.offeringId)}/${route.screen}`;
     case "resource":
       return `#/classes/${encodeURIComponent(route.offeringId)}/resources/${encodeURIComponent(route.itemId)}`;
@@ -52,7 +55,7 @@ export const parseRoute = (hash: string): Route => {
   if (parts[0] !== "classes" || parts[1] === undefined) return { screen: "classes" };
   const offeringId = parts[1];
   const [section, id, child, childId] = parts.slice(2);
-  if (section === "roster" || section === "modules" || section === "create" || section === "gradebook") return { screen: section, offeringId };
+  if (section === "roster" || section === "modules" || section === "create" || section === "gradebook" || section === "announcements") return { screen: section, offeringId };
   if (section === "resources") return id === undefined ? { screen: "resources", offeringId } : { screen: "resource", offeringId, itemId: id };
   if (section === "submissions") return { screen: "submissions", offeringId };
   if (section === "assignments" && id !== undefined) {

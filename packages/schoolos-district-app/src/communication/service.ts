@@ -12,7 +12,6 @@ import {
   type OfferingId,
   type PrincipalId,
   type ResourceRef,
-  type VerifiedPrincipal,
 } from "@schoolos/contracts";
 import type { AcademicStore } from "@schoolos/academics";
 import type { AssessmentService, AssignmentBinding, AssignmentId, SubmissionSnapshot } from "@schoolos/assessment";

@@ -192,8 +192,33 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
       },
     ],
   };
+  // Communication (SCHO-189): the class's announcements and its note to families.
+  const announcements: { announcement: Body & { id: string; publishAt: string; deleted?: boolean }; courseLabel: string; published: boolean }[] = [];
+  let weeklyNote: Body | null = null;
 
   const handlers: Partial<Record<RouteName, (input: Input) => unknown>> = {
+    "teacher.listAnnouncements": () => announcements.filter((a) => a.announcement.deleted !== true).toReversed(),
+    "teacher.createAnnouncement": ({ params, body }) => {
+      const publishAt = typeof body!.publishAt === "string" ? body!.publishAt : NOW;
+      const entry = {
+        announcement: { id: next("ann"), districtId: IDS.district, offeringId: params!.offeringId!, title: body!.title, body: body!.body, publishAt, created: { by: IDS.teacher, at: NOW } },
+        courseLabel: "English 9 (Period 3)",
+        published: publishAt <= NOW,
+      };
+      announcements.push(entry);
+      return entry;
+    },
+    "teacher.deleteAnnouncement": ({ params }) => {
+      const entry = announcements.find((a) => a.announcement.id === params!.announcementId);
+      if (entry !== undefined) entry.announcement.deleted = true;
+      return { deleted: true };
+    },
+    "teacher.weeklyNote": () => ({ week: "2026-W44", note: weeklyNote }),
+    "teacher.setWeeklyNote": ({ body }) => {
+      const text = String(body!.text).trim();
+      weeklyNote = text === "" ? null : { offeringId: IDS.offering, week: "2026-W44", text, updated: { by: IDS.teacher, at: NOW } };
+      return { week: "2026-W44", note: weeklyNote };
+    },
     "me.get": () => ({ principalId: IDS.teacher, districtId: IDS.district, kind: "staff", displayName: "Sam Rivera", roles: [], enrollments: [] }),
     "teacher.listOfferings": () => options.offerings ?? [OFFERING],
     "teacher.roster": () => ROSTER,
