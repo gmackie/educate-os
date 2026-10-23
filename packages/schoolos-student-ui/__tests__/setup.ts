@@ -33,6 +33,11 @@ configure({
 setViewport("desktop");
 URL.createObjectURL = vi.fn(() => "blob:https://learn.northfield.example/object");
 URL.revokeObjectURL = vi.fn();
+if (globalThis.PointerEvent === undefined) {
+  // Base UI builds PointerEvents when a radio, switch or similar control is activated (discussion
+  // controls; the settings screen's email switches).
+  globalThis.PointerEvent = class PointerEvent extends MouseEvent {} as typeof globalThis.PointerEvent;
+}
 globalThis.ResizeObserver ??= class {
   observe() {}
   unobserve() {}
@@ -57,7 +62,3 @@ Blob.prototype.arrayBuffer ??= function (this: Blob) {
 Blob.prototype.text ??= function (this: Blob) {
   return readBlob<string>((reader) => reader.readAsText(this));
 };
-if (globalThis.PointerEvent === undefined) {
-  // Base UI builds PointerEvents when a switch is activated (the settings screen's email switches).
-  globalThis.PointerEvent = class PointerEvent extends MouseEvent {} as typeof globalThis.PointerEvent;
-}
