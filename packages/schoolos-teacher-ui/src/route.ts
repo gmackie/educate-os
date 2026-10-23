@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 export type Route =
   | { screen: "classes" }
   | { screen: "roster"; offeringId: string }
+  | { screen: "modules"; offeringId: string }
   | { screen: "resources"; offeringId: string }
   | { screen: "resource"; offeringId: string; itemId: string }
   | { screen: "create"; offeringId: string }
@@ -13,6 +14,7 @@ export type Route =
 /** The sections of a class, in navigation order. */
 export const CLASS_SECTIONS = [
   { screen: "roster", label: "Roster" },
+  { screen: "modules", label: "Modules" },
   { screen: "resources", label: "Resources" },
   { screen: "create", label: "Create activity" },
   { screen: "submissions", label: "Submissions" },
@@ -24,6 +26,7 @@ export const routeHref = (route: Route): string => {
     case "classes":
       return "#/";
     case "roster":
+    case "modules":
     case "resources":
     case "create":
       return `#/classes/${encodeURIComponent(route.offeringId)}/${route.screen}`;
@@ -44,7 +47,7 @@ export const parseRoute = (hash: string): Route => {
   if (parts[0] !== "classes" || parts[1] === undefined) return { screen: "classes" };
   const offeringId = parts[1];
   const [section, id, child, childId] = parts.slice(2);
-  if (section === "roster" || section === "create") return { screen: section, offeringId };
+  if (section === "roster" || section === "modules" || section === "create") return { screen: section, offeringId };
   if (section === "resources") return id === undefined ? { screen: "resources", offeringId } : { screen: "resource", offeringId, itemId: id };
   if (section === "submissions") return { screen: "submissions", offeringId };
   if (section === "assignments" && id !== undefined) {

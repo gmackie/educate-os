@@ -99,7 +99,7 @@ export interface FakeDistrict extends DistrictApiClient {
 }
 
 /** A Northfield student with an English and a science class this term and a finished art class. */
-export function fakeDistrict(options: { aiHelp?: "full" | "hints-only" | "none" } = {}): FakeDistrict {
+export function fakeDistrict(options: { aiHelp?: "full" | "hints-only" | "none"; modules?: Record<string, unknown> } = {}): FakeDistrict {
   let counter = 0;
   const next = (prefix: string) => `${prefix}_${(++counter).toString().padStart(4, "0")}`;
   const time = () => new Date(Date.parse(NOW) + counter * 60_000).toISOString();
@@ -181,6 +181,7 @@ export function fakeDistrict(options: { aiHelp?: "full" | "hints-only" | "none" 
       return found;
     },
     "student.listActivities": ({ params }) => activities[params.offeringId] ?? [],
+    "student.listModules": ({ params }) => ({ view: "student", outline: options.modules?.[params.offeringId] ?? { offeringId: params.offeringId, revision: 0, modules: [], pages: [] } }),
     "student.listArtifacts": ({ params }) => [...artifacts.values()].filter((s) => s.artifact.workspaceId === params.workspaceId).map(view),
     "student.createArtifact": ({ body }) => {
       const id = addArtifact(body.workspaceId, body.title, body.type, "text/plain", undefined);

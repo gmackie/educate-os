@@ -33,3 +33,7 @@ export type Submission = RouteResponse<"student.listSubmissions">[number];
 export type Feedback = RouteResponse<"student.getFeedback">;
 /** One version of the student's official grade for an assignment. */
 export type OfficialGrade = RouteResponse<"student.officialGrades">[number];
+/** A class's published modules and their pages, as a student sees them. */
+export type CourseOutline = RouteResponse<"student.listModules">["outline"];
+/** One published module of a class. */
+export type CourseModule = CourseOutline["modules"][number];

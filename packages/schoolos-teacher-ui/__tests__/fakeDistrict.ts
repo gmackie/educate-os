@@ -143,6 +143,21 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
     return record;
   };
   const LEVELS = { "none": 0, "hints-only": 1, "full": 2 } as const;
+  type Module = { id: string; title: string; published: boolean; items: Body[]; source?: Body };
+  const outline: { offeringId: string; revision: number; modules: Module[]; pages: Body[] } = { offeringId: IDS.offering, revision: 0, modules: [], pages: [] };
+  const moduleOf = (id: string | undefined) => outline.modules.find((m) => m.id === id)!;
+  const changed = <T>(value: T): T => {
+    outline.revision++;
+    return value;
+  };
+  const CARTRIDGE_PREVIEW = {
+    packageDigest: DIGEST,
+    title: "Ecosystems",
+    modules: [{ title: "Week 1: Producers", items: [{ kind: "page", title: "Plants", characters: 120 }, { kind: "link", title: "Photosynthesis", url: "https://open-lessons.example/photo" }] }],
+    skipped: [{ identifier: "I_TOOL", reason: "lti-tool" }],
+    flattened: [],
+    truncated: [],
+  };
 
   const handlers: Partial<Record<RouteName, (input: Input) => unknown>> = {
     "me.get": () => ({ principalId: IDS.teacher, districtId: IDS.district, kind: "staff", displayName: "Sam Rivera", roles: [], enrollments: [] }),
@@ -301,6 +316,60 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
       assignments[index] = updated;
       return updated;
     },
+    "teacher.listModules": () => ({ view: "teacher", outline }),
+    "teacher.createModule": ({ body }) => {
+      const module: Module = { id: next("cmod"), title: String(body!.title), published: false, items: [] };
+      outline.modules.push(module);
+      return changed(module);
+    },
+    "teacher.updateModule": ({ params, body }) => changed(Object.assign(moduleOf(params!.moduleId), body)),
+    "teacher.reorderModules": ({ body }) => {
+      outline.modules = (body!.moduleIds as string[]).map((id) => moduleOf(id));
+      return changed(outline);
+    },
+    "teacher.deleteModule": ({ params }) => {
+      outline.modules = outline.modules.filter((m) => m.id !== params!.moduleId);
+      return changed({ deleted: true });
+    },
+    "teacher.addPage": ({ params, body }) => {
+      const page = { id: next("cpg"), title: body!.title, body: body!.body };
+      const item = { kind: "page", id: next("cit"), pageId: page.id };
+      outline.pages.push(page);
+      moduleOf(params!.moduleId).items.push(item);
+      return changed({ page, item });
+    },
+    "teacher.updatePage": ({ params, body }) => changed(Object.assign(outline.pages.find((p) => p.id === params!.pageId)!, body)),
+    "teacher.placeActivity": ({ params, body }) => {
+      const item = { kind: "activity", id: next("cit"), activityId: body!.activityId };
+      moduleOf(params!.moduleId).items.push(item);
+      return changed(item);
+    },
+    "teacher.removeModuleItem": ({ params }) => {
+      const module = moduleOf(params!.moduleId);
+      module.items = module.items.filter((i) => i.id !== params!.itemId);
+      return changed({ removed: true });
+    },
+    "teacher.reorderModuleItems": ({ params, body }) => {
+      const module = moduleOf(params!.moduleId);
+      module.items = (body!.itemIds as string[]).map((id) => module.items.find((i) => i.id === id)!);
+      return changed(module);
+    },
+    "teacher.previewCartridge": () => CARTRIDGE_PREVIEW,
+    "teacher.importCartridge": () => {
+      const page = { id: next("cpg"), title: "Plants", body: "Plants make food." };
+      const module: Module = {
+        id: next("cmod"), title: "Week 1: Producers", published: false, source: { kind: "cartridge", fileName: "ecosystems.imscc", packageDigest: DIGEST },
+        items: [{ kind: "page", id: next("cit"), pageId: page.id }, { kind: "link", id: next("cit"), title: "Photosynthesis", url: "https://open-lessons.example/photo" }],
+      };
+      outline.pages.push(page);
+      outline.modules.push(module);
+      return changed({ modules: [module], preview: CARTRIDGE_PREVIEW });
+    },
+    "teacher.exportCartridge": () => ({
+      fileName: "english-9-period-3.imscc",
+      base64: "UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==",
+      losses: outline.modules.flatMap((m) => m.items.filter((i) => i.kind === "activity").map((i) => ({ kind: "activity", module: m.id, item: i.id }))),
+    }),
   };
 
   const client: DistrictApiClient = {
@@ -367,6 +436,7 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
     /** Signs a rubric directly, as an earlier session would have. */
     rubricFor: (key: string) => rubrics.get(key),
     assignments,
+    outline,
   };
 };
 
