@@ -191,6 +191,10 @@ describe("DurableObjectCourseContentStorage", () => {
       const store = new DurableObjectCourseContentStorage(state.storage);
       await expect(store.commit({ ...(outline(1, "<script>x</script>") as object), revision: 1 } as never, 0)).rejects.toThrow();
       expect(await store.load("off_nf-bio-fall-p2" as never)).toBeUndefined();
+    });
+  });
+});
+
 // Guardians (ADR-0012, SCHO-188)
 
 /** A guardian relationship of Amara's, in `status`. */
