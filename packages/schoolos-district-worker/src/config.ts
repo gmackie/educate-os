@@ -4,7 +4,8 @@
 // stores. Everything administrators change later (configuration, funding allocations, the roster)
 // is stored in the district's Durable Object, not here.
 import { z } from "zod";
-import { AuthorityMap, DistrictDirectorySnapshot } from "@schoolos/contracts";
+import { DistrictDirectorySnapshot } from "@schoolos/contracts";
+import { AuthoritySetting } from "@schoolos/district-app";
 import { CloudflareAccountFacts, FundingPoolSet, GovernedModel, UsdNano } from "@schoolos/ai-governance";
 import { RetentionPolicy } from "@schoolos/workspaces";
 
@@ -16,8 +17,13 @@ export const DistrictWorkerConfig = z.strictObject({
    * directory this is ignored, apart from the district's ID, which must still match it.
    */
   directory: DistrictDirectorySnapshot,
-  /** Which system owns each directory record type. Defaults to the OneRoster roster for every type. */
-  authority: AuthorityMap.optional(),
+  /**
+   * Which system owns each directory record type: `"oneroster"` (the default: the roster owns
+   * every type), `"local"` (SchoolOS owns every type, for a district with no roster, such as a
+   * homeschool co-op, whose administrators build classes through the admin API), or a full
+   * `AuthorityMap` for a mixed district.
+   */
+  authority: AuthoritySetting.optional(),
   /** The district's AI funding pools. Defaults to none, so no AI request is funded. */
   fundingPools: FundingPoolSet.optional(),
   /** The district's monthly cap on its course and personal pools' allocations together. */

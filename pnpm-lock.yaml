@@ -1838,6 +1838,9 @@ importers:
       '@schoolos/assessment-ci':
         specifier: workspace:*
         version: link:../schoolos-assessment-ci
+      '@schoolos/cartridge':
+        specifier: workspace:*
+        version: link:../schoolos-cartridge
       '@schoolos/catalog':
         specifier: workspace:*
         version: link:../schoolos-catalog
@@ -2750,9 +2753,6 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/portability':
-        specifier: workspace:*
-        version: link:../schoolos-portability
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
