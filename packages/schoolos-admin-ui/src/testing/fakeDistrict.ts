@@ -268,7 +268,16 @@ export interface FakeDistrictOptions {
   netEstimate?: boolean;
   /** Who owns the directory: the roster (the default) or SchoolOS, as for a co-op with no roster. */
   authority?: "oneroster" | "local";
+  /**
+   * Who is calling: a district administrator (the default), a person the school added who is not
+   * one, whom every admin route refuses, or a sign-in the school has not added, whom every route
+   * refuses with the sign-in to give an administrator.
+   */
+  caller?: "administrator" | "not-administrator" | "unlinked";
 }
+
+/** The sign-in an `unlinked` caller signed in with. */
+export const UNLINKED_SIGN_IN = { issuer: "https://fake.cloudflareaccess.com", subject: "a1b2c3-new-person" };
 
 const ISSUER = "https://fake.cloudflareaccess.com";
 
@@ -549,6 +558,12 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
     async call<N extends RouteName>(name: N, ...args: CallArgs<N>): Promise<RouteResponse<N>> {
       const input = (args[0] ?? {}) as Record<string, unknown>;
       calls.push({ name, input });
+      if (options.caller === "unlinked") {
+        throw new DistrictApiError(401, { code: "unauthenticated", message: "This sign-in is not linked to a principal in this district.", unlinkedSignIn: UNLINKED_SIGN_IN });
+      }
+      if (options.caller === "not-administrator" && name.startsWith("admin.")) {
+        throw new DistrictApiError(403, { code: "forbidden", message: "Only a district administrator can do this.", correlationId: "req-fake" });
+      }
       const handler = handlers[name] as ((input: Record<string, unknown>) => RouteResponse<N>) | undefined;
       if (handler === undefined) throw new DistrictApiError(404, { code: "not-found", message: `The fake district has no ${name}.` });
       // A structured copy, as JSON over the wire would be, so the console cannot share state with the fake.

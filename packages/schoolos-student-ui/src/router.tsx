@@ -10,6 +10,7 @@ import {
   useRouterState,
   type RouterHistory,
 } from "@tanstack/react-router";
+import { unlinkedSignInOf } from "@schoolos/api-client";
 import { useQuery } from "./api.tsx";
 import { ActivityPage } from "./activity/ActivityPage.tsx";
 import { CoursePage } from "./CoursePage.tsx";
@@ -19,6 +20,7 @@ import { HomePage } from "./HomePage.tsx";
 import { Layout } from "./Layout.tsx";
 import { LoadingSkeleton } from "./LoadingSkeleton.tsx";
 import { MySpacePage } from "./MySpacePage.tsx";
+import { NotAddedYet } from "./NotAddedYet.tsx";
 // Family view (ADR-0012, SCHO-188)
 import { ChildCoursePage } from "./family/ChildCoursePage.tsx";
 import { ChildPage } from "./family/ChildPage.tsx";
@@ -45,8 +47,11 @@ const isFamilyPath = (pathname: string) => pathname === "/family" || pathname.st
 const SignedIn = ({ pathname }: { pathname: string }) => {
   const [me] = useQuery("me", (api) => api.call("me.get"));
   const audience = me.status === "ready" ? (me.data.kind === "guardian" ? "family" : "student") : undefined;
+  const unlinked = me.status === "error" ? unlinkedSignInOf(me.error) : undefined;
   const content = me.status === "loading" ? (
     <LoadingSkeleton label="Opening your Learning Home" />
+  ) : unlinked !== undefined ? (
+    <NotAddedYet signIn={unlinked} />
   ) : me.status === "error" ? (
     <ErrorState error={me.error} title="We couldn't open your Learning Home" />
   ) : audience === "family" && !isFamilyPath(pathname) ? (

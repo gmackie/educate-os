@@ -67,7 +67,7 @@ export const ClassesPage = () => {
   });
   return (
     <div className="flex flex-col gap-6">
-      <Text as="h2" variant="heading" size="lg">Classes</Text>
+      <Text as="h2" variant="heading" size="lg">All classes</Text>
       <LoadState loaded={classes} what="the district's classes" onRetry={classes.reload}>
         {(data) => data.length === 0
           ? <Empty icon={<ChalkboardTeacher size={32} aria-hidden />} title="No classes yet" description="Classes appear here once a roster import adds them." />

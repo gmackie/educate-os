@@ -79,3 +79,47 @@ describe("the roster", () => {
     expect(document.body.textContent).not.toMatch(/personal|workspace|private/i);
   });
 });
+
+describe("someone the school has not added yet", () => {
+  const unlinked = {
+    status: 401,
+    body: {
+      code: "unauthenticated" as const,
+      message: "This sign-in is not linked to a principal in this district.",
+      correlationId: "req-7",
+      unlinkedSignIn: { issuer: "https://northfield.cloudflareaccess.com", subject: "a1b2c3-new-teacher" },
+    },
+  };
+  const notAdded = () => fakeDistrict({ failures: { "me.get": unlinked, "teacher.listOfferings": unlinked } });
+
+  it("sees that they are signed in, their sign-in ID, what to do with it, and a way to sign out", async () => {
+    await renderApp(notAdded().client, `#/classes/${IDS.offering}/roster`);
+    const heading = await onScreen("You're signed in, but you haven't been added to this school yet");
+    expect(document.activeElement).toBe(heading);
+    const id = screen.getByRole("group", { name: "Your sign-in ID" });
+    expect(id.textContent).toContain("a1b2c3-new-teacher");
+    expect(id.textContent).toContain("Signed in through northfield.cloudflareaccess.com");
+    expect(screen.getByRole("main").textContent).toContain("Send this ID to your school's administrator. They add you, then reload this page.");
+    expect(screen.getByRole("link", { name: "Sign out" }).getAttribute("href")).toBe("/cdn-cgi/access/logout");
+    // Neither the class screens nor the failed loads behind them.
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  it("copies the sign-in ID from the keyboard and announces it", async () => {
+    const user = await renderApp(notAdded().client);
+    const copy = await screen.findByRole("button", { name: "Copy your sign-in ID" });
+    while (document.activeElement !== copy) await user.tab();
+    await user.keyboard("{Enter}");
+    expect(await navigator.clipboard.readText()).toBe("a1b2c3-new-teacher");
+    await waitFor(() => expect([...document.querySelectorAll('[aria-live="polite"]')].some((region) => region.textContent === "Sign-in ID copied")).toBe(true));
+  });
+
+  it("is not shown for a sign-in that ended, which says to sign in again", async () => {
+    const ended = { status: 401, body: { code: "unauthenticated" as const, message: "Sign in with this district's identity provider." } };
+    await renderApp(fakeDistrict({ failures: { "me.get": ended, "teacher.listOfferings": ended } }).client);
+    expect((await screen.findByRole("alert")).textContent).toContain("Your sign-in has expired. Sign in again to continue.");
+    expect(screen.queryByRole("group", { name: "Your sign-in ID" })).toBeNull();
+  });
+});

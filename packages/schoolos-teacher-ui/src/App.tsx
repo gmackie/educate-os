@@ -1,8 +1,10 @@
 import { Text } from "@cloudflare/kumo";
 import { ChalkboardTeacher } from "@phosphor-icons/react";
+import { unlinkedSignInOf } from "@schoolos/api-client";
 import { AnnouncerProvider } from "./Announcer.tsx";
 import { ClassPage } from "./classes/ClassPage.tsx";
 import { MyClassesPage } from "./classes/MyClassesPage.tsx";
+import { NotAddedYet } from "./NotAddedYet.tsx";
 import { RubricShelfProvider } from "./activities/RubricShelf.tsx";
 import { routeHref, useRoute } from "./route.ts";
 import { useLoad } from "./useLoad.ts";
@@ -11,6 +13,7 @@ import { useLoad } from "./useLoad.ts";
 export const App = () => {
   const route = useRoute();
   const me = useLoad("me", (client) => client.call("me.get"));
+  const unlinked = me.status === "error" ? unlinkedSignInOf(me.error) : undefined;
   return (
     <AnnouncerProvider>
       <RubricShelfProvider>
@@ -28,7 +31,7 @@ export const App = () => {
           {me.status === "ready" && <Text variant="secondary" as="span">{me.data.displayName}</Text>}
         </header>
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl px-4 py-6 outline-none md:px-8">
-          {route.screen === "classes" ? <MyClassesPage /> : <ClassPage route={route} />}
+          {unlinked !== undefined ? <NotAddedYet signIn={unlinked} /> : route.screen === "classes" ? <MyClassesPage /> : <ClassPage route={route} />}
         </main>
       </RubricShelfProvider>
     </AnnouncerProvider>

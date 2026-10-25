@@ -79,8 +79,16 @@ interface StoredArtifact {
   contents: Map<string, unknown>;
 }
 
-/** A failure to inject: a district error by code, or a network failure. */
-export type InjectedFailure = { code: "unavailable" | "conflict" | "forbidden"; message?: string } | "network";
+/**
+ * A failure to inject: a district error by code, or a network failure. An `unauthenticated` one with
+ * `unlinkedSignIn` is a sign-in that verified but that the school has not added.
+ */
+export type InjectedFailure =
+  | { code: "unavailable" | "conflict" | "forbidden"; message?: string }
+  | { code: "unauthenticated"; message?: string; unlinkedSignIn?: { issuer: string; subject: string } }
+  | "network";
+
+const STATUS: Record<Exclude<InjectedFailure, "network">["code"], number> = { unavailable: 503, conflict: 409, forbidden: 403, unauthenticated: 401 };
 
 /** The fake district and its controls. */
 export interface FakeDistrict extends DistrictApiClient {
@@ -351,7 +359,7 @@ export function fakeDistrict(options: {
       if (failure !== undefined) {
         failures.delete(name);
         if (failure === "network") throw new TypeError("Failed to fetch");
-        throw new DistrictApiError(failure.code === "conflict" ? 409 : failure.code === "forbidden" ? 403 : 503, { code: failure.code, message: failure.message ?? "failed" });
+        throw new DistrictApiError(STATUS[failure.code], { ...failure, message: failure.message ?? "failed" });
       }
       const handler = handlers[name] as ((input: RouteInput<N>) => unknown) | undefined;
       if (handler === undefined) throw notFound(name);

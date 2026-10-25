@@ -1,4 +1,4 @@
-import { SchoolOsErrorBody, type ErrorCode } from "@schoolos/contracts";
+import { SchoolOsErrorBody, type ErrorCode, type UnlinkedSignIn } from "@schoolos/contracts";
 import {
   ROUTES,
   routePath,
@@ -9,6 +9,7 @@ import {
 } from "@schoolos/district-app/routes";
 
 export type { RouteInput, RouteName, RouteResponse, UploadMediaType } from "@schoolos/district-app/routes";
+export type { UnlinkedSignIn } from "@schoolos/contracts";
 /** The file types and size a district accepts as uploaded work, so a UI can refuse a file before sending it. */
 export { MAX_UPLOAD_BYTES, UPLOAD_MEDIA_TYPES } from "@schoolos/district-app/routes";
 
@@ -23,6 +24,12 @@ export class DistrictApiError extends Error {
   readonly status: number;
   /** The ID an administrator can find the request's audit entries by. */
   readonly correlationId: string | undefined;
+  /**
+   * The caller's own verified issuer and subject, when they signed in but no one in the district
+   * is linked to that sign-in (`unauthenticated` only), so a UI can show them what to give an
+   * administrator.
+   */
+  readonly unlinkedSignIn: UnlinkedSignIn | undefined;
 
   constructor(status: number, body: SchoolOsErrorBody) {
     super(body.message);
@@ -30,6 +37,7 @@ export class DistrictApiError extends Error {
     this.code = body.code;
     this.status = status;
     this.correlationId = body.correlationId;
+    this.unlinkedSignIn = body.unlinkedSignIn;
   }
 }
 
@@ -92,6 +100,14 @@ export function createDistrictApiClient(options: DistrictApiClientOptions): Dist
       return parsed.data as RouteResponse<N>;
     },
   };
+}
+
+/**
+ * The caller's own sign-in, when `error` says they signed in but the district has not added them,
+ * or undefined for any other failure.
+ */
+export function unlinkedSignInOf(error: unknown): UnlinkedSignIn | undefined {
+  return error instanceof DistrictApiError ? error.unlinkedSignIn : undefined;
 }
 
 function correlation(response: Response): { correlationId?: string } {

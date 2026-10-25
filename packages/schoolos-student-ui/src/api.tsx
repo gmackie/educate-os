@@ -1,5 +1,6 @@
 import { createContext, use, useEffect, useState, type ReactNode } from "react";
 import { DistrictApiError, type DistrictApiClient } from "@schoolos/api-client";
+import { behindAccess } from "./signIn.ts";
 
 const ApiContext = createContext<DistrictApiClient | null>(null);
 
@@ -61,8 +62,10 @@ export const isNotFound = (error: unknown): boolean => error instanceof District
 export const messageFor = (error: unknown): string => {
   if (!(error instanceof DistrictApiError)) return "We couldn't reach your school. Check your connection and try again.";
   switch (error.code) {
+    // Someone the school has not added yet is shown `NotAddedYet` instead; this is a sign-in that
+    // ended or did not verify. Behind Access, reloading signs in again; otherwise only a new link does.
     case "unauthenticated":
-      return "Your sign-in has ended. Open your sign-in link again.";
+      return behindAccess() ? "Your sign-in has ended. Reload this page to sign in again." : "Your sign-in has ended. Open your sign-in link again.";
     case "forbidden":
       return "You don't have access to this.";
     case "not-found":

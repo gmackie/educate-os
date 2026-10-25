@@ -17,7 +17,7 @@ export const ClassesAndPeoplePage = () => {
   const directory = useLoad("authoring", (client) => client.call("admin.authoring"));
   return (
     <div className="flex flex-col gap-8">
-      <Text as="h2" variant="heading" size="lg">Classes and people</Text>
+      <Text as="h2" variant="heading" size="lg">Manage classes and people</Text>
       <LoadState loaded={directory} what="classes and people" onRetry={directory.reload}>
         {(data) => {
           const external = (Object.entries(data.authority) as [DirectoryKind, string][]).filter(([, owner]) => owner !== "local");

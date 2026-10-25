@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { NORTHFIELD } from "@schoolos/fixtures";
 import { createDistrictApp, inMemoryDistrictStores } from "@schoolos/district-app";
-import { createDistrictApiClient, DistrictApiError } from "../src/index.ts";
+import { createDistrictApiClient, DistrictApiError, unlinkedSignInOf } from "../src/index.ts";
 
 /** A Northfield app whose IdP accepts `token-<subject>` and nothing else. */
 async function northfield() {
@@ -48,6 +48,17 @@ describe("the district API client", () => {
     const error = await connect("token-nf-s-2001").call("admin.health").catch((e: unknown) => e);
     expect(error).toBeInstanceOf(DistrictApiError);
     expect(error).toMatchObject({ code: "forbidden", status: 403, correlationId: expect.stringMatching(/^[0-9a-f-]{36}$/) });
+    expect((error as DistrictApiError).unlinkedSignIn).toBeUndefined();
+  });
+
+  it("carries the caller's own sign-in when it verified but is linked to nobody", async () => {
+    const connect = await northfield();
+    const error = await connect("token-nf-new-teacher").call("me.get").catch((e: unknown) => e);
+    expect(error).toMatchObject({ code: "unauthenticated", status: 401 });
+    expect(unlinkedSignInOf(error)).toStrictEqual({ issuer: NORTHFIELD.district.trustedIssuers[0], subject: "nf-new-teacher" });
+    // No credential at all proves no sign-in, so there is nothing to name.
+    expect(unlinkedSignInOf(await connect().call("me.get").catch((e: unknown) => e))).toBeUndefined();
+    expect(unlinkedSignInOf(new TypeError("Failed to fetch"))).toBeUndefined();
   });
 
   it("reads a token function on every call, so a refreshed credential is used", async () => {

@@ -11,7 +11,8 @@ describe("classes and people", () => {
   it("builds a school, term, course, section and people, and enrolls a teacher and a student", async () => {
     const district = fakeDistrict({ authority: "local" });
     const { user } = renderConsole(district.client, "classes-people");
-    await screen.findByRole("heading", { level: 2, name: "Classes and people" });
+    await screen.findByRole("heading", { level: 2, name: "Manage classes and people" });
+    await screen.findByRole("form", { name: "Name your school" });
     expect(screen.queryByText("Some records come from your roster")).toBeNull();
 
     await user.type(within(form("Name your school")).getByRole("textbox", { name: /School or co-op name/ }), "Maple Co-op");

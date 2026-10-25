@@ -5,7 +5,12 @@ import { useAdminClient } from "./AdminClientContext.tsx";
 /** Where a load from the district stands. */
 export type Loaded<T> =
   | { status: "loading" }
-  | { status: "error"; message: string }
+  | {
+    status: "error";
+    message: string;
+    /** The failure itself, for a caller that answers some failures differently. */
+    error: unknown;
+  }
   | { status: "ready"; data: T };
 
 /** A message safe to show an administrator, with the reference support can look the request up by. */
@@ -31,7 +36,7 @@ export const useLoad = <T>(key: string, load: (client: DistrictApiClient) => Pro
     let live = true;
     load(client).then(
       (data) => { if (live) setState({ key, for: current, loaded: { status: "ready", data } }); },
-      (error: unknown) => { if (live) setState({ key, for: current, loaded: { status: "error", message: errorMessage(error) } }); },
+      (error: unknown) => { if (live) setState({ key, for: current, loaded: { status: "error", message: errorMessage(error), error } }); },
     );
     return () => { live = false; };
     // `load` is keyed by `current` rather than listed: callers pass a fresh closure every render.

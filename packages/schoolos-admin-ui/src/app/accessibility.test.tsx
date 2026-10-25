@@ -24,7 +24,7 @@ describe("structure and labels", () => {
   it.each(SCREENS.map((s) => [s.path, s.label]))("%s has its landmarks, headings and a name on every control", async (path, label) => {
     renderConsole(fakeDistrict().client, path);
     expect(screen.getByRole("banner")).toBeTruthy();
-    expect(screen.getByRole("navigation", { name: "Admin sections" })).toBeTruthy();
+    expect(await screen.findByRole("navigation", { name: "Admin sections" })).toBeTruthy();
     expect(screen.getByRole("main")).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "SchoolOS district admin" })).toBeTruthy();
     expect(await screen.findByRole("heading", { level: 2, name: label === "Term rollover" ? "Term rollover preview" : label })).toBeTruthy();
