@@ -1,0 +1,40 @@
+{
+  "directory": {
+    "district": {
+      "id": "dst_gmacko-coop",
+      "name": "Gmacko demo co-op (synthetic)",
+      "timeZone": "America/Detroit",
+      "trustedIssuers": ["https://gmacko.cloudflareaccess.com"]
+    },
+    "schools": [],
+    "terms": [],
+    "courses": [],
+    "offerings": [],
+    "principals": [
+      {
+        "id": "prn_gmacko-coop-admin",
+        "districtId": "dst_gmacko-coop",
+        "kind": "staff",
+        "status": "active",
+        "displayName": "Co-op administrator",
+        "externalIdentities": [
+          {
+            "districtId": "dst_gmacko-coop",
+            "issuer": "https://gmacko.cloudflareaccess.com",
+            "subject": "00000000-0000-0000-0000-000000000000"
+          }
+        ]
+      }
+    ],
+    "enrollments": [],
+    "roleAssignments": [
+      {
+        "principalId": "prn_gmacko-coop-admin",
+        "role": "district-admin",
+        "scope": { "level": "district", "districtId": "dst_gmacko-coop" },
+        "source": "local-grant"
+      }
+    ]
+  },
+  "authority": "local"
+}

@@ -12,8 +12,8 @@ import { AI_GUARD_DEV_MAIN, AI_GUARD_PACKAGE } from "../ai-guard-dev.ts";
 import { readDeployablePackages } from "../release/manifest-lib.ts";
 import { PACKAGES_DIR } from "../preview/staging-config.ts";
 import {
-  PRODUCTION_CONFIG_NAME, buildProductionConfigs, generateProductionConfigs, productionPackageNames,
-  renderProductionConfig, type ProductionConfig, type ProductionInstance,
+  DISTRICT_PACKAGE, PRODUCTION_CONFIG_NAME, buildProductionConfigs, generateProductionConfigs,
+  productionPackageNames, renderProductionConfig, type ProductionConfig, type ProductionInstance,
 } from "./production-config.ts";
 import { SCHOOLOS_GMAC_IO } from "./schoolos-gmac-io.ts";
 
@@ -41,10 +41,10 @@ test("the committed production configs are up to date", () => {
   }
 });
 
-test("deploys the router, backend, AI call guard and the three auto-provisioned gatekeepers", () => {
+test("deploys the router, backend, AI call guard, three auto-provisioned gatekeepers and the district", () => {
   assert.deepEqual([...build().keys()], [
     "gatekeeper-context", "gatekeeper-scheduler", "gatekeeper-websearch", "router",
-    "schoolos-ai-guard", "workshop-backend",
+    "schoolos-ai-guard", DISTRICT_PACKAGE, "workshop-backend",
   ]);
   assert.deepEqual(productionPackageNames(SCHOOLOS_GMAC_IO), [...build().keys()]);
 });
@@ -56,7 +56,7 @@ test("every worker is named for its package, on the instance account, with no pu
     assert.equal(config.workers_dev, false, pkgName);
     assert.equal(config.preview_urls, false, pkgName);
     assert.equal("previews" in config, false, pkgName);
-    if (pkgName !== "router") assert.equal(config.routes, undefined, pkgName);
+    if (pkgName !== "router" && pkgName !== DISTRICT_PACKAGE) assert.equal(config.routes, undefined, pkgName);
   }
 });
 
@@ -119,8 +119,31 @@ test("the guard runs its production entrypoint and cron, reaching Hall Monitor b
   assert.equal(guard.vars?.AI_GUARD_CONFIG, undefined);
 });
 
+test("the district Worker has its own custom domain, serves the UIs as assets and keeps its crons", () => {
+  const district = configFor(build(), DISTRICT_PACKAGE);
+  assert.deepEqual(district.routes, [{ pattern: "district.schoolos.gmac.io", custom_domain: true }]);
+  assert.deepEqual(district.assets, {
+    directory: "./dist/ui",
+    not_found_handling: "single-page-application",
+    run_worker_first: ["/api/*", "/healthz"],
+  });
+  assert.deepEqual(district.triggers, { crons: ["7 * * * *", "0 14 * * SUN"] });
+  assert.deepEqual(district.send_email, [{ name: "SEND_EMAIL" }]);
+  // Nothing binds it yet: the guard keeps its configured directory (SCHO-147).
+  for (const [pkgName, config] of build()) {
+    assert.equal(config.services?.some(({ service }) => service === DISTRICT_PACKAGE) ?? false, false, pkgName);
+  }
+});
+
+test("an instance without a district deploys no district Worker", () => {
+  const { district: _district, ...withoutDistrict } = SCHOOLOS_GMAC_IO;
+  assert.equal(build(withoutDistrict).has(DISTRICT_PACKAGE), false);
+});
+
 test("no generated config carries a secret", () => {
-  const secrets = ["ADMINS", "AI_GUARD_CONFIG", "CF_ACCESS_AUD", "CF_ACCESS_ISS", "HALL_MONITOR_SIGNING_KEY"];
+  const secrets = [
+    "ADMINS", "AI_GUARD_CONFIG", "CF_ACCESS_AUD", "CF_ACCESS_ISS", "DISTRICT_CONFIG", "HALL_MONITOR_SIGNING_KEY",
+  ];
   for (const [pkgName, config] of build()) {
     for (const name of secrets) assert.equal(config.vars?.[name], undefined, `${pkgName} ${name}`);
   }

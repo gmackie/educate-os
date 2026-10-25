@@ -67,7 +67,7 @@ The district must list `CF_ACCESS_ISS` in its `trustedIssuers`.
 
 | Entrypoint | For | Contract |
 | --- | --- | --- |
-| default `fetch` | browsers, behind Access | `/api/*` only; everything else is 404 |
+| default `fetch` | browsers, behind Access | `/api/*`, and `/healthz` (a liveness probe with no sign-in, which reads nothing); everything else is 404 |
 | `DistrictGuardDirectory` | the AI call guard's `SCHOOLOS_DISTRICT` | `GuardDirectoryPort` (`guardSubject`, `admittedSubject`, `ledgerDirectory`) over `DistrictApp.guardDirectory` |
 | `DistrictSchoolTools` | the SchoolOS gatekeeper's `SCHOOLOS_DISTRICT` | `SchoolToolService` over the directory's operations; every agent call waits for a person in the object's approval queue |
 | `DistrictApi` | the release's backend binding, `SCHOOLOS_DISTRICT_API` | the same `/api` surface; holding it grants nothing |
