@@ -7,13 +7,15 @@ import {
   type DistrictId,
   type OfferingId,
   type PolicySettings,
+  type Principal,
+  type PrincipalId,
   type ResourceRef,
   type VerifiedIdentity,
 } from "@schoolos/contracts";
 import { createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@schoolos/identity";
-import { AcademicDirectory } from "@schoolos/academics";
+import { AcademicDirectory, isDistrictAdmin } from "@schoolos/academics";
 import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule } from "@schoolos/policy";
-import { RetentionPolicy, WorkspaceDirectory } from "@schoolos/workspaces";
+import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@schoolos/workspaces";
 import { LearningArtifacts } from "@schoolos/learning-artifacts";
 import { AssessmentService, GradebookService, type AssignmentId } from "@schoolos/assessment";
 import { catalogAlignmentSource, ContentStudio, type AlignmentSource, type ContentReviewer, type ImportFetch } from "@schoolos/content-studio";
@@ -870,7 +872,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       ]);
       const principals = ctx.snapshot.principals
         .filter((p) => p.kind === "student" || p.kind === "staff")
-        .map(({ id, kind, status, displayName, email }) => ({ id, kind, status, displayName, ...(email === undefined ? {} : { email }) }));
+        .map((p) => authoringPrincipal(ctx.snapshot, p, now()));
       return { authority, trustedIssuers: ctx.snapshot.district.trustedIssuers, schools, terms, courses, offerings, principals };
     },
     "admin.createSchool": (ctx, { body }) => ctx.academics().createSchool(ctx.caller, body),
@@ -892,8 +894,33 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       return { enrollment, grantsRevoked: revoked };
     },
     "admin.createPrincipal": async (ctx, { body }) => {
-      const { id, kind, status, displayName, email } = await ctx.academics().createPrincipal(ctx.caller, body);
-      return { id, kind, status, displayName, ...(email === undefined ? {} : { email }) };
+      const principal = await ctx.academics().createPrincipal(ctx.caller, body);
+      return authoringPrincipal(ctx.snapshot, principal, now());
+    },
+    // Managing people (SCHO-212). Each answers from the directory as it is after the change.
+    "admin.updatePrincipal": async (ctx, { params, body }) => {
+      const principal = await ctx.academics().updatePrincipal(ctx.caller, params.principalId, body);
+      return authoringPrincipal((await stores.directory.load()).snapshot, principal, now());
+    },
+    "admin.setPrincipalStatus": async (ctx, { params, body }) => {
+      const services = { academics: ctx.academics(), workspaces: ctx.workspaces() };
+      // Leaving ends their class access; returning restores the course grants their kept enrollments carry.
+      let principal: Principal, grantsRevoked: number;
+      if (body.status === "active") {
+        principal = await services.academics.reactivatePrincipal(ctx.caller, params.principalId);
+        grantsRevoked = (await services.workspaces.reconcileCourseGrants(ctx.caller)).revoked;
+      } else {
+        ({ principal, grantsRevoked } = await transitionPrincipal(services, ctx.caller, params.principalId, body.status));
+      }
+      return { principal: authoringPrincipal((await stores.directory.load()).snapshot, principal, now()), grantsRevoked };
+    },
+    "admin.grantDistrictAdmin": async (ctx, { params }) => {
+      await ctx.academics().grantDistrictAdmin(ctx.caller, params.principalId);
+      return authoringPrincipalById((await stores.directory.load()).snapshot, params.principalId, now());
+    },
+    "admin.revokeDistrictAdmin": async (ctx, { params }) => {
+      await ctx.academics().revokeDistrictAdmin(ctx.caller, params.principalId);
+      return authoringPrincipalById((await stores.directory.load()).snapshot, params.principalId, now());
     },
 
     // Gradebook (SCHO-187). Kept in one block, apart from the handlers above.
@@ -1101,6 +1128,19 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
 }
 
 /** An assignment and its starter material, without where the material's content is stored. */
+/** A principal as the authoring screens list them (`AuthoringPrincipalBody`): never their sign-in identities. */
+function authoringPrincipal(snapshot: DistrictDirectorySnapshot, principal: Principal, at: Date) {
+  const { id, kind, status, displayName, email } = principal;
+  return { id, kind, status, displayName, ...(email === undefined ? {} : { email }), districtAdmin: isDistrictAdmin(snapshot, id, at) };
+}
+
+/** {@link authoringPrincipal} for a principal known to be in `snapshot`. */
+function authoringPrincipalById(snapshot: DistrictDirectorySnapshot, principalId: PrincipalId, at: Date) {
+  const principal = snapshot.principals.find((p) => p.id === principalId);
+  if (principal === undefined) throw new SchoolOsError("not-found", `principal ${principalId} was not found.`);
+  return authoringPrincipal(snapshot, principal, at);
+}
+
 async function assignmentView(assessment: AssessmentService, caller: Caller, assignmentId: AssignmentId): Promise<AssignmentViewBody> {
   const { assignment, starterMaterials } = await assessment.getAssignment(caller, assignmentId);
   return { assignment, starterMaterials: starterMaterials.map(({ content: _stored, ...material }) => material) };

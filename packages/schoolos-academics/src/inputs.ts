@@ -99,3 +99,18 @@ export const NewPrincipal = z.strictObject({
 });
 /** Input for creating a principal. */
 export type NewPrincipal = z.infer<typeof NewPrincipal>;
+
+/**
+ * The principal fields an administrator may change where SchoolOS owns principals (SCHO-212).
+ * Omitted fields are unchanged, and `email: null` clears the address. Their sign-in identity is
+ * fixed: it is how they are found, and moving it would hand their record to someone else. A change
+ * of `kind` is refused while the principal holds an enrollment or a role (see
+ * `AcademicDirectory.updatePrincipal`).
+ */
+export const PrincipalPatch = z.strictObject({
+  kind: NewPrincipal.shape.kind.optional(),
+  displayName: Principal.shape.displayName.optional(),
+  email: z.union([z.email(), z.null()]).optional(),
+});
+/** A change to a principal. */
+export type PrincipalPatch = z.infer<typeof PrincipalPatch>;

@@ -23,6 +23,7 @@ import {
   NewTerm,
   OfferingFilter,
   OfferingPatch,
+  PrincipalPatch,
   SchoolPatch,
   TermPatch,
 } from "./inputs.ts";
@@ -223,6 +224,20 @@ export const ACADEMIC_OPERATIONS = {
     description: "Mark a principal graduated or inactive. Their records and work are kept; their class access ends.",
     input: z.strictObject({ principalId: PrincipalId, status: DepartedStatus }),
     run: (d, c, i) => d.setPrincipalStatus(c, i.principalId, i.status),
+  }),
+  // Granting or taking away district administration is deliberately not an operation: an agent
+  // tool must never be able to widen anyone's authority. It is an admin console route only.
+  update_principal: defineOperation({
+    name: "update_principal",
+    description: "Correct a principal's name, email or kind (student or staff), where SchoolOS owns principals. Their sign-in is unchanged.",
+    input: z.strictObject({ principalId: PrincipalId }).extend(PrincipalPatch.shape),
+    run: (d, c, { principalId, ...patch }) => d.updatePrincipal(c, principalId, patch),
+  }),
+  reactivate_principal: defineOperation({
+    name: "reactivate_principal",
+    description: "Make a graduated or inactive principal active again, where SchoolOS owns principals.",
+    input: z.strictObject({ principalId: PrincipalId }),
+    run: (d, c, i) => d.reactivatePrincipal(c, i.principalId),
   }),
 } satisfies Record<string, AcademicOperation>;
 

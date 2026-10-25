@@ -55,6 +55,8 @@ const ROUTES: readonly Route[] = [
   route("GET", "/me/enrollments", "my_enrollments"),
   route("POST", "/principals", "create_principal", 201),
   route("POST", "/principals/:principalId/status", "set_principal_status"),
+  route("PATCH", "/principals/:principalId", "update_principal"),
+  route("POST", "/principals/:principalId/reactivate", "reactivate_principal"),
 ];
 
 function match(method: string, pathname: string): { route: Route; params: Record<string, string> } | undefined {

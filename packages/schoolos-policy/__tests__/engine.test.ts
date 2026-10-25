@@ -114,6 +114,20 @@ describe("administrators", () => {
       .toMatchObject({ effect: "deny" });
   });
 
+  it("make district administrators at district level only (SCHO-212)", async () => {
+    const person = {
+      resource: {
+        kind: "principal",
+        id: "prn_nf-teacher-rivera",
+        scope: { level: "district", districtId: P.nfAdmin.districtId },
+        classification: "district-internal",
+        ownerPrincipalId: PrincipalId.parse("prn_nf-teacher-rivera"),
+      },
+    } as const;
+    expect(await decide(engine, req(P.nfAdmin, "assign", person))).toMatchObject({ effect: "allow", ruleId: "admin.district.administrators" });
+    expect(await decide(engine, req(P.highPrincipal, "assign", person))).toMatchObject({ effect: "deny" });
+  });
+
   it("never see private chat content or a shared conversation", async () => {
     for (const who of [P.nfAdmin, P.highPrincipal]) {
       expect(await decide(engine, req(who, "read", personalResource("personal-conversation", "prn_nf-student-amara", { id: "c1" }))))

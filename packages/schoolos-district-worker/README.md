@@ -87,6 +87,10 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   them through the admin API (`admin.createCourse`, `admin.enroll`, `admin.createPrincipal` and the
   rest, SCHO-186), and a roster import is refused. A local principal is created with the Access
   subject that signs them in; inviting someone by email before they have signed in is not built yet.
+  Administrators then correct a person's name, email or kind (`admin.updatePrincipal`), deactivate
+  or reactivate them (`admin.setPrincipalStatus`), and make staff district administrators or take
+  that away (`admin.grantDistrictAdmin`, `admin.revokeDistrictAdmin`, SCHO-212). The district always
+  keeps one active administrator, and nobody can remove their own administration.
 - `CF_ACCESS_ISS` and `CF_ACCESS_AUD`.
 - `email` (optional, in `DISTRICT_CONFIG`): `from`, an address on a domain the district has
   onboarded to Cloudflare Email Service in this account, an optional `fromName`, and an optional

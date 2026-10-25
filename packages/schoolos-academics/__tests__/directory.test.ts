@@ -9,7 +9,7 @@ import {
   type DistrictDirectorySnapshot,
 } from "@schoolos/contracts";
 import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
-import { AcademicDirectory, AcademicSync, DirectoryValidationError, InMemoryAcademicStore, RoleTableAuthorizer, storePrincipalFacts } from "../src/index.ts";
+import { AcademicDirectory, AcademicSync, DirectoryValidationError, InMemoryAcademicStore, isDistrictAdmin, RoleTableAuthorizer, storePrincipalFacts } from "../src/index.ts";
 import { ALL_LOCAL, directoryFor, NF, nf, RB_ADMIN, rejectsWith, ROSTER_EXTERNAL } from "./setup.ts";
 
 const BIO_FALL = OfferingId.parse("off_nf-bio-fall-p2");
@@ -458,5 +458,100 @@ describe("local authoring (SCHO-186)", () => {
     expect(error.message).toContain("external:oneroster");
     const local = directoryFor();
     await rejectsWith(local.directory.createPrincipal(NF.morgan, { kind: "student", displayName: "Robin", identity: { issuer: ISSUER, subject: "r" } }), "forbidden");
+  });
+});
+
+describe("managing people (SCHO-212)", () => {
+  const ISSUER = NORTHFIELD.district.trustedIssuers[0]!;
+  const ADMIN = NF.admin.principal.principalId;
+  const RIVERA = PrincipalId.parse("prn_nf-teacher-rivera");
+  const AMARA = PrincipalId.parse("prn_nf-student-amara");
+  const admins = async (store: InMemoryAcademicStore) => {
+    const { snapshot } = await store.load();
+    return snapshot.principals.filter((p) => isDistrictAdmin(snapshot, p.id, new Date())).map((p) => p.id);
+  };
+
+  it("corrects a person added as a student into staff, and edits their name and email", async () => {
+    const { directory } = directoryFor(emptyNorthfield());
+    const added = await directory.createPrincipal(NF.admin, { kind: "student", displayName: "Co-op Admin", email: "a@example.org", identity: { issuer: ISSUER, subject: "co-op-admin" } });
+    const fixed = await directory.updatePrincipal(NF.admin, added.id, { kind: "staff", displayName: "Co-op Administrator" });
+    expect(fixed).toMatchObject({ kind: "staff", displayName: "Co-op Administrator", email: "a@example.org", status: "active" });
+    // The sign-in that finds them never changes.
+    expect(fixed.externalIdentities).toStrictEqual(added.externalIdentities);
+    const cleared = await directory.updatePrincipal(NF.admin, added.id, { email: null });
+    expect(cleared).not.toHaveProperty("email");
+    expect(await directory.updatePrincipal(NF.admin, added.id, {})).toStrictEqual(cleared);
+  });
+
+  it("refuses a change of kind while the person holds an enrollment or a role, active or not", async () => {
+    const { directory } = directoryFor();
+    const enrolled = await rejectsWith(directory.updatePrincipal(NF.admin, AMARA, { kind: "staff" }), "conflict");
+    expect(enrolled.message).toContain("enrollments");
+    // Dropping them from every class still leaves the records their kind is bound to.
+    const { snapshot } = await directoryFor().store.load();
+    for (const enrollment of snapshot.enrollments.filter((e) => e.principalId === AMARA)) await directory.deactivateEnrollment(NF.admin, enrollment.id);
+    await rejectsWith(directory.updatePrincipal(NF.admin, AMARA, { kind: "staff" }), "conflict");
+    await rejectsWith(directory.updatePrincipal(NF.admin, ADMIN, { kind: "student" }), "conflict");
+    // Changing other fields is still allowed, as is naming the kind they already have.
+    expect((await directory.updatePrincipal(NF.admin, AMARA, { kind: "student", displayName: "Amara O." })).displayName).toBe("Amara O.");
+  });
+
+  it("leaves editing people to district administrators, and to the roster where it owns them", async () => {
+    const { store, directory } = directoryFor();
+    const before = await store.load();
+    await rejectsWith(directory.updatePrincipal(NF.highPrincipal, AMARA, { displayName: "X" }), "not-found");
+    await rejectsWith(directory.updatePrincipal(NF.amara, AMARA, { displayName: "X" }), "not-found");
+    await rejectsWith(directory.updatePrincipal(RB_ADMIN, AMARA, { displayName: "X" }), "not-found");
+    await rejectsWith(directory.reactivatePrincipal(NF.amara, AMARA), "not-found");
+    await rejectsWith(directory.grantDistrictAdmin(NF.morgan, RIVERA), "not-found");
+    await rejectsWith(directory.updatePrincipal(NF.admin, AMARA, { districtId: "dst_x" } as never), "validation-failed");
+    expect(await store.load()).toStrictEqual(before);
+    const roster = directoryFor(NORTHFIELD, { authority: ROSTER_EXTERNAL });
+    await rejectsWith(roster.directory.updatePrincipal(NF.admin, AMARA, { displayName: "X" }), "conflict");
+    await rejectsWith(roster.directory.reactivatePrincipal(NF.admin, AMARA), "conflict");
+  });
+
+  it("reactivates a departed principal, restoring the roles kept on record", async () => {
+    const { directory } = directoryFor();
+    await directory.setPrincipalStatus(NF.admin, NF.morgan.principal.principalId, "inactive");
+    await rejectsWith(directory.roster(NF.morgan, BIO_FALL), "not-found");
+    const back = await directory.reactivatePrincipal(NF.admin, NF.morgan.principal.principalId);
+    expect(back.status).toBe("active");
+    expect((await directory.roster(NF.morgan, BIO_FALL)).length).toBeGreaterThan(0);
+    expect(await directory.reactivatePrincipal(NF.admin, back.id)).toStrictEqual(back);
+  });
+
+  it("makes staff district administrators, once, and never a student or an inactive person", async () => {
+    const { store, directory } = directoryFor(emptyNorthfield());
+    const grant = await directory.grantDistrictAdmin(NF.admin, RIVERA);
+    expect(grant).toStrictEqual({ principalId: RIVERA, role: "district-admin", scope: { level: "district", districtId: "dst_northfield" }, source: "local-grant" });
+    const { version } = await store.load();
+    await directory.grantDistrictAdmin(NF.admin, RIVERA);
+    expect((await store.load()).version).toBe(version);
+    expect(await admins(store)).toEqual([ADMIN, RIVERA]);
+    expect((await rejectsWith(directory.grantDistrictAdmin(NF.admin, AMARA), "conflict")).message).toContain("Only staff");
+  });
+
+  it("takes administration away, but never the last administrator's or one's own", async () => {
+    const { store, directory } = directoryFor(emptyNorthfield());
+    expect((await rejectsWith(directory.revokeDistrictAdmin(NF.admin, ADMIN), "conflict")).message).toContain("yourself");
+    await directory.grantDistrictAdmin(NF.admin, RIVERA);
+    const rivera = nf("prn_nf-teacher-rivera");
+    await directory.revokeDistrictAdmin(rivera, ADMIN);
+    expect(await admins(store)).toEqual([RIVERA]);
+    // Now Rivera is the last one: they cannot remove themself, deactivate themself, or be deactivated.
+    await rejectsWith(directory.revokeDistrictAdmin(rivera, RIVERA), "conflict");
+    await rejectsWith(directory.setPrincipalStatus(rivera, RIVERA, "inactive"), "conflict");
+    // Revoking from someone who is not an administrator changes nothing.
+    const { version } = await store.load();
+    await directory.revokeDistrictAdmin(rivera, AMARA);
+    expect((await store.load()).version).toBe(version);
+  });
+
+  it("refuses to take away administration a roster projected", async () => {
+    const snapshot = emptyNorthfield();
+    const projected = { ...snapshot, roleAssignments: [...snapshot.roleAssignments, { principalId: RIVERA, role: "district-admin" as const, scope: { level: "district" as const, districtId: snapshot.district.id }, source: "roster" as const }] };
+    const { directory } = directoryFor(projected);
+    expect((await rejectsWith(directory.revokeDistrictAdmin(NF.admin, RIVERA), "conflict")).message).toContain("roster");
   });
 });

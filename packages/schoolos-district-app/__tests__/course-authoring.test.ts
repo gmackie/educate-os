@@ -121,6 +121,52 @@ describe("a co-op with no roster builds a class from scratch (SCHO-186)", () => 
   });
 });
 
+describe("a co-op administrator manages its people (SCHO-212)", () => {
+  it("corrects someone added as a student, makes them an administrator, and they then manage people", async () => {
+    const district = await bootDistrict(COOP, { authority: "local" });
+    const admin = district.tokenFor(NF.admin);
+    const added = await district.ok(admin, "admin.createPrincipal", {
+      body: { kind: "student", displayName: "Second Admin", identity: { issuer: ISSUER, subject: "coop-second" } },
+    });
+    expect(added).toMatchObject({ kind: "student", districtAdmin: false });
+    // A student cannot be an administrator; correct their kind first.
+    expectError(await district.call(admin, "admin.grantDistrictAdmin", { params: { principalId: added.id }, body: {} }), 409, "conflict");
+    const fixed = await district.ok(admin, "admin.updatePrincipal", { params: { principalId: added.id }, body: { kind: "staff", email: "second@coop.example" } });
+    expect(fixed).toMatchObject({ kind: "staff", email: "second@coop.example", districtAdmin: false });
+    expect(await district.ok(admin, "admin.grantDistrictAdmin", { params: { principalId: added.id }, body: {} })).toMatchObject({ districtAdmin: true });
+
+    const second = district.idp.issue("coop-second");
+    const authoring = await district.ok(second, "admin.authoring");
+    expect(authoring.principals.filter((p) => p.districtAdmin).map((p) => p.displayName).toSorted()).toStrictEqual(["Avery Admin", "Second Admin"]);
+    // The new administrator can take the original's role away, but not their own.
+    expect(await district.ok(second, "admin.revokeDistrictAdmin", { params: { principalId: NF.admin }, body: {} })).toMatchObject({ districtAdmin: false });
+    expectError(await district.call(second, "admin.revokeDistrictAdmin", { params: { principalId: added.id }, body: {} }), 409, "conflict");
+    expectError(await district.call(admin, "admin.authoring"), 403, "forbidden");
+  });
+
+  it("deactivates and reactivates a student, ending and restoring their class access", async () => {
+    const district = await bootDistrict(COOP, { authority: "local" });
+    const { admin, offering, student } = await buildCoopClass(district);
+    const sky = (await district.ok(admin, "admin.authoring")).principals.find((p) => p.displayName === "Sky Learner")!;
+    const left = await district.ok(admin, "admin.setPrincipalStatus", { params: { principalId: sky.id }, body: { status: "inactive" } });
+    expect(left.principal.status).toBe("inactive");
+    expectError(await district.call(student, "student.listModules", { params: { offeringId: offering.id } }), 404, "not-found");
+    const back = await district.ok(admin, "admin.setPrincipalStatus", { params: { principalId: sky.id }, body: { status: "active" } });
+    expect(back.principal.status).toBe("active");
+    await district.ok(student, "student.listModules", { params: { offeringId: offering.id } });
+    // The only administrator cannot deactivate themself.
+    expectError(await district.call(admin, "admin.setPrincipalStatus", { params: { principalId: NF.admin }, body: { status: "inactive" } }), 409, "conflict");
+  });
+
+  it("keeps managing people to administrators", async () => {
+    const district = await bootDistrict(COOP, { authority: "local" });
+    const { teacher } = await buildCoopClass(district);
+    // They learn nothing about people they cannot see.
+    expectError(await district.call(teacher, "admin.grantDistrictAdmin", { params: { principalId: NF.admin }, body: {} }), 404, "not-found");
+    expectError(await district.call(teacher, "admin.updatePrincipal", { params: { principalId: NF.admin }, body: { displayName: "X" } }), 404, "not-found");
+  });
+});
+
 describe("modules and pages in a roster district", () => {
   it("places an installed activity in a module, and denies the wrong teacher, students' writes and another district", async () => {
     const district = await bootDistrict();

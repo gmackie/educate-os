@@ -532,6 +532,12 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     effect: { effect: "allow" },
   },
   {
+    id: "admin.district.administrators",
+    description: "A district admin makes staff district administrators and takes administration away (SCHO-212). The directory refuses removing the last administrator or oneself.",
+    when: { kinds: ["principal"], roles: ["district-admin"], actions: ["assign"] },
+    effect: { effect: "allow" },
+  },
+  {
     id: "admin.school.directory",
     description: "A school admin manages their school's record, offerings and enrollments.",
     when: { kinds: ["school", "offering", "enrollment"], roles: ["school-admin"], actions: ["read", "list", "create", "update"] },

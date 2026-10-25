@@ -62,6 +62,8 @@ const CASES: Case[] = [
   { name: "cross-district admin reads a term", caller: RB_ADMIN, http: ["GET", "/terms/trm_nf-2026-fall"], tool: ["get_term", { termId: "trm_nf-2026-fall" }] },
   { name: "unknown field is rejected", caller: NF.admin, http: ["PATCH", "/terms/trm_nf-2026-fall", { state: "completed" }], tool: ["update_term", { termId: "trm_nf-2026-fall", state: "completed" }] },
   { name: "admin graduates a roster-owned principal", caller: NF.admin, http: ["POST", "/principals/prn_nf-student-amara/status", { status: "graduated" }], tool: ["set_principal_status", { principalId: "prn_nf-student-amara", status: "graduated" }] },
+  { name: "admin renames a roster-owned principal", caller: NF.admin, http: ["PATCH", "/principals/prn_nf-student-amara", { displayName: "A" }], tool: ["update_principal", { principalId: "prn_nf-student-amara", displayName: "A" }] },
+  { name: "student reactivates themself", caller: NF.amara, http: ["POST", "/principals/prn_nf-student-amara/reactivate", {}], tool: ["reactivate_principal", { principalId: "prn_nf-student-amara" }] },
   { name: "malformed ID is rejected", caller: NF.admin, http: ["GET", "/offerings/sch_nf-high"], tool: ["get_offering", { offeringId: "sch_nf-high" }] },
 ];
 
@@ -119,6 +121,8 @@ describe("the HTTP handler and the tools", () => {
       "cross-district admin reads a term": "not-found",
       "unknown field is rejected": "validation-failed",
       "admin graduates a roster-owned principal": "conflict",
+      "admin renames a roster-owned principal": "conflict",
+      "student reactivates themself": "not-found",
       "malformed ID is rejected": "validation-failed",
     });
   });
