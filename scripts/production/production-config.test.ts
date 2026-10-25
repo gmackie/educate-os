@@ -12,9 +12,9 @@ import { AI_GUARD_DEV_MAIN, AI_GUARD_PACKAGE } from "../ai-guard-dev.ts";
 import { readDeployablePackages } from "../release/manifest-lib.ts";
 import { PACKAGES_DIR } from "../preview/staging-config.ts";
 import {
-  DISTRICT_PACKAGE, PRODUCTION_CONFIG_NAME, buildProductionConfigs, generateProductionConfigs,
-  productionPackageNames, productionWorkerName, renderProductionConfig, type ProductionConfig,
-  type ProductionInstance,
+  DISTRICT_PACKAGE, PRODUCTION_CONFIG_NAME, EDUCATEOS_GATEKEEPER_PACKAGE, buildProductionConfigs,
+  generateProductionConfigs, productionPackageNames, productionWorkerName, renderProductionConfig,
+  type ProductionConfig, type ProductionInstance,
 } from "./production-config.ts";
 import { SCHOOLOS_GMAC_IO } from "./schoolos-gmac-io.ts";
 
@@ -42,10 +42,10 @@ test("the committed production configs are up to date", () => {
   }
 });
 
-test("deploys the router, backend, AI call guard, four gatekeepers and the district", () => {
+test("deploys the router, backend, AI call guard, five gatekeepers and the district", () => {
   assert.deepEqual([...build().keys()], [
-    "educateos-ai-guard", DISTRICT_PACKAGE, "gatekeeper-context", "gatekeeper-google",
-    "gatekeeper-scheduler", "gatekeeper-websearch", "router", "workshop-backend",
+    "educateos-ai-guard", DISTRICT_PACKAGE, "gatekeeper-context", "gatekeeper-educateos",
+    "gatekeeper-google", "gatekeeper-scheduler", "gatekeeper-websearch", "router", "workshop-backend",
   ]);
   assert.deepEqual(productionPackageNames(SCHOOLOS_GMAC_IO), [...build().keys()]);
 });
@@ -67,6 +67,7 @@ test("the router is the origin, on its custom domain, bound to the backend and t
   assert.deepEqual(router.services, [
     { binding: "WORKSHOP_BACKEND", service: "workshop-backend" },
     { binding: "GATEKEEPER_CONTEXT", service: "gatekeeper-context" },
+    { binding: "GATEKEEPER_EDUCATEOS", service: "gatekeeper-educateos" },
     { binding: "GATEKEEPER_GOOGLE", service: "gatekeeper-google" },
     { binding: "GATEKEEPER_SCHEDULER", service: "gatekeeper-scheduler" },
     { binding: "GATEKEEPER_WEBSEARCH", service: "gatekeeper-websearch" },
@@ -79,6 +80,7 @@ test("the backend binds the gatekeepers' vendor entrypoint, the guard, Workers A
   assert.deepEqual(backend.services, [
     { binding: "GATEKEEPER_CONTEXT", service: "gatekeeper-context", entrypoint: "GatekeeperVendor",
       props: { sharingDomain: BASE_URL } },
+    { binding: "GATEKEEPER_EDUCATEOS", service: "gatekeeper-educateos", entrypoint: "GatekeeperVendor" },
     { binding: "GATEKEEPER_GOOGLE", service: "gatekeeper-google", entrypoint: "GatekeeperVendor" },
     { binding: "GATEKEEPER_SCHEDULER", service: "gatekeeper-scheduler", entrypoint: "GatekeeperVendor" },
     { binding: "GATEKEEPER_WEBSEARCH", service: "gatekeeper-websearch", entrypoint: "GatekeeperVendor" },
@@ -144,12 +146,23 @@ test("the district Worker has its own custom domain, serves the UIs as assets an
   });
   assert.deepEqual(district.triggers, { crons: ["7 * * * *", "0 14 * * SUN"] });
   assert.deepEqual(district.send_email, [{ name: "SEND_EMAIL" }]);
-  // Nothing binds it yet: the guard keeps its configured directory (SCHO-147).
+  // Only the EducateOS connector binds it (SCHO-218); the guard keeps its configured directory
+  // (SCHO-147), and the backend's EDUCATEOS_DISTRICT_API is left out, since nothing routes to it.
   for (const [pkgName, config] of build()) {
     const binds = config.services?.some(({ service }) =>
       service === DISTRICT_PACKAGE || service === district.name) ?? false;
-    assert.equal(binds, false, pkgName);
+    assert.equal(binds, pkgName === EDUCATEOS_GATEKEEPER_PACKAGE, pkgName);
   }
+});
+
+test("the EducateOS connector reaches the district's school tools by its pinned name, and needs nothing secret", () => {
+  const educateos = configFor(build(), EDUCATEOS_GATEKEEPER_PACKAGE);
+  assert.deepEqual(educateos.services,
+      [{ binding: "EDUCATEOS_DISTRICT", service: "schoolos-district-worker", entrypoint: "DistrictSchoolTools" }]);
+  // Its connect page is served at BASE_URL, on the router's hostname behind the instance's Access.
+  assert.deepEqual(educateos.vars, { BASE_URL: `${BASE_URL}/gatekeeper/educateos` });
+  assert.equal(educateos.kv_namespaces, undefined);
+  assert.deepEqual(educateos.compatibility_flags, ["allow_irrevocable_stub_storage"]);
 });
 
 // The name each Worker that owns Durable Objects is deployed under on schoolos.gmac.io. A Durable
@@ -162,6 +175,8 @@ const DEPLOYED_STATEFUL_WORKERS: Record<string, string> = {
   // Redeployed under its new name, with a fresh ledger, on 2026-10-25 (SCHO-231).
   [AI_GUARD_PACKAGE]: "educateos-ai-guard",
   "gatekeeper-context": "gatekeeper-context",
+  // First deployed with SCHO-218; its one earlier deploy attempt failed before creating the Worker.
+  "gatekeeper-educateos": "gatekeeper-educateos",
   "gatekeeper-google": "gatekeeper-google",
   "gatekeeper-scheduler": "gatekeeper-scheduler",
   "gatekeeper-websearch": "gatekeeper-websearch",
@@ -197,7 +212,7 @@ test("every service binding reaches a Worker the instance deploys, or Hall Monit
 });
 
 test("a pinned name reaches every service binding to that Worker", () => {
-  // Today nothing on schoolos.gmac.io binds the district, so pin the guard, which the backend binds.
+  // Pin the guard, which the backend binds; the district's own pin is covered above.
   const pinned = { ...SCHOOLOS_GMAC_IO, workerNames: { [AI_GUARD_PACKAGE]: "schoolos-ai-guard" } };
   const configs = build(pinned);
   assert.equal(configFor(configs, AI_GUARD_PACKAGE).name, "schoolos-ai-guard");
@@ -220,11 +235,18 @@ test("fails closed on a pin for an undeployed package, a name clash, or a bindin
   assert.throws(() => build(SCHOOLOS_GMAC_IO, dangling), /GONE binds no-such-worker/);
 });
 
-test("an instance without a district deploys no district Worker", () => {
+test("an instance without a district deploys no district Worker, and cannot install the EducateOS connector", () => {
   const { district: _district, workerNames: _workerNames, ...withoutDistrict } = SCHOOLOS_GMAC_IO;
-  assert.equal(build(withoutDistrict).has(DISTRICT_PACKAGE), false);
+  assert.throws(() => build(withoutDistrict), /gatekeeper-educateos needs the instance's district Worker/);
+  const withoutConnector = {
+    ...withoutDistrict,
+    gatekeepers: withoutDistrict.gatekeepers.filter((name) => name !== EDUCATEOS_GATEKEEPER_PACKAGE),
+  };
+  const configs = build(withoutConnector);
+  assert.equal(configs.has(DISTRICT_PACKAGE), false);
+  assert.equal(configs.has(EDUCATEOS_GATEKEEPER_PACKAGE), false);
   // Its pinned name has nothing to pin.
-  assert.throws(() => build({ ...withoutDistrict, workerNames: SCHOOLOS_GMAC_IO.workerNames }),
+  assert.throws(() => build({ ...withoutConnector, workerNames: SCHOOLOS_GMAC_IO.workerNames }),
       /pins a Worker name for educateos-district-worker, which it does not deploy/);
 });
 
