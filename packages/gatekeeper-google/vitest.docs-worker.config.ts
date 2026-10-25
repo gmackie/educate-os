@@ -6,8 +6,8 @@ import deployed from "./cloudflare.config.ts";
 const { compatibilityDate, compatibilityFlags } = deployed.worker;
 
 /**
- * Workerd coverage for nested Drive sessions, Sheets and Slides sessions, the Google Doc Durable
- * Object, and creating files.
+ * Workerd coverage for nested Drive sessions, Sheets, Slides and Classroom sessions, the Google Doc
+ * Durable Object, and creating files.
  */
 export default defineConfig({
   plugins: [
@@ -31,6 +31,7 @@ export default defineConfig({
   test: {
     testTimeout: 15_000,
     include: [
+      "__tests__/workerd/classroom-session.test.ts",
       "__tests__/workerd/google-doc-actions.test.ts",
       "__tests__/workerd/google-file-creation.test.ts",
       "__tests__/workerd/native-sessions.test.ts",

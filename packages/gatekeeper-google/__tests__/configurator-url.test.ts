@@ -31,12 +31,13 @@ import gmailConfigurator from "../src/configurator/gmail-configurator-ui";
 import chatAccountConfigurator from "../src/configurator/chat-account-configurator-ui";
 import chatSpaceConfigurator from "../src/configurator/chat-space-configurator-ui";
 import chatThreadConfigurator from "../src/configurator/chat-thread-configurator-ui";
+import classroomCourseConfigurator from "../src/configurator/classroom-course-configurator-ui";
 import googleDocConfigurator from "../src/configurator/google-doc-configurator-ui";
 import googleSheetsConfigurator from "../src/configurator/google-sheets-configurator-ui";
 import googleSlidesConfigurator from "../src/configurator/google-slides-configurator-ui";
 import {
   GMAIL_RESOURCE, GOOGLE_CALENDAR_RESOURCE, GOOGLE_CHAT_RESOURCE, GOOGLE_CHAT_SPACE_RESOURCE,
-  GOOGLE_CHAT_THREAD_RESOURCE,
+  GOOGLE_CHAT_THREAD_RESOURCE, GOOGLE_CLASSROOM_COURSE_RESOURCE,
   GOOGLE_DOC_RESOURCE, GOOGLE_DRIVE_FILE_RESOURCE, GOOGLE_DRIVE_FOLDER_RESOURCE,
   GOOGLE_DRIVE_RESOURCE, GOOGLE_SHEETS_RESOURCE, GOOGLE_SLIDES_RESOURCE,
   parseResourceUrl,
@@ -302,6 +303,31 @@ describe("Google Chat thread configurator URLs", () => {
   it("explains who can open a thread connection", () => {
     expect(renderedCopy(chatThreadConfigurator))
       .toContain("only if their own Google account can open its conversation");
+  });
+});
+
+// Like Drive's, the value key matches the urlPattern's named group, so the sandbox runtime's own
+// fallback is the prefill path.
+describe("Classroom course configurator URLs", () => {
+  it("mints the course URL the server parses back", () => {
+    let url = configurableUrl(classroomCourseConfigurator, { courseId: "123456789" });
+    expect(url).toBe(GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern.replace(":courseId", "123456789"));
+    expect(parseResourceUrl(url)).toEqual({ kind: "classroomCourse", courseId: "123456789" });
+  });
+
+  it("round-trips its own URL back to the same values", () => {
+    let values = { courseId: "123456789" };
+    let url = configurableUrl(classroomCourseConfigurator, values);
+    expect(valuesFromUrlPattern(url, GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern)).toEqual(values);
+    expect(classroomCourseConfigurator.isReady!({ values })).toBe(true);
+    expect(classroomCourseConfigurator.isReady!({ values: {} })).toBe(false);
+  });
+
+  // An ID the picker never offers must not escape its path segment on the way to the server.
+  it("encodes an ID the server then refuses", () => {
+    let url = configurableUrl(classroomCourseConfigurator, { courseId: "1/students" });
+    expect(url).toBe("https://classroom.googleapis.com/courses/1%2Fstudents");
+    expect(() => parseResourceUrl(url)).toThrow(/Invalid Google Classroom course ID/);
   });
 });
 

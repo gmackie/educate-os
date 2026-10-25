@@ -19,9 +19,16 @@ type GoogleJsonResponseOptions = {
   maxBytes: number;
 };
 
-/** A failed Google API request, carrying Google's status code but none of its response prose. */
+/**
+ * A failed Google API request, carrying Google's status code and reason codes but none of its
+ * response prose.
+ */
 export class GoogleApiError extends Error {
-  constructor(message: string, readonly providerStatus: string | undefined) {
+  constructor(
+    message: string,
+    readonly providerStatus: string | undefined,
+    readonly providerReasons: readonly string[] = [],
+  ) {
     super(message);
   }
 }
@@ -58,6 +65,11 @@ function parseProviderDiagnostics(text: string): GoogleProviderDiagnostics {
       Number.isSafeInteger(providerError.code) ? providerError.code : undefined;
   let providerStatus = safeProviderCode(providerError.status);
   let reasons = new Set<string>();
+  // Classroom names its specific error, such as `ProjectPermissionDenied`, only as an `@` prefix of
+  // the message. The prefix is a code; the prose after it is not kept.
+  let messageCode = typeof providerError.message === "string"
+    ? safeProviderCode(/^@(\S+)/.exec(providerError.message)?.[1]) : undefined;
+  if (messageCode !== undefined) reasons.add(messageCode);
   addProviderReasons(providerError.errors, reasons);
   addProviderReasons(providerError.details, reasons);
 
@@ -134,7 +146,8 @@ export async function readGoogleJson<T>(
       ...diagnostics,
     });
     throw new GoogleApiError(
-      `${provider} ${operation} failed [http=${response.status}]`, diagnostics.providerStatus);
+      `${provider} ${operation} failed [http=${response.status}]`, diagnostics.providerStatus,
+      diagnostics.providerReasons);
   }
 
   let text = await readBoundedText(response, maxBytes, provider);

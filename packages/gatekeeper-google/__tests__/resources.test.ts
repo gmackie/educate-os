@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   BIGQUERY_RESOURCE, GMAIL_RESOURCE, GOOGLE_CALENDAR_RESOURCE, GOOGLE_CHAT_RESOURCE,
-  GOOGLE_CHAT_SPACE_RESOURCE, GOOGLE_CHAT_THREAD_RESOURCE, GOOGLE_DOC_RESOURCE,
+  GOOGLE_CHAT_SPACE_RESOURCE, GOOGLE_CHAT_THREAD_RESOURCE, GOOGLE_CLASSROOM_COURSE_RESOURCE,
+  GOOGLE_DOC_RESOURCE,
   GOOGLE_DRIVE_FILE_RESOURCE, GOOGLE_DRIVE_FOLDER_RESOURCE, GOOGLE_DRIVE_RESOURCE,
   GOOGLE_SHEETS_RESOURCE, GOOGLE_SLIDES_RESOURCE, IDENTITY_SCOPES,
   LEGACY_GRANTED_RESOURCE_URL_PATTERNS, OFFICE_IMPORT_GRANT, RESOURCE_BY_KIND, RESOURCE_SCOPES,
@@ -39,6 +40,7 @@ describe("resource declarations", () => {
       "https://chat.google.com/:kind(room|dm)/:spaceId",
       "https://chat.google.com/:kind(room|dm)/:spaceId/:threadId{/:messageId}?",
       "https://bigquery.googleapis.com/:projectId/*",
+      "https://classroom.googleapis.com/courses/:courseId",
     ]);
   });
 
@@ -179,6 +181,30 @@ describe("resourceUrlPatternsToOAuthScopes", () => {
     expect(resourceUrlPatternsToOAuthScopes([resource.urlPattern])).toEqual([
       ...IDENTITY_SCOPES, ...scopes,
     ]);
+  });
+
+  // Classroom's scopes are requested only for a Classroom course, and never the profile scopes
+  // (email addresses, photos) or the guardian, announcement or add-on ones.
+  it("asks only a Classroom course for the Classroom scopes", () => {
+    const classroomScopes = [
+      "https://www.googleapis.com/auth/classroom.courses.readonly",
+      "https://www.googleapis.com/auth/classroom.rosters.readonly",
+      "https://www.googleapis.com/auth/classroom.coursework.students",
+    ];
+    expect(resourceUrlPatternsToOAuthScopes([GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern]))
+      .toEqual([...IDENTITY_SCOPES, ...classroomScopes]);
+    let others = SUPPORTED_RESOURCES.filter(resource => resource !== GOOGLE_CLASSROOM_COURSE_RESOURCE)
+      .map(resource => resource.urlPattern);
+    expect(resourceUrlPatternsToOAuthScopes(others).filter(scope => scope.includes("classroom")))
+      .toEqual([]);
+    // The read-write course and roster scopes cover the read-only ones.
+    expect(resourcesCoveredByScopes([GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern], [
+      "https://www.googleapis.com/auth/classroom.courses",
+      "https://www.googleapis.com/auth/classroom.rosters",
+      "https://www.googleapis.com/auth/classroom.coursework.students",
+    ])).toEqual([GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern]);
+    expect(resourcesCoveredByScopes([GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern], classroomScopes.slice(0, 2)))
+      .toEqual([]);
   });
 
   it("asks a directly bound spreadsheet for the Sheets write scope", () => {
@@ -652,6 +678,34 @@ describe("parseResourceUrl", () => {
           expect(new URLPattern(resource.urlPattern).test(url)).toBe(resource === expected);
         }
       }
+    });
+  });
+
+  describe("Google Classroom", () => {
+    it("scopes to one course by its numeric API ID", () => {
+      expect(parseResourceUrl("https://classroom.googleapis.com/courses/123456789"))
+        .toEqual({ kind: "classroomCourse", courseId: "123456789" });
+      expect(new URLPattern(GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern)
+        .test("https://classroom.googleapis.com/courses/123456789")).toBe(true);
+    });
+
+    // Classroom's own web links carry an encoded ID, and an alias (`d:` or `p:`) can be repointed
+    // at another course, so neither may mint a capability.
+    it.each([
+      "https://classroom.googleapis.com/courses/",
+      "https://classroom.googleapis.com/courses/d%3Abiology",
+      "https://classroom.googleapis.com/courses/123/students",
+      "https://classroom.googleapis.com/courses/123?x=1",
+      "https://classroom.googleapis.com/courses/123#x",
+      "https://classroom.googleapis.com/v1/courses/123",
+      "https://classroom.googleapis.com/courses/MTIz",
+    ])("rejects %s", url => {
+      expect(() => parseResourceUrl(url)).toThrow(/Google Classroom/);
+    });
+
+    it("refuses a Classroom web link", () => {
+      expect(() => parseResourceUrl("https://classroom.google.com/c/MTIz"))
+        .toThrow(/Unsupported Google resource URL host/);
     });
   });
 

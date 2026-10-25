@@ -27,6 +27,8 @@ export interface GoogleVerifierApi extends GatekeeperUserVerifier {
   hasDatasetAccess(projectId: string, datasetId: string): Promise<boolean>;
   /** Whether the observer's own account can open one Google Chat space, and with `members`, list its members. */
   hasChatSpaceAccess(spaceName: string, options?: { members?: boolean }): Promise<boolean>;
+  /** Whether the observer's own account teaches one Google Classroom course. */
+  hasClassroomTeacherAccess(courseId: string): Promise<boolean>;
   verifyDriveObservations(observations: DriveObservation[]): Promise<ObserverBatchResult>;
   /**
    * The connected account this verifier stands for, so applyCreation() can create a file in it and

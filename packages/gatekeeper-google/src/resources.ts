@@ -9,7 +9,11 @@
 import type { SupportedResource } from "@gadgets/workshop-shared/gatekeeper";
 import type { CalendarAvailabilityMode } from "./calendar-types";
 import { validateChatSpaceId, validateChatThreadId } from "./chat-api";
+import { validateClassroomCourseId } from "./classroom-api";
 import { validateGmailLabelName, validateGmailQueryForGrouping } from "./gmail-validate";
+
+/** Host serving the synthetic Google Classroom resource URLs. */
+export const CLASSROOM_HOST = "classroom.googleapis.com";
 
 /** Host serving the synthetic BigQuery resource URLs. */
 export const BIGQUERY_HOST = "bigquery.googleapis.com";
@@ -120,6 +124,20 @@ export const GOOGLE_CHAT_THREAD_RESOURCE: SupportedResource = {
   title: "Google Chat Thread",
   description:
       "Read and reply in one selected thread as you, including its reactions and attachments.",
+  grantable: true,
+};
+
+/**
+ * One Google Classroom course, named by its numeric API ID on Classroom's API host. Classroom's own
+ * web links carry a different, encoded ID, so a pasted one is refused rather than guessed at.
+ */
+export const GOOGLE_CLASSROOM_COURSE_RESOURCE: SupportedResource = {
+  urlPattern: `https://${CLASSROOM_HOST}/courses/:courseId`,
+  title: "Google Classroom Course",
+  description:
+      "Read one course you teach and its roster, and, with your approval, create assignments " +
+      "and grade and return students' work on them. Only assignments created through this " +
+      "connection can be seen or graded.",
   grantable: true,
 };
 
@@ -315,6 +333,17 @@ export const RESOURCE_SCOPES: {resource: SupportedResource, scopes: string[]}[] 
       "https://www.googleapis.com/auth/bigquery",
     ],
   },
+  {
+    resource: GOOGLE_CLASSROOM_COURSE_RESOURCE,
+    scopes: [
+      // The course picker and the bound course's details; its teachers and students.
+      "https://www.googleapis.com/auth/classroom.courses.readonly",
+      "https://www.googleapis.com/auth/classroom.rosters.readonly",
+      // Creating, reading and grading this project's coursework. Email addresses and photos
+      // (`classroom.profile.*`) are deliberately not requested.
+      "https://www.googleapis.com/auth/classroom.coursework.students",
+    ],
+  },
 ];
 
 /**
@@ -436,6 +465,12 @@ const SCOPE_COVERED_BY: Record<string, readonly string[]> = {
   "https://www.googleapis.com/auth/chat.users.readstate.readonly": [
     "https://www.googleapis.com/auth/chat.users.readstate",
   ],
+  "https://www.googleapis.com/auth/classroom.courses.readonly": [
+    "https://www.googleapis.com/auth/classroom.courses",
+  ],
+  "https://www.googleapis.com/auth/classroom.rosters.readonly": [
+    "https://www.googleapis.com/auth/classroom.rosters",
+  ],
 };
 
 function oauthScopeCovers(required: string, granted: ReadonlySet<string>): boolean {
@@ -527,7 +562,8 @@ export type ResourceTarget =
   | { kind: "driveFile"; fileId: string }
   | { kind: "chatAccount" }
   | { kind: "chatSpace"; spaceId: string }
-  | { kind: "chatThread"; spaceId: string; threadId: string };
+  | { kind: "chatThread"; spaceId: string; threadId: string }
+  | { kind: "classroomCourse"; courseId: string };
 
 /** The grantable resource each {@link ResourceTarget} kind belongs to. */
 export const RESOURCE_BY_KIND: Record<ResourceTarget["kind"], SupportedResource> = {
@@ -543,6 +579,7 @@ export const RESOURCE_BY_KIND: Record<ResourceTarget["kind"], SupportedResource>
   chatAccount: GOOGLE_CHAT_RESOURCE,
   chatSpace: GOOGLE_CHAT_SPACE_RESOURCE,
   chatThread: GOOGLE_CHAT_THREAD_RESOURCE,
+  classroomCourse: GOOGLE_CLASSROOM_COURSE_RESOURCE,
 };
 
 /** The resource kinds createResource() can make: Google's native editor files. */
@@ -596,6 +633,7 @@ export function parseResourceUrl(url: string): ResourceTarget {
     case BIGQUERY_HOST: return parseBigQueryUrl(parsed);
     case "drive.google.com": return parseDriveUrl(parsed);
     case "chat.google.com": return parseChatUrl(parsed);
+    case CLASSROOM_HOST: return parseClassroomUrl(parsed);
   }
   throw new Error(`Unsupported Google resource URL host: ${parsed.hostname}`);
 }
@@ -720,6 +758,18 @@ function parseChatUrl(parsed: URL): ResourceTarget {
   }
 
   throw new Error(`Unsupported Google Chat resource URL: ${describeUrl(parsed)}`);
+}
+
+function parseClassroomUrl(parsed: URL): ResourceTarget {
+  let course = /^\/courses\/([^/]+)$/.exec(parsed.pathname);
+  if (!course || parsed.search || parsed.hash) {
+    throw new Error(
+        `Google Classroom resource URLs must be https://${CLASSROOM_HOST}/courses/<courseId>, ` +
+        `not ${describeUrl(parsed)}.`);
+  }
+  return {
+    kind: "classroomCourse", courseId: validateClassroomCourseId(decodeURIComponent(course[1])),
+  };
 }
 
 function parseBigQueryUrl(parsed: URL): ResourceTarget {

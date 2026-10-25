@@ -122,7 +122,7 @@ function vendorBundle(): string {
     stripTypeModulePrefix(source("types.txt"), GMAIL_TYPES_MODULE_PREFIX), docBundle(),
     sheetsBundle(), slidesBundle(), source("calendar-types.txt"), source("bigquery-types.txt"),
     stripTypeModulePrefix(source("drive-types.txt"), DRIVE_TYPES_MODULE_PREFIX),
-    source("chat-types.txt"),
+    source("chat-types.txt"), source("classroom-types.txt"),
   ].join("\n");
 }
 
@@ -168,6 +168,10 @@ message.addAttachment(file);
 
   it("compiles the exact Google Sheets agent declaration bundle without module dependencies", () => {
     expect(compileAgentTypes(sheetsBundle())).toEqual([]);
+  });
+
+  it("compiles the Google Classroom agent declarations without module dependencies", () => {
+    expect(compileAgentTypes(source("classroom-types.txt"))).toEqual([]);
   });
 
   it.each([
