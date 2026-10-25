@@ -197,7 +197,7 @@ details.menu .sheet a:hover, details.menu .sheet a[aria-current="page"] { backgr
 @media (max-width: 1140px) { details.menu { display: block; } }
 @media (max-width: 420px) { header.nav .wrap { gap: 12px; } header.nav .right .btn.primary { padding: 0 12px; } }
 
-footer .foot-grid { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 24px; margin-bottom: 20px; }
+footer .foot-grid { display: grid; grid-template-columns: 1.3fr repeat(4, 1fr); gap: 24px; margin-bottom: 20px; }
 footer .foot-grid h4 { margin: 0 0 8px; font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-color-kumo-strong); }
 footer .foot-grid ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 footer .foot-grid a { color: var(--text-color-kumo-subtle); }
@@ -333,3 +333,48 @@ a.card.feat:hover { border-color: color-mix(in oklch, var(--color-kumo-brand) 45
 .own > * { min-width: 0; }
 .stack div { flex-wrap: wrap; }
 .col-stack { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+
+/* ---- SCHO-233: audience entry points, gadget gallery, developer docs ---- */
+.aud { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-top: 32px; }
+.aud a { display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: var(--eo-radius); border: 1px solid var(--color-kumo-line); background: var(--color-kumo-base); color: var(--text-color-kumo-default); transition: border-color .15s, transform .15s; }
+.aud a:hover { border-color: color-mix(in oklch, var(--color-kumo-brand) 50%, var(--color-kumo-line)); transform: translateY(-2px); }
+.aud .em { font-size: 1.4rem; }
+.aud b { color: var(--text-color-kumo-strong); font-size: 1rem; }
+.aud span { font-size: .85rem; color: var(--text-color-kumo-subtle); }
+.aud i { margin-top: auto; font-style: normal; font-size: .85rem; color: var(--text-color-kumo-link); }
+@media (max-width: 1000px) { .aud { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .aud { grid-template-columns: minmax(0, 1fr); } }
+
+.proof { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
+.proof div { padding: 16px; border-radius: var(--eo-radius); border: 1px solid var(--color-kumo-line); background: var(--color-kumo-base); }
+.proof b { display: block; color: var(--text-color-kumo-strong); font-size: 1rem; margin-bottom: 4px; }
+.proof span { font-size: .85rem; color: var(--text-color-kumo-subtle); }
+@media (max-width: 900px) { .proof { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .proof { grid-template-columns: minmax(0, 1fr); } }
+
+.gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 32px; }
+@media (max-width: 960px) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .gallery { grid-template-columns: minmax(0, 1fr); } }
+.gcard { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: var(--eo-radius); border: 1px solid var(--color-kumo-line); background: var(--color-kumo-base); min-width: 0; }
+.gcard .gtop { display: flex; align-items: center; gap: 10px; }
+.gcard .gico { width: 38px; height: 38px; flex: none; border-radius: 10px; display: grid; place-items: center; font-size: 1.15rem; background: var(--color-kumo-tint); }
+.gcard h3 { flex: 1; min-width: 0; }
+.gcard .who { font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-color-kumo-brand); }
+.gcard p { margin: 0; font-size: .9rem; color: var(--text-color-kumo-subtle); }
+.gcard .uses { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--color-kumo-hairline); display: grid; gap: 6px; }
+.gcard .uses div { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: .82rem; color: var(--text-color-kumo-default); }
+.gcard .uses small { font-size: .7rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-color-kumo-subtle); }
+.status.byo { background: color-mix(in oklch, var(--color-kumo-badge-purple) 16%, transparent); color: var(--color-kumo-badge-purple); }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
+
+pre.code { margin: 0; padding: 14px 16px; border-radius: 10px; background: var(--color-kumo-recessed); border: 1px solid var(--color-kumo-hairline); overflow-x: auto; font: .8rem/1.55 var(--font-mono); color: var(--text-color-kumo-default); }
+pre.code .c { color: var(--text-color-kumo-subtle); }
+pre.code .k { color: var(--text-color-kumo-brand); }
+.doclinks { display: grid; gap: 8px; margin-top: 16px; }
+.doclinks a { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--color-kumo-line); background: var(--color-kumo-base); color: var(--text-color-kumo-strong); font-size: .92rem; }
+.doclinks a code { font-family: var(--font-mono); font-size: .75rem; color: var(--text-color-kumo-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.doclinks a:hover { background: var(--color-kumo-fill-hover); }
+.quote { padding: 22px; border-radius: var(--eo-radius); border-left: 3px solid var(--color-kumo-brand); background: var(--color-kumo-base); font-size: 1.05rem; color: var(--text-color-kumo-strong); }
+.quote small { display: block; margin-top: 10px; font-size: .8rem; color: var(--text-color-kumo-subtle); }
+.doclinks { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 560px) { .doclinks a { flex-wrap: wrap; } .doclinks a code { white-space: normal; overflow-wrap: anywhere; } }

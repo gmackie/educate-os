@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>For school leaders · EducateOS</title>
+<meta name="description" content="EducateOS for principals, superintendents and IT leaders: one policy over AI, real spend caps, student data in your own Cloudflare account, open source with no paid tier inside.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/mcp/">MCP</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/" aria-current="page">For school leaders</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">For school and district leaders</div>
+      <h1 class="rise" style="--d:1">Say yes to AI without handing your records to a vendor.</h1>
+      <p class="lede rise" style="--d:2">EducateOS runs in your district's own Cloudflare account. One policy decides every AI call, data read and grade, AI spending has hard caps, and every line of code is open to your IT team.</p>
+      <div class="rise" style="--d:3;display:flex;gap:12px;flex-wrap:wrap;margin-top:26px"><a class="btn primary" href="/educateos-district-overview.pdf">District overview (PDF)</a><a class="btn" href="/security/">Security design</a></div>
+      <div class="legend rise" style="--d:3"><span class="status avail">Available in Cloudflare OS</span><span class="status dev">In development</span><span class="status planned">Planned</span><span>EducateOS's own features run on a synthetic demo instance today. No real students use it yet.</span></div>
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">
+<div class="split"><div class="copy"><div class="eyebrow">Control</div><h2>Decide once, centrally, and see the change before it applies.</h2><ul class="checks"><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Policy floors that no school or class setting can loosen.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Every configuration change previewed as a dry run before it applies.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>AI budgets with district pools, a protected safety reserve and per-person caps.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>People, roster imports with a preview, family invitations and term rollover in one console.</span></li></ul></div><div><div class="window" role="img" aria-label="Product preview: the admin console's AI budgets page shows a district pool with a projection, a protected safety reserve, and a pending policy change shown as a dry-run plan before it is applied."><div class="bar"><i></i><i></i><i></i><span class="url">cedarvalley.educateos.io/admin/ai-budgets</span></div><div class="mock split2">
+    <div class="col">
+      <div class="h">AI budgets <span class="badge">October</span></div>
+      <div class="panel"><div class="ph">District pool <span class="badge green">On track</span></div><span class="muted">$184 of $400 · projected $352</span><div class="meter"><i style="width:46%"></i></div></div>
+      <div class="panel"><div class="ph">Safety reserve <span class="badge">Protected</span></div><span class="muted">$11 of $40 · pays for Hall Monitor checks only</span><div class="meter"><i style="width:28%"></i></div></div>
+      <div class="panel"><div class="ph">Per person</div><span class="muted">$2.00 a month cap for students</span></div>
+    </div>
+    <div class="col">
+      <div class="h">Review change <span class="badge warn">Dry run</span></div>
+      <div class="list">
+        <div class="li"><div class="t"><b class="strong">Student AI help</b><small>hints-only → off at Lincoln Elementary</small></div></div>
+        <div class="li"><div class="t"><b class="strong">Affects</b><small>1 school · 412 students</small></div></div>
+        <div class="li"><div class="t"><b class="strong">Policy check</b><small>Within the district's policy floor</small></div><span class="badge green">Passes</span></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end"><span class="mini-btn">Discard</span><span class="mini-btn primary">Apply change</span></div>
+    </div>
+  </div></div><span class="preview-tag">Product preview of the admin console. The district and figures are fictional.</span></div></div>
+    </div>
+  </section>
+  <section class="band tight">
+    <div class="wrap">
+<div class="eyebrow">What leaders get, and its status</div><h2>Built for the questions your board will ask.</h2><div class="grid3"><div class="card feat"><h3>Your account, your records</h3><p>Installed in the district's Cloudflare account. Gmacko Ventures LLC doesn't hold student records.</p><span class="status avail">Available in Cloudflare OS</span></div><div class="card feat"><h3>Default-deny policy</h3><p>One rule table decides every school read and write. If no rule allows it, it's denied.</p><span class="status dev">In development</span></div><div class="card feat"><h3>AI spend caps and screening</h3><p>Budgets, a safety reserve and per-person caps, with Hall Monitor screening student-facing AI.</p><span class="status dev">In development</span></div><div class="card feat"><h3>Admin console</h3><p>People, rosters, classes, families, policies, AI usage and budgets, and term rollover.</p><span class="status dev">In development</span></div><div class="card feat"><h3>Signed releases</h3><p>Updates are signed and verified offline against keys your district pins.</p><span class="status dev">In development</span></div><div class="card feat"><h3>Open source, no paid tier inside</h3><p>Apache-2.0. Every educational feature is in the open core. You pay Cloudflare for what your account uses.</p><span class="status avail">Available in Cloudflare OS</span></div><div class="card feat"><h3>Rosters and LMS</h3><p>OneRoster 1.2, Google Classroom and LTI 1.3 for Canvas, each with honest per-feature status. <a href="/integrations/">Integrations →</a></p><span class="status dev">In development</span></div><div class="card feat"><h3>Audit views</h3><p>Policy decisions are logged without content today. Pages for reviewing them in the console are next.</p><span class="status planned">Planned</span></div><div class="card feat"><h3>Guided install and managed address</h3><p>An optional guided install and a <code>district.educateos.io</code> address from educateos.io.</p><span class="status planned">Planned</span></div></div>
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">
+<div class="split"><div class="copy"><div class="eyebrow">A pilot path</div><h2>Start small, with evidence at each step.</h2><ul class="checks"><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A walkthrough of the demo instance with your IT and privacy staff.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A sandbox install in an account you control, with synthetic data.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>One school, teachers first, student AI off until you choose otherwise.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Your counsel reviews the <a href="/student-privacy/dpa/">DPA template</a> before any student data goes in.</span></li></ul></div><div class="card" style="padding:24px"><h3>What we don't claim</h3><p class="muted" style="margin:8px 0 0">No compliance certifications, no third-party audits, and no live district yet. Every capability on this site carries the status its evidence supports.</p><p style="margin-top:14px"><a href="/student-privacy/">Student privacy →</a> · <a href="/integrations/#statuses">How we label maturity</a></p></div></div>
+    </div>
+  </section>
+  <section>
+    <div class="wrap">
+      <div class="cta">
+        <h2>Bring EducateOS to your district.</h2>
+        <p class="lede" style="margin-left:auto;margin-right:auto">We're piloting with demo districts across Clever, ClassLink, Google Classroom, Canvas and schools with no LMS. Tell us about yours.</p>
+        <div class="ctas"><a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20district%20pilot">Email hello@educateos.io</a><a class="btn" href="/educateos-district-overview.pdf">District overview (PDF)</a></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/" aria-current="page">School leaders</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

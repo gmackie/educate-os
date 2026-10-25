@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>For students · EducateOS</title>
+<meta name="description" content="EducateOS for students: one place for classes, due dates, work and grades, with work you can keep after a class ends.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/mcp/">MCP</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/students/" aria-current="page">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">For students</div>
+      <h1 class="rise" style="--d:1">One calm place for school, and work that stays yours.</h1>
+      <p class="lede rise" style="--d:2">EducateOS gives students a home for every class: what's due, the work itself, quizzes, discussions, feedback and grades. When a class ends, the work doesn't disappear.</p>
+      <div class="rise" style="--d:3;display:flex;gap:12px;flex-wrap:wrap;margin-top:26px"><a class="btn primary" href="/student-privacy/">How your data is protected</a><a class="btn" href="/parents/">For families</a></div>
+      <div class="legend rise" style="--d:3"><span class="status avail">Available in Cloudflare OS</span><span class="status dev">In development</span><span class="status planned">Planned</span><span>EducateOS's own features run on a synthetic demo instance today. No real students use it yet.</span></div>
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">
+<div class="split"><div class="copy"><div class="eyebrow">What you get</div><h2>Less hunting, more doing.</h2><ul class="checks"><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A Learning Home with your courses, announcements and your own space.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A calendar of due dates, announcements and term dates across your classes, with a feed for any calendar app.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Write, upload files or fill in a data table, then submit and get a receipt code.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Feedback and grades appear when your teacher releases them.</span></li></ul></div><div><div class="window" role="img" aria-label="Product preview: a student's My space lists work kept from finished classes, with a Keep a copy button, beside a week calendar of due dates across three classes."><div class="bar"><i></i><i></i><i></i><span class="url">cedarvalley.educateos.io/myspace</span></div><div class="mock split2">
+    <div class="col">
+      <div class="h">My space <span class="badge">Yours to keep</span></div>
+      <div class="list">
+        <div class="li"><span class="sw" style="width:10px;height:10px;border-radius:3px;background:#2563eb"></span><div class="t"><b class="strong">Essay: "The Giver"</b><small>English 8 · finished class</small></div><span class="badge green">Kept</span></div>
+        <div class="li"><span class="sw" style="width:10px;height:10px;border-radius:3px;background:#16a34a"></span><div class="t"><b class="strong">Pond water lab report</b><small>Science 8 · finished class</small></div><span class="mini-btn">Keep a copy</span></div>
+        <div class="li"><span class="sw" style="width:10px;height:10px;border-radius:3px;background:#f59e0b"></span><div class="t"><b class="strong">Robot arm sketches</b><small>My own project</small></div></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="h">This week</div>
+      <div class="panel">
+        <div class="due"><span class="c" style="background:#16a34a"></span><div class="t">Cell labeling practice<small>Biology 9 · Tue</small></div></div>
+        <div class="due"><span class="c" style="background:#2563eb"></span><div class="t">Essay draft due<small>English 9 · Thu</small></div></div>
+        <div class="due"><span class="c" style="background:#f59e0b"></span><div class="t">Linear equations quiz<small>Algebra I · Fri</small></div></div>
+      </div>
+      <div class="tool"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><b>Calendar feed</b> · add it to any calendar app</div>
+    </div>
+  </div></div><span class="preview-tag">Product preview. The student and classes are fictional.</span></div></div>
+    </div>
+  </section>
+  <section class="band tight">
+    <div class="wrap">
+<div class="eyebrow">Everything for students, and its status</div><h2>What works today, and what's coming.</h2><div class="grid3"><div class="card feat"><h3>Learning Home and My space</h3><p>Your courses, recent announcements, and a space of your own.</p><span class="status dev">In development</span></div><div class="card feat"><h3>Calendar across classes</h3><p>Due dates, announcements and term dates in one view, with a subscription link you can turn off.</p><span class="status dev">In development</span></div><div class="card feat"><h3>Work and submissions</h3><p>Text, file uploads and data tables, with a receipt code for every submission.</p><span class="status dev">In development</span></div><div class="card feat"><h3>Quizzes and discussions</h3><p>Six kinds of question, plus class discussions where you can report a post to your teacher.</p><span class="status dev">In development</span></div><div class="card feat"><h3>Feedback and grades</h3><p>Only what your teacher has released or made official.</p><span class="status dev">In development</span></div><div class="card feat"><h3>Keep your work</h3><p>Keep a copy of your work from a finished class in My space.</p><span class="status dev">In development</span></div><div class="card feat"><h3>A helper that gives hints</h3><p>An AI helper that gives hints, not answers. It's off unless your district and teacher turn it on, and it stays inside their spending limits.</p><span class="status planned">Planned</span></div><div class="card feat"><h3>Build your own gadgets</h3><p>Ask an agent for a small app, then read and change its code.</p><span class="status planned">Planned</span></div><div class="card feat"><h3>Take your work with you</h3><p>Move your work to a new school's EducateOS, with consent.</p><span class="status dev">In development</span></div></div>
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">
+<div class="split"><div class="copy"><div class="eyebrow">Your privacy</div><h2>No ads. No selling. No profiles.</h2><p class="lede">EducateOS has no advertising, Gmacko Ventures LLC doesn't sell student data, and automated social-emotional profiling is prohibited in every school policy. Your school keeps your data in its own account.</p></div><div class="card" style="padding:24px"><h3>What your family can see</h3><p class="muted" style="margin:8px 0 0">If your school invites a parent or guardian, they see your classes, due dates, released feedback, official grades and announcements. They don't see your drafts, your own space or your conversations.</p><p style="margin-top:14px"><a href="/student-privacy/">Student privacy →</a></p></div></div>
+    </div>
+  </section>
+  <section>
+    <div class="wrap">
+      <div class="cta">
+        <h2>Want EducateOS at your school?</h2>
+        <p class="lede" style="margin-left:auto;margin-right:auto">Tell your teacher or principal, or write to us and we'll talk with your school.</p>
+        <div class="ctas"><a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20for%20my%20school">Email hello@educateos.io</a><a class="btn" href="/schools/">Who it's for</a></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/" aria-current="page">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

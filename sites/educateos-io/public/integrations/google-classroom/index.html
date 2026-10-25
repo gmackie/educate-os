@@ -33,9 +33,11 @@
       <a href="/#platform">Platform</a>
       <a href="/integrations/">Integrations</a>
       <a href="/connectors/">Connectors</a>
+      <a href="/gadgets/">Gadgets</a>
       <a href="/mcp/">MCP</a>
       <a href="/security/">Security</a>
       <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
       <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
     </nav>
     <div class="right">
@@ -46,9 +48,15 @@
           <a href="/#platform">Platform</a>
           <a href="/integrations/">Integrations</a>
           <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
           <a href="/mcp/">MCP</a>
           <a href="/security/">Security</a>
           <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
           <a href="/schools/">Schools</a>
           <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
         </nav>
@@ -85,7 +93,7 @@
   <section class="band tight">
     <div class="wrap">
       <h2>What happens when something goes wrong</h2>
-<ul class="checks"><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>If Classroom API access is off for the school, or the project lacks permission, the teacher is told which one.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Google's rate limits are retried rather than surfaced as failures.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Coursework another app or the teacher created by hand is never listed or changed.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Nothing is written to Classroom until the teacher approves it in the queue. A rejected action is never sent.</span></li></ul>      <div class="note-box"><b>How we validate.</b> Every status on this page comes from the project's <a href="https://github.com/gmackie/school-os/blob/main/docs/educateos/maturity.md">maturity record</a>. Unit-tested features run against fakes that behave like the real service: <a href="https://github.com/gmackie/school-os/tree/main/packages/gatekeeper-google/__tests__">Classroom API fakes</a>. A feature moves to "Validating against live sandbox" when a run against the vendor's own sandbox is under way, and to "Supported" only after it passes there. <a href="/integrations/#validate">More on our testing →</a></div>
+<ul class="checks"><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>If Classroom API access is off for the school, or the project lacks permission, the teacher is told which one.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Google's rate limits are retried rather than surfaced as failures.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Coursework another app or the teacher created by hand is never listed or changed.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Nothing is written to Classroom until the teacher approves it in the queue. A rejected action is never sent.</span></li></ul>      <div class="note-box"><b>How we validate.</b> Every status on this page comes from the project's <a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/maturity.md">maturity record</a>. Unit-tested features run against fakes that behave like the real service: <a href="https://github.com/gmackie/educate-os/tree/main/packages/gatekeeper-google/__tests__">Classroom API fakes</a>. A feature moves to "Validating against live sandbox" when a run against the vendor's own sandbox is under way, and to "Supported" only after it passes there. <a href="/integrations/#validate">More on our testing →</a></div>
     </div>
   </section>
 
@@ -114,9 +122,20 @@
           <li><a href="/#platform">Platform</a></li>
           <li><a href="/integrations/">Integrations</a></li>
           <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
           <li><a href="/mcp/">MCP</a></li>
-          <li><a href="/schools/">Schools</a></li>
           <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
         </ul>
       </div>
       <div>
@@ -133,7 +152,7 @@
         <h4>Company</h4>
         <ul>
           <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
-          <li><a href="https://github.com/gmackie/school-os">Open source · Apache-2.0</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
         </ul>
       </div>
     </div>

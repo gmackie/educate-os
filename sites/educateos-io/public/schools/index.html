@@ -33,9 +33,11 @@
       <a href="/#platform">Platform</a>
       <a href="/integrations/">Integrations</a>
       <a href="/connectors/">Connectors</a>
+      <a href="/gadgets/">Gadgets</a>
       <a href="/mcp/">MCP</a>
       <a href="/security/">Security</a>
       <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
       <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
     </nav>
     <div class="right">
@@ -46,9 +48,15 @@
           <a href="/#platform">Platform</a>
           <a href="/integrations/">Integrations</a>
           <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
           <a href="/mcp/">MCP</a>
           <a href="/security/">Security</a>
           <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
           <a href="/schools/" aria-current="page">Schools</a>
           <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
         </nav>
@@ -95,8 +103,8 @@
         <h3>Typical starting point</h3>
         <div class="list" style="margin-top:14px">
           <div class="li"><div class="t"><b class="strong">Pilot with one school</b><small>Rosters from the SIS, sign-in through Cloudflare Access</small></div></div>
-          <div class="li"><div class="t"><b class="strong">Teachers first</b><small>Lesson planning and feedback drafts, with student AI off</small></div></div>
-          <div class="li"><div class="t"><b class="strong">Students when ready</b><small>Hint-mode helper in chosen classes, inside the district's caps</small></div></div>
+          <div class="li"><div class="t"><b class="strong">Teachers first</b><small>Lesson planning and classroom gadgets, with student AI off</small></div></div>
+          <div class="li"><div class="t"><b class="strong">Students when ready</b><small>A hint-mode helper in chosen classes, inside the district's caps (planned)</small></div></div>
         </div>
       </div>
     </div>
@@ -130,8 +138,8 @@
             <div class="col">
               <div class="h">AI settings</div>
               <div class="list">
-                <div class="li"><div class="t"><b class="strong">Teacher assistant</b><small>Lesson plans and feedback drafts</small></div><span class="switch on"></span></div>
-                <div class="li"><div class="t"><b class="strong">Student helper</b><small>Hint mode only, when turned on</small></div><span class="switch"></span></div>
+                <div class="li"><div class="t"><b class="strong">Teacher assistant</b><small>Lesson plans and classroom gadgets</small></div><span class="switch on"></span></div>
+                <div class="li"><div class="t"><b class="strong">Student helper</b><small>Hint mode only, when turned on (planned)</small></div><span class="switch"></span></div>
                 <div class="li"><div class="t"><b class="strong">Monthly AI budget</b><small>$40 for the school</small></div><span class="tagline">$6.10 used</span></div>
               </div>
             </div>
@@ -150,7 +158,7 @@
         <ul class="checks">
           <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A co-op admin creates a class, adds a parent as its teacher, enrolls students of different ages and publishes a weekly plan. No LMS or AI is needed.</span></li>
           <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Parents see only their own children's work.</span></li>
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Student work stays with the family when a term ends, and can be exported.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>When a term ends, students keep a copy of their work. Exporting it is in development.</span></li>
         </ul>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:18px"><span class="status dev">In development</span></div>
       </div>
@@ -179,7 +187,7 @@
         <div class="eyebrow">CS and maker classes</div>
         <h2>Students build real software, with a teacher in the loop.</h2>
         <ul class="checks">
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Gadgets: students ask an agent for a small app, then read, change and share its code.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Gadgets: a teacher asks the agent for a small app and can share its code as a blueprint. Students building and changing gadgets themselves is planned.</span></li>
           <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><a href="/connectors/">GitHub and GitLab</a> for real repositories, with pushes and merges queued for approval.</span></li>
           <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Supabase for a databases unit, and read-only Cloudflare logs and metrics when students deploy Workers.</span></li>
           <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Automatic checks on submitted code, with feedback the teacher reviews.</span></li>
@@ -228,9 +236,20 @@
           <li><a href="/#platform">Platform</a></li>
           <li><a href="/integrations/">Integrations</a></li>
           <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
           <li><a href="/mcp/">MCP</a></li>
-          <li><a href="/schools/" aria-current="page">Schools</a></li>
           <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/" aria-current="page">Schools and co-ops</a></li>
         </ul>
       </div>
       <div>
@@ -247,7 +266,7 @@
         <h4>Company</h4>
         <ul>
           <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
-          <li><a href="https://github.com/gmackie/school-os">Open source · Apache-2.0</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
         </ul>
       </div>
     </div>

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>For teachers · EducateOS</title>
+<meta name="description" content="EducateOS for teachers: Teacher Studio for courses, quizzes and grading, plus Cloudflare OS agents and gadgets, with every grade and write approved by the teacher.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/mcp/">MCP</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/" aria-current="page">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">For teachers</div>
+      <h1 class="rise" style="--d:1">Your course, your rules. The busywork, delegated.</h1>
+      <p class="lede rise" style="--d:2">Teacher Studio covers the course itself: modules, activities, quizzes, a gradebook and discussions. Cloudflare OS agents build the small apps a lesson needs. Nothing reaches students until you approve it.</p>
+      <div class="rise" style="--d:3;display:flex;gap:12px;flex-wrap:wrap;margin-top:26px"><a class="btn primary" href="/gadgets/">Gadget ideas for your class</a><a class="btn" href="/integrations/google-classroom/">Using Google Classroom</a></div>
+      <div class="legend rise" style="--d:3"><span class="status avail">Available in Cloudflare OS</span><span class="status dev">In development</span><span class="status planned">Planned</span><span>EducateOS's own features run on a synthetic demo instance today. No real students use it yet.</span></div>
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">
+<div class="split"><div class="copy"><div class="eyebrow">Teacher Studio</div><h2>A complete course toolkit, with you as the final say.</h2><ul class="checks"><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Modules and pages, activity templates, and Publish and assign.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Common Cartridge import and export, including the QTI quizzes inside.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Quizzes with six question types and auto-scoring.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A gradebook with weighted groups, drop-lowest, excused and missing marks, and CSV export.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Rubric scoring and automatic code checks. A grade becomes official only when you approve it.</span></li></ul></div><div><div class="window" role="img" aria-label="Product preview: in Teacher Studio, a student's code submission shows 11 of 12 automatic checks passing, rubric scores, and an Approve official grade button."><div class="bar"><i></i><i></i><i></i><span class="url">cedarvalley.educateos.io/teach/cs-1/submissions</span></div><div class="mock">
+    <div class="tabs"><span>Roster</span><span>Modules</span><span class="on">Submissions</span><span>Gradebook</span><span>Quizzes</span></div>
+    <div class="h">Jordan T. · Traffic light project <span class="badge">Submitted Tue</span></div>
+    <div class="tool"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg><b>Automatic checks</b> · 11 of 12 passed <span class="badge warn" style="margin-left:auto">1 failing</span></div>
+    <div class="list">
+      <div class="li"><div class="t"><b class="strong">Works as specified</b><small>Rubric · 4 points</small></div><span class="tagline">3 / 4</span></div>
+      <div class="li"><div class="t"><b class="strong">Readable code</b><small>Rubric · 4 points</small></div><span class="tagline">4 / 4</span></div>
+      <div class="li"><div class="t"><b class="strong">Tests</b><small>Rubric · 2 points</small></div><span class="tagline">2 / 2</span></div>
+    </div>
+    <div class="approve"><div class="grow"><b class="strong">9 / 10</b><br><span class="muted">Not visible to Jordan until you approve it.</span></div><span class="mini-btn">Share feedback</span><span class="mini-btn primary">Approve official grade</span></div>
+  </div></div><span class="preview-tag">Product preview of Teacher Studio. The class and student are fictional.</span></div></div>
+    </div>
+  </section>
+  <section class="band tight">
+    <div class="wrap">
+<div class="eyebrow">Agents, gadgets and connectors</div><h2>Ask for the app the lesson needs.</h2><div class="grid3"><div class="card feat"><h3>Agents for your course</h3><p>An agent that can read the resources you introduce, from a Drive folder to the district's curriculum guide, and nothing else.</p><span class="status avail">Available in Cloudflare OS</span></div><div class="card feat"><h3>Gadgets, built by asking</h3><p>A simulation, flashcards or a lab plotter, each in its own sandbox. <a href="/gadgets/">See ideas →</a></p><span class="status avail">Available in Cloudflare OS</span></div><div class="card feat"><h3>Share as a blueprint</h3><p>Colleagues make their own copy, connected to their own classes. Your data never goes with it.</p><span class="status avail">Available in Cloudflare OS</span></div><div class="card feat"><h3>Approvals for every write</h3><p>Emails, calendar events and documents an agent prepares wait in your queue.</p><span class="status avail">Available in Cloudflare OS</span></div><div class="card feat"><h3>Google Classroom</h3><p>Read your courses and rosters, create coursework, and return grades you approve.</p><span class="status dev">In development</span></div><div class="card feat"><h3>Announcements and a weekly note</h3><p>Post to the class and add a note to the families' weekly digest.</p><span class="status dev">In development</span></div><div class="card feat"><h3>Discussion moderation</h3><p>Reported posts land in a queue for you.</p><span class="status dev">In development</span></div><div class="card feat"><h3>Resource import with rights</h3><p>Bring in a link or file, choose how it may be used, and review it before students see it.</p><span class="status dev">In development</span></div><div class="card feat"><h3>AI-drafted feedback</h3><p>Feedback drafted against your rubric, never shown to students until you approve it.</p><span class="status planned">Planned</span></div></div>
+    </div>
+  </section>
+  <section>
+    <div class="wrap">
+      <div class="cta">
+        <h2>Teaching somewhere that should try this?</h2>
+        <p class="lede" style="margin-left:auto;margin-right:auto">We're looking for teachers and schools to pilot with. Tell us what you teach.</p>
+        <div class="ctas"><a class="btn primary" href="mailto:hello@educateos.io?subject=Teaching%20with%20EducateOS">Email hello@educateos.io</a><a class="btn" href="/leaders/">Share with your school leaders</a></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/" aria-current="page">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

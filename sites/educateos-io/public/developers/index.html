@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>For developers · EducateOS</title>
+<meta name="description" content="Build on EducateOS: open-source, Workers-native gadgets, blueprints, gatekeepers, MCP and LTI, with docs, a local harness and honest status for every surface.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/mcp/">MCP</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/" aria-current="page">Developers</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/" aria-current="page">Developers</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">For developers</div>
+      <h1 class="rise" style="--d:1">Open source, Workers-native, built to extend.</h1>
+      <p class="lede rise" style="--d:2">EducateOS is Cloudflare OS with a district app on top, all Apache-2.0. Every workspace is a Durable Object, every gadget runs in a sandboxed Worker, and every outside service sits behind a gatekeeper you can write yourself.</p>
+      <div class="rise" style="--d:3;display:flex;gap:12px;flex-wrap:wrap;margin-top:26px"><a class="btn primary" href="https://github.com/gmackie/educate-os">Read the source</a><a class="btn" href="#local">Run it locally</a></div>
+      <div class="legend rise" style="--d:3"><span class="status avail">Available in Cloudflare OS</span><span class="status dev">In development</span><span class="status planned">Planned</span><span>EducateOS's own features run on a synthetic demo instance today. No real students use it yet.</span></div>
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">
+<div class="split"><div class="copy"><div class="eyebrow">The building blocks</div><h2>Gadgets, gatekeepers and bindings.</h2><ul class="checks"><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">Gadgets</b> are small apps in Dynamic Worker facets, each backed by a Durable Object. The client talks to its server only over Cap'n Web RPC.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">The agent</b> is a Code Mode agent: it does its work by writing and running code against the bindings it was given.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">Gatekeepers</b> are Workers that broker each outside service. Reads are recorded, and writes are simulated, then queued for a person.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><b class="strong">Bindings</b> a gadget can get include a language model, web search, scheduled hooks, Google Workspace and Classroom, any MCP server, and the district's school tools.</span></li></ul></div><div><div class="window" role="img" aria-label="Code sample: a gadget reads a class roster through the school tools binding, asks a language model to make lab groups, and places a library hold through an MCP server, which is queued for approval."><div class="bar"><i></i><i></i><i></i><span class="url">cedarvalley.educateos.io/workspace/biology-9/gadgets/lab-groups</span></div><div class="mock"><pre class="code"><span class="c">// Simplified sketch of a gadget's server code. The agent usually writes this for you.</span>
+<span class="k">let</span> roster = <span class="k">await</span> env.SCHOOL.callTool(<span class="k">"get_roster"</span>, { offeringId });  <span class="c">// read: answers at once</span>
+<span class="k">let</span> groups = <span class="k">await</span> env.LLM.run({ prompt: <span class="k">`Make lab groups of 3 from ${names}`</span> });
+<span class="k">let</span> hold = <span class="k">await</span> env.MCP_LIBRARY.placeHold({ title, copies: 3 });   <span class="c">// write: queued</span>
+<span class="k">if</span> (hold.status === <span class="k">"pending"</span>) {
+  <span class="c">// A teacher approves it later. The gadget keeps working meanwhile.</span>
+}</pre></div></div><span class="preview-tag">A simplified sketch. The school tools binding is in development, and the library MCP server is fictional.</span></div></div>
+    </div>
+  </section>
+  <section class="band tight">
+    <div class="wrap">
+<div class="eyebrow">What you can build on, and its status</div><h2>Every surface, with its maturity.</h2><div class="grid3"><div class="card feat"><h3>Gadgets and blueprints</h3><p>Build apps by asking, then publish them as blueprints that others copy and connect to their own resources. Bundled blueprints and <code>.gadget</code> export are included.</p><span class="status avail">Available in Cloudflare OS</span></div><div class="card feat"><h3>Write a gatekeeper</h3><p>The gatekeeper kit handles connect flows, credentials, configurators and the approval queue. Each gatekeeper deploys as its own Worker.</p><span class="status avail">Available in Cloudflare OS</span></div><div class="card feat"><h3>MCP servers and the portal</h3><p>Any MCP server becomes a typed binding, with one method per tool. The portal connector fronts the servers an admin approved.</p><span class="status avail">Available in Cloudflare OS</span></div><div class="card feat"><h3>School tools (SCHOOL binding)</h3><p><code>listTools()</code> and <code>callTool()</code> over the district's directory operations, such as rosters, offerings and enrollments, acting as the verified person.</p><span class="status dev">In development</span></div><div class="card feat"><h3>LTI 1.3 tool</h3><p>OIDC launch, Deep Linking, AGS and NRPS, with dynamic registration by invitation.</p><span class="status unit">Unit-tested</span></div><div class="card feat"><h3>District MCP server</h3><p>The district's own MCP server for outside AI clients, using the same handlers and policy as the district app.</p><span class="status planned">Planned</span></div><div class="card feat"><h3>Open Course Specification</h3><p>A portable course format with modules, lockfiles and composition.</p><span class="status dev">In development</span></div><div class="card feat"><h3>Marketplace listings</h3><p>Signed blueprints and curriculum packs on educateos.io that installations verify offline.</p><span class="status planned">Planned</span></div><div class="card feat"><h3>Maturity record</h3><p>Every capability's level, evidence and gaps, updated in the same PR as the evidence. <a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/maturity.md">Read it →</a></p><span class="status avail">Available in Cloudflare OS</span></div></div>
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">
+<div class="split" style="align-items:start"><div class="copy" id="local"><div class="eyebrow">Run it locally</div><h2>Two synthetic districts in one command.</h2><pre class="code"><span class="c"># the Workshop: agents, gadgets and gatekeepers</span>
+pnpm install
+pnpm run-local
+
+<span class="c"># EducateOS: two isolated synthetic districts, each with a fake
+# sign-in provider, roster and AI provider</span>
+pnpm educateos:harness
+pnpm educateos:harness -- --check   <span class="c"># boot, check health, exit</span></pre><p class="muted" style="font-size:.88rem;margin-top:14px">The code is public under Apache-2.0: fork it, run it and build on it. We aren't taking outside pull requests yet. If you want to help, <a href="mailto:hello@educateos.io?subject=Contributing%20to%20EducateOS">email us</a>.</p></div><div class="copy"><div class="eyebrow">Docs in the repository</div><h2>Start here.</h2><div class="doclinks"><a href="https://github.com/gmackie/educate-os/blob/main/README.md">Cloudflare OS overview <code>README.md</code></a><a href="https://github.com/gmackie/educate-os/blob/main/docs/blueprints.md">Blueprints <code>docs/blueprints.md</code></a><a href="https://github.com/gmackie/educate-os/blob/main/packages/gatekeeper-kit/README.md">Gatekeeper kit <code>packages/gatekeeper-kit/README.md</code></a><a href="https://github.com/gmackie/educate-os/blob/main/docs/connect-handoff.md">Connect handoff <code>docs/connect-handoff.md</code></a><a href="https://github.com/gmackie/educate-os/blob/main/packages/gatekeeper-mcp/README.md">MCP gatekeeper <code>packages/gatekeeper-mcp/README.md</code></a><a href="https://github.com/gmackie/educate-os/blob/main/packages/gatekeeper-mcp-portal/README.md">MCP Server Portal <code>packages/gatekeeper-mcp-portal/README.md</code></a><a href="https://github.com/gmackie/educate-os/blob/main/packages/gatekeeper-educateos/README.md">School tools gatekeeper <code>packages/gatekeeper-educateos/README.md</code></a><a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/lti.md">LTI 1.3 <code>docs/educateos/lti.md</code></a><a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/rfc/0001-open-course-specification.md">Open Course Specification <code>docs/educateos/rfc/0001-open-course-specification.md</code></a><a href="https://github.com/gmackie/educate-os/blob/main/docs/educateos/README.md">EducateOS architecture and packages <code>docs/educateos/README.md</code></a></div></div></div>
+    </div>
+  </section>
+  <section>
+    <div class="wrap">
+      <div class="cta">
+        <h2>Building something for schools?</h2>
+        <p class="lede" style="margin-left:auto;margin-right:auto">Tell us what you're building on EducateOS, or what you'd need to.</p>
+        <div class="ctas"><a class="btn primary" href="mailto:hello@educateos.io?subject=Building%20on%20EducateOS">Email hello@educateos.io</a><a class="btn" href="/gadgets/">Gadget gallery</a></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/developers/" aria-current="page">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

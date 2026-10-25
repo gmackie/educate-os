@@ -33,9 +33,11 @@
       <a href="/#platform">Platform</a>
       <a href="/integrations/">Integrations</a>
       <a href="/connectors/">Connectors</a>
+      <a href="/gadgets/">Gadgets</a>
       <a href="/mcp/">MCP</a>
       <a href="/security/">Security</a>
       <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
       <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
     </nav>
     <div class="right">
@@ -46,9 +48,15 @@
           <a href="/#platform">Platform</a>
           <a href="/integrations/">Integrations</a>
           <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
           <a href="/mcp/">MCP</a>
           <a href="/security/">Security</a>
           <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
           <a href="/schools/">Schools</a>
           <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
         </nav>
@@ -63,13 +71,20 @@
   <section class="hero">
     <div class="wrap">
       <span class="built-on rise"><span class="cf">● Cloudflare OS</span> Built on the open-source Cloudflare OS</span>
-      <h1 class="rise" style="--d:1">Cloudflare OS for schools.</h1>
-      <p class="lede rise" style="--d:2">EducateOS turns Cloudflare OS into a K-12 learning environment. Agents that know your curriculum, small apps that teachers and students build safely, and guardrails a district can trust, plus a learning management system (LMS) built in. Every district runs it in its own Cloudflare account.</p>
+      <h1 class="rise" style="--d:1">AI your school runs, on infrastructure your school owns.</h1>
+      <p class="lede rise" style="--d:2">EducateOS is Cloudflare OS for schools. Teachers get agents that know their course and build classroom apps on request. Students get one calm place for their classes and work. Families see their own child's progress. Leaders get one policy over every AI call, data read and grade. It all runs in the district's own Cloudflare account, with a learning management system built in.</p>
       <div class="ctas rise" style="--d:3">
-        <a class="btn primary" href="#install">Get early access</a>
-        <a class="btn" href="#platform">See the platform</a>
+        <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+        <a class="btn" href="/gadgets/">See what you can build</a>
+        <a class="btn" href="#audiences">Find your role</a>
       </div>
-      <p class="note muted rise" style="--d:3">Open source · Apache-2.0 · In development, with demo districts available now</p>
+      <div class="proof rise" style="--d:3">
+        <div><b>Your account, your data</b><span>Runs in the district's own Cloudflare account, and student records stay there.</span></div>
+        <div><b>Nothing writes on its own</b><span>Agents' changes wait for a person to approve, unless an administrator chooses otherwise.</span></div>
+        <div><b>Open source</b><span>Apache-2.0. Read every line that runs in your account.</span></div>
+        <div><b>No paid tier inside</b><span>Every educational feature ships in the open core.</span></div>
+      </div>
+      <p class="note muted rise" style="--d:3">In development · Statuses on every page say what works today. <a href="/integrations/#statuses">How we label maturity</a></p>
 
       <div class="rise" style="--d:4; margin-top: 48px">
         <div class="window" role="img" aria-label="Product preview: a teacher asks the EducateOS agent to build a cell-labeling gadget for Biology 9. The agent reads the class roster with the teacher's approval, and the finished gadget appears beside the chat.">
@@ -115,8 +130,23 @@
             </div>
           </div>
         </div>
-        <span class="preview-tag">Product preview. Names and districts are fictional.</span>
+        <span class="preview-tag">Product preview of EducateOS as it is being designed. Names and districts are fictional.</span>
       </div>
+    </div>
+  </section>
+
+  <!-- AUDIENCES -->
+  <section id="audiences" class="tight">
+    <div class="wrap">
+      <div class="eyebrow">Who it's for</div>
+      <h2>One platform, a different promise for everyone in a school.</h2>
+      <nav class="aud" aria-label="Audiences">
+        <a href="/students/"><span class="em" aria-hidden="true">🎒</span><b>Students</b><span>Everything due in one place, a helper that teaches, and work that stays yours.</span><i>For students →</i></a>
+        <a href="/parents/"><span class="em" aria-hidden="true">👪</span><b>Families</b><span>See your own child's classes and progress, and know where their data lives.</span><i>For families →</i></a>
+        <a href="/teachers/"><span class="em" aria-hidden="true">🧑‍🏫</span><b>Teachers</b><span>AI does the first draft and builds the app. You approve what reaches students.</span><i>For teachers →</i></a>
+        <a href="/leaders/"><span class="em" aria-hidden="true">🏛️</span><b>School leaders</b><span>One policy, real spend caps, and no vendor holding your records.</span><i>For leaders →</i></a>
+        <a href="/developers/"><span class="em" aria-hidden="true">🛠️</span><b>Developers</b><span>Open source, Workers-native, with gadgets, blueprints, gatekeepers and MCP.</span><i>For developers →</i></a>
+      </nav>
     </div>
   </section>
 
@@ -131,12 +161,12 @@
           <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v10H8l-4 4z"/></svg></div>
           <h3>Agents that know the course</h3>
           <p>Each class gets a workspace. Its agent can see the approved curriculum, the class calendar and the teacher's materials, and only what the district's policy allows.</p>
-          <div class="for"><span class="badge">Lesson planning</span><span class="badge">Feedback drafts</span><span class="badge">Hint-only tutoring</span></div>
+          <div class="for"><span class="badge">Lesson planning</span><span class="badge">Classroom gadgets</span><span class="badge">Curriculum context</span></div>
         </div>
         <div class="card pillar">
           <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg></div>
           <h3>Gadgets, built by asking</h3>
-          <p>Teachers, and students when allowed, ask for small apps such as a simulation, a flashcard deck or a lab data plotter. Each one runs in a sandbox and can be shared with a class.</p>
+          <p>Teachers ask for small apps such as a simulation, a flashcard deck or a lab data plotter. Each one runs in a sandbox and can be shared as a blueprint. Student access to gadgets is planned.</p>
           <div class="for"><span class="badge">Sandboxed</span><span class="badge">Shareable</span><span class="badge">Exportable</span></div>
         </div>
         <div class="card pillar">
@@ -151,6 +181,21 @@
     </div>
   </section>
 
+  <!-- GADGET GALLERY TEASER -->
+  <section class="tight band" id="gallery">
+    <div class="wrap">
+      <div class="eyebrow">Gadgets and blueprints</div>
+      <h2>Describe the app. The agent builds it. Share it with every teacher.</h2>
+      <p class="lede">Gadgets connect to the tools a school already runs, from Google Classroom and Drive to any MCP server. Publish one as a blueprint and colleagues make their own copy, connected to their own classes.</p>
+      <div class="gallery">
+        <article class="gcard"><div class="gtop"><span class="gico" aria-hidden="true">🧭</span><h3>Missing-work radar</h3></div><div class="who">Teachers</div><p>Finds work students haven't turned in across Classroom courses and drafts a nudge for each. Nothing sends until the teacher approves it.</p><div class="uses"><small>Connections it uses</small><div>Google Classroom <span class="status dev">In development</span></div><div>Gmail <span class="status avail">Available in Cloudflare OS</span></div></div></article>
+        <article class="gcard"><div class="gtop"><span class="gico" aria-hidden="true">🗺️</span><h3>Standards-aligned lesson planner</h3></div><div class="who">Teachers</div><p>Drafts a week of lessons from the district's curriculum guide and writes the plan into a Doc.</p><div class="uses"><small>Connections it uses</small><div>Context Library <span class="status avail">Available in Cloudflare OS</span></div><div>Google Docs <span class="status avail">Available in Cloudflare OS</span></div></div></article>
+        <article class="gcard"><div class="gtop"><span class="gico" aria-hidden="true">🎓</span><h3>Canvas pacing board</h3></div><div class="who">Teachers and coaches</div><p>Shows where each section is in a Canvas course, through a Canvas MCP server the district connects to its portal.</p><div class="uses"><small>Connections it uses</small><div>MCP Server Portal <span class="status avail">Available in Cloudflare OS</span></div><div>A Canvas MCP server <span class="status byo">Your MCP server</span></div></div></article>
+      </div>
+      <p style="margin-top:22px"><a class="btn" href="/gadgets/">See the full gallery →</a></p>
+    </div>
+  </section>
+
   <!-- STUDENTS -->
   <section id="students" style="background: var(--color-kumo-elevated); border-block: 1px solid var(--color-kumo-hairline)">
     <div class="wrap split">
@@ -158,11 +203,12 @@
         <div class="eyebrow">For students</div>
         <h2>One calm home for everything due, with a helper that teaches rather than tells.</h2>
         <ul class="checks">
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>What's due across every class, from EducateOS, Google Classroom or Canvas, in one list.</li>
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>An AI helper in hint mode, which can't hand over answers, if the district and teacher turn it on.</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>A home for every class, and a calendar of due dates and announcements across them, with a feed for any calendar app.</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>Work, quizzes and discussions in one place, with a receipt code for every submission. A hint-only AI helper is planned, off unless the district and teacher turn it on.</li>
           <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>Work that belongs to the student: it's versioned, never deleted when a class ends, and exportable.</li>
         </ul>
         <span class="persona"><span class="av" style="background:#db2777">MR</span><span><b class="strong">Maya R.</b> <span class="muted">· grade 9, Cedar Valley (fictional)</span></span></span>
+        <p style="margin-top:18px"><a href="/students/">More for students →</a> · <a href="/parents/">For families →</a></p>
       </div>
       <div>
         <div class="window" role="img" aria-label="Product preview: Maya's student home shows three assignments due this week, an AI helper giving a hint rather than the answer, and course cards with progress.">
@@ -188,7 +234,7 @@
             </div>
           </div>
         </div>
-        <span class="preview-tag">Product preview of the Student Learning Home.</span>
+        <span class="preview-tag">Product preview of the Student Learning Home as it is being designed. The hint-mode helper is planned.</span>
       </div>
     </div>
   </section>
@@ -200,11 +246,12 @@
         <div class="eyebrow">For teachers</div>
         <h2>AI does the first draft. The teacher signs off.</h2>
         <ul class="checks">
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>A gradebook with weighted categories, CSV export and grading periods.</li>
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>Rubric feedback the agent drafts but never posts. A score only becomes official when the teacher approves it.</li>
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>Quizzes with auto-scoring and QTI import, Common Cartridge courses, and moderated discussions.</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>A gradebook with weighted assignment groups, drop-lowest, excused and missing marks, and CSV export.</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>Rubric scoring and automatic code checks. A score only becomes official when the teacher approves it. AI-drafted feedback is planned.</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>Quizzes with six question types and auto-scoring, Common Cartridge import and export (including the QTI quizzes inside), and moderated discussions.</li>
         </ul>
         <span class="persona"><span class="av" style="background:#0f766e">MO</span><span><b class="strong">Mr. Okafor</b> <span class="muted">· Biology, Cedar Valley (fictional)</span></span></span>
+        <p style="margin-top:18px"><a href="/teachers/">More for teachers →</a> · <a href="/gadgets/">Gadget ideas →</a></p>
       </div>
       <div>
         <div class="window" role="img" aria-label="Product preview: Teacher Studio gradebook for Biology 9 with weighted totals and an approval card where the teacher reviews six AI-drafted feedback comments before releasing scores.">
@@ -229,7 +276,7 @@
             </div>
           </div>
         </div>
-        <span class="preview-tag">Product preview of Teacher Studio.</span>
+        <span class="preview-tag">Product preview of Teacher Studio as it is being designed.</span>
       </div>
     </div>
   </section>
@@ -240,15 +287,16 @@
       <div class="eyebrow">LMS-lite, built in</div>
       <h2>A complete learning management system, so a co-op or small school doesn't need a separate one.</h2>
       <p class="lede">Districts with Canvas or Google Classroom can keep using them, and EducateOS works alongside. Schools without an LMS get one included, at no extra cost.</p>
+      <div class="legend"><span class="status dev">In development</span><span>Running on a synthetic demo instance. No real students use it yet.</span></div>
       <div class="lms">
         <div class="card"><div class="ic2">📚</div><h3>Courses & modules</h3><p>Pages, files and modules, with Common Cartridge import and export.</p></div>
-        <div class="card"><div class="ic2">📝</div><h3>Assignments</h3><p>Uploads, due dates, late policies and immutable submissions.</p></div>
-        <div class="card"><div class="ic2">✅</div><h3>Quizzes</h3><p>Item banks, attempts, timed quizzes, auto-scoring and QTI import.</p></div>
+        <div class="card"><div class="ic2">📝</div><h3>Assignments</h3><p>Text, file uploads and data tables, with a receipt code for every submission.</p></div>
+        <div class="card"><div class="ic2">✅</div><h3>Quizzes</h3><p>Six question types, attempts, auto-scoring, and QTI quizzes inside cartridge imports.</p></div>
         <div class="card"><div class="ic2">📈</div><h3>Gradebook</h3><p>Weighted categories, teacher-approved release and CSV export.</p></div>
-        <div class="card"><div class="ic2">💬</div><h3>Discussions</h3><p>Moderated threads, with AI-assisted screening for safety.</p></div>
+        <div class="card"><div class="ic2">💬</div><h3>Discussions</h3><p>Threads students can report, with a teacher moderation queue.</p></div>
         <div class="card"><div class="ic2">📅</div><h3>Calendar</h3><p>Announcements, a class calendar and iCal feeds.</p></div>
         <div class="card"><div class="ic2">👪</div><h3>Families</h3><p>Guardians see only their own children, with a weekly digest.</p></div>
-        <div class="card"><div class="ic2">🎒</div><h3>Portable work</h3><p>Student archives that move with the learner between districts.</p></div>
+        <div class="card"><div class="ic2">🎒</div><h3>Portable work</h3><p>Students keep a copy of their work from finished classes. Moving it between districts is in development.</p></div>
       </div>
     </div>
   </section>
@@ -355,9 +403,20 @@
           <li><a href="/#platform">Platform</a></li>
           <li><a href="/integrations/">Integrations</a></li>
           <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
           <li><a href="/mcp/">MCP</a></li>
-          <li><a href="/schools/">Schools</a></li>
           <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
         </ul>
       </div>
       <div>
@@ -374,7 +433,7 @@
         <h4>Company</h4>
         <ul>
           <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
-          <li><a href="https://github.com/gmackie/school-os">Open source · Apache-2.0</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
         </ul>
       </div>
     </div>
