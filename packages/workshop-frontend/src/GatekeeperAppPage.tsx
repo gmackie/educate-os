@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { type ComponentProps, useEffect, useState } from 'react'
 import type { GatekeeperUiFrame } from '@gadgets/workshop-shared/gatekeeper'
 import { useAuthenticatedApi } from './AuthContext'
 import SandboxedGatekeeperApp from './SandboxedGatekeeperApp'
@@ -11,9 +11,12 @@ function disposeFrame(frame: GatekeeperUiFrame | null) {
 
 /**
  * Renders a gatekeeper's full-page management app (a sandboxed SPA the gatekeeper serves).
- * Fetches the app frame (iframe HTML + `ui` capability) from the backend and hosts it.
+ * Fetches the app frame (iframe HTML + `ui` capability) from the backend and hosts it, at the place
+ * in the app `path` names (see SandboxedGatekeeperApp).
  */
-export default function GatekeeperAppPage({ appId }: { appId: string }) {
+export default function GatekeeperAppPage({ appId, path, onPathChange }: {
+  appId: string
+} & Pick<ComponentProps<typeof SandboxedGatekeeperApp>, 'path' | 'onPathChange'>) {
   const { authenticatedApi } = useAuthenticatedApi()
   // Wrap the frame in an object: it holds a `ui` RPC stub, and we never want useState's setter to
   // treat a stored value as an updater function.
@@ -62,7 +65,12 @@ export default function GatekeeperAppPage({ appId }: { appId: string }) {
   // Fill the routed area below the header so the embedded app can manage its own internal layout.
   return (
     <div className="h-full">
-      <SandboxedGatekeeperApp frame={state.frame} gatekeeperVendorId={appId} />
+      <SandboxedGatekeeperApp
+        frame={state.frame}
+        gatekeeperVendorId={appId}
+        path={path}
+        onPathChange={onPathChange}
+      />
     </div>
   )
 }

@@ -2,9 +2,11 @@ import { type CSSProperties, useCallback, useEffect, useRef, useState } from 're
 import { flushSync } from 'react-dom'
 import { type RpcPromise, RpcStub, RpcTarget, newMessagePortRpcSession } from 'capnweb'
 import { useNavigate } from '@tanstack/react-router'
-import type {
-  GatekeeperUiFrame,
-  GatekeeperUserSelectionReceiver,
+import {
+  isGatekeeperAppPath,
+  type GatekeeperAppLocationReceiver,
+  type GatekeeperUiFrame,
+  type GatekeeperUserSelectionReceiver,
 } from '@gadgets/workshop-shared/gatekeeper'
 import { isHexColor } from '@gadgets/workshop-shared/api'
 import type {
@@ -16,6 +18,7 @@ import { useTheme } from './ThemeContext'
 import { useServerConfig } from './ServerConfigContext'
 import { forwardTrustedFrameError } from './errorReporting'
 import { useAuthenticatedApi } from './AuthContext'
+import { refreshGatekeeperApps } from './useGatekeeperApps'
 import {
   normalizeGatekeeperAppPrompt,
   parseGatekeeperAppWorkspaceTarget,
@@ -42,6 +45,8 @@ type OpenPrompt = (prompt: string) => void
 // Opening throws synchronously if refused; returning transfers receiver ownership to the picker.
 type OpenUserPicker = (receiver: RpcStub<GatekeeperUserSelectionReceiver>) => Promise<void>
 type CancelUserPicker = () => void
+// Moves the Workshop URL to the app's place `path`, adding a history entry unless `replace`.
+type ChangePath = (path: string, options: { replace: boolean }) => void
 
 type UserPicker = {
   id: number
@@ -60,6 +65,10 @@ const MAX_RESOLVED_WORKSPACES = 100
 // How long one gadget listing is reused across title lookups. The untrusted frame calls this once
 // per page of rows (and could call it in a loop), so the listing is shared rather than repeated.
 const WORKSPACE_TITLES_TTL_MS = 10_000
+
+// The shortest gap between the sidebar refreshes an app asks for: each one re-reads every app's
+// entries from its gatekeeper, and the untrusted frame could ask in a loop.
+const NAV_REFRESH_INTERVAL_MS = 1_000
 
 // Near the max int, so the full-viewport iframe sits above all Workshop chrome.
 const overlayZIndex = 2147483000
@@ -103,6 +112,8 @@ class GatekeeperAppHostImpl extends RpcTarget {
   readonly #resolveWorkspaceTitles: ResolveWorkspaceTitles
   readonly #openUserPicker: OpenUserPicker
   readonly #cancelUserPicker: CancelUserPicker
+  readonly #changePath: ChangePath
+  readonly #refreshNav: () => void
   #presenting = false
   #theme: GatekeeperAppTheme
   #themeReceiver: RpcStub<GatekeeperAppThemeReceiver> | null = null
@@ -110,6 +121,14 @@ class GatekeeperAppHostImpl extends RpcTarget {
   #pendingActive: boolean | null = null
   #pendingResolvers: ((ack: PresentAck) => void)[] = []
   #frameId: number | null = null
+  // Where the app is, as the Workshop URL last said or the app last reported.
+  #path: string
+  #locationReceiver: RpcStub<GatekeeperAppLocationReceiver> | null = null
+  // The app's moves are likewise coalesced to one URL change per animation frame (#applyLocation).
+  #pendingLocation: { path: string, push: boolean } | null = null
+  #locationFrameId: number | null = null
+  #lastNavRefresh = -Infinity
+  #navRefreshTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(
     capability: unknown,
@@ -120,9 +139,15 @@ class GatekeeperAppHostImpl extends RpcTarget {
     resolveWorkspaceTitles: ResolveWorkspaceTitles,
     openUserPicker: OpenUserPicker,
     cancelUserPicker: CancelUserPicker,
+    path: string,
+    changePath: ChangePath,
+    refreshNav: () => void,
   ) {
     super()
     this.#theme = theme
+    this.#path = path
+    this.#changePath = changePath
+    this.#refreshNav = refreshNav
     const { capability: ui, dispose } = createRateLimitedCapability(capability, {
       maxConcurrency: 8,
       maxCallsPerMinute: 600,
@@ -216,6 +241,80 @@ class GatekeeperAppHostImpl extends RpcTarget {
     }
   }
 
+  // The app calls this once to learn its place in the Workshop URL and to follow later changes to it
+  // (a sidebar entry, the back button). Apps without places of their own never call it.
+  subscribeLocation(receiver: RpcStub<GatekeeperAppLocationReceiver>): string {
+    if (typeof receiver?.dup !== 'function') {
+      throw new TypeError('subscribeLocation requires a receiver capability.')
+    }
+    this.#locationReceiver?.[Symbol.dispose]?.()
+    // The argument stub is disposed when this call returns, so keep our own dup (released in dispose).
+    this.#locationReceiver = receiver.dup()
+    return this.#path
+  }
+
+  #dropLocationReceiver(receiver: RpcStub<GatekeeperAppLocationReceiver>) {
+    if (this.#locationReceiver !== receiver) return
+    receiver[Symbol.dispose]?.()
+    this.#locationReceiver = null
+  }
+
+  // Tell a subscribed app the Workshop URL moved to `path`, unless the app is already there (as it
+  // is after a move it reported itself). The user's move supersedes any the app has queued.
+  updateLocation(path: string) {
+    this.#cancelPendingLocation()
+    if (path === this.#path) return
+    this.#path = path
+    const receiver = this.#locationReceiver
+    if (!receiver) return
+
+    try {
+      Promise.resolve(receiver.setPath(path)).catch(() => this.#dropLocationReceiver(receiver))
+    } catch {
+      this.#dropLocationReceiver(receiver)
+    }
+  }
+
+  // Record the app's move to `path` in the Workshop URL, so reloading, sharing or going back returns
+  // there. Moves in one animation frame make one URL change, which adds a history entry if any of
+  // them did not ask to `replace`, so a redirect right after a navigation stays one entry.
+  setLocation(path: string, options?: { replace?: boolean }): void {
+    if (!isGatekeeperAppPath(path)) throw new TypeError('Invalid gatekeeper app location.')
+    const push = options?.replace !== true || (this.#pendingLocation?.push ?? false)
+    this.#pendingLocation = { path, push }
+    this.#locationFrameId ??= requestAnimationFrame(() => this.#applyLocation())
+  }
+
+  #applyLocation() {
+    this.#locationFrameId = null
+    const { path, push } = this.#pendingLocation!
+    this.#pendingLocation = null
+    if (path === this.#path) return
+    this.#path = path
+    this.#changePath(path, { replace: !push })
+  }
+
+  #cancelPendingLocation() {
+    if (this.#locationFrameId !== null) cancelAnimationFrame(this.#locationFrameId)
+    this.#locationFrameId = null
+    this.#pendingLocation = null
+  }
+
+  // Re-read the sidebar entries of the user's apps, after the app changed what its own should be.
+  // At most one refresh per NAV_REFRESH_INTERVAL_MS; a request inside the interval is deferred to
+  // its end, and further ones until then share it.
+  refreshNav(): void {
+    if (this.#navRefreshTimer !== null) return
+    const run = () => {
+      this.#navRefreshTimer = null
+      this.#lastNavRefresh = Date.now()
+      this.#refreshNav()
+    }
+    const wait = this.#lastNavRefresh + NAV_REFRESH_INTERVAL_MS - Date.now()
+    if (wait <= 0) run()
+    else this.#navRefreshTimer = setTimeout(run, wait)
+  }
+
   // Queue a presentation change; the latest requested state is applied on the next frame.
   setPresenting(active: boolean): Promise<PresentAck> {
     return new Promise((resolve) => {
@@ -245,6 +344,11 @@ class GatekeeperAppHostImpl extends RpcTarget {
     this.#cancelUserPicker()
     this.#themeReceiver?.[Symbol.dispose]?.()
     this.#themeReceiver = null
+    this.#locationReceiver?.[Symbol.dispose]?.()
+    this.#locationReceiver = null
+    this.#cancelPendingLocation()
+    if (this.#navRefreshTimer !== null) clearTimeout(this.#navRefreshTimer)
+    this.#navRefreshTimer = null
     if (this.#frameId !== null) {
       cancelAnimationFrame(this.#frameId)
       this.#frameId = null
@@ -263,10 +367,15 @@ class GatekeeperAppHostImpl extends RpcTarget {
  * Hosts a gatekeeper's full-page management SPA in a sandboxed, network-isolated iframe. The app
  * talks to the gatekeeper only through the `ui` capability carried over the MessagePort RPC session.
  * The iframe fills its parent container.
+ *
+ * `path` is the app's place in the Workshop URL: a change is passed to the app (subscribeLocation)
+ * without reloading the frame, and the app's own moves come back through `onPathChange`.
  */
-export default function SandboxedGatekeeperApp({ frame, gatekeeperVendorId }: {
+export default function SandboxedGatekeeperApp({ frame, gatekeeperVendorId, path, onPathChange }: {
   frame: GatekeeperUiFrame,
   gatekeeperVendorId: string,
+  path: string,
+  onPathChange: ChangePath,
 }) {
   const navigate = useNavigate()
   const { authenticatedApi } = useAuthenticatedApi()
@@ -294,6 +403,20 @@ export default function SandboxedGatekeeperApp({ frame, gatekeeperVendorId }: {
   useEffect(() => {
     hostRef.current?.updateTheme({ mode: resolvedThemeMode, accentColor })
   }, [resolvedThemeMode, accentColor])
+  // The location is pushed the same way. The host outlives renders, so it reaches the latest
+  // `onPathChange` through a ref rather than restarting the session when the callback changes.
+  const pathRef = useRef(path)
+  pathRef.current = path
+  useEffect(() => {
+    hostRef.current?.updateLocation(path)
+  }, [path])
+  const onPathChangeRef = useRef(onPathChange)
+  onPathChangeRef.current = onPathChange
+  const changePath = useCallback<ChangePath>(
+    (next, options) => onPathChangeRef.current(next, options),
+    [],
+  )
+  const refreshNav = useCallback(() => refreshGatekeeperApps(authenticatedApi), [authenticatedApi])
 
   const setOverlayPhase = useCallback((next: OverlayState) => {
     if (overlayRef.current === next) return
@@ -410,6 +533,9 @@ export default function SandboxedGatekeeperApp({ frame, gatekeeperVendorId }: {
         resolveWorkspaceTitles,
         openUserPicker,
         cancelUserPicker,
+        pathRef.current,
+        changePath,
+        refreshNav,
       )
       hostRef.current = host
       sessionRef.current = newMessagePortRpcSession(port, host)
@@ -442,17 +568,18 @@ export default function SandboxedGatekeeperApp({ frame, gatekeeperVendorId }: {
     }
     // Re-establish the session if either the HTML or the `ui` capability changes, so a new frame
     // carrying a fresh stub (even with identical HTML) never keeps talking through the stale one.
-  }, [frame.iframeHtml, frame.ui, gatekeeperVendorId, cancelUserPicker, openPrompt, openTarget,
-      openUserPicker, present, resolveWorkspaceTitles, setOverlayPhase])
+  }, [frame.iframeHtml, frame.ui, gatekeeperVendorId, cancelUserPicker, changePath, openPrompt,
+      openTarget, openUserPicker, present, refreshNav, resolveWorkspaceTitles, setOverlayPhase])
 
   return (
     <>
       <iframe
         ref={iframeRef}
         srcDoc={frame.iframeHtml}
-        // allow-scripts: run the app's JS. allow-modals: its beforeunload unsaved-changes guard. Not
-        // allow-same-origin (the frame stays an opaque origin), and the app's CSP keeps connect-src 'none'.
-        sandbox="allow-scripts allow-modals"
+        // allow-scripts: run the app's JS. allow-modals: its beforeunload unsaved-changes guard.
+        // allow-downloads: files it builds for the user (e.g. a CSV export). Not allow-same-origin
+        // (the frame stays an opaque origin), and the app's CSP keeps connect-src 'none'.
+        sandbox="allow-scripts allow-modals allow-downloads"
         allow="clipboard-write"
         title="Gatekeeper app"
         style={iframeStyleForOverlay(overlay)}

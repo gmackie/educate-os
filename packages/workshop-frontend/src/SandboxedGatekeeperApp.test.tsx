@@ -10,6 +10,8 @@ import {
   createRoute,
   createRouter,
   RouterProvider,
+  useNavigate,
+  useRouterState,
 } from "@tanstack/react-router";
 import { newMessagePortRpcSession, RpcStub, RpcTarget } from "capnweb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,11 +20,13 @@ import type {
   GatekeeperAppThemeReceiver,
 } from "@gadgets/workshop-shared/theme";
 import type {
+  GatekeeperAppLocationReceiver,
   GatekeeperUiFrame,
   GatekeeperUserSelection,
   GatekeeperUserSelectionReceiver,
 } from "@gadgets/workshop-shared/gatekeeper";
 import SandboxedGatekeeperApp from "./SandboxedGatekeeperApp";
+import { parseGatekeeperAppSearch } from "./gatekeeperAppNavigation";
 import type GatekeeperUserPickerDialog from "./features/gatekeeper-sharing/GatekeeperUserPickerDialog";
 import type * as Kumo from "@cloudflare/kumo";
 
@@ -67,6 +71,9 @@ vi.mock("./errorReporting", () => ({
   forwardTrustedFrameError: () => false,
 }));
 
+const refreshGatekeeperApps = vi.hoisted(() => vi.fn<(api: object) => void>());
+vi.mock("./useGatekeeperApps", () => ({ refreshGatekeeperApps }));
+
 const WORKSPACE_ID = "a".repeat(64);
 
 const listGadgets = vi.fn<() => Promise<{ id: string; title: string }[]>>(async () => [
@@ -90,12 +97,22 @@ interface TestHost extends RpcTarget {
   resolveWorkspaceTitles(ids: string[]): Promise<(string | null)[]>;
   openPrompt(prompt: string): Promise<void>;
   selectUsers(receiver: GatekeeperUserSelectionReceiver | string): Promise<void>;
+  subscribeLocation(receiver: GatekeeperAppLocationReceiver): Promise<string>;
+  setLocation(path: unknown, options?: { replace?: boolean }): Promise<void>;
+  refreshNav(): Promise<void>;
 }
 
 class EmptyUi extends RpcTarget {}
 
 class TestThemeReceiver extends RpcTarget implements GatekeeperAppThemeReceiver {
   setTheme(_theme: GatekeeperAppTheme): void {}
+}
+
+class TestLocationReceiver extends RpcTarget implements GatekeeperAppLocationReceiver {
+  paths: string[] = [];
+  setPath(path: string): void {
+    this.paths.push(path);
+  }
 }
 
 /**
@@ -132,6 +149,7 @@ describe("SandboxedGatekeeperApp navigation", () => {
 
   beforeEach(() => {
     listGadgets.mockClear();
+    refreshGatekeeperApps.mockClear();
   });
 
   afterEach(async () => {
@@ -143,21 +161,32 @@ describe("SandboxedGatekeeperApp navigation", () => {
     picker.real = false;
   });
 
-  // Mount the host under a router and complete the iframe's handshake, leaving `host` connected.
-  async function mountApp() {
+  // Mount the host under a router, its path kept in `?path=` as the app's route keeps it, and
+  // complete the iframe's handshake, leaving `host` connected.
+  async function mountApp(initialUrl = "/") {
     const frame = {
       iframeHtml: "<!doctype html><title>Scheduler</title>",
       ui: new RpcStub(new EmptyUi()),
     } as unknown as GatekeeperUiFrame;
-    const rootRoute = createRootRoute({
-      component: () => <SandboxedGatekeeperApp frame={frame} gatekeeperVendorId="scheduler" />,
-    });
+    const HostedApp = () => {
+      const search = useRouterState({ select: (state) => state.location.search });
+      const navigate = useNavigate();
+      return (
+        <SandboxedGatekeeperApp
+          frame={frame}
+          gatekeeperVendorId="scheduler"
+          path={parseGatekeeperAppSearch(search as Record<string, unknown>).path ?? "/"}
+          onPathChange={(path, { replace }) => navigate({ to: ".", search: { path }, replace })}
+        />
+      );
+    };
+    const rootRoute = createRootRoute({ component: HostedApp });
     const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/" });
     const gadgetRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: "/workspace/$id",
     });
-    const history = createMemoryHistory({ initialEntries: ["/"] });
+    const history = createMemoryHistory({ initialEntries: [initialUrl] });
     const router = createRouter({
       history,
       routeTree: rootRoute.addChildren([indexRoute, gadgetRoute]),
@@ -180,7 +209,7 @@ describe("SandboxedGatekeeperApp navigation", () => {
         ports: [port2],
       }),
     );
-    return { iframe, router };
+    return { iframe, router, history };
   }
 
   // Whether `promise` has settled by the next macrotask, without waiting for it.
@@ -421,5 +450,76 @@ describe("SandboxedGatekeeperApp navigation", () => {
       await vi.waitFor(() => expect(router.state.location.pathname).toBe("/"));
     });
     expect(router.state.location.search).toEqual({ prompt: "Create a daily brief." });
+  });
+
+  it("keeps the app's place and the URL in step both ways without reloading the frame", async () => {
+    const { iframe, router, history } = await mountApp("/?path=%2Fclasses%2F1");
+    const receiver = new TestLocationReceiver();
+    await expect(host!.subscribeLocation(receiver)).resolves.toBe("/classes/1");
+
+    // A Workshop navigation (a sidebar entry, the back button) is passed to the app, in place.
+    await act(async () => {
+      // The test's root route declares no search params, so the router's types know of none.
+      await router.navigate({ to: "/", search: { path: "/classes/2" } as never });
+    });
+    await vi.waitFor(() => expect(receiver.paths).toEqual(["/classes/2"]));
+    expect(container!.querySelector("iframe")).toBe(iframe);
+    expect(iframe.getAttribute("srcdoc")).toBe("<!doctype html><title>Scheduler</title>");
+
+    // The app's own move adds a history entry, and is not echoed back to it.
+    const entries = history.length;
+    await act(async () => {
+      await host!.setLocation("/schools/9");
+      await vi.waitFor(() => expect(router.state.location.search).toEqual({ path: "/schools/9" }));
+    });
+    expect(history.length).toBe(entries + 1);
+
+    // A redirect replaces the entry; moves in one frame make one change, which pushes if any did.
+    await act(async () => {
+      await host!.setLocation("/schools/9/terms", { replace: true });
+      await vi.waitFor(() =>
+        expect(router.state.location.search).toEqual({ path: "/schools/9/terms" }));
+    });
+    expect(history.length).toBe(entries + 1);
+    await act(async () => {
+      await Promise.all([
+        host!.setLocation("/classes/3"),
+        host!.setLocation("/classes/3/roster", { replace: true }),
+      ]);
+      await vi.waitFor(() =>
+        expect(router.state.location.search).toEqual({ path: "/classes/3/roster" }));
+    });
+    expect(history.length).toBe(entries + 2);
+    await tick();
+    expect(receiver.paths).toEqual(["/classes/2"]);
+
+    // Going back is the Workshop's move, so the app hears of it; the session is the same one.
+    await act(async () => {
+      history.back();
+    });
+    await vi.waitFor(() => expect(receiver.paths).toEqual(["/classes/2", "/schools/9/terms"]));
+    await expect(host!.subscribeTheme(new TestThemeReceiver())).resolves.toMatchObject({ mode: "light" });
+  });
+
+  it("refuses locations that are not plain paths in the app", async () => {
+    const { router } = await mountApp("/?path=%2Fhome");
+    for (const path of ["https://evil.example/", "//evil.example", "classes", "/a?b", "/a b", 42]) {
+      await expect(host!.setLocation(path)).rejects.toThrow("Invalid gatekeeper app location.");
+    }
+    await tick();
+    expect(router.state.location.search).toEqual({ path: "/home" });
+  });
+
+  it("refreshes the sidebar when the app asks, at most once per interval", async () => {
+    await mountApp();
+    await host!.refreshNav();
+    expect(refreshGatekeeperApps).toHaveBeenCalledTimes(1);
+    expect(refreshGatekeeperApps).toHaveBeenCalledWith(authenticatedApi);
+
+    await Promise.all([host!.refreshNav(), host!.refreshNav(), host!.refreshNav()]);
+    expect(refreshGatekeeperApps).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(refreshGatekeeperApps).toHaveBeenCalledTimes(2), { timeout: 3_000 });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(refreshGatekeeperApps).toHaveBeenCalledTimes(2);
   });
 });

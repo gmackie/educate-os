@@ -1,3 +1,5 @@
+import { isGatekeeperAppPath } from "@gadgets/workshop-shared/gatekeeper";
+
 export const MAX_GATEKEEPER_APP_PROMPT_LENGTH = 4_000;
 
 // A Durable Object ID string, which is what a workspace ID is.
@@ -31,4 +33,19 @@ export function normalizeGatekeeperAppPrompt(value: string): string {
     throw new RangeError("Gatekeeper app prompt is too long.");
   }
   return prompt;
+}
+
+/** The search params of a gatekeeper app's page, `/gatekeepers/$appId`. */
+export type GatekeeperAppSearch = {
+  /** The place in the app the page opens, e.g. a sidebar entry's path. */
+  path?: string;
+};
+
+/**
+ * Validates the `/gatekeepers/$appId` search params. The URL can come from anywhere (a link, a
+ * bookmark, the app's own setLocation), so a path isGatekeeperAppPath rejects is dropped rather
+ * than handed to the app.
+ */
+export function parseGatekeeperAppSearch(search: Record<string, unknown>): GatekeeperAppSearch {
+  return isGatekeeperAppPath(search.path) ? { path: search.path } : {};
 }

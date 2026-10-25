@@ -2,7 +2,6 @@ import { Link } from '@tanstack/react-router'
 import {
   ArrowLeft,
   Blueprint,
-  BookOpen,
   Compass,
   Hexagon,
   House,
@@ -16,6 +15,8 @@ import SiteLogo from '../SiteLogo'
 import { useGatekeeperApps } from '../../useGatekeeperApps'
 import { openCommandPalette } from './commandPaletteBus'
 import SidebarItem from './SidebarItem'
+import GatekeeperAppIcon from './GatekeeperAppIcon'
+import SidebarGatekeeperAppSection from './SidebarGatekeeperAppSection'
 import {
   SidebarWorkspacesProvider,
   SidebarWorkspacesTools,
@@ -33,6 +34,7 @@ import { inNativeApp, returnToInstalls } from '../../features/native-app/nativeA
  *   • brand row                            pinned
  *   • primary nav (Home, Workspaces, …)    pinned
  *   • workspace tools (⌘K search)          pinned
+ *   • gatekeeper app sections              SCROLLS
  *   • Favorites / Recent workspaces        SCROLLS
  *   • utility strip (plug, avatar)         pinned
  */
@@ -48,6 +50,10 @@ export default function Sidebar({
   // and is connected / enabled for everyone). Disabled or not-yet-connected ones aren't returned, so
   // they simply don't appear. The set is fully dynamic — no gatekeeper is hardcoded.
   const gatekeeperApps = useGatekeeperApps()
+  // An app that contributes entries gets its own section in the scrolling region; collapsed, where
+  // there is no room for labels, it is one icon row like any other app.
+  const appSections = collapsed ? [] : gatekeeperApps.filter((app) => app.nav?.length)
+  const appRows = gatekeeperApps.filter((app) => !appSections.includes(app))
 
   return (
     <aside
@@ -144,44 +150,16 @@ export default function Sidebar({
               collapsed={collapsed}
             />
             {/* Gatekeeper management apps (e.g. the Context Library), listed dynamically. */}
-            {gatekeeperApps.map((app) => {
-              // Escape the icon URL for safe interpolation into a CSS url("…") string.
-              const maskUrl = app.icon
-                ? `url("${app.icon.url.replace(/[\\"]/g, '\\$&')}")`
-                : undefined
-              return (
+            {appRows.map((app) => (
               <SidebarItem
                 key={app.id}
                 to="/gatekeepers/$appId"
                 params={{ appId: app.id }}
                 label={app.title}
-                icon={
-                  maskUrl ? (
-                    // Render the (monochrome) app icon as a CSS mask filled with the row's current
-                    // text color, so it tints like the Phosphor icons — subtle by default, accent
-                    // when active, darker on hover.
-                    <span
-                      aria-hidden
-                      className="h-3.5 w-3.5 bg-current"
-                      style={{
-                        maskImage: maskUrl,
-                        WebkitMaskImage: maskUrl,
-                        maskRepeat: 'no-repeat',
-                        WebkitMaskRepeat: 'no-repeat',
-                        maskPosition: 'center',
-                        WebkitMaskPosition: 'center',
-                        maskSize: 'contain',
-                        WebkitMaskSize: 'contain',
-                      }}
-                    />
-                  ) : (
-                    <BookOpen size={14} weight="regular" />
-                  )
-                }
+                icon={<GatekeeperAppIcon icon={app.icon} />}
                 collapsed={collapsed}
               />
-              )
-            })}
+            ))}
             <SidebarItem
               to="/explore"
               label="Explore"
@@ -197,6 +175,9 @@ export default function Sidebar({
         {/* Scrolling middle: only the Favorites / Recent workspaces / Recent blueprints lists.
             min-h-0 lets flex children compute scroll height correctly. */}
         <div className="sidebar-scroll mt-1 min-h-0 flex-1 overflow-y-auto">
+          {appSections.map((app) => (
+            <SidebarGatekeeperAppSection key={app.id} app={app} nav={app.nav ?? []} />
+          ))}
           <SidebarWorkspacesLists collapsed={collapsed} />
         </div>
       </SidebarWorkspacesProvider>
