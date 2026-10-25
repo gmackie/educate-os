@@ -2,8 +2,9 @@
 // gmacko Cloudflare account, deployed Worker by Worker by ForgeGraph from the configs
 // production-config.ts generates. Everything here is non-secret: resource ids and names, the
 // origin, and plain-text vars. Secrets (the backend's ADMINS and Cloudflare Access pair, the guard's
-// Hall Monitor signing key, the district's DISTRICT_CONFIG and Access pair, the Google connector's
-// OAuth client) are delivered by ForgeGraph and never written down here; see
+// Hall Monitor signing key, the district's DISTRICT_CONFIG and Access pair, whose CF_ACCESS_AUD lists
+// both the district's and the instance's Access audiences, the Google connector's OAuth client) are
+// delivered by ForgeGraph and never written down here; see
 // docs/educateos/runbooks/production-instance.md.
 
 import type { ProductionInstance } from "./production-config.ts";
@@ -12,10 +13,13 @@ import type { ProductionInstance } from "./production-config.ts";
 export const SCHOOLOS_GMAC_IO: ProductionInstance = {
   hostname: "schoolos.gmac.io",
   accountId: "c07a7e704db1808e1fff91bed2b1cd49",
-  // The three auto-provisioned gatekeepers, which need no OAuth app, and the Google connector
-  // (SCHO-214), whose OAuth client is its CLIENT_ID and CLIENT_SECRET secrets.
+  // The three auto-provisioned gatekeepers, which need no OAuth app; the Google connector
+  // (SCHO-214), whose OAuth client is its CLIENT_ID and CLIENT_SECRET secrets; and the EducateOS
+  // connector (SCHO-218), which needs no client: it is bound to the district below and verifies
+  // people by the district's sign-in.
   gatekeepers: [
-    "gatekeeper-context", "gatekeeper-google", "gatekeeper-scheduler", "gatekeeper-websearch",
+    "gatekeeper-context", "gatekeeper-google", "gatekeeper-scheduler", "gatekeeper-educateos",
+    "gatekeeper-websearch",
   ],
   kvNamespaces: {
     "workshop-backend": {
@@ -51,7 +55,8 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
     // The Hall Monitor Worker already deployed in the same account.
     hallMonitorService: "hall-monitor",
   },
-  // LMS-lite (SCHO-193): the demo co-op district, behind its own Access application.
+  // LMS-lite (SCHO-193): the demo co-op district, behind its own Access application. Its
+  // CF_ACCESS_AUD secret lists that application's audience and the instance's (SCHO-218).
   district: {
     hostname: "district.schoolos.gmac.io",
   },

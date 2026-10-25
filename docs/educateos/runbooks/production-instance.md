@@ -1,7 +1,7 @@
 # Runbook: the schoolos.gmac.io production instance
 
 - Issues: SCHO-192 (the instance), SCHO-193 (the LMS-lite district), SCHO-214 (the Google
-  connector).
+  connector), SCHO-218 (the EducateOS connector).
 - Instance: <https://schoolos.gmac.io>, one long-lived EducateOS deployment on the gmacko Cloudflare
   account (`c07a7e704db1808e1fff91bed2b1cd49`), deployed by ForgeGraph.
 - Configs: `packages/<worker>/wrangler.production.jsonc`, generated and committed.
@@ -21,11 +21,12 @@ Every other Worker is reached only through the router.
 
 | Worker | Config | Binds |
 |---|---|---|
-| `router` | `packages/router/wrangler.production.jsonc` | `WORKSHOP_BACKEND`, `GATEKEEPER_{CONTEXT,GOOGLE,SCHEDULER,WEBSEARCH}`, and the Access-mode frontend as `ASSETS` |
-| `workshop-backend` | `packages/workshop-backend/wrangler.production.jsonc` | The four gatekeepers' `GatekeeperVendor` entrypoints (context gets `props.sharingDomain` = the origin), `AI_CALL_GUARD` → `educateos-ai-guard#EducateOsAiCallGuard`, `WORKERS_AI`, KV `BLUEPRINTS` and `AVATARS`, R2 `BLUEPRINT_CONTENT` (`schoolos-prod-blueprint-content`), `BROWSER`, `LOADER` |
+| `router` | `packages/router/wrangler.production.jsonc` | `WORKSHOP_BACKEND`, `GATEKEEPER_{CONTEXT,GOOGLE,SCHEDULER,EDUCATEOS,WEBSEARCH}`, and the Access-mode frontend as `ASSETS` |
+| `workshop-backend` | `packages/workshop-backend/wrangler.production.jsonc` | The five gatekeepers' `GatekeeperVendor` entrypoints (context gets `props.sharingDomain` = the origin), `AI_CALL_GUARD` → `educateos-ai-guard#EducateOsAiCallGuard`, `WORKERS_AI`, KV `BLUEPRINTS` and `AVATARS`, R2 `BLUEPRINT_CONTENT` (`schoolos-prod-blueprint-content`), `BROWSER`, `LOADER` |
 | `gatekeeper-context` | `packages/gatekeeper-context/wrangler.production.jsonc` | KV `CONTEXT_COLLECTIONS` |
 | `gatekeeper-google` | `packages/gatekeeper-google/wrangler.production.jsonc` | none (its Durable Objects need no binding); the OAuth client is its `CLIENT_ID` and `CLIENT_SECRET` secrets. See [The Google connector](#the-google-connector). |
 | `gatekeeper-scheduler` | `packages/gatekeeper-scheduler/wrangler.production.jsonc` | none |
+| `gatekeeper-educateos` | `packages/gatekeeper-educateos/wrangler.production.jsonc` | `EDUCATEOS_DISTRICT` → `educateos-district-worker#DistrictSchoolTools`. See [The EducateOS connector](#the-educateos-connector). |
 | `gatekeeper-websearch` | `packages/gatekeeper-websearch/wrangler.production.jsonc` | `AI`, with `CF_AI_GATEWAY=default` |
 | `educateos-ai-guard` | `packages/educateos-ai-guard/wrangler.production.jsonc` | `HALL_MONITOR` → `hall-monitor` (already in the account). It runs its production entrypoint `src/worker.ts` with the nightly `17 3 * * *` reconciliation cron. |
 | `schoolos-district-worker` (package `educateos-district-worker`; name pinned, see [The district](#the-district-lms-lite)) | `packages/educateos-district-worker/wrangler.production.jsonc` | `SEND_EMAIL` (Email Service), the district's UIs as static assets, and its two Cron Triggers. Its Durable Object needs no binding. |
@@ -51,13 +52,15 @@ reconciliation only records snapshots.
 |---|---|---|
 | `workshop-backend` | `ADMINS` (a JSON array of Access emails), `CF_ACCESS_AUD`, `CF_ACCESS_ISS` | `school-os` |
 | `educateos-ai-guard` | `HALL_MONITOR_SIGNING_KEY` (private Ed25519 or P-256 JWK, with a `kid`), `AI_GUARD_CONFIG` (the example config with the admin's Access email in place of `admin@example.com`, minified) | `schoolos-ai-guard` |
-| `schoolos-district-worker` | `DISTRICT_CONFIG` (the demo district's seed, minified), `CF_ACCESS_AUD` (the district Access application's audience), `CF_ACCESS_ISS` | `schoolos-district` |
+| `schoolos-district-worker` | `DISTRICT_CONFIG` (the demo district's seed, minified), `CF_ACCESS_AUD` (comma-separated: the district Access application's audience, then the instance's; see [The EducateOS connector](#the-educateos-connector)), `CF_ACCESS_ISS` | `schoolos-district` |
 | `gatekeeper-google` | `CLIENT_ID` and `CLIENT_SECRET` (the gmacko-schoolos OAuth web client) | `schoolos-google` |
 
-The guard, the district and the Google connector are each their own ForgeGraph app because
+The guard, the district, the Google connector and the EducateOS connector are each their own ForgeGraph app because
 ForgeGraph's `syncSecrets` copies every secret of a stage onto each target that sets it: in one app,
 the backend would also receive the guard's signing key, the district would receive the backend's
-Access audience in place of its own, and the backend would receive the Google OAuth client. `AI_GUARD_CONFIG` is a secret rather than a var because it names the admin's Workshop user,
+Access audience in place of its own, and the backend would receive the Google OAuth client. The
+EducateOS connector has no secrets; it is its own app, `educateos-gatekeeper`, as the Google connector
+is. `AI_GUARD_CONFIG` is a secret rather than a var because it names the admin's Workshop user,
 and this repository is public.
 
 Setting the Access pair also closes password sign-in. The generator refuses to emit any of these
@@ -103,6 +106,7 @@ version (`wrangler deployments list`).
 | `packages/gatekeeper-context` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:app` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/gatekeeper-scheduler` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache build:app` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/gatekeeper-websearch` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc` (Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
+| `packages/gatekeeper-educateos` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc` (Wrangler's own build runs capnweb-validate; its `types.txt` is committed) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/gatekeeper-google` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache build:configurator` (the configurator frames; Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/educateos-ai-guard` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc` (Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/workshop-backend` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:bundled-blueprints` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
@@ -116,18 +120,18 @@ that the backend rejects. The release build sets it the same way (`build-release
 
 A service binding needs its target to exist, so deploy in tiers:
 
-1. `gatekeeper-context`, `gatekeeper-google`, `gatekeeper-scheduler`, `gatekeeper-websearch` and
-   `educateos-ai-guard`. They can go in parallel. `hall-monitor` must already exist.
-2. `workshop-backend`, after setting its secrets.
-3. `router`, which creates the `schoolos.gmac.io` custom domain. The `gmac.io` zone must be on the
+1. `educateos-district-worker`, which binds no other Worker. `hall-monitor` must already exist.
+2. `gatekeeper-context`, `gatekeeper-google`, `gatekeeper-scheduler`, `gatekeeper-educateos`,
+   `gatekeeper-websearch` and `educateos-ai-guard`. They can go in parallel. `gatekeeper-educateos`
+   binds the district Worker, so it needs step 1.
+3. `workshop-backend`, after setting its secrets.
+4. `router`, which creates the `schoolos.gmac.io` custom domain. The `gmac.io` zone must be on the
    account.
-
-The district Worker binds no other Worker and nothing binds it, so it can go at any point.
 
 Later deploys can go in any order, as long as no binding is renamed. Adding a Worker to a running
 instance is a small cold bring-up: the new Worker must be serving before the backend and router
 deploy with a binding to it. See [The Google connector](#the-google-connector) for how that went for
-`gatekeeper-google`.
+`gatekeeper-google`, and [The EducateOS connector](#the-educateos-connector) for `gatekeeper-educateos`.
 
 ### Bindings the account must support
 
@@ -182,8 +186,10 @@ own Access application.
 - **State.** One SQLite Durable Object holds the district (see the package README), so a deploy
   never touches its data.
 - **Access.** The application `EducateOS district (demo co-op)` covers the hostname, with a bypass
-  application for `district.schoolos.gmac.io/healthz`. Its audience is the district's
-  `CF_ACCESS_AUD`. The issuer is the same team domain as the instance's.
+  application for `district.schoolos.gmac.io/healthz`. Its audience is the first entry of the
+  district's `CF_ACCESS_AUD`; the second is the instance's (see
+  [The EducateOS connector](#the-educateos-connector)). The issuer is the same team domain as the
+  instance's.
 - **Who it knows.** `DISTRICT_CONFIG` seeds the directory on first start only: the district
   (`authority: "local"`, so its administrators build classes rather than importing a roster) and its
   administrator, matched by the Access subject (`sub`) their sign-in carries, not by email. Every
@@ -200,7 +206,8 @@ own Access application.
   `forge secret set DISTRICT_CONFIG --stage production --stdin` for app `schoolos-district`.
   `__tests__/demo-config.test.ts` in the package checks that the example parses and fits in a
   secret. The seed is read only on the object's first start.
-- **Not bound yet.** The guard keeps its configured directory: binding its `EDUCATEOS_DISTRICT` to
+- **Bound by the connector only.** `gatekeeper-educateos` binds `DistrictSchoolTools` (SCHO-218).
+  The guard keeps its configured directory: binding its `EDUCATEOS_DISTRICT` to
   `DistrictGuardDirectory` would resolve Workshop users through the district's identity links, which
   the instance's admin does not have (SCHO-147). The backend's `EDUCATEOS_DISTRICT_API` is left out
   too, since nothing routes to it.
@@ -250,3 +257,43 @@ Sheets, Slides, Calendar, Chat and BigQuery, through each user's own Google acco
   before this change is on `main`, with `--ref` at the change's commit). Only then may
   `workshop-backend` and `router` deploy with their new `GATEKEEPER_GOOGLE` binding; a deploy of
   either before the Worker exists is rejected.
+
+## The EducateOS connector
+
+SCHO-218 installs the EducateOS connector, `gatekeeper-educateos` (package `@educateos/gatekeeper`),
+mounted at `https://schoolos.gmac.io/gatekeeper/educateos`. A person connects their school account
+from the Workshop's Connectors page; their agents then get the district's school tools as the
+`SCHOOL` binding, every write waiting for a person (see the package README). It is not
+auto-provisioned and takes no OAuth client.
+
+- **How users get it.** As for the Google connector: the backend offers every gatekeeper it has a
+  `GATEKEEPER_*` binding for, and connectors are on unless an admin turns them off in the `/admin`
+  Gatekeepers panel.
+- **The district binding.** Its `EDUCATEOS_DISTRICT` is the district Worker's `DistrictSchoolTools`
+  entrypoint. The generator refuses to emit the connector for an instance with no district.
+- **Access.** The connect page is on the router's hostname, behind the instance's Access
+  application, so the assertion the browser carries there is for the *instance's* audience, and
+  the connector hands that request to the district's `authenticate`. The district accepts it only
+  because its `CF_ACCESS_AUD` lists both audiences, comma-separated: the district application's
+  first, then the instance's. The two applications are on the same Access team, so a person's
+  `sub` is the same in both and resolves to the same principal. Test identities must be admitted
+  by both applications' policies. Set it with
+  `FG_APP=educateos-district forge secret set CF_ACCESS_AUD --stage production --stdin`, entering
+  `<district application AUD>,<instance application AUD>`.
+- **ForgeGraph.** App `educateos-gatekeeper`, stage `production`, one `cloudflare-workers` target
+  `gatekeeper-educateos` on hetzner-fg: `workerName` `gatekeeper-educateos`, `appDir`
+  `packages/gatekeeper-educateos`, `configPath`
+  `packages/gatekeeper-educateos/wrangler.production.jsonc`, the `buildCommand` and `deployCommand`
+  in the table above, and `healthCheckUrl` `https://schoolos.gmac.io/healthz`. It has no secrets,
+  so it does not sync them.
+- **Bring-up.** In this order, because a deploy that binds a Worker that does not exist yet is
+  rejected, and because the district must accept the instance's audience before anyone connects:
+  1. Deploy `educateos-district-worker` with SCHO-218's district change (PR #108). That change reads
+     `CF_ACCESS_AUD` as a list, so the district's current single audience keeps working.
+  2. Set the district's `CF_ACCESS_AUD` to both audiences (above), and deploy it again so the
+     secret is synced. Do not set the list before step 1: earlier code reads the whole value as
+     one audience, which would lock everyone out of the district.
+  3. Deploy `gatekeeper-educateos`. For the first deploy, before this change is on `main`, use
+     `--ref` at the change's commit.
+  4. Only after that, deploy `workshop-backend` and `router` with their new `GATEKEEPER_EDUCATEOS`
+     binding. A deploy of either before the Worker exists is rejected.

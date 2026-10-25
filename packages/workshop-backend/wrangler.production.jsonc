@@ -91,6 +91,11 @@
       }
     },
     {
+      "binding": "GATEKEEPER_EDUCATEOS",
+      "service": "gatekeeper-educateos",
+      "entrypoint": "GatekeeperVendor"
+    },
+    {
       "binding": "GATEKEEPER_GOOGLE",
       "service": "gatekeeper-google",
       "entrypoint": "GatekeeperVendor"

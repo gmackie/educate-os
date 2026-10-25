@@ -19,7 +19,8 @@
 //     entrypoint with an in-process fake and no cron;
 //   - when the instance has a district, the district Worker (SCHO-193) at its own custom domain,
 //     serving the district's `/api` and, as static assets, the student, admin and teacher UIs
-//     (assembled by assemble-district-ui.ts at deploy time);
+//     (assembled by assemble-district-ui.ts at deploy time), and, when the instance installs the
+//     EducateOS connector, its `EDUCATEOS_DISTRICT` bound to the district's school tools (SCHO-218);
 //   - no `previews` blocks;
 //   - the instance's pinned Worker names (`workerNames`): a Worker the instance has already deployed
 //     keeps its deployed name when its package is renamed, both as its own `name` and in every
@@ -75,6 +76,16 @@ export const DISTRICT_UI_DIR = "./dist/ui";
 
 /** The district Worker's own routes, which run before its assets: the API and the liveness probe. */
 export const DISTRICT_WORKER_ROUTES = ["/api/*", "/healthz"];
+
+/** The EducateOS connector's package: the one gatekeeper bound to the district Worker (SCHO-218). */
+export const EDUCATEOS_GATEKEEPER_PACKAGE = "gatekeeper-educateos";
+
+/**
+ * The EducateOS connector's `EDUCATEOS_DISTRICT`: the district Worker's `DistrictSchoolTools`
+ * entrypoint, its `SchoolToolService`. No other Worker binds that entrypoint.
+ */
+export const EDUCATEOS_DISTRICT_BINDING: ServiceBinding =
+    { binding: "EDUCATEOS_DISTRICT", service: DISTRICT_PACKAGE, entrypoint: "DistrictSchoolTools" };
 
 /** One long-lived instance: where it runs and the account resources its Workers bind. */
 export interface ProductionInstance {
@@ -262,6 +273,14 @@ export function buildProductionConfigs({
 
     const vars = instance.vars[pkgName] ?? {};
     if (isGatekeeperPackage(pkgName)) {
+      if (pkgName === EDUCATEOS_GATEKEEPER_PACKAGE) {
+        // Its district binding is injected by the deployment (see its README); without one the
+        // connector refuses every call, so an instance with no district cannot install it.
+        if (!instance.district) {
+          throw new Error(`${pkgName} needs the instance's district Worker, which this instance does not run`);
+        }
+        config.services = [...config.services ?? [], EDUCATEOS_DISTRICT_BINDING];
+      }
       withVars(pkgName, config, { BASE_URL: gatekeeperBaseUrl(baseUrl, pkgName), ...vars });
     } else if (pkgName === "workshop-backend") {
       if (config.ai) {
