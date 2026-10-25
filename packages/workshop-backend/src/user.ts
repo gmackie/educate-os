@@ -1,6 +1,6 @@
 import { RpcStub } from "capnweb";
 import { GadgetMetadataWithTimestamps, AiChatAuthorInfo, AiModelConfig, RedactedAiModelConfig, ModelKind, modelKind, CollaboratorRole, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, GadgetMetadata, BlueprintMetadata, BlueprintLibrarySummary, BlueprintSource, BlueprintUserSummary, BLUEPRINT_SCREENSHOT_R2_PREFIX, GatekeeperVendorInfo, OutputSummary, ListOutputsResult, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, validateCommitEmail, NotificationSubscriber, NotificationMute, UserNotification, type DeviceSessionHandoffStart, type ExternalWorkspaceRequest } from '@gadgets/workshop-shared/api';
-import { ActionDescription, Gatekeeper, GatekeeperUser, GatekeeperUserVerifier, GatekeeperVendor, AccountDescription, VendorDescription, GatekeeperConnectCallback, ConnectHandoff, SupportedResource, ResourceConfiguratorFrame, AppUiContext, GatekeeperUiFrame, GatekeeperUserSelection, GatekeeperUserSelectionExchange, RedeemedGatekeeperUserSelection } from "@gadgets/workshop-shared/gatekeeper";
+import { ActionDescription, Gatekeeper, GatekeeperUser, GatekeeperUserVerifier, GatekeeperVendor, AccountDescription, VendorDescription, GatekeeperConnectCallback, ConnectHandoff, SupportedResource, ResourceConfiguratorFrame, AppUiContext, GatekeeperAppNavEntry, GatekeeperUiFrame, GatekeeperUserSelection, GatekeeperUserSelectionExchange, RedeemedGatekeeperUserSelection, sanitizeGatekeeperAppNav } from "@gadgets/workshop-shared/gatekeeper";
 import { shouldAutoProvisionAccount, ambientGatekeeperMode } from "./provisioning-policy.js";
 import { CloudflareGatekeeperUser } from "@gadgets/workshop-shared/cloudflare-gatekeeper";
 import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
@@ -62,7 +62,8 @@ export type ProvidedAccountInfo = {
 // usable directly, the way the runtime stub actually behaves.
 type AccountCreatorStub = Required<Pick<GatekeeperVendor, "createAccount">>;
 type ResourceCreatorStub = Required<Pick<GatekeeperVendor, "createResource">>;
-type SingletonAccountStub = Required<Pick<GatekeeperUser, "getSingletonGatekeeperClass" | "startAppUi">>;
+type SingletonAccountStub =
+    Required<Pick<GatekeeperUser, "getSingletonGatekeeperClass" | "startAppUi" | "getAppNav">>;
 type CreationConfiguratorStub = Required<Pick<GatekeeperUser, "startCreationConfigurator">>;
 
 function areCredentialsValid(record: ConnectedAccountRecord): boolean {
@@ -1565,6 +1566,24 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     });
     return (record.account as unknown as SingletonAccountStub)
         .startAppUi({ isAdmin: options.isAdmin, userSelectionExchange });
+  }
+
+  /**
+   * The sanitized sidebar entries of an account's management UI. Undefined, without asking the
+   * account, unless its description declares `providesUi.nav`. The user's whole app list waits on
+   * this, so an account that has not answered within 3s is treated as failing.
+   */
+  async getAccountAppNav(accountId: number): Promise<GatekeeperAppNavEntry[] | undefined> {
+    let record = this.storage.connectedAccounts.get(accountId);
+    if (!record?.description.providesUi?.nav) return undefined;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let nav = await Promise.race([
+      (record.account as unknown as SingletonAccountStub).getAppNav(),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("the app's sidebar entries took longer than 3s")), 3_000);
+      }),
+    ]).finally(() => clearTimeout(timeout));
+    return sanitizeGatekeeperAppNav(nav);
   }
 
   // The account record behind one of this user's gatekeeper apps, or undefined

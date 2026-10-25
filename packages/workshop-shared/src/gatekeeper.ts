@@ -275,9 +275,82 @@ export type AccountDescription = {
 
   /**
    * If set, this account has a full-page management UI (see GatekeeperUser.startAppUi). The Workshop
-   * surfaces it as a nav entry / page using this title.
+   * surfaces it as a nav entry / page using this title. With `nav`, the account also contributes a
+   * section of sidebar entries into its own page, which the Workshop reads from
+   * GatekeeperUser.getAppNav each time it lists the user's apps.
    */
-  providesUi?: { title: string; icon?: AvatarImage };
+  providesUi?: { title: string; icon?: AvatarImage; nav?: true };
+}
+
+/**
+ * One sidebar entry a management app contributes (see GatekeeperUser.getAppNav). Display data
+ * only: the Workshop links every entry to the app's own page, `/gatekeepers/<vendorId>?path=<path>`,
+ * so an entry grants nothing and cannot lead anywhere else.
+ */
+export type GatekeeperAppNavEntry = {
+  /** The entry's text. */
+  label: string;
+  /** The place in the app the entry opens, e.g. "/classes/42"; see isGatekeeperAppPath. */
+  path: string;
+  /** Heading the entry is listed under within the app's section. Ungrouped entries come first. */
+  group?: string;
+};
+
+/** The most entries one app's sidebar section keeps (see sanitizeGatekeeperAppNav). */
+export const GATEKEEPER_APP_NAV_MAX_ENTRIES = 64;
+/** The longest GatekeeperAppNavEntry.label kept, in UTF-16 code units. */
+export const GATEKEEPER_APP_NAV_MAX_LABEL_LENGTH = 80;
+/** The longest GatekeeperAppNavEntry.group kept, in UTF-16 code units. */
+export const GATEKEEPER_APP_NAV_MAX_GROUP_LENGTH = 40;
+
+const GATEKEEPER_APP_PATH = /^\/[A-Za-z0-9._~%/-]{0,511}$/;
+
+/**
+ * Whether `path` is a place in a management app the Workshop will link to or pass to the app: an
+ * absolute path of at most 512 URL-safe characters, with no empty segment (`//`).
+ */
+export function isGatekeeperAppPath(path: unknown): path is string {
+  return typeof path === "string" && GATEKEEPER_APP_PATH.test(path) && !path.includes("//");
+}
+
+function isNavText(value: unknown, maxLength: number): value is string {
+  return typeof value === "string" && value.trim() !== "" && value.length <= maxLength;
+}
+
+/**
+ * The entries of a management app's nav that the Workshop shows: each well-formed entry, copied
+ * field by field, up to GATEKEEPER_APP_NAV_MAX_ENTRIES. An entry with a blank or overlong label or
+ * group, or a path isGatekeeperAppPath rejects, is dropped. The account is another Worker, so its
+ * reply is checked here rather than trusted to match GatekeeperAppNavEntry.
+ */
+export function sanitizeGatekeeperAppNav(nav: unknown): GatekeeperAppNavEntry[] {
+  if (!Array.isArray(nav)) return [];
+  let result: GatekeeperAppNavEntry[] = [];
+  for (let entry of nav as Partial<Record<keyof GatekeeperAppNavEntry, unknown>>[]) {
+    if (result.length === GATEKEEPER_APP_NAV_MAX_ENTRIES) break;
+    if (typeof entry !== "object" || entry === null) continue;
+    let { label, path, group } = entry;
+    if (!isNavText(label, GATEKEEPER_APP_NAV_MAX_LABEL_LENGTH) || !isGatekeeperAppPath(path)) continue;
+    if (group === undefined) {
+      result.push({ label, path });
+    } else if (isNavText(group, GATEKEEPER_APP_NAV_MAX_GROUP_LENGTH)) {
+      result.push({ label, path, group });
+    }
+  }
+  return result;
+}
+
+/**
+ * The capability a management UI passes to the Workshop host's `subscribeLocation()` to follow its
+ * place in the Workshop URL, `/gatekeepers/<vendorId>?path=<path>`. `subscribeLocation()` returns
+ * the current path; the UI reports its own moves with the host's `setLocation()`.
+ */
+export interface GatekeeperAppLocationReceiver extends RpcTarget {
+  /**
+   * Shows the place `path` names (see isGatekeeperAppPath), which the user navigated the Workshop
+   * to, e.g. with a sidebar entry or the browser's back button. The frame is not reloaded.
+   */
+  setPath(path: string): void;
 }
 
 /** Describes metadata about a specific instance of a resource. Returned by Gatekeeper.describe(). */
@@ -935,6 +1008,14 @@ export interface GatekeeperUser extends WorkerEntrypoint {
    * the tickets its UI receives from the Workshop user picker (GatekeeperUserSelection).
    */
   startAppUi?(context: AppUiContext): Promise<GatekeeperUiFrame>;
+
+  /**
+   * The sidebar entries of the account's management UI, for accounts whose describe() sets
+   * `providesUi.nav`. Called each time the Workshop lists the user's apps, so the entries can follow
+   * changes (e.g. the classes a person teaches this term). The Workshop drops malformed entries
+   * (sanitizeGatekeeperAppNav) and, if this fails, shows the app as a single row.
+   */
+  getAppNav?(): Promise<GatekeeperAppNavEntry[]>;
 
   // TODO:
   // - Query whether account has scope to access a particular URL.

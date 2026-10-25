@@ -648,16 +648,30 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
   // top-level UI (AccountDescription.providesUi). The app id is the gatekeeper's routing id (its
   // vendor id, e.g. "context"), so each app is hosted at /gatekeepers/<vendorId>. UI-providing
   // accounts are auto-provisioned singletons (one per vendor), so the vendor id identifies them.
+  //
+  // An app whose account declares `providesUi.nav` also carries its sidebar entries, read live from
+  // the account (rather than stored with its description) so they follow changes such as a new
+  // term's classes. A failed read is logged and leaves the app as a single row.
   async listGatekeeperApps(): Promise<GatekeeperAppInfo[]> {
     // listProvidedAccounts provisions auto-provisioned accounts first (idempotent), so their apps
     // appear in the nav even before the user opens a gadget — in a single round trip.
-    let accounts = await this.#user.listProvidedAccounts();
-    return accounts
+    let user = this.#user;  // one stub for every call
+    let accounts = await user.listProvidedAccounts();
+    return Promise.all(accounts
         .filter((account: (typeof accounts)[number]) => account.description.providesUi)
-        .map((account: (typeof accounts)[number]) => ({
-          id: account.vendorId,
-          title: account.description.providesUi!.title,
-          icon: account.description.providesUi!.icon,
+        .map(async (account: (typeof accounts)[number]) => {
+          let { title, icon, nav } = account.description.providesUi!;
+          let app: GatekeeperAppInfo = { id: account.vendorId, title, icon };
+          if (!nav) return app;
+          try {
+            app.nav = await user.getAccountAppNav(account.accountId);
+          } catch (err) {
+            logger.warn("failed to read a gatekeeper app's nav", {
+              event: "gatekeeper.app.nav.failed", vendorId: account.vendorId,
+              accountId: account.accountId, error: err,
+            });
+          }
+          return app;
         }));
   }
 
