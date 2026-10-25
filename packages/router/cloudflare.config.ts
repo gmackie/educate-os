@@ -7,8 +7,9 @@ export default defineGadgetsWorker({
   entrypoint: "src/index.ts",
 
   // The router owns the public origin for customer instances, so it serves the frontend.
-  // `runWorkerFirst` keeps API and gatekeeper prefixes on the worker; everything else falls
-  // through to static assets with SPA fallback.
+  // `runWorkerFirst` keeps API and gatekeeper prefixes, and the `/healthz` liveness probe, on the
+  // worker; everything else falls through to static assets with SPA fallback, which would answer
+  // the probe with index.html.
   assets: {
     notFoundHandling: "single-page-application",
     runWorkerFirst: [
@@ -17,6 +18,7 @@ export default defineGadgetsWorker({
       "/blueprint-screenshot",
       "/blueprint-screenshot/*",
       "/gatekeeper/*",
+      "/healthz",
     ],
   },
 
