@@ -169,8 +169,10 @@ district has its own hostname, behind its own Access application.
   (`authority: "local"`, so its administrators build classes rather than importing a roster) and its
   administrator, matched by the Access subject (`sub`) their sign-in carries, not by email. Every
   other principal is created through the admin console after they first sign in, since inviting by
-  email before a first sign-in is not built yet. The demo's test identities are plus aliases of the
-  owner's address, which sign in with the one-time PIN. The public example is
+  email before a first sign-in is not built yet. The demo's test identities are addresses on a test mail
+  domain the operator controls, admitted by a reusable Access policy attached after the owner's on
+  both applications. They sign in with the one-time PIN, whose code arrives in an inbox the
+  operator's agents can read, so scenarios run without a person. The public example is
   `deploy/schoolos-gmac-io/district-config.example.json`. The deployed copy puts the administrator's
   Access `user_uuid` (from `/cdn-cgi/access/get-identity`, which is the assertion's `sub`) in place
   of the zero subject, minified:
