@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SchoolOsErrorBody } from "@schoolos/contracts";
 import { ROUTES, pathParameterNames, type RouteSpec } from "../src/index.ts";
 import {
   bootDistrict,
@@ -32,6 +33,23 @@ describe("request handling", () => {
     const district = await bootDistrict();
     expectError(await district.call(undefined, "me.get"), 401, "unauthenticated");
     expectError(await district.call("not-a-token", "me.get"), 401, "unauthenticated");
+    for (const token of [undefined, "not-a-token"]) {
+      expect((await district.call(token, "me.get")).body).not.toHaveProperty("unlinkedSignIn");
+    }
+  });
+
+  it("shows a verified sign-in linked to nobody its own issuer and subject, and no one else's", async () => {
+    const district = await bootDistrict();
+    const newcomer = district.idp.issue("nf-new-teacher");
+    for (const name of ["me.get", "teacher.listOfferings", "admin.health"] as const) {
+      const refused = await district.call(newcomer, name);
+      expectError(refused, 401, "unauthenticated");
+      expect(SchoolOsErrorBody.parse(refused.body).unlinkedSignIn).toStrictEqual({ issuer: district.idp.issuer, subject: "nf-new-teacher" });
+    }
+    // A linked caller refused for another reason is never told any sign-in.
+    const student = await district.call(district.tokenFor(NF.amara), "admin.health");
+    expectError(student, 403, "forbidden");
+    expect(student.body).not.toHaveProperty("unlinkedSignIn");
   });
 
   it("answers 404 for an unknown route, and for one outside /api", async () => {
@@ -95,7 +113,10 @@ describe("cross-district isolation", () => {
     const riverbend = await bootDistrict(RIVERBEND);
     // Morgan Lee has the same IdP subject in both districts; only each district's own IdP is trusted.
     const nfMorgan = northfield.tokenFor(NF.morgan);
-    expectError(await riverbend.call(nfMorgan, "me.get"), 401, "unauthenticated");
+    const refused = await riverbend.call(nfMorgan, "me.get");
+    expectError(refused, 401, "unauthenticated");
+    // Riverbend does not trust Northfield's IdP, so the sign-in is not one it can name.
+    expect(refused.body).not.toHaveProperty("unlinkedSignIn");
     expect((await riverbend.ok(riverbend.tokenFor("prn_rb-morgan-lee"), "me.get")).districtId).toBe("dst_riverbend");
   });
 

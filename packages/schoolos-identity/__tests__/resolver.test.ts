@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SchoolOsError, type VerifiedIdentity } from "@schoolos/contracts";
+import { SchoolOsError, UnlinkedSignInError, type VerifiedIdentity } from "@schoolos/contracts";
 import { NORTHFIELD, RIVERBEND } from "@schoolos/fixtures";
 import { createDirectoryPrincipalResolver } from "../src/index.ts";
 import { NF_IDP, RB_IDP } from "./helpers.ts";
@@ -42,8 +42,27 @@ describe("createDirectoryPrincipalResolver", () => {
     expect(await rejection(nf.resolve(person("https://evil.example", "nf-0001")))).toBe("unauthenticated");
   });
 
-  it("rejects a subject no principal is linked to", async () => {
-    expect(await rejection(nf.resolve(person(NF_IDP, "nf-9999")))).toBe("unauthenticated");
+  it("rejects a subject no principal is linked to, telling the caller their own sign-in", async () => {
+    const refused = await nf.resolve(person(NF_IDP, "nf-9999")).catch((err: unknown) => err);
+    expect(refused).toBeInstanceOf(UnlinkedSignInError);
+    expect((refused as SchoolOsError).toBody()).toStrictEqual({
+      code: "unauthenticated",
+      message: "This sign-in is not linked to a principal in this district.",
+      unlinkedSignIn: { issuer: NF_IDP, subject: "nf-9999" },
+    });
+  });
+
+  it("names the sign-in for no other refusal", async () => {
+    const refusals = [
+      nf.resolve(person(RB_IDP, "user-1042")),
+      nf.resolve({ issuer: NF_IDP, subject: "nf-0001", credential: "service" }),
+      nf.resolve(person(NF_IDP, "")),
+    ];
+    for (const refusal of refusals) {
+      const body = ((await refusal.catch((err: unknown) => err)) as SchoolOsError).toBody();
+      expect(body.code).toBe("unauthenticated");
+      expect(body).not.toHaveProperty("unlinkedSignIn");
+    }
   });
 
   it("compares subjects exactly, never case-insensitively or trimmed", async () => {

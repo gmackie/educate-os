@@ -124,8 +124,14 @@ describe("the district Worker", () => {
     expect((await SELF.fetch(request("not-a-token", "me.get"))).status).toBe(401);
     const otherAudience = await assertion("nf-0001", { aud: "another-application" });
     expect((await SELF.fetch(request(otherAudience, "me.get"))).status).toBe(401);
-    // A valid assertion for someone the directory does not know proves no principal.
-    expect((await SELF.fetch(request(await assertion("nobody-here"), "me.get"))).status).toBe(401);
+    // A valid assertion for someone the directory does not know proves no principal, and shows
+    // the caller the sign-in an administrator would add. An unverified one names nobody.
+    const unlinked = await SELF.fetch(request(await assertion("nobody-here"), "me.get"));
+    expect(unlinked.status).toBe(401);
+    expect(await unlinked.json()).toMatchObject({ code: "unauthenticated", unlinkedSignIn: { issuer: ACCESS_ISSUER, subject: "nobody-here" } });
+    for (const token of [undefined, "not-a-token", otherAudience]) {
+      expect(await (await SELF.fetch(request(token, "me.get"))).json()).not.toHaveProperty("unlinkedSignIn");
+    }
     expect((await SELF.fetch(new Request("https://district.example/health"))).status).toBe(404);
   });
 
