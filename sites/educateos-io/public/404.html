@@ -1,6 +1,118 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Not found · EducateOS</title>
-<style>body{margin:0;font:17px/1.6 system-ui,sans-serif;display:grid;place-items:center;min-height:80vh;color:#14231f}a{color:#176b55}</style></head>
-<body><main><h1>Page not found</h1><p><a href="/">Back to EducateOS</a></p></main></body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Not found · EducateOS</title>
+<meta name="description" content="Page not found.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/mcp/">MCP</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="hero page-hero" style="min-height:50vh">
+    <div class="wrap">
+      <div class="eyebrow">404</div>
+      <h1>Page not found.</h1>
+      <p class="lede">That page doesn't exist, or it has moved.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:26px"><a class="btn primary" href="/">Back to EducateOS</a><a class="btn" href="/integrations/">Integrations</a><a class="btn" href="/student-privacy/">Student privacy</a></div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/schools/">Schools</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/school-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
 </html>

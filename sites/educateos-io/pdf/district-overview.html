@@ -1,0 +1,115 @@
+<!doctype html>
+<!-- Source of /educateos-district-overview.pdf (SCHO-229). Regenerate with:
+     node sites/educateos-io/build.mjs --pdf
+     Statuses follow docs/educateos/maturity.md and public/assets/integration-status.json. -->
+<html lang="en" data-mode="light">
+<head>
+<meta charset="utf-8">
+<title>EducateOS district overview</title>
+<link rel="stylesheet" href="../public/assets/kumo-2.14.0.css">
+<link rel="stylesheet" href="../public/assets/site.css">
+<style>
+  @page { size: Letter; margin: 0.45in 0.5in; }
+  html, body { background: #fff; }
+  body { font-size: 9.6px; line-height: 1.42; }
+  h1 { font-size: 25px; line-height: 1.08; max-width: none; }
+  h2 { font-size: 12.5px; margin: 0 0 5px; letter-spacing: -0.01em; }
+  p { margin: 0 0 5px; }
+  .top { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--color-kumo-line); padding-bottom: 8px; }
+  .logo { font-size: 14px; }
+  .logo svg { width: 22px; height: 22px; }
+  .meta { font-size: 9px; color: var(--text-color-kumo-subtle); text-align: right; }
+  .intro { display: grid; grid-template-columns: 1.15fr 1fr; gap: 18px; margin: 12px 0 10px; align-items: end; }
+  .intro .lede { font-size: 11px; margin: 6px 0 0; max-width: none; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .box { border: 1px solid var(--color-kumo-line); border-radius: 8px; padding: 9px 11px; }
+  .box ul { margin: 0; padding-left: 13px; display: grid; gap: 2px; }
+  .tbl { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  .tbl th, .tbl td { text-align: left; padding: 3.5px 8px; border-bottom: 1px solid var(--color-kumo-hairline); vertical-align: top; }
+  .tbl th { font-size: 8px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-color-kumo-subtle); font-weight: 600; background: var(--color-kumo-elevated); }
+  .tbl td:last-child { white-space: nowrap; width: 1%; }
+  .tbl td small { color: var(--text-color-kumo-subtle); }
+  .status { font-size: 8px; padding: 1px 7px 1px 6px; }
+  .grp td { background: var(--color-kumo-recessed); font-weight: 600; color: var(--text-color-kumo-strong); font-size: 8.5px; }
+  .two { display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px; margin-top: 10px; }
+  .cta { text-align: left; padding: 10px 12px; border-radius: 8px; background: var(--color-kumo-tint); border: 1px solid var(--color-kumo-line); }
+  .fine { margin-top: 8px; font-size: 7.6px; color: var(--text-color-kumo-subtle); }
+</style>
+</head>
+<body>
+  <div class="top">
+    <span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>EducateOS</span>
+    <span class="meta">District overview · October 2026<br>educateos.io · hello@educateos.io</span>
+  </div>
+
+  <div class="intro">
+    <div>
+      <div class="eyebrow" style="margin-bottom:4px">Cloudflare OS for schools</div>
+      <h1>Agents, gadgets and guardrails for K-12, in the district's own account.</h1>
+    </div>
+    <p class="lede">EducateOS turns the open-source Cloudflare OS into a learning environment. Classes get agents that know the course, teachers and students build small sandboxed apps, and every data read and write passes through a policy the district sets. It is open source (Apache-2.0) and in development.</p>
+  </div>
+
+  <div class="cols">
+    <div class="box">
+      <h2>What it is</h2>
+      <ul>
+        <li><b>Agents</b> for each class, limited to what policy allows.</li>
+        <li><b>Gadgets</b>: small apps built by asking, each in its own sandbox.</li>
+        <li><b>Gatekeepers</b>: connectors where reads are recorded and writes wait for a person.</li>
+        <li><b>LMS-lite</b>: courses, assignments, quizzes, gradebook and families.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h2>Who owns it</h2>
+      <ul>
+        <li>Installed in the <b>district's Cloudflare account</b>, under its credentials.</li>
+        <li>educateos.io offers an optional guided install, updates and a marketplace. It never sits in the data path or gates features.</li>
+        <li>Signed releases, verified offline against keys the district pins.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h2>Student privacy</h2>
+      <ul>
+        <li><b>Built for FERPA and COPPA.</b> Education records stay in the district's account. Gmacko Ventures LLC never receives, stores or processes them, outside support a district requests in writing.</li>
+        <li>No advertising, no sale of data, and automated profiling prohibited.</li>
+        <li>No certification or third-party audit is claimed.</li>
+      </ul>
+    </div>
+  </div>
+
+  <table class="tbl">
+    <thead><tr><th>Capability</th><th>Detail</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr class="grp"><td colspan="3">Platform and safety</td></tr>
+      <tr><td>Agent chat, gadgets and sandboxes</td><td><small>Each agent and gadget starts with access to nothing.</small></td><td><span class="status avail">Available in Cloudflare OS</span></td></tr>
+      <tr><td>Gatekeepers and the approval queue</td><td><small>Google Workspace, MCP servers and portal, Context Library, Web Search, GitHub and more.</small></td><td><span class="status avail">Available in Cloudflare OS</span></td></tr>
+      <tr><td>District app: classes, gradebook, families</td><td><small>Tested end to end against simulated districts. Not yet deployed for a district.</small></td><td><span class="status dev">In development</span></td></tr>
+      <tr><td>Default-deny policy and teacher approvals</td><td><small>Grades that AI drafts stay drafts until a teacher approves them.</small></td><td><span class="status dev">In development</span></td></tr>
+      <tr><td>Hall Monitor screening and AI spend caps</td><td><small>Default: student AI limited to hints, capped at $2 a month per person. Districts can turn it off.</small></td><td><span class="status dev">In development</span></td></tr>
+      <tr class="grp"><td colspan="3">Integrations (no 1EdTech certification is claimed)</td></tr>
+      <tr><td>LTI 1.3 and LTI Advantage (Deep Linking, AGS, NRPS)</td><td><small>Tool-side launch, rosters and teacher-approved grade passback.</small></td><td><span class="status unit">Unit-tested</span></td></tr>
+      <tr><td>Canvas</td><td><small>Developer key and four placements. A live sandbox run is under way.</small></td><td><span class="status validating">Validating against live sandbox</span></td></tr>
+      <tr><td>Google Classroom</td><td><small>Teacher OAuth: courses, rosters, coursework, grades the teacher approves.</small></td><td><span class="status unit">Unit-tested</span></td></tr>
+      <tr><td>OneRoster 1.2 (CSV and REST)</td><td><small>Preview, quarantine, all-or-nothing apply, deactivation instead of deletion.</small></td><td><span class="status unit">Unit-tested</span></td></tr>
+      <tr><td>Clever sign-in through Cloudflare Access</td><td><small>Running against Clever's sandbox.</small></td><td><span class="status validating">Validating against live sandbox</span></td></tr>
+      <tr><td>Clever rosters, ClassLink, large-removal holds</td><td><small>Scheduled, with no working code yet.</small></td><td><span class="status planned">Planned</span></td></tr>
+      <tr><td>District MCP server for outside AI clients</td><td><small>Designed. The MCP client (agents calling MCP servers) is available today.</small></td><td><span class="status planned">Planned</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="two">
+    <div class="box">
+      <h2>Good fits for a pilot</h2>
+      <p><b>Districts</b> that keep their SIS and LMS and add governed agents. <b>Charter and independent schools</b> that want a learning platform without a separate LMS contract. <b>Homeschool co-ops</b> with mixed-age classes and parent teachers. <b>CS and maker classes</b> using GitHub, Supabase and their own Workers.</p>
+    </div>
+    <div class="cta">
+      <h2>Talk to us</h2>
+      <p>We're piloting with demo districts across Clever, ClassLink, Google Classroom, Canvas and schools with no LMS. Email <b>hello@educateos.io</b>.</p>
+      <p>Details: educateos.io/integrations · /security · /student-privacy</p>
+    </div>
+  </div>
+
+  <p class="fine">Statuses as of October 25, 2026, from the project's maturity record: Available in Cloudflare OS = part of Cloudflare OS today; In development = code and tests exist but it isn't deployed for a district; Unit-tested = tested against fakes; Validating = a run against the vendor's live sandbox is under way; Planned = no working code yet. EducateOS is developed by Gmacko Ventures LLC. It is an independent project built on the open-source Cloudflare OS and is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc.</p>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student privacy · EducateOS</title>
+<meta name="description" content="Built for FERPA and COPPA: student education records stay in the district's own Cloudflare account, and Gmacko Ventures LLC never receives, stores or processes them.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/mcp/">MCP</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/" aria-current="page">Student privacy</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/" aria-current="page">Student privacy</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">Student privacy</div>
+      <h1 class="rise" style="--d:1">Built for FERPA and COPPA.</h1>
+      <p class="lede rise" style="--d:2">Student education records stay in the district's own Cloudflare account. Gmacko Ventures LLC, which develops EducateOS, never receives, stores or processes them, unless a district asks in writing for hands-on support under its own control. EducateOS is designed to support the district's FERPA, COPPA and state student-privacy obligations. That is a description of the design, not a certification, and each district makes its own legal review.</p>
+      <div class="ctas rise" style="--d:3;display:flex;gap:12px;flex-wrap:wrap;margin-top:26px">
+        <a class="btn primary" href="/student-privacy/dpa/">Data processing agreement template</a>
+        <a class="btn" href="/privacy/">Privacy Policy</a>
+        <a class="btn" href="/security/">Security design</a>
+      </div>
+      <nav class="subnav rise" style="--d:3" aria-label="On this page">
+        <a href="#where">Where data lives</a>
+        <a href="#ferpa">FERPA</a>
+        <a href="#coppa">COPPA</a>
+        <a href="#state">State laws</a>
+        <a href="#claims">What we don't claim</a>
+      </nav>
+      <div class="legend rise" style="--d:3">
+        <span class="status avail">Available in Cloudflare OS</span>
+        <span class="status dev">In development</span>
+        <span class="status planned">Planned</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="where">
+    <div class="wrap">
+      <div class="eyebrow">Where student data lives</div>
+      <h2>In the district's account, and nowhere we control.</h2>
+      <div class="own">
+        <div class="card box">
+          <h3>educateos.io (Gmacko Ventures LLC)</h3>
+          <div class="stack">
+            <div>🌐 This website <span class="status avail" style="margin-left:auto">Live</span></div>
+            <div>🧭 Guided install, with a one-time token <span class="status dev" style="margin-left:auto">In development</span></div>
+            <div>🔀 Optional <code>district.educateos.io</code> address <span class="status planned" style="margin-left:auto">Planned</span></div>
+            <div>🧩 Updates, marketplace and billing <span class="status planned" style="margin-left:auto">Planned</span></div>
+          </div>
+          <ul>
+            <li>None of these receives education records.</li>
+            <li>The optional address is routing only: requests pass through Cloudflare under our zone for TLS, and we configure no logging, storage or inspection of them. A district on its own domain avoids even that.</li>
+          </ul>
+        </div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div class="card box district">
+          <h3>The district's Cloudflare account</h3>
+          <div class="stack">
+            <div>🏫 Rosters, classes, grades and families</div>
+            <div>🎒 Student work, submissions and conversations</div>
+            <div>🧠 Agents, gadgets and their connections</div>
+            <div>🗄️ Storage, policy decisions and audit records</div>
+          </div>
+          <ul>
+            <li>The district holds the account, the credentials and the keys.</li>
+            <li>Installations never check in with us to decide which features work.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band tight" id="ferpa">
+    <div class="wrap">
+      <div class="eyebrow">FERPA</div>
+      <h2>The district stays the custodian of education records.</h2>
+      <p class="lede">EducateOS is software the district runs itself. There is no vendor-held copy of student records to request, breach or subpoena from us.</p>
+      <div class="grid2">
+        <div class="card feat">
+          <h3>Direct control, no vendor copy</h3>
+          <p>The district installs EducateOS into an account it owns and operates. Under FERPA's school-official framing, the district keeps direct control of the records and their use. In the normal course, Gmacko Ventures LLC has no access to them. If a district ever asks us for hands-on support that involves records, that happens only with the district's written authorization and under its control, as the <a href="/student-privacy/dpa/">DPA template</a> sets out.</p>
+          <span class="status avail">Your own account: Available in Cloudflare OS</span>
+        </div>
+        <div class="card feat">
+          <h3>Guardians see only their own children</h3>
+          <p>Guardian access comes only from a relationship a district administrator has confirmed. Guardians are read-only, never see more than the child can, and never read a student's personal workspace, conversations or submissions. Revoking a relationship never deletes it, so the history stays auditable.</p>
+          <span class="status dev">In development</span>
+        </div>
+        <div class="card feat">
+          <h3>An audit trail without content</h3>
+          <p>Every policy decision is written to an append-only log that records who, what and the outcome as IDs, never the content itself. If the audit record can't be written, the request is refused. Identity links, guardian changes and deletions have their own audit records.</p>
+          <span class="status dev">In development</span>
+        </div>
+        <div class="card feat">
+          <h3>Retention the district sets</h3>
+          <p>The district chooses how long a closed course's workspace is kept, from 30 to 3,650 days with a default of 365. After that it becomes eligible for deletion. A legal hold blocks deletion, and each deletion leaves a tombstone and an audit record. Students' personal workspaces are never removed by this process.</p>
+          <span class="status dev">In development</span>
+        </div>
+        <div class="card feat">
+          <h3>Ending a term never deletes work</h3>
+          <p>Dropping a student or closing a term revokes access but deletes nothing. Roster removals deactivate people rather than deleting them, and enrollments are kept as history.</p>
+          <span class="status dev">In development</span>
+        </div>
+        <div class="card feat">
+          <h3>Export and portability</h3>
+          <p>A student archive format carries a learner's own work, and a signed transfer between districts needs consent. Teachers can export a course as a Common Cartridge. The student export isn't available in the district app yet.</p>
+          <span class="status dev">In development</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="coppa">
+    <div class="wrap">
+      <div class="eyebrow">COPPA</div>
+      <h2>For students under 13, the school decides, and the district holds the data.</h2>
+      <p class="lede">Under COPPA, a school can authorize the collection of a child's information for educational use. EducateOS is designed for that model. The district, not an outside vendor, runs the system and collects the data, and only for the school's own purposes.</p>
+      <div class="grid2">
+        <div class="card feat">
+          <h3>School authorization, not self-sign-up</h3>
+          <p>Students get access from the district's roster and sign in through the district's own identity provider, behind Cloudflare Access. People the district hasn't added see a clear screen saying so, rather than a way to sign themselves up.</p>
+          <span class="status dev">In development</span>
+        </div>
+        <div class="card feat">
+          <h3>The district controls student AI</h3>
+          <p>The default policy limits student AI to hints, with a $2 monthly cap per person. A district can turn student AI off entirely, and teacher-facing AI features start switched off. Hint mode is an instruction to the model, so Hall Monitor also screens messages, and replies where the district requires it.</p>
+          <span class="status dev">In development</span>
+        </div>
+        <div class="card feat">
+          <h3>No advertising, no sale, no profiling</h3>
+          <p>EducateOS contains no advertising. Gmacko Ventures LLC doesn't sell student data, and has none to sell. Automated social-emotional profiling is prohibited in every policy profile, and no school or class setting can turn it on.</p>
+          <span class="status dev">Profiling prohibition: In development</span>
+        </div>
+        <div class="card feat">
+          <h3>Data minimization</h3>
+          <p>The Google Classroom connector doesn't request email addresses, photos or guardian data, and roster entries carry only an ID and a name. Email addresses are never used as identity keys. By default, prompts are kept out of AI Gateway logs.</p>
+          <span class="status dev">In development</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band tight" id="state">
+    <div class="wrap prose">
+      <div class="eyebrow">State student-privacy laws</div>
+      <h2>The same design properties, whatever your state.</h2>
+      <p>Laws such as California's Student Online Personal Information Protection Act (SOPIPA) limit what operators may do with student information: no targeted advertising, no selling it, no profiles for purposes other than school, and reasonable security. The properties above are how EducateOS is designed to meet that kind of rule. The data stays in the district's account, there is no advertising or sale, profiling is prohibited, and the district controls retention and deletion.</p>
+      <p>We describe the design rather than claim compliance with any particular statute. Your counsel decides how it maps to your state's law, and we'll answer any questions they have.</p>
+    </div>
+  </section>
+
+  <section class="tight" id="claims">
+    <div class="wrap split">
+      <div class="copy">
+        <div class="eyebrow">What we don't claim</div>
+        <h2>No certificates, no audit badges.</h2>
+        <p class="lede">EducateOS holds no FERPA, COPPA or state-law certification, because none of those laws certifies software. It hasn't had an independent privacy or security audit, and it isn't a signatory to any student-privacy pledge. EducateOS is in development, and most of the controls above have not yet run in a real district.</p>
+      </div>
+      <div class="card" style="padding:24px" id="dpa">
+        <h3>Data processing agreement</h3>
+        <p class="muted" style="margin:8px 0 16px">A starting template for a district's agreement with Gmacko Ventures LLC. It covers the few services we perform, states that we receive no education records, and sets out when support access may happen. Review it with your counsel.</p>
+        <a class="btn primary" href="/student-privacy/dpa/">Open the DPA template</a>
+        <p style="margin-top:14px"><a href="mailto:hello@educateos.io?subject=EducateOS%20student%20privacy">Questions? hello@educateos.io</a></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/schools/">Schools</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/" aria-current="page">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/school-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LTI 1.3 · Integrations · EducateOS</title>
+<meta name="description" content="How EducateOS implements LTI 1.3 and LTI Advantage services: OIDC launch, id_token checks, Deep Linking, AGS, NRPS, Dynamic Registration and key rotation, with per-feature status.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/mcp/">MCP</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">Integrations · LTI 1.3</div>
+      <h1 class="rise" style="--d:1">LTI 1.3 and LTI Advantage, checked claim by claim.</h1>
+      <p class="lede rise" style="--d:2">EducateOS acts as an LTI 1.3 tool, so a teacher can launch an EducateOS activity from any LMS that speaks LTI 1.3, including Canvas and Schoology. This page lists what the tool code does, and the status of each part.</p>
+      <div class="legend rise" style="--d:3"><span class="status unit" data-status="summary.lti">Unit-tested</span><a href="/integrations/#statuses">What the statuses mean</a></div>
+      <nav class="subnav" aria-label="Integrations"><a href="/integrations/">Overview</a><a href="/integrations/lti/" aria-current="page">LTI 1.3</a><a href="/integrations/canvas/">Canvas</a><a href="/integrations/google-classroom/">Google Classroom</a><a href="/integrations/clever/">Clever</a><a href="/integrations/oneroster/">OneRoster and ClassLink</a></nav>
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">
+      <div class="facts">
+        <div class="card"><small>Sync direction</small>Launches and rosters come in from the LMS. Approved scores go out to it.</div>
+        <div class="card"><small>Source of record</small>The LMS is the gradebook of record only for classes the district routes grades to. Rosters from NRPS apply only where the district names the LMS as the source of enrollments.</div>
+        <div class="card"><small>Data it carries</small>Only the platform's user ID (<code>sub</code>), the course and the resource link. Names, emails and roles in the token are ignored.</div>
+      </div>
+      <table class="spec">
+        <caption class="muted" style="text-align:left;caption-side:top;padding-bottom:8px;font-size:.85rem">Tool-side LTI 1.3 and LTI Advantage features</caption>
+        <thead><tr><th>Feature</th><th>What it does</th><th>Status</th></tr></thead>
+        <tbody><tr><td>OIDC third-party login</td><td>Accepts <code>iss</code>, <code>login_hint</code> and <code>target_link_uri</code>, plus optional <code>lti_message_hint</code>, <code>client_id</code> and <code>lti_deployment_id</code>, by GET or POST. State and nonce are single-use 256-bit random values that expire after 10 minutes and are stored in the district's Durable Object. The browser is bound to its login by a partitioned <code>__Host-</code> cookie, or by LTI client-side postMessage storage where cookies are blocked.</td><td><span class="status unit" data-status="lti.login">Unit-tested</span></td></tr><tr><td>id_token validation</td><td>RS256 only, verified against the platform's keys. Checks <code>iss</code>; <code>aud</code>, and <code>azp</code> when there are several audiences; <code>exp</code> and <code>iat</code> (10-minute maximum age, 60-second clock skew); <code>nonce</code>; <code>deployment_id</code>; <code>message_type</code>; <code>version</code> 1.3.0; and <code>target_link_uri</code>. EducateOS reads only <code>sub</code>, <code>context.id</code>, <code>resource_link.id</code> and its own custom link ID.</td><td><span class="status unit" data-status="lti.idtoken">Unit-tested</span></td></tr><tr><td>Platform JWKS and key rotation</td><td>Fetched without following redirects and cached for 10 minutes. An unknown <code>kid</code> triggers a refetch, at most every 30 seconds, so a platform's key rotation is picked up. RSA keys under 2048 bits are skipped, and a token with no <code>kid</code> is refused.</td><td><span class="status unit" data-status="lti.jwks">Unit-tested</span></td></tr><tr><td>Tool keys</td><td>RS256 2048-bit keys published at <code>/lti/jwks</code>. Rotation keeps the previous public key published. Scheduled rotation from a stored key set isn't built yet.</td><td><span class="status unit" data-status="lti.toolkeys">Unit-tested</span></td></tr><tr><td>Deep Linking 2.0</td><td>Returns <code>ltiResourceLink</code> items in a response JWT signed by the tool, up to 50 at a time, honoring <code>accept_multiple</code>. Selected items don't yet create a gradebook column.</td><td><span class="status unit" data-status="lti.deeplinking">Unit-tested</span></td></tr><tr><td>AGS: line items and results</td><td>Lists line items (filtered by resource link, resource or tag), reads and creates them, and reads results. Access tokens come from client credentials with a signed JWT assertion. A token that grants fewer scopes than requested is refused.</td><td><span class="status unit" data-status="lti.ags.lineitems">Unit-tested</span></td></tr><tr><td>AGS: teacher-approved score passback</td><td>A score is posted only if the class routes grades to the LMS and a teacher's approval matches that exact student, column, version, score and maximum. The approver must still teach the class, and the student must still be enrolled. Each score posts once, and a failed send can be retried.</td><td><span class="status unit" data-status="lti.ags.passback">Unit-tested</span></td></tr><tr><td>NRPS: names and roles</td><td>Membership v2.0, following <code>Link: rel=next</code> paging up to 10,000 members. A partial roster is never applied. Members are matched to people through identity links, roles come from the district rather than the LMS, and members who drop become inactive rather than deleted. Known gap: next-page links are checked by origin but not yet by path.</td><td><span class="status unit" data-status="lti.nrps">Unit-tested</span></td></tr><tr><td>Dynamic Registration</td><td>By invitation only. An administrator creates a single-use invitation that lasts one hour. The platform's registration then waits as pending until an administrator approves it with a provider and at least one class mapping.</td><td><span class="status unit" data-status="lti.dynreg">Unit-tested</span></td></tr><tr><td>Launch to person and class</td><td>A launch maps to a person by (district, issuer, <code>sub</code>) through an identity link an administrator approved, never by email. An unknown user sees their issuer and subject to give an administrator, and no account is created automatically. Each LMS course maps to one EducateOS class, set by an administrator. A launch from an unmapped course is refused.</td><td><span class="status unit" data-status="lti.mapping">Unit-tested</span></td></tr><tr><td>Served by the district Worker</td><td>The LTI endpoints aren't yet mounted in the district's Worker (SCHO-108). Until they are, none of the above can be reached from a live LMS.</td><td><span class="status planned" data-status="lti.mounted">Planned</span></td></tr><tr id="platform"><td>EducateOS as an LTI platform</td><td>Launching trusted third-party LTI tools from inside EducateOS, with scoped rosters and approved grade services.</td><td><span class="status planned" data-status="lti.platform">Planned</span></td></tr></tbody>
+      </table>
+<p class="muted" style="font-size:.88rem;margin-top:16px">EducateOS claims no 1EdTech certification. "LTI 1.3" and "LTI Advantage services (Deep Linking, AGS, NRPS)" describe the specifications the code is written to, not certified conformance.</p>    </div>
+  </section>
+  <section class="band tight">
+    <div class="wrap">
+      <h2>Failure modes we test for</h2>
+<ul class="checks"><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A replayed login state, or a reused nonce with a fresh state.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A wrong audience, or several audiences with no <code>azp</code>.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>An expired, not-yet-valid, future-dated or too-old token.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>An unknown deployment, or one that differs from the login's.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A forged or altered signature, <code>alg: none</code>, or an HS256 token.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A token from a different registered platform, or a launch into another district.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Spoofed role, name or email claims, which are ignored.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A platform's key rotation, and a withdrawn key.</span></li></ul>      <div class="note-box"><b>How we validate.</b> Every status on this page comes from the project's <a href="https://github.com/gmackie/school-os/blob/main/docs/educateos/maturity.md">maturity record</a>. Unit-tested features run against fakes that behave like the real service: <a href="https://github.com/gmackie/school-os/tree/main/packages/educateos-lti/__tests__">the fake LTI platform</a>, <a href="https://github.com/gmackie/school-os/tree/main/packages/educateos-lti-district/__tests__">the district stores on workerd</a>. A feature moves to "Validating against live sandbox" when a run against the vendor's own sandbox is under way, and to "Supported" only after it passes there. <a href="/integrations/#validate">More on our testing →</a></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="cta">
+        <h2>Want to see it against your systems?</h2>
+        <p class="lede" style="margin-left:auto;margin-right:auto">We're validating each integration against live sandboxes with pilot districts. Tell us what your district runs.</p>
+        <div class="ctas"><a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20integrations">Email hello@educateos.io</a><a class="btn" href="/integrations/">All integrations</a></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/schools/">Schools</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/school-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

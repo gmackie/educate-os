@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP · EducateOS</title>
+<meta name="description" content="Bring any MCP server to classroom agents through Cloudflare OS gatekeepers: reads are recorded and writes wait for approval. A district MCP server is planned.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/mcp/" aria-current="page">MCP</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/mcp/" aria-current="page">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">MCP</div>
+      <h1 class="rise" style="--d:1">Bring any MCP server to your classroom agents.</h1>
+      <p class="lede rise" style="--d:2">The Model Context Protocol (MCP) is how AI tools talk to outside services. In EducateOS, an MCP server is one more gatekeeper: agents can use its tools, reads are recorded, and anything that changes data waits for a person.</p>
+      <div class="anchor-row rise" style="--d:3">
+        <a class="btn" href="#client">MCP servers <span class="status avail">Available in Cloudflare OS</span></a>
+        <a class="btn" href="#portal">District portal <span class="status avail">Available in Cloudflare OS</span></a>
+        <a class="btn" href="#server">Your district as a server <span class="status planned">Planned</span></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="client">
+    <div class="wrap split">
+      <div class="copy">
+        <div class="eyebrow">Agents call MCP servers</div>
+        <h2>Paste an endpoint. Pick the tools. Approve the writes.</h2>
+        <span class="status avail" style="margin-top:16px">Available in Cloudflare OS</span>
+        <ul class="checks">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>Paste a server's address. The connector runs the server's own sign-in, and each of its tools becomes something the agent can call. The server needs no EducateOS-specific work.</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>A grant lists the tools it allows, so a class agent can search a catalog without also being able to delete from it.</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>Tools the server marks read-only return straight away and are recorded. Every other call, including tools with no marking at all, queues for approval.</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>Nothing a self-added server claims about itself can make a write skip the approval prompt.</li>
+        </ul>
+        <p class="muted" style="font-size:.85rem;margin-top:18px">The MCP client is part of Cloudflare OS and covered by unit tests. It uses the official MCP TypeScript client.</p>
+      </div>
+      <div>
+        <div class="window" role="img" aria-label="Product preview: a teacher grants the Biology 9 agent a library catalog MCP server. Two read-only tools return straight away, and the place-hold tool needs approval.">
+          <div class="bar"><i></i><i></i><i></i><span class="url">cedarvalley.educateos.io/workspace/biology-9/connections</span></div>
+          <div class="mock">
+            <div class="h">Grant an MCP server <span class="badge">Biology 9 agent</span></div>
+            <div class="field"><label>Server</label><div class="input">Library catalog · via Cedar Valley MCP portal</div></div>
+            <div class="list">
+              <div class="li" style="background:var(--color-kumo-elevated)"><div class="t"><b class="strong">Allowed tools · 3 selected</b><small>Read-only tools return data straight away. The rest queue for your approval.</small></div></div>
+              <div class="li"><span class="box-check on"></span><div class="t"><b class="strong">Search catalog</b></div><span class="tagline">read</span></div>
+              <div class="li"><span class="box-check on"></span><div class="t"><b class="strong">Get title details</b></div><span class="tagline">read</span></div>
+              <div class="li"><span class="box-check on"></span><div class="t"><b class="strong">Place hold</b></div><span class="badge warn">needs approval</span></div>
+              <div class="li"><span class="box-check"></span><div class="t"><b class="strong">Cancel hold</b></div><span class="badge warn">needs approval</span></div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end"><span class="mini-btn">Cancel</span><span class="mini-btn primary">Grant</span></div>
+          </div>
+        </div>
+        <span class="preview-tag">Product preview. The district and its MCP servers are fictional.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="band tight" id="portal">
+    <div class="wrap split rev">
+      <div class="copy">
+        <div class="eyebrow">For administrators</div>
+        <h2>One portal, chosen by the district, so no teacher types an endpoint.</h2>
+        <span class="status avail" style="margin-top:16px">Available in Cloudflare OS</span>
+        <ul class="checks">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>The administrator configures one portal address. Everyone then reaches the MCP servers the district approved, and nothing else.</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>The intended portal is a Cloudflare MCP server portal. Cloudflare Access decides who may connect, and Cloudflare Gateway logs and inspects the traffic.</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>Every grant names a single server behind the portal. "Everything the portal offers" isn't an option.</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>Only a portal can ever auto-apply a write, and only if the administrator turns on trust for the servers behind it <i>and</i> a person enables a rule for that kind of action. Trust is off by default.</li>
+        </ul>
+      </div>
+      <div class="col-stack">
+        <div>
+          <div class="window" role="img" aria-label="Product preview: the district admin's MCP Server Portal settings show the portal address, OAuth sign-in, trust in tool annotations switched off, and three approved servers behind the portal.">
+            <div class="bar"><i></i><i></i><i></i><span class="url">cedarvalley.educateos.io/admin/gatekeepers/mcp-portal</span></div>
+            <div class="mock">
+              <div class="h">MCP Server Portal <span class="badge green"><span class="dot"></span> Connected</span></div>
+              <div class="field"><label>Portal address</label><div class="input">https://mcp.cedarvalley.example/</div></div>
+              <div class="field"><label>Display name in approval prompts</label><div class="input">Cedar Valley MCP Portal</div></div>
+              <div class="list">
+                <div class="li"><div class="t"><b class="strong">Trust tool annotations</b><small>Off: no write from these servers can skip approval</small></div><span class="switch"></span></div>
+              </div>
+              <div class="list">
+                <div class="li" style="background:var(--color-kumo-elevated)"><div class="t"><b class="strong">Servers behind this portal</b><small>Approved in Cloudflare One. Access decides who reaches each one.</small></div></div>
+                <div class="li"><span class="logo-tile sm" style="background:#0f766e">LC</span><div class="t"><b class="strong">Library catalog</b><small>6 tools · staff and students</small></div></div>
+                <div class="li"><span class="logo-tile sm" style="background:#7c3aed">SL</span><div class="t"><b class="strong">State standards lookup</b><small>3 tools · staff</small></div></div>
+                <div class="li"><span class="logo-tile sm" style="background:#ea580c">LB</span><div class="t"><b class="strong">Lab equipment booking</b><small>4 tools · science staff</small></div></div>
+              </div>
+            </div>
+          </div>
+          <span class="preview-tag">Product preview of the admin portal settings.</span>
+        </div>
+        <div>
+          <div class="window" role="img" aria-label="Product preview: a teacher's approval queue shows the agent's request to place a hold on three copies of a library book, with the server named and Approve and Reject buttons.">
+            <div class="bar"><i></i><i></i><i></i><span class="url">cedarvalley.educateos.io/approvals</span></div>
+            <div class="mock">
+              <div class="tool"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/></svg><b>Search catalog</b> · "cell biology, grade 9" <span class="badge green" style="margin-left:auto">Recorded read</span></div>
+              <div class="approve">
+                <div class="grow"><b class="strong">Place hold · 3 copies of "The Cell: A Visual Tour"</b><br><span class="muted">Library catalog via Cedar Valley MCP Portal · for Biology 9, Period 2</span></div>
+                <span class="mini-btn">Reject</span><span class="mini-btn primary">Approve</span>
+              </div>
+            </div>
+          </div>
+          <span class="preview-tag">Product preview of a teacher approving a queued write.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="server">
+    <div class="wrap split">
+      <div class="copy">
+        <div class="eyebrow">Your district as an MCP server</div>
+        <h2>Let the AI tools staff already use reach school data, under the district's rules.</h2>
+        <span class="status planned" style="margin-top:16px">Planned</span>
+        <p class="lede">The design gives each district its own MCP server, so an approved outside AI client could call the district's school tools. It is designed and has no code yet.</p>
+        <ul class="checks">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>The same operation, handler and policy decision as the district's own app, whether it's called from the web or over MCP.</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>Standard OAuth sign-in. A token meant for another service is refused, and revoking access takes effect at once.</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>An admin page to preview what an approved agent could reach before it's switched on.</li>
+        </ul>
+      </div>
+      <div class="card" style="padding:24px">
+        <h3>What exists today, and what doesn't</h3>
+        <div class="list" style="margin-top:14px">
+          <div class="li"><div class="t"><b class="strong">MCP client: agents call MCP servers</b><small>Cloudflare OS feature, unit-tested</small></div><span class="status avail">Available in Cloudflare OS</span></div>
+          <div class="li"><div class="t"><b class="strong">MCP Server Portal connector</b><small>Cloudflare OS feature, unit-tested</small></div><span class="status avail">Available in Cloudflare OS</span></div>
+          <div class="li"><div class="t"><b class="strong">School tools for Workshop agents</b><small>Tested end to end against simulated districts</small></div><span class="status dev">In development</span></div>
+          <div class="li"><div class="t"><b class="strong">District MCP server for outside clients</b><small>Designed, with no code yet</small></div><span class="status planned">Planned</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="cta">
+        <h2>Have an MCP server your teachers need?</h2>
+        <p class="lede" style="margin-left:auto;margin-right:auto">Tell us what it does and who should reach it. We'll help you put it behind your district's portal.</p>
+        <div class="ctas">
+          <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20and%20MCP">Email hello@educateos.io</a>
+          <a class="btn" href="/security/">How approvals keep it safe</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/mcp/" aria-current="page">MCP</a></li>
+          <li><a href="/schools/">Schools</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/school-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

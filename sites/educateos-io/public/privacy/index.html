@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy · EducateOS</title>
+<meta name="description" content="The Privacy Policy of Gmacko Ventures LLC for educateos.io and educateos.dev.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/mcp/">MCP</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="page-hero">
+    <div class="wrap doc">
+      <div class="eyebrow">Privacy Policy</div>
+      <h1>Privacy Policy</h1>
+      <p class="updated">Last updated: October 25, 2026</p>
+      <p>This policy explains what Gmacko Ventures LLC ("we", "us") collects through educateos.io, www.educateos.io, educateos.dev and www.educateos.dev, and the services we offer there. It is short because we collect very little.</p>
+    </div>
+  </section>
+
+  <section class="tight" style="padding-top:8px">
+    <div class="wrap doc">
+      <h2 id="district">District installations are not covered here</h2>
+      <p>EducateOS is open-source software that a school district, school or co-op installs in its own Cloudflare account. That installation, and all the student and staff data in it, belongs to the district. It is governed by the district's own policies and agreements, not by this policy. We don't receive, store or process education records from installations. To ask about data in a school's EducateOS, contact the school or district. Our <a href="/student-privacy/">student privacy page</a> describes how the software is designed.</p>
+
+      <h2 id="collect">What we collect</h2>
+      <h3>Visiting this website</h3>
+      <p>The site is a set of static pages. It sets no cookies and runs no advertising or tracking scripts. Today it loads no analytics. If we add Cloudflare Web Analytics, which is cookieless and doesn't track individual visitors, we'll update this policy first. The site is hosted on Cloudflare, which processes request information such as IP addresses and browser details to deliver and protect it, as described in <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare's privacy policy</a>.</p>
+      <h3>Emailing us</h3>
+      <p>Mail to hello@educateos.io is forwarded through Cloudflare Email Routing to a mailbox Gmacko Ventures LLC operates. We keep what you send, including your name, address and message, so we can reply and follow up. Please don't email us student records.</p>
+      <h3>Guided install (when available)</h3>
+      <p>The guided install will ask you to authorize a one-time Cloudflare OAuth token for your account. We use it only to deploy EducateOS into your account and then discard it. We keep no standing access.</p>
+      <h3>Installation registration (opt-in)</h3>
+      <p>An installation can choose to register with educateos.io. It is off by default. Registration and its status reports carry a fixed list of fields: an installation ID and public key, a district label, the release version, enabled capabilities, a contact role, an account reference, timestamps, health-check results as status codes, and optionally one district-wide AI spend total. They never carry prompts, chat text, student work, rosters or anything about an individual.</p>
+      <h3>Managed address (when available)</h3>
+      <p>If a district uses an address such as district.educateos.io, we keep the name and the target it routes to. Requests to that address pass through Cloudflare under our zone for routing and TLS. We configure no logging, storage or inspection of their content.</p>
+      <h3>Billing (when available)</h3>
+      <p>Paid services such as the managed address, guided install, support and marketplace items will be billed through Stripe. We'll receive the purchaser's name, email and billing address, what was bought and the payment status. Stripe processes card details under <a href="https://stripe.com/privacy">its own privacy policy</a>, and we never see full card numbers.</p>
+      <h3>Marketplace (when available)</h3>
+      <p>We'll keep a record of which organization obtained which marketplace items. Items are delivered as signed files that the installation verifies itself. Installations don't report their use of items back to us.</p>
+
+      <h2 id="use">How we use it</h2>
+      <ul>
+        <li>To answer you and provide the services you ask for.</li>
+        <li>To bill for paid services, once they exist.</li>
+        <li>To keep the site and services secure and working.</li>
+        <li>To meet legal obligations.</li>
+      </ul>
+
+      <h2 id="dont">What we don't do</h2>
+      <ul>
+        <li>We don't sell or rent personal information.</li>
+        <li>We don't use it for advertising, and we don't build behavioral profiles.</li>
+        <li>We don't receive student education records from installations.</li>
+      </ul>
+
+      <h2 id="share">Who we share it with</h2>
+      <p>Only the service providers that run these services: Cloudflare (hosting, email routing and DNS), our email provider, and Stripe once billing exists. Each processes the information only to provide its service to us. We may also disclose information if the law requires it, or to a successor if the business is transferred, in which case this policy continues to apply to it.</p>
+
+      <h2 id="children">Children's privacy</h2>
+      <p>This website is meant for educators, administrators and families researching EducateOS. It isn't directed to children, and we don't knowingly collect personal information from children under 13. If you believe a child has sent us information, email hello@educateos.io and we'll delete it. Students use EducateOS through their school's own installation, and that data is covered by the school's policies, as described above.</p>
+
+      <h2 id="retention">How long we keep it</h2>
+      <p>We keep correspondence for as long as it's needed to answer you and for our records, and billing records for as long as tax and accounting law requires. We delete installation registrations when the installation unregisters, and managed-address records when the address is released.</p>
+
+      <h2 id="rights">Your rights</h2>
+      <p>You can ask us to show you, correct or delete the personal information we hold about you, or to stop using it. Depending on where you live, for example in California, you may have further rights under state law. We won't treat you differently for using them. Email hello@educateos.io and we'll respond within 30 days.</p>
+
+      <h2 id="security">Security</h2>
+      <p>We keep what we collect to a minimum, use the access controls of the services above, and keep no standing credentials for any district's account.</p>
+
+      <h2 id="changes">Changes</h2>
+      <p>If we change this policy, we'll update the date at the top. If a change affects how we use information we already hold, we'll say so on this page before it takes effect.</p>
+
+      <h2 id="contact">Contact</h2>
+      <p>Gmacko Ventures LLC · <a href="mailto:hello@educateos.io">hello@educateos.io</a></p>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/schools/">Schools</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/" aria-current="page">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/school-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

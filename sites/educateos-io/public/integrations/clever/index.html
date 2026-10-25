@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clever · Integrations · EducateOS</title>
+<meta name="description" content="Clever sign-in through Cloudflare Access and planned roster sync from the Clever Data API, with per-feature status.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/mcp/">MCP</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">Integrations · Clever</div>
+      <h1 class="rise" style="--d:1">Clever sign-in now, Clever rosters next.</h1>
+      <p class="lede rise" style="--d:2">Students and staff can sign in with Clever through Cloudflare Access, which EducateOS already uses for sign-in. We're validating that against Clever's sandbox. Roster sync from Clever is planned.</p>
+      <div class="legend rise" style="--d:3"><span class="status validating" data-status="clever.sso">Validating against live sandbox</span><span class="status planned" data-status="clever.roster">Planned</span><a href="/integrations/#statuses">What the statuses mean</a></div>
+      <nav class="subnav" aria-label="Integrations"><a href="/integrations/">Overview</a><a href="/integrations/lti/">LTI 1.3</a><a href="/integrations/canvas/">Canvas</a><a href="/integrations/google-classroom/">Google Classroom</a><a href="/integrations/clever/" aria-current="page">Clever</a><a href="/integrations/oneroster/">OneRoster and ClassLink</a></nav>
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">
+      <div class="facts">
+        <div class="card"><small>Sync direction</small>Inbound only: identities at sign-in, and rosters once sync is built.</div>
+        <div class="card"><small>Source of record</small>Clever, for the districts that choose it as their roster source. Each record type's source is set by the district.</div>
+        <div class="card"><small>Data it carries</small>Clever's user ID, user type and district ID at sign-in. Roster sync will carry what the district shares through Clever.</div>
+      </div>
+      <table class="spec">
+        <caption class="muted" style="text-align:left;caption-side:top;padding-bottom:8px;font-size:.85rem">Clever features</caption>
+        <thead><tr><th>Feature</th><th>What it does</th><th>Status</th></tr></thead>
+        <tbody><tr><td>Clever SSO through Cloudflare Access</td><td>Clever is set up as an OpenID Connect login method in Cloudflare Access. Access passes Clever's <code>user_type</code>, <code>district_id</code> and <code>user_id</code> claims, along with the person's name. Today EducateOS reads the issuer and subject from the Access sign-in, and matches them to a person through an identity link.</td><td><span class="status validating" data-status="clever.sso">Validating against live sandbox</span></td></tr><tr><td>District and school mapping</td><td>Using <code>district_id</code> to confirm that a person belongs to this EducateOS district, and <code>user_type</code> to check their role against the roster. Each person still matches by (district, issuer, subject), never by email.</td><td><span class="status planned" data-status="clever.mapping">Planned</span></td></tr><tr><td>Roster sync from the Data API v3</td><td>A full sync of schools, sections, people and enrollments with a district token (SCHO-203), through the same preview, quarantine and all-or-nothing apply as <a href="/integrations/oneroster/">OneRoster</a>.</td><td><span class="status planned" data-status="clever.roster">Planned</span></td></tr><tr><td>Events-based deltas</td><td>Incremental changes from Clever's events between full syncs. A removal deactivates a person or enrollment and deletes nothing.</td><td><span class="status planned" data-status="clever.events">Planned</span></td></tr></tbody>
+      </table>
+    </div>
+  </section>
+  <section class="band tight">
+    <div class="wrap">
+      <h2>How failures are handled</h2>
+<ul class="checks"><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A Clever user nobody has linked gets a clear screen saying they haven't been added, not an account.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A sign-in from a Clever district that doesn't match the EducateOS district will be refused once claim mapping lands.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Roster sync is planned to inherit OneRoster's protections: preview before apply, quarantine of conflicting identities, and deactivation instead of deletion.</span></li></ul>      <div class="note-box"><b>How we validate.</b> Every status on this page comes from the project's <a href="https://github.com/gmackie/school-os/blob/main/docs/educateos/maturity.md">maturity record</a>. Unit-tested features run against fakes that behave like the real service: <a href="https://github.com/gmackie/school-os/tree/main/packages/educateos-identity/__tests__">the Access sign-in tests</a>. A feature moves to "Validating against live sandbox" when a run against the vendor's own sandbox is under way, and to "Supported" only after it passes there. <a href="/integrations/#validate">More on our testing →</a></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="cta">
+        <h2>Want to see it against your systems?</h2>
+        <p class="lede" style="margin-left:auto;margin-right:auto">We're validating each integration against live sandboxes with pilot districts. Tell us what your district runs.</p>
+        <div class="ctas"><a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20integrations">Email hello@educateos.io</a><a class="btn" href="/integrations/">All integrations</a></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/schools/">Schools</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/school-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

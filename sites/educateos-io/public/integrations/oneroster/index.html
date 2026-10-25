@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneRoster 1.2 and ClassLink · Integrations · EducateOS</title>
+<meta name="description" content="OneRoster 1.2 CSV and REST roster sync in EducateOS: OAuth 2.0 client credentials, delta sync, preview, quarantine, all-or-nothing apply and deactivation, plus ClassLink.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/mcp/">MCP</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">Integrations · OneRoster 1.2 and ClassLink</div>
+      <h1 class="rise" style="--d:1">OneRoster 1.2 rosters, previewed before anything changes.</h1>
+      <p class="lede rise" style="--d:2">EducateOS reads OneRoster 1.2 from a CSV export or a REST endpoint, which covers ClassLink and many student information systems. Every import is previewed, conflicting identities are quarantined, and nothing is ever deleted.</p>
+      <div class="legend rise" style="--d:3"><span class="status unit" data-status="summary.oneroster">Unit-tested</span><span class="status planned" data-status="oneroster.classlink">Planned</span><a href="/integrations/#statuses">What the statuses mean</a></div>
+      <nav class="subnav" aria-label="Integrations"><a href="/integrations/">Overview</a><a href="/integrations/lti/">LTI 1.3</a><a href="/integrations/canvas/">Canvas</a><a href="/integrations/google-classroom/">Google Classroom</a><a href="/integrations/clever/">Clever</a><a href="/integrations/oneroster/" aria-current="page">OneRoster and ClassLink</a></nav>
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">
+      <div class="facts">
+        <div class="card"><small>Sync direction</small>Inbound only. EducateOS never writes to the roster provider.</div>
+        <div class="card"><small>Source of record</small>By default, OneRoster owns schools, terms, courses, classes, enrollments and people. A district can keep any of these local instead.</div>
+        <div class="card"><small>Data it carries</small>Users, roles, classes and enrollments. <code>demographics.csv</code> is never opened, and passwords are dropped.</div>
+      </div>
+      <table class="spec">
+        <caption class="muted" style="text-align:left;caption-side:top;padding-bottom:8px;font-size:.85rem">OneRoster 1.2 features</caption>
+        <thead><tr><th>Feature</th><th>What it does</th><th>Status</th></tr></thead>
+        <tbody><tr><td>CSV import</td><td>A bulk ZIP or CSV export with <code>orgs</code>, <code>academicSessions</code>, <code>courses</code>, <code>classes</code>, <code>users</code>, <code>roles</code>, <code>enrollments</code> and a <code>manifest.csv</code> declaring version 1.2 and bulk files. Delta CSV files are refused, and size and row caps apply.</td><td><span class="status unit" data-status="oneroster.csv">Unit-tested</span></td></tr><tr><td>REST client</td><td>OAuth 2.0 client credentials (client ID and secret over HTTP Basic), scope <code>roster-core.readonly</code>. Reads orgs, academic sessions, courses, classes, users and enrollments under <code>/ims/oneroster/rostering/v1p2/</code>, with <code>limit</code> and <code>offset</code> paging. Next-page links must stay on the same origin and path. 408, 429 and 5xx responses are retried with backoff, honoring <code>Retry-After</code>.</td><td><span class="status unit" data-status="oneroster.rest">Unit-tested</span></td></tr><tr><td>Delta sync</td><td>A <code>dateLastModified&gt;=</code> filter with a separate cursor for each collection and a 5-minute overlap. <code>tobedeleted</code> deactivates a record, but a record missing from a delta never does. A periodic complete sync catches hard deletes.</td><td><span class="status unit" data-status="oneroster.delta">Unit-tested</span></td></tr><tr><td>Preview and all-or-nothing apply</td><td>Every import produces a preview first. It applies only if there are no errors and the directory still passes its integrity checks. Otherwise nothing changes, and cursors don't move.</td><td><span class="status unit" data-status="oneroster.preview">Unit-tested</span></td></tr><tr><td>Quarantine</td><td>A user with a missing, duplicate or changed identity, a conflicting role, or no role is quarantined, and their enrollments are held. Email is never used to match people.</td><td><span class="status unit" data-status="oneroster.quarantine">Unit-tested</span></td></tr><tr><td>Deactivate, never delete</td><td>People and enrollments that leave the roster become inactive. Their work stays.</td><td><span class="status unit" data-status="oneroster.deactivate">Unit-tested</span></td></tr><tr><td>Integration health</td><td>Healthy, degraded, stale or never-synced, worked out from the run history along with consecutive failures, the last error and the quarantine backlog.</td><td><span class="status unit" data-status="oneroster.health">Unit-tested</span></td></tr><tr><td>Holds for large removals</td><td>An import that would remove an unusual number of enrollments waits for an administrator instead of applying.</td><td><span class="status planned" data-status="oneroster.hold">Planned</span></td></tr><tr><td>Scheduled REST sync in the district app</td><td>The district app currently runs CSV imports. Wiring up scheduled REST sync is next.</td><td><span class="status planned" data-status="oneroster.scheduled">Planned</span></td></tr><tr id="classlink"><td>ClassLink</td><td>ClassLink through its OneRoster 1.2 interface. It has no ClassLink-specific code or test run yet.</td><td><span class="status planned" data-status="oneroster.classlink">Planned</span></td></tr></tbody>
+      </table>
+    </div>
+  </section>
+  <section class="band tight">
+    <div class="wrap">
+      <h2>What happens when something goes wrong</h2>
+<ul class="checks"><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A provider that changes its total count or repeats an ID mid-read fails the whole read, and nothing is applied.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A second import running at the same time is refused, so two syncs can't interleave.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>An expired token is refreshed once. Secrets never appear in error messages.</span></li><li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A quarantined person's enrollments are neither written nor deactivated until an administrator resolves them.</span></li></ul>      <div class="note-box"><b>How we validate.</b> Every status on this page comes from the project's <a href="https://github.com/gmackie/school-os/blob/main/docs/educateos/maturity.md">maturity record</a>. Unit-tested features run against fakes that behave like the real service: <a href="https://github.com/gmackie/school-os/tree/main/packages/educateos-integrations/__tests__">the synthetic Northfield district's CSV and REST fixtures</a>. A feature moves to "Validating against live sandbox" when a run against the vendor's own sandbox is under way, and to "Supported" only after it passes there. <a href="/integrations/#validate">More on our testing →</a></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="cta">
+        <h2>Want to see it against your systems?</h2>
+        <p class="lede" style="margin-left:auto;margin-right:auto">We're validating each integration against live sandboxes with pilot districts. Tell us what your district runs.</p>
+        <div class="ctas"><a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20integrations">Email hello@educateos.io</a><a class="btn" href="/integrations/">All integrations</a></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/schools/">Schools</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/school-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

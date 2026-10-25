@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Processing Agreement template · EducateOS</title>
+<meta name="description" content="A template data processing agreement between a district and Gmacko Ventures LLC for EducateOS. Review it with your counsel.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/mcp/">MCP</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="page-hero">
+    <div class="wrap doc">
+      <div class="eyebrow">Student privacy · Template</div>
+      <h1>Data Processing Agreement template</h1>
+      <p><span class="badge warn">Template — review with your counsel</span></p>
+      <p class="updated">Version of October 25, 2026. Text in [brackets] is for the parties to complete.</p>
+      <p>This is a starting point for an agreement between a district and Gmacko Ventures LLC. Because the district runs EducateOS in its own Cloudflare account, the agreement mostly confirms what Gmacko Ventures LLC does <i>not</i> receive, and sets the rules for the rare case where the district asks for hands-on support. It is not legal advice. Your counsel should adapt it, or replace it with your state's standard student data privacy agreement.</p>
+      <p><a class="btn" href="javascript:print()">Print or save as PDF</a></p>
+    </div>
+  </section>
+
+  <section class="tight" style="padding-top:8px">
+    <div class="wrap doc">
+      <h2>1. Parties and purpose</h2>
+      <p>This agreement is between [District name] (the "District") and Gmacko Ventures LLC (the "Provider"). It covers the Provider's services for EducateOS, open-source software the District installs and operates in a Cloudflare account it controls (the "Installation").</p>
+
+      <h2>2. Definitions</h2>
+      <ul>
+        <li><b>Student Data</b>: any information about a student that the District, its staff, its students or their families create or provide while using the Installation, including education records as defined by FERPA (20 U.S.C. § 1232g; 34 CFR Part 99).</li>
+        <li><b>Services</b>: the services the Provider performs, as listed in Section 3.</li>
+        <li><b>Support Access</b>: any access by the Provider to the Installation or to Student Data, made at the District's written request.</li>
+      </ul>
+
+      <h2>3. Services</h2>
+      <p>The Provider may supply any of the following that the District selects: [the guided install / a managed address at district.educateos.io / the update channel / support / marketplace items]. None of these requires the Provider to receive Student Data. The guided install uses a Cloudflare OAuth token that the Provider uses only to deploy the Installation, then discards.</p>
+
+      <h2>4. Ownership and control</h2>
+      <p>The District owns and controls all Student Data. Student Data is stored in the District's Cloudflare account, under the District's credentials and policies. The Provider claims no right to Student Data.</p>
+
+      <h2>5. No receipt of Student Data</h2>
+      <p>In the normal course of the Services, the Provider does not receive, store or process Student Data. Requests to a managed address pass through Cloudflare under the Provider's zone, for routing and TLS only. The Provider configures no logging, storage or inspection of their content. The District may use its own domain instead.</p>
+
+      <h2>6. Support Access</h2>
+      <p>The Provider accesses the Installation or Student Data only if the District requests it in writing. When that happens:</p>
+      <ul>
+        <li>the Provider acts as a school official with a legitimate educational interest, under the District's direct control, and uses Student Data only for the requested purpose;</li>
+        <li>access uses credentials the District grants and can revoke, is limited to what the task needs, and ends when the task is done;</li>
+        <li>the Provider copies no Student Data out of the Installation unless the District directs it to, and deletes any copy within [30] days of finishing; and</li>
+        <li>the Provider keeps a record of the access and gives it to the District on request.</li>
+      </ul>
+
+      <h2>7. Prohibited uses</h2>
+      <p>The Provider will not sell Student Data, use it for targeted advertising, build profiles of students for purposes other than the District's educational ones, or disclose it except as this agreement allows or the law requires.</p>
+
+      <h2>8. Subprocessors</h2>
+      <p>The Provider uses Cloudflare (website hosting, DNS and email routing) and, for paid services, Stripe (billing). Neither receives Student Data from the Provider. The Provider will give the District [30] days' notice before adding a subprocessor that would receive Student Data.</p>
+
+      <h2>9. Security</h2>
+      <p>The Provider keeps no standing credentials for the District's account. EducateOS releases are signed, and the Installation verifies them offline against keys the District pins. The District is responsible for configuring its account, its identity provider and EducateOS's policy settings.</p>
+
+      <h2>10. Incidents</h2>
+      <p>If the Provider learns of unauthorized access to Student Data that it holds or has accessed, it will notify the District within [72 hours], cooperate with the District's response, and provide the information the District needs to meet its own notification duties.</p>
+
+      <h2>11. Retention, return and deletion</h2>
+      <p>Retention, export and deletion of Student Data in the Installation are under the District's control. When this agreement ends, the Provider will delete any Student Data it holds because of Support Access within [30] days and confirm that in writing.</p>
+
+      <h2>12. Parents, eligible students and requests</h2>
+      <p>Requests to inspect, correct or delete Student Data go to the District. If the Provider receives one, it will forward it to the District within [5] business days and won't respond on the District's behalf unless the District asks it to.</p>
+
+      <h2>13. Children under 13</h2>
+      <p>Where students are under 13, the District authorizes the collection of their information for educational purposes in the Installation, and remains responsible for any notice to parents. The Provider collects no information from children.</p>
+
+      <h2>14. Term, governing law and precedence</h2>
+      <p>This agreement runs from [start date] until the later of the end of the Services and the deletion described in Section 11. It is governed by the laws of [State]. Where it conflicts with another agreement between the parties about Student Data, this agreement controls.</p>
+
+      <h2>Signatures</h2>
+      <p>[District name]: name, title, signature, date<br>Gmacko Ventures LLC: name, title, signature, date</p>
+
+      <p class="updated" style="margin-top:32px">Questions about this template: <a href="mailto:hello@educateos.io?subject=EducateOS%20DPA">hello@educateos.io</a>. See also the <a href="/student-privacy/">student privacy overview</a> and our <a href="/privacy/">Privacy Policy</a>.</p>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/schools/">Schools</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/" aria-current="page">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/school-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

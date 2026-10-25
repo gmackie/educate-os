@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security · EducateOS</title>
+<meta name="description" content="How EducateOS keeps the district in control: its own Cloudflare account, default-deny policy, approvals, Hall Monitor screening, AI spend caps, audit and signed releases.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/mcp/">MCP</a>
+      <a href="/security/" aria-current="page">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/" aria-current="page">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">Security and data ownership</div>
+      <h1 class="rise" style="--d:1">The district holds the keys, the data and the off switch.</h1>
+      <p class="lede rise" style="--d:2">EducateOS is designed so a district can check its claims rather than take them on trust. It runs in the district's own Cloudflare account, the code is open source, and every agent action goes through rules the district sets.</p>
+      <div class="legend rise" style="--d:3">
+        <span class="status avail">Available in Cloudflare OS</span>
+        <span class="status dev">In development</span>
+        <span class="status planned">Planned</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight">
+    <div class="wrap">
+      <div class="window rise" role="img" aria-label="Product preview: the district safety view lists recent decisions: a denied roster request, a grade write waiting for a teacher, a message Hall Monitor blocked and a recorded read. Side cards show a student AI allowance and a release whose signature was verified offline.">
+        <div class="bar"><i></i><i></i><i></i><span class="url">cedarvalley.educateos.io/admin/safety</span></div>
+        <div class="mock split2 wide">
+          <div class="col">
+            <div class="h">Recent decisions <span class="badge">Today</span></div>
+            <div class="list">
+              <div class="li"><span class="badge" style="background:var(--color-kumo-danger-tint, var(--color-kumo-warning-tint));color:light-dark(#b91c1c,#fca5a5)">Denied</span><div class="t"><b class="strong">A student's agent asked for the Period 4 roster</b><small>Not enrolled in that class · no rule allows it, so it's denied</small></div><span class="tagline">10:42</span></div>
+              <div class="li"><span class="badge warn">Waiting</span><div class="t"><b class="strong">Scores for Lab report 3</b><small>Drafted by the agent · waiting for Mr. Okafor to approve</small></div><span class="tagline">10:40</span></div>
+              <div class="li"><span class="badge purple">Hall Monitor</span><div class="t"><b class="strong">Blocked a message before it reached the model</b><small>Student helper, Algebra I · the student saw a safe reply</small></div><span class="tagline">10:31</span></div>
+              <div class="li"><span class="badge green">Recorded</span><div class="t"><b class="strong">Read Drive folder "English 9, Unit 3"</b><small>Agent for Ms. Rivera · observation logged</small></div><span class="tagline">10:12</span></div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="panel">
+              <div class="ph">AI allowance · Grade 9 students <span class="badge">This week</span></div>
+              <span class="muted">$0.42 of $2.00 average used</span>
+              <div class="meter"><i style="width:21%"></i></div>
+              <small class="muted" style="display:block;margin-top:8px">Safety checks are paid from a protected pool, never from a student's allowance.</small>
+            </div>
+            <div class="panel">
+              <div class="ph">Release 2026.10.3 <span class="badge green">Verified</span></div>
+              <span class="muted">Signature checked offline against the keys this district pinned.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span class="preview-tag">Product preview of the district safety view, as it is being designed. Names are fictional.</span>
+    </div>
+  </section>
+
+  <section class="band tight" id="ownership">
+    <div class="wrap">
+      <div class="eyebrow">Ownership</div>
+      <h2>Your account, your data, your domain if you want it.</h2>
+      <div class="grid3">
+        <div class="card feat">
+          <h3>Runs in the district's Cloudflare account</h3>
+          <p>Cloudflare OS deploys into an account you own. EducateOS keeps that model: the Workshop, the district app, the gatekeepers and their storage all live in the district's account.</p>
+          <span class="status avail">Available in Cloudflare OS</span>
+        </div>
+        <div class="card feat">
+          <h3>educateos.io stays out of the data path</h3>
+          <p>educateos.io offers a guided install, updates and a marketplace. It never stores or inspects school data, holds no standing credentials for your account, and never decides which features you can use. A district can install and update without it, and can serve EducateOS on its own domain.</p>
+          <span class="status dev">In development</span>
+        </div>
+        <div class="card feat">
+          <h3>Open source, Apache-2.0</h3>
+          <p>The code that runs in your account is public, so your IT team or an outside reviewer can read exactly what it does. There is no paid tier inside the platform.</p>
+          <span class="status avail">Available in Cloudflare OS</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="controls">
+    <div class="wrap">
+      <div class="eyebrow">Controls</div>
+      <h2>Nothing is allowed until a rule allows it.</h2>
+      <div class="grid2">
+        <div class="card feat">
+          <h3>Sandboxed agents and gadgets</h3>
+          <p>Each agent and gadget starts with access to nothing. Gadgets run in a sandbox that can't reach the internet except through the gatekeepers a person gave it.</p>
+          <span class="status avail">Available in Cloudflare OS</span>
+        </div>
+        <div class="card feat">
+          <h3>Approvals for writes</h3>
+          <p>Gatekeepers queue every action with side effects for a person to approve. In EducateOS, grades and other school records that an agent drafts stay drafts until a teacher approves them.</p>
+          <div class="for"><span class="status avail">Approval queue: Available in Cloudflare OS</span><span class="status dev">Teacher-approved grades: In development</span></div>
+        </div>
+        <div class="card feat">
+          <h3>A default-deny school policy</h3>
+          <p>One rule table decides every school read and write, using who the person is, their role and their enrollments. If no rule allows a request, it's denied. The agent's identity always comes from sign-in, never from what a tool was asked.</p>
+          <span class="status dev">In development</span>
+        </div>
+        <div class="card feat">
+          <h3>Hall Monitor AI screening</h3>
+          <p>Before a model sees a new message, the AI call guard sends it to Hall Monitor and applies the decision. Where a district's profile requires it, model replies are held and screened before a student sees them.</p>
+          <span class="status dev">In development</span>
+        </div>
+        <div class="card feat">
+          <h3>AI spend caps</h3>
+          <p>Every model call holds its maximum cost against the person's allowance on the district's own ledger, then settles at the actual cost. Districts set the limits. Safety checks come from a separate protected pool.</p>
+          <span class="status dev">In development</span>
+        </div>
+        <div class="card feat">
+          <h3>An audit trail</h3>
+          <p>Gatekeepers log every action and every read an agent or gadget makes. EducateOS adds a record of each AI call, attributed to a person, a class and a feature.</p>
+          <div class="for"><span class="status avail">Action log: Available in Cloudflare OS</span><span class="status dev">AI call records: In development</span></div>
+        </div>
+        <div class="card feat">
+          <h3>Signed releases, verified offline</h3>
+          <p>Every release is signed. An installation checks the signature against keys it has pinned, without calling home, before it applies an update.</p>
+          <span class="status dev">In development</span>
+        </div>
+        <div class="card feat">
+          <h3>Cloudflare Access sign-in</h3>
+          <p>Staff and students sign in through Cloudflare Access with the identity provider the district already uses. The district app turns that verified sign-in into a person in its directory.</p>
+          <div class="for"><span class="status avail">Access sign-in: Available in Cloudflare OS</span><span class="status dev">District directory: In development</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band tight" id="claims">
+    <div class="wrap split">
+      <div class="copy">
+        <div class="eyebrow">Student privacy</div>
+        <h2>Built for FERPA and COPPA.</h2>
+        <p class="lede">Student education records stay in the district's own Cloudflare account. Gmacko Ventures LLC, which develops EducateOS, doesn't receive, store or process them, unless a district asks in writing for hands-on support under its own control. The design is meant to support the district's own FERPA, COPPA and state student-privacy obligations. It is not a certification, and the district still makes its own review.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:22px">
+          <a class="btn primary" href="/student-privacy/">How we protect student data →</a>
+          <a class="btn" href="/student-privacy/dpa/">DPA template</a>
+        </div>
+      </div>
+      <div class="card" style="padding:24px">
+        <h3>Ask us for a walkthrough</h3>
+        <p class="muted" style="margin:8px 0 0">We'll walk your IT and privacy staff through the code, the data flows and what runs in your account. Every capability on this site carries the status its evidence supports, and the status changes in the same update as the evidence.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px">
+          <a class="btn" href="mailto:hello@educateos.io?subject=EducateOS%20security%20review">Email hello@educateos.io</a>
+          <a class="btn" href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/schools/">Schools</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/" aria-current="page">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/school-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

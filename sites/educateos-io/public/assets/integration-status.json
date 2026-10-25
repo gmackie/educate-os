@@ -1,0 +1,61 @@
+{
+  "$comment": "Integration feature statuses for educateos.io (SCHO-229). Change a feature's level here, then run node sites/educateos-io/build.mjs. Levels follow docs/educateos/maturity.md: Unit-tested means package tests against fakes; Validating means a run against a live vendor sandbox is under way; Supported needs passed external conformance runs, and nothing has it yet.",
+  "levels": {
+    "unit-tested": { "label": "Unit-tested", "class": "unit" },
+    "validating": { "label": "Validating against live sandbox", "class": "validating" },
+    "supported": { "label": "Supported", "class": "supported" },
+    "planned": { "label": "Planned", "class": "planned" }
+  },
+  "features": {
+    "summary.lti": "unit-tested",
+    "summary.canvas": "validating",
+    "summary.google-classroom": "unit-tested",
+    "summary.oneroster": "unit-tested",
+    "summary.clever": "validating",
+
+    "lti.login": "unit-tested",
+    "lti.idtoken": "unit-tested",
+    "lti.jwks": "unit-tested",
+    "lti.toolkeys": "unit-tested",
+    "lti.deeplinking": "unit-tested",
+    "lti.ags.lineitems": "unit-tested",
+    "lti.ags.passback": "unit-tested",
+    "lti.nrps": "unit-tested",
+    "lti.dynreg": "unit-tested",
+    "lti.mapping": "unit-tested",
+    "lti.mounted": "planned",
+    "lti.platform": "planned",
+
+    "canvas.devkey": "unit-tested",
+    "canvas.placements": "unit-tested",
+    "canvas.scopes": "unit-tested",
+    "canvas.courses": "unit-tested",
+    "canvas.sections": "planned",
+    "canvas.sandbox": "validating",
+
+    "gc.oauth": "unit-tested",
+    "gc.courses": "unit-tested",
+    "gc.coursework": "unit-tested",
+    "gc.submissions": "unit-tested",
+    "gc.grades": "unit-tested",
+    "gc.dwd": "planned",
+    "gc.districtsync": "planned",
+    "gc.live": "planned",
+
+    "clever.sso": "validating",
+    "clever.mapping": "planned",
+    "clever.roster": "planned",
+    "clever.events": "planned",
+
+    "oneroster.csv": "unit-tested",
+    "oneroster.rest": "unit-tested",
+    "oneroster.delta": "unit-tested",
+    "oneroster.preview": "unit-tested",
+    "oneroster.quarantine": "unit-tested",
+    "oneroster.deactivate": "unit-tested",
+    "oneroster.health": "unit-tested",
+    "oneroster.hold": "planned",
+    "oneroster.scheduled": "planned",
+    "oneroster.classlink": "planned"
+  }
+}

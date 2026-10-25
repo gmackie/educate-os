@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schools · EducateOS</title>
+<meta name="description" content="EducateOS for districts, charter and independent schools, homeschool co-ops, and CS and maker classes, with an honest status for each capability.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/connectors/">Connectors</a>
+      <a href="/mcp/">MCP</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <!-- TODO(SCHO-224): add "Try the demo" (/demo/) here, in the menu and in the footer once /demo/ is on main. -->
+    </nav>
+    <div class="right">
+      <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20early%20access">Get early access</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/schools/" aria-current="page">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+<section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">Who it's for</div>
+      <h1 class="rise" style="--d:1">One platform, sized for a district or a twelve-family co-op.</h1>
+      <p class="lede rise" style="--d:2">EducateOS installs the same open-source software for every kind of school. What changes is what you connect to it: a district brings its roster and LMS, while a co-op can start with nothing but the built-in classes and gradebook.</p>
+      <nav class="subnav rise" style="--d:3" aria-label="Use cases">
+        <a href="#districts">Districts</a>
+        <a href="#charter">Charter and independent schools</a>
+        <a href="#coops">Homeschool co-ops</a>
+        <a href="#cs">CS and maker classes</a>
+      </nav>
+      <div class="legend rise" style="--d:3">
+        <span class="status avail">Available in Cloudflare OS</span>
+        <span class="status dev">In development</span>
+        <span class="status planned">Planned</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="districts">
+    <div class="wrap split">
+      <div class="copy">
+        <div class="eyebrow">Districts</div>
+        <h2>Keep your SIS and LMS. Add agents your policy governs.</h2>
+        <ul class="checks">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Rosters from <a href="/integrations/oneroster/">OneRoster 1.2 or ClassLink</a>, or <a href="/integrations/clever/">Clever</a>, with large or unexpected changes previewed first.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Works beside <a href="/integrations/canvas/">Canvas</a> or <a href="/integrations/google-classroom/">Google Classroom</a>, which stay the official gradebook.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>One default-deny policy, AI screening and spend caps that the district sets centrally.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Runs in the district's own Cloudflare account. <a href="/student-privacy/">Student privacy →</a></span></li>
+        </ul>
+        <div class="for" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:18px"><span class="status dev">District app and policy: In development</span><span class="status avail">Agents and gatekeepers: Available in Cloudflare OS</span></div>
+      </div>
+      <div class="card" style="padding:24px">
+        <h3>Typical starting point</h3>
+        <div class="list" style="margin-top:14px">
+          <div class="li"><div class="t"><b class="strong">Pilot with one school</b><small>Rosters from the SIS, sign-in through Cloudflare Access</small></div></div>
+          <div class="li"><div class="t"><b class="strong">Teachers first</b><small>Lesson planning and feedback drafts, with student AI off</small></div></div>
+          <div class="li"><div class="t"><b class="strong">Students when ready</b><small>Hint-mode helper in chosen classes, inside the district's caps</small></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band tight" id="charter">
+    <div class="wrap split rev">
+      <div class="copy">
+        <div class="eyebrow">Charter and independent schools</div>
+        <h2>A full learning platform without a separate LMS contract.</h2>
+        <ul class="checks">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Courses, assignments, quizzes, a gradebook, discussions and a family view are built in.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Google sign-in and Google Workspace connectors for a school that already runs on Google.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>No per-seat fee inside the software. You pay Cloudflare for what your account uses.</span></li>
+        </ul>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:18px"><span class="status dev">Built-in LMS: In development</span><span class="status avail">Google Workspace: Available in Cloudflare OS</span></div>
+      </div>
+      <div>
+        <div class="window" role="img" aria-label="Product preview: an independent school's admin dashboard shows four classes, a pending roster import of 212 students, and the AI settings with student AI off.">
+          <div class="bar"><i></i><i></i><i></i><span class="url">harborview.educateos.io/admin</span></div>
+          <div class="mock split2">
+            <div class="col">
+              <div class="h">Classes <span class="badge">Fall term</span></div>
+              <div class="list">
+                <div class="li"><span class="sw" style="width:10px;height:10px;border-radius:3px;background:#16a34a"></span><div class="t"><b class="strong">Grade 7 Science</b><small>24 students · Ms. Abara</small></div></div>
+                <div class="li"><span class="sw" style="width:10px;height:10px;border-radius:3px;background:#2563eb"></span><div class="t"><b class="strong">Grade 8 Humanities</b><small>22 students · Mr. Lindqvist</small></div></div>
+                <div class="li"><span class="sw" style="width:10px;height:10px;border-radius:3px;background:#f59e0b"></span><div class="t"><b class="strong">Algebra I</b><small>19 students · Mrs. Chen</small></div></div>
+              </div>
+              <div class="hold"><span><b>Roster import ready:</b> 212 students, 14 staff. Review before applying.</span></div>
+            </div>
+            <div class="col">
+              <div class="h">AI settings</div>
+              <div class="list">
+                <div class="li"><div class="t"><b class="strong">Teacher assistant</b><small>Lesson plans and feedback drafts</small></div><span class="switch on"></span></div>
+                <div class="li"><div class="t"><b class="strong">Student helper</b><small>Hint mode only, when turned on</small></div><span class="switch"></span></div>
+                <div class="li"><div class="t"><b class="strong">Monthly AI budget</b><small>$40 for the school</small></div><span class="tagline">$6.10 used</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <span class="preview-tag">Product preview. The school and staff are fictional.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="coops">
+    <div class="wrap split">
+      <div class="copy">
+        <div class="eyebrow">Homeschool co-ops</div>
+        <h2>Mixed-age classes, parent teachers and a weekly plan, with no IT department.</h2>
+        <ul class="checks">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A co-op admin creates a class, adds a parent as its teacher, enrolls students of different ages and publishes a weekly plan. No LMS or AI is needed.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Parents see only their own children's work.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Student work stays with the family when a term ends, and can be exported.</span></li>
+        </ul>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:18px"><span class="status dev">In development</span></div>
+      </div>
+      <div>
+        <div class="window" role="img" aria-label="Product preview: a co-op's Biology class for ages 11 to 14 shows this week's plan, taught by a parent, with three tasks and a family view.">
+          <div class="bar"><i></i><i></i><i></i><span class="url">maplegrove-coop.educateos.io/classes/biology</span></div>
+          <div class="mock">
+            <div class="h">Biology · ages 11–14 <span class="badge">Taught by Dana P. (parent)</span></div>
+            <div class="panel">
+              <div class="ph">Week of Oct 26 <span class="badge green">Published</span></div>
+              <div class="due"><span class="c" style="background:#16a34a"></span><div class="t">Read: cells and what they do<small>Monday · at home</small></div></div>
+              <div class="due"><span class="c" style="background:#2563eb"></span><div class="t">Microscope lab at the co-op<small>Wednesday · bring a leaf</small></div></div>
+              <div class="due"><span class="c" style="background:#f59e0b"></span><div class="t">Draw and label a plant cell<small>Friday · upload a photo</small></div></div>
+            </div>
+            <div class="tool"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><b>Family view</b> · the Okoro family sees Ada's and Tobi's work only</div>
+          </div>
+        </div>
+        <span class="preview-tag">Product preview. The co-op and families are fictional.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="band tight" id="cs">
+    <div class="wrap split rev">
+      <div class="copy">
+        <div class="eyebrow">CS and maker classes</div>
+        <h2>Students build real software, with a teacher in the loop.</h2>
+        <ul class="checks">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Gadgets: students ask an agent for a small app, then read, change and share its code.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span><a href="/connectors/">GitHub and GitLab</a> for real repositories, with pushes and merges queued for approval.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Supabase for a databases unit, and read-only Cloudflare logs and metrics when students deploy Workers.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Automatic checks on submitted code, with feedback the teacher reviews.</span></li>
+        </ul>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:18px"><span class="status avail">Gadgets and connectors: Available in Cloudflare OS</span><span class="status dev">Code checks and feedback: In development</span></div>
+      </div>
+      <div>
+        <div class="window" role="img" aria-label="Product preview: a student's agent prepared a commit to the class robotics repository. The push waits for the teacher's approval, and the automatic checks passed.">
+          <div class="bar"><i></i><i></i><i></i><span class="url">ridgeline.educateos.io/workspace/robotics</span></div>
+          <div class="mock">
+            <div class="msg me"><div class="av" style="background:#0891b2">JT</div><div class="bubble">Make the line-follower slow down on sharp turns, then push it to our team repo.</div></div>
+            <div class="tool"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg><b>Checks</b> · 12 of 12 passed on the simulator <span class="badge green" style="margin-left:auto">Passed</span></div>
+            <div class="approve"><div class="grow"><b class="strong">Push 1 commit to ridgeline-robotics/line-follower</b><br><span class="muted">"Slow down when the turn angle exceeds 40°" · waiting for Mr. Haddad</span></div><span class="mini-btn">Reject</span><span class="mini-btn primary">Approve</span></div>
+          </div>
+        </div>
+        <span class="preview-tag">Product preview. The school, students and repository are fictional.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="cta">
+        <h2>Tell us what your school looks like.</h2>
+        <p class="lede" style="margin-left:auto;margin-right:auto">District, charter, independent school or co-op: we'll tell you honestly what works today and what's still in development.</p>
+        <div class="ctas">
+          <a class="btn primary" href="mailto:hello@educateos.io?subject=EducateOS%20for%20our%20school">Email hello@educateos.io</a>
+          <a class="btn" href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/schools/" aria-current="page">Schools</a></li>
+          <!-- TODO(SCHO-224): add <li><a href="/demo/">Demo</a></li> once /demo/ is on main. -->
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/school-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

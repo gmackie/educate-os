@@ -54,6 +54,11 @@ jobs:
       - name: Lint and build
         run: pnpm lint
 
+      # The educateos.io site (SCHO-229): shared header, footer and statuses are stamped, and every
+      # internal link resolves to a file in sites/educateos-io/public.
+      - name: Check the educateos.io site
+        run: node sites/educateos-io/build.mjs --check && node --test sites/educateos-io/links.test.mjs
+
       - name: Test EducateOS packages
         run: node scripts/vp/run.ts --cache --fail-if-no-match --filter='@educateos/*' test
 
