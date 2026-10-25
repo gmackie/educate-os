@@ -20,7 +20,10 @@
 //   - when the instance has a district, the district Worker (SCHO-193) at its own custom domain,
 //     serving the district's `/api` and, as static assets, the student, admin and teacher UIs
 //     (assembled by assemble-district-ui.ts at deploy time);
-//   - no `previews` blocks.
+//   - no `previews` blocks;
+//   - the instance's pinned Worker names (`workerNames`): a Worker the instance has already deployed
+//     keeps its deployed name when its package is renamed, both as its own `name` and in every
+//     service binding that reaches it (SCHO-231).
 //
 // Secrets are never part of a generated config (Wrangler prints vars, and these files are
 // committed): a var with a secret's name fails the generator.
@@ -101,6 +104,20 @@ export interface ProductionInstance {
     /** The district's public hostname: the district Worker's custom domain. */
     hostname: string;
   };
+  /**
+   * Deployed Worker names that differ from their package's, by package. A deployed Worker's name
+   * is production identity, like a hostname or a ForgeGraph app slug: a Durable Object namespace
+   * belongs to its Worker's name, so deploying a stateful Worker under a new name starts it with
+   * empty storage, and leaves the old Worker (and its custom domain) serving the real data. When a
+   * package is renamed, the instance pins the Worker's old name here. The generator applies it to
+   * the Worker's own `name` and to every service binding that reaches it.
+   */
+  workerNames?: Record<string, string>;
+}
+
+/** The name `pkgName`'s Worker is deployed under in `instance`: pinned, or its package name. */
+export function productionWorkerName(instance: ProductionInstance, pkgName: string): string {
+  return instance.workerNames?.[pkgName] ?? pkgName;
 }
 
 /** A KV namespace binding with its namespace id. */
@@ -202,6 +219,15 @@ export function buildProductionConfigs({
       throw new Error(`the instance configures ${pkgName}, which it does not deploy`);
     }
   }
+  const packageNames = productionPackageNames(instance);
+  for (const pkgName of Object.keys(instance.workerNames ?? {})) {
+    if (!packageNames.includes(pkgName)) {
+      throw new Error(`the instance pins a Worker name for ${pkgName}, which it does not deploy`);
+    }
+  }
+  const workerNames = packageNames.map((pkgName) => productionWorkerName(instance, pkgName));
+  const duplicate = workerNames.find((name, index) => workerNames.indexOf(name) !== index);
+  if (duplicate) throw new Error(`two of the instance's Workers would be deployed as ${duplicate}`);
 
   const configs = new Map<string, ProductionConfig>();
   for (const pkgName of productionPackageNames(instance)) {
@@ -219,7 +245,7 @@ export function buildProductionConfigs({
     const { kv_namespaces, r2_buckets, routes: _routes, ...rest } = source;
     const config: ProductionConfig = {
       ...rest,
-      name: pkgName,
+      name: productionWorkerName(instance, pkgName),
       account_id: instance.accountId,
       // Only the router is reachable, and only at its custom domain: everything else is reached
       // through it over service bindings. Stated explicitly, as staging-config.ts does, so neither
@@ -277,6 +303,21 @@ export function buildProductionConfigs({
       throw new Error(`cannot build a production config for package: ${pkgName}`);
     }
     configs.set(pkgName, config);
+  }
+
+  // Every binding above names its target by package name; point each at the name that package's
+  // Worker is deployed under. Anything else must be a Worker the instance knows is already there.
+  const external = new Set([instance.aiGuard.hallMonitorService]);
+  for (const [pkgName, config] of configs) {
+    if (!config.services) continue;
+    config.services = config.services.map((binding) => {
+      if (packageNames.includes(binding.service)) {
+        return { ...binding, service: productionWorkerName(instance, binding.service) };
+      }
+      if (external.has(binding.service)) return binding;
+      throw new Error(`${pkgName}'s ${binding.binding} binds ${binding.service}, which is neither a ` +
+          "Worker the instance deploys nor one it names as already deployed");
+    });
   }
   return configs;
 }

@@ -28,7 +28,7 @@ Every other Worker is reached only through the router.
 | `gatekeeper-scheduler` | `packages/gatekeeper-scheduler/wrangler.production.jsonc` | none |
 | `gatekeeper-websearch` | `packages/gatekeeper-websearch/wrangler.production.jsonc` | `AI`, with `CF_AI_GATEWAY=default` |
 | `educateos-ai-guard` | `packages/educateos-ai-guard/wrangler.production.jsonc` | `HALL_MONITOR` → `hall-monitor` (already in the account). It runs its production entrypoint `src/worker.ts` with the nightly `17 3 * * *` reconciliation cron. |
-| `educateos-district-worker` | `packages/educateos-district-worker/wrangler.production.jsonc` | `SEND_EMAIL` (Email Service), the district's UIs as static assets, and its two Cron Triggers. Its Durable Object needs no binding. |
+| `schoolos-district-worker` (package `educateos-district-worker`; name pinned, see [The district](#the-district-lms-lite)) | `packages/educateos-district-worker/wrangler.production.jsonc` | `SEND_EMAIL` (Email Service), the district's UIs as static assets, and its two Cron Triggers. Its Durable Object needs no binding. |
 
 The backend's vars are `PUBLIC_BASE_URL`, plus `CF_AI_GATEWAY=default`, `CF_AI_GATEWAY_ACCOUNT_ID`
 and `CF_AI_GATEWAY_PROVIDERS=cloudflare`. With these, Workers AI is server-managed through the
@@ -51,7 +51,7 @@ reconciliation only records snapshots.
 |---|---|---|
 | `workshop-backend` | `ADMINS` (a JSON array of Access emails), `CF_ACCESS_AUD`, `CF_ACCESS_ISS` | `school-os` |
 | `educateos-ai-guard` | `HALL_MONITOR_SIGNING_KEY` (private Ed25519 or P-256 JWK, with a `kid`), `AI_GUARD_CONFIG` (the example config with the admin's Access email in place of `admin@example.com`, minified) | `schoolos-ai-guard` |
-| `educateos-district-worker` | `DISTRICT_CONFIG` (the demo district's seed, minified), `CF_ACCESS_AUD` (the district Access application's audience), `CF_ACCESS_ISS` | `schoolos-district` |
+| `schoolos-district-worker` | `DISTRICT_CONFIG` (the demo district's seed, minified), `CF_ACCESS_AUD` (the district Access application's audience), `CF_ACCESS_ISS` | `schoolos-district` |
 | `gatekeeper-google` | `CLIENT_ID` and `CLIENT_SECRET` (the gmacko-schoolos OAuth web client) | `schoolos-google` |
 
 The guard, the district and the Google connector are each their own ForgeGraph app because
@@ -155,9 +155,21 @@ deploy fails. Enable the product rather than editing the generated config.
 
 ## The district (LMS-lite)
 
-SCHO-193 adds the LMS-lite district application: `educateos-district-worker`, for the demo co-op,
-at `https://district.schoolos.gmac.io`. The router sends `/api/*` to the Workshop backend, so the
-district has its own hostname, behind its own Access application.
+SCHO-193 adds the LMS-lite district application: the package `educateos-district-worker`, deployed
+as the Worker `schoolos-district-worker`, for the demo co-op, at `https://district.schoolos.gmac.io`.
+The router sends `/api/*` to the Workshop backend, so the district has its own hostname, behind its
+own Access application.
+
+- **Its Worker name is pinned.** The Worker was deployed as `schoolos-district-worker` before the
+  EducateOS rename (SCHO-200), and keeps that name (SCHO-231). A Durable Object namespace belongs to
+  its Worker's name, so deploying the district under its package's new name would start it empty
+  beside the real one, which keeps the custom domain. A deployed Worker's name is production
+  identity, like a hostname or a ForgeGraph app slug. The instance pins it in `workerNames` in
+  `scripts/production/schoolos-gmac-io.ts`. The generator applies the pin to the Worker's own
+  `name` and to every service binding that reaches it. `production-config.test.ts` fails if any
+  Worker that owns Durable Objects would deploy under a name other than the one recorded there.
+  The AI call guard is not pinned: it was redeployed as `educateos-ai-guard` with a fresh ledger,
+  and the old `schoolos-ai-guard` Worker is to be deleted.
 
 - **What it serves.** The Worker runs first for `/api/*` (the district's API, verified against its
   own Access audience) and `/healthz` (a liveness probe that reads nothing). Everything else is
@@ -195,7 +207,8 @@ district has its own hostname, behind its own Access application.
 - **Email.** `DISTRICT_CONFIG.email.from` must be on a domain onboarded to Cloudflare Email Service
   in the account. Without `email`, notifications stay in-app and the digest is not mailed.
 - **ForgeGraph.** App `schoolos-district`, stage `production`, one `cloudflare-workers` target
-  `educateos-district-worker` on hetzner-fg: `appDir` `packages/educateos-district-worker`,
+  on hetzner-fg: `workerName` `schoolos-district-worker` (the pinned name, not the package's),
+  `appDir` `packages/educateos-district-worker`,
   `configPath` `packages/educateos-district-worker/wrangler.production.jsonc`, the `buildCommand`
   and `deployCommand` in the table above, `syncSecrets: true`, and `healthCheckUrl`
   `https://district.schoolos.gmac.io/healthz`.

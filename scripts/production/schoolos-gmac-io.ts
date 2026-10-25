@@ -55,4 +55,13 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
   district: {
     hostname: "district.schoolos.gmac.io",
   },
+  // Deployed before the EducateOS rename (SCHO-200), and pinned so it is never deployed under its
+  // package's new name (SCHO-231). Its Durable Object holds the demo district's data, a Worker's
+  // Durable Object namespace belongs to its name, and district.schoolos.gmac.io is attached to it:
+  // under a new name the district would come up empty beside the old one. The AI call guard is
+  // deliberately not pinned: it was already redeployed as educateos-ai-guard, with a fresh ledger,
+  // which the demo's negligible guard usage allows; the old schoolos-ai-guard Worker is to be deleted.
+  workerNames: {
+    "educateos-district-worker": "schoolos-district-worker",
+  },
 };

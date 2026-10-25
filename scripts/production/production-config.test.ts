@@ -13,7 +13,8 @@ import { readDeployablePackages } from "../release/manifest-lib.ts";
 import { PACKAGES_DIR } from "../preview/staging-config.ts";
 import {
   DISTRICT_PACKAGE, PRODUCTION_CONFIG_NAME, buildProductionConfigs, generateProductionConfigs,
-  productionPackageNames, renderProductionConfig, type ProductionConfig, type ProductionInstance,
+  productionPackageNames, productionWorkerName, renderProductionConfig, type ProductionConfig,
+  type ProductionInstance,
 } from "./production-config.ts";
 import { SCHOOLOS_GMAC_IO } from "./schoolos-gmac-io.ts";
 
@@ -49,9 +50,9 @@ test("deploys the router, backend, AI call guard, four gatekeepers and the distr
   assert.deepEqual(productionPackageNames(SCHOOLOS_GMAC_IO), [...build().keys()]);
 });
 
-test("every worker is named for its package, on the instance account, with no public URL", () => {
+test("every worker is named for its package unless pinned, on the instance account, with no public URL", () => {
   for (const [pkgName, config] of build()) {
-    assert.equal(config.name, pkgName);
+    assert.equal(config.name, SCHOOLOS_GMAC_IO.workerNames?.[pkgName] ?? pkgName);
     assert.equal(config.account_id, SCHOOLOS_GMAC_IO.accountId);
     assert.equal(config.workers_dev, false, pkgName);
     assert.equal(config.preview_urls, false, pkgName);
@@ -145,13 +146,86 @@ test("the district Worker has its own custom domain, serves the UIs as assets an
   assert.deepEqual(district.send_email, [{ name: "SEND_EMAIL" }]);
   // Nothing binds it yet: the guard keeps its configured directory (SCHO-147).
   for (const [pkgName, config] of build()) {
-    assert.equal(config.services?.some(({ service }) => service === DISTRICT_PACKAGE) ?? false, false, pkgName);
+    const binds = config.services?.some(({ service }) =>
+      service === DISTRICT_PACKAGE || service === district.name) ?? false;
+    assert.equal(binds, false, pkgName);
   }
 });
 
+// The name each Worker that owns Durable Objects is deployed under on schoolos.gmac.io. A Durable
+// Object namespace belongs to its Worker's name, so deploying one of these under any other name
+// starts it empty beside the real one. The EducateOS rename (SCHO-200) did exactly that to the
+// district (SCHO-231). Change an entry only together with a deliberate migration of that Worker's
+// state; add one when a new stateful Worker is first deployed.
+const DEPLOYED_STATEFUL_WORKERS: Record<string, string> = {
+  [DISTRICT_PACKAGE]: "schoolos-district-worker",
+  // Redeployed under its new name, with a fresh ledger, on 2026-10-25 (SCHO-231).
+  [AI_GUARD_PACKAGE]: "educateos-ai-guard",
+  "gatekeeper-context": "gatekeeper-context",
+  "gatekeeper-google": "gatekeeper-google",
+  "gatekeeper-scheduler": "gatekeeper-scheduler",
+  "gatekeeper-websearch": "gatekeeper-websearch",
+  "workshop-backend": "workshop-backend",
+};
+
+test("the district keeps its deployed Worker name through the EducateOS rename", () => {
+  assert.equal(DISTRICT_PACKAGE, "educateos-district-worker");
+  assert.equal(configFor(build(), DISTRICT_PACKAGE).name, "schoolos-district-worker");
+  assert.equal(productionWorkerName(SCHOOLOS_GMAC_IO, DISTRICT_PACKAGE), "schoolos-district-worker");
+});
+
+test("every Worker that owns Durable Objects keeps the name it is deployed under", () => {
+  const stateful = [...build()].filter(([, config]) => (config.migrations?.length ?? 0) > 0);
+  assert.deepEqual(stateful.map(([pkgName]) => pkgName).toSorted(),
+      Object.keys(DEPLOYED_STATEFUL_WORKERS).toSorted(),
+      "a stateful Worker was added or removed: record its deployed name here deliberately");
+  for (const [pkgName, config] of stateful) {
+    assert.equal(config.name, DEPLOYED_STATEFUL_WORKERS[pkgName],
+        `${pkgName} would deploy as a new Worker, with empty Durable Objects`);
+  }
+});
+
+test("every service binding reaches a Worker the instance deploys, or Hall Monitor", () => {
+  const configs = build();
+  const deployed = new Set([...configs.values()].map(({ name }) => name));
+  for (const [pkgName, config] of configs) {
+    for (const { binding, service } of config.services ?? []) {
+      assert.ok(deployed.has(service) || service === SCHOOLOS_GMAC_IO.aiGuard.hallMonitorService,
+          `${pkgName}'s ${binding} binds ${service}, which nothing deploys`);
+    }
+  }
+});
+
+test("a pinned name reaches every service binding to that Worker", () => {
+  // Today nothing on schoolos.gmac.io binds the district, so pin the guard, which the backend binds.
+  const pinned = { ...SCHOOLOS_GMAC_IO, workerNames: { [AI_GUARD_PACKAGE]: "schoolos-ai-guard" } };
+  const configs = build(pinned);
+  assert.equal(configFor(configs, AI_GUARD_PACKAGE).name, "schoolos-ai-guard");
+  assert.deepEqual(configFor(configs, "workshop-backend").services?.find(({ binding }) => binding === "AI_CALL_GUARD"),
+      { binding: "AI_CALL_GUARD", service: "schoolos-ai-guard", entrypoint: "EducateOsAiCallGuard" });
+  for (const [pkgName, config] of configs) {
+    assert.equal(config.services?.some(({ service }) => service === AI_GUARD_PACKAGE) ?? false, false, pkgName);
+  }
+});
+
+test("fails closed on a pin for an undeployed package, a name clash, or a binding to an unknown Worker", () => {
+  assert.throws(() => build({ ...SCHOOLOS_GMAC_IO, workerNames: { "gatekeeper-github": "x" } }),
+      /pins a Worker name for gatekeeper-github, which it does not deploy/);
+  assert.throws(() => build({ ...SCHOOLOS_GMAC_IO, workerNames: { [DISTRICT_PACKAGE]: "router" } }),
+      /would be deployed as router/);
+  const dangling = PACKAGES.map((pkg) => pkg.name !== AI_GUARD_PACKAGE ? pkg : {
+    ...pkg,
+    config: { ...pkg.config, services: [{ binding: "GONE", service: "no-such-worker" }] },
+  });
+  assert.throws(() => build(SCHOOLOS_GMAC_IO, dangling), /GONE binds no-such-worker/);
+});
+
 test("an instance without a district deploys no district Worker", () => {
-  const { district: _district, ...withoutDistrict } = SCHOOLOS_GMAC_IO;
+  const { district: _district, workerNames: _workerNames, ...withoutDistrict } = SCHOOLOS_GMAC_IO;
   assert.equal(build(withoutDistrict).has(DISTRICT_PACKAGE), false);
+  // Its pinned name has nothing to pin.
+  assert.throws(() => build({ ...withoutDistrict, workerNames: SCHOOLOS_GMAC_IO.workerNames }),
+      /pins a Worker name for educateos-district-worker, which it does not deploy/);
 });
 
 test("no generated config carries a secret", () => {
