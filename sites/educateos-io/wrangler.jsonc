@@ -1,0 +1,24 @@
+// The educateos.io site (SCHO-206). Deliberately outside `packages/`: release discovery
+// (`scripts/release/manifest-lib.ts`) and config generation (`scripts/generate-worker-configs.ts`)
+// scan only `packages/`, and this Worker is the project's own site, never part of a district
+// release (ADR-0013).
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "educateos-site",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    { "pattern": "educateos.io", "custom_domain": true },
+    { "pattern": "www.educateos.io", "custom_domain": true },
+    // educateos.dev must serve a live page as the base of Google's Workspace for Education
+    // developer demo domain, gedu.demo.educateos.dev (SCHO-211).
+    { "pattern": "educateos.dev", "custom_domain": true },
+    { "pattern": "www.educateos.dev", "custom_domain": true }
+  ],
+  "workers_dev": false,
+  "preview_urls": false
+}

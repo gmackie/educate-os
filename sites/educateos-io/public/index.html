@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EducateOS: a learning platform your district owns</title>
+<meta name="description" content="EducateOS is an open-source K-12 learning platform that each school district runs in its own Cloudflare account. Courses, assignments, gradebook, rostering and safe classroom AI, with student data that never leaves the district.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23176b55'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<style>
+  :root { --ink: #14231f; --muted: #52635e; --line: #dbe4e1; --brand: #176b55; --brand-soft: #e5f2ee; --bg: #fbfcfb; }
+  @media (prefers-color-scheme: dark) { :root { --ink: #e8f0ed; --muted: #a2b3ad; --line: #2a3a35; --brand: #4fc3a1; --brand-soft: #16302a; --bg: #0f1715; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; color: var(--ink); text-decoration: none; }
+  .logo svg { width: 30px; height: 30px; }
+  nav a { color: var(--muted); text-decoration: none; margin-left: 22px; font-size: .95rem; }
+  nav a:hover { color: var(--ink); }
+  .hero { padding: 72px 0 56px; }
+  .eyebrow { display: inline-block; background: var(--brand-soft); color: var(--brand); font-weight: 600; font-size: .82rem; padding: 4px 12px; border-radius: 999px; }
+  h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); line-height: 1.1; margin: 18px 0 18px; letter-spacing: -.02em; max-width: 18ch; }
+  .lede { font-size: 1.2rem; color: var(--muted); max-width: 60ch; margin: 0; }
+  h2 { font-size: 1.6rem; margin: 0 0 10px; letter-spacing: -.01em; }
+  section { padding: 48px 0; border-top: 1px solid var(--line); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 24px; }
+  .card { border: 1px solid var(--line); border-radius: 14px; padding: 20px; background: color-mix(in srgb, var(--bg) 92%, var(--brand) 8%); }
+  .card h3 { margin: 0 0 6px; font-size: 1.05rem; }
+  .card p { margin: 0; color: var(--muted); font-size: .96rem; }
+  .who { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .who span { border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: .92rem; }
+  .muted { color: var(--muted); }
+  ul.plain { padding-left: 1.1rem; color: var(--muted); }
+  footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#176b55"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav aria-label="Primary"><a href="#platform">Platform</a><a href="#ownership">Ownership</a><a href="#integrations">Integrations</a></nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <span class="eyebrow">Open source · Apache-2.0 · In development</span>
+      <h1>A learning platform your district owns.</h1>
+      <p class="lede">EducateOS is a K-12 learning platform that every school district, school or homeschool co-op runs in its own Cloudflare account. Teachers get courses, assignments and a gradebook. Students get a safe place to learn, with optional classroom AI. Student data stays in the district's own account.</p>
+      <div class="who" aria-label="Who it is for"><span>School districts</span><span>Charter and independent schools</span><span>Homeschool co-ops</span><span>Teachers and students</span><span>Families</span></div>
+    </div>
+
+    <section id="platform">
+      <h2>Everything a classroom needs</h2>
+      <p class="muted">A complete learning environment, without the need to buy and stitch together several products.</p>
+      <div class="grid">
+        <div class="card"><h3>Courses and assignments</h3><p>Modules, pages, due dates, submissions, quizzes with auto-scoring, and Common Cartridge and QTI import.</p></div>
+        <div class="card"><h3>Gradebook</h3><p>Weighted totals and teacher-approved official grades. AI never sets a grade.</p></div>
+        <div class="card"><h3>Families</h3><p>Guardians see their own children's work through confirmed relationships, with announcements, a calendar and a weekly digest.</p></div>
+        <div class="card"><h3>Safe classroom AI</h3><p>Optional AI help for students and teachers, screened by district policy, with spending caps the district controls.</p></div>
+        <div class="card"><h3>Discussions</h3><p>Course discussions with moderation tools built for K-12.</p></div>
+        <div class="card"><h3>Standards-aligned curriculum</h3><p>Curriculum packs aligned to published standards frameworks, which districts can adapt.</p></div>
+      </div>
+    </section>
+
+    <section id="ownership">
+      <h2>The district owns the system and the data</h2>
+      <ul class="plain">
+        <li>Each district's installation runs in its own Cloudflare account. EducateOS is never in the data path.</li>
+        <li>No feature is paywalled inside the platform. The code is open source under Apache-2.0.</li>
+        <li>Releases are signed, and the district verifies them against keys it pins.</li>
+        <li>Each installation can use its own domain, or a default address at <em>district</em>.educateos.io.</li>
+      </ul>
+    </section>
+
+    <section id="integrations">
+      <h2>Works with the tools schools already use</h2>
+      <p class="muted">Integrations under development and testing:</p>
+      <div class="grid">
+        <div class="card"><h3>Rostering</h3><p>OneRoster 1.2, Clever and ClassLink, with previews and safe sync. Dropping an enrollment never deletes a student's work.</p></div>
+        <div class="card"><h3>Learning management systems</h3><p>LTI 1.3 and LTI Advantage for Canvas, Schoology and others, with teacher-approved grade passback.</p></div>
+        <div class="card"><h3>Google Classroom</h3><p>Classes, coursework and grades synchronized with Google Classroom.</p></div>
+        <div class="card"><h3>Single sign-on</h3><p>Google, Microsoft, Clever and ClassLink sign-in.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>EducateOS is developed by Gmacko Ventures LLC. © 2026 Gmacko Ventures LLC.</p>
+  </footer>
+</div>
+</body>
+</html>
