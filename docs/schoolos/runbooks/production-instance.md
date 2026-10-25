@@ -169,7 +169,9 @@ district has its own hostname, behind its own Access application.
   (`authority: "local"`, so its administrators build classes rather than importing a roster) and its
   administrator, matched by the Access subject (`sub`) their sign-in carries, not by email. Every
   other principal is created through the admin console after they first sign in, since inviting by
-  email before a first sign-in is not built yet. The demo's test identities are addresses on a test mail
+  email before a first sign-in is not built yet. Someone who signs in before they are added sees
+  their sign-in ID (the Access `sub`) on the Learning Home, Teacher Studio or admin console, ready
+  to copy and send to an administrator, who enters it under "Manage classes and people". The demo's test identities are addresses on a test mail
   domain the operator controls, admitted by a reusable Access policy attached after the owner's on
   both applications. They sign in with the one-time PIN, whose code arrives in an inbox the
   operator's agents can read, so scenarios run without a person. The public example is

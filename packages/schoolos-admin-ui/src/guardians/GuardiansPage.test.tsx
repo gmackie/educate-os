@@ -76,9 +76,17 @@ describe("guardians", () => {
     expect(within(relationships).queryByRole("button", { name: /Gina Okafor/ })).toBeNull();
   });
 
-  it("shows the district's refusal when someone other than a district administrator opens it", async () => {
+  it("is not offered to someone other than a district administrator, as the district refuses them", async () => {
     const { clientFor, student } = await northfield();
     renderConsole(await clientFor(student.externalIdentities[0]!.subject), "guardians");
-    expect(await screen.findByText("Could not load the students")).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 2, name: "You're not an administrator of this school" })).toBeTruthy();
+    expect(screen.queryByRole("navigation", { name: "Admin sections" })).toBeNull();
+  });
+
+  it("shows a sign-in the district has not added the ID the district reports for it", async () => {
+    const { clientFor } = await northfield();
+    renderConsole(await clientFor("nf-not-yet-added"), "guardians");
+    expect(await screen.findByRole("heading", { level: 2, name: "You're signed in, but you haven't been added to this school yet" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Your sign-in ID" }).textContent).toContain("nf-not-yet-added");
   });
 });
