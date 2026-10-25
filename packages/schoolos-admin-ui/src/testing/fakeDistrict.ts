@@ -286,7 +286,7 @@ function fakeAuthoring(owner: "oneroster" | "local") {
     terms: [] as Record<string, unknown>[],
     courses: [] as Record<string, unknown>[],
     offerings: [] as Record<string, unknown>[],
-    principals: [{ id: "prn_fk-admin", kind: "staff", status: "active", displayName: "Avery Admin" }] as Record<string, unknown>[],
+    principals: [{ id: "prn_fk-admin", kind: "staff", status: "active", displayName: "Avery Admin", districtAdmin: true }] as Record<string, unknown>[],
   };
   const enrollments: Record<string, unknown>[] = [];
   let n = 0;
@@ -323,7 +323,37 @@ function fakeAuthoring(owner: "oneroster" | "local") {
     "admin.archiveOffering": (input: Record<string, unknown>) => archive("offering", directory.offerings, params(input).offeringId!, body(input).archived === true),
     "admin.createPrincipal": (input: Record<string, unknown>) => {
       const { identity: _, ...person } = body(input);
-      return add("principal", directory.principals, { id: id("prn"), status: "active", ...person });
+      return add("principal", directory.principals, { id: id("prn"), status: "active", ...person, districtAdmin: false });
+    },
+    // SCHO-212. Like the district: a kind is fixed once someone is in a section, only active staff
+    // become administrators, and the last administrator stays one.
+    "admin.updatePrincipal": (input: Record<string, unknown>) => {
+      local("principal");
+      const person = find(directory.principals, params(input).principalId);
+      const { email, ...change } = body(input);
+      if (change.kind !== undefined && change.kind !== person.kind && enrollments.some((e) => e.principalId === person.id)) {
+        throw new DistrictApiError(409, { code: "conflict", message: `${String(person.displayName)} already has enrollments, which belong to their current kind.` });
+      }
+      if (email === null) delete person.email;
+      else if (email !== undefined) person.email = email;
+      return Object.assign(person, change);
+    },
+    "admin.setPrincipalStatus": (input: Record<string, unknown>) => {
+      local("principal");
+      const person = find(directory.principals, params(input).principalId);
+      return { principal: Object.assign(person, { status: body(input).status, ...(body(input).status === "active" ? {} : { districtAdmin: false }) }), grantsRevoked: 0 };
+    },
+    "admin.grantDistrictAdmin": (input: Record<string, unknown>) => {
+      const person = find(directory.principals, params(input).principalId);
+      if (person.kind !== "staff") throw new DistrictApiError(409, { code: "conflict", message: "Only staff can be district administrators." });
+      return Object.assign(person, { districtAdmin: true });
+    },
+    "admin.revokeDistrictAdmin": (input: Record<string, unknown>) => {
+      const person = find(directory.principals, params(input).principalId);
+      if (directory.principals.filter((p) => p.districtAdmin === true && p.id !== person.id).length === 0) {
+        throw new DistrictApiError(409, { code: "conflict", message: "This is the district's last administrator; make someone else an administrator first." });
+      }
+      return Object.assign(person, { districtAdmin: false });
     },
     "admin.offeringRoster": (input: Record<string, unknown>) => enrollments
       .filter((e) => e.offeringId === params(input).offeringId && e.status === "active")

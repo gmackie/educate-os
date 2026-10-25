@@ -40,7 +40,7 @@ describe("classes and people", () => {
     await user.click(within(section).getByRole("button", { name: "Add section" }));
     await screen.findByRole("heading", { level: 4, name: "Nature Studies · Tuesdays" });
 
-    for (const [kind, name, subject] of [["Staff (teachers and helpers)", "Jo Parent", "access-jo"], ["Student", "Sky Learner", "access-sky"]] as const) {
+    for (const [kind, name, subject] of [["Staff (teachers, helpers and administrators)", "Jo Parent", "access-jo"], ["Student", "Sky Learner", "access-sky"]] as const) {
       await user.click(within(form("Add a person")).getByRole("radio", { name: kind }));
       await user.type(within(form("Add a person")).getByRole("textbox", { name: /^Name/ }), name);
       await user.type(within(form("Add a person")).getByRole("textbox", { name: /Sign-in ID/ }), subject);
@@ -86,6 +86,52 @@ describe("classes and people", () => {
     expect(screen.queryByRole("form", { name: "Add someone to Art · Fridays" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Restore Art · Fridays" }));
     expect(await screen.findByRole("form", { name: "Add someone to Art · Fridays" })).toBeTruthy();
+  });
+
+  it("asks for a kind before adding someone, then corrects an added student into an administrator (SCHO-212)", async () => {
+    const district = fakeDistrict({ authority: "local" });
+    const { user } = renderConsole(district.client, "classes-people");
+    const add = await screen.findByRole("form", { name: "Add a person" });
+    await user.type(within(add).getByRole("textbox", { name: /^Name/ }), "Second Admin");
+    await user.type(within(add).getByRole("textbox", { name: /Sign-in ID/ }), "access-second");
+    expect((within(add).getByRole("button", { name: "Add person" }) as HTMLButtonElement).disabled).toBe(true);
+    await user.click(within(add).getByRole("radio", { name: "Student" }));
+    await user.click(within(add).getByRole("button", { name: "Add person" }));
+    await screen.findByRole("cell", { name: "Second Admin" });
+    // A student cannot be offered administration.
+    expect(screen.queryByRole("button", { name: "Make Second Admin an administrator" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Edit Second Admin" }));
+    const edit = screen.getByRole("form", { name: "Edit Second Admin" });
+    await user.click(within(edit).getByRole("radio", { name: /^Staff/ }));
+    await user.type(within(edit).getByRole("textbox", { name: /Email/ }), "second@coop.example");
+    await user.click(within(edit).getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(screen.queryByRole("form", { name: "Edit Second Admin" })).toBeNull());
+    expect(district.calls.find((c) => c.name === "admin.updatePrincipal")!.input).toStrictEqual({
+      params: { principalId: expect.any(String) },
+      body: { email: "second@coop.example", kind: "staff" },
+    });
+
+    await user.click(await screen.findByRole("button", { name: "Make Second Admin an administrator" }));
+    await screen.findByRole("button", { name: "Remove Second Admin as administrator" });
+    expect(screen.getAllByText("Administrator")).toHaveLength(2);
+    expect(screen.getByTestId("announcer").textContent).toContain("now a district administrator");
+  });
+
+  it("deactivates and reactivates someone, and shows why the last administrator stays one", async () => {
+    const district = fakeDistrict({ authority: "local" });
+    await district.client.call("admin.createPrincipal", { body: { kind: "student", displayName: "Sky", identity: { issuer: "https://fake.cloudflareaccess.com", subject: "s" } } });
+    const { user } = renderConsole(district.client, "classes-people");
+    await user.click(await screen.findByRole("button", { name: "Deactivate Sky" }));
+    await user.click(await screen.findByRole("button", { name: "Reactivate Sky" }));
+    await screen.findByRole("button", { name: "Deactivate Sky" });
+    expect(district.calls.filter((c) => c.name === "admin.setPrincipalStatus").map((c) => (c.input as { body: unknown }).body)).toStrictEqual([
+      { status: "inactive" },
+      { status: "active" },
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "Remove Avery Admin as administrator" }));
+    expect(await screen.findByText(/last administrator/)).toBeTruthy();
   });
 
   it("lists a roster district's records without offering to change them", async () => {

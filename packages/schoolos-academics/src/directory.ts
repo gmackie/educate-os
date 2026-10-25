@@ -1,6 +1,7 @@
 import {
   ID_PREFIXES,
   precheckAuthorization,
+  roleAssignmentInForce,
   SchoolOsError,
   type AcademicTerm,
   type Action,
@@ -20,6 +21,7 @@ import {
   type Principal,
   type PrincipalId,
   type ResourceRef,
+  type RoleAssignment,
   type School,
   type SchoolId,
   type TermId,
@@ -36,6 +38,7 @@ import {
   NewSchool,
   NewTerm,
   OfferingPatch,
+  PrincipalPatch,
   SchoolPatch,
   TermPatch,
   type OfferingFilter,
@@ -593,6 +596,7 @@ export class AcademicDirectory {
    * `reconcileCourseGrants`, which `transitionPrincipal` in `@schoolos/workspaces` runs after this.
    * Refused with `conflict` when another system owns principals: there the change belongs in that
    * system, whose next sync would otherwise undo it. Moving to the current status changes nothing.
+   * Refused with `conflict` for the caller themself or the last active district admin (SCHO-212).
    */
   async setPrincipalStatus(caller: Caller, principalId: PrincipalId, rawStatus: DepartedStatus): Promise<Principal> {
     const status = parseInput(DepartedStatus, rawStatus);
@@ -602,9 +606,128 @@ export class AcademicDirectory {
     await this.#requireWrite(caller, "update", new Targets(snapshot).principal(principal), "principal", principalId);
     assertLocallyWritable(this.#authority, "principal");
     if (principal.status === status) return principal;
+    this.#assertKeepsAnAdmin(snapshot, caller, principalId, "deactivate");
     const updated: Principal = { ...principal, status };
     await this.#commit({ ...snapshot, principals: replace(snapshot.principals, updated) }, version);
     return updated;
+  }
+
+  /**
+   * Changes a principal's display name, email or kind (SCHO-212), where SchoolOS owns principals,
+   * so an administrator can correct a person added with the wrong details. Their sign-in identity
+   * never changes. A change of kind is refused with `conflict` while they hold any enrollment,
+   * active or not, or any role assignment: each is bound to the kind it was made for (a student
+   * enrolls as a student, staff as teacher or co-teacher), and the record has to stay consistent.
+   */
+  async updatePrincipal(caller: Caller, principalId: PrincipalId, rawPatch: PrincipalPatch): Promise<Principal> {
+    const patch = parseInput(PrincipalPatch, rawPatch);
+    const { snapshot, version } = await this.#store.load();
+    const principal = snapshot.principals.find((p) => p.id === principalId);
+    if (principal === undefined || principal.kind === "guardian" || principal.kind === "service") throw notFound("principal", principalId);
+    await this.#requireWrite(caller, "update", new Targets(snapshot).principal(principal), "principal", principalId);
+    assertLocallyWritable(this.#authority, "principal");
+    if (patch.kind !== undefined && patch.kind !== principal.kind) {
+      const enrolled = snapshot.enrollments.some((e) => e.principalId === principalId);
+      const roles = snapshot.roleAssignments.some((a) => a.principalId === principalId);
+      if (enrolled || roles) {
+        throw new SchoolOsError(
+          "conflict",
+          `${principal.displayName} already has ${enrolled ? "enrollments" : "roles"}, which belong to their current kind; add them again as ${patch.kind === "staff" ? "staff" : "a student"} instead.`,
+        );
+      }
+    }
+    const { email, ...rest } = principal;
+    const updated: Principal = {
+      ...rest,
+      ...(patch.kind === undefined ? {} : { kind: patch.kind }),
+      ...(patch.displayName === undefined ? {} : { displayName: patch.displayName }),
+      ...(patch.email === null ? {} : patch.email !== undefined ? { email: patch.email } : email === undefined ? {} : { email }),
+    };
+    await this.#commit({ ...snapshot, principals: replace(snapshot.principals, updated) }, version);
+    return updated;
+  }
+
+  /**
+   * Makes a graduated or inactive principal active again (SCHO-212), where SchoolOS owns
+   * principals and so is their source of record. Their enrollments and roles, kept on record by
+   * {@link setPrincipalStatus}, grant access again from the next decision. Course grants are
+   * restored by the workspace directory's `reconcileCourseGrants`, which the district app runs
+   * after this. Reactivating an active principal changes nothing.
+   */
+  async reactivatePrincipal(caller: Caller, principalId: PrincipalId): Promise<Principal> {
+    const { snapshot, version } = await this.#store.load();
+    const principal = snapshot.principals.find((p) => p.id === principalId);
+    if (principal === undefined) throw notFound("principal", principalId);
+    await this.#requireWrite(caller, "update", new Targets(snapshot).principal(principal), "principal", principalId);
+    assertLocallyWritable(this.#authority, "principal");
+    if (principal.status === "active") return principal;
+    const updated: Principal = { ...principal, status: "active" };
+    await this.#commit({ ...snapshot, principals: replace(snapshot.principals, updated) }, version);
+    return updated;
+  }
+
+  #isDistrictAdmin(snapshot: DistrictDirectorySnapshot, principalId: PrincipalId): boolean {
+    return isDistrictAdmin(snapshot, principalId, this.#now());
+  }
+
+  /**
+   * Refuses a change that would leave the district with no active district admin, or that takes
+   * the caller's own administration away, since both lock administrators out of this console.
+   */
+  #assertKeepsAnAdmin(snapshot: DistrictDirectorySnapshot, caller: Caller, principalId: PrincipalId, change: string): void {
+    if (!this.#isDistrictAdmin(snapshot, principalId)) return;
+    if (caller.principal.principalId === principalId) {
+      throw new SchoolOsError("conflict", `You cannot ${change} yourself; ask another district administrator.`);
+    }
+    const others = snapshot.principals.filter((p) => p.id !== principalId && this.#isDistrictAdmin(snapshot, p.id));
+    if (others.length === 0) throw new SchoolOsError("conflict", `This is the district's last administrator; make someone else an administrator first.`);
+  }
+
+  /**
+   * Makes a staff principal a district administrator (SCHO-212): a `local-grant` district-admin
+   * assignment at district scope. Allowed wherever SchoolOS is in use, roster districts included,
+   * since a roster sync replaces only the roles it projected. Only staff may be granted it, and
+   * only an active principal, refused with `conflict`. Granting it to a current administrator
+   * changes nothing.
+   */
+  async grantDistrictAdmin(caller: Caller, principalId: PrincipalId): Promise<RoleAssignment> {
+    const { snapshot, version } = await this.#store.load();
+    const principal = snapshot.principals.find((p) => p.id === principalId);
+    if (principal === undefined) throw notFound("principal", principalId);
+    await this.#requireWrite(caller, "assign", new Targets(snapshot).principal(principal), "principal", principalId);
+    if (principal.kind !== "staff") throw new SchoolOsError("conflict", "Only staff can be district administrators.");
+    if (principal.status !== "active") throw new SchoolOsError("conflict", `${principal.displayName} is not active; reactivate them first.`);
+    const assignment: RoleAssignment = {
+      principalId,
+      role: "district-admin",
+      scope: { level: "district", districtId: snapshot.district.id },
+      source: "local-grant",
+    };
+    if (this.#isDistrictAdmin(snapshot, principalId)) return assignment;
+    await this.#commit({ ...snapshot, roleAssignments: [...snapshot.roleAssignments, assignment] }, version);
+    return assignment;
+  }
+
+  /**
+   * Takes district administration away from a principal (SCHO-212) by removing their
+   * `local-grant` district-admin assignments. Refused with `conflict` for the caller themself, for
+   * the last active administrator, and where the role came from a roster, which owns it.
+   * Revoking it from someone who does not hold it changes nothing.
+   */
+  async revokeDistrictAdmin(caller: Caller, principalId: PrincipalId): Promise<void> {
+    const { snapshot, version } = await this.#store.load();
+    const principal = snapshot.principals.find((p) => p.id === principalId);
+    if (principal === undefined) throw notFound("principal", principalId);
+    await this.#requireWrite(caller, "assign", new Targets(snapshot).principal(principal), "principal", principalId);
+    const isAdminAssignment = (a: RoleAssignment) => a.principalId === principalId && a.role === "district-admin" && a.scope.level === "district";
+    const held = snapshot.roleAssignments.filter(isAdminAssignment);
+    if (held.length === 0) return;
+    if (held.every((a) => a.source === "roster")) {
+      throw new SchoolOsError("conflict", `${principal.displayName}'s administration comes from the roster; change it there.`);
+    }
+    this.#assertKeepsAnAdmin(snapshot, caller, principalId, "remove administration from");
+    const kept = snapshot.roleAssignments.filter((a) => !(isAdminAssignment(a) && a.source === "local-grant"));
+    await this.#commit({ ...snapshot, roleAssignments: kept }, version);
   }
 
   // Authorization and commit
@@ -671,6 +794,18 @@ export class AcademicDirectory {
   async #commit(next: DistrictDirectorySnapshot, version: number): Promise<void> {
     await this.#store.commit(validateDirectory(next), version);
   }
+}
+
+/**
+ * Whether `principalId` is an active principal holding district-admin at district scope at `at`
+ * (SCHO-212): what the console shows as an administrator, and what the last-administrator guard
+ * counts. The policy engine decides what the role allows; this only reads the directory.
+ */
+export function isDistrictAdmin(snapshot: DistrictDirectorySnapshot, principalId: PrincipalId, at: Date): boolean {
+  const principal = snapshot.principals.find((p) => p.id === principalId);
+  if (principal?.status !== "active") return false;
+  return snapshot.roleAssignments.some((a) =>
+    a.principalId === principalId && a.role === "district-admin" && a.scope.level === "district" && roleAssignmentInForce(a, at));
 }
 
 /** The records with the one sharing `updated`'s ID replaced by it. */

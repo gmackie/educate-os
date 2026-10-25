@@ -118,7 +118,7 @@ import {
   StudentAttemptView,
   StudentQuizView,
 } from "@schoolos/quizzes";
-import { CoursePatch, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, TermPatch } from "@schoolos/academics";
+import { CoursePatch, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, PrincipalPatch, TermPatch } from "@schoolos/academics";
 import { EvidenceContract } from "@schoolos/registry";
 import { AssessmentReport, IdempotencyKey, RubricDraft, RubricRelease, RunError, RunState } from "@schoolos/assessment-ci";
 import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type AiProjectionReport, type UsageReport } from "@schoolos/ai-governance";
@@ -456,8 +456,12 @@ export type AiFundingBody = z.infer<typeof AiFundingBody>;
 
 // Course authoring (SCHO-186): local directory records, modules and pages, Common Cartridge.
 
-/** A principal as the authoring screens list them: who they are, never their sign-in identities. */
-export const AuthoringPrincipalBody = Principal.pick({ id: true, kind: true, status: true, displayName: true, email: true });
+/**
+ * A principal as the authoring screens list them: who they are, never their sign-in identities,
+ * and whether they are a district administrator now (SCHO-212).
+ */
+export const AuthoringPrincipalBody = Principal.pick({ id: true, kind: true, status: true, displayName: true, email: true })
+  .extend({ districtAdmin: z.boolean() });
 /** An authoring principal. */
 export type AuthoringPrincipalBody = z.infer<typeof AuthoringPrincipalBody>;
 
@@ -1147,6 +1151,24 @@ export const ROUTES = {
   }),
   "admin.createPrincipal": route({
     method: "POST", path: "/api/admin/principals", surface: "admin", status: 201, body: NewPrincipal, response: AuthoringPrincipalBody,
+  }),
+  // Managing people (SCHO-212). Each returns the person as the authoring screens list them.
+  "admin.updatePrincipal": route({
+    method: "POST", path: "/api/admin/principals/:principalId", surface: "admin",
+    params: params({ principalId: PrincipalId }), body: PrincipalPatch, response: AuthoringPrincipalBody,
+  }),
+  "admin.setPrincipalStatus": route({
+    method: "POST", path: "/api/admin/principals/:principalId/status", surface: "admin",
+    params: params({ principalId: PrincipalId }), body: z.strictObject({ status: PrincipalStatus }),
+    response: z.strictObject({ principal: AuthoringPrincipalBody, grantsRevoked: z.int().nonnegative() }),
+  }),
+  "admin.grantDistrictAdmin": route({
+    method: "POST", path: "/api/admin/principals/:principalId/district-admin", surface: "admin",
+    params: params({ principalId: PrincipalId }), body: NoBody, response: AuthoringPrincipalBody,
+  }),
+  "admin.revokeDistrictAdmin": route({
+    method: "POST", path: "/api/admin/principals/:principalId/district-admin/revoke", surface: "admin",
+    params: params({ principalId: PrincipalId }), body: NoBody, response: AuthoringPrincipalBody,
   }),
   // Guardians (ADR-0012, SCHO-188). Guardian routes are read-only; every read is decided by the
   // policy engine with the guardian as subject, and built from the child's own view.
