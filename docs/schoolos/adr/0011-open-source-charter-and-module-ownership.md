@@ -1,6 +1,6 @@
 # ADR-0011: Open-source charter and module ownership
 
-- Status: Accepted
+- Status: Accepted; decisions 1, 3 and 6 amended by [ADR-0013](0013-educateos-open-core-control-plane.md) (2026-10-25)
 - Date: 2026-10-21
 - Issues: SCHO-168 (Integration Fabric RFC, [IF-00](../rfc/0002-integration-fabric.md))
 
