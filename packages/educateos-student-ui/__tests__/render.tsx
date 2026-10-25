@@ -2,9 +2,13 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { createMemoryHistory } from "@tanstack/react-router";
 import { afterEach } from "vitest";
+import { ThemeProvider, storedThemeMode } from "@gadgets/ui/theme";
 import { StudentApp } from "../src/App.tsx";
 import type { StudentFeatures } from "../src/AppContext.tsx";
 import type { DistrictApiClient } from "@educateos/api-client";
+
+/** Where the app keeps the theme a student chose, as main.tsx has it. */
+export const THEME_KEY = "educateos:theme-mode";
 
 let mounted: { root: Root; container: HTMLElement }[] = [];
 
@@ -15,7 +19,11 @@ export async function renderApp(district: DistrictApiClient, path = "/", feature
   const entry = { root, container };
   mounted.push(entry);
   await act(async () => {
-    root.render(<StudentApp client={district} features={features} history={createMemoryHistory({ initialEntries: [path] })} />);
+    root.render(
+      <ThemeProvider source={storedThemeMode(THEME_KEY)}>
+        <StudentApp client={district} features={features} history={createMemoryHistory({ initialEntries: [path] })} />
+      </ThemeProvider>,
+    );
   });
   return {
     container,
@@ -33,6 +41,7 @@ afterEach(() => {
     container.remove();
   }
   mounted = [];
+  localStorage.clear();
 });
 
 /** What the polite live region last announced. */

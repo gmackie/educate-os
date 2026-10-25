@@ -6,6 +6,7 @@ import { afterEach } from "vitest";
 import { configure } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import type { DistrictApiClient } from "@educateos/api-client";
+import { ThemeProvider, storedThemeMode } from "@gadgets/ui/theme";
 import { AdminApp } from "../App.tsx";
 
 // jsdom has no PointerEvent, which Base UI's controls construct when they are pressed.
@@ -59,10 +60,14 @@ configure({
   }) as void,
 });
 
+/** Where the console keeps the theme an administrator chose, as main.tsx has it. */
+export const THEME_KEY = "educateos:theme-mode";
+
 const mounted: (() => void)[] = [];
 afterEach(() => {
   for (const unmount of mounted.splice(0)) unmount();
   window.location.hash = "";
+  localStorage.clear();
 });
 
 /** Renders the console at `screen` against `client`, and a user-event session to drive it. */
@@ -70,7 +75,11 @@ export function renderConsole(client: DistrictApiClient, screen = "dashboard") {
   window.location.hash = `#/${screen}`;
   const container = document.body.appendChild(document.createElement("div"));
   const root = createRoot(container);
-  act(() => root.render(<AdminApp client={client} />));
+  act(() => root.render(
+    <ThemeProvider source={storedThemeMode(THEME_KEY)}>
+      <AdminApp client={client} />
+    </ThemeProvider>,
+  ));
   mounted.push(() => {
     act(() => root.unmount());
     container.remove();

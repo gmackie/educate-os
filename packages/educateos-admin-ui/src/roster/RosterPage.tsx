@@ -121,7 +121,7 @@ export const RosterPage = () => {
             type="file"
             accept=".csv,text/csv"
             multiple
-            className="max-w-full rounded-md border border-kumo-line bg-kumo-control p-2 focus-visible:outline-2 focus-visible:outline-kumo-ring"
+            className="max-w-full rounded-md border border-kumo-line bg-kumo-control p-2 focus-visible:outline-2 focus-visible:outline-kumo-focus"
             onChange={(event) => { setFileList(event.target.files); setStep({ kind: "choose" }); }}
           />
         </div>

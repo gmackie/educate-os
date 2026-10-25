@@ -1,13 +1,20 @@
 import { Text } from "@cloudflare/kumo";
 import { ChalkboardTeacher } from "@phosphor-icons/react";
 import { unlinkedSignInOf } from "@educateos/api-client";
-import { AnnouncerProvider } from "./Announcer.tsx";
+import { ThemeModeButton } from "@gadgets/ui/theme";
+import { AnnouncerProvider, useAnnounce } from "./Announcer.tsx";
 import { ClassPage } from "./classes/ClassPage.tsx";
 import { MyClassesPage } from "./classes/MyClassesPage.tsx";
 import { NotAddedYet } from "./NotAddedYet.tsx";
 import { RubricShelfProvider } from "./activities/RubricShelf.tsx";
 import { routeHref, useRoute } from "./route.ts";
 import { useLoad } from "./useLoad.ts";
+
+/** The theme control, announcing through the app's live region. */
+const ThemeControl = () => {
+  const announce = useAnnounce();
+  return <ThemeModeButton onAnnounce={announce} />;
+};
 
 /** Teacher Studio: the landmarks every screen shares, and the screen the URL names. */
 export const App = () => {
@@ -28,7 +35,10 @@ export const App = () => {
             <ChalkboardTeacher size={24} aria-hidden />
             <Text variant="heading" as="span">Teacher Studio</Text>
           </a>
-          {me.status === "ready" && <Text variant="secondary" as="span">{me.data.displayName}</Text>}
+          <div className="flex items-center gap-3">
+            <ThemeControl />
+            {me.status === "ready" && <Text variant="secondary" as="span">{me.data.displayName}</Text>}
+          </div>
         </header>
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl px-4 py-6 outline-none md:px-8">
           {unlinked !== undefined ? <NotAddedYet signIn={unlinked} /> : route.screen === "classes" ? <MyClassesPage /> : <ClassPage route={route} />}
