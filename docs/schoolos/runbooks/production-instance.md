@@ -1,6 +1,7 @@
 # Runbook: the schoolos.gmac.io production instance
 
-- Issues: SCHO-192 (the instance), SCHO-193 (the LMS-lite district).
+- Issues: SCHO-192 (the instance), SCHO-193 (the LMS-lite district), SCHO-214 (the Google
+  connector).
 - Instance: <https://schoolos.gmac.io>, one long-lived SchoolOS deployment on the gmacko Cloudflare
   account (`c07a7e704db1808e1fff91bed2b1cd49`), deployed by ForgeGraph.
 - Configs: `packages/<worker>/wrangler.production.jsonc`, generated and committed.
@@ -20,9 +21,10 @@ Every other Worker is reached only through the router.
 
 | Worker | Config | Binds |
 |---|---|---|
-| `router` | `packages/router/wrangler.production.jsonc` | `WORKSHOP_BACKEND`, `GATEKEEPER_{CONTEXT,SCHEDULER,WEBSEARCH}`, and the Access-mode frontend as `ASSETS` |
-| `workshop-backend` | `packages/workshop-backend/wrangler.production.jsonc` | The three gatekeepers' `GatekeeperVendor` entrypoints (context gets `props.sharingDomain` = the origin), `AI_CALL_GUARD` → `schoolos-ai-guard#SchoolOsAiCallGuard`, `WORKERS_AI`, KV `BLUEPRINTS` and `AVATARS`, R2 `BLUEPRINT_CONTENT` (`schoolos-prod-blueprint-content`), `BROWSER`, `LOADER` |
+| `router` | `packages/router/wrangler.production.jsonc` | `WORKSHOP_BACKEND`, `GATEKEEPER_{CONTEXT,GOOGLE,SCHEDULER,WEBSEARCH}`, and the Access-mode frontend as `ASSETS` |
+| `workshop-backend` | `packages/workshop-backend/wrangler.production.jsonc` | The four gatekeepers' `GatekeeperVendor` entrypoints (context gets `props.sharingDomain` = the origin), `AI_CALL_GUARD` → `schoolos-ai-guard#SchoolOsAiCallGuard`, `WORKERS_AI`, KV `BLUEPRINTS` and `AVATARS`, R2 `BLUEPRINT_CONTENT` (`schoolos-prod-blueprint-content`), `BROWSER`, `LOADER` |
 | `gatekeeper-context` | `packages/gatekeeper-context/wrangler.production.jsonc` | KV `CONTEXT_COLLECTIONS` |
+| `gatekeeper-google` | `packages/gatekeeper-google/wrangler.production.jsonc` | none (its Durable Objects need no binding); the OAuth client is its `CLIENT_ID` and `CLIENT_SECRET` secrets. See [The Google connector](#the-google-connector). |
 | `gatekeeper-scheduler` | `packages/gatekeeper-scheduler/wrangler.production.jsonc` | none |
 | `gatekeeper-websearch` | `packages/gatekeeper-websearch/wrangler.production.jsonc` | `AI`, with `CF_AI_GATEWAY=default` |
 | `schoolos-ai-guard` | `packages/schoolos-ai-guard/wrangler.production.jsonc` | `HALL_MONITOR` → `hall-monitor` (already in the account). It runs its production entrypoint `src/worker.ts` with the nightly `17 3 * * *` reconciliation cron. |
@@ -50,11 +52,12 @@ reconciliation only records snapshots.
 | `workshop-backend` | `ADMINS` (a JSON array of Access emails), `CF_ACCESS_AUD`, `CF_ACCESS_ISS` | `school-os` |
 | `schoolos-ai-guard` | `HALL_MONITOR_SIGNING_KEY` (private Ed25519 or P-256 JWK, with a `kid`), `AI_GUARD_CONFIG` (the example config with the admin's Access email in place of `admin@example.com`, minified) | `schoolos-ai-guard` |
 | `schoolos-district-worker` | `DISTRICT_CONFIG` (the demo district's seed, minified), `CF_ACCESS_AUD` (the district Access application's audience), `CF_ACCESS_ISS` | `schoolos-district` |
+| `gatekeeper-google` | `CLIENT_ID` and `CLIENT_SECRET` (the gmacko-schoolos OAuth web client) | `schoolos-google` |
 
-The guard and the district are each their own ForgeGraph app because ForgeGraph's `syncSecrets`
-copies every secret of a stage onto each target that sets it: in one app, the backend would also
-receive the guard's signing key, and the district would receive the backend's Access audience in
-place of its own. `AI_GUARD_CONFIG` is a secret rather than a var because it names the admin's Workshop user,
+The guard, the district and the Google connector are each their own ForgeGraph app because
+ForgeGraph's `syncSecrets` copies every secret of a stage onto each target that sets it: in one app,
+the backend would also receive the guard's signing key, the district would receive the backend's
+Access audience in place of its own, and the backend would receive the Google OAuth client. `AI_GUARD_CONFIG` is a secret rather than a var because it names the admin's Workshop user,
 and this repository is public.
 
 Setting the Access pair also closes password sign-in. The generator refuses to emit any of these
@@ -100,6 +103,7 @@ version (`wrangler deployments list`).
 | `packages/gatekeeper-context` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:app` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/gatekeeper-scheduler` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache build:app` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/gatekeeper-websearch` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc` (Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
+| `packages/gatekeeper-google` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache build:configurator` (the configurator frames; Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/schoolos-ai-guard` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc` (Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/workshop-backend` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:bundled-blueprints` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/schoolos-district-worker` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && VITE_CF_ACCESS_MODE=true pnpm exec vp run --no-cache -F @schoolos/student-ui build && SCHOOLOS_UI_BASE=/admin/ pnpm exec vp run --no-cache -F @schoolos/admin-ui build && SCHOOLOS_UI_BASE=/teach/ pnpm exec vp run --no-cache -F @schoolos/teacher-ui build && node ../../scripts/production/assemble-district-ui.ts` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
@@ -112,15 +116,18 @@ that the backend rejects. The release build sets it the same way (`build-release
 
 A service binding needs its target to exist, so deploy in tiers:
 
-1. `gatekeeper-context`, `gatekeeper-scheduler`, `gatekeeper-websearch` and `schoolos-ai-guard`.
-   They can go in parallel. `hall-monitor` must already exist.
+1. `gatekeeper-context`, `gatekeeper-google`, `gatekeeper-scheduler`, `gatekeeper-websearch` and
+   `schoolos-ai-guard`. They can go in parallel. `hall-monitor` must already exist.
 2. `workshop-backend`, after setting its secrets.
 3. `router`, which creates the `schoolos.gmac.io` custom domain. The `gmac.io` zone must be on the
    account.
 
 The district Worker binds no other Worker and nothing binds it, so it can go at any point.
 
-Later deploys can go in any order, as long as no binding is renamed.
+Later deploys can go in any order, as long as no binding is renamed. Adding a Worker to a running
+instance is a small cold bring-up: the new Worker must be serving before the backend and router
+deploy with a binding to it. See [The Google connector](#the-google-connector) for how that went for
+`gatekeeper-google`.
 
 ### Bindings the account must support
 
@@ -192,3 +199,41 @@ district has its own hostname, behind its own Access application.
   `configPath` `packages/schoolos-district-worker/wrangler.production.jsonc`, the `buildCommand`
   and `deployCommand` in the table above, `syncSecrets: true`, and `healthCheckUrl`
   `https://district.schoolos.gmac.io/healthz`.
+
+## The Google connector
+
+SCHO-214 adds the Workshop's Google connector, `gatekeeper-google`, mounted at
+`https://schoolos.gmac.io/gatekeeper/google`. It gives agents and gadgets Gmail, Drive, Docs,
+Sheets, Slides, Calendar, Chat and BigQuery, through each user's own Google account.
+
+- **How users get it.** The backend offers every gatekeeper it has a `GATEKEEPER_*` binding for
+  (`buildGatekeeperVendorMap`); no var lists installed gatekeepers, and the release manifest's
+  `gatekeeperBindingExpansion` is likewise only bindings. It is not auto-provisioned: each user
+  connects their Google account from the Connectors page, through the OAuth flow. Connectors are
+  on unless an admin turns them off in the `/admin` Gatekeepers panel, so nothing else needs
+  configuring. Google sign-in (`AUTH_GATEKEEPERS`) is separate (SCHO-215).
+- **OAuth client.** A Web application OAuth client in the `gmacko-schoolos` Google Cloud project,
+  with an **Internal** consent screen, so only the project's Workspace organization can connect
+  and Google does not need to verify the app. Enable the APIs the connector reaches (Gmail, Docs,
+  Drive, Sheets, Slides, Calendar, Chat, People, BigQuery; see the package README and
+  `deploy-inputs.json`). Its authorized redirect URI is
+  `https://schoolos.gmac.io/gatekeeper/google/oauth`. The same client backs the Access Google
+  sign-in (SCHO-215). The client ID and secret are never written in this repository:
+  `FG_APP=schoolos-google forge secret set CLIENT_ID <id> --stage production` and
+  `FG_APP=schoolos-google forge secret set CLIENT_SECRET <secret> --stage production` (or with
+  `--stdin`, to keep the secret out of shell history).
+- **Access.** The redirect lands on the router's hostname, behind the instance's Access application.
+  The user's browser already holds an Access session there, so no bypass is needed.
+- **Not configured.** The Gmail and Chat new-message hooks (`PUBSUB_CHAT_TOPIC`,
+  `PUBSUB_GMAIL_TOPIC`, `PUBSUB_PUSH_SERVICE_ACCOUNT`) are left unset, so hooks are refused and
+  everything else works. Turning them on also needs an Access bypass for
+  `/gatekeeper/google/pubsub` (see the package README).
+- **ForgeGraph.** App `schoolos-google`, stage `production`, one `cloudflare-workers` target
+  `gatekeeper-google` on hetzner-fg: `workerName` `gatekeeper-google`, `appDir`
+  `packages/gatekeeper-google`, `configPath` `packages/gatekeeper-google/wrangler.production.jsonc`,
+  the `buildCommand` and `deployCommand` in the table above, `syncSecrets: true`, and
+  `healthCheckUrl` `https://schoolos.gmac.io/healthz`.
+- **Bring-up.** Set both secrets, then deploy `gatekeeper-google` first (for the first deploy,
+  before this change is on `main`, with `--ref` at the change's commit). Only then may
+  `workshop-backend` and `router` deploy with their new `GATEKEEPER_GOOGLE` binding; a deploy of
+  either before the Worker exists is rejected.

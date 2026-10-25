@@ -21,6 +21,10 @@
       "service": "gatekeeper-context"
     },
     {
+      "binding": "GATEKEEPER_GOOGLE",
+      "service": "gatekeeper-google"
+    },
+    {
       "binding": "GATEKEEPER_SCHEDULER",
       "service": "gatekeeper-scheduler"
     },

@@ -11,11 +11,14 @@
 # This app holds the router, the backend and the three preinstalled gatekeepers. The AI call guard
 # is the separate app `schoolos-ai-guard` (same repository), because `syncSecrets` copies every
 # secret of a stage to each target that sets it. Only the backend syncs secrets here: ADMINS,
-# CF_ACCESS_AUD and CF_ACCESS_ISS.
+# CF_ACCESS_AUD and CF_ACCESS_ISS. For the same reason the Google connector (gatekeeper-google,
+# SCHO-214) is the separate app `schoolos-google`, whose one target syncs only its OAuth client,
+# CLIENT_ID and CLIENT_SECRET; its target spec is in the runbook.
 #
 # Cold bring-up must go tier by tier (`forge deploy create production --target <name>`): the
-# gatekeepers and the guard, then the backend, then the router, since a service binding to a
-# Worker that does not exist yet is rejected. Afterwards every target deploys in place.
+# gatekeepers (gatekeeper-google included) and the guard, then the backend, then the router, since
+# a service binding to a Worker that does not exist yet is rejected. Afterwards every target
+# deploys in place.
 
 app: school-os
 server: https://forgegraf.com
