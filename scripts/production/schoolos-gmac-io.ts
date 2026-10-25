@@ -2,8 +2,8 @@
 // gmacko Cloudflare account, deployed Worker by Worker by ForgeGraph from the configs
 // production-config.ts generates. Everything here is non-secret: resource ids and names, the
 // origin, and plain-text vars. Secrets (the backend's ADMINS and Cloudflare Access pair, the guard's
-// Hall Monitor signing key, the district's DISTRICT_CONFIG and Access pair) are delivered by
-// ForgeGraph and never written down here; see
+// Hall Monitor signing key, the district's DISTRICT_CONFIG and Access pair, the Google connector's
+// OAuth client) are delivered by ForgeGraph and never written down here; see
 // docs/schoolos/runbooks/production-instance.md.
 
 import type { ProductionInstance } from "./production-config.ts";
@@ -12,9 +12,11 @@ import type { ProductionInstance } from "./production-config.ts";
 export const SCHOOLOS_GMAC_IO: ProductionInstance = {
   hostname: "schoolos.gmac.io",
   accountId: "c07a7e704db1808e1fff91bed2b1cd49",
-  // The auto-provisioned gatekeepers only: they need no OAuth app, so the instance works with
-  // nothing configured beyond this file and the secrets.
-  gatekeepers: ["gatekeeper-context", "gatekeeper-scheduler", "gatekeeper-websearch"],
+  // The three auto-provisioned gatekeepers, which need no OAuth app, and the Google connector
+  // (SCHO-214), whose OAuth client is its CLIENT_ID and CLIENT_SECRET secrets.
+  gatekeepers: [
+    "gatekeeper-context", "gatekeeper-google", "gatekeeper-scheduler", "gatekeeper-websearch",
+  ],
   kvNamespaces: {
     "workshop-backend": {
       BLUEPRINTS: "23044a01aab84a66b92f7c6bce327af8",

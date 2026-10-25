@@ -41,9 +41,9 @@ test("the committed production configs are up to date", () => {
   }
 });
 
-test("deploys the router, backend, AI call guard, three auto-provisioned gatekeepers and the district", () => {
+test("deploys the router, backend, AI call guard, four gatekeepers and the district", () => {
   assert.deepEqual([...build().keys()], [
-    "gatekeeper-context", "gatekeeper-scheduler", "gatekeeper-websearch", "router",
+    "gatekeeper-context", "gatekeeper-google", "gatekeeper-scheduler", "gatekeeper-websearch", "router",
     "schoolos-ai-guard", DISTRICT_PACKAGE, "workshop-backend",
   ]);
   assert.deepEqual(productionPackageNames(SCHOOLOS_GMAC_IO), [...build().keys()]);
@@ -66,6 +66,7 @@ test("the router is the origin, on its custom domain, bound to the backend and t
   assert.deepEqual(router.services, [
     { binding: "WORKSHOP_BACKEND", service: "workshop-backend" },
     { binding: "GATEKEEPER_CONTEXT", service: "gatekeeper-context" },
+    { binding: "GATEKEEPER_GOOGLE", service: "gatekeeper-google" },
     { binding: "GATEKEEPER_SCHEDULER", service: "gatekeeper-scheduler" },
     { binding: "GATEKEEPER_WEBSEARCH", service: "gatekeeper-websearch" },
   ]);
@@ -77,6 +78,7 @@ test("the backend binds the gatekeepers' vendor entrypoint, the guard, Workers A
   assert.deepEqual(backend.services, [
     { binding: "GATEKEEPER_CONTEXT", service: "gatekeeper-context", entrypoint: "GatekeeperVendor",
       props: { sharingDomain: BASE_URL } },
+    { binding: "GATEKEEPER_GOOGLE", service: "gatekeeper-google", entrypoint: "GatekeeperVendor" },
     { binding: "GATEKEEPER_SCHEDULER", service: "gatekeeper-scheduler", entrypoint: "GatekeeperVendor" },
     { binding: "GATEKEEPER_WEBSEARCH", service: "gatekeeper-websearch", entrypoint: "GatekeeperVendor" },
     { binding: "AI_CALL_GUARD", service: AI_GUARD_PACKAGE, entrypoint: "SchoolOsAiCallGuard" },
@@ -105,6 +107,18 @@ test("each gatekeeper is mounted under the origin", () => {
   assert.deepEqual(configFor(configs, "gatekeeper-context").kv_namespaces,
       [{ binding: "CONTEXT_COLLECTIONS", id: "0fc6dfd326eb4bb7a7b41f729a6fd9de" }]);
   assert.equal(configFor(configs, "gatekeeper-websearch").vars?.CF_AI_GATEWAY, "default");
+});
+
+test("the Google connector gets only its origin; its OAuth client stays a secret", () => {
+  const google = configFor(build(), "gatekeeper-google");
+  // Its redirect URI, https://schoolos.gmac.io/gatekeeper/google/oauth, derives from BASE_URL.
+  assert.deepEqual(google.vars, { BASE_URL: `${BASE_URL}/gatekeeper/google` });
+  assert.equal(google.services, undefined);
+  assert.equal(google.kv_namespaces, undefined);
+
+  const leaky = structuredClone(SCHOOLOS_GMAC_IO);
+  leaky.vars["gatekeeper-google"] = { CLIENT_SECRET: "x" };
+  assert.throws(() => build(leaky), /CLIENT_SECRET as a plain-text var/);
 });
 
 test("the guard runs its production entrypoint and cron, reaching Hall Monitor by service binding", () => {
@@ -142,7 +156,8 @@ test("an instance without a district deploys no district Worker", () => {
 
 test("no generated config carries a secret", () => {
   const secrets = [
-    "ADMINS", "AI_GUARD_CONFIG", "CF_ACCESS_AUD", "CF_ACCESS_ISS", "DISTRICT_CONFIG", "HALL_MONITOR_SIGNING_KEY",
+    "ADMINS", "AI_GUARD_CONFIG", "CF_ACCESS_AUD", "CF_ACCESS_ISS", "CLIENT_ID", "CLIENT_SECRET", "DISTRICT_CONFIG",
+    "HALL_MONITOR_SIGNING_KEY",
   ];
   for (const [pkgName, config] of build()) {
     for (const name of secrets) assert.equal(config.vars?.[name], undefined, `${pkgName} ${name}`);
