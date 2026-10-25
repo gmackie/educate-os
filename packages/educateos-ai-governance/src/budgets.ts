@@ -304,7 +304,7 @@ export function projectMonthEnd(ledger: LedgerIndex, pools: readonly FundingPool
 }
 
 /** The product the district's usage is allocated under in its Cloudflare account. */
-export const EDUCATEOS_PRODUCT = "schoolos";
+export const EDUCATEOS_PRODUCT = "educateos";
 
 /**
  * The month's settled usage events as Cloudflare account usage, one per request, charged back to

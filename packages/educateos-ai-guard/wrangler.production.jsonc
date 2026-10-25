@@ -38,7 +38,7 @@
     }
   ],
   "vars": {
-    "HALL_MONITOR_ISSUER": "schoolos",
+    "HALL_MONITOR_ISSUER": "educateos",
     "HALL_MONITOR_AUDIENCE": "hall-monitor"
   }
 }

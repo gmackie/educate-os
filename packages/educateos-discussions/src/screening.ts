@@ -102,7 +102,7 @@ export async function screenPost(screening: DiscussionScreening, request: Screen
       schemaVersion: SCHEMA_VERSION,
       requestId: checkId,
       idempotencyKey: checkId,
-      source: { product: "schoolos", tenantId: settings.tenantId, surface: "discussion.post" },
+      source: { product: "educateos", tenantId: settings.tenantId, surface: "discussion.post" },
       policy: { profileId: settings.profileId, revision: settings.revision },
       context: { audience: "student", gradeBand, costCenterId: settings.costCenterId },
       evaluationKind: "interaction.input",

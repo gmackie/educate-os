@@ -26,8 +26,6 @@ const KEEP = [
   "SCHOOLOS_GMAC_IO",
   // The production instance's existing R2 bucket.
   "schoolos-prod-blueprint-content",
-  // Hall Monitor's product id and the issuer it trusts: its published contract enumerates them.
-  "\"schoolos\"",
   // ForgeGraph app slugs, which cannot be changed (only an app's display name can), and the
   // repository, which ForgeGraph has no rename for: see SCHO-200's follow-ups.
   "app `schoolos-ai-guard`",

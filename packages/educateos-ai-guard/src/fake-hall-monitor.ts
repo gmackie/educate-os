@@ -46,7 +46,7 @@ export async function fakeHallMonitor(request: Request): Promise<Response> {
     receipt: {
       receiptId: `rcpt-${evaluation.requestId}`,
       tenantId: evaluation.source.tenantId,
-      product: "schoolos",
+      product: "educateos",
       costCenterId: evaluation.context.costCenterId,
       logicalRequestId: evaluation.requestId,
       createdAt: new Date().toISOString(),

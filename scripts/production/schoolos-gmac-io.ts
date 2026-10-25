@@ -43,7 +43,7 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
       CF_AI_GATEWAY: "default",
     },
     "educateos-ai-guard": {
-      HALL_MONITOR_ISSUER: "schoolos",
+      HALL_MONITOR_ISSUER: "educateos",
       HALL_MONITOR_AUDIENCE: "hall-monitor",
     },
   },

@@ -96,7 +96,7 @@ Use `application/json`, opaque IDs, and explicit `X-Idempotency-Key`. Rate-limit
 {
   "schemaVersion": "1.0",
   "requestId": "req_01",
-  "source": {"product": "schoolos", "tenantId": "tenant_opaque", "surface": "student.chat"},
+  "source": {"product": "educateos", "tenantId": "tenant_opaque", "surface": "student.chat"},
   "policy": {"profileId": "student-9-12", "revision": "school-2026-fall:17"},
   "context": {"subject": "biology", "activityKind": "guided-study", "gradeBand": "9-12"},
   "evaluationKind": "interaction.input",

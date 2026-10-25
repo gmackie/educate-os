@@ -12,8 +12,8 @@
   "dependencies": {
     "@gadgets/observability": "workspace:*",
     "@gadgets/workshop-shared": "workspace:*",
-    "@gmacko/hall-monitor-client": "file:../../vendor/hall-monitor/gmacko-hall-monitor-client-0.1.0.tgz",
-    "@gmacko/hall-monitor-contracts": "file:../../vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz",
+    "@gmacko/hall-monitor-client": "file:../../vendor/hall-monitor/gmacko-hall-monitor-client-0.3.0.tgz",
+    "@gmacko/hall-monitor-contracts": "file:../../vendor/hall-monitor/gmacko-hall-monitor-contracts-0.3.0.tgz",
     "@educateos/ai-governance": "workspace:*",
     "@educateos/contracts": "workspace:*",
     "@educateos/district-app": "workspace:*",

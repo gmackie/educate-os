@@ -12,10 +12,11 @@ import type { CostReceipt, UsageAttempt } from "@gmacko/hall-monitor-contracts";
 import { normalizeTokenUsage, type AiAttempt, type TokenUsage } from "@educateos/ai-governance";
 import type { GuardConfig } from "./config.ts";
 
-/** Lifetime of a minted service token, in seconds. Hall Monitor allows 60 s of clock skew. */
-const TOKEN_LIFETIME_SECONDS = 300;
-/** A cached token is replaced once it has less than this left, in seconds. */
-const TOKEN_REFRESH_MARGIN_SECONDS = 60;
+/**
+ * Lifetime of a minted service token, in seconds: one call and its retries' clock skew (Hall Monitor
+ * allows 60 s of skew). The client's own default.
+ */
+const TOKEN_LIFETIME_SECONDS = 60;
 
 /** The service-token signing key: a private JWK, Ed25519 (`EdDSA`) or P-256 (`ES256`). */
 interface SigningJwk extends JsonWebKey {
@@ -26,14 +27,16 @@ const encoder = new TextEncoder();
 const base64Url = (bytes: Uint8Array) => bytes.toBase64({ alphabet: "base64url", omitPadding: true });
 const encodeJson = (value: unknown) => base64Url(encoder.encode(JSON.stringify(value)));
 
-// Token sources by everything that shapes a token, so an isolate imports the key and mints a token
-// once rather than on every call.
+// Token sources by everything that shapes a token, so an isolate parses and imports the key once
+// rather than on every call.
 const tokenSources = new Map<string, TokenSource>();
 
 /**
  * Mints Hall Monitor service tokens: compact JWS, signed with `HALL_MONITOR_SIGNING_KEY`, carrying
- * the claims Hall Monitor verifies (`iss`, `aud`, `exp`, `iat`, `jti`, `tenant`, `scope`). Each is
- * reused until a minute before it expires. Returns `undefined` when no signing key is configured.
+ * the claims Hall Monitor verifies (`iss`, `aud`, `exp`, `iat`, `jti`, `tenant`, `scope`). Every call
+ * mints a new token with its own `jti`: Hall Monitor accepts each token once and answers a replay
+ * with 401, and transports ask for a token on every attempt, retries included. Returns `undefined`
+ * when no signing key is configured.
  */
 export function serviceTokenSource(env: Cloudflare.Env, config: GuardConfig): TokenSource | undefined {
   if (!env.HALL_MONITOR_SIGNING_KEY) return undefined;
@@ -54,11 +57,8 @@ export function serviceTokenSource(env: Cloudflare.Env, config: GuardConfig): To
   const { kid, ...material } = jwk;
   const key = crypto.subtle.importKey("jwk", material, alg === "EdDSA" ? { name: "Ed25519" } : { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
   const params = alg === "EdDSA" ? { name: "Ed25519" } : { name: "ECDSA", hash: "SHA-256" };
-  let cached: { token: string; expires: number } | undefined;
-
   const source: TokenSource = async () => {
     const now = Math.floor(Date.now() / 1000);
-    if (cached !== undefined && cached.expires - now > TOKEN_REFRESH_MARGIN_SECONDS) return cached.token;
     const header = { alg, typ: "JWT", ...(kid === undefined ? {} : { kid }) };
     const claims = {
       iss: issuer,
@@ -71,8 +71,7 @@ export function serviceTokenSource(env: Cloudflare.Env, config: GuardConfig): To
     };
     const signingInput = `${encodeJson(header)}.${encodeJson(claims)}`;
     const signature = new Uint8Array(await crypto.subtle.sign(params, await key, encoder.encode(signingInput)));
-    cached = { token: `${signingInput}.${base64Url(signature)}`, expires: claims.exp };
-    return cached.token;
+    return `${signingInput}.${base64Url(signature)}`;
   };
   tokenSources.set(cacheKey, source);
   return source;

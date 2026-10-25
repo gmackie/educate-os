@@ -59,7 +59,7 @@ describe("the fake Hall Monitor", () => {
       schemaVersion: SCHEMA_VERSION,
       requestId: id,
       idempotencyKey: id,
-      source: { product: "schoolos", tenantId: "tenant_dev", surface: "educateos.workshop" },
+      source: { product: "educateos", tenantId: "tenant_dev", surface: "educateos.workshop" },
       policy: { profileId: "k12-student", revision: "dev" },
       context: { audience: "student", gradeBand: "9-12", costCenterId: "cc_dev" },
       evaluationKind: "interaction.input",

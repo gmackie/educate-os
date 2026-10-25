@@ -72,7 +72,7 @@ type UsageEvent = {
   ingestedAt: string;
   source: "caller" | "hall_monitor" | "provider" | "cloudflare_invoice";
   tenantId: string;
-  product: "schoolos" | "playtrek" | "hall-monitor";
+  product: "educateos" | "playtrek" | "hall-monitor";
   billingOwnerId: string;
   costCenterId: string;
   requestId: string;

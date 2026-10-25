@@ -251,7 +251,7 @@ describe("screening student posts with Hall Monitor (SCHO-190)", () => {
     expect(post).toMatchObject({ status: "visible", flags: [] });
     expect(requests).toHaveLength(1);
     expect(requests[0]).toMatchObject({
-      source: { product: "schoolos", tenantId: "tenant-nf", surface: "discussion.post" },
+      source: { product: "educateos", tenantId: "tenant-nf", surface: "discussion.post" },
       policy: { profileId: "student-9-12", revision: "rev-1" },
       context: { audience: "student", gradeBand: "9-12", costCenterId: "cc-safety" },
       evaluationKind: "interaction.input",

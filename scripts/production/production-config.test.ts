@@ -129,7 +129,7 @@ test("the guard runs its production entrypoint and cron, reaching Hall Monitor b
   assert.deepEqual(guard.triggers, { crons: ["17 3 * * *"] });
   assert.deepEqual(guard.services, [{ binding: "HALL_MONITOR", service: "hall-monitor" }]);
   assert.equal(guard.vars?.HALL_MONITOR_URL, undefined, "the service binding is preferred");
-  assert.equal(guard.vars?.HALL_MONITOR_ISSUER, "schoolos");
+  assert.equal(guard.vars?.HALL_MONITOR_ISSUER, "educateos");
   // A secret: it names the admin's Workshop user, and this repository is public.
   assert.equal(guard.vars?.AI_GUARD_CONFIG, undefined);
 });

@@ -382,7 +382,7 @@ export class AiCallGuardService {
       requestId: checkId,
       // Unique per check, so a retried evaluation replays rather than re-bills.
       idempotencyKey: checkId,
-      source: { product: "schoolos", tenantId: moderation.tenantId, surface: moderation.surface },
+      source: { product: "educateos", tenantId: moderation.tenantId, surface: moderation.surface },
       policy: { profileId: context.profile.hallMonitorProfileId, revision: context.profile.revision },
       context: {
         audience: context.audience,

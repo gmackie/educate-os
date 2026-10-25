@@ -4,7 +4,7 @@
  * or Zod at every untrusted boundary and generate OpenAPI from the source schema.
  */
 
-export type Product = "schoolos" | "playtrek" | "hall-monitor";
+export type Product = "educateos" | "playtrek" | "hall-monitor";
 export type EvaluationKind =
   | "interaction.input"
   | "interaction.output"

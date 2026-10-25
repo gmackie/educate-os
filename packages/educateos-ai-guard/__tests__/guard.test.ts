@@ -430,16 +430,22 @@ describe("EducateOsAiCallGuard", () => {
 });
 
 describe("service tokens", () => {
-  it("signs the claims Hall Monitor verifies, and reuses a token until near expiry", async () => {
+  it("signs the claims Hall Monitor verifies, with a new single-use token for every call", async () => {
     const pair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]) as CryptoKeyPair;
     const jwk = { ...await crypto.subtle.exportKey("jwk", pair.privateKey) as JsonWebKey, kid: "guard-1" };
     const getToken = serviceTokenSource({ ...env, HALL_MONITOR_SIGNING_KEY: JSON.stringify(jwk), HALL_MONITOR_ISSUER: "educateos-guard" }, config)!;
     const token = await getToken();
-    expect(await getToken()).toBe(token);
+    // Hall Monitor answers a replayed jti with 401, so a token is never reused.
+    const next = await getToken();
+    expect(next).not.toBe(token);
+    const jti = (part: string) => (decodeSegment(part.split(".")[1]!) as { jti: string }).jti;
+    expect(jti(next)).not.toBe(jti(token));
 
     const [header, payload, signature] = token.split(".") as [string, string, string];
     expect(decodeSegment(header)).toEqual({ alg: "EdDSA", typ: "JWT", kid: "guard-1" });
     expect(decodeSegment(payload)).toMatchObject({ iss: "educateos-guard", aud: "hall-monitor", tenant: "tenant_educateos", scope: "evaluate" });
+    const claims = decodeSegment(payload) as { iat: number; exp: number };
+    expect(claims.exp - claims.iat).toBe(60);
     const valid = await crypto.subtle.verify({ name: "Ed25519" }, pair.publicKey,
       Uint8Array.fromBase64(signature, { alphabet: "base64url" }), new TextEncoder().encode(`${header}.${payload}`));
     expect(valid).toBe(true);
