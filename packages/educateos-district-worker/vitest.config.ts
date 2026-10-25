@@ -4,7 +4,7 @@ import capnwebValidate from "capnweb-validate/vite";
 import { kCurrentWorker } from "miniflare";
 import { defineConfig } from "vitest/config";
 import deployed from "./cloudflare.config.ts";
-import { ACCESS_AUDIENCE, ACCESS_ISSUER, TEST_CONFIG } from "./__tests__/fixtures.ts";
+import { ACCESS_AUDIENCES, ACCESS_ISSUER, TEST_CONFIG } from "./__tests__/fixtures.ts";
 
 const { compatibilityDate, compatibilityFlags } = deployed.worker;
 
@@ -29,7 +29,7 @@ export default defineConfig({
         bindings: {
           DISTRICT_CONFIG: JSON.stringify(TEST_CONFIG),
           CF_ACCESS_ISS: ACCESS_ISSUER,
-          CF_ACCESS_AUD: ACCESS_AUDIENCE,
+          CF_ACCESS_AUD: ACCESS_AUDIENCES,
           TEST_ACCESS_PRIVATE_JWK: JSON.stringify({ ...privateKey.export({ format: "jwk" }), kid: KID, alg: "RS256" }),
           TEST_ACCESS_PUBLIC_JWK: JSON.stringify({ ...publicKey.export({ format: "jwk" }), kid: KID, alg: "RS256" }),
         },

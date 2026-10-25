@@ -14,7 +14,7 @@
   {
     "name": "CF_ACCESS_AUD",
     "kind": "var",
-    "label": "Cloudflare Access audience",
-    "help": "The audience tag of the Access application in front of the district's /api, and of the instance whose gatekeeper forwards sign-ins to it."
+    "label": "Cloudflare Access audiences",
+    "help": "Comma-separated audience tags of the Access applications whose sign-ins the district accepts: the application in front of the district's own hostname and /api and, when the instance runs the EducateOS connector, the instance's Workshop application, whose hostname the connector's connect page is served on. Both must be on the CF_ACCESS_ISS team."
   }
 ]

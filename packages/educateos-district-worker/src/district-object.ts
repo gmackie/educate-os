@@ -121,6 +121,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return (await this.#boot()).tools.declineChange(decider, approvalId, reason);
   }
 
+  /** Serves one `/api` request as `principal`'s own, for the EducateOS connector's school pages (SCHO-218). */
+  async serveAs(principal: VerifiedPrincipal, request: Request): Promise<Response> {
+    return (await this.#boot()).tools.serveAs(principal, request);
+  }
+
   /**
    * Runs the job a Cron Trigger names (SCHO-189): the hourly notification sweep, or the weekly
    * family digest. An expression the district does not schedule runs nothing.
@@ -152,7 +157,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     const sendEmail = this.sendEmail();
     const district = await startDistrict(
       this.ctx.storage,
-      { config: this.env.DISTRICT_CONFIG, accessIssuer: this.env.CF_ACCESS_ISS, accessAudience: this.env.CF_ACCESS_AUD },
+      { config: this.env.DISTRICT_CONFIG, accessIssuer: this.env.CF_ACCESS_ISS, accessAudiences: this.env.CF_ACCESS_AUD },
       {
         importFetch: (url, init) => this.importFetch(url, init),
         ...(keys === undefined ? {} : { accessKeys: keys }),

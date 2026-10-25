@@ -7,7 +7,10 @@ declare namespace Cloudflare {
     DISTRICT_CONFIG: string;
     /** The Access team domain assertions are verified against, as the kernel's `CF_ACCESS_ISS`. */
     CF_ACCESS_ISS?: string;
-    /** The Access application audience assertions are verified against, as the kernel's `CF_ACCESS_AUD`. */
+    /**
+     * The audiences of the Access applications whose assertions are accepted, comma-separated: the
+     * district's own, and the instance Workshop's when its EducateOS connector forwards sign-ins.
+     */
     CF_ACCESS_AUD?: string;
   }
 }

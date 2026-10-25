@@ -8,7 +8,7 @@ import { importJWK, SignJWT, type JWK } from "jose";
 import { describe, expect, it } from "vitest";
 import { NORTHFIELD } from "@educateos/fixtures";
 import { ROUTES, routePath, type RouteInput, type RouteName, type RouteResponse } from "@educateos/district-app/routes";
-import { ACCESS_AUDIENCE, ACCESS_ISSUER } from "./fixtures.ts";
+import { ACCESS_AUDIENCE, ACCESS_ISSUER, WORKSHOP_ACCESS_AUDIENCE } from "./fixtures.ts";
 
 const NF = {
   admin: "prn_nf-district-admin",
@@ -135,6 +135,22 @@ describe("the district Worker", () => {
     expect((await SELF.fetch(new Request("https://district.example/health"))).status).toBe(404);
   });
 
+  it("accepts an assertion for each application CF_ACCESS_AUD lists, and for no other", async () => {
+    const subject = NORTHFIELD.principals.find((p) => p.id === NF.rivera)!.externalIdentities[0]!.subject;
+    for (const aud of [ACCESS_AUDIENCE, WORKSHOP_ACCESS_AUDIENCE, [WORKSHOP_ACCESS_AUDIENCE, "another-application"]]) {
+      expect(await ok(await assertion(subject, { aud }), "me.get")).toMatchObject({ principalId: NF.rivera });
+    }
+    // The list's empty and blank entries are not audiences.
+    for (const aud of ["another-application", "", " ", `${ACCESS_AUDIENCE},${WORKSHOP_ACCESS_AUDIENCE}`]) {
+      expect((await SELF.fetch(request(await assertion(subject, { aud }), "me.get"))).status).toBe(401);
+    }
+    // The connector's connect page is on the Workshop's hostname, so that is the assertion it forwards.
+    const fromWorkshop = new Request("https://workshop.example/gatekeeper/educateos/connect", {
+      headers: { "cf-access-jwt-assertion": await assertion(subject, { aud: WORKSHOP_ACCESS_AUDIENCE }) },
+    });
+    expect(await env.TOOLS.authenticate(fromWorkshop)).toEqual({ principalId: NF.rivera, districtId: NORTHFIELD.district.id });
+  });
+
   it("answers the liveness probe without a sign-in, and nothing else beside /api", async () => {
     const live = await SELF.fetch(new Request("https://district.example/healthz"));
     expect(live.status).toBe(200);
@@ -249,6 +265,33 @@ describe("the district Worker", () => {
     await evictDurableObject(district());
     expect(await env.TOOLS.declineChange(admin!, approvalId, "Terms come from the roster.")).toMatchObject({ status: "declined", approvalId });
     expect(await env.TOOLS.approveChange(admin!, approvalId)).toMatchObject({ status: "error" });
+  });
+
+  it("serves the /api surface to the gatekeeper's verified principal, over its entrypoint", async () => {
+    const as = (principalId: string, districtId: string = NORTHFIELD.district.id) => ({ principalId, districtId }) as never;
+    const serve = async <N extends RouteName>(principalId: string, name: N, input?: RouteInput<N>, districtId?: string) => {
+      const response = await env.TOOLS.serveAs(as(principalId, districtId), request(undefined, name, input));
+      return { status: response.status, body: await response.json() as Record<string, unknown> };
+    };
+
+    // A GET, as the person's own sign-in would see it, with no assertion on the request.
+    const roster = await serve(NF.rivera, "teacher.roster", { params: { offeringId: NF.eng9 } });
+    expect(roster.status).toBe(200);
+    expect(roster.body).toStrictEqual(await ok(await signIn(NF.rivera), "teacher.roster", { params: { offeringId: NF.eng9 } }));
+
+    // A POST, as the person's own action: the student opens their personal workspace.
+    const opened = await serve(NF.amara, "student.openPersonalWorkspace");
+    expect(opened.status).toBe(200);
+    expect(ROUTES["student.openPersonalWorkspace"].response.parse(opened.body)).toMatchObject({ kind: "personal" });
+
+    // Another district's principal, someone unknown, and the onboarding route are refused. (An
+    // inactive principal is refused too; the district application's own suite covers that, since
+    // this district's principals are the roster's to deactivate.)
+    expect(await serve(NF.rivera, "me.get", undefined, "dst_riverbend")).toMatchObject({ status: 401, body: { code: "unauthenticated" } });
+    expect(await serve("prn_nf-nobody", "me.get")).toMatchObject({ status: 401, body: { code: "unauthenticated" } });
+    // Refused before its body is read: the district closes the body, or the later tests hang on it.
+    expect(await serve(NF.admin, "onboarding.redeemGuardianInvitation", { body: { token: "x".repeat(20) } }))
+      .toMatchObject({ status: 403, body: { code: "forbidden" } });
   });
 
   // Discussions (SCHO-190).

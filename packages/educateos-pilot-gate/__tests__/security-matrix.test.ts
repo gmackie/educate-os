@@ -247,7 +247,12 @@ criterion("s14.tool-identity", {
     });
     // The district's service as the gatekeeper is bound to it. Connecting is the Worker's job and is
     // covered by its own suite; here each account is already connected.
-    const district = createSchoolToolService({ districtId: northfield.app.districtId, runner, authenticate: async () => null });
+    const district = createSchoolToolService({
+      districtId: northfield.app.districtId,
+      runner,
+      authenticate: async () => null,
+      serveAs: (principal, request) => northfield.app.serveAs(principal, request),
+    });
     const accountFor = (principalId: string, districtId = northfield.app.districtId) => {
       const submitted: SchoolChange[] = [];
       const observed: string[] = [];

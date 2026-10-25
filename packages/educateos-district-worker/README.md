@@ -58,10 +58,27 @@ names, and each commits in its own `transactionSync`.
 
 `/api` requests and the gatekeeper's `authenticate` are verified the way the kernel verifies them
 (`verifyCfAccessJwt` in workshop-backend). The `cf-access-jwt-assertion` header is checked with
-RS256 against the Access team's published certs, `CF_ACCESS_ISS` and `CF_ACCESS_AUD`. The verified
-claims then go through `identityFromAccessPayload` (`@educateos/identity`), and the identity is
-resolved through the district's own directory. A request with no valid assertion proves no one.
-The district must list `CF_ACCESS_ISS` in its `trustedIssuers`.
+RS256 against the Access team's published certs, `CF_ACCESS_ISS` and the audiences
+`CF_ACCESS_AUD` lists. The verified claims then go through `identityFromAccessPayload`
+(`@educateos/identity`), and the identity is resolved through the district's own directory. A
+request with no valid assertion proves no one. The district must list `CF_ACCESS_ISS` in its
+`trustedIssuers`.
+
+`CF_ACCESS_AUD` is a comma-separated list of Access application audience tags; entries are trimmed
+and empty ones ignored, and an assertion for any listed application is accepted. Usually it holds
+two:
+
+- the district's own application, in front of its hostname and `/api`;
+- the instance's Workshop application, when the instance runs the EducateOS connector
+  (`gatekeeper-educateos`). Its connect page is served on the Workshop's hostname, so the browser's
+  assertion there is for the Workshop's application, and the connector hands that request to
+  `authenticate` (SCHO-218).
+
+Both applications must be on the same Access team (one `CF_ACCESS_ISS`), so a person's `sub` is the
+same in each and resolves to the same principal. Listing the Workshop's audience means anything
+that holds a person's Workshop assertion can sign in to the district as them; Access issues that
+assertion only to the person's own browser, and the Workshop itself is already trusted with it. A
+district with no connector lists its own audience alone.
 
 ## Entrypoints
 
@@ -69,7 +86,7 @@ The district must list `CF_ACCESS_ISS` in its `trustedIssuers`.
 | --- | --- | --- |
 | default `fetch` | browsers, behind Access | `/api/*`, and `/healthz` (a liveness probe with no sign-in, which reads nothing); everything else is 404 |
 | `DistrictGuardDirectory` | the AI call guard's `EDUCATEOS_DISTRICT` | `GuardDirectoryPort` (`guardSubject`, `admittedSubject`, `ledgerDirectory`) over `DistrictApp.guardDirectory` |
-| `DistrictSchoolTools` | the EducateOS gatekeeper's `EDUCATEOS_DISTRICT` | `SchoolToolService` over the directory's operations; every agent call waits for a person in the object's approval queue |
+| `DistrictSchoolTools` | the EducateOS gatekeeper's `EDUCATEOS_DISTRICT` | `SchoolToolService` over the directory's operations; every agent call waits for a person in the object's approval queue. Its `serveAs` serves the `/api` surface for a principal the gatekeeper verified, for its school pages (SCHO-218) |
 | `DistrictApi` | the release's backend binding, `EDUCATEOS_DISTRICT_API` | the same `/api` surface; holding it grants nothing |
 
 ## Configuration and release
@@ -91,7 +108,7 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   or reactivate them (`admin.setPrincipalStatus`), and make staff district administrators or take
   that away (`admin.grantDistrictAdmin`, `admin.revokeDistrictAdmin`, SCHO-212). The district always
   keeps one active administrator, and nobody can remove their own administration.
-- `CF_ACCESS_ISS` and `CF_ACCESS_AUD`.
+- `CF_ACCESS_ISS` and `CF_ACCESS_AUD` (a comma-separated list, see [Sign-in](#sign-in)).
 - `email` (optional, in `DISTRICT_CONFIG`): `from`, an address on a domain the district has
   onboarded to Cloudflare Email Service in this account, an optional `fromName`, and an optional
   `appUrl` linked from every email. Without it, or without the binding, nothing is emailed.
