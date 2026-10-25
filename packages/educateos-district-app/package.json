@@ -1,0 +1,43 @@
+{
+  "name": "@educateos/district-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The EducateOS district application: the merged domain services composed behind one typed, fetch-standard /api surface for the Student, Teacher and Admin UIs, with in-memory stores and, at `./durable-stores`, every store in one Durable Object's SQLite. A library: `@educateos/district-worker` deploys it.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./routes": "./src/routes.ts",
+    "./guard-directory": "./src/guard-directory.ts",
+    "./durable-stores": "./src/durable-stores.ts"
+  },
+  "dependencies": {
+    "@educateos/academics": "workspace:*",
+    "@educateos/ai-governance": "workspace:*",
+    "@educateos/artifacts-git": "workspace:*",
+    "@educateos/assessment": "workspace:*",
+    "@educateos/assessment-ci": "workspace:*",
+    "@educateos/cartridge": "workspace:*",
+    "@educateos/catalog": "workspace:*",
+    "@educateos/config": "workspace:*",
+    "@educateos/content-studio": "workspace:*",
+    "@educateos/contracts": "workspace:*",
+    "@educateos/curriculum": "workspace:*",
+    "@educateos/discussions": "workspace:*",
+    "@educateos/identity": "workspace:*",
+    "@educateos/identity-links": "workspace:*",
+    "@educateos/integrations": "workspace:*",
+    "@educateos/learning-artifacts": "workspace:*",
+    "@educateos/policy": "workspace:*",
+    "@educateos/quizzes": "workspace:*",
+    "@educateos/registry": "workspace:*",
+    "@educateos/workspaces": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@educateos/zip": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

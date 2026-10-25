@@ -1,0 +1,137 @@
+# Illustrative declarative config — proposed schema, not deployed.
+# Secrets are bound via Cloudflare Worker secret/environment settings, not YAML values.
+apiVersion: education.gmacko.io/v1alpha1
+kind: EducationAIGovernance
+metadata:
+  tenantId: "district-or-coop-opaque-id"
+  revision: "pilot-2026-fall-01"
+
+service:
+  hallMonitor:
+    enabled: true
+    mode: enforced          # shadow | enforced | disabled (disabled forbidden for mandatory student profiles)
+    deployment: local-worker  # local-worker | managed-https
+    # Optional managed HTTPS URL supplied from secure deployment config, not a root inference hop.
+    timeoutMs: 2500
+    retries: 1
+    responseProcessing: buffered-if-required
+    policyBundle: "k12-educator-first@1.0.0"
+    immutablePolicyFloor: "district-minimum@1.0.0"
+    requireSignedCaller: true
+    logStudentPayloads: false
+    logUsageMetadata: true
+
+  classifiers:
+    primary:
+      provider: cloudflare-workers-ai
+      model: "@cf/cloudflare/clef-flash"
+    escalation:
+      provider: cloudflare-workers-ai
+      model: "@cf/cloudflare/clef"
+      enabled: true
+      maxFractionSoftTarget: 0.10 # alert on drift, not a safety bypass
+    multimodal:
+      model: "@cf/cloudflare/clef-omni"
+      enabled: false
+
+profiles:
+  educator:
+    studentFacing: false
+    incoming: true
+    outgoing: optional
+    allowedActions: [allow, coach, hold, block, support]
+    humanApprovalForPublication: true
+  student-6-8:
+    studentFacing: true
+    defaultEnabled: false
+    incoming: required
+    outgoing: required
+    answerAssistance: scaffolded
+    modelTier: guided
+    privateConversationRetention: short
+  student-9-12:
+    studentFacing: true
+    defaultEnabled: false
+    incoming: required
+    outgoing: required
+    answerAssistance: contextual
+    modelTier: approved
+    privateConversationRetention: short
+  published-content:
+    studentFacing: false
+    incoming: true
+    outgoing: null
+    requireProvenance: true
+    checkRightsAndAccessibility: true
+    humanApprovalForPublication: true
+
+budgets:
+  currency: USD
+  billingPeriod: calendar-month
+  requireReservationForModelCalls: true
+  strictAncestorCaps: true
+  priceBook: "cloudflare-and-provider-snapshot-2026-10-20"
+  defaults:
+    teacherUsd: "15.00"
+    powerTeacherUsd: "30.00"
+    studentGuidedUsd: "2.00"
+    studentEnhancedUsd: "5.00"
+    assessmentUsdPerEnrolledStudent: "0.25"
+    # Protected organizational safety spending allowance: not a per-child charge.
+    hallMonitorSafety:
+      minimumUsd: "5.00"
+      usdPerAiEnabledUser: "0.10"
+  alertPercentages: [70, 85, 95]
+  onUncertainProviderCost: provisional-liability
+  onDiscretionaryBudgetExhaustion: block-generative
+  onSafetyCapacityFailure: block-generative-and-offer-non-ai
+
+meters:
+  grossCostEnabled: true
+  netInvoiceReconciliation: true
+  sourceReceiptIntegrity: signed
+  eventDeduplication: required
+  keepPromptTextInLedger: false
+  cloudflare:
+    track:
+      - worker-requests
+      - worker-cpu
+      - durable-object-gb-seconds
+      - d1-storage
+      - r2-operations-and-storage
+      - artifacts-operations-and-storage
+      - dynamic-worker-created-daily
+      - container-cpu-memory-disk
+      - workers-ai-neurons
+      - gateway-logs
+    includeAccountDailyNeuronAllowanceOnce: true
+
+products:
+  educateos:
+    enabled: true
+    enforceOn:
+      - new-chat
+      - chat-message
+      - chat-steer
+      - incoming-attachment
+      - gadget-model-invocation
+      - autonomous-agent-message
+      - student-output
+      - imported-content
+  playtrek:
+    enabled: true
+    enforceOn:
+      - generated-episode
+      - generated-challenge
+      - curriculum-review
+      - agent-content-repair
+      - optional-learner-chat
+      - student-output
+
+rollout:
+  activeFor:
+    - teachers
+  studentAiRequiresDistrictApproval: true
+  rootServiceRequiredForRequests: false
+  canaryPercentage: 0
+  useSyntheticFixturesByDefault: true

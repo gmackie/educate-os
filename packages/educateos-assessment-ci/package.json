@@ -1,0 +1,29 @@
+{
+  "name": "@educateos/assessment-ci",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS Assessment CI (roadmap E02): a deterministic evaluator SDK with pinned releases, built-in evaluators for writing, citations, spreadsheets, datasets and math, teacher-signed rubric releases, and durable idempotent assessment runs whose evidence reaches feedback only as labelled suggestions. Its `./durable-object-store` entry point is the runs' Durable Object SQLite store and queue. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./durable-object-store": "./src/durable-object-store.ts"
+  },
+  "dependencies": {
+    "@educateos/academics": "workspace:*",
+    "@educateos/assessment": "workspace:*",
+    "@educateos/cartridge": "workspace:*",
+    "@educateos/contracts": "workspace:*",
+    "@educateos/learning-artifacts": "workspace:*",
+    "@educateos/policy": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@educateos/workspaces": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

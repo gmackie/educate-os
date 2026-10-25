@@ -9,7 +9,7 @@ import server from "../src/server";
 import type { GadgetRecord, UserStorage } from "../src/storage-schema/user-storage";
 import type { UserDurableObject } from "../src/user";
 
-// AuthenticatedApi.ensureExternalWorkspace(): the seam an external system (SchoolOS) uses to give
+// AuthenticatedApi.ensureExternalWorkspace(): the seam an external system (EducateOS) uses to give
 // one of its workspaces a Workshop workspace, acting only as that workspace's owner.
 
 async function connect(): Promise<RpcStub<PublicApi>> {

@@ -43,8 +43,8 @@ test("the committed production configs are up to date", () => {
 
 test("deploys the router, backend, AI call guard, four gatekeepers and the district", () => {
   assert.deepEqual([...build().keys()], [
-    "gatekeeper-context", "gatekeeper-google", "gatekeeper-scheduler", "gatekeeper-websearch", "router",
-    "schoolos-ai-guard", DISTRICT_PACKAGE, "workshop-backend",
+    "educateos-ai-guard", DISTRICT_PACKAGE, "gatekeeper-context", "gatekeeper-google",
+    "gatekeeper-scheduler", "gatekeeper-websearch", "router", "workshop-backend",
   ]);
   assert.deepEqual(productionPackageNames(SCHOOLOS_GMAC_IO), [...build().keys()]);
 });
@@ -81,7 +81,7 @@ test("the backend binds the gatekeepers' vendor entrypoint, the guard, Workers A
     { binding: "GATEKEEPER_GOOGLE", service: "gatekeeper-google", entrypoint: "GatekeeperVendor" },
     { binding: "GATEKEEPER_SCHEDULER", service: "gatekeeper-scheduler", entrypoint: "GatekeeperVendor" },
     { binding: "GATEKEEPER_WEBSEARCH", service: "gatekeeper-websearch", entrypoint: "GatekeeperVendor" },
-    { binding: "AI_CALL_GUARD", service: AI_GUARD_PACKAGE, entrypoint: "SchoolOsAiCallGuard" },
+    { binding: "AI_CALL_GUARD", service: AI_GUARD_PACKAGE, entrypoint: "EducateOsAiCallGuard" },
   ]);
   assert.deepEqual(backend.ai, { binding: "WORKERS_AI" });
   assert.deepEqual(backend.kv_namespaces, [

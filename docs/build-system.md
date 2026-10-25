@@ -54,9 +54,9 @@ settings live in `vite.app.config.ts`; `vite.config.ts` belongs to the task grap
 For dev-server process shutdown, preserve ownership of Wrangler and its workerd children rather
 than exiting the launcher while they remain alive.
 
-`pnpm dev-server --with-ai-guard` (or `SCHOOLOS_DEV_AI_GUARD=1`) adds the SchoolOS AI call guard as
+`pnpm dev-server --with-ai-guard` (or `EDUCATEOS_DEV_AI_GUARD=1`) adds the EducateOS AI call guard as
 one more Wrangler config, running its development entrypoint, and binds it to the backend as
 `AI_CALL_GUARD`; without it the dev server is upstream's and the backend runs unguarded. The guard
 needs no extra preflight task: its Wrangler `build.command` (capnweb-validate) writes the entrypoint.
 PR previews include the guard by default (`PREVIEW_AI_GUARD=false` leaves it out). See
-`packages/schoolos-ai-guard/README.md`.
+`packages/educateos-ai-guard/README.md`.

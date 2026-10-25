@@ -4,7 +4,7 @@
 // project may change it or grade its submissions, and Google refuses anyone else with
 // `@ProjectPermissionDenied`. So the client lists only coursework Classroom reports as
 // `associatedWithDeveloper`, and refuses locally what Google would refuse remotely.
-// docs/schoolos/integrations/google-classroom.md is the design record.
+// docs/educateos/integrations/google-classroom.md is the design record.
 
 import { AccessTokenProvider, fetchWithAuthRetry } from "./auth-retry";
 import type {

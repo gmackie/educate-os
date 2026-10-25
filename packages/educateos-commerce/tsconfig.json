@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // The web-standard surface Workers, Node 24 and browsers share (ADR-0009): no runtime's own
+    // typings, so any EducateOS package can compile these sources unchanged.
+    "types": [],
+    // Node runs these sources directly, so specifiers name the file on disk and only erasable
+    // TypeScript syntax is allowed.
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__", "vitest.worker.config.ts"],
+  // The workerd suite is checked by tsconfig.workerd.json, against the Workers runtime types.
+  "exclude": ["dist", "node_modules", "__tests__/workerd"]
+}

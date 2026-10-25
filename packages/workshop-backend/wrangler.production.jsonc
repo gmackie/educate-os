@@ -107,8 +107,8 @@
     },
     {
       "binding": "AI_CALL_GUARD",
-      "service": "schoolos-ai-guard",
-      "entrypoint": "SchoolOsAiCallGuard"
+      "service": "educateos-ai-guard",
+      "entrypoint": "EducateOsAiCallGuard"
     }
   ],
   "vars": {

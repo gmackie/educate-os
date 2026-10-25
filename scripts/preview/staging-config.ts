@@ -19,7 +19,7 @@
 //     namespace / R2 bucket per preview, and where service bindings get patched to point at
 //     sibling previews rather than the baselines.
 //
-// The SchoolOS AI call guard (an optional backend service) is included by default, running its
+// The EducateOS AI call guard (an optional backend service) is included by default, running its
 // development entrypoint: the production guard and ledger with an in-process fake Hall Monitor
 // and a synthetic config, so a preview's backend runs guarded, as a district's does, without
 // Hall Monitor credentials or a real budget. PREVIEW_AI_GUARD=false leaves it out, and the
@@ -765,7 +765,7 @@ export function backendSecrets({
 
 /**
  * Whether previews include the AI call guard: `PREVIEW_AI_GUARD`, default on. On by default because
- * a SchoolOS preview should run the backend as a district runs it, guarded, and the guard's
+ * a EducateOS preview should run the backend as a district runs it, guarded, and the guard's
  * development entrypoint needs no credentials, secrets or spend: its Hall Monitor is a fake and
  * its config synthetic. `false` or `0` leaves it out (the backend then runs as upstream's); any
  * other value is refused, so a typo can't silently deploy an unguarded preview.

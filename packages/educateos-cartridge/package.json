@@ -1,0 +1,27 @@
+{
+  "name": "@educateos/cartridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS Thin Common Cartridge importer (roadmap \u00a75.3, PR C04): a bounded .imscc reader and a DTD-free manifest parser that map web links into Content Studio quarantine, LTI links into external-tool references launchable only through an approved @educateos/lti tool registration, and the organization into a proposed curriculum outline. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@educateos/catalog": "workspace:*",
+    "@educateos/content-studio": "workspace:*",
+    "@educateos/contracts": "workspace:*",
+    "@educateos/lti": "workspace:*",
+    "@educateos/registry": "workspace:*",
+    "@educateos/zip": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/academics": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@educateos/policy": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

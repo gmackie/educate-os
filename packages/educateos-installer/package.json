@@ -1,0 +1,25 @@
+{
+  "name": "@educateos/installer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS district installer (roadmap R02): Cloudflare API port, account preflight, desired-state compilation of a root-signed release manifest, and an ownership-checked, resumable reconciler with rollback and fleet registration. A library plus a district-run Node CLI, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "node src/cli.ts"
+  },
+  "dependencies": {
+    "@educateos/contracts": "workspace:*",
+    "@educateos/fleet": "workspace:*",
+    "@educateos/releases": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@types/node": "^26.1.0",
+    "vitest": "catalog:"
+  }
+}

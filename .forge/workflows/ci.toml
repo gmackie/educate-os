@@ -1,5 +1,5 @@
-# SchoolOS CI on ForgeGraph runners. The gate is the repository's own `pnpm lint` (oxlint, script
-# types, generated configs and the full workspace build) plus every SchoolOS package's tests.
+# EducateOS CI on ForgeGraph runners. The gate is the repository's own `pnpm lint` (oxlint, script
+# types, generated configs and the full workspace build) plus every EducateOS package's tests.
 version = 1
 
 [environment]
@@ -9,4 +9,4 @@ node = "24"
 command = "corepack enable && pnpm install --frozen-lockfile && pnpm lint"
 
 [test]
-command = "node scripts/vp/run.ts --cache --fail-if-no-match --filter='@schoolos/*' test"
+command = "node scripts/vp/run.ts --cache --fail-if-no-match --filter='@educateos/*' test"

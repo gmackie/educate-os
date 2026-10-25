@@ -4,14 +4,14 @@
 // production-config.ts), at deploy time, from their already-built `dist/` directories:
 //
 //   /         the student Learning Home (path-routed: the assets' single-page fallback is its)
-//   /admin/   the admin console, built with SCHOOLOS_UI_BASE=/admin/
-//   /teach/   Teacher Studio, built with SCHOOLOS_UI_BASE=/teach/
+//   /admin/   the admin console, built with EDUCATEOS_UI_BASE=/admin/
+//   /teach/   Teacher Studio, built with EDUCATEOS_UI_BASE=/teach/
 //
 // The admin and teacher apps route by hash, so each needs only its own index.html under its
 // prefix. Each build must have been made for its prefix: an app built for `/` would load its
 // scripts from the student app's paths and fail in the browser, so that is refused here instead.
 //
-// Usage (from packages/schoolos-district-worker): node ../../scripts/production/assemble-district-ui.ts
+// Usage (from packages/educateos-district-worker): node ../../scripts/production/assemble-district-ui.ts
 
 import { cpSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -29,9 +29,9 @@ export interface DistrictUi {
 
 /** The district's UIs, student first: it is served at the root. */
 export const DISTRICT_UIS: readonly DistrictUi[] = [
-  { pkg: "schoolos-student-ui", base: "/" },
-  { pkg: "schoolos-admin-ui", base: "/admin/" },
-  { pkg: "schoolos-teacher-ui", base: "/teach/" },
+  { pkg: "educateos-student-ui", base: "/" },
+  { pkg: "educateos-admin-ui", base: "/admin/" },
+  { pkg: "educateos-teacher-ui", base: "/teach/" },
 ];
 
 /**
@@ -44,7 +44,7 @@ export function assembleDistrictUi(packagesDir: string, outDir: string, uis: rea
     const index = join(packagesDir, pkg, "dist", "index.html");
     if (!existsSync(index)) throw new Error(`${pkg} is not built: ${index} is missing`);
     if (!readFileSync(index, "utf8").includes(`src="${base}assets/`)) {
-      throw new Error(`${pkg}/dist was not built for ${base} (set SCHOOLOS_UI_BASE=${base} when building it)`);
+      throw new Error(`${pkg}/dist was not built for ${base} (set EDUCATEOS_UI_BASE=${base} when building it)`);
     }
     if (base === "/") {
       for (const other of uis) {

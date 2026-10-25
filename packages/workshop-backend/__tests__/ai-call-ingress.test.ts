@@ -1,4 +1,4 @@
-// Each row of docs/schoolos/hall-monitor/ingress-matrix.md that reaches a model, driven with an AI
+// Each row of docs/educateos/hall-monitor/ingress-matrix.md that reaches a model, driven with an AI
 // call guard bound as AI_CALL_GUARD: the guard is asked before the model, with the row's call site
 // and the text that came in. The guard here denies every call, so nothing reaches a provider.
 //

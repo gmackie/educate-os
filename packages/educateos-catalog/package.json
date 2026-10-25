@@ -1,0 +1,25 @@
+{
+  "name": "@educateos/catalog",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS reviewed framework catalog (CCSS, NGSS, C3, CASEL, ELOF, TEKS, Michigan) with licensing decisions, PlayTrek-derived seed content, and a district-local catalog mirror with pinned releases, approvals, overlays, upgrade diffs and coverage reports. Its `./durable-object-storage` entry point is the mirror's Durable Object SQLite storage. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./durable-object-storage": "./src/durable-object-storage.ts"
+  },
+  "dependencies": {
+    "@educateos/contracts": "workspace:*",
+    "@educateos/fleet": "workspace:*",
+    "@educateos/registry": "workspace:*",
+    "@educateos/releases": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
+    "@gadgets/scripts": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

@@ -26,24 +26,24 @@ test("lays the student app at the root and the others under their prefixes", () 
   mkdirSync(out);
   writeFileSync(join(out, "stale.txt"), "from an earlier deploy");
   assembleDistrictUi(packages, out);
-  assert.match(readFileSync(join(out, "index.html"), "utf8"), /src="\/assets\/index-schoolos-student-ui\.js"/);
+  assert.match(readFileSync(join(out, "index.html"), "utf8"), /src="\/assets\/index-educateos-student-ui\.js"/);
   assert.match(readFileSync(join(out, "admin", "index.html"), "utf8"), /src="\/admin\/assets\//);
-  assert.equal(readFileSync(join(out, "teach", "assets", "index-schoolos-teacher-ui.js"), "utf8"), "schoolos-teacher-ui");
+  assert.equal(readFileSync(join(out, "teach", "assets", "index-educateos-teacher-ui.js"), "utf8"), "educateos-teacher-ui");
   assert.equal(existsSync(join(out, "stale.txt")), false);
 });
 
 test("refuses a UI built for the wrong prefix", () => {
-  const packages = packagesWithBuilds({ "schoolos-admin-ui": "/" });
-  assert.throws(() => assembleDistrictUi(packages, join(packages, "out")), /schoolos-admin-ui\/dist was not built for \/admin\//);
+  const packages = packagesWithBuilds({ "educateos-admin-ui": "/" });
+  assert.throws(() => assembleDistrictUi(packages, join(packages, "out")), /educateos-admin-ui\/dist was not built for \/admin\//);
 });
 
 test("refuses a UI that is not built", () => {
   const packages = mkdtempSync(join(tmpdir(), "district-ui-"));
-  assert.throws(() => assembleDistrictUi(packages, join(packages, "out")), /schoolos-student-ui is not built/);
+  assert.throws(() => assembleDistrictUi(packages, join(packages, "out")), /educateos-student-ui is not built/);
 });
 
 test("refuses a student build with a file tree at another UI's prefix", () => {
   const packages = packagesWithBuilds();
-  mkdirSync(join(packages, "schoolos-student-ui", "dist", "teach"));
+  mkdirSync(join(packages, "educateos-student-ui", "dist", "teach"));
   assert.throws(() => assembleDistrictUi(packages, join(packages, "out")), /has its own \/teach\//);
 });

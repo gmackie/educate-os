@@ -1,5 +1,5 @@
-// Signs a release manifest with the SchoolOS root release key, producing the
-// `SignedReleaseManifest` (`@schoolos/releases`) that `@schoolos/installer` verifies against the
+// Signs a release manifest with the EducateOS root release key, producing the
+// `SignedReleaseManifest` (`@educateos/releases`) that `@educateos/installer` verifies against the
 // keys a district pins. build-release.ts and promote-release.ts write it next to manifest.json as
 // `manifest.signed.json`.
 //
@@ -9,10 +9,10 @@
 // The key is never written to disk or printed, and errors about it never quote it.
 //
 // Imported by relative path, like scripts/evals does with its packages: a workspace dependency on
-// @schoolos/releases would be a cycle, since every SchoolOS package dev-depends on @gadgets/scripts.
+// @educateos/releases would be a cycle, since every EducateOS package dev-depends on @gadgets/scripts.
 
 import { createHash } from "node:crypto";
-import { Ed25519PrivateJwk, SigningIdentity } from "../../packages/schoolos-fleet/src/index.ts";
+import { Ed25519PrivateJwk, SigningIdentity } from "../../packages/educateos-fleet/src/index.ts";
 import {
   type MigrationNote,
   pinReleaseKeys,
@@ -20,11 +20,11 @@ import {
   RootReleaseSigner,
   type SignedReleaseManifest,
   verifySignedReleaseManifest,
-} from "../../packages/schoolos-releases/src/index.ts";
+} from "../../packages/educateos-releases/src/index.ts";
 import type { ReleaseManifest } from "./manifest-lib.ts";
 
 /** The environment variable holding the root release signing key, an Ed25519 private JWK as JSON. */
-export const RELEASE_SIGNING_KEY_ENV = "SCHOOLOS_RELEASE_SIGNING_KEY";
+export const RELEASE_SIGNING_KEY_ENV = "EDUCATEOS_RELEASE_SIGNING_KEY";
 
 /** The signed statement's file name, next to `manifest.json` locally and in R2. */
 export const SIGNED_MANIFEST_FILE = "manifest.signed.json";

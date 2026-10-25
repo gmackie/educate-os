@@ -1,0 +1,24 @@
+{
+  "name": "@educateos/commerce",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS commerce (roadmap R04): the root control plane's commercial layer. Plans, subscriptions with explicit grace rules, purchase orders, integer-cent invoices (the district's own AI spend is reported, never charged), grant credit ledgers, a payment processor port with a fetch-based Stripe adapter and a fake, signed entitlement issuance for the fleet entitlement cache, verification of fleet registrations, and a hash-chained, append-only finance audit with reconciliation. Every operation commits atomically. Its `./durable-object-store` entry point is the Durable Object SQLite store. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./durable-object-store": "./src/durable-object-store.ts"
+  },
+  "dependencies": {
+    "@educateos/contracts": "workspace:*",
+    "@educateos/fleet": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@types/node": "^26.1.0",
+    "vitest": "catalog:"
+  }
+}

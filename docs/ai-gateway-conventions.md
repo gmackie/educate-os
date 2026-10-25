@@ -1,7 +1,7 @@
 # Cloudflare AI Gateway conventions
 
-Shared by PlayTrek and SchoolOS. Each product keeps its own copy and its own
-implementation (SchoolOS ADR-0006: no code is imported across the boundary).
+Shared by PlayTrek and EducateOS. Each product keeps its own copy and its own
+implementation (EducateOS ADR-0006: no code is imported across the boundary).
 What is shared is this contract, so that gateway dashboards, spend limits, and
 log tooling read the same in both. Change both copies together.
 
@@ -9,7 +9,7 @@ Reference implementations:
 
 - PlayTrek: `packages/ai/src/gateway/index.ts` (raw `fetch` clients and the
   Workers AI binding).
-- SchoolOS: `packages/workshop-backend/src/ai-gateway.ts` and `ai-models.ts`
+- EducateOS: `packages/workshop-backend/src/ai-gateway.ts` and `ai-models.ts`
   (`getModel()`).
 
 ## Gateways
@@ -22,7 +22,7 @@ one product would throttle the other.
 | --- | --- | --- |
 | PlayTrek | beta | `playtrek-beta` |
 | PlayTrek | production | `playtrek-prod` |
-| SchoolOS | district installs | created per account by `schoolos-installer` |
+| EducateOS | district installs | created per account by `educateos-installer` |
 
 Gateway settings:
 
@@ -45,7 +45,7 @@ Gateway settings:
 | `CF_AI_GATEWAY_ACCOUNT_ID` | Cloudflare account that owns the gateway. Required once `CF_AI_GATEWAY` is set. Missing is a configuration error, not a silent fallback to direct calls. |
 | `CF_AI_GATEWAY_API_TOKEN` | Token with AI Gateway Run (and Read, for cost lookups) on that gateway. Required for any HTTPS provider that is routed. |
 | `CF_AI_GATEWAY_PROVIDERS` | Comma-separated providers to route. Empty means none. PlayTrek treats an unknown name as a configuration error. |
-| `CF_AI_GATEWAY_USE_BINDING` | SchoolOS only: send gateway traffic over the Workers AI binding instead of HTTPS. |
+| `CF_AI_GATEWAY_USE_BINDING` | EducateOS only: send gateway traffic over the Workers AI binding instead of HTTPS. |
 
 Rollout is one provider at a time by adding it to `CF_AI_GATEWAY_PROVIDERS`.
 Rollback is removing it, or unsetting `CF_AI_GATEWAY`.
@@ -77,10 +77,10 @@ At most five entries per request (gateway limit).
 
 | Key | Required | Value |
 | --- | --- | --- |
-| `app` | yes | `playtrek` or `schoolos`. Set by the product's base config; callers cannot override it. |
+| `app` | yes | `playtrek` or `educateos`. Set by the product's base config; callers cannot override it. |
 | `env` | yes | `beta`, `production`, … Set by the base config; callers cannot override it. |
 | `feature` | recommended | snake_case product surface, e.g. `generation_stream`, `world_genesis`, `npc_voice`. The spend-limit key. |
-| `request_id` | optional | Opaque correlation id. SchoolOS uses `schoolos_request_id` for ledger reconciliation. |
+| `request_id` | optional | Opaque correlation id. EducateOS uses `educateos_request_id` for ledger reconciliation. |
 
 Never put names, emails, free text, or other PII in metadata. It is stored in
 gateway logs and used as spend-limit bucket keys. Use opaque ids only.
@@ -89,6 +89,6 @@ gateway logs and used as spend-limit bucket keys. Use opaque ids only.
 
 Each gateway response carries `cf-aig-log-id`. Store it with the generation
 record, then read the real cost from the gateway log asynchronously, retrying
-with backoff and falling back to the local estimate. SchoolOS does this in
+with backoff and falling back to the local estimate. EducateOS does this in
 `overseer.ts`. PlayTrek returns `gatewayLogId` on OpenRouter completions;
 persisting and reconciling it is phase 3 of PLAY-46.

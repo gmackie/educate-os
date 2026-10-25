@@ -1,0 +1,20 @@
+{
+  "name": "@educateos/identity",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS principal identity: resolving verified (issuer, subject) claims to district principals, the Cloudflare Access adapter, admin-confirmed identity linking and the email-keyed Workshop user migration plan. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@educateos/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@educateos/harness",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Boots the synthetic EducateOS districts locally as isolated instances with fake identity, roster and AI providers, each serving the full district application with demo content. Development tooling, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./pinned-fetch": "./src/pinned-fetch.ts"
+  },
+  "scripts": {
+    "start": "node src/cli.ts"
+  },
+  "dependencies": {
+    "@educateos/api-client": "workspace:*",
+    "@educateos/catalog": "workspace:*",
+    "@educateos/content-studio": "workspace:*",
+    "@educateos/contracts": "workspace:*",
+    "@educateos/curriculum": "workspace:*",
+    "@educateos/district-app": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@educateos/identity": "workspace:*"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/academics": "workspace:*",
+    "@educateos/policy": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

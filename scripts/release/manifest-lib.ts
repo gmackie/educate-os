@@ -68,7 +68,7 @@ const HANDLED_D1_KEYS = new Set([
 const DEFAULT_D1_MIGRATIONS_DIR = "migrations";
 
 /**
- * A D1 migration ID: the `.sql` file name without its extension. Mirrors `@schoolos/installer`'s
+ * A D1 migration ID: the `.sql` file name without its extension. Mirrors `@educateos/installer`'s
  * `D1Migration.id`, so a release never carries an ID the installer would refuse.
  */
 const D1_MIGRATION_ID_RE = /^[0-9]{4}_[a-z0-9_]{1,60}$/;
@@ -196,7 +196,7 @@ export interface WranglerConfig {
   /** Artifacts binding — closed beta, cut from customer manifests. */
   artifacts?: BindingDecl;
   /**
-   * Cloudflare Email Service bindings (the SchoolOS district's notification and digest email,
+   * Cloudflare Email Service bindings (the EducateOS district's notification and digest email,
    * SCHO-189). Placeholder-free; a destination or sender restriction would be account-specific,
    * so `buildWorkerEntry` refuses one.
    */
@@ -253,7 +253,7 @@ export type ManifestBinding = { type: string; name: string } & Record<string, un
 export interface WorkerEntry {
   /**
    * Which role this worker plays in a deployment. A `service` is an optional deployment-provided
-   * service the backend binds by a fixed name (see `backendBinding`), such as the SchoolOS AI call
+   * service the backend binds by a fixed name (see `backendBinding`), such as the EducateOS AI call
    * guard bound as `AI_CALL_GUARD`.
    */
   kind: "backend" | "router" | "gatekeeper" | "service";
@@ -288,7 +288,7 @@ export interface WorkerEntry {
   observability: ObservabilityConfig;
   /**
    * Cron Trigger schedules the deploy service sets on the worker, verbatim from wrangler.jsonc
-   * (the SchoolOS AI call guard's nightly reconciliation). Absent when it has none.
+   * (the EducateOS AI call guard's nightly reconciliation). Absent when it has none.
    */
   crons?: string[];
   /** How the deploy service expands installed gatekeepers into `GATEKEEPER_*` bindings. */
@@ -361,10 +361,10 @@ const HANDLED_CONFIG_KEYS = new Set([
   // gatekeeper-context's Artifacts binding is closed-beta and cannot be provisioned in arbitrary
   // user accounts; it is dropped from customer manifests (the gatekeeper degrades gracefully).
   "artifacts",
-  // Cron Triggers (the SchoolOS AI call guard's nightly reconciliation). Only `crons` is handled:
+  // Cron Triggers (the EducateOS AI call guard's nightly reconciliation). Only `crons` is handled:
   // routes and other triggers are account-specific and fail closed below.
   "triggers",
-  // Cloudflare Email Service (the SchoolOS district's email, SCHO-189). Like ai and browser it is
+  // Cloudflare Email Service (the EducateOS district's email, SCHO-189). Like ai and browser it is
   // placeholder-free: mail leaves from the installing account, from the sender its config names.
   "send_email",
 ]);
@@ -380,7 +380,7 @@ const NO_DEFAULT_CRED_INPUTS = new Set([
   "gatekeeper-websearch",     // auto-provisioned; searches through the account's own AI Gateway
   "gatekeeper-mcp",           // MCP OAuth uses dynamic client registration, not a static app
   "gatekeeper-mcp-portal",    // same MCP OAuth chain as gatekeeper-mcp
-  "gatekeeper-schoolos",      // the district verifies its own sign-in; its service binding is injected
+  "gatekeeper-educateos",      // the district verifies its own sign-in; its service binding is injected
 ]);
 
 // Not installable on customer instances: Email Routing needs a zone, which workers.dev-hosted
@@ -417,7 +417,7 @@ const SINGLETON = new Set([
   "gatekeeper-homeassistant", // (2) no inputs; users connect their own URL + token in-app
   "gatekeeper-mcp",           // (2) no inputs; users paste their own endpoints in-app
   "gatekeeper-mcp-portal",    // (2) no inputs; the one portal comes from the deployment's vars
-  "gatekeeper-schoolos",      // (2) no inputs; the district's service binding is injected
+  "gatekeeper-educateos",      // (2) no inputs; the district's service binding is injected
 ]);
 
 /** Default wizard inputs for an installable gatekeeper that fronts a third-party OAuth app. */
@@ -450,13 +450,13 @@ export interface BackendServiceBinding {
 // wizard inputs come from its deploy-inputs.json, with no OAuth default, and it gets no BASE_URL:
 // it is reached only through the backend's binding, never routed.
 const SERVICE_PACKAGES: Record<string, BackendServiceBinding> = {
-  // ADR-0007: SchoolOS budgets and Hall Monitor moderation around every model call.
-  "schoolos-ai-guard": { name: "AI_CALL_GUARD", entrypoint: "SchoolOsAiCallGuard" },
-  // SCHO-171: the district application. Its real consumers are the AI call guard and the SchoolOS
-  // gatekeeper, each through its own `SCHOOLOS_DISTRICT` entrypoint (DistrictGuardDirectory,
+  // ADR-0007: EducateOS budgets and Hall Monitor moderation around every model call.
+  "educateos-ai-guard": { name: "AI_CALL_GUARD", entrypoint: "EducateOsAiCallGuard" },
+  // SCHO-171: the district application. Its real consumers are the AI call guard and the EducateOS
+  // gatekeeper, each through its own `EDUCATEOS_DISTRICT` entrypoint (DistrictGuardDirectory,
   // DistrictSchoolTools), which a backend binding must never reach: each is for its one consumer.
   // The backend is bound only to the `/api` surface, which every request must authenticate to.
-  "schoolos-district-worker": { name: "SCHOOLOS_DISTRICT_API", entrypoint: "DistrictApi" },
+  "educateos-district-worker": { name: "EDUCATEOS_DISTRICT_API", entrypoint: "DistrictApi" },
 };
 
 /** True when a deployable package is an optional backend service (see `SERVICE_PACKAGES`). */

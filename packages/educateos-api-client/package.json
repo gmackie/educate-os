@@ -1,0 +1,21 @@
+{
+  "name": "@educateos/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A typed fetch client for the EducateOS district API, written against the district app's own Zod route schemas. Used by the Student, Teacher and Admin UIs.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@educateos/contracts": "workspace:*",
+    "@educateos/district-app": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

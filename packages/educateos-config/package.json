@@ -1,0 +1,21 @@
+{
+  "name": "@educateos/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS configuration compiler: the capability registry and shipped pack manifests, the declarative district config document, configuration revisions with diff and rollback, dry-run plans and schema-driven form descriptors. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@educateos/contracts": "workspace:*",
+    "yaml": "^2.9.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

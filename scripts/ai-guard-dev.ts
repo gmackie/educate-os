@@ -1,4 +1,4 @@
-// Running the SchoolOS AI call guard (packages/schoolos-ai-guard) outside a release: in
+// Running the EducateOS AI call guard (packages/educateos-ai-guard) outside a release: in
 // `pnpm dev-server --with-ai-guard` and in PR previews. Both run the guard's development
 // entrypoint (src/dev-worker.ts), which is the production guard and ledger with an in-process
 // fake Hall Monitor and a synthetic default config, and both bind it to the backend exactly as a
@@ -8,7 +8,7 @@ import type { ServiceBinding, WranglerConfig } from "./release/manifest-lib.ts";
 import { serviceBackendBinding } from "./release/manifest-lib.ts";
 
 /** The guard's package (and worker) name. */
-export const AI_GUARD_PACKAGE = "schoolos-ai-guard";
+export const AI_GUARD_PACKAGE = "educateos-ai-guard";
 
 /** The guard's development entrypoint, where its capnweb-validate build writes it. */
 export const AI_GUARD_DEV_MAIN = ".wrangler/validate/src/dev-worker.ts";
@@ -17,7 +17,7 @@ export const AI_GUARD_DEV_MAIN = ".wrangler/validate/src/dev-worker.ts";
 export const AI_GUARD_DEV_FLAG = "--with-ai-guard";
 
 /** The environment variable (shell or root `.dev.vars`) that does the same as the flag. */
-export const AI_GUARD_DEV_ENV = "SCHOOLOS_DEV_AI_GUARD";
+export const AI_GUARD_DEV_ENV = "EDUCATEOS_DEV_AI_GUARD";
 
 /**
  * Whether the dev server should run the guard. Off by default, so the dev server stays upstream's;

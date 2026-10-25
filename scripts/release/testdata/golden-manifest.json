@@ -18,6 +18,146 @@
   "manifestVersion": 1,
   "releaseId": "r000000-fixture",
   "workers": {
+    "educateos-ai-guard": {
+      "backendBinding": {
+        "entrypoint": "EducateOsAiCallGuard",
+        "name": "AI_CALL_GUARD"
+      },
+      "bindings": [
+        {
+          "name": "HALL_MONITOR_SIGNING_KEY",
+          "text": "$SECRET(HALL_MONITOR_SIGNING_KEY)",
+          "type": "secret_text"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [],
+      "crons": [
+        "17 3 * * *"
+      ],
+      "inputs": [
+        {
+          "help": "The district, its funding pools (including the safety pool), model rates, Hall Monitor profiles per audience, and, unless the district app is bound as EDUCATEOS_DISTRICT, its directory snapshot, workspaces and confirmed Workshop user links. See packages/educateos-ai-guard/README.md for the schema.",
+          "kind": "var",
+          "label": "Guard configuration (JSON)",
+          "name": "AI_GUARD_CONFIG"
+        },
+        {
+          "help": "The HTTPS origin of the Hall Monitor deployment this district's moderation runs on.",
+          "kind": "var",
+          "label": "Hall Monitor URL",
+          "name": "HALL_MONITOR_URL"
+        },
+        {
+          "help": "The iss claim of the guard's service tokens. Hall Monitor must list it in HM_TRUSTED_ISSUERS with the signing key's public half.",
+          "kind": "var",
+          "label": "Service token issuer",
+          "name": "HALL_MONITOR_ISSUER"
+        },
+        {
+          "help": "A private Ed25519 or P-256 JSON Web Key (with a kid) the guard signs its Hall Monitor service tokens with.",
+          "kind": "secret",
+          "label": "Service token signing key",
+          "name": "HALL_MONITOR_SIGNING_KEY"
+        }
+      ],
+      "installable": true,
+      "kind": "service",
+      "mainModule": "worker.js",
+      "migrations": [
+        {
+          "new_sqlite_classes": [
+            "DistrictAiLedger"
+          ],
+          "tag": "v1"
+        }
+      ],
+      "modules": [
+        {
+          "name": "worker.js",
+          "r2Key": "blobs/modules/5f0fef1ff44bb063397f9c4754bddccdbb16c738d67efd517b460f03cbbbf7e3",
+          "sha256": "5f0fef1ff44bb063397f9c4754bddccdbb16c738d67efd517b460f03cbbbf7e3",
+          "size": 60,
+          "type": "esm"
+        }
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "singleton": true,
+      "vars": {}
+    },
+    "educateos-district-worker": {
+      "backendBinding": {
+        "entrypoint": "DistrictApi",
+        "name": "EDUCATEOS_DISTRICT_API"
+      },
+      "bindings": [
+        {
+          "name": "SEND_EMAIL",
+          "type": "send_email"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [],
+      "crons": [
+        "7 * * * *",
+        "0 14 * * SUN"
+      ],
+      "inputs": [
+        {
+          "help": "The directory the district starts from (the district, its trusted issuers, and at least the administrators who will import the roster), and optionally its funding pools, model catalog, record authority, retention and email sender (email.from, on a domain onboarded to Cloudflare Email Service in this account). Read only on first start, apart from the district ID. See packages/educateos-district-worker/README.md for the schema.",
+          "kind": "var",
+          "label": "District configuration (JSON)",
+          "name": "DISTRICT_CONFIG"
+        },
+        {
+          "help": "https://<team>.cloudflareaccess.com, no trailing slash: the issuer of the Access assertions the district accepts. The district must list it in its trustedIssuers.",
+          "kind": "var",
+          "label": "Cloudflare Access team domain",
+          "name": "CF_ACCESS_ISS"
+        },
+        {
+          "help": "The audience tag of the Access application in front of the district's /api, and of the instance whose gatekeeper forwards sign-ins to it.",
+          "kind": "var",
+          "label": "Cloudflare Access audience",
+          "name": "CF_ACCESS_AUD"
+        }
+      ],
+      "installable": true,
+      "kind": "service",
+      "mainModule": "worker.js",
+      "migrations": [
+        {
+          "new_sqlite_classes": [
+            "DistrictObject"
+          ],
+          "tag": "v1"
+        }
+      ],
+      "modules": [
+        {
+          "name": "worker.js",
+          "r2Key": "blobs/modules/2845663cbc7df1348b65a4b13c1dee5b66f1618eb38ceb9dec0f94fb01f9fbd3",
+          "sha256": "2845663cbc7df1348b65a4b13c1dee5b66f1618eb38ceb9dec0f94fb01f9fbd3",
+          "size": 67,
+          "type": "esm"
+        }
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "singleton": true,
+      "vars": {}
+    },
     "gatekeeper-cloudflare": {
       "bindings": [
         {
@@ -199,6 +339,47 @@
       "singleton": true,
       "vars": {
         "BASE_URL": "$PUBLIC_BASE_URL/gatekeeper/context"
+      }
+    },
+    "gatekeeper-educateos": {
+      "bindings": [],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
+      "inputs": [],
+      "installable": true,
+      "kind": "gatekeeper",
+      "mainModule": "worker.js",
+      "migrations": [
+        {
+          "new_sqlite_classes": [
+            "EducateOsAccountObject",
+            "EducateOsGatekeeper"
+          ],
+          "tag": "v1"
+        }
+      ],
+      "modules": [
+        {
+          "name": "worker.js",
+          "r2Key": "blobs/modules/fc3d49a26090695f028cfe5da179e87341bae7528bfe75a9d41051ea8f0ad275",
+          "sha256": "fc3d49a26090695f028cfe5da179e87341bae7528bfe75a9d41051ea8f0ad275",
+          "size": 62,
+          "type": "esm"
+        }
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "shortName": "educateos",
+      "singleton": true,
+      "vars": {
+        "BASE_URL": "$PUBLIC_BASE_URL/gatekeeper/educateos"
       }
     },
     "gatekeeper-email": {
@@ -831,47 +1012,6 @@
         "BASE_URL": "$PUBLIC_BASE_URL/gatekeeper/scheduler"
       }
     },
-    "gatekeeper-schoolos": {
-      "bindings": [],
-      "compatibilityDate": "2026-09-04",
-      "compatibilityFlags": [
-        "allow_irrevocable_stub_storage"
-      ],
-      "inputs": [],
-      "installable": true,
-      "kind": "gatekeeper",
-      "mainModule": "worker.js",
-      "migrations": [
-        {
-          "new_sqlite_classes": [
-            "SchoolOsAccountObject",
-            "SchoolOsGatekeeper"
-          ],
-          "tag": "v1"
-        }
-      ],
-      "modules": [
-        {
-          "name": "worker.js",
-          "r2Key": "blobs/modules/0c09f0363cf8a1209b09102de21dfb68f5aaaa97a77cd80873e2f1515d1d0c50",
-          "sha256": "0c09f0363cf8a1209b09102de21dfb68f5aaaa97a77cd80873e2f1515d1d0c50",
-          "size": 61,
-          "type": "esm"
-        }
-      ],
-      "observability": {
-        "enabled": true,
-        "head_sampling_rate": 1,
-        "logs": {
-          "invocation_logs": false
-        }
-      },
-      "shortName": "schoolos",
-      "singleton": true,
-      "vars": {
-        "BASE_URL": "$PUBLIC_BASE_URL/gatekeeper/schoolos"
-      }
-    },
     "gatekeeper-slack": {
       "bindings": [
         {
@@ -1317,146 +1457,6 @@
           "invocation_logs": false
         }
       },
-      "vars": {}
-    },
-    "schoolos-ai-guard": {
-      "backendBinding": {
-        "entrypoint": "SchoolOsAiCallGuard",
-        "name": "AI_CALL_GUARD"
-      },
-      "bindings": [
-        {
-          "name": "HALL_MONITOR_SIGNING_KEY",
-          "text": "$SECRET(HALL_MONITOR_SIGNING_KEY)",
-          "type": "secret_text"
-        }
-      ],
-      "compatibilityDate": "2026-09-04",
-      "compatibilityFlags": [],
-      "crons": [
-        "17 3 * * *"
-      ],
-      "inputs": [
-        {
-          "help": "The district, its funding pools (including the safety pool), model rates, Hall Monitor profiles per audience, and, unless the district app is bound as SCHOOLOS_DISTRICT, its directory snapshot, workspaces and confirmed Workshop user links. See packages/schoolos-ai-guard/README.md for the schema.",
-          "kind": "var",
-          "label": "Guard configuration (JSON)",
-          "name": "AI_GUARD_CONFIG"
-        },
-        {
-          "help": "The HTTPS origin of the Hall Monitor deployment this district's moderation runs on.",
-          "kind": "var",
-          "label": "Hall Monitor URL",
-          "name": "HALL_MONITOR_URL"
-        },
-        {
-          "help": "The iss claim of the guard's service tokens. Hall Monitor must list it in HM_TRUSTED_ISSUERS with the signing key's public half.",
-          "kind": "var",
-          "label": "Service token issuer",
-          "name": "HALL_MONITOR_ISSUER"
-        },
-        {
-          "help": "A private Ed25519 or P-256 JSON Web Key (with a kid) the guard signs its Hall Monitor service tokens with.",
-          "kind": "secret",
-          "label": "Service token signing key",
-          "name": "HALL_MONITOR_SIGNING_KEY"
-        }
-      ],
-      "installable": true,
-      "kind": "service",
-      "mainModule": "worker.js",
-      "migrations": [
-        {
-          "new_sqlite_classes": [
-            "DistrictAiLedger"
-          ],
-          "tag": "v1"
-        }
-      ],
-      "modules": [
-        {
-          "name": "worker.js",
-          "r2Key": "blobs/modules/33cacbb08395e84df3f828402f94122f08a4c644852aaecb53dd5e5577ab52d9",
-          "sha256": "33cacbb08395e84df3f828402f94122f08a4c644852aaecb53dd5e5577ab52d9",
-          "size": 59,
-          "type": "esm"
-        }
-      ],
-      "observability": {
-        "enabled": true,
-        "head_sampling_rate": 1,
-        "logs": {
-          "invocation_logs": false
-        }
-      },
-      "singleton": true,
-      "vars": {}
-    },
-    "schoolos-district-worker": {
-      "backendBinding": {
-        "entrypoint": "DistrictApi",
-        "name": "SCHOOLOS_DISTRICT_API"
-      },
-      "bindings": [
-        {
-          "name": "SEND_EMAIL",
-          "type": "send_email"
-        }
-      ],
-      "compatibilityDate": "2026-09-04",
-      "compatibilityFlags": [],
-      "crons": [
-        "7 * * * *",
-        "0 14 * * SUN"
-      ],
-      "inputs": [
-        {
-          "help": "The directory the district starts from (the district, its trusted issuers, and at least the administrators who will import the roster), and optionally its funding pools, model catalog, record authority, retention and email sender (email.from, on a domain onboarded to Cloudflare Email Service in this account). Read only on first start, apart from the district ID. See packages/schoolos-district-worker/README.md for the schema.",
-          "kind": "var",
-          "label": "District configuration (JSON)",
-          "name": "DISTRICT_CONFIG"
-        },
-        {
-          "help": "https://<team>.cloudflareaccess.com, no trailing slash: the issuer of the Access assertions the district accepts. The district must list it in its trustedIssuers.",
-          "kind": "var",
-          "label": "Cloudflare Access team domain",
-          "name": "CF_ACCESS_ISS"
-        },
-        {
-          "help": "The audience tag of the Access application in front of the district's /api, and of the instance whose gatekeeper forwards sign-ins to it.",
-          "kind": "var",
-          "label": "Cloudflare Access audience",
-          "name": "CF_ACCESS_AUD"
-        }
-      ],
-      "installable": true,
-      "kind": "service",
-      "mainModule": "worker.js",
-      "migrations": [
-        {
-          "new_sqlite_classes": [
-            "DistrictObject"
-          ],
-          "tag": "v1"
-        }
-      ],
-      "modules": [
-        {
-          "name": "worker.js",
-          "r2Key": "blobs/modules/f04203b5b57b50244190f7cba216f36dc8506926e0258975339993463c906cd7",
-          "sha256": "f04203b5b57b50244190f7cba216f36dc8506926e0258975339993463c906cd7",
-          "size": 66,
-          "type": "esm"
-        }
-      ],
-      "observability": {
-        "enabled": true,
-        "head_sampling_rate": 1,
-        "logs": {
-          "invocation_logs": false
-        }
-      },
-      "singleton": true,
       "vars": {}
     },
     "workshop-backend": {

@@ -1,5 +1,5 @@
 // The release pipeline's signing step (scripts/release/release-signing.ts), checked against the
-// verifier districts run (@schoolos/releases, as @schoolos/installer calls it). Every key here is
+// verifier districts run (@educateos/releases, as @educateos/installer calls it). Every key here is
 // generated per run; no key material is committed.
 
 import assert from "node:assert/strict";
@@ -7,10 +7,10 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { SigningIdentity } from "../../packages/schoolos-fleet/src/index.ts";
+import { SigningIdentity } from "../../packages/educateos-fleet/src/index.ts";
 import {
   pinReleaseKeys, RELEASE_INSTALL_GRACE_MS, verifySignedReleaseManifest,
-} from "../../packages/schoolos-releases/src/index.ts";
+} from "../../packages/educateos-releases/src/index.ts";
 import { sha256Hex } from "./hash-lib.ts";
 import {
   migrationNotes, parseSigningArg, RELEASE_SIGNING_KEY_ENV, releaseSigningKey,
@@ -89,13 +89,13 @@ test("every D1 migration in the release is declared irreversible in the statemen
   const migration = (binding: string, id: string) => ({ binding, id, sha256, size: 1, r2Key: `blobs/modules/${sha256}` });
   const notes = migrationNotes({
     workers: {
-      "schoolos-ai-guard": { d1Migrations: [migration("LEDGER", "0002_pools"), migration("LEDGER", "0001_init")] },
-      "workshop-backend": { d1Migrations: [migration("SCHOOLOS_DB", "0001_init")] },
+      "educateos-ai-guard": { d1Migrations: [migration("LEDGER", "0002_pools"), migration("LEDGER", "0001_init")] },
+      "workshop-backend": { d1Migrations: [migration("EDUCATEOS_DB", "0001_init")] },
       router: {},
     } as never,
   });
   assert.deepEqual(notes.map((n) => [n.migrationId, n.irreversible]), [["0001_init", true], ["0002_pools", true]]);
-  assert.equal(notes[0]?.summary, "D1 migration on schoolos-ai-guard LEDGER, workshop-backend SCHOOLOS_DB");
+  assert.equal(notes[0]?.summary, "D1 migration on educateos-ai-guard LEDGER, workshop-backend EDUCATEOS_DB");
 });
 
 test("with a key present, the release must say what it is", () => {

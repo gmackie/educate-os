@@ -31,7 +31,7 @@ test("the backend binds the guard exactly as a release does", () => {
   assert.deepEqual(backendAiGuardBinding(), {
     binding: "AI_CALL_GUARD",
     service: AI_GUARD_PACKAGE,
-    entrypoint: "SchoolOsAiCallGuard",
+    entrypoint: "EducateOsAiCallGuard",
   });
 });
 

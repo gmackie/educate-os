@@ -1,0 +1,118 @@
+// The shapes Teacher Studio renders, named once. Each comes from the district API's own route
+// table through the client, so a change on the server is a type error here.
+import type { RouteInput, RouteResponse } from "@educateos/api-client";
+
+/** A class the teacher teaches, with its course and their role in it. */
+export type TeachingOffering = RouteResponse<"teacher.listOfferings">[number];
+/** One row of a class roster. */
+export type RosterEntry = RouteResponse<"teacher.roster">[number];
+/** A resource waiting in the class's review queue. */
+export type QueueEntry = RouteResponse<"teacher.reviewQueue">[number];
+/** A resource's full review report. */
+export type ResourceReport = RouteResponse<"teacher.resourceReport">;
+/** A resource approved for the class. */
+export type ResourceRelease = RouteResponse<"teacher.listReleases">[number];
+/** How a resource may be used, from narrowest to widest. */
+export type RightsMode = ResourceReport["rights"]["current"];
+/** A saved activity, draft or published. */
+export type ActivityDefinition = RouteResponse<"teacher.createActivity">;
+/** What a template takes to make an activity. */
+export type TemplateInput = RouteInput<"teacher.createActivity">["body"]["activity"];
+/** One of the templates. */
+export type TemplateKind = TemplateInput["template"];
+/** How much AI help an activity allows. */
+export type AiHelpLevel = TemplateInput["aiHelp"];
+/** A learning goal an activity gathers evidence of. */
+export type LearningGoal = TemplateInput["alignments"][number];
+/** A note in the class context, for students or for teachers only. */
+export type ClassNote = Extract<NonNullable<TemplateInput["codex"]>[number], { kind: "note" }>;
+/** An activity assigned in a class. */
+export type Assignment = RouteResponse<"teacher.listAssignments">[number];
+/** A student's submitted, read-only work. */
+export type Submission = RouteResponse<"teacher.listSubmissions">[number];
+/** The feedback on one submission. */
+export type Feedback = RouteResponse<"teacher.getFeedback">;
+/** A score for one rubric criterion, the teacher's own or a suggestion. */
+export type CriterionScore = Feedback["scores"][number];
+/** A comment on a submission. */
+export type FeedbackComment = Feedback["comments"][number];
+/** Who a score or comment comes from. */
+export type FeedbackSource = CriterionScore["source"];
+/** A run of the automatic checks and the scores it suggested. */
+export type CheckRun = RouteResponse<"teacher.runCi">;
+/** A signed rubric. */
+export type RubricRelease = RouteResponse<"teacher.signRubric">;
+/** A draft rubric, before the teacher signs it. */
+export type RubricDraft = RouteInput<"teacher.signRubric">["body"]["rubric"];
+/** A reference to one signed rubric. */
+export type RubricRef = NonNullable<Assignment["rubric"]>;
+/** A grade waiting for the lead teacher's approval. */
+export type GradeProposal = RouteResponse<"teacher.pendingGrades">[number];
+/** One version of a student's official grade. */
+export type OfficialGrade = RouteResponse<"teacher.approveGrade">;
+/** A class's modules and pages, as its teachers see them. */
+export type CourseOutline = RouteResponse<"teacher.listModules">["outline"];
+/** One module of a class. */
+export type CourseModule = CourseOutline["modules"][number];
+/** One item in a module: a page, an activity or a link. */
+export type ModuleItem = CourseModule["items"][number];
+/** A page of a class's content. */
+export type CoursePage = CourseOutline["pages"][number];
+/** What importing a Common Cartridge would add to a class. */
+export type CartridgePreview = RouteResponse<"teacher.previewCartridge">;
+/** A class's content exported as a Common Cartridge. */
+export type CartridgeExport = RouteResponse<"teacher.exportCartridge">;
+
+// Gradebook (SCHO-187)
+/** A class's gradebook: its columns, every enrolled student's row, and the settings behind the totals. */
+export type Gradebook = RouteResponse<"teacher.gradebook">;
+/** How a class's gradebook adds up. */
+export type GradebookSettings = Gradebook["settings"];
+/** One assignment group. */
+export type AssignmentGroup = GradebookSettings["groups"][number];
+/** One letter on the grade scale and the lowest percentage that earns it. */
+export type GradeCutoff = GradebookSettings["scale"][number];
+/** One assignment column. */
+export type GradebookColumn = Gradebook["columns"][number];
+/** One student's row. */
+export type GradebookRow = Gradebook["rows"][number];
+/** One student's assignment. */
+export type GradebookCell = GradebookRow["cells"][number];
+/** What a teacher marks on a cell. */
+export type GradeMarker = NonNullable<GradebookCell["marker"]>;
+/** An announcement to a class, with whether students can see it yet (SCHO-189). */
+export type ClassAnnouncement = RouteResponse<"teacher.listAnnouncements">[number];
+/** A class's note to families for one week (SCHO-189). */
+export type WeeklyNoteView = RouteResponse<"teacher.weeklyNote">;
+
+// Discussions (SCHO-190).
+/** A class's discussion topics as its teachers see them, with the class's discussion settings. */
+export type DiscussionListing = RouteResponse<"teacher.listDiscussions">;
+/** One discussion topic. */
+export type DiscussionTopic = DiscussionListing["topics"][number]["topic"];
+/** A topic and every post in it, moderation status and flags included. */
+export type StaffThread = RouteResponse<"teacher.discussionThread">;
+/** One post as its teachers see it. */
+export type DiscussionPost = StaffThread["posts"][number];
+/** Posts waiting for approval or flagged, and the latest moderation. */
+export type ModerationQueue = RouteResponse<"teacher.moderationQueue">;
+/** A teacher's decision on a post. */
+export type ModerationDecision = RouteInput<"teacher.moderatePost">["body"]["decision"];
+
+// Quizzes (SCHO-191).
+/** A class's quizzes as its teachers see them, with whether they may build them. */
+export type QuizListing = RouteResponse<"teacher.listQuizzes">;
+/** A quiz whole, answer keys included. */
+export type Quiz = RouteResponse<"teacher.getQuiz">;
+/** One quiz item, answer key included. */
+export type QuizItem = Quiz["items"][number];
+/** A quiz's settings. */
+export type QuizSettings = Quiz["settings"];
+/** An item as the builder sends it: its ID is assigned by the district when it has none. */
+export type QuizItemDraft = NonNullable<NonNullable<RouteInput<"teacher.updateQuiz">["body"]>["items"]>[number];
+/** A quiz's results: each student's attempts and score, item analysis and releases. */
+export type QuizResults = RouteResponse<"teacher.quizResults">;
+/** A student's attempt as its teachers grade it. */
+export type StaffAttempt = RouteResponse<"teacher.quizAttempt">;
+/** What releasing a quiz's scores did. */
+export type ReleaseOutcome = RouteResponse<"teacher.releaseQuizScores">;

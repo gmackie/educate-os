@@ -1,0 +1,25 @@
+{
+  "name": "@educateos/discussions",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS course discussions (LMS-lite L6, SCHO-190): an offering's discussion topics and threaded posts, decided by the district's policy engine. Student posts are screened by Hall Monitor where the district enables it and are visible once screened; teachers moderate after, or approve each post first under per-offering pre-moderation. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@gmacko/hall-monitor-contracts": "file:../../vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz",
+    "@educateos/assessment": "workspace:*",
+    "@educateos/content-studio": "workspace:*",
+    "@educateos/contracts": "workspace:*",
+    "@educateos/curriculum": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/academics": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@educateos/policy": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

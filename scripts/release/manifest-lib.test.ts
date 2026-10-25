@@ -192,13 +192,13 @@ test("worker entries carry the deploy contract", () => {
   assert.equal(workers["gatekeeper-mcp-portal"].singleton, true);
   assert.equal(workers["gatekeeper-homeassistant"].singleton, true);
 
-  // The SchoolOS gatekeeper takes no OAuth credentials: the district verifies its own sign-in,
+  // The EducateOS gatekeeper takes no OAuth credentials: the district verifies its own sign-in,
   // through a service binding the district deployment injects, so the release declares none.
-  const schoolos = workers["gatekeeper-schoolos"];
-  assert.deepEqual(schoolos.inputs, []);
-  assert.equal(schoolos.singleton, true);
-  assert.equal(schoolos.preinstall, undefined);
-  assert.ok(!schoolos.bindings.some((b) => b.type === "service"));
+  const educateos = workers["gatekeeper-educateos"];
+  assert.deepEqual(educateos.inputs, []);
+  assert.equal(educateos.singleton, true);
+  assert.equal(educateos.preinstall, undefined);
+  assert.ok(!educateos.bindings.some((b) => b.type === "service"));
 
   // Module blobs are content-addressed.
   for (const [name, entry] of Object.entries(workers)) {
@@ -338,17 +338,17 @@ test("a gatekeeper-prefixed library is not a deployable worker", () => {
 // gatekeeper's shortName, BASE_URL or OAuth default inputs (which would make it uninstallable).
 test("a service package carries its backend binding and only its own inputs", () => {
   const builds = readTestWorkerBuilds();
-  const guard = buildTestManifest(builds).workers["schoolos-ai-guard"];
-  assert.ok(guard, "expected schoolos-ai-guard among the deployable packages");
+  const guard = buildTestManifest(builds).workers["educateos-ai-guard"];
+  assert.ok(guard, "expected educateos-ai-guard among the deployable packages");
   assert.equal(guard.kind, "service");
-  assert.deepEqual(guard.backendBinding, { name: "AI_CALL_GUARD", entrypoint: "SchoolOsAiCallGuard" });
+  assert.deepEqual(guard.backendBinding, { name: "AI_CALL_GUARD", entrypoint: "EducateOsAiCallGuard" });
   assert.equal(guard.shortName, undefined);
   assert.equal(guard.vars.BASE_URL, undefined);
   assert.equal(guard.singleton, true);
 
-  const withoutInputs = { ...builds.find((w) => w.pkgName === "schoolos-ai-guard")!, deployInputs: undefined };
-  const entry = buildTestManifest([...builds.filter((w) => w.pkgName !== "schoolos-ai-guard"), withoutInputs])
-      .workers["schoolos-ai-guard"];
+  const withoutInputs = { ...builds.find((w) => w.pkgName === "educateos-ai-guard")!, deployInputs: undefined };
+  const entry = buildTestManifest([...builds.filter((w) => w.pkgName !== "educateos-ai-guard"), withoutInputs])
+      .workers["educateos-ai-guard"];
   assert.deepEqual(entry?.inputs, []);
   assert.deepEqual(entry?.bindings, []);
 });
@@ -356,12 +356,12 @@ test("a service package carries its backend binding and only its own inputs", ()
 // SCHO-171/SCHO-138: the district keeps every store in its own SQLite Durable Object, because the
 // hosted deploy service does not yet accept a service's D1 or R2 placeholders. The backend is bound
 // to the district's authenticated `/api` surface only, never to the guard's or the gatekeeper's
-// SCHOOLOS_DISTRICT entrypoints, each of which is for its one consumer.
+// EDUCATEOS_DISTRICT entrypoints, each of which is for its one consumer.
 test("the district service declares no D1 or R2, sends email through Email Service, and binds the backend to its /api surface only", () => {
-  const district = buildTestManifest().workers["schoolos-district-worker"];
-  assert.ok(district, "expected schoolos-district-worker among the deployable packages");
+  const district = buildTestManifest().workers["educateos-district-worker"];
+  assert.ok(district, "expected educateos-district-worker among the deployable packages");
   assert.equal(district.kind, "service");
-  assert.deepEqual(district.backendBinding, { name: "SCHOOLOS_DISTRICT_API", entrypoint: "DistrictApi" });
+  assert.deepEqual(district.backendBinding, { name: "EDUCATEOS_DISTRICT_API", entrypoint: "DistrictApi" });
   assert.equal(district.d1Migrations, undefined);
   assert.ok(!district.bindings.some((b) => b.type === "d1" || b.type === "r2_bucket"));
   // SCHO-189: its email leaves through Email Service in the installing account, and its
@@ -374,25 +374,25 @@ test("the district service declares no D1 or R2, sends email through Email Servi
 });
 
 // No deployable package declares D1 yet, so the golden file cannot show it. These pin the shape
-// @schoolos/installer accepts (its D1Migration and `d1` binding schemas), which its own suite
+// @educateos/installer accepts (its D1Migration and `d1` binding schemas), which its own suite
 // checks against a manifest generated here.
 function d1Package(files: Record<string, string>, d1: Record<string, unknown> = {}) {
   const dir = mkdtempSync(join(tmpdir(), "manifest-lib-d1-"));
   mkdirSync(join(dir, "db"));
   for (const [name, sql] of Object.entries(files)) writeFileSync(join(dir, "db", name), sql);
   const config = {
-    name: "schoolos-ai-guard",
+    name: "educateos-ai-guard",
     main: "src/index.ts",
     d1_databases: [{
-      binding: "SCHOOLOS_DB", database_name: "local", database_id: "local-id", migrations_dir: "db",
+      binding: "EDUCATEOS_DB", database_name: "local", database_id: "local-id", migrations_dir: "db",
       ...d1,
     }],
   };
-  return { name: "schoolos-ai-guard", dir, config };
+  return { name: "educateos-ai-guard", dir, config };
 }
 
 function d1Build(pkg: ReturnType<typeof d1Package>): WorkerBuild {
-  const { mainModule, modules } = collectModules(join(TESTDATA, "fixture-bundles", "schoolos-ai-guard"));
+  const { mainModule, modules } = collectModules(join(TESTDATA, "fixture-bundles", "educateos-ai-guard"));
   return { pkgName: pkg.name, config: pkg.config, mainModule, modules, d1Migrations: readD1Migrations(pkg) };
 }
 
@@ -402,14 +402,14 @@ test("a D1 database becomes a $D1_<B>_ID binding and its migrations content-addr
     "0001_principals.sql": "CREATE TABLE principals (id TEXT PRIMARY KEY);\n",
     "README.md": "not a migration",
   });
-  const entry = buildTestManifest([d1Build(pkg)]).workers["schoolos-ai-guard"];
+  const entry = buildTestManifest([d1Build(pkg)]).workers["educateos-ai-guard"];
 
   assert.deepEqual(entry.bindings.find((b) => b.type === "d1"),
-      { type: "d1", name: "SCHOOLOS_DB", id: "$D1_SCHOOLOS_DB_ID" });
+      { type: "d1", name: "EDUCATEOS_DB", id: "$D1_EDUCATEOS_DB_ID" });
   assert.deepEqual(entry.d1Migrations?.map((m) => m.id), ["0001_principals", "0002_rosters"]);
   for (const migration of entry.d1Migrations ?? []) {
     const sql = readFileSync(join(pkg.dir, "db", `${migration.id}.sql`));
-    assert.equal(migration.binding, "SCHOOLOS_DB");
+    assert.equal(migration.binding, "EDUCATEOS_DB");
     assert.equal(migration.size, sql.byteLength);
     assert.equal(migration.r2Key, `blobs/modules/${migration.sha256}`);
     assert.deepEqual(Object.keys(migration).toSorted(), ["binding", "id", "r2Key", "sha256", "size"]);
@@ -428,7 +428,7 @@ test("D1 migrations the installer would refuse fail the release build", () => {
   assert.throws(() => readD1Migrations(d1Package({ "1_init.sql": "SELECT 1;" })),
       /must be named NNNN_<lowercase_words>\.sql/);
   assert.throws(() => buildTestManifest([d1Build(d1Package({}, { remote: true }))]),
-      /d1_databases\[SCHOOLOS_DB\] has key\(s\) this generator doesn't handle: remote/);
+      /d1_databases\[EDUCATEOS_DB\] has key\(s\) this generator doesn't handle: remote/);
 
   const orphan = d1Build(d1Package({ "0001_init.sql": "SELECT 1;" }));
   orphan.d1Migrations = orphan.d1Migrations?.map((m) => ({ ...m, binding: "OTHER_DB" }));
@@ -439,10 +439,10 @@ test("D1 migrations the installer would refuse fail the release build", () => {
 // (routes, queues, email) is account-specific and fails closed until someone decides how.
 test("a worker's Cron Triggers reach its manifest entry, and no other trigger is accepted", () => {
   const builds = readTestWorkerBuilds();
-  assert.deepEqual(buildTestManifest(builds).workers["schoolos-ai-guard"]?.crons, ["17 3 * * *"]);
+  assert.deepEqual(buildTestManifest(builds).workers["educateos-ai-guard"]?.crons, ["17 3 * * *"]);
   assert.equal(buildTestManifest(builds).workers["gatekeeper-google"]?.crons, undefined);
 
-  const guard = builds.find((w) => w.pkgName === "schoolos-ai-guard")!;
+  const guard = builds.find((w) => w.pkgName === "educateos-ai-guard")!;
   const routed = { ...guard, config: { ...guard.config, triggers: { crons: [], routes: ["example.com/*"] } } };
   assert.throws(() => buildTestManifest([...builds.filter((w) => w !== guard), routed]),
       /trigger\(s\) this generator doesn't handle: routes/);

@@ -62,7 +62,7 @@ const SECRET_NAMES = new Set([
 ]);
 
 /** The district Worker's package (and worker) name. */
-export const DISTRICT_PACKAGE = "schoolos-district-worker";
+export const DISTRICT_PACKAGE = "educateos-district-worker";
 
 /**
  * Where the district Worker's static assets are, relative to its package: the three UIs as

@@ -1,0 +1,17 @@
+{
+  "name": "@educateos/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS v1 contracts: identifiers, scopes, principals, the authorization vocabulary, capability manifests, configuration revisions, policy floors and nanodollar money (UsdNano). A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

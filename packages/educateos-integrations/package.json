@@ -1,0 +1,25 @@
+{
+  "name": "@educateos/integrations",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS interoperability adapters, starting with OneRoster 1.2 roster sync from a bulk CSV export (as files or one ZIP) or a REST server: preview, identity linking, safe apply, delta sync runs with per-file cursors, stored sync state and run history (in memory or a Durable Object), a sync schedule and integration health. A library, not a deployable Worker.",
+  "type": "module",
+  "scripts": {
+    "fixtures:write": "node __tests__/fixtures/write-fixtures.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@educateos/contracts": "workspace:*",
+    "@educateos/zip": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@educateos/portability": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

@@ -7,13 +7,13 @@
 //   --use-workers-ai-binding   Include the Workers AI binding in workshop-backend and in the
 //                               gatekeepers that declare one (requires Cloudflare login).
 //   --port PORT                 Listen on PORT instead of 8787. Overrides VITE_BACKEND_HOST.
-//   --with-ai-guard             Also run the SchoolOS AI call guard (packages/schoolos-ai-guard)
+//   --with-ai-guard             Also run the EducateOS AI call guard (packages/educateos-ai-guard)
 //                               and bind it to the backend as AI_CALL_GUARD, with a fake Hall
 //                               Monitor and a synthetic config (see the guard's README).
 //
 // Env:
 //   VITE_BACKEND_HOST=localhost:9000  Also pass --port 9000 to wrangler dev.
-//   SCHOOLOS_DEV_AI_GUARD=1           Same as --with-ai-guard.
+//   EDUCATEOS_DEV_AI_GUARD=1           Same as --with-ai-guard.
 //   AI_GUARD_CONFIG={...}             With the guard, replaces its built-in dev config.
 
 import {
@@ -664,7 +664,7 @@ for (const gk of gatekeepers) {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Generate packages/schoolos-ai-guard/wrangler.dev.jsonc when the guard is requested: its
+// Generate packages/educateos-ai-guard/wrangler.dev.jsonc when the guard is requested: its
 // development entrypoint, which fakes Hall Monitor in process and defaults AI_GUARD_CONFIG to a
 // synthetic config that prices every suggested model.
 // ---------------------------------------------------------------------------

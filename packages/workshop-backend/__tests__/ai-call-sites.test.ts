@@ -4,7 +4,7 @@
 // its requests can carry. This test reads the source and fails when a call has no marker, a marker
 // names a label the AiCallSite union lacks, or the markers differ from MANIFEST below -- so a new
 // path into a model is a deliberate change to this file and to
-// docs/schoolos/hall-monitor/ingress-matrix.md, whose rows ai-call-ingress.test.ts drives.
+// docs/educateos/hall-monitor/ingress-matrix.md, whose rows ai-call-ingress.test.ts drives.
 import { describe, expect, it } from "vitest";
 // @ts-expect-error -- ?raw imports have no type declaration
 import GUARD_API from "../../workshop-shared/src/ai-call-guard.ts?raw";

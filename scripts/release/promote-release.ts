@@ -19,7 +19,7 @@
 // A missing candidate manifest is a hard error: the caller asked to promote something that was
 // never uploaded (or was cleaned up), and silently succeeding would report a phantom publish.
 //
-// Signing (release-signing.ts): with SCHOOLOS_RELEASE_SIGNING_KEY set, the verified candidate's
+// Signing (release-signing.ts): with EDUCATEOS_RELEASE_SIGNING_KEY set, the verified candidate's
 // manifest bytes are signed here and releases/<id>/manifest.signed.json is written before the
 // manifest copy, so a published release never lacks the statement it was published with. This is
 // the recommended place for the key: a candidate that fails the e2e gate is then never signed,
@@ -28,7 +28,7 @@
 // release is published unsigned, for development only.
 //
 // Env: R2_ENDPOINT (https://<account>.r2.cloudflarestorage.com), R2_BUCKET,
-//      R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, optional SCHOOLOS_RELEASE_SIGNING_KEY
+//      R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, optional EDUCATEOS_RELEASE_SIGNING_KEY
 // Usage: node scripts/release/promote-release.ts --release-id <id>
 //          [--version <semver> --channel <canary|stable|lts> [--minimum-compatible-version <semver>]
 //           [--valid-days <n>]]

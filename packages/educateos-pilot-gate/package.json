@@ -1,0 +1,47 @@
+{
+  "name": "@educateos/pilot-gate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The EducateOS synthetic pilot gate (roadmap H01): the security, availability, term rollover, load, restore and accessibility suite, driving both synthetic districts' district apps over HTTP, and the G0/G1 gate report generated from its criteria registry. Test-only; nothing here ships.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "node src/report.ts",
+    "write-doc": "node src/report.ts --write-doc"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/academics": "workspace:*",
+    "@educateos/ai-governance": "workspace:*",
+    "@educateos/api-client": "workspace:*",
+    "@educateos/artifacts-git": "workspace:*",
+    "@educateos/assessment": "workspace:*",
+    "@educateos/assessment-ai": "workspace:*",
+    "@educateos/assessment-ci": "workspace:*",
+    "@educateos/cartridge": "workspace:*",
+    "@educateos/catalog": "workspace:*",
+    "@educateos/commerce": "workspace:*",
+    "@educateos/content-studio": "workspace:*",
+    "@educateos/contracts": "workspace:*",
+    "@educateos/curriculum": "workspace:*",
+    "@educateos/district-app": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@educateos/fleet": "workspace:*",
+    "@educateos/gatekeeper": "workspace:*",
+    "@educateos/harness": "workspace:*",
+    "@educateos/installer": "workspace:*",
+    "@educateos/learning-artifacts": "workspace:*",
+    "@educateos/policy": "workspace:*",
+    "@educateos/portability": "workspace:*",
+    "@educateos/registry": "workspace:*",
+    "@educateos/releases": "workspace:*",
+    "@educateos/workspaces": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

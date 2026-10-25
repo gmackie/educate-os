@@ -1,7 +1,7 @@
 # ForgeGraph delivery for the schoolos.gmac.io production instance (SCHO-192). A merge to main
 # deploys every target once CI is green: the agent installs dependencies at the repository root,
 # runs `buildCommand` and then `deployCommand` in `appDir` (which must be set: without it the agent
-# guesses one Wrangler directory for the whole repository), and probes `healthCheckUrl`. See docs/schoolos/runbooks/production-instance.md.
+# guesses one Wrangler directory for the whole repository), and probes `healthCheckUrl`. See docs/educateos/runbooks/production-instance.md.
 #
 # Every buildCommand first stamps the deployed commit into the config as FG_COMMIT_HASH
 # (scripts/production/stamp-commit.ts): the agent stamps only wrangler.jsonc, not the
@@ -26,7 +26,7 @@ server: https://forgegraf.com
 # --- Operator notes (comments only; not part of the applied schema) ---
 # Pull requests and CI live on ForgeGraph (git.forgegraf.com/gmackie/school-os, remote `forge`).
 # GitHub (gmackie/school-os, remote `origin`) receives the same commits as a mirror; it has no PRs.
-# Districts still deploy SchoolOS into their own Cloudflare accounts (R02); the production stage
+# Districts still deploy EducateOS into their own Cloudflare accounts (R02); the production stage
 # below is our own demo instance, not a district's.
 
 stages:
@@ -88,7 +88,7 @@ stages:
           healthCheckUrl: https://schoolos.gmac.io/healthz
 
 health:
-  # The router's liveness route, exempt from Cloudflare Access ("SchoolOS health (bypass)").
+  # The router's liveness route, exempt from Cloudflare Access ("EducateOS health (bypass)").
   url: /healthz
   interval: 60
   timeout: 10

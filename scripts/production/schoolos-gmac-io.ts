@@ -1,10 +1,10 @@
-// The schoolos.gmac.io production instance (SCHO-192): one long-lived SchoolOS deployment on the
+// The schoolos.gmac.io production instance (SCHO-192): one long-lived EducateOS deployment on the
 // gmacko Cloudflare account, deployed Worker by Worker by ForgeGraph from the configs
 // production-config.ts generates. Everything here is non-secret: resource ids and names, the
 // origin, and plain-text vars. Secrets (the backend's ADMINS and Cloudflare Access pair, the guard's
 // Hall Monitor signing key, the district's DISTRICT_CONFIG and Access pair, the Google connector's
 // OAuth client) are delivered by ForgeGraph and never written down here; see
-// docs/schoolos/runbooks/production-instance.md.
+// docs/educateos/runbooks/production-instance.md.
 
 import type { ProductionInstance } from "./production-config.ts";
 
@@ -42,7 +42,7 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
     "gatekeeper-websearch": {
       CF_AI_GATEWAY: "default",
     },
-    "schoolos-ai-guard": {
+    "educateos-ai-guard": {
       HALL_MONITOR_ISSUER: "schoolos",
       HALL_MONITOR_AUDIENCE: "hall-monitor",
     },

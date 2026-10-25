@@ -856,7 +856,7 @@ importers:
         specifier: 'catalog:'
         version: 4.147.0(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)
 
-  packages/gatekeeper-schoolos:
+  packages/gatekeeper-educateos:
     dependencies:
       '@gadgets/gatekeeper-kit':
         specifier: workspace:*
@@ -864,12 +864,12 @@ importers:
       '@gadgets/workshop-shared':
         specifier: workspace:*
         version: link:../workshop-shared
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/policy':
+        version: link:../educateos-contracts
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
+        version: link:../educateos-policy
       capnweb:
         specifier: 'catalog:'
         version: 0.12.0
@@ -886,12 +886,12 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/fixtures':
+        version: link:../educateos-academics
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       miniflare:
         specifier: 'catalog:'
         version: 5.20261001.0-alpha(@types/node@26.1.0)
@@ -1205,11 +1205,11 @@ importers:
         specifier: 'catalog:'
         version: 4.147.0(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)
 
-  packages/schoolos-academics:
+  packages/educateos-academics:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
+        version: link:../educateos-contracts
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1223,9 +1223,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -1233,7 +1233,7 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-admin-ui:
+  packages/educateos-admin-ui:
     dependencies:
       '@cloudflare/kumo':
         specifier: ^2.14.0
@@ -1241,12 +1241,12 @@ importers:
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      '@schoolos/api-client':
+      '@educateos/api-client':
         specifier: workspace:*
-        version: link:../schoolos-api-client
-      '@schoolos/contracts':
+        version: link:../educateos-api-client
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
+        version: link:../educateos-contracts
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
@@ -1266,12 +1266,12 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/harness':
+        version: link:../educateos-fixtures
+      '@educateos/harness':
         specifier: workspace:*
-        version: link:../schoolos-harness
+        version: link:../educateos-harness
       '@testing-library/dom':
         specifier: 10.4.2
         version: 10.4.2
@@ -1303,14 +1303,14 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-ai-governance:
+  packages/educateos-ai-governance:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/policy':
+        version: link:../educateos-contracts
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
+        version: link:../educateos-policy
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1324,9 +1324,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -1334,7 +1334,7 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-ai-guard:
+  packages/educateos-ai-guard:
     dependencies:
       '@gadgets/observability':
         specifier: workspace:*
@@ -1348,21 +1348,21 @@ importers:
       '@gmacko/hall-monitor-contracts':
         specifier: file:../../vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz
         version: file:vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz
-      '@schoolos/ai-governance':
+      '@educateos/ai-governance':
         specifier: workspace:*
-        version: link:../schoolos-ai-governance
-      '@schoolos/contracts':
+        version: link:../educateos-ai-governance
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/district-app':
+        version: link:../educateos-contracts
+      '@educateos/district-app':
         specifier: workspace:*
-        version: link:../schoolos-district-app
-      '@schoolos/identity':
+        version: link:../educateos-district-app
+      '@educateos/identity':
         specifier: workspace:*
-        version: link:../schoolos-identity
-      '@schoolos/workspaces':
+        version: link:../educateos-identity
+      '@educateos/workspaces':
         specifier: workspace:*
-        version: link:../schoolos-workspaces
+        version: link:../educateos-workspaces
       capnweb:
         specifier: 'catalog:'
         version: 0.12.0
@@ -1379,9 +1379,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       miniflare:
         specifier: 'catalog:'
         version: 5.20261001.0-alpha(@types/node@26.1.0)
@@ -1395,14 +1395,14 @@ importers:
         specifier: 'catalog:'
         version: 4.147.0(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)
 
-  packages/schoolos-api-client:
+  packages/educateos-api-client:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/district-app':
+        version: link:../educateos-contracts
+      '@educateos/district-app':
         specifier: workspace:*
-        version: link:../schoolos-district-app
+        version: link:../educateos-district-app
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1410,9 +1410,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -1420,26 +1420,26 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-artifacts-git:
+  packages/educateos-artifacts-git:
     dependencies:
       '@gadgets/gatekeeper-kit':
         specifier: workspace:*
         version: link:../gatekeeper-kit
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/contracts':
+        version: link:../educateos-academics
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/learning-artifacts':
+        version: link:../educateos-contracts
+      '@educateos/learning-artifacts':
         specifier: workspace:*
-        version: link:../schoolos-learning-artifacts
-      '@schoolos/policy':
+        version: link:../educateos-learning-artifacts
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
-      '@schoolos/workspaces':
+        version: link:../educateos-policy
+      '@educateos/workspaces':
         specifier: workspace:*
-        version: link:../schoolos-workspaces
+        version: link:../educateos-workspaces
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1450,9 +1450,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -1460,23 +1460,23 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-assessment:
+  packages/educateos-assessment:
     dependencies:
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/contracts':
+        version: link:../educateos-academics
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/fleet':
+        version: link:../educateos-contracts
+      '@educateos/fleet':
         specifier: workspace:*
-        version: link:../schoolos-fleet
-      '@schoolos/learning-artifacts':
+        version: link:../educateos-fleet
+      '@educateos/learning-artifacts':
         specifier: workspace:*
-        version: link:../schoolos-learning-artifacts
-      '@schoolos/policy':
+        version: link:../educateos-learning-artifacts
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
+        version: link:../educateos-policy
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1490,12 +1490,12 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/workspaces':
+        version: link:../educateos-fixtures
+      '@educateos/workspaces':
         specifier: workspace:*
-        version: link:../schoolos-workspaces
+        version: link:../educateos-workspaces
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -1503,32 +1503,32 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-assessment-ai:
+  packages/educateos-assessment-ai:
     dependencies:
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/ai-governance':
+        version: link:../educateos-academics
+      '@educateos/ai-governance':
         specifier: workspace:*
-        version: link:../schoolos-ai-governance
-      '@schoolos/assessment':
+        version: link:../educateos-ai-governance
+      '@educateos/assessment':
         specifier: workspace:*
-        version: link:../schoolos-assessment
-      '@schoolos/assessment-ci':
+        version: link:../educateos-assessment
+      '@educateos/assessment-ci':
         specifier: workspace:*
-        version: link:../schoolos-assessment-ci
-      '@schoolos/config':
+        version: link:../educateos-assessment-ci
+      '@educateos/config':
         specifier: workspace:*
-        version: link:../schoolos-config
-      '@schoolos/contracts':
+        version: link:../educateos-config
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/curriculum':
+        version: link:../educateos-contracts
+      '@educateos/curriculum':
         specifier: workspace:*
-        version: link:../schoolos-curriculum
-      '@schoolos/learning-artifacts':
+        version: link:../educateos-curriculum
+      '@educateos/learning-artifacts':
         specifier: workspace:*
-        version: link:../schoolos-learning-artifacts
+        version: link:../educateos-learning-artifacts
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1542,15 +1542,15 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/policy':
+        version: link:../educateos-fixtures
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
-      '@schoolos/workspaces':
+        version: link:../educateos-policy
+      '@educateos/workspaces':
         specifier: workspace:*
-        version: link:../schoolos-workspaces
+        version: link:../educateos-workspaces
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -1558,26 +1558,26 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-assessment-ci:
+  packages/educateos-assessment-ci:
     dependencies:
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/assessment':
+        version: link:../educateos-academics
+      '@educateos/assessment':
         specifier: workspace:*
-        version: link:../schoolos-assessment
-      '@schoolos/cartridge':
+        version: link:../educateos-assessment
+      '@educateos/cartridge':
         specifier: workspace:*
-        version: link:../schoolos-cartridge
-      '@schoolos/contracts':
+        version: link:../educateos-cartridge
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/learning-artifacts':
+        version: link:../educateos-contracts
+      '@educateos/learning-artifacts':
         specifier: workspace:*
-        version: link:../schoolos-learning-artifacts
-      '@schoolos/policy':
+        version: link:../educateos-learning-artifacts
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
+        version: link:../educateos-policy
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1591,12 +1591,12 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/workspaces':
+        version: link:../educateos-fixtures
+      '@educateos/workspaces':
         specifier: workspace:*
-        version: link:../schoolos-workspaces
+        version: link:../educateos-workspaces
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -1604,26 +1604,26 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-cartridge:
+  packages/educateos-cartridge:
     dependencies:
-      '@schoolos/catalog':
+      '@educateos/catalog':
         specifier: workspace:*
-        version: link:../schoolos-catalog
-      '@schoolos/content-studio':
+        version: link:../educateos-catalog
+      '@educateos/content-studio':
         specifier: workspace:*
-        version: link:../schoolos-content-studio
-      '@schoolos/contracts':
+        version: link:../educateos-content-studio
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/lti':
+        version: link:../educateos-contracts
+      '@educateos/lti':
         specifier: workspace:*
-        version: link:../schoolos-lti
-      '@schoolos/registry':
+        version: link:../educateos-lti
+      '@educateos/registry':
         specifier: workspace:*
-        version: link:../schoolos-registry
-      '@schoolos/zip':
+        version: link:../educateos-registry
+      '@educateos/zip':
         specifier: workspace:*
-        version: link:../schoolos-zip
+        version: link:../educateos-zip
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1631,15 +1631,15 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/fixtures':
+        version: link:../educateos-academics
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/policy':
+        version: link:../educateos-fixtures
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
+        version: link:../educateos-policy
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -1647,48 +1647,20 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-catalog:
+  packages/educateos-catalog:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/fleet':
+        version: link:../educateos-contracts
+      '@educateos/fleet':
         specifier: workspace:*
-        version: link:../schoolos-fleet
-      '@schoolos/registry':
+        version: link:../educateos-fleet
+      '@educateos/registry':
         specifier: workspace:*
-        version: link:../schoolos-registry
-      '@schoolos/releases':
+        version: link:../educateos-registry
+      '@educateos/releases':
         specifier: workspace:*
-        version: link:../schoolos-releases
-      zod:
-        specifier: 'catalog:'
-        version: 4.6.5
-    devDependencies:
-      '@cloudflare/vitest-plugin':
-        specifier: 'catalog:'
-        version: 1.4.3(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)(vitest@5.0.5)
-      '@cloudflare/workers-types':
-        specifier: 'catalog:'
-        version: 5.20261005.1
-      '@gadgets/scripts':
-        specifier: workspace:*
-        version: link:../../scripts
-      '@types/node':
-        specifier: 26.1.0
-        version: 26.1.0
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
-
-  packages/schoolos-commerce:
-    dependencies:
-      '@schoolos/contracts':
-        specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/fleet':
-        specifier: workspace:*
-        version: link:../schoolos-fleet
+        version: link:../educateos-releases
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1702,9 +1674,6 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
-        specifier: workspace:*
-        version: link:../schoolos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -1712,11 +1681,42 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-config:
+  packages/educateos-commerce:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
+        version: link:../educateos-contracts
+      '@educateos/fleet':
+        specifier: workspace:*
+        version: link:../educateos-fleet
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+    devDependencies:
+      '@cloudflare/vitest-plugin':
+        specifier: 'catalog:'
+        version: 1.4.3(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)(vitest@5.0.5)
+      '@cloudflare/workers-types':
+        specifier: 'catalog:'
+        version: 5.20261005.1
+      '@gadgets/scripts':
+        specifier: workspace:*
+        version: link:../../scripts
+      '@educateos/fixtures':
+        specifier: workspace:*
+        version: link:../educateos-fixtures
+      '@types/node':
+        specifier: 26.1.0
+        version: 26.1.0
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
+
+  packages/educateos-config:
+    dependencies:
+      '@educateos/contracts':
+        specifier: workspace:*
+        version: link:../educateos-contracts
       yaml:
         specifier: ^2.9.1
         version: 2.9.1
@@ -1727,9 +1727,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -1737,17 +1737,17 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-content-studio:
+  packages/educateos-content-studio:
     dependencies:
-      '@schoolos/catalog':
+      '@educateos/catalog':
         specifier: workspace:*
-        version: link:../schoolos-catalog
-      '@schoolos/contracts':
+        version: link:../educateos-catalog
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/registry':
+        version: link:../educateos-contracts
+      '@educateos/registry':
         specifier: workspace:*
-        version: link:../schoolos-registry
+        version: link:../educateos-registry
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1761,20 +1761,20 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/fixtures':
+        version: link:../educateos-academics
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/policy':
+        version: link:../educateos-fixtures
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
+        version: link:../educateos-policy
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-contracts:
+  packages/educateos-contracts:
     dependencies:
       zod:
         specifier: 'catalog:'
@@ -1787,20 +1787,20 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-curriculum:
+  packages/educateos-curriculum:
     dependencies:
-      '@schoolos/config':
+      '@educateos/config':
         specifier: workspace:*
-        version: link:../schoolos-config
-      '@schoolos/content-studio':
+        version: link:../educateos-config
+      '@educateos/content-studio':
         specifier: workspace:*
-        version: link:../schoolos-content-studio
-      '@schoolos/contracts':
+        version: link:../educateos-content-studio
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/registry':
+        version: link:../educateos-contracts
+      '@educateos/registry':
         specifier: workspace:*
-        version: link:../schoolos-registry
+        version: link:../educateos-registry
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1808,36 +1808,36 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/fixtures':
+        version: link:../educateos-academics
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/policy':
+        version: link:../educateos-fixtures
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
+        version: link:../educateos-policy
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-discussions:
+  packages/educateos-discussions:
     dependencies:
       '@gmacko/hall-monitor-contracts':
         specifier: file:../../vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz
         version: file:vendor/hall-monitor/gmacko-hall-monitor-contracts-0.1.0.tgz
-      '@schoolos/assessment':
+      '@educateos/assessment':
         specifier: workspace:*
-        version: link:../schoolos-assessment
-      '@schoolos/content-studio':
+        version: link:../educateos-assessment
+      '@educateos/content-studio':
         specifier: workspace:*
-        version: link:../schoolos-content-studio
-      '@schoolos/contracts':
+        version: link:../educateos-content-studio
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/curriculum':
+        version: link:../educateos-contracts
+      '@educateos/curriculum':
         specifier: workspace:*
-        version: link:../schoolos-curriculum
+        version: link:../educateos-curriculum
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1845,81 +1845,81 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/fixtures':
+        version: link:../educateos-academics
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/policy':
+        version: link:../educateos-fixtures
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
+        version: link:../educateos-policy
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-district-app:
+  packages/educateos-district-app:
     dependencies:
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/ai-governance':
+        version: link:../educateos-academics
+      '@educateos/ai-governance':
         specifier: workspace:*
-        version: link:../schoolos-ai-governance
-      '@schoolos/artifacts-git':
+        version: link:../educateos-ai-governance
+      '@educateos/artifacts-git':
         specifier: workspace:*
-        version: link:../schoolos-artifacts-git
-      '@schoolos/assessment':
+        version: link:../educateos-artifacts-git
+      '@educateos/assessment':
         specifier: workspace:*
-        version: link:../schoolos-assessment
-      '@schoolos/assessment-ci':
+        version: link:../educateos-assessment
+      '@educateos/assessment-ci':
         specifier: workspace:*
-        version: link:../schoolos-assessment-ci
-      '@schoolos/cartridge':
+        version: link:../educateos-assessment-ci
+      '@educateos/cartridge':
         specifier: workspace:*
-        version: link:../schoolos-cartridge
-      '@schoolos/catalog':
+        version: link:../educateos-cartridge
+      '@educateos/catalog':
         specifier: workspace:*
-        version: link:../schoolos-catalog
-      '@schoolos/config':
+        version: link:../educateos-catalog
+      '@educateos/config':
         specifier: workspace:*
-        version: link:../schoolos-config
-      '@schoolos/content-studio':
+        version: link:../educateos-config
+      '@educateos/content-studio':
         specifier: workspace:*
-        version: link:../schoolos-content-studio
-      '@schoolos/contracts':
+        version: link:../educateos-content-studio
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/curriculum':
+        version: link:../educateos-contracts
+      '@educateos/curriculum':
         specifier: workspace:*
-        version: link:../schoolos-curriculum
-      '@schoolos/discussions':
+        version: link:../educateos-curriculum
+      '@educateos/discussions':
         specifier: workspace:*
-        version: link:../schoolos-discussions
-      '@schoolos/identity':
+        version: link:../educateos-discussions
+      '@educateos/identity':
         specifier: workspace:*
-        version: link:../schoolos-identity
-      '@schoolos/identity-links':
+        version: link:../educateos-identity
+      '@educateos/identity-links':
         specifier: workspace:*
-        version: link:../schoolos-identity-links
-      '@schoolos/integrations':
+        version: link:../educateos-identity-links
+      '@educateos/integrations':
         specifier: workspace:*
-        version: link:../schoolos-integrations
-      '@schoolos/learning-artifacts':
+        version: link:../educateos-integrations
+      '@educateos/learning-artifacts':
         specifier: workspace:*
-        version: link:../schoolos-learning-artifacts
-      '@schoolos/policy':
+        version: link:../educateos-learning-artifacts
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
-      '@schoolos/quizzes':
+        version: link:../educateos-policy
+      '@educateos/quizzes':
         specifier: workspace:*
-        version: link:../schoolos-quizzes
-      '@schoolos/registry':
+        version: link:../educateos-quizzes
+      '@educateos/registry':
         specifier: workspace:*
-        version: link:../schoolos-registry
-      '@schoolos/workspaces':
+        version: link:../educateos-registry
+      '@educateos/workspaces':
         specifier: workspace:*
-        version: link:../schoolos-workspaces
+        version: link:../educateos-workspaces
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1927,12 +1927,12 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/zip':
+        version: link:../educateos-fixtures
+      '@educateos/zip':
         specifier: workspace:*
-        version: link:../schoolos-zip
+        version: link:../educateos-zip
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -1940,38 +1940,38 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-district-worker:
+  packages/educateos-district-worker:
     dependencies:
       '@gadgets/observability':
         specifier: workspace:*
         version: link:../observability
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/ai-governance':
+        version: link:../educateos-academics
+      '@educateos/ai-governance':
         specifier: workspace:*
-        version: link:../schoolos-ai-governance
-      '@schoolos/content-studio':
+        version: link:../educateos-ai-governance
+      '@educateos/content-studio':
         specifier: workspace:*
-        version: link:../schoolos-content-studio
-      '@schoolos/contracts':
+        version: link:../educateos-content-studio
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/district-app':
+        version: link:../educateos-contracts
+      '@educateos/district-app':
         specifier: workspace:*
-        version: link:../schoolos-district-app
-      '@schoolos/gatekeeper':
+        version: link:../educateos-district-app
+      '@educateos/gatekeeper':
         specifier: workspace:*
-        version: link:../gatekeeper-schoolos
-      '@schoolos/identity':
+        version: link:../gatekeeper-educateos
+      '@educateos/identity':
         specifier: workspace:*
-        version: link:../schoolos-identity
-      '@schoolos/policy':
+        version: link:../educateos-identity
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
-      '@schoolos/workspaces':
+        version: link:../educateos-policy
+      '@educateos/workspaces':
         specifier: workspace:*
-        version: link:../schoolos-workspaces
+        version: link:../educateos-workspaces
       capnweb:
         specifier: 'catalog:'
         version: 0.12.0
@@ -1991,12 +1991,12 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/catalog':
+      '@educateos/catalog':
         specifier: workspace:*
-        version: link:../schoolos-catalog
-      '@schoolos/fixtures':
+        version: link:../educateos-catalog
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       miniflare:
         specifier: 'catalog:'
         version: 5.20261001.0-alpha(@types/node@26.1.0)
@@ -2010,42 +2010,42 @@ importers:
         specifier: 'catalog:'
         version: 4.147.0(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)
 
-  packages/schoolos-doc-extract:
+  packages/educateos-doc-extract:
     dependencies:
-      '@schoolos/cartridge':
+      '@educateos/cartridge':
         specifier: workspace:*
-        version: link:../schoolos-cartridge
-      '@schoolos/content-studio':
+        version: link:../educateos-cartridge
+      '@educateos/content-studio':
         specifier: workspace:*
-        version: link:../schoolos-content-studio
+        version: link:../educateos-content-studio
     devDependencies:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/contracts':
+        version: link:../educateos-academics
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/fixtures':
+        version: link:../educateos-contracts
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/policy':
+        version: link:../educateos-fixtures
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
-      '@schoolos/portability':
+        version: link:../educateos-policy
+      '@educateos/portability':
         specifier: workspace:*
-        version: link:../schoolos-portability
+        version: link:../educateos-portability
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-fixtures:
+  packages/educateos-fixtures:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
+        version: link:../educateos-contracts
     devDependencies:
       '@gadgets/scripts':
         specifier: workspace:*
@@ -2054,11 +2054,11 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-fleet:
+  packages/educateos-fleet:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
+        version: link:../educateos-contracts
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2072,9 +2072,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -2082,51 +2082,51 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-harness:
+  packages/educateos-harness:
     dependencies:
-      '@schoolos/api-client':
+      '@educateos/api-client':
         specifier: workspace:*
-        version: link:../schoolos-api-client
-      '@schoolos/catalog':
+        version: link:../educateos-api-client
+      '@educateos/catalog':
         specifier: workspace:*
-        version: link:../schoolos-catalog
-      '@schoolos/content-studio':
+        version: link:../educateos-catalog
+      '@educateos/content-studio':
         specifier: workspace:*
-        version: link:../schoolos-content-studio
-      '@schoolos/contracts':
+        version: link:../educateos-content-studio
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/curriculum':
+        version: link:../educateos-contracts
+      '@educateos/curriculum':
         specifier: workspace:*
-        version: link:../schoolos-curriculum
-      '@schoolos/district-app':
+        version: link:../educateos-curriculum
+      '@educateos/district-app':
         specifier: workspace:*
-        version: link:../schoolos-district-app
-      '@schoolos/fixtures':
+        version: link:../educateos-district-app
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/identity':
+        version: link:../educateos-fixtures
+      '@educateos/identity':
         specifier: workspace:*
-        version: link:../schoolos-identity
+        version: link:../educateos-identity
     devDependencies:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/policy':
+        version: link:../educateos-academics
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
+        version: link:../educateos-policy
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-identity:
+  packages/educateos-identity:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
+        version: link:../educateos-contracts
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2134,9 +2134,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -2144,20 +2144,20 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-identity-links:
+  packages/educateos-identity-links:
     dependencies:
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/contracts':
+        version: link:../educateos-academics
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/identity':
+        version: link:../educateos-contracts
+      '@educateos/identity':
         specifier: workspace:*
-        version: link:../schoolos-identity
-      '@schoolos/policy':
+        version: link:../educateos-identity
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
+        version: link:../educateos-policy
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2171,24 +2171,24 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-installer:
+  packages/educateos-installer:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/fleet':
+        version: link:../educateos-contracts
+      '@educateos/fleet':
         specifier: workspace:*
-        version: link:../schoolos-fleet
-      '@schoolos/releases':
+        version: link:../educateos-fleet
+      '@educateos/releases':
         specifier: workspace:*
-        version: link:../schoolos-releases
+        version: link:../educateos-releases
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2196,9 +2196,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -2206,14 +2206,14 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-integrations:
+  packages/educateos-integrations:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/zip':
+        version: link:../educateos-contracts
+      '@educateos/zip':
         specifier: workspace:*
-        version: link:../schoolos-zip
+        version: link:../educateos-zip
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2221,12 +2221,12 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/portability':
+        version: link:../educateos-fixtures
+      '@educateos/portability':
         specifier: workspace:*
-        version: link:../schoolos-portability
+        version: link:../educateos-portability
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -2234,20 +2234,20 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-learning-artifacts:
+  packages/educateos-learning-artifacts:
     dependencies:
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/contracts':
+        version: link:../educateos-academics
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/policy':
+        version: link:../educateos-contracts
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
-      '@schoolos/workspaces':
+        version: link:../educateos-policy
+      '@educateos/workspaces':
         specifier: workspace:*
-        version: link:../schoolos-workspaces
+        version: link:../educateos-workspaces
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2255,9 +2255,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -2265,14 +2265,14 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-lti:
+  packages/educateos-lti:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/identity':
+        version: link:../educateos-contracts
+      '@educateos/identity':
         specifier: workspace:*
-        version: link:../schoolos-identity
+        version: link:../educateos-identity
       jose:
         specifier: ^6.2.12
         version: 6.2.12
@@ -2283,9 +2283,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -2293,26 +2293,26 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-lti-district:
+  packages/educateos-lti-district:
     dependencies:
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/assessment':
+        version: link:../educateos-academics
+      '@educateos/assessment':
         specifier: workspace:*
-        version: link:../schoolos-assessment
-      '@schoolos/contracts':
+        version: link:../educateos-assessment
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/curriculum':
+        version: link:../educateos-contracts
+      '@educateos/curriculum':
         specifier: workspace:*
-        version: link:../schoolos-curriculum
-      '@schoolos/identity':
+        version: link:../educateos-curriculum
+      '@educateos/identity':
         specifier: workspace:*
-        version: link:../schoolos-identity
-      '@schoolos/lti':
+        version: link:../educateos-identity
+      '@educateos/lti':
         specifier: workspace:*
-        version: link:../schoolos-lti
+        version: link:../educateos-lti
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2326,12 +2326,12 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/policy':
+        version: link:../educateos-fixtures
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
+        version: link:../educateos-policy
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -2339,29 +2339,29 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-ocs:
+  packages/educateos-ocs:
     dependencies:
-      '@schoolos/cartridge':
+      '@educateos/cartridge':
         specifier: workspace:*
-        version: link:../schoolos-cartridge
-      '@schoolos/catalog':
+        version: link:../educateos-cartridge
+      '@educateos/catalog':
         specifier: workspace:*
-        version: link:../schoolos-catalog
-      '@schoolos/contracts':
+        version: link:../educateos-catalog
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/curriculum':
+        version: link:../educateos-contracts
+      '@educateos/curriculum':
         specifier: workspace:*
-        version: link:../schoolos-curriculum
-      '@schoolos/fleet':
+        version: link:../educateos-curriculum
+      '@educateos/fleet':
         specifier: workspace:*
-        version: link:../schoolos-fleet
-      '@schoolos/registry':
+        version: link:../educateos-fleet
+      '@educateos/registry':
         specifier: workspace:*
-        version: link:../schoolos-registry
-      '@schoolos/releases':
+        version: link:../educateos-registry
+      '@educateos/releases':
         specifier: workspace:*
-        version: link:../schoolos-releases
+        version: link:../educateos-releases
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2375,26 +2375,26 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/content-studio':
+        version: link:../educateos-academics
+      '@educateos/content-studio':
         specifier: workspace:*
-        version: link:../schoolos-content-studio
-      '@schoolos/fixtures':
+        version: link:../educateos-content-studio
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/policy':
+        version: link:../educateos-fixtures
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
-      '@schoolos/portability':
+        version: link:../educateos-policy
+      '@educateos/portability':
         specifier: workspace:*
-        version: link:../schoolos-portability
+        version: link:../educateos-portability
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-pilot-gate:
+  packages/educateos-pilot-gate:
     dependencies:
       zod:
         specifier: 'catalog:'
@@ -2403,81 +2403,81 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/ai-governance':
+        version: link:../educateos-academics
+      '@educateos/ai-governance':
         specifier: workspace:*
-        version: link:../schoolos-ai-governance
-      '@schoolos/api-client':
+        version: link:../educateos-ai-governance
+      '@educateos/api-client':
         specifier: workspace:*
-        version: link:../schoolos-api-client
-      '@schoolos/artifacts-git':
+        version: link:../educateos-api-client
+      '@educateos/artifacts-git':
         specifier: workspace:*
-        version: link:../schoolos-artifacts-git
-      '@schoolos/assessment':
+        version: link:../educateos-artifacts-git
+      '@educateos/assessment':
         specifier: workspace:*
-        version: link:../schoolos-assessment
-      '@schoolos/assessment-ai':
+        version: link:../educateos-assessment
+      '@educateos/assessment-ai':
         specifier: workspace:*
-        version: link:../schoolos-assessment-ai
-      '@schoolos/assessment-ci':
+        version: link:../educateos-assessment-ai
+      '@educateos/assessment-ci':
         specifier: workspace:*
-        version: link:../schoolos-assessment-ci
-      '@schoolos/cartridge':
+        version: link:../educateos-assessment-ci
+      '@educateos/cartridge':
         specifier: workspace:*
-        version: link:../schoolos-cartridge
-      '@schoolos/catalog':
+        version: link:../educateos-cartridge
+      '@educateos/catalog':
         specifier: workspace:*
-        version: link:../schoolos-catalog
-      '@schoolos/commerce':
+        version: link:../educateos-catalog
+      '@educateos/commerce':
         specifier: workspace:*
-        version: link:../schoolos-commerce
-      '@schoolos/content-studio':
+        version: link:../educateos-commerce
+      '@educateos/content-studio':
         specifier: workspace:*
-        version: link:../schoolos-content-studio
-      '@schoolos/contracts':
+        version: link:../educateos-content-studio
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/curriculum':
+        version: link:../educateos-contracts
+      '@educateos/curriculum':
         specifier: workspace:*
-        version: link:../schoolos-curriculum
-      '@schoolos/district-app':
+        version: link:../educateos-curriculum
+      '@educateos/district-app':
         specifier: workspace:*
-        version: link:../schoolos-district-app
-      '@schoolos/fixtures':
+        version: link:../educateos-district-app
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/fleet':
+        version: link:../educateos-fixtures
+      '@educateos/fleet':
         specifier: workspace:*
-        version: link:../schoolos-fleet
-      '@schoolos/gatekeeper':
+        version: link:../educateos-fleet
+      '@educateos/gatekeeper':
         specifier: workspace:*
-        version: link:../gatekeeper-schoolos
-      '@schoolos/harness':
+        version: link:../gatekeeper-educateos
+      '@educateos/harness':
         specifier: workspace:*
-        version: link:../schoolos-harness
-      '@schoolos/installer':
+        version: link:../educateos-harness
+      '@educateos/installer':
         specifier: workspace:*
-        version: link:../schoolos-installer
-      '@schoolos/learning-artifacts':
+        version: link:../educateos-installer
+      '@educateos/learning-artifacts':
         specifier: workspace:*
-        version: link:../schoolos-learning-artifacts
-      '@schoolos/policy':
+        version: link:../educateos-learning-artifacts
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
-      '@schoolos/portability':
+        version: link:../educateos-policy
+      '@educateos/portability':
         specifier: workspace:*
-        version: link:../schoolos-portability
-      '@schoolos/registry':
+        version: link:../educateos-portability
+      '@educateos/registry':
         specifier: workspace:*
-        version: link:../schoolos-registry
-      '@schoolos/releases':
+        version: link:../educateos-registry
+      '@educateos/releases':
         specifier: workspace:*
-        version: link:../schoolos-releases
-      '@schoolos/workspaces':
+        version: link:../educateos-releases
+      '@educateos/workspaces':
         specifier: workspace:*
-        version: link:../schoolos-workspaces
+        version: link:../educateos-workspaces
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -2485,14 +2485,14 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-policy:
+  packages/educateos-policy:
     dependencies:
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/contracts':
+        version: link:../educateos-academics
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
+        version: link:../educateos-contracts
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2506,9 +2506,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -2516,38 +2516,38 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-portability:
+  packages/educateos-portability:
     dependencies:
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/assessment':
+        version: link:../educateos-academics
+      '@educateos/assessment':
         specifier: workspace:*
-        version: link:../schoolos-assessment
-      '@schoolos/config':
+        version: link:../educateos-assessment
+      '@educateos/config':
         specifier: workspace:*
-        version: link:../schoolos-config
-      '@schoolos/content-studio':
+        version: link:../educateos-config
+      '@educateos/content-studio':
         specifier: workspace:*
-        version: link:../schoolos-content-studio
-      '@schoolos/contracts':
+        version: link:../educateos-content-studio
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/fleet':
+        version: link:../educateos-contracts
+      '@educateos/fleet':
         specifier: workspace:*
-        version: link:../schoolos-fleet
-      '@schoolos/learning-artifacts':
+        version: link:../educateos-fleet
+      '@educateos/learning-artifacts':
         specifier: workspace:*
-        version: link:../schoolos-learning-artifacts
-      '@schoolos/policy':
+        version: link:../educateos-learning-artifacts
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
-      '@schoolos/registry':
+        version: link:../educateos-policy
+      '@educateos/registry':
         specifier: workspace:*
-        version: link:../schoolos-registry
-      '@schoolos/workspaces':
+        version: link:../educateos-registry
+      '@educateos/workspaces':
         specifier: workspace:*
-        version: link:../schoolos-workspaces
+        version: link:../educateos-workspaces
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2555,9 +2555,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -2565,17 +2565,17 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-quizzes:
+  packages/educateos-quizzes:
     dependencies:
-      '@schoolos/assessment':
+      '@educateos/assessment':
         specifier: workspace:*
-        version: link:../schoolos-assessment
-      '@schoolos/contracts':
+        version: link:../educateos-assessment
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/curriculum':
+        version: link:../educateos-contracts
+      '@educateos/curriculum':
         specifier: workspace:*
-        version: link:../schoolos-curriculum
+        version: link:../educateos-curriculum
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2583,24 +2583,24 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/fixtures':
+        version: link:../educateos-academics
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
-      '@schoolos/policy':
+        version: link:../educateos-fixtures
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
+        version: link:../educateos-policy
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-registry:
+  packages/educateos-registry:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
+        version: link:../educateos-contracts
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2612,14 +2612,14 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-releases:
+  packages/educateos-releases:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/fleet':
+        version: link:../educateos-contracts
+      '@educateos/fleet':
         specifier: workspace:*
-        version: link:../schoolos-fleet
+        version: link:../educateos-fleet
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2633,9 +2633,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -2643,11 +2643,11 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-sandbox-runner:
+  packages/educateos-sandbox-runner:
     dependencies:
-      '@schoolos/assessment-ai':
+      '@educateos/assessment-ai':
         specifier: workspace:*
-        version: link:../schoolos-assessment-ai
+        version: link:../educateos-assessment-ai
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2665,7 +2665,7 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-student-ui:
+  packages/educateos-student-ui:
     dependencies:
       '@cloudflare/kumo':
         specifier: ^2.14.0
@@ -2673,9 +2673,9 @@ importers:
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      '@schoolos/api-client':
+      '@educateos/api-client':
         specifier: workspace:*
-        version: link:../schoolos-api-client
+        version: link:../educateos-api-client
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
@@ -2726,7 +2726,7 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-teacher-ui:
+  packages/educateos-teacher-ui:
     dependencies:
       '@cloudflare/kumo':
         specifier: ^2.14.0
@@ -2734,9 +2734,9 @@ importers:
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      '@schoolos/api-client':
+      '@educateos/api-client':
         specifier: workspace:*
-        version: link:../schoolos-api-client
+        version: link:../educateos-api-client
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
@@ -2787,17 +2787,17 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-workspaces:
+  packages/educateos-workspaces:
     dependencies:
-      '@schoolos/academics':
+      '@educateos/academics':
         specifier: workspace:*
-        version: link:../schoolos-academics
-      '@schoolos/contracts':
+        version: link:../educateos-academics
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
-      '@schoolos/policy':
+        version: link:../educateos-contracts
+      '@educateos/policy':
         specifier: workspace:*
-        version: link:../schoolos-policy
+        version: link:../educateos-policy
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2811,9 +2811,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
-      '@schoolos/fixtures':
+      '@educateos/fixtures':
         specifier: workspace:*
-        version: link:../schoolos-fixtures
+        version: link:../educateos-fixtures
       '@types/node':
         specifier: 26.1.0
         version: 26.1.0
@@ -2821,11 +2821,11 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/schoolos-zip:
+  packages/educateos-zip:
     dependencies:
-      '@schoolos/contracts':
+      '@educateos/contracts':
         specifier: workspace:*
-        version: link:../schoolos-contracts
+        version: link:../educateos-contracts
       zod:
         specifier: 'catalog:'
         version: 4.6.5

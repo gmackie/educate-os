@@ -1,0 +1,19 @@
+{
+  "name": "@educateos/zip",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS bounded ZIP reader and deterministic writer: entry, size and compression-ratio caps checked before anything is inflated, refusal of unsafe paths, encryption, ZIP64 and overlapping entries, and a filter so unwanted entries are never inflated. Shared by the Common Cartridge and OneRoster importers. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@educateos/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

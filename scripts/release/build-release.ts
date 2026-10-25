@@ -8,7 +8,7 @@
 //   <out>/manifest.json                    the release manifest (upload LAST — its presence
 //                                          marks the release complete)
 //   <out>/manifest.signed.json             the root's signed statement for manifest.json, when
-//                                          SCHOOLOS_RELEASE_SIGNING_KEY is set (release-signing.ts)
+//                                          EDUCATEOS_RELEASE_SIGNING_KEY is set (release-signing.ts)
 //   <out>/modules/<sha256>                 worker module and D1 migration SQL blobs,
 //                                          content-addressed
 //   <out>/assets/<cfHash>                  static asset blobs, content-addressed
@@ -21,7 +21,7 @@
 //          [--version <semver> --channel <canary|stable|lts> [--minimum-compatible-version <semver>]
 //           [--valid-days <n>]]
 //
-// The signing flags are required when SCHOOLOS_RELEASE_SIGNING_KEY holds the root release key, and
+// The signing flags are required when EDUCATEOS_RELEASE_SIGNING_KEY holds the root release key, and
 // unused otherwise: without the key the release is an unsigned development build.
 
 import {

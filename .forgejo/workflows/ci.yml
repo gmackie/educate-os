@@ -1,9 +1,9 @@
-# SchoolOS CI on ForgeGraph (git.forgegraf.com). Forgejo ignores .github/workflows when this
+# EducateOS CI on ForgeGraph (git.forgegraf.com). Forgejo ignores .github/workflows when this
 # directory exists, so the upstream Cloudflare workflows (CLA, contribution policy, previews, evals)
 # do not run here; GitHub (gmackie/school-os) only mirrors commits.
 #
 # The required gate is the repository's own `pnpm lint` (oxlint, script types, generated configs and
-# the full workspace build) plus every SchoolOS package's tests. The upstream Workshop suites are
+# the full workspace build) plus every EducateOS package's tests. The upstream Workshop suites are
 # kept in a separate job so a kernel regression is still visible.
 name: CI
 
@@ -28,7 +28,7 @@ env:
   TESTS_WITH_TIMEOUT_IDLE_SECONDS: "300"
   TESTS_WITH_TIMEOUT_MAX_SECONDS: "1500"
   # Vitest's own per-test (5 s default) and per-hook (10 s) timeouts still tripped at that
-  # concurrency: @schoolos/ai-guard's guard.test.ts (run 195), durable-object-store tests (runs
+  # concurrency: @educateos/ai-guard's guard.test.ts (run 195), durable-object-store tests (runs
   # 190/191) and a gatekeeper conformance race (run 187). These are floors, not overrides: a package
   # that sets a longer timeout keeps it, and local runs are unchanged (SCHO-160, docs/testing.md).
   VITEST_TEST_TIMEOUT: "60000"
@@ -54,8 +54,8 @@ jobs:
       - name: Lint and build
         run: pnpm lint
 
-      - name: Test SchoolOS packages
-        run: node scripts/vp/run.ts --cache --fail-if-no-match --filter='@schoolos/*' test
+      - name: Test EducateOS packages
+        run: node scripts/vp/run.ts --cache --fail-if-no-match --filter='@educateos/*' test
 
       - name: Report CI result to ForgeGraph
         if: always()
@@ -82,7 +82,7 @@ jobs:
               \"workflowName\": \"CI\"
             }" || echo "::warning::Failed to report CI result to ForgeGraph"
 
-  # Not part of the reported gate: upstream's own suites, which SchoolOS changes should not break.
+  # Not part of the reported gate: upstream's own suites, which EducateOS changes should not break.
   workshop-tests:
     # After the gate rather than beside it: both jobs start workerd test fleets, and running them at
     # once on a shared runner host starved each other's tests into timeouts.
@@ -100,6 +100,6 @@ jobs:
       - name: Test Workshop packages (browser suites excluded)
         run: >-
           node scripts/vp/run.ts --cache --fail-if-no-match
-          --filter=!cloudflare-os --filter='!@schoolos/*'
+          --filter=!cloudflare-os --filter='!@educateos/*'
           --filter=!@gadgets/workshop-frontend --filter=!@gadgets/configurator-ui
           test

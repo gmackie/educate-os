@@ -542,7 +542,7 @@ test("a preview runs the AI call guard's development entrypoint, bound to the ba
   assert.equal(guard.vars?.AI_GUARD_CONFIG, undefined);
   assert.equal(guard.previews?.vars, undefined);
 
-  const expected = { binding: "AI_CALL_GUARD", service: AI_GUARD_PACKAGE, entrypoint: "SchoolOsAiCallGuard" };
+  const expected = { binding: "AI_CALL_GUARD", service: AI_GUARD_PACKAGE, entrypoint: "EducateOsAiCallGuard" };
   const backend = configs.get("workshop-backend");
   assert.deepEqual(backend?.services?.find((service) => service.binding === "AI_CALL_GUARD"), expected);
   // preview.ts patches this entry's preview_id with the guard preview's id, like a gatekeeper's.

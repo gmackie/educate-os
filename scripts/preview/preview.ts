@@ -12,7 +12,7 @@
 // Deployment runs in three tiers, because each tier's service bindings must name the previews the
 // tier before it produced:
 //
-//   1. the 16 gatekeepers  (concurrently; nothing binds to anything), and the SchoolOS AI call
+//   1. the 16 gatekeepers  (concurrently; nothing binds to anything), and the EducateOS AI call
 //                          guard unless PREVIEW_AI_GUARD=false (its fake Hall Monitor is in process)
 //   2. workshop-backend    (binds every gatekeeper preview via GatekeeperVendor, and the guard
 //                          preview as AI_CALL_GUARD)

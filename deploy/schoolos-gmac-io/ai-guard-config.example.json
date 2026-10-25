@@ -6,7 +6,7 @@
       "name": "gmacko demo district (synthetic)",
       "timeZone": "America/Los_Angeles",
       "trustedIssuers": [
-        "https://schoolos-demo.invalid"
+        "https://educateos-demo.invalid"
       ]
     },
     "schools": [],
@@ -23,7 +23,7 @@
         "externalIdentities": [
           {
             "districtId": "dst_gmacko-demo",
-            "issuer": "https://schoolos-demo.invalid",
+            "issuer": "https://educateos-demo.invalid",
             "subject": "demo-admin"
           }
         ]
@@ -135,7 +135,7 @@
     {
       "provider": "cloudflare",
       "modelId": "@cf/moonshotai/kimi-k2.7-code",
-      "priceBookId": "schoolos-demo-conservative-2026-10",
+      "priceBookId": "educateos-demo-conservative-2026-10",
       "inputUsdNanoPerMTok": "1000000000",
       "outputUsdNanoPerMTok": "4000000000",
       "cacheReadUsdNanoPerMTok": "200000000",
@@ -146,7 +146,7 @@
     {
       "provider": "cloudflare",
       "modelId": "@cf/zai-org/glm-5.2",
-      "priceBookId": "schoolos-demo-conservative-2026-10",
+      "priceBookId": "educateos-demo-conservative-2026-10",
       "inputUsdNanoPerMTok": "1000000000",
       "outputUsdNanoPerMTok": "4000000000",
       "cacheReadUsdNanoPerMTok": "200000000",
@@ -157,7 +157,7 @@
     {
       "provider": "cloudflare",
       "modelId": "@cf/zai-org/glm-5.3-flash",
-      "priceBookId": "schoolos-demo-conservative-2026-10",
+      "priceBookId": "educateos-demo-conservative-2026-10",
       "inputUsdNanoPerMTok": "1000000000",
       "outputUsdNanoPerMTok": "4000000000",
       "cacheReadUsdNanoPerMTok": "200000000",
@@ -168,7 +168,7 @@
     {
       "provider": "cloudflare",
       "modelId": "@cf/deepseek-ai/deepseek-v4-pro-0813",
-      "priceBookId": "schoolos-demo-conservative-2026-10",
+      "priceBookId": "educateos-demo-conservative-2026-10",
       "inputUsdNanoPerMTok": "1000000000",
       "outputUsdNanoPerMTok": "4000000000",
       "cacheReadUsdNanoPerMTok": "200000000",
@@ -195,7 +195,7 @@
       "modelId": "hall-monitor-evaluate"
     },
     "maxUsdNanoPerCheck": "1000000",
-    "tenantId": "schoolos-gmacko-demo",
+    "tenantId": "educateos-gmacko-demo",
     "costCenterId": "cc-gmacko-demo"
   },
   "contextSource": "static",

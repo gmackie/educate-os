@@ -1,0 +1,23 @@
+{
+  "name": "@educateos/quizzes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS quizzes (LMS-lite L7, SCHO-191): an offering's item banks and quizzes (multiple choice, multiple select, true/false, numeric with tolerance, short answer, essay) and its students' timed, attempt-limited attempts, decided by the district's policy engine. The server scores every item but essays on submission; scores stay proposals until a teacher releases them as official grades through the assessment gate, as one action. Answer keys never reach a student before the quiz shows them. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@educateos/assessment": "workspace:*",
+    "@educateos/contracts": "workspace:*",
+    "@educateos/curriculum": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@educateos/academics": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@educateos/policy": "workspace:*",
+    "vitest": "catalog:"
+  }
+}
