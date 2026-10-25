@@ -1249,7 +1249,8 @@
           "/api/*",
           "/blueprint-screenshot",
           "/blueprint-screenshot/*",
-          "/gatekeeper/*"
+          "/gatekeeper/*",
+          "/healthz"
         ],
         "variants": {
           "access": {

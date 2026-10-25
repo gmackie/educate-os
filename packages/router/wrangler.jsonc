@@ -25,7 +25,8 @@
       "/api/*",
       "/blueprint-screenshot",
       "/blueprint-screenshot/*",
-      "/gatekeeper/*"
+      "/gatekeeper/*",
+      "/healthz"
     ],
     "directory": "../workshop-frontend/dist"
   }
