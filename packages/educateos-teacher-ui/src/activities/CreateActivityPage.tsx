@@ -8,10 +8,11 @@ import { Loading } from "../Loading.tsx";
 import { PageHeading } from "../PageHeading.tsx";
 import { Problem } from "../Problem.tsx";
 import { routeHref } from "../route.ts";
-import type { ActivityDefinition, Assignment, LearningGoal, TeachingOffering } from "../types.ts";
+import type { ActivityDefinition, Assignment, TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
-import { AI_HELP, buildActivity, emptyActivityForm, goalKey, goalLabel, releaseKey, TEMPLATES, type ActivityContext, type ActivityForm } from "./activityForm.ts";
+import { AI_HELP, buildActivity, emptyActivityForm, releaseKey, TEMPLATES, type ActivityContext, type ActivityForm } from "./activityForm.ts";
 import { ClassNotes } from "./ClassNotes.tsx";
+import { LearningGoalPicker } from "./LearningGoalPicker.tsx";
 import { PublishPanel } from "./PublishPanel.tsx";
 import { RubricChooser, type RubricChoice } from "./RubricChooser.tsx";
 import { StudentPreview } from "./StudentPreview.tsx";
@@ -26,21 +27,19 @@ type Phase =
 
 /**
  * Creates an activity from a template: compose it, preview it as a student, then publish and
- * assign it. Learning goals come from those the class's activities already use, which the
- * district approved for it.
+ * assign it. Learning goals are optional, and come from the standards releases the district
+ * approved, as they fit the course's subject and grades.
  */
 export const CreateActivityPage = ({ teaching }: { teaching: TeachingOffering }) => {
   const offeringId = teaching.offering.id;
   const setup = useLoad(`create:${offeringId}`, async (client) => {
-    const [releases, assignments] = await Promise.all([
+    const [releases, assignments, goals] = await Promise.all([
       client.call("teacher.listReleases", { params: { offeringId } }),
       client.call("teacher.listAssignments", { params: { offeringId } }),
+      client.call("teacher.learningGoals", { params: { offeringId } }),
     ]);
-    const activities = await Promise.all(assignments.map((a) => client.call("teacher.getActivity", { params: { activityId: a.activityId } })));
-    const goals = new Map<string, LearningGoal>();
-    for (const activity of activities) for (const goal of activity.content.evidence.alignments) goals.set(goalKey(goal), goal);
     const earlier: RubricChoice[] = assignments.flatMap((a) => (a.rubric === undefined ? [] : [{ ref: a.rubric, label: `The rubric from “${a.title}”` }]));
-    return { releases, goals: [...goals.values()], earlier };
+    return { releases, goals, earlier };
   });
 
   return (
@@ -51,7 +50,8 @@ export const CreateActivityPage = ({ teaching }: { teaching: TeachingOffering })
       {setup.status === "ready" && (
         <Composer
           teaching={teaching}
-          context={{ subject: teaching.course.subject, gradeBand: teaching.course.gradeBand, goals: setup.data.goals, releases: setup.data.releases }}
+          context={{ subject: teaching.course.subject, gradeBand: teaching.course.gradeBand, goals: setup.data.goals.goals, releases: setup.data.releases }}
+          approvedReleases={setup.data.goals.approvedReleases}
           earlier={setup.data.earlier}
         />
       )}
@@ -59,7 +59,12 @@ export const CreateActivityPage = ({ teaching }: { teaching: TeachingOffering })
   );
 };
 
-const Composer = ({ teaching, context, earlier }: { teaching: TeachingOffering; context: ActivityContext; earlier: readonly RubricChoice[] }) => {
+const Composer = ({ teaching, context, approvedReleases, earlier }: {
+  teaching: TeachingOffering;
+  context: ActivityContext;
+  approvedReleases: number;
+  earlier: readonly RubricChoice[];
+}) => {
   const client = useDistrictApi();
   const announce = useAnnounce();
   const offeringId = teaching.offering.id;
@@ -142,11 +147,7 @@ const Composer = ({ teaching, context, earlier }: { teaching: TeachingOffering; 
 
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2"><Text variant="heading" as="span">Learning goals</Text></legend>
-        {context.goals.length === 0
-          ? <Text variant="secondary">No learning goals are set up for this class yet. Ask your curriculum admin to add them.</Text>
-          : context.goals.map((goal) => (
-            <Checkbox key={goalKey(goal)} label={goalLabel(goal)} checked={form.goals.includes(goalKey(goal))} onCheckedChange={(on) => setForm({ ...form, goals: toggle(form.goals, goalKey(goal), on === true) })} />
-          ))}
+        <LearningGoalPicker goals={context.goals} approvedReleases={approvedReleases} chosen={form.goals} onChange={(goals) => setForm({ ...form, goals })} />
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">

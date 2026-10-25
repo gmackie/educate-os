@@ -16,6 +16,7 @@ import { ModulesPage } from "./modules/ModulesPage.tsx";
 import { PoliciesPage } from "./policies/PoliciesPage.tsx";
 import { TermRolloverPage } from "./rollover/TermRolloverPage.tsx";
 import { RosterPage } from "./roster/RosterPage.tsx";
+import { LearningStandardsPage } from "./standards/LearningStandardsPage.tsx";
 import { AiUsagePage } from "./usage/AiUsagePage.tsx";
 
 const Screen = ({ path, config }: { path: ScreenPath; config: DistrictConfigState }) => {
@@ -26,6 +27,7 @@ const Screen = ({ path, config }: { path: ScreenPath; config: DistrictConfigStat
     case "classes-people": return <ClassesAndPeoplePage />;
     case "guardians": return <GuardiansPage />;
     case "modules": return <ModulesPage state={config} />;
+    case "learning-standards": return <LearningStandardsPage />;
     case "policies": return <PoliciesPage state={config} />;
     case "ai-usage": return <AiUsagePage state={config} />;
     case "ai-budgets": return <AiBudgetsPage />;

@@ -99,6 +99,9 @@ function parseInput<S extends z.ZodType>(schema: S, input: unknown): z.output<S>
 
 const NOT_FOUND = () => new EducateOsError("not-found", "no such activity");
 
+/** A competency's short name for a teacher: the last part of its URI, which catalog URIs make its code. */
+const goalCode = (competencyUri: string): string => competencyUri.split(/[:/]/).findLast((part) => part !== "") ?? competencyUri;
+
 const strictest = (levels: readonly (AiHelpLevel | undefined)[]): AiHelpLevel =>
   AI_HELP_LEVELS[Math.max(...levels.map((level) => (level === undefined ? 0 : AI_HELP_LEVELS.indexOf(level))))]!;
 
@@ -317,7 +320,8 @@ export class CurriculumService {
     const competencies = new Map<string, CompetencyRef>();
     for (const { frameworkKey, competencyUri } of content.evidence.alignments) {
       const competency = await this.#options.alignments.resolve(frameworkKey, competencyUri);
-      if (competency === undefined) throw new EducateOsError("validation-failed", `${competencyUri} is not an item of the district's approved ${frameworkKey} release`);
+      // Named by its code where the teacher sees one, never by its URI: the message reaches the teacher.
+      if (competency === undefined) throw new EducateOsError("validation-failed", `The learning goal ${goalCode(competencyUri)} is not in a learning standards release your district has approved.`);
       competencies.set(competency.competencyUri, competency);
     }
     const resolution = resolveAiHelp(await this.#options.aiHelpPolicy.layersFor(offering), content.aiHelp);

@@ -218,3 +218,44 @@ describe("class quizzes", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("You don't have permission");
   });
 });
+
+describe("publishing a quiz in a class with no assignment for it (SCHO-220)", () => {
+  it("offers a new gradebook assignment, and keeps Publish off with the reason until the quiz has a question", async () => {
+    const district = withQuizzes();
+    const user = await renderApp(district.client, list);
+    const form = await screen.findByRole("form", { name: "New quiz" });
+    await user.type(within(form).getByRole("textbox", { name: "Quiz title" }), "Rock Cycle Check-in");
+    await user.click(within(form).getByRole("button", { name: "Create quiz" }));
+    await settle();
+    await onScreen("Rock Cycle Check-in · English 9 · Period 3");
+
+    const details = screen.getByRole("form", { name: "Quiz details" });
+    expect(within(details).getByRole("radio", { name: /^A new gradebook assignment for this quiz/ }).getAttribute("aria-checked")).toBe("true");
+    const publish = screen.getByRole("button", { name: "Publish" }) as HTMLButtonElement;
+    expect(publish.disabled).toBe(true);
+    const reason = document.getElementById(publish.getAttribute("aria-describedby")!);
+    expect(reason?.textContent).toBe("Add at least one question and save the quiz to publish it.");
+
+    await user.click(within(details).getByRole("button", { name: "Add true or false" }));
+    await user.type(within(within(details).getByRole("group", { name: "Question 1: True or false" })).getByRole("textbox", { name: "Question 1 prompt" }), "Lava cools into igneous rock.");
+    await user.click(within(details).getByRole("button", { name: "Save quiz" }));
+    await waitFor(() => expect((screen.getByRole("button", { name: "Publish" }) as HTMLButtonElement).disabled).toBe(false));
+    expect(district.callsTo("teacher.updateQuiz")[0]!.input.body).toMatchObject({ assignmentId: null });
+    expect(screen.queryByText("Add at least one question and save the quiz to publish it.")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Publish" }));
+    await screen.findByRole("button", { name: "Unpublish" });
+    expect(district.callsTo("teacher.publishQuiz")[0]!.input.body).toStrictEqual({ published: true });
+  });
+
+  it("explains a refusal in plain words, without a raw reference", async () => {
+    const district = withQuizzes();
+    const user = await renderApp(district.client, `${list}/${QUIZ}`);
+    await onScreen("Poetry terms · English 9 · Period 3");
+    district.fail("teacher.publishQuiz", { status: 400, body: { code: "validation-failed", message: "Choose when the quiz closes before publishing it.", correlationId: "f18b4622-aff9-486d-ae6c-62e5fe81252b" } });
+    await user.click(screen.getByRole("button", { name: "Unpublish" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Choose when the quiz closes before publishing it.");
+    expect(alert.textContent).not.toMatch(/Reference|f18b4622/);
+  });
+});

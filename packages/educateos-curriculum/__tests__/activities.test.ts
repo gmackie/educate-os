@@ -117,7 +117,17 @@ describe("resources must be released Content Studio releases", () => {
     const { service, release } = await setup();
     const lab = await release(MORGAN, PAGES.cells, BIO);
     const input = biologyLab(lab, { alignments: [{ frameworkKey: "ngss", competencyUri: "https://frameworks.example/ngss/made-up" }] });
-    await rejectsWith(service.createDraft(MORGAN, { scope: BIO, activity: input }), "validation-failed", /approved ngss release/);
+    // Named by its code, in words a teacher can act on: never the competency's URI.
+    await rejectsWith(service.createDraft(MORGAN, { scope: BIO, activity: input }), "validation-failed", /^The learning goal made-up is not in a learning standards release your district has approved\.$/);
+  });
+
+  it("creates an activity with no learning goals, whose evidence contract names no competencies (SCHO-220)", async () => {
+    const { service, release } = await setup();
+    const lab = await release(MORGAN, PAGES.cells, BIO);
+    const { alignments: _none, ...input } = biologyLab(lab);
+    const draft = await service.createDraft(MORGAN, { scope: BIO, activity: input });
+    expect(draft.content.evidence.alignments).toStrictEqual([]);
+    expect(draft.evidenceContract.competencies).toStrictEqual([]);
   });
 });
 

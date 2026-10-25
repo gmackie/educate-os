@@ -148,7 +148,8 @@ export const EvidencePlan = z.strictObject({
   responseType: ResponseType,
   criteria: z.array(ObservableCriterion).min(1).max(30),
   collaboration: z.enum(["individual", "group"]),
-  alignments: z.array(AlignmentRequest).min(1).max(20),
+  /** The learning goals it is evidence of. Optional: an activity with none still gathers and grades work (SCHO-220). */
+  alignments: z.array(AlignmentRequest).max(20),
 });
 /** An evidence plan. */
 export type EvidencePlan = z.infer<typeof EvidencePlan>;

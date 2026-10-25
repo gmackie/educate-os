@@ -45,12 +45,19 @@ export function fakeGrading(options: { closesAt?: string } = {}) {
   const sheets: { subject: string; assignmentId: string; sheet: AnswerSheet }[] = [];
   const recorded: { subject: string; grades: readonly GradeToRecord[] }[] = [];
   const prepared: { assignmentId: string; attemptsAllowed: number }[] = [];
+  const created: { subject: string; offeringId: string; quizId: string; title: string; assignmentId: string }[] = [];
   const versions = new Map<string, number>();
   const grading: QuizGrading = {
     async assignment(offeringId, assignmentId): Promise<QuizAssignment | undefined> {
       if (offeringId === BIO && assignmentId === ASSIGNMENT) return { id: ASSIGNMENT, title: "Cells quiz", ...(options.closesAt === undefined ? {} : { closesAt: options.closesAt }) };
       if (offeringId === ENG9 && assignmentId === ENG_ASSIGNMENT) return { id: ENG_ASSIGNMENT, title: "Poetry quiz" };
-      return undefined;
+      const own = created.find((c) => c.offeringId === offeringId && c.assignmentId === assignmentId);
+      return own === undefined ? undefined : { id: own.assignmentId, title: own.title };
+    },
+    async createAssignment(who, offeringId, quiz) {
+      const assignmentId = `asg_for-${quiz.id.slice(3)}`;
+      if (!created.some((c) => c.assignmentId === assignmentId)) created.push({ subject: who.principalId, offeringId, quizId: quiz.id, title: quiz.title, assignmentId });
+      return assignmentId;
     },
     async prepareAssignment(_subject, assignmentId, attemptsAllowed) {
       prepared.push({ assignmentId, attemptsAllowed });
@@ -70,7 +77,7 @@ export function fakeGrading(options: { closesAt?: string } = {}) {
       });
     },
   };
-  return { grading, sheets, recorded, prepared };
+  return { grading, sheets, recorded, prepared, created };
 }
 
 /** A quiz service over Northfield, on a clock tests move, with Biology's assignment. */

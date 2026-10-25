@@ -27,7 +27,7 @@ describe("the teacher-only note toggle", () => {
     await user.type(screen.getByRole("textbox", { name: "Title" }), "Leaves");
     await user.type(screen.getByRole("textbox", { name: "Overview for students" }), "Why are leaves green?");
     await user.type(screen.getByRole("textbox", { name: "Prompt" }), "Explain.");
-    await user.click(screen.getByRole("checkbox", { name: "CCSS-ELA W.9-10.1" }));
+    await user.click(screen.getByRole("checkbox", { name: /^CCSS-ELA W\.9-10\.1 / }));
     await user.click(screen.getByRole("button", { name: "Preview as student" }));
     const preview = await screen.findByRole("region", { name: "Preview as a student" });
     expect(within(preview).queryByText(/photosynthesis/)).toBeNull();
@@ -42,7 +42,8 @@ describe("the teacher-only note toggle", () => {
     await user.click(await screen.findByRole("button", { name: "Preview as student" }));
     const alert = await screen.findByRole("alert");
     expect(within(alert).getByText("Give the activity a title.")).toBeTruthy();
-    expect(within(alert).getByText("Choose at least one learning goal.")).toBeTruthy();
+    // Learning goals are optional (SCHO-220), so they are not among what is missing.
+    expect(within(alert).queryByText(/learning goal/)).toBeNull();
     expect(district.callsTo("teacher.createActivity")).toStrictEqual([]);
   });
 
@@ -52,7 +53,7 @@ describe("the teacher-only note toggle", () => {
     await user.type(await screen.findByRole("textbox", { name: "Title" }), "Leaves");
     await user.type(screen.getByRole("textbox", { name: "Overview for students" }), "Why are leaves green?");
     await user.type(screen.getByRole("textbox", { name: "Prompt" }), "Explain.");
-    await user.click(screen.getByRole("checkbox", { name: "CCSS-ELA W.9-10.1" }));
+    await user.click(screen.getByRole("checkbox", { name: /^CCSS-ELA W\.9-10\.1 / }));
     await user.click(screen.getByRole("radio", { name: /Full/ }));
     await user.click(screen.getByRole("button", { name: "Preview as student" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Your district's policy doesn't allow that.");

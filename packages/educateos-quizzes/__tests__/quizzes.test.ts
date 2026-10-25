@@ -35,7 +35,6 @@ describe("building quizzes (SCHO-191)", () => {
     expect(draft.items[0]!.id).toMatch(/^qzi_/);
     // Students see no draft.
     expect(await service.listQuizzes(AMARA, BIO)).toEqual({ view: "student", quizzes: [] });
-    expect(await message(service.setPublished(MORGAN, BIO, draft.id, { published: true }))).toMatch(/needs an assignment/);
     await service.updateQuiz(MORGAN, BIO, draft.id, { assignmentId: ASSIGNMENT, settings: { attemptsAllowed: 3, shuffleQuestions: true, shuffleChoices: true, showAnswers: "after-submit", scorePolicy: "latest" } });
     const published = await service.setPublished(MORGAN, BIO, draft.id, { published: true });
     expect(published.status).toBe("published");
@@ -43,6 +42,24 @@ describe("building quizzes (SCHO-191)", () => {
     expect(prepared).toEqual([{ assignmentId: ASSIGNMENT, attemptsAllowed: 3 }]);
     const listing = await service.listQuizzes(AMARA, BIO);
     expect(listing.view === "student" && listing.quizzes.map((q) => [q.courseTitle, q.title, q.questionCount, q.availability, q.canStart])).toEqual([["Biology I", "Cells", 1, "open", true]]);
+  });
+
+  it("gives a quiz published without an assignment its own, once, and refuses one with no questions (SCHO-220)", async () => {
+    const { service, prepared, created } = setup();
+    const empty = await service.createQuiz(MORGAN, BIO, { title: "Empty" });
+    expect(await message(service.setPublished(MORGAN, BIO, empty.id, { published: true }))).toMatch(/at least one question/);
+    expect(created).toEqual([]);
+
+    const draft = await service.createQuiz(MORGAN, BIO, { title: "Rock Cycle Check-in", items: [{ type: "true-false", prompt: "Lava cools into igneous rock.", points: 1, correct: true }] });
+    const published = await service.setPublished(MORGAN, BIO, draft.id, { published: true });
+    expect(created).toEqual([{ subject: MORGAN.principalId, offeringId: BIO, quizId: draft.id, title: "Rock Cycle Check-in", assignmentId: published.assignmentId }]);
+    expect(published).toMatchObject({ status: "published", assignmentId: expect.stringMatching(/^asg_/) });
+    expect(prepared).toEqual([{ assignmentId: published.assignmentId, attemptsAllowed: 1 }]);
+
+    // Taken back to a draft and published again, it keeps the same assignment.
+    await service.setPublished(MORGAN, BIO, draft.id, { published: false });
+    expect((await service.setPublished(MORGAN, BIO, draft.id, { published: true })).assignmentId).toBe(published.assignmentId);
+    expect(created).toHaveLength(1);
   });
 
   it("binds quizzes only to the class's own assignments and modules, and keeps a draft module's quiz from students", async () => {

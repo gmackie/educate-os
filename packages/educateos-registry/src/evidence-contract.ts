@@ -25,16 +25,17 @@ export const AssessmentRestrictions = z.strictObject({
 export type AssessmentRestrictions = z.infer<typeof AssessmentRestrictions>;
 
 /**
- * The claims and observations that count as evidence of one or more competencies (roadmap §5.1).
- * Each version is immutable, and an assessment run records the version it evaluated, so changing
- * the criteria never rewrites past results.
+ * The claims and observations that count as evidence of competencies (roadmap §5.1). Each version
+ * is immutable, and an assessment run records the version it evaluated, so changing the criteria
+ * never rewrites past results.
  */
 export const EvidenceContract = z
   .strictObject({
     id: EvidenceContractId,
     version: z.number().int().positive(),
     title: z.string().min(1).max(500),
-    competencies: z.array(CompetencyRef).min(1),
+    /** The competencies the evidence counts toward. Empty for work not yet aligned to any (SCHO-220). */
+    competencies: z.array(CompetencyRef),
     responseType: ResponseType,
     criteria: z.array(ObservableCriterion).min(1),
     restrictions: AssessmentRestrictions,

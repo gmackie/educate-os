@@ -1,6 +1,9 @@
 import { DistrictApiError } from "@educateos/api-client";
 
-/** What went wrong, in words a teacher can act on, and a reference their district's help desk can trace. */
+/**
+ * What went wrong, in words a teacher can act on, and, when the fault is the district's rather than
+ * something the teacher can fix, a reference their help desk can trace.
+ */
 export interface ProblemText {
   message: string;
   detail?: string;
@@ -23,5 +26,7 @@ export const describeProblem = (error: unknown): ProblemText => {
   const message = BY_CODE[error.code] ?? "The district didn't answer. Try again in a moment.";
   // Validation and policy messages name the field or rule at fault, which is what the teacher needs to fix it.
   const detail = error.code === "validation-failed" || error.code === "policy-violation" || error.code === "conflict" ? error.message : undefined;
-  return { message, ...(detail === undefined ? {} : { detail }), ...(error.correlationId === undefined ? {} : { reference: error.correlationId }) };
+  // A reference only means something to a help desk, so it is shown only for a failure the teacher can't fix themselves (SCHO-220).
+  const reference = error.code === "unavailable" ? error.correlationId : undefined;
+  return { message, ...(detail === undefined ? {} : { detail }), ...(reference === undefined ? {} : { reference }) };
 };

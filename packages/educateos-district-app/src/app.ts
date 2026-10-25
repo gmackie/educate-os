@@ -21,6 +21,7 @@ import { AssessmentService, GradebookService, type AssignmentId } from "@educate
 import { catalogAlignmentSource, ContentStudio, type AlignmentSource, type ContentReviewer, type ImportFetch } from "@educateos/content-studio";
 import { contentStudioReleases, CourseContentService, CurriculumService, type AiHelpPolicySource, type OfferingScope } from "@educateos/curriculum";
 import { CatalogMirror, catalogSeedRelease, type VerifyRelease } from "@educateos/catalog";
+import { approveStandards, learningGoalsFor, listStandards, withdrawStandards } from "./standards.ts";
 import { AiLedger, ledgerGovernor, type AiRequestGovernor, type CloudflareAccountFacts, type FundingPool, type GovernedModel, type UsdNano } from "@educateos/ai-governance";
 import { createDraftRevision, planConfigurationChange, SHIPPED_REGISTRY, type CapabilityRegistry } from "@educateos/config";
 import { oneroster } from "@educateos/integrations";
@@ -460,6 +461,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
           artifacts: this.artifacts(),
           workspaces: this.workspaces(),
           correlationId: this.correlationId,
+          directory: this.snapshot,
         }),
         now: () => now().toISOString(),
       });
@@ -632,6 +634,15 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "teacher.approveResource": (ctx, { params, body }) => ctx.studio().approve(ctx.subject, params.itemId, body),
     "teacher.createActivity": (ctx, { params, body }) =>
       ctx.curriculum().createDraft(ctx.subject, { scope: ctx.offeringScope(params.offeringId), activity: body.activity }),
+    "teacher.learningGoals": async (ctx, { params }) => {
+      // Offered to whoever may author the class's activities, which is what the goals are for.
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" }, "Only the class's teachers can create its activities.");
+      const offering = ctx.snapshot.offerings.find((o) => o.id === params.offeringId)!;
+      const course = ctx.snapshot.courses.find((c) => c.id === offering.courseId);
+      if (course === undefined) throw new EducateOsError("not-found", `offering ${params.offeringId} has no course.`);
+      return learningGoalsFor(catalog, course);
+    },
     "teacher.publishActivity": (ctx, { params }) => ctx.curriculum().publish(ctx.subject, params.definitionId),
     "teacher.installActivity": (ctx, { params, body }) =>
       installAndAssign({
@@ -727,6 +738,19 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
           .map((e) => ctx.snapshot.principals.find((p) => p.id === e.principalId)?.displayName ?? "");
         return [{ offering, course, teachers, students: active.filter((e) => e.role === "student").length }];
       });
+    },
+    // Learning standards (SCHO-220)
+    "admin.listStandards": async (ctx) => {
+      await ctx.requireDistrict("list", "standards-release");
+      return listStandards(catalog);
+    },
+    "admin.approveStandards": async (ctx, { params }) => {
+      await ctx.requireDistrict("approve", "standards-release");
+      return approveStandards(catalog, params.frameworkKey, { by: ctx.principal.principalId, at: now().toISOString() });
+    },
+    "admin.withdrawStandards": async (ctx, { params }) => {
+      await ctx.requireDistrict("approve", "standards-release");
+      return withdrawStandards(catalog, params.frameworkKey, { by: ctx.principal.principalId, at: now().toISOString() });
     },
     "admin.previewRoster": async (ctx, { body }) => {
       await ctx.requireDistrict("update", "enrollment");

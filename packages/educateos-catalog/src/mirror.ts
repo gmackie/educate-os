@@ -12,7 +12,7 @@ import { CatalogKey } from "./vocabulary.ts";
  * - `proposed`: installed for review; not yet used.
  * - `approved`: the release the district uses. At most one per framework. Its content can never
  *   change again.
- * - `retired`: no longer used; kept for history.
+ * - `retired`: no longer used; kept for history, and may be approved again.
  */
 export const ApprovalStatus = z.enum(["proposed", "approved", "retired"]);
 /** An approval status. */
@@ -268,16 +268,17 @@ export class CatalogMirror {
   }
 
   /**
-   * Approves a proposed release, retiring the release it replaces. Returns the diff the approval
-   * puts into use.
+   * Approves a proposed release, or reinstates a retired one, retiring the release it replaces.
+   * Returns the diff the approval puts into use. A retired release's content never changed, so
+   * reinstating it is the same decision as approving it was.
    *
-   * @throws EducateOsError `not-found` if there is no such release, `conflict` if it is not
-   *   proposed, or `validation-failed` if its stored content no longer matches its digest.
+   * @throws EducateOsError `not-found` if there is no such release, `conflict` if it is already
+   *   approved, or `validation-failed` if its stored content no longer matches its digest.
    */
   async approve(key: string, version: string, actor: Actor): Promise<ReleaseDiff> {
     const state = await this.#require(key);
     const target = this.#find(state, version);
-    if (target.status !== "proposed") throw new EducateOsError("conflict", `${key}@${version} is ${target.status}, not proposed`);
+    if (target.status === "approved") throw new EducateOsError("conflict", `${key}@${version} is already approved`);
     await this.#checkIntegrity(target.release);
     const previous = state.releases.find((r) => r.status === "approved");
     const decided = { decidedBy: actor.by, decidedAt: actor.at };

@@ -23,6 +23,7 @@ import {
   type Scope,
   type VerifiedPrincipal,
 } from "@educateos/contracts";
+import { AssignmentId } from "@educateos/assessment";
 import type { CourseContentStorage, CourseOutline } from "@educateos/curriculum";
 import { z } from "zod";
 import {
@@ -95,6 +96,12 @@ export type RecordedGrade = { status: "official"; version: number } | { status: 
 export interface QuizGrading {
   /** The offering's assignment `assignmentId`, if it is one of the offering's. A fact about the class, not a decision for anyone. */
   assignment(offeringId: OfferingId, assignmentId: string): Promise<QuizAssignment | undefined>;
+  /**
+   * Creates the gradebook assignment a quiz published without one releases its scores to, acting
+   * as `subject`, and returns its ID. Asking again for the same quiz returns the same assignment,
+   * so a retried publish never adds a second gradebook column.
+   */
+  createAssignment(subject: VerifiedPrincipal, offeringId: OfferingId, quiz: Pick<Quiz, "id" | "title" | "settings">): Promise<string>;
   /**
    * Readies the assignment to take a published quiz's attempts as submissions (at least
    * `attemptsAllowed` of them), acting as `subject`, the staff member publishing the quiz.
@@ -299,23 +306,34 @@ export class QuizService {
   }
 
   /**
-   * Publishes a quiz to its class, or takes it back to a draft. Publishing needs an assignment to
-   * release its scores to and at least one item; the assignment is readied to take its attempts.
+   * Publishes a quiz to its class, or takes it back to a draft. Publishing needs at least one item
+   * and an assignment to release its scores to: a quiz without one gets its own gradebook
+   * assignment, named after it (SCHO-220). The assignment is readied to take its attempts.
    */
   async setPublished(subject: VerifiedPrincipal, offeringId: unknown, quizId: unknown, input: unknown): Promise<Quiz> {
     const { published } = parseInput(z.strictObject({ published: z.boolean() }), input);
     const scope = this.#scope(offeringId);
     await this.#requireManage(subject, scope, "publish");
     const before = await this.#load(scope.offeringId);
-    const current = this.#quiz(before, quizId);
+    let current = this.#quiz(before, quizId);
     if (published) {
       if (current.items.length === 0) throw new EducateOsError("validation-failed", "A quiz needs at least one question before it is published.");
+      if (current.assignmentId === undefined) {
+        current = { ...current, assignmentId: AssignmentId.parse(await this.#options.grading.createAssignment(subject, scope.offeringId, current)) };
+      }
       await this.#checkPlacement(scope, current, undefined, true);
       await this.#options.grading.prepareAssignment(subject, current.assignmentId!, current.settings.attemptsAllowed);
     }
+    const assignmentId = current.assignmentId;
     return this.#change(scope, async (book) => {
       const quiz = this.#quiz(book, quizId);
-      const updated: Quiz = { ...quiz, status: published ? "published" : "draft", updatedAt: this.#now() };
+      const updated: Quiz = {
+        ...quiz,
+        // The assignment made for it above, unless the quiz was bound to another meanwhile.
+        ...(published && quiz.assignmentId === undefined && assignmentId !== undefined ? { assignmentId } : {}),
+        status: published ? "published" : "draft",
+        updatedAt: this.#now(),
+      };
       return { write: { quizzes: [updated] }, result: updated };
     });
   }
