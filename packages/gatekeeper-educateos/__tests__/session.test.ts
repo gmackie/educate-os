@@ -161,6 +161,16 @@ describe("the EducateOS gatekeeper session", () => {
     expect(await service.authenticate(connectRequest(P.ines.principalId))).toBeNull();
   });
 
+  it("serves the district's pages for a principal of this district only", async () => {
+    const { service } = northfieldDistrict();
+    const page = new Request("https://district.example/api/teacher/offerings/x/roster", { headers: { "x-test-principal": P.amara.principalId } });
+    // The district application decides the rest; the service passes the principal it was given, not the request's sign-in.
+    expect(await (await service.serveAs(P.morgan, page)).json()).toEqual({ servedAs: P.morgan, method: "GET", path: "/api/teacher/offerings/x/roster" });
+    const outsider = await service.serveAs(P.rbMorgan, page);
+    expect(outsider.status).toBe(401);
+    expect(await outsider.json()).toMatchObject({ code: "unauthenticated" });
+  });
+
   it("calls nothing for a revoked account", async () => {
     const district = northfieldDistrict();
     const callTool = vi.spyOn(district.service, "callTool");

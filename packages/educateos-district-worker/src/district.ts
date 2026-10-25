@@ -10,7 +10,7 @@ import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
 import { authorityFor, createDistrictApp, type DistrictApp } from "@educateos/district-app";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
-import { accessRequestVerifier } from "./access.ts";
+import { accessAudiences, accessRequestVerifier } from "./access.ts";
 import { readDistrictWorkerConfig } from "./config.ts";
 // Communication (SCHO-189)
 import { cloudflareEmailSender, type SendEmailBinding } from "./mail.ts";
@@ -29,8 +29,8 @@ export interface DistrictSettings {
   config: string | undefined;
   /** `CF_ACCESS_ISS`, the Access team domain. */
   accessIssuer: string | undefined;
-  /** `CF_ACCESS_AUD`, the Access application's audience. */
-  accessAudience: string | undefined;
+  /** `CF_ACCESS_AUD`, the audiences of the Access applications it accepts, comma-separated (see `accessAudiences`). */
+  accessAudiences: string | undefined;
 }
 
 /** What a district reaches outside its storage. */
@@ -60,7 +60,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
   const stores = durableDistrictStores(storage, config.directory);
   const verifyRequest = accessRequestVerifier({
     issuer: settings.accessIssuer ?? "",
-    audience: settings.accessAudience ?? "",
+    audiences: accessAudiences(settings.accessAudiences),
     ...(seams.accessKeys === undefined ? {} : { keys: seams.accessKeys }),
   });
   const authority = authorityFor(config.authority);
@@ -102,6 +102,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
         return null;
       }
     },
+    serveAs: (principal, request) => app.serveAs(principal, request),
   });
   return { app, tools };
 }

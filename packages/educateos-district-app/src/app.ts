@@ -1,4 +1,5 @@
 import {
+  AuthorizationRequest,
   EducateOsError,
   type Action,
   type Authorizer,
@@ -11,6 +12,7 @@ import {
   type PrincipalId,
   type ResourceRef,
   type VerifiedIdentity,
+  type VerifiedPrincipal,
 } from "@educateos/contracts";
 import { createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@educateos/identity";
 import { AcademicDirectory, isDistrictAdmin } from "@educateos/academics";
@@ -157,6 +159,17 @@ export interface DistrictApp {
   readonly districtId: DistrictId;
   /** Handles one HTTP request. Paths outside `/api/` answer `not-found`. */
   fetch(request: Request): Promise<Response>;
+  /**
+   * Handles one `/api` request as `principal`, whom the caller has already verified, instead of as
+   * whoever the request's own credential proves: the EducateOS connector's school pages, which a
+   * person reaches from their own Workshop session (SCHO-218). Routes, schemas, surfaces and
+   * policy are exactly {@link fetch}'s, on the same `http` channel, since these are the person's
+   * own actions. The principal is read from the directory as it stands: one this district does not
+   * know, or that is not `active`, is `unauthenticated`, as is one of another district. The
+   * onboarding route is refused, since it answers a sign-in that is nobody's principal yet, and
+   * the calendar feed is not served, since a token alone authorizes it.
+   */
+  serveAs(principal: VerifiedPrincipal, request: Request): Promise<Response>;
   /** The one policy engine every service decides through. */
   readonly engine: PolicyEngine;
   /** The AI spend ledger. */
@@ -188,6 +201,27 @@ const SURFACE_KINDS: Record<Exclude<Surface, "onboarding">, readonly ResolvedPri
   admin: ["staff"],
   guardian: ["guardian"],
 };
+
+/** The principal a request runs as: who it is, without the sign-in that proved it. */
+type RequestPrincipal = Omit<ResolvedPrincipal, "identity">;
+
+const SERVED_PRINCIPAL = AuthorizationRequest.shape.subject;
+
+/**
+ * The directory's record of a principal the caller has already verified (`DistrictApp.serveAs`).
+ * Nobody this directory does not hold as an `active` principal is anyone here: another district's,
+ * an unknown ID, or someone since made inactive or graduated, whose roles ended with their status.
+ */
+function principalServedAs(snapshot: DistrictDirectorySnapshot, servedAs: VerifiedPrincipal): RequestPrincipal {
+  const parsed = SERVED_PRINCIPAL.safeParse(servedAs);
+  const principal = parsed.success && parsed.data.districtId === snapshot.district.id
+    ? snapshot.principals.find((p) => p.id === parsed.data.principalId)
+    : undefined;
+  if (principal === undefined || principal.status !== "active") {
+    throw new EducateOsError("unauthenticated", "This account is not an active principal of this district.");
+  }
+  return { districtId: principal.districtId, principalId: principal.id, kind: principal.kind };
+}
 
 /** Accepts a framework release only if it is byte-for-byte the catalog's own seed release. */
 const seedReleasesOnly: VerifyRelease = async (release) => {
@@ -264,14 +298,14 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   /** Everything one request uses, built around a decider that audits under its correlation ID. */
   class RequestContext {
     readonly correlationId: string;
-    readonly principal: ResolvedPrincipal;
+    readonly principal: RequestPrincipal;
     readonly snapshot: DistrictDirectorySnapshot;
     readonly caller: Caller;
     readonly decider: PolicyDecider;
     readonly authorizer: Authorizer;
     readonly origin: string;
 
-    constructor(correlationId: string, principal: ResolvedPrincipal, snapshot: DistrictDirectorySnapshot, origin: string) {
+    constructor(correlationId: string, principal: RequestPrincipal, snapshot: DistrictDirectorySnapshot, origin: string) {
       this.correlationId = correlationId;
       this.principal = principal;
       this.snapshot = snapshot;
@@ -1091,28 +1125,41 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   // Guardians (ADR-0012, SCHO-188)
   const guardianRoutes = guardianHandlers<RequestContext>({ stores, invitationPage: options.guardianInvitationPage, now });
 
-  async function handle(request: Request, correlationId: string): Promise<Response> {
+  /**
+   * Serves one `/api` request. Without `servedAs`, the caller is whoever the request's credential
+   * proves; with it, the caller is that already-verified principal (see `DistrictApp.serveAs`).
+   */
+  async function handle(request: Request, correlationId: string, servedAs?: VerifiedPrincipal): Promise<Response> {
     const url = new URL(request.url);
     const matched = matchRoute(request.method, url.pathname);
     if (matched === undefined) throw new EducateOsError("not-found", "No such route.");
 
-    const identity = await options.verifyRequest(request);
-    if (identity === undefined) throw new EducateOsError("unauthenticated", "Sign in with this district's identity provider.");
     const { spec } = matched;
     const parseInput = async () => ({
       params: spec.params === undefined ? undefined : parsePart("path", spec.params, matched.params),
       query: spec.query === undefined ? undefined : parsePart("query", spec.query, Object.fromEntries(url.searchParams)),
       body: spec.body === undefined ? undefined : parsePart("body", spec.body, await readJsonBody(request)),
     });
-    // Onboarding answers a verified sign-in that is nobody's principal yet. Its one route only
-    // starts a request an administrator decides, so it needs no principal and grants nothing.
-    if (spec.surface === "onboarding") {
-      const { body } = await parseInput() as { body: { token: string } };
-      return jsonResponse(await guardianInvitationsFor(engine).redeem(identity, body.token), spec.status ?? 200, correlationId);
-    }
 
-    const { snapshot } = await stores.directory.load();
-    const principal = await resolverFor(snapshot).resolve(identity);
+    let principal: RequestPrincipal;
+    let snapshot: DistrictDirectorySnapshot;
+    if (servedAs === undefined) {
+      const identity = await options.verifyRequest(request);
+      if (identity === undefined) throw new EducateOsError("unauthenticated", "Sign in with this district's identity provider.");
+      // Onboarding answers a verified sign-in that is nobody's principal yet. Its one route only
+      // starts a request an administrator decides, so it needs no principal and grants nothing.
+      if (spec.surface === "onboarding") {
+        const { body } = await parseInput() as { body: { token: string } };
+        return jsonResponse(await guardianInvitationsFor(engine).redeem(identity, body.token), spec.status ?? 200, correlationId);
+      }
+      ({ snapshot } = await stores.directory.load());
+      principal = await resolverFor(snapshot).resolve(identity);
+    } else {
+      // Someone served as a principal already is one, so there is nothing for onboarding to start.
+      if (spec.surface === "onboarding") throw new EducateOsError("forbidden", "This part of EducateOS is not available to your account.");
+      ({ snapshot } = await stores.directory.load());
+      principal = principalServedAs(snapshot, servedAs);
+    }
     if (!SURFACE_KINDS[spec.surface].includes(principal.kind)) {
       throw new EducateOsError("forbidden", "This part of EducateOS is not available to your account.");
     }
@@ -1121,6 +1168,16 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     const ctx = new RequestContext(correlationId, principal, snapshot, url.origin);
     const handler = (handlers[matched.name as keyof Handlers] ?? guardianRoutes[matched.name as GuardianRouteName]) as (ctx: RequestContext, input: unknown) => Promise<unknown>;
     return jsonResponse(await handler(ctx, input), spec.status ?? 200, correlationId);
+  }
+
+  /** Runs `serve` under a fresh correlation ID, answering whatever it throws as an error response. */
+  async function respond(request: Request, serve: (correlationId: string) => Promise<Response>): Promise<Response> {
+    const correlationId = crypto.randomUUID();
+    try {
+      return await serve(correlationId);
+    } catch (error) {
+      return errorResponse(error, correlationId, new URL(request.url).pathname);
+    }
   }
 
   return {
@@ -1138,14 +1195,16 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       runNotificationJob: () => communicationFor(jobDecider).runNotificationJob(),
       runWeeklyDigest: () => familyDigest(communicationFor(jobDecider)).runWeeklyJob(),
     },
-    async fetch(request) {
-      const correlationId = crypto.randomUUID();
+    fetch(request) {
+      return respond(request, async (correlationId) => await serveCalendarFeed(request, correlationId) ?? await handle(request, correlationId));
+    },
+    async serveAs(principal, request) {
       try {
-        const feed = await serveCalendarFeed(request, correlationId);
-        if (feed !== undefined) return feed;
-        return await handle(request, correlationId);
-      } catch (error) {
-        return errorResponse(error, correlationId, new URL(request.url).pathname);
+        return await respond(request, (correlationId) => handle(request, correlationId, principal));
+      } finally {
+        // A request refused before its body is read still holds the body open, and one that came
+        // over RPC (as the connector's does) keeps its stream, and the caller, waiting until it closes.
+        if (!request.bodyUsed) await request.body?.cancel();
       }
     },
   };

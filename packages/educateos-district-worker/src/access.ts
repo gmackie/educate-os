@@ -16,10 +16,23 @@ export const ACCESS_ASSERTION_HEADER = "cf-access-jwt-assertion";
 export interface AccessVerifierOptions {
   /** The Access team domain, `https://<team>.cloudflareaccess.com`: the kernel's `CF_ACCESS_ISS`. */
   issuer: string;
-  /** The Access application's audience tag: the kernel's `CF_ACCESS_AUD`. */
-  audience: string;
+  /**
+   * The audience tags of the Access applications whose assertions the district accepts, at least
+   * one: its own application's, and the instance's Workshop application's when the instance's
+   * EducateOS connector forwards sign-ins from the Workshop's hostname. See {@link accessAudiences}.
+   */
+  audiences: readonly string[];
   /** The signing keys. Defaults to the team's published certs; tests pass a local key set. */
   keys?: JWTVerifyGetKey;
+}
+
+/**
+ * The audiences `CF_ACCESS_AUD` lists: comma-separated, each trimmed, empty entries dropped. One
+ * tag (the district's own application) is the common case; a second is the instance's Workshop
+ * application, whose sign-in the EducateOS connector's connect page carries (SCHO-218).
+ */
+export function accessAudiences(text: string | undefined): string[] {
+  return (text ?? "").split(",").map((entry) => entry.trim()).filter((entry) => entry !== "");
 }
 
 // One remote key set per team, so its keys are fetched once per isolate rather than per request.
@@ -36,13 +49,17 @@ function teamKeys(issuer: string): JWTVerifyGetKey {
 
 /**
  * A {@link RequestVerifier} over Cloudflare Access. A request without an assertion, or with one
- * that fails verification, proves no identity. Access signs with RS256, so no other algorithm is
+ * that fails verification (including one for an application not in `audiences`), proves no
+ * identity. Access signs with RS256, so no other algorithm is
  * accepted. A verified token whose claims do not name exactly one user or service token is refused
  * with `unauthenticated` (see `identityFromAccessPayload`).
  */
 export function accessRequestVerifier(options: AccessVerifierOptions): RequestVerifier {
-  const { issuer, audience } = options;
-  if (issuer === "" || audience === "") throw new Error("Cloudflare Access issuer and audience must both be configured.");
+  const { issuer } = options;
+  const audience = [...options.audiences];
+  if (issuer === "" || audience.length === 0 || audience.some((entry) => entry.trim() === "")) {
+    throw new Error("Cloudflare Access issuer and audience must both be configured.");
+  }
   const keys = options.keys ?? teamKeys(issuer);
   return async (request: Request): Promise<VerifiedIdentity | undefined> => {
     const token = request.headers.get(ACCESS_ASSERTION_HEADER);

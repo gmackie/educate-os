@@ -132,6 +132,8 @@ export function northfieldDistrict() {
       const signedIn = request.headers.get("x-test-principal");
       return signedIn === null ? null : principal(signedIn);
     },
+    // A stand-in for the district application's `/api`: it echoes whom and what it served.
+    serveAs: async (servedAs, request) => Response.json({ servedAs, method: request.method, path: new URL(request.url).pathname }),
   });
   return { service, runner, approvals, audit: audit.events, artifacts, ran, directory };
 }

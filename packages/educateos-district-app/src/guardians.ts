@@ -37,7 +37,7 @@ export type GuardianRouteName =
 
 /** What a guardian route handler needs from app.ts's request context. */
 export interface GuardianRequestContext {
-  readonly principal: ResolvedPrincipal;
+  readonly principal: Pick<ResolvedPrincipal, "districtId" | "principalId">;
   readonly snapshot: DistrictDirectorySnapshot;
   readonly caller: Caller;
   readonly subject: VerifiedPrincipal;

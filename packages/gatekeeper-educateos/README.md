@@ -68,6 +68,36 @@ over a `SchoolToolRunner`. That is what a district Worker exposes, and what the 
 pilot gate compose. Only the gatekeeper holds the binding, and it passes only subjects read from a
 connected account. That is the trust the binding carries.
 
+## School pages (SCHO-218)
+
+The connector is to host the district's own screens (Administration, each school, each class) as
+its app UI, at `/gatekeepers/<id>` through `startAppUi`, so a person uses their district from
+their Workshop. Those pages talk to the district through `SchoolToolService.serveAs(principal,
+request)`, which serves the district's `/api` surface (`DistrictApp.serveAs`) as the account's
+principal rather than as whoever the request's credential proves. Nothing calls it yet; the app UI
+that will is a later step of SCHO-218.
+
+Serving as a principal is safe because of who can reach it, and on which channel:
+
+- **Only the person's own session reaches it.** The app UI will be started by `startAppUi` on the
+  account, which the Workshop calls only for the account's owner, from their own browser session,
+  as it does for the Context Library's management UI. The `EDUCATEOS_DISTRICT` binding is the
+  gatekeeper's alone. The principal is the one stored on the
+  account at connect time, which the district verified from that person's own sign-in. No page
+  request names a principal, and the account never asks the request who it is.
+- **Agents and gadgets never reach it.** The `SCHOOL` binding an agent or gadget holds is a
+  `SchoolToolsSession`: `listTools` and `callTool` only. Nothing in the session, the facet or the
+  account's agent-facing surface forwards a request to `serveAs`, so code in a workspace cannot
+  drive a page.
+- **Agent calls keep `confirmWrites`.** `callTool` stays on the `agent` channel with every write
+  queued for a person, exactly as above. `serveAs` is on the `http` channel, the channel of the
+  district's own screens, because what it carries is the person acting for themselves: the same
+  routes, schemas, surfaces and policy rules as their own sign-in to the district, no more.
+- **The district still decides.** It reads the principal from its directory on every request. One
+  of another district (refused by the service and the application both), one it does not know, or
+  one no longer `active` is `unauthenticated`; each surface still answers only its principal kinds;
+  and the onboarding route, which answers a sign-in that is nobody's principal yet, is refused.
+
 ## Release
 
 The gatekeeper takes no OAuth credentials, so `scripts/release/manifest-lib.ts` lists it in
@@ -83,7 +113,9 @@ until a district deployment binds `EDUCATEOS_DISTRICT`.
   and the workspace facet. `src/describe.ts` builds the text people see.
 - `__tests__/session.test.ts` (Node) covers the session and the district service over Northfield:
   the subject cannot change, `readOnlyHint` is ignored, writes queue for a person, and
-  cross-district calls are denied.
+  cross-district calls, school pages included, are denied. `DistrictApp.serveAs` itself is
+  covered by the district application's `serve-as.test.ts` and over a real binding by the district
+  Worker's suite.
 - `__tests__/workerd/` runs the Worker itself: the connect flow, and the facet installed through
   `ctx.facets` as the overseer installs it. The district sits behind a real `EDUCATEOS_DISTRICT`
   service binding.

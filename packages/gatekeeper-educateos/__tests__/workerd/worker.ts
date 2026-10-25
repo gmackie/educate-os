@@ -43,6 +43,9 @@ export class FakeDistrict extends WorkerEntrypoint implements SchoolToolService 
   declineChange(decider: VerifiedPrincipal, approvalId: string, reason: string) {
     return district.service.declineChange(decider, approvalId, reason);
   }
+  serveAs(principal: VerifiedPrincipal, request: Request) {
+    return district.service.serveAs(principal, request);
+  }
 }
 
 /** How many accounts the Workshop's connect callback was handed. */

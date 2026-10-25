@@ -79,6 +79,16 @@ export class DistrictSchoolTools extends WorkerEntrypoint<Cloudflare.Env> implem
   async declineChange(decider: VerifiedPrincipal, approvalId: string, reason: string): Promise<ToolDecisionOutcome> {
     return districtObject(this.env, this.ctx.exports).declineChange(decider, approvalId, reason);
   }
+
+  /**
+   * Serves one `/api` request as `principal`'s own, for the EducateOS connector's school pages
+   * (SCHO-218). Not validated, for the same reason as `authenticate`; the district application
+   * parses the principal itself and refuses anyone who is not an active principal of this district.
+   */
+  @skipRpcValidation()
+  async serveAs(principal: VerifiedPrincipal, request: Request): Promise<Response> {
+    return districtObject(this.env, this.ctx.exports).serveAs(principal, request);
+  }
 }
 
 /**
