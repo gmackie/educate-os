@@ -83,14 +83,17 @@ export interface TestDistrict {
   call<N extends RouteName>(token: string | undefined, name: N, input?: RouteInput<N>): Promise<CallResult<unknown>>;
 }
 
-/** Boots a district application over in-memory stores, with the ELA and math catalog seeds approved. */
+/**
+ * Boots a district application over in-memory stores, with the ELA and math catalog seeds approved
+ * unless `standards` names others (`[]` for a district that has approved none, SCHO-220).
+ */
 export async function bootDistrict(
   directory: DistrictDirectorySnapshot = NORTHFIELD,
-  options: Partial<Pick<DistrictAppOptions, "projects" | "fundingPools" | "modelCatalog" | "aiMonthlyDistrictCapUsdNano" | "cloudflareAccount" | "now" | "authority"
+  { standards = ["ccss-ela", "ccss-math"], ...options }: Partial<Pick<DistrictAppOptions, "projects" | "fundingPools" | "modelCatalog" | "aiMonthlyDistrictCapUsdNano" | "cloudflareAccount" | "now" | "authority"
     // Communication (SCHO-189)
     | "mail" | "appUrl"
     // Discussions (SCHO-190)
-    | "discussionScreening">> = {},
+    | "discussionScreening">> & { standards?: readonly string[] } = {},
 ): Promise<TestDistrict> {
   const idp = new TestIdentityProvider(directory.district.trustedIssuers[0]!);
   const stores = inMemoryDistrictStores(directory);
@@ -112,7 +115,7 @@ export async function bootDistrict(
   });
   const admin = directory.roleAssignments.find((r) => r.role === "district-admin")!.principalId;
   const actor = { by: admin, at: new Date().toISOString() };
-  for (const key of ["ccss-ela", "ccss-math"]) {
+  for (const key of standards) {
     const release = await catalogSeedRelease(key);
     await app.catalog.select(key, actor);
     await app.catalog.install(release, actor);

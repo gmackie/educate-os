@@ -601,6 +601,12 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
 
   // Curriculum.
   {
+    id: "curriculum.standards.manage",
+    description: "A district admin or district curriculum admin lists the district's standards releases and, as a person rather than an agent, approves or withdraws the ones its activities may align to.",
+    when: { kinds: ["standards-release"], roles: ["district-admin", "curriculum-admin"], classifications: ["district-internal"], actions: [...READS, "approve"], channels: ["http"] },
+    effect: { effect: "allow" },
+  },
+  {
     id: "curriculum.admin.manage",
     description: "A curriculum admin authors, reviews, approves and publishes learning resources in their scope.",
     when: {

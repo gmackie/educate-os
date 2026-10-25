@@ -384,6 +384,18 @@ function fakeAuthoring(owner: "oneroster" | "local") {
   };
 }
 
+/** The built-in standards the fake district lists (SCHO-220). */
+const STANDARDS: { frameworkKey: string; title: string; publisher: string; subjects: string[]; gradeBands: string[]; version: string; license: { name: string; termsUrl: string }; status: "approved" | "not-approved"; decided?: { by: string; at: string } }[] = [
+  {
+    frameworkKey: "ccss-ela", title: "Common Core State Standards for English Language Arts", publisher: "NGA Center and CCSSO", subjects: ["english-language-arts"],
+    gradeBands: ["K-2", "3-5", "6-8", "9-12"], version: "1.1.0", license: { name: "Common Core State Standards Public License", termsUrl: "https://www.thecorestandards.org/public-license/" }, status: "not-approved",
+  },
+  {
+    frameworkKey: "c3", title: "College, Career, and Civic Life (C3) Framework", publisher: "National Council for the Social Studies", subjects: ["social-studies"],
+    gradeBands: ["K-2", "3-5", "6-8", "9-12"], version: "1.1.0", license: { name: "C3 terms of use", termsUrl: "https://www.socialstudies.org/standards/c3" }, status: "not-approved",
+  },
+];
+
 /** The fake district: the client the console is given, and what it was asked. */
 export interface FakeDistrict {
   /** The client. */
@@ -436,6 +448,12 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
   const revisions = [revision(initialDesired())];
   const headDesired = () => revisions.at(-1)!.desired as DesiredStateView;
 
+  const standards = STANDARDS.map((entry) => structuredClone(entry));
+  const standardsFor = (input: Record<string, unknown>) => {
+    const entry = standards.find((s) => s.frameworkKey === (input.params as Record<string, string>).frameworkKey);
+    if (entry === undefined) throw new DistrictApiError(404, { code: "not-found", message: "No such standards." });
+    return entry;
+  };
   const handlers: { [N in RouteName]?: (input: Record<string, unknown>) => RouteResponse<N> } = {
     // Loosely typed, like the other handlers' `as never` answers.
     ...(fakeAuthoring(options.authority ?? "oneroster") as object),
@@ -550,6 +568,10 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
         students: c.students,
       };
     }) as never,
+    // Learning standards (SCHO-220): two built-in frameworks, neither approved at first.
+    "admin.listStandards": () => standards as never,
+    "admin.approveStandards": (input) => Object.assign(standardsFor(input), { status: "approved", decided: { by: "prn_fk-admin", at: "2026-10-25T15:00:00.000Z" } }) as never,
+    "admin.withdrawStandards": (input) => Object.assign(standardsFor(input), { status: "not-approved", decided: { by: "prn_fk-admin", at: "2026-10-25T15:05:00.000Z" } }) as never,
     // A route that names students. The aggregate screens must never call it.
     "teacher.roster": () => STUDENT_NAMES.map((displayName) => ({ displayName })) as never,
   };

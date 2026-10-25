@@ -85,6 +85,11 @@ export const ResourceKind = z.enum([
   /** One student's attempt at a quiz, owned by that student (SCHO-191): their answers and how they scored. `course`. */
   "quiz-attempt",
   "learning-resource",
+  /**
+   * A standards framework release a district approves for use (SCHO-220): the learning goals its
+   * activities may align to. District-level and `district-internal`.
+   */
+  "standards-release",
   "capability-config",
   "ai-budget",
   "audit-event",

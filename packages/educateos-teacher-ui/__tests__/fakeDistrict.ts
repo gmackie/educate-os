@@ -31,6 +31,11 @@ export const IDS = {
 
 /** The learning goal the class's existing activity uses. */
 export const GOAL = { frameworkKey: "ccss-ela", competencyUri: "urn:educateos:catalog:ccss-ela:W.9-10.1" };
+/** The goals the district's approved releases offer English 9 (SCHO-220). */
+export const GOALS = [
+  { ...GOAL, code: "W.9-10.1", statement: "Write arguments to support claims in an analysis of substantive topics or texts." },
+  { frameworkKey: "ccss-ela", competencyUri: "urn:educateos:catalog:ccss-ela:W.9-10.2", code: "W.9-10.2", statement: "Write informative/explanatory texts to examine and convey complex ideas." },
+];
 
 const OFFERING = {
   offering: { id: IDS.offering, districtId: IDS.district, schoolId: "sch_nf-high", termId: "trm_nf-2026-fall", courseId: "crs_nf-english-9", sectionName: "Period 3" },
@@ -110,6 +115,8 @@ export interface FakeDistrictOptions {
   offerings?: unknown[];
   /** The most AI help the district allows; asking for more is refused. */
   maxAiHelp?: "none" | "hints-only" | "full";
+  /** The learning goals offered for the class, and how many standards releases are approved. Defaults to {@link GOALS} from one release. */
+  learningGoals?: { goals: unknown[]; approvedReleases: number };
 }
 
 /** A fake district and the client the app talks to it through. */
@@ -224,6 +231,7 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
     "teacher.roster": () => ROSTER,
     "teacher.listAssignments": () => assignments,
     "teacher.getActivity": ({ params }) => activities.get(params!.activityId!),
+    "teacher.learningGoals": () => options.learningGoals ?? { goals: GOALS, approvedReleases: 1 },
     "teacher.importResource": ({ body }) => {
       const item = resourceItem(next("itm"), String(body!.url));
       items.set(item.id, item);

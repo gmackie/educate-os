@@ -30,6 +30,26 @@ counsel are in [legal/standards-licensing-counsel-brief.md](legal/standards-lice
 five bands (PK, K-2, 3-5, 6-8, 9-12) for each of its subjects, so a missing high-school band is a
 declared gap rather than an omission.
 
+## Approving standards in a district (SCHO-220)
+
+A district uses a framework only once it approves a release of it. The `available` entries above
+ship a built-in release, and a district administrator (or a curriculum admin assigned at district
+scope; policy rule `curriculum.standards.manage`) approves or withdraws it on the admin console's
+**Learning standards** page (`/admin/#/learning-standards`), or through the API:
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/admin/standards` | Lists every built-in framework, its subjects and grade bands, and whether the district approved it. |
+| `POST /api/admin/standards/:frameworkKey/approve` | Selects the framework, installs the release EducateOS ships (the mirror accepts only those exact bytes) and approves it. Approving it again changes nothing. |
+| `POST /api/admin/standards/:frameworkKey/withdraw` | Retires the approved release. Approving it again reinstates the same release. |
+| `GET /api/teacher/offerings/:offeringId/learning-goals` | The goals offered on Create activity: items of every approved release whose framework covers the course's subject, at a grade the course spans, leaving out broad groupings (strands, domains) and items with no text. |
+
+Learning goals are optional: an activity may have none. When it names some, the curriculum service
+accepts only items of a release the district has approved, so a withdrawn release's goals are
+refused for new and revised activities while existing ones keep what they recorded. A
+`pointer-only` framework such as NGSS has no built-in release and cannot be approved this way;
+until a district import path exists, science activities are created without learning goals.
+
 ## Provenance rules
 
 - Catalog metadata (each `FrameworkDefinition`) is written by EducateOS reviewers and is `derived`.

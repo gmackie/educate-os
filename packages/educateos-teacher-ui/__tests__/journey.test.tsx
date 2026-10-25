@@ -41,7 +41,7 @@ describe("a teacher's first class", () => {
     await user.type(screen.getByRole("textbox", { name: "Title" }), "Should school start later?");
     await user.type(screen.getByRole("textbox", { name: "Overview for students" }), "Argue for or against a later start.");
     await user.type(screen.getByRole("textbox", { name: "Prompt" }), "Take a position on a later start.");
-    await user.click(screen.getByRole("checkbox", { name: "CCSS-ELA W.9-10.1" }));
+    await user.click(screen.getByRole("checkbox", { name: /^CCSS-ELA W\.9-10\.1 / }));
     await user.click(screen.getByRole("checkbox", { name: "Persuasive Writing Models" }));
     await user.click(screen.getByRole("button", { name: "Add a note" }));
     await user.type(screen.getByRole("textbox", { name: "Note title" }), "Watch for");

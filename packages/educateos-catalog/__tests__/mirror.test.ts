@@ -93,6 +93,21 @@ describe("catalog mirror", () => {
     expect(await contentDigest((await m.approvedRelease("ccss-math"))!.content)).toBe(release.contentDigest);
   });
 
+  it("reinstates a withdrawn release without changing its content (SCHO-220)", async () => {
+    const { mirror: m } = mirror();
+    await m.select("ccss-math", ADMIN);
+    const release = await catalogSeedRelease("ccss-math");
+    await m.install(release, ADMIN);
+    await m.approve("ccss-math", release.version, ADMIN);
+    await m.retire("ccss-math", release.version, LATER);
+    expect(await m.approvedRelease("ccss-math")).toBeUndefined();
+    // Installing the same bytes again leaves it retired; approving it puts it back into use.
+    await m.install(release, LATER);
+    await m.approve("ccss-math", release.version, LATER);
+    expect((await m.approvedRelease("ccss-math"))?.contentDigest).toBe(release.contentDigest);
+    expect((await m.get("ccss-math"))?.releases.map((r) => [r.status, r.decidedBy])).toStrictEqual([["approved", LATER.by]]);
+  });
+
   it("upgrades with a diff of added, changed and retired items, and flags overlays left behind", async () => {
     const { mirror: m } = mirror();
     await m.select("ccss-math", ADMIN);

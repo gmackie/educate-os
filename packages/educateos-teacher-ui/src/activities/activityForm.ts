@@ -65,10 +65,10 @@ export const emptyActivityForm = (): ActivityForm => ({
 });
 
 /** The key a learning goal is chosen by. */
-export const goalKey = (goal: LearningGoal): string => `${goal.frameworkKey} ${goal.competencyUri}`;
+export const goalKey = (goal: Pick<LearningGoal, "frameworkKey" | "competencyUri">): string => `${goal.frameworkKey} ${goal.competencyUri}`;
 
 /** A learning goal's short name: its framework and code, such as "CCSS-ELA W.9-10.1". */
-export const goalLabel = (goal: LearningGoal): string => `${goal.frameworkKey.toUpperCase()} ${goal.competencyUri.split(":").at(-1) ?? goal.competencyUri}`;
+export const goalLabel = (goal: LearningGoal): string => `${goal.frameworkKey.toUpperCase()} ${goal.code}`;
 
 /** The key an approved resource is chosen by. */
 export const releaseKey = (release: ResourceRelease): string => `${release.descriptor.id}@${release.descriptor.release.version}`;
@@ -97,7 +97,6 @@ export const buildActivity = (form: ActivityForm, context: ActivityContext): { o
   const title = need(form.title, "Give the activity a title.");
   const overview = need(form.overview, "Write an overview for students.");
   const goals = context.goals.filter((goal) => form.goals.includes(goalKey(goal)));
-  if (goals.length === 0) problems.push("Choose at least one learning goal.");
   const resources = context.releases
     .filter((release) => form.resources.includes(releaseKey(release)))
     .map((release) => ({ resourceId: release.descriptor.id, version: release.descriptor.release.version }));

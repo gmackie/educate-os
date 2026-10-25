@@ -4,7 +4,11 @@
 // so the attempt has an immutable, digest-pinned submission and a receipt like any other work. A
 // release records the scores through E01's official-grade gate, as one action. The quiz service
 // decides nothing here that these services do not decide again.
-import type { ArtifactType, Caller, VerifiedPrincipal } from "@educateos/contracts";
+//
+// A quiz published without an assignment gets its own (SCHO-220). An assignment names an activity
+// only as an opaque ID, and this one names the quiz itself (`act_quiz-…`): no activity is installed
+// for it, so activity views skip it, and the ID finds the assignment again on a retried publish.
+import { ActivityId, EducateOsError, type ArtifactType, type Caller, type DistrictDirectorySnapshot, type VerifiedPrincipal } from "@educateos/contracts";
 import type { AssessmentRecordStore, AssessmentService, AssignmentBinding } from "@educateos/assessment";
 import type { LearningArtifacts } from "@educateos/learning-artifacts";
 import type { QuizAssignment, QuizGrading } from "@educateos/quizzes";
@@ -27,10 +31,15 @@ export interface QuizGradingServices {
   workspaces: WorkspaceDirectory;
   /** The request's correlation ID, so every decision the quiz causes is audited under it. */
   correlationId: string;
+  /** The district directory, for the term a quiz's own assignment is due at the end of. */
+  directory: DistrictDirectorySnapshot;
 }
 
+/** The opaque activity ID a quiz's own assignment names: the quiz's, so it is found again. */
+export const quizActivityId = (quizId: string): ActivityId => ActivityId.parse(`act_${`quiz-${quizId.replace(/^qz_/, "")}`.slice(0, 63)}`);
+
 /** {@link QuizGrading} over the district's assessment, artifact and workspace services. */
-export function quizGrading({ records, assessment, artifacts, workspaces, correlationId }: QuizGradingServices): QuizGrading {
+export function quizGrading({ records, assessment, artifacts, workspaces, correlationId, directory }: QuizGradingServices): QuizGrading {
   const callerOf = (subject: VerifiedPrincipal): Caller => ({ principal: subject, channel: "http", correlationId });
   return {
     async assignment(offeringId, assignmentId): Promise<QuizAssignment | undefined> {
@@ -38,6 +47,28 @@ export function quizGrading({ records, assessment, artifacts, workspaces, correl
       if (assignment === undefined) return undefined;
       const closes = closesAt(assignment);
       return { id: assignment.id, title: assignment.title, ...(closes === undefined ? {} : { closesAt: closes }) };
+    },
+
+    async createAssignment(subject, offeringId, quiz) {
+      const activityId = quizActivityId(quiz.id);
+      const existing = (await records.load()).state.assignments.find((a) => a.offeringId === offeringId && a.activityId === activityId);
+      if (existing !== undefined) return existing.id;
+      // Due when the quiz closes, or else at the end of its term. Late work is accepted: the quiz's own window decides when attempts stop.
+      const offering = directory.offerings.find((o) => o.id === offeringId);
+      const term = directory.terms.find((t) => t.id === offering?.termId);
+      const dueAt = quiz.settings.availableUntil ?? (term === undefined ? undefined : `${term.endsOn}T23:59:59Z`);
+      if (dueAt === undefined) throw new EducateOsError("validation-failed", "Choose when the quiz closes before publishing it.");
+      const assignment = await assessment.createAssignment(callerOf(subject), {
+        offeringId,
+        activityId,
+        title: quiz.title,
+        dueAt: new Date(dueAt).toISOString(),
+        latePolicy: { kind: "accept" },
+        attemptsAllowed: quiz.settings.attemptsAllowed,
+        permittedArtifactTypes: [ANSWER_SHEET_TYPE],
+        feedbackVisibility: "when-shared",
+      });
+      return assignment.id;
     },
 
     async prepareAssignment(subject, assignmentId, attemptsAllowed) {

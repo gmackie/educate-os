@@ -27,7 +27,8 @@ const CommonInput = {
   overview: Text(5000),
   resources: z.array(ResourceReleaseRef).max(50).default([]),
   codex: z.array(CodexEntry).max(100).default([]),
-  alignments: z.array(AlignmentRequest).min(1).max(20),
+  /** Learning goals from the district's approved standards releases. Optional (SCHO-220). */
+  alignments: z.array(AlignmentRequest).max(20).default([]),
   aiHelp: AiHelpLevel,
   /** Artifact types allowed beyond those the template's steps require. */
   additionalArtifactTypes: z.array(ArtifactType).max(12).default([]),

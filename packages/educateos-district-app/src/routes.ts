@@ -721,6 +721,53 @@ export type StaffAttemptBody = z.infer<typeof StaffAttemptBody>;
 const params = <S extends z.core.$ZodLooseShape>(shape: S) => z.strictObject(shape);
 const NoBody = z.strictObject({});
 
+// Learning standards (SCHO-220). Plain schemas, so the browser bundle never carries the catalog itself.
+/** A catalog framework key, such as `ccss-ela`. */
+const StandardsKey = z.string().regex(/^[a-z][a-z0-9-]{1,62}$/);
+
+/**
+ * A standards framework that ships with EducateOS, as the Learning standards page lists it: what it
+ * covers, and whether the district approved its built-in release for its activities' learning goals.
+ */
+export const StandardsReleaseBody = z.strictObject({
+  frameworkKey: StandardsKey,
+  title: z.string(),
+  publisher: z.string(),
+  /** The catalog's subjects it covers, such as `english-language-arts`. */
+  subjects: z.array(z.string()),
+  /** The catalog grade bands (`PK`, `K-2`, `3-5`, `6-8`, `9-12`) it ships items for. */
+  gradeBands: z.array(z.string()),
+  /** The built-in release's version. */
+  version: z.string(),
+  license: z.strictObject({ name: z.string(), termsUrl: z.string(), attribution: z.string().optional() }),
+  /** `approved` while the district uses the built-in release; activities may then align to its items. */
+  status: z.enum(["approved", "not-approved"]),
+  /** Who last approved or withdrew it, and when. Absent until someone does. */
+  decided: z.strictObject({ by: PrincipalId, at: z.string() }).optional(),
+});
+/** A standards release listing entry. */
+export type StandardsReleaseBody = z.infer<typeof StandardsReleaseBody>;
+
+/** One learning goal a teacher may choose for an activity: an item of an approved standards release. */
+export const LearningGoalBody = z.strictObject({
+  frameworkKey: StandardsKey,
+  competencyUri: z.string(),
+  /** The publisher's code, such as `W.9-10.1`, or the district's local label for it. */
+  code: z.string(),
+  statement: z.string(),
+});
+/** A learning goal. */
+export type LearningGoalBody = z.infer<typeof LearningGoalBody>;
+
+/**
+ * The learning goals offered for a class: items of the district's approved standards releases that
+ * match the course's subject and grade band. `approvedReleases` counts every approved release, so a
+ * class with no goals can say whether none is approved or none fits.
+ */
+export const LearningGoalsBody = z.strictObject({ goals: z.array(LearningGoalBody), approvedReleases: z.int().nonnegative() });
+/** Learning goals for a class. */
+export type LearningGoalsBody = z.infer<typeof LearningGoalsBody>;
+
 /** Defines a route, keeping its literal types. */
 function route<const S extends RouteSpec>(spec: S): S {
   return spec;
@@ -883,6 +930,10 @@ export const ROUTES = {
     method: "POST", path: "/api/teacher/offerings/:offeringId/activities", surface: "teacher", status: 201,
     params: params({ offeringId: OfferingId }), body: z.strictObject({ activity: TemplateInput }), response: ActivityDefinition,
   }),
+  "teacher.learningGoals": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/learning-goals", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: LearningGoalsBody,
+  }),
   "teacher.publishActivity": route({
     method: "POST", path: "/api/teacher/activity-definitions/:definitionId/publish", surface: "teacher",
     params: params({ definitionId: ActivityDefinitionId }), body: NoBody, response: ActivityDefinition,
@@ -983,6 +1034,16 @@ export const ROUTES = {
   // Admin
   "admin.health": route({ method: "GET", path: "/api/admin/health", surface: "admin", response: DistrictHealthBody }),
   "admin.listOfferings": route({ method: "GET", path: "/api/admin/offerings", surface: "admin", response: z.array(AdminOfferingBody) }),
+  // Learning standards (SCHO-220)
+  "admin.listStandards": route({ method: "GET", path: "/api/admin/standards", surface: "admin", response: z.array(StandardsReleaseBody) }),
+  "admin.approveStandards": route({
+    method: "POST", path: "/api/admin/standards/:frameworkKey/approve", surface: "admin",
+    params: params({ frameworkKey: StandardsKey }), body: NoBody, response: StandardsReleaseBody,
+  }),
+  "admin.withdrawStandards": route({
+    method: "POST", path: "/api/admin/standards/:frameworkKey/withdraw", surface: "admin",
+    params: params({ frameworkKey: StandardsKey }), body: NoBody, response: StandardsReleaseBody,
+  }),
   "admin.previewRoster": route({
     method: "POST", path: "/api/admin/roster/preview", surface: "admin", body: RosterFilesInput, response: declared<oneroster.OneRosterPreview>(),
   }),

@@ -117,9 +117,9 @@ const QuizForm = ({ quiz, assignments, modules, started, onSaved }: {
     >
       <Input label="Title" maxLength={200} value={title} onChange={(event) => setTitle(event.target.value)} />
       <InputArea label="Instructions (optional)" value={description} autoResize minRows={2} onValueChange={setDescription} />
-      <Radio.Group legend="Release scores as grades for" description="A quiz needs an assignment before it can be published; its released scores become that assignment's grades."
+      <Radio.Group legend="Release scores as grades for" description="Released scores become this assignment's grades in the gradebook."
         value={assignmentId} onValueChange={(value) => setAssignmentId(value as string)}>
-        <Radio.Item value={NONE} label="No assignment yet" />
+        <Radio.Item value={NONE} label="A new gradebook assignment for this quiz, made when you publish it" />
         {assignments.map((a) => <Radio.Item key={a.id} value={a.id} label={a.title} />)}
       </Radio.Group>
       {modules.length > 0 && (
@@ -172,10 +172,14 @@ const QuizActions = ({ quiz, onChanged }: { quiz: Quiz; onChanged: () => void })
   const action = useAction(onChanged);
   const params = { offeringId: quiz.offeringId, quizId: quiz.id };
   const published = quiz.status === "published";
+  // The one thing the district refuses to publish that the teacher can see coming: a quiz with no saved questions.
+  const cannotPublish = !published && quiz.items.length === 0 ? "Add at least one question and save the quiz to publish it." : undefined;
+  const reasonId = `publish-reason-${quiz.id}`;
   return (
     <div className="flex flex-col gap-2">
       <div role="group" aria-label={`Manage ${quiz.title}`} className="flex flex-wrap items-center gap-2">
-        <Button variant={published ? "secondary" : "primary"} icon={published ? <EyeSlash aria-hidden /> : <Eye aria-hidden />} loading={action.running("publish")} disabled={action.busy}
+        <Button variant={published ? "secondary" : "primary"} icon={published ? <EyeSlash aria-hidden /> : <Eye aria-hidden />} loading={action.running("publish")}
+          disabled={action.busy || cannotPublish !== undefined} aria-describedby={cannotPublish === undefined ? undefined : reasonId}
           onClick={() => void action.run("publish", async (client) => {
             const next = await client.call("teacher.publishQuiz", { params, body: { published: !published } });
             return next.status === "published" ? `Published ${next.title} to the class.` : `${next.title} is a draft again; students can't see it.`;
@@ -200,6 +204,7 @@ const QuizActions = ({ quiz, onChanged }: { quiz: Quiz; onChanged: () => void })
           )
           : <Button size="sm" variant="ghost" icon={<Trash aria-hidden />} onClick={() => setConfirmingDelete(true)}>Delete</Button>}
       </div>
+      {cannotPublish !== undefined && <p id={reasonId}><Text variant="secondary" size="sm" as="span">{cannotPublish}</Text></p>}
       {action.state.status === "failed" && <Problem error={action.state.error} />}
     </div>
   );

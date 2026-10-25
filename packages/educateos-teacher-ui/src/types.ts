@@ -22,8 +22,8 @@ export type TemplateInput = RouteInput<"teacher.createActivity">["body"]["activi
 export type TemplateKind = TemplateInput["template"];
 /** How much AI help an activity allows. */
 export type AiHelpLevel = TemplateInput["aiHelp"];
-/** A learning goal an activity gathers evidence of. */
-export type LearningGoal = TemplateInput["alignments"][number];
+/** A learning goal the district approved for a class, which an activity may gather evidence of. */
+export type LearningGoal = RouteResponse<"teacher.learningGoals">["goals"][number];
 /** A note in the class context, for students or for teachers only. */
 export type ClassNote = Extract<NonNullable<TemplateInput["codex"]>[number], { kind: "note" }>;
 /** An activity assigned in a class. */
