@@ -1,7 +1,91 @@
+# ForgeGraph delivery for the schoolos.gmac.io production instance (SCHO-192). A merge to main
+# deploys every target once CI is green: the agent installs dependencies at the repository root,
+# runs `buildCommand` and then `deployCommand` in `appDir` (which must be set: without it the agent
+# guesses one Wrangler directory for the whole repository), and probes `healthCheckUrl`. See docs/schoolos/runbooks/production-instance.md.
+#
+# Every buildCommand first stamps the deployed commit into the config as FG_COMMIT_HASH
+# (scripts/production/stamp-commit.ts): the agent stamps only wrangler.jsonc, not the
+# `-c wrangler.production.jsonc` deployed here, and its source-order guard refuses to deploy over a
+# version with no FG_COMMIT_HASH (FORGE-212).
+#
+# This app holds the router, the backend and the three preinstalled gatekeepers. The AI call guard
+# is the separate app `schoolos-ai-guard` (same repository), because `syncSecrets` copies every
+# secret of a stage to each target that sets it. Only the backend syncs secrets here: ADMINS,
+# CF_ACCESS_AUD and CF_ACCESS_ISS.
+#
+# Cold bring-up must go tier by tier (`forge deploy create production --target <name>`): the
+# gatekeepers and the guard, then the backend, then the router, since a service binding to a
+# Worker that does not exist yet is rejected. Afterwards every target deploys in place.
+
 app: school-os
 server: https://forgegraf.com
 
 # --- Operator notes (comments only; not part of the applied schema) ---
 # Pull requests and CI live on ForgeGraph (git.forgegraf.com/gmackie/school-os, remote `forge`).
 # GitHub (gmackie/school-os, remote `origin`) receives the same commits as a mirror; it has no PRs.
-# No deployment stages yet: SchoolOS districts deploy into their own Cloudflare accounts (R02).
+# Districts still deploy SchoolOS into their own Cloudflare accounts (R02); the production stage
+# below is our own demo instance, not a district's.
+
+stages:
+  - name: production
+    url: https://schoolos.gmac.io
+    sortOrder: 20
+    targets:
+      - name: gatekeeper-context
+        platform: cloudflare-workers
+        nodeId: bf11e7b1-b9de-45be-a89d-ae08049c7598  # hetzner-fg
+        config:
+          workerName: gatekeeper-context
+          appDir: packages/gatekeeper-context
+          configPath: packages/gatekeeper-context/wrangler.production.jsonc
+          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:app
+          deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
+          healthCheckUrl: https://schoolos.gmac.io/healthz
+      - name: gatekeeper-scheduler
+        platform: cloudflare-workers
+        nodeId: bf11e7b1-b9de-45be-a89d-ae08049c7598  # hetzner-fg
+        config:
+          workerName: gatekeeper-scheduler
+          appDir: packages/gatekeeper-scheduler
+          configPath: packages/gatekeeper-scheduler/wrangler.production.jsonc
+          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache build:app
+          deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
+          healthCheckUrl: https://schoolos.gmac.io/healthz
+      - name: gatekeeper-websearch
+        platform: cloudflare-workers
+        nodeId: bf11e7b1-b9de-45be-a89d-ae08049c7598  # hetzner-fg
+        config:
+          workerName: gatekeeper-websearch
+          appDir: packages/gatekeeper-websearch
+          configPath: packages/gatekeeper-websearch/wrangler.production.jsonc
+          # Wrangler's own build (capnweb-validate) is the rest of the build.
+          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc
+          deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
+          healthCheckUrl: https://schoolos.gmac.io/healthz
+      - name: workshop-backend
+        platform: cloudflare-workers
+        nodeId: bf11e7b1-b9de-45be-a89d-ae08049c7598  # hetzner-fg
+        config:
+          workerName: workshop-backend
+          appDir: packages/workshop-backend
+          configPath: packages/workshop-backend/wrangler.production.jsonc
+          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:bundled-blueprints
+          deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
+          syncSecrets: true
+          healthCheckUrl: https://schoolos.gmac.io/healthz
+      - name: router
+        platform: cloudflare-workers
+        nodeId: bf11e7b1-b9de-45be-a89d-ae08049c7598  # hetzner-fg
+        config:
+          workerName: router
+          appDir: packages/router
+          configPath: packages/router/wrangler.production.jsonc
+          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && VITE_CF_ACCESS_MODE=true pnpm exec vp run --no-cache -F @gadgets/workshop-frontend build
+          deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
+          healthCheckUrl: https://schoolos.gmac.io/healthz
+
+health:
+  # The router's liveness route, exempt from Cloudflare Access ("SchoolOS health (bypass)").
+  url: /healthz
+  interval: 60
+  timeout: 10

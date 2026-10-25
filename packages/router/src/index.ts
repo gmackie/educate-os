@@ -47,6 +47,13 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
 
+    // Liveness for deployers' health probes: answered here, so it reaches no backend or gatekeeper
+    // and carries nothing about the instance. A deployment behind Cloudflare Access exempts this
+    // one path from sign-in so the probe can reach it.
+    if (url.pathname === "/healthz") {
+      return new Response("ok", { headers: { "content-type": "text/plain", "cache-control": "no-store" } });
+    }
+
     for (const key of Object.keys(env)) {
       if (!key.startsWith("GATEKEEPER_")) continue;
       const suffix = key.slice("GATEKEEPER_".length).toLowerCase().replaceAll("_", "-");
