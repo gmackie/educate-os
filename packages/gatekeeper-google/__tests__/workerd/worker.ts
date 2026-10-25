@@ -232,25 +232,72 @@ class HookBindingQueue extends TestApprovalQueue {
   }
 }
 
+/**
+ * Test state that TestHooks keeps in its storage, not its memory: the runtime evicts an object
+ * that has had no request for about ten seconds, and a loaded runner can leave one idle that long
+ * mid-test, which would forget what its hook received and how it was told to behave.
+ */
+class StoredState<T extends object> {
+  constructor(private readonly storage: DurableObjectStorage, private readonly key: string,
+              private readonly initial: T) {}
+
+  get(): T {
+    return this.storage.kv.get<T>(this.key) ?? structuredClone(this.initial);
+  }
+
+  /** Change the state; nothing may await within `change`, so no other change interleaves. */
+  update(change: (state: T) => void): T {
+    const state = this.get();
+    change(state);
+    this.storage.kv.put(this.key, state);
+    return state;
+  }
+}
+
+type ApprovalRecord = {submissions: Array<{actionId: number; description: unknown}>; observations: unknown[]};
+
+/** The approval queue each hook firing gets, recording what the firing submits and observes. */
+class HookApprovalQueue extends TestApprovalQueue {
+  constructor(private readonly recorded: StoredState<ApprovalRecord>) {
+    super();
+  }
+
+  override async authorizeObservation(description: unknown): Promise<void> {
+    this.recorded.update(state => { state.observations.push(description); });
+    await super.authorizeObservation(description);
+  }
+
+  override async submitAction(actionId: number, description: unknown): Promise<void> {
+    this.recorded.update(state => { state.submissions.push({actionId, description}); });
+    await super.submitAction(actionId, description);
+  }
+
+  override read() {
+    return this.recorded.get();
+  }
+}
+
 type HookState = {
   received: ChatMessageInfo[]; reply?: string; post?: string; failures: number; admissionFailures?: number;
 };
 
 /** A gadget's message hook: records each entry, optionally failing first, replying or posting. */
 class RecordingHook extends RpcTarget {
-  constructor(private readonly state: HookState) {
+  constructor(private readonly state: StoredState<HookState>) {
     super();
   }
 
   async receiveMessage(entry: ChatNewMessageEntry): Promise<void> {
     try {
-      if (this.state.failures > 0) {
-        this.state.failures--;
-        throw new Error("The test hook failed.");
-      }
-      this.state.received.push(entry.info);
-      if (this.state.reply !== undefined) await entry.message.reply(this.state.reply);
-      if (this.state.post !== undefined) await entry.conversation.post(this.state.post);
+      let failed = false;
+      const {reply, post} = this.state.update(state => {
+        failed = state.failures > 0;
+        if (failed) state.failures--;
+        else state.received.push(entry.info);
+      });
+      if (failed) throw new Error("The test hook failed.");
+      if (reply !== undefined) await entry.message.reply(reply);
+      if (post !== undefined) await entry.conversation.post(post);
     } finally {
       disposeRpc(entry.message);
       disposeRpc(entry.conversation);
@@ -269,23 +316,25 @@ type GmailHookState = {
 
 /** A gadget's Gmail hook: records each entry, optionally failing first or replying. */
 class GmailRecordingHook extends RpcTarget {
-  constructor(private readonly state: GmailHookState) {
+  constructor(private readonly state: StoredState<GmailHookState>) {
     super();
   }
 
   async receiveMessage(entry: GmailMessageEntry): Promise<void> {
     try {
-      if (this.state.held) {
-        this.state.holding = true;
-        while (this.state.held) await scheduler.wait(5);
-        this.state.holding = false;
+      if (this.state.get().held) {
+        this.state.update(state => { state.holding = true; });
+        while (this.state.get().held) await scheduler.wait(5);
+        this.state.update(state => { state.holding = false; });
       }
-      if (this.state.failures > 0) {
-        this.state.failures--;
-        throw new Error("The test hook failed.");
-      }
-      this.state.received.push(entry.info);
-      if (this.state.reply !== undefined) await entry.message.reply(this.state.reply);
+      let failed = false;
+      const {reply} = this.state.update(state => {
+        failed = state.failures > 0;
+        if (failed) state.failures--;
+        else state.received.push(entry.info);
+      });
+      if (failed) throw new Error("The test hook failed.");
+      if (reply !== undefined) await entry.message.reply(reply);
     } finally {
       disposeRpc(entry.message);
     }
@@ -600,11 +649,13 @@ export class TestHooks extends DurableObject<Cloudflare.Env> {
 
   // ── Google Chat and Gmail hooks, with these hooks standing in for the Overseer ──
 
-  #hookQueue = new TestApprovalQueue();
-  #hook: HookState = { received: [], failures: 0 };
-  #gmailHook: GmailHookState = { received: [], failures: 0 };
+  // Stored, not held in memory: see StoredState.
+  #hookQueue = new HookApprovalQueue(
+    new StoredState<ApprovalRecord>(this.ctx.storage, "test:hookQueue", { submissions: [], observations: [] }));
+  #hook = new StoredState<HookState>(this.ctx.storage, "test:hook", { received: [], failures: 0 });
+  #gmailHook = new StoredState<GmailHookState>(this.ctx.storage, "test:gmailHook", { received: [], failures: 0 });
   /** Which gatekeeper bound the hook, and so which recording hook its firings get. */
-  #hookKind: "chat" | "gmail" = "chat";
+  #hookKind = new StoredState<{ kind: "chat" | "gmail" }>(this.ctx.storage, "test:hookKind", { kind: "chat" });
 
   /** Subscribe through the facet's own subscribeNewMessages(), keeping the controller it binds. */
   async chatSubscribe(facet: ChatFacet): Promise<void> {
@@ -613,7 +664,7 @@ export class TestHooks extends DurableObject<Cloudflare.Env> {
     using queue = new RpcStub(new HookBindingQueue(this.ctx.storage));
     using capability = await chat.startSession(queue as never) as (ChatSpace | ChatThread) & Disposable;
     await capability.subscribeNewMessages(new RpcStub(new RecordingHook(this.#hook)));
-    this.#hookKind = "chat";
+    this.#hookKind.update(state => { state.kind = "chat"; });
   }
 
   /** Subscribe a Gmail binding, or one of its threads, keeping the controller it binds. */
@@ -629,7 +680,7 @@ export class TestHooks extends DurableObject<Cloudflare.Env> {
       using thread = await session.getThread(threadId) as GmailThread & Disposable;
       await thread.subscribeNewMessages(hook as never);
     }
-    this.#hookKind = "gmail";
+    this.#hookKind.update(state => { state.kind = "gmail"; });
   }
 
   async gmailDeliver(
@@ -665,27 +716,30 @@ export class TestHooks extends DurableObject<Cloudflare.Env> {
   }
 
   startHook() {
-    if (this.#hook.admissionFailures) {
-      this.#hook.admissionFailures--;
-      throw new Error("The test Workshop failed to start the firing.");
-    }
-    const callback = this.#hookKind === "gmail"
+    let refused = false;
+    this.#hook.update(state => {
+      refused = (state.admissionFailures ?? 0) > 0;
+      if (refused) state.admissionFailures!--;
+    });
+    if (refused) throw new Error("The test Workshop failed to start the firing.");
+    const callback = this.#hookKind.get().kind === "gmail"
       ? new GmailRecordingHook(this.#gmailHook)
       : new RecordingHook(this.#hook);
     return { callback, approvalQueue: new RpcStub(this.#hookQueue) };
   }
 
   setHookBehavior(behavior: Partial<Omit<HookState, "received">>): void {
-    Object.assign(this.#hook, behavior);
+    this.#hook.update(state => { Object.assign(state, behavior); });
   }
 
   /** What the hook received, how many of its failures remain, and what it queued. */
   readHook(): { received: ChatMessageInfo[]; failures: number; submissions: Array<{ actionId: number }> } {
-    return { received: this.#hook.received, failures: this.#hook.failures, ...this.#hookQueue.read() };
+    const { received, failures } = this.#hook.get();
+    return { received, failures, ...this.#hookQueue.read() };
   }
 
   setGmailHookBehavior(behavior: Partial<Omit<GmailHookState, "received">>): void {
-    Object.assign(this.#gmailHook, behavior);
+    this.#gmailHook.update(state => { Object.assign(state, behavior); });
   }
 
   /** What the Gmail hook received, how many of its failures remain, and what it queued. */
@@ -694,9 +748,10 @@ export class TestHooks extends DurableObject<Cloudflare.Env> {
     observations: Array<{ title: string }>; holding: boolean;
   } {
     const { submissions, observations } = this.#hookQueue.read();
+    const { received, failures, holding } = this.#gmailHook.get();
     return {
-      received: this.#gmailHook.received, failures: this.#gmailHook.failures, submissions,
-      observations: observations as Array<{ title: string }>, holding: this.#gmailHook.holding === true,
+      received, failures, submissions,
+      observations: observations as Array<{ title: string }>, holding: holding === true,
     };
   }
 }

@@ -44,6 +44,13 @@ const testEnv = env as unknown as {
 };
 
 const gadgetId = 3;
+/**
+ * How long a test waits for an alarm the runtime runs on its own, such as the one a batch sets to
+ * continue a due backlog. A loaded runner can take seconds to run it, well past `vi.waitFor`'s
+ * one-second default; tests that wait this long declare RUNTIME_ALARM_TEST_TIMEOUT_MS.
+ */
+const RUNTIME_ALARM_WAIT = { timeout: 30_000, interval: 20 };
+const RUNTIME_ALARM_TEST_TIMEOUT_MS = 45_000;
 const MAX_ENABLED_SCHEDULES_PER_ACCOUNT = 500;
 const MAX_ENABLED_SCHEDULES_PER_WORKSPACE = 100;
 
@@ -722,10 +729,11 @@ describe("ScheduleDriver", () => {
     await testEnv.TEST_HOOKS.holdCallbacksUntilConcurrent(4);
 
     await runDurableObjectAlarm(driver);
+    // The backlog's 21st callback runs in the next alarm, which the runtime runs at once.
     await vi.waitFor(async () => {
       const events = (await testEnv.TEST_HOOKS.read()).events;
       expect(events.filter((event) => event.startsWith("callback:"))).toHaveLength(21);
-    });
+    }, RUNTIME_ALARM_WAIT);
     const delivery = await testEnv.TEST_HOOKS.read();
     expect(delivery.events.filter((event) => event.startsWith("callback:"))).toHaveLength(21);
     expect(delivery.maxActiveCallbacks).toBe(4);
@@ -738,7 +746,7 @@ describe("ScheduleDriver", () => {
         startHookRejectedCount: 0,
       }),
     );
-  });
+  }, RUNTIME_ALARM_TEST_TIMEOUT_MS);
 
   it("reports startHook rejections only as a batch count", async () => {
     const debug = vi.spyOn(console, "debug").mockImplementation(() => {});
@@ -1240,14 +1248,15 @@ describe("ScheduleDriver", () => {
     expect(reportIssue).not.toHaveBeenCalled();
 
     let keys: string[] = [];
+    // Cleanup runs in bounded passes, each in an alarm the runtime runs once the last has finished.
     await vi.waitFor(async () => {
       keys = await runInDurableObject(driver, (_instance, state) =>
         [...state.storage.kv.list()].map(([key]) => key),
       );
       expect(keys).toEqual(["metadata"]);
-    });
+    }, RUNTIME_ALARM_WAIT);
     expect(keys).toEqual(["metadata"]);
-  });
+  }, RUNTIME_ALARM_TEST_TIMEOUT_MS);
 });
 
 async function rejectedMessage(run: () => Promise<unknown>): Promise<string> {

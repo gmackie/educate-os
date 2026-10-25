@@ -23,7 +23,10 @@ let maxActiveCallbacks = 0;
 // When set, callbacks hold until this many have overlapped once, so reaching the driver's
 // concurrency bound does not depend on its startHook/authorization round trips racing a timer.
 let callbackConcurrencyTarget = 0;
-const CALLBACK_CONCURRENCY_WAIT_MS = 2_000;
+// Only bounds a driver that never reaches the target, which the test's maxActiveCallbacks
+// assertion then reports. Generous, as a loaded runner can take seconds to start the callbacks,
+// and within schedule-driver.test.ts's RUNTIME_ALARM_TEST_TIMEOUT_MS.
+const CALLBACK_CONCURRENCY_WAIT_MS = 20_000;
 let disposedApprovalQueues = 0;
 let disposedCallbacks = 0;
 let blockPoint: BlockPoint | null = null;

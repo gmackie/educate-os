@@ -258,13 +258,18 @@ const driverStorage = <T>(key: string) => runInDurableObject(driver(),
 
 /**
  * Wait until the driver has no history read or delivery due: its own alarm runs them, and forcing
- * that alarm here as well would run it twice concurrently.
+ * that alarm here as well would run it twice concurrently. While hooks are registered, also wait
+ * for that run to have set the next alarm, which later() runs: before then, later() could find no
+ * alarm to run, and quietly run nothing, or run one alongside the runtime's.
  */
-const settled = () => until(() => runInDurableObject(driver(), (_instance: unknown, state: DurableObjectState) => {
+const settled = () => until(() => runInDurableObject(driver(), async (_instance: unknown, state: DurableObjectState) => {
   const now = Date.now();
   const due = [...state.storage.kv.list<{at?: number}>({prefix: "msg:"})].some(([, row]) => row.at! <= now);
   const syncAt = state.storage.kv.get<number>("syncAt");
-  return !due && (syncAt === undefined || syncAt > now);
+  if (due || (syncAt !== undefined && syncAt <= now)) return false;
+  if ([...state.storage.kv.list({prefix: "reg:", limit: 1})].length === 0) return true;
+  const alarm = await state.storage.getAlarm();
+  return alarm !== null && alarm > now;
 }));
 
 /** Run the driver's alarm on a clock `ms` ahead, which the runtime won't wake it for. */
