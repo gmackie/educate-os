@@ -1,6 +1,8 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import { Link, Text } from "@cloudflare/kumo";
 import { BookOpenIcon, CalendarBlankIcon, ExamIcon, GearIcon, HouseIcon, LockSimpleIcon, UsersThreeIcon } from "@phosphor-icons/react";
+import { ThemeModeButton } from "@gadgets/ui/theme";
+import { useAnnounce } from "./AppContext.tsx";
 import { NotificationsLink } from "./communication/NotificationsLink.tsx";
 
 const DESKTOP_QUERY = "(min-width: 48rem)";
@@ -69,6 +71,7 @@ const MainNav = ({ label, audience }: { label: string; audience: Audience }) => 
  */
 export const Layout = ({ studentName, audience, children }: { studentName: string | undefined; audience: Audience | undefined; children: ReactNode }) => {
   const isPhone = useIsPhone();
+  const announce = useAnnounce();
   return (
     <div data-layout={isPhone ? "phone" : "desktop"} className="min-h-dvh bg-kumo-base text-kumo-default">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-kumo-elevated focus:p-2">
@@ -92,6 +95,7 @@ export const Layout = ({ studentName, audience, children }: { studentName: strin
                 </Link>
               </>
             ) : null}
+            <ThemeModeButton onAnnounce={announce} />
             {studentName === undefined ? null : <Text variant="secondary">{studentName}</Text>}
           </div>
         </div>

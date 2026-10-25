@@ -4,8 +4,12 @@ import { screen, waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { afterEach } from "vitest";
 import type { DistrictApiClient } from "@educateos/api-client";
+import { ThemeProvider, storedThemeMode } from "@gadgets/ui/theme";
 import { App } from "../src/App.tsx";
 import { DistrictApiProvider } from "../src/DistrictApi.tsx";
+
+/** Where Teacher Studio keeps the theme a teacher chose, as main.tsx has it. */
+export const THEME_KEY = "educateos:theme-mode";
 
 let mounted: { root: Root; container: HTMLElement } | undefined;
 
@@ -17,6 +21,7 @@ afterEach(() => {
     mounted = undefined;
   }
   window.location.hash = "";
+  localStorage.clear();
 });
 
 /** Renders Teacher Studio over `client`, at `hash`. */
@@ -25,7 +30,11 @@ export const renderApp = async (client: DistrictApiClient, hash = "#/") => {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
-  await act(async () => root.render(<DistrictApiProvider client={client}><App /></DistrictApiProvider>));
+  await act(async () => root.render(
+    <ThemeProvider source={storedThemeMode(THEME_KEY)}>
+      <DistrictApiProvider client={client}><App /></DistrictApiProvider>
+    </ThemeProvider>,
+  ));
   mounted = { root, container };
   return userEvent.setup();
 };

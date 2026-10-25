@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@cloudflare/kumo": "^2.14.0",
+    "@gadgets/ui": "workspace:*",
     "@phosphor-icons/react": "^2.1.10",
     "@educateos/api-client": "workspace:*",
     "@educateos/contracts": "workspace:*",

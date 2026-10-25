@@ -230,6 +230,9 @@ importers:
       '@educateos/contracts':
         specifier: workspace:*
         version: link:../educateos-contracts
+      '@gadgets/ui':
+        specifier: workspace:*
+        version: link:../ui
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -1659,6 +1662,9 @@ importers:
       '@educateos/api-client':
         specifier: workspace:*
         version: link:../educateos-api-client
+      '@gadgets/ui':
+        specifier: workspace:*
+        version: link:../ui
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -1720,6 +1726,9 @@ importers:
       '@educateos/api-client':
         specifier: workspace:*
         version: link:../educateos-api-client
+      '@gadgets/ui':
+        specifier: workspace:*
+        version: link:../ui
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

@@ -77,7 +77,7 @@ export const ChangeReview = ({ change, expectedHeadRevisionId, onApplied, onCanc
   return (
     <section aria-labelledby="change-review-title" className="flex flex-col gap-4 rounded-lg border border-kumo-line bg-kumo-elevated p-4">
       <Text as="h3" variant="heading" size="lg">
-        <span id="change-review-title" ref={heading} tabIndex={-1} className="outline-none focus-visible:ring-2 focus-visible:ring-kumo-ring">
+        <span id="change-review-title" ref={heading} tabIndex={-1} className="outline-none focus-visible:ring-2 focus-visible:ring-kumo-focus">
           {change.title}
         </span>
       </Text>

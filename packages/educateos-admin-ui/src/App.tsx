@@ -2,7 +2,8 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { Loader, Text } from "@cloudflare/kumo";
 import { DistrictApiError, unlinkedSignInOf, type DistrictApiClient } from "@educateos/api-client";
 import { AdminClientProvider } from "./app/AdminClientContext.tsx";
-import { AnnouncerProvider } from "./app/Announcer.tsx";
+import { ThemeModeButton } from "@gadgets/ui/theme";
+import { AnnouncerProvider, useAnnounce } from "./app/Announcer.tsx";
 import { NotAddedYet } from "./app/NotAddedYet.tsx";
 import { NotAnAdministrator } from "./app/NotAnAdministrator.tsx";
 import { SCREENS, useHashRoute, type ScreenPath } from "./app/useHashRoute.ts";
@@ -59,6 +60,7 @@ const Console = () => {
   const main = useRef<HTMLElement>(null);
   const first = useRef(true);
   const gate = accessGate(config);
+  const announce = useAnnounce();
 
   // Moving between screens moves focus to the new screen, as a page load would, so keyboard and
   // screen-reader users start at its top. Not on first load, where focus belongs to the browser.
@@ -76,8 +78,9 @@ const Console = () => {
       <a href="#main" onClick={(event) => { event.preventDefault(); main.current?.focus(); }} className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-10 focus:rounded focus:bg-kumo-base focus:p-2">
         Skip to content
       </a>
-      <header className="border-b border-kumo-line px-4 py-3">
+      <header className="flex items-center justify-between gap-4 border-b border-kumo-line px-4 py-3">
         <Text as="h1" variant="heading" size="lg">EducateOS district admin</Text>
+        <ThemeModeButton onAnnounce={announce} />
       </header>
       {gate !== undefined ? (
         <main id="main" ref={main} tabIndex={-1} className="mx-auto max-w-7xl p-4 outline-none md:p-6">
@@ -92,7 +95,7 @@ const Console = () => {
                   <a
                     href={`#/${screen.path}`}
                     aria-current={screen.path === path ? "page" : undefined}
-                    className="block rounded-md px-3 py-2 text-kumo-default hover:bg-kumo-tint focus-visible:outline-2 focus-visible:outline-kumo-ring aria-[current=page]:bg-kumo-tint aria-[current=page]:font-semibold"
+                    className="block rounded-md px-3 py-2 text-kumo-default hover:bg-kumo-tint focus-visible:outline-2 focus-visible:outline-kumo-focus aria-[current=page]:bg-kumo-tint aria-[current=page]:font-semibold"
                   >
                     {screen.label}
                   </a>

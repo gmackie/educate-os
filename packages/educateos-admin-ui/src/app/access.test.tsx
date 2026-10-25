@@ -43,9 +43,11 @@ describe("a person who is not a district administrator", () => {
     expect(within(apps).getByRole("link", { name: "Teacher Studio" }).getAttribute("href")).toBe("/teach/");
     expect(screen.queryByRole("navigation", { name: "Admin sections" })).toBeNull();
     expect(document.body.textContent).not.toMatch(/Could not load|reference req-fake/);
-    // Both links are reachable from the keyboard, after the skip link.
+    // Both links are reachable from the keyboard, after the skip link and the header's theme control.
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole("link", { name: "Skip to content" }));
+    await user.tab();
+    expect(document.activeElement).toBe(within(screen.getByRole("banner")).getByRole("button", { name: /^Theme:/ }));
     await user.tab();
     expect(document.activeElement).toBe(within(apps).getByRole("link", { name: "Learning Home" }));
     await user.tab();

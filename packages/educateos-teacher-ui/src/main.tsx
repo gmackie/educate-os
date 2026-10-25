@@ -4,6 +4,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createDistrictApiClient } from "@educateos/api-client";
+import { ThemeProvider, storedThemeMode } from "@gadgets/ui/theme";
 import { App } from "./App.tsx";
 import { DistrictApiProvider } from "./DistrictApi.tsx";
 import "./styles.css";
@@ -21,10 +22,14 @@ const token = sessionStorage.getItem(TOKEN_KEY) ?? undefined;
 
 const client = createDistrictApiClient({ baseUrl: window.location.origin, ...(token === undefined ? {} : { token }) });
 
+// The theme starts from, and remembers, this browser's choice. A host that sets the theme itself
+// (the Workshop, once the app is embedded there) would hand the provider its own source instead.
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <DistrictApiProvider client={client}>
-      <App />
-    </DistrictApiProvider>
+    <ThemeProvider source={storedThemeMode("educateos:theme-mode")}>
+      <DistrictApiProvider client={client}>
+        <App />
+      </DistrictApiProvider>
+    </ThemeProvider>
   </StrictMode>,
 );
