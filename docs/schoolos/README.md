@@ -113,16 +113,21 @@ districts) landing on a different principal in each. `SCHOOLOS_HARNESS_PORT` mov
 9. [Comprehensive Learner Record issuer](adr/0009-clr-issuer.md) (Proposed)
 11. [CASE imports stay strict; publisher deviations go through named adapters](adr/0011-case-publisher-adapters.md)
 12. [Guardians read through confirmed relationships, and roles can be dated](adr/0012-guardians-and-dated-roles.md)
+13. [EducateOS: open core with an optional paid control plane at educateos.io](adr/0013-educateos-open-core-control-plane.md)
 
 ## Rules every SchoolOS change follows
 
-- No student or teacher content leaves the district's account. `schoolos.dev` is never in the data path.
-- SchoolOS runs entirely in the organization's account. `schoolos.dev` may host documentation, an
-  optional guided bootstrap and public releases. It never mediates runtime access, issues runtime
-  tokens or gates features.
+- No student or teacher content leaves the district's account. educateos.io (formerly `schoolos.dev`)
+  is never in the data path ([ADR-0013](adr/0013-educateos-open-core-control-plane.md)).
+- SchoolOS runs entirely in the organization's account. educateos.io may host documentation,
+  releases, a guided install, an installation dashboard, billing for the services it performs,
+  and a marketplace. It never mediates runtime access, issues runtime tokens, holds standing
+  credentials for an installation or gates features.
 - No paid-gated core: no entitlement checks, subscription callbacks, student-data fleet reporting or
-  remote administrative access in the default runtime. Instance registration is opt-in,
-  content-free and off by default.
+  remote administrative access in the default runtime. A paid marketplace item is a signed
+  artifact verified offline. Instance registration is opt-in, content-free and off by default.
+- Every installation works on the organization's own domain. `<slug>.educateos.io` is a default
+  hostname, not a dependency.
 - Releases are verified offline against keys the organization pins.
 - Claims about standards support match [maturity.md](maturity.md). No 1EdTech certification is
   claimed.
