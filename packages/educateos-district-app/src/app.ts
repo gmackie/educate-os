@@ -706,7 +706,15 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "teacher.listSubmissions": (ctx, { params }) => ctx.assessment().listSubmissions(ctx.caller, params.assignmentId),
     "teacher.submittedContent": async (ctx, { params }) => {
       const { item, content } = await ctx.assessment().readSubmittedContent(ctx.caller, params.submissionId, params.artifactId);
-      return { item, content: contentBody(content) };
+      // The title names the activity step the work answers. Work the student has since deleted keeps its content, not its title.
+      const title = await ctx.artifacts().getArtifact(ctx.caller, item.artifactId).then(
+        ({ artifact }) => artifact.title,
+        (error: unknown) => {
+          if (error instanceof EducateOsError && error.code === "not-found") return undefined;
+          throw error;
+        },
+      );
+      return { item, content: contentBody(content), ...(title === undefined ? {} : { title }) };
     },
     "teacher.getFeedback": (ctx, { params }) => ctx.assessment().getFeedback(ctx.caller, params.submissionId),
     "teacher.addComment": (ctx, { params, body }) => ctx.assessment().addComment(ctx.caller, params.submissionId, body),
@@ -719,10 +727,25 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       await stores.rubrics.put(release);
       return release;
     },
+    "teacher.getRubric": async (ctx, { params }) => {
+      await ctx.require("read", { kind: "rubric", scope: ctx.offeringScope(params.offeringId), classification: "teacher-only" }, "Only the class's teachers can read its rubrics.");
+      const release = await stores.rubrics.get({ rubricId: params.rubricId, version: params.version });
+      // A release bound to a class is that class's alone. An unbound one (as teacher.signRubric
+      // signs them) is this class's only once one of its assignments uses it.
+      const ours = release !== undefined && (release.offering === undefined
+        ? (await ctx.assessment().listAssignments(ctx.caller, params.offeringId))
+          .some((a) => a.rubric?.rubricId === release.rubricId && a.rubric.version === release.version)
+        : release.offering.offeringId === params.offeringId);
+      if (!ours) {
+        throw new EducateOsError("not-found", `rubric ${params.rubricId} version ${params.version} not found.`);
+      }
+      return release;
+    },
     "teacher.runCi": (ctx, { params, body }) => runCiAndSuggest(ctx.ci(), ctx.caller, params.submissionId, body.idempotencyKey),
     "teacher.recordGrade": (ctx, { params, body }) =>
       ctx.assessment().recordOfficialGrade(ctx.caller, { submissionId: params.submissionId, score: body.score }),
     "teacher.pendingGrades": (ctx, { params }) => ctx.assessment().pendingGradeProposals(ctx.caller, params.assignmentId),
+    "teacher.officialGrades": (ctx, { params }) => ctx.assessment().officialGrades(ctx.caller, params.assignmentId, params.studentId),
     "teacher.approveGrade": (ctx, { params }) => ctx.assessment().approveGradeProposal(ctx.caller, params.proposalId),
     "teacher.declineGradeProposal": (ctx, { params, body }) => ctx.assessment().declineGradeProposal(ctx.caller, params.proposalId, body.reason),
 
