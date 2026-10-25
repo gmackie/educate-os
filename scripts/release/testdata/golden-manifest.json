@@ -491,6 +491,12 @@
             "GoogleSlidesGatekeeperImpl"
           ],
           "tag": "v8"
+        },
+        {
+          "new_sqlite_classes": [
+            "GoogleClassroomGatekeeperImpl"
+          ],
+          "tag": "v9"
         }
       ],
       "modules": [

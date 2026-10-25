@@ -50,6 +50,8 @@ import type {
   GoogleDriveReadSession, GoogleDriveSession,
 } from "./drive-types";
 import { ChatApi, isChatNoAccessError } from "./chat-api";
+import { ClassroomApi } from "./classroom-api";
+import CLASSROOM_TYPES_CODE from "./classroom-types.txt";
 import type { GoogleVerifierApi } from "./google-verifier-types";
 import { BigQueryApi, DEFAULT_MAX_BYTES_BILLED } from "./bigquery-api";
 import {
@@ -78,6 +80,7 @@ import {
   ChatAccountConfiguratorUI,
   ChatSpaceConfiguratorUI,
   ChatThreadConfiguratorUI,
+  ClassroomCourseConfiguratorUI,
   GmailConfiguratorUI,
   GoogleDocConfiguratorUI,
   GoogleSheetsConfiguratorUI,
@@ -91,6 +94,7 @@ import CALENDAR_CONFIGURATOR_HTML from "./generated/calendar-configurator-ui.txt
 import CHAT_ACCOUNT_CONFIGURATOR_HTML from "./generated/chat-account-configurator-ui.txt";
 import CHAT_SPACE_CONFIGURATOR_HTML from "./generated/chat-space-configurator-ui.txt";
 import CHAT_THREAD_CONFIGURATOR_HTML from "./generated/chat-thread-configurator-ui.txt";
+import CLASSROOM_COURSE_CONFIGURATOR_HTML from "./generated/classroom-course-configurator-ui.txt";
 import GMAIL_CONFIGURATOR_HTML from "./generated/gmail-configurator-ui.txt";
 import GOOGLE_DOC_CONFIGURATOR_HTML from "./generated/google-doc-configurator-ui.txt";
 import GOOGLE_SHEETS_CONFIGURATOR_HTML from "./generated/google-sheets-configurator-ui.txt";
@@ -105,9 +109,9 @@ import { Mutex } from "./mutex";
 import {
   BIGQUERY_HOST, BIGQUERY_RESOURCE, GMAIL_RESOURCE, GOOGLE_CALENDAR_RESOURCE,
   GOOGLE_CHAT_RESOURCE, GOOGLE_CHAT_SPACE_RESOURCE, GOOGLE_CHAT_THREAD_RESOURCE,
-  GOOGLE_DOC_RESOURCE, GOOGLE_DRIVE_FILE_RESOURCE, GOOGLE_DRIVE_FOLDER_RESOURCE,
-  GOOGLE_DRIVE_RESOURCE, GOOGLE_SHEETS_RESOURCE, GOOGLE_SLIDES_RESOURCE, RESOURCE_BY_KIND,
-  SUPPORTED_RESOURCES, creatableKind, nativeFileUrl,
+  GOOGLE_CLASSROOM_COURSE_RESOURCE, GOOGLE_DOC_RESOURCE, GOOGLE_DRIVE_FILE_RESOURCE,
+  GOOGLE_DRIVE_FOLDER_RESOURCE, GOOGLE_DRIVE_RESOURCE, GOOGLE_SHEETS_RESOURCE,
+  GOOGLE_SLIDES_RESOURCE, RESOURCE_BY_KIND, SUPPORTED_RESOURCES, creatableKind, nativeFileUrl,
   grantedResourceUrlPatterns, hasDriveResourceGrant, isPrivateGrant, OFFICE_IMPORT_GRANT,
   parseResourceUrl, recordedResourceUrlPatterns, type RecordedResourceGrant,
 } from "./resources";
@@ -155,9 +159,11 @@ function getGoogleDriveTypesCode(): string {
 
 import type {GmailGatekeeperImplProps} from "./gmail";
 import type {GoogleChatGatekeeperImplProps} from "./chat";
+import type {GoogleClassroomGatekeeperImplProps} from "./classroom";
 
 export { GmailGatekeeperImpl } from "./gmail";
 export { GoogleChatGatekeeperImpl } from "./chat";
+export { GoogleClassroomGatekeeperImpl } from "./classroom";
 export { ChatHookController, ChatHookDriver } from "./chat-hooks";
 export { GmailHookController, GmailHookDriver } from "./gmail-hooks";
 export { GoogleSheetsGatekeeperImpl } from "./sheets";
@@ -369,14 +375,14 @@ export class GatekeeperVendor extends WorkerEntrypoint<Env> implements Gatekeepe
       url: "https://google.com",
       logo: { url: GOOGLE_LOGO_URL },
       color: "#e8f0fe",
-      tagline: "Draft replies, edit docs, sheets and slides, search Drive, manage calendars, post to Chat, and analyze data",
+      tagline: "Draft replies, edit docs, sheets and slides, search Drive, manage calendars, post to Chat, grade in Classroom, and analyze data",
       description:
           "Connect your Google account to give Cloudflare OS access to Gmail, Google Docs, Google " +
-          "Sheets, Google Slides, Google Drive, Google Calendar, Google Chat, and BigQuery. Build " +
-          "agents that triage email, draft and edit documents, spreadsheets and presentations, " +
-          "search Drive and read native Docs and Sheets, find focus time, " +
-          "schedule meetings, follow and post to Chat conversations, or run analytics queries on " +
-          "your data.",
+          "Sheets, Google Slides, Google Drive, Google Calendar, Google Chat, Google Classroom, and " +
+          "BigQuery. Build agents that triage email, draft and edit documents, spreadsheets and " +
+          "presentations, search Drive and read native Docs and Sheets, find focus time, " +
+          "schedule meetings, follow and post to Chat conversations, create and grade Classroom " +
+          "assignments, or run analytics queries on your data.",
       providesAuth: true,
     };
   }
@@ -434,7 +440,7 @@ export class GatekeeperVendor extends WorkerEntrypoint<Env> implements Gatekeepe
     return [
       stripTypeModulePrefix(TYPES_CODE, GMAIL_TYPES_MODULE_PREFIX), getGoogleDocTypesCode(),
       getGoogleSheetsTypesCode(), getGoogleSlidesTypesCode(), CALENDAR_TYPES_CODE,
-      BIGQUERY_TYPES_CODE, getDriveAgentTypesCode(), CHAT_TYPES_CODE,
+      BIGQUERY_TYPES_CODE, getDriveAgentTypesCode(), CHAT_TYPES_CODE, CLASSROOM_TYPES_CODE,
     ].join("\n");
   }
 }
@@ -880,6 +886,10 @@ export class GatekeeperUserImpl extends WorkerEntrypoint<Env, GatekeeperUserImpl
         };
         return { class: this.ctx.exports.GoogleChatGatekeeperImpl({ props }), resource };
       }
+      case "classroomCourse": {
+        let props: GoogleClassroomGatekeeperImplProps = { userObjectId, courseId: target.courseId };
+        return { class: this.ctx.exports.GoogleClassroomGatekeeperImpl({ props }), resource };
+      }
       case "driveAccount":
       case "driveFolder":
       case "driveFile": {
@@ -965,6 +975,13 @@ export class GatekeeperUserImpl extends WorkerEntrypoint<Env, GatekeeperUserImpl
       return {
         iframeHtml: CHAT_THREAD_CONFIGURATOR_HTML,
         ui: new RpcStub(new ChatThreadConfiguratorUI()),
+      };
+    }
+
+    if (resourceUrlPattern === GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern) {
+      return {
+        iframeHtml: CLASSROOM_COURSE_CONFIGURATOR_HTML,
+        ui: new RpcStub(new ClassroomCourseConfiguratorUI(getToken)),
       };
     }
 
@@ -1061,6 +1078,8 @@ export class GatekeeperUserImpl extends WorkerEntrypoint<Env, GatekeeperUserImpl
 //     observer's own token has IAM access to a dataset (BigQuery returns 401/403/404 otherwise).
 //   - Google Chat — strategies A/B: an account binding refuses observers; a conversation or thread
 //     binding checks that the observer can open its conversation.
+//   - Google Classroom — strategy B (ACL check, single unit): hasClassroomTeacherAccess answers
+//     whether the observer teaches the bound course.
 // The overseer only ever hands this verifier back to a Google gatekeeper, which may therefore trust
 // the boolean results. Creation uses it too: getUserObjectId names the account a user approved a
 // pending creation into, and applyCreation() creates the file through that account.
@@ -1182,6 +1201,10 @@ export class GoogleVerifier extends WorkerEntrypoint<Env, GoogleVerifierProps>
       if (isChatNoAccessError(error)) return false;
       throw error;
     }
+  }
+
+  async hasClassroomTeacherAccess(courseId: string): Promise<boolean> {
+    return new ClassroomApi(opts => this.#getToken(opts)).isTeacher(courseId);
   }
 
   async verifyDriveObservations(

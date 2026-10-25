@@ -4,6 +4,7 @@ import { displayText } from "@gadgets/configurator-ui/options";
 import { BigQueryApi } from "./bigquery-api";
 import { GoogleCalendarApi } from "./calendar-api";
 import { ChatApi, chatSpaceIdFromReference, isChatNoAccessError } from "./chat-api";
+import { ClassroomApi } from "./classroom-api";
 import type { ChatSpaceInfo } from "./chat-types";
 import { GoogleAccessToken } from "./google-api";
 import { AccessTokenProvider, AccessTokenRequest } from "./auth-retry";
@@ -24,6 +25,9 @@ import type {
 } from "./configurator/chat-account-configurator-types";
 import type { ChatSpaceConfiguratorRpc } from "./configurator/chat-space-configurator-types";
 import type { ChatThreadConfiguratorRpc } from "./configurator/chat-thread-configurator-types";
+import type {
+  ClassroomCourseConfiguratorRpc,
+} from "./configurator/classroom-course-configurator-types";
 import type { DriveAccountConfiguratorRpc } from "./configurator/drive-account-configurator-types";
 import type { DriveFileConfiguratorRpc } from "./configurator/drive-file-configurator-types";
 import type { DriveFolderConfiguratorRpc } from "./configurator/drive-folder-configurator-types";
@@ -484,5 +488,23 @@ export class DriveFolderConfiguratorUI extends RpcTarget implements DriveFolderC
         ? "In a shared drive"
         : file.owners?.[0]?.displayName ?? file.owners?.[0]?.emailAddress ?? "My Drive",
     })));
+  }
+}
+
+// RPC interface exposed by Gatekeeper to the resource selection/configuration iframe.
+@validateRpc()
+export class ClassroomCourseConfiguratorUI extends RpcTarget implements ClassroomCourseConfiguratorRpc {
+  constructor(getToken: () => Promise<GoogleAccessToken>) {
+    super();
+    googleTokenGetters.set(this, getToken);
+  }
+
+  async listCourses(query: string): Promise<ConfiguratorOption[]> {
+    let courses = await new ClassroomApi(googleTokenProvider(this)).listTaughtCourses();
+    return tellApartSameNamed(courses
+      .map(course => ({
+        value: course.id, title: course.name, ...course.section ? { subtitle: course.section } : {},
+      }))
+      .filter(option => optionMatches([option.title, option.subtitle], query)));
   }
 }
