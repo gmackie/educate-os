@@ -57,7 +57,7 @@ describe("the demo", () => {
   it("starts over on reset: back to the picker, with the hash route and progress cleared", async () => {
     await choose("Grade 9 student");
     await findByRole(container, "heading", { name: "Hi, Amara Okafor" }, BOOT);
-    await userEvent.click(await findByRole(container, "link", { name: "English Language Arts · Grade 9" }, BOOT));
+    await userEvent.click(await findByRole(container, "link", { name: "English 9 · Period 3" }, BOOT));
     expect(await findByRole(banner(), "button", { name: /Things to try 1\/3/ }, BOOT)).toBeDefined();
     expect(window.location.hash).toBe("#/courses/off_nf-eng9-fall-p3");
 
