@@ -14,8 +14,11 @@ describe("the class list", () => {
     expect(rows.map((row) => within(row).getAllByRole("cell")[0]!.textContent)).toStrictEqual([
       "Art 6 · Section D", "Biology · Section A", "English 9 · Section B", "Math 7 · Section C",
     ]);
+    // Schools and terms are named, never shown by their codes (SCHO-221).
     const english = within(table).getByRole("row", { name: /English 9/ });
-    expect(within(english).getAllByRole("cell").map((cell) => cell.textContent)).toStrictEqual(["English 9 · Section B", "fk-high", "fk-2026-fall", "Sam Rivera, Wen Chen", "27"]);
+    await within(english).findByText("Fake High School");
+    expect(within(english).getAllByRole("cell").map((cell) => cell.textContent)).toStrictEqual(["English 9 · Section B", "Fake High School", "Fall 2026", "Sam Rivera, Wen Chen", "27"]);
+    expect(container.textContent).not.toMatch(/fk-|sch_|trm_/);
     expect(screen.getByText("4 classes")).toBeTruthy();
     for (const name of STUDENT_NAMES) expect(container.textContent).not.toContain(name);
     expect(district.calls.map((c) => c.name)).toContain("admin.listOfferings");
@@ -29,10 +32,26 @@ describe("the class list", () => {
     const table = screen.getByRole("table", { name: "Every class in the district" });
     expect(within(table).getAllByRole("row").slice(1).map((row) => within(row).getAllByRole("cell")[0]!.textContent)).toStrictEqual(["English 9 · Section B"]);
     expect(screen.getByText("1 class of 4 match")).toBeTruthy();
+    await screen.findByText("Fake High School");
+    await user.clear(search);
+    await user.type(search, "middle school");
+    expect(screen.getByText("2 classes of 4 match")).toBeTruthy();
     await user.clear(search);
     await user.type(search, "nowhere");
     expect(screen.getByText("No class matches “nowhere”.")).toBeTruthy();
     expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("says where classes come from when there are none yet, not only from a roster", async () => {
+    const district = fakeDistrict();
+    const client: DistrictApiClient = {
+      call: ((name: never, ...args: never[]) => name === "admin.listOfferings"
+        ? Promise.resolve([])
+        : (district.client.call as (...a: unknown[]) => Promise<unknown>)(name, ...args)) as DistrictApiClient["call"],
+    };
+    renderConsole(client, "classes");
+    expect(await screen.findByText("Classes appear here once a roster import adds them, or once you add a section by hand.")).toBeTruthy();
+    expect(within(screen.getByRole("main")).getByRole("link", { name: "Manage classes and people" }).getAttribute("href")).toBe("#/classes-people");
   });
 
   it("says why the list could not load, and loads it again on Try again", async () => {

@@ -96,6 +96,18 @@ describe("a co-op with no roster builds a class from scratch (SCHO-186)", () => 
     expect((await district.ok(admin, "admin.updateCourse", { params: { courseId: course.id }, body: { title: "Nature Studies II" } })).title).toBe("Nature Studies II");
   });
 
+  it("renames a school and changes its grades, and reports who owns the directory in health (SCHO-221)", async () => {
+    const district = await bootDistrict(COOP, { authority: "local" });
+    const { admin, school, teacher } = await buildCoopClass(district);
+    const renamed = await district.ok(admin, "admin.updateSchool", { params: { schoolId: school.id }, body: { name: "Maple Learning Co-op", gradeBands: ["K-5", "6-8"] } });
+    expect(renamed).toMatchObject({ id: school.id, name: "Maple Learning Co-op", gradeBands: ["K-5", "6-8"] });
+    expect((await district.ok(admin, "admin.authoring")).schools).toStrictEqual([renamed]);
+    // A refused write answers as for a school the teacher cannot see, as every directory write does.
+    expectError(await district.call(teacher, "admin.updateSchool", { params: { schoolId: school.id }, body: { name: "Mine" } }), 404, "not-found");
+    expect((await district.ok(admin, "admin.authoring")).schools[0]!.name).toBe("Maple Learning Co-op");
+    expect((await district.ok(admin, "admin.health")).authority).toStrictEqual(LOCAL_AUTHORITY);
+  });
+
   it("leaves a roster district's records to the roster, naming it", async () => {
     const district = await bootDistrict();
     const admin = district.tokenFor(NF.admin);
@@ -104,6 +116,8 @@ describe("a co-op with no roster builds a class from scratch (SCHO-186)", () => 
     expect((refused.body as { message: string }).message).toContain("external:oneroster");
     expectError(await district.call(admin, "admin.enroll", { params: { offeringId: NF.bio }, body: { principalId: NF.dmitri, role: "student" } }), 409, "conflict");
     expect((await district.ok(admin, "admin.authoring")).authority).toStrictEqual(ONEROSTER_AUTHORITY);
+    expectError(await district.call(admin, "admin.updateSchool", { params: { schoolId: "sch_nf-high" }, body: { name: "Renamed" } }), 409, "conflict");
+    expect((await district.ok(admin, "admin.health")).authority).toStrictEqual(ONEROSTER_AUTHORITY);
   });
 
   it("keeps directory authoring to administrators", async () => {
@@ -112,6 +126,16 @@ describe("a co-op with no roster builds a class from scratch (SCHO-186)", () => 
     expectError(await district.call(teacher, "admin.createCourse", { body: { title: "Mine", subject: "arts", gradeBand: "3" } }), 403, "forbidden");
     expectError(await district.call(teacher, "admin.authoring"), 403, "forbidden");
     expectError(await district.call(student, "admin.enroll", { params: { offeringId: offering.id }, body: { principalId: NF.admin, role: "student" } }), 403, "forbidden");
+  });
+
+  it("names the district's schools, terms and classes for administrators, and no person (SCHO-221)", async () => {
+    const district = await bootDistrict();
+    const names = await district.ok(district.tokenFor(NF.admin), "admin.directoryNames");
+    expect(names.schools).toContainEqual({ id: "sch_nf-high", name: "Northfield High School" });
+    expect(names.terms).toContainEqual({ id: "trm_nf-2026-fall", name: expect.any(String) });
+    expect(names.offerings).toContainEqual({ id: "off_nf-bio-fall-p2", name: expect.stringMatching(/ · Period 2$/) });
+    expect(JSON.stringify(names)).not.toMatch(/prn_|Amara|Rivera/);
+    expectError(await district.call(district.tokenFor(NF.amara), "admin.directoryNames"), 403, "forbidden");
   });
 
   it("resolves authority settings by profile or in full", () => {

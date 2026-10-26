@@ -6,11 +6,11 @@ import { STUDENT_NAMES, fakeDistrict } from "../testing/fakeDistrict.ts";
 import { renderConsole } from "../testing/renderConsole.tsx";
 import { formatUsdNanoExact, parseDollarsToCents } from "./budgetFormat.ts";
 
-const BUDGET_ROUTES = new Set(["admin.aiFunding", "admin.aiCostSummary", "admin.aiProjection", "admin.updateFundingPools", "admin.getConfig"]);
+const BUDGET_ROUTES = new Set(["admin.directoryNames", "admin.aiFunding", "admin.aiCostSummary", "admin.aiProjection", "admin.updateFundingPools", "admin.getConfig"]);
 
 /** The value shown for one figure of the cost summary. */
 async function figure(term: string): Promise<string> {
-  const summary = await screen.findByRole("region", { name: "This month's cost (2026-10)" });
+  const summary = await screen.findByRole("region", { name: "This month's cost (October 2026)" });
   return within(summary).getByText(term).closest("dt")!.nextElementSibling!.textContent ?? "";
 }
 
@@ -123,7 +123,7 @@ describe("AI budgets", () => {
     const district = fakeDistrict({ netEstimate: true });
     const { container } = renderConsole(district.client, "ai-budgets");
     await screen.findByRole("region", { name: "Month-end projection" });
-    await screen.findByRole("region", { name: "This month's cost (2026-10)" });
+    await screen.findByRole("region", { name: "This month's cost (October 2026)" });
     expect(container.textContent).not.toMatch(/prn_/);
     for (const name of STUDENT_NAMES) expect(container.textContent).not.toContain(name);
     expect(district.calls.every((c) => BUDGET_ROUTES.has(c.name))).toBe(true);

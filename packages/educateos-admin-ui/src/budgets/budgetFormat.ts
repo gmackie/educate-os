@@ -3,7 +3,7 @@
 // paid for a thousand of them must not read as $0.00 or as a whole number of cents it never spent.
 import type { RouteResponse } from "@educateos/api-client";
 import { USD_NANO_PER_CENT, USD_NANO_PER_USD } from "@educateos/contracts";
-import { className, schoolName } from "../app/labels.ts";
+import type { DirectoryNames } from "../app/labels.ts";
 
 /** Where the district's funding stands this month. */
 export type FundingReport = RouteResponse<"admin.aiFunding">["report"];
@@ -54,13 +54,13 @@ export const PURPOSE_LABELS: Record<PoolStatus["purpose"], string> = {
   safety: "Safety reserve",
 };
 
-/** Where a pool applies. */
-export function scopeLabel(scope: PoolStatus["scope"]): string {
+/** Where a pool applies, naming its school or class. */
+export function scopeLabel(scope: PoolStatus["scope"], names: DirectoryNames): string {
   switch (scope.level) {
     case "district": return "Whole district";
-    case "school": return `School ${schoolName(scope.schoolId)}`;
-    case "offering": return `Class ${className(scope.offeringId)}`;
-    case "activity": return `Activity in class ${className(scope.offeringId)}`;
+    case "school": return names.school(scope.schoolId);
+    case "offering": return names.offering(scope.offeringId);
+    case "activity": return `An activity in ${names.offering(scope.offeringId)}`;
   }
 }
 

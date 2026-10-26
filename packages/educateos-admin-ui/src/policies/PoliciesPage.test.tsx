@@ -39,7 +39,7 @@ describe("district policies", () => {
     await waitFor(() => expect(apply.disabled).toBe(false));
     await user.click(apply);
 
-    expect(await screen.findByText("The district policy was updated.")).toBeTruthy();
+    expect(await screen.findByText("District policy updated. Version 2 of the configuration is now in force.")).toBeTruthy();
     expect(desiredPolicies(district.revisions.at(-1)!).promptsInGatewayLogs).toBe("permitted");
     const applied = district.calls.find((c) => c.name === "admin.applyConfig")!;
     expect((applied.input as { body: { acknowledgeApprovals: boolean } }).body.acknowledgeApprovals).toBe(true);

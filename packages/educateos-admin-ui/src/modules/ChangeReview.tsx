@@ -5,6 +5,7 @@ import type { ConfigRevisionId, ConfigurationRevision } from "@educateos/contrac
 import { useAdminClient } from "../app/AdminClientContext.tsx";
 import { useAnnounce } from "../app/Announcer.tsx";
 import { errorMessage, useLoad } from "../app/useLoad.ts";
+import type { DirectoryNames } from "../app/labels.ts";
 import type { DiffEntry } from "../app/useDistrictConfig.ts";
 import type { ConfigDocument } from "../configDocument.ts";
 import { PlanSummary } from "./PlanSummary.tsx";
@@ -17,6 +18,8 @@ export interface ProposedChange {
   document: ConfigDocument;
   /** The apply button's label, such as "Activate" or "Roll back". */
   applyLabel: string;
+  /** What applying did, for the message afterwards, such as "Rolled back to version 2". */
+  appliedMessage: string;
   /** Whether applying takes something away, which styles the button as destructive. */
   removesAccess?: boolean;
 }
@@ -24,6 +27,8 @@ export interface ProposedChange {
 interface ChangeReviewProps {
   /** The change. */
   change: ProposedChange;
+  /** The district's class and school names. */
+  names: DirectoryNames;
   /** The revision the change is planned against; the district refuses the apply if another revision landed since. */
   expectedHeadRevisionId: ConfigRevisionId | undefined;
   /** Called with the new revision and what it changed. */
@@ -37,7 +42,7 @@ interface ChangeReviewProps {
  * run, the administrator reads what it does and acknowledges any approvals it needs, and only then
  * applies it as a new revision.
  */
-export const ChangeReview = ({ change, expectedHeadRevisionId, onApplied, onCancel }: ChangeReviewProps) => {
+export const ChangeReview = ({ change, names, expectedHeadRevisionId, onApplied, onCancel }: ChangeReviewProps) => {
   const client = useAdminClient();
   const announce = useAnnounce();
   const heading = useRef<HTMLHeadingElement>(null);
@@ -65,7 +70,7 @@ export const ChangeReview = ({ change, expectedHeadRevisionId, onApplied, onCanc
           acknowledgeApprovals: acknowledged,
         },
       });
-      announce(`${change.applyLabel}: done. A new configuration version is in force.`);
+      announce(`${change.appliedMessage}. A new configuration version is in force.`);
       onApplied(revision, plan.diff);
     } catch (error) {
       setApplyError(errorMessage(error));
@@ -93,7 +98,7 @@ export const ChangeReview = ({ change, expectedHeadRevisionId, onApplied, onCanc
           description={<ul className="list-disc pl-5">{planned.data.problems.map((p) => <li key={`${p.code}:${p.path}`}>{p.message}</li>)}</ul>}
         />
       )}
-      {plan !== undefined && <PlanSummary plan={plan} />}
+      {plan !== undefined && <PlanSummary plan={plan} names={names} />}
 
       {plan !== undefined && needsApproval && !blocked && (
         <Checkbox

@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { LayerCard, Text } from "@cloudflare/kumo";
+import type { RouteResponse } from "@educateos/api-client";
 import { count } from "../app/labels.ts";
 import { LoadState } from "../app/LoadState.tsx";
 import { useLoad } from "../app/useLoad.ts";
 import type { DistrictConfigState } from "../app/useDistrictConfig.ts";
-import { documentFromDesired } from "../configDocument.ts";
+import { documentFromDesired, type DesiredStateView } from "../configDocument.ts";
 import { formatUsdNano } from "../policies/policySettings.ts";
 
 const ROSTER_PROVIDERS: Record<string, string> = {
@@ -12,6 +13,22 @@ const ROSTER_PROVIDERS: Record<string, string> = {
   "oneroster-api": "OneRoster connection",
   manual: "Entered by hand",
 };
+
+type Health = RouteResponse<"admin.health">;
+
+/** Whether any directory record type comes from a roster rather than this console. */
+const rosterManaged = (authority: Health["authority"]) => Object.values(authority).some((owner) => owner !== "local");
+
+/** What the configuration says about modules, in a sentence: which are on, and for which classes. */
+function modulesSentence(desired: DesiredStateView | undefined): string {
+  if (desired === undefined) return "EducateOS is not set up yet.";
+  const on = Object.values(desired.modules).filter((module) => module.state !== "disabled").length;
+  if (on === 0) return "No module is on in the configuration.";
+  const reach = desired.rollout.target === "all-active-offerings"
+    ? "every active class"
+    : count(desired.rollout.offerings.length, "selected class", "selected classes");
+  return `${count(on, "module")} on in the configuration, for ${reach}.`;
+}
 
 const Tile = ({ title, value, children }: { title: string; value: string; children?: ReactNode }) => (
   <LayerCard className="flex flex-col gap-1 p-4">
@@ -22,8 +39,8 @@ const Tile = ({ title, value, children }: { title: string; value: string; childr
 );
 
 /**
- * The district at a glance: enrolled people, classes, issues, pending teacher work, AI spend and
- * integration health. Every figure is a count or a total. It never names a person and never shows
+ * The district at a glance: its people, classes, issues, pending teacher work, AI spend and roster
+ * integration. Every figure is a count or a total. It never names a person and never shows
  * what anyone wrote.
  */
 export const Dashboard = ({ state }: { state: DistrictConfigState }) => {
@@ -45,16 +62,13 @@ export const Dashboard = ({ state }: { state: DistrictConfigState }) => {
         {(h) => (
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="District at a glance">
             <li>
-              <Tile title="Enrolled users" value={(h.directory.students + h.directory.staff).toLocaleString("en-US")}>
-                {count(h.directory.students, "student")} and {count(h.directory.staff, "staff member")}; {count(h.directory.activeEnrollments, "active enrollment")}.
+              {/* Everyone the district has added, enrolled or not: administrators are staff too. */}
+              <Tile title="Students and staff" value={(h.directory.students + h.directory.staff).toLocaleString("en-US")}>
+                {count(h.directory.students, "student")} and {count(h.directory.staff, "staff member")}, administrators included; {count(h.directory.activeEnrollments, "active class enrollment")}.
               </Tile>
             </li>
             <li>
-              <Tile title="Classes" value={h.directory.offerings.toLocaleString("en-US")}>
-                {head === undefined ? "EducateOS is not set up yet."
-                  : head.desired.rollout.target === "all-active-offerings" ? "Modules that are on are visible to every active class."
-                  : `Modules are visible to ${count(head.desired.rollout.offerings.length, "selected class", "selected classes")}.`}
-              </Tile>
+              <Tile title="Classes" value={h.directory.offerings.toLocaleString("en-US")}>{modulesSentence(head?.desired)}</Tile>
             </li>
             <li>
               <LoadState loaded={issues} what="configuration issues">
@@ -76,10 +90,16 @@ export const Dashboard = ({ state }: { state: DistrictConfigState }) => {
               </LoadState>
             </li>
             <li>
-              <Tile title="Integration health" value={head === undefined ? "Not set up" : ROSTER_PROVIDERS[head.desired.rostering.provider] ?? head.desired.rostering.provider}>
-                {head?.desired.rostering.mode === "preview-before-apply" ? "Roster imports wait for an administrator's preview. " : ""}
-                {count(h.work.workspaces, "learning space")}, {count(h.work.submissions, "submission")} and {count(h.config.revisions, "configuration version")} on record.
-              </Tile>
+              {rosterManaged(h.authority) ? (
+                <Tile title="Roster integration" value={head === undefined ? "Not set up" : ROSTER_PROVIDERS[head.desired.rostering.provider] ?? head.desired.rostering.provider}>
+                  {head?.desired.rostering.mode === "preview-before-apply" ? "Roster imports wait for an administrator's preview. " : ""}
+                  {count(h.work.workspaces, "learning space")}, {count(h.work.submissions, "submission")} and {count(h.config.revisions, "configuration version")} on record.
+                </Tile>
+              ) : (
+                <Tile title="Roster integration" value="None">
+                  Classes and people are managed by hand under Manage classes and people. {count(h.work.workspaces, "learning space")}, {count(h.work.submissions, "submission")} and {count(h.config.revisions, "configuration version")} on record.
+                </Tile>
+              )}
             </li>
           </ul>
         )}

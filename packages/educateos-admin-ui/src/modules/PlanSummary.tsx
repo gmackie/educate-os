@@ -2,7 +2,7 @@ import { Badge, Banner, Table, Text } from "@cloudflare/kumo";
 import { Warning } from "@phosphor-icons/react";
 import type { PolicySettings } from "@educateos/contracts";
 import type { ConfigurationPlan, DiffEntry } from "../app/useDistrictConfig.ts";
-import { className, count, packName, schoolName } from "../app/labels.ts";
+import { count, packName, type DirectoryNames } from "../app/labels.ts";
 import { ENUMERATED_POLICIES, MONTHLY_CAP, formatCents } from "../policies/policySettings.ts";
 
 type PackChange = ConfigurationPlan["packs"][number];
@@ -22,6 +22,18 @@ const APPROVAL_LABELS: Record<ConfigurationPlan["approvals"][number]["reason"], 
   "admin-activation-removed": "Classes will no longer wait for an administrator to activate modules",
   "exposure-activation": "Modules become visible to classes",
 };
+
+/**
+ * What an approval is for, in names. The district describes it in codes, such as
+ * `off_…: core-learning` for a class gaining a module, so classes and packs are named here.
+ */
+function approvalDetail(approval: ConfigurationPlan["approvals"][number], names: DirectoryNames): string {
+  if (approval.reason === "exposure-activation") {
+    const [offeringId, packs] = approval.detail.split(": ");
+    if (offeringId !== undefined && packs !== undefined) return `${names.offering(offeringId)} gains ${packs.split(", ").map(packName).join(", ")}`;
+  }
+  return names.withClassNames(approval.detail);
+}
 
 function packChangeText(change: PackChange): string {
   const parts: string[] = [];
@@ -101,7 +113,7 @@ const EffectivePolicy = ({ impact }: { impact: OfferingImpact }) => (
  * what turns on only because something needs it, the people reached in each class, the policy in
  * force there, and what blocks the change or needs approval. Shows counts, never names.
  */
-export const PlanSummary = ({ plan }: { plan: ConfigurationPlan }) => {
+export const PlanSummary = ({ plan, names }: { plan: ConfigurationPlan; names: DirectoryNames }) => {
   const nothingChanges = plan.diff.length === 0;
   return (
     <div className="flex flex-col gap-6">
@@ -155,8 +167,8 @@ export const PlanSummary = ({ plan }: { plan: ConfigurationPlan }) => {
               <Table.Body>
                 {plan.offerings.map((impact) => (
                   <Table.Row key={impact.offeringId}>
-                    <Table.Cell>{className(impact.offeringId)}</Table.Cell>
-                    <Table.Cell>{schoolName(impact.schoolId)}</Table.Cell>
+                    <Table.Cell>{names.offering(impact.offeringId)}</Table.Cell>
+                    <Table.Cell>{names.school(impact.schoolId)}</Table.Cell>
                     <Table.Cell>{impact.students}</Table.Cell>
                     <Table.Cell>{impact.staff}</Table.Cell>
                     <Table.Cell>
@@ -176,7 +188,7 @@ export const PlanSummary = ({ plan }: { plan: ConfigurationPlan }) => {
           </Text>
           {plan.offerings.map((impact) => (
             <details key={impact.offeringId} className="rounded-md border border-kumo-line p-3">
-              <summary className="cursor-pointer">Policy in force at {className(impact.offeringId)}</summary>
+              <summary className="cursor-pointer">Policy in force at {names.offering(impact.offeringId)}</summary>
               <div className="mt-2 overflow-x-auto"><EffectivePolicy impact={impact} /></div>
             </details>
           ))}
@@ -189,7 +201,7 @@ export const PlanSummary = ({ plan }: { plan: ConfigurationPlan }) => {
           <ul className="list-disc pl-5">
             {plan.policyViolations.map((v) => (
               <li key={`${v.offeringId}:${v.level}:${v.key}`}>
-                {settingLabel(v.key)} at {className(v.offeringId)} ({v.level} level): {settingValue(v.key, v.requested)} is looser than the district's {settingValue(v.key, v.floor)}.
+                {settingLabel(v.key)} at {names.offering(v.offeringId)} ({v.level} level): {settingValue(v.key, v.requested)} is looser than the district's {settingValue(v.key, v.floor)}.
               </li>
             ))}
           </ul>
@@ -200,7 +212,7 @@ export const PlanSummary = ({ plan }: { plan: ConfigurationPlan }) => {
         <section aria-labelledby="plan-approvals" className="flex flex-col gap-2">
           <Text as="h4" variant="heading" id="plan-approvals">Needs a district administrator's approval</Text>
           <ul className="list-disc pl-5">
-            {plan.approvals.map((a) => <li key={`${a.reason}:${a.path}`}>{APPROVAL_LABELS[a.reason]}: {a.detail}</li>)}
+            {plan.approvals.map((a, index) => <li key={`${a.reason}:${a.path}:${index}`}>{APPROVAL_LABELS[a.reason]}: {approvalDetail(a, names)}</li>)}
           </ul>
         </section>
       )}

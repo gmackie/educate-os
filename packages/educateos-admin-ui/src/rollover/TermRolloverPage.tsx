@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { Banner, Button, Input, Table, Text } from "@cloudflare/kumo";
+import { Banner, Button, Select, Table, Text } from "@cloudflare/kumo";
 import { Warning } from "@phosphor-icons/react";
-import { TermId } from "@educateos/contracts";
 import type { RouteResponse } from "@educateos/api-client";
 import { useAdminClient } from "../app/AdminClientContext.tsx";
 import { useAnnounce } from "../app/Announcer.tsx";
-import { count } from "../app/labels.ts";
-import { errorMessage } from "../app/useLoad.ts";
+import { count, formatDate } from "../app/labels.ts";
+import { LoadState } from "../app/LoadState.tsx";
+import { errorMessage, useLoad } from "../app/useLoad.ts";
 
 type RolloverPreview = RouteResponse<"admin.termRollover">;
+type Term = RouteResponse<"admin.authoring">["terms"][number];
 
 const TERM_STATES: Record<RolloverPreview["termState"], string> = {
   planned: "Planned",
@@ -24,18 +25,19 @@ const TERM_STATES: Record<RolloverPreview["termState"], string> = {
 export const TermRolloverPage = () => {
   const client = useAdminClient();
   const announce = useAnnounce();
-  const [term, setTerm] = useState("");
+  const terms = useLoad("rollover-terms", async (c) => (await c.call("admin.authoring")).terms);
+  const [termId, setTermId] = useState<Term["id"] | null>(null);
   const [preview, setPreview] = useState<RolloverPreview>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
 
-  const parsed = TermId.safeParse(term.trim());
+  const termName = (id: string) => (terms.status === "ready" ? terms.data.find((t) => t.id === id)?.name : undefined) ?? id;
   const run = async () => {
-    if (!parsed.success) return;
+    if (termId === null) return;
     setLoading(true);
     setError(undefined);
     try {
-      const result = await client.call("admin.termRollover", { params: { termId: parsed.data } });
+      const result = await client.call("admin.termRollover", { params: { termId } });
       setPreview(result);
       announce("Term rollover preview ready.");
     } catch (e) {
@@ -49,20 +51,28 @@ export const TermRolloverPage = () => {
   return (
     <div className="flex flex-col gap-6">
       <Text as="h2" variant="heading" size="lg">Term rollover preview</Text>
-      <form className="flex max-w-md flex-col gap-3" onSubmit={(event) => { event.preventDefault(); void run(); }}>
-        <Input
-          label="Term code"
-          description="The term's code from your roster, such as trm_nf-2026-fall."
-          value={term}
-          onChange={(event) => setTerm(event.target.value)}
-          error={term.trim() !== "" && !parsed.success ? "Enter a term code that starts with trm_." : undefined}
-        />
-        <div><Button type="submit" variant="primary" disabled={!parsed.success} loading={loading}>Preview rollover</Button></div>
-      </form>
+      <LoadState loaded={terms} what="the district's terms" onRetry={terms.reload}>
+        {(list) => list.length === 0 ? <Text variant="secondary">The district has no terms yet.</Text> : (
+          <form aria-label="Choose a term" className="flex max-w-md flex-col gap-3" onSubmit={(event) => { event.preventDefault(); void run(); }}>
+            <Select<Term["id"] | null>
+              label="Term"
+              placeholder="Choose a term"
+              value={termId}
+              renderValue={(id) => (id === null ? "Choose a term" : termName(id))}
+              onValueChange={(id) => { setTermId(id); setPreview(undefined); }}
+            >
+              {list.map((t) => (
+                <Select.Option key={t.id} value={t.id}>{`${t.name} (${formatDate(t.startsOn)} to ${formatDate(t.endsOn)}), ${TERM_STATES[t.state].toLowerCase()}`}</Select.Option>
+              ))}
+            </Select>
+            <div><Button type="submit" variant="primary" disabled={termId === null} loading={loading}>Preview rollover</Button></div>
+          </form>
+        )}
+      </LoadState>
       {error !== undefined && <Banner variant="error" icon={<Warning weight="fill" />} title="Could not preview the rollover" description={error} />}
       {preview !== undefined && (
         <section aria-labelledby="rollover-result" className="flex flex-col gap-3">
-          <Text as="h3" variant="heading" id="rollover-result">Closing {preview.termId}</Text>
+          <Text as="h3" variant="heading" id="rollover-result">Closing {termName(preview.termId)}</Text>
           <Text>
             The term is {TERM_STATES[preview.termState].toLowerCase()}.{" "}
             {preview.alreadyClosed ? "It has already been closed." : preview.canClose ? "It can be closed now." : "It can be closed once it is completed."}

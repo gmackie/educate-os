@@ -1,7 +1,7 @@
 // Guardian access over the HTTP surface (ADR-0012, SCHO-188): onboarding through an invitation,
 // and isolation of everything a guardian is not allowed to read or do.
 import { describe, expect, it } from "vitest";
-import { bootDistrict, expectError, NF, RIVERBEND, studentSubmitsEssay, teacherSetsUpEssay, type TestDistrict } from "./support.ts";
+import { bootDistrict, expectError, NF, NORTHFIELD, RIVERBEND, studentSubmitsEssay, teacherSetsUpEssay, type TestDistrict } from "./support.ts";
 
 /** A district on a clock the test moves. */
 async function district(directory = undefined as Parameters<typeof bootDistrict>[0]) {
@@ -52,6 +52,14 @@ describe("guardian onboarding over HTTP", () => {
     const overview = await d.ok(admin, "admin.studentGuardians", { params: { studentId: NF.amara } });
     expect(overview.relationships.map((r) => [r.relationship.status, r.guardianActive])).toEqual([["pending", false]]);
     expectError(await d.call(admin, "admin.confirmGuardian", { params: { relationshipId: invited.relationship.id } }), 409, "conflict");
+    // The administrator sees which sign-in used the link, not only the name they invited under (SCHO-221).
+    expect(overview.pendingSignIns).toEqual([{
+      requestId: expect.any(String),
+      invitationId: invited.invitation.id,
+      guardianDisplayName: "Gina Okafor",
+      signIn: { issuer: NORTHFIELD.district.trustedIssuers[0], subject: "gina-okafor" },
+      requestedAt: expect.stringMatching(/^\d{4}-\d\d-\d\dT/),
+    }]);
 
     await d.ok(admin, "admin.approveIdentityRequest", { params: { requestId: overview.pendingSignIns[0]!.requestId } });
     expect(await d.ok(gina, "me.get")).toMatchObject({ kind: "guardian", displayName: "Gina Okafor", roles: [], enrollments: [] });

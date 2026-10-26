@@ -7,6 +7,10 @@ interface RelationshipActionsProps {
   guardianName: string;
   studentName: string;
   standing: GuardianStanding;
+  /** What the relationship lets the guardian read, in the administrator's words. */
+  readable: readonly string[];
+  /** How many classes it is limited to, or undefined for all of the student's classes. */
+  classCount: number | undefined;
   /** Whether a change is in flight, which disables every action. */
   busy: boolean;
   onConfirm: () => Promise<void>;
@@ -21,7 +25,7 @@ type Asking = "confirm" | "suspend" | "revoke" | undefined;
  * What an administrator can do to one relationship in its standing. Confirming, suspending and
  * ending each ask first, since each changes what the guardian can read about the student at once.
  */
-export const RelationshipActions = ({ guardianName, studentName, standing, busy, onConfirm, onSuspend, onResume, onRevoke }: RelationshipActionsProps) => {
+export const RelationshipActions = ({ guardianName, studentName, standing, readable, classCount, busy, onConfirm, onSuspend, onResume, onRevoke }: RelationshipActionsProps) => {
   const [asking, setAsking] = useState<Asking>();
   const [reason, setReason] = useState<SuspendReason>("court-order-review");
   const answer = (change: () => Promise<void>) => {
@@ -51,7 +55,8 @@ export const RelationshipActions = ({ guardianName, studentName, standing, busy,
         onConfirm={() => answer(onConfirm)}
         onCancel={() => setAsking(undefined)}
       >
-        <p>{guardianName} will be able to read what this relationship allows of {studentName}'s classes: assignments and due dates, feedback once it is released to {studentName}, and official grades.</p>
+        <p>{guardianName} will be able to read, of {classCount === undefined ? `all of ${studentName}'s classes` : classCount === 1 ? `one of ${studentName}'s classes` : `${classCount} of ${studentName}'s classes`}:</p>
+        <ul className="list-disc pl-5">{readable.map((kind) => <li key={kind}>{kind}</li>)}</ul>
         <p>They can never change anything, and never see {studentName}'s own work, personal space or conversations.</p>
       </ConfirmDialog>
 

@@ -36,7 +36,7 @@ export const SetupPanel = ({ districtId, onPreview }: { districtId: DistrictId; 
         {PROFILES.map((p) => <Radio.Item key={p.value} value={p.value} label={`${p.label}: ${p.explanation}`} />)}
       </Radio.Group>
       <div>
-        <Button variant="primary" onClick={() => onPreview({ title: "Preview: start the district configuration", document: firstConfiguration(districtId, profile), applyLabel: "Create configuration" })}>
+        <Button variant="primary" onClick={() => onPreview({ title: "Preview: start the district configuration", document: firstConfiguration(districtId, profile), applyLabel: "Create configuration", appliedMessage: "Configuration created" })}>
           Preview setup
         </Button>
       </div>

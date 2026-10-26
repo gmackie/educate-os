@@ -1,7 +1,8 @@
 import { Meter, Table, Text } from "@cloudflare/kumo";
 import type { RouteResponse } from "@educateos/api-client";
 import { ceilUsdNanoToCents } from "@educateos/contracts";
-import { className, count } from "../app/labels.ts";
+import { count } from "../app/labels.ts";
+import { useDirectoryNames } from "../app/useDirectoryNames.ts";
 import { LoadState } from "../app/LoadState.tsx";
 import { useLoad } from "../app/useLoad.ts";
 import type { DistrictConfigState } from "../app/useDistrictConfig.ts";
@@ -58,6 +59,7 @@ export function capStatus(report: UsageReport, capCents: number): { atCap: numbe
  */
 export const AiUsagePage = ({ state }: { state: DistrictConfigState }) => {
   const usage = useLoad("usage", (c) => c.call("admin.aiUsage"));
+  const names = useDirectoryNames();
   const cap = state.config.status === "ready"
     ? state.config.data.head?.desired.policies.aiMonthlyCapCentsPerPrincipal ?? state.config.data.districtPolicy.aiMonthlyCapCentsPerPrincipal
     : undefined;
@@ -82,7 +84,7 @@ export const AiUsagePage = ({ state }: { state: DistrictConfigState }) => {
                   <Meter label="People who reached the cap" value={status.atCap} max={Math.max(status.people, 1)} customValue={`${status.atCap} of ${status.people}`} />
                 </section>
               )}
-              <UsageTable caption="By class" label="Class" rows={Object.entries(report.byOffering).map(([id, t]) => [className(id), t])} />
+              <UsageTable caption="By class" label="Class" rows={Object.entries(report.byOffering).map(([id, t]) => [names.offering(id), t])} />
               <UsageTable caption="By funding pool" label="Pool" rows={Object.entries(report.byPool)} />
               <UsageTable caption="By model" label="Model" rows={Object.entries(report.byModel)} />
             </div>

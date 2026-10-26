@@ -18,6 +18,23 @@ export interface FakeClass {
 }
 
 const COURSE_TITLES: Readonly<Record<string, string>> = { bio: "Biology", eng: "English 9", math: "Math 7", art: "Art 6" };
+const SCHOOL_NAMES: Readonly<Record<string, string>> = { "sch_fk-high": "Fake High School", "sch_fk-middle": "Fake Middle School" };
+const TERM = { id: "trm_fk-2026-fall", districtId: "dst_fake", name: "Fall 2026", startsOn: "2026-08-24", endsOn: "2026-12-18", state: "active" };
+
+/** A class's course and section, as the district names them: `off_fk-bio-a` is Biology, Section A. */
+function classRecords(c: FakeClass) {
+  const [, code, section] = /^off_fk-([a-z]+)\d*-([a-z])$/.exec(c.offeringId)!;
+  return {
+    offering: { id: c.offeringId, districtId: "dst_fake", schoolId: c.schoolId, termId: TERM.id, courseId: `crs_fk-${code}`, sectionName: `Section ${section!.toUpperCase()}` },
+    course: { id: `crs_fk-${code}`, districtId: "dst_fake", title: COURSE_TITLES[code!]!, subject: "other", gradeBand: "9" },
+  };
+}
+
+/** A class's name in the console: its course and section, such as "Biology · Section A". */
+export const classTitle = (c: FakeClass): string => {
+  const { course, offering } = classRecords(c);
+  return `${course.title} · ${offering.sectionName}`;
+};
 const TEACHERS = ["Sam Rivera", "Wen Chen"];
 
 /** The synthetic students' names. They exist only so tests can prove the aggregates never show them. */
@@ -288,13 +305,15 @@ const ISSUER = "https://fake.cloudflareaccess.com";
  */
 function fakeAuthoring(owner: "oneroster" | "local") {
   const authority = Object.fromEntries(["school", "term", "course", "offering", "enrollment", "principal"].map((kind) => [kind, owner === "local" ? "local" : "external:oneroster"]));
+  // A roster district's records came from its roster: the four classes, their schools and term.
+  const rostered = owner === "local" ? [] : CLASSES.map(classRecords);
   const directory = {
     authority,
     trustedIssuers: [ISSUER],
-    schools: [] as Record<string, unknown>[],
-    terms: [] as Record<string, unknown>[],
-    courses: [] as Record<string, unknown>[],
-    offerings: [] as Record<string, unknown>[],
+    schools: (owner === "local" ? [] : Object.entries(SCHOOL_NAMES).map(([id, name]) => ({ id, districtId: "dst_fake", name, gradeBands: ["9-12"] }))) as Record<string, unknown>[],
+    terms: (owner === "local" ? [] : [{ ...TERM }]) as Record<string, unknown>[],
+    courses: rostered.map((r) => r.course).filter((c, i, all) => all.findIndex((other) => other.id === c.id) === i) as Record<string, unknown>[],
+    offerings: rostered.map((r) => r.offering) as Record<string, unknown>[],
     principals: [{ id: "prn_fk-admin", kind: "staff", status: "active", displayName: "Avery Admin", districtAdmin: true }] as Record<string, unknown>[],
   };
   const enrollments: Record<string, unknown>[] = [];
@@ -311,6 +330,10 @@ function fakeAuthoring(owner: "oneroster" | "local") {
   const find = (list: Record<string, unknown>[], recordId: unknown) => list.find((r) => r.id === recordId)!;
   const params = (input: Record<string, unknown>) => input.params as Record<string, string>;
   const body = (input: Record<string, unknown>) => input.body as Record<string, unknown>;
+  const update = (kind: string, list: Record<string, unknown>[], recordId: string, change: Record<string, unknown>) => {
+    local(kind);
+    return Object.assign(find(list, recordId), change);
+  };
   const archive = (kind: string, list: Record<string, unknown>[], recordId: string, archived: boolean) => {
     local(kind);
     const record = find(list, recordId);
@@ -321,6 +344,9 @@ function fakeAuthoring(owner: "oneroster" | "local") {
   return {
     "admin.authoring": () => directory,
     "admin.createSchool": (input: Record<string, unknown>) => add("school", directory.schools, { id: id("sch"), districtId: "dst_fake", ...body(input) }),
+    "admin.updateSchool": (input: Record<string, unknown>) => update("school", directory.schools, params(input).schoolId!, body(input)),
+    "admin.updateTerm": (input: Record<string, unknown>) => update("term", directory.terms, params(input).termId!, body(input)),
+    "admin.updateCourse": (input: Record<string, unknown>) => update("course", directory.courses, params(input).courseId!, body(input)),
     "admin.createTerm": (input: Record<string, unknown>) => add("term", directory.terms, { id: id("trm"), districtId: "dst_fake", ...body(input), state: "planned" }),
     "admin.transitionTerm": (input: Record<string, unknown>) => {
       local("term");
@@ -465,6 +491,7 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
       content: { awaitingReview: 3, releases: 2 },
       config: { headRevisionId: revisions.at(-1)!.id, revisions: revisions.length },
       aiRequests: 41,
+      authority: Object.fromEntries(["school", "term", "course", "offering", "enrollment", "principal"].map((kind) => [kind, options.authority === "local" ? "local" : "external:oneroster"])),
     }) as never,
     "admin.aiUsage": () => {
       return {
@@ -559,15 +586,12 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
       grants: { toRevoke: 9 },
       principals: { students: 91, staff: 5 },
     }) as never,
-    "admin.listOfferings": () => CLASSES.map((c) => {
-      const [, code, section] = /^off_fk-([a-z]+)\d*-([a-z])$/.exec(c.offeringId)!;
-      return {
-        offering: { id: c.offeringId, districtId: "dst_fake", schoolId: c.schoolId, termId: "trm_fk-2026-fall", courseId: `crs_fk-${code}`, sectionName: `Section ${section!.toUpperCase()}` },
-        course: { id: `crs_fk-${code}`, districtId: "dst_fake", title: COURSE_TITLES[code!]!, subject: "other", gradeBand: "9" },
-        teachers: TEACHERS.slice(0, c.staff),
-        students: c.students,
-      };
+    "admin.directoryNames": () => ({
+      schools: Object.entries(SCHOOL_NAMES).map(([id, name]) => ({ id, name })),
+      terms: [{ id: TERM.id, name: TERM.name }],
+      offerings: CLASSES.map((c) => ({ id: c.offeringId, name: classTitle(c) })),
     }) as never,
+    "admin.listOfferings": () => CLASSES.map((c) => ({ ...classRecords(c), teachers: TEACHERS.slice(0, c.staff), students: c.students })) as never,
     // Learning standards (SCHO-220): two built-in frameworks, neither approved at first.
     "admin.listStandards": () => standards as never,
     "admin.approveStandards": (input) => Object.assign(standardsFor(input), { status: "approved", decided: { by: "prn_fk-admin", at: "2026-10-25T15:00:00.000Z" } }) as never,

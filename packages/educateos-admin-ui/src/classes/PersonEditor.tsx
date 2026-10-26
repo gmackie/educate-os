@@ -47,7 +47,7 @@ export const PersonEditor = ({ person, saving, onSave, onCancel }: {
         <Radio.Item value="student" label="Student" />
         <Radio.Item value="staff" label="Staff (teachers, helpers and administrators)" />
       </Radio.Group>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
         <Input label="Name" required value={draft.displayName} onChange={(e) => setDraft({ ...draft, displayName: e.target.value })} />
         <Input label="Email (optional)" type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />
       </div>

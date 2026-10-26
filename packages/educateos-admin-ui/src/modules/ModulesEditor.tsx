@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Badge, Button, Checkbox, Radio, Table, Text } from "@cloudflare/kumo";
 import type { CapabilityId, OfferingId } from "@educateos/contracts";
-import { className, count, packName, schoolName } from "../app/labels.ts";
+import { count, packName, type DirectoryNames } from "../app/labels.ts";
 import type { ConfigVersion } from "../app/useDistrictConfig.ts";
 import { documentFromDesired, withModuleState, withRolloutClasses, type DesiredModule, type DesiredStateView, type ModuleState } from "../configDocument.ts";
 import type { ProposedChange } from "./ChangeReview.tsx";
@@ -28,6 +28,8 @@ interface ModulesEditorProps {
   head: ConfigVersion;
   /** The classes modules can be rolled out to. */
   classes: readonly ClassSummary[];
+  /** The district's class and school names. */
+  names: DirectoryNames;
   /** Called with the change to preview. */
   onPreview: (change: ProposedChange) => void;
 }
@@ -36,7 +38,7 @@ interface ModulesEditorProps {
  * The capability packs and who sees them. Edits make a draft; nothing changes until the draft is
  * previewed and activated.
  */
-export const ModulesEditor = ({ head, classes, onPreview }: ModulesEditorProps) => {
+export const ModulesEditor = ({ head, classes, names, onPreview }: ModulesEditorProps) => {
   const [draft, setDraft] = useState(head.desired);
   // A district whose modules are all off has rolled nothing out yet, so it starts from a pilot.
   const rolledOutToAll = head.desired.rollout.target === "all-active-offerings"
@@ -62,6 +64,7 @@ export const ModulesEditor = ({ head, classes, onPreview }: ModulesEditorProps) 
       title: rollout === "all" ? "Preview: modules for all active classes" : `Preview: modules for ${count(selected.size, "class", "classes")}`,
       document: documentFromDesired(next),
       applyLabel: "Activate",
+      appliedMessage: "Modules activated",
     });
   };
 
@@ -122,16 +125,16 @@ export const ModulesEditor = ({ head, classes, onPreview }: ModulesEditorProps) 
         {rollout === "selected" && (
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 font-medium">Classes</legend>
-            {classes.length === 0 && <Text variant="secondary">No active classes were found. Import a roster first.</Text>}
+            {classes.length === 0 && <Text variant="secondary">No active classes were found. Import a roster or add a section under Manage classes and people first.</Text>}
             <ul className="grid gap-2 sm:grid-cols-2">
-              {classes.map((c) => (
+              {classes.toSorted((a, b) => names.offering(a.offeringId).localeCompare(names.offering(b.offeringId))).map((c) => (
                 <li key={c.offeringId} className="rounded-md border border-kumo-line p-2">
                   <Checkbox
-                    label={`${className(c.offeringId)} (${schoolName(c.schoolId)}): ${count(c.students, "student")}, ${count(c.staff, "staff member")}`}
+                    label={`${names.offering(c.offeringId)} (${names.school(c.schoolId)}): ${count(c.students, "student")}, ${count(c.staff, "staff member")}`}
                     checked={selected.has(c.offeringId)}
                     onCheckedChange={(checked) => toggleClass(c.offeringId, checked === true)}
                   />
-                  {c.visibleNow && <Badge variant="success" className="ml-6">Using EducateOS now</Badge>}
+                  {c.visibleNow && <Badge variant="success" className="ml-6">On in the configuration now</Badge>}
                 </li>
               ))}
             </ul>

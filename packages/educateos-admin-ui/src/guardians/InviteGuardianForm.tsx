@@ -9,7 +9,7 @@ import { READABLE_KIND_LABEL, READABLE_KINDS } from "./guardianLabels.ts";
 
 type Issued = RouteResponse<"admin.inviteGuardian">;
 
-const expiry = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" });
+const expiry = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
 /**
  * Invites a guardian for one student and shows the single-use link to hand them. The link is

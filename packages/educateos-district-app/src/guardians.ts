@@ -198,8 +198,16 @@ export function guardianHandlers<C extends GuardianRequestContext>(options: Guar
       const open = await ctx.identityLinks().listPending(ctx.caller);
       const pendingSignIns = invitations.flatMap((invitation) => {
         const requestId = invitation.redeemed?.requestId;
-        const waiting = requestId !== undefined && open.some((r) => r.requestId === requestId && r.kind === "identity-link");
-        return waiting ? [{ requestId, invitationId: invitation.id, guardianDisplayName: invitation.guardianDisplayName }] : [];
+        const request = requestId === undefined ? undefined : open.find((r) => r.requestId === requestId);
+        if (request?.kind !== "identity-link") return [];
+        const { issuer, subject } = request.link.identity;
+        return [{
+          requestId: request.requestId,
+          invitationId: invitation.id,
+          guardianDisplayName: invitation.guardianDisplayName,
+          signIn: { issuer, subject },
+          requestedAt: request.link.requestedAt,
+        }];
       });
       const rows = [];
       for (const relationship of relationships) {

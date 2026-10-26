@@ -5,6 +5,8 @@ import type { RouteResponse } from "@educateos/api-client";
 export type AuthoringDirectory = RouteResponse<"admin.authoring">;
 /** The record types an authority map covers. */
 export type DirectoryKind = keyof AuthoringDirectory["authority"];
+/** A school or co-op. */
+export type School = AuthoringDirectory["schools"][number];
 /** A catalog course. */
 export type Course = AuthoringDirectory["courses"][number];
 /** A section of a course in one school and term. */
@@ -28,11 +30,14 @@ export const SUBJECTS = [
   ["other", "Other"],
 ] as const;
 
-/** The state a term moves to next, and the button that moves it there. */
+/**
+ * The state a term moves to next, the button that moves it there, and what moving it does, which
+ * the administrator confirms first: a term never moves back.
+ */
 export const NEXT_TERM_STATE = {
-  planned: { to: "active", label: "Start term" },
-  active: { to: "grading", label: "Start grading" },
-  grading: { to: "completed", label: "Close term" },
+  planned: { to: "active", label: "Start term", consequence: "Its classes begin. A term only moves forward, so this cannot be undone." },
+  active: { to: "grading", label: "Start grading", consequence: "The term moves into grading. Teachers finish and approve grades; this cannot be undone." },
+  grading: { to: "completed", label: "Close term", consequence: "The term is closed and its classes end. Nothing anyone made is deleted; this cannot be undone." },
   completed: undefined,
 } as const;
 
