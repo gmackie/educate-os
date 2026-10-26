@@ -125,4 +125,14 @@ describe("settings", () => {
     expect(screen.queryByRole("textbox", { name: "Your calendar link" })).toBeNull();
     expect(district.calls.filter((c) => c.name === "me.revokeCalendarFeed")).toHaveLength(1);
   });
+
+  it("embedded in a host, links the calendar at the district's own address and leaves signing out to the host", async () => {
+    const user = userEvent.setup();
+    await renderApp(fakeDistrict(), "/settings", { aiHelp: false }, { districtOrigin: "https://northfield.example" });
+    await user.click(await screen.findByRole("button", { name: "Make a calendar link" }));
+    const link = (await screen.findByRole("textbox", { name: "Your calendar link" }) as HTMLInputElement).value;
+    expect(link).toMatch(/^https:\/\/northfield\.example\/api\/calendar\/[A-Za-z0-9]+\.ics$/);
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Sign out" })).toBeNull();
+  });
 });

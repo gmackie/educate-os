@@ -4,7 +4,7 @@ import { createMemoryHistory } from "@tanstack/react-router";
 import { afterEach } from "vitest";
 import { ThemeProvider, storedThemeMode } from "@gadgets/ui/theme";
 import { StudentApp } from "../src/App.tsx";
-import type { StudentFeatures } from "../src/AppContext.tsx";
+import type { Embedding, StudentFeatures } from "../src/AppContext.tsx";
 import type { DistrictApiClient } from "@educateos/api-client";
 
 /** Where the app keeps the theme a student chose, as main.tsx has it. */
@@ -12,8 +12,8 @@ export const THEME_KEY = "educateos:theme-mode";
 
 let mounted: { root: Root; container: HTMLElement }[] = [];
 
-/** Renders the Learning Home at `path` against `district`, and returns its container. */
-export async function renderApp(district: DistrictApiClient, path = "/", features: StudentFeatures = { aiHelp: false }): Promise<{ container: HTMLElement; unmount: () => void }> {
+/** Renders the Learning Home at `path` against `district`, as a host embeds it if `embedding` is given, and returns its container. */
+export async function renderApp(district: DistrictApiClient, path = "/", features: StudentFeatures = { aiHelp: false }, embedding?: Embedding): Promise<{ container: HTMLElement; unmount: () => void }> {
   const container = document.body.appendChild(document.createElement("div"));
   const root = createRoot(container);
   const entry = { root, container };
@@ -21,7 +21,7 @@ export async function renderApp(district: DistrictApiClient, path = "/", feature
   await act(async () => {
     root.render(
       <ThemeProvider source={storedThemeMode(THEME_KEY)}>
-        <StudentApp client={district} features={features} history={createMemoryHistory({ initialEntries: [path] })} />
+        <StudentApp client={district} features={features} history={createMemoryHistory({ initialEntries: [path] })} {...(embedding === undefined ? {} : { embedding })} />
       </ThemeProvider>,
     );
   });

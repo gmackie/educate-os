@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { assignHash, readHash, subscribeToHash } from "@gadgets/ui/hash-location";
 
 /** A Teacher Studio screen and the identifiers it shows. */
 export type Route =
@@ -88,16 +89,11 @@ export const parseRoute = (hash: string): Route => {
   return { screen: "roster", offeringId };
 };
 
-const subscribe = (onChange: () => void) => {
-  window.addEventListener("hashchange", onChange);
-  return () => window.removeEventListener("hashchange", onChange);
-};
-const readHash = () => window.location.hash;
 
 /** The current route, kept in the URL hash so the back button and bookmarks work. */
-export const useRoute = (): Route => parseRoute(useSyncExternalStore(subscribe, readHash));
+export const useRoute = (): Route => parseRoute(useSyncExternalStore(subscribeToHash, readHash));
 
 /** Moves to `route`. */
 export const navigate = (route: Route): void => {
-  window.location.hash = routeHref(route);
+  assignHash(routeHref(route));
 };

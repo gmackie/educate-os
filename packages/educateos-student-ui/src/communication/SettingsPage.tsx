@@ -1,12 +1,14 @@
 import { Text } from "@cloudflare/kumo";
 import { useQuery } from "../api.tsx";
+import { useDistrictOrigin } from "../AppContext.tsx";
 import { ErrorState } from "../ErrorState.tsx";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import { CalendarSubscription } from "./CalendarSubscription.tsx";
 import { EmailSettings } from "./EmailSettings.tsx";
 
 /** The student's settings: which emails they get, and their calendar link. */
-export const SettingsPage = ({ origin = window.location.origin }: { origin?: string }) => {
+export const SettingsPage = ({ origin }: { origin?: string }) => {
+  const districtOrigin = useDistrictOrigin();
   const [preferences, reload] = useQuery("preferences", (api) => api.call("me.preferences"));
   return (
     <div className="flex flex-col gap-8">
@@ -19,7 +21,7 @@ export const SettingsPage = ({ origin = window.location.origin }: { origin?: str
       </section>
       <section aria-labelledby="calendar-link" className="flex flex-col gap-3">
         <Text variant="heading" as="h2"><span id="calendar-link">Calendar link</span></Text>
-        <CalendarSubscription origin={origin} />
+        <CalendarSubscription origin={origin ?? districtOrigin} />
       </section>
     </div>
   );

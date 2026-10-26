@@ -15,6 +15,10 @@
     "./theme": {
       "types": "./src/Theme/index.ts",
       "import": "./src/Theme/index.ts"
+    },
+    "./hash-location": {
+      "types": "./src/HashLocation/index.ts",
+      "import": "./src/HashLocation/index.ts"
     }
   },
   "scripts": {
