@@ -25,6 +25,9 @@ pnpm --filter @educateos/pilot-gate start                    # run it and print 
 pnpm --filter @educateos/pilot-gate write-doc                # regenerate the tables below
 ```
 
+The district validation suite in the same package runs the integration scenarios in all six demo
+districts; see [district-validation.md](district-validation.md).
+
 One registry, `src/criteria.ts`, holds every criterion and its checks. The test files register
 their tests from it: a check marked `test` must have a body, a `todo` must not, and each todo's
 name carries the issues that block it. The gate report joins the registry with a run of the suite,

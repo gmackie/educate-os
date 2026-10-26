@@ -47,3 +47,6 @@ wrangler.dev.jsonc
 .dev.vars.*
 **/.dev.vars
 **/.dev.vars.*
+
+# The district validation report (SCHO-205), written by `district-report --out district-report`.
+district-report/
