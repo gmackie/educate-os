@@ -1,0 +1,5 @@
+# The in-browser demo (SCHO-224) promises that nothing leaves the visitor's browser beyond its own
+# static files. no-transform keeps Cloudflare's edge from rewriting its HTML, which is how the
+# zone's Web Analytics beacon would otherwise be injected into every page, the demo's included.
+/demo/*
+  Cache-Control: no-transform
