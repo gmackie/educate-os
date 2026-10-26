@@ -5,7 +5,7 @@
 // read as evidence that was never gathered.
 import { z } from "zod";
 import { AssessmentRunId, ContentDigest, EducateOsError, type OfferingId } from "@educateos/contracts";
-import { RubricReleaseRef, submissionDigest, type SubmissionItem } from "@educateos/assessment";
+import { RubricReleaseRef, isSubmissionDigestOf, type SubmissionItem } from "@educateos/assessment";
 import { canonicalTextBytes, isTextMediaType, sha256Digest } from "@educateos/learning-artifacts";
 import { canonicalDigest } from "./canonical.ts";
 import { deepFreeze, runDeterministically } from "./determinism.ts";
@@ -70,14 +70,34 @@ export interface AssessmentRunsOptions {
   now?: () => Date;
 }
 
+const EVALUATOR_SET_FORMAT = "educateos.evaluator-set.v1";
+const RUN_KEY_FORMAT = "educateos.assessment-run-key.v1";
+/** SCHO-232: the names of the same formats before the EducateOS rename, which runs requested then are keyed under. */
+const LEGACY_EVALUATOR_SET_FORMAT = "schoolos.evaluator-set.v1"; // rename-educateos: keep
+const LEGACY_RUN_KEY_FORMAT = "schoolos.assessment-run-key.v1"; // rename-educateos: keep
+
 /** The digest a run key's `evaluatorRelease` holds: of the exact releases, sorted by ID. */
 export async function evaluatorSetDigest(releases: readonly EvaluatorRelease[]): Promise<ContentDigest> {
-  return canonicalDigest({ format: "educateos.evaluator-set.v1", releases });
+  return canonicalDigest({ format: EVALUATOR_SET_FORMAT, releases });
 }
 
 /** The run ID a key names: derived from the key, so requesting the same key always finds the same run. */
 export async function assessmentRunIdFor(key: AssessmentRunKey): Promise<AssessmentRunId> {
-  const digest = await canonicalDigest({ format: "educateos.assessment-run-key.v1", key });
+  return runIdUnder(RUN_KEY_FORMAT, key);
+}
+
+/**
+ * The ID the run for `key` was given if it was requested before the EducateOS rename (SCHO-232).
+ * Run IDs were then derived under a legacy format name, and so was the key's evaluator release
+ * digest, whose legacy value is `legacyEvaluatorRelease`. A request looks for a run under this ID
+ * first, so a run requested before the rename is found rather than repeated.
+ */
+export async function legacyAssessmentRunIdFor(key: AssessmentRunKey, legacyEvaluatorRelease: ContentDigest): Promise<AssessmentRunId> {
+  return runIdUnder(LEGACY_RUN_KEY_FORMAT, { ...key, evaluatorRelease: legacyEvaluatorRelease });
+}
+
+async function runIdUnder(format: string, key: AssessmentRunKey): Promise<AssessmentRunId> {
+  const digest = await canonicalDigest({ format, key });
   return AssessmentRunId.parse(`asr_${digest.slice("sha256:".length, "sha256:".length + 40)}`);
 }
 
@@ -160,6 +180,8 @@ export class AssessmentRuns {
       executionProfile: request.executionProfile,
       idempotencyKey: request.idempotencyKey,
     };
+    const legacy = await this.#runs.get(await legacyAssessmentRunIdFor(key, await canonicalDigest({ format: LEGACY_EVALUATOR_SET_FORMAT, releases: evaluators })));
+    if (legacy !== undefined) return legacy;
     return this.#runs.insert({
       id: await assessmentRunIdFor(key),
       key,
@@ -276,7 +298,7 @@ export class AssessmentRuns {
     if (size > profile.limits.maxInputBytes) {
       return failed("input-too-large", `The submitted work is ${size} bytes; this profile reads at most ${profile.limits.maxInputBytes}.`);
     }
-    if ((await submissionDigest(work.items)) !== run.key.submissionDigest) {
+    if (!(await isSubmissionDigestOf(work.items, run.key.submissionDigest))) {
       return failed("integrity", "The work supplied is not the submission this run assesses.");
     }
 

@@ -85,7 +85,8 @@ export type ProjectStorage = z.infer<typeof ProjectStorage>;
  * same values whichever storage holds them and whenever they were saved. Holds no credential.
  */
 export const ProjectManifest = z.strictObject({
-  format: z.literal("educateos.project.v1"),
+  /** Versions saved before the EducateOS rename keep its legacy spelling (SCHO-232). */
+  format: z.enum(["educateos.project.v1", "schoolos.project.v1"]), // rename-educateos: keep
   /** The saver's description of the version. */
   message: z.string().trim().min(1).max(500),
   /** SHA-256 over the canonical file listing (see {@link projectContentDigest}). */
@@ -104,6 +105,14 @@ export type ProjectManifest = z.infer<typeof ProjectManifest>;
  * the text canonicalization learning-artifacts applies leaves it unchanged.
  */
 export const PROJECT_MANIFEST_MEDIA_TYPE = "text/vnd.educateos.project+json";
+
+/** SCHO-232: the media type project versions saved before the EducateOS rename are stored under. */
+export const LEGACY_PROJECT_MANIFEST_MEDIA_TYPE = "text/vnd.schoolos.project+json"; // rename-educateos: keep
+
+/** Whether a revision of `mediaType` is a project version: saved under either media type. */
+export function isProjectManifestMediaType(mediaType: string): boolean {
+  return mediaType === PROJECT_MANIFEST_MEDIA_TYPE || mediaType === LEGACY_PROJECT_MANIFEST_MEDIA_TYPE;
+}
 
 /** A working tree as Git objects, with the manifest entries and digest that describe it. */
 export interface BuiltTree {

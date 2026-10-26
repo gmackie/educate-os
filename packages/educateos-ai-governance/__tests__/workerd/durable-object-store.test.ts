@@ -94,6 +94,61 @@ describe("DurableObjectLedgerStore", () => {
     });
   });
 
+  it("recovers the entries a ledger appended before the rename, ahead of those appended since (SCHO-232)", async () => {
+    const schema = (storage: DurableObjectStorage) => storage.sql.exec(
+      "SELECT type, sql FROM sqlite_master WHERE tbl_name = ? ORDER BY CASE type WHEN 'table' THEN 0 ELSE 1 END", LEDGER_ENTRIES_TABLE,
+    ).toArray().map((row) => String(row.sql));
+    const rows = (storage: DurableObjectStorage) => storage.sql.exec(`SELECT * FROM ${LEDGER_ENTRIES_TABLE} ORDER BY seq`).toArray();
+    const insert = (storage: DurableObjectStorage, table: string, list: Record<string, unknown>[]) => {
+      for (const row of list) {
+        storage.sql.exec(`INSERT INTO ${table} (seq, entry_schema_version, entry_type, request_id, entry_json) VALUES (?, ?, ?, ?, ?)`,
+          ...([row.seq, row.entry_schema_version, row.entry_type, row.request_id, row.entry_json] as (string | number | null)[]));
+      }
+    };
+    // The ledger as the AI guard left it before the rename: its table and triggers under the old name.
+    const ledger = fresh();
+    await ledger.reserve("req-1", 30);
+    await ledger.settle("req-1", 25);
+    await ledger.reserve("req-2", 20);
+    await runInDurableObject(ledger, (_instance, state) => {
+      const [ddl, list] = [schema(state.storage), rows(state.storage)];
+      state.storage.sql.exec(`DROP TABLE ${LEDGER_ENTRIES_TABLE}`);
+      for (const statement of ddl) state.storage.sql.exec(statement.replaceAll("educateos_", "schoolos_")); // rename-educateos: keep
+      insert(state.storage, "schoolos_ai_ledger_entries", list); // rename-educateos: keep
+    });
+    // ...and what the renamed code appended since, in a new table of its own.
+    const since = fresh();
+    await since.reserve("req-3", 10);
+    const written = await runInDurableObject(since, (_instance, state) => ({ ddl: schema(state.storage), list: rows(state.storage) }));
+    await runInDurableObject(ledger, (_instance, state) => {
+      written.ddl.forEach((statement, i) => {
+        state.storage.sql.exec(statement);
+        if (i === 0) insert(state.storage, LEDGER_ENTRIES_TABLE, written.list);
+      });
+    });
+    await evictDurableObject(ledger);
+
+    const entries = await ledger.entries();
+    expect(entries.map((entry) => [entry.type, "requestId" in entry ? entry.requestId : undefined])).toEqual([
+      ["reservation", "req-1"], ["settlement", "req-1"], ["reservation", "req-2"], ["reservation", "req-3"],
+    ]);
+    // A reservation held before the rename still settles, and the balances count every entry: two
+    // settlements (25 + 15) and the hold still open since (10).
+    await ledger.settle("req-2", 15);
+    expect((await ledger.balances())["fpl_nf-bio-fall"]?.chargedUsdNano).toBe(usdNanoFromCents(50));
+    await runInDurableObject(ledger, (_instance, state) => {
+      expect(state.storage.sql.exec(`SELECT seq, request_id FROM ${LEDGER_ENTRIES_TABLE} ORDER BY seq`).toArray().map((row) => row.request_id))
+        .toEqual(["req-1", "req-1", "req-2", "req-3", "req-2"]);
+      expect(state.storage.sql.exec("SELECT COUNT(*) AS n FROM schoolos_ai_ledger_entries_premigration").one().n).toBe(3); // rename-educateos: keep
+      // Both the ledger and its backup stay append-only.
+      expect(() => state.storage.sql.exec(`DELETE FROM ${LEDGER_ENTRIES_TABLE}`)).toThrow(/append-only/);
+      expect(() => state.storage.sql.exec("UPDATE schoolos_ai_ledger_entries_premigration SET entry_json = '{}'")).toThrow(/append-only/); // rename-educateos: keep
+    });
+    // A second start finds nothing left to migrate.
+    await evictDurableObject(ledger);
+    expect((await ledger.entries()).length).toBe(5);
+  });
+
   it("refuses to rewrite or delete history", async () => {
     const ledger = fresh();
     await ledger.reserve("req-1", 10);

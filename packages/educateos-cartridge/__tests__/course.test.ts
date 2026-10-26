@@ -80,6 +80,8 @@ describe("course cartridges (SCHO-186)", () => {
 
   it("keeps Markdown EducateOS wrote verbatim, entities and all", () => {
     expect(pageTextFromHtml(`<pre class="educateos-markdown">a &#60;b&#62; &#38; c</pre>`)).toBe("a <b> & c");
+    // As a cartridge exported before the EducateOS rename marks it (SCHO-232).
+    expect(pageTextFromHtml(`<pre class="schoolos-markdown">a &#60;b&#62; &#38; c</pre>`)).toBe("a <b> & c"); // rename-educateos: keep
   });
 });
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ActivityId, AssessmentRunId, DistrictId, OfferingId, PrincipalId, SubmissionId, UsdNano } from "@educateos/contracts";
-import { CriterionId } from "@educateos/assessment";
+import { CriterionId, recordFormat } from "@educateos/assessment";
 import { AssessmentRunKey, CheckVisibility, CriterionEvidence, EvaluatorRelease, RunState } from "@educateos/assessment-ci";
 import { AI_SUGGESTED, AiFeedbackConfig, AiOutcome } from "./ai-feedback.ts";
 import { ModelRef } from "./model-port.ts";
@@ -22,7 +22,7 @@ export type OptionalRunSpec = z.infer<typeof OptionalRunSpec>;
 /** What an AI run found, labelled `ai-suggested` throughout. It is never official. */
 export const AiFeedbackReport = z.strictObject({
   kind: z.literal("ai"),
-  format: z.literal("educateos.ai-feedback-report.v2"),
+  format: recordFormat("ai-feedback-report.v2"),
   runId: AssessmentRunId,
   key: AssessmentRunKey,
   label: z.literal(AI_SUGGESTED),
@@ -49,7 +49,7 @@ export type SandboxCheckResult = z.infer<typeof SandboxCheckResult>;
 /** What a sandboxed run found. */
 export const SandboxReport = z.strictObject({
   kind: z.literal("sandbox"),
-  format: z.literal("educateos.sandbox-report.v2"),
+  format: recordFormat("sandbox-report.v2"),
   runId: AssessmentRunId,
   key: AssessmentRunKey,
   evaluator: EvaluatorRelease,

@@ -16,6 +16,37 @@ import { parseRange } from "./semver.ts";
 /** The `apiVersion` of the district configuration document this package compiles. */
 export const CONFIG_API_VERSION = "educateos.io/v1alpha1";
 
+/** SCHO-232: the `apiVersion` of documents and desired states written before the EducateOS rename. */
+export const LEGACY_CONFIG_API_VERSION = "schoolos.dev/v1alpha1"; // rename-educateos: keep
+
+/** SCHO-232: the names the EducateOS rename changed inside a document or desired state, old to new. */
+const RENAMED_PACKS: Readonly<Record<string, string>> = { "schoolos-lti": "educateos-lti" }; // rename-educateos: keep
+const RENAMED_SOURCES: Readonly<Record<string, string>> = { "schoolos-catalog": "educateos-catalog" }; // rename-educateos: keep
+
+/**
+ * A document or desired state with the names it may carry from before the EducateOS rename
+ * (SCHO-232) read as the current ones: the `apiVersion`, the LTI pack's ID and the catalog's
+ * imported-source name. Stored revisions keep what they hold, so their content hashes and IDs
+ * still verify; what is compiled or rolled back from them is written with the current names.
+ */
+function withCurrentNames(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const out: Record<string, unknown> = { ...value };
+  if (out.apiVersion === LEGACY_CONFIG_API_VERSION) out.apiVersion = CONFIG_API_VERSION;
+  if (isRecord(out.modules)) {
+    out.modules = Object.fromEntries(Object.entries(out.modules).map(([id, module]) => [RENAMED_PACKS[id] ?? id, module]));
+  }
+  if (isRecord(out.curriculum) && Array.isArray(out.curriculum.importedSources)) {
+    const importedSources = out.curriculum.importedSources.map((source: unknown) => (typeof source === "string" ? RENAMED_SOURCES[source] ?? source : source));
+    out.curriculum = { ...out.curriculum, importedSources };
+  }
+  return out;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /**
  * Named policy defaults a document starts from. Every profile prohibits automated SEL profiling
  * (ADR-0004); they differ in how much AI spend, AI help and teacher visibility they allow. Each sets
@@ -157,7 +188,7 @@ const Rostering = z.strictObject({
  * The declarative district configuration (roadmap §4.1), parsed from JSON or from YAML converted to
  * JSON by the caller. Unknown fields are rejected. Credentials never belong here; see `secrets.ts`.
  */
-export const DistrictConfigDocument = z.strictObject({
+export const DistrictConfigDocument = z.preprocess(withCurrentNames, z.strictObject({
   apiVersion: z.literal(CONFIG_API_VERSION),
   district: DistrictId,
   profile: DefaultsProfileName,
@@ -177,7 +208,7 @@ export const DistrictConfigDocument = z.strictObject({
   if (!selected && document.rollout.offerings !== undefined) {
     context.addIssue({ code: "custom", path: ["rollout", "offerings"], message: "offerings apply only to selected-course-offerings" });
   }
-});
+}));
 /** A district configuration document. */
 export type DistrictConfigDocument = z.infer<typeof DistrictConfigDocument>;
 
@@ -198,7 +229,7 @@ export type DesiredModule = z.infer<typeof DesiredModule>;
  * the policy floor in the contract vocabulary, and lists sorted where order carries no meaning. Two
  * documents that mean the same thing compile to the same desired state, and so to the same hash.
  */
-export const DesiredState = z.strictObject({
+export const DesiredState = z.preprocess(withCurrentNames, z.strictObject({
   apiVersion: z.literal(CONFIG_API_VERSION),
   district: DistrictId,
   profile: DefaultsProfileName,
@@ -214,6 +245,6 @@ export const DesiredState = z.strictObject({
   /** The complete district floor. */
   policies: PolicySettings,
   overrides: z.array(z.strictObject({ scope: NarrowerScope, settings: PolicyOverrides })),
-});
+}));
 /** A compiled desired state. */
 export type DesiredState = z.infer<typeof DesiredState>;

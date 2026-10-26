@@ -37,7 +37,8 @@ export class DurableObjectDistrictReleaseStore implements DistrictReleaseStore {
   readonly #tables: DurableObjectTables;
 
   constructor(storage: DurableObjectSqlStorage) {
-    this.#tables = new DurableObjectTables(storage, DISTRICT_SCHEMA);
+    // The state from before the rename (SCHO-232), unless one has been saved since.
+    this.#tables = new DurableObjectTables(storage, DISTRICT_SCHEMA, [{ table: DISTRICT_RELEASE_STATE_TABLE, merge: { kind: "keyed" } }]);
   }
 
   async load(): Promise<DistrictReleaseState | undefined> {
@@ -70,7 +71,11 @@ export class DurableObjectRolloutStore implements RolloutStore {
   readonly #tables: DurableObjectTables;
 
   constructor(storage: DurableObjectSqlStorage) {
-    this.#tables = new DurableObjectTables(storage, ROLLOUT_SCHEMA);
+    // From before the rename (SCHO-232): a channel saved since wins; an offer sequence goes past both.
+    this.#tables = new DurableObjectTables(storage, ROLLOUT_SCHEMA, [
+      { table: ROLLOUT_TABLES.channels, merge: { kind: "keyed" } },
+      { table: ROLLOUT_TABLES.offerSequences, merge: { kind: "revision", key: ["instance_id"], revision: "last" } },
+    ]);
   }
 
   async channel(channel: ReleaseChannel): Promise<ChannelState> {

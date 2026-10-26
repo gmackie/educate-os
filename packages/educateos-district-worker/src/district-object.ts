@@ -28,6 +28,12 @@ import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "
 import { startDistrict, type District } from "./district.ts";
 import type { SendEmailBinding } from "./mail.ts";
 import { jobForCron } from "./schedule.ts";
+import { onLegacyTableMigrated, type LegacyTableReport } from "@educateos/contracts/legacy-tables";
+
+// Each table recovered from before the rename (SCHO-232), with its counts, so the migration's
+// outcome in production can be read from the logs.
+const legacyTableLogger = createLogger<LegacyTableReport>({ component: "educateos.district" });
+onLegacyTableMigrated((report) => legacyTableLogger.info("a table from before the rename was migrated", { event: "legacy-tables.migrated", ...report }));
 
 /** What the district logs: its ID, and a scheduled job's counts (SCHO-189). */
 interface DistrictLogFields {
@@ -39,6 +45,7 @@ interface DistrictLogFields {
   skipped?: number;
   failed?: number;
   alreadyDone?: number;
+  revisionId?: string;
 }
 
 const logger = createLogger<DistrictLogFields>({ component: "educateos.district" });
@@ -160,6 +167,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
       { config: this.env.DISTRICT_CONFIG, accessIssuer: this.env.CF_ACCESS_ISS, accessAudiences: this.env.CF_ACCESS_AUD },
       {
         importFetch: (url, init) => this.importFetch(url, init),
+        // SCHO-232: a configuration head policy cannot read is passed over; say so, once per revision.
+        onUnreadableConfigRevision: (revisionId) => logger.error("a configuration revision cannot be read; policy falls back to the revision before it", {
+          event: "config.revision.unreadable",
+          revisionId,
+        }),
         ...(keys === undefined ? {} : { accessKeys: keys }),
         ...(sendEmail === undefined ? {} : { sendEmail }),
       },

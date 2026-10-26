@@ -81,6 +81,11 @@ describe("CASE 1.1 compatibility corpus", () => {
     const encoded = encodeCasePackage(crosswalk);
     expect(encoded.CFAssociations?.[0]?.associationType).toBe("ext:educateos.broader");
     expect(decodeCasePackage(encoded, official).associations?.[0]?.relation).toBe("broader");
+
+    // A package written before the EducateOS rename names the type `ext:schoolos.broader` (SCHO-232). (rename-educateos: keep)
+    const legacy = structuredClone(encoded);
+    legacy.CFAssociations![0]!.associationType = "ext:schoolos.broader"; // rename-educateos: keep
+    expect(decodeCasePackage(legacy, official).associations?.[0]?.relation).toBe("broader");
   });
 
   it("refuses to encode an opaque type that would read back as an interpreted relation", () => {

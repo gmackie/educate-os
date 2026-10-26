@@ -99,6 +99,18 @@ export const NO_COMMIT: GitOid = "0".repeat(40);
  */
 export const VERSION_REF_PREFIX = "educateos/versions/";
 
+/**
+ * SCHO-232: the branch namespace versions saved before the EducateOS rename are under. Their refs
+ * keep those versions reachable, so they are protected as the current ones are; nothing writes
+ * new ones.
+ */
+export const LEGACY_VERSION_REF_PREFIX = "schoolos/versions/"; // rename-educateos: keep
+
+/** Whether `branch` is a protected version ref, under either namespace. */
+export function isVersionRef(branch: string): boolean {
+  return branch.startsWith(VERSION_REF_PREFIX) || branch.startsWith(LEGACY_VERSION_REF_PREFIX);
+}
+
 /** The username Artifacts expects beside a repository token, as `artifact-sync.ts` sends it. */
 export const ARTIFACTS_TOKEN_USERNAME = "x-access-token";
 

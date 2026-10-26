@@ -4,6 +4,7 @@ import { sha256Digest } from "@educateos/learning-artifacts";
 import { ExportId, SubjectRef } from "./archive.ts";
 import { consentGrantDigest, TransferConsent, TransferConsentId, TransferParty } from "./consent.ts";
 import { fromBase64Url, signEnvelope, SignedEnvelope, toBase64Url, type SigningIdentity } from "@educateos/fleet";
+import { recordFormat } from "./legacy-formats.ts";
 import { validateArchive } from "./validate.ts";
 
 /**
@@ -12,7 +13,7 @@ import { validateArchive } from "./validate.ts";
  * so the signature is detached and the archive file is unchanged.
  */
 export const TransferStatement = z.strictObject({
-  format: z.literal("educateos.transfer-statement"),
+  format: recordFormat("transfer-statement"),
   formatVersion: z.literal(1),
   archiveDigest: ContentDigest,
   exportId: ExportId,
@@ -70,7 +71,7 @@ export const MAX_TRANSFER_BYTES = 96 * 1024 * 1024;
 
 /** A transfer package on the wire: the learner's downloaded file, or a direct push's body. */
 export const TransferWire = z.strictObject({
-  format: z.literal("educateos.transfer"),
+  format: recordFormat("transfer"),
   formatVersion: z.literal(1),
   /** The `.educateos` archive, base64url. */
   archive: z.string().min(1),

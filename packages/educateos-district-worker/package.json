@@ -27,9 +27,10 @@
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "catalog:",
-    "@gadgets/scripts": "workspace:*",
     "@educateos/catalog": "workspace:*",
+    "@educateos/config": "workspace:*",
     "@educateos/fixtures": "workspace:*",
+    "@gadgets/scripts": "workspace:*",
     "miniflare": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",

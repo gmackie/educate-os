@@ -118,6 +118,11 @@ export interface DistrictAppOptions {
   registry?: CapabilityRegistry;
   /** The policy floor before the first configuration revision is applied. */
   defaultPolicy?: PolicySettings;
+  /**
+   * Told the ID of a configuration revision policy cannot read and passes over (SCHO-232), once per
+   * revision, for the Worker to log. Shared code imports no logger, so the Node harness can run it.
+   */
+  onUnreadableConfigRevision?: (revisionId: string) => void;
   /** The policy rule table. Defaults to `DISTRICT_APP_RULES`. */
   rules?: readonly PolicyRule[];
   /** The clock. Defaults to the system clock. */
@@ -256,7 +261,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const authority = authorityFor(options.authority);
   const retention = RetentionPolicy.parse(options.retention ?? { courseWorkspaceRetentionDays: 365 });
   const registry = options.registry ?? SHIPPED_REGISTRY;
-  const policySource = configPolicySource(stores.config, options.defaultPolicy ?? DEFAULT_POLICY_FLOOR);
+  const policySource = configPolicySource(stores.config, options.defaultPolicy ?? DEFAULT_POLICY_FLOOR, options.onUnreadableConfigRevision);
   const engine = new PolicyEngine({
     information: directoryPolicyInformation(stores.directory, policySource, {
       relationships: [guardianRelationships(stores.guardianRelationships, stores.directory, now)],

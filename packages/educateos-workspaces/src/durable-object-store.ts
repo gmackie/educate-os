@@ -4,6 +4,15 @@
 // the Worker hosting a district's directory chooses its own Durable Object class around it.
 import { z } from "zod";
 import { EducateOsError } from "@educateos/contracts";
+import {
+  legacyTableName,
+  mergeLegacyDocument,
+  migrateLegacyTables,
+  PREMIGRATION_SUFFIX,
+  renameIdentifiers,
+  type LegacySql,
+  type LegacyTablePlan,
+} from "@educateos/contracts/legacy-tables";
 import { Workspace, WorkspaceState } from "./model.ts";
 import { assertWorkspaceInvariants, emptyWorkspaceState, type StoredWorkspaces, type WorkspaceStore } from "./store.ts";
 
@@ -56,6 +65,64 @@ const StateRest = WorkspaceState.omit({ workspaces: true });
 
 const WorkspaceRow = z.object({ id: z.string(), workspace_json: z.string() });
 const StateRow = z.object({ version: z.number(), state_json: z.string() });
+
+/** SQL: the current workspace `legacy` has the key of, other than itself. */
+const SAME_KEY = `current.owner_principal_id = legacy.owner_principal_id AND current.kind = legacy.kind
+  AND (current.kind = 'personal' OR current.offering_id = legacy.offering_id) AND current.id <> legacy.id`;
+
+/**
+ * The workspaces a district kept before the rename (SCHO-232) whose key a workspace created since
+ * holds (a personal workspace opened again after the rename, say), each mapped to that workspace.
+ * The workspace created since is the one kept, since the newest work names it; the legacy one stays
+ * in the backup, and whatever named it (grants, promotions, artifacts) is reassigned to the one kept,
+ * which has the same owner, kind and offering. Works before and after the directory is migrated.
+ */
+export function legacyWorkspaceReplacements(sql: LegacySql): Map<string, string> {
+  const legacyTable = [legacyTableName(WORKSPACES_TABLE), legacyTableName(WORKSPACES_TABLE) + PREMIGRATION_SUFFIX]
+    .find((name) => sql.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", name).toArray().length > 0);
+  const current = sql.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", WORKSPACES_TABLE).toArray().length > 0;
+  if (legacyTable === undefined || !current) return new Map();
+  const rows = sql.exec(`SELECT legacy.id AS legacy_id, current.id AS kept_id FROM ${legacyTable} AS legacy JOIN ${WORKSPACES_TABLE} AS current ON ${SAME_KEY}`).toArray();
+  return new Map(rows.map((row) => [String(row.legacy_id), String(row.kept_id)]));
+}
+
+/**
+ * Recovers the directory a district kept before the rename (SCHO-232): every workspace of both
+ * sides, apart from a legacy one whose key a workspace created since holds (see
+ * {@link legacyWorkspaceReplacements}), and the rest of the state merged with that legacy
+ * workspace's grants, promotions and deletion records naming the workspace kept. A merged directory
+ * that breaks its invariants is refused and rolls the migration back.
+ */
+const LEGACY_DIRECTORY: readonly LegacyTablePlan[] = [
+  { table: WORKSPACES_TABLE, skipLegacyWhere: `EXISTS (SELECT 1 FROM ${WORKSPACES_TABLE} AS current WHERE ${SAME_KEY})` },
+  {
+    tables: [WORKSPACE_STATE_TABLE],
+    migrate(sql: LegacySql, legacy: (table: string) => string) {
+      const [before] = sql.exec(`SELECT version, state_json FROM ${legacy(WORKSPACE_STATE_TABLE)} WHERE id = 1`).toArray();
+      if (before === undefined) return;
+      const [after] = sql.exec(`SELECT version, state_json FROM ${WORKSPACE_STATE_TABLE} WHERE id = 1`).toArray();
+      const replacements = legacyWorkspaceReplacements(sql);
+      const old = StateRow.parse(before);
+      let version = old.version;
+      let rest = StateRest.parse(renameIdentifiers(parseJson(StateRest, old.state_json, "the workspace state"), replacements));
+      if (after !== undefined) {
+        const current = StateRow.parse(after);
+        rest = StateRest.parse(mergeLegacyDocument(rest, parseJson(StateRest, current.state_json, "the workspace state")));
+        version = Math.max(version, current.version) + 1;
+      }
+      const workspaces = sql.exec(`SELECT workspace_json FROM ${WORKSPACES_TABLE} ORDER BY rowid`).toArray()
+        .map((row) => parseJson(Workspace, String(row.workspace_json), "a workspace"));
+      assertWorkspaceInvariants({ workspaces, ...rest });
+      sql.exec(
+        `INSERT INTO ${WORKSPACE_STATE_TABLE} (id, version, state_json) VALUES (1, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET version = excluded.version, state_json = excluded.state_json`,
+        version,
+        JSON.stringify(rest),
+      );
+      return replacements.size === 0 ? "merged" : `merged; ${replacements.size} legacy workspace(s) replaced by one created since`;
+    },
+  },
+];
 
 /** Thrown when a stored row cannot be read. The directory refuses to decide on state it cannot read. */
 export class WorkspaceStoreCorruptionError extends Error {
@@ -135,13 +202,18 @@ export class DurableObjectWorkspaceStore implements WorkspaceStore {
 
   #load(): { version: number; state: WorkspaceState; json: Map<string, string> } {
     if (this.#cached !== undefined) return this.#cached;
-    const { rows, meta } = this.#storage.transactionSync(() => {
+    // Read inside the migration's transaction, so a merged directory that cannot be read rolls it back.
+    this.#cached = this.#storage.transactionSync(() => {
       for (const statement of SCHEMA) this.#storage.sql.exec(statement);
-      return {
-        rows: this.#storage.sql.exec(`SELECT id, workspace_json FROM ${WORKSPACES_TABLE} ORDER BY rowid`).toArray(),
-        meta: this.#storage.sql.exec(`SELECT version, state_json FROM ${WORKSPACE_STATE_TABLE} WHERE id = 1`).toArray(),
-      };
+      migrateLegacyTables(this.#storage.sql, LEGACY_DIRECTORY);
+      return this.#read();
     });
+    return this.#cached;
+  }
+
+  #read(): { version: number; state: WorkspaceState; json: Map<string, string> } {
+    const rows = this.#storage.sql.exec(`SELECT id, workspace_json FROM ${WORKSPACES_TABLE} ORDER BY rowid`).toArray();
+    const meta = this.#storage.sql.exec(`SELECT version, state_json FROM ${WORKSPACE_STATE_TABLE} WHERE id = 1`).toArray();
     const json = new Map<string, string>();
     const workspaces = rows.map((raw) => {
       const row = WorkspaceRow.safeParse(raw);
@@ -158,8 +230,7 @@ export class DurableObjectWorkspaceStore implements WorkspaceStore {
       version = row.data.version;
       rest = parseJson(StateRest, row.data.state_json, "the workspace state");
     }
-    this.#cached = { version, state: { workspaces, ...rest }, json };
-    return this.#cached;
+    return { version, state: { workspaces, ...rest }, json };
   }
 }
 

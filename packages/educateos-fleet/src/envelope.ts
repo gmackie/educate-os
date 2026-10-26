@@ -49,10 +49,12 @@ export const SignedEnvelope = z.strictObject({
 export type SignedEnvelope = z.infer<typeof SignedEnvelope>;
 
 const PROTOCOL_CONTEXT = "educateos-fleet/v1";
+/** SCHO-232: the context of envelopes signed before the EducateOS rename, which still verify. */
+const LEGACY_PROTOCOL_CONTEXT = "schoolos-fleet/v1"; // rename-educateos: keep
 
 // `slice()` gives a view over a plain `ArrayBuffer` under every runtime's typings (ADR-0009).
-function signedBytes(kind: FleetMessageKind, payload: unknown): Uint8Array<ArrayBuffer> {
-  return new TextEncoder().encode(`${PROTOCOL_CONTEXT}\0${kind}\0${canonicalJson(payload)}`).slice();
+function signedBytes(kind: FleetMessageKind, payload: unknown, context = PROTOCOL_CONTEXT): Uint8Array<ArrayBuffer> {
+  return new TextEncoder().encode(`${context}\0${kind}\0${canonicalJson(payload)}`).slice();
 }
 
 /**
@@ -82,13 +84,16 @@ export async function verifyEnvelope(
   publicKey: Ed25519PublicKey,
 ): Promise<boolean> {
   if (envelope.keyId !== (await keyIdFor(publicKey))) return false;
-  let bytes: Uint8Array<ArrayBuffer>;
-  try {
-    bytes = signedBytes(kind, envelope.payload);
-  } catch {
-    return false;
+  for (const context of [PROTOCOL_CONTEXT, LEGACY_PROTOCOL_CONTEXT]) {
+    let bytes: Uint8Array<ArrayBuffer>;
+    try {
+      bytes = signedBytes(kind, envelope.payload, context);
+    } catch {
+      return false;
+    }
+    if (await verifySignature(publicKey, envelope.signature, bytes)) return true;
   }
-  return await verifySignature(publicKey, envelope.signature, bytes);
+  return false;
 }
 
 /**

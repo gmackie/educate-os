@@ -105,12 +105,18 @@ export const FinanceAuditEvent = z.strictObject({
 export type FinanceAuditEvent = z.infer<typeof FinanceAuditEvent>;
 
 const AUDIT_CONTEXT = "educateos-finance-audit/v1";
+/** SCHO-232: the context events chained before the EducateOS rename were hashed under. */
+const LEGACY_AUDIT_CONTEXT = "schoolos-finance-audit/v1"; // rename-educateos: keep
 
 /** The hash of an audit event: SHA-256 over a context string and the canonical JSON of every field but `hash`. */
 export async function hashFinanceAuditEvent(event: Omit<FinanceAuditEvent, "hash">): Promise<string> {
+  return hashUnder(AUDIT_CONTEXT, event);
+}
+
+async function hashUnder(context: string, event: Omit<FinanceAuditEvent, "hash">): Promise<string> {
   const fields: Record<string, unknown> = { ...event };
   delete fields.hash;
-  const bytes = new TextEncoder().encode(`${AUDIT_CONTEXT}\0${canonicalJson(fields)}`).slice();
+  const bytes = new TextEncoder().encode(`${context}\0${canonicalJson(fields)}`).slice();
   return [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
@@ -152,7 +158,10 @@ export async function verifyFinanceAuditChain(events: readonly unknown[]): Promi
     if (previous !== undefined && event.accountId !== previous.accountId) return { intact: false, index, reason: "account" };
     if (event.sequence !== (previous?.sequence ?? 0) + 1) return { intact: false, index, reason: "sequence" };
     if (event.previousHash !== (previous?.hash ?? GENESIS_AUDIT_HASH)) return { intact: false, index, reason: "previous-hash" };
-    if (event.hash !== (await hashFinanceAuditEvent(event))) return { intact: false, index, reason: "hash" };
+    // An event chained before the EducateOS rename was hashed under the legacy context (SCHO-232).
+    if (event.hash !== (await hashFinanceAuditEvent(event)) && event.hash !== (await hashUnder(LEGACY_AUDIT_CONTEXT, event))) {
+      return { intact: false, index, reason: "hash" };
+    }
     previous = event;
   }
   return { intact: true, length: events.length, headHash: previous?.hash ?? GENESIS_AUDIT_HASH };

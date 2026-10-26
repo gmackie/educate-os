@@ -4,12 +4,13 @@
 // share: that engine's guarantees (zero cost, no clock, randomness or network) are exactly what
 // these runs cannot give.
 import { z } from "zod";
-import { AssessmentRunId, compareUsdNano, EducateOsError, SubmissionId, usdNano, usdNanoValue, type Caller, type UsdNano } from "@educateos/contracts";
-import { submissionDigest, type AssessmentService, type AssignmentBinding, type RubricReleaseRef, type SubmissionSnapshot } from "@educateos/assessment";
+import { AssessmentRunId, compareUsdNano, type ContentDigest, EducateOsError, SubmissionId, usdNano, usdNanoValue, type Caller, type UsdNano } from "@educateos/contracts";
+import { isSubmissionDigestOf, type AssessmentService, type AssignmentBinding, type RubricReleaseRef, type SubmissionSnapshot } from "@educateos/assessment";
 import {
   assertRubricAuthority,
   assessmentRunIdFor,
   canonicalDigest,
+  legacyAssessmentRunIdFor,
   ExecutionProfileId,
   IdempotencyKey,
   verifyRubricRelease,
@@ -47,6 +48,10 @@ import {
 import { SANDBOX_EVALUATOR, SandboxCheck, SandboxResult, sandboxEvidence, sandboxFiles, unavailableSandbox, type ExecutionSandbox } from "./sandbox.ts";
 import type { OptionalRunStore } from "./store.ts";
 import { aiSuggestedLevel, studentReportView, teacherReportView, type StudentReportView, type TeacherReportView } from "./views.ts";
+
+const OPTIONAL_EVALUATOR_FORMAT = "educateos.optional-evaluator.v1";
+/** SCHO-232: the optional evaluator release format's name before the EducateOS rename, in run keys derived then. */
+const LEGACY_OPTIONAL_EVALUATOR_FORMAT = "schoolos.optional-evaluator.v1"; // rename-educateos: keep
 
 /** What requesting AI feedback on a submission takes. */
 export const AiRunRequest = z.strictObject({
@@ -345,11 +350,13 @@ export class AssessmentAi {
       submissionDigest: submission.submissionDigest,
       rubricRelease: { rubricId: rubric.rubricId, version: rubric.version },
       // The evaluator release and everything the teacher configured: a new config is a new run.
-      evaluatorRelease: await canonicalDigest({ format: "educateos.optional-evaluator.v1", spec }),
+      evaluatorRelease: await canonicalDigest({ format: OPTIONAL_EVALUATOR_FORMAT, spec }),
       executionProfile: request.executionProfile,
       idempotencyKey: request.idempotencyKey,
     };
-    const run = await this.#options.store.insertRun({
+    // A run requested before the EducateOS rename is keyed under the legacy names; it is found, not paid for again.
+    const legacyId = await legacyAssessmentRunIdFor(key, await canonicalDigest({ format: LEGACY_OPTIONAL_EVALUATOR_FORMAT, spec }));
+    const run = (await this.#options.store.getRun(legacyId)) ?? await this.#options.store.insertRun({
       id: await assessmentRunIdFor(key),
       key,
       spec,
@@ -527,8 +534,8 @@ export class AssessmentAi {
 }
 
 /** Reads and verifies the submitted text, as the deterministic engine does. */
-async function readWork(work: SubmittedWork, expected: string): Promise<{ artifacts: EvaluationArtifact[] } | Extract<Outcome, { kind: "failed" | "retry" }>> {
-  if ((await submissionDigest(work.items)) !== expected) return failed("integrity", "The work supplied is not the submission this run assesses.");
+async function readWork(work: SubmittedWork, expected: ContentDigest): Promise<{ artifacts: EvaluationArtifact[] } | Extract<Outcome, { kind: "failed" | "retry" }>> {
+  if (!(await isSubmissionDigestOf(work.items, expected))) return failed("integrity", "The work supplied is not the submission this run assesses.");
   const artifacts: EvaluationArtifact[] = [];
   for (const item of work.items) {
     if (!isTextMediaType(item.mediaType)) continue;

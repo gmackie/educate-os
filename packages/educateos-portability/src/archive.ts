@@ -7,6 +7,7 @@ import {
   ProvenanceRecord,
   sha256Digest,
 } from "@educateos/learning-artifacts";
+import { ArchiveGenerator, recordFormat } from "./legacy-formats.ts";
 import { isSafeEntryPath, writeZip } from "./zip.ts";
 
 /**
@@ -21,7 +22,7 @@ import { isSafeEntryPath, writeZip } from "./zip.ts";
  * the mapping back to internal IDs stays with the exporting district.
  */
 
-/** The value of `manifest.format`. */
+/** The value of `manifest.format` this package writes. */
 export const ARCHIVE_FORMAT = "educateos.student-archive";
 /** The archive format version this package writes and reads. */
 export const ARCHIVE_FORMAT_VERSION = 1;
@@ -152,7 +153,7 @@ export type ArchiveItem = z.infer<typeof ArchiveItem>;
 
 /** `manifest.json`: what the archive is, who it is about, and every other entry in it. */
 export const StudentArchiveManifest = z.strictObject({
-  format: z.literal(ARCHIVE_FORMAT),
+  format: recordFormat("student-archive"),
   formatVersion: z.literal(ARCHIVE_FORMAT_VERSION),
   exportId: ExportId,
   /** The exporting district, by display name only. */
@@ -284,10 +285,10 @@ export type ExportDecision = z.infer<typeof ExportDecision>;
 
 /** `provenance.json`: what produced the archive, and the policy decision behind every item in it. */
 export const ArchiveProvenance = z.strictObject({
-  format: z.literal("educateos.student-archive.provenance"),
+  format: recordFormat("student-archive.provenance"),
   formatVersion: z.literal(ARCHIVE_FORMAT_VERSION),
   exportId: ExportId,
-  generator: z.literal("@educateos/portability"),
+  generator: ArchiveGenerator,
   decisions: z.array(ExportDecision).max(10_000),
 });
 /** Archive provenance. */

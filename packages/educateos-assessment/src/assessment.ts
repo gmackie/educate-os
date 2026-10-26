@@ -25,7 +25,7 @@ import {
   type LearningArtifacts,
   type RevisionContent,
 } from "@educateos/learning-artifacts";
-import { canonicalItems, submissionDigest, submissionIdFor } from "./digest.ts";
+import { canonicalItems, isSubmissionDigestOf, submissionDigest, submissionIdFor } from "./digest.ts";
 import {
   AssignmentBinding,
   AssignmentId,
@@ -400,7 +400,8 @@ export class AssessmentService {
       const mine = loaded.state.submissions.filter((s) => s.assignmentId === current.id && s.studentPrincipalId === me);
       const live = mine.filter((s) => s.withdrawnAt === undefined);
       const latest = live.at(-1);
-      if (latest?.submissionDigest === digest) return { result: receiptOf(latest) };
+      // A retry of the same work returns the same receipt, even for a submission digested before the rename.
+      if (latest !== undefined && (await isSubmissionDigestOf(items, latest.submissionDigest))) return { result: receiptOf(latest) };
 
       const disallowed = items.find((item) => !current.permittedArtifactTypes.includes(item.artifactType));
       if (disallowed !== undefined) {

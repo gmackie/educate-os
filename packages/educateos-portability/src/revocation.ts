@@ -3,6 +3,7 @@ import { ContentDigest, EducateOsError } from "@educateos/contracts";
 import { Ed25519PublicKey, parseWire, signEnvelope, SignedEnvelope, verifyEnvelope, type SigningIdentity } from "@educateos/fleet";
 import { ExportId, SubjectRef } from "./archive.ts";
 import { consentGrantDigest, sameParty, TransferConsent, TransferConsentId, TransferParty } from "./consent.ts";
+import { recordFormat } from "./legacy-formats.ts";
 
 /** A source district whose agent key the destination admin has pinned. */
 export const PinnedSource = z.strictObject({
@@ -29,7 +30,7 @@ export function pinnedFor(pinnedSources: readonly PinnedSource[], source: Transf
  * learner-carried file leaves: the file carries the consent as it was when it was downloaded.
  */
 export const ConsentRevocationNotice = z.strictObject({
-  format: z.literal("educateos.consent-revocation"),
+  format: recordFormat("consent-revocation"),
   formatVersion: z.literal(1),
   consentId: TransferConsentId,
   consentDigest: ContentDigest,

@@ -7,6 +7,7 @@
 // history holds counts and error codes only.
 import { DistrictDirectorySnapshot, IntegrationSyncRun, RosterSyncSchedule, EducateOsError, type SyncMode } from "@educateos/contracts";
 import { z } from "zod";
+import { migrateLegacyTables, type LegacySql, type LegacyTablePlan } from "@educateos/contracts/legacy-tables";
 import { OneRosterSourceMap } from "./source-map.ts";
 import { RosterCursors, RosterMirror, runRosterSync } from "./sync.ts";
 import type { RosterSyncInput, RosterSyncResult, RosterSyncState } from "./sync.ts";
@@ -103,6 +104,25 @@ export const ROSTER_SYNC_TABLES = {
 // character never straddles two of them.
 const CHUNK_LENGTH = 512 * 1024;
 
+/**
+ * The sync state and runs from before the rename (SCHO-232). The state is one document: it is
+ * copied when none has been saved since, and two cannot be merged, so finding both is refused.
+ */
+const LEGACY_TABLES: readonly LegacyTablePlan[] = [
+  {
+    tables: [ROSTER_SYNC_TABLES.state, ROSTER_SYNC_TABLES.chunks],
+    migrate(sql: LegacySql, legacy: (table: string) => string) {
+      if (sql.exec(`SELECT 1 FROM ${legacy(ROSTER_SYNC_TABLES.state)} WHERE id = 1`).toArray().length === 0) return;
+      if (sql.exec(`SELECT 1 FROM ${ROSTER_SYNC_TABLES.state} WHERE id = 1`).toArray().length > 0) {
+        throw new RosterStoreCorruptionError("roster sync state was saved both before and after the rename, and two states cannot be merged");
+      }
+      sql.exec(`INSERT OR REPLACE INTO ${ROSTER_SYNC_TABLES.chunks} (part, data) SELECT part, data FROM ${legacy(ROSTER_SYNC_TABLES.chunks)}`);
+      sql.exec(`INSERT INTO ${ROSTER_SYNC_TABLES.state} (id, version, chunk_count) SELECT id, version, chunk_count FROM ${legacy(ROSTER_SYNC_TABLES.state)}`);
+    },
+  },
+  ROSTER_SYNC_TABLES.runs,
+];
+
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS ${ROSTER_SYNC_TABLES.state} (
     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -192,11 +212,15 @@ export class DurableObjectRosterSyncStore implements RosterSyncStore {
   }
 
   #transaction<T>(closure: () => T): T {
-    return this.#storage.transactionSync(() => {
-      if (!this.#ready) for (const statement of SCHEMA) this.#storage.sql.exec(statement);
-      this.#ready = true;
+    const result = this.#storage.transactionSync(() => {
+      if (!this.#ready) {
+        for (const statement of SCHEMA) this.#storage.sql.exec(statement);
+        migrateLegacyTables(this.#storage.sql, LEGACY_TABLES);
+      }
       return closure();
     });
+    this.#ready = true;
+    return result;
   }
 
   #version(): number | undefined {

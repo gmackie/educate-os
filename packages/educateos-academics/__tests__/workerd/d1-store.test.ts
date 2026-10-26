@@ -127,6 +127,30 @@ describe("D1AcademicStore", () => {
     expect(stored.snapshot.terms).toStrictEqual(NORTHFIELD.terms);
   });
 
+  it("still recognises the conflict in a database migrated before the EducateOS rename (SCHO-232)", async () => {
+    const guard = (message: string) => `CREATE TRIGGER academic_directory_commit_guard INSTEAD OF INSERT ON academic_directory_commit
+BEGIN
+  SELECT RAISE(ABORT, '${message}')
+  WHERE NEW.expected_version IS NOT (SELECT version FROM academic_directory WHERE singleton = 1);
+  UPDATE academic_directory SET version = version + 1 WHERE singleton = 1;
+END`;
+    const replaceGuard = (message: string) => env.DB.batch([env.DB.prepare("DROP TRIGGER academic_directory_commit_guard"), env.DB.prepare(guard(message))]);
+    await replaceGuard("schoolos: academic directory version conflict"); // rename-educateos: keep
+    try {
+      await D1AcademicStore.seed(env.DB, NORTHFIELD);
+      const first = new D1AcademicStore(env.DB);
+      const second = new D1AcademicStore(env.DB);
+      const fromFirst = await first.load();
+      const fromSecond = await second.load();
+      fromFirst.snapshot.schools[0]!.name = "First";
+      await first.commit(fromFirst.snapshot, 0);
+      fromSecond.snapshot.schools[0]!.name = "Second";
+      await rejectsWith(second.commit(fromSecond.snapshot, 0), "conflict");
+    } finally {
+      await replaceGuard("educateos: academic directory version conflict");
+    }
+  });
+
   it("loses no write when many instances commit at once: each either lands or is told to retry", async () => {
     await D1AcademicStore.seed(env.DB, NORTHFIELD);
     const outcomes = await Promise.allSettled(

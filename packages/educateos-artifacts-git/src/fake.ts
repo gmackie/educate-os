@@ -11,7 +11,7 @@ import type {
   GitAccess,
   GitTransport,
 } from "./artifacts-api.ts";
-import { NO_COMMIT, VERSION_REF_PREFIX } from "./artifacts-api.ts";
+import { NO_COMMIT, isVersionRef } from "./artifacts-api.ts";
 import { gitObjectId, type GitObject } from "./git-objects.ts";
 
 interface FakeToken {
@@ -40,7 +40,7 @@ interface FakeRepository {
  *
  * Given `isServiceToken`, it also enforces the ref protection EducateOS needs and Cloudflare
  * Artifacts does not yet offer: a push that creates, moves or deletes a version ref
- * (`VERSION_REF_PREFIX`) is refused unless its token is the service's own. Without it, like
+ * (`VERSION_REF_PREFIX`, or the legacy one: `isVersionRef`) is refused unless its token is the service's own. Without it, like
  * Artifacts today, any write token may move any ref.
  */
 export class InMemoryArtifacts implements ArtifactsNamespace, GitTransport {
@@ -90,7 +90,7 @@ export class InMemoryArtifacts implements ArtifactsNamespace, GitTransport {
 
   async push(remote: string, token: string, update: BranchUpdate, objects: readonly GitObject[]): Promise<void> {
     const { repository, minted } = this.#authorize(remote, token, "write");
-    if (update.branch.startsWith(VERSION_REF_PREFIX) && this.#isServiceToken !== undefined && !this.#isServiceToken(minted.id)) {
+    if (isVersionRef(update.branch) && this.#isServiceToken !== undefined && !this.#isServiceToken(minted.id)) {
       throw new EducateOsError("forbidden", `push rejected for refs/heads/${update.branch}: saved versions are protected`);
     }
     for (const object of objects) {

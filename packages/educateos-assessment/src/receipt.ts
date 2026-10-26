@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { DistrictId } from "@educateos/contracts";
 import { Ed25519Signature, KeyId, canonicalJson, keyIdFor, verifySignature, type Ed25519PublicKey, type SigningIdentity } from "@educateos/fleet";
-import { submissionDigest } from "./digest.ts";
+import { isSubmissionDigestOf } from "./digest.ts";
 import { SubmissionReceipt } from "./model.ts";
 
 /**
@@ -22,9 +22,11 @@ export const SignedSubmissionReceipt = z.strictObject({
 export type SignedSubmissionReceipt = z.infer<typeof SignedSubmissionReceipt>;
 
 const CONTEXT = "educateos-submission-receipt/v1";
+/** SCHO-232: the signing context of receipts signed before the EducateOS rename. */
+const LEGACY_CONTEXT = "schoolos-submission-receipt/v1"; // rename-educateos: keep
 
-function signedBytes(districtId: DistrictId, receipt: SubmissionReceipt): Uint8Array<ArrayBuffer> {
-  return new TextEncoder().encode(`${CONTEXT}\0${districtId}\0${canonicalJson(receipt)}`);
+function signedBytes(districtId: DistrictId, receipt: SubmissionReceipt, context = CONTEXT): Uint8Array<ArrayBuffer> {
+  return new TextEncoder().encode(`${context}\0${districtId}\0${canonicalJson(receipt)}`);
 }
 
 /** Signs `receipt` as `districtId`'s, with the district's receipt key. */
@@ -55,10 +57,13 @@ export async function verifySubmissionReceipt(
   const parsed = SignedSubmissionReceipt.safeParse(input);
   if (!parsed.success || parsed.data.districtId !== districtId) return undefined;
   const { receipt, signature } = parsed.data;
-  if ((await submissionDigest(receipt.items)) !== receipt.submissionDigest) return undefined;
+  if (!(await isSubmissionDigestOf(receipt.items, receipt.submissionDigest))) return undefined;
   for (const publicKey of trustedKeys) {
     if ((await keyIdFor(publicKey)) !== signature.keyId) continue;
-    return (await verifySignature(publicKey, signature.value, signedBytes(districtId, receipt))) ? receipt : undefined;
+    // A receipt signed before the EducateOS rename carries the legacy format and was signed under
+    // the legacy context (SCHO-232); a receipt of the current format verifies only under the current one.
+    const context = receipt.format.startsWith("educateos.") ? CONTEXT : LEGACY_CONTEXT;
+    return (await verifySignature(publicKey, signature.value, signedBytes(districtId, receipt, context))) ? receipt : undefined;
   }
   return undefined;
 }

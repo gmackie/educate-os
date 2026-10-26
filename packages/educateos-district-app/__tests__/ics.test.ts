@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { escapeIcsText, foldIcsLine, isoWeekBounds, isoWeekOf, digestWeekOf, renderIcs } from "../src/index.ts";
 
+// The UIDs keep the domain they had before the rename (SCHO-232): calendar clients key events by UID.
 /** The golden calendar, one content line per entry; continuation lines start with a space. */
 const GOLDEN = [
   "BEGIN:VCALENDAR",
@@ -14,7 +15,7 @@ const GOLDEN = [
   "X-WR-CALNAME:EducateOS — Northfield\\, synthetic",
   "X-WR-TIMEZONE:UTC",
   "BEGIN:VEVENT",
-  "UID:term-start-trm_nf-2026-fall@dst_northfield.educateos",
+  "UID:term-start-trm_nf-2026-fall@dst_northfield.schoolos", // rename-educateos: keep
   "DTSTAMP:20261023T120000Z",
   "DTSTART;VALUE=DATE:20260831",
   "DTEND;VALUE=DATE:20260901",
@@ -22,7 +23,7 @@ const GOLDEN = [
   "TRANSP:TRANSPARENT",
   "END:VEVENT",
   "BEGIN:VEVENT",
-  "UID:due-asg_essay@dst_northfield.educateos",
+  "UID:due-asg_essay@dst_northfield.schoolos", // rename-educateos: keep
   "DTSTAMP:20261023T120000Z",
   "DTSTART:20261120T220000Z",
   "SUMMARY:Due: Should the school day start later? Yes\\; no\\, maybe\\\\later —",
@@ -30,7 +31,7 @@ const GOLDEN = [
   "TRANSP:TRANSPARENT",
   "END:VEVENT",
   "BEGIN:VEVENT",
-  "UID:announcement-ann_1@dst_northfield.educateos",
+  "UID:announcement-ann_1@dst_northfield.schoolos", // rename-educateos: keep
   "DTSTAMP:20261023T120000Z",
   "DTSTART:20261026T133000Z",
   "SUMMARY:Announcement: Café trip\\, line one\\nline two — résumé workshop",
@@ -41,15 +42,15 @@ const GOLDEN = [
 ].join("\r\n") + "\r\n";
 
 const events = [
-  { uid: "term-start-trm_nf-2026-fall@dst_northfield.educateos", title: "Fall 2026 begins", start: "2026-08-31", allDay: true },
+  { uid: "term-start-trm_nf-2026-fall@dst_northfield.schoolos", title: "Fall 2026 begins", start: "2026-08-31", allDay: true }, // rename-educateos: keep
   {
-    uid: "due-asg_essay@dst_northfield.educateos",
+    uid: "due-asg_essay@dst_northfield.schoolos", // rename-educateos: keep
     title: "Due: Should the school day start later? Yes; no, maybe\\later — English 9 (Period 3)",
     start: "2026-11-20T17:00:00-05:00",
     allDay: false,
   },
   {
-    uid: "announcement-ann_1@dst_northfield.educateos",
+    uid: "announcement-ann_1@dst_northfield.schoolos", // rename-educateos: keep
     title: "Announcement: Café trip, line one\nline two — résumé workshop for everyone in the whole school, all welcome",
     start: "2026-10-26T13:30:00.000Z",
     allDay: false,

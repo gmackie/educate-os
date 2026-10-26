@@ -51,6 +51,13 @@ names, and each commits in its own `transactionSync`.
   then copy the `academic_*` rows into a D1 database built from `educateos-academics/migrations`
   and the `educateos_artifact_blob*` objects into R2 by key. After that, construct `D1AcademicStore`
   and a real R2 bucket in `durableDistrictStores`' place.
+- **Tables from before the rename (SCHO-232).** The EducateOS rename moved every store's tables from
+  `schoolos_*` to `educateos_*`. Each store recovers its `schoolos_*` rows on first use, inside the <!-- rename-educateos: keep -->
+  transaction that creates its tables (`@educateos/contracts/legacy-tables`): the rows are copied in
+  by the store's rule for conflicts with rows written since, and the legacy table is renamed to
+  `schoolos_<name>_premigration`, a backup that is never dropped. A merge the store cannot make <!-- rename-educateos: keep -->
+  safely (two personal workspaces for one person, a merged state that breaks its invariants) is
+  refused and rolled back, and that store fails until the conflict is resolved by hand.
 - **Seeding.** On first start, the directory is seeded from `DISTRICT_CONFIG.directory`. After that
   the stored directory is kept, and a configuration that names another district is refused.
 

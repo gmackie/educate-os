@@ -41,6 +41,8 @@ export interface DistrictSeams {
   accessKeys?: JWTVerifyGetKey;
   /** The Worker's Cloudflare Email Service binding (`SEND_EMAIL`), if it has one (SCHO-189). */
   sendEmail?: SendEmailBinding;
+  /** Told the ID of a configuration revision policy cannot read and passes over (SCHO-232), to log it. */
+  onUnreadableConfigRevision?: (revisionId: string) => void;
 }
 
 /** The district ID `DISTRICT_CONFIG` names, which its Durable Object is named by. */
@@ -68,6 +70,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     stores,
     verifyRequest,
     importFetch: seams.importFetch,
+    ...(seams.onUnreadableConfigRevision === undefined ? {} : { onUnreadableConfigRevision: seams.onUnreadableConfigRevision }),
     authority,
     ...(config.fundingPools === undefined ? {} : { fundingPools: config.fundingPools }),
     ...(config.aiMonthlyDistrictCapUsdNano === undefined ? {} : { aiMonthlyDistrictCapUsdNano: config.aiMonthlyDistrictCapUsdNano }),

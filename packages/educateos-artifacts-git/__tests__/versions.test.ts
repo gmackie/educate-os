@@ -4,6 +4,7 @@ import {
   buildTree,
   encodeCommit,
   gitObject,
+  LEGACY_VERSION_REF_PREFIX,
   NO_COMMIT,
   PROJECT_BRANCH,
   VERSION_MANIFEST_PATH,
@@ -75,6 +76,13 @@ describe("saved versions in Git", () => {
 
     await storage.push(remote, write.reveal(), { branch: PROJECT_BRANCH, oldSha: latest, ...rogue }, rogue.objects);
     expect(storage.branchHead(repository)).toBe(rogue.newSha);
+  });
+
+  it("refuse a student's own Git client the version refs saved before the rename too (SCHO-232)", async () => {
+    const { projects, storage, created, remote, latest } = await twoVersions();
+    const write = await projects.issueCredential(P.amara, created.artifact.id, "write");
+    const rogue = await studentCommit(latest, "print('rewritten')\n");
+    await rejectsWith(storage.push(remote, write.reveal(), { branch: `${LEGACY_VERSION_REF_PREFIX}${rogue.newSha}`, oldSha: NO_COMMIT, ...rogue }, rogue.objects), "forbidden");
   });
 
   it("stay readable, and the next save lands, after a student rewrites the branch", async () => {

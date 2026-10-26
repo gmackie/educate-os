@@ -167,5 +167,12 @@ describe("bill reconciliation", () => {
     expect(() => parseCostExportCsv(`${header}\nreq-1,2026-10-05,anthropic,m,0.1234567891`)).toThrow();
     expect(() => parseCostExportJson({ format: "educateos.ai-cost-export.v1", rows: [{ date: "2026-10-05", provider: "openai", model: "m", cost_usd: 0.1 }] })).toThrow();
     expect(() => parseCostExportJson({ format: "educateos.ai-cost-export.v1", rows: [], extra: true })).toThrow();
+    expect(() => parseCostExportJson({ format: "other.ai-cost-export.v1", rows: [] })).toThrow();
+  });
+
+  it("imports an export prepared before the EducateOS rename (SCHO-232)", () => {
+    const row = { date: "2026-10-05", provider: "anthropic", model: "claude-sonnet-example", cost_usd: "0.80" } as const;
+    expect(parseCostExportJson({ format: "schoolos.ai-cost-export.v1", rows: [row] })) // rename-educateos: keep
+      .toEqual(parseCostExportJson({ format: "educateos.ai-cost-export.v1", rows: [row] }));
   });
 });

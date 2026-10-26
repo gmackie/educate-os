@@ -4,6 +4,7 @@
 // imports nothing from `cloudflare:workers`, so the package's main entry stays runtime-agnostic and
 // the Worker hosting a district's records chooses its own Durable Object class around it.
 import { EducateOsError } from "@educateos/contracts";
+import { mergeLegacyDocument, migrateLegacyTables, type LegacySql, type LegacyTablePlan } from "@educateos/contracts/legacy-tables";
 import { AssessmentState } from "./model.ts";
 import { assertAssessmentInvariants, type AssessmentRecordStore, type StoredAssessment } from "./store.ts";
 
@@ -35,6 +36,37 @@ const SCHEMA = `CREATE TABLE IF NOT EXISTS ${ASSESSMENT_RECORDS_TABLE} (
 )`;
 
 const EMPTY: AssessmentState = { assignments: [], starterMaterials: [], submissions: [], feedback: [], gradeProposals: [], gradeVersions: [] };
+
+/**
+ * Recovers the records a district kept before the rename (SCHO-232): copied as they are when none
+ * were written since, and otherwise merged with them, keeping every record of both. The merge must
+ * be a state each side could have become (`assertAssessmentInvariants`), or it is refused and the
+ * migration rolled back.
+ */
+const LEGACY_RECORDS: LegacyTablePlan = {
+  tables: [ASSESSMENT_RECORDS_TABLE],
+  migrate(sql: LegacySql, legacy: (table: string) => string) {
+    const [before] = sql.exec(`SELECT version, state_json FROM ${legacy(ASSESSMENT_RECORDS_TABLE)} WHERE id = 1`).toArray();
+    if (before === undefined) return;
+    const [after] = sql.exec(`SELECT version, state_json FROM ${ASSESSMENT_RECORDS_TABLE} WHERE id = 1`).toArray();
+    let version = Number(before.version);
+    let state = parseState(before.state_json);
+    if (after !== undefined) {
+      const current = parseState(after.state_json);
+      const merged = AssessmentState.parse(mergeLegacyDocument(state, current));
+      assertAssessmentInvariants(state, merged);
+      assertAssessmentInvariants(current, merged);
+      version = Math.max(version, Number(after.version)) + 1;
+      state = merged;
+    }
+    sql.exec(
+      `INSERT INTO ${ASSESSMENT_RECORDS_TABLE} (id, version, state_json) VALUES (1, ?, ?)
+       ON CONFLICT (id) DO UPDATE SET version = excluded.version, state_json = excluded.state_json`,
+      version,
+      JSON.stringify(state),
+    );
+  },
+};
 
 /** Thrown when the stored records cannot be read. Nothing is decided on records that cannot be read. */
 export class AssessmentRecordCorruptionError extends Error {
@@ -79,17 +111,23 @@ export class DurableObjectAssessmentRecordStore implements AssessmentRecordStore
 
   #read(): StoredAssessment {
     this.#storage.sql.exec(SCHEMA);
+    migrateLegacyTables(this.#storage.sql, [LEGACY_RECORDS]);
     const [row] = this.#storage.sql.exec(`SELECT version, state_json FROM ${ASSESSMENT_RECORDS_TABLE} WHERE id = 1`).toArray();
     if (row === undefined) return { version: 0, state: structuredClone(EMPTY) };
-    if (typeof row.version !== "number" || typeof row.state_json !== "string") throw new AssessmentRecordCorruptionError("the assessment records row has an unexpected shape");
-    let json: unknown;
-    try {
-      json = JSON.parse(row.state_json);
-    } catch {
-      throw new AssessmentRecordCorruptionError("the assessment records are not JSON");
-    }
-    const state = AssessmentState.safeParse(json);
-    if (!state.success) throw new AssessmentRecordCorruptionError("the assessment records do not match their schema");
-    return { version: row.version, state: state.data };
+    if (typeof row.version !== "number") throw new AssessmentRecordCorruptionError("the assessment records row has an unexpected shape");
+    return { version: row.version, state: parseState(row.state_json) };
   }
+}
+
+function parseState(text: unknown): AssessmentState {
+  if (typeof text !== "string") throw new AssessmentRecordCorruptionError("the assessment records row has an unexpected shape");
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new AssessmentRecordCorruptionError("the assessment records are not JSON");
+  }
+  const state = AssessmentState.safeParse(json);
+  if (!state.success) throw new AssessmentRecordCorruptionError("the assessment records do not match their schema");
+  return state.data;
 }

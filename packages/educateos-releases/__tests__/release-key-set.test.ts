@@ -1,4 +1,4 @@
-import { SigningIdentity } from "@educateos/fleet";
+import { SigningIdentity, canonicalJson } from "@educateos/fleet";
 import { describe, expect, it } from "vitest";
 import {
   acceptReleaseKeySet,
@@ -28,6 +28,22 @@ function keySet(version: number, keys: { identity: SigningIdentity; retiresAt?: 
 }
 
 const keyIds = (trust: ReleaseTrust) => trust.keys.map((key) => key.keyId);
+
+describe("release messages signed before the EducateOS rename (SCHO-232)", () => {
+  it("still verify, in the legacy signing context", async () => {
+    const clock = manualClock();
+    const { rootKeys, trust } = await makeSigner();
+    const next = await SigningIdentity.generate();
+    const payload = keySet(1, [{ identity: next }], clock.now());
+    const bytes = new TextEncoder().encode(`schoolos-releases/v1\0release-key-set\0${canonicalJson(payload)}`); // rename-educateos: keep
+    const signatures = await Promise.all(rootKeys.slice(0, 2).map(async (key) => ({ keyId: key.keyId, signature: await key.sign(bytes) })));
+    const legacy = { payload: JSON.parse(canonicalJson(payload)), signatures };
+    expect(keyIds(await acceptReleaseKeySet(trust, legacy, clock.now()))).toEqual([next.keyId]);
+    // The legacy context is still bound to the message: a changed payload is refused.
+    const tampered = { ...legacy, payload: { ...legacy.payload, version: 2 } };
+    expect((await rejection(acceptReleaseKeySet(trust, tampered, clock.now()))).code).toBe("unauthenticated");
+  });
+});
 
 describe("SCHO-84 release key rotation through the offline root keys", () => {
   it("rotates with overlap: both keys verify until the old one retires, then only the new one", async () => {

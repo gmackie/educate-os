@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { AssessmentRunId, ContentDigest, RubricId } from "@educateos/contracts";
-import { CriterionId, RubricReleaseRef } from "@educateos/assessment";
+import { CriterionId, RubricReleaseRef, recordFormat } from "@educateos/assessment";
 import { CheckVisibility } from "./rubric.ts";
 import { CriterionEvidence, EvaluatorRelease } from "./sdk.ts";
 
@@ -144,7 +144,7 @@ export type ReportSummary = z.infer<typeof ReportSummary>;
  * counts, so the same key always gives byte-for-byte the same report.
  */
 export const AssessmentReport = z.strictObject({
-  format: z.literal("educateos.assessment-report.v2"),
+  format: recordFormat("assessment-report.v2"),
   runId: AssessmentRunId,
   key: AssessmentRunKey,
   rubricDigest: ContentDigest,
@@ -164,7 +164,7 @@ export type AssessmentReport = z.infer<typeof AssessmentReport>;
  * suggested scores, and no run key or fixture digest.
  */
 export const StudentAssessmentReport = z.strictObject({
-  format: z.literal("educateos.assessment-report.student.v1"),
+  format: recordFormat("assessment-report.student.v1"),
   runId: AssessmentRunId,
   rubric: z.strictObject({ rubricId: RubricId, version: z.int().positive() }),
   criteria: z.array(z.strictObject({ criterionId: CriterionId, title: z.string(), checks: z.array(CheckResult) })),
