@@ -9,7 +9,7 @@ import { useAction } from "../modules/useAction.ts";
 import { navigate, routeHref } from "../route.ts";
 import type { TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
-import { formatWhen } from "./quizText.ts";
+import { formatDateTime } from "../dates.ts";
 
 /** Starting a quiz: its title. Everything else is set in the builder it opens into. */
 const NewQuizForm = ({ offeringId }: { offeringId: string }) => {
@@ -76,7 +76,7 @@ export const QuizzesPage = ({ teaching }: { teaching: TeachingOffering }) => {
                       </Table.Cell>
                       <Table.Cell>{submitted}</Table.Cell>
                       <Table.Cell>{needsGrading > 0 ? <Badge variant="warning">{String(needsGrading)}</Badge> : "0"}</Table.Cell>
-                      <Table.Cell>{lastReleasedAt === undefined ? <Text variant="secondary" as="span">Not yet</Text> : formatWhen(lastReleasedAt)}</Table.Cell>
+                      <Table.Cell>{lastReleasedAt === undefined ? <Text variant="secondary" as="span">Not yet</Text> : formatDateTime(lastReleasedAt)}</Table.Cell>
                       <Table.Cell><a href={routeHref({ screen: "quiz-results", offeringId, quizId: quiz.id })}>{`Results for ${quiz.title}`}</a></Table.Cell>
                     </Table.Row>
                   ))}

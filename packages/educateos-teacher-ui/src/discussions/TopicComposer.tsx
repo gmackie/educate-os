@@ -3,6 +3,7 @@ import { Button, Checkbox, Input, InputArea, Radio, Text } from "@cloudflare/kum
 import { Plus } from "@phosphor-icons/react";
 import { Problem } from "../Problem.tsx";
 import { useAction } from "../modules/useAction.ts";
+import { formatDateTime } from "../dates.ts";
 import type { Assignment, CourseModule } from "../types.ts";
 
 const NONE = "none";
@@ -69,9 +70,14 @@ export const TopicComposer = ({ offeringId, modules, assignments, onCreated }: {
         </Radio.Group>
       )}
       {assignments.length > 0 && (
-        <Radio.Group legend="Grade participation under" value={assignmentId} onValueChange={(value) => setAssignmentId(value as string)}>
+        <Radio.Group
+          legend="Grade participation under"
+          description="A graded discussion is due when its assignment is. Change that date under Submissions."
+          value={assignmentId}
+          onValueChange={(value) => setAssignmentId(value as string)}
+        >
           <Radio.Item value={NONE} label="Not graded" />
-          {assignments.map((a) => <Radio.Item key={a.id} value={a.id} label={a.title} />)}
+          {assignments.map((a) => <Radio.Item key={a.id} value={a.id} label={`${a.title}, due ${formatDateTime(a.dueAt)}`} />)}
         </Radio.Group>
       )}
       <Checkbox label="Students can reply to each other's posts" checked={allowReplies} onCheckedChange={(on) => setAllowReplies(on === true)} />

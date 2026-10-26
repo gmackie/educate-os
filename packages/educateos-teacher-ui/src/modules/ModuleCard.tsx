@@ -68,10 +68,10 @@ export const ModuleCard = ({ offeringId, module, pages, assignments, position, o
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h2><Text variant="heading" as="span">{module.title}</Text></h2>
-          {module.published ? <Badge variant="success" appearance="dot">Published</Badge> : <Badge variant="neutral" appearance="dot">Draft</Badge>}
           {module.source?.kind === "cartridge" && <Badge variant="neutral">Imported</Badge>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {/* The switch is the module's one status indicator: a "Draft" badge beside it said the same thing twice. */}
           <Switch
             label="Visible to students"
             checked={module.published}
@@ -115,7 +115,7 @@ export const ModuleCard = ({ offeringId, module, pages, assignments, position, o
                   </span>
                   <span className="flex gap-1">
                     {item.kind === "page" && (
-                      <Button size="sm" variant="ghost" disabled={action.busy} onClick={() => setEditing({ kind: "page", pageId: item.pageId })}>Edit</Button>
+                      <Button size="sm" variant="ghost" aria-label={`Edit ${itemLabel(item)}`} disabled={action.busy} onClick={() => setEditing({ kind: "page", pageId: item.pageId })}>Edit</Button>
                     )}
                     <Button size="sm" variant="ghost" shape="square" aria-label={`Move ${itemLabel(item)} up`} icon={<ArrowUp aria-hidden />} disabled={action.busy || index === 0} onClick={() => void moveItem(index, index - 1)} />
                     <Button size="sm" variant="ghost" shape="square" aria-label={`Move ${itemLabel(item)} down`} icon={<ArrowDown aria-hidden />} disabled={action.busy || index === module.items.length - 1} onClick={() => void moveItem(index, index + 1)} />

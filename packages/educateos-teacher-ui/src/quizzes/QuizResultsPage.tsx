@@ -10,7 +10,8 @@ import { routeHref } from "../route.ts";
 import { Loading } from "../Loading.tsx";
 import type { QuizResults, ReleaseOutcome, TeachingOffering } from "../types.ts";
 import { AttemptGrader } from "./AttemptGrader.tsx";
-import { formatPoints, formatWhen } from "./quizText.ts";
+import { formatPoints } from "./quizText.ts";
+import { formatDateTime } from "../dates.ts";
 
 type Row = QuizResults["students"][number];
 
@@ -35,8 +36,24 @@ const ScoreStatus = ({ row }: { row: Row }) => {
   return <span className="flex flex-wrap gap-2"><span>{score}</span><Badge variant="neutral">{row.released === undefined ? "Not released" : "Changed since release"}</Badge></span>;
 };
 
+/** Why there is nothing to release, in the quiz's own terms. */
+const nothingToRelease = (data: QuizResults): string => {
+  if (data.quiz.status === "draft") return "Publish the quiz first. Scores can be released once students have taken it and they're graded.";
+  if (data.students.length === 0) return "No one has taken the quiz yet, so there are no scores to release.";
+  if (data.students.some((row) => row.needsGrading)) return "Scores can be released once their essays are graded.";
+  if (data.releases.length > 0) return "Every graded score is already released.";
+  return "No scores are ready to release yet.";
+};
+
 /** Releasing every fully graded score as an official grade, after the teacher confirms. */
-const ReleaseControl = ({ offeringId, quizId, releasable, onReleased }: { offeringId: string; quizId: string; releasable: number; onReleased: () => void }) => {
+const ReleaseControl = ({ offeringId, quizId, releasable, idleHint, onReleased }: {
+  offeringId: string;
+  quizId: string;
+  releasable: number;
+  /** Why nothing can be released, shown when nothing can. */
+  idleHint: string;
+  onReleased: () => void;
+}) => {
   const [confirming, setConfirming] = useState(false);
   const [outcome, setOutcome] = useState<ReleaseOutcome>();
   const action = useAction(onReleased);
@@ -64,7 +81,7 @@ const ReleaseControl = ({ offeringId, quizId, releasable, onReleased }: { offeri
               Release scores
             </Button>
           )}
-        {!confirming && releasable === 0 && <Text variant="secondary" size="sm" as="span">Every graded score is already released.</Text>}
+        {!confirming && releasable === 0 && <Text variant="secondary" size="sm" as="span">{idleHint}</Text>}
       </div>
       {outcome !== undefined && <Text as="p">{releaseSummary(outcome)}</Text>}
       {action.state.status === "failed" && <Problem error={action.state.error} />}
@@ -94,7 +111,7 @@ export const QuizResultsPage = ({ teaching, quizId }: { teaching: TeachingOfferi
         <>
           <PageHeading>{`Results: ${data.quiz.title} · ${classLabel(teaching)}`}</PageHeading>
           <a href={routeHref({ screen: "quiz", offeringId, quizId })}>Edit quiz</a>
-          <ReleaseControl offeringId={offeringId} quizId={quizId} releasable={data.releasable} onReleased={results.reload} />
+          <ReleaseControl offeringId={offeringId} quizId={quizId} releasable={data.releasable} idleHint={nothingToRelease(data)} onReleased={results.reload} />
           {data.students.length === 0
             ? <Empty icon={<ChartBar size={32} aria-hidden />} title="No attempts yet" description="Results appear here once students start the quiz." />
             : (
@@ -170,7 +187,7 @@ export const QuizResultsPage = ({ teaching, quizId }: { teaching: TeachingOfferi
             </LayerCard>
           </section>
           {data.releases.length > 0 && (
-            <Text variant="secondary" size="sm" as="p">{`Last released ${formatWhen(data.releases.at(-1)!.at)}.`}</Text>
+            <Text variant="secondary" size="sm" as="p">{`Last released ${formatDateTime(data.releases.at(-1)!.at)}.`}</Text>
           )}
         </>
       )}

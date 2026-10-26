@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { DistrictApiClient, RouteName } from "@educateos/api-client";
 import { fakeDistrict, IDS } from "./fakeDistrict.ts";
 import { onScreen, renderApp } from "./render.tsx";
+import { formatDateTime } from "../src/dates.ts";
 
 const AT = "2026-10-21T15:00:00.000Z";
 const page = `#/classes/${IDS.offering}/discussions`;
@@ -100,7 +101,7 @@ describe("class discussions", () => {
     const form = screen.getByRole("form", { name: "Open a discussion" });
     await user.type(within(form).getByRole("textbox", { name: "Topic" }), "Uniforms?");
     await user.type(within(form).getByRole("textbox", { name: /Prompt/ }), "Argue **one** side.");
-    await user.click(within(form).getByRole("radio", { name: "Persuasive paragraph" }));
+    await user.click(within(form).getByRole("radio", { name: `Persuasive paragraph, due ${formatDateTime("2026-11-03T23:59:00.000Z")}` }));
     await user.click(within(form).getByRole("button", { name: "Open discussion" }));
     await screen.findByRole("region", { name: "Uniforms?" });
     expect(district.callsTo("teacher.createTopic")[0]!.input.body).toStrictEqual({
@@ -164,6 +165,10 @@ describe("class discussions", () => {
     await user.click(within(thread).getByRole("button", { name: "Post reply" }));
     await waitFor(() => expect(within(thread).getByText("Thanks for being kind.")).toBeTruthy());
     expect(district.callsTo("teacher.createPost")[0]!.input.body).toStrictEqual({ body: "Thanks for being kind.", parentId: "dps_hidden" });
+    // The teacher's own post is theirs to reply to, not "Ms. Rivera"'s.
+    const own = await within(thread).findByRole("article", { name: "Ms. Rivera" });
+    await user.click(within(own).getByRole("button", { name: "Reply to your post" }));
+    expect(within(own).getByRole("textbox", { name: "Reply to your post" })).toBeTruthy();
   });
 
   it("deletes a topic only after the teacher confirms", async () => {

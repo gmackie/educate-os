@@ -5,6 +5,7 @@ import { useAnnounce } from "../Announcer.tsx";
 import { useDistrictApi } from "../DistrictApi.tsx";
 import { Problem } from "../Problem.tsx";
 import type { ResourceReport } from "../types.ts";
+import { FILE_INPUT_CLASS } from "../fileInputClass.ts";
 
 /**
  * Sends a web page, or later a file, to the class's review queue. Nothing imported reaches
@@ -56,7 +57,7 @@ export const ImportResourceForm = ({ offeringId, onImported }: { offeringId: str
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="resource-file" className="text-sm font-medium">Or upload a file</label>
-        <input id="resource-file" type="file" disabled aria-describedby="resource-file-help" className="text-sm" />
+        <input id="resource-file" type="file" disabled aria-describedby="resource-file-help" className={FILE_INPUT_CLASS} />
         <Text variant="secondary" size="sm" as="span">
           <span id="resource-file-help">File uploads aren't turned on for your district yet. Paste a web address instead.</span>
         </Text>

@@ -27,6 +27,7 @@ import {
   PrincipalKind,
   RevisionId,
   RoleAssignment,
+  RubricId,
   School,
   SubmissionId,
   TermId,
@@ -974,7 +975,12 @@ export const ROUTES = {
   "teacher.submittedContent": route({
     method: "GET", path: "/api/teacher/submissions/:submissionId/artifacts/:artifactId", surface: "teacher",
     params: params({ submissionId: SubmissionId, artifactId: ArtifactId }),
-    response: z.strictObject({ item: SubmissionItem, content: RevisionContentBody }),
+    response: z.strictObject({
+      item: SubmissionItem,
+      content: RevisionContentBody,
+      /** The submitted work's title, which names the activity step it answers. Absent once the student deleted it. */
+      title: z.string().optional(),
+    }),
   }),
   "teacher.getFeedback": route({
     method: "GET", path: "/api/teacher/submissions/:submissionId/feedback", surface: "teacher",
@@ -1001,6 +1007,10 @@ export const ROUTES = {
     method: "POST", path: "/api/teacher/offerings/:offeringId/rubrics", surface: "teacher", status: 201,
     params: params({ offeringId: OfferingId }), body: z.strictObject({ rubric: RubricDraft }), response: RubricRelease,
   }),
+  "teacher.getRubric": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/rubrics/:rubricId/versions/:version", surface: "teacher",
+    params: params({ offeringId: OfferingId, rubricId: RubricId, version: z.string().regex(/^[1-9][0-9]{0,8}$/, "a release version").transform(Number) }), response: RubricRelease,
+  }),
   "teacher.runCi": route({
     method: "POST", path: "/api/teacher/submissions/:submissionId/ci", surface: "teacher",
     params: params({ submissionId: SubmissionId }),
@@ -1021,6 +1031,10 @@ export const ROUTES = {
   "teacher.pendingGrades": route({
     method: "GET", path: "/api/teacher/assignments/:assignmentId/grade-proposals", surface: "teacher",
     params: params({ assignmentId: AssignmentId }), response: z.array(GradeProposal),
+  }),
+  "teacher.officialGrades": route({
+    method: "GET", path: "/api/teacher/assignments/:assignmentId/students/:studentId/grades", surface: "teacher",
+    params: params({ assignmentId: AssignmentId, studentId: PrincipalId }), response: z.array(OfficialGradeVersion),
   }),
   "teacher.approveGrade": route({
     method: "POST", path: "/api/teacher/grade-proposals/:proposalId/approve", surface: "teacher",

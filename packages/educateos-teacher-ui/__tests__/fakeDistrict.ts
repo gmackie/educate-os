@@ -130,12 +130,15 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
   const activities = new Map<string, unknown>([[IDS.existingActivity, {
     view: "teacher",
     installation: { id: IDS.existingActivity },
-    content: { title: "Persuasive paragraph", evidence: { alignments: [GOAL] } },
+    content: { title: "Persuasive paragraph", steps: [{ id: "draft", title: "Draft", prompt: "Write it.", sources: [], response: { kind: "writing" } }], evidence: { alignments: [GOAL] } },
     evidenceContract: {},
   }]]);
   const assignments: ReturnType<typeof assignment>[] = [assignment(IDS.existingAssignment, IDS.existingActivity, "Persuasive paragraph")];
   const submissions: Body[] = [];
   const texts = new Map<string, string>();
+  // Each submitted item's title and text, by submission and artifact.
+  const works = new Map<string, { artifactId: string; title?: string; text: string }[]>();
+  const grades: Body[] = [];
   const files = new Map<string, { mediaType: string; base64: string }>();
   const proposals: Body[] = [];
   const feedback = new Map<string, { submissionId: string; state: string; comments: Body[]; scores: Body[]; updatedAt: string }>();
@@ -203,6 +206,18 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
   const announcements: { announcement: Body & { id: string; publishAt: string; deleted?: boolean }; courseLabel: string; published: boolean }[] = [];
   let weeklyNote: Body | null = null;
 
+  const recordGrade = (submissionId: string, score: Body) => {
+    const submission = submissions.find((s) => s.id === submissionId)!;
+    const earlier = grades.filter((g) => g.assignmentId === submission.assignmentId && g.studentPrincipalId === submission.studentPrincipalId);
+    const version = {
+      format: "educateos.official-grade.v1", districtId: IDS.district, offeringId: IDS.offering, assignmentId: submission.assignmentId,
+      studentPrincipalId: submission.studentPrincipalId, submissionId: submission.id, submissionDigest: DIGEST, version: earlier.length + 1,
+      score, approval: { approvedBy: IDS.teacher, approvedAt: NOW, channel: "http" },
+    };
+    grades.push(version);
+    return version;
+  };
+
   const handlers: Partial<Record<RouteName, (input: Input) => unknown>> = {
     "teacher.listAnnouncements": () => announcements.filter((a) => a.announcement.deleted !== true).toReversed(),
     "teacher.createAnnouncement": ({ params, body }) => {
@@ -213,6 +228,12 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
         published: publishAt <= NOW,
       };
       announcements.push(entry);
+      return entry;
+    },
+    "teacher.updateAnnouncement": ({ params, body }) => {
+      const entry = announcements.find((a) => a.announcement.id === params!.announcementId)!;
+      Object.assign(entry.announcement, body);
+      entry.published = entry.announcement.publishAt <= NOW;
       return entry;
     },
     "teacher.deleteAnnouncement": ({ params }) => {
@@ -279,7 +300,13 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
           subject: activity.subject,
           gradeBand: activity.gradeBand,
           overview: activity.overview,
-          steps: [{ id: "draft", title: "Draft", prompt: String(activity.prompt ?? "Do the work."), sources: [], response: { kind: "writing" } }],
+          // A science investigation asks for its data table; every other template, a written draft.
+          steps: activity.template === "science-investigation"
+            ? [
+              { id: "method", title: "Method", prompt: String(activity.methodPrompt), sources: [], response: { kind: "writing" } },
+              { id: "data", title: "Data", prompt: "Record your observations.", sources: [], response: { kind: "dataset", columns: activity.dataColumns } },
+            ]
+            : [{ id: "draft", title: "Draft", prompt: String(activity.prompt ?? "Do the work."), sources: [], response: { kind: "writing" } }],
           resources: activity.resources,
           codex: activity.codex,
           rubricSlots: [],
@@ -312,8 +339,15 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
     "teacher.listSubmissions": ({ params }) => submissions.filter((s) => s.assignmentId === params!.assignmentId),
     "teacher.submittedContent": ({ params }) => {
       const submission = submissions.find((s) => s.id === params!.submissionId)! as { items: Body[] };
+      const pieces = works.get(params!.submissionId!);
+      if (pieces !== undefined) {
+        const piece = pieces.find((w) => w.artifactId === params!.artifactId)!;
+        return { item: submission.items.find((i) => i.artifactId === piece.artifactId), content: { kind: "text", text: piece.text }, ...(piece.title === undefined ? {} : { title: piece.title }) };
+      }
       const file = files.get(params!.submissionId!);
-      return { item: submission.items[0], content: file === undefined ? { kind: "text", text: texts.get(params!.submissionId!) } : { kind: "bytes", base64: file.base64 } };
+      // Learning Home saves a step's work as "<assignment>: <step>"; both fake activities have a "Draft" step.
+      const title = `${assignments.find((a) => a.id === (submission as Body).assignmentId)!.title}: Draft`;
+      return { item: submission.items[0], title, content: file === undefined ? { kind: "text", text: texts.get(params!.submissionId!) } : { kind: "bytes", base64: file.base64 } };
     },
     "teacher.getFeedback": ({ params }) => feedbackFor(params!.submissionId!),
     "teacher.runCi": ({ params }) => {
@@ -360,16 +394,12 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
       record.state = String(body!.state);
       return record;
     },
-    "teacher.recordGrade": ({ params, body }) => {
-      const submission = submissions.find((s) => s.id === params!.submissionId)!;
-      return {
-        status: "official",
-        version: {
-          format: "educateos.official-grade.v1", districtId: IDS.district, offeringId: IDS.offering, assignmentId: submission.assignmentId,
-          studentPrincipalId: submission.studentPrincipalId, submissionId: submission.id, submissionDigest: DIGEST, version: 1,
-          score: body!.score, approval: { approvedBy: IDS.teacher, approvedAt: NOW, channel: "http" },
-        },
-      };
+    "teacher.recordGrade": ({ params, body }) => ({ status: "official", version: recordGrade(String(params!.submissionId), body!.score as Body) }),
+    "teacher.officialGrades": ({ params }) => grades.filter((g) => g.assignmentId === params!.assignmentId && g.studentPrincipalId === params!.studentId),
+    "teacher.getRubric": ({ params }) => {
+      const release = rubrics.get(`${params!.rubricId}@${params!.version}`);
+      if (release === undefined) throw new DistrictApiError(404, { code: "not-found", message: "no such rubric" });
+      return release;
     },
     "teacher.pendingGrades": ({ params }) => proposals.filter((p) => p.assignmentId === params!.assignmentId && p.declined === undefined),
     "teacher.declineGradeProposal": ({ params, body }) => {
@@ -494,6 +524,38 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
         submissionDigest: DIGEST, ...(assigned.rubric === undefined ? {} : { rubric: assigned.rubric }), submittedAt: NOW, timing: "on-time", channel: "http",
       });
       return id;
+    },
+    /**
+     * A student turns in several pieces of work, each saved under a title, as Learning Home saves
+     * one per activity step. They are stored in canonical (artifact ID) order, as the district does.
+     */
+    studentSubmitsWorks: (assignmentId: string, pieces: { artifactId: string; title?: string; text: string }[]) => {
+      const assigned = assignments.find((a) => a.id === assignmentId)!;
+      const id = next("sub");
+      const sorted = pieces.toSorted((a, b) => a.artifactId.localeCompare(b.artifactId));
+      works.set(id, sorted);
+      submissions.push({
+        id, districtId: IDS.district, assignmentId, offeringId: IDS.offering, studentPrincipalId: IDS.amara, attempt: 1,
+        items: sorted.map((piece) => ({ artifactId: piece.artifactId, revisionId: `rev_${piece.artifactId.slice(4)}`, digest: DIGEST, artifactType: "document", mediaType: "text/markdown", sizeBytes: piece.text.length, aiAssistance: { level: "none" } })),
+        submissionDigest: DIGEST, ...(assigned.rubric === undefined ? {} : { rubric: assigned.rubric }), submittedAt: NOW, timing: "on-time", channel: "http",
+      });
+      return id;
+    },
+    /** The teacher approved an official grade for a submission earlier, in another session. */
+    gradedEarlier: (submissionId: string, score: { points: number; maxPoints: number }) => recordGrade(submissionId, score),
+    /** A step-by-step activity assigned in the class, with a rubric signed earlier. */
+    assignStepActivity: (title: string, steps: { id: string; title: string; kind: "writing" | "dataset" | "none" }[], rubric?: { rubricId: string; version: number; title: string; criteria: { id: string; title: string; levels: { id: string; label: string; points: number }[]; checks: unknown[] }[] }) => {
+      const activityId = next("act");
+      activities.set(activityId, {
+        view: "teacher", installation: { id: activityId }, evidenceContract: {},
+        content: { title, steps: steps.map((s) => ({ id: s.id, title: s.title, prompt: `Do ${s.title}.`, sources: [], response: s.kind === "dataset" ? { kind: "dataset", columns: [{ name: "Sample" }] } : { kind: s.kind } })), evidence: { alignments: [] } },
+      });
+      if (rubric !== undefined) {
+        rubrics.set(`${rubric.rubricId}@${rubric.version}`, { format: "educateos.rubric-release.v1", ...rubric, signature: { signedBy: IDS.teacher, signedAt: NOW, channel: "http", digest: DIGEST } } as never);
+      }
+      const created = assignment(next("asg"), activityId, title, rubric === undefined ? undefined : { rubricId: rubric.rubricId, version: rubric.version });
+      assignments.push(created);
+      return created.id;
     },
     /** A student turns in a file for an assignment. */
     studentSubmitsFile: (assignmentId: string, file: { mediaType: string; base64: string }) => {

@@ -51,13 +51,17 @@ describe("a teacher's first class", () => {
     await user.type(screen.getByRole("textbox", { name: "Rubric title" }), "Essay basics");
     await user.type(screen.getByRole("textbox", { name: "Criteria" }), "Length");
     await user.type(screen.getByRole("textbox", { name: /Automatic check/ }), "20");
-    await user.click(screen.getByRole("button", { name: "Sign and use this rubric" }));
+    await user.click(screen.getByRole("button", { name: "Save and use this rubric" }));
     await waitFor(() => expect(screen.getByRole("radio", { name: "Essay basics" }).getAttribute("aria-checked")).toBe("true"));
+    expect(screen.getByText(/Once saved, a rubric can't change/)).toBeTruthy();
 
     // Preview as a student: the teacher-only note is not there.
     await user.click(screen.getByRole("button", { name: "Preview as student" }));
     const preview = await screen.findByRole("region", { name: "Preview as a student" });
     expect(within(preview).getByText("Should school start later?")).toBeTruthy();
+    // The rubric shows as students see it: criteria and levels.
+    expect(within(preview).getByText("How your work is assessed: Essay basics")).toBeTruthy();
+    expect(within(preview).getByText("Length: Beginning (1), Developing (2), Secure (3)")).toBeTruthy();
     expect(within(preview).queryByText(/counterclaims/)).toBeNull();
     const created = district.callsTo("teacher.createActivity")[0]!.input.body!.activity as Record<string, unknown>;
     expect(created).toMatchObject({
@@ -87,7 +91,7 @@ describe("a teacher's first class", () => {
     await user.click(screen.getByRole("link", { name: "Go to submissions" }));
     await user.click(await screen.findByRole("link", { name: "Review Amara Okafor’s work" }));
     await onScreen("Amara Okafor’s work · Should school start later?");
-    expect(screen.getByRole("region", { name: "Submitted work 1" }).textContent).toBe(ESSAY);
+    expect(screen.getByRole("region", { name: "Submitted work: Draft" }).textContent).toBe(ESSAY);
 
     // Run the automatic checks; their suggestion is labelled and is not the teacher's score.
     await user.click(screen.getByRole("button", { name: "Run checks" }));
@@ -98,7 +102,8 @@ describe("a teacher's first class", () => {
     expect((screen.getByRole("textbox", { name: "Points" }) as HTMLInputElement).value).toBe("");
 
     // Adopt the suggestion as the teacher's own score.
-    await user.click(within(length).getByRole("button", { name: "Use 3" }));
+    await user.click(within(length).getByRole("button", { name: "Use Secure" }));
+    expect(within(length).getByRole("radio", { name: "Secure (3)" }).getAttribute("aria-checked")).toBe("true");
     expect(district.callsTo("teacher.scoreCriterion")).toHaveLength(0);
     await user.click(within(length).getByRole("button", { name: "Save score" }));
     await waitFor(() => expect((screen.getByRole("textbox", { name: "Points" }) as HTMLInputElement).value).toBe("3"));

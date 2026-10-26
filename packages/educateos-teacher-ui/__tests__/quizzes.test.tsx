@@ -1,7 +1,7 @@
 // SCHO-191: a teacher builds a quiz from items, binds it to an assignment and publishes it, reads
 // the results with item analysis, grades an essay, and releases the scores once, after confirming.
 import { screen, waitFor, within } from "@testing-library/dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DistrictApiError, type DistrictApiClient, type RouteName } from "@educateos/api-client";
 import { fakeDistrict, IDS } from "./fakeDistrict.ts";
 import { onScreen, renderApp, settle } from "./render.tsx";
@@ -57,7 +57,16 @@ function withQuizzes() {
       if (moduleId !== null && moduleId !== undefined) quiz.moduleId = moduleId;
       return quiz;
     },
-    "teacher.publishQuiz": ({ params, body }) => Object.assign(quizzes.find((q) => q.id === params!.quizId)!, { status: body!.published ? "published" : "draft" }),
+    "teacher.publishQuiz": ({ params, body }) => {
+      const quiz = quizzes.find((q) => q.id === params!.quizId)!;
+      // As the district does, publishing a quiz with no assignment makes one for it.
+      if (body!.published === true && quiz.assignmentId === undefined) {
+        const made = { ...base.assignments[0]!, id: `asg_quiz${++counter}`, activityId: `act_quiz${counter}`, title: String(quiz.title) };
+        base.assignments.push(made);
+        quiz.assignmentId = made.id;
+      }
+      return Object.assign(quiz, { status: body!.published ? "published" : "draft", updatedAt: `2026-10-21T16:0${++counter}:00.000Z` });
+    },
     "teacher.deleteQuiz": ({ params }) => {
       quizzes.splice(quizzes.findIndex((q) => q.id === params!.quizId), 1);
       return { deleted: true };
@@ -67,7 +76,8 @@ function withQuizzes() {
       const released = last?.grades[0] as { points: number } | undefined;
       return {
         quiz: quizzes[0],
-        students: [{
+        // A draft has no attempts.
+        students: quizzes[0]!.status === "draft" ? [] : [{
           studentId: IDS.amara,
           attempts: [{ id: ATTEMPT, number: 1, status: "submitted", submittedAt: AT, points: graded() ? total() : null, maxPoints: 7 }],
           ...(graded() ? { gradedAttemptId: ATTEMPT, score: { points: total(), maxPoints: 7 } } : {}),
@@ -79,7 +89,7 @@ function withQuizzes() {
           { itemId: "qzi_essay", responses: 1, correct: 0, graded: graded() ? 1 : 0, percentCorrect: graded() ? 0 : null, meanPoints: graded() ? scores[1]!.points : null },
         ],
         releases,
-        releasable: graded() && released?.points !== total() ? 1 : 0,
+        releasable: quizzes[0]!.status !== "draft" && graded() && released?.points !== total() ? 1 : 0,
         names: [{ principalId: IDS.amara, displayName: "Amara Okafor" }],
       };
     },
@@ -246,6 +256,57 @@ describe("publishing a quiz in a class with no assignment for it (SCHO-220)", ()
     await user.click(screen.getByRole("button", { name: "Publish" }));
     await screen.findByRole("button", { name: "Unpublish" });
     expect(district.callsTo("teacher.publishQuiz")[0]!.input.body).toStrictEqual({ published: true });
+    // Publishing made its gradebook assignment, so a second new one is no longer offered.
+    const published = screen.getByRole("form", { name: "Quiz details" });
+    await waitFor(() => expect(within(published).getByRole("radio", { name: "Rock Cycle Check-in" }).getAttribute("aria-checked")).toBe("true"));
+    expect(within(published).queryByRole("radio", { name: /^A new gradebook assignment/ })).toBeNull();
+  });
+
+  it("says why there is nothing to release for a draft no one has taken", async () => {
+    const district = withQuizzes();
+    district.quizzes[0]!.status = "draft";
+    await renderApp(district.client, `${list}/${QUIZ}/results`);
+    await onScreen(/Results: Poetry terms/);
+    expect(screen.getByText("Publish the quiz first. Scores can be released once students have taken it and they're graded.")).toBeTruthy();
+    expect(screen.queryByText("Every graded score is already released.")).toBeNull();
+    expect((screen.getByRole("button", { name: "Release scores" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("edits numbers and settings without React or Base UI warning about controlled inputs", async () => {
+    const errors = vi.spyOn(console, "error");
+    try {
+      const district = withQuizzes();
+      const user = await renderApp(district.client, list);
+      const form = await screen.findByRole("form", { name: "New quiz" });
+      await user.type(within(form).getByRole("textbox", { name: "Quiz title" }), "Rocks");
+      await user.click(within(form).getByRole("button", { name: "Create quiz" }));
+      await onScreen("Rocks · English 9 · Period 3");
+      const details = screen.getByRole("form", { name: "Quiz details" });
+      await user.click(within(details).getByRole("button", { name: "Add essay" }));
+      await user.click(within(details).getByRole("button", { name: "Add number" }));
+      const question = within(details).getByRole("group", { name: "Question 2: Number" });
+      // Arranging names the question it moves.
+      expect((within(question).getByRole("button", { name: "Move Question 2 up" }) as HTMLButtonElement).disabled).toBe(false);
+      expect((within(question).getByRole("button", { name: "Move Question 2 down" }) as HTMLButtonElement).disabled).toBe(true);
+      for (const name of ["Question 2 points", "Question 2 answer", "Question 2 tolerance (plus or minus)"]) {
+        const field = within(question).getByRole("spinbutton", { name });
+        await user.clear(field);
+        await user.type(field, "4");
+      }
+      const attempts = within(details).getByRole("spinbutton", { name: "Attempts allowed" });
+      await user.clear(attempts);
+      await user.type(attempts, "2");
+      await user.type(within(within(details).getByRole("group", { name: "Question 1: Essay" })).getByRole("spinbutton", { name: /longest answer/ }), "500");
+      await user.click(within(details).getByRole("button", { name: "Save quiz" }));
+      await waitFor(() => expect(district.callsTo("teacher.updateQuiz")).toHaveLength(1));
+      const body = district.callsTo("teacher.updateQuiz")[0]!.input.body as { settings: { attemptsAllowed: number }; items: Body[] };
+      expect(body.settings.attemptsAllowed).toBe(2);
+      expect(body.items[1]).toMatchObject({ type: "numeric", points: 4, answer: 4, tolerance: 4 });
+      expect(body.items[0]).toMatchObject({ type: "essay", maxLength: 500 });
+      expect(errors.mock.calls.map((args) => String(args[0]))).toStrictEqual([]);
+    } finally {
+      errors.mockRestore();
+    }
   });
 
   it("explains a refusal in plain words, without a raw reference", async () => {

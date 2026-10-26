@@ -61,6 +61,38 @@ describe("class announcements", () => {
     expect((within(form).getByRole("textbox", { name: "Title" }) as HTMLInputElement).value).toBe("Field trip");
   });
 
+  it("edits a posted announcement in place, and keeps it posted", async () => {
+    const district = fakeDistrict();
+    const user = await renderApp(district.client, page);
+    const form = await screen.findByRole("form", { name: "New announcement" });
+    await user.type(within(form).getByRole("textbox", { name: "Title" }), "Library visit");
+    await user.type(within(form).getByRole("textbox", { name: /Message/ }), "Friday.");
+    await user.click(within(form).getByRole("button", { name: "Post announcement" }));
+
+    await user.click(await screen.findByRole("button", { name: "Edit Library visit" }));
+    const edit = screen.getByRole("form", { name: "Edit Library visit" });
+    // Students already see it, so there is no scheduling it for later.
+    expect(within(edit).queryByRole("checkbox", { name: "Schedule for later" })).toBeNull();
+    const message = within(edit).getByRole("textbox", { name: /Message/ }) as HTMLTextAreaElement;
+    expect(message.value).toBe("Friday.");
+    await user.clear(message);
+    await user.type(message, "Thursday instead.");
+    await user.click(within(edit).getByRole("button", { name: "Save changes" }));
+
+    const posted = await screen.findByRole("article", { name: "Library visit" });
+    expect(within(posted).getByText("Thursday instead.")).toBeTruthy();
+    expect(district.callsTo("teacher.updateAnnouncement")[0]!.input).toStrictEqual({
+      params: { announcementId: expect.any(String) },
+      body: { title: "Library visit", body: "Thursday instead." },
+    });
+    expect(screen.getByRole("status").textContent).toBe("Saved Library visit");
+
+    await user.click(within(posted).getByRole("button", { name: "Edit Library visit" }));
+    await user.click(within(screen.getByRole("form", { name: "Edit Library visit" })).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("form", { name: "Edit Library visit" })).toBeNull();
+    expect(district.callsTo("teacher.updateAnnouncement")).toHaveLength(1);
+  });
+
   it("saves and removes the week's note to families", async () => {
     const district = fakeDistrict();
     const user = await renderApp(district.client, page);
@@ -71,6 +103,10 @@ describe("class announcements", () => {
     expect(district.callsTo("teacher.setWeeklyNote")[0]!.input.body).toStrictEqual({ week: "2026-W44", text: "We start Of Mice and Men." });
 
     const saved = await screen.findByRole("form", { name: "Note to families" });
+    // The form says the note is saved, and when, until it is edited again.
+    expect(await within(saved).findByText(/^Saved /)).toBeTruthy();
+    await user.type(within(saved).getByRole("textbox", { name: "Note for the week" }), " Bring the book.");
+    expect(within(saved).queryByText(/^Saved /)).toBeNull();
     await user.clear(within(saved).getByRole("textbox", { name: "Note for the week" }));
     await user.click(within(saved).getByRole("button", { name: "Remove note" }));
     await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Note removed"));

@@ -11,9 +11,10 @@ import type { CheckRun } from "../types.ts";
  * and rubric give the same result, so running again returns the same report rather than a new
  * opinion. Their scores are suggestions the teacher may adopt.
  */
-export const CheckResults = ({ submissionId, hasRubric, run, onRun }: {
+export const CheckResults = ({ submissionId, rubric, run, onRun }: {
   submissionId: string;
-  hasRubric: boolean;
+  /** The submission's rubric: none, one whose checks the page couldn't read, or one with this many checks. */
+  rubric: { kind: "none" } | { kind: "unknown" } | { kind: "known"; checks: number };
   run: CheckRun | undefined;
   onRun: (run: CheckRun) => void;
 }) => {
@@ -37,13 +38,17 @@ export const CheckResults = ({ submissionId, hasRubric, run, onRun }: {
   return (
     <section aria-labelledby="checks-heading" className="flex flex-col gap-3">
       <h2 id="checks-heading"><Text variant="heading" as="span">Automatic checks</Text></h2>
-      {hasRubric ? (
+      {rubric.kind === "none" && <Text variant="secondary">This activity has no rubric, so there are no automatic checks.</Text>}
+      {rubric.kind === "known" && rubric.checks === 0 && (
+        <Text variant="secondary">This rubric has no automatic checks. Score each criterion yourself below.</Text>
+      )}
+      {(rubric.kind === "unknown" || (rubric.kind === "known" && rubric.checks > 0)) && (
         <div>
           <Button icon={<Play aria-hidden />} loading={state.status === "running"} onClick={() => void start()}>
             {run === undefined ? "Run checks" : "Check again"}
           </Button>
         </div>
-      ) : <Text variant="secondary">This activity has no rubric, so there are no automatic checks.</Text>}
+      )}
       {state.status === "failed" && <Problem error={state.error} />}
       {run !== undefined && (run.run.state === "queued" || run.run.state === "running") && (
         <Text variant="secondary">The checks are still running. Press “Check again” in a moment.</Text>

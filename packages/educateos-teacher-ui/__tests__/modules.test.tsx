@@ -30,15 +30,21 @@ describe("class modules", () => {
     await user.click(within(card()).getByRole("button", { name: "Add page" }));
     await waitFor(() => expect(within(card()).getByText("What is a claim?")).toBeTruthy());
     expect(district.callsTo("teacher.addPage")[0]!.input.body).toStrictEqual({ title: "What is a claim?", body: "A **claim** is arguable." });
+    // Each item's controls name the item they act on.
+    expect(within(card()).getByRole("button", { name: "Edit What is a claim?" })).toBeTruthy();
+    expect(within(card()).getByRole("button", { name: "Move What is a claim? down" })).toBeTruthy();
 
     await user.click(within(card()).getByRole("button", { name: "Add activity" }));
     await user.click(within(card()).getByRole("radio", { name: "Persuasive paragraph" }));
     await user.click(within(card()).getByRole("button", { name: "Add activity" }));
     await waitFor(() => expect(within(card()).getByText("Persuasive paragraph")).toBeTruthy());
 
-    expect(within(card()).getByText("Draft")).toBeTruthy();
+    // The switch is the one status indicator.
+    expect(within(card()).getByRole("switch", { name: "Visible to students" }).getAttribute("aria-checked")).toBe("false");
+    expect(within(card()).queryByText("Draft")).toBeNull();
     await user.click(within(card()).getByRole("switch", { name: "Visible to students" }));
-    await waitFor(() => expect(within(card()).getByText("Published")).toBeTruthy());
+    await waitFor(() => expect(within(card()).getByRole("switch", { name: "Visible to students" }).getAttribute("aria-checked")).toBe("true"));
+    expect(within(card()).queryByText("Published")).toBeNull();
     expect(district.callsTo("teacher.updateModule")[0]!.input.body).toStrictEqual({ published: true });
 
     await user.click(screen.getByRole("button", { name: "Move Week 2: Evidence up" }));

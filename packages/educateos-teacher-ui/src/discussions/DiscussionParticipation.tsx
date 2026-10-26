@@ -2,6 +2,7 @@ import { Text } from "@cloudflare/kumo";
 import { DistrictApiError } from "@educateos/api-client";
 import { routeHref } from "../route.ts";
 import { useLoad } from "../useLoad.ts";
+import { formatDateTime } from "../dates.ts";
 
 /**
  * Where a student's discussion posts count toward an assignment: their posts in the class's topics
@@ -40,7 +41,7 @@ export const DiscussionParticipation = ({ offeringId, assignmentId, studentPrinc
                 {theirs.map((post) => (
                   <li key={post.id} className="rounded-lg border border-kumo-hairline p-3">
                     <Text variant="secondary" size="sm" as="p">
-                      <time dateTime={post.createdAt}>{new Date(post.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</time>
+                      <time dateTime={post.createdAt}>{formatDateTime(post.createdAt)}</time>
                       {post.parentId === undefined ? "" : " · reply"}
                       {post.status === "visible" ? "" : ` · ${post.status}`}
                     </Text>

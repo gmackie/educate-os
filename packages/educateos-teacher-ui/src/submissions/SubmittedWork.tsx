@@ -14,10 +14,11 @@ type Submitted = RouteResponse<"teacher.submittedContent">;
  * passage of it. A passage can be selected with the pointer or typed, so the comment works the
  * same from the keyboard.
  */
-export const SubmittedWork = ({ submissionId, submitted, index, onCommented }: {
+export const SubmittedWork = ({ submissionId, submitted, label, onCommented }: {
   submissionId: string;
   submitted: Submitted;
-  index: number;
+  /** What the work answers: its activity step, where known. */
+  label: string;
   onCommented: () => void;
 }) => {
   const client = useDistrictApi();
@@ -65,20 +66,20 @@ export const SubmittedWork = ({ submissionId, submitted, index, onCommented }: {
   return (
     <LayerCard className="flex flex-col gap-3 p-4">
       <span className="flex flex-wrap items-center gap-2">
-        <Text bold as="span">{`Work ${index + 1}`}</Text>
+        <h3><Text bold as="span">{label}</Text></h3>
         <Badge variant="neutral" icon={<LockSimple aria-hidden />}>Read-only: the version they turned in</Badge>
         {item.aiAssistance.level !== "none" && <Badge variant="warning">{item.aiAssistance.level === "generated" ? "Student says AI wrote this" : "Student says AI helped"}</Badge>}
       </span>
       {content.kind === "text" && (
         // Focusable so a keyboard user can scroll long work; a labelled region so it is announced as the work.
-        <div role="region" aria-label={`Submitted work ${index + 1}`} tabIndex={0} className="max-h-96 overflow-auto rounded border border-kumo-line p-3 focus-visible:ring-2 focus-visible:ring-kumo-brand">
+        <div role="region" aria-label={`Submitted work: ${label}`} tabIndex={0} className="max-h-96 overflow-auto rounded border border-kumo-line p-3 focus-visible:ring-2 focus-visible:ring-kumo-brand">
           <pre ref={textRef} className="whitespace-pre-wrap font-sans">{content.text}</pre>
         </div>
       )}
       {content.kind === "external" && <Text>{`A link the student turned in: ${content.url}`}</Text>}
-      {content.kind === "bytes" && <SubmittedFile base64={content.base64} mediaType={item.mediaType} label={`Submitted work ${index + 1}`} />}
+      {content.kind === "bytes" && <SubmittedFile base64={content.base64} mediaType={item.mediaType} label={label} />}
       <form
-        aria-label={`Comment on work ${index + 1}`}
+        aria-label={`Comment on ${label}`}
         className="flex flex-col gap-2"
         onSubmit={(event) => {
           event.preventDefault();
