@@ -47,9 +47,20 @@ function request<N extends RouteName>(token: string | undefined, name: N, input:
   });
 }
 
+/**
+ * Fetches through the Worker and reads the whole body before returning, so no response is left
+ * open in the district's object: an unread body keeps its request running, and the object cannot be
+ * restarted under it (`evictDurableObject` then waits until the test times out).
+ */
+async function fetchWorker(input: Request): Promise<Response> {
+  const response = await SELF.fetch(input);
+  const body = await response.arrayBuffer();
+  return new Response(response.status === 204 ? null : body, { status: response.status, headers: response.headers });
+}
+
 /** Calls a route through the Worker's own fetch handler and returns the schema-checked body. */
 async function ok<N extends RouteName>(token: string, name: N, input?: RouteInput<N>): Promise<RouteResponse<N>> {
-  const response = await SELF.fetch(request(token, name, input));
+  const response = await fetchWorker(request(token, name, input));
   const body: unknown = await response.json();
   if (!response.ok) throw new Error(`${name} failed with ${response.status}: ${JSON.stringify(body)}`);
   return ROUTES[name].response.parse(body) as RouteResponse<N>;
@@ -120,19 +131,19 @@ describe("the district Worker", () => {
   let artifactId = "";
 
   it("refuses a request without a valid Access assertion", async () => {
-    expect((await SELF.fetch(request(undefined, "me.get"))).status).toBe(401);
-    expect((await SELF.fetch(request("not-a-token", "me.get"))).status).toBe(401);
+    expect((await fetchWorker(request(undefined, "me.get"))).status).toBe(401);
+    expect((await fetchWorker(request("not-a-token", "me.get"))).status).toBe(401);
     const otherAudience = await assertion("nf-0001", { aud: "another-application" });
-    expect((await SELF.fetch(request(otherAudience, "me.get"))).status).toBe(401);
+    expect((await fetchWorker(request(otherAudience, "me.get"))).status).toBe(401);
     // A valid assertion for someone the directory does not know proves no principal, and shows
     // the caller the sign-in an administrator would add. An unverified one names nobody.
-    const unlinked = await SELF.fetch(request(await assertion("nobody-here"), "me.get"));
+    const unlinked = await fetchWorker(request(await assertion("nobody-here"), "me.get"));
     expect(unlinked.status).toBe(401);
     expect(await unlinked.json()).toMatchObject({ code: "unauthenticated", unlinkedSignIn: { issuer: ACCESS_ISSUER, subject: "nobody-here" } });
     for (const token of [undefined, "not-a-token", otherAudience]) {
-      expect(await (await SELF.fetch(request(token, "me.get"))).json()).not.toHaveProperty("unlinkedSignIn");
+      expect(await (await fetchWorker(request(token, "me.get"))).json()).not.toHaveProperty("unlinkedSignIn");
     }
-    expect((await SELF.fetch(new Request("https://district.example/health"))).status).toBe(404);
+    expect((await fetchWorker(new Request("https://district.example/health"))).status).toBe(404);
   });
 
   it("accepts an assertion for each application CF_ACCESS_AUD lists, and for no other", async () => {
@@ -142,7 +153,7 @@ describe("the district Worker", () => {
     }
     // The list's empty and blank entries are not audiences.
     for (const aud of ["another-application", "", " ", `${ACCESS_AUDIENCE},${WORKSHOP_ACCESS_AUDIENCE}`]) {
-      expect((await SELF.fetch(request(await assertion(subject, { aud }), "me.get"))).status).toBe(401);
+      expect((await fetchWorker(request(await assertion(subject, { aud }), "me.get"))).status).toBe(401);
     }
     // The connector's connect page is on the Workshop's hostname, so that is the assertion it forwards.
     const fromWorkshop = new Request("https://workshop.example/gatekeeper/educateos/connect", {
@@ -152,10 +163,10 @@ describe("the district Worker", () => {
   });
 
   it("answers the liveness probe without a sign-in, and nothing else beside /api", async () => {
-    const live = await SELF.fetch(new Request("https://district.example/healthz"));
+    const live = await fetchWorker(new Request("https://district.example/healthz"));
     expect(live.status).toBe(200);
     expect(await live.text()).toBe("ok");
-    expect((await SELF.fetch(new Request("https://district.example/healthz/me"))).status).toBe(404);
+    expect((await fetchWorker(new Request("https://district.example/healthz/me"))).status).toBe(404);
   });
 
   it("writes the roster, an assignment and a submission through /api", async () => {
@@ -329,7 +340,7 @@ describe("guardian onboarding in the district Worker", () => {
     await evictDurableObject(district());
     await ok(admin, "admin.confirmGuardian", { params: { relationshipId: invited.relationship.id } });
     // The spent invitation stays spent after a restart.
-    const spent = await SELF.fetch(request(await assertion("someone-else"), "onboarding.redeemGuardianInvitation", { body: { token } }));
+    const spent = await fetchWorker(request(await assertion("someone-else"), "onboarding.redeemGuardianInvitation", { body: { token } }));
     expect({ status: spent.status, body: await spent.json() }).toMatchObject({ status: 404, body: { code: "not-found" } });
 
     await evictDurableObject(district());
