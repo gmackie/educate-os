@@ -4,6 +4,7 @@
 // the Worker hosting a district's directory chooses its own Durable Object class around it.
 import { z } from "zod";
 import { EducateOsError } from "@educateos/contracts";
+import { mergeLegacyDocument, migrateLegacyTables, type LegacySql, type LegacyTablePlan } from "@educateos/contracts/legacy-tables";
 import { Workspace, WorkspaceState } from "./model.ts";
 import { assertWorkspaceInvariants, emptyWorkspaceState, type StoredWorkspaces, type WorkspaceStore } from "./store.ts";
 
@@ -56,6 +57,45 @@ const StateRest = WorkspaceState.omit({ workspaces: true });
 
 const WorkspaceRow = z.object({ id: z.string(), workspace_json: z.string() });
 const StateRow = z.object({ version: z.number(), state_json: z.string() });
+
+/**
+ * Recovers the directory a district kept before the rename (SCHO-232): every workspace of both
+ * sides, and the rest of the state merged. Two workspaces with one key (a personal workspace made
+ * again since, say) cannot both be kept and neither can be dropped without losing what lives in it,
+ * so that migration is refused and rolled back, as is one whose merged directory breaks its
+ * invariants.
+ */
+const LEGACY_DIRECTORY: readonly LegacyTablePlan[] = [
+  {
+    table: WORKSPACES_TABLE,
+    refuseConflicts: "A workspace stored before the rename has the key of one created since, so the two directories cannot be merged.",
+  },
+  {
+    tables: [WORKSPACE_STATE_TABLE],
+    migrate(sql: LegacySql, legacy: (table: string) => string) {
+      const [before] = sql.exec(`SELECT version, state_json FROM ${legacy(WORKSPACE_STATE_TABLE)} WHERE id = 1`).toArray();
+      if (before === undefined) return;
+      const [after] = sql.exec(`SELECT version, state_json FROM ${WORKSPACE_STATE_TABLE} WHERE id = 1`).toArray();
+      const old = StateRow.parse(before);
+      let version = old.version;
+      let rest = parseJson(StateRest, old.state_json, "the workspace state");
+      if (after !== undefined) {
+        const current = StateRow.parse(after);
+        rest = StateRest.parse(mergeLegacyDocument(rest, parseJson(StateRest, current.state_json, "the workspace state")));
+        version = Math.max(version, current.version) + 1;
+      }
+      const workspaces = sql.exec(`SELECT workspace_json FROM ${WORKSPACES_TABLE} ORDER BY rowid`).toArray()
+        .map((row) => parseJson(Workspace, String(row.workspace_json), "a workspace"));
+      assertWorkspaceInvariants({ workspaces, ...rest });
+      sql.exec(
+        `INSERT INTO ${WORKSPACE_STATE_TABLE} (id, version, state_json) VALUES (1, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET version = excluded.version, state_json = excluded.state_json`,
+        version,
+        JSON.stringify(rest),
+      );
+    },
+  },
+];
 
 /** Thrown when a stored row cannot be read. The directory refuses to decide on state it cannot read. */
 export class WorkspaceStoreCorruptionError extends Error {
@@ -135,13 +175,18 @@ export class DurableObjectWorkspaceStore implements WorkspaceStore {
 
   #load(): { version: number; state: WorkspaceState; json: Map<string, string> } {
     if (this.#cached !== undefined) return this.#cached;
-    const { rows, meta } = this.#storage.transactionSync(() => {
+    // Read inside the migration's transaction, so a merged directory that cannot be read rolls it back.
+    this.#cached = this.#storage.transactionSync(() => {
       for (const statement of SCHEMA) this.#storage.sql.exec(statement);
-      return {
-        rows: this.#storage.sql.exec(`SELECT id, workspace_json FROM ${WORKSPACES_TABLE} ORDER BY rowid`).toArray(),
-        meta: this.#storage.sql.exec(`SELECT version, state_json FROM ${WORKSPACE_STATE_TABLE} WHERE id = 1`).toArray(),
-      };
+      migrateLegacyTables(this.#storage.sql, LEGACY_DIRECTORY);
+      return this.#read();
     });
+    return this.#cached;
+  }
+
+  #read(): { version: number; state: WorkspaceState; json: Map<string, string> } {
+    const rows = this.#storage.sql.exec(`SELECT id, workspace_json FROM ${WORKSPACES_TABLE} ORDER BY rowid`).toArray();
+    const meta = this.#storage.sql.exec(`SELECT version, state_json FROM ${WORKSPACE_STATE_TABLE} WHERE id = 1`).toArray();
     const json = new Map<string, string>();
     const workspaces = rows.map((raw) => {
       const row = WorkspaceRow.safeParse(raw);
@@ -158,8 +203,7 @@ export class DurableObjectWorkspaceStore implements WorkspaceStore {
       version = row.data.version;
       rest = parseJson(StateRest, row.data.state_json, "the workspace state");
     }
-    this.#cached = { version, state: { workspaces, ...rest }, json };
-    return this.#cached;
+    return { version, state: { workspaces, ...rest }, json };
   }
 }
 

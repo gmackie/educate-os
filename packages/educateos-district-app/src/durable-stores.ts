@@ -14,6 +14,7 @@
 // service Worker's D1 database or R2 bucket would need (SCHO-138), so revision content that would
 // be an R2 object is kept in chunked SQLite rows (`DurableObjectBlobBucket`).
 import { z } from "zod";
+import { mergeLegacyDocument, migrateLegacyTables, type LegacySql, type LegacyTablePlan } from "@educateos/contracts/legacy-tables";
 import {
   ConfigurationRevision,
   GuardianRelationship,
@@ -52,7 +53,7 @@ import {
   type StoredGradebook,
 } from "@educateos/assessment";
 import { DurableObjectAssessmentRecordStore } from "@educateos/assessment/durable-object-store";
-import { RubricRelease, verifyRubricRelease, type RubricReleaseStore } from "@educateos/assessment-ci";
+import { RubricRelease, rubricDigest, verifyRubricRelease, type RubricReleaseStore } from "@educateos/assessment-ci";
 import { DurableObjectAssessmentRunStore } from "@educateos/assessment-ci/durable-object-store";
 import { DurableObjectContentStudioStorage } from "@educateos/content-studio/durable-object-store";
 import {
@@ -200,23 +201,34 @@ function parseStored<S extends z.ZodType>(schema: S, text: unknown, what: string
   return parsed.data;
 }
 
-/** Runs `statements` once per storage object, then `closure`, in one transaction. */
+/**
+ * Runs `statements` once per storage object, then recovers the rows the rename orphaned in the
+ * tables' legacy twins (`legacy`, SCHO-232, see `@educateos/contracts/legacy-tables`), then
+ * `closure`, in one transaction: a migration whose result `closure` cannot read rolls back with it.
+ */
 class Tables {
   readonly storage: DistrictSqlStorage;
   readonly #schema: readonly string[];
+  readonly #legacy: readonly LegacyTablePlan[];
   #ready = false;
 
-  constructor(storage: DistrictSqlStorage, schema: readonly string[]) {
+  constructor(storage: DistrictSqlStorage, schema: readonly string[], legacy: readonly LegacyTablePlan[]) {
     this.storage = storage;
     this.#schema = schema;
+    this.#legacy = legacy;
   }
 
   transaction<T>(closure: (sql: DistrictSqlStorage["sql"]) => T): T {
-    return this.storage.transactionSync(() => {
-      if (!this.#ready) for (const statement of this.#schema) this.storage.sql.exec(statement);
-      this.#ready = true;
+    const result = this.storage.transactionSync(() => {
+      if (!this.#ready) {
+        for (const statement of this.#schema) this.storage.sql.exec(statement);
+        migrateLegacyTables(this.storage.sql, this.#legacy);
+      }
       return closure(this.storage.sql);
     });
+    // Only once the transaction that created and migrated the tables has committed.
+    this.#ready = true;
+    return result;
   }
 }
 
@@ -242,7 +254,25 @@ class ChunkedDocument {
     ];
   }
 
-  read(sql: DistrictSqlStorage["sql"]): { version: number; json: string } | undefined {
+  /**
+   * The document's plan for recovering its legacy tables (SCHO-232): the legacy document is copied
+   * as it is when this one does not exist, and otherwise merged into it by `merge`, which validates
+   * the result (throwing to roll the migration back), under a version past both.
+   */
+  legacy(merge: (legacy: string, current: string) => string): LegacyTablePlan {
+    return {
+      tables: [this.#table, `${this.#table}_parts`],
+      migrate: (sql: LegacySql, legacyName: (table: string) => string) => {
+        const stored = new ChunkedDocument(legacyName(this.#table)).read(sql);
+        if (stored === undefined) return;
+        const current = this.read(sql);
+        if (current === undefined) this.write(sql, stored.version, stored.json);
+        else this.write(sql, Math.max(stored.version, current.version) + 1, merge(stored.json, current.json));
+      },
+    };
+  }
+
+  read(sql: LegacySql): { version: number; json: string } | undefined {
     const [head] = sql.exec(`SELECT version, parts FROM ${this.#table} WHERE id = 1`).toArray();
     if (head === undefined) return undefined;
     const parts = sql.exec(`SELECT part, data FROM ${this.#table}_parts ORDER BY part`).toArray();
@@ -252,7 +282,7 @@ class ChunkedDocument {
     return { version: head.version, json: parts.map((p) => p.data as string).join("") };
   }
 
-  write(sql: DistrictSqlStorage["sql"], version: number, json: string): void {
+  write(sql: LegacySql, version: number, json: string): void {
     const count = Math.max(1, Math.ceil(json.length / DOCUMENT_CHUNK_LENGTH));
     sql.exec(`DELETE FROM ${this.#table}_parts`);
     for (let part = 0; part < count; part++) {
@@ -282,7 +312,7 @@ class RevisionLog<T extends { id: string }> {
     this.#conflict = conflict;
     this.#tables = new Tables(storage, [
       `CREATE TABLE IF NOT EXISTS ${table} (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, revision_json TEXT NOT NULL)`,
-    ]);
+    ], [table]);
   }
 
   list(): T[] {
@@ -342,7 +372,7 @@ export class DurableObjectWorkshopUserLinkStore implements WorkshopUserLinkStore
   constructor(storage: DistrictSqlStorage) {
     this.#tables = new Tables(storage, [
       `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.workshopUserLinks} (seq INTEGER PRIMARY KEY AUTOINCREMENT, link_json TEXT NOT NULL)`,
-    ]);
+    ], [DISTRICT_TABLES.workshopUserLinks]);
   }
 
   async list(): Promise<WorkshopUserLink[]> {
@@ -358,13 +388,36 @@ export class DurableObjectWorkshopUserLinkStore implements WorkshopUserLinkStore
   }
 }
 
+/**
+ * Both source maps, for a district that wrote one before the rename and one since (SCHO-232): the
+ * entries of both, where both map one record the current source winning.
+ */
+function mergeRosterSources(legacy: string, current: string): string {
+  const read = (json: string) => parseStored(oneroster.OneRosterSourceMap, json, "the roster source map");
+  return JSON.stringify(oneroster.OneRosterSourceMap.parse(mergeLegacyDocument(read(legacy), read(current))));
+}
+
+/**
+ * Both artifact records, for a district that saved work before the rename and since (SCHO-232):
+ * every artifact, revision, pin and share of both, which must be a state either side could have
+ * become (`assertRevisionInvariants`), or the migration is refused and rolled back.
+ */
+function mergeArtifactRecords(legacy: string, current: string): string {
+  const read = (json: string) => parseStored(ArtifactState, json, "the artifact records");
+  const [before, after] = [read(legacy), read(current)];
+  const merged = ArtifactState.parse(mergeLegacyDocument(before, after));
+  assertRevisionInvariants(before, merged);
+  assertRevisionInvariants(after, merged);
+  return JSON.stringify(merged);
+}
+
 /** A {@link RosterSourceStore} in a Durable Object's SQLite: the source map as one chunked document. */
 export class DurableObjectRosterSourceStore implements RosterSourceStore {
   readonly #document = new ChunkedDocument(DISTRICT_TABLES.rosterSources);
   readonly #tables: Tables;
 
   constructor(storage: DistrictSqlStorage) {
-    this.#tables = new Tables(storage, this.#document.schema());
+    this.#tables = new Tables(storage, this.#document.schema(), [this.#document.legacy(mergeRosterSources)]);
   }
 
   async load(): Promise<oneroster.OneRosterSourceMap> {
@@ -390,7 +443,7 @@ export class DurableObjectArtifactRecordStore implements ArtifactRecordStore {
   readonly #tables: Tables;
 
   constructor(storage: DistrictSqlStorage) {
-    this.#tables = new Tables(storage, this.#document.schema());
+    this.#tables = new Tables(storage, this.#document.schema(), [this.#document.legacy(mergeArtifactRecords)]);
   }
 
   async load(): Promise<StoredArtifacts> {
@@ -424,7 +477,7 @@ export class DurableObjectInlineTextTable implements InlineTextTable {
   constructor(storage: DistrictSqlStorage, options: { now?: () => Date } = {}) {
     this.#tables = new Tables(storage, [
       `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.inlineText} (key TEXT PRIMARY KEY, text TEXT NOT NULL, stored_at TEXT NOT NULL)`,
-    ]);
+    ], [{ table: DISTRICT_TABLES.inlineText, merge: { kind: "keyed" } }]);
     this.#now = options.now ?? (() => new Date());
   }
 
@@ -477,6 +530,10 @@ export class DurableObjectBlobBucket implements R2BucketLike {
     this.#tables = new Tables(storage, [
       `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.blobs} (key TEXT PRIMARY KEY, size INTEGER NOT NULL, parts INTEGER NOT NULL, uploaded_at TEXT NOT NULL)`,
       `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.blobParts} (key TEXT NOT NULL, part INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY (key, part))`,
+    ], [
+      // A legacy blob's parts are copied only with the blob: under a key both tables hold, the current blob and its parts win whole.
+      { table: DISTRICT_TABLES.blobParts, merge: { kind: "keyed" }, skipLegacyWhere: `EXISTS (SELECT 1 FROM ${DISTRICT_TABLES.blobs} AS current WHERE current.key = legacy.key)` },
+      { table: DISTRICT_TABLES.blobs, merge: { kind: "keyed" } },
     ]);
     this.#now = options.now ?? (() => new Date());
   }
@@ -569,7 +626,7 @@ export class DurableObjectRubricReleaseStore implements RubricReleaseStore {
       `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.rubricReleases} (
         rubric_id TEXT NOT NULL, version INTEGER NOT NULL, release_json TEXT NOT NULL, PRIMARY KEY (rubric_id, version)
       )`,
-    ]);
+    ], [DISTRICT_TABLES.rubricReleases]);
   }
 
   async get(ref: RubricReleaseRef): Promise<RubricRelease | undefined> {
@@ -579,10 +636,14 @@ export class DurableObjectRubricReleaseStore implements RubricReleaseStore {
   async put(release: RubricRelease): Promise<void> {
     await verifyRubricRelease(release);
     const parsed = RubricRelease.parse(release);
+    // A release stored before the rename is signed under its legacy format (SCHO-232): the same
+    // content signed again since is the same release when its digest under that format matches.
+    const stored = this.#tables.transaction((sql) => this.#read(sql, parsed));
+    const sameAsStored = stored !== undefined && stored.format !== parsed.format && (await rubricDigest(parsed, stored.format)) === stored.signature.digest;
     this.#tables.transaction((sql) => {
       const existing = this.#read(sql, parsed);
       if (existing !== undefined) {
-        if (existing.signature.digest === parsed.signature.digest) return;
+        if (existing.signature.digest === parsed.signature.digest || (sameAsStored && existing.signature.digest === stored.signature.digest)) return;
         throw new EducateOsError("conflict", `Rubric ${parsed.rubricId} version ${parsed.version} is already released and cannot change.`);
       }
       sql.exec(`INSERT INTO ${DISTRICT_TABLES.rubricReleases} (rubric_id, version, release_json) VALUES (?, ?, ?)`, parsed.rubricId, parsed.version, JSON.stringify(parsed));
@@ -608,7 +669,7 @@ export class DurableObjectCurriculumStorage implements CurriculumStorage {
         id TEXT NOT NULL, version INTEGER NOT NULL, status TEXT NOT NULL, definition_json TEXT NOT NULL, PRIMARY KEY (id, version)
       )`,
       `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.installations} (id TEXT PRIMARY KEY, installation_json TEXT NOT NULL)`,
-    ]);
+    ], [DISTRICT_TABLES.definitions, DISTRICT_TABLES.installations]);
   }
 
   async listVersions(id: ActivityDefinitionId): Promise<ActivityDefinition[]> {
@@ -669,7 +730,7 @@ export class DurableObjectCodexPublisher implements CodexPublisher {
       `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.codexDocuments} (
         collection_key TEXT NOT NULL, activity_id TEXT NOT NULL, codex_json TEXT NOT NULL, PRIMARY KEY (collection_key, activity_id)
       )`,
-    ]);
+    ], [{ table: DISTRICT_TABLES.codexCollections, merge: { kind: "revision", key: ["collection_key"], revision: "revision" } }, DISTRICT_TABLES.codexDocuments]);
   }
 
   async publish(codex: StudentCodex): Promise<CodexPublication> {
@@ -720,6 +781,10 @@ export class DurableObjectCourseContentStorage implements CourseContentStorage {
       `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.coursePages} (
         offering_id TEXT NOT NULL, position INTEGER NOT NULL, page_json TEXT NOT NULL, PRIMARY KEY (offering_id, position)
       )`,
+    ], [
+      { table: DISTRICT_TABLES.courseOutlines, merge: { kind: "revision", key: ["offering_id"], revision: "revision" } },
+      { table: DISTRICT_TABLES.courseModules, merge: { kind: "positions", parent: ["offering_id"], position: "position" } },
+      { table: DISTRICT_TABLES.coursePages, merge: { kind: "positions", parent: ["offering_id"], position: "position" } },
     ]);
   }
 
@@ -785,7 +850,7 @@ export class DurableObjectToolApprovalStore implements ToolApprovalStore {
         seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, idempotency_key TEXT NOT NULL, state TEXT NOT NULL, action_json TEXT NOT NULL
       )`,
       `CREATE INDEX IF NOT EXISTS ${DISTRICT_TABLES.toolApprovals}_key ON ${DISTRICT_TABLES.toolApprovals} (idempotency_key, state)`,
-    ]);
+    ], [DISTRICT_TABLES.toolApprovals]);
   }
 
   async get(id: ToolApprovalId): Promise<PendingToolAction | undefined> {
@@ -867,6 +932,17 @@ export class DurableObjectGuardianRelationshipStore implements GuardianRelations
         BEGIN SELECT RAISE(ABORT, 'guardian relationship events are append-only'); END`,
       `CREATE TRIGGER IF NOT EXISTS ${DISTRICT_TABLES.guardianRelationshipEvents}_no_delete BEFORE DELETE ON ${DISTRICT_TABLES.guardianRelationshipEvents}
         BEGIN SELECT RAISE(ABORT, 'guardian relationship events are append-only'); END`,
+    ], [
+      // A guardian has one open relationship to a student. One re-created since the rename is the
+      // one in use, so a legacy open relationship to the same student stays in the backup; its
+      // audit events are still copied, so its history is kept.
+      {
+        table: DISTRICT_TABLES.guardianRelationships,
+        skipLegacyWhere: `json_extract(legacy.relationship_json, '$.status') IN ('pending', 'active') AND EXISTS (
+          SELECT 1 FROM ${DISTRICT_TABLES.guardianRelationships} AS current WHERE current.guardian_id = legacy.guardian_id
+            AND current.student_id = legacy.student_id AND json_extract(current.relationship_json, '$.status') IN ('pending', 'active'))`,
+      },
+      DISTRICT_TABLES.guardianRelationshipEvents,
     ]);
   }
 
@@ -936,7 +1012,7 @@ export class DurableObjectGuardianInvitationStore implements GuardianInvitationS
         seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, token_digest TEXT NOT NULL UNIQUE, student_id TEXT NOT NULL, invitation_json TEXT NOT NULL
       )`,
       `CREATE INDEX IF NOT EXISTS ${DISTRICT_TABLES.guardianInvitations}_student ON ${DISTRICT_TABLES.guardianInvitations} (student_id)`,
-    ]);
+    ], [DISTRICT_TABLES.guardianInvitations]);
   }
 
   async findByTokenDigest(tokenDigest: string): Promise<GuardianInvitation | undefined> {
@@ -1041,7 +1117,7 @@ export class DurableObjectGradebookStore implements GradebookStore {
         offering_id TEXT NOT NULL, assignment_id TEXT NOT NULL, student_id TEXT NOT NULL, marker_json TEXT NOT NULL,
         PRIMARY KEY (offering_id, assignment_id, student_id)
       )`,
-    ]);
+    ], [{ table: DISTRICT_TABLES.gradebookSettings, merge: { kind: "revision", key: ["offering_id"], revision: "revision" } }, DISTRICT_TABLES.gradebookMarkers]);
   }
 
   async load(offeringId: OfferingId): Promise<StoredGradebook> {
@@ -1127,7 +1203,7 @@ export class DurableObjectAnnouncementStore implements AnnouncementStore {
         id TEXT PRIMARY KEY, offering_id TEXT NOT NULL, publish_at TEXT NOT NULL, announcement_json TEXT NOT NULL
       )`,
       `CREATE INDEX IF NOT EXISTS ${COMMUNICATION_TABLES.announcements}_offering ON ${COMMUNICATION_TABLES.announcements} (offering_id, publish_at)`,
-    ]);
+    ], [COMMUNICATION_TABLES.announcements]);
   }
 
   async list(offeringId: OfferingId): Promise<Announcement[]> {
@@ -1166,7 +1242,7 @@ export class DurableObjectWeeklyNoteStore implements WeeklyNoteStore {
       `CREATE TABLE IF NOT EXISTS ${COMMUNICATION_TABLES.weeklyNotes} (
         offering_id TEXT NOT NULL, week TEXT NOT NULL, note_json TEXT NOT NULL, PRIMARY KEY (offering_id, week)
       )`,
-    ]);
+    ], [COMMUNICATION_TABLES.weeklyNotes]);
   }
 
   async get(offeringId: OfferingId, week: IsoWeek): Promise<WeeklyNote | undefined> {
@@ -1208,7 +1284,7 @@ export class DurableObjectNotificationStore implements NotificationStore {
       )`,
       `CREATE INDEX IF NOT EXISTS ${COMMUNICATION_TABLES.notifications}_principal ON ${COMMUNICATION_TABLES.notifications} (principal_id, occurred_at)`,
       `CREATE INDEX IF NOT EXISTS ${COMMUNICATION_TABLES.notifications}_pending ON ${COMMUNICATION_TABLES.notifications} (email_pending, occurred_at)`,
-    ]);
+    ], [COMMUNICATION_TABLES.notifications]);
   }
 
   async list(principalId: PrincipalId): Promise<Notification[]> {
@@ -1267,7 +1343,7 @@ export class DurableObjectCalendarFeedStore implements CalendarFeedStore {
       `CREATE TABLE IF NOT EXISTS ${COMMUNICATION_TABLES.calendarFeeds} (
         principal_id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE, feed_json TEXT NOT NULL
       )`,
-    ]);
+    ], [COMMUNICATION_TABLES.calendarFeeds]);
   }
 
   async get(principalId: PrincipalId): Promise<CalendarFeed | undefined> {
@@ -1307,7 +1383,7 @@ export class DurableObjectPreferenceStore implements PreferenceStore {
   constructor(storage: DistrictSqlStorage) {
     this.#tables = new Tables(storage, [
       `CREATE TABLE IF NOT EXISTS ${COMMUNICATION_TABLES.preferences} (principal_id TEXT PRIMARY KEY, preferences_json TEXT NOT NULL)`,
-    ]);
+    ], [COMMUNICATION_TABLES.preferences]);
   }
 
   async get(principalId: PrincipalId): Promise<EmailPreferences | undefined> {
@@ -1340,7 +1416,7 @@ export class DurableObjectDigestLedgerStore implements DigestLedgerStore {
       `CREATE TABLE IF NOT EXISTS ${COMMUNICATION_TABLES.digestLedger} (
         guardian_id TEXT NOT NULL, week TEXT NOT NULL, status TEXT NOT NULL, entry_json TEXT NOT NULL, PRIMARY KEY (guardian_id, week)
       )`,
-    ]);
+    ], [COMMUNICATION_TABLES.digestLedger]);
   }
 
   async get(guardianPrincipalId: PrincipalId, week: IsoWeek): Promise<DigestLedgerEntry | undefined> {
@@ -1412,6 +1488,11 @@ export class DurableObjectDiscussionStorage implements DiscussionStorage {
         offering_id TEXT NOT NULL, post_id TEXT NOT NULL, topic_id TEXT NOT NULL, post_json TEXT NOT NULL, PRIMARY KEY (offering_id, post_id)
       )`,
       `CREATE TABLE IF NOT EXISTS ${t.discussionModeration} (offering_id TEXT NOT NULL, position INTEGER NOT NULL, event_json TEXT NOT NULL, PRIMARY KEY (offering_id, position))`,
+    ], [
+      { table: t.discussionBoards, merge: { kind: "revision", key: ["offering_id"], revision: "revision" } },
+      t.discussionTopics,
+      t.discussionPosts,
+      { table: t.discussionModeration, merge: { kind: "positions", parent: ["offering_id"], position: "position" } },
     ]);
   }
 
@@ -1502,6 +1583,11 @@ export class DurableObjectQuizStorage implements QuizStorage {
         offering_id TEXT NOT NULL, attempt_id TEXT NOT NULL, quiz_id TEXT NOT NULL, attempt_json TEXT NOT NULL, PRIMARY KEY (offering_id, attempt_id)
       )`,
       `CREATE TABLE IF NOT EXISTS ${t.quizReleases} (offering_id TEXT NOT NULL, position INTEGER NOT NULL, release_json TEXT NOT NULL, PRIMARY KEY (offering_id, position))`,
+    ], [
+      { table: t.quizBooks, merge: { kind: "revision", key: ["offering_id"], revision: "revision" } },
+      t.quizzes,
+      t.quizAttempts,
+      { table: t.quizReleases, merge: { kind: "positions", parent: ["offering_id"], position: "position" } },
     ]);
   }
 

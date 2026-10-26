@@ -4,6 +4,7 @@
 // the Worker that hosts a district's control Durable Object chooses its own class around it.
 import { z } from "zod";
 import type { DistrictId } from "@educateos/contracts";
+import { migrateLegacyTables } from "@educateos/contracts/legacy-tables";
 import { IdentityLinkIndex } from "./log-index.ts";
 import { IdentityLinkEntry } from "./records.ts";
 import { stageStep, type IdentityLinkStep, type IdentityLinkStore } from "./store.ts";
@@ -130,16 +131,20 @@ export class DurableObjectIdentityLinkStore implements IdentityLinkStore {
 
   #load(): IdentityLinkIndex {
     if (this.#index !== undefined) return this.#index;
-    const rows = this.#storage.transactionSync(() => {
+    // The entries written before the rename (SCHO-232) come first, as they were appended first. The
+    // log is folded inside the migration's transaction, so a merged log that breaks its own rules
+    // rolls the migration back and leaves the legacy table where it was.
+    this.#index = this.#storage.transactionSync(() => {
       for (const statement of SCHEMA) this.#storage.sql.exec(statement);
-      return this.#storage.sql.exec(`SELECT seq, entry_schema_version, entry_json FROM ${IDENTITY_LINK_ENTRIES_TABLE} ORDER BY seq`).toArray();
+      migrateLegacyTables(this.#storage.sql, [IDENTITY_LINK_ENTRIES_TABLE]);
+      const rows = this.#storage.sql.exec(`SELECT seq, entry_schema_version, entry_json FROM ${IDENTITY_LINK_ENTRIES_TABLE} ORDER BY seq`).toArray();
+      const entries = rows.map(parseRow);
+      try {
+        return new IdentityLinkIndex(this.districtId, entries);
+      } catch (error) {
+        throw new IdentityLinkLogCorruptionError(`the stored identity-link log breaks its own rules: ${(error as Error).message}`);
+      }
     });
-    const entries = rows.map(parseRow);
-    try {
-      this.#index = new IdentityLinkIndex(this.districtId, entries);
-    } catch (error) {
-      throw new IdentityLinkLogCorruptionError(`the stored identity-link log breaks its own rules: ${(error as Error).message}`);
-    }
     return this.#index;
   }
 }

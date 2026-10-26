@@ -2,6 +2,7 @@
 // (`@educateos/assessment-ci/durable-object-store`). It uses the same structural storage type as the
 // assessment records' store, and imports nothing from `cloudflare:workers`.
 import { EducateOsError, type AssessmentRunId } from "@educateos/contracts";
+import { migrateLegacyTables } from "@educateos/contracts/legacy-tables";
 import type { DurableSqlStorage } from "@educateos/assessment/durable-object-store";
 import { AssessmentRun } from "./model.ts";
 import { assertRunTransition, type AssessmentRunStore } from "./store.ts";
@@ -107,6 +108,8 @@ export class DurableObjectAssessmentRunStore implements AssessmentRunStore {
   // Run in every transaction rather than cached: a cached flag would outlive a rolled-back creation.
   #ensureSchema(): void {
     for (const statement of SCHEMA) this.#storage.sql.exec(statement);
+    // The runs queued before the rename (SCHO-232); once copied, one lookup that finds nothing.
+    migrateLegacyTables(this.#storage.sql, [ASSESSMENT_RUNS_TABLE]);
   }
 }
 

@@ -5,7 +5,8 @@
   "description": "EducateOS v1 contracts: identifiers, scopes, principals, the authorization vocabulary, capability manifests, configuration revisions, policy floors and nanodollar money (UsdNano). A library, not a deployable Worker.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./legacy-tables": "./src/legacy-tables.ts"
   },
   "dependencies": {
     "zod": "catalog:"

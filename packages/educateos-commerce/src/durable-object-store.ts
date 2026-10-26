@@ -92,7 +92,14 @@ export class DurableObjectCommerceStore implements CommerceStore {
   #pending: Pending | undefined;
 
   constructor(storage: DurableObjectSqlStorage) {
-    this.#tables = new DurableObjectTables(storage, SCHEMA);
+    // From before the rename (SCHO-232). Records and processed events written since under the same
+    // key win; log entries keep their order; an entitlement revision counter goes past both.
+    this.#tables = new DurableObjectTables(storage, SCHEMA, [
+      records,
+      logs,
+      processedEvents,
+      { table: entitlementRevisions, merge: { kind: "revision", key: ["instance_id"], revision: "last" } },
+    ]);
   }
 
   async atomically<T>(work: () => Promise<T>): Promise<T> {

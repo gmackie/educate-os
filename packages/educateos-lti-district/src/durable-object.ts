@@ -2,6 +2,7 @@
 // (`@educateos/lti-district/durable-object`). It names the storage it needs structurally and imports
 // nothing from `cloudflare:workers`, so the main entry stays runtime-agnostic and the district
 // Worker chooses its own Durable Object class around it (one object per district).
+import { migrateLegacyTables } from "@educateos/contracts/legacy-tables";
 import type { RecordTable, TableRow } from "./table.ts";
 
 /** A value SQLite stores in one column. */
@@ -63,7 +64,11 @@ export class DurableObjectRecordTable implements RecordTable {
 
   constructor(storage: LtiSqlStorage) {
     this.#storage = storage;
-    for (const statement of SCHEMA) storage.sql.exec(statement);
+    storage.transactionSync(() => {
+      for (const statement of SCHEMA) storage.sql.exec(statement);
+      // Records from before the rename (SCHO-232); one written since under the same key wins.
+      migrateLegacyTables(storage.sql, [{ table: LTI_RECORDS_TABLE, merge: { kind: "keyed" } }]);
+    });
   }
 
   get(collection: string, key: string): TableRow | undefined {

@@ -3,6 +3,7 @@
 // other assessment stores, and imports nothing from `cloudflare:workers`.
 import type { z } from "zod";
 import { EducateOsError, type AssessmentRunId, type SubmissionId } from "@educateos/contracts";
+import { migrateLegacyTables } from "@educateos/contracts/legacy-tables";
 import type { DurableSqlStorage } from "@educateos/assessment/durable-object-store";
 import { AiRelease, OptionalRun, TeacherOverride } from "./model.ts";
 import { assertOptionalRunTransition, type OptionalRunStore } from "./store.ts";
@@ -120,6 +121,8 @@ export class DurableObjectOptionalRunStore implements OptionalRunStore {
   #transaction<T>(closure: () => T): T {
     return this.#storage.transactionSync(() => {
       for (const statement of SCHEMA) this.#storage.sql.exec(statement);
+      // From before the rename (SCHO-232); once copied, one lookup that finds nothing.
+      migrateLegacyTables(this.#storage.sql, [RUNS, OVERRIDES, RELEASES]);
       return closure();
     });
   }

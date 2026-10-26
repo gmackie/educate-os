@@ -4,6 +4,7 @@
 // runtime-agnostic and the Worker that hosts a district's audit trail chooses its own Durable
 // Object class around it.
 import { z } from "zod";
+import { migrateLegacyTables } from "@educateos/contracts/legacy-tables";
 import { PolicyAuditEvent, type PolicyAuditSink } from "./audit.ts";
 
 /** A value SQLite stores in one column. */
@@ -19,6 +20,8 @@ export interface AuditSqlStorage {
     /** Runs one statement, returning a cursor over its rows. */
     exec(query: string, ...bindings: AuditSqlValue[]): { toArray(): Record<string, unknown>[] };
   };
+  /** Runs `closure` in one transaction, rolled back if it throws. */
+  transactionSync<T>(closure: () => T): T;
 }
 
 /** The table events are appended to. Exported so tests and migrations can name it. */
@@ -125,7 +128,11 @@ export class DurableObjectPolicyAuditSink implements PolicyAuditSink {
 
   #exec(query: string, ...bindings: AuditSqlValue[]): Record<string, unknown>[] {
     if (!this.#ready) {
-      for (const statement of SCHEMA) this.#storage.sql.exec(statement);
+      this.#storage.transactionSync(() => {
+        for (const statement of SCHEMA) this.#storage.sql.exec(statement);
+        // The decisions recorded before the rename (SCHO-232) come first, as they were made first.
+        migrateLegacyTables(this.#storage.sql, [POLICY_AUDIT_TABLE]);
+      });
       this.#ready = true;
     }
     return this.#storage.sql.exec(query, ...bindings).toArray();

@@ -3,6 +3,7 @@
 // nothing from `cloudflare:workers`, so the package's main entry stays runtime-agnostic and the
 // Worker hosting the agent chooses its own Durable Object class around it. `@educateos/releases`
 // and `@educateos/commerce` build their Durable Object stores on the helpers here.
+import { migrateLegacyTables, type LegacyTablePlan } from "@educateos/contracts/legacy-tables";
 import { z } from "zod";
 import type { SequenceCounter } from "./agent.ts";
 import { Sequence } from "./protocol.ts";
@@ -53,18 +54,27 @@ export function parseStoredJson<T extends z.ZodType>(schema: T, text: unknown, w
 export class DurableObjectTables {
   readonly #storage: DurableObjectSqlStorage;
   readonly #schema: readonly string[];
+  readonly #legacy: readonly LegacyTablePlan[];
   #ready = false;
 
-  /** `schema` is the store's `CREATE … IF NOT EXISTS` statements, run once per object instance. */
-  constructor(storage: DurableObjectSqlStorage, schema: readonly string[]) {
+  /**
+   * `schema` is the store's `CREATE … IF NOT EXISTS` statements, run once per object instance.
+   * `legacy` recovers its tables' rows from before the rename, in the same transaction (SCHO-232,
+   * see `@educateos/contracts/legacy-tables`).
+   */
+  constructor(storage: DurableObjectSqlStorage, schema: readonly string[], legacy: readonly LegacyTablePlan[] = []) {
     this.#storage = storage;
     this.#schema = schema;
+    this.#legacy = legacy;
   }
 
   /** Runs `step` in one transaction, rolled back if it throws. */
   transact<T>(step: (sql: DurableObjectSqlStorage["sql"]) => T): T {
     const result = this.#storage.transactionSync(() => {
-      if (!this.#ready) for (const statement of this.#schema) this.#storage.sql.exec(statement);
+      if (!this.#ready) {
+        for (const statement of this.#schema) this.#storage.sql.exec(statement);
+        migrateLegacyTables(this.#storage.sql, this.#legacy);
+      }
       return step(this.#storage.sql);
     });
     // Only once the transaction that created the tables has committed.
@@ -99,7 +109,8 @@ export class DurableObjectSequenceCounter implements SequenceCounter {
   readonly #tables: DurableObjectTables;
 
   constructor(storage: DurableObjectSqlStorage) {
-    this.#tables = new DurableObjectTables(storage, SEQUENCE_SCHEMA);
+    // A counter: past both the legacy and the current number, so no number is handed out twice.
+    this.#tables = new DurableObjectTables(storage, SEQUENCE_SCHEMA, [{ table: SEQUENCE_TABLE, merge: { kind: "revision", key: ["id"], revision: "last" } }]);
   }
 
   async next(): Promise<number> {

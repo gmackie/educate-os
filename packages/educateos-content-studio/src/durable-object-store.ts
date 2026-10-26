@@ -3,6 +3,7 @@
 // structurally and imports nothing from `cloudflare:workers`, so the package's main entry stays
 // runtime-agnostic and the Worker hosting a district's studio object chooses its own class around it.
 import { type ContentItemId, type ResourceId, EducateOsError } from "@educateos/contracts";
+import { migrateLegacyTables } from "@educateos/contracts/legacy-tables";
 import { ResourceDescriptor } from "@educateos/registry";
 import type { ClassBinding, ContentItem, StudioRelease } from "./item.ts";
 import { StudioAuditEvent } from "./pipeline.ts";
@@ -253,6 +254,9 @@ export class DurableObjectContentStudioStorage implements ContentStudioStorage {
     if (this.#ready) return;
     this.#storage.transactionSync(() => {
       for (const statement of SCHEMA) this.#storage.sql.exec(statement);
+      // The studio's rows from before the rename (SCHO-232). An item, release (by resource and
+      // version) or snapshot chunk written since under the same key is the later write and is kept.
+      migrateLegacyTables(this.#storage.sql, [T.items, { table: T.snapshotChunks, merge: { kind: "keyed" } }, T.releases, T.bindings, T.audit]);
     });
     this.#ready = true;
   }

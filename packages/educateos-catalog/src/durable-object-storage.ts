@@ -3,6 +3,7 @@
 // and imports nothing from `cloudflare:workers`, so the package's main entry stays runtime-agnostic
 // and the district Worker that hosts the mirror chooses its own Durable Object class around it.
 import { EducateOsError } from "@educateos/contracts";
+import { migrateLegacyTables } from "@educateos/contracts/legacy-tables";
 import { FrameworkRelease } from "@educateos/registry";
 import { z } from "zod";
 import { contentDigest } from "./digest.ts";
@@ -90,7 +91,12 @@ export class DurableObjectCatalogMirrorStorage implements CatalogMirrorStorage {
 
   constructor(storage: MirrorSqlStorage) {
     this.#storage = storage;
-    for (const statement of SCHEMA) storage.sql.exec(statement);
+    storage.transactionSync(() => {
+      for (const statement of SCHEMA) storage.sql.exec(statement);
+      // The mirrors from before the rename (SCHO-232). A framework mirrored again since keeps its
+      // current state; content is addressed by digest, so the same chunk twice is the same bytes.
+      migrateLegacyTables(storage.sql, [CATALOG_MIRROR_STATE_TABLE, { table: CATALOG_MIRROR_CONTENT_TABLE, merge: { kind: "keyed" } }]);
+    });
   }
 
   async get(key: CatalogKey): Promise<FrameworkMirrorState | undefined> {

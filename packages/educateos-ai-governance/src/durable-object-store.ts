@@ -3,6 +3,7 @@
 // imports nothing from `cloudflare:workers`, so the package's main entry stays runtime-agnostic and
 // a Worker that hosts a ledger chooses its own Durable Object class around it.
 import { z } from "zod";
+import { migrateLegacyTables } from "@educateos/contracts/legacy-tables";
 import {
   CurrentLedgerEntry,
   ENTRY_SCHEMA_VERSION,
@@ -142,13 +143,17 @@ export class DurableObjectLedgerStore implements LedgerStore {
 
   #load(): LedgerIndex {
     if (this.#index !== undefined) return this.#index;
-    const rows = this.#storage.transactionSync(() => {
+    // The entries written before the rename (SCHO-232) come first, as they were appended first. The
+    // ledger is folded inside the migration's transaction, so a merged history the ledger refuses
+    // rolls the migration back and leaves the legacy table where it was.
+    this.#index = this.#storage.transactionSync(() => {
       for (const statement of SCHEMA) this.#storage.sql.exec(statement);
-      return this.#storage.sql.exec(
+      migrateLegacyTables(this.#storage.sql, [LEDGER_ENTRIES_TABLE]);
+      const rows = this.#storage.sql.exec(
         `SELECT seq, entry_schema_version, entry_json FROM ${LEDGER_ENTRIES_TABLE} ORDER BY seq`,
       ).toArray();
+      return new LedgerIndex(rows.map(parseRow));
     });
-    this.#index = new LedgerIndex(rows.map(parseRow));
     return this.#index;
   }
 }

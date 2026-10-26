@@ -2,6 +2,7 @@
 // (`@educateos/ocs/durable-object-library`). Like the Content Studio's store, it names the storage it
 // needs structurally and imports nothing from `cloudflare:workers`.
 import { EducateOsError } from "@educateos/contracts";
+import { migrateLegacyTables } from "@educateos/contracts/legacy-tables";
 import { type OcsFiles, type OcsPackage, packageDigest, readPackage } from "./package.ts";
 import type { PackageSource, PublishedPackage } from "./resolver.ts";
 import type { OcsPackageId } from "./schema.ts";
@@ -164,6 +165,8 @@ export class DurableObjectPackageLibrary implements PackageSource {
     if (this.#ready) return;
     this.#storage.transactionSync(() => {
       for (const statement of SCHEMA) this.#storage.sql.exec(statement);
+      // Publications from before the rename (SCHO-232); one published since under the same version wins.
+      migrateLegacyTables(this.#storage.sql, [{ table: OCS_LIBRARY_TABLE, merge: { kind: "keyed" } }]);
     });
     this.#ready = true;
   }
