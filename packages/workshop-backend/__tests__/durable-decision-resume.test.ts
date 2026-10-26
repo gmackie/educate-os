@@ -26,6 +26,10 @@ declare module "cloudflare:workers" {
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
+// What these waits observe comes from real Durable Object RPCs, model streams and alarm runs,
+// which a loaded runner can stretch far past `vi.waitFor`'s 1 s default.
+const eventually = (check: () => void) => vi.waitFor(check, {timeout: 30_000});
+
 function inference(gate?: Promise<void>) {
   let count = 0;
   const fetch = globalThis.fetch;
@@ -300,7 +304,7 @@ describe("decision handoff using the existing execution row", () => {
       const errors = vi.spyOn(impl.logger, "error");
       impl.startAgent(CHAT, successor, USER, s.user.id.toString());
       gate.resolve();
-      await vi.waitFor(() => expect(errors).toHaveBeenCalled());
+      await eventually(() => expect(errors).toHaveBeenCalled());
       expect(impl.storage.chatMeta.get(CHAT)?.activeAgent).toEqual(successor.profile);
       expect(impl.storage.activeAgents.get(CHAT)?.modelId).toBe(successor.profile.id);
       expect([...impl.storage.chats.list()].filter(m => m.type === "error")).toEqual([]);
@@ -328,7 +332,7 @@ describe("decision handoff using the existing execution row", () => {
         expect(await impl.ctx.storage.getAlarm()).toBeNull();
       });
     }
-    await vi.waitFor(() => expect(notifications).toEqual([[s.user.id.toString(), expect.objectContaining({
+    await eventually(() => expect(notifications).toEqual([[s.user.id.toString(), expect.objectContaining({
       kind: "permissionRequested", workspaceId: s.stub.id.toString(), chatId: CHAT, chatTitle: "Resume",
     })]]));
     expect(requests()).toBe(0);
@@ -352,7 +356,7 @@ describe("decision handoff using the existing execution row", () => {
       }));
     });
     if (initiator.type === "user") {
-      await vi.waitFor(() => expect(notifications).toEqual([[s.user.id.toString(), expect.objectContaining({
+      await eventually(() => expect(notifications).toEqual([[s.user.id.toString(), expect.objectContaining({
         kind: "taskCompleted", workspaceId: s.stub.id.toString(), chatId: CHAT, chatTitle: "Resume",
       })]]));
     } else {
@@ -446,19 +450,19 @@ describe("decision handoff using the existing execution row", () => {
       // A completed request step has committed; hold the turn's final reconciliation open.
       const reconcile = impl.reconcilePendingGadgets.bind(impl);
       const commit = impl.commitAgentStep.bind(impl);
-      const cleanup = Promise.withResolvers<void>();
-      let committed = false, held = false;
+      const cleanup = Promise.withResolvers<void>(), held = Promise.withResolvers<void>();
+      let committed = false, holding = false;
       vi.spyOn(impl, "commitAgentStep").mockImplementation(async (...args) => {
         await commit(...args);
         if (!committed) { committed = true; request(impl, "connection", "1:second"); }
       });
       vi.spyOn(impl, "reconcilePendingGadgets").mockImplementation(async id => {
-        if (committed && !held) { held = true; await cleanup.promise; }
+        if (committed && !holding) { holding = true; held.resolve(); await cleanup.promise; }
         await reconcile(id);
       });
       // Start after consuming the fixture's old request, as a genuine resumed execution would.
       decide(impl, "connection"); impl.resumeAgentAfterDecision(CHAT);
-      await vi.waitFor(() => expect(held).toBe(true));
+      await held.promise;
       decide(impl, "connection"); impl.resumeAgentAfterDecision(CHAT);
       expect(requests()).toBe(1);
       cleanup.resolve();
@@ -470,14 +474,14 @@ describe("decision handoff using the existing execution row", () => {
 
   it.each(["stop", "delete"] as const)("does not revive after %s during model lookup", async operation => {
     const requests = inference(), s = await scenario();
-    const gate = Promise.withResolvers<void>();
+    const gate = Promise.withResolvers<void>(), looking = Promise.withResolvers<void>();
     const lookup = vi.fn(async () => {
-      await gate.promise; return {profile: USER, aiModel: MODEL};
+      looking.resolve(); await gate.promise; return {profile: USER, aiModel: MODEL};
     });
     await s.visit(async impl => {
       modelLookup(impl, lookup);
       decide(impl, "connection"); impl.resumeAgentAfterDecision(CHAT);
-      await vi.waitFor(() => expect(lookup).toHaveBeenCalled());
+      await looking.promise;
       if (operation === "stop") impl.cancelAgent(CHAT);
       else { impl.storage.chatMeta.delete(CHAT); impl.destroyLiveChat(CHAT); }
       gate.resolve();
@@ -539,7 +543,7 @@ describe("decision handoff using the existing execution row", () => {
       await impl.waitForAllAgentsToComplete();
       expect(impl.storage.activeAgents.get(CHAT)?.resumeAttempts).toBe(1);
       const alarm = impl.runAlarmTasks();
-      await vi.waitFor(() => expect(requests()).toBe(1));
+      await eventually(() => expect(requests()).toBe(1));
       expect(impl.storage.activeAgents.get(CHAT)?.resumeAttempts).toBeUndefined();
       gate.resolve();
       await alarm;
@@ -659,7 +663,7 @@ describe("decision handoff using the existing execution row", () => {
     });
     await evictDurableObject(s.stub);
     await s.visit(async impl => {
-      await vi.waitFor(() => expect(requests()).toBe(1));
+      await eventually(() => expect(requests()).toBe(1));
       expect(await impl.ctx.storage.getAlarm()).toBe(scheduled);
       gate.resolve();
       await impl.waitForAllAgentsToComplete();
