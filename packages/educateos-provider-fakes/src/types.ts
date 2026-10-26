@@ -74,6 +74,13 @@ export interface SectionSeed extends SeedRecord {
   readonly teacherIds: readonly string[];
   /** People with role `student`. */
   readonly studentIds: readonly string[];
+  /** Google Classroom's free-text course `section`, such as `Block 1`. Defaults to `Period <period>`. */
+  readonly section?: string;
+  /**
+   * Google Classroom course aliases (`d:` domain-scoped, `p:` project-scoped), such as the SIS
+   * section ID a district keys its courses on. Only the Classroom fake reads them.
+   */
+  readonly aliases?: readonly string[];
 }
 
 /** The roles a seeded person can have. */

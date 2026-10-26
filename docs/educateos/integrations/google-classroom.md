@@ -1,30 +1,37 @@
 # Google Classroom provider
 
-- Status: Research and implementation plan, 2026-10-21. No Google API has been called. Every claim
-  cites Google's public documentation as read that day.
+- Status: District sync and grade sync built and Harness-tested against the Classroom fake,
+  2026-10-26 (SCHO-77). Coursework and grade sync were validated live on a single course (1 teacher,
+  1 student); district-wide roster sync is fakes-only. See [Live validation](#live-validation). The
+  research below was read from Google's public documentation on 2026-10-21, and every claim cites it.
 - Issue: SCHO-77 (follow-up of SCHO-27, roadmap I02).
-- Code it targets: `ClassroomProvider` in `packages/educateos-lti/src/classroom.ts`.
+- Code: `packages/educateos-integrations/src/google-classroom` (the `googleclassroom` namespace),
+  behind `ClassroomProvider` in `packages/educateos-lti/src/classroom.ts`. The teacher-scoped
+  Workshop connector (`packages/gatekeeper-google`, SCHO-213) is separate and unchanged.
 
 ## Where EducateOS stands
 
-`@educateos/lti` ships the Classroom adapter shell:
+`@educateos/lti` holds the Classroom adapter:
 
 - `ClassroomAdapter` projects a Classroom roster into a `RosterProjection`, keyed by the identity
-  `(district, https://accounts.google.com, <Google user ID>)`.
+  `(district, https://accounts.google.com, <Google user ID>)`, and creates coursework in an
+  offering's Classroom course.
 - `ClassroomGradeSink` publishes approved grades through the passback gate.
 
-Both talk to Google only through `ClassroomProvider`, which nothing implements yet:
+Both talk to Google only through `ClassroomProvider`:
 
 ```ts
 interface ClassroomProvider {
   listRoster(courseId: string): Promise<readonly ClassroomRosterEntry[]>;
+  /** Only coursework the provider's own Cloud project created. */
   listCourseWork(courseId: string): Promise<readonly ClassroomCourseWork[]>;
+  createCourseWork(input: { courseId; draft: { title; description?; maxPoints } }): Promise<ClassroomCourseWork>;
   setAssignedGrade(input: { courseId; courseWorkId; userId; assignedGrade }): Promise<void>;
 }
 ```
 
-The real provider is gated on two things this page sets out: verified Google API access, and the
-coursework-ownership rule.
+`GoogleClassroomProvider` in `@educateos/integrations` implements it over the Classroom REST API.
+[District sync](#district-sync-scho-77) describes what was built.
 
 ## API access requirements
 
@@ -210,7 +217,110 @@ Consequences for EducateOS:
   Pub/Sub sits outside the district's Cloudflare account, so the first version polls on the
   existing roster-sync schedule and does not use push.
 
-## Implementation plan
+## District sync (SCHO-77)
+
+Each district uses its own Google Cloud project and service account, so decision 1(b) below is the
+one taken: the district's Workspace administrator grants the account domain-wide delegation. No
+teacher has to connect anything.
+
+- **Tokens.** `serviceAccountTokens` signs an RS256 `jwt-bearer` assertion with WebCrypto. Its
+  `sub` is the Workspace user to act as, and it is sent only to `https://oauth2.googleapis.com/token`,
+  never to the key file's `token_uri`. Tokens are cached per user. A refused assertion (revoked key,
+  missing delegation or scope) is `auth-failed`.
+- **Scopes.** Roster sync uses `classroom.courses.readonly`, `classroom.rosters.readonly` and
+  `classroom.profile.emails` (`CLASSROOM_ROSTER_SCOPES`). Grade sync adds
+  `classroom.coursework.students` (`CLASSROOM_GRADE_SCOPES`). The demo project's delegation lists
+  the read-write `classroom.courses` and `classroom.rosters` instead of the `.readonly` scopes; a
+  district can delegate the narrower set.
+- **Client.** `GoogleClassroomClient` reads as the configured administrator. It lists only the
+  course states it is asked for (`ACTIVE` for sync), follows `nextPageToken`, and refuses a
+  repeated token as `inconsistent-paging`. It retries 429s (honouring
+  `Retry-After`), 5xxs and network failures, and refreshes a token once on a 401. It never retries
+  a coursework create, which could then happen twice. Failures carry Google's status, `ErrorInfo`
+  reason and Classroom's `@` tag, never the message.
+- **Classroom as the roster (Harbor).** `classroomRosterSource` maps every course into the OneRoster
+  row model, so it goes through the same import as the CSV and REST sources: subject linking,
+  quarantine, preview and all-or-nothing apply. An `ACTIVE` course is a class; any other state is
+  absent from the feed, so its offering stays and its enrollments go inactive. Teachers and
+  students become users. `domains` limits the import to the district's own Workspace accounts; a
+  guest or consumer account is left out with a warning, since an imported account can sign in. A
+  person who teaches one course and studies in another (a teacher in a staff-development class)
+  is quarantined for an administrator. Students allowed to create classes would be imported as
+  staff, so a district should not allow it. The subject is the Google user ID under `https://accounts.google.com`
+  (`CLASSROOM_IDENTITY`). Classroom has no terms, schools or grades, so the district's
+  configuration names the term, the schools with their grades, and which courses (by ID or `d:`
+  alias) belong to which school. `p:` aliases are not used: Google shows them only to the project
+  that made them. A course named under two schools is an error. Complete syncs only: Classroom has no change feed to poll, so a
+  complete sync on the roster schedule is what catches a dropped student. A sync that would
+  deactivate a large share of the roster is held for an administrator, by the same removal hold
+  as Clever and OneRoster.
+- **Classroom as the LMS only (Cedar Valley).** `planClassroomLinks` proposes, without creating
+  anyone:
+  - a link from each active course to an offering, by `d:<offering ID>` alias or by a
+    district-supplied alias, else by course name and section;
+  - a link from each roster member to a principal enrolled in that offering, by Workspace email,
+    else by display name. A name match is not proposed when the account's email and the
+    principal's are on the same domain and differ: that is a namesake.
+
+  Ambiguous matches, accounts or principals already linked elsewhere, matches that disagree
+  across courses, and unreadable records are reported and not proposed. `applyClassroomLinks`
+  applies what an administrator accepts, after checking every link again against the directory
+  as it stands. A plan that went stale or was altered is refused. It also refuses an
+  administrator's principal, a principal not actively enrolled in the linked offering, and a
+  malformed Google user ID. Name matches are applied only with `acceptNameMatches`, meaning the
+  administrator confirmed each one. It produces Classroom grade routes and `https://accounts.google.com` identities on the
+  existing principals. It refuses unless the district trusts that issuer, since a trusted issuer is
+  a sign-in path; that decision is the district's.
+- **Grades.** `GoogleClassroomProvider` creates and publishes coursework as the course's owner,
+  because only a course's teachers may create or grade its coursework. A create is sent once. Its
+  description carries a reference unique to the call, so when Google's answer is lost (a timeout,
+  a 5xx) the coursework is found by that reference rather than made twice. When the provider is
+  wired into the district Worker, creating a column must require an authorised teacher of the
+  offering, as the passback gate does for grades. It lists only
+  `associatedWithDeveloper` coursework, so the grade sink refuses a teacher's own coursework
+  locally. A grade is written as `assignedGrade` and `draftGrade` (`updateMask`), and only after
+  the passback gate's teacher-approval checks. Grades finer than two decimal places are refused.
+  The submission is not returned: returning it to the student stays the teacher's action in
+  Classroom.
+
+### Live validation
+
+**Single-course smoke run, 2026-10-26: passed.** The run used the demo tenant gedu.demo.educateos.io
+and the `classroom-sync` service account with domain-wide delegation. The course was Cedar Valley's
+Earth Science 8, Period 1: Classroom course `895811762849`, alias `d:off_cv-earthsci-p1`,
+<https://classroom.google.com/c/ODk1ODExNzYyODQ5>. Its owner is the teacher account
+`cv-teacher-whitaker`, and its one student is the tenant admin account. The admin created the
+course, because Google refused the teacher with `UserCannotCreateCourse`. Command:
+`node packages/educateos-integrations/scripts/classroom-smoke.ts`, which runs the shipped code unchanged.
+
+| Step | Outcome |
+| --- | --- |
+| Delegated scopes | `classroom.courses`, `classroom.rosters`, `classroom.profile.emails` and `classroom.coursework.students` all granted. The `.readonly` forms are not delegated. |
+| Read the course and roster as the admin | `ACTIVE`, "Earth Science 8" (Period 1). Alias `d:off_cv-earthsci-p1`. 1 teacher, 1 student, none unreadable. |
+| Cedar Valley link plan | The course was linked to `off_cv-earthsci-p1` by alias. The teacher was linked to `prn_cv-teacher-whitaker` by name. The student was linked to a runtime-only principal; that match is circular, because its name was read from the roster. |
+| Create coursework as the app, acting as the course owner | Coursework `895814817838`, out of 10; repeated on the final code (after the review fixes) as `895818021538`. Classroom marked it `associatedWithDeveloper`, and the provider lists it as EducateOS's own. |
+| Publish a teacher-approved grade (8.5 of 10) through the passback gate | `posted`. A retry returned `already-posted`, and an unapproved version was refused as `policy-violation` with nothing sent. |
+| Read back as the teacher | One submission, `CREATED`, with `assignedGrade` 8.5 and `draftGrade` 8.5. |
+
+**What the run does not show:**
+- **A live student account or a real link.** The student is the tenant admin account, and its link
+  to a principal is circular. The run used the read-write scope set the demo delegation grants,
+  not the `.readonly` sets.
+- **District-wide roster sync.** Harbor's 8 courses don't exist yet. The tenant is on an
+  unverified Education Fundamentals trial capped at 2 licensed users, so the seed (SCHO-202)
+  cannot finish until Google approves the education/demo-domain request. Classroom as the roster
+  is fakes-only, and maturity reflects that.
+- **The OpenID `sub` check.** No one signed in, so it is still unverified that Google's OpenID
+  `sub` equals the Classroom user ID (see [Identity](#identity)).
+- **Google's own refusal of teacher-made coursework.** Google's `@ProjectPermissionDenied` was
+  not provoked, because the course has no teacher-made coursework. The local refusal is tested
+  against the fake.
+
+When the seed completes, the next live run should sync Harbor as classroom-sync, compare the result
+with the Harbor fixture, check the `sub` by signing in as a test account, and run Cedar Valley's
+link plan over all 4 courses.
+
+## Implementation plan (2026-10-21, superseded by District sync above)
 
 The steps go in order. Steps 1-4 can be built and tested now against a fake Google HTTP surface. Steps
 5-7 need the project and verification.

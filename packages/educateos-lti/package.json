@@ -2,7 +2,7 @@
   "name": "@educateos/lti",
   "version": "0.1.0",
   "private": true,
-  "description": "EducateOS LTI 1.3 broker: platform registrations, OIDC login, id_token validation, launch-to-principal and offering mapping, Canvas Deep Linking 2.0 and the tool JWKS, as fetch-standard handlers; LTI Advantage AGS and NRPS, teacher-approved grade passback with source-of-record routing, and a Google Classroom adapter shell. A library, not a deployable Worker.",
+  "description": "EducateOS LTI 1.3 broker: platform registrations, OIDC login, id_token validation, launch-to-principal and offering mapping, Canvas Deep Linking 2.0 and the tool JWKS, as fetch-standard handlers; LTI Advantage AGS and NRPS, teacher-approved grade passback with source-of-record routing, and the Google Classroom adapter (its HTTP provider is in @educateos/integrations). A library, not a deployable Worker.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

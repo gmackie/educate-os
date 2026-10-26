@@ -6,13 +6,17 @@ import {
   ClassroomAdapter,
   ClassroomGradeSink,
   type ClassroomCourseWork,
+  type ClassroomCourseWorkDraft,
   type ClassroomProvider,
   type ClassroomRosterEntry,
 } from "../src/index.ts";
 import { NORTHFIELD_LTI, rejection, withLtiPlatform } from "./helpers.ts";
 import { AMARA, approval, BIO, createServicesWorld, ENG9, requestFor, RIVERA } from "./services-helpers.ts";
 
-/** An in-memory Google Classroom. It makes no network calls. */
+/**
+ * An in-memory Google Classroom. It makes no network calls. Like the real provider, it lists only
+ * the coursework it created.
+ */
 class FakeClassroom implements ClassroomProvider {
   readonly rosters = new Map<string, ClassroomRosterEntry[]>();
   readonly courseWork = new Map<string, ClassroomCourseWork[]>();
@@ -23,6 +27,11 @@ class FakeClassroom implements ClassroomProvider {
   }
   async listCourseWork(courseId: string) {
     return this.courseWork.get(courseId) ?? [];
+  }
+  async createCourseWork(input: { courseId: string; draft: ClassroomCourseWorkDraft }) {
+    const work = { id: `cw-created-${this.courseWork.get(input.courseId)?.length ?? 0}`, title: input.draft.title, maxPoints: input.draft.maxPoints };
+    this.courseWork.set(input.courseId, [...(this.courseWork.get(input.courseId) ?? []), work]);
+    return work;
   }
   async setAssignedGrade(input: { courseId: string; courseWorkId: string; userId: string; assignedGrade: number }) {
     this.grades.push(input);
@@ -83,6 +92,20 @@ describe("Google Classroom adapter shell", () => {
     expect((await adapter.courseWork(BIO)).map((work) => work.id)).toEqual(["cw-cell-lab", "cw-quiz"]);
     expect(await rejection(adapter.courseWork(ENG9))).toBe("conflict");
     expect(await rejection(adapter.rosterProjection(ENG9))).toBe("conflict");
+  });
+
+  it("creates coursework only in an offering routed to Classroom, and grades it", async () => {
+    const { adapter, world, classroom } = await setup();
+    const created = await adapter.createCourseWork(BIO, { title: "Field notes", maxPoints: 10 });
+    expect(created).toEqual({ id: "cw-created-2", title: "Field notes", maxPoints: 10 });
+    expect((await adapter.courseWork(BIO)).map((work) => work.id)).toContain(created.id);
+    expect(await rejection(adapter.createCourseWork(ENG9, { title: "Essay", maxPoints: 10 }))).toBe("conflict");
+    expect(await rejection(adapter.createCourseWork(BIO, { title: " ", maxPoints: 10 }))).toBe("validation-failed");
+
+    const approved = approval(world, created.id);
+    world.approvals.record(approved);
+    expect(await world.passback.publish(requestFor(approved))).toEqual({ status: "posted", route: "google-classroom" });
+    expect(classroom.grades).toEqual([{ courseId: COURSE, courseWorkId: created.id, userId: AMARA_GOOGLE, assignedGrade: 8 }]);
   });
 
   it("publishes a teacher-approved grade through the same gate, once", async () => {

@@ -2,7 +2,7 @@
   "name": "@educateos/integrations",
   "version": "0.1.0",
   "private": true,
-  "description": "EducateOS interoperability adapters: OneRoster 1.2 roster sync from a bulk CSV export (as files or one ZIP) or a REST server, and Clever Data API v3.1 roster sync (complete and events delta) through the same pipeline: preview, identity linking, safe apply, a large-removal hold, delta sync runs with per-file or event cursors, stored sync state and run history (in memory or a Durable Object), a sync schedule and integration health. A library, not a deployable Worker.",
+  "description": "EducateOS interoperability adapters: OneRoster 1.2 roster sync from a bulk CSV export (as files or one ZIP) or a REST server, and Clever Data API v3.1 roster sync (complete and events delta) through the same pipeline: preview, identity linking, safe apply, a large-removal hold, delta sync runs with per-file or event cursors, stored sync state and run history (in memory or a Durable Object), a sync schedule and integration health. Google Classroom district sync through domain-wide delegation: Classroom as a roster source, course linking to another source's offerings, and grade sync for coursework EducateOS creates. A library, not a deployable Worker.",
   "type": "module",
   "scripts": {
     "fixtures:write": "node __tests__/fixtures/write-fixtures.ts"
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@educateos/contracts": "workspace:*",
+    "@educateos/lti": "workspace:*",
     "@educateos/zip": "workspace:*",
     "zod": "catalog:"
   },

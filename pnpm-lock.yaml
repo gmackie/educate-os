@@ -1346,6 +1346,9 @@ importers:
       '@educateos/contracts':
         specifier: workspace:*
         version: link:../educateos-contracts
+      '@educateos/lti':
+        specifier: workspace:*
+        version: link:../educateos-lti
       '@educateos/zip':
         specifier: workspace:*
         version: link:../educateos-zip

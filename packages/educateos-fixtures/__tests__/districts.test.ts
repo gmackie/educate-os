@@ -54,7 +54,11 @@ describe.each(DEMO_DISTRICTS.map((d) => [d.slug, d] as const))("%s", (_, demo) =
     for (const principal of district.principals) {
       if (principal.email !== undefined) expect(principal.email).toMatch(/@[a-z.]+\.example$/);
     }
-    for (const issuer of district.district.trustedIssuers) expect(issuer).toMatch(/^https:\/\/[a-z.]+\.example$/);
+    // Google sign-in has one issuer for every Workspace domain; its subjects here are synthetic.
+    const google = demo.profile.sso === "google" ? ["https://accounts.google.com"] : [];
+    for (const issuer of district.district.trustedIssuers) {
+      if (!google.includes(issuer)) expect(issuer).toMatch(/^https:\/\/[a-z.]+\.example$/);
+    }
   });
 
   it("links each guardian relationship to its own guardian and student principals", () => {

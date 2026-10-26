@@ -2,7 +2,7 @@
 // https://classroom.googleapis.com/v1. Followed: the Classroom REST reference
 // (https://developers.google.com/workspace/classroom/reference/rest): `courses.list` (`teacherId`,
 // `studentId`, `courseStates`, each user named by numeric ID, email or `me`) and `courses.get`;
-// `courses.teachers` and `courses.students` list/get; `courses.courseWork` list
+// `courses.aliases` list; `courses.teachers` and `courses.students` list/get; `courses.courseWork` list
 // (`courseWorkStates`, PUBLISHED by default; students see only PUBLISHED), get and create (state
 // DRAFT by default; the creating project's coursework is `associatedWithDeveloper`);
 // `courses.courseWork.studentSubmissions` list (`-` for every coursework, `userId`, `states`,
@@ -339,6 +339,10 @@ export class GoogleClassroomFake extends Fake {
       return Response.json(this.#courseJson(course, caller));
     }
     const resource = segments[2];
+    if (resource === "aliases" && segments.length === 3 && method === "GET") {
+      this.#need(caller, COURSE_READ, "google.classroom.v1.Courses.Aliases.ListAliases");
+      return this.#page(url, (course.section.aliases ?? []).map((alias) => ({ courseId: course.id, alias })), "aliases");
+    }
     if ((resource === "teachers" || resource === "students") && method === "GET") {
       const service = resource === "teachers" ? "Teachers" : "Students";
       if (segments.length === 3) {
@@ -501,7 +505,7 @@ export class GoogleClassroomFake extends Fake {
     return {
       id: course.id,
       name: s.title,
-      ...(s.period === undefined ? {} : { section: `Period ${s.period}` }),
+      ...(s.section !== undefined ? { section: s.section } : s.period === undefined ? {} : { section: `Period ${s.period}` }),
       ...(s.room === undefined ? {} : { room: s.room }),
       ownerId: this.userId(course.teachers[0] ?? s.teacherIds[0]!),
       creationTime: course.created,

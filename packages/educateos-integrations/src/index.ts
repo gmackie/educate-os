@@ -6,6 +6,8 @@
 export * as oneroster from "./oneroster/index.ts";
 /** Clever Data API v3.1 roster sync: a complete read and an events delta, imported by the OneRoster pipeline. */
 export * as clever from "./clever/index.ts";
+/** Google Classroom: district-wide roster sync, course linking and grade sync through domain-wide delegation. */
+export * as googleclassroom from "./google-classroom/index.ts";
 export * from "./sync-run.ts";
 /** The interface every roster source implements, so CSV and REST sources are interchangeable. */
 export type { RosterSource } from "./oneroster/sync.ts";

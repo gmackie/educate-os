@@ -2,15 +2,18 @@ import { DistrictDirectorySnapshot, GuardianRelationship } from "@educateos/cont
 import { enroll, guardianOf, person, teaches } from "./builders.ts";
 
 const D = "dst_harbor";
-const IDP = "https://google.harbor.example";
+// Google's own OpenID issuer (`CLASSROOM_ISSUER` in @educateos/lti): Workspace sign-in asserts it,
+// and Classroom roster sync keys principals on it, so it is the only issuer Harbor trusts. The
+// subjects below are synthetic and name no real Google account.
+const IDP = "https://accounts.google.com";
 
 /**
  * Harbor Charter: a charter school with no SIS. People sign in with their Google Workspace
  * accounts, and Google Classroom is both the roster and the LMS. Each IdP subject is the person's
- * Google user ID as the synthetic Google sign-in asserts it, and each email is their Workspace
- * account, so the Classroom seed (`vendors/classroom.ts`) names exactly these people. In the real
- * demo tenant Google assigns its own user IDs, so a live run links by those instead. Every person
- * here is invented.
+ * Google user ID as Google sign-in asserts it, and each email is their Workspace account, so the
+ * Classroom seed (`vendors/classroom.ts`) names exactly these people. In the real demo tenant
+ * Google assigns its own user IDs, so a live run links by those instead. Every person here is
+ * invented.
  *
  * Deliberate edge cases:
  * - Ruth Delaney teaches at both campuses.

@@ -39,9 +39,9 @@
     "gc.coursework": "unit-tested",
     "gc.submissions": "unit-tested",
     "gc.grades": "unit-tested",
-    "gc.dwd": "planned",
-    "gc.districtsync": "planned",
-    "gc.live": "planned",
+    "gc.dwd": "unit-tested",
+    "gc.districtsync": "unit-tested",
+    "gc.live": "validating",
 
     "clever.sso": "validating",
     "clever.mapping": "unit-tested",

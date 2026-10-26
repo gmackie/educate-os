@@ -35,6 +35,19 @@ function setup(options: { maxPageSize?: number; apiDisabled?: boolean } = {}) {
 }
 
 describe("courses", () => {
+  it("lists a course's aliases, which a seed section carries", async () => {
+    const fake = new GoogleClassroomFake({
+      seed: { ...SAMPLE_DISTRICT, sections: SAMPLE_DISTRICT.sections.map((s) => (s.id === "mw-bio-p2" ? { ...s, aliases: ["d:mw-bio-p2"] } : s)) },
+      tokens: { okafor: { userId: "mw-t-okafor", scopes: TEACHER_SCOPES }, bare: { userId: "mw-t-okafor", scopes: [S.courseworkStudents] } },
+    });
+    const list = async (token: string, section: string) =>
+      fake.fetch(`${BASE}/courses/${fake.courseId(section)}/aliases`, { headers: { authorization: `Bearer ${token}` } });
+    const bio = fake.courseId("mw-bio-p2");
+    expect(await (await list("okafor", "mw-bio-p2")).json()).toEqual({ aliases: [{ courseId: bio, alias: "d:mw-bio-p2" }] });
+    expect(await (await list("okafor", "mw-bio-p4")).json()).toEqual({});
+    expect((await list("bare", "mw-bio-p2")).status).toBe(403);
+  });
+
   it("lists the courses a teacher teaches, and a student attends, by me", async () => {
     const { call, fake } = setup();
     const taught = await call("okafor", "/courses?teacherId=me&courseStates=ACTIVE");

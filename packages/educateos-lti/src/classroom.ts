@@ -1,6 +1,6 @@
-// Google Classroom adapter shell (roadmap I02). There is no real Google client here: integrating
-// with Google Classroom is gated on verified API access and Google's partner terms, and nothing in
-// this package calls Google. `ClassroomProvider` is the seam a real client will implement.
+// Google Classroom adapter (roadmap I02). Nothing in this package calls Google: `ClassroomProvider`
+// is the seam, and `GoogleClassroomProvider` in `@educateos/integrations` (SCHO-77) implements it
+// over the Classroom REST API.
 import { z } from "zod";
 import { RosterProjection, EducateOsError, type DistrictId, type OfferingId, type Principal } from "@educateos/contracts";
 import { routeOfKind, type ClassroomGradeRoute, type GradeDelivery, type GradeRouteStore, type GradeSink, type LmsGradeRoute } from "./passback.ts";
@@ -33,20 +33,31 @@ export const ClassroomCourseWork = z.strictObject({
 /** Classroom coursework. */
 export type ClassroomCourseWork = z.infer<typeof ClassroomCourseWork>;
 
+/** Coursework to create: a new gradebook column, out of `maxPoints`. */
+export const ClassroomCourseWorkDraft = z.strictObject({
+  title: z.string().trim().min(1).max(3000),
+  description: z.string().max(30_000).optional(),
+  maxPoints: z.number().positive().finite(),
+});
+/** A coursework draft. */
+export type ClassroomCourseWorkDraft = z.infer<typeof ClassroomCourseWorkDraft>;
+
 /**
  * The Google Classroom operations EducateOS uses, shaped after the Classroom API (`courses.students`
  * and `courses.teachers`, `courses.courseWork`, `studentSubmissions.patch` of `assignedGrade`).
  * Implementations validate what Google returns before handing it back.
  *
- * A real implementation is gated on verified Google API access and partner terms. Classroom only
- * lets a project grade coursework that project created, so a real client also creates the
- * coursework it grades.
+ * Classroom lets a Cloud project grade only coursework that project created
+ * (`@ProjectPermissionDenied`), so the provider creates the coursework it grades, and lists only
+ * that coursework: a column it lists is one it can grade.
  */
 export interface ClassroomProvider {
   /** The course's teachers and students. */
   listRoster(courseId: string): Promise<readonly ClassroomRosterEntry[]>;
-  /** The course's coursework. */
+  /** The course's coursework that the provider's own Cloud project created. */
   listCourseWork(courseId: string): Promise<readonly ClassroomCourseWork[]>;
+  /** Creates and publishes coursework in the course, owned by the provider's project. */
+  createCourseWork(input: { courseId: string; draft: ClassroomCourseWorkDraft }): Promise<ClassroomCourseWork>;
   /** Sets a student's assigned grade on one piece of coursework. */
   setAssignedGrade(input: { courseId: string; courseWorkId: string; userId: string; assignedGrade: number }): Promise<void>;
 }
@@ -97,10 +108,21 @@ export class ClassroomAdapter {
     });
   }
 
-  /** The course's coursework. */
+  /** The course's coursework: the columns EducateOS created and can grade. */
   async courseWork(offeringId: OfferingId): Promise<ClassroomCourseWork[]> {
     const route = await this.#route(offeringId);
     return z.array(ClassroomCourseWork).parse(await this.#options.provider.listCourseWork(route.courseId));
+  }
+
+  /**
+   * Creates a gradebook column in the offering's Classroom course. Its ID is the `column` a
+   * teacher's grade approval names; it is the only kind of column the grade sink can publish to.
+   */
+  async createCourseWork(offeringId: OfferingId, draft: ClassroomCourseWorkDraft): Promise<ClassroomCourseWork> {
+    const parsed = ClassroomCourseWorkDraft.safeParse(draft);
+    if (!parsed.success) throw new EducateOsError("validation-failed", "The coursework is malformed.");
+    const route = await this.#route(offeringId);
+    return ClassroomCourseWork.parse(await this.#options.provider.createCourseWork({ courseId: route.courseId, draft: parsed.data }));
   }
 
   async #route(offeringId: OfferingId): Promise<ClassroomGradeRoute> {

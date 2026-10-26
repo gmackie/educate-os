@@ -1,0 +1,8 @@
+{
+  // The SCHO-77 live smoke test runs under Node on an operator's machine, never in a Worker.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["."]
+}
