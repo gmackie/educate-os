@@ -26,6 +26,10 @@
 //     keeps its deployed name when its package is renamed, both as its own `name` and in every
 //     service binding that reaches it (SCHO-231).
 //
+// It also generates `wrangler.demo-<slug>.jsonc` in the district package for each demo district
+// (SCHO-210, demo-districts.ts): the same district Worker, under its own name and at its own
+// `<slug>.educateos.io`, with nothing around it.
+//
 // Secrets are never part of a generated config (Wrangler prints vars, and these files are
 // committed): a var with a secret's name fails the generator.
 //
@@ -42,6 +46,7 @@ import {
   PACKAGES_DIR, ROOT, backendGatekeeperServices, gatekeeperBaseUrl, routerServices,
   type StagingConfig,
 } from "../preview/staging-config.ts";
+import { DEMO_DISTRICT_DEPLOYMENTS } from "./demo-districts.ts";
 import { SCHOOLOS_GMAC_IO } from "./schoolos-gmac-io.ts";
 
 /** The generated per-package config file name (committed). */
@@ -219,6 +224,96 @@ function withVars(
 }
 
 /**
+ * Makes `config` (the district package's, already named and on its account) a deployed district:
+ * its custom domains, its UIs as assets, and its LTI Tool at its first hostname, the district's
+ * identity. Shared by an instance's district and the demo districts.
+ */
+function asDistrict(config: ProductionConfig, hostnames: readonly string[], vars: Record<string, string>): void {
+  if ((config.triggers?.crons?.length ?? 0) < 2) {
+    throw new Error(`${DISTRICT_PACKAGE}/wrangler.jsonc has lost its notification and digest Cron Triggers`);
+  }
+  if (config.assets) throw new Error(`${DISTRICT_PACKAGE}/wrangler.jsonc declares assets; the generator owns them`);
+  if (config.services?.length) {
+    throw new Error(`${DISTRICT_PACKAGE}/wrangler.jsonc binds another Worker; the generator cannot place it`);
+  }
+  // Wrangler replaces a Worker's custom domains with exactly these, so every alias is listed.
+  config.routes = hostnames.map((pattern) => ({ pattern, custom_domain: true as const }));
+  config.assets = {
+    directory: DISTRICT_UI_DIR,
+    not_found_handling: "single-page-application",
+    run_worker_first: DISTRICT_WORKER_ROUTES,
+  };
+  // The LTI Tool (SCHO-177) is served at the district's own hostname.
+  withVars(DISTRICT_PACKAGE, config, { LTI_TOOL_ORIGIN: `https://${hostnames[0]}`, ...vars });
+}
+
+/**
+ * A demo district (SCHO-210): a district Worker of its own, with no instance around it, at its
+ * managed default hostname. See demo-districts.ts.
+ */
+export interface DemoDistrictDeployment {
+  /** The demo district's slug, as in `@educateos/fixtures`. */
+  slug: string;
+  /** The Cloudflare account it deploys to. */
+  accountId: string;
+  /** Its one hostname, `<slug>.educateos.io`: a custom domain, and the district's identity. */
+  hostname: string;
+}
+
+/** A demo district's Worker name: its own, so its own Durable Object namespace. */
+export function demoDistrictWorkerName(slug: string): string {
+  return `educateos-${slug}-district`;
+}
+
+/** A demo district's generated config file, in the district package (committed). */
+export function demoDistrictConfigName(slug: string): string {
+  return `wrangler.demo-${slug}.jsonc`;
+}
+
+/**
+ * Build each demo district's config, by slug. Pure, like {@link buildProductionConfigs}: each is the
+ * district package's wrangler.jsonc made a district Worker named for its slug, with only its own
+ * hostname. Fails on a repeated slug or hostname, or one that clashes with `instance`'s district.
+ */
+export function buildDemoDistrictConfigs({
+  districts,
+  packages,
+  instance,
+}: {
+  districts: readonly DemoDistrictDeployment[];
+  packages: readonly PackageConfig[];
+  instance?: ProductionInstance;
+}): Map<string, ProductionConfig> {
+  const pkg = packages.find((candidate) => candidate.name === DISTRICT_PACKAGE);
+  if (!pkg) throw new Error(`${DISTRICT_PACKAGE} is no deployable package`);
+  const taken = new Set(instance?.district ? [instance.district.hostname, ...instance.district.aliases ?? []] : []);
+  const names = new Set(instance ? productionPackageNames(instance).map((name) => productionWorkerName(instance, name)) : []);
+  const configs = new Map<string, ProductionConfig>();
+  for (const district of districts) {
+    if (!/^[a-z][a-z0-9-]{2,31}$/.test(district.slug)) throw new Error(`${district.slug} is not a district slug`);
+    const name = demoDistrictWorkerName(district.slug);
+    if (configs.has(district.slug) || names.has(name)) throw new Error(`two Workers would be deployed as ${name}`);
+    if (taken.has(district.hostname)) throw new Error(`${district.hostname} is already another district's hostname`);
+    taken.add(district.hostname);
+    names.add(name);
+    const { kv_namespaces, r2_buckets, d1_databases, routes: _routes, ...rest } = structuredClone(pkg.config) as StagingConfig;
+    if (kv_namespaces?.length || r2_buckets?.length || d1_databases?.length) {
+      throw new Error(`${DISTRICT_PACKAGE} declares account resources; a demo district would need its own`);
+    }
+    const config: ProductionConfig = {
+      ...rest,
+      name,
+      account_id: district.accountId,
+      workers_dev: false,
+      preview_urls: false,
+    };
+    asDistrict(config, [district.hostname], {});
+    configs.set(district.slug, config);
+  }
+  return configs;
+}
+
+/**
  * Build every package's production config. Pure: `packages` are the parsed wrangler.jsonc files
  * (the instance's own subset is picked from them); the result maps package name to its config.
  */
@@ -319,20 +414,7 @@ export function buildProductionConfigs({
       config.services = [...config.services ?? [], hallMonitor];
       withVars(pkgName, config, vars);
     } else if (pkgName === DISTRICT_PACKAGE && instance.district) {
-      if ((config.triggers?.crons?.length ?? 0) < 2) {
-        throw new Error(`${pkgName}/wrangler.jsonc has lost its notification and digest Cron Triggers`);
-      }
-      if (config.assets) throw new Error(`${pkgName}/wrangler.jsonc declares assets; the generator owns them`);
-      // Wrangler replaces a Worker's custom domains with exactly these, so every alias is listed.
-      config.routes = [instance.district.hostname, ...instance.district.aliases ?? []]
-        .map((pattern) => ({ pattern, custom_domain: true as const }));
-      config.assets = {
-        directory: DISTRICT_UI_DIR,
-        not_found_handling: "single-page-application",
-        run_worker_first: DISTRICT_WORKER_ROUTES,
-      };
-      // The LTI Tool (SCHO-177) is served at the district's own hostname.
-      withVars(pkgName, config, { LTI_TOOL_ORIGIN: `https://${instance.district.hostname}`, ...vars });
+      asDistrict(config, [instance.district.hostname, ...instance.district.aliases ?? []], vars);
     } else {
       throw new Error(`cannot build a production config for package: ${pkgName}`);
     }
@@ -362,17 +444,27 @@ export function renderProductionConfig(config: ProductionConfig): string {
 }
 
 /**
- * Regenerate every production config, writing only files whose content changed. With `check`,
- * writes nothing. Returns the repo-relative paths that differed.
+ * Regenerate every production config, the instance's and the demo districts', writing only files
+ * whose content changed. With `check`, writes nothing. Returns the repo-relative paths that differed.
  */
-export function generateProductionConfigs(
-  { check, instance = SCHOOLOS_GMAC_IO }: { check: boolean; instance?: ProductionInstance },
-): string[] {
+export function generateProductionConfigs({
+  check,
+  instance = SCHOOLOS_GMAC_IO,
+  districts = DEMO_DISTRICT_DEPLOYMENTS,
+}: {
+  check: boolean;
+  instance?: ProductionInstance;
+  districts?: readonly DemoDistrictDeployment[];
+}): string[] {
   const packages = readDeployablePackages(PACKAGES_DIR);
-  const configs = buildProductionConfigs({ instance, packages });
-  return [...configs].flatMap(([pkgName, config]) => {
-    const pkg = packages.find((candidate) => candidate.name === pkgName)!;
-    const path = join(pkg.dir, PRODUCTION_CONFIG_NAME);
+  const dir = (pkgName: string) => packages.find((candidate) => candidate.name === pkgName)!.dir;
+  const files: [string, ProductionConfig][] = [
+    ...[...buildProductionConfigs({ instance, packages })]
+      .map(([pkgName, config]): [string, ProductionConfig] => [join(dir(pkgName), PRODUCTION_CONFIG_NAME), config]),
+    ...[...buildDemoDistrictConfigs({ districts, packages, instance })]
+      .map(([slug, config]): [string, ProductionConfig] => [join(dir(DISTRICT_PACKAGE), demoDistrictConfigName(slug)), config]),
+  ];
+  return files.flatMap(([path, config]) => {
     const text = renderProductionConfig(config);
     if (existsSync(path) && readFileSync(path, "utf8") === text) return [];
     const rel = relative(ROOT, path);
