@@ -112,6 +112,16 @@ describe("LTI dynamic registration (SCHO-59)", () => {
     const toolConfig = body["https://purl.imsglobal.org/spec/lti-tool-configuration"];
     expect(toolConfig.claims).toEqual(["iss", "sub"]);
     expect(toolConfig["https://canvas.instructure.com/lti/privacy_level"]).toBe("anonymous");
+    // Each message names its placements, so Canvas does not default the resource link to
+    // `link_selection` and shadow Deep Linking there.
+    expect(toolConfig.messages).toEqual([
+      { type: "LtiResourceLinkRequest", target_link_uri: `${TOOL}/lti/launch`, placements: ["course_navigation"] },
+      {
+        type: "LtiDeepLinkingRequest",
+        target_link_uri: `${TOOL}/lti/launch`,
+        placements: ["link_selection", "assignment_selection", "editor_button"],
+      },
+    ]);
     // Only scopes the platform says it supports are requested.
     expect(body.scope.split(" ").toSorted()).toEqual([
       "https://purl.imsglobal.org/spec/lti-ags/scope/score",

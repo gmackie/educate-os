@@ -18,6 +18,7 @@ import { z } from "zod";
 import { DistrictId, PrincipalId, ProviderName, EducateOsError } from "@educateos/contracts";
 import { ltiToolEndpoints, type LtiToolEndpoints } from "./broker.ts";
 import { CANVAS_PLACEMENTS } from "./canvas.ts";
+import type { LaunchMessageType } from "./claims.ts";
 import { ActivityLink, OfferingMapping, PlatformRegistration } from "./registration.ts";
 import { AGS_SCOPES, LTI_SCOPES, readJson } from "./service-client.ts";
 import { randomToken, type Clock, type SingleUseStore } from "./stores.ts";
@@ -304,7 +305,10 @@ export class DynamicRegistration {
     const endpoints = this.#endpoints;
     const wanted = [...AGS_SCOPES, LTI_SCOPES.contextMembershipReadonly];
     const scopes = scopesSupported === undefined ? wanted : wanted.filter((scope) => scopesSupported.includes(scope));
-    const deepLinking = Object.entries(CANVAS_PLACEMENTS).filter(([, type]) => type === "LtiDeepLinkingRequest").map(([placement]) => placement);
+    // Every message names its placements: Canvas gives a message without any `link_selection`, and
+    // keeps the first message per placement, so the resource link would take Deep Linking's.
+    const placementsOf = (type: LaunchMessageType) =>
+      Object.entries(CANVAS_PLACEMENTS).filter(([, message]) => message === type).map(([placement]) => placement);
     return {
       application_type: "web",
       response_types: ["id_token"],
@@ -320,8 +324,8 @@ export class DynamicRegistration {
         target_link_uri: endpoints.launch,
         claims: ["iss", "sub"],
         messages: [
-          { type: "LtiResourceLinkRequest", target_link_uri: endpoints.launch },
-          { type: "LtiDeepLinkingRequest", target_link_uri: endpoints.launch, placements: deepLinking },
+          { type: "LtiResourceLinkRequest", target_link_uri: endpoints.launch, placements: placementsOf("LtiResourceLinkRequest") },
+          { type: "LtiDeepLinkingRequest", target_link_uri: endpoints.launch, placements: placementsOf("LtiDeepLinkingRequest") },
         ],
         "https://canvas.instructure.com/lti/privacy_level": "anonymous",
       },
