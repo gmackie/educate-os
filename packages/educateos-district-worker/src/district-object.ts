@@ -45,6 +45,7 @@ interface DistrictLogFields {
   skipped?: number;
   failed?: number;
   alreadyDone?: number;
+  revisionId?: string;
 }
 
 const logger = createLogger<DistrictLogFields>({ component: "educateos.district" });
@@ -166,6 +167,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
       { config: this.env.DISTRICT_CONFIG, accessIssuer: this.env.CF_ACCESS_ISS, accessAudiences: this.env.CF_ACCESS_AUD },
       {
         importFetch: (url, init) => this.importFetch(url, init),
+        // SCHO-232: a configuration head policy cannot read is passed over; say so, once per revision.
+        onUnreadableConfigRevision: (revisionId) => logger.error("a configuration revision cannot be read; policy falls back to the revision before it", {
+          event: "config.revision.unreadable",
+          revisionId,
+        }),
         ...(keys === undefined ? {} : { accessKeys: keys }),
         ...(sendEmail === undefined ? {} : { sendEmail }),
       },

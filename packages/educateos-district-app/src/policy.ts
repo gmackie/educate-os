@@ -7,31 +7,28 @@ import {
 } from "@educateos/contracts";
 import { DEFAULTS_PROFILES, DesiredState } from "@educateos/config";
 import { DEFAULT_POLICY_RULES, type PolicyRule, type PolicySource } from "@educateos/policy";
-import { createLogger } from "@gadgets/observability/logger";
 import type { ConfigurationRevision } from "@educateos/contracts";
 import type { ConfigRevisionStore } from "./stores.ts";
 
-const logger = createLogger<{ revisionId: string }>({ component: "educateos.district.policy" });
-
-/** The revisions already logged as unreadable, so a bad head is logged once per object, not per request. */
-const unreadable = new Set<string>();
+/**
+ * Told the ID of a configuration revision policy cannot read, once per revision, so the Worker can
+ * log it at `error` (`config.revision.unreadable`) with its own logger.
+ */
+export type UnreadableRevisionReporter = (revisionId: string) => void;
 
 /**
  * The desired state of the newest revision that parses. A head that does not (one restored from
- * before the rename that this code cannot read, say: SCHO-232) is logged at `error` and passed over
- * for the revision before it, rather than failing every policy decision in the district. With none
+ * before the rename that this code cannot read, say: SCHO-232) is reported and passed over for the
+ * revision before it, rather than failing every policy decision in the district. With none
  * readable, the caller's fallback floor applies.
  */
-function newestReadable(revisions: readonly ConfigurationRevision[]): DesiredState | undefined {
+function newestReadable(revisions: readonly ConfigurationRevision[], reported: Set<string>, report: UnreadableRevisionReporter): DesiredState | undefined {
   for (const revision of revisions.toReversed()) {
     const parsed = DesiredState.safeParse(revision.desired);
     if (parsed.success) return parsed.data;
-    if (!unreadable.has(revision.id)) {
-      unreadable.add(revision.id);
-      logger.error("a configuration revision cannot be read; policy falls back to the revision before it", {
-        event: "config.revision.unreadable",
-        revisionId: revision.id,
-      });
+    if (!reported.has(revision.id)) {
+      reported.add(revision.id);
+      report(revision.id);
     }
   }
   return undefined;
@@ -52,10 +49,15 @@ export const DEFAULT_POLICY_FLOOR: PolicySettings = DEFAULTS_PROFILES["us-k12-co
  * widest first. A compiled revision never loosens the floor, so an override that would is ignored
  * rather than trusted.
  */
-export function configPolicySource(config: ConfigRevisionStore, fallback: PolicySettings = DEFAULT_POLICY_FLOOR): PolicySource {
+export function configPolicySource(
+  config: ConfigRevisionStore,
+  fallback: PolicySettings = DEFAULT_POLICY_FLOOR,
+  onUnreadableRevision: UnreadableRevisionReporter = () => {},
+): PolicySource {
+  const reported = new Set<string>();
   return {
     async effectivePolicy(scope: Scope): Promise<PolicySettings> {
-      const desired = newestReadable(await config.list());
+      const desired = newestReadable(await config.list(), reported, onUnreadableRevision);
       if (desired === undefined) return fallback;
       const layers = desired.overrides
         .filter((override) => scopeContains(override.scope, scope))

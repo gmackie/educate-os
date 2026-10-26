@@ -468,8 +468,13 @@ describe("the district's stores after the rename (SCHO-232)", () => {
       if (!draft.ok) throw new Error("draft");
       await config.append({ ...draft.revision, status: "applied" }, undefined);
       await config.append({ ...good, id: "cfg_unreadable", previousRevisionId: draft.revision.id, desired: { apiVersion: "elsewhere/v9" } } as never, draft.revision.id);
-      expect(await configPolicySource(config).effectivePolicy({ level: "district", districtId: NORTHFIELD.district.id } as never))
-        .toStrictEqual(DEFAULTS_PROFILES["us-k12-standard"]);
+      const unreadable: string[] = [];
+      const policy = configPolicySource(config, undefined, (revisionId) => unreadable.push(revisionId));
+      const scope = { level: "district", districtId: NORTHFIELD.district.id } as never;
+      expect(await policy.effectivePolicy(scope)).toStrictEqual(DEFAULTS_PROFILES["us-k12-standard"]);
+      expect(await policy.effectivePolicy(scope)).toStrictEqual(DEFAULTS_PROFILES["us-k12-standard"]);
+      // Reported once, for the Worker to log at error, however many decisions pass over it.
+      expect(unreadable).toStrictEqual(["cfg_unreadable"]);
     });
   });
 
