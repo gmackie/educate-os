@@ -7,9 +7,12 @@
 // Then: `pnpm install` (lockfile), `pnpm configs:generate`, `pnpm production:configs`,
 // `pnpm types:generate`, and `UPDATE_GOLDEN=1 node --test scripts/release/manifest-lib.test.ts`.
 //
-// Nothing was live, so deployed identifiers (Worker names, Durable Object classes, bindings, env
-// names, table names, wire formats) are renamed too, with no compatibility readers. What stays is
-// listed in KEEP: names owned by something outside this repository.
+// Deployed identifiers (Worker names, Durable Object classes, bindings, env names, table names, wire
+// formats) were renamed too, on the understanding that nothing was live. The production district
+// was: SCHO-231 pins its Worker name, and SCHO-232 recovers the rows its renamed tables orphaned.
+// What stays is listed in KEEP (names owned by something outside this repository), and any line
+// carrying the marker `rename-educateos: keep` (in a comment on that line) is left as it is, so code
+// that names a legacy SchoolOS identifier on purpose survives a rerun.
 
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -48,8 +51,18 @@ const RENAMES: [RegExp, string][] = [
   [/schoolos/g, "educateos"],
 ];
 
-/** Files left alone: the lockfile is regenerated, vendored sources are not ours. */
-const SKIP = [/^pnpm-lock\.yaml$/, /^vendor\//, /^scripts\/rename-educateos\.ts$/];
+/** Lines that keep their SchoolOS spelling, whatever they contain. */
+export const KEEP_MARKER = "rename-educateos: keep";
+
+/**
+ * Files left alone: the lockfile is regenerated, vendored sources are not ours, and the allocation
+ * test's made-up product labels decide which product takes a rounding remainder, so renaming them
+ * changes its expected numbers.
+ */
+const SKIP = [
+  /^pnpm-lock\.yaml$/, /^vendor\//, /^scripts\/rename-educateos(\.test)?\.ts$/,
+  /^packages\/educateos-ai-governance\/__tests__\/account-allocation\.test\.ts$/,
+];
 
 /** Generated files, rewritten by their generators instead (see the header). */
 const GENERATED = [/(^|\/)wrangler(\.production)?\.jsonc$/, /(^|\/)worker-configuration\.d\.ts$/];
@@ -59,6 +72,10 @@ const LINKS_ONLY = [/^docs\/(schoolos|educateos)\/adr\/0013-/];
 
 /** Apply the rename to one string. */
 export function rename(text: string): string {
+  return text.split("\n").map((line) => line.includes(KEEP_MARKER) ? line : renameLine(line)).join("\n");
+}
+
+function renameLine(text: string): string {
   let out = text;
   KEEP.forEach((name, i) => {
     out = out.replaceAll(name, `\uE000KEEP${i}\uE000`);
@@ -100,7 +117,7 @@ function rewriteContents(): void {
   console.log(`rewrote ${changed} files`);
 }
 
-const mode = process.argv[2];
+const mode = import.meta.main ? process.argv[2] : undefined;
 if (mode === "paths") renamePaths();
 else if (mode === "contents") rewriteContents();
 else if (mode !== undefined) throw new Error(`usage: rename-educateos.ts paths|contents (got ${mode})`);
