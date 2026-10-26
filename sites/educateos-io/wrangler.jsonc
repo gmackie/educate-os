@@ -6,10 +6,14 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "educateos-site",
   "compatibility_date": "2026-10-01",
+  // The dashboard probes installations' public hostnames, some on this same zone: send those
+  // requests the way any visitor's would go, to whichever Worker serves the hostname.
+  "compatibility_flags": ["global_fetch_strictly_public"],
   // A script, not an assets-only Worker: Cloudflare keeps no vars on an assets-only version, so
   // ForgeGraph's FG_COMMIT_HASH would be dropped and its source-order guard would refuse every
   // later deploy (SCHO-233). Requests that match a file never reach the script, except on the paths
-  // run_worker_first names: the operator console and the health check (SCHO-206).
+  // run_worker_first names: the operator console, the opt-in registry and the health check
+  // (SCHO-206).
   "main": "worker.ts",
   "assets": {
     "binding": "ASSETS",
@@ -17,7 +21,7 @@
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page",
     // Must equal DYNAMIC_PATHS in packages/educateos-control-plane/src/app.ts (site-config.test.mjs).
-    "run_worker_first": ["/healthz", "/app", "/app/*"]
+    "run_worker_first": ["/healthz", "/app", "/app/*", "/registry/*"]
   },
   // The control plane's operators and installations. This Worker owns the data, so it must never
   // be renamed, nor the class (SCHO-231): a new name starts an empty namespace.

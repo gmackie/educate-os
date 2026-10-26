@@ -7,7 +7,8 @@
 // It holds no district data. An installation row is what the operator chose and where it lives;
 // the installation itself runs in the operator's own Cloudflare account and never calls back here
 // unless it opted in to the registry (ADR-0013).
-import { CommercialAccountId } from "@educateos/contracts";
+import { CommercialAccountId, type InstanceId } from "@educateos/contracts";
+import type { RegistrationVerification } from "@educateos/fleet";
 import { DurableObjectTables, parseStoredJson, type DurableObjectSqlStorage } from "@educateos/fleet/durable-object-store";
 import { z } from "zod";
 import type { OperatorIdentity } from "./access.ts";
@@ -35,8 +36,8 @@ export const Installation = z.strictObject({
   instanceId: z.string().regex(/^ins_[a-z0-9]{1,20}$/),
   /** The managed slug, so the installation serves at `<slug>.educateos.io`. */
   slug: z.string().min(3).max(32),
-  /** The hostname the installation serves at. */
-  hostname: z.string().min(1).max(253),
+  /** The hostname the installation serves at: its managed hostname (SCHO-207), the one the dashboard probes. */
+  hostname: z.string().max(253).regex(/^[a-z][a-z0-9-]{1,30}[a-z0-9]\.educateos\.io$/, "expected <slug>.educateos.io"),
   /** The operator's Cloudflare account it was installed into. */
   accountId: z.string().regex(/^[0-9a-f]{32}$/),
   /** The release version it was installed at. */
@@ -137,6 +138,21 @@ export class ControlPlaneStore {
         .toArray()
         .map((row) => parseStoredJson(Installation, row.record, `installation ${String(row.instance_id)}`))
         .toSorted((a, b) => b.installedAt.localeCompare(a.installedAt)));
+  }
+
+  /**
+   * The registry's account check (`CommercialAccountVerifier`): an installation may register
+   * under an operator's account only if that operator installed it through educateos.io. So an
+   * account ID alone, even a leaked one, lets nobody put an instance on someone's dashboard.
+   */
+  verifyRegistration(accountId: CommercialAccountId, instanceId: InstanceId): RegistrationVerification {
+    return this.#tables.transact((sql) => {
+      const [operator] = sql.exec(`SELECT subject FROM ${TABLES.operators} WHERE account_id = ?`, accountId).toArray();
+      if (operator === undefined) return { outcome: "refused", reason: "unknown-account" } as const;
+      const owned = sql.exec(`SELECT 1 FROM ${TABLES.installations} WHERE instance_id = ? AND operator_subject = ?`,
+        instanceId, String(operator.subject)).toArray();
+      return owned.length === 0 ? { outcome: "refused", reason: "instance-not-confirmed" } as const : { outcome: "verified" } as const;
+    });
   }
 
   /** Answers once the store can read and write, for the site's health check. */

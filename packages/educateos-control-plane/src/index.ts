@@ -3,4 +3,7 @@
 export * from "./access.ts";
 export * from "./app.ts";
 export * from "./pages.ts";
+export * from "./probe.ts";
+export * from "./registry.ts";
+export * from "./registry-store.ts";
 export * from "./store.ts";

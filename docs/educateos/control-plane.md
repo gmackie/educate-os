@@ -1,8 +1,8 @@
 # The educateos.io control plane
 
-- Status: skeleton (operator sign-in and the store). The installation dashboard and the guided
-  install follow in later PRs of SCHO-206; billing (SCHO-208) and the marketplace (SCHO-209) build
-  on this.
+- Status: operator sign-in, the store, the opt-in registry and the installation dashboard. The
+  guided install follows in a later PR of SCHO-206; billing (SCHO-208) and the marketplace
+  (SCHO-209) build on this.
 - Issue: SCHO-206. Decision record: [ADR-0013](adr/0013-educateos-open-core-control-plane.md).
 - Code: `packages/educateos-control-plane`, served by the site Worker in `sites/educateos-io`.
 
@@ -20,6 +20,7 @@ before any script runs. Only the paths in `assets.run_worker_first` reach the Wo
 | Path | What answers |
 | --- | --- |
 | `/healthz` | JSON `{"status":"ok","commit":…}` once the store answers. ForgeGraph's health check. |
+| `/registry/v1/heartbeat` | The opt-in instance registry's heartbeats: signed by the installation, no sign-in. |
 | `/app`, `/app/*` | The operator console, behind Cloudflare Access, on educateos.io only. The other hostnames redirect there, since the Access application covers only `educateos.io/app`. |
 
 Anything else that reaches the script goes back to the assets binding and its 404 page. The paths
@@ -105,3 +106,44 @@ The console is server-rendered HTML in the site's own shell: the stamped header 
 `sites/educateos-io/partials`, Kumo tokens and `site.css`. It ships no framework. Every value is
 escaped by the `html` template tag. Each page is `no-store` and sent under a CSP that admits no
 script except the site's theme switch, by hash.
+
+## The opt-in registry
+
+SCHO-155 left the registry without storage or a server: `@educateos/fleet`'s `InstanceRegistry` had
+only an in-memory store. The control plane now hosts it over `DurableObjectRegistryStorage`
+(`src/registry-store.ts`), whose writes are atomic in the same Durable Object: first-come
+registration, single-use keys and sequence numbers.
+
+- **Registration happens only inside the control plane.** The guided install registers the
+  installation while it holds the install, and only if the operator asked. There is no HTTP
+  `register` route, so someone who learns an instance's IDs can't register it first and lock the
+  real installation out of its own registration.
+- **The commercial account is the operator's `acct_…` ID.** `verifyRegistration` also requires that
+  this operator installed the instance.
+- **Heartbeats arrive at `POST /registry/v1/heartbeat`.** The Worker reads at most 64 KiB, whatever
+  Content-Length says, and checks the envelope's shape before the Durable Object sees it.
+- **Still to do.** CLI-installed instances can't register yet, since claiming one is follow-up work.
+  Nothing in the runtime sends heartbeats yet either, so a registered installation shows its
+  registration and installed version, and reports appear once a heartbeat sender exists.
+- **Before traffic grows,** add a rate limit on `/registry/*`. The one Durable Object also serves
+  sign-in and the dashboard.
+
+## The installation dashboard
+
+`/app/` (and `/app/api/installations` as JSON) lists the operator's installations, read-only:
+
+| Column | Source |
+| --- | --- |
+| Installation, installed | The control plane's installation record, written by the guided install |
+| Address | The managed hostname, `<slug>.educateos.io` (SCHO-207) |
+| Version | The registry's last reported version, else the installed one |
+| Health | A probe of `https://<hostname>/healthz` while the page loads: responding, behind sign-in, an HTTP status, or unreachable |
+| Registry | Registered or not; last report; how many reported probes are ok |
+
+Only managed hostnames (`<slug>.educateos.io`) are stored or probed. At most 50 are probed, six at
+a time. The probe is an ordinary request to the router's `/healthz`, which reads nothing and returns
+nothing about the instance. It runs only while the operator has the page open, and keeps only the
+status. An installation behind Access without a `/healthz` bypass shows as "behind sign-in": Access
+answered, so the instance's own state is unknown. The site Worker sets
+`global_fetch_strictly_public`, so a probe of a hostname on the educateos.io zone reaches that
+hostname's Worker as a visitor's request would.

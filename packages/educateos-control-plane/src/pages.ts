@@ -2,7 +2,10 @@
 // footer, Kumo tokens and site.css), so /app reads as part of educateos.io and ships no framework.
 // Every value that reaches a page passes through `html`, which escapes it.
 import { ACCESS_LOGOUT_PATH } from "./access.ts";
-import type { Installation, Operator } from "./store.ts";
+import type { ProbedEntry } from "./app.ts";
+import type { ProbeResult } from "./probe.ts";
+import type { Registration } from "./registry.ts";
+import type { Operator } from "./store.ts";
 
 /** The site's shared markup, from `sites/educateos-io/partials`. */
 export interface SiteShell {
@@ -96,17 +99,42 @@ function signedInBar(operator: Operator): Html {
   return html`<p class="muted">Signed in as <b class="strong">${operator.email}</b> · account <code>${operator.accountId}</code> · <a href="${ACCESS_LOGOUT_PATH}">Sign out</a></p>`;
 }
 
-/** The operator's home: their installations. */
-export function dashboardPage(shell: SiteShell, operator: Operator, installations: readonly Installation[]): string {
-  const list = installations.length === 0
+function health(probe: ProbeResult): Html {
+  switch (probe.state) {
+    case "responding":
+      return html`<span class="status avail">Responding</span>`;
+    case "behind-sign-in":
+      return html`<span class="status dev">Behind sign-in</span><br><small class="muted">Access answered; /healthz has no bypass</small>`;
+    case "failing":
+      return html`<span class="badge warn">HTTP ${probe.status}</span>`;
+    case "unreachable":
+      return html`<span class="badge warn">Unreachable</span>`;
+  }
+}
+
+function registry(registration: Registration | undefined): Html {
+  if (registration === undefined) return html`<span class="muted">Not registered</span>`;
+  const failing = registration.probes.filter((probe) => probe.status !== "ok").length;
+  return html`Registered ${registration.registeredAt.slice(0, 10)}<br><small class="muted">${
+    registration.lastHeartbeatAt === undefined ? "No report yet" : `Last report ${registration.lastHeartbeatAt.slice(0, 16).replace("T", " ")} UTC`
+  }${registration.probes.length === 0 ? "" : ` · ${registration.probes.length - failing} of ${registration.probes.length} probes ok`}</small>`;
+}
+
+/**
+ * The operator's home: their installations, read-only. Health is what the dashboard's probe saw
+ * just now; version and reports come from the opt-in registry when the installation registered.
+ */
+export function dashboardPage(shell: SiteShell, operator: Operator, entries: readonly ProbedEntry[]): string {
+  const list = entries.length === 0
     ? html`<div class="note-box"><b>No installations yet.</b> Installations you make through educateos.io will be listed here. An installation runs in your own Cloudflare account and keeps running whether or not educateos.io is up.</div>`
     : html`<div class="table-scroll"><table class="spec">
-        <thead><tr><th>Installation</th><th>Address</th><th>Version</th><th>Installed</th></tr></thead>
-        <tbody>${installations.map((installation) => html`<tr>
-          <td>${installation.slug}<br><small class="muted">${installation.instanceId}</small></td>
-          <td><a href="https://${installation.hostname}/">${installation.hostname}</a></td>
-          <td>${installation.releaseVersion}</td>
-          <td>${installation.installedAt.slice(0, 10)}</td>
+        <thead><tr><th>Installation</th><th>Address</th><th>Version</th><th>Health</th><th>Registry</th></tr></thead>
+        <tbody>${entries.map(({ installation, registration, probe }) => html`<tr>
+          <td>${installation.slug}<br><small class="muted">${installation.instanceId} · installed ${installation.installedAt.slice(0, 10)}</small></td>
+          <td><a href="https://${installation.hostname}/">${installation.hostname}</a><br><small class="muted">account ${installation.accountId.slice(0, 8)}…</small></td>
+          <td>${registration?.releaseVersion ?? installation.releaseVersion}</td>
+          <td>${health(probe)}</td>
+          <td>${registry(registration)}</td>
         </tr>`)}</tbody>
       </table></div>`;
   return page(shell, "Your installations", html`<section class="page-hero">

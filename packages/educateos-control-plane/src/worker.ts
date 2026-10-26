@@ -9,6 +9,8 @@ import type { JWTVerifyGetKey } from "jose";
 import { operatorVerifier, type OperatorIdentity, type OperatorVerifier } from "./access.ts";
 import { handleRequest, type ControlPlaneApi } from "./app.ts";
 import type { SiteShell } from "./pages.ts";
+import type { ProbeResult } from "./probe.ts";
+import { ControlPlaneRegistry, type DashboardEntry, type RegistryMessage, type RegistryReply } from "./registry.ts";
 import { ControlPlaneStore, type Installation, type Operator } from "./store.ts";
 
 /** The site Worker's bindings and vars. */
@@ -29,10 +31,12 @@ export const CONTROL_PLANE_OBJECT = "educateos.io";
 /** The control plane's store, as a Durable Object. Its methods are the store's, over RPC. */
 export class ControlPlane extends DurableObject<ControlPlaneEnv> implements ControlPlaneApi {
   readonly #store: ControlPlaneStore;
+  readonly #registry: ControlPlaneRegistry;
 
   constructor(ctx: DurableObjectState, env: ControlPlaneEnv) {
     super(ctx, env);
     this.#store = new ControlPlaneStore(ctx.storage);
+    this.#registry = new ControlPlaneRegistry(ctx.storage, this.#store);
   }
 
   signIn(identity: OperatorIdentity): Operator {
@@ -41,6 +45,14 @@ export class ControlPlane extends DurableObject<ControlPlaneEnv> implements Cont
 
   installations(operatorSubject: string): Installation[] {
     return this.#store.installations(operatorSubject);
+  }
+
+  dashboard(operator: Operator): Promise<DashboardEntry[]> {
+    return this.#registry.dashboard(operator);
+  }
+
+  receiveRegistryMessage(kind: RegistryMessage, input: unknown): Promise<RegistryReply> {
+    return this.#registry.receive(kind, input);
   }
 
   ping(): true {
@@ -52,6 +64,8 @@ export class ControlPlane extends DurableObject<ControlPlaneEnv> implements Cont
 export interface SiteWorkerOptions {
   /** The Access signing keys. Defaults to the team's published certs; tests pass a local key set. */
   accessKeys?: JWTVerifyGetKey;
+  /** The dashboard's installation probe. Defaults to a real `/healthz` request; tests stub it. */
+  probe?: (hostname: string) => Promise<ProbeResult>;
 }
 
 /** The site Worker's fetch handler, with the site's shell. */
@@ -74,6 +88,7 @@ export function siteWorker(shell: SiteShell, options: SiteWorkerOptions = {}): E
         store: () => env.CONTROL_PLANE.getByName(CONTROL_PLANE_OBJECT),
         assets: (assetRequest) => env.ASSETS.fetch(assetRequest),
         commit: env.FG_COMMIT_HASH,
+        probe: options.probe,
       });
     },
   };
