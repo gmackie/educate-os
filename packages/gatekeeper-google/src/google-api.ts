@@ -151,7 +151,9 @@ export async function exchangeAuthCode(
 }
 
 export type RefreshFailure =
-  | { ok: false; reason: "revoked" }
+  // `detail` is Google's own account of the refusal (its `error_subtype`, such as `invalid_rapt`
+  // when a reauthentication policy applies, and `error_description`), for logs.
+  | { ok: false; reason: "revoked"; detail: string }
   | { ok: false; reason: "policyBlocked"; detail: string };
 
 export type AccessTokenResult = { ok: true; token: GoogleAccessToken } | RefreshFailure;
@@ -179,9 +181,11 @@ export async function getAccessToken(
     let isJson = contentType && contentType.startsWith("application/json");
 
     if (isJson) {
-      let body = await response.json<{error?: string, error_description?: string}>();
+      let body = await response.json<
+          {error?: string, error_description?: string, error_subtype?: string}>();
       if (body.error === "invalid_grant") {
-        return { ok: false, reason: "revoked" };
+        let detail = [body.error_subtype, body.error_description].filter(Boolean).join(": ");
+        return { ok: false, reason: "revoked", detail: detail || "invalid_grant" };
       }
       if (body.error === "admin_policy_enforced") {
         return { ok: false, reason: "policyBlocked",
