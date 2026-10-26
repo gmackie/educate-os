@@ -48,6 +48,21 @@ describe("AGS line items and results", () => {
     expect(world.fetched.filter((url) => url !== world.canvas.tokenUrl)).toEqual([]);
   });
 
+  it("follows line item pages only within the context's container", async () => {
+    const world = await createServicesWorld();
+    const services = world.canvas.contextServices(BIO_CONTEXT);
+    const container = world.canvas.lineItemsUrl(BIO_CONTEXT);
+    world.canvas.addLineItem(BIO_CONTEXT, { label: "Quiz", scoreMaximum: 5 });
+    world.canvas.lineItemsLink = (url) => (url.searchParams.get("page") === null ? `<${container}?page=2>; rel="next"` : undefined);
+    expect(await world.ags.listLineItems(services)).toHaveLength(2);
+
+    const otherCourse = world.canvas.lineItemsUrl("nf-canvas-course-eng9-p3");
+    world.canvas.addLineItem("nf-canvas-course-eng9-p3", { label: "Essay", scoreMaximum: 10 });
+    world.canvas.lineItemsLink = (url) => (url.pathname === new URL(container).pathname ? `<${otherCourse}>; rel="next"` : undefined);
+    expect(await rejection(world.ags.listLineItems(services))).toBe("forbidden");
+    expect(world.fetched).not.toContain(otherCourse);
+  });
+
   it("refuses an operation the context's AGS claim does not grant", async () => {
     const world = await createServicesWorld();
     const readOnly = world.canvas.contextServices(BIO_CONTEXT, [LTI_SCOPES.lineItemReadonly]);

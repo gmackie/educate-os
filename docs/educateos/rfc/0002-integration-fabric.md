@@ -490,8 +490,10 @@ tracked in [maturity.md](../maturity.md), and the charter decisions in §0 and �
    provider-authority type.
 8. **MCP in the repository today is client-only.** `@modelcontextprotocol/client` 2.2.0 speaks
    protocol `2025-06-18`. No MCP server SDK is installed and there is no OAuth resource server.
-9. **The LTI paging guard checks origin only.** `packages/educateos-lti/src/service-client.ts`
-   sends the bearer token only to the service URL's origin; §8's threat row needs origin and path.
+9. **The LTI paging guard checked origin only.** `packages/educateos-lti/src/service-client.ts`
+   sent the bearer token only to the service URL's origin; §8's threat row needs origin and path.
+   Resolved by SCHO-240: `assertNextPageUrl` also holds NRPS and AGS next pages to the first
+   page's path.
 10. **OneRoster has no large-removal hold.** Quarantine, all-or-nothing apply and
     deactivate-not-delete exist; holding a large negative diff for approval (§4, §8) does not.
 11. **`RoleAssignment` lacks dates and guardian roles.** §3's `RoleGrant(scope, dates)` and

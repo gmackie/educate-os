@@ -66,6 +66,22 @@ describe("NRPS", () => {
     expect(world.fetched.some((url) => url.includes("attacker.example"))).toBe(false);
   });
 
+  it("never follows a next link off the membership URL's path, to another course or service", async () => {
+    const world = await createServicesWorld();
+    world.canvas.pageSize = 1;
+    world.canvas.members.set(BIO_CONTEXT, roster(2));
+    world.canvas.members.set("nf-canvas-course-eng9-p3", roster(1));
+    const otherCourse = `${world.canvas.membershipsUrl("nf-canvas-course-eng9-p3")}?page=1`;
+    world.canvas.linkOverride = (page) => (page === 1 ? `<${otherCourse}>; rel="next"` : undefined);
+    expect(await rejection(world.nrps.rosterProjection(world.canvas.contextServices(BIO_CONTEXT)))).toBe("forbidden");
+    expect(world.fetched).not.toContain(otherCourse);
+
+    // A relative link to another service of the same platform is refused too.
+    world.canvas.linkOverride = (page) => (page === 1 ? '</api/lti/courses/1/line_items>; rel="next"' : undefined);
+    expect(await rejection(world.nrps.rosterProjection(world.canvas.contextServices(BIO_CONTEXT)))).toBe("forbidden");
+    expect(world.fetched.some((url) => url.includes("/line_items"))).toBe(false);
+  });
+
   it("refuses malformed members instead of defaulting them", async () => {
     for (const bad of [{ roles: [] }, { user_id: "", roles: [] }, { user_id: "x", roles: [], status: "Suspended" }, { user_id: "x" }]) {
       const world = await createServicesWorld();

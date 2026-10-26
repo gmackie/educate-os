@@ -67,4 +67,4 @@ its `production.log`.
 - **Not tested here:** the platform-storage cookie fallback with cookies blocked, `editor_button`
   and `link_selection` placements (Canvas mapped `link_selection` to a resource link launch because
   the registration's resource link message names no placements), course navigation, and NRPS
-  paging. The service paging guard is still origin-only.
+  paging. Since this run, service paging links are also held to the first page's path (SCHO-240).

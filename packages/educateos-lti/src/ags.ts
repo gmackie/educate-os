@@ -12,6 +12,7 @@ import { offeringForContext, type PlatformRegistration, type PlatformRegistratio
 import {
   AGS_SCOPES,
   LTI_SCOPES,
+  assertNextPageUrl,
   nextPageUrl,
   readJson,
   sameRegistration,
@@ -199,6 +200,7 @@ export class AgsClient {
         items.push(item);
       }
       url = nextPageUrl(response.headers.get("link"), url);
+      if (url !== undefined) assertNextPageUrl(url, first);
     }
     return items;
   }

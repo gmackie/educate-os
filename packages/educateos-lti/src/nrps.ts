@@ -2,13 +2,15 @@
 // for EducateOS. PlayTrek defaulted malformed fields with `.catch` (a member with no `user_id` became
 // `""`, an unknown status became `Active`), followed `rel="next"` to any host with the bearer token
 // and without a page limit, and decided `isInstructor` by substring-matching role strings. Here every
-// member is validated or the roster is refused, paging stays on the membership URL's origin and is
-// capped, names and emails are never read, and roles are carried only as untrusted metadata.
+// member is validated or the roster is refused, paging stays on the membership URL's origin and
+// path and is capped, names and emails are never read, and roles are carried only as untrusted
+// metadata.
 import { z } from "zod";
 import { RosterProjection, EducateOsError, type ProjectedMemberStatus } from "@educateos/contracts";
 import { offeringForContext, type PlatformRegistrationStore } from "./registration.ts";
 import {
   LTI_SCOPES,
+  assertNextPageUrl,
   nextPageUrl,
   readJson,
   serviceOrigin,
@@ -121,6 +123,7 @@ export class NrpsClient {
         members.set(member.data.user_id, { status: STATUS[member.data.status ?? "Active"], roles: member.data.roles });
       }
       url = nextPageUrl(response.headers.get("link"), url);
+      if (url !== undefined) assertNextPageUrl(url, services.nrps.membershipsUrl);
     }
 
     return RosterProjection.parse({

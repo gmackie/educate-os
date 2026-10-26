@@ -48,6 +48,8 @@ export class FakeServicePlatform {
   readonly scoreFailures: number[] = [];
   /** Overrides an NRPS page's Link header. */
   linkOverride: ((page: number, contextId: string) => string | undefined) | undefined;
+  /** A Link header for line item container pages, by request URL. */
+  lineItemsLink: ((url: URL) => string | undefined) | undefined;
   readonly #toolJwks: () => { keys: JWK[] };
   readonly #now: () => number;
   readonly #tokens = new Map<string, IssuedToken>();
@@ -134,7 +136,8 @@ export class FakeServicePlatform {
             String(item.id).startsWith(prefix) &&
             (url.searchParams.get("resource_link_id") === null || item.resourceLinkId === url.searchParams.get("resource_link_id")),
         );
-        return Response.json(items);
+        const link = this.lineItemsLink?.(url);
+        return Response.json(items, link === undefined ? {} : { headers: { link } });
       });
     }
     const item = /^(\/api\/lti\/courses\/[^/]+\/line_items\/\d+)(\/scores|\/results)?$/.exec(path);

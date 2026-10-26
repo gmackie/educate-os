@@ -106,7 +106,8 @@ export interface LtiServiceClientOptions {
  *
  * A bearer token is sent only to an https URL with the origin the caller names, which is the
  * origin of a service URL taken from a verified launch. Paging links and line item IDs that point
- * anywhere else are refused, so a platform response cannot redirect the token to another host.
+ * anywhere else are refused, so a platform response cannot redirect the token to another host, and
+ * a next-page link must also keep the first page's path (see {@link assertNextPageUrl}).
  */
 export class LtiServiceClient {
   readonly #fetch: typeof fetch;
@@ -239,6 +240,20 @@ export function assertServiceUrl(url: string, origin: string): void {
   }
   if (parsed.protocol !== "https:" || parsed.origin !== origin) {
     throw new EducateOsError("forbidden", "The LTI service URL is outside the platform's service origin.");
+  }
+}
+
+/**
+ * Throws `forbidden` unless `next`, a next-page link from a platform's response, is another page
+ * of the collection `first` reads: the same origin and the same path, with only the query changed.
+ * Otherwise a page could point the bearer token at another of the platform's services, or at
+ * another course's roster or line items, whose items would be read as this context's.
+ */
+export function assertNextPageUrl(next: string, first: string): void {
+  const page = new URL(next);
+  const collection = new URL(first);
+  if (page.origin !== collection.origin || page.pathname !== collection.pathname) {
+    throw new EducateOsError("forbidden", "The LTI service's next page is outside the collection it pages.");
   }
 }
 
