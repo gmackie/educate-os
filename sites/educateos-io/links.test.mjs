@@ -12,9 +12,15 @@ import {fileURLToPath} from "node:url";
 
 const publicDir = join(dirname(fileURLToPath(import.meta.url)), "public");
 
+// public/demo/ is the in-browser demo (SCHO-224), which packages/educateos-demo builds there and git
+// ignores. Its pages are the app's, not the site's, and a link to it resolves to the app's source
+// page, so the check gives the same answer whether or not the demo has been built.
+const DEMO = {dir: join(publicDir, "demo"), source: join(publicDir, "../../../packages/educateos-demo/index.html")};
+
 function htmlFiles(dir) {
   return readdirSync(dir, {withFileTypes: true}).flatMap((entry) => {
     const path = join(dir, entry.name);
+    if (path === DEMO.dir) return [];
     if (entry.isDirectory()) return htmlFiles(path);
     return entry.name.endsWith(".html") ? [path] : [];
   });
@@ -25,6 +31,7 @@ function isFile(path) {
 }
 
 function resolveTarget(pathname) {
+  if (pathname === "/demo/") return isFile(DEMO.source) ? DEMO.source : null;
   const local = join(publicDir, decodeURIComponent(pathname));
   if (pathname.endsWith("/")) return isFile(join(local, "index.html")) ? join(local, "index.html") : null;
   for (const candidate of [local, `${local}.html`, join(local, "index.html")]) {

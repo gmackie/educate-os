@@ -34,9 +34,14 @@ function chip(key, path) {
   return `<span class="status ${level.class}" data-status="${key}">${level.label}</span>`;
 }
 
+// public/demo/ is the in-browser demo (SCHO-224): an app that packages/educateos-demo builds there
+// (gitignored), not a page of the site, so it carries no header or footer to stamp.
+const GENERATED = join(publicDir, "demo");
+
 function htmlFiles(dir) {
   return readdirSync(dir, {withFileTypes: true}).flatMap((entry) => {
     const path = join(dir, entry.name);
+    if (path === GENERATED) return [];
     if (entry.isDirectory()) return htmlFiles(path);
     return entry.name.endsWith(".html") ? [path] : [];
   });

@@ -3,6 +3,8 @@ node_modules/
 
 # Build outputs
 dist/
+# The educateos.io demo's build (packages/educateos-demo), written into the site Worker's assets
+sites/educateos-io/public/demo/
 # Generated gatekeeper UI bundles, rebuilt as a prerequisite of build/deploy
 packages/gatekeeper-*/src/generated/*-configurator-ui.txt
 packages/gatekeeper-*/src/generated/*-configurator-ui.js*

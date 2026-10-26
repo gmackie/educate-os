@@ -152,13 +152,24 @@ function activityFor(subject: Subject, gradeBand: string, resource: { resourceId
  * tokens for.
  */
 export async function seedDemo(entry: HarnessDistrict, app: DistrictApp): Promise<DemoPrincipals> {
-  const { directory } = entry.district;
-  const byId = (id: PrincipalId) => directory.principals.find((p) => p.id === id)!;
-  const client = async (principal: Principal): Promise<DistrictApiClient> => createDistrictApiClient({
+  return seedDistrict(entry.district.directory, app, async (subject) => createDistrictApiClient({
     baseUrl: "http://district.harness",
-    token: await entry.identity.issueToken(principal.externalIdentities[0]!.subject),
+    token: await entry.identity.issueToken(subject),
     fetch: (request) => app.fetch(request),
-  });
+  }));
+}
+
+/** A client for `app` signed in as the person with IdP subject `subject` at the district's issuer. */
+export type SignInAs = (subject: string) => Promise<DistrictApiClient>;
+
+/**
+ * {@link seedDemo} for any district application, with `signInAs` standing in for the IdP: the
+ * harness signs in with its fake IdP's tokens, and the in-browser demo (`@educateos/demo`) with
+ * the persona it verifies requests as. It uses only web-standard APIs, so it runs in a browser.
+ */
+export async function seedDistrict(directory: DistrictDirectorySnapshot, app: DistrictApp, signInAs: SignInAs): Promise<DemoPrincipals> {
+  const byId = (id: PrincipalId) => directory.principals.find((p) => p.id === id)!;
+  const client = (principal: Principal): Promise<DistrictApiClient> => signInAs(principal.externalIdentities[0]!.subject);
 
   const admin = byId(directory.roleAssignments.find((r) => r.role === "district-admin")!.principalId);
   const actor = { by: admin.id, at: new Date().toISOString() };

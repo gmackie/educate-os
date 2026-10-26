@@ -1,0 +1,43 @@
+{
+  "name": "@educateos/demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The public no-AI demo at educateos.io/demo (SCHO-224): the real Student, Teacher and Admin UIs over the real district application, running in the visitor's browser against a synthetic district. A static site the educateos.io Worker serves, never part of a district release: it has no wrangler config.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@cloudflare/kumo": "^2.14.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "@educateos/admin-ui": "workspace:*",
+    "@educateos/api-client": "workspace:*",
+    "@educateos/catalog": "workspace:*",
+    "@educateos/contracts": "workspace:*",
+    "@educateos/district-app": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@educateos/harness": "workspace:*",
+    "@educateos/student-ui": "workspace:*",
+    "@educateos/teacher-ui": "workspace:*",
+    "@gadgets/ui": "workspace:*",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/react-router": "^1.170.39",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/user-event": "14.6.7",
+    "@types/node": "26.1.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^5.2.0",
+    "jsdom": "^26.1.0",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}
