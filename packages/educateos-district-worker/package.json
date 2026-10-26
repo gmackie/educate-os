@@ -10,7 +10,6 @@
     "test:run": "vitest run"
   },
   "dependencies": {
-    "@gadgets/observability": "workspace:*",
     "@educateos/academics": "workspace:*",
     "@educateos/ai-governance": "workspace:*",
     "@educateos/content-studio": "workspace:*",
@@ -19,10 +18,12 @@
     "@educateos/gatekeeper": "workspace:*",
     "@educateos/identity": "workspace:*",
     "@educateos/identity-links": "workspace:*",
+    "@educateos/integrations": "workspace:*",
     "@educateos/lti": "workspace:*",
     "@educateos/lti-district": "workspace:*",
     "@educateos/policy": "workspace:*",
     "@educateos/workspaces": "workspace:*",
+    "@gadgets/observability": "workspace:*",
     "capnweb": "catalog:",
     "capnweb-validate": "catalog:",
     "jose": "^6.2.12",

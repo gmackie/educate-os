@@ -19,6 +19,7 @@ import {
   ConfigurationRevision,
   GuardianRelationship,
   EducateOsError,
+  IntegrationSyncRun,
   type ActivityDefinitionId,
   type ActivityId,
   type ConfigRevisionId,
@@ -106,7 +107,8 @@ import {
 // Quizzes (SCHO-191)
 import { QUIZ_CONFLICT, Quiz, QuizAttempt, QuizBook, QuizRelease, type QuizBookWrite, type QuizStorage } from "@educateos/quizzes";
 import { FundingAllocationRevision } from "./routes.ts";
-import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, WorkshopUserLinkStore } from "./stores.ts";
+import { MAX_ROSTER_SYNC_RUNS, RosterSyncRecord } from "./stores.ts";
+import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, RosterSyncStore, WorkshopUserLinkStore } from "./stores.ts";
 // Communication (SCHO-189)
 import {
   Announcement,
@@ -150,6 +152,8 @@ export const DISTRICT_TABLES = {
   fundingRevisions: "educateos_district_funding_revisions",
   workshopUserLinks: "educateos_district_workshop_user_links",
   rosterSources: "educateos_district_roster_sources",
+  rosterSync: "educateos_district_roster_sync",
+  rosterSyncRuns: "educateos_district_roster_sync_runs",
   artifactRecords: "educateos_artifact_records",
   inlineText: "educateos_artifact_inline_text",
   blobs: "educateos_artifact_blobs",
@@ -436,6 +440,48 @@ export class DurableObjectRosterSourceStore implements RosterSourceStore {
   async save(sources: oneroster.OneRosterSourceMap): Promise<void> {
     const json = JSON.stringify(oneroster.OneRosterSourceMap.parse(sources));
     this.#tables.transaction((sql) => this.#document.write(sql, 0, json));
+  }
+}
+
+/**
+ * A {@link RosterSyncStore} in a Durable Object's SQLite (SCHO-203): the record as one chunked
+ * document, and one row per run, trimmed to {@link MAX_ROSTER_SYNC_RUNS}.
+ */
+export class DurableObjectDistrictRosterSyncStore implements RosterSyncStore {
+  readonly #document = new ChunkedDocument(DISTRICT_TABLES.rosterSync);
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      ...this.#document.schema(),
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.rosterSyncRuns} (seq INTEGER PRIMARY KEY AUTOINCREMENT, run_json TEXT NOT NULL)`,
+    ], []);
+  }
+
+  async load(): Promise<RosterSyncRecord> {
+    const stored = this.#tables.transaction((sql) => this.#document.read(sql));
+    return stored === undefined ? {} : parseStored(RosterSyncRecord, stored.json, "the roster sync record");
+  }
+
+  async save(record: RosterSyncRecord): Promise<void> {
+    const json = JSON.stringify(RosterSyncRecord.parse(record));
+    this.#tables.transaction((sql) => this.#document.write(sql, 0, json));
+  }
+
+  async recordRun(run: IntegrationSyncRun): Promise<void> {
+    const json = JSON.stringify(IntegrationSyncRun.parse(run));
+    this.#tables.transaction((sql) => {
+      sql.exec(`INSERT INTO ${DISTRICT_TABLES.rosterSyncRuns} (run_json) VALUES (?)`, json);
+      sql.exec(`DELETE FROM ${DISTRICT_TABLES.rosterSyncRuns} WHERE seq <= (SELECT MAX(seq) FROM ${DISTRICT_TABLES.rosterSyncRuns}) - ?`, MAX_ROSTER_SYNC_RUNS);
+    });
+  }
+
+  async runs(limit = MAX_ROSTER_SYNC_RUNS): Promise<IntegrationSyncRun[]> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`SELECT run_json FROM ${DISTRICT_TABLES.rosterSyncRuns} ORDER BY seq DESC LIMIT ?`, limit).toArray()
+        .map((row) => parseStored(IntegrationSyncRun, row.run_json, "a roster sync run"))
+        .toReversed()
+    );
   }
 }
 
@@ -1074,6 +1120,7 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
   return {
     directory,
     rosterSources: new DurableObjectRosterSourceStore(storage),
+    rosterSync: new DurableObjectDistrictRosterSyncStore(storage),
     workspaces: new DurableObjectWorkspaceStore(storage),
     artifactRecords: new DurableObjectArtifactRecordStore(storage),
     artifactContent: new BackendArtifactStore({ text: new DurableObjectInlineTextTable(storage), r2: new DurableObjectBlobBucket(storage) }),

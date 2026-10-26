@@ -34,6 +34,12 @@ export class DistrictObject extends DeployedDistrictObject {
     };
   }
 
+  /** Runs the hourly roster sync as the Cron Trigger does, and says what it did (SCHO-203). */
+  async scheduledRosterSync(): Promise<{ ran: boolean; reason?: string }> {
+    const outcome = await (await this.districtApp()).rostering.runScheduledSync();
+    return outcome.ran ? { ran: true } : { ran: false, reason: outcome.reason };
+  }
+
   /** The email recorded so far. */
   async sentEmail(): Promise<Parameters<SendEmailBinding["send"]>[0][]> {
     return structuredClone(this.#sent);

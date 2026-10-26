@@ -16,7 +16,7 @@ import {
   type VerifiedPrincipal,
 } from "@educateos/contracts";
 import { createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@educateos/identity";
-import { AcademicDirectory, isDistrictAdmin } from "@educateos/academics";
+import { AcademicDirectory, assertSyncWritable, DIRECTORY_ENTITY_KINDS, isDistrictAdmin } from "@educateos/academics";
 import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule } from "@educateos/policy";
 import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@educateos/workspaces";
 import { LearningArtifacts } from "@educateos/learning-artifacts";
@@ -26,12 +26,12 @@ import { contentStudioReleases, CourseContentService, CurriculumService, type Ai
 import { CatalogMirror, catalogSeedRelease, type VerifyRelease } from "@educateos/catalog";
 import { approveStandards, learningGoalsFor, listStandards, withdrawStandards } from "./standards.ts";
 import { AiLedger, ledgerGovernor, type AiRequestGovernor, type CloudflareAccountFacts, type FundingPool, type GovernedModel, type UsdNano } from "@educateos/ai-governance";
-import { createDraftRevision, planConfigurationChange, SHIPPED_REGISTRY, type CapabilityRegistry } from "@educateos/config";
-import { oneroster } from "@educateos/integrations";
+import { createDraftRevision, DesiredState, planConfigurationChange, SHIPPED_REGISTRY, type CapabilityRegistry } from "@educateos/config";
+import { integrationHealth, oneroster } from "@educateos/integrations";
 import { ArtifactsGitBackend, InMemoryCredentialLedger, ProjectArtifacts, type ArtifactsPlan } from "@educateos/artifacts-git";
 import { AssessmentCi, AssessmentRuns, builtinRegistry, signRubricRelease, type EvaluatorRegistry } from "@educateos/assessment-ci";
 import { changeAllocations, effectivePools } from "./funding.ts";
-import { applyRosterImport, contentBody, installAndAssign, keepArtifact, publishStarterMaterial, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
+import { applyRosterImport, runRosterSyncOver, type RosterSyncOutcome, type RosterSyncSettings, contentBody, installAndAssign, keepArtifact, publishStarterMaterial, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
 import { CORRELATION_HEADER, errorResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
 import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./policy.ts";
 import { type AssignmentViewBody, type ParsedRouteInput, type RouteName, type RouteResponse, type Surface } from "./routes.ts";
@@ -81,6 +81,18 @@ export interface DistrictAppOptions {
   authority?: AuthoritySetting;
   /** How the roster relates to the IdP. Defaults to the district's first trusted issuer, keyed by `username`. */
   roster?: oneroster.OneRosterImportConfig;
+  /**
+   * Builds the roster source the head configuration revision's `rostering` names (SCHO-203), such
+   * as a Clever source over the district's token, or says why this deployment has none. Without it
+   * no roster sync runs; CSV imports are unaffected.
+   */
+  rosterSource?: RosterSourceFactory;
+  /**
+   * The service principal a scheduled roster sync acts as when it revokes the course grants of
+   * people the roster dropped. It needs authority over the district's enrollments (a district-admin
+   * grant). Without it a scheduled sync does not run; an administrator can still run one.
+   */
+  rosterServicePrincipalId?: PrincipalId;
   /** How long course workspaces are kept after their term closes. Defaults to a year. */
   retention?: RetentionPolicy;
   /** Hosts students may save links to as external artifacts. Defaults to none. */
@@ -151,6 +163,15 @@ export interface DistrictAppOptions {
   discussionScreening?: DiscussionScreening;
 }
 
+/** Builds a roster source for a configured `rostering`, or says why there is none. */
+export type RosterSourceFactory = (rostering: DesiredState["rostering"]) => { source: oneroster.RosterSource } | { reason: string };
+
+/** The district's roster sync job, which the district Worker runs on its hourly Cron Trigger (SCHO-203). */
+export interface RosterJobs {
+  /** Runs whichever roster sync the schedule says is due, as the roster service principal; or says why none ran. */
+  runScheduledSync(): Promise<RosterSyncOutcome | { ran: false; reason: string }>;
+}
+
 /** The district's communication jobs, which the district Worker runs on its Cron Triggers (SCHO-189). */
 export interface CommunicationJobs {
   /** Brings every student's notifications up to date and emails those owed an email. */
@@ -194,6 +215,8 @@ export interface DistrictApp {
   readonly stores: DistrictAppStores;
   /** The communication jobs (SCHO-189). Not on the `/api` surface. */
   readonly communication: CommunicationJobs;
+  /** The roster sync job (SCHO-203). Not on the `/api` surface. */
+  readonly rostering: RosterJobs;
 }
 
 /** The default `DistrictAppOptions.authority`: the OneRoster roster owns every directory record type. */
@@ -303,6 +326,47 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     ? undefined
     : new ArtifactsGitBackend({ plan: options.projects.plan, ledger: new InMemoryCredentialLedger() });
   const resolverFor = options.resolverFor ?? createDirectoryPrincipalResolver;
+
+  /** The roster sync the head configuration revision sets up: its provider, settings and source, or why it cannot run. */
+  async function rosterSyncSetup(): Promise<{ provider: string; settings?: RosterSyncSettings; source?: oneroster.RosterSource; reason?: string }> {
+    const head = (await stores.config.list()).at(-1);
+    if (head === undefined) return { provider: "none", reason: "no configuration revision has been applied" };
+    const desired = DesiredState.safeParse(head.desired);
+    if (!desired.success) return { provider: "unknown", reason: "the head configuration revision cannot be read" };
+    const { rostering } = desired.data;
+    const { provider, identityMapping, schedule, removalHold } = rostering;
+    if (identityMapping === undefined) return { provider, reason: "the roster has no identity mapping" };
+    const built = options.rosterSource?.(rostering) ?? { reason: `this deployment has no roster source for ${provider}` };
+    if ("reason" in built) return { provider, reason: built.reason };
+    try {
+      for (const kind of DIRECTORY_ENTITY_KINDS) assertSyncWritable(authority, kind, built.source.system ?? "oneroster");
+    } catch (error) {
+      if (error instanceof EducateOsError) return { provider, reason: `the roster does not own the directory: ${error.message}` };
+      throw error;
+    }
+    const settings: RosterSyncSettings = {
+      identityMapping,
+      ...(schedule === undefined ? {} : { schedule }),
+      ...(removalHold === undefined ? {} : { removalHold }),
+    };
+    return { provider, settings, source: built.source };
+  }
+
+  /**
+   * One roster sync at a time: the sync record has no version check, so a scheduled run and an
+   * administrator's run that overlapped (each provider call lets other requests in) could save
+   * over each other's mirror and cursors. A second caller is told one is running.
+   */
+  let rosterSyncRunning = false;
+  async function exclusiveRosterSync<T>(busy: () => T, run: () => Promise<T>): Promise<T> {
+    if (rosterSyncRunning) return busy();
+    rosterSyncRunning = true;
+    try {
+      return await run();
+    } finally {
+      rosterSyncRunning = false;
+    }
+  }
 
   /** Everything one request uses, built around a decider that audits under its correlation ID. */
   class RequestContext {
@@ -893,6 +957,57 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         now: now(),
       });
     },
+    // Scheduled roster sync (SCHO-203)
+    "admin.rosterSyncStatus": async (ctx) => {
+      await ctx.requireDistrict("read", "district");
+      const setup = await rosterSyncSetup();
+      const [runs, record] = await Promise.all([stores.rosterSync.runs(50), stores.rosterSync.load()]);
+      const schedule = setup.settings?.schedule;
+      return {
+        provider: setup.provider,
+        runnable: setup.source !== undefined,
+        ...(setup.reason === undefined ? {} : { reason: setup.reason }),
+        runs,
+        ...(schedule === undefined ? {} : { health: integrationHealth(runs, { maxStalenessMinutes: 2 * schedule.completeEveryHours * 60 }, now()) }),
+        ...(record.approvedRemoval === undefined ? {} : { approvedRemoval: record.approvedRemoval }),
+      };
+    },
+    "admin.runRosterSync": async (ctx, { body }) => {
+      await ctx.requireDistrict("update", "enrollment");
+      const setup = await rosterSyncSetup();
+      const { source, settings } = setup;
+      if (source === undefined || settings === undefined) throw new EducateOsError("unavailable", `The roster cannot sync: ${setup.reason}.`);
+      // With no mode, rerun what the latest run held, so an approval matches the removal it names.
+      const latest = (await stores.rosterSync.runs(1)).at(-1);
+      const mode = body.mode ?? (latest?.errorCode === "removal-held" ? latest.mode : "complete");
+      const outcome = await exclusiveRosterSync(
+        () => { throw new EducateOsError("conflict", "A roster sync is already running; try again when it finishes."); },
+        () => runRosterSyncOver({
+          directory: stores.directory,
+          sources: stores.rosterSources,
+          sync: stores.rosterSync,
+          authority,
+          workspaces: ctx.workspaces(),
+          caller: ctx.caller,
+          source,
+          settings,
+          mode,
+          runId: `admin-${ctx.correlationId}`,
+          now,
+        }),
+      );
+      if (!outcome.ran) return { ran: false, grantsRevoked: 0 };
+      return { ran: true, run: outcome.run, ...(outcome.preview === undefined ? {} : { preview: outcome.preview }), grantsRevoked: outcome.grantsRevoked };
+    },
+    "admin.approveRosterRemoval": async (ctx, { body }) => {
+      await ctx.requireDistrict("update", "enrollment");
+      const latest = (await stores.rosterSync.runs(1)).at(-1);
+      if (latest?.errorCode !== "removal-held" || latest.held?.fingerprint !== body.fingerprint) {
+        throw new EducateOsError("conflict", "That is not the removal the latest roster sync held; review the latest sync again.");
+      }
+      await stores.rosterSync.save({ ...(await stores.rosterSync.load()), approvedRemoval: body.fingerprint });
+      return { approvedRemoval: body.fingerprint };
+    },
     "admin.getConfig": async (ctx) => {
       await ctx.requireDistrict("read", "capability-config");
       const revisions = await stores.config.list();
@@ -1285,6 +1400,37 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     communication: {
       runNotificationJob: () => communicationFor(jobDecider).runNotificationJob(),
       runWeeklyDigest: () => familyDigest(communicationFor(jobDecider)).runWeeklyJob(),
+    },
+    rostering: {
+      async runScheduledSync() {
+        const setup = await rosterSyncSetup();
+        if (setup.source === undefined || setup.settings === undefined) return { ran: false, reason: setup.reason ?? "no roster source" };
+        if (setup.settings.schedule === undefined) return { ran: false, reason: "the roster has no sync schedule" };
+        const serviceId = options.rosterServicePrincipalId;
+        if (serviceId === undefined) return { ran: false, reason: "no roster service principal is configured" };
+        // Without authority over enrollments the run would commit, then fail to revoke dropped grants.
+        if (!isDistrictAdmin((await stores.directory.load()).snapshot, serviceId, now())) {
+          return { ran: false, reason: "the roster service principal is not an active district administrator" };
+        }
+        const { source, settings } = setup;
+        const runId = `scheduled-${now().toISOString()}`;
+        const decider: PolicyDecider = { decide: (request) => engine.decide(request, { correlationId: runId }) };
+        return exclusiveRosterSync<RosterSyncOutcome | { ran: false; reason: string }>(
+          () => ({ ran: false, reason: "a roster sync is already running" }),
+          () => runRosterSyncOver({
+            directory: stores.directory,
+            sources: stores.rosterSources,
+            sync: stores.rosterSync,
+            authority,
+            workspaces: new WorkspaceDirectory({ workspaces: stores.workspaces, directory: stores.directory, policy: decider, retention, now }),
+            caller: { principal: { principalId: serviceId, districtId }, channel: "system", correlationId: runId },
+            source,
+            settings,
+            runId,
+            now,
+          }),
+        );
+      },
     },
     fetch(request) {
       return respond(request, async (correlationId) => await serveCalendarFeed(request, correlationId) ?? await handle(request, correlationId));

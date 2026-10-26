@@ -90,6 +90,8 @@ export interface TestDistrict {
 export async function bootDistrict(
   directory: DistrictDirectorySnapshot = NORTHFIELD,
   { standards = ["ccss-ela", "ccss-math"], ...options }: Partial<Pick<DistrictAppOptions, "projects" | "fundingPools" | "modelCatalog" | "aiMonthlyDistrictCapUsdNano" | "cloudflareAccount" | "now" | "authority"
+    // Scheduled roster sync (SCHO-203)
+    | "rosterSource" | "rosterServicePrincipalId"
     // Communication (SCHO-189)
     | "mail" | "appUrl"
     // Discussions (SCHO-190)

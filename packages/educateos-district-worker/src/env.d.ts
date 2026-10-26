@@ -17,5 +17,10 @@ declare namespace Cloudflare {
      * Unset, the district serves no LTI routes.
      */
     LTI_TOOL_ORIGIN?: string;
+    /**
+     * The district-app bearer token Clever issued for the district (SCHO-203), a Worker secret.
+     * Unset, no Clever roster syncs.
+     */
+    CLEVER_DISTRICT_TOKEN?: string;
   }
 }

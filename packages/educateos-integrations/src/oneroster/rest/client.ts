@@ -273,7 +273,8 @@ export class OneRosterRestClient {
     return this.#fetch(url, {
       method: "GET",
       headers: { authorization: `Bearer ${token}`, accept: "application/json" },
-      redirect: "error",
+      // workerd refuses `redirect: "error"`; a redirect is refused as a failure like any non-2xx.
+      redirect: "manual",
       signal: AbortSignal.timeout(this.#limits.requestTimeoutMs),
     });
   }
@@ -314,7 +315,8 @@ export class OneRosterRestClient {
         method: "POST",
         headers,
         body: form.toString(),
-        redirect: "error",
+        // workerd refuses `redirect: "error"`; a redirect is refused as a failure like any non-2xx.
+        redirect: "manual",
         signal: AbortSignal.timeout(this.#limits.requestTimeoutMs),
       })
     );

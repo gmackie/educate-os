@@ -1044,6 +1044,9 @@ importers:
       '@educateos/fixtures':
         specifier: workspace:*
         version: link:../educateos-fixtures
+      '@educateos/provider-fakes':
+        specifier: workspace:*
+        version: link:../educateos-provider-fakes
       '@educateos/zip':
         specifier: workspace:*
         version: link:../educateos-zip
@@ -1083,6 +1086,9 @@ importers:
       '@educateos/identity-links':
         specifier: workspace:*
         version: link:../educateos-identity-links
+      '@educateos/integrations':
+        specifier: workspace:*
+        version: link:../educateos-integrations
       '@educateos/lti':
         specifier: workspace:*
         version: link:../educateos-lti

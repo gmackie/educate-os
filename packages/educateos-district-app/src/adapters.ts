@@ -3,6 +3,11 @@
 import {
   EducateOsError,
   type ActivityDefinitionId,
+  type IntegrationSyncRun,
+  type RemovalHold,
+  type RosterIdentityMapping,
+  type RosterSyncSchedule,
+  type SyncMode,
   type ArtifactId,
   type AuthorityMap,
   type Caller,
@@ -21,7 +26,7 @@ import type { ActivityInstallation, CurriculumService, OfferingScope } from "@ed
 import { drainCourseFundingCancellations, type CourseFundingCancellations, type TermClosedEvent } from "@educateos/ai-governance";
 import { oneroster } from "@educateos/integrations";
 import type { AssignmentSettingsInput, RevisionContentBody, StarterMaterialBody } from "./routes.ts";
-import type { RosterSourceStore } from "./stores.ts";
+import type { RosterSourceStore, RosterSyncStore } from "./stores.ts";
 import type { z } from "zod";
 
 /**
@@ -158,6 +163,128 @@ export async function applyRosterImport(input: {
   const { revoked } = await input.workspaces.reconcileCourseGrants(input.caller);
   return { applied: true, preview: result.preview, grantsRevoked: revoked };
 }
+
+/** How a district's roster sync is configured: the head configuration revision's `rostering`. */
+export interface RosterSyncSettings {
+  /** How the roster's users map to the IdP. */
+  identityMapping: RosterIdentityMapping;
+  /** When the roster syncs. Without it nothing runs on a schedule; an administrator can still run one. */
+  schedule?: RosterSyncSchedule;
+  /** The large-removal hold's threshold. The sync's default when absent. */
+  removalHold?: RemovalHold;
+}
+
+/** What one roster sync did: nothing (and why), or a run. */
+export type RosterSyncOutcome =
+  | { ran: false; reason: "not-due" }
+  | { ran: true; run: IntegrationSyncRun; preview?: oneroster.OneRosterPreview; grantsRevoked: number };
+
+/**
+ * A03 → A01 → W01 over a roster source (SCHO-203): one scheduled or administrator-run sync, through
+ * the same `runRosterSync` as every source. It reads the live directory and source map as the
+ * roster state, so nothing is copied; `sync` keeps only what a delta needs (the mirror and the
+ * cursors), an approved removal, and the run history.
+ *
+ * The source must own every record type it writes (`external:<source.system>` in the authority
+ * map). With no `mode`, it runs whichever sync the schedule says is due, if any. A run that applies
+ * commits the directory against the version it read: if another apply landed meanwhile, nothing is
+ * kept and the run is recorded as failed (`internal-error`), to be run again. Afterwards W01 revokes
+ * the course grants of everyone the roster dropped, as `caller`.
+ *
+ * An approved removal is consumed by the next run that applies, and dropped by one held again (it
+ * would remove something other than what was approved), so a stale approval never carries over.
+ * A run that throws is recorded as failed (`internal-error`) before the error propagates.
+ *
+ * Run one at a time per district: the sync record has no version check, so overlapping runs could
+ * save over each other's mirror and cursors. `createDistrictApp` serialises its callers.
+ */
+export async function runRosterSyncOver(input: {
+  directory: AcademicStore;
+  sources: RosterSourceStore;
+  sync: RosterSyncStore;
+  authority: AuthorityMap;
+  workspaces: WorkspaceDirectory;
+  caller: Caller;
+  source: oneroster.RosterSource;
+  settings: RosterSyncSettings;
+  mode?: SyncMode;
+  runId: string;
+  now: () => Date;
+}): Promise<RosterSyncOutcome> {
+  const system = input.source.system ?? "oneroster";
+  for (const kind of DIRECTORY_ENTITY_KINDS) assertSyncWritable(input.authority, kind, system);
+  const runs = await input.sync.runs();
+  const mode = input.mode ?? (input.settings.schedule === undefined
+    ? undefined
+    : oneroster.dueRosterSync(input.settings.schedule, runs, input.source.modes, input.now()));
+  if (mode === undefined) return { ran: false, reason: "not-due" };
+
+  const record = await input.sync.load();
+  const { version, snapshot } = await input.directory.load();
+  const state: oneroster.RosterSyncState = {
+    roster: { snapshot, sources: await input.sources.load() },
+    ...(record.mirror === undefined ? {} : { mirror: record.mirror }),
+    ...(record.cursors === undefined ? {} : { cursors: record.cursors }),
+    ...(record.sourceCursor === undefined ? {} : { sourceCursor: record.sourceCursor }),
+  };
+  const startedAt = input.now().toISOString();
+  let result: Awaited<ReturnType<typeof oneroster.runRosterSync>>;
+  try {
+    result = await oneroster.runRosterSync({
+      state,
+      source: input.source,
+      mode,
+      config: input.settings.identityMapping,
+      runId: input.runId,
+      clock: input.now,
+      ...(input.settings.removalHold === undefined ? {} : { removalHold: input.settings.removalHold }),
+      ...(record.approvedRemoval === undefined ? {} : { approvedRemoval: record.approvedRemoval }),
+    });
+  } catch (error) {
+    // Whatever went wrong, the run history says a run failed, so the sync's health shows it.
+    await input.sync.recordRun({ id: input.runId, mode, startedAt, finishedAt: input.now().toISOString(), counts: ZERO_COUNTS, outcome: "failed", errorCode: "internal-error" });
+    throw error;
+  }
+  if (result.run.outcome === "failed") {
+    await input.sync.recordRun(result.run);
+    // A run held again proves the approval stale; any other failure leaves it for the next run.
+    // Read the record again and clear only that approval, so nothing saved meanwhile is undone.
+    if (record.approvedRemoval !== undefined && result.run.errorCode === "removal-held") {
+      const { approvedRemoval, ...latest } = await input.sync.load();
+      if (approvedRemoval === record.approvedRemoval) await input.sync.save(latest);
+    }
+    return { ran: true, run: result.run, ...(result.preview === undefined ? {} : { preview: result.preview }), grantsRevoked: 0 };
+  }
+  try {
+    await input.directory.commit(result.state.roster.snapshot, version);
+  } catch (error) {
+    if (!(error instanceof EducateOsError && error.code === "conflict")) throw error;
+    const run: IntegrationSyncRun = { ...result.run, counts: ZERO_COUNTS, outcome: "failed", errorCode: "internal-error", finishedAt: input.now().toISOString() };
+    await input.sync.recordRun(run);
+    return { ran: true, run, grantsRevoked: 0 };
+  }
+  await input.sources.save(result.state.roster.sources);
+  const next = result.state;
+  await input.sync.save({
+    ...(next.mirror === undefined ? {} : { mirror: next.mirror }),
+    ...(next.cursors === undefined ? {} : { cursors: next.cursors }),
+    ...(next.sourceCursor === undefined ? {} : { sourceCursor: next.sourceCursor }),
+  });
+  await input.sync.recordRun(result.run);
+  const { revoked } = await input.workspaces.reconcileCourseGrants(input.caller);
+  return { ran: true, run: result.run, ...(result.preview === undefined ? {} : { preview: result.preview }), grantsRevoked: revoked };
+}
+
+const NO_CHANGE = { added: 0, updated: 0, deactivated: 0 };
+const ZERO_COUNTS: IntegrationSyncRun["counts"] = {
+  schools: NO_CHANGE,
+  terms: NO_CHANGE,
+  courses: NO_CHANGE,
+  offerings: NO_CHANGE,
+  principals: NO_CHANGE,
+  enrollments: NO_CHANGE,
+  roleAssignments: { added: 0, removed: 0 },
+};
 
 /** Where G01 keeps the course-funding cancellations it has drained. */
 export interface FundingCancellationStore {

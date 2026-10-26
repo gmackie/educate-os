@@ -4,7 +4,7 @@
 // stores. Everything administrators change later (configuration, funding allocations, the roster)
 // is stored in the district's Durable Object, not here.
 import { z } from "zod";
-import { DistrictDirectorySnapshot } from "@educateos/contracts";
+import { DistrictDirectorySnapshot, PrincipalId } from "@educateos/contracts";
 import { AuthoritySetting } from "@educateos/district-app";
 import { CloudflareAccountFacts, FundingPoolSet, GovernedModel, UsdNano } from "@educateos/ai-governance";
 import { RetentionPolicy } from "@educateos/workspaces";
@@ -37,6 +37,12 @@ export const DistrictWorkerConfig = z.strictObject({
     districtId: z.string().regex(/^[0-9a-f]{24}$/),
     issuer: z.url({ protocol: /^https$/ }).optional(),
   }).optional(),
+  /**
+   * The service principal a scheduled roster sync acts as (SCHO-203) when it revokes the course
+   * grants of people the roster dropped: a `service` principal in the directory with a district-admin
+   * grant. Without it the hourly roster sync does not run; an administrator can still run one.
+   */
+  rosterServicePrincipalId: PrincipalId.optional(),
   /** The district's AI funding pools. Defaults to none, so no AI request is funded. */
   fundingPools: FundingPoolSet.optional(),
   /** The district's monthly cap on its course and personal pools' allocations together. */

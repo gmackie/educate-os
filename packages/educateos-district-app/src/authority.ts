@@ -15,6 +15,19 @@ export const ONEROSTER_AUTHORITY: AuthorityMap = {
 };
 
 /**
+ * The Clever roster owns every directory record type (SCHO-203): a district that rosters through
+ * Clever's Data API. Its sync writes as `external:clever`, so a OneRoster import into it is refused.
+ */
+export const CLEVER_AUTHORITY: AuthorityMap = {
+  school: "external:clever",
+  term: "external:clever",
+  course: "external:clever",
+  offering: "external:clever",
+  enrollment: "external:clever",
+  principal: "external:clever",
+};
+
+/**
  * EducateOS owns every directory record type: administrators create schools, terms, courses,
  * offerings and principals, and enroll students, through the admin API. For a district with no
  * roster to sync from, such as a homeschool co-op. A roster import into such a district is refused
@@ -29,8 +42,11 @@ export const LOCAL_AUTHORITY: AuthorityMap = {
   principal: "local",
 };
 
-/** A named authority map: `oneroster` ({@link ONEROSTER_AUTHORITY}) or `local` ({@link LOCAL_AUTHORITY}). */
-export const AuthorityProfile = z.enum(["oneroster", "local"]);
+/**
+ * A named authority map: `oneroster` ({@link ONEROSTER_AUTHORITY}), `clever`
+ * ({@link CLEVER_AUTHORITY}) or `local` ({@link LOCAL_AUTHORITY}).
+ */
+export const AuthorityProfile = z.enum(["oneroster", "clever", "local"]);
 /** An authority profile name. */
 export type AuthorityProfile = z.infer<typeof AuthorityProfile>;
 
@@ -42,6 +58,7 @@ export type AuthoritySetting = z.infer<typeof AuthoritySetting>;
 /** The authority map a setting names. With none, the roster owns everything. */
 export function authorityFor(setting: AuthoritySetting | undefined): AuthorityMap {
   if (setting === undefined || setting === "oneroster") return ONEROSTER_AUTHORITY;
+  if (setting === "clever") return CLEVER_AUTHORITY;
   if (setting === "local") return LOCAL_AUTHORITY;
   return AuthorityMap.parse(setting);
 }

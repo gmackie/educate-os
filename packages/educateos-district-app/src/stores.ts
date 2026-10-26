@@ -1,5 +1,6 @@
 import {
   EducateOsError,
+  IntegrationSyncRun,
   type ConfigRevisionId,
   type ConfigurationRevision,
   type DistrictDirectorySnapshot,
@@ -29,6 +30,7 @@ import {
 import { InMemoryCatalogMirrorStorage, type CatalogMirrorStorage } from "@educateos/catalog";
 import { InMemoryLedgerStore, type LedgerStore } from "@educateos/ai-governance";
 import { oneroster } from "@educateos/integrations";
+import { z } from "zod";
 import { InMemoryDiscussionStorage, type DiscussionStorage } from "@educateos/discussions";
 // Quizzes (SCHO-191)
 import { InMemoryQuizStorage, type QuizStorage } from "@educateos/quizzes";
@@ -123,6 +125,61 @@ export class InMemoryRosterSourceStore implements RosterSourceStore {
 }
 
 /**
+ * What a scheduled roster sync keeps between runs (SCHO-203), beside the directory and source map
+ * it writes: the roster's rows as last applied, where the next delta starts, and a held removal an
+ * administrator approved. The directory itself is never copied here.
+ */
+export const RosterSyncRecord = z.strictObject({
+  /** The roster's rows as the last applied sync left them. Absent until a complete sync applies. */
+  mirror: oneroster.RosterMirror.optional(),
+  /** Where each file's next `dateLastModified` delta starts. */
+  cursors: oneroster.RosterCursors.optional(),
+  /** Where the source's own change feed resumes (Clever's events). */
+  sourceCursor: oneroster.SourceCursor.optional(),
+  /** The fingerprint of a held removal an administrator approved, which the next sync consumes. */
+  approvedRemoval: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+});
+/** A roster sync record. */
+export type RosterSyncRecord = z.infer<typeof RosterSyncRecord>;
+
+/** How many sync runs a {@link RosterSyncStore} keeps. Older ones are dropped. */
+export const MAX_ROSTER_SYNC_RUNS = 500;
+
+/** Where a scheduled roster sync keeps its {@link RosterSyncRecord} and its run history. */
+export interface RosterSyncStore {
+  /** The record, empty before the first sync. */
+  load(): Promise<RosterSyncRecord>;
+  /** Replaces the record. */
+  save(record: RosterSyncRecord): Promise<void>;
+  /** Records a run, dropping the oldest past {@link MAX_ROSTER_SYNC_RUNS}. Runs hold counts and codes, never roster data. */
+  recordRun(run: IntegrationSyncRun): Promise<void>;
+  /** The most recent runs, at most `limit`, oldest first. */
+  runs(limit?: number): Promise<IntegrationSyncRun[]>;
+}
+
+/** A {@link RosterSyncStore} in memory. */
+export class InMemoryRosterSyncStore implements RosterSyncStore {
+  #record: RosterSyncRecord = {};
+  #runs: IntegrationSyncRun[] = [];
+
+  async load(): Promise<RosterSyncRecord> {
+    return structuredClone(this.#record);
+  }
+
+  async save(record: RosterSyncRecord): Promise<void> {
+    this.#record = structuredClone(RosterSyncRecord.parse(record));
+  }
+
+  async recordRun(run: IntegrationSyncRun): Promise<void> {
+    this.#runs = [...this.#runs, IntegrationSyncRun.parse(run)].slice(-MAX_ROSTER_SYNC_RUNS);
+  }
+
+  async runs(limit = MAX_ROSTER_SYNC_RUNS): Promise<IntegrationSyncRun[]> {
+    return structuredClone(this.#runs.slice(-limit));
+  }
+}
+
+/**
  * The district's administrator-confirmed Workshop user links (`@educateos/identity`), oldest first.
  * Append-only; `confirmWorkshopUserLink` checks a link against these before it is added.
  */
@@ -170,6 +227,8 @@ export interface DistrictAppStores {
   directory: AcademicStore;
   /** Which directory records the roster owns (A03). */
   rosterSources: RosterSourceStore;
+  /** A scheduled roster sync's mirror, cursors, approval and run history (SCHO-203). */
+  rosterSync: RosterSyncStore;
   /** Workspace records (W01). */
   workspaces: WorkspaceStore;
   /** Artifact records (W02). */
@@ -229,6 +288,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
   return {
     directory: InMemoryAcademicStore.seeded(directory),
     rosterSources: new InMemoryRosterSourceStore(),
+    rosterSync: new InMemoryRosterSyncStore(),
     workspaces: new InMemoryWorkspaceStore(),
     artifactRecords: new InMemoryArtifactRecordStore(),
     artifactContent: new BackendArtifactStore({ text: new InMemoryInlineTextTable(), r2: new InMemoryR2Bucket() }),

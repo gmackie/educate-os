@@ -87,6 +87,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return fetch(input, init);
   }
 
+  /** The fetch roster syncs reach their provider (Clever's Data API) with (SCHO-203). Tests replace it with a fake. */
+  protected rosterFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    return fetch(input, init);
+  }
+
   /** The running application, for subclasses that drive it directly (the tests). */
   protected async districtApp(): Promise<DistrictApp> {
     return (await this.#boot()).app;
@@ -153,8 +158,9 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
   }
 
   /**
-   * Runs the job a Cron Trigger names (SCHO-189): the hourly notification sweep, or the weekly
-   * family digest. An expression the district does not schedule runs nothing.
+   * Runs the job a Cron Trigger names (SCHO-189): the hourly notification sweep, then whichever
+   * roster sync is due (SCHO-203); or the weekly family digest. An expression the district does not
+   * schedule runs nothing.
    */
   async runScheduled(cron: string): Promise<void> {
     const { app } = await this.#boot();
@@ -164,8 +170,40 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
       log.warn("a Cron Trigger named no district job", { event: "district.cron.unknown" });
       return;
     }
-    const result = job === "notifications" ? await app.communication.runNotificationJob() : await app.communication.runWeeklyDigest();
-    log.info("a scheduled district job ran", { event: `district.cron.${job}`, ...result });
+    if (job === "digest") {
+      log.info("a scheduled district job ran", { event: "district.cron.digest", ...await app.communication.runWeeklyDigest() });
+      return;
+    }
+    // The roster sync runs whether or not the notification sweep did: neither failure costs the other.
+    try {
+      log.info("a scheduled district job ran", { event: "district.cron.notifications", ...await app.communication.runNotificationJob() });
+    } finally {
+      await this.#runRosterSync(app);
+    }
+  }
+
+  /** The hourly roster sync: logged, never thrown, so one failure costs no other job. Counts and codes only. */
+  async #runRosterSync(app: DistrictApp): Promise<void> {
+    const log = logger.with({ districtId: app.districtId });
+    try {
+      const outcome = await app.rostering.runScheduledSync();
+      if (!outcome.ran) {
+        log.info("no roster sync ran", { event: "district.cron.roster.skipped", reason: outcome.reason });
+        return;
+      }
+      const { run } = outcome;
+      log.info("a roster sync ran", {
+        event: "district.cron.roster",
+        mode: run.mode,
+        outcome: run.outcome,
+        ...(run.errorCode === undefined ? {} : { errorCode: run.errorCode }),
+        principalsDeactivated: run.counts.principals.deactivated,
+        enrollmentsDeactivated: run.counts.enrollments.deactivated,
+        grantsRevoked: outcome.grantsRevoked,
+      });
+    } catch (error) {
+      log.error("the roster sync failed", { event: "district.cron.roster.failed", error });
+    }
   }
 
   #boot(): Promise<District> {
@@ -188,6 +226,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         accessIssuer: this.env.CF_ACCESS_ISS,
         accessAudiences: this.env.CF_ACCESS_AUD,
         ltiToolOrigin: this.env.LTI_TOOL_ORIGIN,
+        cleverDistrictToken: this.env.CLEVER_DISTRICT_TOKEN,
       },
       {
         importFetch: (url, init) => this.importFetch(url, init),
@@ -197,6 +236,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
           revisionId,
         }),
         platformFetch: (input, init) => this.platformFetch(input, init),
+        rosterFetch: (input, init) => this.rosterFetch(input, init),
         ...(keys === undefined ? {} : { accessKeys: keys }),
         ...(sendEmail === undefined ? {} : { sendEmail }),
       },

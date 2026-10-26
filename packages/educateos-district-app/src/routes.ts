@@ -20,6 +20,7 @@ import {
   DistrictId,
   Enrollment,
   EnrollmentId,
+  IntegrationSyncRun,
   OfferingId,
   PolicySettings,
   Principal,
@@ -31,6 +32,7 @@ import {
   School,
   SchoolId,
   SubmissionId,
+  SyncMode,
   TermId,
   TermState,
   WorkspaceId,
@@ -125,7 +127,7 @@ import { EvidenceContract } from "@educateos/registry";
 import { AssessmentReport, IdempotencyKey, RubricDraft, RubricRelease, RunError, RunState } from "@educateos/assessment-ci";
 import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type AiProjectionReport, type UsageReport } from "@educateos/ai-governance";
 import type { ConfigProblem, ConfigurationPlan } from "@educateos/config";
-import type { oneroster } from "@educateos/integrations";
+import type { IntegrationHealth, oneroster } from "@educateos/integrations";
 // Guardians (ADR-0012, SCHO-188)
 import { GuardianRelationship, GuardianRelationshipId, OpaqueCode, PrincipalStatus } from "@educateos/contracts";
 import { GuardianRelationshipAuditEvent, GuardianRelationshipScope } from "@educateos/policy";
@@ -431,6 +433,36 @@ export const RosterFilesInput = z.strictObject({
 });
 /** A roster import request. */
 export type RosterFilesInput = z.infer<typeof RosterFilesInput>;
+
+/** A roster integration's sync (SCHO-203): how it is set up, its latest runs and its health. */
+export const RosterSyncStatusBody = z.strictObject({
+  /** The head configuration revision's roster provider, or `none` before any revision. */
+  provider: z.string(),
+  /** Whether this district can run a sync now: a provider with a source, an identity mapping and credentials. */
+  runnable: z.boolean(),
+  /** Why it cannot, when it cannot. */
+  reason: z.string().optional(),
+  /** The most recent runs, oldest first. Counts and codes only. */
+  runs: z.array(IntegrationSyncRun),
+  /** Health against the schedule: a sync is stale after two complete-sync intervals. Absent without a schedule. */
+  health: declared<IntegrationHealth>().optional(),
+  /** A held removal an administrator approved, which the next sync will apply if it still matches. */
+  approvedRemoval: z.string().optional(),
+});
+/** A roster sync status. */
+export type RosterSyncStatusBody = z.infer<typeof RosterSyncStatusBody>;
+
+/** What running a roster sync did. */
+export const RosterSyncRunBody = z.strictObject({
+  /** Whether a sync ran. */
+  ran: z.boolean(),
+  /** The run, when one ran. */
+  run: IntegrationSyncRun.optional(),
+  /** The import's preview, when the run got as far as mapping the feed. */
+  preview: declared<oneroster.OneRosterPreview>().optional(),
+  /** Course grants revoked from people the roster dropped. */
+  grantsRevoked: z.int().nonnegative(),
+});
 
 /** A configuration document to plan or apply. */
 export const ConfigDocumentInput = z.strictObject({
@@ -1117,6 +1149,17 @@ export const ROUTES = {
   "admin.applyRoster": route({
     method: "POST", path: "/api/admin/roster/apply", surface: "admin", body: RosterFilesInput,
     response: z.strictObject({ applied: z.boolean(), preview: declared<oneroster.OneRosterPreview>(), grantsRevoked: z.int().nonnegative() }),
+  }),
+  // Scheduled roster sync (SCHO-203)
+  "admin.rosterSyncStatus": route({ method: "GET", path: "/api/admin/roster/sync", surface: "admin", response: RosterSyncStatusBody }),
+  "admin.runRosterSync": route({
+    method: "POST", path: "/api/admin/roster/sync", surface: "admin",
+    body: z.strictObject({ mode: SyncMode.optional() }), response: RosterSyncRunBody,
+  }),
+  "admin.approveRosterRemoval": route({
+    method: "POST", path: "/api/admin/roster/sync/approve", surface: "admin",
+    body: z.strictObject({ fingerprint: z.string().regex(/^[0-9a-f]{64}$/) }),
+    response: z.strictObject({ approvedRemoval: z.string() }),
   }),
   "admin.getConfig": route({
     method: "GET", path: "/api/admin/config", surface: "admin",

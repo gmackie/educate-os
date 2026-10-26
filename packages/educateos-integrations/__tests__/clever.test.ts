@@ -91,6 +91,17 @@ describe("Clever Data API client", () => {
     expect(() => new clever.CleverDataClient({ connection: { districtId: "not-an-id" }, token: "t", fetch })).toThrow(/Clever district ID/);
   });
 
+  it("follows no redirect: one is a failed request, and the fetch is asked not to follow it", async () => {
+    let asked: RequestRedirect | undefined;
+    const redirecting: typeof fetch = async (_input, init) => {
+      asked = init?.redirect;
+      return new Response(null, { status: 302, headers: { location: "https://evil.example/" } });
+    };
+    const client = new clever.CleverDataClient({ connection: { districtId: "0".repeat(24) }, token: "t", fetch: redirecting });
+    await expect(client.list("users")).rejects.toMatchObject({ code: "invalid-response" });
+    expect(asked).toBe("manual");
+  });
+
   it("follows no link to another resource", async () => {
     const fetchStub: typeof fetch = async () =>
       Response.json({ data: [{ data: { id: "a" } }], links: [{ rel: "next", uri: "https://evil.example/v3.1/users?starting_after=a" }] });

@@ -34,9 +34,10 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@gadgets/scripts": "workspace:*",
     "@educateos/fixtures": "workspace:*",
+    "@educateos/provider-fakes": "workspace:*",
     "@educateos/zip": "workspace:*",
+    "@gadgets/scripts": "workspace:*",
     "@types/node": "26.1.0",
     "vitest": "catalog:"
   }

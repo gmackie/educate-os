@@ -87,6 +87,22 @@ that holds a person's Workshop assertion can sign in to the district as them; Ac
 assertion only to the person's own browser, and the Workshop itself is already trusted with it. A
 district with no connector lists its own audience alone.
 
+### Clever (SCHO-203)
+
+A district that signs in through Clever sets `DISTRICT_CONFIG.cleverSso` (`districtId`, Clever's ID
+of the district, and optionally the `issuer` its identity links name, `https://clever.com` by
+default). A sign-in whose Access token carries Clever's claims (passed through by an Access OIDC login
+method for Clever, including `multi_role_user_id`) is then resolved by the Clever user ID, and a
+person's token without them is refused. Access tokens do not say which login method was used, so the
+district's Access application must offer Clever as its only login method for people.
+
+Clever's portal ("Instant Login") sends people to the app's first redirect URI with a code and no
+`state`, which Access refuses, so the district Worker serves no launch route of its own. Portal
+launches go through the one shared URL `https://educateos.io/clever/launch` (SCHO-249), which
+redirects to the district registered for the user's Clever district, where Access starts its own
+Clever sign-in. A self-hosted install registers its own landing page as the first redirect URI
+instead (see ADR-0013).
+
 ## Entrypoints
 
 | Entrypoint | For | Contract |
@@ -119,7 +135,7 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   `authority`, `fundingPools`, `aiMonthlyDistrictCapUsdNano`, `cloudflareAccount`, `modelCatalog`,
   `approvedExternalHosts` and `retention`. Workers vars are limited in size, so the seed should be
   small. The roster arrives through `admin.applyRoster`.
-- `authority` names who owns the directory: `"oneroster"` (the default) or `"local"`, or a full
+- `authority` names who owns the directory: `"oneroster"` (the default), `"clever"` or `"local"`, or a full
   `AuthorityMap` for a mixed district. A district with no roster, such as a homeschool co-op, sets
   `"local"`: its administrators then create schools, terms, courses, sections and students and enroll
   them through the admin API (`admin.createCourse`, `admin.enroll`, `admin.createPrincipal` and the
@@ -130,6 +146,12 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   that away (`admin.grantDistrictAdmin`, `admin.revokeDistrictAdmin`, SCHO-212). The district always
   keeps one active administrator, and nobody can remove their own administration.
 - `CF_ACCESS_ISS` and `CF_ACCESS_AUD` (a comma-separated list, see [Sign-in](#sign-in)).
+- `CLEVER_DISTRICT_TOKEN` (optional secret, SCHO-203): the district-app token Clever issued for the
+  district, for the scheduled Clever roster sync. It is not a deploy input (the wizard requires every
+  input, and most districts have no Clever roster); set it with `wrangler secret put` or the
+  deployment's secret sync. With it, `DISTRICT_CONFIG.authority` should be `"clever"` (the Clever
+  roster owns every record type, as `external:clever`) and `DISTRICT_CONFIG.rosterServicePrincipalId`
+  names the `service` principal, granted district administration, that the sync acts as.
 - `LTI_TOOL_ORIGIN` (optional): the LTI Tool's public origin (see [LTI 1.3 Tool](#lti-13-tool-scho-177)).
   It is not yet a deploy input, so the installer does not offer it; the schoolos.gmac.io production
   config sets it from the district hostname.
@@ -153,6 +175,16 @@ Two Cron Triggers run the district's communication jobs (`src/schedule.ts`):
 | --- | --- |
 | `7 * * * *` | Brings every active student's in-app notifications up to date (new announcements and assignments, work due within 48 hours and not submitted, released feedback and grades), then emails those owed an email, honouring each principal's preferences. Notifications are keyed by what they are about, so a rerun adds and sends nothing twice. |
 | `0 14 * * SUN` | Sends the weekly family digest for the week starting the next morning. Each guardian's week is claimed in a send ledger before the send, so it goes out at most once; a provider refusal is retried on the next run. |
+
+The hourly trigger also runs whichever roster sync is due (SCHO-203): the head configuration
+revision's `rostering` names the provider (only `clever` is wired in the Worker), its
+`identityMapping`, `schedule` and `removalHold`, and `rostering.clever` the Clever district. The
+sync reads the live directory, keeps only its mirror, cursors and run history beside it, and
+applies through the same importer as a CSV import. A sync that would deactivate a large share of
+the roster is held: `admin.rosterSyncStatus` shows it, `admin.approveRosterRemoval` approves exactly
+that removal, and the next sync applies it; `admin.runRosterSync` runs one now. Without a token, a
+Clever roster configuration or a roster service principal, the job logs why and does nothing; a
+failed sync never stops the notification job.
 
 The scheduled handler hands each trigger to the district's object (`DistrictObject.runScheduled`).
 An expression it does not know runs nothing.

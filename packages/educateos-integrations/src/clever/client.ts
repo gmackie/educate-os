@@ -212,7 +212,8 @@ export class CleverDataClient {
           this.#fetch(url, {
             method: "GET",
             headers: { authorization: `Bearer ${this.#token}`, accept: "application/json" },
-            redirect: "error",
+            // workerd refuses `redirect: "error"`; a redirect is answered as a failure like any non-2xx.
+            redirect: "manual",
             signal: AbortSignal.timeout(this.#limits.requestTimeoutMs),
           }),
         this.#retry,

@@ -7,7 +7,8 @@ import { AcademicDirectory } from "@educateos/academics";
 import type { ImportFetch } from "@educateos/content-studio";
 import { createDirectoryPrincipalResolver } from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
-import { authorityFor, createDistrictApp, type DistrictApp } from "@educateos/district-app";
+import { authorityFor, createDistrictApp, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
+import { clever } from "@educateos/integrations";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
 import { accessAudiences, accessRequestVerifier } from "./access.ts";
@@ -37,6 +38,8 @@ export interface DistrictSettings {
   accessAudiences: string | undefined;
   /** `LTI_TOOL_ORIGIN`, the LTI Tool's public https origin. Without it the district serves no LTI routes. */
   ltiToolOrigin?: string | undefined;
+  /** `CLEVER_DISTRICT_TOKEN`, the district-app token Clever issued for the district (SCHO-203). Without it no Clever roster syncs. */
+  cleverDistrictToken?: string | undefined;
 }
 
 /** What a district reaches outside its storage. */
@@ -51,6 +54,8 @@ export interface DistrictSeams {
   onUnreadableConfigRevision?: (revisionId: string) => void;
   /** The fetch LTI platform calls go through (SCHO-177). Defaults to the global fetch. */
   platformFetch?: typeof fetch;
+  /** The fetch roster syncs reach their provider with (SCHO-203). Defaults to the global fetch. */
+  rosterFetch?: typeof fetch;
 }
 
 /** The district ID `DISTRICT_CONFIG` names, which its Durable Object is named by. */
@@ -65,6 +70,19 @@ export function configuredDistrictId(config: string | undefined): string {
  * surface and the gatekeeper's `authenticate` sign in through Cloudflare Access and resolve the
  * identity through the directory as it stands, so they cannot disagree about who a caller is.
  */
+/**
+ * The roster sources the district Worker can build (SCHO-203): a Clever roster read with the
+ * district's token. OneRoster REST is not wired into the Worker yet, so any other provider says so.
+ */
+export function workerRosterSource(token: string | undefined, rosterFetch: typeof fetch): RosterSourceFactory {
+  return (rostering) => {
+    if (rostering.provider !== "clever") return { reason: `the district Worker syncs a Clever roster only, not ${rostering.provider}` };
+    if (rostering.clever === undefined) return { reason: "the roster names no Clever district" };
+    if (token === undefined || token === "") return { reason: "no CLEVER_DISTRICT_TOKEN secret is set" };
+    return { source: clever.cleverRosterSource(new clever.CleverDataClient({ connection: rostering.clever, token, fetch: rosterFetch })) };
+  };
+}
+
 export async function startDistrict(storage: DistrictSqlStorage, settings: DistrictSettings, seams: DistrictSeams): Promise<District> {
   const config = readDistrictWorkerConfig(settings.config);
   const stores = durableDistrictStores(storage, config.directory);
@@ -81,6 +99,9 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     importFetch: seams.importFetch,
     ...(seams.onUnreadableConfigRevision === undefined ? {} : { onUnreadableConfigRevision: seams.onUnreadableConfigRevision }),
     authority,
+    // Scheduled roster sync (SCHO-203)
+    rosterSource: workerRosterSource(settings.cleverDistrictToken, seams.rosterFetch ?? ((input, init) => fetch(input, init))),
+    ...(config.rosterServicePrincipalId === undefined ? {} : { rosterServicePrincipalId: config.rosterServicePrincipalId }),
     ...(config.fundingPools === undefined ? {} : { fundingPools: config.fundingPools }),
     ...(config.aiMonthlyDistrictCapUsdNano === undefined ? {} : { aiMonthlyDistrictCapUsdNano: config.aiMonthlyDistrictCapUsdNano }),
     ...(config.cloudflareAccount === undefined ? {} : { cloudflareAccount: config.cloudflareAccount }),
