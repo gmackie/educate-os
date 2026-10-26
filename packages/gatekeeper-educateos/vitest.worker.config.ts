@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import capnwebValidate from "capnweb-validate/vite";
 import { kCurrentWorker } from "miniflare";
@@ -34,6 +35,13 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    // The School app bundle is built separately (build-app.ts); the Worker only embeds it.
+    alias: [{
+      find: /^\.\/generated\/app\.txt$/,
+      replacement: fileURLToPath(new URL("./__tests__/workerd/app-stub.txt", import.meta.url)),
+    }],
+  },
   test: {
     include: ["__tests__/workerd/*.test.ts"],
     // Asserts the pool actually started, rather than trusting a green run to mean workerd.

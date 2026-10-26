@@ -165,8 +165,9 @@ test("the EducateOS connector reaches the district's school tools by its pinned 
   const educateos = configFor(build(), EDUCATEOS_GATEKEEPER_PACKAGE);
   assert.deepEqual(educateos.services,
       [{ binding: "EDUCATEOS_DISTRICT", service: "schoolos-district-worker", entrypoint: "DistrictSchoolTools" }]);
-  // Its connect page is served at BASE_URL, on the router's hostname behind the instance's Access.
-  assert.deepEqual(educateos.vars, { BASE_URL: `${BASE_URL}/gatekeeper/educateos` });
+  // Its connect page is served at BASE_URL, on the router's hostname behind the instance's Access;
+  // the School app's calendar links name the district's own hostname.
+  assert.deepEqual(educateos.vars, { BASE_URL: `${BASE_URL}/gatekeeper/educateos`, DISTRICT_URL: "https://district.schoolos.gmac.io" });
   assert.equal(educateos.kv_namespaces, undefined);
   assert.deepEqual(educateos.compatibility_flags, ["allow_irrevocable_stub_storage"]);
 });

@@ -70,16 +70,33 @@ connected account. That is the trust the binding carries.
 
 ## School pages (SCHO-218)
 
-The connector is to host the district's own screens (Administration, each school, each class) as
-its app UI, at `/gatekeepers/<id>` through `startAppUi`, so a person uses their district from
-their Workshop. Those pages talk to the district through `SchoolToolService.serveAs(principal,
-request)`, which serves the district's `/api` surface (`DistrictApp.serveAs`) as the account's
-principal rather than as whoever the request's credential proves. Nothing calls it yet; the app UI
-that will is a later step of SCHO-218.
+The account provides the **School app** (`providesUi: { title: "School", nav: true }`): the
+district's own screens (the admin console, Teacher Studio and the Learning Home) at
+`/gatekeepers/educateos`, so a person uses their district from their Workshop.
+
+- **The frame.** `app/` is one single-file React app built by `build-app.ts` into the gitignored
+  `src/generated/app.txt`, which `startAppUi` returns. It mounts the three UIs' own packages, which
+  are embeddable for this (no routes in the frame's own address, the host's theme, the district's
+  origin for links). Its place is the Workshop URL's `?path=`: `/admin/…` and `/teach/…` are those
+  screens' hash routes, `/learn/…` the Learning Home's paths (`app/places.ts`). A link click never
+  navigates the frame; it moves the screen's route or the place (`linkAction`).
+- **The district.** Every API call the screens make goes to the account's `SchoolAppApi` over the
+  host's RPC session (the frame has no network), and from there to
+  `SchoolToolService.serveAs(principal, request)`, which serves the district's `/api` surface
+  (`DistrictApp.serveAs`) as the account's principal rather than as whoever the request's
+  credential proves. Only `/api/…` paths are forwarded, and the principal is read from the account
+  on each request, so revoking the account stops an open page.
+- **The sidebar.** `getAppNav` reads the person's own view of the district through the same path
+  and lists Administration and each school for a district administrator, Teacher Studio and each
+  class they teach, the Learning Home and each class for a student, and the family view and each
+  child for a guardian (`src/app-nav.ts`). A list the district refuses drops its entries, not the
+  section.
+- **Links that leave.** `DISTRICT_URL` (set by the production config from the district's hostname)
+  is the origin a calendar feed link names.
 
 Serving as a principal is safe because of who can reach it, and on which channel:
 
-- **Only the person's own session reaches it.** The app UI will be started by `startAppUi` on the
+- **Only the person's own session reaches it.** The School app is started by `startAppUi` on the
   account, which the Workshop calls only for the account's owner, from their own browser session,
   as it does for the Context Library's management UI. The `EDUCATEOS_DISTRICT` binding is the
   gatekeeper's alone. The principal is the one stored on the

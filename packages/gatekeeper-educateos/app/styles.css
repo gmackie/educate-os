@@ -1,0 +1,33 @@
+/* One stylesheet for the three district screens the School app shows, so Tailwind sees every class they use. */
+@source "../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
+@source "../../educateos-student-ui/src";
+@source "../../educateos-teacher-ui/src";
+@source "../../educateos-admin-ui/src";
+@source "../../ui/src";
+@source ".";
+@import "@cloudflare/kumo/styles";
+@import "tailwindcss";
+@custom-variant dark (&:where([data-mode="dark"], [data-mode="dark"] *));
+
+html, body, #root {
+  min-height: 100%;
+  margin: 0;
+  background: var(--color-kumo-base);
+}
+
+/* Keep page controls below Kumo's overlays, which portal outside the app root. */
+#root {
+  isolation: isolate;
+}
+
+/*
+ * The Learning Home reads at the browser's default text sizes rather than Kumo's dense console ones
+ * (its own styles.css sets them in @theme). The screens share this stylesheet, so the sizes are set
+ * only while it is the screen showing.
+ */
+:root[data-app="learning-home"] {
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+}

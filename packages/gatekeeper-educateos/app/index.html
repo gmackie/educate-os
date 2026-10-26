@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Sandboxed frame: everything the district sends arrives over the host's MessagePort RPC; no network access. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:; connect-src 'none'; worker-src 'none'; child-src blob:; frame-src blob:; object-src blob:; base-uri 'none'; form-action 'none';" />
+    <title>School</title>
+    <script>
+      // A first-paint guess from the OS preference; the host's own theme follows over RPC.
+      document.documentElement.setAttribute(
+        'data-mode',
+        window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+      );
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

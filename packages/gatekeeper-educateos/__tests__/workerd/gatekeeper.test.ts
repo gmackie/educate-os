@@ -81,6 +81,28 @@ describe("the EducateOS gatekeeper Worker", () => {
       .toContain("not connected");
   });
 
+  it("serves the School app's requests to the district's API as the connected person, and nothing else", async () => {
+    const { accountObjectId } = await connect(P.morgan.principalId);
+    const page = await hooks().schoolAppRequest(accountObjectId, "GET", "/api/teacher/offerings/x/roster", null);
+    expect(page.title).toBe("School");
+    // The bundle itself is built separately and stubbed here (vitest.worker.config.ts).
+    expect(page.html).not.toBe("");
+    expect(page.reply?.status).toBe(200);
+    expect(JSON.parse(page.reply!.body)).toStrictEqual({ servedAs: P.morgan, method: "GET", path: "/api/teacher/offerings/x/roster" });
+
+    for (const path of ["/connect/x", "/api/../admin", "https://elsewhere.example/api/me", "/api/me#x"]) {
+      expect((await hooks().schoolAppRequest(accountObjectId, "GET", path, null)).refused).toContain("only the district's API");
+    }
+    expect((await hooks().schoolAppRequest(accountObjectId, "GET", "/api/me", "{}")).refused).toContain("not one the district's API takes");
+    expect((await hooks().schoolAppRequest(accountObjectId, "POST", "/api/me", null)).refused).toContain("not one the district's API takes");
+  });
+
+  it("stops serving an open School app once its account is revoked", async () => {
+    const { accountObjectId } = await connect(P.amara.principalId);
+    await hooks().revoke(accountObjectId);
+    expect((await hooks().schoolAppRequest(accountObjectId, "GET", "/api/me", null)).refused).toContain("not connected");
+  });
+
   it("admits no collaborator to a workspace that reads school records", async () => {
     const { accountObjectId } = await connect(P.amara.principalId);
     expect(await hooks().addObserver(accountObjectId)).toMatch(/cannot be shared/);

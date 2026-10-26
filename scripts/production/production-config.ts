@@ -291,7 +291,9 @@ export function buildProductionConfigs({
         }
         config.services = [...config.services ?? [], EDUCATEOS_DISTRICT_BINDING];
       }
-      withVars(pkgName, config, { BASE_URL: gatekeeperBaseUrl(baseUrl, pkgName), ...vars });
+      // The School app's links that leave it (a calendar feed) name the district's own address.
+      const district = pkgName === EDUCATEOS_GATEKEEPER_PACKAGE ? { DISTRICT_URL: `https://${instance.district!.hostname}` } : {};
+      withVars(pkgName, config, { BASE_URL: gatekeeperBaseUrl(baseUrl, pkgName), ...district, ...vars });
     } else if (pkgName === "workshop-backend") {
       if (config.ai) {
         throw new Error(`${pkgName} declares an ai binding, but WORKERS_AI is injected here (as ` +

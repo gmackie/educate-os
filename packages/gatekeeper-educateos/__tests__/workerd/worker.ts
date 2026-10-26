@@ -15,6 +15,7 @@ import type {
 } from "@gadgets/workshop-shared/gatekeeper";
 import type { VerifiedPrincipal } from "@educateos/contracts";
 import type { SchoolToolService } from "../../src/district.ts";
+import type { SchoolAppApi } from "../../src/school-app-api.ts";
 import type { SchoolToolCallResult } from "../../src/session.ts";
 import type { EducateOsGatekeeper } from "../../src/worker.ts";
 import { northfieldDistrict } from "../district.ts";
@@ -112,6 +113,27 @@ export class TestHooks extends DurableObject<Cloudflare.Env> {
   }
 
   /** Revokes an account, as the Workshop does when the person disconnects it. */
+  /** Opens the account's School app and sends one request through it, or returns why it was refused. */
+  async schoolAppRequest(accountObjectId: string, method: "GET" | "POST", path: string, body: string | null):
+      Promise<{ html: string; title: string | undefined; reply?: { status: number; body: string }; refused?: string }> {
+    const account = this.ctx.exports.EducateOsAccount({ props: { accountObjectId } });
+    const description = await account.describe();
+    // The School app redeems no picker tickets, so any service stands in for the exchange.
+    const exchange = (this.ctx.exports as unknown as TestExports).TestConnectCallback({}) as never;
+    const frame = await account.startAppUi({ isAdmin: false, userSelectionExchange: exchange });
+    // The frame's capability, as the School app calls it.
+    const ui = frame.ui as unknown as SchoolAppApi & Disposable;
+    const result = { html: frame.iframeHtml, title: description.providesUi?.title };
+    try {
+      const reply = await ui.request(method, path, body);
+      return { ...result, reply: { status: reply.status, body: reply.body } };
+    } catch (error) {
+      return { ...result, refused: String(error) };
+    } finally {
+      ui[Symbol.dispose]();
+    }
+  }
+
   async revoke(accountObjectId: string): Promise<void> {
     await this.ctx.exports.EducateOsAccount({ props: { accountObjectId } }).revoke();
   }
