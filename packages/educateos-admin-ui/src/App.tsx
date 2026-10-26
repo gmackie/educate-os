@@ -6,7 +6,7 @@ import { ThemeModeButton } from "@gadgets/ui/theme";
 import { AnnouncerProvider, useAnnounce } from "./app/Announcer.tsx";
 import { NotAddedYet } from "./app/NotAddedYet.tsx";
 import { NotAnAdministrator } from "./app/NotAnAdministrator.tsx";
-import { SCREENS, useHashRoute, type ScreenPath } from "./app/useHashRoute.ts";
+import { SCREENS, useHashRoute, useSchoolRoute, type ScreenPath } from "./app/useHashRoute.ts";
 import { useDistrictConfig, type DistrictConfigState } from "./app/useDistrictConfig.ts";
 import { AiBudgetsPage } from "./budgets/AiBudgetsPage.tsx";
 import { ClassesAndPeoplePage } from "./classes/ClassesAndPeoplePage.tsx";
@@ -18,6 +18,7 @@ import { PoliciesPage } from "./policies/PoliciesPage.tsx";
 import { TermRolloverPage } from "./rollover/TermRolloverPage.tsx";
 import { RosterPage } from "./roster/RosterPage.tsx";
 import { LearningStandardsPage } from "./standards/LearningStandardsPage.tsx";
+import { SchoolPage } from "./schools/SchoolPage.tsx";
 import { AiUsagePage } from "./usage/AiUsagePage.tsx";
 
 const Screen = ({ path, config }: { path: ScreenPath; config: DistrictConfigState }) => {
@@ -56,6 +57,7 @@ const accessGate = ({ config }: DistrictConfigState): ReactNode | undefined => {
 
 const Console = () => {
   const path = useHashRoute();
+  const schoolId = useSchoolRoute();
   const config = useDistrictConfig();
   const main = useRef<HTMLElement>(null);
   const first = useRef(true);
@@ -70,7 +72,7 @@ const Console = () => {
       return;
     }
     main.current?.focus();
-  }, [path]);
+  }, [path, schoolId]);
 
   return (
     <div className="min-h-screen bg-kumo-base text-kumo-default">
@@ -94,7 +96,7 @@ const Console = () => {
                 <li key={screen.path} className="shrink-0">
                   <a
                     href={`#/${screen.path}`}
-                    aria-current={screen.path === path ? "page" : undefined}
+                    aria-current={schoolId === undefined && screen.path === path ? "page" : undefined}
                     className="block rounded-md px-3 py-2 text-kumo-default hover:bg-kumo-tint focus-visible:outline-2 focus-visible:outline-kumo-focus aria-[current=page]:bg-kumo-tint aria-[current=page]:font-semibold"
                   >
                     {screen.label}
@@ -104,7 +106,7 @@ const Console = () => {
             </ul>
           </nav>
           <main id="main" ref={main} tabIndex={-1} className="min-w-0 flex-1 p-4 outline-none md:p-6">
-            <Screen path={path} config={config} />
+            {schoolId === undefined ? <Screen path={path} config={config} /> : <SchoolPage key={schoolId} schoolId={schoolId} />}
           </main>
         </div>
       )}

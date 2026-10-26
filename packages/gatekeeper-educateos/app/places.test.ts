@@ -7,6 +7,7 @@ describe("places", () => {
       ["/", { app: "home" }],
       ["/admin", { app: "admin", hash: "#/" }],
       ["/admin/classes-people", { app: "admin", hash: "#/classes-people" }],
+      ["/schools/sch_1", { app: "admin", hash: "#/schools/sch_1" }],
       ["/teach", { app: "teach", hash: "#/" }],
       ["/teach/classes/off_1/assignments/asg_2", { app: "teach", hash: "#/classes/off_1/assignments/asg_2" }],
       ["/learn", { app: "learn", path: "/" }],

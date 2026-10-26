@@ -1,17 +1,22 @@
 import { useState } from "react";
-import { Button, Input, Table, Text } from "@cloudflare/kumo";
+import { Button, Input, Link, Table, Text } from "@cloudflare/kumo";
+import { schoolHref } from "../app/useHashRoute.ts";
 import { ActionOutcome } from "./ActionOutcome.tsx";
 import { isLocal, type AuthoringDirectory, type School } from "./authoring.ts";
 import { useAuthoringAction } from "./useAuthoringAction.ts";
 
-type SchoolDraft = { name: string; gradeBands: string };
+/** A school's name and grades as typed. */
+export type SchoolDraft = { name: string; gradeBands: string };
 
-const draftOf = (school?: School): SchoolDraft => ({ name: school?.name ?? "", gradeBands: school?.gradeBands.join(", ") ?? "" });
-const bandsOf = (draft: SchoolDraft) => draft.gradeBands.split(",").map((band) => band.trim()).filter((band) => band !== "");
-const isComplete = (draft: SchoolDraft) => draft.name.trim() !== "" && bandsOf(draft).length > 0;
+/** The draft for `school`, or an empty one. */
+export const draftOf = (school?: School): SchoolDraft => ({ name: school?.name ?? "", gradeBands: school?.gradeBands.join(", ") ?? "" });
+/** The grade bands a draft lists. */
+export const bandsOf = (draft: SchoolDraft) => draft.gradeBands.split(",").map((band) => band.trim()).filter((band) => band !== "");
+/** Whether a draft names the school and at least one grade band. */
+export const isComplete = (draft: SchoolDraft) => draft.name.trim() !== "" && bandsOf(draft).length > 0;
 
 /** A school's name and grades, for adding one or correcting one. */
-const SchoolFields = ({ draft, onChange }: { draft: SchoolDraft; onChange: (draft: SchoolDraft) => void }) => (
+export const SchoolFields = ({ draft, onChange }: { draft: SchoolDraft; onChange: (draft: SchoolDraft) => void }) => (
   <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
     <Input label="School or co-op name" required value={draft.name} onChange={(e) => onChange({ ...draft, name: e.target.value })} />
     <Input label="Grades" description="Such as K-8, or 6-8, 9-12." required value={draft.gradeBands} onChange={(e) => onChange({ ...draft, gradeBands: e.target.value })} />
@@ -35,7 +40,7 @@ export const SchoolsSection = ({ directory, onChanged }: { directory: AuthoringD
           <Table.Body>
             {directory.schools.map((school) => (
               <Table.Row key={school.id}>
-                <Table.Cell>{school.name}</Table.Cell>
+                <Table.Cell><Link href={schoolHref(school.id)}>{school.name}</Link></Table.Cell>
                 <Table.Cell>{school.gradeBands.join(", ")}</Table.Cell>
                 <Table.Cell>
                   {writable && (

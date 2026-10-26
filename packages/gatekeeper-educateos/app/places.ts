@@ -1,6 +1,7 @@
 // Where the School app is, as the Workshop URL names it (`/gatekeepers/educateos?path=<path>`), and
 // what that is in the district screen showing it. The admin console and Teacher Studio keep their
-// routes in a hash, the Learning Home in a path; each lives under a prefix of its own here.
+// routes in a hash, the Learning Home in a path; each lives under a prefix of its own here. A
+// school's page is the admin console's, but has a prefix of its own, `/schools/<id>`.
 
 /** A place in the School app. */
 export type Place =
@@ -17,6 +18,8 @@ const rest = (path: string, prefix: string): string | undefined =>
 
 /** The place `path` names. Anything unknown is the home page. */
 export function placeOf(path: string): Place {
+  const school = rest(path, "/schools");
+  if (school !== undefined && school !== "") return { app: "admin", hash: `#/schools/${school}` };
   for (const app of ["admin", "teach"] as const) {
     const tail = rest(path, `/${app}`);
     if (tail !== undefined) return { app, hash: `#/${tail}` };
@@ -34,6 +37,7 @@ export function pathOf(place: Place): string {
     case "admin":
     case "teach": {
       const tail = place.hash.replace(/^#\/?/, "").replace(/\/+$/, "");
+      if (place.app === "admin" && tail.startsWith("schools/")) return `/${tail}`;
       return tail === "" ? `/${place.app}` : `/${place.app}/${tail}`;
     }
     case "learn":
