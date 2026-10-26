@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // The Workers shell, the site Worker that composes it and the workerd suite import
+    // `cloudflare:workers`, so they are checked against the Workers runtime's types (ADR-0009).
+    "types": ["@cloudflare/workers-types"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "__tests__", "../../sites/educateos-io/worker.ts", "../../sites/educateos-io/partials.d.ts"],
+  "exclude": ["node_modules"]
+}

@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // The web-standard surface (ADR-0009): routing, sign-in, pages and the store are checked with
+    // the EducateOS libraries they compose.
+    "types": [],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src"],
+  // The Workers-only shell imports `cloudflare:workers`. It is checked by tsconfig.workerd.json,
+  // with the site Worker and the workerd suite.
+  "exclude": ["node_modules", "src/worker.ts"]
+}

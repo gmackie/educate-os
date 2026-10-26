@@ -1,0 +1,26 @@
+{
+  "name": "@educateos/control-plane",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The optional educateos.io control plane (SCHO-206, ADR-0013): operator sign-in through Cloudflare Access, the operator and installation store (a SQLite Durable Object), and the /app routes the educateos.io site Worker (sites/educateos-io) serves beside its static pages. A library with no wrangler.jsonc, so release discovery never treats it as part of a district release.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./worker": "./src/worker.ts"
+  },
+  "dependencies": {
+    "@educateos/contracts": "workspace:*",
+    "@educateos/fleet": "workspace:*",
+    "@educateos/identity": "workspace:*",
+    "jose": "^6.2.12",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
+    "@gadgets/scripts": "workspace:*",
+    "@types/node": "^26.1.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
