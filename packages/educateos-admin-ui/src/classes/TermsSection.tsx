@@ -6,7 +6,8 @@ import { ActionOutcome } from "./ActionOutcome.tsx";
 import { isLocal, NEXT_TERM_STATE, type AuthoringDirectory, type Term } from "./authoring.ts";
 import { useAuthoringAction } from "./useAuthoringAction.ts";
 
-const STATE_LABEL = { planned: "Planned", active: "In session", grading: "Grading", completed: "Closed" } as const;
+/** How each term state reads. */
+export const STATE_LABEL = { planned: "Planned", active: "In session", grading: "Grading", completed: "Closed" } as const;
 
 type TermDraft = { name: string; startsOn: string; endsOn: string };
 
