@@ -1314,8 +1314,11 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
           ]);
           let enabledResources =
               filterEnabledResources(config, id, supportedResources);
-          if (enabledResources.length == 0) {
-            // Every resource for this vendor is disabled (or it advertised none) — hide the vendor.
+          if (enabledResources.length == 0
+              && (supportedResources.length > 0 || description.autoProvisionsAccount)) {
+            // Every resource for this vendor is disabled — hide the vendor. One that advertises none
+            // is connected for its account alone (its singleton or app, e.g. EducateOS) and stays
+            // listed, unless it provisions its own accounts, which listAddableGatekeepers offers.
             return null;
           }
 
