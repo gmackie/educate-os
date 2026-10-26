@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Button, Input, Text } from "@cloudflare/kumo";
+import { Badge, Button, Input, Radio, Text } from "@cloudflare/kumo";
 import { FloppyDisk } from "@phosphor-icons/react";
 import { useAnnounce } from "../Announcer.tsx";
 import { useDistrictApi } from "../DistrictApi.tsx";
@@ -9,11 +9,13 @@ import { sourceBadge, sourceLabel } from "./feedbackSource.ts";
 import { teacherScore, type ReviewCriterion } from "./rubricCriteria.ts";
 
 /**
- * The rubric with each criterion's suggested levels beside the teacher's own score. Using a
- * suggestion only fills the box; it becomes the teacher's score when they save it.
+ * The rubric with each criterion's suggested levels beside the teacher's own score, picked from
+ * the criterion's levels where the rubric is known. Using a suggestion only selects it; it becomes
+ * the teacher's score when they save it.
  */
-export const RubricScores = ({ submissionId, criteria, scores, onSaved }: {
+export const RubricScores = ({ submissionId, hasRubric, criteria, scores, onSaved }: {
   submissionId: string;
+  hasRubric: boolean;
   criteria: readonly ReviewCriterion[];
   scores: readonly CriterionScore[];
   onSaved: () => void;
@@ -21,7 +23,7 @@ export const RubricScores = ({ submissionId, criteria, scores, onSaved }: {
   <section aria-labelledby="rubric-heading" className="flex flex-col gap-3">
     <h2 id="rubric-heading"><Text variant="heading" as="span">Rubric</Text></h2>
     {criteria.length === 0
-      ? <Text variant="secondary">Run the automatic checks to bring in this rubric's criteria.</Text>
+      ? <Text variant="secondary">{hasRubric ? "This rubric's criteria couldn't be loaded. Run the automatic checks to bring them in." : "This activity has no rubric to score."}</Text>
       : (
         <ul className="flex flex-col gap-3">
           {criteria.map((criterion) => (
@@ -51,6 +53,7 @@ const CriterionRow = ({ submissionId, criterion, scores, onSaved }: {
   const points = value.trim() === "" ? Number.NaN : Number(value);
   const valid = Number.isFinite(points) && points >= 0 && (maxPoints === undefined || points <= maxPoints);
   const levelFor = (pts: number) => criterion.levels.find((level) => level.points === pts)?.label;
+  const selectedLevel = criterion.levels.find((level) => level.points === points)?.id ?? "";
 
   const save = async () => {
     setState({ status: "saving" });
@@ -77,7 +80,9 @@ const CriterionRow = ({ submissionId, criterion, scores, onSaved }: {
           <Text as="span">
             {`Suggests ${suggestion.points}${suggestion.maxPoints === undefined ? "" : ` of ${suggestion.maxPoints}`}${levelFor(suggestion.points) === undefined ? "" : ` (${levelFor(suggestion.points)})`}. Not your score until you save it.`}
           </Text>
-          <Button size="sm" variant="ghost" onClick={() => setEntered(String(suggestion.points))}>{`Use ${suggestion.points}`}</Button>
+          <Button size="sm" variant="ghost" onClick={() => setEntered(String(suggestion.points))}>
+            {levelFor(suggestion.points) === undefined ? `Use ${suggestion.points}` : `Use ${levelFor(suggestion.points)}`}
+          </Button>
         </span>
       ))}
       <form
@@ -87,17 +92,33 @@ const CriterionRow = ({ submissionId, criterion, scores, onSaved }: {
           if (valid) void save();
         }}
       >
-        <Input
-          label={`Your score for ${criterion.title}`}
-          inputMode="decimal"
-          description={maxPoints === undefined ? undefined : `Out of ${maxPoints}`}
-          value={value}
-          onChange={(event) => setEntered(event.target.value)}
-          {...(value !== "" && !valid ? { error: maxPoints === undefined ? "Enter a number of points." : `Enter 0 to ${maxPoints}.` } : {})}
-        />
+        {criterion.levels.length > 0 ? (
+          <Radio.Group
+            legend={`Your level for ${criterion.title}`}
+            orientation="horizontal"
+            value={selectedLevel}
+            onValueChange={(id: string) => {
+              const level = criterion.levels.find((l) => l.id === id);
+              if (level !== undefined) setEntered(String(level.points));
+            }}
+          >
+            {criterion.levels.map((level) => <Radio.Item key={level.id} value={level.id} label={`${level.label} (${level.points})`} />)}
+          </Radio.Group>
+        ) : (
+          <Input
+            label={`Your score for ${criterion.title}`}
+            inputMode="decimal"
+            description={maxPoints === undefined ? undefined : `Out of ${maxPoints}`}
+            value={value}
+            onChange={(event) => setEntered(event.target.value)}
+            {...(value !== "" && !valid ? { error: maxPoints === undefined ? "Enter a number of points." : `Enter 0 to ${maxPoints}.` } : {})}
+          />
+        )}
         <Button type="submit" icon={<FloppyDisk aria-hidden />} disabled={!valid || entered === undefined} loading={state.status === "saving"}>Save score</Button>
       </form>
-      {own !== undefined && entered === undefined && <Badge variant="neutral">{`Your score: ${own.points}${own.maxPoints === undefined ? "" : ` of ${own.maxPoints}`}`}</Badge>}
+      {own !== undefined && entered === undefined && (
+        <Badge variant="neutral">{`Your score: ${own.points}${own.maxPoints === undefined ? "" : ` of ${own.maxPoints}`}${levelFor(own.points) === undefined ? "" : ` (${levelFor(own.points)})`}`}</Badge>
+      )}
       {state.status === "failed" && <Problem error={state.error} />}
     </div>
   );

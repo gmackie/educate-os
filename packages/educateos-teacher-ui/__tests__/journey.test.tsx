@@ -87,7 +87,7 @@ describe("a teacher's first class", () => {
     await user.click(screen.getByRole("link", { name: "Go to submissions" }));
     await user.click(await screen.findByRole("link", { name: "Review Amara Okafor’s work" }));
     await onScreen("Amara Okafor’s work · Should school start later?");
-    expect(screen.getByRole("region", { name: "Submitted work 1" }).textContent).toBe(ESSAY);
+    expect(screen.getByRole("region", { name: "Submitted work: Draft" }).textContent).toBe(ESSAY);
 
     // Run the automatic checks; their suggestion is labelled and is not the teacher's score.
     await user.click(screen.getByRole("button", { name: "Run checks" }));
@@ -98,7 +98,8 @@ describe("a teacher's first class", () => {
     expect((screen.getByRole("textbox", { name: "Points" }) as HTMLInputElement).value).toBe("");
 
     // Adopt the suggestion as the teacher's own score.
-    await user.click(within(length).getByRole("button", { name: "Use 3" }));
+    await user.click(within(length).getByRole("button", { name: "Use Secure" }));
+    expect(within(length).getByRole("radio", { name: "Secure (3)" }).getAttribute("aria-checked")).toBe("true");
     expect(district.callsTo("teacher.scoreCriterion")).toHaveLength(0);
     await user.click(within(length).getByRole("button", { name: "Save score" }));
     await waitFor(() => expect((screen.getByRole("textbox", { name: "Points" }) as HTMLInputElement).value).toBe("3"));

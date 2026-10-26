@@ -119,7 +119,7 @@ describe("roles and labels", () => {
     await user.click(await screen.findByRole("link", { name: "Review Amara Okafor’s work" }));
     await screen.findByRole("group", { name: "argument" });
     expectWellFormed();
-    expect(screen.getByRole("region", { name: "Submitted work 1" }).getAttribute("tabindex")).toBe("0");
+    expect(screen.getByRole("region", { name: "Submitted work: Draft" }).getAttribute("tabindex")).toBe("0");
     // Assistive technology hears what each action changed.
     expect(screen.getAllByRole("status").some((s) => s.getAttribute("aria-live") === "polite")).toBe(true);
   });

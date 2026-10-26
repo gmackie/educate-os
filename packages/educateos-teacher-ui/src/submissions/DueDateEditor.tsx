@@ -5,6 +5,7 @@ import { useAnnounce } from "../Announcer.tsx";
 import { useDistrictApi } from "../DistrictApi.tsx";
 import { Problem } from "../Problem.tsx";
 import type { Assignment } from "../types.ts";
+import { formatDateTime } from "../dates.ts";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -33,7 +34,7 @@ export const DueDateEditor = ({ assignment, onChanged }: { assignment: Assignmen
     try {
       const updated = await client.call("teacher.updateAssignment", { params: { assignmentId: assignment.id }, body: { dueAt: due.toISOString() } });
       setState({ status: "idle" });
-      announce(`Due date for ${updated.title} changed to ${new Date(updated.dueAt).toLocaleString()}.`);
+      announce(`Due date for ${updated.title} changed to ${formatDateTime(updated.dueAt)}.`);
       onChanged(updated);
     } catch (error) {
       setState({ status: "failed", error });

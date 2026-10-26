@@ -1,11 +1,6 @@
 // How the quiz screens put dates, scores and item types into words.
 import type { QuizItem } from "../types.ts";
 
-const when = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-
-/** A moment the way a teacher reads it, such as "Oct 20, 3:05 PM". */
-export const formatWhen = (iso: string): string => when.format(new Date(iso));
-
 /** Points without float noise: whole numbers plainly, others to two places. */
 export const formatPoints = (points: number): string => (Number.isInteger(points) ? String(points) : points.toFixed(2).replace(/0+$/, ""));
 

@@ -2,6 +2,7 @@ import { Button, Checkbox, Input, InputArea, Radio, Text } from "@cloudflare/kum
 import { ArrowDown, ArrowUp, Plus, Trash } from "@phosphor-icons/react";
 import type { QuizItemDraft } from "../types.ts";
 import { ITEM_TYPE_LABEL } from "./quizText.ts";
+import { TypedInput, TypedInputArea } from "./TypedInput.tsx";
 
 type ChoiceItem = Extract<QuizItemDraft, { type: "multiple-choice" | "multiple-select" }>;
 
@@ -106,9 +107,9 @@ export const ItemEditor = ({ item, position, count, locked, onChange, onMove, on
     <fieldset disabled={locked} className="flex flex-col gap-3 rounded-lg border border-kumo-hairline p-4">
       <legend className="px-1"><Text variant="heading" as="span">{`${label}: ${ITEM_TYPE_LABEL[item.type]}`}</Text></legend>
       <InputArea label={`${label} prompt`} value={item.prompt} autoResize minRows={2} onValueChange={(prompt) => onChange({ ...item, prompt })} />
-      <Input label={`${label} points`} type="number" min={0} step="any" defaultValue={String(item.points)}
-        onChange={(event) => {
-          const points = numberFrom(event.target.value);
+      <TypedInput label={`${label} points`} type="number" min={0} step="any" initial={String(item.points)}
+        onText={(text) => {
+          const points = numberFrom(text);
           if (points !== undefined && points > 0) onChange({ ...item, points });
         }} />
       {(item.type === "multiple-choice" || item.type === "multiple-select") && <ChoicesEditor item={item} label={label} onChange={onChange} />}
@@ -120,26 +121,26 @@ export const ItemEditor = ({ item, position, count, locked, onChange, onMove, on
       )}
       {item.type === "numeric" && (
         <div className="flex flex-wrap gap-3">
-          <Input label={`${label} answer`} type="number" step="any" defaultValue={String(item.answer)}
-            onChange={(event) => {
-              const answer = numberFrom(event.target.value);
+          <TypedInput label={`${label} answer`} type="number" step="any" initial={String(item.answer)}
+            onText={(text) => {
+              const answer = numberFrom(text);
               if (answer !== undefined) onChange({ ...item, answer });
             }} />
-          <Input label={`${label} tolerance (plus or minus)`} type="number" min={0} step="any" defaultValue={String(item.tolerance)}
-            onChange={(event) => {
-              const tolerance = numberFrom(event.target.value);
+          <TypedInput label={`${label} tolerance (plus or minus)`} type="number" min={0} step="any" initial={String(item.tolerance)}
+            onText={(text) => {
+              const tolerance = numberFrom(text);
               if (tolerance !== undefined && tolerance >= 0) onChange({ ...item, tolerance });
             }} />
         </div>
       )}
       {item.type === "short-answer" && (
         <>
-          <InputArea
+          <TypedInputArea
             label={`${label} accepted answers`}
             description="One per line. Capital letters and extra spaces don't matter."
-            defaultValue={item.acceptedAnswers.join("\n")}
+            initial={item.acceptedAnswers.join("\n")}
             minRows={2}
-            onValueChange={(text) => onChange({ ...item, acceptedAnswers: text.split("\n").map((line) => line.trim()).filter((line) => line !== "") })}
+            onText={(text) => onChange({ ...item, acceptedAnswers: text.split("\n").map((line) => line.trim()).filter((line) => line !== "") })}
           />
           <Input
             label={`${label} pattern (optional)`}
@@ -154,10 +155,10 @@ export const ItemEditor = ({ item, position, count, locked, onChange, onMove, on
         </>
       )}
       {item.type === "essay" && (
-        <Input label={`${label} longest answer, in characters (optional)`} type="number" min={1} max={20000} defaultValue={item.maxLength === undefined ? "" : String(item.maxLength)}
-          onChange={(event) => {
+        <TypedInput label={`${label} longest answer, in characters (optional)`} type="number" min={1} max={20000} initial={item.maxLength === undefined ? "" : String(item.maxLength)}
+          onText={(text) => {
             const { maxLength: _previous, ...rest } = item;
-            const maxLength = numberFrom(event.target.value);
+            const maxLength = numberFrom(text);
             onChange(maxLength === undefined ? rest : { ...rest, maxLength: Math.round(maxLength) });
           }} />
       )}

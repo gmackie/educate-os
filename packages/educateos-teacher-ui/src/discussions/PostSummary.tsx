@@ -1,5 +1,6 @@
 import { Badge, Text } from "@cloudflare/kumo";
 import type { DiscussionPost } from "../types.ts";
+import { formatDateTime } from "../dates.ts";
 
 const STATUS: Record<DiscussionPost["status"], { label: string; variant: "neutral" | "secondary" | "success" | "error" } | undefined> = {
   visible: undefined,
@@ -33,7 +34,7 @@ export const PostSummary = ({ post, names, headingId }: { post: DiscussionPost; 
         <Text bold as="span"><span id={headingId}>{names.get(post.authorId) ?? "Unknown author"}</span></Text>
         {post.authorRole === "staff" && <Badge variant="info">Teacher</Badge>}
         <Text variant="secondary" size="sm" as="span">
-          <time dateTime={post.createdAt}>{new Date(post.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</time>
+          <time dateTime={post.createdAt}>{formatDateTime(post.createdAt)}</time>
           {post.editedAt !== undefined && " (edited)"}
         </Text>
         {status !== undefined && <Badge variant={status.variant}>{status.label}</Badge>}

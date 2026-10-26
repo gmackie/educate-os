@@ -10,6 +10,7 @@ import { navigate, routeHref } from "../route.ts";
 import type { Assignment, CourseModule, Quiz, QuizItemDraft, QuizSettings, TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
 import { blankItem, ItemEditor } from "./ItemEditor.tsx";
+import { TypedInput } from "./TypedInput.tsx";
 import { fromLocalInput, ITEM_TYPE_LABEL, toLocalInput } from "./quizText.ts";
 
 const NONE = "none";
@@ -28,22 +29,22 @@ const SettingsFields = ({ settings, onChange }: { settings: QuizSettings; onChan
   <fieldset className="flex flex-col gap-3 rounded-lg border border-kumo-hairline p-4">
     <legend className="px-1"><Text variant="heading" as="span">Settings</Text></legend>
     <div className="flex flex-wrap gap-3">
-      <Input label="Attempts allowed" type="number" min={1} max={20} defaultValue={String(settings.attemptsAllowed)}
-        onChange={(event) => {
-          const value = Math.round(Number(event.target.value));
+      <TypedInput label="Attempts allowed" type="number" min={1} max={20} initial={String(settings.attemptsAllowed)}
+        onText={(text) => {
+          const value = Math.round(Number(text));
           if (value >= 1 && value <= 20) onChange({ ...settings, attemptsAllowed: value });
         }} />
-      <Input label="Time limit in minutes (optional)" type="number" min={1} max={600} defaultValue={settings.timeLimitMinutes === undefined ? "" : String(settings.timeLimitMinutes)}
-        onChange={(event) => {
-          const value = Math.round(Number(event.target.value));
-          onChange(optional(settings, "timeLimitMinutes", event.target.value === "" || !(value >= 1 && value <= 600) ? undefined : value));
+      <TypedInput label="Time limit in minutes (optional)" type="number" min={1} max={600} initial={settings.timeLimitMinutes === undefined ? "" : String(settings.timeLimitMinutes)}
+        onText={(text) => {
+          const value = Math.round(Number(text));
+          onChange(optional(settings, "timeLimitMinutes", text === "" || !(value >= 1 && value <= 600) ? undefined : value));
         }} />
     </div>
     <div className="flex flex-wrap gap-3">
-      <Input label="Opens (optional)" type="datetime-local" defaultValue={toLocalInput(settings.availableFrom)}
-        onChange={(event) => onChange(optional(settings, "availableFrom", fromLocalInput(event.target.value)))} />
-      <Input label="Closes (optional)" type="datetime-local" defaultValue={toLocalInput(settings.availableUntil)}
-        onChange={(event) => onChange(optional(settings, "availableUntil", fromLocalInput(event.target.value)))} />
+      <TypedInput label="Opens (optional)" type="datetime-local" initial={toLocalInput(settings.availableFrom)}
+        onText={(text) => onChange(optional(settings, "availableFrom", fromLocalInput(text)))} />
+      <TypedInput label="Closes (optional)" type="datetime-local" initial={toLocalInput(settings.availableUntil)}
+        onText={(text) => onChange(optional(settings, "availableUntil", fromLocalInput(text)))} />
     </div>
     <Checkbox label="Show each student the questions in their own order" checked={settings.shuffleQuestions} onCheckedChange={(on) => onChange({ ...settings, shuffleQuestions: on === true })} />
     <Checkbox label="Show each student the choices in their own order" checked={settings.shuffleChoices} onCheckedChange={(on) => onChange({ ...settings, shuffleChoices: on === true })} />
@@ -119,7 +120,10 @@ const QuizForm = ({ quiz, assignments, modules, started, onSaved }: {
       <InputArea label="Instructions (optional)" value={description} autoResize minRows={2} onValueChange={setDescription} />
       <Radio.Group legend="Release scores as grades for" description="Released scores become this assignment's grades in the gradebook."
         value={assignmentId} onValueChange={(value) => setAssignmentId(value as string)}>
-        <Radio.Item value={NONE} label="A new gradebook assignment for this quiz, made when you publish it" />
+        {/* Once published the quiz has its assignment; offering a new one would make a duplicate. */}
+        {(quiz.status !== "published" || quiz.assignmentId === undefined) && (
+          <Radio.Item value={NONE} label="A new gradebook assignment for this quiz, made when you publish it" />
+        )}
         {assignments.map((a) => <Radio.Item key={a.id} value={a.id} label={a.title} />)}
       </Radio.Group>
       {modules.length > 0 && (

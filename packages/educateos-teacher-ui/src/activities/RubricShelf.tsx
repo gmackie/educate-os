@@ -9,9 +9,9 @@ interface Shelf {
 const RubricShelfContext = createContext<Shelf | null>(null);
 
 /**
- * The rubrics the teacher signed in this session, so the activity that uses one and the reviews
- * scored against it can show its criteria and levels. The district API returns a rubric when it
- * is signed but has no way to read one back yet.
+ * The rubrics the teacher signed in this session, so the activity being built can show the one it
+ * uses before any assignment does. Reviews read a rubric back from the district instead
+ * (teacher.getRubric), which answers only for rubrics a class assignment uses.
  */
 export const RubricShelfProvider = ({ children }: { children: ReactNode }) => {
   const [rubrics, setRubrics] = useState<readonly RubricRelease[]>([]);

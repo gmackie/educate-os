@@ -9,6 +9,7 @@ import { routeHref } from "../route.ts";
 import type { Assignment, TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
 import { DueDateEditor } from "./DueDateEditor.tsx";
+import { formatDateTime } from "../dates.ts";
 
 /** The class's assigned activities and, for the one chosen, every student's submitted work. */
 export const SubmissionsPage = ({ teaching, assignmentId }: { teaching: TeachingOffering; assignmentId?: string }) => {
@@ -44,7 +45,7 @@ export const SubmissionsPage = ({ teaching, assignmentId }: { teaching: Teaching
                     className="flex flex-col rounded p-2 text-kumo-default no-underline focus-visible:ring-2 focus-visible:ring-kumo-brand aria-[current=page]:bg-kumo-tint"
                   >
                     <Text bold as="span">{a.title}</Text>
-                    <Text variant="secondary" size="sm" as="span">{`Due ${new Date(a.dueAt).toLocaleDateString()}`}</Text>
+                    <Text variant="secondary" size="sm" as="span">{`Due ${formatDateTime(a.dueAt)}`}</Text>
                   </a>
                 </li>
               ))}
@@ -104,7 +105,7 @@ const SubmissionList = ({ offeringId, assignmentId, title }: { offeringId: strin
                   <Table.Cell>{submission.attempt}</Table.Cell>
                   <Table.Cell>
                     <span className="flex flex-wrap items-center gap-2">
-                      {new Date(submission.submittedAt).toLocaleString()}
+                      {formatDateTime(submission.submittedAt)}
                       {submission.timing === "late" ? <Badge variant="warning">Late</Badge> : <Badge variant="success">On time</Badge>}
                     </span>
                   </Table.Cell>

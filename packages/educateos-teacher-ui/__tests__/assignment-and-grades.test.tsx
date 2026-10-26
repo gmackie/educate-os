@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/dom";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeDistrict, IDS } from "./fakeDistrict.ts";
 import { renderApp } from "./render.tsx";
+import { formatDateTime } from "../src/dates.ts";
 
 const forbidden = { status: 403, body: { code: "forbidden" as const, message: "no" } };
 const submissionsOf = (assignmentId: string) => `#/classes/${IDS.offering}/assignments/${assignmentId}`;
@@ -33,7 +34,7 @@ describe("an assignment's due date", () => {
       body: { dueAt: new Date("2026-11-10T08:30").toISOString() },
     });
     const nav = screen.getByRole("navigation", { name: "Activities" });
-    expect(await within(nav).findByText(`Due ${new Date("2026-11-10T08:30").toLocaleDateString()}`)).toBeTruthy();
+    expect(await within(nav).findByText(`Due ${formatDateTime(new Date("2026-11-10T08:30").toISOString())}`)).toBeTruthy();
     expect(screen.getByRole("status").textContent).toMatch(/^Due date for Persuasive paragraph changed to /);
     // Focus stays with the form the teacher used; the list did not reload around it.
     expect(document.activeElement).toBe(save);
@@ -96,11 +97,11 @@ describe("a file a student turned in", () => {
     const district = fakeDistrict();
     const submissionId = district.studentSubmitsFile(IDS.existingAssignment, { mediaType: "application/pdf", base64: btoa("%PDF-1.7\n%%EOF\n") });
     await renderApp(district.client, review(submissionId));
-    const pdf = await screen.findByLabelText("Submitted work 1");
+    const pdf = await screen.findByLabelText("Draft");
     expect(pdf.tagName).toBe("OBJECT");
     expect(pdf.getAttribute("type")).toBe("application/pdf");
-    const download = screen.getByRole("link", { name: "Download Submitted work 1" });
-    expect(download.getAttribute("download")).toBe("Submitted work 1.pdf");
+    const download = screen.getByRole("link", { name: "Download Draft" });
+    expect(download.getAttribute("download")).toBe("Draft.pdf");
     expect(download.getAttribute("href")).toMatch(/^blob:/);
   });
 
@@ -108,7 +109,7 @@ describe("a file a student turned in", () => {
     const district = fakeDistrict();
     const submissionId = district.studentSubmitsFile(IDS.existingAssignment, { mediaType: "image/png", base64: btoa("\x89PNG\r\n\x1a\n") });
     await renderApp(district.client, review(submissionId));
-    expect((await screen.findByRole("img", { name: "Submitted work 1" })).getAttribute("src")).toMatch(/^blob:/);
-    expect(screen.getByRole("link", { name: "Download Submitted work 1" }).getAttribute("download")).toBe("Submitted work 1.png");
+    expect((await screen.findByRole("img", { name: "Draft" })).getAttribute("src")).toMatch(/^blob:/);
+    expect(screen.getByRole("link", { name: "Download Draft" }).getAttribute("download")).toBe("Draft.png");
   });
 });

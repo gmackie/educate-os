@@ -17,6 +17,7 @@ import { PublishPanel } from "./PublishPanel.tsx";
 import { RubricChooser, type RubricChoice } from "./RubricChooser.tsx";
 import { StudentPreview } from "./StudentPreview.tsx";
 import { TemplateFields } from "./TemplateFields.tsx";
+import { formatDateTime } from "../dates.ts";
 
 const toggle = (list: readonly string[], key: string, on: boolean) => (on ? [...list, key] : list.filter((k) => k !== key));
 
@@ -96,7 +97,7 @@ const Composer = ({ teaching, context, approvedReleases, earlier }: {
       <Empty
         icon={<CheckCircle size={32} aria-hidden />}
         title={`“${phase.assignment.title}” is assigned`}
-        description={`Due ${new Date(phase.assignment.dueAt).toLocaleDateString()}. Students' work will appear under Submissions.`}
+        description={`Due ${formatDateTime(phase.assignment.dueAt)}. Students' work will appear under Submissions.`}
         contents={(
           <span className="flex flex-wrap justify-center gap-3">
             <a href={routeHref({ screen: "submissions", offeringId, assignmentId: phase.assignment.id })}>Go to submissions</a>

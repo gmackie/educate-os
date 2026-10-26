@@ -9,8 +9,8 @@ import type { ClassAnnouncement, TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
 import { AnnouncementComposer } from "./AnnouncementComposer.tsx";
 import { WeeklyNoteForm } from "./WeeklyNoteForm.tsx";
+import { formatDateTime } from "../dates.ts";
 
-const when = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 const AnnouncementItem = ({ entry, busy, deleting, onDelete }: { entry: ClassAnnouncement; busy: boolean; deleting: boolean; onDelete: () => void }) => {
   const { announcement, published } = entry;
@@ -22,7 +22,7 @@ const AnnouncementItem = ({ entry, busy, deleting, onDelete }: { entry: ClassAnn
       </div>
       <Text variant="secondary" size="sm">
         {published ? "Posted " : "Students see it from "}
-        <time dateTime={announcement.publishAt}>{when.format(new Date(announcement.publishAt))}</time>
+        <time dateTime={announcement.publishAt}>{formatDateTime(announcement.publishAt)}</time>
       </Text>
       <p className="whitespace-pre-wrap">{announcement.body}</p>
       <div>
