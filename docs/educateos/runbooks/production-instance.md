@@ -53,7 +53,7 @@ reconciliation only records snapshots.
 | `workshop-backend` | `ADMINS` (a JSON array of Access emails), `CF_ACCESS_AUD`, `CF_ACCESS_ISS` | `educate-os` |
 | `educateos-ai-guard` | `HALL_MONITOR_SIGNING_KEY` (private Ed25519 or P-256 JWK, with a `kid`), `AI_GUARD_CONFIG` (the example config with the admin's Access email in place of `admin@example.com`, minified) | `educateos-ai-guard` |
 | `schoolos-district-worker` | `DISTRICT_CONFIG` (the demo district's seed, minified), `CF_ACCESS_AUD` (comma-separated: the district Access application's audience, then the instance's; see [The EducateOS connector](#the-educateos-connector)), `CF_ACCESS_ISS` | `educateos-district` |
-| `gatekeeper-google` | `CLIENT_ID` and `CLIENT_SECRET` (the gmacko-schoolos OAuth web client) | `educateos-google` |
+| `gatekeeper-google` | `CLIENT_ID` and `CLIENT_SECRET` (the educateos-classroom-demo OAuth web client) | `educateos-google` |
 
 The guard, the district, the Google connector and the EducateOS connector are each their own ForgeGraph app because
 ForgeGraph's `syncSecrets` copies every secret of a stage onto each target that sets it: in one app,
@@ -240,10 +240,12 @@ Sheets, Slides, Calendar, Chat and BigQuery, through each user's own Google acco
   `gatekeeperBindingExpansion` is likewise only bindings. It is not auto-provisioned: each user
   connects their Google account from the Connectors page, through the OAuth flow. Connectors are
   on unless an admin turns them off in the `/admin` Gatekeepers panel, so nothing else needs
-  configuring. Google sign-in (`AUTH_GATEKEEPERS`) is separate (SCHO-215).
-- **OAuth client.** A Web application OAuth client in the `gmacko-schoolos` Google Cloud project,
-  with an **Internal** consent screen, so only the project's Workspace organization can connect
-  and Google does not need to verify the app. Enable the APIs the connector reaches (Gmail, Docs,
+  configuring. Signing in with Google is separate: it is an Access identity provider, not the
+  Workshop's `AUTH_GATEKEEPERS` (see "Google sign-in" below).
+- **OAuth client.** A Web application OAuth client in the `educateos-classroom-demo` Google Cloud
+  project, owned by the demo Workspace for Education tenant `gedu.demo.educateos.io`, with an
+  **Internal** consent screen, so only that organization's accounts can connect and Google does not
+  need to verify the app. Enable the APIs the connector reaches (Gmail, Docs,
   Drive, Sheets, Slides, Calendar, Chat, People, BigQuery; see the package README and
   `deploy-inputs.json`). Its authorized redirect URI is
   `https://schoolos.gmac.io/gatekeeper/google/oauth`. The same client backs the Access Google
@@ -266,6 +268,34 @@ Sheets, Slides, Calendar, Chat and BigQuery, through each user's own Google acco
   before this change is on `main`, with `--ref` at the change's commit). Only then may
   `workshop-backend` and `router` deploy with their new `GATEKEEPER_GOOGLE` binding; a deploy of
   either before the Worker exists is rejected.
+
+## Google sign-in
+
+SCHO-215 lets staff and students sign in to the instance and the district with their Workspace for
+Education accounts. It is configured in Cloudflare Access only; neither Worker changes, because the
+district keys people by Access subject.
+
+- **Identity provider.** "Google (EducateOS demo)", type Google Workspace, restricted to the
+  `gedu.demo.educateos.io` domain, using the connector's OAuth client above. The client lists
+  `https://gmacko.cloudflareaccess.com/cdn-cgi/access/callback` as an authorized redirect URI.
+  Creating or editing identity providers needs the Cloudflare dashboard (or an API token with
+  Access identity-provider rights); the workspace token is refused.
+- **Policy.** The reusable allow policy "EducateOS demo Google accounts" includes the email domain
+  `gedu.demo.educateos.io` and requires the login method to be that identity provider, so a
+  one-time PIN sent to a domain address does not satisfy it. It is attached, after the existing
+  policies, to both the instance's and the district's Access applications.
+- **What refuses an outside account.** Google itself: the provider passes `hd`, so its sign-in page
+  only accepts the domain's accounts (another organization's address gets "Couldn't find this
+  account"), and the Internal consent screen admits no one else.
+- **New accounts and Google's login challenge.** A new account's first sign-in can be met by
+  Google's "Verify it's you" phone challenge, which only a phone number satisfies; a recovery email
+  is not offered, and an admin's "Turn off for 10 minutes" did not lift it (2026-10-26). The person
+  completes it once from their own phone. "Use employee ID" (Admin console, Security,
+  Authentication, Login challenges) with an employee ID on the account may replace it, but the
+  phone was still required within minutes of turning it on.
+- **After signing in.** The instance creates the Workshop user. The district shows "you haven't been
+  added to this school yet" until an administrator adds the person under Manage classes and people,
+  with "Signs in through" set to the Access team and the Access subject as the sign-in ID.
 
 ## The EducateOS connector
 
