@@ -38,6 +38,9 @@ export interface QuizGradingServices {
 /** The opaque activity ID a quiz's own assignment names: the quiz's, so it is found again. */
 export const quizActivityId = (quizId: string): ActivityId => ActivityId.parse(`act_${`quiz-${quizId.replace(/^qz_/, "")}`.slice(0, 63)}`);
 
+/** Whether an assignment's activity ID is a quiz's, from {@link quizActivityId}, rather than an installed activity's. */
+export const isQuizActivityId = (activityId: string): boolean => activityId.startsWith("act_quiz-");
+
 /** {@link QuizGrading} over the district's assessment, artifact and workspace services. */
 export function quizGrading({ records, assessment, artifacts, workspaces, correlationId, directory }: QuizGradingServices): QuizGrading {
   const callerOf = (subject: VerifiedPrincipal): Caller => ({ principal: subject, channel: "http", correlationId });

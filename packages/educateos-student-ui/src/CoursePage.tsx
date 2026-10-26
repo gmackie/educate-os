@@ -1,9 +1,9 @@
 import { Badge, Banner, Breadcrumbs, Empty, Link, SkeletonLine, Surface, Text } from "@cloudflare/kumo";
 import { ClipboardTextIcon, InfoIcon } from "@phosphor-icons/react";
-import { isNotFound, useQuery } from "./api.tsx";
+import { useQuery } from "./api.tsx";
 import { isFinished, STATUS_LABEL, workByStep, type ActivityStatus } from "./courses.ts";
 import { ErrorState } from "./ErrorState.tsx";
-import { courseTitle, formatDateTime } from "./labels.ts";
+import { classTitleIn, formatDateTime } from "./labels.ts";
 import { LoadingSkeleton } from "./LoadingSkeleton.tsx";
 import type { AssignedActivity } from "./model.ts";
 import { PrivacyNote } from "./PrivacyNote.tsx";
@@ -22,8 +22,7 @@ const STATUS_VARIANT = {
 
 /**
  * One activity in the list, with its status. Submitted work comes from the student's submissions,
- * and "feedback ready" from whether the latest one's feedback has been released to them: the API
- * answers not-found until it has.
+ * and "feedback ready" from whether the latest one's feedback has been released to them.
  */
 const ActivityRow = ({ offeringId, entry, hasWork }: { offeringId: string; entry: AssignedActivity; hasWork: boolean }) => {
   const { assignment } = entry;
@@ -31,13 +30,8 @@ const ActivityRow = ({ offeringId, entry, hasWork }: { offeringId: string; entry
     const submissions = await api.call("student.listSubmissions", { params: { assignmentId: assignment.id } });
     const latest = submissions.filter((s) => s.withdrawnAt === undefined).toSorted((a, b) => b.attempt - a.attempt)[0];
     if (latest === undefined) return hasWork ? "in-progress" : "not-started";
-    try {
-      await api.call("student.getFeedback", { params: { submissionId: latest.id } });
-      return "feedback-ready";
-    } catch (error) {
-      if (isNotFound(error)) return "submitted";
-      throw error;
-    }
+    const released = await api.call("student.assignmentFeedback", { params: { assignmentId: assignment.id } });
+    return released.some((feedback) => feedback.submissionId === latest.id) ? "feedback-ready" : "submitted";
   });
   return (
     <Surface className="flex flex-col gap-2 rounded-lg border border-kumo-hairline p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -63,19 +57,24 @@ const ActivityRow = ({ offeringId, entry, hasWork }: { offeringId: string; entry
 /** A class: its activities in due-date order, each with its due date and status. */
 export const CoursePage = ({ offeringId }: { offeringId: string }) => {
   const [course, reload] = useQuery(`course:${offeringId}`, async (api) => {
-    const [activities, workspaces] = await Promise.all([
+    const [activities, workspaces, offerings] = await Promise.all([
       api.call("student.listActivities", { params: { offeringId } }),
       api.call("student.listWorkspaces"),
+      api.call("student.listOfferings"),
     ]);
     const workspace = workspaces.find((w) => w.kind === "course" && w.offeringId === offeringId);
     const artifacts = workspace === undefined ? [] : await api.call("student.listArtifacts", { params: { workspaceId: workspace.id } });
-    return { activities: activities.toSorted((a, b) => a.assignment.dueAt.localeCompare(b.assignment.dueAt)), workspace, artifacts };
+    return {
+      title: classTitleIn(offerings, offeringId),
+      activities: activities.toSorted((a, b) => a.assignment.dueAt.localeCompare(b.assignment.dueAt)),
+      workspace,
+      artifacts,
+    };
   });
 
   if (course.status === "loading") return <LoadingSkeleton label="Loading this class" lines={4} />;
   if (course.status === "error") return <ErrorState error={course.error} title="We couldn't load this class" onRetry={reload} />;
-  const { activities, workspace, artifacts } = course.data;
-  const title = courseTitle(activities);
+  const { title, activities, workspace, artifacts } = course.data;
 
   return (
     <div className="flex flex-col gap-6">

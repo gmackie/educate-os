@@ -25,6 +25,7 @@ import { NotAddedYet } from "./NotAddedYet.tsx";
 import { ChildCoursePage } from "./family/ChildCoursePage.tsx";
 import { ChildPage } from "./family/ChildPage.tsx";
 import { FamilyHomePage } from "./family/FamilyHomePage.tsx";
+import { FamilySettingsPage } from "./family/FamilySettingsPage.tsx";
 import { InvitationPage } from "./family/InvitationPage.tsx";
 // Communication (SCHO-189)
 import { CalendarPage } from "./communication/CalendarPage.tsx";
@@ -36,6 +37,9 @@ import { QuizResultPage } from "./quizzes/QuizResultPage.tsx";
 
 /** Where a guardian's invitation link opens. It is the one page that needs no EducateOS account. */
 export const INVITATION_PATH = "/family/invitation";
+
+/** A guardian's settings (SCHO-222). A guardian is taken there from a student's `/settings`. */
+export const FAMILY_SETTINGS_PATH = "/family/settings";
 
 const isFamilyPath = (pathname: string) => pathname === "/family" || pathname.startsWith("/family/");
 
@@ -55,7 +59,7 @@ const SignedIn = ({ pathname }: { pathname: string }) => {
   ) : me.status === "error" ? (
     <ErrorState error={me.error} title="We couldn't open your Learning Home" />
   ) : audience === "family" && !isFamilyPath(pathname) ? (
-    <Navigate to="/family" replace />
+    <Navigate to={pathname === "/settings" ? FAMILY_SETTINGS_PATH : "/family"} replace />
   ) : audience === "student" && isFamilyPath(pathname) ? (
     <Empty title="There's nothing here" description="Use Home to find your classes." />
   ) : (
@@ -128,6 +132,8 @@ const quizResultRoute = createRoute({
 // Family view (ADR-0012, SCHO-188)
 const familyRoute = createRoute({ getParentRoute: () => rootRoute, path: "/family", component: FamilyHomePage });
 
+const familySettingsRoute = createRoute({ getParentRoute: () => rootRoute, path: FAMILY_SETTINGS_PATH, component: FamilySettingsPage });
+
 const invitationRoute = createRoute({ getParentRoute: () => rootRoute, path: INVITATION_PATH, component: InvitationPage });
 
 const childRoute = createRoute({
@@ -148,7 +154,7 @@ const childCourseRoute = createRoute({
   },
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, calendarRoute, notificationsRoute, settingsRoute, courseRoute, activityRoute, quizRoute, quizResultRoute, familyRoute, invitationRoute, childRoute, childCourseRoute]);
+const routeTree = rootRoute.addChildren([homeRoute, mySpaceRoute, gradesRoute, calendarRoute, notificationsRoute, settingsRoute, courseRoute, activityRoute, quizRoute, quizResultRoute, familyRoute, familySettingsRoute, invitationRoute, childRoute, childCourseRoute]);
 
 /** The Learning Home's router: on the browser's history, or on a memory history in tests. */
 export const createStudentRouter = (history?: RouterHistory) =>

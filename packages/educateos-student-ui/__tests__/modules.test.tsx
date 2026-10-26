@@ -24,7 +24,7 @@ const OUTLINE = {
   pages: [{
     id: "cpg_1",
     title: "What is a claim?",
-    body: "## Claims\n\nA **claim** is *arguable*. <script>alert(1)</script>\n\n- Specific\n- Debatable\n\nSee [the guide](https://open-lessons.example/guide) or [this](javascript:alert(1)).",
+    body: "## Claims\n\nA **claim** is *arguable*. <script>alert(1)</script>\n\n- Specific\n- Debatable\n\nSee [the guide](https://open-lessons.example/guide) or [this](javascript:alert(1)).\n\nSlides: https://open-lessons.example/slides. Not http://plain.example/page.",
   }],
 };
 
@@ -53,6 +53,15 @@ describe("class modules", () => {
     expect(within(section).getByRole("link", { name: /the guide/ }).getAttribute("href")).toBe("https://open-lessons.example/guide");
     expect(within(section).queryByRole("link", { name: /^this/ })).toBeNull();
     expect(within(section).getByText("this")).toBeTruthy();
+  });
+
+  it("makes a bare https address a link, without its trailing full stop, and leaves other schemes as text (SCHO-222)", async () => {
+    await renderApp(fakeDistrict({ modules: { [ENGLISH]: OUTLINE } }), `/courses/${ENGLISH}`);
+    const section = await screen.findByRole("region", { name: "Week 1: Claims" });
+    const slides = within(section).getByRole("link", { name: /https:\/\/open-lessons\.example\/slides/ });
+    expect(slides.getAttribute("href")).toBe("https://open-lessons.example/slides");
+    expect(slides.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(within(section).queryByRole("link", { name: /plain\.example/ })).toBeNull();
   });
 
   it("shows nothing extra for a class with no published modules", async () => {

@@ -3,11 +3,13 @@ import { useQuery } from "../api.tsx";
 import { ErrorState } from "../ErrorState.tsx";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import { coursePath, quizPath } from "../router.tsx";
+import { useClassTitle } from "../useClassTitle.ts";
 import { AttemptResultView } from "./AttemptResultView.tsx";
 
 /** One of the student's finished attempts at a quiz, as the quiz lets them see it. */
 export const QuizResultPage = ({ offeringId, quizId, attemptId }: { offeringId: string; quizId: string; attemptId: string }) => {
   const [result, reload] = useQuery(`quiz-result:${offeringId}:${attemptId}`, (client) => client.call("student.quizAttemptResult", { params: { offeringId, attemptId } }));
+  const classTitle = useClassTitle(offeringId, result.status === "ready" && result.data.courseTitle !== "" ? result.data.courseTitle : "Class");
   if (result.status === "loading") return <LoadingSkeleton label="Loading your results" lines={4} />;
   if (result.status === "error") return <ErrorState error={result.error} title="We couldn't open these results" onRetry={reload} />;
   return (
@@ -15,7 +17,7 @@ export const QuizResultPage = ({ offeringId, quizId, attemptId }: { offeringId: 
       <Breadcrumbs>
         <Breadcrumbs.Link href="/">Home</Breadcrumbs.Link>
         <Breadcrumbs.Separator />
-        <Breadcrumbs.Link href={coursePath(offeringId)}>{result.data.courseTitle || "Class"}</Breadcrumbs.Link>
+        <Breadcrumbs.Link href={coursePath(offeringId)}>{classTitle}</Breadcrumbs.Link>
         <Breadcrumbs.Separator />
         <Breadcrumbs.Link href={quizPath(offeringId, quizId)}>{result.data.title}</Breadcrumbs.Link>
         <Breadcrumbs.Separator />

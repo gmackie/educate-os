@@ -43,6 +43,8 @@ export const PostItem = ({ node, topic, authors, onChanged }: {
   }
 
   const author = post.mine ? "You" : authors.get(post.authorId) ?? "A classmate";
+  // Whose post it is, as a reply names it: "Reply to your post", not "Reply to You".
+  const whose = post.mine ? "your post" : author;
   const open = !topic.locked;
   const canReply = open && topic.settings.allowReplies && post.status === "visible";
   return (
@@ -75,7 +77,7 @@ export const PostItem = ({ node, topic, authors, onChanged }: {
         )}
         {mode === "reading" ? (
           <div className="flex flex-wrap gap-2">
-            {canReply ? <Button size="sm" variant="secondary" icon={<ArrowBendUpLeftIcon aria-hidden />} onClick={() => setMode("replying")} aria-label={`Reply to ${author}`}>Reply</Button> : null}
+            {canReply ? <Button size="sm" variant="secondary" icon={<ArrowBendUpLeftIcon aria-hidden />} onClick={() => setMode("replying")} aria-label={`Reply to ${whose}`}>Reply</Button> : null}
             {post.mine && open ? (
               <>
                 <Button size="sm" variant="secondary" icon={<PencilSimpleIcon aria-hidden />} onClick={() => setMode("editing")}>Edit</Button>
@@ -119,7 +121,7 @@ export const PostItem = ({ node, topic, authors, onChanged }: {
         ) : null}
         {mode === "replying" ? (
           <PostComposer
-            label={`Reply to ${author}`}
+            label={`Reply to ${whose}`}
             submitLabel="Post reply"
             onCancel={() => setMode("reading")}
             onSubmit={async (body) => {
@@ -131,7 +133,7 @@ export const PostItem = ({ node, topic, authors, onChanged }: {
           />
         ) : null}
       </article>
-      <Replies replies={replies} topic={topic} authors={authors} onChanged={onChanged} label={`Replies to ${author}`} />
+      <Replies replies={replies} topic={topic} authors={authors} onChanged={onChanged} label={`Replies to ${whose}`} />
     </li>
   );
 };

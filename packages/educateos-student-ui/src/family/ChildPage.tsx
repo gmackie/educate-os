@@ -1,20 +1,18 @@
 import { useEffect } from "react";
-import { Badge, Empty, Link, Surface, Text } from "@cloudflare/kumo";
+import { Badge, Empty, Link, SkeletonLine, Surface, Text } from "@cloudflare/kumo";
 import { ChalkboardTeacherIcon, EyeIcon } from "@phosphor-icons/react";
 import type { RouteResponse } from "@educateos/api-client";
 import { isNotFound, useQuery } from "../api.tsx";
 import { useAnnounce } from "../AppContext.tsx";
 import { ErrorState } from "../ErrorState.tsx";
+import { classTitle } from "../labels.ts";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import { childCoursePath } from "../router.tsx";
+import { scoreText } from "./familyText.ts";
 import { ChildSwitcher } from "./ChildSwitcher.tsx";
 
 /** One of a child's classes. */
 type ChildClass = RouteResponse<"guardian.childOfferings">[number];
-
-/** A class's name: its course, and the section when there is one. */
-export const classTitle = ({ course, offering }: Pick<ChildClass, "course" | "offering">): string =>
-  offering.sectionName === undefined ? course.title : `${course.title} · ${offering.sectionName}`;
 
 /** What a guardian sees, and what they never see, in words a family reads. */
 export const FamilyPrivacyNote = ({ childName }: { childName: string }) => (
@@ -23,6 +21,21 @@ export const FamilyPrivacyNote = ({ childName }: { childName: string }) => (
     {`You see what ${childName}'s teachers have shared with ${childName}. You never see ${childName}'s own work or personal space.`}
   </p>
 );
+
+/**
+ * The points the child's official grades add up to in a class so far, such as "Graded so far: 8 of
+ * 10 points". A guardian is not given the teacher's gradebook, so this is the graded work's points,
+ * not a weighted course grade.
+ */
+const GradedSoFar = ({ studentId, offeringId }: { studentId: string; offeringId: string }) => {
+  const [course] = useQuery(`child-grades:${studentId}:${offeringId}`, (api) => api.call("guardian.childCourse", { params: { studentId, offeringId } }));
+  if (course.status === "loading") return <SkeletonLine minWidth={30} maxWidth={50} />;
+  if (course.status === "error") return null;
+  const latest = course.data.assignments.flatMap(({ grades }) => grades.slice(-1));
+  if (latest.length === 0) return <Text variant="secondary" size="sm">Nothing graded yet</Text>;
+  const total = latest.reduce((sum, { score }) => ({ points: sum.points + score.points, maxPoints: sum.maxPoints + score.maxPoints }), { points: 0, maxPoints: 0 });
+  return <Text size="sm">{`Graded so far: ${scoreText(total)}`}</Text>;
+};
 
 const ClassList = ({ studentId, classes, past }: { studentId: string; classes: readonly ChildClass[]; past: boolean }) => (
   <ul className="grid gap-3 sm:grid-cols-2">
@@ -36,6 +49,7 @@ const ClassList = ({ studentId, classes, past }: { studentId: string; classes: r
             <Text variant="secondary" size="sm">{entry.term.name}</Text>
             {past ? <Badge variant="neutral">Finished</Badge> : null}
           </div>
+          <GradedSoFar studentId={studentId} offeringId={entry.offering.id} />
         </Surface>
       </li>
     ))}

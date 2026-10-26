@@ -16,6 +16,8 @@ import type { ResolvedPrincipal } from "@educateos/identity";
 import type { AssessmentService } from "@educateos/assessment";
 import type { GuardianRelationships, PolicyDecider } from "@educateos/policy";
 import type { GuardianInvitations, IdentityLinkAdminService } from "@educateos/identity-links";
+import type { Announcement } from "./communication/model.ts";
+import { isQuizActivityId } from "./quizzes.ts";
 import type { ParsedRouteInput, RouteResponse } from "./routes.ts";
 import type { DistrictAppStores } from "./stores.ts";
 
@@ -45,6 +47,11 @@ export interface GuardianRequestContext {
   /** The request's origin, which an invitation link defaults to. */
   readonly origin: string;
   assessment(): AssessmentService;
+  /**
+   * An offering's published announcements, newest first, as the policy engine lets the caller read
+   * them: none where it does not.
+   */
+  publishedAnnouncements(offeringId: OfferingId): Promise<Announcement[]>;
   guardianRelationships(): GuardianRelationships;
   guardianInvitations(): GuardianInvitations;
   identityLinks(): IdentityLinkAdminService;
@@ -99,8 +106,9 @@ function requireStudent(snapshot: DistrictDirectorySnapshot, studentId: Principa
  * - **Offerings** are the child's active student enrollments, each a `read` of the `offering`.
  * - **A course** is the child's assignments in it (a `list` and `read` of `activity`), with the
  *   feedback released to the child, as the child sees it (`AssessmentService.releasedFeedback`, a
- *   `read` of `feedback`), and the child's official grades (a `read` of `official-grade`). No
- *   submission, artifact or workspace is ever read for a guardian.
+ *   `read` of `feedback`), the child's official grades (a `read` of `official-grade`), and the
+ *   class's published announcements (a `list` of `announcement`). No submission, artifact or
+ *   workspace is ever read for a guardian.
  *
  * The admin routes are a district admin's, decided by the services they call.
  */
@@ -170,12 +178,23 @@ export function guardianHandlers<C extends GuardianRequestContext>(options: Guar
       const assignments = [];
       for (const assignment of await orNone(assessment.listAssignments(ctx.caller, params.offeringId))) {
         assignments.push({
-          assignment: { id: assignment.id, offeringId: assignment.offeringId, title: assignment.title, dueAt: assignment.dueAt },
+          assignment: {
+            id: assignment.id,
+            offeringId: assignment.offeringId,
+            title: assignment.title,
+            dueAt: assignment.dueAt,
+            kind: isQuizActivityId(assignment.activityId) ? "quiz" as const : "activity" as const,
+          },
           feedback: await assessment.releasedFeedback(ctx.caller, assignment.id, params.studentId),
           grades: await orNone(assessment.officialGrades(ctx.caller, assignment.id, params.studentId)),
         });
       }
-      return { ...readable, assignments: assignments.toSorted((a, b) => a.assignment.dueAt.localeCompare(b.assignment.dueAt)) };
+      return {
+        ...readable,
+        assignments: assignments.toSorted((a, b) => a.assignment.dueAt.localeCompare(b.assignment.dueAt)),
+        // Decided with the guardian as subject, so a relationship whose scope leaves announcements out shows none.
+        announcements: await ctx.publishedAnnouncements(params.offeringId),
+      };
     },
 
     "admin.guardianStudents": async (ctx) => {

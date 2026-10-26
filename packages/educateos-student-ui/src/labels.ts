@@ -1,6 +1,6 @@
 // The words the Learning Home uses. Kept together so the privacy wording, which the acceptance
 // criterion depends on, is one string everywhere it appears.
-import type { ActivityContent } from "./model.ts";
+import type { ActivityContent, StudentOffering } from "./model.ts";
 
 /** Who can see a place's work, in the student's terms. */
 export const PRIVACY_LABEL = {
@@ -8,28 +8,14 @@ export const PRIVACY_LABEL = {
   course: "Your teacher can see work you submit or share",
 } as const;
 
-const SUBJECTS: Readonly<Record<ActivityContent["subject"], string>> = {
-  "english-language-arts": "English Language Arts",
-  science: "Science",
-  "history-social-studies": "History and Social Studies",
-  mathematics: "Mathematics",
-  arts: "Art",
-  "world-languages": "World Languages",
-  "computer-science": "Computer Science",
-  "health-physical-education": "Health and PE",
-  "social-emotional-learning": "Social and Emotional Learning",
-  other: "Course",
-};
+/** A class's name: its course and section, such as "Earth Science · Tuesday mornings". */
+export const classTitle = ({ course, offering }: { course: { title: string }; offering: { sectionName?: string } }): string =>
+  offering.sectionName === undefined || offering.sectionName === "" ? course.title : `${course.title} · ${offering.sectionName}`;
 
-/**
- * A course's name, from what its activities say about it. The student API does not name a class
- * yet, so its subject and grade band stand in until one does.
- */
-export const courseTitle = (activities: readonly { activity: { content: ActivityContent } }[]): string => {
-  const content = activities[0]?.activity.content;
-  if (content === undefined) return "Course";
-  const band = content.gradeBand.includes("-") ? `Grades ${content.gradeBand.replace("-", "–")}` : `Grade ${content.gradeBand}`;
-  return `${SUBJECTS[content.subject]} · ${band}`;
+/** The name of one of the student's classes, from their list of classes (SCHO-222). */
+export const classTitleIn = (offerings: readonly StudentOffering[], offeringId: string): string => {
+  const found = offerings.find((entry) => entry.offering.id === offeringId);
+  return found === undefined ? "Your class" : classTitle(found);
 };
 
 const dateTime = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });

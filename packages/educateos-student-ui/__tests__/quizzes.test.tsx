@@ -30,9 +30,9 @@ const quizView = (extra: Record<string, unknown> = {}) => ({
 type Result = Record<string, unknown>;
 
 /** The fake district with one quiz in English, whose attempt lasts `minutes` on the district's clock. */
-function withQuiz(options: { minutes?: number; result?: Result; submitFails?: boolean } = {}) {
+function withQuiz(options: { minutes?: number; result?: Result; submitFails?: boolean; quiz?: Record<string, unknown>; deadline?: string } = {}) {
   const base = fakeDistrict();
-  const deadline = new Date(Date.parse(SERVER_NOW) + (options.minutes ?? 15) * MINUTE).toISOString();
+  const deadline = options.deadline ?? new Date(Date.parse(SERVER_NOW) + (options.minutes ?? 15) * MINUTE).toISOString();
   const saved: unknown[] = [];
   const attemptView = { attemptId: ATTEMPT, quizId: QUIZ, title: "Poetry terms", number: 1, questions: QUESTIONS, answers: [], startedAt: SERVER_NOW, deadline, serverNow: SERVER_NOW };
   const hiddenResult = {
@@ -40,8 +40,8 @@ function withQuiz(options: { minutes?: number; result?: Result; submitFails?: bo
     items: QUESTIONS.map((question) => ({ question, ...(question.id === "qzi_mc" ? { response: { type: "multiple-choice", choiceId: "c2" } } : {}) })),
   };
   const handlers: Partial<Record<RouteName, (input: never) => unknown>> = {
-    "student.listQuizzes": () => [quizView()],
-    "student.getQuiz": () => quizView(),
+    "student.listQuizzes": () => [quizView(options.quiz)],
+    "student.getQuiz": () => quizView(options.quiz),
     "student.startQuizAttempt": () => attemptView,
     "student.saveQuizAnswers": ({ body }: RouteInput<"student.saveQuizAnswers">) => {
       saved.push(body.answers);
@@ -148,6 +148,22 @@ describe("class quizzes", () => {
     expect(announcement()).toBe("Time is up. This attempt can no longer be changed or submitted.");
     expect(screen.getByRole("alert").textContent).toContain("Time is up");
     expect((screen.getByRole("button", { name: "Submit quiz" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("shows when an untimed quiz closes, not a countdown of hundreds of hours (SCHO-222)", async () => {
+    await renderApp(withQuiz({ quiz: { timeLimitMinutes: undefined }, deadline: "2026-10-30T21:00:00.000Z" }).district, `/courses/${ENGLISH}/quizzes/${QUIZ}`);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Start quiz" }));
+    const closes = await screen.findByText(/^No time limit\. Closes/);
+    expect(closes.querySelector("time")?.getAttribute("datetime")).toBe("2026-10-30T21:00:00.000Z");
+    expect(screen.queryByRole("timer")).toBeNull();
+  });
+
+  it("shows the released score on the quiz's own page (SCHO-222)", async () => {
+    const submitted = { id: ATTEMPT, number: 1, status: "submitted", startedAt: SERVER_NOW, submittedAt: SERVER_NOW };
+    await renderApp(withQuiz({ quiz: { attempts: [submitted], releasedScore: { points: 9, maxPoints: 11 } } }).district, `/courses/${ENGLISH}/quizzes/${QUIZ}`);
+    expect(await screen.findByText("Your score: 9 out of 11")).toBeTruthy();
+    expect(screen.getByText("Submitted")).toBeTruthy();
   });
 
   it("shows that time ran out when the district refuses a late submission", async () => {

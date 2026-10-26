@@ -82,7 +82,7 @@ describe("communication through the Worker", () => {
     await worker.scheduled!(createScheduledController({ cron: NOTIFICATION_CRON }), env, Object.assign(ctx, { exports }));
     await waitOnExecutionContext(ctx);
     const sent = (await district().sentEmail()).slice(before);
-    const mine = sent.filter((m) => m.subject === "New announcement in English 9 (Period 3): Bring a novel");
+    const mine = sent.filter((m) => m.subject === "New announcement in English 9 · Period 3: Bring a novel");
     expect(mine).toHaveLength(1);
     expect(mine[0]).toMatchObject({
       to: "family.okafor@northfield.example",

@@ -59,7 +59,7 @@ export const CourseDiscussions = ({ offeringId }: { offeringId: string }) => {
                   </Text>
                 </div>
                 <div id={panelId} hidden={!open}>
-                  {open ? <TopicThread topic={topic} /> : null}
+                  {open ? <TopicThread topic={topic} onChanged={reload} /> : null}
                 </div>
               </Surface>
             </li>

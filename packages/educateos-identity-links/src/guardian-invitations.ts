@@ -144,6 +144,14 @@ export interface RedeemedGuardianInvitation {
   outcome: GuardianInvitationRedemption["outcome"];
 }
 
+/** Who an invitation is about, shown to the guardian before they accept it. */
+export interface GuardianInvitationPreview {
+  /** The child's display name. */
+  studentDisplayName: string;
+  /** The child's school, or the district's name where the child is at several schools or none. */
+  schoolName: string;
+}
+
 /** What a {@link GuardianInvitations} service is built from. */
 export interface GuardianInvitationsOptions {
   /** Where invitations are kept. */
@@ -237,6 +245,42 @@ export class GuardianInvitations {
   }
 
   /**
+   * What an invitation is for, before the guardian accepts it: the child's name and their school's,
+   * so the page can say who and where (SCHO-222). The token is not spent. A token that cannot be
+   * redeemed is refused exactly as {@link redeem} refuses it, so a preview tells a holder nothing a
+   * redemption would not.
+   *
+   * @throws EducateOsError `not-found` for a token that cannot be used.
+   */
+  async preview(rawToken: unknown): Promise<GuardianInvitationPreview> {
+    const { invitation } = await this.#usable(rawToken);
+    const { snapshot } = await this.#directory.load();
+    const student = snapshot.principals.find((p) => p.id === invitation.studentPrincipalId);
+    if (student === undefined) throw new EducateOsError("not-found", INVALID);
+    const schoolIds = new Set(snapshot.enrollments
+      .filter((e) => e.principalId === student.id && e.status === "active")
+      .flatMap((e) => snapshot.offerings.filter((o) => o.id === e.offeringId).map((o) => o.schoolId)));
+    // One school names itself; a child in several, or in none yet, is at the district.
+    const school = schoolIds.size === 1 ? snapshot.schools.find((s) => schoolIds.has(s.id)) : undefined;
+    return { studentDisplayName: student.displayName, schoolName: school?.name ?? snapshot.district.name };
+  }
+
+  /** The invitation and its relationship, if the token can still be redeemed; `not-found` otherwise. */
+  async #usable(rawToken: unknown): Promise<{ invitation: GuardianInvitation; relationship: GuardianRelationship }> {
+    const token = TOKEN.safeParse(rawToken);
+    if (!token.success) throw new EducateOsError("not-found", INVALID);
+    const invitation = await this.#store.findByTokenDigest(await guardianInvitationDigest(token.data));
+    if (invitation === undefined || invitation.redeemed !== undefined || this.#now().getTime() >= Date.parse(invitation.expiresAt)) {
+      throw new EducateOsError("not-found", INVALID);
+    }
+    const relationship = await this.#relationshipStore.get(invitation.relationshipId);
+    if (relationship === undefined || relationship.status !== "pending" || relationship.guardianPrincipalId !== invitation.reservedGuardianPrincipalId) {
+      throw new EducateOsError("not-found", INVALID);
+    }
+    return { invitation, relationship };
+  }
+
+  /**
    * Redeems an invitation as the identity a trusted issuer verified. The token is spent whatever
    * follows, so a link that leaked can be used once at most, and every refusal of a token (unknown,
    * expired, spent, or its relationship no longer pending) is the same `not-found`.
@@ -246,17 +290,8 @@ export class GuardianInvitations {
    *   trust; `conflict` when the guardian already has a relationship to the student.
    */
   async redeem(identity: VerifiedIdentity, rawToken: unknown): Promise<RedeemedGuardianInvitation> {
-    const token = TOKEN.safeParse(rawToken);
-    if (!token.success) throw new EducateOsError("not-found", INVALID);
-    const invitation = await this.#store.findByTokenDigest(await guardianInvitationDigest(token.data));
+    const { invitation, relationship } = await this.#usable(rawToken);
     const at = this.#now();
-    if (invitation === undefined || invitation.redeemed !== undefined || at.getTime() >= Date.parse(invitation.expiresAt)) {
-      throw new EducateOsError("not-found", INVALID);
-    }
-    const relationship = await this.#relationshipStore.get(invitation.relationshipId);
-    if (relationship === undefined || relationship.status !== "pending" || relationship.guardianPrincipalId !== invitation.reservedGuardianPrincipalId) {
-      throw new EducateOsError("not-found", INVALID);
-    }
 
     const { snapshot } = await this.#directory.load();
     const key = externalIdentityKey({ districtId: snapshot.district.id, issuer: identity.issuer, subject: identity.subject });

@@ -3,16 +3,18 @@ import { ChalkboardTeacherIcon, LockSimpleIcon } from "@phosphor-icons/react";
 import { useQuery } from "./api.tsx";
 import { CourseCard } from "./CourseCard.tsx";
 import { groupCourses, type CourseEntry } from "./courses.ts";
+import { classTitleIn } from "./labels.ts";
 import { ErrorState } from "./ErrorState.tsx";
 import { LoadingSkeleton } from "./LoadingSkeleton.tsx";
+import type { StudentOffering } from "./model.ts";
 import { PrivacyNote } from "./PrivacyNote.tsx";
 import { RecentAnnouncements } from "./communication/RecentAnnouncements.tsx";
 
-const CourseList = ({ courses, past }: { courses: CourseEntry[]; past: boolean }) => (
+const CourseList = ({ courses, offerings, past }: { courses: CourseEntry[]; offerings: readonly StudentOffering[]; past: boolean }) => (
   <ul className="grid gap-3 sm:grid-cols-2">
     {courses.map((course) => (
       <li key={course.offeringId}>
-        <CourseCard offeringId={course.offeringId} past={past} />
+        <CourseCard offeringId={course.offeringId} title={classTitleIn(offerings, course.offeringId)} past={past} />
       </li>
     ))}
   </ul>
@@ -21,13 +23,13 @@ const CourseList = ({ courses, past }: { courses: CourseEntry[]; past: boolean }
 /** Home: this term's classes, the student's own space, and finished classes, each with who can see it. */
 export const HomePage = () => {
   const [home, reload] = useQuery("home", async (api) => {
-    const [me, workspaces] = await Promise.all([api.call("me.get"), api.call("student.listWorkspaces")]);
-    return { me, ...groupCourses(me, workspaces) };
+    const [me, workspaces, offerings] = await Promise.all([api.call("me.get"), api.call("student.listWorkspaces"), api.call("student.listOfferings")]);
+    return { me, offerings, ...groupCourses(me, workspaces) };
   });
 
   if (home.status === "loading") return <LoadingSkeleton label="Loading your classes" lines={4} />;
   if (home.status === "error") return <ErrorState error={home.error} title="We couldn't load your classes" onRetry={reload} />;
-  const { me, current, past } = home.data;
+  const { me, offerings, current, past } = home.data;
 
   return (
     <div className="flex flex-col gap-8">
@@ -52,7 +54,7 @@ export const HomePage = () => {
             description="When your teacher adds you to a class, it shows up here."
           />
         ) : (
-          <CourseList courses={current} past={false} />
+          <CourseList courses={current} offerings={offerings} past={false} />
         )}
       </section>
 
@@ -76,7 +78,7 @@ export const HomePage = () => {
           <Text variant="heading" as="h2">
             <span id="past-courses">Past courses (read-only)</span>
           </Text>
-          <CourseList courses={past} past />
+          <CourseList courses={past} offerings={offerings} past />
         </section>
       )}
     </div>

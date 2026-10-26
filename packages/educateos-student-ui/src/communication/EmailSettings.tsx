@@ -6,20 +6,25 @@ import { useAnnounce } from "../AppContext.tsx";
 import { ErrorState } from "../ErrorState.tsx";
 import type { Preferences } from "../model.ts";
 
-type Kind = "announcements" | "assignments" | "feedback" | "grades";
+type Kind = keyof Preferences["email"];
 
-const KINDS: readonly { kind: Kind; label: string }[] = [
-  { kind: "announcements", label: "New announcements" },
-  { kind: "assignments", label: "New assignments and work due soon" },
-  { kind: "feedback", label: "Feedback from my teachers" },
-  { kind: "grades", label: "Grades posted" },
-];
+/** The emails each reader can turn on or off: a student's notifications, a family's weekly update. */
+const KINDS: Readonly<Record<"student" | "family", readonly { kind: Kind; label: string }[]>> = {
+  student: [
+    { kind: "announcements", label: "New announcements" },
+    { kind: "assignments", label: "New assignments and work due soon" },
+    { kind: "feedback", label: "Feedback from my teachers" },
+    { kind: "grades", label: "Grades posted" },
+  ],
+  family: [{ kind: "digest", label: "A weekly update about my children's classes" }],
+};
 
 /**
- * Which emails the student gets. Each switch saves at once. Where the school sends no email, or
- * has no address for the student, the switches say why nothing arrives.
+ * Which emails the reader gets. Each switch saves at once. Where the school sends no email there
+ * are no switches, only a note saying so (SCHO-222); where it has no address for the reader, the
+ * switches stay, with a note on why nothing arrives yet.
  */
-export const EmailSettings = ({ initial }: { initial: Preferences }) => {
+export const EmailSettings = ({ initial, audience = "student" }: { initial: Preferences; audience?: "student" | "family" }) => {
   const api = useApi();
   const announce = useAnnounce();
   const [preferences, setPreferences] = useState(initial);
@@ -39,15 +44,24 @@ export const EmailSettings = ({ initial }: { initial: Preferences }) => {
     }
   };
 
+  if (!preferences.emailEnabled) {
+    return (
+      <Banner
+        variant="secondary"
+        icon={<InfoIcon weight="fill" />}
+        title="Your school doesn't send email from EducateOS"
+        description={audience === "student" ? "You'll still see everything under Notifications." : "You'll still see everything here when you sign in."}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      {!preferences.emailEnabled ? (
-        <Banner variant="secondary" icon={<InfoIcon weight="fill" />} title="Your school doesn't send email from EducateOS" description="You'll still see everything under Notifications." />
-      ) : !preferences.hasEmailAddress ? (
+      {preferences.hasEmailAddress ? null : (
         <Banner variant="secondary" icon={<InfoIcon weight="fill" />} title="Your school has no email address for you" description="Ask your school to add one if you want these emails." />
-      ) : null}
+      )}
       <Text variant="secondary">Email me about:</Text>
-      {KINDS.map(({ kind, label }) => (
+      {KINDS[audience].map(({ kind, label }) => (
         <Switch key={kind} label={label} checked={preferences.email[kind]} disabled={saving !== undefined} onCheckedChange={(on) => void change(kind, on)} />
       ))}
       {failed === undefined ? null : <ErrorState error={failed} title="We couldn't save that change" />}

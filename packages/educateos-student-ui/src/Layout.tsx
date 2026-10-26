@@ -4,6 +4,8 @@ import { BookOpenIcon, CalendarBlankIcon, ExamIcon, GearIcon, HouseIcon, LockSim
 import { ThemeModeButton } from "@gadgets/ui/theme";
 import { useAnnounce } from "./AppContext.tsx";
 import { NotificationsLink } from "./communication/NotificationsLink.tsx";
+import { FAMILY_SETTINGS_PATH } from "./router.tsx";
+import { SignOut } from "./SignOut.tsx";
 
 const DESKTOP_QUERY = "(min-width: 48rem)";
 
@@ -87,16 +89,15 @@ export const Layout = ({ studentName, audience, children }: { studentName: strin
           </Text>
           {isPhone || audience === undefined ? null : <MainNav label="Main" audience={audience} />}
           <div className="flex items-center gap-3">
-            {audience === "student" ? (
-              <>
-                <NotificationsLink />
-                <Link href="/settings" variant="plain" className="flex items-center py-2" aria-label="Settings">
-                  <GearIcon aria-hidden size={20} />
-                </Link>
-              </>
-            ) : null}
+            {audience === "student" ? <NotificationsLink /> : null}
+            {audience === undefined ? null : (
+              <Link href={audience === "student" ? "/settings" : FAMILY_SETTINGS_PATH} variant="plain" className="flex items-center py-2" aria-label="Settings">
+                <GearIcon aria-hidden size={20} />
+              </Link>
+            )}
             <ThemeModeButton onAnnounce={announce} />
             {studentName === undefined ? null : <Text variant="secondary">{studentName}</Text>}
+            {audience === undefined ? null : <SignOut />}
           </div>
         </div>
       </header>

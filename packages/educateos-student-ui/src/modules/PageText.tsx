@@ -46,19 +46,22 @@ export const pageBlocks = (markdown: string): Block[] => {
   return blocks;
 };
 
-// Bold, italics, inline code and links, in that order of precedence. Anything else is text.
-const INLINE = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[([^\]]+)\]\(([^)\s]+)\)/g;
+// Bold, italics, inline code, links and bare `https` addresses, in that order of precedence.
+// Anything else is text. A bare address stops before trailing punctuation, so "see https://a.example."
+// links to the address, not the full stop.
+const INLINE = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[([^\]]+)\]\(([^)\s]+)\)|(https:\/\/[^\s<>"]*[^\s<>".,;:!?'")\]])/g;
 
-/** One line of Markdown as text with emphasis and links. Only `https` links become links. */
+/** One line of Markdown as text with emphasis and links. Only `https` addresses become links. */
 const Inline = ({ text }: { text: string }) => {
   const parts: ReactNode[] = [];
   let at = 0;
   for (const match of text.matchAll(INLINE)) {
     if (match.index > at) parts.push(text.slice(at, match.index));
-    const [, bold, italic, code, label, href] = match;
+    const [, bold, italic, code, label, href, bare] = match;
     if (bold !== undefined) parts.push(<strong>{bold}</strong>);
     else if (italic !== undefined) parts.push(<em>{italic}</em>);
     else if (code !== undefined) parts.push(<code>{code}</code>);
+    else if (bare !== undefined) parts.push(<SafeExternalLink href={bare}>{bare}</SafeExternalLink>);
     else parts.push(<SafeExternalLink href={href!}>{label}</SafeExternalLink>);
     at = match.index + match[0].length;
   }

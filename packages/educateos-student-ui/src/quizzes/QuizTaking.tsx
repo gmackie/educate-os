@@ -3,6 +3,7 @@ import { Banner, Button, Text } from "@cloudflare/kumo";
 import { HourglassMediumIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { DistrictApiError } from "@educateos/api-client";
 import { messageFor, useApi } from "../api.tsx";
+import { formatDateTime } from "../labels.ts";
 import { useAnnounce } from "../AppContext.tsx";
 import type { QuizAttemptResult, QuizAttemptView, QuizResponse } from "../model.ts";
 import { QuestionField } from "./QuestionField.tsx";
@@ -20,9 +21,14 @@ const isTimeUp = (error: unknown) => error instanceof DistrictApiError && error.
  * works, the time left on the district's clock, and submitting after the student confirms. Once
  * time is up the attempt can no longer be changed; the district refuses a late submission too.
  */
-export const QuizTaking = ({ offeringId, attempt, onSubmitted }: {
+export const QuizTaking = ({ offeringId, attempt, timed, onSubmitted }: {
   offeringId: string;
   attempt: QuizAttemptView;
+  /**
+   * Whether the quiz has a time limit. An untimed attempt's deadline is the quiz's close, which
+   * reads as a date, not as a countdown of hundreds of hours.
+   */
+  timed: boolean;
   onSubmitted: (result: QuizAttemptResult) => void;
 }) => {
   const api = useApi();
@@ -67,6 +73,10 @@ export const QuizTaking = ({ offeringId, attempt, onSubmitted }: {
       <div className="flex flex-wrap items-center justify-between gap-3">
         {clock.remaining === undefined ? (
           <Text variant="secondary">No time limit. Your answers are saved as you go.</Text>
+        ) : !timed && attempt.deadline !== undefined ? (
+          <Text variant="secondary">
+            No time limit. Closes <time dateTime={attempt.deadline}>{formatDateTime(attempt.deadline)}</time>. Your answers are saved as you go.
+          </Text>
         ) : (
           <Text>
             Time left: <span role="timer" aria-label="Time left" className="font-semibold tabular-nums">{formatClock(clock.remaining)}</span>

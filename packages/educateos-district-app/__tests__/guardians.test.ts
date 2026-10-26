@@ -73,6 +73,43 @@ describe("guardian onboarding over HTTP", () => {
     expect(after.relationships[0]!.history.map((e) => e.action)).toEqual(["guardian-relationship.recorded", "guardian-relationship.confirmed"]);
   });
 
+  it("names the child and school before accepting, and tells a sign-in awaiting approval to wait (SCHO-222)", async () => {
+    const d = await district();
+    const admin = d.tokenFor(NF.admin);
+    const invited = await d.ok(admin, "admin.inviteGuardian", { params: { studentId: NF.amara }, body: { guardianDisplayName: "Gina Okafor" } });
+    const token = tokenIn(invited.invitationUrl);
+    const gina = d.idp.issue("gina-okafor");
+
+    // Amara takes classes at one school, so the invitation names it. Previewing spends nothing.
+    const preview = await d.ok(gina, "onboarding.previewGuardianInvitation", { body: { token } });
+    expect(preview.studentDisplayName).toBe("Amara Okafor");
+    expect(preview.schoolName).not.toBe("");
+    expect(await d.ok(gina, "onboarding.previewGuardianInvitation", { body: { token } })).toEqual(preview);
+    expectError(await d.call(undefined, "onboarding.previewGuardianInvitation", { body: { token } }), 401, "unauthenticated");
+    expectError(await d.call(gina, "onboarding.previewGuardianInvitation", { body: { token: "x".repeat(43) } }), 404, "not-found");
+
+    // Before redeeming, the sign-in is simply unlinked.
+    const before = await d.call(gina, "me.get");
+    expectError(before, 401, "unauthenticated");
+    expect((before.body as { unlinkedSignIn?: { awaitingApproval?: true } }).unlinkedSignIn?.awaitingApproval).toBeUndefined();
+
+    await d.ok(gina, "onboarding.redeemGuardianInvitation", { body: { token } });
+    // A spent link previews as nothing, exactly as it redeems.
+    expectError(await d.call(gina, "onboarding.previewGuardianInvitation", { body: { token } }), 404, "not-found");
+    const waiting = await d.call(gina, "me.get");
+    expectError(waiting, 401, "unauthenticated");
+    expect((waiting.body as { unlinkedSignIn: unknown }).unlinkedSignIn).toMatchObject({ subject: "gina-okafor", awaitingApproval: true });
+    // Someone else's sign-in is not marked by Gina's request.
+    const other = await d.call(d.idp.issue("someone-else"), "me.get");
+    expect((other.body as { unlinkedSignIn?: { awaitingApproval?: true } }).unlinkedSignIn?.awaitingApproval).toBeUndefined();
+
+    // Once decided, the request no longer marks the sign-in.
+    const { pendingSignIns } = await d.ok(admin, "admin.studentGuardians", { params: { studentId: NF.amara } });
+    await d.ok(admin, "admin.rejectIdentityRequest", { params: { requestId: pendingSignIns[0]!.requestId } });
+    const rejected = await d.call(gina, "me.get");
+    expect((rejected.body as { unlinkedSignIn?: { awaitingApproval?: true } }).unlinkedSignIn?.awaitingApproval).toBeUndefined();
+  });
+
   it("lets only a district administrator invite, review or decide", async () => {
     const d = await district();
     const { relationshipId } = await onboard(d, NF.amara, "gina");
@@ -125,6 +162,25 @@ describe("what a guardian sees", () => {
     const reads = d.audit.events().filter((e) => e.principalId === guardianId && e.effect === "allow");
     expect(reads.length).toBeGreaterThan(0);
     expect(new Set(reads.map((e) => [e.ruleId, e.grantId].join(" ")))).toEqual(new Set([`guardian.child.read ${relationshipId}`]));
+  });
+
+  it("shows the class's published announcements where the relationship's scope covers them (SCHO-222)", async () => {
+    const d = await district();
+    const { guardian, relationshipId } = await onboard(d, NF.amara, "gina");
+    const rivera = d.tokenFor(NF.rivera);
+    await d.ok(rivera, "teacher.createAnnouncement", { params: { offeringId: NF.eng9 }, body: { title: "Library visit", body: "Bring your card." } });
+    await d.ok(rivera, "teacher.createAnnouncement", {
+      params: { offeringId: NF.eng9 },
+      body: { title: "Next month", body: "Not yet.", publishAt: new Date(d.clock.now.getTime() + 30 * 86_400_000).toISOString() },
+    });
+
+    const course = await d.ok(guardian, "guardian.childCourse", { params: { studentId: NF.amara, offeringId: NF.eng9 } });
+    // Published ones only, as Amara sees them.
+    expect(course.announcements.map((a) => a.title)).toEqual(["Library visit"]);
+    expect(course.announcements.map((a) => a.id)).toEqual((await d.ok(d.tokenFor(NF.amara), "student.courseAnnouncements", { params: { offeringId: NF.eng9 } })).map((v) => v.announcement.id));
+
+    await d.ok(d.tokenFor(NF.admin), "admin.updateGuardianScope", { params: { relationshipId }, body: { readableKinds: ["offering", "activity", "feedback", "official-grade"] } });
+    expect((await d.ok(guardian, "guardian.childCourse", { params: { studentId: NF.amara, offeringId: NF.eng9 } })).announcements).toEqual([]);
   });
 
   it("follows the relationship's scope: withheld grades, and only the named offerings", async () => {

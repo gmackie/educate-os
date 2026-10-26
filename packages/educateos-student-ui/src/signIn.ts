@@ -19,3 +19,9 @@ export const takeSignIn = (location: Location, history: History): string | undef
   }
   return sessionStorage.getItem(TOKEN_KEY) ?? undefined;
 };
+
+/** Where signing out goes behind Access: its logout page, which the app does not serve. Absolute, so the router leaves it to the browser. */
+export const accessLogoutHref = (): string => new URL("/cdn-cgi/access/logout", window.location.origin).href;
+
+/** Ends a development sign-in: this tab forgets its token. */
+export const forgetSignIn = (): void => sessionStorage.removeItem(TOKEN_KEY);

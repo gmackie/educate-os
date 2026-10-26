@@ -10,7 +10,8 @@ import { PageText } from "../modules/PageText.tsx";
 import { coursePath, quizResultPath } from "../router.tsx";
 import { AttemptResultView } from "./AttemptResultView.tsx";
 import { QuizTaking } from "./QuizTaking.tsx";
-import { AVAILABILITY_LABEL, quizFacts } from "./quizText.ts";
+import { useClassTitle } from "../useClassTitle.ts";
+import { AVAILABILITY_LABEL, formatPoints, quizFacts } from "./quizText.ts";
 
 const ATTEMPT_STATUS = { "in-progress": "In progress", submitted: "Submitted", expired: "Time ran out" } as const;
 
@@ -28,6 +29,11 @@ const QuizOverview = ({ quiz, onStart, starting, startError }: { quiz: QuizView;
         {quiz.availableFrom === undefined ? null : <>Opens <time dateTime={quiz.availableFrom}>{formatDateTime(quiz.availableFrom)}</time>. </>}
         {quiz.availableUntil === undefined ? null : <>Closes <time dateTime={quiz.availableUntil}>{formatDateTime(quiz.availableUntil)}</time>.</>}
       </Text>
+      {quiz.releasedScore === undefined ? null : (
+        <Text>
+          <span className="font-semibold">{`Your score: ${formatPoints(quiz.releasedScore.points)} out of ${formatPoints(quiz.releasedScore.maxPoints)}`}</span>
+        </Text>
+      )}
       {quiz.attempts.length === 0 ? null : (
         <section aria-labelledby="attempts" className="flex flex-col gap-2">
           <Text variant="heading" as="h2"><span id="attempts">Your attempts</span></Text>
@@ -67,6 +73,7 @@ const QuizOverview = ({ quiz, onStart, starting, startError }: { quiz: QuizView;
 export const QuizPage = ({ offeringId, quizId }: { offeringId: string; quizId: string }) => {
   const api = useApi();
   const [quiz, reload] = useQuery(`quiz:${offeringId}:${quizId}`, (client) => client.call("student.getQuiz", { params: { offeringId, quizId } }));
+  const classTitle = useClassTitle(offeringId, quiz.status === "ready" && quiz.data.courseTitle !== "" ? quiz.data.courseTitle : "Class");
   const [stage, setStage] = useState<Stage>({ stage: "overview" });
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<unknown>();
@@ -92,7 +99,7 @@ export const QuizPage = ({ offeringId, quizId }: { offeringId: string; quizId: s
       <Breadcrumbs>
         <Breadcrumbs.Link href="/">Home</Breadcrumbs.Link>
         <Breadcrumbs.Separator />
-        <Breadcrumbs.Link href={coursePath(offeringId)}>{quiz.data.courseTitle || "Class"}</Breadcrumbs.Link>
+        <Breadcrumbs.Link href={coursePath(offeringId)}>{classTitle}</Breadcrumbs.Link>
         <Breadcrumbs.Separator />
         <Breadcrumbs.Current>{quiz.data.title}</Breadcrumbs.Current>
       </Breadcrumbs>
@@ -105,6 +112,7 @@ export const QuizPage = ({ offeringId, quizId }: { offeringId: string; quizId: s
         <QuizTaking
           offeringId={offeringId}
           attempt={stage.attempt}
+          timed={quiz.data.timeLimitMinutes !== undefined}
           onSubmitted={(result) => {
             setStage({ stage: "submitted", result });
             reload();

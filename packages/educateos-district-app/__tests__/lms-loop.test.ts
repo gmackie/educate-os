@@ -220,3 +220,37 @@ describe("admin.listOfferings", () => {
     expect(listed.map((o) => o.offering.id)).not.toContain(NF.eng9);
   });
 });
+
+describe("student.listOfferings (SCHO-222)", () => {
+  it("names each class the student is enrolled in, a finished one too, and answers students only", async () => {
+    const district = await bootDistrict();
+    const offerings = await district.ok(district.tokenFor(NF.amara), "student.listOfferings");
+    expect(offerings.map((o) => o.offering.id).toSorted()).toEqual([NF.bio, NF.bioSpring, NF.eng9].toSorted());
+    const english = offerings.find((o) => o.offering.id === NF.eng9)!;
+    expect([english.course.title, english.offering.sectionName, english.term.id]).toEqual(["English 9", english.offering.sectionName, NF.fall]);
+    expect(offerings.find((o) => o.offering.id === NF.bioSpring)!.term.state).toBe("completed");
+    expectError(await district.call(district.tokenFor(NF.rivera), "student.listOfferings"), 403, "forbidden");
+  });
+});
+
+describe("student.assignmentFeedback (SCHO-222)", () => {
+  it("answers an empty list, not not-found, until feedback is released, then the released record", async () => {
+    const district = await bootDistrict();
+    const { assignment } = await teacherSetsUpEssay(district);
+    const amara = district.tokenFor(NF.amara);
+    const target = { params: { assignmentId: assignment.id } };
+    expect(await district.ok(amara, "student.assignmentFeedback", target)).toEqual([]);
+    const { receipt } = await studentSubmitsEssay(district, assignment.id, amara);
+    // Right after submitting there is nothing to read, and asking is not an error.
+    expect(await district.ok(amara, "student.assignmentFeedback", target)).toEqual([]);
+
+    const rivera = district.tokenFor(NF.rivera);
+    await district.ok(rivera, "teacher.addComment", { params: { submissionId: receipt.submissionId }, body: { body: "Add a counterclaim." } });
+    expect(await district.ok(amara, "student.assignmentFeedback", target)).toEqual([]);
+    await district.ok(rivera, "teacher.releaseFeedback", { params: { submissionId: receipt.submissionId }, body: { state: "shared-with-student" } });
+    expect(await district.ok(amara, "student.assignmentFeedback", target))
+      .toEqual([await district.ok(amara, "student.getFeedback", { params: { submissionId: receipt.submissionId } })]);
+    // A classmate sees none of it.
+    expect(await district.ok(district.tokenFor(NF.elena), "student.assignmentFeedback", target)).toEqual([]);
+  });
+});

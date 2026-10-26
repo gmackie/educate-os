@@ -29,7 +29,7 @@ describe("My space", () => {
     await renderApp(district, "/my-space");
 
     const finished = await screen.findByRole("region", { name: "Keep work from finished classes" });
-    const art = await within(finished).findByRole("region", { name: "Art · Grades 9–12" });
+    const art = await within(finished).findByRole("region", { name: "Art · Period 2" });
     await user.click(within(art).getByRole("button", { name: "Keep a copy of Color in a painting you love: Describe the colors" }));
     expect(await within(art).findByText("Kept in My space")).toBeTruthy();
     expect(district.calls.find((call) => call.name === "student.keepArtifact")?.input).toMatchObject({ params: { workspaceId: "wsp_amara-art" } });
