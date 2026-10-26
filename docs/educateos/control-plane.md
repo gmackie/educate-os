@@ -1,8 +1,8 @@
 # The educateos.io control plane
 
-- Status: operator sign-in, the store, the opt-in registry and the installation dashboard. The
-  guided install follows in a later PR of SCHO-206; billing (SCHO-208) and the marketplace
-  (SCHO-209) build on this.
+- Status: operator sign-in, the store, the opt-in registry, the installation dashboard and Clever
+  portal launches (SCHO-249). The guided install follows in a later PR of SCHO-206; billing
+  (SCHO-208) and the marketplace (SCHO-209) build on this.
 - Issue: SCHO-206. Decision record: [ADR-0013](adr/0013-educateos-open-core-control-plane.md).
 - Code: `packages/educateos-control-plane`, served by the site Worker in `sites/educateos-io`.
 
@@ -22,6 +22,7 @@ before any script runs. Only the paths in `assets.run_worker_first` reach the Wo
 | `/healthz` | JSON `{"status":"ok","commit":…}` once the store answers. ForgeGraph's health check. |
 | `/registry/v1/heartbeat` | The opt-in instance registry's heartbeats: signed by the installation, no sign-in. |
 | `/app`, `/app/*` | The operator console, behind Cloudflare Access, on educateos.io only. The other hostnames redirect there, since the Access application covers only `educateos.io/app`. |
+| `/clever/launch` | Clever portal launches, sent on to the registered installation for the user's Clever district (SCHO-249). No sign-in. See [Clever portal launches](#clever-portal-launches). |
 
 Anything else that reaches the script goes back to the assets binding and its 404 page. The paths
 live under `/app` on the apex rather than at `app.educateos.io`. `app` is a reserved slug either
@@ -127,6 +128,45 @@ registration, single-use keys and sequence numbers.
   registration and installed version, and reports appear once a heartbeat sender exists.
 - **Before traffic grows,** add a rate limit on `/registry/*`. The one Durable Object also serves
   sign-in and the dashboard.
+
+## Clever portal launches
+
+Clever sends portal and Instant Login launches to the app's first redirect URI with a code and no
+`state`, which a district's Access application would refuse. The educateos.io Clever app lists
+`https://educateos.io/clever/launch` first instead ([ADR-0013 addendum A2](adr/0013-educateos-open-core-control-plane.md#addendum-a2-2026-10-26-scho-249-clever-portal-launches-pass-through-educateosio)).
+`src/clever-launch.ts` answers it:
+
+1. GET only. HEAD is answered without spending the code, and other methods get 405.
+2. The code is exchanged at `https://clever.com/oauth/tokens` (HTTP Basic with the app's client,
+   `redirect_uri` exactly `https://educateos.io/clever/launch`).
+3. The token reads `https://api.clever.com/v3.0/me` once, for `data.district`, and is dropped.
+4. The registry maps that Clever district to an installation, and the answer is a 303 to
+   `https://<slug>.educateos.io/`. The district's Access application then signs the user in
+   through Clever itself.
+
+Every response is `no-store` and `no-referrer`. A missing code, an unconfigured Worker, a refused
+exchange or identity read, and an unknown district each get a plain page that names none of the
+values involved; the log line names only which of those it was.
+
+**Which districts it serves.** Only installations registered in the opt-in registry with a Clever
+district ID (`control_plane_registry_clever_districts`). The ID is written by the Durable Object's
+`linkCleverDistrict`, which, like registration, is never served over HTTP; a Clever district names
+one installation, first come. Installations that never opted in, and the demo districts (which are
+not control-plane installations), can't take portal launches: their users start from the district's
+own address, except those named in the site Worker's `CLEVER_LAUNCH_DISTRICTS` var: a JSON map from
+Clever district ID to a `<slug>.educateos.io` hostname, consulted only when the registry has no
+match. It is a demo bridge until the guided install writes installation rows; today it maps the
+`educateos-dev` sandbox district `6ade41569b8cebb96d733c48` to `northfield.educateos.io`. Before
+the guided install offers the link, it needs a proof that the operator speaks for that Clever
+district.
+
+**Setup.**
+
+- The Clever app's first redirect URI is `https://educateos.io/clever/launch`. Each district's own
+  Access callback stays on the list after it, for "Log in with Clever".
+- The site Worker's secrets `CLEVER_CLIENT_ID` and `CLEVER_CLIENT_SECRET` hold the app's OAuth
+  client (`wrangler secret put`, never `wrangler.jsonc`). Without both, every launch gets the
+  "unavailable" page.
 
 ## The installation dashboard
 

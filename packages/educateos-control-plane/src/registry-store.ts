@@ -15,6 +15,7 @@ import { z } from "zod";
 export const REGISTRY_TABLES = {
   instances: "control_plane_registry_instances",
   keys: "control_plane_registry_keys",
+  cleverDistricts: "control_plane_registry_clever_districts",
 } as const;
 
 const SCHEMA = [
@@ -30,6 +31,12 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS ${REGISTRY_TABLES.instances}_by_account ON ${REGISTRY_TABLES.instances} (commercial_account_id)`,
   // Every key ever registered, current or retired. None is accepted twice, for any instance.
   `CREATE TABLE IF NOT EXISTS ${REGISTRY_TABLES.keys} (key_id TEXT PRIMARY KEY)`,
+  // The Clever district each registered installation serves, for Clever portal launches (SCHO-249).
+  // A Clever district names one installation, and an installation names one Clever district.
+  `CREATE TABLE IF NOT EXISTS ${REGISTRY_TABLES.cleverDistricts} (
+    clever_district_id TEXT PRIMARY KEY,
+    instance_id TEXT NOT NULL UNIQUE
+  )`,
 ];
 
 // What a stored record must hold for the store to act on it. The registry wrote the rest, and it is
@@ -121,6 +128,35 @@ export class DurableObjectRegistryStorage implements InstanceRegistryStorage {
   async list(): Promise<InstanceRecord[]> {
     return this.#tables.transact((sql) =>
       sql.exec(`SELECT instance_id, record FROM ${REGISTRY_TABLES.instances}`).toArray().map((row) => read(row)!));
+  }
+
+  /**
+   * Records that a registered installation serves a Clever district, replacing the district it
+   * named before. Refused (false) when the installation isn't registered, or when another
+   * installation already names that Clever district.
+   */
+  async linkCleverDistrict(instanceId: InstanceRecord["instanceId"], cleverDistrictId: string): Promise<boolean> {
+    return this.#tables.transact((sql) => {
+      if (select(sql, instanceId) === undefined) return false;
+      const [holder] = sql.exec(`SELECT instance_id FROM ${REGISTRY_TABLES.cleverDistricts} WHERE clever_district_id = ?`, cleverDistrictId).toArray();
+      if (holder !== undefined) return holder.instance_id === instanceId;
+      sql.exec(`DELETE FROM ${REGISTRY_TABLES.cleverDistricts} WHERE instance_id = ?`, instanceId);
+      sql.exec(`INSERT INTO ${REGISTRY_TABLES.cleverDistricts} (clever_district_id, instance_id) VALUES (?, ?)`, cleverDistrictId, instanceId);
+      return true;
+    });
+  }
+
+  /** The registered installation that serves a Clever district, if one does. */
+  async cleverDistrictInstance(cleverDistrictId: string): Promise<InstanceRecord["instanceId"] | undefined> {
+    return this.#tables.transact((sql) => {
+      const [row] = sql.exec(
+        `SELECT c.instance_id FROM ${REGISTRY_TABLES.cleverDistricts} c
+         JOIN ${REGISTRY_TABLES.instances} i ON i.instance_id = c.instance_id
+         WHERE c.clever_district_id = ?`,
+        cleverDistrictId,
+      ).toArray();
+      return row === undefined ? undefined : InstanceId.parse(row.instance_id);
+    });
   }
 
   /** The records registered under one operator account. */

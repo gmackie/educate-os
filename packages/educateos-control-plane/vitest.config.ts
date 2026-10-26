@@ -2,6 +2,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import { COMPATIBILITY_DATE } from "@gadgets/scripts/worker-config";
 import { defineConfig } from "vitest/config";
+import { CLEVER_CLIENT } from "./__tests__/clever-fake.ts";
 import { ACCESS_AUD, ACCESS_ISSUER } from "./__tests__/fixtures.ts";
 
 // A Cloudflare Access signing key made for this run only: the tests sign assertions with its
@@ -27,6 +28,10 @@ export default defineConfig({
           ACCESS_ISSUER,
           ACCESS_AUD,
           FG_COMMIT_HASH: "0".repeat(40),
+          CLEVER_CLIENT_ID: CLEVER_CLIENT.clientId,
+          CLEVER_CLIENT_SECRET: CLEVER_CLIENT.clientSecret,
+          // A demo district that isn't a registered installation, and an entry that must be dropped.
+          CLEVER_LAUNCH_DISTRICTS: JSON.stringify({ "abcdefabcdefabcdefabcdef": "demo-district.educateos.io", "fedcbafedcbafedcbafedcba": "evil.example.com" }),
           TEST_ACCESS_PRIVATE_JWK: jwk(access.privateKey),
           TEST_ACCESS_PUBLIC_JWK: jwk(access.publicKey),
           TEST_STRANGER_PRIVATE_JWK: jwk(stranger.privateKey),

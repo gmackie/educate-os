@@ -140,6 +140,14 @@ export class ControlPlaneStore {
         .toSorted((a, b) => b.installedAt.localeCompare(a.installedAt)));
   }
 
+  /** One installation by its instance ID, whoever made it. */
+  installation(instanceId: string): Installation | undefined {
+    return this.#tables.transact((sql) => {
+      const [row] = sql.exec(`SELECT instance_id, record FROM ${TABLES.installations} WHERE instance_id = ?`, instanceId).toArray();
+      return row === undefined ? undefined : parseStoredJson(Installation, row.record, `installation ${String(row.instance_id)}`);
+    });
+  }
+
   /**
    * The registry's account check (`CommercialAccountVerifier`): an installation may register
    * under an operator's account only if that operator installed it through educateos.io. So an
