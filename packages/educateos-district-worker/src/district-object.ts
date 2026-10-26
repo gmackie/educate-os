@@ -28,6 +28,12 @@ import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "
 import { startDistrict, type District } from "./district.ts";
 import type { SendEmailBinding } from "./mail.ts";
 import { jobForCron } from "./schedule.ts";
+import { onLegacyTableMigrated, type LegacyTableReport } from "@educateos/contracts/legacy-tables";
+
+// Each table recovered from before the rename (SCHO-232), with its counts, so the migration's
+// outcome in production can be read from the logs.
+const legacyTableLogger = createLogger<LegacyTableReport>({ component: "educateos.district" });
+onLegacyTableMigrated((report) => legacyTableLogger.info("a table from before the rename was migrated", { event: "legacy-tables.migrated", ...report }));
 
 /** What the district logs: its ID, and a scheduled job's counts (SCHO-189). */
 interface DistrictLogFields {

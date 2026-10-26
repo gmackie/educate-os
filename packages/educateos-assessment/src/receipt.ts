@@ -60,11 +60,10 @@ export async function verifySubmissionReceipt(
   if (!(await isSubmissionDigestOf(receipt.items, receipt.submissionDigest))) return undefined;
   for (const publicKey of trustedKeys) {
     if ((await keyIdFor(publicKey)) !== signature.keyId) continue;
-    // A receipt signed before the EducateOS rename was signed under the legacy context (SCHO-232).
-    for (const context of [CONTEXT, LEGACY_CONTEXT]) {
-      if (await verifySignature(publicKey, signature.value, signedBytes(districtId, receipt, context))) return receipt;
-    }
-    return undefined;
+    // A receipt signed before the EducateOS rename carries the legacy format and was signed under
+    // the legacy context (SCHO-232); a receipt of the current format verifies only under the current one.
+    const context = receipt.format.startsWith("educateos.") ? CONTEXT : LEGACY_CONTEXT;
+    return (await verifySignature(publicKey, signature.value, signedBytes(districtId, receipt, context))) ? receipt : undefined;
   }
   return undefined;
 }

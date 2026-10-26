@@ -21,7 +21,13 @@ import {
   DurableObjectWeeklyNoteStore,
   durableDistrictStores,
 } from "@educateos/district-app/durable-stores";
+import { canonicalJson, CONFIG_API_VERSION, contentHash, createDraftRevision, DEFAULTS_PROFILES, DesiredState, sha256Hex, SHIPPED_REGISTRY } from "@educateos/config";
+import { configPolicySource, DEFAULT_POLICY_FLOOR } from "@educateos/district-app";
+import { onLegacyTableMigrated, type LegacyTableReport } from "@educateos/contracts/legacy-tables";
 import { ACCESS_AUDIENCE, ACCESS_ISSUER } from "./fixtures.ts";
+
+/** The configuration `apiVersion` the code before the rename wrote. */
+const LEGACY_API_VERSION = "schoolos.dev/v1alpha1"; // rename-educateos: keep
 
 type Storage = DurableObjectStorage;
 type Stub = ReturnType<typeof env.DISTRICT.getByName>;
@@ -236,7 +242,16 @@ describe("the district's stores after the rename (SCHO-232)", () => {
       };
     };
 
+    const reports: LegacyTableReport[] = [];
+    const stop = onLegacyTableMigrated((report) => reports.push(report));
     const first = await runInDurableObject(object, async (_instance, state) => read(state.storage));
+    stop();
+    // One report per table, each accounting for every legacy row.
+    expect(reports.find((r) => r.table === "educateos_quizzes")).toMatchObject({ rule: "rows", legacyRows: 1, copied: 1, skippedAsConflict: 0, skippedInvalid: 0 });
+    expect(reports.find((r) => r.table === "educateos_guardian_relationships")).toMatchObject({ legacyRows: 2, copied: 1, skippedByRule: 1 });
+    for (const r of reports.filter((r) => r.legacyRows !== undefined)) {
+      expect(r.copied! + r.skippedByRule! + r.skippedAsConflict! + r.skippedInvalid!).toBe(r.legacyRows);
+    }
     // Course content: the legacy modules and pages first, the ones added since after them, under a
     // revision past both, so an edit planned against either side is planned again.
     expect(first.bio?.modules.map((m) => m.title)).toStrictEqual(["Unit 1: Rocks and Minerals", "Unit 2: Fossils"]);
@@ -340,18 +355,121 @@ describe("the district's stores after the rename (SCHO-232)", () => {
     expect(merged.artifacts).toMatchObject({ version: 4, state: { shares: [{ artifactId: "art_old" }, { artifactId: "art_new" }] } });
   });
 
-  it("refuses to merge two workspaces with one key, and leaves both sides as they were", async () => {
+  it("keeps the workspace created since when both sides have one with a key, and moves what named the legacy one to it", async () => {
+    // Amara used her personal workspace and her Biology class's workspace before the rename. After
+    // it, opening "My space" and submitting a quiz made both again, under new IDs.
     const object = fresh();
     const personal = (id: string) => ({ id, kind: "personal", districtId: "dst_northfield", ownerPrincipalId: "prn_nf-student-amara", createdAt: at });
-    const seed = (id: string) => async (storage: Storage) => {
-      await durableDistrictStores(storage, NORTHFIELD).workspaces.load();
-      storage.sql.exec("INSERT INTO educateos_workspaces (id, kind, owner_principal_id, offering_id, workspace_json) VALUES (?, 'personal', 'prn_nf-student-amara', NULL, ?)", id, JSON.stringify(personal(id)));
+    const course = (id: string) => ({
+      id, kind: "course", districtId: "dst_northfield", ownerPrincipalId: "prn_nf-student-amara", createdAt: at,
+      schoolId: "sch_nf-high", offeringId: BIO, termId: "trm_nf-2026-fall",
+    });
+    const grant = (workspaceId: string) => ({
+      state: "live", workspaceId, principalId: "prn_nf-student-amara", offeringId: BIO, termId: "trm_nf-2026-fall", kind: "course-tools", grantedAt: at,
+    });
+    const artifact = (id: string, workspaceId: string) => ({
+      id, districtId: "dst_northfield", workspaceId, ownerPrincipalId: "prn_nf-student-amara", type: "document", title: `Notes ${id}`,
+      classification: "personal-private", scope: { level: "district", districtId: "dst_northfield" }, createdAt: at,
+    });
+    const seed = (p: string, c: string, art: string) => async (storage: Storage) => {
+      const stores = durableDistrictStores(storage, NORTHFIELD);
+      await stores.workspaces.load();
+      storage.sql.exec("INSERT INTO educateos_workspaces (id, kind, owner_principal_id, offering_id, workspace_json) VALUES (?, 'personal', 'prn_nf-student-amara', NULL, ?)", p, JSON.stringify(personal(p)));
+      storage.sql.exec("INSERT INTO educateos_workspaces (id, kind, owner_principal_id, offering_id, workspace_json) VALUES (?, 'course', 'prn_nf-student-amara', ?, ?)", c, BIO, JSON.stringify(course(c)));
+      storage.sql.exec("INSERT INTO educateos_workspace_state (id, version, state_json) VALUES (1, 2, ?)",
+        JSON.stringify({ grants: [grant(c)], closures: [], promotions: [], events: [], deletions: [] }));
+      await stores.artifactRecords.load();
+      storage.sql.exec("INSERT INTO educateos_artifact_records (id, version, parts) VALUES (1, 1, 1)");
+      storage.sql.exec("INSERT INTO educateos_artifact_records_parts (part, data) VALUES (0, ?)", JSON.stringify({ artifacts: [artifact(art, p)], revisions: [], pins: [], shares: [] }));
     };
-    await renamedDistrict(object, seed("wsp_before"), seed("wsp_since"));
+    await renamedDistrict(object, seed("wsp_amara-before", "wsp_bio-before", "art_before"), seed("wsp_amara-since", "wsp_bio-since", "art_since"));
+    const merged = await runInDurableObject(object, async (_instance, state) => {
+      // The artifact records first, before the directory has migrated: the reassignment must not depend on the order.
+      const stores = durableDistrictStores(state.storage, NORTHFIELD);
+      const artifacts = await stores.artifactRecords.load();
+      const workspaces = await stores.workspaces.load();
+      return { artifacts, workspaces, backup: state.storage.sql.exec("SELECT id FROM schoolos_workspaces_premigration ORDER BY id").toArray() }; // rename-educateos: keep
+    });
+    expect(merged.workspaces.state.workspaces.map((w) => w.id)).toStrictEqual(["wsp_amara-since", "wsp_bio-since"]);
+    expect(merged.workspaces.state.grants).toStrictEqual([grant("wsp_bio-since")]);
+    expect(merged.artifacts.state.artifacts.map((a) => [a.id, a.workspaceId])).toStrictEqual([["art_before", "wsp_amara-since"], ["art_since", "wsp_amara-since"]]);
+    expect(merged.backup).toStrictEqual([{ id: "wsp_amara-before" }, { id: "wsp_bio-before" }]);
+  });
+
+  it("leaves a legacy identity-link request superseded by one made since in the backup, so the log still folds", async () => {
+    const object = fresh();
+    const requested = (requestId: string) => ({
+      type: "link-requested", requestId,
+      link: {
+        districtId: "dst_northfield", principalId: "prn_nf-student-amara", credential: "person", requestedAt: at,
+        identity: { districtId: "dst_northfield", issuer: ACCESS_ISSUER, subject: "amara-second-login" },
+      },
+    });
+    const seed = (requestId: string) => async (storage: Storage) => {
+      await durableDistrictStores(storage, NORTHFIELD).identityLinks.read();
+      storage.sql.exec("INSERT INTO educateos_identity_link_entries (entry_schema_version, entry_type, request_id, entry_json) VALUES (1, 'link-requested', ?, ?)",
+        requestId, JSON.stringify(requested(requestId)));
+    };
+    await renamedDistrict(object, seed("idr_before"), seed("idr_since"));
+    const result = await runInDurableObject(object, async (_instance, state) => ({
+      open: (await durableDistrictStores(state.storage, NORTHFIELD).identityLinks.read()).open().map((r) => r.requestId),
+      backup: state.storage.sql.exec("SELECT request_id FROM schoolos_identity_link_entries_premigration").toArray(), // rename-educateos: keep
+    }));
+    expect(result.open).toStrictEqual(["idr_since"]);
+    expect(result.backup).toStrictEqual([{ request_id: "idr_before" }]);
+  });
+
+  it("restores a configuration revision exactly as the code before the rename wrote it, and decides policy by it", async () => {
+    const object = fresh();
+    // Compiled by today's code, then written with the names the code before the rename used, and its
+    // ID derived from that content as `revisionId` derives it: what the legacy table holds.
+    const draft = await createDraftRevision({
+      document: {
+        apiVersion: CONFIG_API_VERSION, district: NORTHFIELD.district.id, profile: "us-k12-standard",
+        identity: { provider: "district-sso" }, rostering: { provider: "oneroster-csv", mode: "preview-before-apply" },
+        modules: { "core-learning": "enabled" }, rollout: { target: "all-active-offerings", requiresAdminActivation: false },
+      },
+      registry: SHIPPED_REGISTRY,
+      actorPrincipalId: "prn_nf-district-admin" as never,
+    });
+    if (!draft.ok) throw new Error(JSON.stringify(draft.problems));
+    const desired = { ...draft.revision.desired, apiVersion: LEGACY_API_VERSION };
+    const id = `cfg_${(await sha256Hex(canonicalJson({ contentHash: await contentHash(desired), previousRevisionId: null }))).slice(0, 32)}`;
+    const legacy = { ...draft.revision, id, schemaVersion: LEGACY_API_VERSION, desired, status: "applied" };
+    await renamedDistrict(object, async (storage) => {
+      await durableDistrictStores(storage, NORTHFIELD).config.append(legacy as never, undefined);
+    });
+    const effective = await runInDurableObject(object, async (_instance, state) => {
+      const config = durableDistrictStores(state.storage, NORTHFIELD).config;
+      const [head] = await config.list();
+      expect(head?.desired.apiVersion).toBe(LEGACY_API_VERSION);
+      expect(DesiredState.parse(head!.desired).apiVersion).toBe(CONFIG_API_VERSION);
+      return configPolicySource(config).effectivePolicy({ level: "district", districtId: NORTHFIELD.district.id } as never);
+    });
+    // The standard profile, not the conservative floor a district without configuration gets.
+    expect(effective).toStrictEqual(DEFAULTS_PROFILES["us-k12-standard"]);
+    expect(effective).not.toStrictEqual(DEFAULT_POLICY_FLOOR);
+  });
+
+  it("decides policy by the newest revision it can read when the head cannot be read", async () => {
+    const object = fresh();
     await runInDurableObject(object, async (_instance, state) => {
-      await expect(durableDistrictStores(state.storage, NORTHFIELD).workspaces.load()).rejects.toThrow(/cannot be merged/);
-      expect(tablesOf(state.storage, "schoolos\\_workspace%")).toStrictEqual(["schoolos_workspace_state", "schoolos_workspaces"]); // rename-educateos: keep
-      expect(state.storage.sql.exec("SELECT id FROM educateos_workspaces").toArray()).toStrictEqual([{ id: "wsp_since" }]);
+      const config = durableDistrictStores(state.storage, NORTHFIELD).config;
+      const good = { id: "cfg_good", scope: { districtId: NORTHFIELD.district.id }, schemaVersion: CONFIG_API_VERSION, status: "applied", actorPrincipalId: "prn_nf-district-admin", desired: {} };
+      const draft = await createDraftRevision({
+        document: {
+          apiVersion: CONFIG_API_VERSION, district: NORTHFIELD.district.id, profile: "us-k12-standard",
+          identity: { provider: "district-sso" }, rostering: { provider: "oneroster-csv", mode: "preview-before-apply" },
+          modules: { "core-learning": "enabled" }, rollout: { target: "all-active-offerings", requiresAdminActivation: false },
+        },
+        registry: SHIPPED_REGISTRY,
+        actorPrincipalId: "prn_nf-district-admin" as never,
+      });
+      if (!draft.ok) throw new Error("draft");
+      await config.append({ ...draft.revision, status: "applied" }, undefined);
+      await config.append({ ...good, id: "cfg_unreadable", previousRevisionId: draft.revision.id, desired: { apiVersion: "elsewhere/v9" } } as never, draft.revision.id);
+      expect(await configPolicySource(config).effectivePolicy({ level: "district", districtId: NORTHFIELD.district.id } as never))
+        .toStrictEqual(DEFAULTS_PROFILES["us-k12-standard"]);
     });
   });
 

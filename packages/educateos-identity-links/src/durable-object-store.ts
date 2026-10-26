@@ -3,10 +3,10 @@
 // imports nothing from `cloudflare:workers`, so the package's main entry stays runtime-agnostic and
 // the Worker that hosts a district's control Durable Object chooses its own class around it.
 import { z } from "zod";
-import type { DistrictId } from "@educateos/contracts";
-import { migrateLegacyTables } from "@educateos/contracts/legacy-tables";
+import { externalIdentityKey, type DistrictId } from "@educateos/contracts";
+import { legacyTableName, migrateLegacyTables, type LegacySql } from "@educateos/contracts/legacy-tables";
 import { IdentityLinkIndex } from "./log-index.ts";
-import { IdentityLinkEntry } from "./records.ts";
+import { IdentityLinkEntry, type IdentityRequest } from "./records.ts";
 import { stageStep, type IdentityLinkStep, type IdentityLinkStore } from "./store.ts";
 
 /** A value SQLite stores in one column. */
@@ -136,7 +136,11 @@ export class DurableObjectIdentityLinkStore implements IdentityLinkStore {
     // rolls the migration back and leaves the legacy table where it was.
     this.#index = this.#storage.transactionSync(() => {
       for (const statement of SCHEMA) this.#storage.sql.exec(statement);
-      migrateLegacyTables(this.#storage.sql, [IDENTITY_LINK_ENTRIES_TABLE]);
+      const leftOut = legacyRequestsToLeaveOut(this.#storage.sql, this.districtId);
+      migrateLegacyTables(this.#storage.sql, [{
+        table: IDENTITY_LINK_ENTRIES_TABLE,
+        ...(leftOut.length === 0 ? {} : { skipLegacyWhere: `legacy.request_id IN (${leftOut.map((id) => `'${id.replaceAll("'", "''")}'`).join(", ")})` }),
+      }]);
       const rows = this.#storage.sql.exec(`SELECT seq, entry_schema_version, entry_json FROM ${IDENTITY_LINK_ENTRIES_TABLE} ORDER BY seq`).toArray();
       const entries = rows.map(parseRow);
       try {
@@ -147,4 +151,63 @@ export class DurableObjectIdentityLinkStore implements IdentityLinkStore {
     });
     return this.#index;
   }
+}
+
+/** What a request is open for: one link of a principal and identity, or one Workshop user's adoption. */
+function requestKey(request: IdentityRequest): string {
+  return request.kind === "identity-link"
+    ? JSON.stringify(["link", request.link.principalId, externalIdentityKey(request.link.identity)])
+    : JSON.stringify(["adoption", request.adoption.workshopUserId]);
+}
+
+function entryKey(entry: IdentityLinkEntry): string | undefined {
+  if (entry.type === "link-requested") return JSON.stringify(["link", entry.link.principalId, externalIdentityKey(entry.link.identity)]);
+  if (entry.type === "adoption-proposed") return JSON.stringify(["adoption", entry.adoption.workshopUserId]);
+  return undefined;
+}
+
+function folds(districtId: DistrictId, entries: readonly IdentityLinkEntry[]): boolean {
+  try {
+    new IdentityLinkIndex(districtId, entries);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The legacy requests (SCHO-232) whose entries stay in the backup rather than being merged in, so
+ * the merged log always folds. A legacy request still open when a request for the same link or
+ * adoption was made since is superseded by that one. If the log still breaks its rules, every legacy
+ * request still open is left out; failing that (two confirmed adoptions of one Workshop user, say),
+ * the whole legacy log is, and the migration's report counts what was left.
+ */
+function legacyRequestsToLeaveOut(sql: LegacySql, districtId: DistrictId): string[] {
+  const legacyTable = legacyTableName(IDENTITY_LINK_ENTRIES_TABLE);
+  if (sql.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", legacyTable).toArray().length === 0) return [];
+  const read = (table: string) => sql.exec(`SELECT seq, entry_schema_version, entry_json FROM ${table} ORDER BY seq`).toArray();
+  const current = read(IDENTITY_LINK_ENTRIES_TABLE).map(parseRow);
+  const rows = read(legacyTable);
+  const all = [...new Set(rows.map((row) => {
+    try {
+      return parseRow(row).requestId;
+    } catch {
+      return undefined;
+    }
+  }).filter((id): id is IdentityLinkEntry["requestId"] => id !== undefined))];
+  let legacy: IdentityLinkEntry[];
+  let index: IdentityLinkIndex;
+  try {
+    legacy = rows.map(parseRow);
+    index = new IdentityLinkIndex(districtId, legacy);
+  } catch {
+    return all;
+  }
+  const without = (ids: ReadonlySet<string>) => [...legacy.filter((entry) => !ids.has(entry.requestId)), ...current];
+  const since = new Set(current.map(entryKey).filter((key) => key !== undefined));
+  const superseded = new Set(index.open().filter((request) => since.has(requestKey(request))).map((request) => request.requestId as string));
+  if (folds(districtId, without(superseded))) return [...superseded];
+  const open = new Set([...superseded, ...index.open().map((request) => request.requestId as string)]);
+  if (folds(districtId, without(open))) return [...open];
+  return all;
 }

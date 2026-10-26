@@ -1000,6 +1000,9 @@ importers:
       '@educateos/workspaces':
         specifier: workspace:*
         version: link:../educateos-workspaces
+      '@gadgets/observability':
+        specifier: workspace:*
+        version: link:../observability
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -1071,6 +1074,9 @@ importers:
       '@educateos/catalog':
         specifier: workspace:*
         version: link:../educateos-catalog
+      '@educateos/config':
+        specifier: workspace:*
+        version: link:../educateos-config
       '@educateos/fixtures':
         specifier: workspace:*
         version: link:../educateos-fixtures

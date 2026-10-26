@@ -14,7 +14,7 @@
 // service Worker's D1 database or R2 bucket would need (SCHO-138), so revision content that would
 // be an R2 object is kept in chunked SQLite rows (`DurableObjectBlobBucket`).
 import { z } from "zod";
-import { mergeLegacyDocument, migrateLegacyTables, type LegacySql, type LegacyTablePlan } from "@educateos/contracts/legacy-tables";
+import { mergeLegacyDocument, migrateLegacyTables, renameIdentifiers, type LegacySql, type LegacyTablePlan } from "@educateos/contracts/legacy-tables";
 import {
   ConfigurationRevision,
   GuardianRelationship,
@@ -28,7 +28,7 @@ import {
   type PrincipalId,
 } from "@educateos/contracts";
 import { DurableObjectAcademicStore } from "@educateos/academics/durable-object-store";
-import { DurableObjectWorkspaceStore } from "@educateos/workspaces/durable-object-store";
+import { DurableObjectWorkspaceStore, legacyWorkspaceReplacements } from "@educateos/workspaces/durable-object-store";
 import {
   ArtifactState,
   assertRevisionInvariants,
@@ -255,19 +255,20 @@ class ChunkedDocument {
   }
 
   /**
-   * The document's plan for recovering its legacy tables (SCHO-232): the legacy document is copied
-   * as it is when this one does not exist, and otherwise merged into it by `merge`, which validates
-   * the result (throwing to roll the migration back), under a version past both.
+   * The document's plan for recovering its legacy tables (SCHO-232): `merge` makes the document from
+   * the legacy one and this one, if it exists, and validates the result (throwing to roll the
+   * migration back). It is written under the legacy version, or a version past both.
    */
-  legacy(merge: (legacy: string, current: string) => string): LegacyTablePlan {
+  legacy(merge: (sql: LegacySql, legacy: string, current: string | undefined) => string): LegacyTablePlan {
     return {
       tables: [this.#table, `${this.#table}_parts`],
       migrate: (sql: LegacySql, legacyName: (table: string) => string) => {
         const stored = new ChunkedDocument(legacyName(this.#table)).read(sql);
-        if (stored === undefined) return;
+        if (stored === undefined) return "no legacy document";
         const current = this.read(sql);
-        if (current === undefined) this.write(sql, stored.version, stored.json);
-        else this.write(sql, Math.max(stored.version, current.version) + 1, merge(stored.json, current.json));
+        const version = current === undefined ? stored.version : Math.max(stored.version, current.version) + 1;
+        this.write(sql, version, merge(sql, stored.json, current?.json));
+        return current === undefined ? "copied" : "merged";
       },
     };
   }
@@ -312,7 +313,9 @@ class RevisionLog<T extends { id: string }> {
     this.#conflict = conflict;
     this.#tables = new Tables(storage, [
       `CREATE TABLE IF NOT EXISTS ${table} (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, revision_json TEXT NOT NULL)`,
-    ], [table]);
+    // A revision's ID derives from its content and predecessor, so one written again since under a
+    // legacy ID is the same revision: it keeps its legacy place, and the head cannot fall back to it.
+    ], [{ table, sameRecordKey: ["id"] }]);
   }
 
   list(): T[] {
@@ -392,19 +395,24 @@ export class DurableObjectWorkshopUserLinkStore implements WorkshopUserLinkStore
  * Both source maps, for a district that wrote one before the rename and one since (SCHO-232): the
  * entries of both, where both map one record the current source winning.
  */
-function mergeRosterSources(legacy: string, current: string): string {
+function mergeRosterSources(_sql: LegacySql, legacy: string, current: string | undefined): string {
+  if (current === undefined) return legacy;
   const read = (json: string) => parseStored(oneroster.OneRosterSourceMap, json, "the roster source map");
   return JSON.stringify(oneroster.OneRosterSourceMap.parse(mergeLegacyDocument(read(legacy), read(current))));
 }
 
 /**
- * Both artifact records, for a district that saved work before the rename and since (SCHO-232):
- * every artifact, revision, pin and share of both, which must be a state either side could have
- * become (`assertRevisionInvariants`), or the migration is refused and rolled back.
+ * The artifact records from before the rename (SCHO-232), with each artifact in a legacy workspace
+ * that a workspace created since replaced moved to that workspace (same owner, kind and offering,
+ * see `legacyWorkspaceReplacements`), merged with the records saved since: every artifact,
+ * revision, pin and share of both, which must be a state either side could have become
+ * (`assertRevisionInvariants`), or the migration is refused and rolled back.
  */
-function mergeArtifactRecords(legacy: string, current: string): string {
+function mergeArtifactRecords(sql: LegacySql, legacy: string, current: string | undefined): string {
   const read = (json: string) => parseStored(ArtifactState, json, "the artifact records");
-  const [before, after] = [read(legacy), read(current)];
+  const before = ArtifactState.parse(renameIdentifiers(read(legacy), legacyWorkspaceReplacements(sql)));
+  if (current === undefined) return JSON.stringify(before);
+  const after = read(current);
   const merged = ArtifactState.parse(mergeLegacyDocument(before, after));
   assertRevisionInvariants(before, merged);
   assertRevisionInvariants(after, merged);

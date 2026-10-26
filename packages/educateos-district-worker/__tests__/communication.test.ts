@@ -61,7 +61,8 @@ describe("communication through the Worker", () => {
     expect(first.status).toBe(200);
     expect(first.headers.get("content-type")).toBe("text/calendar; charset=utf-8");
     // Long lines are folded (RFC 5545 §3.1); unfold to read them.
-    expect((await first.text()).replace(/\r\n /g, "")).toContain(`UID:announcement-${posted.announcement.id}@dst_northfield.educateos\r\n`);
+    // Calendar clients key events by UID, so the UIDs keep the domain they had before the rename (SCHO-232).
+    expect((await first.text()).replace(/\r\n /g, "")).toContain(`UID:announcement-${posted.announcement.id}@dst_northfield.schoolos\r\n`); // rename-educateos: keep
 
     await evictDurableObject(district());
     expect((await feed(path)).status).toBe(200);

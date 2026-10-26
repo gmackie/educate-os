@@ -87,16 +87,28 @@ const json = (text: string, what: string): unknown => {
  * {@link CatalogMirrorCorruptionError}.
  */
 export class DurableObjectCatalogMirrorStorage implements CatalogMirrorStorage {
-  readonly #storage: MirrorSqlStorage;
+  readonly #raw: MirrorSqlStorage;
+  #ready = false;
 
   constructor(storage: MirrorSqlStorage) {
-    this.#storage = storage;
-    storage.transactionSync(() => {
-      for (const statement of SCHEMA) storage.sql.exec(statement);
-      // The mirrors from before the rename (SCHO-232). A framework mirrored again since keeps its
-      // current state; content is addressed by digest, so the same chunk twice is the same bytes.
-      migrateLegacyTables(storage.sql, [CATALOG_MIRROR_STATE_TABLE, { table: CATALOG_MIRROR_CONTENT_TABLE, merge: { kind: "keyed" } }]);
-    });
+    this.#raw = storage;
+  }
+
+  /**
+   * The storage, its tables created on first use rather than when the store is made, so a failed
+   * migration fails the catalog's own calls and not the start of the object holding it.
+   */
+  get #storage(): MirrorSqlStorage {
+    if (!this.#ready) {
+      this.#raw.transactionSync(() => {
+        for (const statement of SCHEMA) this.#raw.sql.exec(statement);
+        // The mirrors from before the rename (SCHO-232). A framework mirrored again since keeps its
+        // current state; content is addressed by digest, so the same chunk twice is the same bytes.
+        migrateLegacyTables(this.#raw.sql, [CATALOG_MIRROR_STATE_TABLE, { table: CATALOG_MIRROR_CONTENT_TABLE, merge: { kind: "keyed" } }]);
+      });
+      this.#ready = true;
+    }
+    return this.#raw;
   }
 
   async get(key: CatalogKey): Promise<FrameworkMirrorState | undefined> {

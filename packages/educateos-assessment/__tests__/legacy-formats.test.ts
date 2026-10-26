@@ -69,6 +69,12 @@ describe("records from before the EducateOS rename", () => {
     expect(await verifySubmissionReceipt(kept, NF, [(await SigningIdentity.generate()).publicKey])).toBeUndefined();
   });
 
+  it("refuse a receipt of the current format signed under the legacy context", async () => {
+    const key = await SigningIdentity.generate();
+    const value = await receipt("educateos.submission-receipt.v1", await legacyDigest());
+    expect(await verifySubmissionReceipt(await signLegacy(value, key), NF, [key.publicKey])).toBeUndefined();
+  });
+
   it("verify a new receipt for a submission digested before the rename", async () => {
     const key = await SigningIdentity.generate();
     const value = await receipt("educateos.submission-receipt.v1", await legacyDigest());

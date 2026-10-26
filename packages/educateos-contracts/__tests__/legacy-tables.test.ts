@@ -4,7 +4,16 @@
 // district's own stores.
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { hasLegacyTables, legacyTableName, mergeLegacyDocument, migrateLegacyTables, type LegacySql, type LegacyTablePlan } from "../src/legacy-tables.ts";
+import {
+  legacyTableName,
+  mergeLegacyDocument,
+  migrateLegacyTables,
+  onLegacyTableMigrated,
+  renameIdentifiers,
+  type LegacySql,
+  type LegacyTablePlan,
+  type LegacyTableReport,
+} from "../src/legacy-tables.ts";
 
 /** A Durable Object's SQL API, played by Node's SQLite, with its transactions. */
 function database(): { sql: LegacySql; transaction<T>(closure: () => T): T } {
@@ -153,15 +162,30 @@ describe("migrateLegacyTables", () => {
     expect(rows(sql, "SELECT id FROM educateos_links ORDER BY id").map((r) => r.id)).toStrictEqual(["l2", "l3", "n1"]);
   });
 
-  it("refuses, and rolls back, a merge that would leave a legacy row out when the store cannot choose", () => {
-    const { sql, transaction } = database();
-    both(sql, (t) => [`CREATE TABLE ${t} (id TEXT PRIMARY KEY, owner TEXT NOT NULL UNIQUE)`], "educateos_spaces");
-    sql.exec("INSERT INTO schoolos_spaces VALUES ('w1', 'amara')"); // rename-educateos: keep
-    sql.exec("INSERT INTO educateos_spaces VALUES ('w2', 'amara')");
-    expect(() => transaction(() => migrateLegacyTables(sql, [{ table: "educateos_spaces", refuseConflicts: "two workspaces" }]))).toThrow("two workspaces");
-    expect(tables(sql)).toStrictEqual(["educateos_spaces", "schoolos_spaces"]); // rename-educateos: keep
-    expect(rows(sql, "SELECT id FROM educateos_spaces")).toStrictEqual([{ id: "w2" }]);
-    expect(hasLegacyTables(sql, ["educateos_spaces"])).toBe(true);
+  it("keeps a legacy row in its place when the same record was written again since", () => {
+    const { sql } = database();
+    both(sql, (t) => [`CREATE TABLE ${t} (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE)`], "educateos_revisions");
+    for (const id of ["r1", "r2"]) sql.exec(`INSERT INTO ${legacyTableName("educateos_revisions")} (id) VALUES (?)`, id);
+    sql.exec("INSERT INTO educateos_revisions (id) VALUES ('r1')");
+    migrateLegacyTables(sql, [{ table: "educateos_revisions", sameRecordKey: ["id"] }]);
+    // The head is the legacy head, not the first revision written again.
+    expect(rows(sql, "SELECT id FROM educateos_revisions ORDER BY seq").map((r) => r.id)).toStrictEqual(["r1", "r2"]);
+  });
+
+  it("reports what each table's migration copied and why it left the rest", () => {
+    const { sql } = database();
+    sql.exec(`CREATE TABLE ${legacyTableName("educateos_notes")} (id TEXT PRIMARY KEY, body TEXT, hidden INTEGER NOT NULL DEFAULT 0)`);
+    sql.exec("CREATE TABLE educateos_notes (id TEXT PRIMARY KEY, body TEXT NOT NULL, hidden INTEGER NOT NULL DEFAULT 0)");
+    sql.exec(`INSERT INTO ${legacyTableName("educateos_notes")} VALUES ('a', 'kept', 0), ('b', 'clash', 0), ('c', NULL, 0), ('d', 'hidden', 1)`);
+    sql.exec("INSERT INTO educateos_notes VALUES ('b', 'since', 0)");
+    const reports: LegacyTableReport[] = [];
+    const stop = onLegacyTableMigrated((report) => reports.push(report));
+    migrateLegacyTables(sql, [{ table: "educateos_notes", skipLegacyWhere: "legacy.hidden = 1" }]);
+    stop();
+    expect(reports).toStrictEqual([{
+      table: "educateos_notes", backup: `${legacyTableName("educateos_notes")}_premigration`, rule: "rows",
+      legacyRows: 4, copied: 1, skippedByRule: 1, skippedAsConflict: 1, skippedInvalid: 1,
+    }]);
   });
 
   it("hands a document to its store, and renames every table of it", () => {
@@ -216,5 +240,13 @@ describe("mergeLegacyDocument", () => {
       map: { s1: "x", s2: "z" },
       flag: "new",
     });
+  });
+});
+
+describe("renameIdentifiers", () => {
+  it("replaces exactly the IDs named, at any depth, and nothing that merely contains one", () => {
+    const map = new Map([["wsp_old", "wsp_new"]]);
+    expect(renameIdentifiers({ grants: [{ workspaceId: "wsp_old" }], note: "wsp_old2", n: 1 }, map))
+      .toStrictEqual({ grants: [{ workspaceId: "wsp_new" }], note: "wsp_old2", n: 1 });
   });
 });

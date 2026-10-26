@@ -31,6 +31,7 @@
     "@educateos/quizzes": "workspace:*",
     "@educateos/registry": "workspace:*",
     "@educateos/workspaces": "workspace:*",
+    "@gadgets/observability": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

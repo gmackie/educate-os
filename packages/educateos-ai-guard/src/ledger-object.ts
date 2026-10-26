@@ -24,6 +24,13 @@ import {
   type VoidResult,
 } from "@educateos/ai-governance";
 import { DurableObjectLedgerStore } from "@educateos/ai-governance/durable-object-store";
+import { createLogger } from "@gadgets/observability/logger";
+import { onLegacyTableMigrated, type LegacyTableReport } from "@educateos/contracts/legacy-tables";
+
+// Each table recovered from before the rename (SCHO-232), with its counts, so the migration's
+// outcome in production can be read from the logs.
+const legacyTableLogger = createLogger<LegacyTableReport>({ component: "educateos.ai-guard.ledger" });
+onLegacyTableMigrated((report) => legacyTableLogger.info("a table from before the rename was migrated", { event: "legacy-tables.migrated", ...report }));
 import { readGuardConfig, type GuardConfig } from "./config.ts";
 import type { GuardDirectoryPort } from "./context.ts";
 

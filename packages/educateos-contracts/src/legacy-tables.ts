@@ -68,10 +68,11 @@ export interface LegacyTable {
    */
   readonly skipLegacyWhere?: string;
   /**
-   * Set when no legacy row may be left out by a conflict, because the store cannot tell which side
-   * to keep: the migration then throws an error with this message, which rolls it back.
+   * Columns whose values name a record exactly, so a current row with a legacy row's values is the
+   * same record written again since (a content-derived ID, say). The legacy row keeps its place and
+   * the copy written since is dropped, rather than the legacy row being left out.
    */
-  readonly refuseConflicts?: string;
+  readonly sameRecordKey?: readonly string[];
 }
 
 /**
@@ -86,7 +87,49 @@ export interface LegacyDocument {
    * Runs only when the first table's legacy twin exists. `legacy` maps a current table name to its
    * legacy name. A merge the store cannot make safely must throw, which rolls the migration back.
    */
-  migrate(sql: LegacySql, legacy: (table: string) => string): void;
+  migrate(sql: LegacySql, legacy: (table: string) => string): string | void;
+}
+
+/**
+ * What one table's migration did, for the operator's log (`legacy-tables.migrated`): how many
+ * legacy rows there were, how many were copied, and why the others were left in the backup.
+ */
+export interface LegacyTableReport {
+  /** The table's current name. */
+  table: string;
+  /** The name its backup was given. */
+  backup: string;
+  /** The rule that settled conflicts, or `document`. */
+  rule: string;
+  /** Rows in the legacy table (row rules only). */
+  legacyRows?: number;
+  /** Rows copied into the current table (row rules only). */
+  copied?: number;
+  /** Rows the store's own condition left in the backup. */
+  skippedByRule?: number;
+  /** Rows left in the backup because the current table held their key. */
+  skippedAsConflict?: number;
+  /** Rows left in the backup because a column the current table requires is empty. */
+  skippedInvalid?: number;
+  /** Current rows dropped as the same record as a legacy row (see `sameRecordKey`). */
+  replacedDuplicates?: number;
+  /** What a document's store reported doing. */
+  outcome?: string;
+}
+
+const listeners = new Set<(report: LegacyTableReport) => void>();
+
+/**
+ * Calls `listener` with a report each time a table is migrated in this isolate, so the Worker can
+ * log it with its own logger. Returns a function that removes the listener.
+ */
+export function onLegacyTableMigrated(listener: (report: LegacyTableReport) => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function report(entry: LegacyTableReport): void {
+  for (const listener of listeners) listener(entry);
 }
 
 /** One entry of a store's migration: a table name (merged by `rows`), a table, or a document. */
@@ -141,7 +184,7 @@ function withoutTriggers(sql: LegacySql, table: string, closure: () => void): vo
 
 const POSITION_OFFSET = 1_000_000_000;
 
-function copyRows(sql: LegacySql, plan: LegacyTable, legacy: string): void {
+function copyRows(sql: LegacySql, plan: LegacyTable, legacy: string): Omit<LegacyTableReport, "table" | "backup"> {
   const current = identifier(plan.table);
   const merge = plan.merge ?? { kind: "rows" };
   const target = columns(sql, current);
@@ -153,6 +196,12 @@ function copyRows(sql: LegacySql, plan: LegacyTable, legacy: string): void {
   const keepRowid = merge.kind === "rows" && !shared.some((c) => c.rowid);
   const list = [...(keepRowid ? ["rowid"] : []), ...shared.map((c) => c.name)].join(", ");
   const sameKey = (keys: readonly string[]) => keys.map((k) => `legacy.${identifier(k)} = ${current}.${k}`).join(" AND ");
+  let replacedDuplicates = 0;
+  if (plan.sameRecordKey !== undefined) {
+    const where = `EXISTS (SELECT 1 FROM ${legacy} AS legacy WHERE ${sameKey(plan.sameRecordKey)})`;
+    replacedDuplicates = count(sql, `${current} WHERE ${where}`);
+    if (replacedDuplicates > 0) withoutTriggers(sql, current, () => sql.exec(`DELETE FROM ${current} WHERE ${where}`));
+  }
   const currentHasRows = sql.exec(`SELECT 1 FROM ${current} LIMIT 1`).toArray().length > 0;
 
   if (currentHasRows && merge.kind !== "keyed") {
@@ -180,11 +229,22 @@ function copyRows(sql: LegacySql, plan: LegacyTable, legacy: string): void {
   }
 
   const skip = plan.skipLegacyWhere === undefined ? "" : ` WHERE NOT (${plan.skipLegacyWhere})`;
+  const legacyRows = count(sql, legacy);
+  const eligible = count(sql, `${legacy} AS legacy${skip}`);
+  const required = shared.filter((c) => c.required).map((c) => `legacy.${c.name} IS NULL`);
+  const skippedInvalid = required.length === 0 ? 0 : count(sql, `${legacy} AS legacy WHERE (${required.join(" OR ")})${skip === "" ? "" : ` AND NOT (${plan.skipLegacyWhere})`}`);
   const before = count(sql, current);
   sql.exec(`INSERT OR IGNORE INTO ${current} (${list}) SELECT ${list} FROM ${legacy} AS legacy${skip} ORDER BY rowid`);
-  if (plan.refuseConflicts !== undefined && count(sql, current) - before < count(sql, `${legacy} AS legacy${skip}`)) {
-    throw new Error(plan.refuseConflicts);
-  }
+  const copied = count(sql, current) - before;
+  return {
+    rule: merge.kind,
+    legacyRows,
+    copied,
+    skippedByRule: legacyRows - eligible,
+    skippedAsConflict: eligible - skippedInvalid - copied,
+    skippedInvalid,
+    ...(replacedDuplicates === 0 ? {} : { replacedDuplicates }),
+  };
 }
 
 function count(sql: LegacySql, from: string): number {
@@ -212,31 +272,34 @@ function backupName(sql: LegacySql, legacy: string): string {
  */
 export function migrateLegacyTables(sql: LegacySql, plan: readonly LegacyTablePlan[]): string[] {
   const migrated: string[] = [];
-  const rename = (legacy: string) => {
-    sql.exec(`ALTER TABLE ${legacy} RENAME TO ${backupName(sql, legacy)}`);
+  const reports: LegacyTableReport[] = [];
+  const rename = (table: string, legacy: string, done: Omit<LegacyTableReport, "table" | "backup">) => {
+    const backup = backupName(sql, legacy);
+    sql.exec(`ALTER TABLE ${legacy} RENAME TO ${backup}`);
     migrated.push(legacy);
+    reports.push({ table, backup, ...done });
   };
   for (const entry of plan) {
     if (typeof entry !== "string" && "migrate" in entry) {
       const legacy = entry.tables.map(legacyTableName);
       if (!tableExists(sql, legacy[0]!)) continue;
-      entry.migrate(sql, legacyTableName);
-      for (const name of legacy) if (tableExists(sql, name)) rename(name);
+      const outcome = entry.migrate(sql, legacyTableName);
+      entry.tables.forEach((table, i) => {
+        if (tableExists(sql, legacy[i]!)) rename(table, legacy[i]!, { rule: "document", ...(typeof outcome === "string" ? { outcome } : {}) });
+      });
       continue;
     }
     const table: LegacyTable = typeof entry === "string" ? { table: entry } : entry;
     const legacy = legacyTableName(table.table);
     if (!tableExists(sql, legacy)) continue;
-    copyRows(sql, table, legacy);
-    rename(legacy);
+    rename(table.table, legacy, copyRows(sql, table, legacy));
   }
+  // Reported once the whole plan has run: a store's transaction may still roll it back, but a
+  // report of a migration that then failed is followed by that store's own error.
+  for (const entry of reports) report(entry);
   return migrated;
 }
 
-/** Whether a store still has tables the rename orphaned. For checks that the migration ran. */
-export function hasLegacyTables(sql: LegacySql, tables: readonly string[]): boolean {
-  return tables.some((table) => tableExists(sql, legacyTableName(table)));
-}
 
 function identity(item: unknown): string {
   if (typeof item === "object" && item !== null && !Array.isArray(item) && typeof (item as { id?: unknown }).id === "string") {
@@ -289,4 +352,17 @@ function mergeField(legacy: unknown, current: unknown): unknown {
   }
   if (isRecord(legacy) && isRecord(current)) return { ...legacy, ...current };
   return current;
+}
+
+/**
+ * `value` with every string equal to a key of `replacements` replaced by its value, at any depth:
+ * for a document whose records name an ID the migration replaced. Only exact matches are replaced,
+ * so it suits IDs, which are unique strings, and nothing else.
+ */
+export function renameIdentifiers(value: unknown, replacements: ReadonlyMap<string, string>): unknown {
+  if (replacements.size === 0) return value;
+  if (typeof value === "string") return replacements.get(value) ?? value;
+  if (Array.isArray(value)) return value.map((item) => renameIdentifiers(item, replacements));
+  if (isRecord(value)) return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, renameIdentifiers(item, replacements)]));
+  return value;
 }
