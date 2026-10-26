@@ -17,7 +17,7 @@ section { padding: 88px 0; }
 .lede { font-size: 1.15rem; color: var(--text-color-kumo-subtle); max-width: 62ch; margin: 18px 0 0; }
 
 /* Kumo-style primitives */
-.btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 8px; font-weight: 500; font-size: .95rem; border: 1px solid var(--color-kumo-line); background: var(--color-kumo-base); color: var(--text-color-kumo-strong); }
+.btn { display: inline-flex; white-space: nowrap; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 8px; font-weight: 500; font-size: .95rem; border: 1px solid var(--color-kumo-line); background: var(--color-kumo-base); color: var(--text-color-kumo-strong); }
 .btn:hover { background: var(--color-kumo-fill-hover); }
 .btn.primary { background: var(--color-kumo-brand); border-color: transparent; color: #fff; }
 .btn.primary:hover { background: var(--color-kumo-brand-hover); }
@@ -35,11 +35,11 @@ header.nav { position: sticky; top: 0; z-index: 20; backdrop-filter: saturate(1.
 header.nav .wrap { display: flex; align-items: center; gap: 20px; height: 64px; }
 .logo { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--text-color-kumo-strong); font-size: 1.08rem; }
 .logo svg { width: 28px; height: 28px; }
-nav.links { display: flex; gap: 22px; margin-left: 12px; }
+nav.links { display: flex; gap: 22px; margin-left: 12px; white-space: nowrap; }
 nav.links a { color: var(--text-color-kumo-subtle); font-size: .93rem; }
 nav.links a:hover { color: var(--text-color-kumo-strong); }
 header.nav .right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
-@media (max-width: 1140px) { nav.links { display: none; } }
+@media (max-width: 1200px) { nav.links { display: none; } }
 @media (max-width: 860px) { .hide-sm { display: none; } }
 
 /* Hero */
@@ -188,13 +188,12 @@ footer .wrap { display: grid; gap: 8px; }
 
 /* ---- Shared chrome (SCHO-229): header menu, active link, footer columns ---- */
 nav.links a[aria-current="page"] { color: var(--text-color-kumo-strong); font-weight: 500; }
-details.menu { display: none; position: relative; }
+details.menu { position: relative; }
 details.menu summary { list-style: none; cursor: pointer; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--color-kumo-line); background: var(--color-kumo-base); color: var(--text-color-kumo-strong); }
 details.menu summary::-webkit-details-marker { display: none; }
 details.menu .sheet { position: absolute; right: 0; top: 48px; width: min(260px, calc(100vw - 32px)); display: grid; padding: 8px; border-radius: var(--eo-radius); border: 1px solid var(--color-kumo-line); background: var(--color-kumo-base); box-shadow: 0 16px 40px -16px rgba(15, 23, 42, .35); }
 details.menu .sheet a { padding: 10px 12px; border-radius: 8px; color: var(--text-color-kumo-default); }
 details.menu .sheet a:hover, details.menu .sheet a[aria-current="page"] { background: var(--color-kumo-tint); color: var(--text-color-kumo-link); }
-@media (max-width: 1140px) { details.menu { display: block; } }
 @media (max-width: 420px) { header.nav .wrap { gap: 12px; } header.nav .right .btn.primary { padding: 0 12px; } }
 
 footer .foot-grid { display: grid; grid-template-columns: 1.3fr repeat(4, 1fr); gap: 24px; margin-bottom: 20px; }
