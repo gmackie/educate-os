@@ -48,6 +48,21 @@ Each level includes the ones before it.
 | AI call guard and Hall Monitor | Unit-tested (guard); client vendored | `packages/educateos-ai-guard`, `vendor/hall-monitor` (client and contracts only) | The Hall Monitor Worker is built outside the release, from `gmackie/hall-monitor`. | Pinned Worker build in the release (IF-00b, RFC 0002 §12) |
 | Commerce and fleet | Unit-tested, optional and non-default | `packages/educateos-commerce`, `packages/educateos-fleet` | Not part of the default runtime (ADR-0011). | Owner decision on keeping or extracting them |
 
+## Provider fakes
+
+`packages/educateos-provider-fakes` (SCHO-201) holds in-process fakes of the providers EducateOS
+integrates with, built from each vendor's published API documentation: OIDC identity providers
+(Clever, ClassLink, Google), the Clever Data API v3.1, OneRoster 1.2 REST with the ClassLink OAuth2
+profile, the Google Classroom API, and Canvas- and Schoology-flavoured LTI 1.3 platforms. They
+serve synthetic seed data and inject faults (outage, rate limit, malformed record, large removal).
+The OneRoster REST sync, the LTI broker with AGS and NRPS, and the Google Classroom client run
+unchanged against them.
+
+A run against a fake is Harness-tested evidence at most. It is never External-conformance-tested
+evidence: a fake encodes our reading of the documentation, not the vendor's behaviour. No level in
+the table above was raised on the strength of the fakes. The package README lists what each fake
+does not model.
+
 ## Rules for claims
 
 - A README or release note names the level from this table, not a stronger one.

@@ -1,0 +1,18 @@
+{
+  "name": "@educateos/provider-fakes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wire-faithful fakes of the providers EducateOS integrates with, built from their published API documentation: OIDC identity providers (Clever, ClassLink, Google), the Clever Data API v3.1, OneRoster 1.2 REST (the ClassLink OAuth2 profile), the Google Classroom API and Canvas- and Schoology-flavoured LTI 1.3 platforms. Each is a fetch handler over caller-supplied synthetic seed data, with fault injection. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "jose": "^6.2.12"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@types/node": "26.1.0",
+    "vitest": "catalog:"
+  }
+}

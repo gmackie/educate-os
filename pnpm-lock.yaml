@@ -1316,6 +1316,9 @@ importers:
       '@educateos/portability':
         specifier: workspace:*
         version: link:../educateos-portability
+      '@educateos/provider-fakes':
+        specifier: workspace:*
+        version: link:../educateos-provider-fakes
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
@@ -1375,6 +1378,9 @@ importers:
       '@educateos/fixtures':
         specifier: workspace:*
         version: link:../educateos-fixtures
+      '@educateos/provider-fakes':
+        specifier: workspace:*
+        version: link:../educateos-provider-fakes
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
@@ -1647,6 +1653,22 @@ importers:
       '@educateos/fixtures':
         specifier: workspace:*
         version: link:../educateos-fixtures
+      '@gadgets/scripts':
+        specifier: workspace:*
+        version: link:../../scripts
+      '@types/node':
+        specifier: 26.1.0
+        version: 26.1.0
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
+
+  packages/educateos-provider-fakes:
+    dependencies:
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
+    devDependencies:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
@@ -2353,6 +2375,9 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 'catalog:'
         version: 1.4.3(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)(vitest@5.0.5)
+      '@educateos/provider-fakes':
+        specifier: workspace:*
+        version: link:../educateos-provider-fakes
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts

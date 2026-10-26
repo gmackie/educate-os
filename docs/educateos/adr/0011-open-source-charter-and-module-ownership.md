@@ -60,7 +60,7 @@ release and an organization turns them on. Tooling never runs in an organization
 | Kernel and core runtime (required) | `educateos-contracts`, `educateos-identity`, `educateos-identity-links`, `educateos-policy`, `educateos-config`, `educateos-academics`, `educateos-workspaces`, `educateos-learning-artifacts`, `educateos-assessment`, `educateos-curriculum`, `educateos-content-studio`, `educateos-registry`, `educateos-catalog`, `educateos-ai-governance`, `educateos-zip`, `educateos-district-app`, `educateos-district-worker`, `educateos-api-client`, `educateos-student-ui`, `educateos-teacher-ui`, `educateos-admin-ui` |
 | Optional runtime | `educateos-ai-guard` (required whenever student-facing AI is on, ADR-0007), `gatekeeper-educateos`, `educateos-lti`, `educateos-integrations`, `educateos-cartridge`, `educateos-ocs`, `educateos-portability`, `educateos-artifacts-git`, `educateos-assessment-ci`, `educateos-assessment-ai` |
 | Optional, non-default reference code | `educateos-commerce`, `educateos-fleet` |
-| Tooling, release and test | `educateos-installer`, `educateos-releases`, `educateos-fixtures`, `educateos-harness`, `educateos-pilot-gate` |
+| Tooling, release and test | `educateos-installer`, `educateos-releases`, `educateos-fixtures`, `educateos-provider-fakes`, `educateos-harness`, `educateos-pilot-gate` |
 
 `educateos-releases` also holds the district-side verification the installer runs; that part is
 required at install time, and its staged-rollout half is reference code for whoever publishes

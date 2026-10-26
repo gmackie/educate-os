@@ -1,31 +1,23 @@
-// A stand-in LTI 1.3 platform. It signs RS256 id_tokens with keys generated through Web Crypto and
-// serves its JWKS through a fake fetch, so tests can rotate, withdraw and forge keys.
-import { SignJWT, type JWK } from "jose";
-import { LTI_CLAIM, LTI_VERSION } from "../src/index.ts";
+// A stand-in LTI 1.3 platform for the broker's unit tests: one issuer, one client ID and the keys
+// it publishes, with no seed behind it. Its keys, signing, rotation and forging come from the
+// promoted platform fake in `@educateos/provider-fakes` (`src/lti`); this keeps the small claim
+// defaults the broker's tests were written against. For full OIDC, Deep Linking, AGS, NRPS and
+// Dynamic Registration against Canvas- or Schoology-flavoured platforms, use `LtiPlatformFake`
+// (see `provider-fakes.test.ts`).
+import type { JWK } from "jose";
+import {
+  applyClaimOverrides,
+  generatePlatformKey,
+  LTI_CLAIMS,
+  LTI_VERSION,
+  PlatformKeyRing,
+  type ClaimOverrides,
+  type PlatformKey,
+} from "@educateos/provider-fakes";
 
-export interface PlatformKey {
-  readonly kid: string;
-  readonly privateKey: CryptoKey;
-  readonly publicJwk: JWK;
-}
+export { generatePlatformKey, type ClaimOverrides, type PlatformKey };
 
-let kidCounter = 0;
-
-/** Generates an RS256 key pair with a fresh `kid`. */
-export async function generatePlatformKey(modulusLength = 2048): Promise<PlatformKey> {
-  const pair = await crypto.subtle.generateKey(
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256", modulusLength, publicExponent: new Uint8Array([1, 0, 1]) },
-    true,
-    ["sign", "verify"],
-  );
-  const publicJwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
-  kidCounter += 1;
-  return { kid: `platform-key-${kidCounter}`, privateKey: pair.privateKey, publicJwk };
-}
-
-/** Claims a test launch may set or override. `undefined` removes a claim. */
-export type ClaimOverrides = Record<string, unknown>;
-
+/** What a test launch is made of. */
 export interface LaunchClaimsInput {
   readonly nonce: string;
   readonly sub: string;
@@ -44,10 +36,7 @@ export class FakePlatform {
   readonly deploymentId: string;
   readonly jwksUrl: string;
   readonly authLoginUrl: string;
-  /** The key it signs with. */
-  signingKey: PlatformKey;
-  /** The keys its JWKS publishes. */
-  published: PlatformKey[];
+  readonly keys: PlatformKeyRing;
   readonly #now: () => number;
 
   constructor(issuer: string, clientId: string, deploymentId: string, key: PlatformKey, now: () => number) {
@@ -56,8 +45,7 @@ export class FakePlatform {
     this.deploymentId = deploymentId;
     this.jwksUrl = `${issuer}/api/lti/security/jwks`;
     this.authLoginUrl = `${issuer}/api/lti/authorize_redirect`;
-    this.signingKey = key;
-    this.published = [key];
+    this.keys = new PlatformKeyRing(key);
     this.#now = now;
   }
 
@@ -65,20 +53,35 @@ export class FakePlatform {
     return new FakePlatform(issuer, clientId, deploymentId, await generatePlatformKey(), now);
   }
 
+  /** The key it signs with. */
+  get signingKey(): PlatformKey {
+    return this.keys.signingKey;
+  }
+
+  set signingKey(key: PlatformKey) {
+    this.keys.signingKey = key;
+  }
+
+  /** The keys its JWKS publishes. */
+  get published(): PlatformKey[] {
+    return this.keys.published;
+  }
+
+  set published(keys: PlatformKey[]) {
+    this.keys.published = keys;
+  }
+
   /** The JWKS body its endpoint serves. */
   jwks(): { keys: JWK[] } {
-    return { keys: this.published.map((key) => ({ ...key.publicJwk, kid: key.kid, alg: "RS256", use: "sig" })) };
+    return this.keys.jwks();
   }
 
   /** Rotates to a new signing key. With `withdrawOld`, the old key is no longer published. */
-  async rotate(withdrawOld: boolean): Promise<PlatformKey> {
-    const next = await generatePlatformKey();
-    this.published = withdrawOld ? [next] : [next, ...this.published];
-    this.signingKey = next;
-    return next;
+  rotate(withdrawOld: boolean): Promise<PlatformKey> {
+    return this.keys.rotate(withdrawOld);
   }
 
-  /** The claims of a launch, before overrides are applied. */
+  /** The claims of a launch, with overrides applied. */
   claims(input: LaunchClaimsInput): Record<string, unknown> {
     const now = Math.floor(this.#now() / 1000);
     const messageType = input.messageType ?? "LtiResourceLinkRequest";
@@ -89,16 +92,16 @@ export class FakePlatform {
       iat: now,
       exp: now + 300,
       nonce: input.nonce,
-      [LTI_CLAIM.messageType]: messageType,
-      [LTI_CLAIM.version]: LTI_VERSION,
-      [LTI_CLAIM.deploymentId]: input.deploymentId ?? this.deploymentId,
-      [LTI_CLAIM.targetLinkUri]: input.targetLinkUri,
-      [LTI_CLAIM.context]: { id: input.contextId ?? "ctx-unknown", label: "BIO", title: "Biology" },
+      [LTI_CLAIMS.messageType]: messageType,
+      [LTI_CLAIMS.version]: LTI_VERSION,
+      [LTI_CLAIMS.deploymentId]: input.deploymentId ?? this.deploymentId,
+      [LTI_CLAIMS.targetLinkUri]: input.targetLinkUri,
+      [LTI_CLAIMS.context]: { id: input.contextId ?? "ctx-unknown", label: "BIO", title: "Biology" },
     };
     if (messageType === "LtiResourceLinkRequest") {
-      claims[LTI_CLAIM.resourceLink] = { id: input.resourceLinkId ?? "rl-course-nav", title: "EducateOS" };
+      claims[LTI_CLAIMS.resourceLink] = { id: input.resourceLinkId ?? "rl-course-nav", title: "EducateOS" };
     } else {
-      claims[LTI_CLAIM.deepLinkingSettings] = {
+      claims[LTI_CLAIMS.deepLinkingSettings] = {
         deep_link_return_url: `${this.issuer}/courses/1/deep_linking_response`,
         accept_types: ["ltiResourceLink"],
         accept_presentation_document_targets: ["iframe", "window"],
@@ -106,16 +109,12 @@ export class FakePlatform {
         data: "opaque-platform-data",
       };
     }
-    for (const [name, value] of Object.entries(input.overrides ?? {})) {
-      if (value === undefined) delete claims[name];
-      else claims[name] = value;
-    }
-    return claims;
+    return applyClaimOverrides(claims, input.overrides);
   }
 
   /** Signs a launch id_token. `key` defaults to the current signing key. */
-  async idToken(input: LaunchClaimsInput, key: PlatformKey = this.signingKey): Promise<string> {
-    return new SignJWT(this.claims(input)).setProtectedHeader({ alg: "RS256", kid: key.kid, typ: "JWT" }).sign(key.privateKey);
+  idToken(input: LaunchClaimsInput, key: PlatformKey = this.signingKey): Promise<string> {
+    return this.keys.sign(this.claims(input), { key });
   }
 }
 

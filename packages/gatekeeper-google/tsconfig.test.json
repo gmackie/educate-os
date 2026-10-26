@@ -3,7 +3,10 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "types": ["./worker-configuration.d.ts", "@cloudflare/vitest-plugin/types"]
+    "types": ["./worker-configuration.d.ts", "@cloudflare/vitest-plugin/types"],
+    // The provider fakes the Classroom compatibility test imports name their files with `.ts`
+    // specifiers; the root config's noEmit makes that allowed.
+    "allowImportingTsExtensions": true
   },
   "include": ["src", "__tests__"]
 }
