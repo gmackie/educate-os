@@ -46,6 +46,16 @@ export default defineConfig({
         serviceBindings: {
           ASSETS: (request: Request) => new Response(`static ${new URL(request.url).pathname}`, { status: 200 }),
         },
+        // Every outbound request from the test Worker: a stand-in for api.cloudflare.com, so the
+        // installer's real client is driven through workerd's own fetch (cloudflare-api.test.ts).
+        outboundService: (request: Request) => {
+          const url = new URL(request.url);
+          const account = /^\/client\/v4\/accounts\/([0-9a-f]{32})$/.exec(url.pathname);
+          if (url.hostname !== "api.cloudflare.com" || request.method !== "GET" || account === null) {
+            return new Response(JSON.stringify({ success: false, errors: [{ code: 7003 }], result: null }), { status: 404 });
+          }
+          return Response.json({ success: true, errors: [], result: { id: account[1], name: "Stub account" } });
+        },
       },
     }),
   ],

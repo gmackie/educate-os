@@ -140,7 +140,9 @@ export class CloudflareHttpApi implements CloudflareApi {
 
   constructor(options: CloudflareHttpApiOptions) {
     this.#tokens = options.tokens;
-    this.#fetch = options.fetch ?? fetch;
+    // Called as `this.#fetch(...)`, the global fetch would get this client as its `this`, which
+    // workerd refuses ("Illegal invocation"); bind it to the global object (SCHO-206).
+    this.#fetch = options.fetch ?? fetch.bind(globalThis);
     this.#base = options.baseUrl ?? CLOUDFLARE_API_BASE;
   }
 
