@@ -253,6 +253,9 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
         const path = new URL(request.url).pathname.slice(LTI_API_PREFIX.length);
         const matched = matchAdminRoute(adminRoutes, request.method, path);
         if (matched === undefined) throw new EducateOsError("not-found", "No such LTI route.");
+        // Every POST, bodiless ones too, must say it is JSON: a cross-site form cannot, so a page
+        // elsewhere cannot use an administrator's Access session to rotate keys or reject a platform.
+        if (request.method === "POST" && !isJson(request)) throw new EducateOsError("validation-failed", "Send the request as application/json.");
         const caller = await callerOf(request);
         return Response.json(await matched.route.run(caller, request, matched.params), { headers: { "cache-control": "no-store" } });
       } catch (error) {
@@ -296,19 +299,18 @@ function matchAdminRoute<R extends { method: string; path: string }>(routes: rea
   return undefined;
 }
 
-/**
- * A JSON request body. The content type must be JSON, which a cross-site form cannot send without a
- * preflight, as the application's own routes require.
- */
+/** A JSON request body. The content type must be JSON, which a cross-site form cannot send without a preflight. */
 async function jsonBody(request: Request): Promise<unknown> {
-  if (!/^application\/json(;|$)/i.test(request.headers.get("content-type") ?? "")) {
-    throw new EducateOsError("validation-failed", "Send the request body as application/json.");
-  }
+  if (!isJson(request)) throw new EducateOsError("validation-failed", "Send the request body as application/json.");
   try {
     return (await request.json()) as unknown;
   } catch {
     throw new EducateOsError("validation-failed", "The request body is not JSON.");
   }
+}
+
+function isJson(request: Request): boolean {
+  return /^application\/json(;|$)/i.test(request.headers.get("content-type") ?? "");
 }
 
 async function jsonObject(request: Request): Promise<Record<string, unknown>> {

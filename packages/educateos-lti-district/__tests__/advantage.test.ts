@@ -158,6 +158,9 @@ describe("LtiAdvantageService", () => {
     const { advantage, published } = await setup();
     const grade = { offeringId: BIO, studentId: AMARA, column: COLUMN, gradeVersion: 1 };
     expect(await rejection(advantage.publishGrade(as(ADMIN), grade))).toBe("forbidden");
+    // Anyone policy refuses learns nothing: an existing and a missing grade are refused alike.
+    expect(await rejection(advantage.publishGrade(as(AMARA), grade))).toBe("forbidden");
+    expect(await rejection(advantage.publishGrade(as(AMARA), { ...grade, gradeVersion: 2 }))).toBe("forbidden");
     expect(await rejection(advantage.publishGrade(as(MORGAN), { ...grade, gradeVersion: 2 }))).toBe("policy-violation");
     expect(await rejection(advantage.publishGrade(as(MORGAN), { ...grade, scoreGiven: 10 }))).toBe("validation-failed");
     expect(await advantage.publishGrade(as(MORGAN), grade)).toEqual({ status: "posted", route: "lti-ags" });

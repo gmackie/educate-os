@@ -168,6 +168,12 @@ describe("the district's LTI Tool", () => {
     expect((await published()).map((key) => key.kid)).toEqual([first!.kid]);
 
     expect((await api(RIVERA, "POST", "/api/lti/tool-keys/rotate")).status).toBe(403);
+    // A bodiless POST that does not say it is JSON, as a cross-site form's, is refused.
+    const form = await fetchTool(`${LTI_TOOL_ORIGIN}/api/lti/tool-keys/rotate`, {
+      method: "POST",
+      headers: { "cf-access-jwt-assertion": await signIn(ADMIN), "content-type": "application/x-www-form-urlencoded" },
+    });
+    expect(form.status).toBe(400);
     const rotation = await api(ADMIN, "POST", "/api/lti/tool-keys/rotate");
     expect(rotation.body.retiredKids).toEqual([first!.kid]);
     await evictDurableObject(district());

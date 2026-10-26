@@ -114,8 +114,10 @@ export interface LtiAdvantageServiceOptions {
  *
  * - the issuer, identity links and tool keys are district configuration: `update` on the district;
  * - line items and roster reads are offering configuration: `update` on the offering;
- * - a grade is published only by the teacher who approved that exact version. The passback gate
- *   then checks everything again (route, approval, score, enrollment, ledger).
+ * - a grade is published as the teacher's own approval of it (`approve` on the student's official
+ *   grade, which the default rules give a teacher of the offering on the `http` channel), and only
+ *   by the teacher who approved that exact version. The passback gate then checks everything again
+ *   (route, approval, score, enrollment, ledger).
  *
  * A refusal is `forbidden`, whatever the reason; the policy audit trail records which rule decided.
  */
@@ -215,9 +217,21 @@ export class LtiAdvantageService {
   async publishGrade(caller: Caller, rawInput: unknown): Promise<PassbackResult> {
     const input = GradePublishInput.safeParse(rawInput);
     if (!input.success) throw new EducateOsError("validation-failed", "The grade to publish is malformed.");
+    // Policy decides before any approval is looked up, so a caller who may not publish learns
+    // nothing about whether a grade exists.
+    const { districtId } = this.#options;
+    const offering = (await this.#options.directory.load()).snapshot.offerings.find((o) => o.id === input.data.offeringId);
+    if (offering === undefined || offering.districtId !== districtId) throw forbidden();
+    await authorizeLti(this.#options.authorizer, caller, "approve", {
+      kind: "official-grade",
+      id: input.data.column,
+      scope: { level: "offering", districtId, schoolId: offering.schoolId, offeringId: offering.id },
+      classification: "course",
+      ownerPrincipalId: input.data.studentId,
+    }, forbidden);
     const approval = await this.#options.approvals.find(input.data);
     if (approval === undefined) throw new EducateOsError("policy-violation", "This grade has not been approved by the offering's teacher.");
-    if (approval.approverId !== caller.principal.principalId || caller.principal.districtId !== this.#options.districtId) throw forbidden();
+    if (approval.approverId !== caller.principal.principalId) throw forbidden();
     return this.#options.passback.publish({ ...input.data, scoreGiven: approval.scoreGiven, scoreMaximum: approval.scoreMaximum });
   }
 

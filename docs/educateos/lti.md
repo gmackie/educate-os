@@ -340,7 +340,9 @@ The resource link launch answers with a page built from the directory (who the p
 offering, the linked activity). The deep linking picker lists the activities assigned in the
 launch's offering; the choice is authorized by `policySelectActivities`.
 
-`/api/lti/*` (JSON in and out; a POST body must be `application/json`):
+`/api/lti/*` (JSON in and out). Every POST, bodiless ones included, must be sent as
+`application/json`, which a cross-site form cannot do, so another site cannot use an
+administrator's Access session:
 
 | Route | Decided as | Does |
 | --- | --- | --- |
@@ -353,7 +355,7 @@ launch's offering; the choice is authorized by `policySelectActivities`.
 | `POST grade-routes`, `POST grade-columns` | `update` offering | As `LtiAdminService.routeGradesToPlatform` and `bindGradeColumn`. |
 | `POST line-items` | `update` offering | Creates an AGS line item in a connected context. |
 | `POST roster` | `update` offering | Reads the context's NRPS roster, matched to identity links. Nothing is written. |
-| `POST passback` | the approving teacher | Publishes `{ offeringId, studentId, column, gradeVersion }`: only the teacher who approved that official grade version may, and the score sent is the approved one. `GradePassback` then checks everything again. |
+| `POST passback` | `approve` on the student's official grade, and the approving teacher only | Publishes `{ offeringId, studentId, column, gradeVersion }`: only the teacher who approved that official grade version may, and the score sent is the approved one. Policy decides before the approval is read, so a refused caller learns nothing about the grade. `GradePassback` then checks everything again. |
 | `GET tool-keys`, `POST tool-keys/rotate` | `read` / `update` district | The published key IDs; rotation keeps the previous key published. |
 
 Platform calls (JWKS, tokens, AGS, NRPS, registration) use `redirect: "manual"` and refuse any
