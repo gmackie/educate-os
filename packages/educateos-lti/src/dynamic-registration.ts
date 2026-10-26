@@ -57,8 +57,12 @@ export const PendingPlatformRegistration = z.strictObject({
   districtId: DistrictId,
   issuer: HttpsUrl,
   clientId: LtiId,
-  /** The deployment the platform created for the tool. Required: a launch must name it. */
-  deploymentId: LtiId,
+  /**
+   * The deployment the platform created for the tool, when it created one at registration. Canvas
+   * creates it later, when the tool is installed in an account or course; the administrator then
+   * supplies it on approval.
+   */
+  deploymentId: LtiId.optional(),
   authLoginUrl: HttpsUrl,
   authTokenUrl: HttpsUrl,
   jwksUrl: HttpsUrl,
@@ -114,20 +118,33 @@ export const RegistrationApproval = z.strictObject({
   provider: ProviderName,
   offerings: z.array(OfferingMapping).min(1),
   activityLinks: z.array(ActivityLink).default([]),
+  /**
+   * Deployments launches may come through, beyond any the platform reported at registration: the
+   * IDs the platform shows once the tool is installed (Canvas creates its deployments then).
+   */
+  deploymentIds: z.array(LtiId).max(20).default([]),
 });
 /** A registration approval. */
 export type RegistrationApproval = z.input<typeof RegistrationApproval>;
 
-/** The platform registration an approval makes of a pending one. */
+/**
+ * The platform registration an approval makes of a pending one. Its deployments are the one the
+ * platform reported, if any, and those the approval names; with none at all it is refused, since no
+ * launch could be accepted.
+ */
 export function approvedRegistration(pending: PendingPlatformRegistration, approval: RegistrationApproval): PlatformRegistration {
   const parsedPending = PendingPlatformRegistration.parse(pending);
   const decided = RegistrationApproval.parse(approval);
+  const deploymentIds = [...new Set([...(parsedPending.deploymentId === undefined ? [] : [parsedPending.deploymentId]), ...decided.deploymentIds])];
+  if (deploymentIds.length === 0) {
+    throw new EducateOsError("validation-failed", "The platform reported no deployment: install the tool there, then approve it with the deployment ID the platform shows.");
+  }
   return PlatformRegistration.parse({
     districtId: parsedPending.districtId,
     provider: decided.provider,
     issuer: parsedPending.issuer,
     clientId: parsedPending.clientId,
-    deploymentIds: [parsedPending.deploymentId],
+    deploymentIds,
     authLoginUrl: parsedPending.authLoginUrl,
     authTokenUrl: parsedPending.authTokenUrl,
     jwksUrl: parsedPending.jwksUrl,
@@ -153,9 +170,15 @@ const PlatformOpenIdConfiguration = z.object({
 });
 
 /** The platform's answer to the tool's registration request (§3.6). Stripping, as above. */
+/**
+ * The platform's registration answer (§3.6.2): the client ID it assigned, and a deployment ID if it
+ * created a deployment. The specification puts that inside the tool configuration; Canvas puts it at
+ * the top level, and only when it creates the deployment at registration. An empty one is refused.
+ */
 const ToolRegistrationResponse = z.object({
   client_id: LtiId,
-  "https://purl.imsglobal.org/spec/lti-tool-configuration": z.object({ deployment_id: LtiId }),
+  deployment_id: LtiId.optional(),
+  "https://purl.imsglobal.org/spec/lti-tool-configuration": z.object({ deployment_id: LtiId.optional() }).optional(),
 });
 
 /** The registration request's query string, as the platform opens it. */
@@ -246,8 +269,9 @@ export class DynamicRegistration {
       }),
     );
     if (!registered.success) {
-      throw new EducateOsError("validation-failed", "The platform's registration answer lacks a client ID or deployment ID.");
+      throw new EducateOsError("validation-failed", "The platform's registration answer lacks a client ID, or has an empty deployment ID.");
     }
+    const deploymentId = registered.data.deployment_id ?? registered.data["https://purl.imsglobal.org/spec/lti-tool-configuration"]?.deployment_id;
 
     const productFamily = platform["https://purl.imsglobal.org/spec/lti-platform-configuration"]?.product_family_code;
     await this.#options.pending.put(
@@ -256,7 +280,7 @@ export class DynamicRegistration {
         districtId: invitation.districtId,
         issuer: platform.issuer,
         clientId: registered.data.client_id,
-        deploymentId: registered.data["https://purl.imsglobal.org/spec/lti-tool-configuration"].deployment_id,
+        ...(deploymentId === undefined ? {} : { deploymentId }),
         authLoginUrl: platform.authorization_endpoint,
         authTokenUrl: platform.token_endpoint,
         jwksUrl: platform.jwks_uri,

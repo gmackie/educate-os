@@ -52,10 +52,13 @@ five URLs, but only by invitation, and only into a waiting room:
    Canvas's `anonymous` privacy level). Every URL must be https, redirects are never followed, and a
    platform's error body is never repeated.
 3. The result is a `PendingPlatformRegistration`, kept apart from registrations; the broker never
-   reads it, so it cannot start a login. The platform must return a non-empty client ID and
-   deployment ID, or nothing is recorded.
-4. A district admin approves it with `approveRegistration(id, { provider, offerings, activityLinks })`,
-   or rejects it. Only then is it saved as a `PlatformRegistration`, after the directory checks:
+   reads it, so it cannot start a login. The platform must return a non-empty client ID, or nothing
+   is recorded. A deployment ID is taken from the tool configuration (the specification's place)
+   or the top level of the answer (Canvas's). Canvas returns none unless its in-development
+   `lti_registrations_next` flag is on: it creates the deployment when the tool is installed.
+4. A district admin approves it with `approveRegistration(id, { provider, offerings, activityLinks,
+   deploymentIds })`, or rejects it. `deploymentIds` adds the deployments the platform shows once
+   the tool is installed; an approval that leaves the registration with no deployment is refused. Only then is it saved as a `PlatformRegistration`, after the directory checks:
    the issuer must be trusted and every mapped offering and linked activity must exist.
 
 PlayTrek's version of this endpoint was first open to anyone and later guarded by one
@@ -348,7 +351,7 @@ administrator's Access session:
 | --- | --- | --- |
 | `POST invitations` | `update` district | Issues a single-use Dynamic Registration URL. |
 | `GET registrations` | `read` district | Approved and pending registrations. |
-| `POST pending/:id/approve`, `POST pending/:id/reject` | `update` district | Approves with `{ provider, offerings, activityLinks? }`, or discards. |
+| `POST pending/:id/approve`, `POST pending/:id/reject` | `update` district | Approves with `{ provider, offerings, activityLinks?, deploymentIds? }`, or discards. |
 | `POST trusted-issuers` | `update` district | Trusts the issuer `{ issuer }` of a pending or approved registration, which approval and identity links need. |
 | `POST identity-links` | `update` district | Records a pending link `{ issuer, subject, principalId }`; approve it at `/api/admin/identity-requests/:id/approve`. An unlinked launch's error body names its `issuer` and `subject`. |
 | `GET offerings/:offeringId/services` | `update` offering | The AGS and NRPS services launches reported. |

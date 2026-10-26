@@ -140,18 +140,32 @@ describe("LTI dynamic registration (SCHO-59)", () => {
     expect(await world.pending.list()).toHaveLength(1);
   });
 
-  it("requires a non-empty deployment ID and client ID from the platform", async () => {
+  it("requires a client ID from the platform, and refuses an empty deployment ID", async () => {
     for (const answer of [
       toolRegistration({ "https://purl.imsglobal.org/spec/lti-tool-configuration": { deployment_id: "" } }),
-      toolRegistration({ "https://purl.imsglobal.org/spec/lti-tool-configuration": {} }),
-      { client_id: "10000000000077" },
+      toolRegistration({ deployment_id: "" }),
       toolRegistration({ client_id: "" }),
+      { deployment_id: "nf-canvas-deploy-77" },
     ]) {
       const world = createRegistration({ register: () => Response.json(answer) });
       const { url } = await world.registration.issueInvitation(NF, ADMIN);
       expect(await rejection(world.open(url))).toBe("validation-failed");
       expect(await world.pending.list()).toEqual([]);
     }
+  });
+
+  it("takes Canvas's top-level deployment ID, and waits for the administrator's when the platform created none", async () => {
+    const canvas = createRegistration({ register: () => Response.json({ client_id: "10000000000077", deployment_id: "1:canvas-deploy" }) });
+    await canvas.open((await canvas.registration.issueInvitation(NF, ADMIN)).url);
+    expect((await canvas.pending.list())[0]).toMatchObject({ deploymentId: "1:canvas-deploy" });
+
+    const later = createRegistration({ register: () => Response.json({ client_id: "10000000000077" }) });
+    await later.open((await later.registration.issueInvitation(NF, ADMIN)).url);
+    const [pending] = await later.pending.list();
+    expect(pending!.deploymentId).toBeUndefined();
+    const offerings = [{ contextId: "c1", offeringId: OfferingId.parse("off_nf-bio-fall-p2") }];
+    expect(() => approvedRegistration(pending!, { provider: "canvas", offerings })).toThrow(/no deployment/);
+    expect(approvedRegistration(pending!, { provider: "canvas", offerings, deploymentIds: ["2:installed"] }).deploymentIds).toEqual(["2:installed"]);
   });
 
   it("refuses a configuration with a non-https endpoint, and a non-https configuration URL without fetching it", async () => {
