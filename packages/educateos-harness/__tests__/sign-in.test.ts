@@ -2,6 +2,7 @@
 // `createDirectoryPrincipalResolver`, the production path, rather than picking principals itself.
 import { describe, expect, it } from "vitest";
 import { createDistrictApiClient } from "@educateos/api-client";
+import { NORTHFIELD, RIVERBEND } from "@educateos/fixtures";
 import { bootDistrictApp, bootHarness, MORGAN_LEE_SUBJECT, signInAcrossDistricts } from "../src/index.ts";
 
 const me = (fetch: (request: Request) => Promise<Response>, path: string, token: string) =>
@@ -9,7 +10,7 @@ const me = (fetch: (request: Request) => Promise<Response>, path: string, token:
 
 describe("Morgan Lee across districts", () => {
   it("lands on a different principal in each district, and each refuses the other's token", async () => {
-    const results = await signInAcrossDistricts(await bootHarness(), MORGAN_LEE_SUBJECT);
+    const results = await signInAcrossDistricts(await bootHarness([NORTHFIELD, RIVERBEND]), MORGAN_LEE_SUBJECT);
     expect(results).toEqual([
       { districtId: "dst_northfield", principalId: "prn_nf-morgan-lee", displayName: "Morgan Lee", foreignTokensRefused: 1 },
       { districtId: "dst_riverbend", principalId: "prn_rb-morgan-lee", displayName: "Morgan Lee", foreignTokensRefused: 1 },
@@ -17,7 +18,7 @@ describe("Morgan Lee across districts", () => {
   });
 
   it("resolves the same way in each district's full application", async () => {
-    const districts = await bootHarness();
+    const districts = await bootHarness([NORTHFIELD, RIVERBEND]);
     const seen = [];
     for (const entry of districts) {
       const app = await bootDistrictApp(entry);

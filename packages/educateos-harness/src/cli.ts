@@ -1,8 +1,8 @@
-// Boots both synthetic districts, each on its own local port with the full district application
+// Boots the six demo districts, each on its own local port with the full district application
 // (`/api/...`) seeded with demo content, and prints their health, demo sign-in tokens and where
-// Morgan Lee (one IdP subject in both districts) lands in each.
+// Morgan Lee (one IdP subject in Northfield and Riverbend) lands in each.
 //
-//   pnpm educateos:harness           serve until interrupted (ports 4801, 4802, ...)
+//   pnpm educateos:harness           serve until interrupted (Northfield on 4801 ... Harbor on 4806)
 //   pnpm educateos:harness --check   boot, query every /health and /api/admin/health over HTTP, then exit
 //
 // EDUCATEOS_HARNESS_PORT changes the first port. With --check, ports are ephemeral.
@@ -84,7 +84,10 @@ async function main(): Promise<void> {
   }
 
   // The same teacher, signed in at each district through its own IdP, is a different principal there.
-  const morgan = await signInAcrossDistricts(districts.map(({ entry }) => entry), MORGAN_LEE_SUBJECT);
+  const withMorgan = districts
+    .map(({ entry }) => entry)
+    .filter((entry) => entry.district.directory.principals.some((p) => p.externalIdentities.some((i) => i.subject === MORGAN_LEE_SUBJECT)));
+  const morgan = await signInAcrossDistricts(withMorgan, MORGAN_LEE_SUBJECT);
   console.log(`${morgan[0]?.displayName ?? MORGAN_LEE_SUBJECT}: ${morgan.map((s) => `${s.districtId} -> ${s.principalId} (foreign tokens refused: ${s.foreignTokensRefused})`).join("; ")}`);
 
   if (check) {

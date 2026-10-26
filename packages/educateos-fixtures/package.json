@@ -2,7 +2,7 @@
   "name": "@educateos/fixtures",
   "version": "0.1.0",
   "private": true,
-  "description": "Two isolated synthetic EducateOS districts for tests and the local harness. Synthetic data only; no real people.",
+  "description": "Six isolated synthetic EducateOS demo districts with integration profiles and vendor-side seed data, for tests, the local harness and the provider fakes. Synthetic data only; no real people.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

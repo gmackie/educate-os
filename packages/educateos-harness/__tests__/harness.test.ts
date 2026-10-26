@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 import { OfferingId, PrincipalId } from "@educateos/contracts";
-import { NORTHFIELD, RIVERBEND } from "@educateos/fixtures";
+import { DEMO_DISTRICTS, NORTHFIELD, RIVERBEND } from "@educateos/fixtures";
 import { DistrictInstance, FakeAiProvider, FakeIdentityProvider, FakeRosterProvider, bootHarness } from "../src/index.ts";
 
 const get = (district: DistrictInstance, path: string, token?: string) =>
@@ -33,6 +33,15 @@ describe("booting", () => {
       expect(health.directory.principals).toBe(snapshot.principals.length);
       expect(health.directory.students).toBeGreaterThanOrEqual(2);
       expect(health.directory.activeEnrollments).toBe(snapshot.enrollments.filter((e) => e.status === "active").length);
+    }
+  });
+
+  it("boots all six demo districts by default, in harness port order", async () => {
+    const entries = await bootHarness();
+    expect(entries.map((e) => e.district.districtId)).toEqual(DEMO_DISTRICTS.map((d) => d.directory.district.id));
+    for (const [i, entry] of entries.entries()) {
+      const health = await body(await get(entry.district, "/health"));
+      expect(health.directory.principals).toBe(DEMO_DISTRICTS[i]!.directory.principals.length);
     }
   });
 

@@ -4,6 +4,7 @@ import { InstanceId, PrincipalId, SchoolId, type DistrictDirectorySnapshot } fro
 import { ResourceDescriptor } from "@educateos/registry";
 import { DistrictAgent, InMemorySequenceCounter, SigningIdentity } from "@educateos/fleet";
 import { createDistrictApiClient, type DistrictApiClient } from "@educateos/api-client";
+import { NORTHFIELD, RIVERBEND } from "@educateos/fixtures";
 import { bootDistrictApp, bootHarness, harnessFetch, seedDemo, type HarnessDistrict } from "@educateos/harness";
 import { criterion } from "./gate.ts";
 import { importThinCartridge } from "./cartridge.ts";
@@ -43,7 +44,8 @@ const activeOfferings = (directory: DistrictDirectorySnapshot) =>
 
 criterion("x34.districts", {
   "two-districts": async () => {
-    const districts = await Promise.all((await bootHarness()).map(async (entry) => {
+    // The pilot criterion is about the two pilot districts, not every demo district the harness knows.
+    const districts = await Promise.all((await bootHarness([NORTHFIELD, RIVERBEND])).map(async (entry) => {
       const app = await bootDistrictApp(entry);
       const demo = await seedDemo(entry, app);
       return { entry, app, demo, fetch: harnessFetch(entry, app) };

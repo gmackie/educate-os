@@ -23,25 +23,41 @@ such as F01 and A02) lives in the EducateOS Kanbanger project, which uses the `S
 | `docs/educateos/hall-monitor/` | Hall Monitor moderation and AI cost governance: the reconciled plan, model ingress matrix and source specification. |
 | `packages/educateos-contracts` | `@educateos/contracts`: the shared vocabulary every EducateOS package imports. Prefixed IDs for every record kind (directory, registry, artifacts, fleet instances), timestamps and opaque codes, scopes, principals with their lifecycle status and source links, verified identities, the authorization vocabulary with `Caller` and principal facts, sources of record (`Authority`, `GradeAuthority`), the audit event base, artifact types and revision references, integration sync runs, roster projections, capability manifests, configuration revisions, policy floors, errors and directory integrity checks. A type a second package needs belongs here, not in a copy. |
 | `packages/educateos-contracts` | `@educateos/contracts`: IDs, scopes, principals, the authorization vocabulary, capability manifests, configuration revisions, policy floors, errors, directory integrity checks and nanodollar money (`UsdNano`, ADR-0008). |
-| `packages/educateos-fixtures` | `@educateos/fixtures`: two isolated synthetic districts. These are the only directory data tests may use. |
-| `packages/educateos-harness` | `@educateos/harness`: boots both districts locally as isolated instances, each with a fake IdP, roster and AI provider. |
+| `packages/educateos-fixtures` | `@educateos/fixtures`: six isolated synthetic demo districts, each with an integration profile (SSO, roster source, LMS, grade authority), guardian relationships and vendor-side seeds (Clever v3.1, OneRoster 1.2 REST, Google Classroom) that hold the same people as its directory, plus the Google demo-tenant plan (`googleDemoPlan`). These are the only directory data tests may use. |
+| `packages/educateos-harness` | `@educateos/harness`: boots the six demo districts locally as isolated instances, each with a fake IdP, roster and AI provider. |
 
 ## Running the districts locally
 
 ```sh
-pnpm educateos:harness            # Northfield on :4801, Riverbend on :4802, until Ctrl-C
+pnpm educateos:harness            # the six districts on :4801 to :4806, until Ctrl-C
 pnpm educateos:harness -- --check # boot, check every /health over HTTP, exit
 ```
+
+| Port | Slug | District | Sign-in | Roster | LMS | Grade of record |
+| --- | --- | --- | --- | --- | --- | --- |
+| 4801 | `northfield` | Northfield Public Schools | district OIDC | OneRoster CSV | Canvas (LTI) | Canvas |
+| 4802 | `riverbend` | Riverbend Unified | district OIDC | OneRoster REST | LMS-lite | EducateOS |
+| 4803 | `prairie` | Prairie Co-op | local accounts | kept by hand | LMS-lite | EducateOS |
+| 4804 | `cedarvalley` | Cedar Valley USD | Clever SSO | Clever | Google Classroom | Classroom |
+| 4805 | `lakeshore` | Lakeshore Schools | ClassLink SSO | ClassLink OneRoster REST | Schoology (LTI) | Schoology |
+| 4806 | `harbor` | Harbor Charter | Google Workspace | Google Classroom (no SIS) | Google Classroom | Classroom |
+
+Each district file lists its deliberate edge cases: a shared family email, a student dropped
+mid-term, guardians (one relationship still pending), a teacher in two schools, Morgan Lee's
+email and subject in two districts, two different students sharing one IdP subject, and
+Lakeshore's large-removal export (`lakeshoreLargeRemoval`). `vendorSeeds(demo)` gives the records
+each district's providers hold. Harbor and Cedar Valley also exist in the Google demo tenant
+`gedu.demo.educateos.io`, seeded by `scripts/demo/seed-google-demo.ts` (see its header).
 
 Each district serves `GET /health`, `GET /me` and `POST /ai/complete`, and the full district
 application under `/api/` (see `@educateos/district-app` below), seeded with demo content: an approved
 resource and an installed activity in every active class, a student's essay in a personal and a
 course workspace, one submission, an applied configuration revision and one AI request. The harness
 prints a ready-made `curl` command with a token for one student, one teacher and one district
-administrator per district. A token from one district's IdP is rejected by the other. Sign-in takes
+administrator per district. A token from one district's IdP is rejected by every other. Sign-in takes
 the production path: each token's verified payload goes through `identityFromAccessPayload` and the
-directory's `createDirectoryPrincipalResolver`, and the CLI shows Morgan Lee (one IdP subject in both
-districts) landing on a different principal in each. `EDUCATEOS_HARNESS_PORT` moves the first port.
+directory's `createDirectoryPrincipalResolver`, and the CLI shows Morgan Lee (one IdP subject in
+Northfield and Riverbend) landing on a different principal in each. `EDUCATEOS_HARNESS_PORT` moves the first port.
 | `packages/educateos-identity` | `@educateos/identity`: resolves verified `(issuer, subject)` claims to principals, the Cloudflare Access adapter, admin-confirmed identity linking and the email-keyed migration plan (F04). |
 | `packages/educateos-identity-links` | `@educateos/identity-links`: the district identity-link control. An append-only log of pending identity links and Workshop user adoptions (in memory, or Durable Object SQLite via `./durable-object-store`), and the district-admin service that lists, approves and rejects them under the policy engine, persisting every audit event and, for a confirmed adoption, the Workshop user rebind intent (SCHO-38). |
 | `packages/educateos-registry` | `@educateos/registry`: Learning Registry records (frameworks, competencies, associations, resources, curriculum packs, evidence contracts), lossless CASE 1.1 codecs and a fetch-injected CASE client. `src/case/codec.ts` lists what CASE cannot express. |

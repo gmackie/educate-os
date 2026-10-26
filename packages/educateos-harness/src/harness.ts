@@ -15,8 +15,8 @@ export interface HarnessDistrict {
 }
 
 /**
- * Boots each snapshot as its own district, with its own providers and state. Defaults to both
- * synthetic districts. Fails if any district fails to boot.
+ * Boots each snapshot as its own district, with its own providers and state. Defaults to the six
+ * demo districts, in harness port order. Fails if any district fails to boot.
  */
 export async function bootHarness(
   snapshots: readonly DistrictDirectorySnapshot[] = SYNTHETIC_DISTRICTS,
