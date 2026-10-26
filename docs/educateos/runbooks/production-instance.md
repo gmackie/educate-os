@@ -166,7 +166,8 @@ own Access application. Since SCHO-207 it is also at its managed default hostnam
 `https://northfield.educateos.io`. That is a second custom domain on the same Worker (`aliases` in
 `scripts/production/schoolos-gmac-io.ts`), possible because the educateos.io zone is in this account
 (see [the spike](../spikes/managed-hostnames-cloudflare.md)). It is routing only: the district's
-identity, and every link it sends, stays `district.schoolos.gmac.io`.
+identity, and every link it sends, stays `district.schoolos.gmac.io`. The five other demo districts are separate
+district Workers at their own `<slug>.educateos.io`; see [the demo districts runbook](demo-districts.md).
 
 - **Its Worker name is pinned.** The Worker was deployed as `schoolos-district-worker` before the
   EducateOS rename (SCHO-200), and keeps that name (SCHO-231). A Durable Object namespace belongs to

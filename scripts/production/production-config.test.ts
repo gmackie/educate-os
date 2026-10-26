@@ -12,10 +12,11 @@ import { AI_GUARD_DEV_MAIN, AI_GUARD_PACKAGE } from "../ai-guard-dev.ts";
 import { readDeployablePackages } from "../release/manifest-lib.ts";
 import { PACKAGES_DIR } from "../preview/staging-config.ts";
 import {
-  DISTRICT_PACKAGE, PRODUCTION_CONFIG_NAME, EDUCATEOS_GATEKEEPER_PACKAGE, buildProductionConfigs,
-  generateProductionConfigs, productionPackageNames, productionWorkerName, renderProductionConfig,
+  DISTRICT_PACKAGE, PRODUCTION_CONFIG_NAME, EDUCATEOS_GATEKEEPER_PACKAGE, buildDemoDistrictConfigs, buildProductionConfigs,
+  demoDistrictConfigName, demoDistrictWorkerName, generateProductionConfigs, productionPackageNames, productionWorkerName, renderProductionConfig,
   type ProductionConfig, type ProductionInstance,
 } from "./production-config.ts";
+import { DEMO_DISTRICT_DEPLOYMENTS } from "./demo-districts.ts";
 import { SCHOOLOS_GMAC_IO } from "./schoolos-gmac-io.ts";
 
 const PACKAGES = readDeployablePackages(PACKAGES_DIR);
@@ -281,3 +282,61 @@ test("fails closed on a resource binding the instance does not name, or one it n
   assert.throws(() => build(stale), /names R2 bucket GONE/);
 });
 
+
+// The demo districts (SCHO-210): five separate district Workers, each at `<slug>.educateos.io`.
+
+const DEMOS = buildDemoDistrictConfigs({ districts: DEMO_DISTRICT_DEPLOYMENTS, packages: PACKAGES, instance: SCHOOLOS_GMAC_IO });
+
+// Each demo district's deployed Worker name. As for DEPLOYED_STATEFUL_WORKERS: each owns its
+// district's Durable Object, so a changed name would start that district empty. Change an entry
+// only together with a deliberate migration; add one when a demo district is first deployed.
+const DEPLOYED_DEMO_DISTRICT_WORKERS: Record<string, string> = {
+  riverbend: "educateos-riverbend-district",
+  prairie: "educateos-prairie-district",
+  cedarvalley: "educateos-cedarvalley-district",
+  lakeshore: "educateos-lakeshore-district",
+  harbor: "educateos-harbor-district",
+};
+
+test("deploys five demo districts beside northfield, each its own Worker at its own hostname", () => {
+  assert.deepEqual([...DEMOS.keys()], ["riverbend", "prairie", "cedarvalley", "lakeshore", "harbor"]);
+  const district = configFor(build(), DISTRICT_PACKAGE);
+  for (const [slug, config] of DEMOS) {
+    assert.equal(config.name, DEPLOYED_DEMO_DISTRICT_WORKERS[slug],
+        `${slug} would deploy as a new Worker, with an empty Durable Object`);
+    assert.equal(config.account_id, SCHOOLOS_GMAC_IO.accountId);
+    assert.equal(config.workers_dev, false, slug);
+    assert.equal(config.preview_urls, false, slug);
+    // Only its own hostname: Wrangler detaches any custom domain a deploy does not list, so a demo
+    // must never list northfield's (or another demo's).
+    assert.deepEqual(config.routes, [{ pattern: `${slug}.educateos.io`, custom_domain: true }]);
+    assert.deepEqual(config.vars, { LTI_TOOL_ORIGIN: `https://${slug}.educateos.io` });
+    assert.deepEqual(config.assets, district.assets);
+    assert.deepEqual(config.triggers, district.triggers);
+    assert.deepEqual(config.migrations, district.migrations);
+    assert.equal(config.services, undefined, slug);
+    assert.equal(demoDistrictConfigName(slug), `wrangler.demo-${slug}.jsonc`);
+    const path = join(PACKAGES_DIR, DISTRICT_PACKAGE, demoDistrictConfigName(slug));
+    assert.equal(readFileSync(path, "utf8"), renderProductionConfig(config), `${path} is out of date`);
+  }
+});
+
+test("demo districts never take northfield's hostname, a Worker name already deployed, or each other's", () => {
+  const northfield = { slug: "northfield", accountId: SCHOOLOS_GMAC_IO.accountId, hostname: "northfield.educateos.io" };
+  assert.throws(() => buildDemoDistrictConfigs({ districts: [northfield], packages: PACKAGES, instance: SCHOOLOS_GMAC_IO }),
+      /northfield.educateos.io is already another district's hostname/);
+  const twice = [DEMO_DISTRICT_DEPLOYMENTS[0]!, DEMO_DISTRICT_DEPLOYMENTS[0]!];
+  assert.throws(() => buildDemoDistrictConfigs({ districts: twice, packages: PACKAGES }), /two Workers would be deployed/);
+  const clash = { ...DEMO_DISTRICT_DEPLOYMENTS[1]!, hostname: DEMO_DISTRICT_DEPLOYMENTS[0]!.hostname };
+  assert.throws(() => buildDemoDistrictConfigs({ districts: [DEMO_DISTRICT_DEPLOYMENTS[0]!, clash], packages: PACKAGES }),
+      /already another district's hostname/);
+  assert.throws(() => buildDemoDistrictConfigs({ districts: [{ ...northfield, slug: "Bad_Slug" }], packages: PACKAGES }),
+      /not a district slug/);
+  assert.equal(demoDistrictWorkerName("prairie"), "educateos-prairie-district");
+});
+
+test("no demo district config carries a secret", () => {
+  for (const [slug, config] of DEMOS) {
+    for (const name of ["CF_ACCESS_AUD", "CF_ACCESS_ISS", "DISTRICT_CONFIG"]) assert.equal(config.vars?.[name], undefined, `${slug} ${name}`);
+  }
+});
