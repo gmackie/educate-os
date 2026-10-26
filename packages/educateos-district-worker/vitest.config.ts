@@ -4,7 +4,7 @@ import capnwebValidate from "capnweb-validate/vite";
 import { kCurrentWorker } from "miniflare";
 import { defineConfig } from "vitest/config";
 import deployed from "./cloudflare.config.ts";
-import { ACCESS_AUDIENCES, ACCESS_ISSUER, TEST_CONFIG } from "./__tests__/fixtures.ts";
+import { ACCESS_AUDIENCES, ACCESS_ISSUER, LTI_TOOL_ORIGIN, TEST_CONFIG } from "./__tests__/fixtures.ts";
 
 const { compatibilityDate, compatibilityFlags } = deployed.worker;
 
@@ -12,6 +12,10 @@ const { compatibilityDate, compatibilityFlags } = deployed.worker;
 // private half, and the test district verifies them with its public half instead of the team's certs.
 const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const KID = "test-access-key";
+// The synthetic LMS's signing key (SCHO-177): the tests sign launches with its private half, and the
+// test district's platform fetch publishes its public half as the platform's JWKS.
+const platform = generateKeyPairSync("rsa", { modulusLength: 2048 });
+const PLATFORM_KID = "test-platform-key";
 
 /**
  * The Worker runs in workerd: the district is a real SQLite Durable Object, reached through the
@@ -32,6 +36,9 @@ export default defineConfig({
           CF_ACCESS_AUD: ACCESS_AUDIENCES,
           TEST_ACCESS_PRIVATE_JWK: JSON.stringify({ ...privateKey.export({ format: "jwk" }), kid: KID, alg: "RS256" }),
           TEST_ACCESS_PUBLIC_JWK: JSON.stringify({ ...publicKey.export({ format: "jwk" }), kid: KID, alg: "RS256" }),
+          LTI_TOOL_ORIGIN: LTI_TOOL_ORIGIN,
+          TEST_PLATFORM_PRIVATE_JWK: JSON.stringify({ ...platform.privateKey.export({ format: "jwk" }), kid: PLATFORM_KID, alg: "RS256" }),
+          TEST_PLATFORM_PUBLIC_JWK: JSON.stringify({ ...platform.publicKey.export({ format: "jwk" }), kid: PLATFORM_KID, alg: "RS256", use: "sig" }),
         },
         durableObjects: {
           // The Worker reaches the district through ctx.exports; the tests restart it through this binding.

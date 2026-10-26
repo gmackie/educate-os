@@ -74,8 +74,11 @@ export const DISTRICT_PACKAGE = "educateos-district-worker";
  */
 export const DISTRICT_UI_DIR = "./dist/ui";
 
-/** The district Worker's own routes, which run before its assets: the API and the liveness probe. */
-export const DISTRICT_WORKER_ROUTES = ["/api/*", "/healthz"];
+/**
+ * The district Worker's own routes, which run before its assets: the API, the liveness probe and
+ * the LTI Tool's endpoints (SCHO-177).
+ */
+export const DISTRICT_WORKER_ROUTES = ["/api/*", "/healthz", "/lti/*"];
 
 /** The EducateOS connector's package: the one gatekeeper bound to the district Worker (SCHO-218). */
 export const EDUCATEOS_GATEKEEPER_PACKAGE = "gatekeeper-educateos";
@@ -326,7 +329,8 @@ export function buildProductionConfigs({
         not_found_handling: "single-page-application",
         run_worker_first: DISTRICT_WORKER_ROUTES,
       };
-      withVars(pkgName, config, vars);
+      // The LTI Tool (SCHO-177) is served at the district's own hostname.
+      withVars(pkgName, config, { LTI_TOOL_ORIGIN: `https://${instance.district.hostname}`, ...vars });
     } else {
       throw new Error(`cannot build a production config for package: ${pkgName}`);
     }

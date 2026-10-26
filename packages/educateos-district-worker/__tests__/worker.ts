@@ -8,6 +8,7 @@ import { catalogSeedRelease } from "@educateos/catalog";
 import type { PrincipalId } from "@educateos/contracts";
 import { DistrictObject as DeployedDistrictObject } from "../src/district-object.ts";
 import type { SendEmailBinding } from "../src/mail.ts";
+import { LMS_ISSUER } from "./fixtures.ts";
 
 // Named rather than `export *`: the pool finds entrypoints from the module's named exports.
 export { DistrictApi, DistrictGuardDirectory, DistrictSchoolTools } from "../src/worker.ts";
@@ -40,6 +41,28 @@ export class DistrictObject extends DeployedDistrictObject {
 
   protected override accessKeys(): JWTVerifyGetKey {
     return createLocalJWKSet({ keys: [JSON.parse(this.env.TEST_ACCESS_PUBLIC_JWK) as JWK] });
+  }
+
+  /**
+   * A synthetic LMS (SCHO-177): its OpenID configuration, a registration endpoint that assigns a
+   * client and deployment, and the JWKS of the key the tests sign launches with.
+   */
+  protected override async platformFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const request = new Request(input, init);
+    if (request.url === `${LMS_ISSUER}/.well-known/openid-configuration`) {
+      return Response.json({
+        issuer: LMS_ISSUER,
+        authorization_endpoint: `${LMS_ISSUER}/api/lti/authorize_redirect`,
+        token_endpoint: `${LMS_ISSUER}/login/oauth2/token`,
+        jwks_uri: `${LMS_ISSUER}/api/lti/security/jwks`,
+        registration_endpoint: `${LMS_ISSUER}/api/lti/registrations`,
+      });
+    }
+    if (request.url === `${LMS_ISSUER}/api/lti/registrations` && request.method === "POST") {
+      return Response.json({ client_id: "lms-client-1", "https://purl.imsglobal.org/spec/lti-tool-configuration": { deployment_id: "lms-deploy-1" } });
+    }
+    if (request.url === `${LMS_ISSUER}/api/lti/security/jwks`) return Response.json({ keys: [JSON.parse(this.env.TEST_PLATFORM_PUBLIC_JWK) as JWK] });
+    return new Response("not found", { status: 404 });
   }
 
   protected override async importFetch(url: string): Promise<Response> {

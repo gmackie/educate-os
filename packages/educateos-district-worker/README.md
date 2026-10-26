@@ -96,6 +96,20 @@ district with no connector lists its own audience alone.
 | `DistrictSchoolTools` | the EducateOS gatekeeper's `EDUCATEOS_DISTRICT` | `SchoolToolService` over the directory's operations; every agent call waits for a person in the object's approval queue. Its `serveAs` serves the `/api` surface for a principal the gatekeeper verified, for its school pages (SCHO-218) |
 | `DistrictApi` | the release's backend binding, `EDUCATEOS_DISTRICT_API` | the same `/api` surface; holding it grants nothing |
 
+## LTI 1.3 Tool (SCHO-177)
+
+With `LTI_TOOL_ORIGIN` set (an https origin, no trailing slash), `src/lti.ts` serves the district as
+an LTI 1.3 Tool: `@educateos/lti`'s broker and handlers over `@educateos/lti-district`'s stores in the
+district's object, and the administrators' operations at `/api/lti/*`. Unset, `/lti/*` and
+`/api/lti/*` are 404. The fetch handler passes `/lti/*` to the object; a deployment that serves the
+UIs as assets must run the Worker first for `/lti/*` too.
+
+`/lti/login`, `/lti/launch`, `/lti/jwks`, `/lti/deep-link` and `/lti/register` must be exempt from
+Access (one bypass application for exactly those paths), because LMS users launch from their own
+browsers with no Access session. `/api/lti/*` stays behind Access. The routes, what each is decided
+as, and why each Tool path is safe without sign-in are in
+[docs/educateos/lti.md](../../docs/educateos/lti.md#the-district-workers-tool-scho-177).
+
 ## Configuration and release
 
 The deploy inputs are in `deploy-inputs.json`. They are all vars:
@@ -116,6 +130,9 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   that away (`admin.grantDistrictAdmin`, `admin.revokeDistrictAdmin`, SCHO-212). The district always
   keeps one active administrator, and nobody can remove their own administration.
 - `CF_ACCESS_ISS` and `CF_ACCESS_AUD` (a comma-separated list, see [Sign-in](#sign-in)).
+- `LTI_TOOL_ORIGIN` (optional): the LTI Tool's public origin (see [LTI 1.3 Tool](#lti-13-tool-scho-177)).
+  It is not yet a deploy input, so the installer does not offer it; the schoolos.gmac.io production
+  config sets it from the district hostname.
 - `email` (optional, in `DISTRICT_CONFIG`): `from`, an address on a domain the district has
   onboarded to Cloudflare Email Service in this account, an optional `fromName`, and an optional
   `appUrl` linked from every email. Without it, or without the binding, nothing is emailed.
@@ -184,3 +201,7 @@ storage included, is the deployed code.
   bindings, and decides a queued school tool call after a restart.
 - `stores.test.ts` covers the store paths the journeys do not reach: conflicts, refused rows,
   seeding, chunked objects and approval transitions.
+- `lti.test.ts` registers a synthetic LMS by invitation, trusts and approves it, links a student
+  and launches as her across a restart, and refuses a replayed launch, a launch signed by another
+  key, one without the state cookie and one with the wrong nonce. It also keeps the tool keys and a
+  rotation across restarts. The test object's `platformFetch` is the synthetic LMS.

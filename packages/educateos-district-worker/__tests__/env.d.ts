@@ -15,5 +15,9 @@ declare namespace Cloudflare {
     TEST_ACCESS_PRIVATE_JWK: string;
     /** The public half of this run's Access key, as a JWK. */
     TEST_ACCESS_PUBLIC_JWK: string;
+    /** The private half of the synthetic LMS's signing key, as a JWK (SCHO-177). */
+    TEST_PLATFORM_PRIVATE_JWK: string;
+    /** The public half of the synthetic LMS's signing key, as a JWK (SCHO-177). */
+    TEST_PLATFORM_PUBLIC_JWK: string;
   }
 }

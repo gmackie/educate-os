@@ -28,6 +28,7 @@ import type {
   RecordedContextServices,
 } from "./stores.ts";
 import type { GradeColumnStore } from "./columns.ts";
+import { authorizeLti, authorizeLtiOffering, districtResource } from "./authorize.ts";
 
 /** Which recorded platform context an offering's grades should go to. */
 export const PlatformGradeRouteInput = z.strictObject({
@@ -179,32 +180,16 @@ export class LtiAdminService {
   }
 
   #district(): ResourceRef {
-    const { districtId } = this.#options;
-    return { kind: "district", id: districtId, scope: { level: "district", districtId }, classification: "district-internal" };
+    return districtResource(this.#options.districtId);
   }
 
   async #authorizeOffering(caller: Caller, action: Action, rawOfferingId: unknown): Promise<OfferingId> {
-    const id = OfferingId.safeParse(rawOfferingId);
-    const offering = id.success ? (await this.#options.directory()).offerings.find((o) => o.id === id.data) : undefined;
-    // An unknown offering is refused exactly as a forbidden one is, so the answer reveals nothing.
-    if (offering === undefined || offering.districtId !== this.#options.districtId) throw forbidden();
-    await this.#authorize(caller, action, {
-      kind: "offering",
-      id: offering.id,
-      scope: { level: "offering", districtId: offering.districtId, schoolId: offering.schoolId, offeringId: offering.id },
-      classification: "district-internal",
-    });
-    return offering.id;
+    const { authorizer, districtId } = this.#options;
+    return authorizeLtiOffering({ authorizer, districtId, directory: await this.#options.directory() }, caller, action, rawOfferingId, forbidden);
   }
 
   async #authorize(caller: Caller, action: Action, resource: ResourceRef): Promise<void> {
-    const decision = await this.#options.authorizer.authorize({
-      subject: caller.principal,
-      action,
-      resource,
-      context: { channel: caller.channel },
-    });
-    if (decision.effect !== "allow") throw forbidden();
+    await authorizeLti(this.#options.authorizer, caller, action, resource, forbidden);
   }
 }
 

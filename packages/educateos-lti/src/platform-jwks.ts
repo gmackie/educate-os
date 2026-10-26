@@ -93,7 +93,8 @@ export class PlatformJwksCache {
   async #load(jwksUrl: string): Promise<CachedKeySet> {
     let body: unknown;
     try {
-      const response = await this.#fetch(jwksUrl, { headers: { accept: "application/json" }, redirect: "error" });
+      // `manual`, not `error`, which the Workers runtime refuses. A redirect is not `ok`, so it is refused.
+      const response = await this.#fetch(jwksUrl, { headers: { accept: "application/json" }, redirect: "manual" });
       if (!response.ok) throw new Error(`status ${response.status}`);
       body = await response.json();
     } catch {

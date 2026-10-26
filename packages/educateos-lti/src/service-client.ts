@@ -159,11 +159,16 @@ export class LtiServiceClient {
         accept: init.accept,
       };
       if (init.contentType !== undefined) headers["content-type"] = init.contentType;
+      let response: Response;
       try {
-        return await this.#fetch(url, { method: init.method, headers, body: init.body, redirect: "error" });
+        // `manual`, not `error`, which the Workers runtime refuses: a redirect is answered here instead.
+        response = await this.#fetch(url, { method: init.method, headers, body: init.body, redirect: "manual" });
       } catch {
         throw new EducateOsError("unavailable", "The LTI platform could not be reached.");
       }
+      // A redirect is never followed: it could carry the bearer token to another URL.
+      if (response.status >= 300 && response.status < 400) throw new EducateOsError("unavailable", "The LTI platform answered with a redirect.");
+      return response;
     };
     const response = await send();
     if (response.status !== 401) return response;
@@ -196,9 +201,10 @@ export class LtiServiceClient {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
         body: body.toString(),
-        redirect: "error",
+        redirect: "manual",
       });
-      // The body of a refusal is not read: it is the platform's text and may echo the assertion.
+      // The body of a refusal is not read: it is the platform's text and may echo the assertion. A
+      // redirect is not `ok`, so it is refused too.
       if (!response.ok) throw new Error(`status ${response.status}`);
       payload = await readJson(response);
     } catch {
