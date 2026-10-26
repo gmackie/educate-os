@@ -6,7 +6,12 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "educateos-site",
   "compatibility_date": "2026-10-01",
+  // A one-line script, not an assets-only Worker: Cloudflare keeps no vars on an assets-only
+  // version, so ForgeGraph's FG_COMMIT_HASH would be dropped and its source-order guard would
+  // refuse every later deploy (SCHO-233). Requests that match a file never reach the script.
+  "main": "worker.js",
   "assets": {
+    "binding": "ASSETS",
     "directory": "./public",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
