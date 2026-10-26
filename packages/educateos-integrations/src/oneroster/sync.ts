@@ -1,6 +1,6 @@
 // Roster sync runs over any source that yields the OneRoster row model: complete and delta syncs,
 // the roster mirror a delta is laid over, and the run record each sync leaves. New for EducateOS.
-import { EducateOsError, type IntegrationSyncRun, type SyncCounts, type SyncErrorCode, type SyncMode } from "@educateos/contracts";
+import { EducateOsError, RemovalHold, type IntegrationSyncRun, type SyncCounts, type SyncErrorCode, type SyncMode } from "@educateos/contracts";
 import { z } from "zod";
 import { RosterSyncError } from "../sync-run.ts";
 import { readOneRosterCsv } from "./feed.ts";
@@ -26,12 +26,26 @@ export type RosterCursors = z.infer<typeof RosterCursors>;
  */
 export const DELTA_OVERLAP_MS = 5 * 60_000;
 
+/**
+ * Where a source's own change feed resumes, for a source whose deltas are not `dateLastModified`
+ * reads (Clever's events, for one). It is opaque to the sync, which keeps the one the last applied
+ * read returned and hands it to the next delta.
+ */
+export const SourceCursor = z.string().min(1).max(512);
+
 /** What a sync asks a source for. */
 export interface RosterReadRequest {
   /** Whether to read the whole roster or only what changed. */
   mode: SyncMode;
   /** For a delta, where each file starts. A file with no cursor is read whole. */
   since?: RosterCursors;
+  /** For a delta, the source cursor the last applied read returned, if it returned one. */
+  sourceCursor?: string;
+  /**
+   * For a delta, the roster as the last applied sync left it, so a source whose change feed says
+   * only what a record is now (a section's current students) can say what it no longer lists.
+   */
+  baseline?: RosterMirror;
 }
 
 /** What a source read. */
@@ -44,6 +58,8 @@ export interface RosterBatch {
   issues: OneRosterIssue[];
   /** Each file's latest `dateLastModified` among the records read, when the source reports them. */
   highWater?: OneRosterHighWater;
+  /** Where the source's next delta resumes, for a source that keeps its own cursor. */
+  sourceCursor?: string;
 }
 
 /**
@@ -53,6 +69,11 @@ export interface RosterBatch {
 export interface RosterSource {
   /** What kind of source this is, such as `oneroster-csv`. */
   readonly kind: string;
+  /**
+   * The external system the records come from, as principals' source links name it (the
+   * contracts `ProviderName`). `oneroster` when absent.
+   */
+  readonly system?: string;
   /** How the source delivers records, which decides how import issues name where a record is. */
   readonly format: OneRosterFormat;
   /** The modes it can read in. Every source can read a complete roster. */
@@ -104,6 +125,8 @@ export interface RosterSyncState {
   mirror?: RosterMirror;
   /** Where each file's next delta starts. Changes only when a sync succeeds. */
   cursors?: RosterCursors;
+  /** Where the source's next delta resumes, for a source that keeps its own. Changes only when a sync succeeds. */
+  sourceCursor?: string;
 }
 
 /** Everything one sync needs. */
@@ -120,7 +143,29 @@ export interface RosterSyncInput {
   runId: string;
   /** The time. Read when the run starts, which also dates term states, and when it finishes. */
   clock: () => Date;
+  /**
+   * When a feed that would deactivate many records is held for an administrator instead of
+   * applied. {@link DEFAULT_REMOVAL_HOLD} when absent; `false` turns the hold off.
+   */
+  removalHold?: RemovalHold | false;
+  /**
+   * The {@link HeldRemoval.fingerprint} of a hold an administrator approved. A run whose feed would
+   * deactivate exactly those records applies; any other removal over the threshold is held again.
+   */
+  approvedRemoval?: string;
 }
+
+/** Holds a feed that would deactivate over a fifth of the active roster, and at least three records. */
+export const DEFAULT_REMOVAL_HOLD: RemovalHold = { maxFraction: 0.2, minCount: 3 };
+
+/**
+ * A feed held by the removal hold: how many active roster principals and enrollments it would
+ * deactivate, of how many, and a digest of exactly which. The run record keeps it (the contracts
+ * `IntegrationSyncRun.held`). Passing the fingerprint back as {@link RosterSyncInput.approvedRemoval}
+ * applies that removal and no other; a source that keeps changing (a delta whose events keep
+ * arriving) can change it before the approval is used, and is then held again.
+ */
+export type HeldRemoval = NonNullable<IntegrationSyncRun["held"]>;
 
 /** The outcome of a sync. */
 export interface RosterSyncResult {
@@ -130,6 +175,8 @@ export interface RosterSyncResult {
   state: RosterSyncState;
   /** The import's preview, when the run got as far as mapping the feed. */
   preview?: OneRosterPreview;
+  /** Set when the run failed with `removal-held`: what the feed would have deactivated. */
+  held?: HeldRemoval;
 }
 
 /**
@@ -144,6 +191,10 @@ export interface RosterSyncResult {
  * and running the same delta again, or a complete sync of an unchanged roster, changes nothing.
  * Nothing is applied and the cursors stay where they were unless the whole feed applies.
  *
+ * A feed that would deactivate more of the roster than the {@link RemovalHold} allows is not
+ * applied either: the run fails with `removal-held` and returns the preview and a {@link HeldRemoval}
+ * for an administrator, whose approval is a rerun naming its fingerprint.
+ *
  * A failure to read, or a feed that does not apply, is returned as a failed run. Invalid state or
  * configuration is a caller error and is thrown.
  */
@@ -152,8 +203,12 @@ export async function runRosterSync(input: RosterSyncInput): Promise<RosterSyncR
   const startedAt = input.clock();
   const mirror = state.mirror === undefined ? undefined : parseState(RosterMirror, state.mirror, "roster mirror");
   const previousCursors = state.cursors === undefined ? undefined : parseState(RosterCursors, state.cursors, "cursors");
+  const previousSourceCursor = state.sourceCursor === undefined ? undefined : parseState(SourceCursor, state.sourceCursor, "source cursor");
+  const hold = input.removalHold === false ? undefined : parseState(RemovalHold, input.removalHold ?? DEFAULT_REMOVAL_HOLD, "removal hold");
 
-  const finish = (outcome: { errorCode: SyncErrorCode; preview?: OneRosterPreview } | { next: RosterSyncState; preview: OneRosterPreview }): RosterSyncResult => {
+  const finish = (
+    outcome: { errorCode: SyncErrorCode; preview?: OneRosterPreview; held?: HeldRemoval } | { next: RosterSyncState; preview: OneRosterPreview },
+  ): RosterSyncResult => {
     const failed = "errorCode" in outcome;
     const cursor = earliest(failed ? previousCursors : outcome.next.cursors);
     const run: IntegrationSyncRun = {
@@ -166,11 +221,13 @@ export async function runRosterSync(input: RosterSyncInput): Promise<RosterSyncR
       ...(outcome.preview === undefined ? {} : { quarantined: outcome.preview.quarantined.length }),
       outcome: failed ? "failed" : "succeeded",
       ...(failed ? { errorCode: outcome.errorCode } : {}),
+      ...("held" in outcome && outcome.held !== undefined ? { held: outcome.held } : {}),
     };
     return {
       run,
       state: failed ? state : outcome.next,
       ...(outcome.preview === undefined ? {} : { preview: outcome.preview }),
+      ...("held" in outcome && outcome.held !== undefined ? { held: outcome.held } : {}),
     };
   };
 
@@ -179,7 +236,11 @@ export async function runRosterSync(input: RosterSyncInput): Promise<RosterSyncR
 
   let batch: RosterBatch;
   try {
-    batch = await source.read(mode === "delta" ? { mode, since: previousCursors ?? {} } : { mode });
+    batch = await source.read(
+      mode === "delta"
+        ? { mode, since: previousCursors ?? {}, baseline: mirror!, ...(previousSourceCursor === undefined ? {} : { sourceCursor: previousSourceCursor }) }
+        : { mode },
+    );
   } catch (error) {
     if (error instanceof RosterSyncError) return finish({ errorCode: error.code });
     throw error;
@@ -196,13 +257,58 @@ export async function runRosterSync(input: RosterSyncInput): Promise<RosterSyncR
     config,
     now: startedAt,
     format: source.format,
+    ...(source.system === undefined ? {} : { system: source.system }),
   });
   if (!result.applied) return finish({ errorCode: "feed-rejected", preview: result.preview });
+  if (hold !== undefined) {
+    const held = await heldRemoval(state.roster, result.next, hold);
+    if (held !== undefined && held.fingerprint !== input.approvedRemoval) {
+      return finish({ errorCode: "removal-held", preview: result.preview, held });
+    }
+  }
   const cursors = nextCursors(mode, previousCursors ?? {}, batch.highWater ?? {});
+  // A complete read starts the source's change feed afresh; a delta that returned none keeps its place.
+  const sourceCursor = batch.sourceCursor ?? (mode === "delta" ? previousSourceCursor : undefined);
+  if (sourceCursor !== undefined) parseState(SourceCursor, sourceCursor, `source ${source.kind}'s cursor`);
   return finish({
-    next: { roster: result.next, mirror: records, ...(Object.keys(cursors).length === 0 ? {} : { cursors }) },
+    next: {
+      roster: result.next,
+      mirror: records,
+      ...(Object.keys(cursors).length === 0 ? {} : { cursors }),
+      ...(sourceCursor === undefined ? {} : { sourceCursor }),
+    },
     preview: result.preview,
   });
+}
+
+/** Which of `before`'s active roster records `after` no longer holds active, sorted, and how many were active. */
+function measureRemoval<T extends { id: string; status: string }>(before: readonly T[], after: readonly T[], managed: Readonly<Record<string, unknown>>) {
+  const status = new Map(after.map((record) => [record.id, record.status]));
+  const active = before.filter((record) => record.status === "active" && Object.hasOwn(managed, record.id));
+  const deactivated = active.filter((record) => status.get(record.id) !== "active").map((record) => record.id).toSorted();
+  return { active: active.length, deactivated };
+}
+
+/**
+ * What applying `next` over `current` would deactivate, when it is over the hold's threshold.
+ * Only roster-managed principals and enrollments count, and only those active before: a record the
+ * roster already dropped, or one it never managed, is not being removed now.
+ */
+export async function heldRemoval(current: RosterState, next: RosterState, hold: RemovalHold): Promise<HeldRemoval | undefined> {
+  const principals = measureRemoval(current.snapshot.principals, next.snapshot.principals, current.sources.principals);
+  const enrollments = measureRemoval(current.snapshot.enrollments, next.snapshot.enrollments, current.sources.enrollments);
+  const over = (m: { active: number; deactivated: string[] }) =>
+    m.deactivated.length >= hold.minCount && m.deactivated.length > hold.maxFraction * m.active;
+  if (!over(principals) && !over(enrollments)) return undefined;
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(JSON.stringify([principals.deactivated, enrollments.deactivated])),
+  );
+  return {
+    principals: { deactivated: principals.deactivated.length, active: principals.active },
+    enrollments: { deactivated: enrollments.deactivated.length, active: enrollments.active },
+    fingerprint: Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(""),
+  };
 }
 
 /**

@@ -72,6 +72,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     issuer: settings.accessIssuer ?? "",
     audiences: accessAudiences(settings.accessAudiences),
     ...(seams.accessKeys === undefined ? {} : { keys: seams.accessKeys }),
+    ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }),
   });
   const authority = authorityFor(config.authority);
   const app = await createDistrictApp({

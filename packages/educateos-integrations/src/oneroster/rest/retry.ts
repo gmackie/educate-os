@@ -44,6 +44,7 @@ export async function fetchWithRetry(
   policy: RetryPolicy,
   sleep: Sleep,
   now: () => number = Date.now,
+  waitOf: WaitHint = retryAfterHint,
 ): Promise<Response> {
   for (let n = 1; ; n++) {
     const backoff = Math.min(policy.baseDelayMs * 2 ** (n - 1), policy.maxDelayMs);
@@ -56,12 +57,21 @@ export async function fetchWithRetry(
       continue;
     }
     if (!RETRYABLE_STATUSES.has(response.status) || n >= policy.maxAttempts) return response;
-    const retryAfter = parseRetryAfter(response.headers.get("retry-after"), now());
+    const retryAfter = waitOf(response, now());
     // The body is never read; cancelling it frees the connection.
     await response.body?.cancel().catch(() => {});
     await sleep(retryAfter === undefined ? backoff : Math.min(retryAfter, policy.maxRetryAfterMs));
   }
 }
+
+/**
+ * How long a retryable response asks the client to wait, in milliseconds, or undefined to fall
+ * back to the backoff. A provider that signals its rate limit some other way supplies its own.
+ */
+export type WaitHint = (response: Response, now: number) => number | undefined;
+
+/** The wait a response's `Retry-After` header asks for: the {@link WaitHint} every source uses unless it has its own. */
+export const retryAfterHint: WaitHint = (response, now) => parseRetryAfter(response.headers.get("retry-after"), now);
 
 /**
  * Reads a `Retry-After` header (RFC 9110 section 10.2.3) as a wait in milliseconds: a whole number

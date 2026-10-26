@@ -49,6 +49,19 @@ describe("rebuilding a revision's document", () => {
     expect((await plan(readDesired({ ...stored, desired: { ...stored.desired, apiVersion: "schoolos.dev/v1alpha1" } }))).diff).toStrictEqual([]); // rename-educateos: keep
   });
 
+  it("keeps a roster's connection settings it does not edit (SCHO-203)", async () => {
+    const stored = (await admin.call("admin.getConfig")).head!;
+    const rostering = {
+      provider: "oneroster-api",
+      mode: "preview-before-apply",
+      identityMapping: { issuer: "https://idp.northfield.example", subject: { field: "username" } },
+      schedule: { deltaEveryMinutes: 30, completeEveryHours: 24 },
+      removalHold: { maxFraction: 0.2, minCount: 3 },
+    };
+    const read = readDesired({ ...stored, desired: { ...stored.desired, rostering } });
+    expect(documentFromDesired(read).rostering).toStrictEqual(rostering);
+  });
+
   it("carries a district policy edit through as exactly that edit", async () => {
     const tightened = await plan(withDistrictPolicies(head, { ...head.policies, aiMonthlyCapCentsPerPrincipal: 100 }));
     expect(tightened.diff).toStrictEqual([{ path: "/policies/aiMonthlyCapCentsPerPrincipal", change: "changed", before: 200, after: 100 }]);

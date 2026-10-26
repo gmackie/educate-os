@@ -11,6 +11,7 @@ import { formatUsdNano } from "../policies/policySettings.ts";
 const ROSTER_PROVIDERS: Record<string, string> = {
   "oneroster-csv": "OneRoster CSV export",
   "oneroster-api": "OneRoster connection",
+  clever: "Clever",
   manual: "Entered by hand",
 };
 

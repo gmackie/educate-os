@@ -13,7 +13,7 @@ function serve(seed: OneRosterSeed): FakeOneRosterServer {
   return new FakeOneRosterServer({ ...JSON.parse(JSON.stringify(collections)), demographics: [] } as Collections);
 }
 
-async function sync(demo: DemoDistrict, server: FakeOneRosterServer, state?: oneroster.RosterSyncState) {
+async function sync(demo: DemoDistrict, server: FakeOneRosterServer, state?: oneroster.RosterSyncState, extra: Partial<oneroster.RosterSyncInput> = {}) {
   const source = oneroster.restRosterSource(new oneroster.OneRosterRestClient({
     config: { baseUrl: ORIGIN, tokenUrl: TOKEN_URL, scopes: [oneroster.ROSTER_CORE_READONLY_SCOPE], pageSize: 5 },
     credentials: CREDENTIALS,
@@ -35,6 +35,7 @@ async function sync(demo: DemoDistrict, server: FakeOneRosterServer, state?: one
     config: { issuer: directory.district.trustedIssuers[0]!, subject: { field: "username" } },
     runId: "run-1",
     clock: () => new Date((now += 1000)),
+    ...extra,
   });
 }
 
@@ -68,10 +69,13 @@ describe.each(["riverbend", "lakeshore", "northfield"] as const)("%s's OneRoster
 });
 
 describe("Lakeshore's large removal", () => {
-  it("would deactivate eight of ten students if applied unchecked", async () => {
+  it("is held for review, and would deactivate eight of ten students once approved", async () => {
     const demo = demoDistrict("lakeshore");
     const first = await sync(demo, serve(oneRosterSeed(demo)));
-    const second = await sync(demo, serve(lakeshoreLargeRemoval()), first.state);
+    const held = await sync(demo, serve(lakeshoreLargeRemoval()), first.state);
+    expect(held.run).toMatchObject({ outcome: "failed", errorCode: "removal-held" });
+    expect(held.held!.principals.deactivated).toBe(8);
+    const second = await sync(demo, serve(lakeshoreLargeRemoval()), first.state, { approvedRemoval: held.held!.fingerprint });
     expect(second.run.outcome).toBe("succeeded");
     const students = second.state.roster.snapshot.principals.filter((p) => p.kind === "student");
     expect(students.filter((p) => p.status === "active").map((p) => p.displayName).toSorted()).toEqual(["Hana Ito", "Iker Ruiz"]);

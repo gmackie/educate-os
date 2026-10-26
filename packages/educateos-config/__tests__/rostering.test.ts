@@ -53,3 +53,48 @@ describe("rostering in a configuration revision", () => {
     expect(compileDistrictConfig(email, SHIPPED_REGISTRY).ok).toBe(false);
   });
 });
+
+// SCHO-203: a Clever roster names its Clever district in the revision; its token never does.
+describe("a Clever roster in a configuration revision", () => {
+  const CLEVER_DISTRICT = "6650c1a0e1b2c3d4e5f6d001";
+  function withClever(rostering: Record<string, unknown>) {
+    const document = northfieldDocument() as Record<string, unknown>;
+    document["rostering"] = {
+      provider: "clever",
+      mode: "preview-before-apply",
+      identityMapping: { issuer: "https://idp.northfield.example", subject: { field: "userIds", type: "clever" } },
+      schedule: { deltaEveryMinutes: 15, completeEveryHours: 24 },
+      clever: { districtId: CLEVER_DISTRICT },
+      removalHold: { maxFraction: 0.1, minCount: 5 },
+      ...rostering,
+    };
+    return document;
+  }
+
+  it("stores the Clever district, the identity mapping, the schedule and the removal hold", async () => {
+    const draft = await createDraftRevision({ document: withClever({}), registry: SHIPPED_REGISTRY, actorPrincipalId: ADMIN });
+    if (!draft.ok) throw new Error(JSON.stringify(draft.problems));
+    expect(draft.compiled.desired.rostering).toMatchObject({
+      provider: "clever",
+      clever: { districtId: CLEVER_DISTRICT },
+      removalHold: { maxFraction: 0.1, minCount: 5 },
+    });
+    expect(planConfigurationChange({ next: draft.revision, directory: NORTHFIELD, registry: SHIPPED_REGISTRY }).problems).toEqual([]);
+  });
+
+  it("requires the Clever district, and the Clever user ID as the subject", () => {
+    const paths = (document: Record<string, unknown>) => {
+      const result = compileDistrictConfig(document as never, SHIPPED_REGISTRY);
+      return result.ok ? [] : result.problems.map((p) => p.path);
+    };
+    expect(paths(withClever({ clever: undefined }))).toEqual(["/rostering/clever"]);
+    expect(paths(withClever({ identityMapping: { issuer: "https://idp.northfield.example", subject: { field: "username" } } }))).toEqual(["/rostering/identityMapping/subject"]);
+    expect(paths(withClever({ provider: "oneroster-api" }))).toEqual(["/rostering/clever"]);
+  });
+
+  it("refuses a district token in the revision", () => {
+    const result = compileDistrictConfig(withClever({ clever: { districtId: CLEVER_DISTRICT, districtToken: "a-district-app-token" } }) as never, SHIPPED_REGISTRY);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.problems).toContainEqual(expect.objectContaining({ code: "secret-in-config", path: "/rostering/clever/districtToken" }));
+  });
+});

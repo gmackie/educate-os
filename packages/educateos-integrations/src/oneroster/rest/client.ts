@@ -7,6 +7,7 @@
 // base path is the 1.2 rostering service's (`/ims/oneroster/rostering/v1p2`, not `/ims/oneroster/v1p2`).
 import type { SyncErrorCode } from "@educateos/contracts";
 import { z } from "zod";
+import { discard, readJson } from "../../http.ts";
 import { RosterSyncError } from "../../sync-run.ts";
 import type { OneRosterIssue } from "../feed.ts";
 import { DEFAULT_RETRY_POLICY, fetchWithRetry, realSleep } from "./retry.ts";
@@ -333,43 +334,6 @@ function failureCode(status: number): SyncErrorCode {
   if (status === 401 || status === 403) return "auth-failed";
   if (status === 429) return "rate-limited";
   return "source-unavailable";
-}
-
-/** Reads a body as JSON, refusing it once it passes `maxBytes` without buffering the rest. */
-async function readJson(what: string, response: Response, maxBytes: number): Promise<unknown> {
-  const declared = response.headers.get("content-length");
-  if (declared !== null && /^\d+$/.test(declared) && Number(declared) > maxBytes) {
-    await discard(response);
-    throw new RosterSyncError("response-too-large", `${what} response is larger than ${maxBytes} bytes`);
-  }
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  if (response.body !== null) {
-    const reader = response.body.getReader();
-    for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
-      size += chunk.value.byteLength;
-      if (size > maxBytes) {
-        await reader.cancel().catch(() => {});
-        throw new RosterSyncError("response-too-large", `${what} response is larger than ${maxBytes} bytes`);
-      }
-      chunks.push(chunk.value);
-    }
-  }
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  try {
-    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-  } catch {
-    throw new RosterSyncError("invalid-response", `${what} response is not JSON`);
-  }
-}
-
-async function discard(response: Response): Promise<void> {
-  await response.body?.cancel().catch(() => {});
 }
 
 function readTotal(collection: RosterCollection, value: string | null): number | undefined {

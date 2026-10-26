@@ -14,6 +14,7 @@ import {
   School,
   EducateOsError,
   IdpSubjectField as ContractIdpSubjectField,
+  ProviderName,
   RosterIdentityMapping,
   checkDirectoryIntegrity,
   externalIdentityKey,
@@ -82,7 +83,7 @@ export interface OneRosterImportInput {
  * How a feed was delivered, which decides how issues name where a record is: a CSV export's
  * `users.csv`, or a REST server's `users` collection.
  */
-export type OneRosterFormat = "csv" | "rest";
+export type OneRosterFormat = "csv" | "rest" | "clever";
 
 /**
  * An import of a feed already read into rows, by any source. The feed is the whole roster: a
@@ -95,6 +96,8 @@ export interface OneRosterFeedImportInput extends Omit<OneRosterImportInput, "fi
   issues: readonly OneRosterIssue[];
   /** How the feed was delivered, for the wording of issues. A bulk CSV export when absent. */
   format?: OneRosterFormat;
+  /** The system principals' source links name (the contracts `ProviderName`). `oneroster` when absent. */
+  system?: string;
 }
 
 /** Where a row-model file's records come from in a feed of each format, as issues name it. */
@@ -108,6 +111,15 @@ const PLACES: Readonly<Record<OneRosterFormat, Readonly<Record<OneRosterFile, st
     "users.csv": "the users collection",
     "roles.csv": "the users' roles",
     "enrollments.csv": "the enrollments collection",
+  },
+  clever: {
+    "orgs.csv": "Clever's districts and schools",
+    "academicSessions.csv": "Clever's terms",
+    "courses.csv": "Clever's courses",
+    "classes.csv": "Clever's sections",
+    "users.csv": "Clever's users",
+    "roles.csv": "the Clever users' roles",
+    "enrollments.csv": "Clever's section rosters",
   },
 };
 
@@ -301,6 +313,8 @@ interface ImportContext {
   warn(file: OneRosterFile, row: number, column: string, message: string): void;
   /** Where a file's records come from, in the feed's own terms (`users.csv`, the users collection). */
   place(file: OneRosterFile): string;
+  /** The system principals' source links name. */
+  system: string;
 }
 
 async function createContext(input: OneRosterFeedImportInput): Promise<ImportContext> {
@@ -375,6 +389,7 @@ async function createContext(input: OneRosterFeedImportInput): Promise<ImportCon
     error: (file, row, column, message) => issues.push({ severity: "error", ...located(file, row), column, message }),
     warn: (file, row, column, message) => issues.push({ severity: "warning", ...located(file, row), column, message }),
     place: (file) => PLACES[input.format ?? "csv"][file],
+    system: ProviderName.parse(input.system ?? "oneroster"),
   };
 }
 
@@ -761,7 +776,7 @@ function nextSourceMap(ctx: ImportContext, catalog: Catalog, people: People, enr
 
   const principals: Record<string, SourceLink> = next.principals;
   for (const [sourcedId, outcome] of people.outcomes) {
-    if (outcome.kind === "import") principals[outcome.id] = { system: "oneroster", sourcedId, lastSeenAt: ctx.seenAt };
+    if (outcome.kind === "import") principals[outcome.id] = { system: ctx.system, sourcedId, lastSeenAt: ctx.seenAt };
   }
   return next;
 }

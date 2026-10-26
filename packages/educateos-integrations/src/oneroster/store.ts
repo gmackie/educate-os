@@ -9,7 +9,7 @@ import { DistrictDirectorySnapshot, IntegrationSyncRun, RosterSyncSchedule, Educ
 import { z } from "zod";
 import { migrateLegacyTables, type LegacySql, type LegacyTablePlan } from "@educateos/contracts/legacy-tables";
 import { OneRosterSourceMap } from "./source-map.ts";
-import { RosterCursors, RosterMirror, runRosterSync } from "./sync.ts";
+import { RosterCursors, RosterMirror, SourceCursor, runRosterSync } from "./sync.ts";
 import type { RosterSyncInput, RosterSyncResult, RosterSyncState } from "./sync.ts";
 
 /** The stored form of a {@link RosterSyncState}, validated whenever it is read back. */
@@ -17,6 +17,7 @@ export const StoredRosterSyncState = z.strictObject({
   roster: z.strictObject({ snapshot: DistrictDirectorySnapshot, sources: OneRosterSourceMap }),
   mirror: RosterMirror.optional(),
   cursors: RosterCursors.optional(),
+  sourceCursor: SourceCursor.optional(),
 });
 
 /** A stored state and the version a commit over it must name. */

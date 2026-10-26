@@ -7,7 +7,7 @@
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import type { VerifiedIdentity } from "@educateos/contracts";
 import type { RequestVerifier } from "@educateos/district-app";
-import { identityFromAccessPayload } from "@educateos/identity";
+import { identityFromAccessPayload, type CleverSsoConfig } from "@educateos/identity";
 
 /** The request header Access puts its signed assertion in. */
 export const ACCESS_ASSERTION_HEADER = "cf-access-jwt-assertion";
@@ -24,6 +24,8 @@ export interface AccessVerifierOptions {
   audiences: readonly string[];
   /** The signing keys. Defaults to the team's published certs; tests pass a local key set. */
   keys?: JWTVerifyGetKey;
+  /** Set when the district signs people in through Clever, behind Access (SCHO-203). */
+  clever?: CleverSsoConfig;
 }
 
 /**
@@ -70,6 +72,6 @@ export function accessRequestVerifier(options: AccessVerifierOptions): RequestVe
     } catch {
       return undefined;
     }
-    return identityFromAccessPayload(payload, { issuer });
+    return identityFromAccessPayload(payload, { issuer, ...(options.clever === undefined ? {} : { clever: options.clever }) });
   };
 }

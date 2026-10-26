@@ -82,9 +82,13 @@ The existing clients run unchanged against the fakes. Their tests are
 - **LTI Dynamic Registration and Canvas.** Canvas returns `deployment_id` at the top level of its
   registration answer, not inside `lti-tool-configuration`. The tool read only the latter until
   SCHO-177 (#132); a test now holds it to Canvas's placement.
-- **A OneRoster delta that removes half the students applies in full.** The sync has no
-  large-removal hold yet (maturity.md, IF-11). A test pins this, so adding the hold shows up as a
-  deliberate change.
+- **A OneRoster delta that removes half the students applied in full.** The sync had no
+  large-removal hold (maturity.md, IF-11). Since SCHO-203 it is held for an administrator, and the
+  test that pinned the old behaviour now pins the hold.
+
+The Clever connector (SCHO-203) was written against these fakes. Its tests are
+`educateos-integrations/__tests__/clever.test.ts` and `educateos-identity/__tests__/clever-sso.test.ts`.
+`districtSeed(demo)` in `@educateos/fixtures` turns a demo district into a seed for any fake.
 
 ## Not modelled, or not verified
 

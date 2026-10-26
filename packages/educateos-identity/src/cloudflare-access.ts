@@ -1,4 +1,5 @@
 import { EducateOsError, VerifiedIdentity } from "@educateos/contracts";
+import { identityFromCleverClaims, type CleverSsoConfig } from "./clever-sso.ts";
 
 /**
  * The claims of a Cloudflare Access JWT *after* verification: what the kernel's
@@ -17,6 +18,13 @@ export interface CloudflareAccessConfig {
    * signs in through Access lists exactly this string in `trustedIssuers`.
    */
   readonly issuer: string;
+  /**
+   * Set when the deployment's Access application signs people in through Clever: an Access OIDC
+   * login method for Clever that passes Clever's claims through, and no other login method for
+   * people. Access does not say which login method a token came from, so a second method that
+   * could pass a `user_type` claim could pose as Clever. See {@link identityFromAccessPayload}.
+   */
+  readonly clever?: CleverSsoConfig;
 }
 
 /**
@@ -40,7 +48,7 @@ const nonEmptyString = (value: unknown): value is string => typeof value === "st
 
 /**
  * Extracts the identity from a verified Access JWT payload. Only `iss`, `sub` and `common_name` are
- * read.
+ * read, and `custom` when `config.clever` is set.
  *
  * - **Issuer.** Access's `iss` is the team domain. It must equal `config.issuer` exactly; the
  *   verifier already required that, and it is checked again so this function is safe on its own.
@@ -50,6 +58,13 @@ const nonEmptyString = (value: unknown): value is string => typeof value === "st
  *   `sub`. It becomes a `service` credential whose subject is
  *   {@link accessServiceTokenSubject}, which resolves only through an explicit link to a `service`
  *   principal.
+ * - **Clever.** With `config.clever` set, a user token whose `custom` claims (where Access puts the
+ *   OIDC claims a login method passes through) carry Clever's `user_type` is a Clever sign-in: its
+ *   identity is {@link identityFromCleverClaims}, under Clever's issuer, not Access's `sub`. Access
+ *   keys its users by email, so a family sharing one address shares one Access `sub`; the Clever
+ *   user ID tells them apart. A person's token without them is refused rather than read by its
+ *   Access `sub`, which in a Clever district would be the shared, email-keyed identity. Service
+ *   tokens are read as below.
  * - **Everything else is rejected:** a missing or empty `sub` without a `common_name`, a non-string
  *   claim, or a token carrying both a `sub` and a `common_name`, which Access never issues.
  *
@@ -74,6 +89,13 @@ export function identityFromAccessPayload(
   if (nonEmptyString(sub)) {
     if (nonEmptyString(commonName)) {
       throw new EducateOsError("unauthenticated", "The Access token names both a user and a service token.");
+    }
+    const custom = payload["custom"];
+    if (config.clever !== undefined) {
+      if (typeof custom !== "object" || custom === null || !("user_type" in custom)) {
+        throw new EducateOsError("unauthenticated", "This district signs people in through Clever, and the Access token carries no Clever sign-in.");
+      }
+      return identityFromCleverClaims(custom as Readonly<Record<string, unknown>>, config.clever);
     }
     candidate = { issuer: iss, subject: sub, credential: "person" };
   } else if (nonEmptyString(commonName)) {

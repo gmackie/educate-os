@@ -124,15 +124,21 @@ describe("the OneRoster provider fake", () => {
     expect(preview?.issues).toContainEqual(expect.objectContaining({ severity: "error", file: "users.csv", sourcedId: "mw-admin-varga" }));
   });
 
-  // The sync has no mass-removal guard: a delta listing half the students as tobedeleted applies
-  // in full. This pins today's behaviour so that adding a guard is a visible change.
-  it("applies a large removal in full: there is no safety threshold", async () => {
+  // SCHO-203 added the large-removal hold (IF-11): a delta listing half the students as
+  // tobedeleted waits for an administrator, and applies in full once approved.
+  it("holds a large removal until an administrator approves it", async () => {
     const { source, fake, clock } = setup();
     const { state } = await synced(EMPTY, source);
     const before = activePrincipals(state);
     clock.ms = Date.parse("2026-10-21T09:00:00Z");
     fake.inject({ kind: "large-removal", fraction: 0.5 });
-    const { state: next, run } = await synced(state, source, "delta");
+    const held = await sync(state, source, "delta");
+    expect(held.run).toMatchObject({ outcome: "failed", errorCode: "removal-held" });
+    expect(held.state).toBe(state);
+    let now = START;
+    const { state: next, run } = await oneroster.runRosterSync({
+      state, source, mode: "delta", config: CONFIG, runId: "run-approved", clock: () => new Date((now += 1000)), approvedRemoval: held.held!.fingerprint,
+    });
     expect(run.counts.principals.deactivated).toBe(5);
     expect(run.counts.enrollments.deactivated).toBe(10);
     expect(activePrincipals(next)).toBe(before - 5);

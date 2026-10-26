@@ -24,6 +24,19 @@ export const DistrictWorkerConfig = z.strictObject({
    * `AuthorityMap` for a mixed district.
    */
   authority: AuthoritySetting.optional(),
+  /**
+   * Clever SSO (SCHO-203): set when the district's Access application signs people in through an
+   * OIDC login method for Clever that passes Clever's claims through. Such a sign-in is resolved as
+   * the Clever user ID under `issuer` (Clever's own, `https://clever.com`, when absent), which the
+   * district must list in `trustedIssuers` and its Clever roster's identity mapping must name. It
+   * is deployment configuration, not a configuration revision, so an administrator's session
+   * cannot change how people sign in.
+   */
+  cleverSso: z.strictObject({
+    /** Clever's ID of the district. A sign-in from any other Clever district is refused. */
+    districtId: z.string().regex(/^[0-9a-f]{24}$/),
+    issuer: z.url({ protocol: /^https$/ }).optional(),
+  }).optional(),
   /** The district's AI funding pools. Defaults to none, so no AI request is funded. */
   fundingPools: FundingPoolSet.optional(),
   /** The district's monthly cap on its course and personal pools' allocations together. */

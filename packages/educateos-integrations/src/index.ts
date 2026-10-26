@@ -4,6 +4,8 @@
 
 /** OneRoster 1.2 roster import: CSV and REST sources, preview and diff, identity linking, safe apply and sync runs. */
 export * as oneroster from "./oneroster/index.ts";
+/** Clever Data API v3.1 roster sync: a complete read and an events delta, imported by the OneRoster pipeline. */
+export * as clever from "./clever/index.ts";
 export * from "./sync-run.ts";
 /** The interface every roster source implements, so CSV and REST sources are interchangeable. */
 export type { RosterSource } from "./oneroster/sync.ts";

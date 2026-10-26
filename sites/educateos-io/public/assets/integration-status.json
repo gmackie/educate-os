@@ -43,9 +43,9 @@
     "gc.live": "planned",
 
     "clever.sso": "validating",
-    "clever.mapping": "planned",
-    "clever.roster": "planned",
-    "clever.events": "planned",
+    "clever.mapping": "unit-tested",
+    "clever.roster": "unit-tested",
+    "clever.events": "unit-tested",
 
     "oneroster.csv": "unit-tested",
     "oneroster.rest": "unit-tested",
@@ -54,7 +54,7 @@
     "oneroster.quarantine": "unit-tested",
     "oneroster.deactivate": "unit-tested",
     "oneroster.health": "unit-tested",
-    "oneroster.hold": "planned",
+    "oneroster.hold": "unit-tested",
     "oneroster.scheduled": "planned",
     "oneroster.classlink": "planned"
   }

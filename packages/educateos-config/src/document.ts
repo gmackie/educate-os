@@ -1,10 +1,12 @@
 import {
   CapabilityId,
+  CleverRosterConnection,
   DistrictId,
   OfferingId,
   POLICY_ORDERINGS,
   PolicyOverrides,
   PolicySettings,
+  RemovalHold,
   RosterIdentityMapping,
   RosterSyncSchedule,
   Scope,
@@ -168,19 +170,38 @@ const Curriculum = z.strictObject({
 const Identity = z.strictObject({ provider: z.enum(["district-sso", "cloudflare-access"]) });
 
 const Rostering = z.strictObject({
-  provider: z.enum(["oneroster-csv", "oneroster-api", "manual"]),
+  provider: z.enum(["oneroster-csv", "oneroster-api", "clever", "manual"]),
   mode: z.enum(["preview-before-apply", "apply-automatically"]),
   /**
    * How the roster's users map to the IdP's subjects, for a OneRoster provider. The issuer must be
    * one the district trusts, which the plan checks against the directory.
    */
   identityMapping: RosterIdentityMapping.optional(),
-  /** When the roster syncs, for a OneRoster provider. */
+  /** When the roster syncs, for a OneRoster or Clever provider. */
   schedule: RosterSyncSchedule.optional(),
+  /**
+   * Which Clever district a Clever roster reads (SCHO-203). Required for, and only for, the
+   * `clever` provider. Its district token is a Worker secret, never configuration.
+   */
+  clever: CleverRosterConnection.optional(),
+  /** When a sync that would deactivate much of the roster is held for review. The sync's default when absent. */
+  removalHold: RemovalHold.optional(),
 }).superRefine((rostering, context) => {
-  if (rostering.provider !== "manual") return;
-  for (const field of ["identityMapping", "schedule"] as const) {
-    if (rostering[field] !== undefined) context.addIssue({ code: "custom", path: [field], message: `a manual roster has no ${field}` });
+  if (rostering.provider === "manual") {
+    for (const field of ["identityMapping", "schedule", "clever", "removalHold"] as const) {
+      if (rostering[field] !== undefined) context.addIssue({ code: "custom", path: [field], message: `a manual roster has no ${field}` });
+    }
+    return;
+  }
+  if (rostering.provider === "clever") {
+    if (rostering.clever === undefined) context.addIssue({ code: "custom", path: ["clever"], message: "a Clever roster names its Clever district" });
+    const subject = rostering.identityMapping?.subject;
+    // A Clever roster records each user's Clever ID as `userIds` type `clever`, the subject Clever SSO asserts.
+    if (subject !== undefined && !(subject.field === "userIds" && subject.type === "clever")) {
+      context.addIssue({ code: "custom", path: ["identityMapping", "subject"], message: "a Clever roster's subject is the Clever user ID: userIds of type clever" });
+    }
+  } else if (rostering.clever !== undefined) {
+    context.addIssue({ code: "custom", path: ["clever"], message: "only a Clever roster names a Clever district" });
   }
 });
 
