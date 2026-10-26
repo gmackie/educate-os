@@ -1,7 +1,7 @@
 # EducateOS capability maturity
 
 - Status: Living document. Update a row in the PR that changes its evidence.
-- Date: 2026-10-21
+- Date: 2026-10-26
 - Issue: SCHO-168 ([ADR-0011](adr/0011-open-source-charter-and-module-ownership.md), [RFC 0002](rfc/0002-integration-fabric.md) §1)
 
 Having specification-shaped code is not the same as interoperating with a real platform. This page
@@ -10,8 +10,9 @@ notes claim only what the evidence supports. The pilot gate's MET/NOT MET table
 ([pilot-gate.md](pilot-gate.md)) is generated from its own criteria and is not repeated here.
 
 **No 1EdTech certification is claimed for any part of EducateOS.** Where this repository says it
-supports "LTI 1.3" or "LTI Advantage", it means implemented and unit-tested Tool-side client code,
-not conformance-tested or certified behaviour.
+supports "LTI 1.3" or "LTI Advantage", it means Tool-side code that passed the live run against one
+current Canvas recorded in [integrations/canvas-lti.md](integrations/canvas-lti.md), not 1EdTech
+conformance-suite or certified behaviour, and not yet any second LMS.
 
 ## Levels
 
@@ -31,8 +32,8 @@ Each level includes the ones before it.
 
 | Capability | Level | Evidence | Gaps | Next step |
 | --- | --- | --- | --- | --- |
-| LTI 1.3 Tool: OIDC login, launch validation, launch-to-principal and offering mapping | Unit-tested | `packages/educateos-lti` (`broker.ts`, `handlers.ts`), tests against an in-process `FakePlatform` | Registration, nonce and state stores are in memory only. No Canvas or Moodle sandbox run. | Durable stores and a Canvas sandbox run (IF-08) |
-| LTI Advantage Tool: Deep Linking 2.0, AGS, NRPS, teacher-approved grade passback | Unit-tested | `packages/educateos-lti` (`deep-linking.ts`, `ags.ts`, `nrps.ts`, `passback.ts`, `service-client.ts`) | Same fixtures only. Service paging links are checked by origin, not origin and path. No conformance run. | Origin-and-path paging guard, then sandbox and conformance fixtures (IF-08) |
+| LTI 1.3 Tool: OIDC login, launch validation, launch-to-principal and offering mapping | External-conformance-tested (Canvas, labnuc) | `packages/educateos-lti` (`broker.ts`, `handlers.ts`, `dynamic-registration.ts`); durable registrations, login state and rotating tool keys in the district's Durable Object (`packages/educateos-lti-district`, workerd restart and replay tests); served by the production district Worker (`packages/educateos-district-worker/src/lti.ts`). Live Canvas run 2026-10-26: Dynamic Registration, teacher and student launches, replayed and spoofed launches refused, tool key rotation ([evidence](integrations/canvas-lti.md)) | One LMS, a self-hosted current Canvas; the registration token was minted out of band on its single-domain install. No Moodle or other second LMS. No 1EdTech conformance suite. The platform-storage cookie fallback was not exercised live. | A second LMS (IF-08), then a 1EdTech conformance run |
+| LTI Advantage Tool: Deep Linking 2.0, AGS, NRPS, teacher-approved grade passback | External-conformance-tested (Canvas, labnuc) | `packages/educateos-lti` (`deep-linking.ts`, `ags.ts`, `nrps.ts`, `passback.ts`, `service-client.ts`); `LtiAdvantageService` (`packages/educateos-lti-district/src/advantage.ts`) behind `/api/lti`. Live Canvas run 2026-10-26: deep linking response accepted by Canvas, NRPS roster read, AGS line item created, a teacher-approved grade published to the Canvas gradebook ([evidence](integrations/canvas-lti.md)) | One LMS. The deep-linked item was placed in its Canvas assignment through Canvas's API, not the assignment dialog. NRPS paging was not exercised live, and service paging links are checked by origin, not origin and path. No second LMS, no conformance suite. | Origin-and-path paging guard; a second LMS (IF-08) |
 | LTI Platform (EducateOS hosting third-party tools) | Designed | RFC 0002 §5 | No code. | IF-10 |
 | Google Classroom | Implemented (adapter shell) | `packages/educateos-lti/src/classroom.ts` | Not an LTI platform; uses Google's own APIs and scopes. | Not scheduled |
 | MCP client (Workshop calls external MCP servers) | Unit-tested | `packages/mcp-shared`, `packages/gatekeeper-mcp`; `@modelcontextprotocol/client` 2.2.0, protocol `2025-06-18` | Upstream Workshop feature, not EducateOS-specific. | Track the SDK when IF-05 pins a version |
