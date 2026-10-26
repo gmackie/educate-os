@@ -168,8 +168,7 @@ function entryKey(entry: IdentityLinkEntry): string | undefined {
 
 function folds(districtId: DistrictId, entries: readonly IdentityLinkEntry[]): boolean {
   try {
-    new IdentityLinkIndex(districtId, entries);
-    return true;
+    return new IdentityLinkIndex(districtId, entries) instanceof IdentityLinkIndex;
   } catch {
     return false;
   }

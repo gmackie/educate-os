@@ -72,6 +72,8 @@ describe("district LTI stores in a Durable Object", () => {
     const district = fresh();
     await runInDurableObject(district, async (_instance, state) => {
       const table = new DurableObjectRecordTable(state.storage);
+      // The table is created on first use (SCHO-232), so use it once before writing a row past it.
+      table.list(LTI_COLLECTIONS.loginStates);
       state.storage.sql.exec(
         `INSERT INTO ${LTI_RECORDS_TABLE} (collection, key, value_json, expires_at) VALUES (?, ?, ?, ?)`,
         LTI_COLLECTIONS.loginStates,

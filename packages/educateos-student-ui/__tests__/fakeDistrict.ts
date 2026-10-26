@@ -235,9 +235,9 @@ export function fakeDistrict(options: {
   let preferences = { email: { announcements: true, assignments: true, feedback: true, grades: true, digest: true }, hasEmailAddress: true, emailEnabled: true };
   let feed: { createdAt: string; path: string } | undefined;
   const CALENDAR = [
-    { uid: "term-start-trm_fall@dst_northfield.educateos", kind: "term-start", title: "Fall 2026 begins", start: "2026-10-19", allDay: true },
-    { uid: `due-${ESSAY}@dst_northfield.educateos`, kind: "assignment-due", title: "Due: Should the school day start later? — English 9 (Period 3)", start: "2026-10-22T21:00:00.000Z", allDay: false, offeringId: ENGLISH, assignmentId: ESSAY },
-    { uid: `due-${LAB_REPORT}@dst_northfield.educateos`, kind: "assignment-due", title: "Due: Osmosis lab report — Biology (Period 1)", start: "2026-11-12T21:00:00.000Z", allDay: false, offeringId: SCIENCE, assignmentId: LAB_REPORT },
+    { uid: "term-start-trm_fall@dst_northfield.schoolos", kind: "term-start", title: "Fall 2026 begins", start: "2026-10-19", allDay: true }, // rename-educateos: keep
+    { uid: `due-${ESSAY}@dst_northfield.schoolos`, kind: "assignment-due", title: "Due: Should the school day start later? — English 9 (Period 3)", start: "2026-10-22T21:00:00.000Z", allDay: false, offeringId: ENGLISH, assignmentId: ESSAY }, // rename-educateos: keep
+    { uid: `due-${LAB_REPORT}@dst_northfield.schoolos`, kind: "assignment-due", title: "Due: Osmosis lab report — Biology (Period 1)", start: "2026-11-12T21:00:00.000Z", allDay: false, offeringId: SCIENCE, assignmentId: LAB_REPORT }, // rename-educateos: keep
   ];
 
   const handlers: Handlers = {
