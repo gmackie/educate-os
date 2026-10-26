@@ -106,7 +106,10 @@ through the broker in `canvas.test.ts`.
   ignored.
 - **Tool keys** are RS256 key pairs stored as private JWKs (`generateToolKey`, `importToolKey`).
   `rotateToolKeys` switches signing to a new key and keeps the previous public key published, so
-  platforms can still verify a response signed just before the rotation.
+  platforms can still verify a response signed just before the rotation. In a district Worker they
+  are kept by `TableToolKeyStore` (`@educateos/lti-district`) in the district's Durable Object: the
+  private JWKs never leave that storage, and `rotate()` retires the signing key and keeps one
+  retired key published by default.
 
 ## Deployment requirements
 
@@ -278,6 +281,7 @@ one SQLite table in the district's Durable Object; `InMemoryRecordTable` is for 
 | `TableContextServicesStore` | Keeps the newest services per (offering, platform context); an older launch cannot bring back replaced URLs. |
 | `TableGradeRouteStore`, `TableGradeColumnStore` | A column bound to one assignment cannot be moved to another. |
 | `TableRosterSourceStore` | A projection no newer than the last applied is refused. |
+| `TableToolKeyStore` (SCHO-177) | One record holds the whole key set, so a rotation is one write. The first read generates the key; of racing first reads, the key stored first wins, so every isolate signs with the same key. |
 
 A stored record that does not match its schema is an error (`LtiStoredRecordError`), never a
 default. The workerd suite (`__tests__/workerd/`) runs the stores against real Durable Object
