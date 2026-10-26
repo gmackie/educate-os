@@ -7,12 +7,12 @@
 import { DurableObject } from "cloudflare:workers";
 import type { JWTVerifyGetKey } from "jose";
 import { operatorVerifier, type OperatorIdentity, type OperatorVerifier } from "./access.ts";
-import { handleRequest, type ControlPlaneApi } from "./app.ts";
+import { handleRequest, type ControlPlaneApi, type ControlPlaneDeps } from "./app.ts";
 import { configuredLaunchDistricts } from "./clever-launch.ts";
 import type { SiteShell } from "./pages.ts";
 import type { ProbeResult } from "./probe.ts";
 import { ControlPlaneRegistry, type DashboardEntry, type RegistryMessage, type RegistryReply } from "./registry.ts";
-import { ControlPlaneStore, type Installation, type Operator } from "./store.ts";
+import { ControlPlaneStore, type Installation, type Operator, type Reservation } from "./store.ts";
 
 /** The site Worker's bindings and vars. */
 export interface ControlPlaneEnv {
@@ -35,6 +35,10 @@ export interface ControlPlaneEnv {
   CLEVER_LAUNCH_DISTRICTS?: string;
   /** Stamped by the ForgeGraph build (`scripts/production/stamp-commit.ts`). */
   FG_COMMIT_HASH?: string;
+  /** Signed releases for the guided install, as `scripts/release/upload-release.ts` lays them out. */
+  RELEASES?: R2Bucket;
+  /** The release keys the guided install verifies releases against: a `ReleaseTrust`. */
+  RELEASE_TRUST?: unknown;
 }
 
 /** The one Durable Object instance holding the control plane's state. */
@@ -57,6 +61,18 @@ export class ControlPlane extends DurableObject<ControlPlaneEnv> implements Cont
 
   installations(operatorSubject: string): Installation[] {
     return this.#store.installations(operatorSubject);
+  }
+
+  recordInstallation(operatorSubject: string, installation: Installation): boolean {
+    return this.#store.recordInstallation(operatorSubject, installation);
+  }
+
+  reserveInstall(operatorSubject: string, slug: string, accountId: string, proposed: string): Reservation {
+    return this.#store.reserveInstall(operatorSubject, slug, accountId, proposed);
+  }
+
+  endInstall(operatorSubject: string, slug: string, release: boolean): void {
+    this.#store.endInstall(operatorSubject, slug, release);
   }
 
   dashboard(operator: Operator): Promise<DashboardEntry[]> {
@@ -89,6 +105,8 @@ export interface SiteWorkerOptions {
   probe?: (hostname: string) => Promise<ProbeResult>;
   /** Reaches Clever for portal launches. Defaults to the global `fetch`; tests stand in a fake Clever. */
   cleverFetch?: (input: string, init: RequestInit) => Promise<Response>;
+  /** The Cloudflare API the guided install drives. Defaults to api.cloudflare.com; tests use a fake. */
+  cloudflareApi?: ControlPlaneDeps["cloudflareApi"];
 }
 
 /** The site Worker's fetch handler, with the site's shell. */
@@ -104,7 +122,7 @@ export function siteWorker(shell: SiteShell, options: SiteWorkerOptions = {}): E
     return verifier.verify;
   };
   return {
-    async fetch(request, env) {
+    async fetch(request, env, ctx) {
       return handleRequest(request, {
         shell,
         verifyOperator: (operatorRequest) => verifierFor(env)(operatorRequest),
@@ -117,6 +135,9 @@ export function siteWorker(shell: SiteShell, options: SiteWorkerOptions = {}): E
           : {}),
         ...(options.cleverFetch === undefined ? {} : { cleverFetch: options.cleverFetch }),
         cleverLaunchDistricts: configuredLaunchDistricts(env.CLEVER_LAUNCH_DISTRICTS),
+        ...(env.RELEASES && env.RELEASE_TRUST ? { releases: { bucket: env.RELEASES, trust: env.RELEASE_TRUST } } : {}),
+        waitUntil: (promise) => ctx.waitUntil(promise),
+        ...(options.cloudflareApi ? { cloudflareApi: options.cloudflareApi } : {}),
       });
     },
   };

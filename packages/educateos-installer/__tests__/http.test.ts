@@ -48,6 +48,24 @@ describe("Cloudflare HTTP client", () => {
     expect(requests.every((r) => r.headers.get("authorization") === `Bearer ${TOKEN}`)).toBe(true);
   });
 
+  it("reads a success envelope whose errors and result_info are null, as GET /workers/domains answers", async () => {
+    // Seen live on 2026-10-26 (SCHO-206): `{"success":true,"errors":null,"messages":null,...}`.
+    const { fetchImpl } = stubFetch(() => Response.json({
+      success: true, errors: null, messages: null, result_info: null,
+      result: [{ id: "d1", hostname: "northfield.educateos.io", service: "router", zone_id: "z1", zone_name: "educateos.io", environment: "production" }],
+    }));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+
+    expect(await api.listWorkerDomains(ACCOUNT)).toEqual([{ id: "d1", hostname: "northfield.educateos.io", service: "router", zoneId: "z1" }]);
+  });
+
+  it("never follows a redirect, so the token can't leave api.cloudflare.com", async () => {
+    const { fetchImpl, requests } = stubFetch(() => new Response(null, { status: 307, headers: { location: "https://evil.example/" } }));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+    await expect(api.listKvNamespaces(ACCOUNT)).rejects.toMatchObject({ status: 307 });
+    expect(requests.map((r) => [new URL(r.url).host, r.redirect])).toEqual([["api.cloudflare.com", "manual"]]);
+  });
+
   it("turns a revoked token into a credential failure whose message never carries the token", async () => {
     const { fetchImpl } = stubFetch(() =>
       Response.json({ success: false, errors: [{ code: 9109, message: `Invalid access token ${TOKEN}` }], result: null }, { status: 401 }));

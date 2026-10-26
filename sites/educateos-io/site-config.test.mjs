@@ -24,6 +24,14 @@ test("the paths that reach the Worker first are the ones the control plane route
   assert.deepEqual(config.assets.run_worker_first, [...DYNAMIC_PATHS]);
 });
 
+test("the guided install reads releases from educateos.io's release bucket and pins its release keys", async () => {
+  assert.deepEqual(config.r2_buckets, [{binding: "RELEASES", bucket_name: "educateos-releases"}]);
+  const {ReleaseTrust} = await import("../../packages/educateos-releases/src/trust.ts");
+  const trust = ReleaseTrust.parse(config.vars.RELEASE_TRUST);
+  assert.ok(trust.keys.length >= 1 && trust.root.keys.length >= trust.root.threshold);
+  assert.ok(!JSON.stringify(config.vars.RELEASE_TRUST).includes('"d"'), "only public keys are pinned");
+});
+
 test("the console verifies Access assertions for its own application", () => {
   assert.equal(config.vars.ACCESS_ISSUER, "https://gmacko.cloudflareaccess.com");
   assert.match(config.vars.ACCESS_AUD, /^[0-9a-f]{64}$/);

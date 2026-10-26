@@ -12,5 +12,6 @@
     "erasableSyntaxOnly": true
   },
   "include": ["src", "__tests__", "../../sites/educateos-io/worker.ts", "../../sites/educateos-io/partials.d.ts"],
-  "exclude": ["node_modules"]
+  // The Node suite has its own tsconfig.node.json.
+  "exclude": ["node_modules", "__tests__/node"]
 }

@@ -33,7 +33,7 @@ export interface Operator {
 /** An installation an operator made through educateos.io. */
 export const Installation = z.strictObject({
   /** The installer's instance ID, `ins_…`. */
-  instanceId: z.string().regex(/^ins_[a-z0-9]{1,20}$/),
+  instanceId: z.string().regex(/^ins_[a-z0-9][a-z0-9-]{0,19}$/),
   /** The managed slug, so the installation serves at `<slug>.educateos.io`. */
   slug: z.string().min(3).max(32),
   /** The hostname the installation serves at: its managed hostname (SCHO-207), the one the dashboard probes. */
@@ -49,7 +49,19 @@ export const Installation = z.strictObject({
 export type Installation = z.infer<typeof Installation>;
 
 /** The tables, exported so tests and later migrations can name them. */
-export const TABLES = { operators: "control_plane_operators", installations: "control_plane_installations" } as const;
+export const TABLES = {
+  operators: "control_plane_operators",
+  installations: "control_plane_installations",
+  reservations: "control_plane_reservations",
+} as const;
+
+/** How long one guided install holds its slug's run lease. A run still going after this is presumed dead. */
+export const INSTALL_LEASE_MS = 30 * 60 * 1000;
+
+/** What reserving a slug for a guided install gave. */
+export type Reservation =
+  | { ok: true; instanceId: string }
+  | { ok: false; reason: "taken" | "running" };
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS ${TABLES.operators} (
@@ -67,6 +79,16 @@ const SCHEMA = [
     record TEXT NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS ${TABLES.installations}_by_operator ON ${TABLES.installations} (operator_subject)`,
+  // Who holds a slug for the guided install, under which instance ID, and whether a run holds it
+  // now. Taken before the first Cloudflare call, so two runs never install one slug at once, and
+  // kept after an interrupted run, so the next run resumes as the same instance.
+  `CREATE TABLE IF NOT EXISTS ${TABLES.reservations} (
+    slug TEXT PRIMARY KEY,
+    operator_subject TEXT NOT NULL REFERENCES ${TABLES.operators} (subject),
+    account_id TEXT NOT NULL,
+    instance_id TEXT NOT NULL UNIQUE,
+    lease_until TEXT
+  )`,
 ];
 
 const OperatorRow = z.object({
@@ -145,6 +167,66 @@ export class ControlPlaneStore {
     return this.#tables.transact((sql) => {
       const [row] = sql.exec(`SELECT instance_id, record FROM ${TABLES.installations} WHERE instance_id = ?`, instanceId).toArray();
       return row === undefined ? undefined : parseStoredJson(Installation, row.record, `installation ${String(row.instance_id)}`);
+    });
+  }
+
+  /**
+   * Reserves a slug for one guided install run, atomically. A slug another operator, or another
+   * account, holds is `taken`. One whose run lease hasn't expired is `running`, so a double submit
+   * never runs two installs at once. Otherwise the run gets the lease and the slug's instance ID:
+   * the one reserved before, so a re-run or upgrade resumes as the same instance, else `proposed`.
+   */
+  reserveInstall(operatorSubject: string, slug: string, accountId: string, proposed: string): Reservation {
+    const now = this.#now();
+    const leaseUntil = new Date(now.getTime() + INSTALL_LEASE_MS).toISOString();
+    return this.#tables.transact((sql): Reservation => {
+      const [held] = sql.exec(`SELECT operator_subject, account_id, instance_id, lease_until FROM ${TABLES.reservations} WHERE slug = ?`, slug).toArray();
+      if (held === undefined) {
+        const clash = sql.exec(`SELECT 1 FROM ${TABLES.reservations} WHERE instance_id = ?`, proposed).toArray().length > 0 ||
+          sql.exec(`SELECT 1 FROM ${TABLES.installations} WHERE slug = ? OR instance_id = ?`, slug, proposed).toArray().length > 0;
+        if (clash) return { ok: false, reason: "taken" };
+        sql.exec(`INSERT INTO ${TABLES.reservations} (slug, operator_subject, account_id, instance_id, lease_until) VALUES (?, ?, ?, ?, ?)`,
+          slug, operatorSubject, accountId, proposed, leaseUntil);
+        return { ok: true, instanceId: proposed };
+      }
+      if (held.operator_subject !== operatorSubject || held.account_id !== accountId) return { ok: false, reason: "taken" };
+      if (typeof held.lease_until === "string" && held.lease_until > now.toISOString()) return { ok: false, reason: "running" };
+      sql.exec(`UPDATE ${TABLES.reservations} SET lease_until = ? WHERE slug = ?`, leaseUntil, slug);
+      return { ok: true, instanceId: String(held.instance_id) };
+    });
+  }
+
+  /**
+   * Ends a guided install run: drops its lease, and with `release` (the run changed nothing and
+   * the slug names no installation) gives the slug back.
+   */
+  endInstall(operatorSubject: string, slug: string, release: boolean): void {
+    this.#tables.transact((sql) => {
+      const installed = sql.exec(`SELECT 1 FROM ${TABLES.installations} WHERE slug = ?`, slug).toArray().length > 0;
+      if (release && !installed) {
+        sql.exec(`DELETE FROM ${TABLES.reservations} WHERE slug = ? AND operator_subject = ?`, slug, operatorSubject);
+      } else {
+        sql.exec(`UPDATE ${TABLES.reservations} SET lease_until = NULL WHERE slug = ? AND operator_subject = ?`, slug, operatorSubject);
+      }
+    });
+  }
+
+  /**
+   * Records, or after a re-run or upgrade updates, an installation the operator made through
+   * educateos.io. Only the operator holding the slug's reservation, under its instance ID, may.
+   * Returns whether it did.
+   */
+  recordInstallation(operatorSubject: string, installation: Installation): boolean {
+    const record = Installation.parse(installation);
+    return this.#tables.transact((sql) => {
+      const held = sql.exec(`SELECT 1 FROM ${TABLES.reservations} WHERE slug = ? AND operator_subject = ? AND instance_id = ?`,
+        record.slug, operatorSubject, record.instanceId).toArray();
+      if (held.length === 0) return false;
+      sql.exec(
+        `INSERT INTO ${TABLES.installations} (instance_id, operator_subject, slug, record) VALUES (?, ?, ?, ?)
+         ON CONFLICT (instance_id) DO UPDATE SET record = excluded.record`,
+        record.instanceId, operatorSubject, record.slug, JSON.stringify(record));
+      return true;
     });
   }
 

@@ -3,6 +3,7 @@
 // Every value that reaches a page passes through `html`, which escapes it.
 import { ACCESS_LOGOUT_PATH } from "./access.ts";
 import type { ProbedEntry } from "./app.ts";
+import { ECHOED_FIELDS, type InstallEvent } from "./guided-install.ts";
 import type { ProbeResult } from "./probe.ts";
 import type { Registration } from "./registry.ts";
 import type { Operator } from "./store.ts";
@@ -71,7 +72,17 @@ export const PAGE_HEADERS: Readonly<Record<string, string>> = {
 
 /** A whole page in the site's shell. */
 export function page(shell: SiteShell, title: string, body: Html): string {
-  return html`<!doctype html>
+  const [head, tail] = pageParts(shell, title);
+  return `${head}${body.text}${tail}`;
+}
+
+// Where a page's body goes. No shell or title can contain it: html escapes nothing to NUL, and the
+// partials are text.
+const BODY_SLOT = "\u0000";
+
+/** A page's markup before and after its body, for a page streamed as it is written. */
+export function pageParts(shell: SiteShell, title: string): [string, string] {
+  const [head, tail] = html`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -87,12 +98,13 @@ export function page(shell: SiteShell, title: string, body: Html): string {
 <body>
 ${new Html(shell.header)}
 <main>
-${body}
+${new Html(BODY_SLOT)}
 </main>
 ${new Html(shell.footer)}
 </body>
 </html>
-`.text;
+`.text.split(BODY_SLOT);
+  return [head!, tail!];
 }
 
 function signedInBar(operator: Operator): Html {
@@ -142,6 +154,7 @@ export function dashboardPage(shell: SiteShell, operator: Operator, entries: rea
       <div class="eyebrow">Operator console</div>
       <h1>Your installations</h1>
       ${signedInBar(operator)}
+      <p><a class="btn primary" href="/app/install">Install EducateOS</a></p>
     </div>
   </section>
   <section class="tight">
@@ -159,4 +172,120 @@ export function messagePage(shell: SiteShell, title: string, message: string): s
       <p><a class="btn" href="/app/">Operator console</a> <a class="btn" href="/">educateos.io</a></p>
     </div>
   </section>`);
+}
+
+/**
+ * The permissions the guided install's token needs, as Cloudflare's token editor names them
+ * (docs/educateos/installer-permissions.md). `key` and `type` prefill the editor.
+ */
+export const INSTALL_TOKEN_PERMISSIONS = [
+  { scope: "Account", name: "Account Settings", level: "Read", key: "account_settings", type: "read" },
+  { scope: "Account", name: "Billing", level: "Read", key: "billing", type: "read" },
+  { scope: "Account", name: "Workers Scripts", level: "Edit", key: "workers_scripts", type: "edit" },
+  { scope: "Account", name: "Workers KV Storage", level: "Edit", key: "workers_kv_storage", type: "edit" },
+  { scope: "Account", name: "Workers R2 Storage", level: "Edit", key: "workers_r2", type: "edit" },
+  { scope: "Account", name: "D1", level: "Edit", key: "d1", type: "edit" },
+  { scope: "Account", name: "Access: Apps and Policies", level: "Edit", key: "access", type: "edit" },
+  { scope: "Account", name: "Access: Organizations, Identity Providers, and Groups", level: "Read", key: "access_acct", type: "read" },
+  { scope: "Account", name: "AI Gateway", level: "Edit", key: "aig", type: "edit" },
+  { scope: "Zone", name: "Zone", level: "Read", key: "zone", type: "read" },
+  { scope: "Zone", name: "DNS", level: "Edit", key: "dns", type: "edit" },
+  { scope: "Zone", name: "Workers Routes", level: "Edit", key: "workers_routes", type: "edit" },
+  { scope: "Zone", name: "SSL and Certificates", level: "Edit", key: "ssl_and_certificates", type: "edit" },
+] as const;
+
+/** Cloudflare's token editor, prefilled with {@link INSTALL_TOKEN_PERMISSIONS}. */
+export function installTokenLink(): string {
+  const keys = INSTALL_TOKEN_PERMISSIONS.map(({ key, type }) => ({ key, type }));
+  const query = new URLSearchParams({ permissionGroupKeys: JSON.stringify(keys), name: "EducateOS guided install" });
+  return `https://dash.cloudflare.com/profile/api-tokens?${query}`;
+}
+
+const FIELD_LABELS: Record<(typeof ECHOED_FIELDS)[number], { label: string; hint: string; placeholder: string }> = {
+  slug: { label: "Address", hint: "Your installation serves at <slug>.educateos.io. Lowercase letters, digits and hyphens.", placeholder: "riverbend" },
+  accountId: { label: "Cloudflare account ID", hint: "The account EducateOS is installed into: yours. It is on your account's dashboard home.", placeholder: "32 hexadecimal characters" },
+  baseDomain: { label: "Your domain", hint: "A zone in that account. EducateOS also serves at <slug>.<your domain>.", placeholder: "riverbend.example" },
+  accessTeam: { label: "Zero Trust team name", hint: "Your Cloudflare Access team, <team>.cloudflareaccess.com. Students and staff sign in through it.", placeholder: "riverbend" },
+  allowedEmailDomains: { label: "Email domains that may sign in", hint: "Comma-separated.", placeholder: "riverbend.example" },
+  admins: { label: "Administrator emails", hint: "Comma-separated. They become the installation's administrators.", placeholder: "it@riverbend.example" },
+};
+
+/** The guided install form. Rejected values are shown again with their errors; the token never is. */
+export function installPage(
+  shell: SiteShell,
+  operator: Operator,
+  values: Partial<Record<(typeof ECHOED_FIELDS)[number], string>> = {},
+  errors: Partial<Record<string, string>> = {},
+): string {
+  const field = (name: (typeof ECHOED_FIELDS)[number]) => {
+    const { label, hint, placeholder } = FIELD_LABELS[name];
+    return html`<div class="field">
+      <label for="${name}">${label}</label>
+      <input class="input" id="${name}" name="${name}" value="${values[name] ?? ""}" placeholder="${placeholder}" required autocomplete="off" spellcheck="false">
+      <small class="muted">${hint}</small>${errors[name] ? html`<br><small class="badge warn">${errors[name]}</small>` : ""}
+    </div>`;
+  };
+  return page(shell, "Install EducateOS", html`<section class="page-hero">
+    <div class="wrap">
+      <div class="eyebrow">Operator console</div>
+      <h1>Install EducateOS</h1>
+      ${signedInBar(operator)}
+      <p class="lede">educateos.io installs the latest signed release into your own Cloudflare account. Your installation then runs there, whether or not educateos.io is up.</p>
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">
+      <form method="post" action="/app/install" class="card">
+        ${ECHOED_FIELDS.map(field)}
+        <div class="field">
+          <label for="token">Cloudflare API token</label>
+          <input class="input" id="token" name="token" type="password" required autocomplete="off" spellcheck="false">
+          <small class="muted">Used once, for this install, and never stored. <a href="${installTokenLink()}" target="_blank" rel="noopener">Create a token with exactly these permissions</a>, scoped to that account and your domain's zone and educateos.io's zone if you own both, with a short expiry, then delete it once the install finishes.</small>
+          ${errors.token ? html`<br><small class="badge warn">${errors.token}</small>` : ""}
+          <details><summary class="muted">The permissions it needs</summary><ul class="checks">${INSTALL_TOKEN_PERMISSIONS.map((p) => html`<li>${p.scope}: ${p.name}: ${p.level}</li>`)}</ul></details>
+        </div>
+        <div class="field">
+          <label><input type="checkbox" name="register"> Register this installation with educateos.io (optional)</label>
+          <small class="muted">Registration lets your dashboard show the version and health your installation reports. It sends only the registry's fixed, content-free fields (see the privacy policy), and you can leave it off.</small>
+        </div>
+        <p><button class="btn primary" type="submit">Install</button> <a class="btn" href="/app/">Cancel</a></p>
+      </form>
+    </div>
+  </section>`);
+}
+
+/** The top of the streamed progress page. */
+export function installProgressHead(shell: SiteShell, slug: string): string {
+  const [head] = pageParts(shell, "Installing EducateOS");
+  return head + html`<section class="page-hero"><div class="wrap">
+    <div class="eyebrow">Operator console</div>
+    <h1>Installing ${slug}.educateos.io</h1>
+    <p class="lede">Keep this page open until it finishes. If the page is closed or the connection drops, the install stops partway: run it again with the same settings and it continues from what is already in your account.</p>
+  </div></section>
+  <section class="tight"><div class="wrap"><ol class="list">`.text;
+}
+
+/** One progress event, as it is streamed. */
+export function installProgressEvent(event: InstallEvent): string {
+  switch (event.kind) {
+    case "release":
+      return html`<li class="li">Verified release <code>${event.releaseId}</code> (version ${event.version}) against the pinned release keys</li>`.text;
+    case "step":
+      return html`<li class="li"><span class="status avail">done</span> ${event.action} <code>${event.key}</code></li>`.text;
+    case "report":
+      return html`${event.blocking.map((entry) => html`<li class="li"><span class="badge warn">blocking</span> ${entry}</li>`)}${
+        event.blocked.map((entry) => html`<li class="li"><span class="badge warn">blocked</span> ${entry}</li>`)}${
+        event.warnings.map((entry) => html`<li class="li"><span class="status planned">note</span> ${entry}</li>`)}`.text;
+    case "registration":
+      return html`<li class="li">Registration with educateos.io: ${event.status}</li>`.text;
+    case "done":
+      return html`</ol><div class="note-box"><b>Installed.</b> <a href="https://${event.installation.hostname}/">${event.installation.hostname}</a> is live in your account, release ${event.installation.releaseVersion}. educateos.io has already discarded your token: delete it now in your Cloudflare dashboard (<a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener">API Tokens</a>). <a href="/app/">Back to your installations</a>.</div><ol class="list">`.text;
+    case "failed":
+      return html`</ol><div class="note-box"><b>The install stopped.</b> ${event.message} educateos.io has discarded your token. <a href="/app/install">Try again</a> or <a href="/app/">go back</a>.</div><ol class="list">`.text;
+  }
+}
+
+/** The bottom of the streamed progress page. */
+export function installProgressTail(shell: SiteShell): string {
+  return `</ol></div></section>${pageParts(shell, "")[1]}`;
 }

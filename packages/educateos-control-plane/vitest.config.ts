@@ -35,7 +35,11 @@ export default defineConfig({
           TEST_ACCESS_PRIVATE_JWK: jwk(access.privateKey),
           TEST_ACCESS_PUBLIC_JWK: jwk(access.publicKey),
           TEST_STRANGER_PRIVATE_JWK: jwk(stranger.privateKey),
+          // The bucket starts empty, so a guided install here stops at "no signed release"; the
+          // install itself is driven against the installer's fake in the Node suite.
+          RELEASE_TRUST: {},
         },
+        r2Buckets: ["RELEASES"],
         durableObjects: {
           CONTROL_PLANE: { className: "ControlPlane", useSQLite: true },
         },

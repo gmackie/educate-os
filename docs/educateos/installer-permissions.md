@@ -1,6 +1,6 @@
 # Installer permissions and blocking Cloudflare requirements
 
-- Status: Draft. Nothing here has been checked against a live Cloudflare account yet.
+- Status: Draft. The district-run token with exactly the API token permissions below completed a full install into a live account on 2026-10-26 (SCHO-206, docs/educateos/control-plane.md); the OAuth column and the per-permission minimum are still unverified.
 - Issue: SCHO-29 (roadmap R02)
 - Code: `packages/educateos-installer`
 

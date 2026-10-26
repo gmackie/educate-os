@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // The Node suite reads the installer's test release from disk, through the installer's own
+    // test support, so it is checked with Node's types, as the installer's suite is.
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["__tests__/node", "vitest.node.config.ts"],
+  "exclude": ["node_modules"]
+}

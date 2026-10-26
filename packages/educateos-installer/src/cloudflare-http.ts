@@ -33,7 +33,7 @@ const Envelope = z.object({
     page: z.number().optional(),
     total_pages: z.number().optional(),
     cursor: z.string().optional(),
-  }).optional(),
+  }).nullish(),
 });
 
 const Id = z.object({ id: z.string() });
@@ -492,7 +492,9 @@ export class CloudflareHttpApi implements CloudflareApi {
     }
     let response: Response;
     try {
-      response = await this.#fetch(url, { method, headers, body });
+      // Never follow a redirect: it could carry the Authorization header off api.cloudflare.com. A
+      // 3xx has no JSON envelope, so it fails below like any other refusal.
+      response = await this.#fetch(url, { method, headers, body, redirect: "manual" });
     } catch {
       throw new CloudflareApiError(operation, 0, []);
     }

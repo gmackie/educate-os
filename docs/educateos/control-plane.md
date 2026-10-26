@@ -1,8 +1,8 @@
 # The educateos.io control plane
 
-- Status: operator sign-in, the store, the opt-in registry, the installation dashboard and Clever
-  portal launches (SCHO-249). The guided install follows in a later PR of SCHO-206; billing
-  (SCHO-208) and the marketplace (SCHO-209) build on this.
+- Status: operator sign-in, the store, the opt-in registry, the installation dashboard, Clever
+  portal launches (SCHO-249) and the guided install. Billing (SCHO-208) and the marketplace
+  (SCHO-209) build on this.
 - Issue: SCHO-206. Decision record: [ADR-0013](adr/0013-educateos-open-core-control-plane.md).
 - Code: `packages/educateos-control-plane`, served by the site Worker in `sites/educateos-io`.
 
@@ -21,6 +21,7 @@ before any script runs. Only the paths in `assets.run_worker_first` reach the Wo
 | --- | --- |
 | `/healthz` | JSON `{"status":"ok","commit":…}` once the store answers. ForgeGraph's health check. |
 | `/registry/v1/heartbeat` | The opt-in instance registry's heartbeats: signed by the installation, no sign-in. |
+| `/app/install` | The guided install: the form (GET) and the run (POST), inside the console. |
 | `/app`, `/app/*` | The operator console, behind Cloudflare Access, on educateos.io only. The other hostnames redirect there, since the Access application covers only `educateos.io/app`. |
 | `/clever/launch` | Clever portal launches, sent on to the registered installation for the user's Clever district (SCHO-249). No sign-in. See [Clever portal launches](#clever-portal-launches). |
 
@@ -187,3 +188,92 @@ status. An installation behind Access without a `/healthz` bypass shows as "behi
 answered, so the instance's own state is unknown. The site Worker sets
 `global_fetch_strictly_public`, so a probe of a hostname on the educateos.io zone reaches that
 hostname's Worker as a visitor's request would.
+
+## The guided install
+
+`/app/install` runs `@educateos/installer` from educateos.io into the operator's own Cloudflare
+account (`src/guided-install.ts`). The form asks for:
+
+- the slug, which becomes `<slug>.educateos.io`;
+- the account ID and a zone in that account (EducateOS also serves at `<slug>.<zone>`);
+- the Zero Trust team, the email domains that may sign in, and the administrators;
+- whether to register with educateos.io (off by default); and
+- a Cloudflare API token.
+
+**The token.** Cloudflare's OAuth would make this a revocable grant, but no public OAuth client is
+registered (SCHO-67, `installer-oauth.md`). So the operator pastes a scoped API token once. The form
+links to Cloudflare's token editor prefilled with exactly the permissions in
+`installer-permissions.md` (`INSTALL_TOKEN_PERMISSIONS`). The token:
+
+- lives only in the POST that runs the install, inside the installer's static token provider;
+- goes only to api.cloudflare.com;
+- is never stored, logged or echoed (tests assert it appears in no event, page or rejected form);
+- is dropped when the run ends.
+
+The page then tells the operator to delete it. A token that doesn't verify stops preflight before
+anything changes.
+
+**The release.** The newest `releases/<id>/` in the `educateos-releases` R2 bucket (binding
+`RELEASES`, laid out by `scripts/release/upload-release.ts`). Before anything is installed, its
+signed statement is verified against `RELEASE_TRUST` and its manifest bytes against the statement,
+exactly as the CLI verifies a release. The installer then checks every blob's hash as it uploads.
+
+**The run.**
+
+- It streams as the page itself, one line per applied step, with no script.
+- **The slug is reserved** in one Durable Object transaction before the first Cloudflare call
+  (`reserveInstall`). The reservation holds:
+  - the operator and account it belongs to;
+  - the slug's instance ID;
+  - a 30-minute run lease.
+- A slug another operator or account holds is refused. So is a second run while one holds the
+  lease, which covers a double submit.
+- **Resuming.** The operator who holds the slug may run the install again, to resume or upgrade.
+  The re-run reuses the reserved instance ID, so the installer's ownership checks see the same
+  instance. For a slug over 20 characters, the ID suffix is a hash of the slug, not random.
+- **Ending a run.** A run that changed nothing (refused before the installer touched the account)
+  gives the slug back. Any other run keeps it.
+- **Keep the page open.** The install runs in the request; `waitUntil` only covers about 30 seconds
+  after the browser goes away. A run that is cut off is resumed by running the install again.
+  The CLI install of the same release made about 13 resource changes plus 171 blob uploads. Its
+  request count against the Workers subrequest limit is measured on the first production guided
+  install (see SCHO-206).
+- **Recording.** On success, the installation is recorded for the dashboard. If the operator opted
+  in, it is then registered from inside the control plane (see "The opt-in registry"). If the
+  install lands but the record fails, the page says so, and a re-run records it.
+- **Release downgrade.** Whoever can write to the release bucket could delete newer releases so an
+  older signed one installs. Today that is only the project owner. A signed "latest" pointer or a
+  pinned minimum would close it.
+- **Redirects.** The installer's Cloudflare client never follows one, so the token can't leave
+  api.cloudflare.com.
+
+**Limits.**
+
+- Only the same-account managed hostname path is wired. That is the path where the operator's
+  account also holds the educateos.io zone, as every demo district does (ADR-0013 addendum A1).
+- The cross-account path needs educateos.io's own DNS token for the zone half (`applyManagedZone`)
+  and is still unproven on a second account (SCHO-241).
+- No gatekeeper beyond the release's preinstalled ones is offered yet.
+
+### Release keys
+
+No release key existed before SCHO-206, so the guided install's releases are signed with a demo
+release key (`EDUCATEOS_RELEASE_SIGNING_KEY`). Its root key set has threshold 1.
+
+- The private halves are only in the owner's macOS Keychain, as `educateos-release-signing-key`
+  and `educateos-release-root-key`.
+- The public halves are pinned in `RELEASE_TRUST` (`sites/educateos-io/wrangler.jsonc`).
+- Release `r000001-088ddc0` (version 0.1.0, canary, built from main `088ddc08`) is the first one
+  signed with it.
+
+Before districts depend on it, move signing to a CI-held key on the release job
+(`release-signing.md`), and rotate it in with `RootReleaseSigner.rotate`.
+
+### First live run of the installer
+
+These were the installer's first runs against a live account (2026-10-26), using the CLI with the
+same token permissions. They found one bug: `GET /accounts/{id}/workers/domains` answers
+`"errors": null`, which the response envelope refused, so preflight reported the API as
+unavailable. `cloudflare-http.ts` now reads `null` as no errors, with a test. With that fixed, a
+CLI apply into account c07a7e70 created all 13 resources of release `r000001-088ddc0`, and both
+hostnames then served behind Access.

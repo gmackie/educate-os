@@ -790,6 +790,12 @@ importers:
       '@educateos/identity':
         specifier: workspace:*
         version: link:../educateos-identity
+      '@educateos/installer':
+        specifier: workspace:*
+        version: link:../educateos-installer
+      '@educateos/releases':
+        specifier: workspace:*
+        version: link:../educateos-releases
       jose:
         specifier: ^6.2.12
         version: 6.2.12

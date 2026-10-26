@@ -12,6 +12,8 @@
     "@educateos/contracts": "workspace:*",
     "@educateos/fleet": "workspace:*",
     "@educateos/identity": "workspace:*",
+    "@educateos/installer": "workspace:*",
+    "@educateos/releases": "workspace:*",
     "jose": "^6.2.12",
     "zod": "catalog:"
   },

@@ -12,10 +12,13 @@ import type { ErrorCode } from "@educateos/contracts";
 import { Heartbeat, SignedEnvelope } from "@educateos/fleet";
 import { AccessUnavailableError, type OperatorIdentity, type OperatorVerifier } from "./access.ts";
 import { CLEVER_LAUNCH_PATH, cleverLaunch, type CleverAppCredentials } from "./clever-launch.ts";
-import { dashboardPage, messagePage, PAGE_HEADERS, type SiteShell } from "./pages.ts";
+import { ECHOED_FIELDS, GuidedInstallForm, runGuidedInstall, type GuidedInstallDeps, type ReleaseBucket } from "./guided-install.ts";
+import {
+  dashboardPage, installPage, installProgressEvent, installProgressHead, installProgressTail, messagePage, PAGE_HEADERS, type SiteShell,
+} from "./pages.ts";
 import { probeInstallation, type ProbeResult } from "./probe.ts";
 import type { DashboardEntry, RegistryMessage, RegistryReply } from "./registry.ts";
-import type { Installation, Operator } from "./store.ts";
+import type { Installation, Operator, Reservation } from "./store.ts";
 
 /** The paths the Worker handles before the assets binding, as `run_worker_first` lists them. */
 export const DYNAMIC_PATHS = ["/healthz", "/app", "/app/*", "/registry/*", CLEVER_LAUNCH_PATH] as const;
@@ -56,6 +59,9 @@ export interface ControlPlaneApi {
   signIn(identity: OperatorIdentity): Promise<Operator> | Operator;
   installations(operatorSubject: string): Promise<Installation[]> | Installation[];
   dashboard(operator: Operator): Promise<DashboardEntry[]>;
+  recordInstallation(operatorSubject: string, installation: Installation): Promise<boolean> | boolean;
+  reserveInstall(operatorSubject: string, slug: string, accountId: string, proposed: string): Promise<Reservation> | Reservation;
+  endInstall(operatorSubject: string, slug: string, release: boolean): Promise<void> | void;
   receiveRegistryMessage(kind: RegistryMessage, input: unknown): Promise<RegistryReply>;
   cleverLaunchHostname(cleverDistrictId: string): Promise<string | undefined>;
   ping(): Promise<true> | true;
@@ -81,6 +87,12 @@ export interface ControlPlaneDeps {
    * installations (`CLEVER_LAUNCH_DISTRICTS`). Consulted only when the registry has no match.
    */
   cleverLaunchDistricts?: ReadonlyMap<string, string>;
+  /** The guided install's release source and pinned trust. Without them, installing is unavailable. */
+  releases?: { bucket: ReleaseBucket; trust: unknown };
+  /** Keeps a streamed install running if the browser goes away mid-run. */
+  waitUntil?: (promise: Promise<unknown>) => void;
+  /** The Cloudflare API the guided install drives. Defaults to api.cloudflare.com. */
+  cloudflareApi?: GuidedInstallDeps["cloudflareApi"];
 }
 
 function respond(body: string, status = 200, headers: Record<string, string> = {}): Response {
@@ -151,13 +163,22 @@ async function route(request: Request, deps: ControlPlaneDeps): Promise<Response
     return respond(messagePage(deps.shell, "Sign-in required",
       "This page is for signed-in operators. Open it again to sign in with your email address."), 401);
   }
-  if (request.method !== "GET" && request.method !== "HEAD") {
+  const posting = request.method === "POST" && pathname === "/app/install";
+  if (request.method !== "GET" && request.method !== "HEAD" && !posting) {
     return respond(messagePage(deps.shell, "Not allowed", "That request isn't supported here."), 405, { allow: "GET, HEAD" });
+  }
+  // A form post must come from the console itself. Access's cookie is SameSite=Lax, so another
+  // site can't post with it anyway; this holds even if that ever changes.
+  if (posting && request.headers.get("origin") !== CONSOLE_ORIGIN) {
+    return respond(messagePage(deps.shell, "Not allowed", "That form didn't come from the operator console."), 403);
   }
 
   const store = deps.store();
   const operator = await store.signIn(identity);
+  if (posting) return startInstall(request, operator, deps);
   switch (pathname) {
+    case "/app/install":
+      return respond(installPage(deps.shell, operator));
     case "/app/":
       return respond(dashboardPage(deps.shell, operator, await withProbes(await store.dashboard(operator), deps)));
     case "/app/api/installations":
@@ -235,4 +256,47 @@ async function receiveRegistryMessage(request: Request, pathname: string, deps: 
   }
   const reply = await deps.store().receiveRegistryMessage(kind, input);
   return reply.ok ? json(reply.body) : json({ error: reply.code, message: reply.message }, REGISTRY_STATUS[reply.code]);
+}
+
+// Runs the guided install from a form post and streams its progress as the page itself, so the
+// operator watches each step land with no script on the page. The token is read from the form into
+// the run and goes nowhere else.
+async function startInstall(request: Request, operator: Operator, deps: ControlPlaneDeps): Promise<Response> {
+  const fields = Object.fromEntries([...(await request.formData()).entries()].map(([key, value]) => [key, String(value)]));
+  const parsed = GuidedInstallForm.safeParse(fields);
+  const echoed = Object.fromEntries(ECHOED_FIELDS.map((name) => [name, fields[name] ?? ""]));
+  if (!parsed.success) {
+    const errors = Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message]));
+    return respond(installPage(deps.shell, operator, echoed, errors), 400);
+  }
+  if (deps.releases === undefined) {
+    return respond(messagePage(deps.shell, "Installing is unavailable", "educateos.io has no release source configured."), 503);
+  }
+  const { releases } = deps;
+  const store = deps.store();
+  const encoder = new TextEncoder();
+  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+  const writer = writable.getWriter();
+  // A write fails once the browser has gone; the install carries on regardless.
+  const write = (text: string) => void writer.write(encoder.encode(text)).catch(() => undefined);
+
+  write(installProgressHead(deps.shell, parsed.data.slug));
+  const run = runGuidedInstall(parsed.data, {
+    operator,
+    bucket: releases.bucket,
+    trust: releases.trust,
+    reserve: async (slug, accountId, proposed) => store.reserveInstall(operator.subject, slug, accountId, proposed),
+    end: async (slug, release) => store.endInstall(operator.subject, slug, release),
+    record: async (installation) => store.recordInstallation(operator.subject, installation),
+    register: (envelope) => store.receiveRegistryMessage("register", envelope),
+    ...(deps.cloudflareApi ? { cloudflareApi: deps.cloudflareApi } : {}),
+  }, (event) => write(installProgressEvent(event))).catch((error: unknown) => {
+    console.error("guided install failed", { error: error instanceof Error ? error.name : typeof error });
+    write(installProgressEvent({ kind: "failed", message: "Unexpected error." }));
+  }).finally(() => {
+    write(installProgressTail(deps.shell));
+    void writer.close().catch(() => undefined);
+  });
+  deps.waitUntil?.(run);
+  return new Response(readable, { headers: { ...PAGE_HEADERS } });
 }
