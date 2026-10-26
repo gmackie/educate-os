@@ -700,6 +700,11 @@ export class UserAccount extends DurableObject<Env> {
                 : "Google credentials have expired or been revoked. Please re-authenticate.");
         // Recorded before notifying so only the first caller of a burst does either.
         this.#mintFailure = { error, at: Date.now() };
+        // Google's reason is the only way to tell a revoked grant from, say, a reauthentication
+        // policy (`invalid_rapt`); it names no token.
+        logger.warn("Google refused to mint an access token", {
+          event: "google.token.mint.refused", providerStatus: result.detail,
+        });
         this.#notifyCredentialsDead();
         throw error;
       }
