@@ -50,10 +50,10 @@ reconciliation only records snapshots.
 
 | Worker | Secret | ForgeGraph app |
 |---|---|---|
-| `workshop-backend` | `ADMINS` (a JSON array of Access emails), `CF_ACCESS_AUD`, `CF_ACCESS_ISS` | `school-os` |
-| `educateos-ai-guard` | `HALL_MONITOR_SIGNING_KEY` (private Ed25519 or P-256 JWK, with a `kid`), `AI_GUARD_CONFIG` (the example config with the admin's Access email in place of `admin@example.com`, minified) | `schoolos-ai-guard` |
-| `schoolos-district-worker` | `DISTRICT_CONFIG` (the demo district's seed, minified), `CF_ACCESS_AUD` (comma-separated: the district Access application's audience, then the instance's; see [The EducateOS connector](#the-educateos-connector)), `CF_ACCESS_ISS` | `schoolos-district` |
-| `gatekeeper-google` | `CLIENT_ID` and `CLIENT_SECRET` (the gmacko-schoolos OAuth web client) | `schoolos-google` |
+| `workshop-backend` | `ADMINS` (a JSON array of Access emails), `CF_ACCESS_AUD`, `CF_ACCESS_ISS` | `educate-os` |
+| `educateos-ai-guard` | `HALL_MONITOR_SIGNING_KEY` (private Ed25519 or P-256 JWK, with a `kid`), `AI_GUARD_CONFIG` (the example config with the admin's Access email in place of `admin@example.com`, minified) | `educateos-ai-guard` |
+| `schoolos-district-worker` | `DISTRICT_CONFIG` (the demo district's seed, minified), `CF_ACCESS_AUD` (comma-separated: the district Access application's audience, then the instance's; see [The EducateOS connector](#the-educateos-connector)), `CF_ACCESS_ISS` | `educateos-district` |
+| `gatekeeper-google` | `CLIENT_ID` and `CLIENT_SECRET` (the gmacko-schoolos OAuth web client) | `educateos-google` |
 
 The guard, the district, the Google connector and the EducateOS connector are each their own ForgeGraph app because
 ForgeGraph's `syncSecrets` copies every secret of a stage onto each target that sets it: in one app,
@@ -144,7 +144,7 @@ deploy fails. Enable the product rather than editing the generated config.
 1. Edit `scripts/production/schoolos-gmac-io.ts` (resources, vars, gatekeepers). For the guard
    config, edit `deploy/schoolos-gmac-io/ai-guard-config.example.json`, then set the deployed copy
    with the admin's email substituted:
-   `forge secret set AI_GUARD_CONFIG --stage production --stdin` for app `schoolos-ai-guard`. A Worker's own bindings change in its
+   `forge secret set AI_GUARD_CONFIG --stage production --stdin` for app `educateos-ai-guard`. A Worker's own bindings change in its
    `cloudflare.config.ts`, as usual (`pnpm configs:generate` first).
 2. Run `pnpm production:configs` and commit the regenerated `wrangler.production.jsonc` files.
    `pnpm production:check`, which is part of `pnpm lint`, fails on drift. The generator fails
@@ -203,7 +203,7 @@ own Access application.
   `deploy/schoolos-gmac-io/district-config.example.json`. The deployed copy puts the administrator's
   Access `user_uuid` (from `/cdn-cgi/access/get-identity`, which is the assertion's `sub`) in place
   of the zero subject, minified:
-  `forge secret set DISTRICT_CONFIG --stage production --stdin` for app `schoolos-district`.
+  `forge secret set DISTRICT_CONFIG --stage production --stdin` for app `educateos-district`.
   `__tests__/demo-config.test.ts` in the package checks that the example parses and fits in a
   secret. The seed is read only on the object's first start.
 - **Bound by the connector only.** `gatekeeper-educateos` binds `DistrictSchoolTools` (SCHO-218).
@@ -213,7 +213,7 @@ own Access application.
   too, since nothing routes to it.
 - **Email.** `DISTRICT_CONFIG.email.from` must be on a domain onboarded to Cloudflare Email Service
   in the account. Without `email`, notifications stay in-app and the digest is not mailed.
-- **ForgeGraph.** App `schoolos-district`, stage `production`, one `cloudflare-workers` target
+- **ForgeGraph.** App `educateos-district`, stage `production`, one `cloudflare-workers` target
   on hetzner-fg: `workerName` `schoolos-district-worker` (the pinned name, not the package's),
   `appDir` `packages/educateos-district-worker`,
   `configPath` `packages/educateos-district-worker/wrangler.production.jsonc`, the `buildCommand`
@@ -248,7 +248,7 @@ Sheets, Slides, Calendar, Chat and BigQuery, through each user's own Google acco
   `PUBSUB_GMAIL_TOPIC`, `PUBSUB_PUSH_SERVICE_ACCOUNT`) are left unset, so hooks are refused and
   everything else works. Turning them on also needs an Access bypass for
   `/gatekeeper/google/pubsub` (see the package README).
-- **ForgeGraph.** App `schoolos-google`, stage `production`, one `cloudflare-workers` target
+- **ForgeGraph.** App `educateos-google`, stage `production`, one `cloudflare-workers` target
   `gatekeeper-google` on hetzner-fg: `workerName` `gatekeeper-google`, `appDir`
   `packages/gatekeeper-google`, `configPath` `packages/gatekeeper-google/wrangler.production.jsonc`,
   the `buildCommand` and `deployCommand` in the table above, `syncSecrets: true`, and

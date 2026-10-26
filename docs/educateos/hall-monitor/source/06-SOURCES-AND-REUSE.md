@@ -14,7 +14,7 @@
 - `packages/config/src/ai-providers.ts` — model provider allowlist/settings and launch modes. Extend to emit model usage receipts and versioned routing decisions.
 - `packages/lti/src/` — LTI 1.3 components which need independent policy treatment for grade passback and verified identity.
 
-### `gmackie/school-os` (public Cloudflare OS fork)
+### `gmackie/educate-os` (public Cloudflare OS fork)
 
 - `packages/workshop-backend/src/ai-models.ts` — decision-model support, `getDecisionModel`, `DecisionModelGatekeeper`, AI Gateway metadata and provider routing. Clef binding path already exists but is not mandatory ingress moderation.
 - `packages/workshop-backend/src/decision-model-binding.d.ts` — `decide(request)` with typed choice/bool/score questions and probabilistic answers.

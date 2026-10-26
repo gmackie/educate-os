@@ -1,6 +1,6 @@
 # EducateOS CI on ForgeGraph (git.forgegraf.com). Forgejo ignores .github/workflows when this
 # directory exists, so the upstream Cloudflare workflows (CLA, contribution policy, previews, evals)
-# do not run here; GitHub (gmackie/school-os) only mirrors commits.
+# do not run here; GitHub (gmackie/educate-os) only mirrors commits.
 #
 # The required gate is the repository's own `pnpm lint` (oxlint, script types, generated configs and
 # the full workspace build) plus every EducateOS package's tests. The upstream Workshop suites are

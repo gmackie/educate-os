@@ -26,24 +26,21 @@ const KEEP = [
   "SCHOOLOS_GMAC_IO",
   // The production instance's existing R2 bucket.
   "schoolos-prod-blueprint-content",
-  // ForgeGraph app slugs, which cannot be changed (only an app's display name can), and the
-  // repository, which ForgeGraph has no rename for: see SCHO-200's follow-ups.
-  "app `schoolos-ai-guard`",
-  "app `schoolos-district`",
-  "app `schoolos-google`",
-  "App `schoolos-district`",
-  "App `schoolos-google`",
-  // The runbook's secrets table, whose last column is the ForgeGraph app.
-  "| `schoolos-ai-guard` |\n",
-  "| `schoolos-district` |\n",
-  "| `schoolos-google` |\n",
-  "school-os",
+  // Deployed Worker names are production state (SCHO-231): the district's Durable Object
+  // namespace belongs to `schoolos-district-worker`, and the guard's old Worker is named as such.
+  "schoolos-district-worker",
+  "old schoolos-ai-guard Worker",
+  "old `schoolos-ai-guard` Worker",
+  // A pinned name in production-config.test.ts that must differ from the package's name.
+  "\"schoolos-ai-guard\"",
   // The Google Cloud project that holds the connector's OAuth client.
   "gmacko-schoolos",
 ];
 
 /** Rewrites, applied in order once the KEEP names are set aside. */
 const RENAMES: [RegExp, string][] = [
+  // The repository (ForgeGraph and GitHub), renamed by SCHO-226.
+  [/school-os/g, "educate-os"],
   [/SchoolOS/g, "EducateOS"],
   [/SchoolOs/g, "EducateOs"],
   [/SCHOOLOS/g, "EDUCATEOS"],

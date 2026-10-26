@@ -156,7 +156,7 @@ As of October 20, 2026, the currently published list rates are **$0.038/M input 
 
 ## 7. EducateOS integration — enforce before forwarding
 
-Current `gmackie/school-os` has `packages/workshop-backend/src/ai-models.ts` with a decision-model binding (`getDecisionModel`, `DecisionModelGatekeeper`, `DecisionModelBindingImpl`) and `packages/workshop-backend/src/decision-model-binding.d.ts`, but **that is opt-in model access**, not server-mandated moderation.
+Current `gmackie/educate-os` has `packages/workshop-backend/src/ai-models.ts` with a decision-model binding (`getDecisionModel`, `DecisionModelGatekeeper`, `DecisionModelBindingImpl`) and `packages/workshop-backend/src/decision-model-binding.d.ts`, but **that is opt-in model access**, not server-mandated moderation.
 
 Required interception boundaries in `packages/workshop-backend/src/overseer.ts`: new chat, subsequent chat messages, **in-flight `steerRunningTurn`**, slash-command expansion, attachment references, external message deliveries, automatic agent triggers and any teacher/student Gadget call that invokes a model. `steerRunningTurn` queues text ahead of normal send logic and must not bypass the check. Any new entrypoint should be registered in an ingress coverage test manifest.
 

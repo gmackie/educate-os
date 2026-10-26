@@ -326,7 +326,7 @@ Administrators should not need to know OAuth claim URIs, MCP protocol headers or
 Do not restructure upstream Workshop core simply to match ClassBack. Extend the packages that already exist:
 
 ```text
-school-os/
+educate-os/
   packages/
     educateos-contracts/            # EXISTING: domain/resource/capability types
     educateos-academics/            # EXISTING: EducationOperation prototype, CRUD-lite
@@ -415,7 +415,7 @@ When the co-op chooses a third-party lab simulation, it registers the simulator 
 
 ## 12. Batteries-included packaging and Hall Monitor distribution
 
-**Delivery contract:** Cloning a tagged `school-os` release and running its documented installer is sufficient to build and deploy the local application, CRUD-lite database, MCP endpoints, registered LTI services, administration UI, AI safety and usage ledger, health probes and backups. Optional providers require organization-owned credentials, but no privately hosted EducateOS dependency.
+**Delivery contract:** Cloning a tagged `educate-os` release and running its documented installer is sufficient to build and deploy the local application, CRUD-lite database, MCP endpoints, registered LTI services, administration UI, AI safety and usage ledger, health probes and backups. Optional providers require organization-owned credentials, but no privately hosted EducateOS dependency.
 
 The shared Hall Monitor can retain an independent public source repository because PlayTrek also consumes it. **EducateOS must include an auditable, pinned build of Hall Monitor in its release**, with the source dependency and hashes available for offline/internal mirrors. The local installed Hall Monitor Worker, moderation policies and usage receipts live under the organization's Cloudflare account; no external Hall Monitor service is required. Prefer reproducible workspace packaging or a reviewed git subtree/vendor mirror for completely offline build environments. A git submodule alone without an available local clone can frustrate offline installations, so the release archive needs full dependency closure.
 
@@ -443,7 +443,7 @@ Store schema migrations, capability manifests, test fixtures, deployment permiss
 
 ## Sources and verification notes
 
-**Source repositories:** `gmackie/classback`, `gmackie/school-os`, `gmackie/playtrek` inspected through connected GitHub API on 2026-10-21. Existing docs sometimes lag code; test and conformance results have **not** been executed in this design exercise.
+**Source repositories:** `gmackie/classback`, `gmackie/educate-os`, `gmackie/playtrek` inspected through connected GitHub API on 2026-10-21. Existing docs sometimes lag code; test and conformance results have **not** been executed in this design exercise.
 
 **Relevant public specifications:**
 - https://standards.1edtech.org/lti/specifications/guides/conformance/conformance-guide

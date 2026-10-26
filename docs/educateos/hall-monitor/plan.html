@@ -84,7 +84,7 @@
 <body>
 <main>
   <h1 class="reveal">Shared Hall Monitor + AI cost governance <span class="badge">Reconciled plan · building</span></h1>
-  <p class="meta reveal" style="--i:1">2026-10-20 · repos: <code>gmackie/hall-monitor</code> (new, GitHub, public) · <code>gmackie/school-os</code> (ForgeGraph) · <code>gmackie/playtrek</code> (ForgeGraph) · source: <em>EducateOS_Hall_Monitor_Cost_and_Milestone_Master_Plan.md</em> + doc set</p>
+  <p class="meta reveal" style="--i:1">2026-10-20 · repos: <code>gmackie/hall-monitor</code> (new, GitHub, public) · <code>gmackie/educate-os</code> (ForgeGraph) · <code>gmackie/playtrek</code> (ForgeGraph) · source: <em>EducateOS_Hall_Monitor_Cost_and_Milestone_Master_Plan.md</em> + doc set</p>
 
   <div class="callout reveal" style="--i:2">
     <p><strong>Decision:</strong> build Hall Monitor as a product-neutral service and SDK in <code>gmackie/hall-monitor</code>. Do <em>not</em> build a new cost ledger. Extend EducateOS's existing <code>@educateos/ai-governance</code> (SCHO-25) to integer USD-nano amounts, price books and per-attempt receipts. Then hook both into the Workshop kernel at the one function every model request already goes through.</p>
@@ -143,7 +143,7 @@
   </div>
   <ol class="timeline">
     <li class="active reveal" style="--i:15"><div class="head"><h3>Wave 0 — M0 discovery &amp; tracking</h3><span class="chip active">In progress</span></div>
-      <p class="muted">The ADR, the ingress matrix (14 paths), the reconciled doc set in <code>school-os/docs/hall-monitor/</code>, a Kanbanger <em>Hall Monitor</em> project, and issues across all three projects.</p>
+      <p class="muted">The ADR, the ingress matrix (14 paths), the reconciled doc set in <code>educate-os/docs/hall-monitor/</code>, a Kanbanger <em>Hall Monitor</em> project, and issues across all three projects.</p>
       <details><summary>Tasks</summary><div class="table-scroll"><table>
         <thead><tr><th>Task</th><th>Files</th><th>Verification</th><th>Status</th></tr></thead>
         <tbody>
@@ -207,7 +207,7 @@
   <p>Hall Monitor: <code>pnpm test</code> (vitest + workerd) and GitHub Actions on every PR. EducateOS: <code>pnpm lint</code> plus the package suites (<code>vp run -F</code>), with ForgeGraph CI green on the head revision before auto-approval. PlayTrek: turbo test/typecheck/oxlint for the packages touched. Cross-product acceptance: a synthetic co-op (12 teachers, 60 students) runs end to end with duplicate events, timeouts, an exhausted student wallet and the root offline.</p>
 
   <h2>Open questions</h2>
-  <p>None blocking. Defaults chosen: a pnpm git dependency until npm publishing is approved; a Kanbanger <em>Hall Monitor</em> project in team GMA; GitHub PRs for hall-monitor and ForgeGraph PRs for school-os and playtrek.</p>
+  <p>None blocking. Defaults chosen: a pnpm git dependency until npm publishing is approved; a Kanbanger <em>Hall Monitor</em> project in team GMA; GitHub PRs for hall-monitor and ForgeGraph PRs for educate-os and playtrek.</p>
 </main>
 </body>
 </html>
