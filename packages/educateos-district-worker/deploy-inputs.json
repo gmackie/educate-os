@@ -16,11 +16,5 @@
     "kind": "var",
     "label": "Cloudflare Access audiences",
     "help": "Comma-separated audience tags of the Access applications whose sign-ins the district accepts: the application in front of the district's own hostname and /api and, when the instance runs the EducateOS connector, the instance's Workshop application, whose hostname the connector's connect page is served on. Both must be on the CF_ACCESS_ISS team."
-  },
-  {
-    "name": "LTI_TOOL_ORIGIN",
-    "kind": "var",
-    "label": "LTI Tool origin (optional)",
-    "help": "https://<district host>, no trailing slash: where LMS platforms send LTI 1.3 logins and launches (SCHO-177). Exempt exactly /lti/login, /lti/launch, /lti/jwks, /lti/deep-link and /lti/register from Access; /api/lti stays behind it. Leave it empty to serve no LTI routes. See docs/educateos/lti.md."
   }
 ]

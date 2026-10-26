@@ -131,6 +131,8 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   keeps one active administrator, and nobody can remove their own administration.
 - `CF_ACCESS_ISS` and `CF_ACCESS_AUD` (a comma-separated list, see [Sign-in](#sign-in)).
 - `LTI_TOOL_ORIGIN` (optional): the LTI Tool's public origin (see [LTI 1.3 Tool](#lti-13-tool-scho-177)).
+  It is not yet a deploy input, so the installer does not offer it; the schoolos.gmac.io production
+  config sets it from the district hostname.
 - `email` (optional, in `DISTRICT_CONFIG`): `from`, an address on a domain the district has
   onboarded to Cloudflare Email Service in this account, an optional `fromName`, and an optional
   `appUrl` linked from every email. Without it, or without the binding, nothing is emailed.
