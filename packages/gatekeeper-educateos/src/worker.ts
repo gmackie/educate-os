@@ -8,12 +8,15 @@ import type {
   AccountDescription,
   ActionKind,
   AgentCatalog,
+  AppUiContext,
   ApprovalQueue,
   ConnectHandoff,
   Gatekeeper,
+  GatekeeperAppNavEntry,
   GatekeeperConnectCallback,
   GatekeeperUser,
   GatekeeperUserVerifier,
+  GatekeeperUiFrame,
   GitCache,
   ResourceConfiguratorFrame,
   ResourceDescription,
@@ -29,13 +32,16 @@ import {
   connectHandoffPageHtml, errorPageHtml, escapeHtml, htmlResponse, INVALID_LINK_HTML, PAGE_STYLE,
 } from "@gadgets/gatekeeper-kit/connect-pages";
 import type { VerifiedPrincipal } from "@educateos/contracts";
+import { readSchoolNavFacts, schoolNav, type DistrictGet } from "./app-nav.ts";
 import { describeChange, describeRead } from "./describe.ts";
 import type { SchoolToolService } from "./district.ts";
 import {
   decisionResult, SchoolToolsSessionCore, type SchoolChange, type SchoolToolCallResult, type SchoolToolInfo,
 } from "./session.ts";
+import type { DistrictResponse, SchoolAppApi } from "./school-app-api.ts";
 import type { SchoolToolsSession } from "./types.js";
 import TYPES_CODE from "./types.txt";
+import APP_HTML from "./generated/app.txt";
 
 const SCHOOL_ICON = {
   url:
@@ -52,6 +58,14 @@ function districtOf(env: Cloudflare.Env): SchoolToolService {
     throw new Error("This deployment has no EducateOS district service bound to its school tools.");
   }
   return env.EDUCATEOS_DISTRICT;
+}
+
+/**
+ * The origin requests to the district are addressed to. The district serves them by path, so with
+ * no `DISTRICT_URL` a placeholder does; links that leave the app need the real one.
+ */
+function districtUrl(env: Cloudflare.Env): string {
+  return env.DISTRICT_URL ?? "https://district.invalid";
 }
 
 function baseUrl(env: Cloudflare.Env): string {
@@ -319,11 +333,82 @@ export class EducateOsGatekeeper extends DurableObject<Cloudflare.Env, FacetProp
 
 type AccountProps = { accountObjectId: string };
 
+/** A path the School app may request: under the district's `/api`, with no fragment. */
+const DISTRICT_API_PATH = /^\/api\/[A-Za-z0-9._~%/-]*(?:\?[^#\s]*)?$/;
+
+/** The largest request body the School app sends: a Common Cartridge upload is 5 MiB as base64 JSON. */
+const MAX_REQUEST_BODY = 8 * 1024 * 1024;
+
+/**
+ * The School app's capability: the district's own screens, served as the account's person (see
+ * README.md, "School pages"). The principal is read from the account on every request, so a
+ * disconnected account's open page stops working at once.
+ */
+@validateRpc()
+class SchoolAppApiImpl extends RpcTarget implements SchoolAppApi {
+  readonly #env: Cloudflare.Env;
+  readonly #account: DurableObjectStub<EducateOsAccountObject>;
+
+  constructor(env: Cloudflare.Env, account: DurableObjectStub<EducateOsAccountObject>) {
+    super();
+    this.#env = env;
+    this.#account = account;
+  }
+
+  async districtOrigin(): Promise<string | null> {
+    return this.#env.DISTRICT_URL === undefined ? null : new URL(this.#env.DISTRICT_URL).origin;
+  }
+
+  async request(method: "GET" | "POST", path: string, body: string | null): Promise<DistrictResponse> {
+    if (!DISTRICT_API_PATH.test(path) || path.includes("..")) throw new Error("The School app reaches only the district's API.");
+    if (method === "GET" ? body !== null : body === null || body.length > MAX_REQUEST_BODY) {
+      throw new Error("That request body is not one the district's API takes.");
+    }
+    const principal = await this.#account.principal();
+    const response = await districtOf(this.#env).serveAs(principal, new Request(new URL(path, districtUrl(this.#env)), {
+      method,
+      headers: { accept: "application/json", ...(body === null ? {} : { "content-type": "application/json" }) },
+      ...(body === null ? {} : { body }),
+    }));
+    return { status: response.status, body: await response.text(), correlationId: response.headers.get("x-correlation-id") };
+  }
+}
+
 @validateRpc()
 export class EducateOsAccount extends WorkerEntrypoint<Cloudflare.Env, AccountProps> implements GatekeeperUser {
-  /** Describes the account: an agent singleton and no management UI. */
+  /** Describes the account: an agent singleton, and the School app with its sidebar entries. */
   async describe(): Promise<AccountDescription> {
-    return { displayName: "EducateOS", avatar: SCHOOL_ICON, singleton: { tsType: "SchoolToolsSession" } };
+    return {
+      displayName: "EducateOS",
+      avatar: SCHOOL_ICON,
+      singleton: { tsType: "SchoolToolsSession" },
+      providesUi: { title: "School", icon: SCHOOL_ICON, nav: true },
+    };
+  }
+
+  #accountObject(): DurableObjectStub<EducateOsAccountObject> {
+    const namespace = this.ctx.exports.EducateOsAccountObject;
+    return namespace.get(namespace.idFromString(this.ctx.props.accountObjectId));
+  }
+
+  /** Reads the district's API as the account's person. */
+  #districtGet(principal: VerifiedPrincipal): DistrictGet {
+    const district = districtOf(this.env);
+    return async <T,>(path: string) => {
+      const response = await district.serveAs(principal, new Request(new URL(path, districtUrl(this.env)), { headers: { accept: "application/json" } }));
+      if (!response.ok) throw new Error(`The district answered ${response.status} for ${path}.`);
+      return await response.json() as T;
+    };
+  }
+
+  /** The School app: the district's screens, as the account's person. */
+  async startAppUi(_context: AppUiContext): Promise<GatekeeperUiFrame> {
+    return { iframeHtml: APP_HTML, ui: new RpcStub(new SchoolAppApiImpl(this.env, this.#accountObject())) };
+  }
+
+  /** The School app's sidebar entries, from the person's roles, schools and classes. */
+  async getAppNav(): Promise<GatekeeperAppNavEntry[]> {
+    return schoolNav(await readSchoolNavFacts(this.#districtGet(await this.#accountObject().principal())));
   }
 
   /** Returns the workspace facet, bound to this account. */
@@ -351,8 +436,7 @@ export class EducateOsAccount extends WorkerEntrypoint<Cloudflare.Env, AccountPr
 
   /** Forgets the account and the principal it was verified as. */
   async revoke(): Promise<void> {
-    const namespace = this.ctx.exports.EducateOsAccountObject;
-    await namespace.get(namespace.idFromString(this.ctx.props.accountObjectId)).revoke();
+    await this.#accountObject().revoke();
   }
 
   reconnect(): Promise<{ url: string }> {

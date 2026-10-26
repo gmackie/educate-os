@@ -47,6 +47,7 @@
     }
   ],
   "vars": {
-    "BASE_URL": "https://schoolos.gmac.io/gatekeeper/educateos"
+    "BASE_URL": "https://schoolos.gmac.io/gatekeeper/educateos",
+    "DISTRICT_URL": "https://district.schoolos.gmac.io"
   }
 }

@@ -1,0 +1,1 @@
+The School app bundle, stubbed for the workerd suite: build-app.ts builds the real one.
