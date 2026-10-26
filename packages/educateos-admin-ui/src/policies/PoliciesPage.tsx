@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Banner, Button, Input, Radio, Text } from "@cloudflare/kumo";
-import { CheckCircle } from "@phosphor-icons/react";
+import { Button, Input, Radio, Text } from "@cloudflare/kumo";
 import type { PolicySettings } from "@educateos/contracts";
+import { AppliedNotice } from "../app/AppliedNotice.tsx";
 import { ConfirmDialog } from "../app/ConfirmDialog.tsx";
 import { LoadState } from "../app/LoadState.tsx";
+import { useDirectoryNames } from "../app/useDirectoryNames.ts";
 import type { ConfigVersion, DistrictConfigState } from "../app/useDistrictConfig.ts";
 import { documentFromDesired, withDistrictPolicies } from "../configDocument.ts";
 import { ChangeReview, type ProposedChange } from "../modules/ChangeReview.tsx";
@@ -32,6 +33,7 @@ const PolicyForm = ({ head, current, onPreview }: PolicyFormProps) => {
     title: "Preview: district policy change",
     document: documentFromDesired(withDistrictPolicies(head.desired, next)),
     applyLabel: "Apply policy",
+    appliedMessage: "District policy updated",
   });
   const review = () => {
     const loosened = loosenedSettings(current, next);
@@ -95,11 +97,12 @@ const PolicyForm = ({ head, current, onPreview }: PolicyFormProps) => {
 export const PoliciesPage = ({ state }: { state: DistrictConfigState }) => {
   const [review, setReview] = useState<ProposedChange>();
   const [notice, setNotice] = useState<string>();
+  const names = useDirectoryNames();
   return (
     <div className="flex flex-col gap-6">
       <Text as="h2" variant="heading" size="lg">Policies</Text>
       <Text variant="secondary">These are the district's settings. Schools and classes can be stricter, never less strict.</Text>
-      {notice !== undefined && <Banner icon={<CheckCircle weight="fill" />} title={notice} />}
+      {notice !== undefined && <AppliedNotice message={notice} />}
       <LoadState loaded={state.config} what="the district policies">
         {(config) => {
           if (config.head === undefined) return <Text>Set up the district under Modules and activation first.</Text>;
@@ -108,11 +111,12 @@ export const PoliciesPage = ({ state }: { state: DistrictConfigState }) => {
             return (
               <ChangeReview
                 change={review}
+                names={names}
                 expectedHeadRevisionId={head.revision.id}
                 onCancel={() => setReview(undefined)}
                 onApplied={(revision, changes) => {
                   state.onApplied(revision, changes);
-                  setNotice("The district policy was updated.");
+                  setNotice(`${review.appliedMessage}. Version ${head.number + 1} of the configuration is now in force.`);
                   setReview(undefined);
                 }}
               />

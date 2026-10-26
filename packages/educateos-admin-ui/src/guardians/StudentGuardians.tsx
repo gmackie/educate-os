@@ -1,29 +1,34 @@
 import { useEffect, useRef, useState } from "react";
 import { Badge, Banner, Button, Table, Text } from "@cloudflare/kumo";
-import { Warning } from "@phosphor-icons/react";
+import { CheckCircle, Warning } from "@phosphor-icons/react";
 import type { DistrictApiClient, RouteResponse } from "@educateos/api-client";
 import { useAdminClient } from "../app/AdminClientContext.tsx";
 import { useAnnounce } from "../app/Announcer.tsx";
+import { formatMoment } from "../app/labels.ts";
 import { LoadState } from "../app/LoadState.tsx";
 import { errorMessage, useLoad } from "../app/useLoad.ts";
 import { READABLE_KIND_LABEL, STANDING, standingOf } from "./guardianLabels.ts";
+import { DigestPreview } from "./DigestPreview.tsx";
 import { InviteGuardianForm } from "./InviteGuardianForm.tsx";
 import { RelationshipActions } from "./RelationshipActions.tsx";
 
 type Overview = RouteResponse<"admin.studentGuardians">;
 
-/** Runs one change to the district, then announces it and reloads, or shows why it failed. */
+/** Runs one change to the district, then announces and shows it and reloads, or shows why it failed. */
 const useChange = (reload: () => void) => {
   const client = useAdminClient();
   const announce = useAnnounce();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const run = async (done: string, change: (client: DistrictApiClient) => Promise<unknown>) => {
+  const [done, setDone] = useState<string>();
+  const run = async (message: string, change: (client: DistrictApiClient) => Promise<unknown>) => {
     setBusy(true);
     setError(undefined);
+    setDone(undefined);
     try {
       await change(client);
-      announce(done);
+      announce(message);
+      setDone(message);
       reload();
     } catch (e) {
       setError(errorMessage(e));
@@ -31,7 +36,16 @@ const useChange = (reload: () => void) => {
       setBusy(false);
     }
   };
-  return { busy, error, run };
+  return { busy, error, done, run };
+};
+
+/** A sign-in's provider, by its host: `https://coop.cloudflareaccess.com` reads "coop.cloudflareaccess.com". */
+const providerOf = (issuer: string) => {
+  try {
+    return new URL(issuer).host;
+  } catch {
+    return issuer;
+  }
 };
 
 /** A guardian's name: their account's once their sign-in is approved, else the name they were invited under. */
@@ -64,15 +78,24 @@ export const StudentGuardians = ({ studentId }: { studentId: string }) => {
             <Button size="sm" variant="secondary" onClick={overview.reload}>Refresh</Button>
           </div>
           {change.error !== undefined && <Banner variant="error" icon={<Warning weight="fill" />} title="That change was not made" description={change.error} />}
+          {change.done !== undefined && <Banner icon={<CheckCircle weight="fill" />} title={change.done} />}
 
           {data.pendingSignIns.length > 0 && (
             <section aria-labelledby="pending-sign-ins" className="flex flex-col gap-2">
               <Text as="h4" variant="heading" id="pending-sign-ins">Sign-ins to approve</Text>
-              <Text variant="secondary">These people opened their invitation link and signed in. Approving creates their guardian account; they still see nothing until you confirm them below.</Text>
+              <Text variant="secondary">
+                These people opened their invitation link and signed in. Check the sign-in ID is the person you invited, for example against your sign-in provider's user list: approving links that sign-in to the guardian account. They still see nothing until you confirm them below.
+              </Text>
               <ul className="flex flex-col gap-2">
                 {data.pendingSignIns.map((signIn) => (
                   <li key={signIn.requestId} className="flex flex-wrap items-center gap-3 rounded-md border border-kumo-line p-3">
-                    <Text>{signIn.guardianDisplayName}</Text>
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      <Text bold>{signIn.guardianDisplayName}</Text>
+                      <Text variant="secondary" size="sm">Invited under this name. Used the link on {formatMoment(signIn.requestedAt)}, signed in through {providerOf(signIn.signIn.issuer)}.</Text>
+                      <Text variant="secondary" size="sm">
+                        Sign-in ID: <Text as="span" variant="mono">{signIn.signIn.subject}</Text>
+                      </Text>
+                    </div>
                     <Button
                       variant="primary"
                       disabled={change.busy}
@@ -126,20 +149,25 @@ export const StudentGuardians = ({ studentId }: { studentId: string }) => {
                             {row.relationship.offeringIds === undefined ? "" : ` (${row.relationship.offeringIds.length === 1 ? "one class" : `${row.relationship.offeringIds.length} classes`})`}
                           </Table.Cell>
                           <Table.Cell>
-                            <RelationshipActions
-                              guardianName={name}
-                              studentName={data.student.displayName}
-                              standing={standing}
-                              busy={change.busy}
-                              onConfirm={() => change.run(`${name} confirmed as a guardian.`, (client) =>
-                                client.call("admin.confirmGuardian", { params: { relationshipId: row.relationship.id } }))}
-                              onSuspend={(reason) => change.run(`${name}'s access suspended.`, (client) =>
-                                client.call("admin.suspendGuardian", { params: { relationshipId: row.relationship.id }, body: { reason } }))}
-                              onResume={() => change.run(`${name}'s access restored.`, (client) =>
-                                client.call("admin.resumeGuardian", { params: { relationshipId: row.relationship.id } }))}
-                              onRevoke={() => change.run(`${name}'s relationship ended.`, (client) =>
-                                client.call("admin.revokeGuardian", { params: { relationshipId: row.relationship.id } }))}
-                            />
+                            <div className="flex flex-wrap gap-2">
+                              <RelationshipActions
+                                guardianName={name}
+                                studentName={data.student.displayName}
+                                readable={row.relationship.readableKinds.map((kind) => READABLE_KIND_LABEL[kind])}
+                                classCount={row.relationship.offeringIds?.length}
+                                standing={standing}
+                                busy={change.busy}
+                                onConfirm={() => change.run(`${name} confirmed as a guardian.`, (client) =>
+                                  client.call("admin.confirmGuardian", { params: { relationshipId: row.relationship.id } }))}
+                                onSuspend={(reason) => change.run(`${name}'s access suspended.`, (client) =>
+                                  client.call("admin.suspendGuardian", { params: { relationshipId: row.relationship.id }, body: { reason } }))}
+                                onResume={() => change.run(`${name}'s access restored.`, (client) =>
+                                  client.call("admin.resumeGuardian", { params: { relationshipId: row.relationship.id } }))}
+                                onRevoke={() => change.run(`${name}'s relationship ended.`, (client) =>
+                                  client.call("admin.revokeGuardian", { params: { relationshipId: row.relationship.id } }))}
+                              />
+                              {standing === "active" && <DigestPreview guardianPrincipalId={row.relationship.guardianPrincipalId} guardianName={name} />}
+                            </div>
                           </Table.Cell>
                         </Table.Row>
                       );

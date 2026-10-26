@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { LayerCard, Text } from "@cloudflare/kumo";
 import type { RouteResponse } from "@educateos/api-client";
-import { count } from "../app/labels.ts";
+import { count, formatMonth } from "../app/labels.ts";
 import { formatUsdNanoExact, type FundingReport } from "./budgetFormat.ts";
 
 /** This month's cost, as the district reports it. */
@@ -30,7 +30,7 @@ export const CostSummary = ({ cost, funding }: { cost: CostSummaryReport; fundin
   const remaining = sum(funding.pools.map((pool) => pool.remainingUsdNano));
   return (
     <section aria-labelledby="cost-heading" className="flex flex-col gap-2">
-      <Text as="h3" variant="heading" id="cost-heading">This month's cost ({cost.period})</Text>
+      <Text as="h3" variant="heading" id="cost-heading">This month's cost ({formatMonth(cost.period)})</Text>
       <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Figure term="Gross model cost" value={formatUsdNanoExact(cost.grossModelCostUsdNano)}>
           What {count(cost.requests, "AI request")} cost at list prices, before any free allowance. Safety checks are included.

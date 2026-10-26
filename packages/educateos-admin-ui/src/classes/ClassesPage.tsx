@@ -1,26 +1,27 @@
 import { useState } from "react";
-import { Empty, Input, Table, Text } from "@cloudflare/kumo";
+import { Empty, Input, Link, Table, Text } from "@cloudflare/kumo";
 import { ChalkboardTeacher } from "@phosphor-icons/react";
 import type { RouteResponse } from "@educateos/api-client";
-import { count, schoolName } from "../app/labels.ts";
+import { count, type DirectoryNames } from "../app/labels.ts";
 import { LoadState } from "../app/LoadState.tsx";
+import { useDirectoryNames } from "../app/useDirectoryNames.ts";
 import { useLoad } from "../app/useLoad.ts";
 
 type DistrictClass = RouteResponse<"admin.listOfferings">[number];
 
 const title = (c: DistrictClass) => `${c.course.title} · ${c.offering.sectionName}`;
 
-const ClassTable = ({ classes }: { classes: readonly DistrictClass[] }) => {
+const ClassTable = ({ classes, names }: { classes: readonly DistrictClass[]; names: DirectoryNames }) => {
   const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
   const shown = needle === ""
     ? classes
-    : classes.filter((c) => [title(c), schoolName(c.offering.schoolId), ...c.teachers].some((text) => text.toLowerCase().includes(needle)));
+    : classes.filter((c) => [title(c), names.school(c.offering.schoolId), names.term(c.offering.termId), ...c.teachers].some((text) => text.toLowerCase().includes(needle)));
 
   return (
     <div className="flex flex-col gap-3">
       <div className="max-w-sm">
-        <Input label="Find a class" description="By course, section, school or teacher." value={query} onChange={(event) => setQuery(event.target.value)} />
+        <Input label="Find a class" description="By course, section, school, term or teacher." value={query} onChange={(event) => setQuery(event.target.value)} />
       </div>
       <Text variant="secondary" size="sm">
         {needle === "" ? count(classes.length, "class", "classes") : `${count(shown.length, "class", "classes")} of ${classes.length.toLocaleString("en-US")} match`}
@@ -42,8 +43,8 @@ const ClassTable = ({ classes }: { classes: readonly DistrictClass[] }) => {
               {shown.map((c) => (
                 <Table.Row key={c.offering.id}>
                   <Table.Cell>{title(c)}</Table.Cell>
-                  <Table.Cell>{schoolName(c.offering.schoolId)}</Table.Cell>
-                  <Table.Cell>{c.offering.termId.replace(/^trm_/, "")}</Table.Cell>
+                  <Table.Cell>{names.school(c.offering.schoolId)}</Table.Cell>
+                  <Table.Cell>{names.term(c.offering.termId)}</Table.Cell>
                   <Table.Cell>{c.teachers.length === 0 ? <Text variant="secondary" as="span">No teacher yet</Text> : c.teachers.join(", ")}</Table.Cell>
                   <Table.Cell>{c.students}</Table.Cell>
                 </Table.Row>
@@ -57,10 +58,11 @@ const ClassTable = ({ classes }: { classes: readonly DistrictClass[] }) => {
 };
 
 /**
- * Every class in the district, from the roster: its course and section, school, term, teachers and
- * how many students are actively enrolled. Students are counted, never named.
+ * Every class in the district, from the roster or made by hand: its course and section, school,
+ * term, teachers and how many students are actively enrolled. Students are counted, never named.
  */
 export const ClassesPage = () => {
+  const names = useDirectoryNames();
   const classes = useLoad("classes", async (client) => {
     const listed = await client.call("admin.listOfferings");
     return listed.toSorted((a, b) => title(a).localeCompare(title(b)));
@@ -70,8 +72,15 @@ export const ClassesPage = () => {
       <Text as="h2" variant="heading" size="lg">All classes</Text>
       <LoadState loaded={classes} what="the district's classes" onRetry={classes.reload}>
         {(data) => data.length === 0
-          ? <Empty icon={<ChalkboardTeacher size={32} aria-hidden />} title="No classes yet" description="Classes appear here once a roster import adds them." />
-          : <ClassTable classes={data} />}
+          ? (
+            <Empty
+              icon={<ChalkboardTeacher size={32} aria-hidden />}
+              title="No classes yet"
+              description="Classes appear here once a roster import adds them, or once you add a section by hand."
+              contents={<Link href="#/classes-people">Manage classes and people</Link>}
+            />
+          )
+          : <ClassTable classes={data} names={names} />}
       </LoadState>
     </div>
   );

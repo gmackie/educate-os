@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { screen, waitFor, within } from "@testing-library/dom";
 import type { UserEvent } from "@testing-library/user-event";
-import { CLASSES, fakeDistrict } from "../testing/fakeDistrict.ts";
+import { CLASSES, classTitle, fakeDistrict } from "../testing/fakeDistrict.ts";
 import { renderConsole } from "../testing/renderConsole.tsx";
 import { SCREENS } from "./useHashRoute.ts";
 
@@ -68,7 +68,8 @@ describe("the keyboard-only acceptance journey", () => {
     await waitFor(() => expect(within(core).getByRole("radio", { name: "On" }).getAttribute("aria-checked")).toBe("true"));
 
     for (const c of CLASSES.slice(0, 3)) {
-      await tabTo(user, () => screen.getByRole("checkbox", { name: new RegExp(`^${c.offeringId.slice(4)} `) }));
+      const box = await screen.findByRole("checkbox", { name: new RegExp(`^${classTitle(c)} `) });
+      await tabTo(user, () => box);
       await user.keyboard(" ");
     }
     expect(screen.getByText("3 classes selected.")).toBeTruthy();
@@ -82,7 +83,7 @@ describe("the keyboard-only acceptance journey", () => {
 
     await tabTo(user, () => within(review).getByRole("button", { name: "Activate" }));
     await user.keyboard("{Enter}");
-    expect(await screen.findByText("Activate: version 2 is now in force.")).toBeTruthy();
+    expect(await screen.findByText("Modules activated. Version 2 of the configuration is now in force.")).toBeTruthy();
     expect(district.revisions).toHaveLength(2);
     expect(screen.getByRole("status", { hidden: true }).textContent).toContain("A new configuration version is in force");
   });

@@ -50,6 +50,10 @@ describe("guardians", () => {
     expect(await gina.call("onboarding.redeemGuardianInvitation", { body: { token } })).toEqual({ outcome: "awaiting-approval" });
 
     await user.click(screen.getByRole("button", { name: "Refresh" }));
+    // The administrator sees which sign-in used the link, not only the name they typed (SCHO-221).
+    const pending = await screen.findByRole("region", { name: "Sign-ins to approve" });
+    expect(within(pending).getByText("gina-okafor")).toBeTruthy();
+    expect(within(pending).getByText(/Used the link on .+, signed in through /)).toBeTruthy();
     await user.click(await screen.findByRole("button", { name: "Approve Gina Okafor's sign-in" }));
     await waitFor(() => expect(announcer().textContent).toBe("Gina Okafor's sign-in approved."));
     expect(await within(relationships).findByText("Waiting for your confirmation")).toBeTruthy();
@@ -57,8 +61,20 @@ describe("guardians", () => {
 
     await user.click(within(relationships).getByRole("button", { name: "Confirm Gina Okafor" }));
     const confirm = await screen.findByRole("alertdialog", { name: `Confirm Gina Okafor as ${student.displayName}'s guardian?` });
+    // The dialog lists exactly what the relationship grants: here everything but grades.
+    expect(within(confirm).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "Classes", "Assignments and due dates", "Feedback released to the student", "Class announcements",
+    ]);
     await user.click(within(confirm).getByRole("button", { name: "Confirm guardian" }));
     expect(await within(relationships).findByText("Active")).toBeTruthy();
+    expect(screen.getByText("Gina Okafor confirmed as a guardian.", { selector: ":not([data-testid=announcer])" })).toBeTruthy();
+
+    // What Gina's next weekly email would say, without sending it.
+    await user.click(within(relationships).getByRole("button", { name: "Preview weekly digest for Gina Okafor" }));
+    const digest = await screen.findByRole("dialog", { name: "Gina Okafor's weekly digest" });
+    expect(await within(digest).findByText("Subject")).toBeTruthy();
+    expect(within(digest).getByLabelText("Digest text").textContent).toContain(student.displayName);
+    await user.click(within(digest).getByRole("button", { name: "Close" }));
     expect((await gina.call("guardian.listChildren")).map((c) => c.displayName)).toEqual([student.displayName]);
 
     await user.click(within(relationships).getByRole("button", { name: "Suspend Gina Okafor" }));

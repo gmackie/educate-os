@@ -16,16 +16,29 @@ describe("the dashboard", () => {
     const tiles = await screen.findByRole("list", { name: "District at a glance" });
     const tile = (title: string) => within(tiles).getByRole("heading", { name: title }).parentElement!;
 
-    expect(within(tile("Enrolled users")).getByText("96")).toBeTruthy();
+    // Everyone added counts, administrators included, so the tile does not claim they are enrolled (SCHO-221).
+    expect(within(tile("Students and staff")).getByText("96")).toBeTruthy();
+    expect(within(tile("Students and staff")).getByText(/administrators included; 96 active class enrollments/)).toBeTruthy();
     expect(within(tile("Classes")).getByText("4")).toBeTruthy();
+    // Every module is off in the fake's configuration, whatever its rollout says.
+    expect(within(tile("Classes")).getByText("No module is on in the configuration.")).toBeTruthy();
     expect(within(tile("Pending teacher tasks")).getByText("3")).toBeTruthy();
     expect(within(await screen.findByRole("heading", { name: "AI usage and cost" }).then((h) => h.parentElement!)).getByText("$8.60")).toBeTruthy();
     expect(await screen.findByRole("heading", { name: "Permission and configuration issues" })).toBeTruthy();
-    expect(within(tile("Integration health")).getByText("OneRoster CSV export")).toBeTruthy();
+    expect(within(tile("Roster integration")).getByText("OneRoster CSV export")).toBeTruthy();
 
     for (const name of STUDENT_NAMES) expect(container.textContent).not.toContain(name);
     expect(container.textContent).not.toMatch(/prn_/);
     expect(district.calls.every((c) => AGGREGATE_ROUTES.has(c.name))).toBe(true);
+  });
+
+  it("names no roster integration for a district managed by hand", async () => {
+    renderConsole(fakeDistrict({ authority: "local" }).client, "dashboard");
+    const tiles = await screen.findByRole("list", { name: "District at a glance" });
+    const roster = within(tiles).getByRole("heading", { name: "Roster integration" }).parentElement!;
+    expect(within(roster).getByText("None")).toBeTruthy();
+    expect(within(roster).getByText(/managed by hand/)).toBeTruthy();
+    expect(within(roster).queryByText("OneRoster CSV export")).toBeNull();
   });
 });
 
@@ -34,6 +47,9 @@ describe("AI usage", () => {
     const district = fakeDistrict();
     const { container } = renderConsole(district.client, "ai-usage");
     expect(await screen.findByRole("region", { name: "By class" })).toBeTruthy();
+    // Classes are named by their course and section, from routes that name no person.
+    expect(await within(screen.getByRole("region", { name: "By class" })).findByText("Biology · Section A")).toBeTruthy();
+    expect(district.calls.every((c) => ["admin.aiUsage", "admin.directoryNames", "admin.getConfig"].includes(c.name))).toBe(true);
     expect(within(screen.getByRole("region", { name: "By funding pool" })).getByText("fpl_fk-courses")).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "By model" })).getByText("cloudflare/synthetic-model")).toBeTruthy();
     // The cap is $2.00: one person reached it and one ($1.70) is within 20%.

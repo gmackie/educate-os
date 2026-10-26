@@ -36,7 +36,7 @@ export const RevisionHistory = ({ versions, onPreview }: RevisionHistoryProps) =
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => onPreview({ title: `Preview: roll back to version ${version.number}`, document: documentFromDesired(version.desired), applyLabel: "Roll back" })}
+                onClick={() => onPreview({ title: `Preview: roll back to version ${version.number}`, document: documentFromDesired(version.desired), applyLabel: "Roll back", appliedMessage: `Rolled back to version ${version.number}` })}
               >
                 Roll back to version {version.number}
               </Button>
