@@ -2,14 +2,15 @@
   "name": "@educateos/pilot-gate",
   "version": "0.1.0",
   "private": true,
-  "description": "The EducateOS synthetic pilot gate (roadmap H01): the security, availability, term rollover, load, restore and accessibility suite, driving both synthetic districts' district apps over HTTP, and the G0/G1 gate report generated from its criteria registry. Test-only; nothing here ships.",
+  "description": "The EducateOS synthetic pilot gate (roadmap H01): the security, availability, term rollover, load, restore and accessibility suite, driving both synthetic districts' district apps over HTTP, and the G0/G1 gate report generated from its criteria registry. The district validation suite (SCHO-205) runs each integration scenario in all six demo districts against the provider fakes, and against a live district. Test-only; nothing here ships.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
     "start": "node src/report.ts",
-    "write-doc": "node src/report.ts --write-doc"
+    "write-doc": "node src/report.ts --write-doc",
+    "district-report": "node src/validate.ts"
   },
   "dependencies": {
     "zod": "catalog:"
@@ -34,10 +35,14 @@
     "@educateos/fleet": "workspace:*",
     "@educateos/gatekeeper": "workspace:*",
     "@educateos/harness": "workspace:*",
+    "@educateos/identity": "workspace:*",
     "@educateos/installer": "workspace:*",
+    "@educateos/integrations": "workspace:*",
     "@educateos/learning-artifacts": "workspace:*",
+    "@educateos/lti": "workspace:*",
     "@educateos/policy": "workspace:*",
     "@educateos/portability": "workspace:*",
+    "@educateos/provider-fakes": "workspace:*",
     "@educateos/registry": "workspace:*",
     "@educateos/releases": "workspace:*",
     "@educateos/workspaces": "workspace:*",

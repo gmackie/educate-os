@@ -19,6 +19,8 @@ import {
 } from "@educateos/district-app";
 import { createDistrictApiClient, DistrictApiError, type DistrictApiClient } from "@educateos/api-client";
 import { bootHarness, DEMO_PAGES, type HarnessDistrict } from "@educateos/harness";
+import { LearningArtifacts } from "@educateos/learning-artifacts";
+import { RetentionPolicy, WorkspaceDirectory } from "@educateos/workspaces";
 
 /** The synthetic model every pilot district funds. */
 export const MODEL = { provider: "cloudflare", modelId: "synthetic-pilot-model" } as const;
@@ -151,12 +153,23 @@ export function subjectOf(directory: DistrictDirectorySnapshot, principalId: str
   return principal.externalIdentities[0]!.subject;
 }
 
+/**
+ * A catalog seed's release, built once per test file: building one takes seconds and every district
+ * boot approves two. Each caller gets its own copy, so no app can change another's.
+ */
+const seedReleases = new Map<string, ReturnType<typeof catalogSeedRelease>>();
+export async function seedRelease(key: string): ReturnType<typeof catalogSeedRelease> {
+  let release = seedReleases.get(key);
+  if (release === undefined) seedReleases.set(key, (release = catalogSeedRelease(key)));
+  return structuredClone(await release);
+}
+
 /** Approves the ELA and math catalog seeds in the district's mirror. */
 export async function approveCatalogSeeds(app: DistrictApp, directory: DistrictDirectorySnapshot): Promise<void> {
   const admin = directory.roleAssignments.find((r) => r.role === "district-admin")!.principalId;
   const actor = { by: admin, at: new Date().toISOString() };
   for (const key of ["ccss-ela", "ccss-math"]) {
-    const release = await catalogSeedRelease(key);
+    const release = await seedRelease(key);
     await app.catalog.select(key, actor);
     await app.catalog.install(release, actor);
     await app.catalog.approve(key, release.version, actor);
@@ -241,7 +254,7 @@ export function writingTask(resource: { resourceId: string; version: string }, c
 
 /** The first competency of an approved catalog seed. */
 export async function competencyOf(key: string): Promise<{ frameworkKey: string; competencyUri: string }> {
-  const release = await catalogSeedRelease(key);
+  const release = await seedRelease(key);
   return { frameworkKey: key, competencyUri: release.content.nodes![0]!.uri };
 }
 
@@ -416,4 +429,30 @@ export function offeringScope(offeringId: string) {
   const offering = NORTHFIELD.offerings.find((o) => o.id === offeringId);
   if (offering === undefined) throw new Error(`no Northfield offering ${offeringId}`);
   return { level: "offering" as const, districtId: offering.districtId, schoolId: offering.schoolId, offeringId: offering.id };
+}
+
+/** The learning-artifact service over a district app's stores and engine, as the app builds it per request. */
+export function artifactsOf(district: PilotDistrict) {
+  const { stores, app } = district;
+  return new LearningArtifacts({
+    records: stores.artifactRecords,
+    content: stores.artifactContent,
+    workspaces: stores.workspaces,
+    directory: stores.directory,
+    policy: app.engine,
+    approvedExternalHosts: [],
+    now: () => new Date(),
+  });
+}
+
+/** The workspace directory over a district app's stores and engine. */
+export function workspacesOf(district: PilotDistrict) {
+  const { stores, app } = district;
+  return new WorkspaceDirectory({
+    workspaces: stores.workspaces,
+    directory: stores.directory,
+    policy: app.engine,
+    retention: RetentionPolicy.parse({ courseWorkspaceRetentionDays: 365 }),
+    now: () => new Date(),
+  });
 }

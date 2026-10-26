@@ -6,8 +6,7 @@ import { NORTHFIELD, RIVERBEND } from "@educateos/fixtures";
 import { defineSchoolTool, InMemoryToolApprovalStore, SchoolToolRunner } from "@educateos/policy";
 import { createSchoolToolService, SchoolToolsSessionCore, type SchoolChange } from "@educateos/gatekeeper";
 import { AssessmentService } from "@educateos/assessment";
-import { LearningArtifacts } from "@educateos/learning-artifacts";
-import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@educateos/workspaces";
+import { transitionPrincipal } from "@educateos/workspaces";
 import { AcademicDirectory } from "@educateos/academics";
 import { ArtifactsGitBackend, InMemoryArtifacts, InMemoryCredentialLedger, ProjectArtifacts, type WorkingTree } from "@educateos/artifacts-git";
 import { catalogSeedRelease, contentDigest } from "@educateos/catalog";
@@ -21,6 +20,7 @@ import { installerScenario } from "./installer.ts";
 import { entitlementWithRootDown } from "./root.ts";
 import {
   applyNorthfieldRoster,
+  artifactsOf,
   bootDistrictFor,
   bootPilot,
   callerOf,
@@ -37,6 +37,7 @@ import {
   subjectOf,
   teacherInstallsEssay,
   usdNano,
+  workspacesOf,
   type PilotDistrict,
 } from "./support.ts";
 
@@ -53,32 +54,6 @@ const personalConversation = (owner: string): ResourceRef => ({
   classification: "personal-private",
   ownerPrincipalId: PrincipalId.parse(owner),
 });
-
-/** The learning-artifact service over a district app's stores and engine, as the app builds it per request. */
-function artifactsOf(district: PilotDistrict) {
-  const { stores, app } = district;
-  return new LearningArtifacts({
-    records: stores.artifactRecords,
-    content: stores.artifactContent,
-    workspaces: stores.workspaces,
-    directory: stores.directory,
-    policy: app.engine,
-    approvedExternalHosts: [],
-    now,
-  });
-}
-
-/** The workspace directory over a district app's stores and engine. */
-function workspacesOf(district: PilotDistrict) {
-  const { stores, app } = district;
-  return new WorkspaceDirectory({
-    workspaces: stores.workspaces,
-    directory: stores.directory,
-    policy: app.engine,
-    retention: RetentionPolicy.parse({ courseWorkspaceRetentionDays: 365 }),
-    now,
-  });
-}
 
 criterion("s14.cross-district", {
   boundary: async () => {

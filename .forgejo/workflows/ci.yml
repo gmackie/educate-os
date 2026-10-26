@@ -63,6 +63,25 @@ jobs:
       - name: Test EducateOS packages
         run: node scripts/vp/run.ts --cache --fail-if-no-match --filter='@educateos/*' test
 
+      # The district validation suite (SCHO-205, docs/educateos/district-validation.md): six demo
+      # districts × integration scenarios, in process against the provider fakes. A step in this
+      # job, not a job of its own, because runners are scarce and a job would repeat the install.
+      # It renders the per-district gate report (MET / NOT MET / NOT YET APPLICABLE), fails the gate
+      # on NOT MET, and keeps the report as an artifact. It takes about two minutes.
+      - name: District validation report
+        run: node packages/educateos-pilot-gate/src/validate.ts --out district-report --revision "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      # This Forgejo accepts v3 artifacts, not v4.
+      - name: Upload the district validation report
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v3
+        with:
+          name: district-report
+          path: district-report
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Report CI result to ForgeGraph
         if: always()
         env:

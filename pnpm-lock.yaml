@@ -1604,18 +1604,30 @@ importers:
       '@educateos/harness':
         specifier: workspace:*
         version: link:../educateos-harness
+      '@educateos/identity':
+        specifier: workspace:*
+        version: link:../educateos-identity
       '@educateos/installer':
         specifier: workspace:*
         version: link:../educateos-installer
+      '@educateos/integrations':
+        specifier: workspace:*
+        version: link:../educateos-integrations
       '@educateos/learning-artifacts':
         specifier: workspace:*
         version: link:../educateos-learning-artifacts
+      '@educateos/lti':
+        specifier: workspace:*
+        version: link:../educateos-lti
       '@educateos/policy':
         specifier: workspace:*
         version: link:../educateos-policy
       '@educateos/portability':
         specifier: workspace:*
         version: link:../educateos-portability
+      '@educateos/provider-fakes':
+        specifier: workspace:*
+        version: link:../educateos-provider-fakes
       '@educateos/registry':
         specifier: workspace:*
         version: link:../educateos-registry
