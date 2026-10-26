@@ -51,7 +51,7 @@ guess.
 | `detachWorkerDomain` (releasing a managed hostname) | `DELETE /accounts/{id}/workers/domains/{domain}` | Workers Scripts: Edit, plus Workers Routes: Edit on the zone | `workers_routes:write` | unverified |
 | `getFallbackOrigin`, `setFallbackOrigin`, `findCustomHostname`, `createCustomHostname`, `deleteCustomHostname` (the managed hostname, cross-account) | `/zones/{zone}/custom_hostnames[/fallback_origin]` | SSL and Certificates: Edit | `ssl_certs:write` | wrangler-requested |
 | `listWorkerRoutes`, `createWorkerRoute`, `deleteWorkerRoute` (the managed hostname, cross-account) | `/zones/{zone}/workers/routes` | Workers Routes: Edit | `workers_routes:write` | wrangler-requested |
-| `createDnsRecord` (the managed hostname's originless fallback origin, `<slug>-educateos-origin.<zone>`, only on a zone with no fallback origin) | `POST /zones/{zone}/dns_records` | DNS: Edit | none known: Wrangler requests no DNS write scope, so an OAuth install on such a zone fails here until one is verified | unverified |
+| `createDnsRecord` (the managed hostname's originless fallback origin, `educateos-origin.<zone>`, only on a zone with no fallback origin) | `POST /zones/{zone}/dns_records` | DNS: Edit | none known: Wrangler requests no DNS write scope, so an OAuth install on such a zone fails here until one is verified | unverified |
 | `listKvNamespaces`, `createKvNamespace` | `/accounts/{id}/storage/kv/namespaces` | Workers KV Storage: Edit | `workers_kv:write` | wrangler-requested |
 | `listR2Buckets`, `createR2Bucket` | `/accounts/{id}/r2/buckets` | Workers R2 Storage: Edit | `workers:write` | unverified (R2 coverage inferred) |
 | `listD1Databases`, `createD1Database`, `queryD1` | `/accounts/{id}/d1/database[/{uuid}/query]` | D1: Edit | `d1:write` | wrangler-requested |
@@ -79,6 +79,12 @@ educateos.io's own token, never a district's: DNS: Edit on the educateos.io zone
 `createDnsRecord`, `updateDnsRecord`, `deleteDnsRecord`). That token is the Keychain item
 `educateos-cf-subdomains-token` ("EducateOS subdomains (educateos.io)": Zone Read, DNS Edit, SSL and
 Certificates Edit and Workers Routes Edit on educateos.io, and Workers Scripts Edit on the account).
+
+The cross-account rows' API-token permissions were exercised live on 2026-10-26 (SCHO-241), with a
+district-run token in a second account holding, among others, DNS: Edit, SSL and Certificates: Edit, Workers
+Routes: Edit, Zone: Edit, Workers Scripts: Edit and Access: Apps and Policies: Edit. That settles
+the token column for a district-run install only; the OAuth column is unchanged, and an OAuth
+install still has no known scope for the origin record.
 
 ## Account requirements preflight blocks on
 

@@ -120,7 +120,8 @@ describe("Cloudflare HTTP client", () => {
     const { fetchImpl, requests } = stubFetch((request) => {
       const path = new URL(request.url).pathname;
       if (path.endsWith("/fallback_origin")) {
-        return Response.json({ success: false, errors: [{ code: 1456, message: "available with SSL for SaaS" }], result: null }, { status: 401 });
+        // Verbatim shape from a live zone without SaaS (SCHO-241): no `result` key at all.
+        return Response.json({ success: false, errors: [{ code: 1456, message: "available with SSL for SaaS" }], messages: [] }, { status: 401 });
       }
       return ok(request.method === "POST"
         ? { id: "ch-1", hostname: "northfield.educateos.io", status: "pending", ssl: { status: "initializing" } }
@@ -148,6 +149,14 @@ describe("Cloudflare HTTP client", () => {
       certificateValidation: [{ name: "_acme-challenge.northfield.educateos.io", value: "cert-1" }],
     });
     expect(new URL(requests[2]!.url).searchParams.get("hostname")).toBe("northfield.educateos.io");
+  });
+
+  it("reads a SaaS zone with no fallback origin as SaaS on, origin unset", async () => {
+    // Verbatim from hbtply.com, SaaS on and no fallback origin (SCHO-241).
+    const { fetchImpl } = stubFetch(() =>
+      Response.json({ success: false, errors: [{ code: 1551, message: "Resource not found." }], messages: [] }, { status: 404 }));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+    expect(await api.getFallbackOrigin("zone-1")).toEqual({ saas: true });
   });
 
   it("writes every Access destination and reads them back, primary first", async () => {
@@ -181,6 +190,15 @@ describe("Cloudflare HTTP client", () => {
     expect(await api.listDnsRecords("zone-1", "northfield.educateos.io")).toEqual([
       { id: "r1", type: "CNAME", name: "northfield.educateos.io", content: "x.example", proxied: false, comment: "" },
     ]);
+  });
+
+  it("reads a success whose errors are null, as the Workers custom domains list answers", async () => {
+    const { fetchImpl } = stubFetch(() => Response.json({
+      result: [], success: true, errors: null, messages: null,
+      result_info: { page: 1, per_page: 0, count: 0, total_count: 0 },
+    }));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+    expect(await api.listWorkerDomains(ACCOUNT)).toEqual([]);
   });
 
   it("reads the district-run token from the environment and fails cleanly without it", async () => {

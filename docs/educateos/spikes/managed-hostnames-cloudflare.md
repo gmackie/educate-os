@@ -133,15 +133,35 @@ must include the zone. A second account never sees it.
 Verified live (same account): see the SCHO-207 issue for the hostname, certificate, Access and
 health checks.
 
-Not verified, since it needs a second account (the owner decided on one account for the demo, see
-SCHO-210):
+Verified live (cross account, SCHO-241, 2026-10-26). The district was a second account holding
+its own Free zone, `hbtply.com`, a proof Worker and its own Zero Trust team; the hostname was
+`springfield.educateos.io`. Both halves ran through the installer's own plan and apply
+(`packages/educateos-installer/scripts/managed-hostname-live.ts`):
 
-- the TXT-pre-validated custom hostname reaching `active` without traffic,
-- the hostname route firing for a DNS-only custom hostname,
-- Access applying on a custom-input destination in the district's account,
-- WebSockets (the Workshop's RPC) through the custom hostname,
-- that a SaaS zone with no fallback origin answers its read with 404, and which OAuth scope, if
-  any, covers creating the originless fallback origin record.
+- **TXT pre-validation reaches `active` with no traffic.** The custom hostname went active within
+  about a minute of educateos.io publishing its records, and the certificate (SSL.com, `ssl.method:
+  txt`) within about two. The create response carried only the ownership TXT; the two
+  `_acme-challenge` values (an RSA and an ECDSA certificate) appeared on the next read, so the
+  re-read in finding 7 is needed, and educateos.io holds four records.
+- **The hostname route fires for a DNS-only custom hostname.** `springfield.educateos.io/*` on
+  the district's zone ran the district's Worker. DNS resolved through the DNS-only CNAME to
+  `educateos-origin.hbtply.com`, an originless `AAAA 100::`.
+- **Access applies on a custom-input destination in the district's account.** An unauthenticated
+  request was redirected to the district's own team (`hbtply.cloudflareaccess.com`) with its
+  application's AUD. Signed in as a test identity, `/api/me` returned 200 on both hostnames, with a
+  JWT whose issuer and AUD the Worker verified. Adding the destination left the AUD unchanged
+  (finding 9). Access finished the sign-in on the application's primary domain, the district's
+  own hostname, and the same session was accepted on the alias.
+- **WebSockets work through the custom hostname.** A signed-in upgrade echoed; an anonymous one
+  was refused at Access.
+- **Enabling SaaS on a Free zone** is a $0 checkout that needs a payment method and accepts the
+  usage-billing terms. Until then the fallback origin read answers 401 with code 1456.
+- **A SaaS zone with no fallback origin** answers its read with 404 and code 1551.
+- **Release** removed the custom hostname, the route and all four educateos.io records; a second
+  run planned nothing. After dropping the Access destination, the district still served on its own
+  hostname and the slug resolved nowhere. Release keeps the zone's fallback origin, which other
+  hostnames on the zone may share.
 
-The installer's fake account models these as the docs describe them. Prove them on a real second
-account before the first BYOA district uses a managed hostname.
+Still not verified: which OAuth scope, if any, covers creating the originless fallback origin
+record. The proof ran with a district-run API token; see
+[installer-permissions.md](../installer-permissions.md).

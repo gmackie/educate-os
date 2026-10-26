@@ -25,8 +25,10 @@ export const CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4";
 
 const Envelope = z.object({
   success: z.boolean(),
-  errors: z.array(z.object({ code: z.number() })).default([]),
-  result: z.unknown(),
+  // Some endpoints (Workers custom domains, for one) answer a success with `"errors": null`.
+  errors: z.array(z.object({ code: z.number() })).nullish().transform((errors) => errors ?? []),
+  // Error answers may leave `result` out entirely; their codes must still be read.
+  result: z.unknown().optional(),
   result_info: z.object({
     page: z.number().optional(),
     total_pages: z.number().optional(),
@@ -190,7 +192,8 @@ export class CloudflareHttpApi implements CloudflareApi {
       return wire?.origin ? { saas: true, origin: wire.origin } : { saas: true };
     } catch (error) {
       if (error instanceof CloudflareApiError && error.cloudflareCodes.includes(SAAS_NOT_ENABLED_CODE)) return { saas: false };
-      // That a SaaS zone with no fallback origin answers 404 is unverified; 7003 is a missing zone.
+      // A SaaS zone with no fallback origin answers 404 with code 1551 (hbtply.com, 2026-10-26);
+      // 7003 is a missing zone.
       if (error instanceof CloudflareApiError && error.status === 404 && !error.cloudflareCodes.includes(7003)) return { saas: true };
       throw error;
     }
