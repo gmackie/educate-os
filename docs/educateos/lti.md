@@ -74,6 +74,13 @@ offering:
 
 ## Canvas setup
 
+The Tool has passed a live run against current Canvas (2026-10-26): Dynamic Registration, teacher
+and student launches, Deep Linking, NRPS, an AGS line item, teacher-approved passback into the
+Canvas gradebook, refused replays and forged launches, and tool key rotation. The results, request
+IDs and deviations are in [integrations/canvas-lti.md](integrations/canvas-lti.md). Dynamic
+Registration is the preferred setup; the developer key JSON below is the manual alternative, which
+that run did not exercise.
+
 1. In Canvas, **Admin → Developer Keys → + Developer Key → LTI Key**, choose **Paste JSON** and
    paste the output of `canvasDeveloperKey(ltiToolEndpoints("https://<district host>"))`. The
    exact JSON for `https://educateos.example` is
