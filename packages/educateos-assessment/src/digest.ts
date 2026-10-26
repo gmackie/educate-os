@@ -23,13 +23,33 @@ export function canonicalItems<T extends DigestedItem>(items: readonly T[]): T[]
  * run on it and anyone holding the revisions can recompute it.
  */
 export function submissionDigestBytes(items: readonly DigestedItem[]): Uint8Array<ArrayBuffer> {
-  const canonical = canonicalItems(items).map(({ artifactId, revisionId, digest }) => ({ artifactId, revisionId, digest }));
-  return encoder.encode(JSON.stringify({ format: "educateos.submission-digest.v1", items: canonical }));
+  return digestBytes(DIGEST_FORMAT, items);
 }
 
 /** The combined submission digest: SHA-256 over {@link submissionDigestBytes}. */
 export async function submissionDigest(items: readonly DigestedItem[]): Promise<ContentDigest> {
   return sha256Digest(submissionDigestBytes(items));
+}
+
+/**
+ * Whether `expected` is the submission digest of `items`. Submissions made before the EducateOS
+ * rename were digested under the legacy format name (SCHO-232), and their stored snapshots, run
+ * keys and receipts keep that digest, so a digest under either name matches.
+ */
+export async function isSubmissionDigestOf(items: readonly DigestedItem[], expected: ContentDigest): Promise<boolean> {
+  for (const format of [DIGEST_FORMAT, LEGACY_DIGEST_FORMAT]) {
+    if ((await sha256Digest(digestBytes(format, items))) === expected) return true;
+  }
+  return false;
+}
+
+const DIGEST_FORMAT = "educateos.submission-digest.v1";
+/** SCHO-232: the digest format name before the EducateOS rename. */
+const LEGACY_DIGEST_FORMAT = "schoolos.submission-digest.v1";
+
+function digestBytes(format: string, items: readonly DigestedItem[]): Uint8Array<ArrayBuffer> {
+  const canonical = canonicalItems(items).map(({ artifactId, revisionId, digest }) => ({ artifactId, revisionId, digest }));
+  return encoder.encode(JSON.stringify({ format, items: canonical }));
 }
 
 /**

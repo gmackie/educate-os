@@ -44,7 +44,8 @@ export const COST_EXPORT_CSV_COLUMNS = ["request_id", "date", "provider", "model
 
 /** The JSON form: a versioned document holding the rows. */
 export const CostExportDocument = z.strictObject({
-  format: z.literal("educateos.ai-cost-export.v1"),
+  /** Exports prepared before the EducateOS rename name its legacy spelling (SCHO-232). */
+  format: z.enum(["educateos.ai-cost-export.v1", "schoolos.ai-cost-export.v1"]),
   rows: z.array(CostExportRow),
 });
 /** A cost export document. */

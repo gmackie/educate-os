@@ -29,6 +29,7 @@ import { gitObject } from "./git-objects.ts";
 import {
   buildTree,
   PROJECT_MANIFEST_MEDIA_TYPE,
+  isProjectManifestMediaType,
   ProjectManifest,
   WorkingTree,
   type BuiltTree,
@@ -499,7 +500,7 @@ export class ProjectArtifacts {
   }
 
   async #manifestOf(caller: Caller, artifactId: ArtifactId, revision: ArtifactRevision): Promise<ProjectManifest> {
-    if (revision.mediaType !== PROJECT_MANIFEST_MEDIA_TYPE) throw notAProject();
+    if (!isProjectManifestMediaType(revision.mediaType)) throw notAProject();
     return (await this.#readManifest(caller, artifactId, revision.id)).manifest;
   }
 
@@ -635,7 +636,7 @@ function versionOf(revision: ArtifactRevision, manifest: ProjectManifest): Proje
 }
 
 function parseManifest(revision: ArtifactRevision, text: string | undefined): ProjectManifest {
-  if (revision.mediaType !== PROJECT_MANIFEST_MEDIA_TYPE || text === undefined) throw notAProject();
+  if (!isProjectManifestMediaType(revision.mediaType) || text === undefined) throw notAProject();
   const parsed = ProjectManifest.safeParse(JSON.parse(text));
   if (!parsed.success) throw new EducateOsError("unavailable", "This project version could not be read.");
   return parsed.data;

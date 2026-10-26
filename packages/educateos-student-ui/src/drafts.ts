@@ -5,6 +5,8 @@
 import { useSyncExternalStore } from "react";
 
 const PREFIX = "educateos.student.draft:";
+/** SCHO-232: drafts kept by a tab opened before the EducateOS rename, read until saved or dropped. */
+const LEGACY_PREFIX = "schoolos.student.draft:";
 const listeners = new Set<() => void>();
 
 const notify = () => {
@@ -14,7 +16,7 @@ const notify = () => {
 /** Reads the draft under `key`, if there is one. */
 export const readDraft = (key: string): string | undefined => {
   try {
-    return sessionStorage.getItem(PREFIX + key) ?? undefined;
+    return sessionStorage.getItem(PREFIX + key) ?? sessionStorage.getItem(LEGACY_PREFIX + key) ?? undefined;
   } catch {
     return undefined;
   }
@@ -27,6 +29,7 @@ export const readDraft = (key: string): string | undefined => {
 export const writeDraft = (key: string, text: string): boolean => {
   try {
     sessionStorage.setItem(PREFIX + key, text);
+    sessionStorage.removeItem(LEGACY_PREFIX + key);
     return true;
   } catch {
     return false;
@@ -39,6 +42,7 @@ export const writeDraft = (key: string, text: string): boolean => {
 export const clearDraft = (key: string): void => {
   try {
     sessionStorage.removeItem(PREFIX + key);
+    sessionStorage.removeItem(LEGACY_PREFIX + key);
   } catch {
     // Nothing was stored, so there is nothing to drop.
   }

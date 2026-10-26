@@ -149,7 +149,8 @@ export async function createRollbackRevision(input: {
   const revision = ConfigurationRevision.parse({
     id: await revisionId(hash, head),
     scope: head.scope,
-    schemaVersion: target.schemaVersion,
+    // The desired state is read with the current names (SCHO-232), so it is written under the current version.
+    schemaVersion: CONFIG_API_VERSION,
     desired: parsed.data,
     status: "draft",
     actorPrincipalId: input.actorPrincipalId,

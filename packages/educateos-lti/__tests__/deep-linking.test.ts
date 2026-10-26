@@ -93,6 +93,8 @@ describe("Deep Linking 2.0", () => {
 
     const launched = await launchItem(world, BIO, { educateos_link: items[0]!.custom.educateos_link });
     expect(launched.activity).toBe("act_cell-lab");
+    // An item the LMS kept from before the EducateOS rename names the parameter `schoolos_link` (SCHO-232).
+    expect((await launchItem(world, BIO, { schoolos_link: items[0]!.custom.educateos_link })).activity).toBe("act_cell-lab");
   });
 
   it("does not resolve a deep-linked link ID copied into another offering's course", async () => {

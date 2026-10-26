@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ContentDigest, DistrictId, OfferingId, PrincipalId, RubricId, SchoolId, EducateOsError, type Caller } from "@educateos/contracts";
 import type { AcademicStore } from "@educateos/academics";
 import type { PolicyDecider } from "@educateos/policy";
-import { CriterionId, type RubricReleaseRef } from "@educateos/assessment";
+import { CriterionId, recordFormat, type RubricReleaseRef } from "@educateos/assessment";
 import { canonicalDigest } from "./canonical.ts";
 import type { EvaluatorRegistry } from "./registry.ts";
 import { EvaluatorId } from "./sdk.ts";
@@ -102,7 +102,7 @@ export type RubricSignature = z.infer<typeof RubricSignature>;
  * since a release itself never changes, that lock fixes exactly which checks and fixtures apply.
  */
 export const RubricRelease = z.strictObject({
-  format: z.literal("educateos.rubric-release.v1"),
+  format: recordFormat("rubric-release.v1"),
   ...rubricBody,
   /**
    * The offering the release was signed for, by one of its teachers (see
@@ -115,15 +115,22 @@ export const RubricRelease = z.strictObject({
 /** A rubric release. */
 export type RubricRelease = z.infer<typeof RubricRelease>;
 
+/** The format every new rubric release is signed with. */
+const RUBRIC_RELEASE_FORMAT = "educateos.rubric-release.v1";
+
 /**
  * The digest a rubric signature covers: everything in the release except the signature. Fields
  * added since the first release format (`aiInstructions`, `offering`) are covered when present and
- * left out when absent, so a release signed before them keeps its digest.
+ * left out when absent, so a release signed before them keeps its digest. `format` is the release's
+ * own; a release signed before the EducateOS rename covers its legacy spelling (SCHO-232).
  */
-export async function rubricDigest(release: RubricDraft & { offering?: RubricOffering }): Promise<ContentDigest> {
+export async function rubricDigest(
+  release: RubricDraft & { offering?: RubricOffering },
+  format: RubricRelease["format"] = RUBRIC_RELEASE_FORMAT,
+): Promise<ContentDigest> {
   const { rubricId, version, title, criteria, aiInstructions, offering } = release;
   return canonicalDigest({
-    format: "educateos.rubric-release.v1",
+    format,
     rubricId,
     version,
     title,
@@ -247,7 +254,7 @@ async function sign(rawDraft: RubricDraft, signer: Caller, registry: EvaluatorRe
   }
   const bound = offering === undefined ? draft : { ...draft, offering };
   return {
-    format: "educateos.rubric-release.v1",
+    format: RUBRIC_RELEASE_FORMAT,
     ...bound,
     signature: { signedBy: signer.principal.principalId, signedAt: signedAt.toISOString(), channel: "http", digest: await rubricDigest(bound) },
   };
@@ -255,7 +262,7 @@ async function sign(rawDraft: RubricDraft, signer: Caller, registry: EvaluatorRe
 
 /** Checks that `release` is exactly what its signer approved, answering `policy-violation` if not. */
 export async function verifyRubricRelease(release: RubricRelease): Promise<void> {
-  if (!RubricRelease.safeParse(release).success || (await rubricDigest(release)) !== release.signature.digest) {
+  if (!RubricRelease.safeParse(release).success || (await rubricDigest(release, release.format)) !== release.signature.digest) {
     throw new EducateOsError("policy-violation", `Rubric ${release.rubricId} version ${release.version} does not match its signature.`);
   }
 }

@@ -59,7 +59,11 @@ const CASE_TYPE_BY_RELATION = {
 type InterpretedRelation = keyof typeof CASE_TYPE_BY_RELATION;
 
 const RELATION_BY_CASE_TYPE: ReadonlyMap<string, InterpretedRelation> = new Map(
-  Object.entries(CASE_TYPE_BY_RELATION).map(([relation, caseType]) => [caseType, relation as InterpretedRelation]),
+  Object.entries(CASE_TYPE_BY_RELATION).flatMap(([relation, caseType]) => [
+    [caseType, relation as InterpretedRelation],
+    // Packages written before the EducateOS rename name the extensions `ext:schoolos.*` (SCHO-232).
+    ...(caseType.startsWith("ext:educateos.") ? [[caseType.replace("ext:educateos.", "ext:schoolos."), relation as InterpretedRelation] as const] : []),
+  ]),
 );
 
 // Domain field name -> CASE field name, for the fields that map one to one.

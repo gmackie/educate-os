@@ -12,6 +12,8 @@ import { OcsPackageId, Sha256Digest } from "./schema.ts";
 import { SemVer } from "./semver.ts";
 
 const OCS_SIGNING_CONTEXT = "educateos-ocs/v1\0package-publication";
+/** SCHO-232: the context of publications signed before the EducateOS rename, which still verify. */
+const LEGACY_OCS_SIGNING_CONTEXT = "schoolos-ocs/v1\0package-publication";
 
 /** What a publisher signs: one version of one package, by its digest. */
 export const PackagePublication = z.strictObject({
@@ -41,7 +43,7 @@ export const PublisherTrust = z.strictObject({
 /** A district's approved publisher keys. */
 export type PublisherTrust = z.infer<typeof PublisherTrust>;
 
-const signedBytes = (publication: unknown): Uint8Array<ArrayBuffer> => new TextEncoder().encode(`${OCS_SIGNING_CONTEXT}\0${canonicalJson(publication)}`);
+const signedBytes = (publication: unknown, context = OCS_SIGNING_CONTEXT): Uint8Array<ArrayBuffer> => new TextEncoder().encode(`${context}\0${canonicalJson(publication)}`);
 
 /** Signs a package's publication as its publisher. The statement is parsed first, so only a well-formed one is signed. */
 export async function signPackagePublication(identity: SigningIdentity, publication: PackagePublication): Promise<SignedEnvelope> {
@@ -78,13 +80,20 @@ export async function checkPublication(
     ?.keys.find((candidate) => candidate.keyId === envelope.data.keyId);
   if (key === undefined || (key.retiresAt !== undefined && now.getTime() >= Date.parse(key.retiresAt))) return { ok: false, reason: "unknown-publisher" };
   if ((await keyIdFor(key.publicKey)) !== key.keyId) return { ok: false, reason: "unknown-publisher" };
-  let bytes: Uint8Array<ArrayBuffer>;
-  try {
-    bytes = signedBytes(envelope.data.payload);
-  } catch {
-    return { ok: false, reason: "bad-signature" };
+  let verified = false;
+  for (const context of [OCS_SIGNING_CONTEXT, LEGACY_OCS_SIGNING_CONTEXT]) {
+    let bytes: Uint8Array<ArrayBuffer>;
+    try {
+      bytes = signedBytes(envelope.data.payload, context);
+    } catch {
+      return { ok: false, reason: "bad-signature" };
+    }
+    if (await verifySignature(key.publicKey, envelope.data.signature, bytes)) {
+      verified = true;
+      break;
+    }
   }
-  if (!(await verifySignature(key.publicKey, envelope.data.signature, bytes))) return { ok: false, reason: "bad-signature" };
+  if (!verified) return { ok: false, reason: "bad-signature" };
   const statement = PackagePublication.safeParse(envelope.data.payload);
   if (!statement.success) return { ok: false, reason: "bad-signature" };
   const { packageId, version, digest } = statement.data;

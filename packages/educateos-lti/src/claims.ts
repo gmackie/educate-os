@@ -142,6 +142,12 @@ export interface ParsedLaunchClaims {
 export const EDUCATEOS_LINK_PARAMETER = "educateos_link";
 
 /**
+ * SCHO-232: the same parameter as content items deep-linked before the EducateOS rename name it.
+ * The LMS keeps those items as they were written, so launches from them still carry it.
+ */
+export const LEGACY_LINK_PARAMETER = "schoolos_link";
+
+/**
  * Parses a verified payload. Returns `undefined` when a required claim is missing or malformed,
  * when the message type or version is not one the broker accepts, or when a message lacks the claim
  * its type requires (a resource link, or deep linking settings).
@@ -155,7 +161,8 @@ export function parseLaunchClaims(payload: unknown): ParsedLaunchClaims | undefi
   const deepLinking = claims[LTI_CLAIM.deepLinkingSettings];
   if (messageType === "LtiResourceLinkRequest" && resourceLinkId === undefined) return undefined;
   if (messageType === "LtiDeepLinkingRequest" && deepLinking === undefined) return undefined;
-  const linkParameter = claims[LTI_CLAIM.custom]?.[EDUCATEOS_LINK_PARAMETER];
+  const custom = claims[LTI_CLAIM.custom];
+  const linkParameter = custom?.[EDUCATEOS_LINK_PARAMETER] ?? custom?.[LEGACY_LINK_PARAMETER];
   return {
     educateosLinkId: typeof linkParameter === "string" && linkParameter.length > 0 ? linkParameter : undefined,
     issuer: claims.iss,

@@ -18,6 +18,9 @@ import {
 /** The configuration document version the console writes. */
 export const CONFIG_API_VERSION = "educateos.io/v1alpha1";
 
+/** SCHO-232: the version of revisions stored before the EducateOS rename, which the console still reads. */
+export const LEGACY_CONFIG_API_VERSION = "schoolos.dev/v1alpha1";
+
 /** A module's state in a configuration document. */
 export const ModuleState = z.enum(["enabled", "advisory", "disabled"]);
 /** A module state. */
@@ -28,7 +31,7 @@ export type ModuleState = z.infer<typeof ModuleState>;
  * state (`DesiredState` in `@educateos/config`), which the routes carry only as an untyped record.
  */
 export const DesiredStateView = z.strictObject({
-  apiVersion: z.literal(CONFIG_API_VERSION),
+  apiVersion: z.enum([CONFIG_API_VERSION, LEGACY_CONFIG_API_VERSION]),
   district: DistrictId,
   profile: z.string().min(1),
   identity: z.record(z.string(), z.unknown()),
@@ -57,11 +60,19 @@ export type DesiredModule = DesiredStateView["modules"][CapabilityId];
 /** A district configuration document, as the plan and apply routes accept it. */
 export type ConfigDocument = Record<string, unknown>;
 
-/** Reads a revision's desired state, or throws if the district returned something the console cannot read. */
+/** SCHO-232: pack IDs the EducateOS rename changed, as revisions stored before it name them. */
+const RENAMED_PACKS: Readonly<Record<string, string>> = { "schoolos-lti": "educateos-lti" };
+
+/**
+ * Reads a revision's desired state, or throws if the district returned something the console cannot
+ * read. A revision stored before the EducateOS rename is read with the current pack IDs, as the
+ * district reads it.
+ */
 export function readDesired(revision: ConfigurationRevision): DesiredStateView {
   const parsed = DesiredStateView.safeParse(revision.desired);
   if (!parsed.success) throw new Error("This configuration version is in a format the console cannot read.");
-  return parsed.data;
+  const modules = Object.entries(parsed.data.modules).map(([id, module]) => [CapabilityId.parse(RENAMED_PACKS[id] ?? id), module] as const);
+  return { ...parsed.data, modules: Object.fromEntries(modules) };
 }
 
 /** Policy in the document vocabulary, from settings in the contract vocabulary. */
@@ -89,7 +100,8 @@ export function documentFromDesired(desired: DesiredStateView): ConfigDocument {
     .map(([id, module]) => [id, { state: module.state, config: module.config }]));
   const { target, offerings, requiresAdminActivation } = desired.rollout;
   return {
-    apiVersion: desired.apiVersion,
+    // The district reads a revision stored before the rename with the current names, so the document is written with them.
+    apiVersion: CONFIG_API_VERSION,
     district: desired.district,
     profile: desired.profile,
     identity: desired.identity,

@@ -24,6 +24,19 @@ describe("signed envelopes", () => {
     expect(await verifyEnvelope(JSON.parse(JSON.stringify(reordered)), "heartbeat", identity.publicKey)).toBe(true);
   });
 
+  it("verify when signed before the EducateOS rename, in its legacy context (SCHO-232)", async () => {
+    const identity = await SigningIdentity.generate();
+    const payload = { instanceId: "ins_northfield", sequence: 1 };
+    const legacyBytes = (kind: string) => new TextEncoder().encode(`schoolos-fleet/v1\0${kind}\0${canonicalJson(payload)}`);
+    const envelope = { payload, signature: await identity.sign(legacyBytes("heartbeat")), keyId: identity.keyId };
+    expect(await verifyEnvelope(envelope, "heartbeat", identity.publicKey)).toBe(true);
+    expect(await verifyEnvelope(envelope, "entitlement", identity.publicKey)).toBe(false);
+    expect(await verifyEnvelope({ ...envelope, payload: { ...payload, sequence: 2 } }, "heartbeat", identity.publicKey)).toBe(false);
+    // New envelopes are signed in the new context only.
+    const signed = await signEnvelope(identity, "heartbeat", payload);
+    expect(signed.signature).not.toBe(envelope.signature);
+  });
+
   it("bind the message kind, so a signature for one kind never verifies as another", async () => {
     const identity = await SigningIdentity.generate();
     const envelope = await signEnvelope(identity, "heartbeat", { instanceId: "ins_northfield", sequence: 1 });

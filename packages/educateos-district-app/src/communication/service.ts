@@ -100,6 +100,13 @@ const EMAILS_PER_RUN = 200;
 /** The widest calendar range one read may ask for. */
 export const MAX_CALENDAR_RANGE_DAYS = 400;
 
+/**
+ * The domain part of every calendar event's UID. Calendar clients identify an event by its UID for
+ * as long as they hold it, so UIDs keep the domain they had before the EducateOS rename (SCHO-232);
+ * changing it would make every subscribed event look deleted and re-added.
+ */
+const UID_DOMAIN = "schoolos";
+
 /** A course offering's label: its course title and section. */
 export function courseLabelOf(snapshot: DistrictDirectorySnapshot, offeringId: OfferingId): string {
   const offering = snapshot.offerings.find((o) => o.id === offeringId);
@@ -398,7 +405,7 @@ export class CommunicationService {
       for (const assignment of assignments) {
         if (!inRange(assignment.dueAt)) continue;
         events.push({
-          uid: `due-${assignment.id}@${district}.educateos`,
+          uid: `due-${assignment.id}@${district}.${UID_DOMAIN}`,
           kind: "assignment-due",
           title: `Due: ${assignment.title} — ${label}`,
           start: assignment.dueAt,
@@ -411,7 +418,7 @@ export class CommunicationService {
       for (const { announcement, published } of listed?.announcements ?? []) {
         if (!inRange(announcement.publishAt)) continue;
         events.push({
-          uid: `announcement-${announcement.id}@${district}.educateos`,
+          uid: `announcement-${announcement.id}@${district}.${UID_DOMAIN}`,
           kind: "announcement",
           title: `${published ? "Announcement" : "Scheduled announcement"}: ${announcement.title} — ${label}`,
           start: announcement.publishAt,
@@ -424,7 +431,7 @@ export class CommunicationService {
     for (const term of snapshot.terms.filter((t) => terms.has(t.id))) {
       for (const [kind, date, verb] of [["term-start", term.startsOn, "begins"], ["term-end", term.endsOn, "ends"]] as const) {
         if (!inRange(`${date}T00:00:00.000Z`)) continue;
-        events.push({ uid: `${kind}-${term.id}@${district}.educateos`, kind, title: `${term.name} ${verb}`, start: date, allDay: true });
+        events.push({ uid: `${kind}-${term.id}@${district}.${UID_DOMAIN}`, kind, title: `${term.name} ${verb}`, start: date, allDay: true });
       }
     }
     return events.toSorted((a, b) => a.start.localeCompare(b.start) || a.uid.localeCompare(b.uid));

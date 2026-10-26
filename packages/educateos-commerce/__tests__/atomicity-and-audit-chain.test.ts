@@ -1,8 +1,8 @@
 import { InstanceId } from "@educateos/contracts";
 import { NORTHFIELD, RIVERBEND } from "@educateos/fixtures";
-import { InMemoryInstanceRegistryStorage, InstanceRegistry, DistrictAgent, InMemorySequenceCounter, SigningIdentity } from "@educateos/fleet";
+import { canonicalJson, InMemoryInstanceRegistryStorage, InstanceRegistry, DistrictAgent, InMemorySequenceCounter, SigningIdentity } from "@educateos/fleet";
 import { describe, expect, it } from "vitest";
-import { GENESIS_AUDIT_HASH, InMemoryCommerceStore, type ProcessorRef, verifyFinanceAuditChain } from "../src/index.ts";
+import { GENESIS_AUDIT_HASH, hashFinanceAuditEvent, InMemoryCommerceStore, type ProcessorRef, verifyFinanceAuditChain } from "../src/index.ts";
 import { CLERK, DAY, idsFor, setup, TERM_START } from "./support.ts";
 
 const DUE_AT = new Date(Date.parse(TERM_START) + 30 * DAY).toISOString();
@@ -105,6 +105,23 @@ describe("SCHO-99 hash-chained finance audit", () => {
     const [foreign] = await riverbend.service.auditTrail(riverbend.accountId);
     expect(await verifyFinanceAuditChain([foreign, ...trail.slice(1)])).toMatchObject({ intact: false, index: 1 });
     expect(await verifyFinanceAuditChain([{ ...trail[0], note: "x" }])).toEqual({ intact: false, index: 0, reason: "malformed" });
+  });
+
+  it("verifies a trail begun before the EducateOS rename, hashed in the legacy context (SCHO-232)", async () => {
+    const { trail } = await lifecycleTrail();
+    const sha256 = async (text: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    // The first three events as the code before the rename chained them, then the rest chained on after it.
+    const rechained: typeof trail = [];
+    for (const [index, event] of trail.entries()) {
+      const { hash: _hash, ...fields } = { ...event, previousHash: rechained.at(-1)?.hash ?? GENESIS_AUDIT_HASH };
+      const hash = index < 3 ? await sha256(`schoolos-finance-audit/v1\0${canonicalJson(fields)}`) : await hashFinanceAuditEvent(fields);
+      rechained.push({ ...fields, hash });
+    }
+    expect(rechained[0]!.hash).not.toBe(trail[0]!.hash);
+    expect(await verifyFinanceAuditChain(rechained)).toEqual({ intact: true, length: trail.length, headHash: rechained.at(-1)!.hash });
+    const edited = structuredClone(rechained);
+    edited[1]!.after = { ...edited[1]!.after, amountCents: 1 };
+    expect(await verifyFinanceAuditChain(edited)).toEqual({ intact: false, index: 1, reason: "hash" });
   });
 
   it("stays one unbroken chain under concurrent operations", async () => {

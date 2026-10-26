@@ -1,4 +1,4 @@
-import { type Ed25519PublicKey, keyIdFor, SigningIdentity, signEnvelope } from "@educateos/fleet";
+import { canonicalJson, type Ed25519PublicKey, keyIdFor, SigningIdentity, signEnvelope } from "@educateos/fleet";
 import { signReleaseMessage } from "@educateos/releases";
 import { describe, expect, it } from "vitest";
 import { checkPublication, publisherPolicy, type PublisherTrust, readPackage, signPackagePublication } from "../src/index.ts";
@@ -33,6 +33,14 @@ describe("publisher signatures", () => {
   it("accept a package signed by a key the district approved for its publisher", async () => {
     const { publisher, pkg, statement, trust } = await setup();
     expect(await checkPublication(pkg, await signPackagePublication(publisher, statement), trust, NOW)).toStrictEqual({ ok: true, signed: true });
+  });
+
+  it("accept a publication signed before the EducateOS rename, in its legacy context (SCHO-232)", async () => {
+    const { publisher, pkg, statement, trust } = await setup();
+    const bytes = new TextEncoder().encode(`schoolos-ocs/v1\0package-publication\0${canonicalJson(statement)}`);
+    const legacy = { payload: JSON.parse(canonicalJson(statement)), signature: await publisher.sign(bytes), keyId: publisher.keyId };
+    expect(await checkPublication(pkg, legacy, trust, NOW)).toStrictEqual({ ok: true, signed: true });
+    expect(await checkPublication(pkg, { ...legacy, payload: { ...legacy.payload, version: "2.0.1" } }, trust, NOW)).toStrictEqual({ ok: false, reason: "bad-signature" });
   });
 
   it("refuse an unsigned package from outside the district, and need none from its own domains", async () => {

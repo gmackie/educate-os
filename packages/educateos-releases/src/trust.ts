@@ -25,10 +25,12 @@ export const ReleaseMessageKind = z.enum(["release-manifest", "release-key-set",
 export type ReleaseMessageKind = z.infer<typeof ReleaseMessageKind>;
 
 const RELEASE_CONTEXT = "educateos-releases/v1";
+/** SCHO-232: the context of release messages signed before the EducateOS rename, which still verify. */
+const LEGACY_RELEASE_CONTEXT = "schoolos-releases/v1";
 
 // `slice()` gives a view over a plain `ArrayBuffer` under every runtime's typings (ADR-0009).
-function signedBytes(kind: ReleaseMessageKind, payload: unknown): Uint8Array<ArrayBuffer> {
-  return new TextEncoder().encode(`${RELEASE_CONTEXT}\0${kind}\0${canonicalJson(payload)}`).slice();
+function signedBytes(kind: ReleaseMessageKind, payload: unknown, context = RELEASE_CONTEXT): Uint8Array<ArrayBuffer> {
+  return new TextEncoder().encode(`${context}\0${kind}\0${canonicalJson(payload)}`).slice();
 }
 
 /** Signs a payload as a release message of `kind`, in the fleet's envelope shape. */
@@ -147,13 +149,16 @@ export async function openReleaseMessage<T extends z.ZodType>(
 
 async function verifies(key: RootKey | TrustedReleaseKey, signature: string, kind: ReleaseMessageKind, payload: unknown): Promise<boolean> {
   if ((await keyIdFor(key.publicKey)) !== key.keyId) return false;
-  let bytes: Uint8Array<ArrayBuffer>;
-  try {
-    bytes = signedBytes(kind, payload);
-  } catch {
-    return false;
+  for (const context of [RELEASE_CONTEXT, LEGACY_RELEASE_CONTEXT]) {
+    let bytes: Uint8Array<ArrayBuffer>;
+    try {
+      bytes = signedBytes(kind, payload, context);
+    } catch {
+      return false;
+    }
+    if (await verifySignature(key.publicKey, signature, bytes)) return true;
   }
-  return await verifySignature(key.publicKey, signature, bytes);
+  return false;
 }
 
 /**

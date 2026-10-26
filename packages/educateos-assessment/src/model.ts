@@ -16,6 +16,19 @@ import { AiAssistance, ContentRef, MediaType } from "@educateos/learning-artifac
 
 const idBody = "[a-z0-9][a-z0-9-]{0,62}";
 
+/** SCHO-232: the prefix record formats carried before the EducateOS rename. */
+const LEGACY_FORMAT_PREFIX = "schoolos";
+
+/**
+ * The record format `educateos.<name>`, also accepting the `schoolos.<name>` spelling of records
+ * stored or signed before the rename (SCHO-232). A parsed record keeps the spelling it was stored
+ * with, so stored records stay unchanged and signatures over them still verify; new records are
+ * always written with the `educateos.` spelling.
+ */
+export function recordFormat<const Name extends string>(name: Name) {
+  return z.enum([`educateos.${name}`, `${LEGACY_FORMAT_PREFIX}.${name}`]);
+}
+
 /**
  * Identifies an assignment: one activity bound to one offering. It may belong in
  * `@educateos/contracts` once a second package (I02's passback) refers to assignments.
@@ -200,7 +213,7 @@ export type SubmissionSnapshot = z.infer<typeof SubmissionSnapshot>;
  * exactly that work. A retried submission returns the same receipt.
  */
 export const SubmissionReceipt = z.strictObject({
-  format: z.literal("educateos.submission-receipt.v1"),
+  format: recordFormat("submission-receipt.v1"),
   submissionId: SubmissionId,
   assignmentId: AssignmentId,
   studentPrincipalId: PrincipalId,
@@ -395,7 +408,7 @@ export function isPendingProposal(proposal: GradeProposal): boolean {
  * - `submissionId` and `submissionDigest` name the exact work the grade is for.
  */
 export const OfficialGradeVersion = z.strictObject({
-  format: z.literal("educateos.official-grade.v1"),
+  format: recordFormat("official-grade.v1"),
   districtId: DistrictId,
   offeringId: OfferingId,
   assignmentId: AssignmentId,

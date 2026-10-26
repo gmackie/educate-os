@@ -57,6 +57,24 @@ describe("unsaved work", () => {
     expect(screen.getByText("Unsaved changes")).toBeTruthy();
   });
 
+  it("restores a draft kept before the EducateOS rename, and drops it once saved (SCHO-232)", async () => {
+    const district = fakeDistrict();
+    const user = userEvent.setup();
+    const first = await renderApp(district, ACTIVITY);
+    await user.type(await screen.findByRole("textbox", EDITOR), "Typed before the rename.");
+    // Re-key the draft as the code before the rename kept it.
+    const key = Object.keys(sessionStorage).find((k) => k.startsWith("educateos.student.draft:"))!;
+    sessionStorage.setItem(key.replace("educateos.", "schoolos."), sessionStorage.getItem(key)!);
+    sessionStorage.removeItem(key);
+    first.unmount();
+
+    await renderApp(district, ACTIVITY);
+    expect(await screen.findByRole("textbox", EDITOR)).toHaveProperty("value", "Typed before the rename.");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText(/^Saved /)).toBeTruthy();
+    expect(sessionStorage.length).toBe(0);
+  });
+
   it("drops the draft when the text goes back to what was saved", async () => {
     const district = fakeDistrict();
     const user = userEvent.setup();
