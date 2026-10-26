@@ -11,6 +11,7 @@ import {
   type RegistrationTargets,
 } from "./stores.ts";
 import { TableGradeColumnStore } from "./columns.ts";
+import { TableToolKeyStore } from "./tool-keys.ts";
 import type { RecordTable } from "./table.ts";
 
 /** Every store one district's LTI integration needs, over its one record table. */
@@ -28,6 +29,8 @@ export interface LtiDistrictStores {
   readonly gradeRoutes: TableGradeRouteStore;
   readonly gradeColumns: TableGradeColumnStore;
   readonly rosterSources: TableRosterSourceStore;
+  /** The tool's signing keys, rotated by an administrator. */
+  readonly toolKeys: TableToolKeyStore;
 }
 
 /**
@@ -48,5 +51,6 @@ export function createLtiDistrictStores(table: RecordTable, options: { targets: 
     gradeRoutes: new TableGradeRouteStore(table),
     gradeColumns: new TableGradeColumnStore(table),
     rosterSources: new TableRosterSourceStore(table),
+    toolKeys: new TableToolKeyStore(table, now),
   };
 }

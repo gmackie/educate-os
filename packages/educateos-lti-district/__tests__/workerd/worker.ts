@@ -5,12 +5,13 @@
 import { DurableObject } from "cloudflare:workers";
 import { ActivityId, DistrictId, OfferingId, type DistrictDirectorySnapshot } from "@educateos/contracts";
 import { NORTHFIELD } from "@educateos/fixtures";
-import { LoginState, type PassbackClaim, type PlatformRegistration } from "@educateos/lti";
+import { LoginState, toolJwks, type PassbackClaim, type PlatformRegistration } from "@educateos/lti";
 // Imported module by module, not through the package index: these are the stores the Durable
 // Object hosts, and the index also re-exports modules over E01 and the curriculum service.
 import { DurableObjectRecordTable } from "../../src/durable-object.ts";
 import { LTI_COLLECTIONS, TablePassbackLedger, TableRegistrationStore, TableSingleUseStore } from "../../src/stores.ts";
 import { directoryRegistrationTargets } from "../../src/targets.ts";
+import { TableToolKeyStore, type ToolKeyRotation } from "../../src/tool-keys.ts";
 
 const NF = DistrictId.parse("dst_northfield");
 const NF_CANVAS = "https://canvas.northfield.example";
@@ -42,6 +43,7 @@ export class TestLtiDistrict extends DurableObject {
     loginStates: TableSingleUseStore<LoginState>;
     passbackLedger: TablePassbackLedger;
     registrations: TableRegistrationStore;
+    toolKeys: TableToolKeyStore;
   };
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
@@ -61,6 +63,7 @@ export class TestLtiDistrict extends DurableObject {
       loginStates: new TableSingleUseStore(table, LTI_COLLECTIONS.loginStates, LoginState),
       passbackLedger: new TablePassbackLedger(table),
       registrations: new TableRegistrationStore(table, targets),
+      toolKeys: new TableToolKeyStore(table),
     };
   }
 
@@ -98,6 +101,15 @@ export class TestLtiDistrict extends DurableObject {
 
   async registration(): Promise<PlatformRegistration | undefined> {
     return this.#stores.registrations.get(REGISTRATION);
+  }
+
+  /** The published tool key IDs, signing key first. */
+  async toolKeyIds(): Promise<string[]> {
+    return toolJwks(await this.#stores.toolKeys.keySet()).keys.map((key) => key.kid);
+  }
+
+  async rotateToolKeys(): Promise<ToolKeyRotation> {
+    return this.#stores.toolKeys.rotate();
   }
 }
 

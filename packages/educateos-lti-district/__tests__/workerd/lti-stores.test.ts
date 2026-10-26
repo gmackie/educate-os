@@ -1,7 +1,8 @@
 // The district LTI stores over `DurableObjectRecordTable`, in workerd, against real Durable Object
 // SQLite storage (SCHO-60): a login state is taken once however many requests race for it, a
-// passback version is claimed once, deep-linked activity links never overwrite one another, and
-// everything survives a restart of the object.
+// passback version is claimed once, deep-linked activity links never overwrite one another, the
+// tool's signing keys and their rotation are kept (SCHO-177), and everything survives a restart of
+// the object.
 
 import { env, evictDurableObject, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
@@ -53,6 +54,18 @@ describe("district LTI stores in a Durable Object", () => {
     expect(results.filter((result) => result === "conflict")).toHaveLength(4);
     await evictDurableObject(district);
     expect((await district.registration())?.activityLinks).toHaveLength(21);
+  });
+
+  it("keeps the tool's signing key, and a rotation, across restarts", async () => {
+    const district = fresh();
+    const [first] = await district.toolKeyIds();
+    await evictDurableObject(district);
+    expect(await district.toolKeyIds()).toEqual([first]);
+
+    const rotation = await district.rotateToolKeys();
+    expect(rotation.retiredKids).toEqual([first]);
+    await evictDurableObject(district);
+    expect(await district.toolKeyIds()).toEqual([rotation.signingKid, first]);
   });
 
   it("refuses to read a tampered row", async () => {
