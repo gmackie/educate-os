@@ -81,6 +81,7 @@ describe("district slugs", () => {
       expect(RESERVED_SLUGS.has(slug)).toBe(true);
       expect(DistrictSlug.safeParse(slug).success).toBe(false);
     }
+    expect(RESERVED_SLUGS.has("schoolos")).toBe(true); // rename-educateos: keep
     for (const slug of ["nf", "a".repeat(33), "2northfield", "north_field", "Northfield", "north--field", "xn--nrthfeld-n4a", "northfield-", "north.field", ""]) {
       expect(DistrictSlug.safeParse(slug).success, slug).toBe(false);
     }

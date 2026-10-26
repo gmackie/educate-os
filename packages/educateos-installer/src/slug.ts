@@ -31,7 +31,8 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "preview", "previews", "sandbox", "internal", "localhost", "local", "system", "health",
   "healthz", "metrics", "monitor",
   // names that would read as official
-  "educateos", "schoolos", "cloudflare", "official", "district", "districts", "school", "schools",
+  "schoolos", // the product's former name, still reserved (rename-educateos: keep)
+  "educateos", "cloudflare", "official", "district", "districts", "school", "schools",
   "example", "invalid", "null", "undefined",
 ]);
 
