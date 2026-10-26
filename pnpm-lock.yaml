@@ -1175,6 +1175,9 @@ importers:
       '@educateos/contracts':
         specifier: workspace:*
         version: link:../educateos-contracts
+      '@educateos/provider-fakes':
+        specifier: workspace:*
+        version: link:../educateos-provider-fakes
     devDependencies:
       '@gadgets/scripts':
         specifier: workspace:*

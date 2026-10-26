@@ -106,6 +106,17 @@ export interface PersonSeed extends SeedRecord {
   readonly guardianOf?: readonly string[];
   /** A guardian's relationship to their students. Defaults to `guardian`. */
   readonly relationship?: "parent" | "guardian" | "relative" | "aunt/uncle" | "grandparent" | "sibling" | "other";
+  /**
+   * Vendor user IDs the person already has, for a seed adapted from a directory that records them
+   * (a demo district's Clever or Google subjects). Each replaces the ID the fakes would derive, in
+   * sign-in and in the roster alike, so the subject a fake asserts is the one the directory holds.
+   */
+  readonly vendorIds?: {
+    /** The Clever user ID: the Clever OIDC `sub` and the Data API user `id`. 24 hex digits. */
+    readonly clever?: string;
+    /** The Google account ID: the Google OIDC `sub` and the Classroom user ID. Decimal digits. */
+    readonly google?: string;
+  };
 }
 
 /** A student's turned-in work on an assignment, for the Classroom and LTI grade fakes. */

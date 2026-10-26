@@ -9,6 +9,7 @@ import { RIVERBEND } from "./riverbend.ts";
 import { classroomSeed, type ClassroomSeed } from "./vendors/classroom.ts";
 import { cleverSeed, type CleverSeed } from "./vendors/clever.ts";
 import { districtSeed } from "./vendors/district-seed.ts";
+import { fakeSeed } from "./vendors/fakes.ts";
 import { oneRosterSeed, withStudentsRemoved, type OneRosterSeed } from "./vendors/oneroster.ts";
 
 export { CEDARVALLEY, CEDARVALLEY_GUARDIANS } from "./cedarvalley.ts";
@@ -21,7 +22,7 @@ export type * from "./profile.ts";
 export type * from "./vendors/classroom.ts";
 export type * from "./vendors/clever.ts";
 export type * from "./vendors/oneroster.ts";
-export { classroomSeed, cleverSeed, districtSeed, oneRosterSeed, withStudentsRemoved };
+export { classroomSeed, cleverSeed, districtSeed, fakeSeed, oneRosterSeed, withStudentsRemoved };
 export type { DistrictSeedOptions, FakeDistrictSeed, FakePersonSeed } from "./vendors/district-seed.ts";
 export { googleDemoPlan, type GoogleCoursePlan, type GoogleDemoPlan, type GoogleOrgUnitPlan, type GoogleUserPlan } from "./google-demo.ts";
 

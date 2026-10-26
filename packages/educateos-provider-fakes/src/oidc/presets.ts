@@ -261,8 +261,8 @@ const classlinkPreset: OidcPreset = {
 };
 
 /** A seed person's Google account ID (`sub`): 21 decimal digits. */
-export function googleSubjectId(seed: Pick<DistrictSeed, "id">, personId: string): string {
-  return numericId("google:user", `${seed.id}\u0000${personId}`, 21);
+export function googleSubjectId(seed: Pick<DistrictSeed, "id"> & Partial<Pick<DistrictSeed, "people">>, personId: string): string {
+  return seed.people?.find((p) => p.id === personId)?.vendorIds?.google ?? numericId("google:user", `${seed.id}\u0000${personId}`, 21);
 }
 
 const googlePreset: OidcPreset = {
