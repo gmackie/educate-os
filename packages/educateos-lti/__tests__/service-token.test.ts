@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decodeJwt, decodeProtectedHeader } from "jose";
-import { createToolKeySet, generateToolKey, importToolKey, LTI_SCOPES, LtiServiceClient, rotateToolKeys } from "../src/index.ts";
+import { createToolKeySet, generateToolKey, importToolKey, LTI_SCOPES, LtiServiceClient, PlatformJwksCache, rotateToolKeys } from "../src/index.ts";
 import { servicesFetch } from "./fake-services.ts";
 import { rejection } from "./helpers.ts";
 import { createServicesWorld } from "./services-helpers.ts";
@@ -13,6 +13,21 @@ async function registrationOf(world: Awaited<ReturnType<typeof createServicesWor
 }
 
 describe("LTI service tokens", () => {
+  it("never follows a redirect, and asks fetch for `manual`, which the Workers runtime accepts", async () => {
+    const world = await createServicesWorld();
+    const registration = await registrationOf(world);
+    const modes: (RequestRedirect | undefined)[] = [];
+    const redirecting = (async (_input: string | URL | Request, init?: RequestInit) => {
+      modes.push(init?.redirect);
+      return new Response(null, { status: 302, headers: { location: "https://elsewhere.example/" } });
+    }) as typeof fetch;
+    const client = new LtiServiceClient({ fetch: redirecting, toolKeys: world.getToolKeys, now: world.clock.now });
+    expect(await rejection(client.accessToken(registration, NRPS))).toBe("unavailable");
+    expect(await rejection(new PlatformJwksCache({ fetch: redirecting }).getKey(registration.jwksUrl, "kid"))).toBe("unavailable");
+    expect(modes).toEqual(["manual", "manual"]);
+  });
+
+
   it("signs a client assertion the platform verifies against the tool JWKS", async () => {
     const world = await createServicesWorld();
     const registration = await registrationOf(world);

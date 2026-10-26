@@ -11,6 +11,11 @@ export const WORKSHOP_ACCESS_AUDIENCE = "test-workshop-aud";
 /** `CF_ACCESS_AUD` as the tests deploy it: both audiences, with an empty and a blank entry to ignore. */
 export const ACCESS_AUDIENCES = ` ${ACCESS_AUDIENCE},, ,${WORKSHOP_ACCESS_AUDIENCE} `;
 
+/** The LTI Tool's origin, as the tests deploy it (SCHO-177): the host their requests name. */
+export const LTI_TOOL_ORIGIN = "https://district.example";
+/** The synthetic LMS the LTI tests register (SCHO-177). Not one of Northfield's trusted issuers. */
+export const LMS_ISSUER = "https://lms.northfield.example";
+
 /** Northfield as the district's seed, its records owned by the roster, funded for one synthetic model. */
 export const TEST_CONFIG: DistrictWorkerConfig = {
   directory: NORTHFIELD,

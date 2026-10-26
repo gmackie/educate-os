@@ -1043,6 +1043,15 @@ importers:
       '@educateos/identity':
         specifier: workspace:*
         version: link:../educateos-identity
+      '@educateos/identity-links':
+        specifier: workspace:*
+        version: link:../educateos-identity-links
+      '@educateos/lti':
+        specifier: workspace:*
+        version: link:../educateos-lti
+      '@educateos/lti-district':
+        specifier: workspace:*
+        version: link:../educateos-lti-district
       '@educateos/policy':
         specifier: workspace:*
         version: link:../educateos-policy

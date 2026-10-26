@@ -12,5 +12,10 @@ declare namespace Cloudflare {
      * district's own, and the instance Workshop's when its EducateOS connector forwards sign-ins.
      */
     CF_ACCESS_AUD?: string;
+    /**
+     * The LTI 1.3 Tool's public https origin, such as `https://district.example.org` (SCHO-177).
+     * Unset, the district serves no LTI routes.
+     */
+    LTI_TOOL_ORIGIN?: string;
   }
 }

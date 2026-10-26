@@ -29,6 +29,7 @@ import { startDistrict, type District } from "./district.ts";
 import type { SendEmailBinding } from "./mail.ts";
 import { jobForCron } from "./schedule.ts";
 import { onLegacyTableMigrated, type LegacyTableReport } from "@educateos/contracts/legacy-tables";
+import { LTI_API_PREFIX } from "./lti.ts";
 
 // Each table recovered from before the rename (SCHO-232), with its counts, so the migration's
 // outcome in production can be read from the logs.
@@ -78,14 +79,32 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return this.env.SEND_EMAIL as SendEmailBinding | undefined;
   }
 
+  /**
+   * The fetch LTI platform calls go through: JWKS, tokens, AGS, NRPS and registration (SCHO-177).
+   * Tests replace it with a synthetic platform.
+   */
+  protected platformFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    return fetch(input, init);
+  }
+
   /** The running application, for subclasses that drive it directly (the tests). */
   protected async districtApp(): Promise<DistrictApp> {
     return (await this.#boot()).app;
   }
 
-  /** Serves the district's `/api` surface. */
+  /**
+   * Serves the district's `/api` surface, the LTI administrators' `/api/lti/` routes among it, and
+   * the LTI Tool's `/lti/` routes (SCHO-177), which are 404 when the deployment runs no LTI Tool.
+   */
   override async fetch(request: Request): Promise<Response> {
-    return (await this.#boot()).app.fetch(request);
+    const { app, lti } = await this.#boot();
+    const { pathname } = new URL(request.url);
+    if (pathname.startsWith(LTI_API_PREFIX) || pathname.startsWith("/lti/")) {
+      if (lti === undefined) return Response.json({ code: "not-found", message: "This district runs no LTI Tool." }, { status: 404 });
+      if (pathname.startsWith(LTI_API_PREFIX)) return lti.serveAdmin(request);
+      return (await lti.serveTool(request))!;
+    }
+    return app.fetch(request);
   }
 
   /** What the district says about a Workshop user, for the AI call guard. */
@@ -164,7 +183,12 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     const sendEmail = this.sendEmail();
     const district = await startDistrict(
       this.ctx.storage,
-      { config: this.env.DISTRICT_CONFIG, accessIssuer: this.env.CF_ACCESS_ISS, accessAudiences: this.env.CF_ACCESS_AUD },
+      {
+        config: this.env.DISTRICT_CONFIG,
+        accessIssuer: this.env.CF_ACCESS_ISS,
+        accessAudiences: this.env.CF_ACCESS_AUD,
+        ltiToolOrigin: this.env.LTI_TOOL_ORIGIN,
+      },
       {
         importFetch: (url, init) => this.importFetch(url, init),
         // SCHO-232: a configuration head policy cannot read is passed over; say so, once per revision.
@@ -172,6 +196,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
           event: "config.revision.unreadable",
           revisionId,
         }),
+        platformFetch: (input, init) => this.platformFetch(input, init),
         ...(keys === undefined ? {} : { accessKeys: keys }),
         ...(sendEmail === undefined ? {} : { sendEmail }),
       },

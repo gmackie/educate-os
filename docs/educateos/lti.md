@@ -262,8 +262,7 @@ will also create the coursework it grades. Tests use an in-memory fake provider.
 # District wiring (SCHO-60, SCHO-76)
 
 `@educateos/lti-district` (`packages/educateos-lti-district`) is what a district Worker hosts around
-the broker. Mounting `createLtiHandler` in the district Worker is a later change (SCHO-108); this
-package supplies every piece it needs.
+the broker. The district Worker mounts it (SCHO-177; see [The district Worker's Tool](#the-district-workers-tool)).
 
 ## Durable stores
 
@@ -320,4 +319,43 @@ school admin in their school). `policySelectActivities` is the handler's `select
 chosen activity must be installed in the launch's offering, and the principal must be allowed to
 `assign` it there. `districtPrincipalResolver` resolves launches against the directory as it is at
 each launch.
+
+## The district Worker's Tool (SCHO-177)
+
+`@educateos/district-worker` serves the Tool when its `LTI_TOOL_ORIGIN` var names the district's
+public https origin (production sets it from the district hostname). Its LTI records share the
+district's Durable Object with the application's, in the `educateos_lti_records` table.
+
+| Path | Who calls it | Sign-in |
+| --- | --- | --- |
+| `GET/POST /lti/login`, `POST /lti/launch`, `GET /lti/jwks`, `POST /lti/deep-link`, `GET /lti/register` | the platform and its users' browsers | none: **exempt from Access**, exactly these paths. Each is protected by what it carries (a platform-signed id_token bound to single-use state and the browser's state cookie, a single-use deep linking session, a single-use registration invitation). |
+| `/api/lti/*` | district administrators and teachers | Cloudflare Access, as the rest of `/api`: verified and resolved through the directory, then decided by policy. |
+
+A platform's users never pass through Access: Canvas posts the launch from the learner's own
+browser, inside the Canvas iframe, with no Access session. So the bypass must cover the five Tool
+paths and nothing else; the administrators' surface stays behind the district's Access
+application.
+
+The resource link launch answers with a page built from the directory (who the principal is, the
+offering, the linked activity). The deep linking picker lists the activities assigned in the
+launch's offering; the choice is authorized by `policySelectActivities`.
+
+`/api/lti/*` (JSON in and out; a POST body must be `application/json`):
+
+| Route | Decided as | Does |
+| --- | --- | --- |
+| `POST invitations` | `update` district | Issues a single-use Dynamic Registration URL. |
+| `GET registrations` | `read` district | Approved and pending registrations. |
+| `POST pending/:id/approve`, `POST pending/:id/reject` | `update` district | Approves with `{ provider, offerings, activityLinks? }`, or discards. |
+| `POST trusted-issuers` | `update` district | Trusts the issuer `{ issuer }` of a pending or approved registration, which approval and identity links need. |
+| `POST identity-links` | `update` district | Records a pending link `{ issuer, subject, principalId }`; approve it at `/api/admin/identity-requests/:id/approve`. An unlinked launch's error body names its `issuer` and `subject`. |
+| `GET offerings/:offeringId/services` | `update` offering | The AGS and NRPS services launches reported. |
+| `POST grade-routes`, `POST grade-columns` | `update` offering | As `LtiAdminService.routeGradesToPlatform` and `bindGradeColumn`. |
+| `POST line-items` | `update` offering | Creates an AGS line item in a connected context. |
+| `POST roster` | `update` offering | Reads the context's NRPS roster, matched to identity links. Nothing is written. |
+| `POST passback` | the approving teacher | Publishes `{ offeringId, studentId, column, gradeVersion }`: only the teacher who approved that official grade version may, and the score sent is the approved one. `GradePassback` then checks everything again. |
+| `GET tool-keys`, `POST tool-keys/rotate` | `read` / `update` district | The published key IDs; rotation keeps the previous key published. |
+
+Platform calls (JWKS, tokens, AGS, NRPS, registration) use `redirect: "manual"` and refuse any
+redirect: the Workers runtime rejects `redirect: "error"` outright.
 

@@ -14,6 +14,8 @@ import { accessAudiences, accessRequestVerifier } from "./access.ts";
 import { readDistrictWorkerConfig } from "./config.ts";
 // Communication (SCHO-189)
 import { cloudflareEmailSender, type SendEmailBinding } from "./mail.ts";
+// LTI 1.3 Tool (SCHO-177)
+import { startDistrictLti, type DistrictLti } from "./lti.ts";
 
 /** The district application and its school tools. */
 export interface District {
@@ -21,6 +23,8 @@ export interface District {
   app: DistrictApp;
   /** The school tools the EducateOS gatekeeper reaches. */
   tools: SchoolToolService;
+  /** The district's LTI 1.3 Tool, when the deployment names its origin (SCHO-177). */
+  lti: DistrictLti | undefined;
 }
 
 /** The Worker's settings a district starts from: its vars, as text. */
@@ -31,6 +35,8 @@ export interface DistrictSettings {
   accessIssuer: string | undefined;
   /** `CF_ACCESS_AUD`, the audiences of the Access applications it accepts, comma-separated (see `accessAudiences`). */
   accessAudiences: string | undefined;
+  /** `LTI_TOOL_ORIGIN`, the LTI Tool's public https origin. Without it the district serves no LTI routes. */
+  ltiToolOrigin?: string | undefined;
 }
 
 /** What a district reaches outside its storage. */
@@ -43,6 +49,8 @@ export interface DistrictSeams {
   sendEmail?: SendEmailBinding;
   /** Told the ID of a configuration revision policy cannot read and passes over (SCHO-232), to log it. */
   onUnreadableConfigRevision?: (revisionId: string) => void;
+  /** The fetch LTI platform calls go through (SCHO-177). Defaults to the global fetch. */
+  platformFetch?: typeof fetch;
 }
 
 /** The district ID `DISTRICT_CONFIG` names, which its Durable Object is named by. */
@@ -107,5 +115,15 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     },
     serveAs: (principal, request) => app.serveAs(principal, request),
   });
-  return { app, tools };
+  const lti = settings.ltiToolOrigin === undefined || settings.ltiToolOrigin === ""
+    ? undefined
+    : startDistrictLti({
+      storage,
+      app,
+      stores,
+      verifyRequest,
+      toolOrigin: settings.ltiToolOrigin,
+      platformFetch: seams.platformFetch ?? ((input, init) => fetch(input, init)),
+    });
+  return { app, tools, lti };
 }

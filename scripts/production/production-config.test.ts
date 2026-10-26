@@ -147,8 +147,9 @@ test("the district Worker has its own custom domains, serves the UIs as assets a
   assert.deepEqual(district.assets, {
     directory: "./dist/ui",
     not_found_handling: "single-page-application",
-    run_worker_first: ["/api/*", "/healthz"],
+    run_worker_first: ["/api/*", "/healthz", "/lti/*"],
   });
+  assert.deepEqual(district.vars, { LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io" });
   assert.deepEqual(district.triggers, { crons: ["7 * * * *", "0 14 * * SUN"] });
   assert.deepEqual(district.send_email, [{ name: "SEND_EMAIL" }]);
   // Only the EducateOS connector binds it (SCHO-218); the guard keeps its configured directory

@@ -111,12 +111,16 @@ function serveApi(request: Request, env: Cloudflare.Env, exports: Cloudflare.Exp
 
 export default {
   /**
-   * The district's `/api` surface, and `/healthz`, a liveness probe that reads nothing and needs no
-   * sign-in (a deployment exempts it from Access). Nothing else is served; a deployment that serves
-   * the district's UIs does so as static assets in front of this handler.
+   * The district's `/api` surface; `/healthz`, a liveness probe that reads nothing and needs no
+   * sign-in (a deployment exempts it from Access); and the LTI Tool's `/lti/*` endpoints (SCHO-177),
+   * which platform users reach from their LMS, so a deployment exempts exactly those paths from
+   * Access too. Nothing else is served; a deployment that serves the district's UIs does so as
+   * static assets in front of this handler.
    */
   async fetch(request, env, ctx): Promise<Response> {
-    if (new URL(request.url).pathname === "/healthz") return new Response("ok", { headers: { "content-type": "text/plain" } });
+    const { pathname } = new URL(request.url);
+    if (pathname === "/healthz") return new Response("ok", { headers: { "content-type": "text/plain" } });
+    if (pathname.startsWith("/lti/")) return districtObject(env, ctx.exports).fetch(request);
     return serveApi(request, env, ctx.exports);
   },
   /** The district's Cron Triggers (SCHO-189): notifications hourly, the family digest weekly. See schedule.ts. */
