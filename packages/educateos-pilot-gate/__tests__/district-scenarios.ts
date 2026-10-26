@@ -8,8 +8,9 @@
 // never a district's name.
 import { expect } from "vitest";
 import { DistrictApiError } from "@educateos/api-client";
-import { DEMO_DISTRICTS, type DemoDistrict } from "@educateos/fixtures";
+import { DEMO_DISTRICTS, districtSeed, type DemoDistrict } from "@educateos/fixtures";
 import { FakeIdentityProvider } from "@educateos/harness";
+import { createDirectoryPrincipalResolver, identityFromCleverClaims } from "@educateos/identity";
 import { integrationHealth, type oneroster } from "@educateos/integrations";
 import {
   AgsClient,
@@ -20,7 +21,7 @@ import {
   LtiAgsGradeSink,
 } from "@educateos/lti";
 import { InMemoryExportMappingStore, InMemoryStudentRecordSource, readZip, StudentArchiveExporter } from "@educateos/portability";
-import { parseAutoSubmitForm } from "@educateos/provider-fakes";
+import { cleverDistrictId as cleverDistrictIdOf, OidcFake, parseAutoSubmitForm, routeFetch } from "@educateos/provider-fakes";
 import { restore, snapshot } from "./backup.ts";
 import type { ScenarioBody } from "./district-gate.ts";
 import {
@@ -29,18 +30,15 @@ import {
   castOf,
   directoryOf,
   districtCsv,
-  fakeEnrollmentId,
   fixtureShape,
   formPost,
   importedOffering,
   importedPrincipal,
   ltiWorld,
-  restRoster,
   rosterShape,
   signingInFromStore,
   subjectOfPrincipal,
-  syncedOffering,
-  syncedPrincipal,
+  syncedRoster,
   TOOL,
   withEnrollmentEnded,
   withoutEnrollment,
@@ -81,9 +79,9 @@ async function importedFromCsv(demo: DemoDistrict, overrides: PilotOverrides = {
   return { district, admin };
 }
 
-/** A completed first REST sync of the district's OneRoster server. */
-async function syncedFromRest(demo: DemoDistrict) {
-  const roster = restRoster(demo);
+/** A completed first sync of the district's roster provider (OneRoster REST or Clever). */
+async function syncedFromProvider(demo: DemoDistrict) {
+  const roster = syncedRoster(demo);
   const first = await roster.sync(roster.empty, "complete");
   if (first.run.outcome !== "succeeded") throw new Error(`the first sync failed: ${JSON.stringify(first.preview?.issues ?? first.run).slice(0, 2000)}`);
   return { roster, state: first.state, runs: [first.run] };
@@ -110,7 +108,7 @@ async function expectDropped(district: PilotDistrict, work: Awaited<ReturnType<t
 }
 
 /** A REST sync that must succeed. */
-async function synced(roster: ReturnType<typeof restRoster>, state: oneroster.RosterSyncState, mode: "complete" | "delta", approvedRemoval?: string) {
+async function synced(roster: ReturnType<typeof syncedRoster>, state: oneroster.RosterSyncState, mode: "complete" | "delta", approvedRemoval?: string) {
   const result = await roster.sync(state, mode, approvedRemoval);
   if (result.run.outcome !== "succeeded") throw new Error(`the ${mode} sync failed: ${JSON.stringify(result.preview?.issues ?? result.run).slice(0, 2000)}`);
   return result;
@@ -137,6 +135,39 @@ export const SCENARIO_BODIES: Readonly<Record<string, ScenarioBody>> = {
     const claimed = await district.entry.identity.issueToken(subject, { extraClaims: { role: "district-admin", principalId: cast.admin.id } });
     expect((await district.withToken(claimed).call("me.get")).principalId).toBe(cast.student.id);
     await expectDenied(district.withToken(claimed).call("admin.health"));
+  },
+
+  "vendor-sso": async (demo) => {
+    // The district's directory as its Clever roster made it, so subjects are Clever user IDs.
+    const { roster, state } = await syncedFromProvider(demo);
+    const resolver = createDirectoryPrincipalResolver(state.roster.snapshot);
+    const seed = districtSeed(demo);
+    const client = { clientId: `${demo.slug}-validation`, clientSecret: "synthetic-client-value", redirectUris: [`https://${demo.slug}.educateos.example/callback`] };
+    const idp = new OidcFake({ seed, preset: "clever", clients: [client] });
+    const fetch = routeFetch(Object.fromEntries(idp.origins.map((origin) => [origin, idp])));
+    const discovery = (await (await fetch(idp.discoveryUrl)).json()) as Record<string, string>;
+    const cleverDistrictId = cleverDistrictIdOf(seed);
+    /** What Clever's userinfo says of a person who signs in. */
+    const claimsOf = async (personId: string) => {
+      const authorize = new URL(discovery["authorization_endpoint"]!);
+      for (const [k, v] of Object.entries({ client_id: client.clientId, redirect_uri: client.redirectUris[0]!, response_type: "code", scope: "openid email profile", state: "s", login_hint: personId })) authorize.searchParams.set(k, v);
+      const code = new URL((await fetch(authorize, { redirect: "manual" })).headers.get("location")!).searchParams.get("code")!;
+      const { access_token: token } = (await (await fetch(discovery["token_endpoint"]!, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded", authorization: `Basic ${btoa(`${client.clientId}:${client.clientSecret}`)}` },
+        body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: client.redirectUris[0]! }),
+      })).json()) as { access_token: string };
+      return (await (await fetch(discovery["userinfo_endpoint"]!, { headers: { authorization: `Bearer ${token}` } })).json()) as Record<string, unknown>;
+    };
+    const cast = castOf(demo);
+    const config = { districtId: cleverDistrictId, issuer: issuerOf(demo) };
+    for (const person of [cast.student, cast.peer, cast.teacher, cast.admin]) {
+      const identity = identityFromCleverClaims(await claimsOf(person.id), config);
+      expect((await resolver.resolve(identity)).principalId, person.id).toBe(roster.principal(state, person.id).id);
+    }
+    // A sign-in from another Clever district is refused, whoever it names.
+    const claims = await claimsOf(cast.student.id);
+    expect(() => identityFromCleverClaims({ ...claims, district: "0".repeat(24), district_id: "0".repeat(24) }, config)).toThrow(/another district/);
   },
 
   "tenant-isolation": async (demo) => {
@@ -184,10 +215,11 @@ export const SCENARIO_BODIES: Readonly<Record<string, ScenarioBody>> = {
         expect((await district.withToken(await district.entry.identity.issueToken(subjectOfPrincipal(cast.student))).call("me.get")).principalId).toBe(student);
         return;
       }
-      case "oneroster-rest": {
-        const { state, runs } = await syncedFromRest(demo);
+      case "oneroster-rest":
+      case "clever": {
+        const { roster, state, runs } = await syncedFromProvider(demo);
         expect(runs[0]).toMatchObject({ mode: "complete", outcome: "succeeded" });
-        expect(fixtureShape(state.roster.snapshot, state.roster.sources)).toStrictEqual(fixtureShape(demo.directory));
+        expect(roster.shape(state)).toStrictEqual(fixtureShape(demo.directory));
         // Every synced person can be signed in to: one identity at the district's trusted issuer.
         expect(state.roster.snapshot.principals.every((p) => p.externalIdentities.some((i) => i.issuer === issuer))).toBe(true);
         return;
@@ -231,17 +263,18 @@ export const SCENARIO_BODIES: Readonly<Record<string, ScenarioBody>> = {
         expect(after.enrollments).toStrictEqual(before.enrollments);
         return;
       }
-      case "oneroster-rest": {
-        // One enrollment ends at the SIS; a delta deactivates exactly it.
-        const { roster, state } = await syncedFromRest(demo);
-        roster.fake.remove("enrollments", fakeEnrollmentId(cast.offeringId, cast.peer.id));
+      case "oneroster-rest":
+      case "clever": {
+        // One enrollment ends at the provider; a delta deactivates exactly it.
+        const { roster, state } = await syncedFromProvider(demo);
+        roster.drop(cast.offeringId, cast.peer.id);
         const delta = await synced(roster, state, "delta");
         expect(delta.run.mode).toBe("delta");
         const { counts } = delta.run;
         expect(counts.enrollments).toStrictEqual({ added: 0, updated: 0, deactivated: 1 });
         for (const kind of ["schools", "terms", "courses", "offerings", "principals"] as const) expect(counts[kind], kind).toStrictEqual({ added: 0, updated: 0, deactivated: 0 });
-        const peer = syncedPrincipal(delta.state, cast.peer.id);
-        const offering = syncedOffering(delta.state, cast.offeringId);
+        const peer = roster.principal(delta.state, cast.peer.id);
+        const offering = roster.offering(delta.state, cast.offeringId);
         expect(delta.state.roster.snapshot.enrollments.find((e) => e.principalId === peer.id && e.offeringId === offering)?.status).toBe("inactive");
         expect(peer.status).toBe("active");
         // The same delta again changes nothing.
@@ -286,31 +319,31 @@ export const SCENARIO_BODIES: Readonly<Record<string, ScenarioBody>> = {
   },
 
   "roster-outage": async (demo) => {
-    const { roster, state, runs } = await syncedFromRest(demo);
+    const { roster, state, runs } = await syncedFromProvider(demo);
     const sla = { maxStalenessMinutes: 24 * 60 };
-    roster.fake.inject({ kind: "outage", status: 503 });
+    roster.outage();
     const down = await roster.sync(state, "delta");
     expect(down.run).toMatchObject({ outcome: "failed", errorCode: "source-unavailable" });
     expect(down.state, "a failed sync leaves the directory as it was").toBe(state);
     runs.push(down.run);
     expect(integrationHealth(runs, sla, new Date(roster.clock.ms))).toMatchObject({ status: "degraded", consecutiveFailures: 1, lastErrorCode: "source-unavailable" });
-    roster.fake.clearFaults();
+    roster.recover();
     const up = await synced(roster, state, "delta");
     runs.push(up.run);
     expect(integrationHealth(runs, sla, new Date(roster.clock.ms))).toMatchObject({ status: "healthy", consecutiveFailures: 0 });
-    expect(fixtureShape(up.state.roster.snapshot, up.state.roster.sources)).toStrictEqual(fixtureShape(state.roster.snapshot, state.roster.sources));
+    expect(roster.shape(up.state)).toStrictEqual(roster.shape(state));
   },
 
   "large-removal-hold": async (demo) => {
-    const { roster, state } = await syncedFromRest(demo);
-    const before = fixtureShape(state.roster.snapshot, state.roster.sources);
+    const { roster, state } = await syncedFromProvider(demo);
+    const before = roster.shape(state);
     // A botched SIS export: most of the students vanish at once.
-    roster.fake.inject({ kind: "large-removal", fraction: 0.6 });
+    roster.largeRemoval(0.6);
     const held = await roster.sync(state, "complete");
     expect(held.run).toMatchObject({ outcome: "failed", errorCode: "removal-held" });
     expect(held.state, "a held sync leaves the directory as it was").toBe(state);
     expect(held.held!.principals.deactivated).toBeGreaterThanOrEqual(Math.ceil(0.6 * demo.directory.principals.filter((p) => p.kind === "student").length));
-    expect(fixtureShape(held.state.roster.snapshot, held.state.roster.sources)).toStrictEqual(before);
+    expect(roster.shape(held.state)).toStrictEqual(before);
     // The administrator approves exactly that removal, and only then does it apply: deactivated, not deleted.
     const approved = await synced(roster, state, "complete", held.held!.fingerprint);
     const after = approved.state.roster.snapshot;

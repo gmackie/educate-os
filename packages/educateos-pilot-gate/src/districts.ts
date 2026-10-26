@@ -34,29 +34,30 @@ const runs = (direct?: string): Applicability => (direct === undefined ? { kind:
 const blocked = (reason: string, ...blockedBy: string[]): Applicability => ({ kind: "blocked", blockedBy: blockedBy.map((id) => IssueId.parse(id)), reason });
 const notInProfile: Applicability = { kind: "not-in-profile" };
 
-const CLEVER = "SCHO-203";
 const CLASSLINK = "SCHO-204";
 const CLASSROOM_SYNC = "SCHO-77";
 const GOOGLE_SIGN_IN = "SCHO-215";
 const PROVIDER_HOLD = "SCHO-180";
 const REST_APPLY = "SCHO-242";
 
-const NO_CLEVER = "There is no Clever connector yet (roster sync and Clever SSO).";
 const NO_CLASSLINK = "There is no ClassLink connector yet (OneRoster OAuth2 profile and ClassLink SSO).";
 const NO_CLASSROOM_SYNC = "There is no district-wide Google Classroom sync into the directory yet.";
 const NO_CSV_HOLD = "The CSV upload (admin.applyRoster) applies a feed that drops most students in full: the removal hold (SCHO-203) is in the sync runner, which the upload does not use.";
-const NO_REST_APPLY = "The district app applies only uploaded CSV rosters; nothing applies a OneRoster REST sync to a running district, so a drop or a term's end at the SIS never reaches it.";
+const NO_SYNC_APPLY = "The district app applies only uploaded CSV rosters; nothing applies a OneRoster REST or Clever sync to a running district, so a drop or a term's end at the source never reaches it.";
+const CLEVER_DIRECT = "The district app has no Clever sync route, so the sync runs through `runRosterSync` over the Clever connector (`cleverRosterSource`) and the Clever Data API fake.";
 const REST_DIRECT = "The district app has no OneRoster REST sync route, so the sync runs through `runRosterSync` over the OneRoster fake.";
 const LTI_DIRECT = "The district app has no LTI routes; the district Worker serves `@educateos/lti`'s handler, which is driven here over the app's directory.";
 
 /** A roster scenario: by the district's roster source. */
 function byRoster(profile: IntegrationProfile, rules: { local?: Applicability; csv: Applicability; rest: Applicability; clever?: Applicability; classroom?: Applicability }): Applicability {
+  // The Clever connector (SCHO-203) syncs through the same runner as OneRoster REST, so a rule for
+  // REST applies to Clever too unless the scenario says otherwise.
   switch (profile.roster) {
     case "local": return rules.local ?? notInProfile;
     case "oneroster-csv": return rules.csv;
     // ClassLink's OneRoster is the OAuth2 REST profile the existing client speaks; SCHO-204 adds its tenant configuration and SSO.
     case "oneroster-rest": return rules.rest;
-    case "clever": return rules.clever ?? blocked(NO_CLEVER, CLEVER);
+    case "clever": return rules.clever ?? (rules.rest.kind === "runs" ? runs(CLEVER_DIRECT) : rules.rest);
     case "google-classroom": return rules.classroom ?? blocked(NO_CLASSROOM_SYNC, CLASSROOM_SYNC);
   }
 }
@@ -88,7 +89,7 @@ export const SCENARIOS: readonly Scenario[] = [
     title: "the vendor's OIDC sign-in (Clever, ClassLink, Google) resolves to the directory principal through (district, issuer, subject)",
     applies: ({ profile: p }) => {
       switch (p.sso) {
-        case "clever": return blocked(NO_CLEVER, CLEVER);
+        case "clever": return runs("Cloudflare Access passes Clever's claims to the district Worker, which reads them with `identityFromCleverClaims`; here the claims come from the Clever OIDC fake's userinfo, and resolve against the directory the Clever roster sync made.");
         case "classlink": return blocked(NO_CLASSLINK, CLASSLINK);
         case "google": return blocked("Google Workspace sign-in for a district is not built yet.", GOOGLE_SIGN_IN);
         default: return notInProfile;
@@ -118,7 +119,7 @@ export const SCENARIOS: readonly Scenario[] = [
     id: "drop",
     group: "roster",
     title: "a student dropped at the source loses the class on the next request, and keeps their workspace and work",
-    applies: ({ profile: p }) => byRoster(p, { local: runs(), csv: runs(), rest: blocked(NO_REST_APPLY, REST_APPLY) }),
+    applies: ({ profile: p }) => byRoster(p, { local: runs(), csv: runs(), rest: blocked(NO_SYNC_APPLY, REST_APPLY) }),
   },
   {
     id: "large-removal-hold",
@@ -173,7 +174,7 @@ export const SCENARIOS: readonly Scenario[] = [
     group: "operations",
     title: "a term the source of record ends can be closed, which revokes its class grants and course AI funding and keeps the students' work",
     // Who ends a term is the source of record: the administrator in a local district, the next roster sync otherwise.
-    applies: ({ profile: p }) => byRoster(p, { local: runs(), csv: runs(), rest: blocked(NO_REST_APPLY, REST_APPLY) }),
+    applies: ({ profile: p }) => byRoster(p, { local: runs(), csv: runs(), rest: blocked(NO_SYNC_APPLY, REST_APPLY) }),
   },
   {
     id: "export-restore",
