@@ -786,6 +786,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         },
         config: { ...(head === undefined ? {} : { headRevisionId: head.id }), revisions: revisions.length },
         aiRequests: (await ledger.usageEvents()).length,
+        authority,
       };
     },
     "admin.listOfferings": async (ctx) => {
@@ -800,6 +801,22 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
           .map((e) => ctx.snapshot.principals.find((p) => p.id === e.principalId)?.displayName ?? "");
         return [{ offering, course, teachers, students: active.filter((e) => e.role === "student").length }];
       });
+    },
+    "admin.directoryNames": async (ctx) => {
+      await ctx.requireDistrict("list", "offering");
+      const academics = ctx.academics();
+      const [schools, terms, courses, offerings] = await Promise.all([
+        academics.listSchools(ctx.caller),
+        academics.listTerms(ctx.caller),
+        academics.listCourses(ctx.caller),
+        academics.listOfferings(ctx.caller),
+      ]);
+      const titles = new Map(courses.map((c) => [c.id, c.title]));
+      return {
+        schools: schools.map(({ id, name }) => ({ id, name })),
+        terms: terms.map(({ id, name }) => ({ id, name })),
+        offerings: offerings.map((o) => ({ id: o.id, name: `${titles.get(o.courseId) ?? "Course"} · ${o.sectionName}` })),
+      };
     },
     // Learning standards (SCHO-220)
     "admin.listStandards": async (ctx) => {
@@ -962,6 +979,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       return { authority, trustedIssuers: ctx.snapshot.district.trustedIssuers, schools, terms, courses, offerings, principals };
     },
     "admin.createSchool": (ctx, { body }) => ctx.academics().createSchool(ctx.caller, body),
+    "admin.updateSchool": (ctx, { params, body }) => ctx.academics().updateSchool(ctx.caller, params.schoolId, body),
     "admin.createTerm": (ctx, { body }) => ctx.academics().createTerm(ctx.caller, body),
     "admin.updateTerm": (ctx, { params, body }) => ctx.academics().updateTerm(ctx.caller, params.termId, body),
     "admin.transitionTerm": (ctx, { params, body }) => ctx.academics().transitionTerm(ctx.caller, params.termId, body.to),

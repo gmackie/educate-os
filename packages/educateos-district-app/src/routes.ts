@@ -29,6 +29,7 @@ import {
   RoleAssignment,
   RubricId,
   School,
+  SchoolId,
   SubmissionId,
   TermId,
   TermState,
@@ -119,7 +120,7 @@ import {
   StudentAttemptView,
   StudentQuizView,
 } from "@educateos/quizzes";
-import { CoursePatch, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, PrincipalPatch, TermPatch } from "@educateos/academics";
+import { CoursePatch, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, PrincipalPatch, SchoolPatch, TermPatch } from "@educateos/academics";
 import { EvidenceContract } from "@educateos/registry";
 import { AssessmentReport, IdempotencyKey, RubricDraft, RubricRelease, RunError, RunState } from "@educateos/assessment-ci";
 import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type AiProjectionReport, type UsageReport } from "@educateos/ai-governance";
@@ -370,6 +371,19 @@ export const AdminOfferingBody = z.strictObject({
 /** An administrator's class row. */
 export type AdminOfferingBody = z.infer<typeof AdminOfferingBody>;
 
+/**
+ * The names of the district's schools, terms and classes, so a screen that reports by ID can say
+ * which one it means (SCHO-221). It names no person, so the count-and-total screens may read it.
+ */
+export const DirectoryNamesBody = z.strictObject({
+  schools: z.array(z.strictObject({ id: SchoolId, name: z.string() })),
+  terms: z.array(z.strictObject({ id: TermId, name: z.string() })),
+  /** Each class named by its course and section, such as "Biology · Period 2". */
+  offerings: z.array(z.strictObject({ id: OfferingId, name: z.string() })),
+});
+/** Directory names. */
+export type DirectoryNamesBody = z.infer<typeof DirectoryNamesBody>;
+
 /** An Assessment CI run as a teacher sees it, and the suggested scores it posted to the submission's feedback. */
 export const CiRunBody = z.strictObject({
   run: z.strictObject({
@@ -400,6 +414,8 @@ export const DistrictHealthBody = z.strictObject({
   content: z.strictObject({ awaitingReview: z.int(), releases: z.int() }),
   config: z.strictObject({ headRevisionId: ConfigRevisionId.optional(), revisions: z.int() }),
   aiRequests: z.int(),
+  /** Which system owns each directory record type, so the console can say whether a roster integration is set up. */
+  authority: AuthorityMap,
 });
 /** District health. */
 export type DistrictHealthBody = z.infer<typeof DistrictHealthBody>;
@@ -591,7 +607,20 @@ export const StudentGuardiansBody = z.strictObject({
   })),
   invitations: z.array(GuardianInvitationBody),
   /** Redeemed invitations' sign-ins awaiting a district admin's approval. */
-  pendingSignIns: z.array(z.strictObject({ requestId: IdentityRequestId, invitationId: GuardianInvitationId, guardianDisplayName: z.string() })),
+  pendingSignIns: z.array(z.strictObject({
+    requestId: IdentityRequestId,
+    invitationId: GuardianInvitationId,
+    /** The name the administrator invited them under, not one the guardian chose. */
+    guardianDisplayName: z.string(),
+    /**
+     * The sign-in that redeemed the link, which is what approving links to the new guardian, so
+     * the administrator can tell who actually used it. No email is kept: the verified sign-in
+     * carries none.
+     */
+    signIn: z.strictObject({ issuer: z.string(), subject: z.string() }),
+    /** When the link was redeemed. */
+    requestedAt: z.string(),
+  })),
 });
 /** A student's guardians. */
 export type StudentGuardiansBody = z.infer<typeof StudentGuardiansBody>;
@@ -1048,6 +1077,7 @@ export const ROUTES = {
   // Admin
   "admin.health": route({ method: "GET", path: "/api/admin/health", surface: "admin", response: DistrictHealthBody }),
   "admin.listOfferings": route({ method: "GET", path: "/api/admin/offerings", surface: "admin", response: z.array(AdminOfferingBody) }),
+  "admin.directoryNames": route({ method: "GET", path: "/api/admin/directory-names", surface: "admin", response: DirectoryNamesBody }),
   // Learning standards (SCHO-220)
   "admin.listStandards": route({ method: "GET", path: "/api/admin/standards", surface: "admin", response: z.array(StandardsReleaseBody) }),
   "admin.approveStandards": route({
@@ -1186,6 +1216,9 @@ export const ROUTES = {
   }),
   "admin.authoring": route({ method: "GET", path: "/api/admin/authoring", surface: "admin", response: AuthoringDirectoryBody }),
   "admin.createSchool": route({ method: "POST", path: "/api/admin/schools", surface: "admin", status: 201, body: NewSchool, response: School }),
+  "admin.updateSchool": route({
+    method: "POST", path: "/api/admin/schools/:schoolId", surface: "admin", params: params({ schoolId: SchoolId }), body: SchoolPatch, response: School,
+  }),
   "admin.createTerm": route({ method: "POST", path: "/api/admin/terms", surface: "admin", status: 201, body: NewTerm, response: AcademicTerm }),
   "admin.updateTerm": route({
     method: "POST", path: "/api/admin/terms/:termId", surface: "admin", params: params({ termId: TermId }), body: TermPatch, response: AcademicTerm,
