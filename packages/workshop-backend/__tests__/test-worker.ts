@@ -5,6 +5,7 @@ import { DurableObject, RpcStub, RpcTarget, WorkerEntrypoint, restore } from "cl
 import type {
   AccountDescription,
   AppUiContext,
+  GatekeeperAppNavEntry,
   GatekeeperUiFrame,
   GatekeeperUserSelection,
   GatekeeperUserVerifier,
@@ -89,6 +90,9 @@ const accountCalls = new Map<string, string[]>();
 /** A ticket a FakeGatekeeperAccount redeems when its UI is next opened, by account name. */
 const stashedTickets = new Map<string, string>();
 
+/** How a FakeGatekeeperAccount with a UI answers getAppNav, which it declares by having one. */
+export type FakeAppNav = { entries: unknown[] } | { fail: true } | { hang: true };
+
 /**
  * A gatekeeper account as the Workshop sees one: a persistent stub it can store and call back into.
  * Records calls by `props.name` so a test can ask any instance what happened (`calls()`); with
@@ -96,6 +100,7 @@ const stashedTickets = new Map<string, string>();
  */
 export class FakeGatekeeperAccount extends WorkerEntrypoint<Cloudflare.Env, {
   name: string; failRevoke?: boolean; failDescribe?: boolean; providesUi?: boolean;
+  appNav?: FakeAppNav;
 }> {
   #record(call: string) {
     const calls = accountCalls.get(this.ctx.props.name) ?? [];
@@ -109,7 +114,9 @@ export class FakeGatekeeperAccount extends WorkerEntrypoint<Cloudflare.Env, {
     return {
       displayName: this.ctx.props.name,
       uniqueName: this.ctx.props.name,
-      ...(this.ctx.props.providesUi ? { providesUi: { title: this.ctx.props.name } } : {}),
+      ...(this.ctx.props.providesUi ? {
+        providesUi: { title: this.ctx.props.name, ...(this.ctx.props.appNav ? { nav: true } : {}) },
+      } : {}),
     };
   }
 
@@ -165,6 +172,15 @@ export class FakeGatekeeperAccount extends WorkerEntrypoint<Cloudflare.Env, {
     return { iframeHtml: "<!doctype html>", ui: new RpcStub(new RpcTarget()) };
   }
 
+  /** Answers as `props.appNav` says, whether or not the description declared it. */
+  async getAppNav(): Promise<GatekeeperAppNavEntry[]> {
+    this.#record("getAppNav");
+    const appNav = this.ctx.props.appNav;
+    if (appNav && "fail" in appNav) throw new Error("getAppNav failed");
+    if (appNav && "hang" in appNav) await new Promise(resolve => setTimeout(resolve, 30_000));
+    return (appNav?.entries ?? [{ label: "Undeclared", path: "/" }]) as GatekeeperAppNavEntry[];
+  }
+
   async calls(): Promise<string[]> {
     return accountCalls.get(this.ctx.props.name) ?? [];
   }
@@ -184,11 +200,11 @@ export class GatekeeperUserPickerTestHooks extends DurableObject<Cloudflare.Env>
 
   async addAccount(
       userId: string, vendorId: string, accountName: string,
-      options: { expired?: boolean; providesUi?: boolean } = {},
+      options: { expired?: boolean; providesUi?: boolean; appNav?: FakeAppNav } = {},
   ): Promise<number> {
     const user = this.ctx.exports.UserDurableObject.getByName(userId);
     const account = this.ctx.exports.FakeGatekeeperAccount({
-      props: { name: accountName, providesUi: options.providesUi },
+      props: { name: accountName, providesUi: options.providesUi, appNav: options.appNav },
     });
     const accountId = await user.linkConnectedAccountFromLogin(account, vendorId);
     if (options.expired) await user.markCredentialsExpired(accountId);

@@ -24,7 +24,7 @@
 // Gadget a stub pointing to the Gadget's server-side Durable Object interface.
 
 import { RpcCompatible, RpcStub, RpcTarget } from "capnweb";
-import { AccountDescription, ActionKind, ActionDescription, AgentCatalog, AvatarImage, GatekeeperUiFrame, GatekeeperUserSelection, ObservationDescription, ResourceDescription, ResourceConfiguratorFrame, SupportedResource, VendorDescription, HookDescription } from "./gatekeeper.js";
+import { AccountDescription, ActionKind, ActionDescription, AgentCatalog, AvatarImage, GatekeeperAppNavEntry, GatekeeperUiFrame, GatekeeperUserSelection, ObservationDescription, ResourceDescription, ResourceConfiguratorFrame, SupportedResource, VendorDescription, HookDescription } from "./gatekeeper.js";
 import type { CodeChange } from "./code-change.js";
 import type { GitOid } from "./gatekeeper.js";
 import type { UiFeatureFlags } from "./feature-flags.js";
@@ -975,6 +975,11 @@ export type GatekeeperAppInfo = {
   title: string;
   /** Optional icon. */
   icon?: AvatarImage;
+  /**
+   * The app's sidebar entries, already sanitized (sanitizeGatekeeperAppNav), when its account
+   * declares `providesUi.nav` and answered GatekeeperUser.getAppNav. Absent, the app is one row.
+   */
+  nav?: GatekeeperAppNavEntry[];
 };
 
 // ---------------------------------------------------------------------------
