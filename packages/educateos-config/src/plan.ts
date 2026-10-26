@@ -139,6 +139,8 @@ export interface PlanProblem {
     | "unknown-scope"
     | "pack-version-unavailable"
     | "untrusted-roster-issuer"
+    | "untrusted-sso-issuer"
+    | "classlink-mismatch"
     | ResolutionProblem["kind"];
   /** JSON Pointer into the next desired state. */
   path: string;
@@ -403,6 +405,32 @@ export function planConfigurationChange(input: {
       path: "/rostering/identityMapping/issuer",
       message: `the roster's issuer ${rosterIssuer} is not one of the district's trusted issuers`,
     });
+  }
+  const ssoIssuer = next.identity.classlink?.issuer;
+  if (ssoIssuer !== undefined && !directory.district.trustedIssuers.includes(ssoIssuer)) {
+    problems.push({
+      code: "untrusted-sso-issuer",
+      path: "/identity/classlink/issuer",
+      message: `the sign-in issuer ${ssoIssuer} is not one of the district's trusted issuers`,
+    });
+  }
+  // When ClassLink serves both the sign-in and the roster, they must describe the same people the
+  // same way, or every sign-in arrives unlinked. The roster's mapping is compared as the sync applies
+  // it: when none is given, the district's first trusted issuer with `username` subjects. A roster
+  // from another source may link people under its own issuer, so it is not checked.
+  const sso = next.identity.classlink;
+  const roster = next.rostering;
+  if (sso !== undefined && roster.classlink !== undefined) {
+    const mapping = roster.identityMapping ?? { issuer: directory.district.trustedIssuers[0], subject: { field: "username" as const } };
+    if (mapping.issuer !== sso.issuer) {
+      problems.push({ code: "classlink-mismatch", path: "/rostering/identityMapping/issuer", message: "the roster's issuer is not the ClassLink sign-in's issuer" });
+    }
+    if (sso.subjectClaim === "preferred_username" && mapping.subject.field !== "username") {
+      problems.push({ code: "classlink-mismatch", path: "/rostering/identityMapping/subject", message: "ClassLink signs people in by preferred_username, which the roster carries as username" });
+    }
+    if (roster.classlink.tenantId !== sso.tenantId) {
+      problems.push({ code: "classlink-mismatch", path: "/rostering/classlink/tenantId", message: "the ClassLink roster and sign-in name different tenants" });
+    }
   }
   const knownSchools = new Set(directory.schools.map((s) => s.id));
   const knownOfferings = new Set(directory.offerings.map((o) => o.id));

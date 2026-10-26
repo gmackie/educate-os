@@ -8,6 +8,8 @@ export * as oneroster from "./oneroster/index.ts";
 export * as clever from "./clever/index.ts";
 /** Google Classroom: district-wide roster sync, course linking and grade sync through domain-wide delegation. */
 export * as googleclassroom from "./google-classroom/index.ts";
+/** ClassLink: its OneRoster REST profile and its sign-in. */
+export * as classlink from "./classlink/index.ts";
 export * from "./sync-run.ts";
 /** The interface every roster source implements, so CSV and REST sources are interchangeable. */
 export type { RosterSource } from "./oneroster/sync.ts";

@@ -10,6 +10,7 @@ export * from "./authorization.ts";
 export * from "./audit.ts";
 export * from "./artifacts.ts";
 export * from "./sync.ts";
+export * from "./classlink.ts";
 export * from "./roster-projection.ts";
 export * from "./capability.ts";
 export * from "./policy-floor.ts";

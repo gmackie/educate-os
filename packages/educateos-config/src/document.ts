@@ -1,5 +1,7 @@
 import {
   CapabilityId,
+  ClassLinkRosterConnection,
+  ClassLinkSso,
   CleverRosterConnection,
   DistrictId,
   OfferingId,
@@ -167,7 +169,15 @@ const Curriculum = z.strictObject({
   importedSources: z.array(z.enum(["district-approved", "educateos-catalog"])).min(1),
 });
 
-const Identity = z.strictObject({ provider: z.enum(["district-sso", "cloudflare-access"]) });
+const Identity = z.strictObject({
+  provider: z.enum(["district-sso", "cloudflare-access"]),
+  /** ClassLink sign-in, for a district whose SSO is ClassLink. */
+  classlink: ClassLinkSso.optional(),
+}).superRefine((identity, context) => {
+  if (identity.classlink !== undefined && identity.provider !== "district-sso") {
+    context.addIssue({ code: "custom", path: ["classlink"], message: "ClassLink sign-in is a district-sso provider" });
+  }
+});
 
 const Rostering = z.strictObject({
   provider: z.enum(["oneroster-csv", "oneroster-api", "clever", "manual"]),
@@ -184,9 +194,14 @@ const Rostering = z.strictObject({
    * `clever` provider. Its district token is a Worker secret, never configuration.
    */
   clever: CleverRosterConnection.optional(),
+  /** The ClassLink Roster Server, for a OneRoster API roster that ClassLink serves (SCHO-204). */
+  classlink: ClassLinkRosterConnection.optional(),
   /** When a sync that would deactivate much of the roster is held for review. The sync's default when absent. */
   removalHold: RemovalHold.optional(),
 }).superRefine((rostering, context) => {
+  if (rostering.classlink !== undefined && rostering.provider !== "oneroster-api") {
+    context.addIssue({ code: "custom", path: ["classlink"], message: "a ClassLink roster is a oneroster-api provider" });
+  }
   if (rostering.provider === "manual") {
     for (const field of ["identityMapping", "schedule", "clever", "removalHold"] as const) {
       if (rostering[field] !== undefined) context.addIssue({ code: "custom", path: [field], message: `a manual roster has no ${field}` });

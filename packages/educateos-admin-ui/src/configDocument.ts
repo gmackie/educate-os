@@ -35,8 +35,8 @@ export const DesiredStateView = z.strictObject({
   district: DistrictId,
   profile: z.string().min(1),
   identity: z.record(z.string(), z.unknown()),
-  // Loose: a roster's identity mapping, schedule, Clever district and removal hold pass through
-  // unread, so a revision that sets them still opens and saves unchanged.
+  // Loose: a roster's identity mapping, schedule, Clever district, ClassLink connection and removal
+  // hold pass through unread, so a revision that sets them still opens and saves unchanged.
   rostering: z.looseObject({ provider: z.string().min(1), mode: z.string().min(1) }),
   curriculum: z.record(z.string(), z.unknown()).optional(),
   modules: z.record(CapabilityId, z.strictObject({

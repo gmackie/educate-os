@@ -1,11 +1,11 @@
 // Extracted from PlayTrek packages/edtech/src/oneroster/client.ts (`OneRosterClient`) at commit
 // 7258e4347: OAuth 2.0 client-credentials authentication with an in-memory token cache, and
 // `limit`/`offset`/`filter` queries against the rostering collections. Changed from PlayTrek: the
-// token endpoint, scopes and fetch are configuration; credentials go in HTTP Basic rather than the
-// form body; a rejected token is refreshed once; every collection is read to its last page; every
-// response is size-capped and validated; error messages never include a response body; and the
+// token endpoint, scopes and fetch are configuration; credentials go in HTTP Basic by default, or
+// in the form body for a server that wants `client_secret_post` (SCHO-204); a rejected token is
+// refreshed once; every collection is read to its last page; every response is size-capped and validated; error messages never include a response body; and the
 // base path is the 1.2 rostering service's (`/ims/oneroster/rostering/v1p2`, not `/ims/oneroster/v1p2`).
-import type { SyncErrorCode } from "@educateos/contracts";
+import { OAuthClientAuthentication, type SyncErrorCode } from "@educateos/contracts";
 import { z } from "zod";
 import { discard, readJson } from "../../http.ts";
 import { RosterSyncError } from "../../sync-run.ts";
@@ -34,6 +34,8 @@ export const OneRosterRestConfig = z.strictObject({
   scopes: z.array(ScopeToken).min(1).max(20),
   /** Records asked for per page. The server may return fewer. */
   pageSize: z.number().int().min(1).max(10_000).default(500),
+  /** How the client authenticates to the token endpoint: HTTP Basic, or the form body. */
+  clientAuthentication: OAuthClientAuthentication.default("client_secret_basic"),
 });
 /** A OneRoster REST configuration, as given. */
 export type OneRosterRestConfigInput = z.input<typeof OneRosterRestConfig>;
@@ -297,18 +299,21 @@ export class OneRosterRestClient {
 
   async #requestToken(): Promise<string> {
     const issuedAt = this.#clock();
-    // RFC 6749 section 2.3.1: the ID and secret are form-encoded, then sent as HTTP Basic.
     const { clientId, clientSecret } = this.#credentials;
-    const basic = btoa(`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`);
+    const form = new URLSearchParams({ grant_type: "client_credentials", scope: this.#config.scopes.join(" ") });
+    const headers: Record<string, string> = { "content-type": "application/x-www-form-urlencoded", accept: "application/json" };
+    if (this.#config.clientAuthentication === "client_secret_post") {
+      form.set("client_id", clientId);
+      form.set("client_secret", clientSecret);
+    } else {
+      // RFC 6749 section 2.3.1: the ID and secret are form-encoded, then sent as HTTP Basic.
+      headers["authorization"] = `Basic ${btoa(`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`)}`;
+    }
     const response = await this.#send("token", () =>
       this.#fetch(this.#config.tokenUrl, {
         method: "POST",
-        headers: {
-          authorization: `Basic ${basic}`,
-          "content-type": "application/x-www-form-urlencoded",
-          accept: "application/json",
-        },
-        body: new URLSearchParams({ grant_type: "client_credentials", scope: this.#config.scopes.join(" ") }).toString(),
+        headers,
+        body: form.toString(),
         redirect: "error",
         signal: AbortSignal.timeout(this.#limits.requestTimeoutMs),
       })
