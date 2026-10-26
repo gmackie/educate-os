@@ -162,7 +162,11 @@ deploy fails. Enable the product rather than editing the generated config.
 SCHO-193 adds the LMS-lite district application: the package `educateos-district-worker`, deployed
 as the Worker `schoolos-district-worker`, for the demo co-op, at `https://district.schoolos.gmac.io`.
 The router sends `/api/*` to the Workshop backend, so the district has its own hostname, behind its
-own Access application.
+own Access application. Since SCHO-207 it is also at its managed default hostname,
+`https://northfield.educateos.io`. That is a second custom domain on the same Worker (`aliases` in
+`scripts/production/schoolos-gmac-io.ts`), possible because the educateos.io zone is in this account
+(see [the spike](../spikes/managed-hostnames-cloudflare.md)). It is routing only: the district's
+identity, and every link it sends, stays `district.schoolos.gmac.io`.
 
 - **Its Worker name is pinned.** The Worker was deployed as `schoolos-district-worker` before the
   EducateOS rename (SCHO-200), and keeps that name (SCHO-231). A Durable Object namespace belongs to
@@ -189,7 +193,12 @@ own Access application.
   application for `district.schoolos.gmac.io/healthz`. Its audience is the first entry of the
   district's `CF_ACCESS_AUD`; the second is the instance's (see
   [The EducateOS connector](#the-educateos-connector)). The issuer is the same team domain as the
-  instance's.
+  instance's. Both applications also list `northfield.educateos.io` (and its `/healthz`) as a second
+  destination, so the alias is protected by the same policies and carries the same audience, and
+  `CF_ACCESS_AUD` did not change. Add an alias to both applications before deploying it: Wrangler
+  attaches every custom domain in the config, and one that no application lists would serve without
+  Access. The destinations were added with the API (`PUT /accounts/<id>/access/apps/<app>` with the
+  full application and the extra `destinations` entry), since the applications predate the installer.
 - **Who it knows.** `DISTRICT_CONFIG` seeds the directory on first start only: the district
   (`authority: "local"`, so its administrators build classes rather than importing a roster) and its
   administrator, matched by the Access subject (`sub`) their sign-in carries, not by email. Every

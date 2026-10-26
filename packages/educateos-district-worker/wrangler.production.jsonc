@@ -41,6 +41,10 @@
     {
       "pattern": "district.schoolos.gmac.io",
       "custom_domain": true
+    },
+    {
+      "pattern": "northfield.educateos.io",
+      "custom_domain": true
     }
   ],
   "assets": {

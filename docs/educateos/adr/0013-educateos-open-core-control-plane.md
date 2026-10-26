@@ -78,3 +78,24 @@ ADR-0011 decisions 2, 4, 5 and 7 and its module ownership table stand, with "sch
 - `@schoolos/commerce` needs a Stripe Checkout and Portal path for managed services (SCHO-208). The
   marketplace (SCHO-209) needs signed listings that installations verify offline.
 - Claims about integrations still follow [maturity.md](../maturity.md).
+
+## Addendum A1 (2026-10-25, SCHO-207): how the default hostname is attached
+
+The spike is [managed-hostnames-cloudflare.md](../spikes/managed-hostnames-cloudflare.md). It
+refines decision 4 as follows:
+
+- **The district is the Cloudflare for SaaS provider, not educateos.io.** The custom hostname
+  `<slug>.educateos.io` lives on a zone in the district's own account, with its certificate, a
+  Worker route to its Worker, and its own Access application. Cloudflare terminates TLS under the
+  district's zone, not ours. educateos.io publishes only DNS records: a **DNS-only** CNAME to the
+  district's fallback origin, and the TXT records for hostname ownership and certificate
+  validation. A proxied CNAME is not allowed, because it would run our zone's settings first
+  (Orange-to-Orange).
+- **When the district's account also holds educateos.io** (the demo, which runs every demo district
+  in the owner's account), the hostname is a Workers Custom Domain on the district's Worker, and SaaS
+  is not used. Cloudflare does not apply Access to a SaaS custom hostname whose zone is in the same
+  account.
+- **The default hostname is an alias.** The district's own hostname stays its public base URL and
+  data namespace. So leaving is removing the alias, with no data to move.
+- **Slugs** are DNS labels of 3 to 32 characters from a reserved-word filter. They are unique because
+  the educateos.io side refuses records that another instance owns.

@@ -59,6 +59,9 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
   // CF_ACCESS_AUD secret lists that application's audience and the instance's (SCHO-218).
   district: {
     hostname: "district.schoolos.gmac.io",
+    // Its managed default hostname (SCHO-207). The educateos.io zone is in this account, so it is a
+    // plain custom domain; both district Access applications list it as a second destination.
+    aliases: ["northfield.educateos.io"],
   },
   // Deployed before the EducateOS rename (SCHO-200), and pinned so it is never deployed under its
   // package's new name (SCHO-231). Its Durable Object holds the demo district's data, a Worker's

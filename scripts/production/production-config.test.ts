@@ -136,9 +136,14 @@ test("the guard runs its production entrypoint and cron, reaching Hall Monitor b
   assert.equal(guard.vars?.AI_GUARD_CONFIG, undefined);
 });
 
-test("the district Worker has its own custom domain, serves the UIs as assets and keeps its crons", () => {
+test("the district Worker has its own custom domains, serves the UIs as assets and keeps its crons", () => {
   const district = configFor(build(), DISTRICT_PACKAGE);
-  assert.deepEqual(district.routes, [{ pattern: "district.schoolos.gmac.io", custom_domain: true }]);
+  // Wrangler replaces the Worker's custom domains with this list, so the original stays first and
+  // the managed default hostname (SCHO-207) is only added beside it.
+  assert.deepEqual(district.routes, [
+    { pattern: "district.schoolos.gmac.io", custom_domain: true },
+    { pattern: "northfield.educateos.io", custom_domain: true },
+  ]);
   assert.deepEqual(district.assets, {
     directory: "./dist/ui",
     not_found_handling: "single-page-application",

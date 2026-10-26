@@ -114,6 +114,13 @@ export interface ProductionInstance {
   district?: {
     /** The district's public hostname: the district Worker's custom domain. */
     hostname: string;
+    /**
+     * More custom domains on the same Worker, such as its managed default hostname
+     * `<slug>.educateos.io` (SCHO-207). They are routing only: the district's identity stays
+     * `hostname`. The district's Access applications (the app and its `/healthz` bypass) must list
+     * each one as a destination before it is deployed, or it would serve without Access.
+     */
+    aliases?: string[];
   };
   /**
    * Deployed Worker names that differ from their package's, by package. A deployed Worker's name
@@ -149,7 +156,7 @@ export interface ProductionConfig extends Omit<StagingConfig, "previews" | "rout
   kv_namespaces?: KvNamespace[];
   /** R2 buckets, with the instance's bucket names. */
   r2_buckets?: R2Bucket[];
-  /** The router's, or the district Worker's, custom domain. */
+  /** The router's, or the district Worker's, custom domains. */
   routes?: { pattern: string; custom_domain: true }[];
 }
 
@@ -311,7 +318,9 @@ export function buildProductionConfigs({
         throw new Error(`${pkgName}/wrangler.jsonc has lost its notification and digest Cron Triggers`);
       }
       if (config.assets) throw new Error(`${pkgName}/wrangler.jsonc declares assets; the generator owns them`);
-      config.routes = [{ pattern: instance.district.hostname, custom_domain: true }];
+      // Wrangler replaces a Worker's custom domains with exactly these, so every alias is listed.
+      config.routes = [instance.district.hostname, ...instance.district.aliases ?? []]
+        .map((pattern) => ({ pattern, custom_domain: true as const }));
       config.assets = {
         directory: DISTRICT_UI_DIR,
         not_found_handling: "single-page-application",
