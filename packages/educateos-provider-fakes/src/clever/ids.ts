@@ -23,14 +23,14 @@ export function cleverId(seed: Pick<DistrictSeed, "id">, collection: Exclude<Cle
 }
 
 /** A seed person's v3.x (multi-role) Clever user ID: the OIDC `sub` and `multi_role_user_id`. */
-export function cleverUserId(seed: Pick<DistrictSeed, "id">, personId: string): string {
-  return cleverId(seed, "users", personId);
+export function cleverUserId(seed: Pick<DistrictSeed, "id"> & Partial<Pick<DistrictSeed, "people">>, personId: string): string {
+  return seed.people?.find((p) => p.id === personId)?.vendorIds?.clever ?? cleverId(seed, "users", personId);
 }
 
 /**
  * The `legacy_id` of one of a person's roles: the pre-v3 ID, which the OIDC `user_id` claim
  * carries. A student's equals their user ID; every other role has its own.
  */
-export function cleverLegacyId(seed: Pick<DistrictSeed, "id">, personId: string, role: CleverRole): string {
+export function cleverLegacyId(seed: Pick<DistrictSeed, "id"> & Partial<Pick<DistrictSeed, "people">>, personId: string, role: CleverRole): string {
   return role === "student" ? cleverUserId(seed, personId) : hexId(`clever:legacy:${role}`, `${seed.id}\u0000${personId}`);
 }

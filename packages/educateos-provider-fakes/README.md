@@ -34,6 +34,13 @@ so they are stable across runs and shared across fakes. A seed person has the sa
 the Clever SSO and Data API fakes, and the same Google ID in Google sign-in and Classroom. In
 OneRoster, sourcedIds are the seed IDs.
 
+A seed person may carry `vendorIds` (`clever`, `google`): vendor user IDs the person already has.
+They replace the derived ones everywhere, so a seed adapted from a directory that records them
+asserts that directory's subjects. The demo districts adapt this way: `fakeSeed(demo)` from
+`@educateos/fixtures/fake-seed` turns any of the six into a `DistrictSeed`, with each fixture's
+Clever and Google IDs as `vendorIds` and each IdP subject as the person's `username` (OneRoster
+`username`, ClassLink `LoginId`).
+
 `validateSeed` checks references and roles. It also requires every email address, and the
 district domain, to be on a reserved `.example` domain. Seeds are synthetic: never use real
 people. `SAMPLE_DISTRICT` (`src/sample.ts`) is a small worked example that the contract tests share.

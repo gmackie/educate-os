@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   Fake,
+  GoogleClassroomFake,
   SAMPLE_DISTRICT,
+  CleverDataFake,
+  cleverLegacyId,
+  cleverUserId,
+  googleSubjectId,
   SeedError,
   enrollmentsOf,
   hexId,
@@ -58,6 +63,41 @@ describe("seeds", () => {
     expect(after.people.some((p) => removed.has(p.id))).toBe(false);
     expect(after.sections[0]!.studentIds).toEqual(["mw-s-04", "mw-s-05", "mw-s-06"]);
     expect(after.people.find((p) => p.id === "mw-g-brightwater")!.guardianOf).toEqual([]);
+  });
+});
+
+describe("vendor IDs a seed carries", () => {
+  const CLEVER = "6650c1a0e1b2c3d4e5f62001";
+  const GOOGLE = "104000000000000002001";
+  const seed = {
+    ...SAMPLE_DISTRICT,
+    people: SAMPLE_DISTRICT.people.map((p) => (p.id === "mw-s-01" ? { ...p, vendorIds: { clever: CLEVER, google: GOOGLE } } : p)),
+  };
+
+  it("replace the derived ones in sign-in and roster alike, and only for that person", () => {
+    expect(cleverUserId(seed, "mw-s-01")).toBe(CLEVER);
+    expect(cleverLegacyId(seed, "mw-s-01", "student")).toBe(CLEVER);
+    expect(googleSubjectId(seed, "mw-s-01")).toBe(GOOGLE);
+    expect(new CleverDataFake({ seed }).userId("mw-s-01")).toBe(CLEVER);
+    expect(new GoogleClassroomFake({ seed }).userId("mw-s-01")).toBe(GOOGLE);
+    expect(cleverUserId(seed, "mw-s-02")).toBe(cleverUserId(SAMPLE_DISTRICT, "mw-s-02"));
+  });
+
+  it("keep a removed person's Clever ID, which their users.deleted event carries", () => {
+    const fake = new CleverDataFake({ seed });
+    const events = fake.removePerson("mw-s-01");
+    expect(fake.userId("mw-s-01")).toBe(CLEVER);
+    expect(events.find((e) => e.type === "users.deleted")?.data.object).toMatchObject({ id: CLEVER });
+  });
+
+  it("must be shaped like the vendor's and belong to one person", () => {
+    const withIds = (ids: Record<string, { clever?: string; google?: string }>) => ({
+      ...SAMPLE_DISTRICT,
+      people: SAMPLE_DISTRICT.people.map((p) => (ids[p.id] === undefined ? p : { ...p, vendorIds: ids[p.id] })),
+    });
+    expect(() => validateSeed(withIds({ "mw-s-01": { clever: "not-hex" } }))).toThrow(/not 24 hex digits/);
+    expect(() => validateSeed(withIds({ "mw-s-01": { google: "0123" } }))).toThrow(/not a decimal ID/);
+    expect(() => validateSeed(withIds({ "mw-s-01": { clever: CLEVER }, "mw-s-02": { clever: CLEVER } }))).toThrow(/shares clever ID/);
   });
 });
 

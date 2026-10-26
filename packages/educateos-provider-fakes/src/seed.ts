@@ -55,8 +55,17 @@ export function validateSeed(seed: DistrictSeed): DistrictSeed {
     for (const id of section.teacherIds) role(id, ["teacher", "staff", "administrator"], from);
     for (const id of section.studentIds) role(id, ["student"], from);
   }
+  const vendorIds = { clever: new Set<string>(), google: new Set<string>() };
   for (const person of seed.people) {
     const from = `person ${person.id}`;
+    const { clever, google } = person.vendorIds ?? {};
+    if (clever !== undefined && !/^[0-9a-f]{24}$/.test(clever)) problems.push(`${from} has Clever ID ${clever}, not 24 hex digits`);
+    if (google !== undefined && !/^[1-9][0-9]{0,20}$/.test(google)) problems.push(`${from} has Google ID ${google}, not a decimal ID`);
+    for (const [vendor, id] of [["clever", clever], ["google", google]] as const) {
+      if (id === undefined) continue;
+      if (vendorIds[vendor].has(id)) problems.push(`${from} shares ${vendor} ID ${id} with another person`);
+      vendorIds[vendor].add(id);
+    }
     if (!exampleEmail(person.email)) problems.push(`${from} has email ${person.email}, not on a .example domain`);
     for (const id of person.schoolIds) need(schools, "school", id, from);
     if (person.role !== "guardian" && person.schoolIds.length === 0) problems.push(`${from} belongs to no school`);

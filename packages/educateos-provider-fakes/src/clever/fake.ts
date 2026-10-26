@@ -91,6 +91,8 @@ export class CleverDataFake extends Fake {
   #seed: DistrictSeed;
   #records: CleverRecords;
   #eventCount = 0;
+  /** Every person's Clever user ID, kept after they leave the seed, as Clever keeps a deleted user's ID. */
+  readonly #userIds = new Map<string, string>();
 
   constructor(options: CleverDataFakeOptions) {
     super(options);
@@ -101,6 +103,11 @@ export class CleverDataFake extends Fake {
     this.#extraRoles = options.extraRoles ?? {};
     this.#limit = options.rateLimitPerMinute ?? CLEVER_RATE_LIMIT_PER_MINUTE;
     this.#records = projectClever(this.#seed, this.#extraRoles);
+    this.#rememberUserIds(this.#seed);
+  }
+
+  #rememberUserIds(seed: DistrictSeed): void {
+    for (const person of seed.people) this.#userIds.set(person.id, cleverUserId(seed, person.id));
   }
 
   /** The seed as it stands after every mutation. */
@@ -113,9 +120,9 @@ export class CleverDataFake extends Fake {
     return cleverId(this.#seed, collection, seedId);
   }
 
-  /** The Clever user ID of a seed person. */
+  /** The Clever user ID of a seed person, including one a mutation has since removed. */
   userId(personId: string): string {
-    return cleverUserId(this.#seed, personId);
+    return this.#userIds.get(personId) ?? cleverUserId(this.#seed, personId);
   }
 
   /** The record the API currently serves, or undefined. */
@@ -165,6 +172,7 @@ export class CleverDataFake extends Fake {
     }
     this.#seed = next;
     this.#records = projected;
+    this.#rememberUserIds(next);
     const batch = [...created, ...updated, ...deleted].map((event) => {
       this.#eventCount += 1;
       const seconds = Math.floor(this.now() / 1000).toString(16).padStart(8, "0");
