@@ -64,7 +64,25 @@ its `production.log`.
 - **Browser sign-in.** Canvas users of account 3 were signed in with one-time `SessionToken`s
   minted for their own pseudonyms; masquerade is evaluated against the default root account and is
   refused there. Canvas's Access was passed with the email PIN flow as a test identity.
-- **Not tested here:** the platform-storage cookie fallback with cookies blocked, `editor_button`
-  and `link_selection` placements (Canvas mapped `link_selection` to a resource link launch because
-  the registration's resource link message names no placements), course navigation, and NRPS
-  paging. Since this run, service paging links are also held to the first page's path (SCHO-240).
+- **Not tested in this run** (all done in the follow-up below): the platform-storage cookie
+  fallback with cookies blocked, the `editor_button` and `link_selection` placements (Canvas mapped
+  `link_selection` to a resource link launch because the registration's resource link message named
+  no placements), course navigation, and NRPS paging.
+
+## Follow-up checks (SCHO-240)
+
+Run 2026-10-26, 14:07–15:20 UTC, against the same Canvas and the production district Worker.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| NRPS paging | Passed | Course 2 was given 50 more (login-less) students, 52 members in all. `POST /api/lti/roster` (cf-ray `a50a07b48fa6b808`) read all 52, Terry and Sam matched, after Canvas served page 1 and then `…/names_and_roles?page=2&per_page=50` on the same path (Canvas requests `4e2e14b5-…`, `282ed27e-…`). This ran on deployment `1eaf1e7e` (commit `804199b`, PR #135), so the next page passed the origin-and-path guard. |
+| Cookie-blocked launch (platform storage) | Passed | In WebKit (Playwright 1.64, WebKit 27.2), which blocks the tool's third-party state cookie, Sam opened assignment 2: the login post carried `lti_storage_target`; Canvas's launch post arrived without the state cookie and the tool answered with its storage page (`a50a1dd51b019113`); that page read the secret back from Canvas's `post_message_forwarding` frame and re-posted the launch from the tool's own origin with `lti_storage_value`, and Sam was signed in. [Screenshot](canvas-lti/10-cookie-blocked-launch-webkit.png). Chromium keeps the `Partitioned` state cookie even with third-party cookies phased out, so the same launch there took the cookie path (one launch post, with the cookie). Deployment `1d08d9d2` (commit `0ae4264`). |
+| Tool key rotation, again | Passed | After the Moodle run's rotation (`a509fedcbe4f91e4`), Canvas's roster read still passed (`a50a016fdce83e79`). |
+| Placements after PR #138 | Passed | A fresh Dynamic Registration (cf-ray `a50a699a9a2c0b2d`, key `10000000000004`, installed in course 2 as tool 3, deployment `3:61f3600b24f01a51af8076f1fd9c04d5be7541ab`, approved `a50a6d11fa03b5e5`) on deployment `87ca92f1` (commit `a288b9d`, which includes #138). Canvas's placements for it: `course_navigation` `LtiResourceLinkRequest`; `link_selection`, `assignment_selection` and `editor_button` `LtiDeepLinkingRequest`. As Terry: the course's EducateOS tab launched into Earth Science ([screenshot](canvas-lti/11-course-navigation.png)); `link_selection` and `editor_button` launches opened the activity picker ([link selection](canvas-lti/12-link-selection-picker.png), [editor button](canvas-lti/13-editor-button-picker.png)). The SCHO-177 registration (tool 2), launched the same way, still sent a resource link for `link_selection` ([screenshot](canvas-lti/14-old-registration-link-selection.png)). |
+
+Notes:
+- The placement launches used Canvas's `?launch_type=<placement>` on the tool's course URL, which
+  sends that placement's message, rather than the Modules "Add item" and rich content editor
+  dialogs, whose cross-origin frames the automation browser cannot click. No link-selection or
+  editor-button item was placed into a module or page.
+- Course 2 now has both EducateOS installs (tools 2 and 3); assignment 2 still uses tool 2.

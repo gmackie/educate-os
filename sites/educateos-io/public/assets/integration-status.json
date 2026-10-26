@@ -1,5 +1,5 @@
 {
-  "$comment": "Integration feature statuses for educateos.io (SCHO-229). Change a feature's level here, then run node sites/educateos-io/build.mjs. Levels follow docs/educateos/maturity.md: Unit-tested means package tests against fakes; Validating means a run against a live vendor sandbox is under way; Supported needs a passed run against a real external party (for LTI and Canvas: the live run against current Canvas on 2026-10-26, SCHO-177, docs/educateos/integrations/canvas-lti.md). It is not 1EdTech certification.",
+  "$comment": "Integration feature statuses for educateos.io (SCHO-229). Change a feature's level here, then run node sites/educateos-io/build.mjs. Levels follow docs/educateos/maturity.md: Unit-tested means package tests against fakes; Validating means a run against a live vendor sandbox is under way; Supported needs a passed run against a real external party (for LTI and Canvas: the live runs against current Canvas and Moodle 4.5 on 2026-10-26, SCHO-177 and SCHO-240, docs/educateos/integrations/canvas-lti.md and moodle-lti.md). It is not 1EdTech certification.",
   "levels": {
     "unit-tested": { "label": "Unit-tested", "class": "unit" },
     "validating": { "label": "Validating against live sandbox", "class": "validating" },
@@ -24,10 +24,11 @@
     "lti.dynreg": "supported",
     "lti.mapping": "supported",
     "lti.mounted": "supported",
+    "lti.moodle": "supported",
     "lti.platform": "planned",
 
     "canvas.devkey": "unit-tested",
-    "canvas.placements": "validating",
+    "canvas.placements": "supported",
     "canvas.scopes": "supported",
     "canvas.courses": "supported",
     "canvas.sections": "planned",

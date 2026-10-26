@@ -108,6 +108,26 @@ The claims Canvas sends for each placement are in
 `packages/educateos-lti/__tests__/fixtures/canvas-placements.ts`, and every placement is launched
 through the broker in `canvas.test.ts`.
 
+Dynamic Registration names each message's placements. Canvas gives a message without placements
+`link_selection` and keeps the first message per placement, so a resource link message with none
+would take `link_selection` from Deep Linking (SCHO-240).
+
+## Moodle setup
+
+The Tool has also passed a live run against Moodle 4.5 (2026-10-26), recorded in
+[integrations/moodle-lti.md](integrations/moodle-lti.md). Moodle's own Dynamic Registration is the
+setup:
+
+1. A district administrator creates an invitation (`POST /api/lti/invitations`).
+2. In Moodle, **Site administration → Plugins → Activity modules → External tool → Manage tools**,
+   paste the invitation URL into **Tool URL** and choose **Add LTI Advantage**. Moodle registers
+   and lists the tool as Pending; choose **Activate**.
+3. The district administrator trusts the issuer (Moodle's `wwwroot`) and approves the pending
+   registration with provider `moodle` and the course mappings. Moodle's context ID is the course
+   ID, and Moodle returns the deployment ID at registration, so the approval does not need one.
+4. Teachers add the tool from the activity chooser; **Select content** opens the EducateOS picker
+   (Deep Linking).
+
 ## Keys
 
 - **Platform keys** are fetched with an injected `fetch`, cached for 10 minutes, and refetched at
@@ -162,6 +182,10 @@ The broker then binds the launch to the browser through it:
 - If the platform does not answer within five seconds, the login page follows the redirect anyway
   (the cookie may still work) and the launch page asks the person to open the tool in a new window.
 - A wrong secret burns the state, as any failed launch does.
+- Passed live (SCHO-240): in WebKit, which blocks the third-party state cookie, a Canvas launch
+  completed through Canvas's `post_message_forwarding` storage, with the re-post from the tool's
+  own origin ([evidence](integrations/canvas-lti.md#follow-up-checks-scho-240)). Chromium keeps the
+  `Partitioned` cookie even with third-party cookies blocked, so it takes the cookie path.
 
 # LTI Advantage services and grade passback (I02)
 
