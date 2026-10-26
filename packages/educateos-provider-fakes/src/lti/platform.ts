@@ -13,7 +13,7 @@
 // line items). Everything is in memory and deterministic apart from token values.
 import { createLocalJWKSet, decodeJwt, decodeProtectedHeader, jwtVerify, type JWK, type JWTPayload } from "jose";
 import { Fake, TokenIssuer, bearer, formOf, type FakeOptions } from "../fake.ts";
-import { hexId, tokenId } from "../ids.ts";
+import { hexId } from "../ids.ts";
 import { enrollmentsOf, studentsToRemove, validateSeed, withoutPeople } from "../seed.ts";
 import type { DistrictSeed, PersonSeed, SectionSeed } from "../types.ts";
 import {
@@ -226,6 +226,12 @@ export interface LtiPlatformFakeOptions extends FakeOptions {
   readonly platformStorage?: boolean;
   /** Overrides where Dynamic Registration puts `deployment_id`. Defaults to the flavour's. */
   readonly registrationDeploymentId?: "top-level" | "tool-configuration";
+  /**
+   * Seconds a launch stays redeemable after {@link LtiPlatformFake.initiateLogin}, and a deep
+   * linking request answerable after its launch. Default 600 for launches; deep linking requests
+   * live an hour, as a teacher may browse the tool's picker for a while.
+   */
+  readonly launchLifetimeSeconds?: number;
 }
 
 const SCORE_ACTIVITY = new Set(["Initialized", "Started", "InProgress", "Submitted", "Completed"]);
@@ -332,6 +338,23 @@ interface PendingLaunch {
   readonly targetLinkUri: string;
   readonly overrides: ClaimOverrides | undefined;
   used: boolean;
+  /** When the launch stops being redeemable (ms); set when its login is initiated. */
+  expiresAt: number;
+}
+
+/** How long a deep linking request stays answerable. */
+const DEEP_LINK_LIFETIME_MS = 3600 * 1000;
+
+/** An unguessable token: launches and deep linking requests are bearer capabilities. */
+function randomToken(): string {
+  return crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
+}
+
+/** The services a URL may name, indexed by the URL their base is. */
+interface ServiceIndex {
+  readonly deepLink: Map<string, ServiceMatch[]>;
+  readonly nrps: Map<string, ServiceMatch[]>;
+  readonly ags: Map<string, ServiceMatch[]>;
 }
 
 /**
@@ -364,6 +387,10 @@ export class LtiPlatformFake extends Fake {
   readonly #registrationTokens: TokenIssuer<{ initiatedAt: number }>;
   readonly #registrationDeploymentId: "top-level" | "tool-configuration";
   readonly #pending = new Map<string, PendingLaunch>();
+  readonly #deepLinkExpiry = new Map<string, number>();
+  readonly #launchLifetimeMs: number;
+  /** Service URLs by base, for every tool × section; rebuilt when either changes. */
+  #index: ServiceIndex | undefined;
   readonly #lineItems = new Map<string, StoredLineItem>();
   readonly #usedJtis = new Set<string>();
   readonly #usedDeepLinkNonces = new Set<string>();
@@ -384,6 +411,7 @@ export class LtiPlatformFake extends Fake {
     this.#registrationTokens = new TokenIssuer(`${options.flavour.name}-rt-`, this.now);
     this.#registrationDeploymentId = options.registrationDeploymentId ?? options.flavour.registrationDeploymentId;
     this.platformStorage = options.platformStorage ?? false;
+    this.#launchLifetimeMs = (options.launchLifetimeSeconds ?? 600) * 1000;
     for (const tool of options.tools ?? []) this.registerTool(tool);
   }
 
@@ -426,6 +454,7 @@ export class LtiPlatformFake extends Fake {
       privacyLevel: input.privacyLevel ?? "anonymous",
     };
     this.tools.set(clientId, tool);
+    this.#index = undefined;
     for (const assignment of this.#seed.assignments ?? []) {
       if (assignment.createdByIntegration !== true || !this.#seed.sections.some((s) => s.id === assignment.sectionId)) continue;
       const stored = this.#storeLineItem(tool, assignment.sectionId, {
@@ -513,7 +542,12 @@ export class LtiPlatformFake extends Fake {
    */
   initiateLogin(input: LtiLaunchInput): LtiLoginInitiation {
     const pending = this.#pendingLaunch(input);
-    const messageHint = `${this.flavour.name}-hint-${++this.#hints}-${tokenId("lti:hint", `${this.#hints}:${this.now()}`, 22)}`;
+    // The hint is a bearer capability: whoever presents it with the person's login_hint gets the
+    // signed launch. So it is random, and it expires; expired launches are forgotten.
+    const messageHint = `${this.flavour.name}-hint-${++this.#hints}-${randomToken()}`;
+    const now = this.now();
+    for (const [hint, old] of this.#pending) if (old.expiresAt <= now) this.#pending.delete(hint);
+    pending.expiresAt = now + this.#launchLifetimeMs;
     this.#pending.set(messageHint, pending);
     const user = this.flavour.userIds(pending.person);
     const params: Record<string, string> = {
@@ -608,14 +642,14 @@ export class LtiPlatformFake extends Fake {
     if (f.openidConfigurationUrl !== undefined && here === f.openidConfigurationUrl && request.method === "GET") return this.#openidConfiguration(url);
     if (f.registrationEndpoint !== undefined && here === f.registrationEndpoint && request.method === "POST") return this.#register(request, body);
 
-    const deepLink = this.#match(here, (context, clientId) => f.deepLinkReturnUrl(context, clientId), true);
-    if (deepLink.length > 0 && request.method === "POST") return this.#deepLinkReturn(url, body);
-    const nrps = this.#match(here, (context, clientId) => f.membershipsUrl(context, clientId), true);
+    const deepLink = this.#match(here, "deepLink");
+    if (deepLink.length > 0 && request.method === "POST") return this.#deepLinkReturn(url, body, deepLink);
+    const nrps = this.#match(here, "nrps");
     if (nrps.length > 0) {
       if (request.method !== "GET") return f.serviceError(405, "Method not allowed");
       return this.#service(request, nrps, [LTI_SCOPES.contextMembershipReadonly], (match) => this.#memberships(request, url, match));
     }
-    const ags = this.#match(here, (context, clientId) => f.lineItemsUrl(context, clientId), false);
+    const ags = this.#match(here, "ags");
     if (ags.length > 0) return this.#ags(request, url, body, ags);
     return f.serviceError(404, "The specified resource does not exist.");
   }
@@ -626,6 +660,7 @@ export class LtiPlatformFake extends Fake {
 
   protected removeLargeShare(fraction: number): void {
     this.#seed = withoutPeople(this.#seed, studentsToRemove(this.#seed, fraction));
+    this.#index = undefined;
   }
 
   // ── OIDC ─────────────────────────────────────────────────────────
@@ -633,7 +668,8 @@ export class LtiPlatformFake extends Fake {
   /** Canvas's first hop: from the shared OIDC host to the institution's domain. */
   #authorizeRedirect(params: URLSearchParams): Response {
     const hint = params.get("lti_message_hint");
-    if (hint === null || !this.#pending.has(hint)) return this.flavour.serviceError(400, "Invalid lti_message_hint");
+    const pending = hint === null ? undefined : this.#pending.get(hint);
+    if (pending === undefined || pending.expiresAt <= this.now()) return this.flavour.serviceError(400, "Invalid lti_message_hint");
     const next = new URL(this.flavour.authorizeEndpoint!);
     // Canvas forwards only the OIDC parameters it permits.
     for (const name of ["client_id", "login_hint", "lti_message_hint", "nonce", "prompt", "redirect_uri", "response_mode", "response_type", "scope", "state"]) {
@@ -666,7 +702,7 @@ export class LtiPlatformFake extends Fake {
     if (pending === undefined) return this.flavour.serviceError(400, "Invalid lti_message_hint");
     if (pending.tool.clientId !== tool.clientId) return fail("unauthorized_client", "Client not authorized in requested context");
     if (this.flavour.userIds(pending.person).loginHint !== params.get("login_hint")) return fail("login_required", "Must have an active user session");
-    if (pending.used) return fail("launch_no_longer_valid", "The launch has either expired or already been consumed");
+    if (pending.used || pending.expiresAt <= this.now()) return fail("launch_no_longer_valid", "The launch has either expired or already been consumed");
     pending.used = true;
     const idToken = await this.keys.sign(this.#claims(pending, params.get("nonce")!));
     return this.#formPost(redirectUri, {
@@ -706,6 +742,7 @@ export class LtiPlatformFake extends Fake {
       targetLinkUri: input.targetLinkUri ?? resourceLink?.url ?? tool.targetLinkUri,
       overrides: input.overrides,
       used: false,
+      expiresAt: Number.POSITIVE_INFINITY,
     };
   }
 
@@ -763,7 +800,14 @@ export class LtiPlatformFake extends Fake {
 
   #deepLinkSettings(launch: PendingLaunch, context: LtiContextIds): Record<string, unknown> {
     const placement: DeepLinkPlacement = this.flavour.deepLinkPlacement(launch.placement);
-    const data = `dl-${tokenId("lti:deep-link", `${this.#hints}:${launch.section.id}:${this.now()}:${this.deepLinkRequests.size}`, 32)}`;
+    const data = `dl-${randomToken()}`;
+    const now = this.now();
+    for (const [old, expiresAt] of this.#deepLinkExpiry) {
+      if (expiresAt > now) continue;
+      this.#deepLinkExpiry.delete(old);
+      this.deepLinkRequests.delete(old);
+    }
+    this.#deepLinkExpiry.set(data, now + DEEP_LINK_LIFETIME_MS);
     const returnUrl = new URL(this.flavour.deepLinkReturnUrl(context, launch.tool.clientId));
     if (this.flavour.deepLinkData === "return-url") returnUrl.searchParams.set("data", data);
     const settings: Record<string, unknown> = {
@@ -883,17 +927,41 @@ export class LtiPlatformFake extends Fake {
     return respond(match);
   }
 
-  /** The tools × sections whose service base `base` is `here` (exact) or a prefix of it. */
-  #match(here: string, base: (context: LtiContextIds, clientId: string) => string, exact: boolean): ServiceMatch[] {
-    const found: ServiceMatch[] = [];
+  /**
+   * The tools × sections whose service base of `kind` is `here` (exact) or a prefix of it (AGS,
+   * whose line items and their scores and results live below the container). Looked up in an index
+   * of every tool × section's bases, so a request costs a few map reads, not a scan of them all.
+   */
+  #match(here: string, kind: keyof ServiceIndex): ServiceMatch[] {
+    const index = (this.#index ??= this.#buildIndex())[kind];
+    const exact = index.get(here);
+    if (exact !== undefined) return exact.map((m) => ({ ...m, rest: "" }));
+    if (kind !== "ags") return [];
+    // A line item is `<container>/<id>`, its scores and results one segment further down.
+    for (let cut = here.lastIndexOf("/"), depth = 0; cut > 0 && depth < 2; cut = here.lastIndexOf("/", cut - 1), depth++) {
+      const found = index.get(here.slice(0, cut));
+      if (found !== undefined) return found.map((m) => ({ ...m, rest: here.slice(cut) }));
+    }
+    return [];
+  }
+
+  #buildIndex(): ServiceIndex {
+    const index: ServiceIndex = { deepLink: new Map(), nrps: new Map(), ags: new Map() };
+    const add = (map: Map<string, ServiceMatch[]>, url: string, match: ServiceMatch) => {
+      const list = map.get(url);
+      if (list === undefined) map.set(url, [match]);
+      else list.push(match);
+    };
     for (const tool of this.tools.values()) {
       for (const section of this.#seed.sections) {
         const context = this.flavour.contextIds(section);
-        const url = base(context, tool.clientId);
-        if (here === url || (!exact && here.startsWith(`${url}/`))) found.push({ tool, section, context, rest: here.slice(url.length) });
+        const match = { tool, section, context, rest: "" };
+        add(index.deepLink, this.flavour.deepLinkReturnUrl(context, tool.clientId), match);
+        add(index.nrps, this.flavour.membershipsUrl(context, tool.clientId), match);
+        add(index.ags, this.flavour.lineItemsUrl(context, tool.clientId), match);
       }
     }
-    return found;
+    return index;
   }
 
   // ── NRPS ─────────────────────────────────────────────────────────
@@ -1122,13 +1190,20 @@ export class LtiPlatformFake extends Fake {
       return this.flavour.serviceError(400, `Provided timestamp of ${String(score.timestamp)} before last updated timestamp`);
     }
     const graded = score.gradingProgress === "FullyGraded" || score.gradingProgress === "PendingManual";
+    // A score without scoreGiven clears the result: AGS 2.0 reads a missing scoreGiven as no score,
+    // and Canvas then clears the submission's grade (from its scores controller; not verified
+    // against a live Canvas). One with scoreGiven that is not yet graded keeps the previous result.
     const resultScore =
-      graded && typeof score.scoreGiven === "number" ? (score.scoreGiven * stored.item.scoreMaximum) / (score.scoreMaximum as number) : undefined;
+      typeof score.scoreGiven !== "number"
+        ? undefined
+        : graded
+          ? (score.scoreGiven * stored.item.scoreMaximum) / (score.scoreMaximum as number)
+          : previous?.result.resultScore;
     const result: LtiResult = {
       id: `${stored.item.id}/results/${userId}`,
       scoreOf: stored.item.id,
       userId,
-      ...(resultScore === undefined ? previous?.result.resultScore === undefined ? {} : { resultScore: previous.result.resultScore } : { resultScore }),
+      ...(resultScore === undefined ? {} : { resultScore }),
       resultMaximum: stored.item.scoreMaximum,
       ...(typeof score.comment === "string" ? { comment: score.comment } : {}),
     };
@@ -1140,7 +1215,7 @@ export class LtiPlatformFake extends Fake {
   // ── Deep Linking ─────────────────────────────────────────────────
 
   /** Verifies a Deep Linking response (Deep Linking 2.0 §4.5) and places what it carries. */
-  async #deepLinkReturn(url: URL, body: string): Promise<Response> {
+  async #deepLinkReturn(url: URL, body: string, matches: readonly ServiceMatch[]): Promise<Response> {
     const fail = (message: string) => this.flavour.serviceError(400, message);
     const jwt = formOf(body).get("JWT");
     if (jwt === null || jwt.length === 0) return fail("JWT is required");
@@ -1172,6 +1247,11 @@ export class LtiPlatformFake extends Fake {
     const data = this.flavour.deepLinkData === "return-url" ? url.searchParams.get("data") : payload[LTI_CLAIMS.data];
     const request = typeof data === "string" ? this.deepLinkRequests.get(data) : undefined;
     if (request === undefined || request.clientId !== tool.clientId) return fail("data does not match a deep linking request");
+    // The response must come back to the return URL of the course the request was issued in: a
+    // response posted to another course's URL would place content where the teacher never chose.
+    if (!matches.some((m) => m.section.id === request.sectionId && m.tool.clientId === tool.clientId)) {
+      return fail("data does not match this course's deep linking request");
+    }
     if (payload[LTI_CLAIMS.deploymentId] !== request.deploymentId) return fail("deployment_id does not match the request");
     const nonce = String(payload.nonce);
     if (this.#usedDeepLinkNonces.has(nonce)) return fail("nonce has already been used");
@@ -1315,6 +1395,8 @@ export class LtiPlatformFake extends Fake {
       }
     }
     if (errors.length > 0) return Response.json({ errors: errors.map((message) => ({ message })) }, { status: 422 });
+    // A registration token registers one tool: spent here, before anything else can await.
+    this.#registrationTokens.revoke(token);
     const toolConfig = config as Record<string, unknown>;
     const requested = typeof metadata.scope === "string" ? metadata.scope.split(" ").filter((s) => s.length > 0) : [];
     const privacy = toolConfig["https://canvas.instructure.com/lti/privacy_level"];

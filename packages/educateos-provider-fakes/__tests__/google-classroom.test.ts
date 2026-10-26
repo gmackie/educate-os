@@ -245,6 +245,20 @@ describe("authentication and errors", () => {
     expect((await call(short, "/courses")).response.status).toBe(401);
   });
 
+  it("serves below another base, and accepts the tokens a resolver vouches for", async () => {
+    const base = "https://fakes.example/maplewood/classroom/v1";
+    const fake = new GoogleClassroomFake({
+      seed: SAMPLE_DISTRICT,
+      baseUrl: base,
+      resolveToken: (token) => (token === "from-sign-in" ? { userId: "mw-t-okafor", scopes: TEACHER_SCOPES } : token === "nobody" ? { userId: "no-such-person", scopes: TEACHER_SCOPES } : undefined),
+    });
+    const get = (url: string, token: string) => fake.fetch(url, { headers: { authorization: `Bearer ${token}` } });
+    expect((await get(`${base}/courses?teacherId=me`, "from-sign-in")).status).toBe(200);
+    expect((await get(`${base}/courses`, "unknown")).status).toBe(401);
+    expect((await get(`${base}/courses`, "nobody")).status).toBe(401);
+    expect((await get(`${BASE}/courses`, "from-sign-in")).status).toBe(404);
+  });
+
   it("refuses a method its scopes do not cover", async () => {
     const { call, as } = setup();
     const { response, body } = await call(as({ userId: "mw-t-okafor", scopes: [S.rostersReadonly] }), "/courses");

@@ -198,6 +198,11 @@ export class TokenIssuer<Grant> {
     this.#tokens.set(token, { grant, expiresAt });
   }
 
+  /** Withdraws one token, so it is unknown from now on (a single-use token once spent). */
+  revoke(token: string): void {
+    this.#tokens.delete(token);
+  }
+
   revokeAll(): void {
     this.#tokens.clear();
   }

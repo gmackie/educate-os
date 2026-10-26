@@ -8,6 +8,18 @@
 // same in each. Every email address and URL in a seed must be on a reserved `.example` domain;
 // `validateSeed` enforces it.
 
+/**
+ * What a `Headers` can be built from. Named here because the DOM's `HeadersInit` is absent from the
+ * Node typings some consumers check these sources under.
+ */
+export type HeadersSource = ConstructorParameters<typeof Headers>[0];
+
+/** An RSA key pair as `crypto.subtle.generateKey` makes one (the DOM's `CryptoKeyPair`). */
+export interface KeyPair {
+  readonly privateKey: CryptoKey;
+  readonly publicKey: CryptoKey;
+}
+
 /** A fake: a fetch handler over one provider's API. */
 export type FakeHandler = (request: Request) => Promise<Response>;
 

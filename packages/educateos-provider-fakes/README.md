@@ -3,7 +3,8 @@
 Wire-faithful fakes of the providers EducateOS integrates with (SCHO-201). Each one is built from
 the vendor's published API documentation, including its response shapes, paging, authentication,
 errors and rate limits. Each is a fetch handler, `(request: Request) => Promise<Response>`, so it
-runs in process in tests. Later it can be wrapped as a Worker for the live demo districts (SCHO-210).
+runs in process in tests. The demo districts reach them as a public Worker,
+[`sites/educateos-demo-fakes`](../../sites/educateos-demo-fakes/README.md) (SCHO-210).
 
 This package is a library, not a deployable Worker. It has no `wrangler.jsonc`, so release
 discovery ignores it.
@@ -77,7 +78,31 @@ on one origin. Clever's SSO userinfo and its Data API both live on `api.clever.c
 using both must route that origin by path itself.
 
 `requests` keeps the last 10,000 requests, headers and bodies included, client secrets too. Never
-expose it from a deployed fake.
+expose it from a deployed fake; a deployed one passes `maxRecordedRequests: 0`.
+
+## Serving them from one host
+
+Every fake can be served below a path, so one host can carry several districts' fakes, and each
+takes what a deployment that does not trust its callers needs. All of these are optional, and the
+defaults are what the tests have always used:
+
+- `rebasePreset(preset, baseUrl)` moves an OIDC preset under a base URL: the issuer becomes the base,
+  and every endpoint keeps its path below it. `OidcFake` also takes a `signingKey`, so a restarted
+  fake keeps its JWKS, and a preset may list `acceptedScopes` beyond its discovery document's (Google
+  sign-in granting Classroom scopes). `accessGrant(token)` reports what a live token grants.
+- `CleverDataFake` takes a `baseUrl` (its `links` and `uri`s carry the base's path and resolve
+  against the origin) and a `clientKey`, which gives each caller its own rate-limit budget per token.
+- `GoogleClassroomFake` takes a `baseUrl` and a `resolveToken`, which lets it accept another fake's
+  tokens (Google sign-in's).
+- `OneRosterFake` already took a `baseUrl`, and LTI flavours their origins, which may have paths.
+- `LtiPlatformFake` takes `launchLifetimeSeconds` (default 600).
+
+Behaviours a public deployment needed, now the fakes' own: a Dynamic Registration token registers
+one tool; launch hints and deep linking `data` are random, and launches and deep linking requests
+expire; a Deep Linking response is accepted only at its own course's return URL; tokens and codes of
+people a `large-removal` took out stop working at userinfo and the token endpoint; an AGS score
+without `scoreGiven` clears the result; LTI service URLs and Clever event cursors are looked up by
+index rather than scanned.
 
 ## What the clients' runs found
 
@@ -125,3 +150,4 @@ Each file's header comment cites the documentation it follows.
   - Schoology Dynamic Registration is off: a third-party guide says Schoology supports only manual registration.
   - Canvas's `lti_message_hint` and access tokens are opaque here; in Canvas they are signed JWTs.
   - Not implemented: Canvas variable substitution, NRPS `rlid` and `differences`, and the single-result GET.
+  - A score without `scoreGiven` clears the result, as Canvas's scores controller reads; not verified against a live Canvas.

@@ -2,7 +2,8 @@ import { createLocalJWKSet, decodeJwt, jwtVerify, type JSONWebKeySet } from "jos
 import { describe, expect, it } from "vitest";
 import { SAMPLE_DISTRICT, routeFetch } from "../src/index.ts";
 import { CleverDataFake } from "../src/clever/index.ts";
-import { OIDC_PRESETS, OidcFake, googleSubjectId, type OidcFakeOptions, type OidcPresetName } from "../src/oidc/index.ts";
+import { OIDC_PRESETS, OidcFake, googleSubjectId, rebasePreset, type OidcFakeOptions, type OidcPresetName } from "../src/oidc/index.ts";
+import { generatePlatformKey } from "../src/lti/keys.ts";
 
 const CLIENT = { clientId: "educateos-test", clientSecret: "s3cret-value", redirectUris: ["https://app.maplewood.example/auth/callback"] };
 const REDIRECT = CLIENT.redirectUris[0]!;
@@ -211,6 +212,48 @@ describe.each(["clever", "classlink", "google"] as const)("OIDC fake, %s preset"
     const gone = await codeFrom(await authorize(s, { login_hint: "mw-s-01" }));
     expect(gone.location.searchParams.get("error")).toBe("access_denied");
     expect((await codeFrom(await authorize(s, { login_hint: "mw-s-04" }))).code).toBeTruthy();
+  });
+
+  it("stops honouring a removed student's token at userinfo, and their pending code", async () => {
+    const s = setup(name);
+    const { code } = await codeFrom(await authorize(s, { login_hint: "mw-s-01" }));
+    const { code: pending } = await codeFrom(await authorize(s, { login_hint: "mw-s-01", state: "st-2" }));
+    const { access_token: token } = (await (await exchange(s, code!)).json()) as { access_token: string };
+    const config = await discover(s);
+    const userinfo = () => s.fetch(config["userinfo_endpoint"]!, { headers: { authorization: `Bearer ${token}` } });
+    expect((await userinfo()).status).toBe(200);
+    expect(s.fake.accessGrant(token)).toMatchObject({ personId: "mw-s-01", clientId: CLIENT.clientId });
+    s.fake.inject({ kind: "large-removal", fraction: 0.3 });
+    expect((await userinfo()).status).toBe(401);
+    expect(s.fake.accessGrant(token)).toBeUndefined();
+    expect(await (await exchange(s, pending!)).json()).toMatchObject({ error: "invalid_grant" });
+  });
+
+  it("serves the same flow rebased under a path, and signs with a key it is given", async () => {
+    const base = `https://fakes.example/maplewood/${name}`;
+    const key = await generatePlatformKey();
+    const s = setup(name, { preset: rebasePreset(OIDC_PRESETS[name], base), signingKey: key });
+    const config = await discover(s);
+    expect(s.fake.discoveryUrl).toBe(`${base}/.well-known/openid-configuration`);
+    expect(config["issuer"]).toBe(base);
+    for (const endpoint of ["authorization_endpoint", "token_endpoint", "jwks_uri", "userinfo_endpoint"]) expect(config[endpoint]!.startsWith(`${base}/`)).toBe(true);
+    const { code } = await codeFrom(await authorize(s, { login_hint: "mw-s-02" }));
+    const { id_token: idToken } = (await (await exchange(s, code!)).json()) as { id_token: string };
+    const { protectedHeader, payload } = await verify(s, idToken);
+    expect(protectedHeader.kid).toBe(key.kid);
+    expect(payload.iss).toBe(base);
+  });
+});
+
+describe("OIDC fake, accepted scopes", () => {
+  it("grants a preset's accepted scopes beyond scopes_supported, and still refuses unknown ones", async () => {
+    const extra = "https://www.googleapis.com/auth/classroom.courses.readonly";
+    const s = setup("google", { preset: { ...OIDC_PRESETS.google, acceptedScopes: [extra] } });
+    const { code } = await codeFrom(await authorize(s, { login_hint: "mw-t-okafor", scope: `openid email ${extra}` }));
+    const { access_token: token } = (await (await exchange(s, code!)).json()) as { access_token: string };
+    expect(s.fake.accessGrant(token)?.scopes).toContain(extra);
+    const refused = await codeFrom(await authorize(s, { login_hint: "mw-t-okafor", scope: "openid https://www.googleapis.com/auth/drive" }));
+    expect(refused.location.searchParams.get("error")).toBe("invalid_scope");
   });
 });
 

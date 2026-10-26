@@ -182,6 +182,30 @@ describe("Clever Data API v3.1 fake: auth and rate limits", () => {
     expect((await get("/schools")).status).toBe(200);
     expect(CLEVER_RATE_LIMIT_PER_MINUTE).toBe(1200);
   });
+
+  it("gives each client its own budget per token when keyed by caller", async () => {
+    const { fake } = setup({ rateLimitPerMinute: 1, clientKey: (request) => request.headers.get("x-caller") ?? "" });
+    const as = (caller: string) => fake.fetch(`${API}/schools`, { headers: { authorization: `Bearer ${fake.districtToken}`, "x-caller": caller } });
+    expect((await as("a")).status).toBe(200);
+    expect((await as("a")).status).toBe(429);
+    // Another caller's requests with the same token are not refused for the first's.
+    expect((await as("b")).status).toBe(200);
+  });
+});
+
+describe("Clever Data API v3.1 fake: below a base path", () => {
+  it("serves the API below the base, with links and uris that resolve against the origin", async () => {
+    const base = "https://fakes.example/maplewood/clever";
+    const fake = new CleverDataFake({ seed: SAMPLE_DISTRICT, baseUrl: base });
+    const get = (url: string) => fake.fetch(new URL(url, base), { headers: { authorization: `Bearer ${fake.districtToken}` } });
+    const first = (await (await get(`${base}/v3.1/users?limit=2`)).json()) as Page;
+    expect(first.data[0]!.uri).toMatch(/^\/maplewood\/clever\/v3\.1\/users\//);
+    const next = first.links.find((l) => l.rel === "next")!.uri;
+    expect(next).toMatch(/^\/maplewood\/clever\/v3\.1\/users\?limit=2&starting_after=/);
+    expect((await get(next)).status).toBe(200);
+    expect((await get("https://fakes.example/v3.1/users")).status).toBe(404);
+    expect((await get("https://api.clever.com/v3.1/users")).status).toBe(404);
+  });
 });
 
 describe("Clever Data API v3.1 fake: faults", () => {
@@ -282,6 +306,11 @@ describe("Clever Data API v3.1 fake: events", () => {
     expect((await page("/events?record_type=sections")).data).toHaveLength(1);
     expect((await page("/events?record_type=users")).data).toHaveLength(4);
     expect((await get(`/events?starting_after=${"f".repeat(24)}`)).status).toBe(400);
+    const before = await page(`/events?ending_before=${all[3]}&limit=2`);
+    expect(before.data.map((e) => e.data.id)).toEqual(all.slice(1, 3));
+    // Cursors filter by position even when the record_type filter skips the cursor's own event.
+    expect((await page(`/events?record_type=sections&starting_after=${all[0]}`)).data).toHaveLength(1);
+    expect((await page(`/events?record_type=users&ending_before=${all[4]}`)).data).toHaveLength(4);
     const one = (await (await get(`/events/${all[0]}`)).json()) as { data: CleverEvent };
     expect(one.data.type).toBe("users.updated");
     fake.inject({ kind: "malformed-record", times: 1, match: { path: "/events" } });

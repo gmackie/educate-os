@@ -60,6 +60,16 @@ export interface GoogleClassroomFakeOptions extends FakeOptions {
   readonly maxPageSize?: number;
   /** Whether the domain's admin has turned Classroom data access off (`@ClassroomApiDisabled`). */
   readonly apiDisabled?: boolean;
+  /**
+   * Where the API is served, ending in `/v1`. Defaults to {@link CLASSROOM_API_BASE}. A base with a
+   * longer path (one host serving several fakes) serves the same API below it.
+   */
+  readonly baseUrl?: string;
+  /**
+   * Consulted for a bearer token the fake did not issue or register: what it grants, or undefined.
+   * Lets the fake accept the access tokens of a Google sign-in fake, as Classroom accepts Google's.
+   */
+  readonly resolveToken?: (token: string) => ClassroomGrant | undefined;
 }
 
 type Json = Record<string, unknown>;
@@ -144,6 +154,8 @@ export class GoogleClassroomFake extends Fake {
   readonly #grants: TokenIssuer<ClassroomGrant>;
   readonly #maxPageSize: number;
   readonly #apiDisabled: boolean;
+  readonly #base: URL;
+  readonly #resolveToken: ((token: string) => ClassroomGrant | undefined) | undefined;
   readonly #people: Map<string, PersonSeed>;
   readonly #courses = new Map<string, Course>();
   readonly #courseWork = new Map<string, CourseWork>();
@@ -158,6 +170,8 @@ export class GoogleClassroomFake extends Fake {
     this.#grants = new TokenIssuer<ClassroomGrant>("ya29.fake-", this.now);
     this.#maxPageSize = options.maxPageSize ?? 20;
     this.#apiDisabled = options.apiDisabled ?? false;
+    this.#base = new URL(`${(options.baseUrl ?? CLASSROOM_API_BASE).replace(/\/+$/, "")}/`);
+    this.#resolveToken = options.resolveToken;
     this.#people = new Map(this.#seed.people.map((p) => [p.id, p]));
     for (const [token, grant] of Object.entries(options.tokens ?? {})) this.authorize(token, grant);
     for (const section of this.#seed.sections) {
@@ -314,10 +328,10 @@ export class GoogleClassroomFake extends Fake {
 
   #route(request: Request, body: string): Response {
     const url = new URL(request.url);
-    if (url.origin !== new URL(CLASSROOM_API_BASE).origin || !url.pathname.startsWith("/v1/")) throw notFound();
+    if (url.origin !== this.#base.origin || !url.pathname.startsWith(this.#base.pathname)) throw notFound();
     const caller = this.#authenticate(request);
     if (this.#apiDisabled) throw new GoogleError(403, "PERMISSION_DENIED", "@ClassroomApiDisabled The user is not permitted to access the Classroom API.");
-    const segments = decodeSegments(url.pathname.slice("/v1/".length));
+    const segments = decodeSegments(url.pathname.slice(this.#base.pathname.length));
     if (segments === undefined) throw notFound();
     const [verbless, verb] = splitVerb(segments.at(-1)!);
     segments[segments.length - 1] = verbless;
@@ -428,8 +442,8 @@ export class GoogleClassroomFake extends Fake {
 
   #authenticate(request: Request): ClassroomGrant {
     const token = bearer(request);
-    const grant = this.#grants.lookup(token);
-    if (grant !== undefined) return grant;
+    const grant = this.#grants.lookup(token) ?? (token === undefined ? undefined : this.#resolveToken?.(token));
+    if (grant !== undefined && this.#people.has(grant.userId)) return grant;
     const headers = { "www-authenticate": 'Bearer realm="https://accounts.google.com/"' };
     if (token === undefined) {
       throw new GoogleError(401, "UNAUTHENTICATED",

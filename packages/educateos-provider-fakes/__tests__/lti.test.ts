@@ -205,6 +205,20 @@ describe.each(flavours)("LTI platform fake (%s)", (name, flavour) => {
       });
     }
 
+    it("expires a launch that is not redeemed in time, and makes its hint unguessable", async () => {
+      const world = await setup(flavour, { launchLifetimeSeconds: 60 });
+      const login = world.fake.initiateLogin({ personId: ADA, sectionId: BIO });
+      const other = world.fake.initiateLogin({ personId: ADA, sectionId: BIO });
+      // Two launches in the same millisecond still get unrelated hints.
+      expect(login.messageHint.length).toBeGreaterThanOrEqual(64);
+      expect(login.messageHint.slice(-32)).not.toBe(other.messageHint.slice(-32));
+      world.clock.ms += 61_000;
+      const result = await world.fake.authorize(authRequest(world, login.params));
+      if (name === "canvas") expect(result.status).toBe(400);
+      else expect(result.error).toBe("launch_no_longer_valid");
+      expect((await launch(world)).result.idToken).toBeDefined();
+    });
+
     it("publishes its keys and keeps the rotation, withdrawal and forging abilities", async () => {
       const world = await setup(flavour);
       const jwks = await (await world.fake.fetch(world.fake.flavour.jwksUri)).json();
@@ -380,6 +394,12 @@ describe.each(flavours)("LTI platform fake (%s)", (name, flavour) => {
       const results = await world.fake.fetch(`${lineItem}/results?user_id=${userId}`, { headers: auth });
       expect(results.headers.get("content-type")).toBe(LTI_MEDIA_TYPES.resultContainer);
       expect(await results.json()).toEqual([{ id: `${lineItem}/results/${userId}`, scoreOf: lineItem, userId, resultScore: 8, resultMaximum: 10, comment: "Good" }]);
+
+      // A later score without scoreGiven clears the result, as Canvas clears the grade.
+      const { scoreGiven: _given, scoreMaximum: _maximum, comment: _comment, ...cleared } = score;
+      expect((await post({ ...cleared, timestamp: "2026-10-20T15:00:00.000Z", gradingProgress: "NotReady" })).status).toBeLessThan(300);
+      const after = await world.fake.fetch(`${lineItem}/results?user_id=${userId}`, { headers: auth });
+      expect(await after.json()).toEqual([{ id: `${lineItem}/results/${userId}`, scoreOf: lineItem, userId, resultMaximum: 10 }]);
     });
 
     it("serves a malformed line item on request", async () => {
@@ -444,6 +464,29 @@ describe.each(flavours)("LTI platform fake (%s)", (name, flavour) => {
       if (name === "canvas") foreign.searchParams.set("data", "forged");
       expect(await post(await respond(world, name === "canvas" ? undefined : "forged", items), foreign.toString())).toBe(400);
       expect(await post(await respond(world, name === "canvas" ? undefined : data, [{ type: "ltiAssetProcessor" }]))).toBe(400);
+    });
+
+    it("binds a response to the course its request came from", async () => {
+      const world = await setup(flavour);
+      const { result } = await launch(world, { personId: OKAFOR, messageType: "LtiDeepLinkingRequest" });
+      const settings = result.claims![LTI_CLAIMS.deepLinkingSettings] as Record<string, unknown>;
+      const returnUrl = new URL(settings.deep_link_return_url as string);
+      const data = name === "canvas" ? returnUrl.searchParams.get("data")! : (settings.data as string);
+      // The same request's response, posted to another course Okafor teaches.
+      const elsewhere = new URL(world.fake.contextOf("mw-bio-p4").deepLinkReturnUrl);
+      if (name === "canvas") elsewhere.searchParams.set("data", data);
+      expect(elsewhere.pathname).not.toBe(returnUrl.pathname);
+      const items = [{ type: "ltiResourceLink", title: "Cell lab", url: LAUNCH }];
+      const post = async (url: URL) =>
+        world.fake.fetch(url, {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ JWT: await respond(world, name === "canvas" ? undefined : data, items) }).toString(),
+        });
+      expect((await post(elsewhere)).status).toBe(400);
+      expect(world.fake.deepLinkResults).toHaveLength(0);
+      expect((await post(returnUrl)).status).toBe(200);
+      expect(world.fake.deepLinkResults[0]!.links[0]!.sectionId).toBe(BIO);
     });
   });
 
@@ -520,6 +563,11 @@ describe("Dynamic Registration 1.0", () => {
     expect(answer.deployment_id).toBe(tool.deploymentIds[0]);
     expect(answer["https://purl.imsglobal.org/spec/lti-tool-configuration"]).not.toHaveProperty("deployment_id");
     expect(answer.scope.split(" ")).toContain("openid");
+    // The registration token registers one tool: a second registration with it is refused, and so
+    // is its OpenID configuration.
+    expect((await register(metadata)).status).toBe(401);
+    expect((await fake.fetch(configUrl)).status).toBe(401);
+    expect(fake.tools.size).toBe(1);
   });
 
   it("Canvas: can put the deployment in the tool configuration, as the spec's example does", async () => {
