@@ -99,3 +99,41 @@ refines decision 4 as follows:
   data namespace. So leaving is removing the alias, with no data to move.
 - **Slugs** are DNS labels of 3 to 32 characters from a reserved-word filter. They are unique because
   the educateos.io side refuses records that another instance owns.
+
+## Addendum A2 (2026-10-26, SCHO-249): Clever portal launches pass through educateos.io
+
+Clever sends a launch from its portal or an Instant Login link to the app's first ("primary")
+redirect URI, with an authorization code and no `state`
+([OAuth implementation](https://dev.clever.com/docs/oauth-implementation),
+[SSO overview](https://dev.clever.com/docs/getting-started-with-clever-sso)). Cloudflare Access
+refuses a callback for a sign-in it didn't start, so a district's own Access callback can't be that
+URI. A launch route on each district would need one Clever redirect URI per district, and Clever
+asks that the first URI serve every district without district-specific subdomains
+([best practices](https://dev.clever.com/docs/best-practices-edge-cases)). So:
+
+- **One shared launch URL.** The educateos.io Clever app lists `https://educateos.io/clever/launch`
+  first. The site Worker exchanges the code with the app's client secret, reads the user's Clever
+  district from `/v3.0/me`, and answers with a 303 to `https://<slug>.educateos.io/` for the
+  registered installation that serves that district. The district's Access application then starts
+  its own Clever sign-in, which Clever completes without asking, since the user is signed in.
+  "Log in with Clever" from a district's own sign-in page is unchanged: it goes through the district's
+  Access team callback and never touches educateos.io.
+- **This is the only time educateos.io is in a sign-in path, and it keeps nothing.** It sees an
+  authorization code, and for one request an access token and the user's Clever user and district
+  IDs. The token is used for that one `/me` read and dropped. None of it is stored, logged or
+  forwarded, and only the district's hostname leaves. Responses are `no-store` and
+  `no-referrer`, since the launch URL carries the code. The district's Access sign-in does not trust
+  anything educateos.io says: Access gets its own token from Clever, and the district checks its
+  Clever district claim (`identityFromCleverClaims`). educateos.io remains outside the data path
+  (decision 4).
+- **Only registered installations take portal launches.** The registry keeps one optional Clever
+  district ID per registered installation, and a Clever district names one installation. An
+  installation that never opted in to the registry (decision 6) can't be found, so its users start
+  from the district's own address or its "Log in with Clever" button. The link is written only from
+  inside the control plane, like registration. Before the guided install offers it, the operator
+  must prove the Clever district is theirs (for example, a Clever district-admin sign-in); until then
+  nothing writes it except the control plane's own tooling.
+- **Self-hosting is the alternative.** An organization with its own Clever app, or that wants no
+  educateos.io in any sign-in, registers its own landing page as that app's first redirect URI: any
+  Access-exempt page that drops the code and redirects to the district root does the same job.
+  Decision 1 still holds: nothing about launches is needed to install, run or sign in to a district.

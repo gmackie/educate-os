@@ -2,6 +2,7 @@
 // `cloudflare:workers`, is the separate `@educateos/control-plane/worker` entry.
 export * from "./access.ts";
 export * from "./app.ts";
+export * from "./clever-launch.ts";
 export * from "./pages.ts";
 export * from "./probe.ts";
 export * from "./registry.ts";

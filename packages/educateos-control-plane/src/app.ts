@@ -4,19 +4,21 @@
 //   /healthz       the site's health check (ForgeGraph's healthCheckUrl): the store answers
 //   /app, /app/*   the operator console, behind Cloudflare Access, on educateos.io only
 //   /registry/*    the opt-in instance registry's heartbeats: signed by installations, no sign-in
+//   /clever/launch Clever portal launches, sent on to the registered district (SCHO-249), no sign-in
 //
 // Anything else that reaches the Worker is handed back to the assets binding, whose 404 page the
 // static site already defines.
 import type { ErrorCode } from "@educateos/contracts";
 import { Heartbeat, SignedEnvelope } from "@educateos/fleet";
 import { AccessUnavailableError, type OperatorIdentity, type OperatorVerifier } from "./access.ts";
+import { CLEVER_LAUNCH_PATH, cleverLaunch, type CleverAppCredentials } from "./clever-launch.ts";
 import { dashboardPage, messagePage, PAGE_HEADERS, type SiteShell } from "./pages.ts";
 import { probeInstallation, type ProbeResult } from "./probe.ts";
 import type { DashboardEntry, RegistryMessage, RegistryReply } from "./registry.ts";
 import type { Installation, Operator } from "./store.ts";
 
 /** The paths the Worker handles before the assets binding, as `run_worker_first` lists them. */
-export const DYNAMIC_PATHS = ["/healthz", "/app", "/app/*", "/registry/*"] as const;
+export const DYNAMIC_PATHS = ["/healthz", "/app", "/app/*", "/registry/*", CLEVER_LAUNCH_PATH] as const;
 
 /** The largest registry message accepted. A heartbeat is a few kilobytes. */
 export const MAX_REGISTRY_BODY_BYTES = 64 * 1024;
@@ -55,6 +57,7 @@ export interface ControlPlaneApi {
   installations(operatorSubject: string): Promise<Installation[]> | Installation[];
   dashboard(operator: Operator): Promise<DashboardEntry[]>;
   receiveRegistryMessage(kind: RegistryMessage, input: unknown): Promise<RegistryReply>;
+  cleverLaunchHostname(cleverDistrictId: string): Promise<string | undefined>;
   ping(): Promise<true> | true;
 }
 
@@ -69,6 +72,10 @@ export interface ControlPlaneDeps {
   commit?: string;
   /** Probes an installation's hostname for the dashboard. Defaults to {@link probeInstallation}. */
   probe?: (hostname: string) => Promise<ProbeResult>;
+  /** The Clever app's client, for portal launches. Undefined refuses every launch. */
+  clever?: CleverAppCredentials;
+  /** Reaches Clever for portal launches. Defaults to the global `fetch`. */
+  cleverFetch?: (input: string, init: RequestInit) => Promise<Response>;
 }
 
 function respond(body: string, status = 200, headers: Record<string, string> = {}): Response {
@@ -106,6 +113,15 @@ async function route(request: Request, deps: ControlPlaneDeps): Promise<Response
     if (request.method !== "GET" && request.method !== "HEAD") return json({ error: "method not allowed" }, 405);
     await deps.store().ping();
     return json({ status: "ok", commit: deps.commit ?? null });
+  }
+
+  if (pathname === CLEVER_LAUNCH_PATH) {
+    return cleverLaunch(request, {
+      shell: deps.shell,
+      credentials: deps.clever,
+      hostnameFor: (cleverDistrictId) => deps.store().cleverLaunchHostname(cleverDistrictId),
+      fetch: deps.cleverFetch ?? ((input, init) => fetch(input, init)),
+    });
   }
 
   if (pathname.startsWith("/registry/")) {

@@ -21,6 +21,12 @@ export interface ControlPlaneEnv {
   ACCESS_ISSUER: string;
   /** The audience tag of the control plane's Access application. */
   ACCESS_AUD: string;
+  /**
+   * The educateos.io Clever app's OAuth client (secrets), for portal launches at /clever/launch
+   * (SCHO-249). Without both, every launch is refused with a page.
+   */
+  CLEVER_CLIENT_ID?: string;
+  CLEVER_CLIENT_SECRET?: string;
   /** Stamped by the ForgeGraph build (`scripts/production/stamp-commit.ts`). */
   FG_COMMIT_HASH?: string;
 }
@@ -55,6 +61,15 @@ export class ControlPlane extends DurableObject<ControlPlaneEnv> implements Cont
     return this.#registry.receive(kind, input);
   }
 
+  /** Records the Clever district a registered installation serves. Never reachable over HTTP. */
+  linkCleverDistrict(instanceId: string, cleverDistrictId: string): Promise<RegistryReply> {
+    return this.#registry.linkCleverDistrict(instanceId, cleverDistrictId);
+  }
+
+  cleverLaunchHostname(cleverDistrictId: string): Promise<string | undefined> {
+    return this.#registry.cleverLaunchHostname(cleverDistrictId);
+  }
+
   ping(): true {
     return this.#store.ping();
   }
@@ -66,6 +81,8 @@ export interface SiteWorkerOptions {
   accessKeys?: JWTVerifyGetKey;
   /** The dashboard's installation probe. Defaults to a real `/healthz` request; tests stub it. */
   probe?: (hostname: string) => Promise<ProbeResult>;
+  /** Reaches Clever for portal launches. Defaults to the global `fetch`; tests stand in a fake Clever. */
+  cleverFetch?: (input: string, init: RequestInit) => Promise<Response>;
 }
 
 /** The site Worker's fetch handler, with the site's shell. */
@@ -89,6 +106,10 @@ export function siteWorker(shell: SiteShell, options: SiteWorkerOptions = {}): E
         assets: (assetRequest) => env.ASSETS.fetch(assetRequest),
         commit: env.FG_COMMIT_HASH,
         probe: options.probe,
+        ...(env.CLEVER_CLIENT_ID && env.CLEVER_CLIENT_SECRET
+          ? { clever: { clientId: env.CLEVER_CLIENT_ID, clientSecret: env.CLEVER_CLIENT_SECRET } }
+          : {}),
+        ...(options.cleverFetch === undefined ? {} : { cleverFetch: options.cleverFetch }),
       });
     },
   };
