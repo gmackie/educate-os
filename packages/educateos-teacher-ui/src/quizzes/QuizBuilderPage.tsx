@@ -11,7 +11,8 @@ import type { Assignment, CourseModule, Quiz, QuizItemDraft, QuizSettings, Teach
 import { useLoad } from "../useLoad.ts";
 import { blankItem, ItemEditor } from "./ItemEditor.tsx";
 import { TypedInput } from "./TypedInput.tsx";
-import { fromLocalInput, ITEM_TYPE_LABEL, toLocalInput } from "./quizText.ts";
+import { ITEM_TYPE_LABEL } from "./quizText.ts";
+import { fromLocalInput, toLocalInput } from "../dates.ts";
 
 const NONE = "none";
 const ITEM_TYPES = Object.keys(ITEM_TYPE_LABEL) as QuizItemDraft["type"][];

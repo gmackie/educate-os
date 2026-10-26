@@ -114,7 +114,7 @@ const Composer = ({ teaching, context, approvedReleases, earlier }: {
   if (phase.step === "preview") {
     return (
       <div className="flex flex-col gap-6">
-        <StudentPreview definition={phase.definition} releases={context.releases} />
+        <StudentPreview definition={phase.definition} releases={context.releases} offeringId={offeringId} rubric={form.rubric} />
         <LayerCard className="flex flex-col gap-3 p-4">
           <h2><Text variant="heading" as="span">Publish and assign</Text></h2>
           <PublishPanel definition={phase.definition} offeringId={offeringId} rubric={form.rubric} onPublished={(assignment) => setPhase({ step: "published", assignment })} />

@@ -230,6 +230,12 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
       announcements.push(entry);
       return entry;
     },
+    "teacher.updateAnnouncement": ({ params, body }) => {
+      const entry = announcements.find((a) => a.announcement.id === params!.announcementId)!;
+      Object.assign(entry.announcement, body);
+      entry.published = entry.announcement.publishAt <= NOW;
+      return entry;
+    },
     "teacher.deleteAnnouncement": ({ params }) => {
       const entry = announcements.find((a) => a.announcement.id === params!.announcementId);
       if (entry !== undefined) entry.announcement.deleted = true;
@@ -294,7 +300,13 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
           subject: activity.subject,
           gradeBand: activity.gradeBand,
           overview: activity.overview,
-          steps: [{ id: "draft", title: "Draft", prompt: String(activity.prompt ?? "Do the work."), sources: [], response: { kind: "writing" } }],
+          // A science investigation asks for its data table; every other template, a written draft.
+          steps: activity.template === "science-investigation"
+            ? [
+              { id: "method", title: "Method", prompt: String(activity.methodPrompt), sources: [], response: { kind: "writing" } },
+              { id: "data", title: "Data", prompt: "Record your observations.", sources: [], response: { kind: "dataset", columns: activity.dataColumns } },
+            ]
+            : [{ id: "draft", title: "Draft", prompt: String(activity.prompt ?? "Do the work."), sources: [], response: { kind: "writing" } }],
           resources: activity.resources,
           codex: activity.codex,
           rubricSlots: [],

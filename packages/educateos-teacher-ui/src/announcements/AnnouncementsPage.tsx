@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Badge, Button, Empty, Surface, Text } from "@cloudflare/kumo";
 import { Megaphone } from "@phosphor-icons/react";
 import { classLabel } from "../classes/classLabel.ts";
@@ -7,13 +8,36 @@ import { PageHeading } from "../PageHeading.tsx";
 import { Problem } from "../Problem.tsx";
 import type { ClassAnnouncement, TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
-import { AnnouncementComposer } from "./AnnouncementComposer.tsx";
+import { AnnouncementComposer, type AnnouncementDraft } from "./AnnouncementComposer.tsx";
 import { WeeklyNoteForm } from "./WeeklyNoteForm.tsx";
 import { formatDateTime } from "../dates.ts";
 
 
-const AnnouncementItem = ({ entry, busy, deleting, onDelete }: { entry: ClassAnnouncement; busy: boolean; deleting: boolean; onDelete: () => void }) => {
+const AnnouncementItem = ({ entry, busy, deleting, saving, onDelete, onSave }: {
+  entry: ClassAnnouncement;
+  busy: boolean;
+  deleting: boolean;
+  saving: boolean;
+  onDelete: () => void;
+  onSave: (draft: AnnouncementDraft) => Promise<boolean>;
+}) => {
   const { announcement, published } = entry;
+  const [editing, setEditing] = useState(false);
+  if (editing) {
+    return (
+      <Surface className="rounded-lg border border-kumo-hairline p-4">
+        <AnnouncementComposer
+          saving={saving}
+          editing={{ entry, onCancel: () => setEditing(false) }}
+          onPost={async (draft) => {
+            const saved = await onSave(draft);
+            if (saved) setEditing(false);
+            return saved;
+          }}
+        />
+      </Surface>
+    );
+  }
   return (
     <Surface as="article" aria-label={announcement.title} className="flex flex-col gap-2 rounded-lg border border-kumo-hairline p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -25,7 +49,10 @@ const AnnouncementItem = ({ entry, busy, deleting, onDelete }: { entry: ClassAnn
         <time dateTime={announcement.publishAt}>{formatDateTime(announcement.publishAt)}</time>
       </Text>
       <p className="whitespace-pre-wrap">{announcement.body}</p>
-      <div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="secondary" disabled={busy} onClick={() => setEditing(true)} aria-label={`Edit ${announcement.title}`}>
+          Edit
+        </Button>
         <Button size="sm" variant="secondary" loading={deleting} disabled={busy} onClick={onDelete} aria-label={`Delete ${announcement.title}`}>
           Delete
         </Button>
@@ -36,7 +63,7 @@ const AnnouncementItem = ({ entry, busy, deleting, onDelete }: { entry: ClassAnn
 
 /**
  * A class's announcements: the teacher posts one now or schedules it, sees what students see and
- * what is still waiting, and deletes any. Below, the week's note to families for the digest.
+ * what is still waiting, and edits or deletes any. Below, the week's note to families for the digest.
  */
 export const AnnouncementsPage = ({ teaching }: { teaching: TeachingOffering }) => {
   const offeringId = teaching.offering.id;
@@ -76,6 +103,11 @@ export const AnnouncementsPage = ({ teaching }: { teaching: TeachingOffering }) 
                       entry={entry}
                       busy={action.busy}
                       deleting={action.running(`delete:${entry.announcement.id}`)}
+                      saving={action.running(`edit:${entry.announcement.id}`)}
+                      onSave={(draft) => action.run(`edit:${entry.announcement.id}`, async (client) => {
+                        const saved = await client.call("teacher.updateAnnouncement", { params: { announcementId: entry.announcement.id }, body: draft });
+                        return `Saved ${saved.announcement.title}`;
+                      })}
                       onDelete={() => void action.run(`delete:${entry.announcement.id}`, async (client) => {
                         await client.call("teacher.deleteAnnouncement", { params: { announcementId: entry.announcement.id } });
                         return `Deleted ${entry.announcement.title}`;

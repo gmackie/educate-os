@@ -19,6 +19,7 @@ export const SubmissionsPage = ({ teaching, assignmentId }: { teaching: Teaching
   // take focus away from the form the teacher just used).
   const [edited, setEdited] = useState<Readonly<Record<string, Assignment>>>({});
   const list = assignments.status === "ready" ? assignments.data.map((a) => edited[a.id] ?? a) : [];
+  const turnedIn = useTurnedIn(assignments.status === "ready" ? assignments.data.map((a) => a.id) : []);
   const chosen = list.find((a) => a.id === assignmentId);
   return (
     <div className="flex flex-col gap-6">
@@ -46,6 +47,9 @@ export const SubmissionsPage = ({ teaching, assignmentId }: { teaching: Teaching
                   >
                     <Text bold as="span">{a.title}</Text>
                     <Text variant="secondary" size="sm" as="span">{`Due ${formatDateTime(a.dueAt)}`}</Text>
+                    {turnedIn.status === "ready" && (
+                      <Text variant="secondary" size="sm" as="span">{`${turnedIn.data.get(a.id) ?? 0} turned in`}</Text>
+                    )}
                   </a>
                 </li>
               ))}
@@ -68,6 +72,17 @@ export const SubmissionsPage = ({ teaching, assignmentId }: { teaching: Teaching
     </div>
   );
 };
+
+/**
+ * How many students have work turned in for each assignment: one per student with a live
+ * submission, however many attempts they made. A count that fails to load is left out rather than
+ * standing in the way of the list.
+ */
+const useTurnedIn = (assignmentIds: readonly string[]) =>
+  useLoad(`turned-in:${assignmentIds.join(",")}`, async (client) => {
+    const perAssignment = await Promise.all(assignmentIds.map((assignmentId) => client.call("teacher.listSubmissions", { params: { assignmentId } })));
+    return new Map(assignmentIds.map((id, i) => [id, new Set(perAssignment[i]!.filter((s) => s.withdrawnAt === undefined).map((s) => s.studentPrincipalId)).size]));
+  });
 
 const SubmissionList = ({ offeringId, assignmentId, title }: { offeringId: string; assignmentId: string; title: string }) => {
   const list = useLoad(`submissions:${assignmentId}`, async (client) => {

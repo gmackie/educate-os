@@ -285,6 +285,9 @@ describe("publishing a quiz in a class with no assignment for it (SCHO-220)", ()
       await user.click(within(details).getByRole("button", { name: "Add essay" }));
       await user.click(within(details).getByRole("button", { name: "Add number" }));
       const question = within(details).getByRole("group", { name: "Question 2: Number" });
+      // Arranging names the question it moves.
+      expect((within(question).getByRole("button", { name: "Move Question 2 up" }) as HTMLButtonElement).disabled).toBe(false);
+      expect((within(question).getByRole("button", { name: "Move Question 2 down" }) as HTMLButtonElement).disabled).toBe(true);
       for (const name of ["Question 2 points", "Question 2 answer", "Question 2 tolerance (plus or minus)"]) {
         const field = within(question).getByRole("spinbutton", { name });
         await user.clear(field);

@@ -62,14 +62,15 @@ export const ClassPage = ({ route }: { route: ClassRoute }) => {
           <li aria-current="page">{classLabel(teaching)}</li>
         </ol>
       </nav>
-      <nav aria-label="Class sections">
-        <ul className="flex flex-wrap gap-1 border-b border-kumo-line">
+      {/* One row that scrolls sideways on a narrow screen rather than wrapping, so the current section's underline stays on the line. */}
+      <nav aria-label="Class sections" className="border-b border-kumo-line">
+        <ul className="flex gap-0.5 overflow-x-auto">
           {CLASS_SECTIONS.map((section) => (
-            <li key={section.screen}>
+            <li key={section.screen} className="shrink-0">
               <a
                 href={routeHref({ screen: section.screen, offeringId: teaching.offering.id })}
                 aria-current={section.screen === current ? "page" : undefined}
-                className="-mb-px block rounded-t border-b-2 border-transparent px-3 py-2 text-kumo-subtle no-underline focus-visible:ring-2 focus-visible:ring-kumo-brand aria-[current=page]:border-kumo-brand aria-[current=page]:text-kumo-default"
+                className="block whitespace-nowrap rounded-t border-b-2 border-transparent px-2.5 py-2 text-kumo-subtle no-underline focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-kumo-brand aria-[current=page]:border-kumo-brand aria-[current=page]:text-kumo-default"
               >
                 {section.label}
               </a>

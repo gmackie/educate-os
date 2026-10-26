@@ -71,7 +71,7 @@ const SimpleRubricBuilder = ({ offeringId, onSigned }: { offeringId: string; onS
       setCriteria("");
       setMinWords("");
       setState({ status: "idle" });
-      announce(`Rubric “${release.title}” is signed and chosen.`);
+      announce(`Rubric “${release.title}” is saved and chosen. It can't change now, so every student is assessed against the same criteria.`);
     } catch (error) {
       setState({ status: "failed", error });
     }
@@ -80,7 +80,7 @@ const SimpleRubricBuilder = ({ offeringId, onSigned }: { offeringId: string; onS
   return (
     <div role="group" aria-label="Create a simple rubric" className="flex flex-col gap-2 rounded border border-kumo-line p-3">
       <Text bold>Create a simple rubric</Text>
-      <Text variant="secondary" size="sm">{`Each criterion gets three levels: ${SIMPLE_LEVELS.map((l) => `${l.label} (${l.points})`).join(", ")}.`}</Text>
+      <Text variant="secondary" size="sm">{`Each criterion gets three levels: ${SIMPLE_LEVELS.map((l) => `${l.label} (${l.points})`).join(", ")}. Once saved, a rubric can't change, so every student is assessed against the same criteria. To change it later, create a new one.`}</Text>
       <Input label="Rubric title" value={title} onChange={(event) => setTitle(event.target.value)} />
       <InputArea label="Criteria" description="One per line" value={criteria} onValueChange={setCriteria} />
       <Input
@@ -93,7 +93,7 @@ const SimpleRubricBuilder = ({ offeringId, onSigned }: { offeringId: string; onS
       />
       <div>
         <Button icon={<Seal aria-hidden />} loading={state.status === "signing"} disabled={title.trim() === "" || names.length === 0} onClick={() => void sign()}>
-          Sign and use this rubric
+          Save and use this rubric
         </Button>
       </div>
       {state.status === "failed" && <Problem error={state.error} />}

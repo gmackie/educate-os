@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Button, InputArea, Text } from "@cloudflare/kumo";
+import { CheckCircle } from "@phosphor-icons/react";
+import { formatDateTime } from "../dates.ts";
 import type { WeeklyNoteView } from "../types.ts";
 
 /** The longest weekly note the district stores, in characters. */
@@ -14,7 +16,8 @@ const weekStart = (week: string): string => {
 
 /**
  * The class's note to families for the week the next family digest covers. Saving empty text
- * removes it. Families of students in the class read it in their weekly email.
+ * removes it. Families of students in the class read it in their weekly email. While what is typed
+ * is what was saved, it says so, and when.
  */
 export const WeeklyNoteForm = ({ current, saving, onSave }: { current: WeeklyNoteView; saving: boolean; onSave: (text: string) => Promise<boolean> }) => {
   const [text, setText] = useState(current.note?.text ?? "");
@@ -31,10 +34,18 @@ export const WeeklyNoteForm = ({ current, saving, onSave }: { current: WeeklyNot
         {`Included in the weekly family email for the week of ${weekStart(current.week)}. Families see it as written.`}
       </Text>
       <InputArea label="Note for the week" autoResize minRows={3} maxLength={MAX_NOTE_LENGTH} value={text} onValueChange={setText} />
-      <div>
+      <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" variant="secondary" loading={saving}>
           {text.trim() === "" && current.note !== null ? "Remove note" : "Save note"}
         </Button>
+        {current.note !== null && text.trim() === current.note.text && (
+          <Text variant="secondary" size="sm" as="span">
+            <span className="inline-flex items-center gap-1">
+              <CheckCircle aria-hidden />
+              {`Saved ${formatDateTime(current.note.updated.at)}`}
+            </span>
+          </Text>
+        )}
       </div>
     </form>
   );

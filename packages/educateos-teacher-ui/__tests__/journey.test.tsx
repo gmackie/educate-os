@@ -51,13 +51,17 @@ describe("a teacher's first class", () => {
     await user.type(screen.getByRole("textbox", { name: "Rubric title" }), "Essay basics");
     await user.type(screen.getByRole("textbox", { name: "Criteria" }), "Length");
     await user.type(screen.getByRole("textbox", { name: /Automatic check/ }), "20");
-    await user.click(screen.getByRole("button", { name: "Sign and use this rubric" }));
+    await user.click(screen.getByRole("button", { name: "Save and use this rubric" }));
     await waitFor(() => expect(screen.getByRole("radio", { name: "Essay basics" }).getAttribute("aria-checked")).toBe("true"));
+    expect(screen.getByText(/Once saved, a rubric can't change/)).toBeTruthy();
 
     // Preview as a student: the teacher-only note is not there.
     await user.click(screen.getByRole("button", { name: "Preview as student" }));
     const preview = await screen.findByRole("region", { name: "Preview as a student" });
     expect(within(preview).getByText("Should school start later?")).toBeTruthy();
+    // The rubric shows as students see it: criteria and levels.
+    expect(within(preview).getByText("How your work is assessed: Essay basics")).toBeTruthy();
+    expect(within(preview).getByText("Length: Beginning (1), Developing (2), Secure (3)")).toBeTruthy();
     expect(within(preview).queryByText(/counterclaims/)).toBeNull();
     const created = district.callsTo("teacher.createActivity")[0]!.input.body!.activity as Record<string, unknown>;
     expect(created).toMatchObject({

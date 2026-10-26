@@ -53,6 +53,18 @@ describe("an assignment's due date", () => {
   });
 });
 
+describe("the submissions list", () => {
+  it("counts the students who turned in work for each activity, once each", async () => {
+    const district = fakeDistrict();
+    district.studentSubmits(IDS.existingAssignment, "First try.");
+    district.studentSubmits(IDS.existingAssignment, "Second try.");
+    district.studentSubmits(IDS.existingAssignment, "Noah's.", IDS.noah);
+    await renderApp(district.client, `#/classes/${IDS.offering}/submissions`);
+    const nav = await screen.findByRole("navigation", { name: "Activities" });
+    expect(await within(nav).findByText("2 turned in")).toBeTruthy();
+  });
+});
+
 describe("a co-teacher's proposed grade", () => {
   it("can be declined with a reason, which ends the proposal", async () => {
     const district = fakeDistrict();

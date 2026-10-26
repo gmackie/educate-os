@@ -5,6 +5,7 @@ import { Problem } from "../Problem.tsx";
 import type { CartridgeExport, CartridgePreview } from "../types.ts";
 import { fileToBase64, MAX_CARTRIDGE_BYTES } from "./fileToBase64.ts";
 import { useAction } from "./useAction.ts";
+import { FILE_INPUT_CLASS } from "../fileInputClass.ts";
 
 type Upload = { fileName: string; base64: string; preview: CartridgePreview };
 
@@ -69,7 +70,7 @@ export const CartridgePanel = ({ offeringId, onImported }: { offeringId: string;
           type="file"
           accept=".imscc,.zip,application/zip"
           aria-describedby="cartridge-file-help"
-          className="text-sm"
+          className={FILE_INPUT_CLASS}
           disabled={action.busy}
           onChange={(event) => {
             const file = event.target.files?.[0];

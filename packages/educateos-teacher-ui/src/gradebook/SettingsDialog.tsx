@@ -65,9 +65,9 @@ const SettingsForm = ({ gradebook, onSaved }: { gradebook: Gradebook; onSaved: (
           const update = (patch: Partial<typeof group>) => change({ groups: draft.groups.map((g) => (g.id === group.id ? { ...g, ...patch } : g)) });
           return (
             <div key={group.id} role="group" aria-label={label} className="flex flex-col gap-2 rounded-lg border border-kumo-line p-3 sm:flex-row sm:items-end">
-              <div className="grow"><Input label="Group name" maxLength={100} value={group.name} onChange={(e) => update({ name: e.target.value })} /></div>
-              <div className="sm:w-28"><Input label="Weight (%)" type="number" min={0} max={100} step="any" value={group.weight} onChange={(e) => update({ weight: e.target.value })} /></div>
-              <div className="sm:w-28"><Input label="Drop lowest" type="number" min={0} max={20} step={1} value={group.dropLowest} onChange={(e) => update({ dropLowest: e.target.value })} /></div>
+              <div className="min-w-0 grow"><Input className="w-full" label="Group name" maxLength={100} value={group.name} onChange={(e) => update({ name: e.target.value })} /></div>
+              <div className="min-w-0 sm:w-28"><Input className="w-full" label="Weight (%)" type="number" min={0} max={100} step="any" value={group.weight} onChange={(e) => update({ weight: e.target.value })} /></div>
+              <div className="min-w-0 sm:w-28"><Input className="w-full" label="Drop lowest" type="number" min={0} max={20} step={1} value={group.dropLowest} onChange={(e) => update({ dropLowest: e.target.value })} /></div>
               <Button
                 variant="secondary-destructive"
                 icon={<Trash aria-hidden />}
@@ -118,9 +118,10 @@ const SettingsForm = ({ gradebook, onSaved }: { gradebook: Gradebook; onSaved: (
           const update = (patch: Partial<typeof cutoff>) => change({ scale: draft.scale.map((c, i) => (i === index ? { ...c, ...patch } : c)) });
           return (
             <div key={index} role="group" aria-label={`Grade ${index + 1}`} className="flex flex-col gap-2 sm:flex-row sm:items-end">
-              <div className="sm:w-28"><Input label="Letter" maxLength={12} value={cutoff.letter} onChange={(e) => update({ letter: e.target.value })} /></div>
-              <div className="sm:w-36">
+              <div className="min-w-0 sm:w-28"><Input className="w-full" label="Letter" maxLength={12} value={cutoff.letter} onChange={(e) => update({ letter: e.target.value })} /></div>
+              <div className="min-w-0 sm:w-36">
                 <Input
+                  className="w-full"
                   label="From (%)"
                   type="number"
                   min={0}
@@ -128,7 +129,6 @@ const SettingsForm = ({ gradebook, onSaved }: { gradebook: Gradebook; onSaved: (
                   step="any"
                   value={last ? "0" : cutoff.minPercent}
                   disabled={last}
-                  {...(last ? { description: "The lowest grade starts at 0." } : {})}
                   onChange={(e) => update({ minPercent: e.target.value })}
                 />
               </div>
@@ -140,6 +140,8 @@ const SettingsForm = ({ gradebook, onSaved }: { gradebook: Gradebook; onSaved: (
                   onClick={() => change({ scale: draft.scale.filter((_, i) => i !== index) })}
                 />
               ) : null}
+              {/* Under the row rather than under its field, so every row's controls line up. */}
+              {last ? <span className="sm:self-center"><Text variant="secondary" size="sm" as="span">The lowest grade starts at 0.</Text></span> : null}
             </div>
           );
         })}

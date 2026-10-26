@@ -173,8 +173,8 @@ export const ItemEditor = ({ item, position, count, locked, onChange, onMove, on
         }}
       />
       <div role="group" aria-label={`Arrange ${label}`} className="flex flex-wrap gap-2">
-        <Button size="sm" icon={<ArrowUp aria-hidden />} disabled={position === 1} onClick={() => onMove(-1)}>Move up</Button>
-        <Button size="sm" icon={<ArrowDown aria-hidden />} disabled={position === count} onClick={() => onMove(1)}>Move down</Button>
+        <Button size="sm" icon={<ArrowUp aria-hidden />} aria-label={`Move ${label} up`} disabled={position === 1} onClick={() => onMove(-1)}>Move up</Button>
+        <Button size="sm" icon={<ArrowDown aria-hidden />} aria-label={`Move ${label} down`} disabled={position === count} onClick={() => onMove(1)}>Move down</Button>
         <Button size="sm" variant="ghost" icon={<Trash aria-hidden />} onClick={onRemove}>{`Remove ${label}`}</Button>
       </div>
     </fieldset>

@@ -27,6 +27,8 @@ const expectWellFormed = () => {
   expect(screen.getByRole("main")).toBeTruthy();
   expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   for (const role of ["button", "link", "textbox", "checkbox", "radio", "switch"] as const) allNamed(role);
+  // The product is EducateOS everywhere a teacher reads its name (SCHO-222).
+  expect(document.body.textContent).not.toMatch(/school\s?os/i);
 };
 
 describe("keyboard-only use", () => {
@@ -101,6 +103,9 @@ describe("roles and labels", () => {
       { section: "Roster", heading: /^Roster/ },
       { section: "Resources", heading: /^Resources/ },
       { section: "Create activity", heading: /^Create activity/ },
+      { section: "Modules", heading: /^Modules/ },
+      { section: "Gradebook", heading: /^Gradebook/ },
+      { section: "Announcements", heading: /^Announcements/ },
       { section: "Submissions", heading: /^Submissions/ },
     ];
     await user.click(screen.getByRole("link", { name: /English 9/ }));

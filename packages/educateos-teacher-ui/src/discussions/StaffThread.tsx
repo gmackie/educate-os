@@ -8,6 +8,7 @@ import type { DiscussionPost, DiscussionTopic } from "../types.ts";
 import { PostActions } from "./PostActions.tsx";
 import { PostSummary } from "./PostSummary.tsx";
 import { useSteadyLoad } from "../useSteadyLoad.ts";
+import { useLoad } from "../useLoad.ts";
 
 interface Node {
   post: DiscussionPost;
@@ -55,10 +56,18 @@ const TeacherComposer = ({ label, submitLabel, topic, parentId, onPosted }: {
   );
 };
 
-const PostNode = ({ node, topic, names, onChanged }: { node: Node; topic: DiscussionTopic; names: ReadonlyMap<string, string>; onChanged: () => void }) => {
+const PostNode = ({ node, topic, names, viewerId, onChanged }: {
+  node: Node;
+  topic: DiscussionTopic;
+  names: ReadonlyMap<string, string>;
+  /** The teacher reading, once known, so their own posts read as theirs. */
+  viewerId: string | undefined;
+  onChanged: () => void;
+}) => {
   const headingId = useId();
   const [replying, setReplying] = useState(false);
   const author = names.get(node.post.authorId) ?? "Unknown author";
+  const replyLabel = node.post.authorId === viewerId ? "Reply to your post" : `Reply to ${author}`;
   return (
     <li className="flex flex-col gap-2">
       <article aria-labelledby={headingId} className="flex flex-col gap-2 rounded-lg border border-kumo-hairline p-3">
@@ -66,12 +75,12 @@ const PostNode = ({ node, topic, names, onChanged }: { node: Node; topic: Discus
         <div className="flex flex-wrap items-start gap-2">
           <PostActions post={node.post} author={author} onChanged={onChanged} />
           {topic.settings.allowReplies && node.post.status === "visible" && node.post.deletedAt === undefined && !replying && (
-            <Button size="sm" variant="ghost" icon={<ArrowBendUpLeft aria-hidden />} aria-label={`Reply to ${author}`} onClick={() => setReplying(true)}>Reply</Button>
+            <Button size="sm" variant="ghost" icon={<ArrowBendUpLeft aria-hidden />} aria-label={replyLabel} onClick={() => setReplying(true)}>Reply</Button>
           )}
         </div>
         {replying && (
           <TeacherComposer
-            label={`Reply to ${author}`}
+            label={replyLabel}
             submitLabel="Post reply"
             topic={topic}
             parentId={node.post.id}
@@ -84,7 +93,7 @@ const PostNode = ({ node, topic, names, onChanged }: { node: Node; topic: Discus
       </article>
       {node.replies.length > 0 && (
         <ul aria-label={`Replies to ${author}`} className="ml-4 flex flex-col gap-2 border-l border-kumo-hairline pl-3 sm:ml-6">
-          {node.replies.map((reply) => <PostNode key={reply.post.id} node={reply} topic={topic} names={names} onChanged={onChanged} />)}
+          {node.replies.map((reply) => <PostNode key={reply.post.id} node={reply} topic={topic} names={names} viewerId={viewerId} onChanged={onChanged} />)}
         </ul>
       )}
     </li>
@@ -99,6 +108,7 @@ const PostNode = ({ node, topic, names, onChanged }: { node: Node; topic: Discus
 export const StaffThread = ({ topic, onChanged }: { topic: DiscussionTopic; onChanged: () => void }) => {
   const thread = useSteadyLoad(`staff-thread:${topic.id}`, (client) =>
     client.call("teacher.discussionThread", { params: { offeringId: topic.offeringId, topicId: topic.id } }));
+  const me = useLoad("me", (client) => client.call("me.get"));
   const changed = () => {
     thread.reload();
     onChanged();
@@ -112,7 +122,7 @@ export const StaffThread = ({ topic, onChanged }: { topic: DiscussionTopic; onCh
         ? <Text variant="secondary">No posts yet.</Text>
         : (
           <ul aria-label={`Posts in ${topic.title}`} className="flex flex-col gap-3">
-            {tree(thread.data.posts).map((node) => <PostNode key={node.post.id} node={node} topic={topic} names={names} onChanged={changed} />)}
+            {tree(thread.data.posts).map((node) => <PostNode key={node.post.id} node={node} topic={topic} names={names} viewerId={me.status === "ready" ? me.data.principalId : undefined} onChanged={changed} />)}
           </ul>
         )}
       <TeacherComposer label="Post to the class" submitLabel="Post" topic={topic} onPosted={changed} />
