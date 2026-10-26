@@ -11,7 +11,8 @@ import { DistrictApiError } from "@educateos/api-client";
 import { DEMO_DISTRICTS, districtSeed, type DemoDistrict } from "@educateos/fixtures";
 import { FakeIdentityProvider } from "@educateos/harness";
 import { createDirectoryPrincipalResolver, identityFromCleverClaims } from "@educateos/identity";
-import { integrationHealth, type oneroster } from "@educateos/integrations";
+import { DistrictDirectorySnapshot, type ClassLinkSsoInput, type VerifiedIdentity } from "@educateos/contracts";
+import { classlink, integrationHealth, type oneroster } from "@educateos/integrations";
 import {
   AgsClient,
   GradePassback,
@@ -21,16 +22,16 @@ import {
   LtiAgsGradeSink,
 } from "@educateos/lti";
 import { InMemoryExportMappingStore, InMemoryStudentRecordSource, readZip, StudentArchiveExporter } from "@educateos/portability";
-import { cleverDistrictId as cleverDistrictIdOf, OidcFake, parseAutoSubmitForm, routeFetch } from "@educateos/provider-fakes";
+import { classlinkTenantId, cleverDistrictId as cleverDistrictIdOf, OIDC_PRESETS, OidcFake, parseAutoSubmitForm, routeFetch, type DistrictSeed } from "@educateos/provider-fakes";
 import { restore, snapshot } from "./backup.ts";
 import type { ScenarioBody } from "./district-gate.ts";
 import {
   beforeFirstSync,
   bootDemo,
   castOf,
+  classroomGrades,
   directoryOf,
   districtCsv,
-  fixtureShape,
   formPost,
   importedOffering,
   importedPrincipal,
@@ -79,7 +80,7 @@ async function importedFromCsv(demo: DemoDistrict, overrides: PilotOverrides = {
   return { district, admin };
 }
 
-/** A completed first sync of the district's roster provider (OneRoster REST or Clever). */
+/** A completed first sync of the district's roster provider (OneRoster REST, ClassLink, Clever or Google Classroom). */
 async function syncedFromProvider(demo: DemoDistrict) {
   const roster = syncedRoster(demo);
   const first = await roster.sync(roster.empty, "complete");
@@ -138,36 +139,11 @@ export const SCENARIO_BODIES: Readonly<Record<string, ScenarioBody>> = {
   },
 
   "vendor-sso": async (demo) => {
-    // The district's directory as its Clever roster made it, so subjects are Clever user IDs.
-    const { roster, state } = await syncedFromProvider(demo);
-    const resolver = createDirectoryPrincipalResolver(state.roster.snapshot);
-    const seed = districtSeed(demo);
-    const client = { clientId: `${demo.slug}-validation`, clientSecret: "synthetic-client-value", redirectUris: [`https://${demo.slug}.educateos.example/callback`] };
-    const idp = new OidcFake({ seed, preset: "clever", clients: [client] });
-    const fetch = routeFetch(Object.fromEntries(idp.origins.map((origin) => [origin, idp])));
-    const discovery = (await (await fetch(idp.discoveryUrl)).json()) as Record<string, string>;
-    const cleverDistrictId = cleverDistrictIdOf(seed);
-    /** What Clever's userinfo says of a person who signs in. */
-    const claimsOf = async (personId: string) => {
-      const authorize = new URL(discovery["authorization_endpoint"]!);
-      for (const [k, v] of Object.entries({ client_id: client.clientId, redirect_uri: client.redirectUris[0]!, response_type: "code", scope: "openid email profile", state: "s", login_hint: personId })) authorize.searchParams.set(k, v);
-      const code = new URL((await fetch(authorize, { redirect: "manual" })).headers.get("location")!).searchParams.get("code")!;
-      const { access_token: token } = (await (await fetch(discovery["token_endpoint"]!, {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded", authorization: `Basic ${btoa(`${client.clientId}:${client.clientSecret}`)}` },
-        body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: client.redirectUris[0]! }),
-      })).json()) as { access_token: string };
-      return (await (await fetch(discovery["userinfo_endpoint"]!, { headers: { authorization: `Bearer ${token}` } })).json()) as Record<string, unknown>;
-    };
-    const cast = castOf(demo);
-    const config = { districtId: cleverDistrictId, issuer: issuerOf(demo) };
-    for (const person of [cast.student, cast.peer, cast.teacher, cast.admin]) {
-      const identity = identityFromCleverClaims(await claimsOf(person.id), config);
-      expect((await resolver.resolve(identity)).principalId, person.id).toBe(roster.principal(state, person.id).id);
+    switch (demo.profile.sso) {
+      case "clever": return cleverSignIn(demo);
+      case "classlink": return classLinkSignIn(demo);
+      default: throw new Error(`no vendor sign-in body for ${demo.profile.sso}`);
     }
-    // A sign-in from another Clever district is refused, whoever it names.
-    const claims = await claimsOf(cast.student.id);
-    expect(() => identityFromCleverClaims({ ...claims, district: "0".repeat(24), district_id: "0".repeat(24) }, config)).toThrow(/another district/);
   },
 
   "tenant-isolation": async (demo) => {
@@ -216,10 +192,14 @@ export const SCENARIO_BODIES: Readonly<Record<string, ScenarioBody>> = {
         return;
       }
       case "oneroster-rest":
-      case "clever": {
+      case "clever":
+      case "google-classroom": {
         const { roster, state, runs } = await syncedFromProvider(demo);
         expect(runs[0]).toMatchObject({ mode: "complete", outcome: "succeeded" });
-        expect(roster.shape(state)).toStrictEqual(fixtureShape(demo.directory));
+        expect(roster.shape(state)).toStrictEqual(roster.expected());
+        // The cast's class and people arrived, so the comparison is not of two empty rosters.
+        expect(roster.shape(state).classes[cast.offeringId], cast.offeringId).toContain(cast.student.id);
+        expect(roster.principal(state, cast.teacher.id).status).toBe("active");
         // Every synced person can be signed in to: one identity at the district's trusted issuer.
         expect(state.roster.snapshot.principals.every((p) => p.externalIdentities.some((i) => i.issuer === issuer))).toBe(true);
         return;
@@ -322,13 +302,13 @@ export const SCENARIO_BODIES: Readonly<Record<string, ScenarioBody>> = {
     const { roster, state, runs } = await syncedFromProvider(demo);
     const sla = { maxStalenessMinutes: 24 * 60 };
     roster.outage();
-    const down = await roster.sync(state, "delta");
+    const down = await roster.sync(state, roster.followUp);
     expect(down.run).toMatchObject({ outcome: "failed", errorCode: "source-unavailable" });
     expect(down.state, "a failed sync leaves the directory as it was").toBe(state);
     runs.push(down.run);
     expect(integrationHealth(runs, sla, new Date(roster.clock.ms))).toMatchObject({ status: "degraded", consecutiveFailures: 1, lastErrorCode: "source-unavailable" });
     roster.recover();
-    const up = await synced(roster, state, "delta");
+    const up = await synced(roster, state, roster.followUp);
     runs.push(up.run);
     expect(integrationHealth(runs, sla, new Date(roster.clock.ms))).toMatchObject({ status: "healthy", consecutiveFailures: 0 });
     expect(roster.shape(up.state)).toStrictEqual(roster.shape(state));
@@ -396,6 +376,24 @@ export const SCENARIO_BODIES: Readonly<Record<string, ScenarioBody>> = {
   },
 
   "lms-outage": async (demo) => {
+    if (demo.profile.lms === "google-classroom") {
+      const grades = await classroomGrades(demo);
+      const column = await grades.adapter.createCourseWork(grades.ids.offeringId, { title: "Validation essay", maxPoints: 10 });
+      const request = grades.request(column.id, 8);
+      grades.approve(request);
+      grades.fake.inject({ kind: "outage", status: 503 });
+      await expect(grades.passback.publish(request)).rejects.toMatchObject({ code: "unavailable" });
+      expect(grades.submission(column.id), "a grade reached Classroom while it was down").not.toHaveProperty("assignedGrade");
+      // Any PATCH so far met the outage (the sink's reads fail first, so there may be none);
+      // exactly one more, after recovery, writes the grade, and a repeat publish writes nothing.
+      const failed = grades.patches();
+      grades.fake.clearFaults();
+      expect(await grades.passback.publish(request), "the failed delivery was recorded as posted").toStrictEqual({ status: "posted", route: "google-classroom" });
+      expect(await grades.passback.publish(request)).toStrictEqual({ status: "already-posted", route: "google-classroom" });
+      expect(grades.patches() - failed, "grade writes after recovery").toBe(1);
+      expect(grades.submission(column.id)).toMatchObject({ assignedGrade: 8 });
+      return;
+    }
     const { world, passback, request, approve } = await agsSetup(demo);
     approve();
     world.fake.inject({ kind: "outage", status: 503 });
@@ -404,6 +402,26 @@ export const SCENARIO_BODIES: Readonly<Record<string, ScenarioBody>> = {
     world.fake.clearFaults();
     expect(await passback.publish(request), "the failed delivery was recorded as posted").toStrictEqual({ status: "posted", route: "lti-ags" });
     expect(world.fake.scores).toHaveLength(1);
+  },
+
+  "classroom-coursework": async (demo) => {
+    const grades = await classroomGrades(demo);
+    const { fake, courseId, cast } = grades;
+    // The teacher's coursework, created as them in their course.
+    const column = await grades.adapter.createCourseWork(grades.ids.offeringId, { title: "Validation essay", maxPoints: 10 });
+    expect(fake.courseWorkOf(courseId).find((w) => w.id === column.id)).toMatchObject({
+      title: "Validation essay", state: "PUBLISHED", maxPoints: 10, associatedWithDeveloper: true, creatorUserId: fake.userId(cast.teacher.id),
+    });
+    expect((await grades.adapter.courseWork(grades.ids.offeringId)).map((w) => w.id)).toContain(column.id);
+    // An unapproved grade is not sent; the teacher's approval sends it once.
+    const request = grades.request(column.id, 8);
+    await expect(grades.passback.publish(request), "an unapproved grade was sent").rejects.toMatchObject({ code: "policy-violation" });
+    expect(fake.requests.filter((r) => r.method === "PATCH")).toStrictEqual([]);
+    grades.approve(request);
+    expect(await grades.passback.publish(request)).toStrictEqual({ status: "posted", route: "google-classroom" });
+    expect(await grades.passback.publish(request)).toStrictEqual({ status: "already-posted", route: "google-classroom" });
+    expect(grades.submission(column.id)).toMatchObject({ userId: fake.userId(cast.student.id), assignedGrade: 8, draftGrade: 8 });
+    expect(fake.requests.filter((r) => r.method === "PATCH")).toHaveLength(1);
   },
 
   // ── Operations ──────────────────────────────────────────────────
@@ -596,4 +614,104 @@ async function agsSetup(demo: DemoDistrict) {
   const request = { offeringId: cast.offeringId, studentId: cast.student.id, column: column.id, gradeVersion: 1, scoreGiven: 8, scoreMaximum: 10 };
   const approve = () => approvals.record({ ...request, approverId: cast.teacher.id, approvedAt: new Date(world.now() - 5 * 60_000).toISOString() });
   return { world, passback, request, approve };
+}
+
+/** A synthetic OIDC relying party registered with a vendor IdP fake. */
+const relyingParty = (demo: DemoDistrict) => ({ clientId: `${demo.slug}-validation`, clientSecret: "synthetic-client-value", redirectUris: [`https://${demo.slug}.educateos.example/callback`] });
+
+/**
+ * Clever sign-in: Cloudflare Access passes Clever's claims to the district Worker, read with
+ * `identityFromCleverClaims`. Each role signs in through the Clever OIDC fake and resolves against
+ * the directory the Clever roster sync made, whose subjects are Clever user IDs.
+ */
+async function cleverSignIn(demo: DemoDistrict) {
+  const { roster, state } = await syncedFromProvider(demo);
+  const resolver = createDirectoryPrincipalResolver(state.roster.snapshot);
+  const seed = districtSeed(demo);
+  const client = relyingParty(demo);
+  const idp = new OidcFake({ seed, preset: "clever", clients: [client] });
+  const fetch = routeFetch(Object.fromEntries(idp.origins.map((origin) => [origin, idp])));
+  const discovery = (await (await fetch(idp.discoveryUrl)).json()) as Record<string, string>;
+  const cleverDistrictId = cleverDistrictIdOf(seed);
+  /** What Clever's userinfo says of a person who signs in. */
+  const claimsOf = async (personId: string) => {
+    const authorize = new URL(discovery["authorization_endpoint"]!);
+    for (const [k, v] of Object.entries({ client_id: client.clientId, redirect_uri: client.redirectUris[0]!, response_type: "code", scope: "openid email profile", state: "s", login_hint: personId })) authorize.searchParams.set(k, v);
+    const code = new URL((await fetch(authorize, { redirect: "manual" })).headers.get("location")!).searchParams.get("code")!;
+    const { access_token: token } = (await (await fetch(discovery["token_endpoint"]!, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", authorization: `Basic ${btoa(`${client.clientId}:${client.clientSecret}`)}` },
+      body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: client.redirectUris[0]! }),
+    })).json()) as { access_token: string };
+    return (await (await fetch(discovery["userinfo_endpoint"]!, { headers: { authorization: `Bearer ${token}` } })).json()) as Record<string, unknown>;
+  };
+  const cast = castOf(demo);
+  const config = { districtId: cleverDistrictId, issuer: issuerOf(demo) };
+  for (const person of [cast.student, cast.peer, cast.teacher, cast.admin]) {
+    const identity = identityFromCleverClaims(await claimsOf(person.id), config);
+    expect((await resolver.resolve(identity)).principalId, person.id).toBe(roster.principal(state, person.id).id);
+  }
+  // A sign-in from another Clever district is refused, whoever it names.
+  const claims = await claimsOf(cast.student.id);
+  expect(() => identityFromCleverClaims({ ...claims, district: "0".repeat(24), district_id: "0".repeat(24) }, config)).toThrow(/another district/);
+}
+
+/**
+ * ClassLink sign-in (SCHO-204): the authorization-code flow with PKCE through `classLinkSignIn`,
+ * against the ClassLink OIDC fake under the district's issuer. The subject is the id_token's
+ * `preferred_username`, ClassLink's login ID, which is the OneRoster `username` the ClassLink
+ * roster sync keyed each person on. Each role resolves to the principal that sync made, and a
+ * sign-in from another ClassLink tenant is refused on its tenant claim.
+ */
+async function classLinkSignIn(demo: DemoDistrict) {
+  expect(demo.profile.roster, "ClassLink sign-in resolves against a ClassLink Roster Server sync").toBe("oneroster-rest");
+  const { roster, state } = await syncedFromProvider(demo);
+  const resolver = createDirectoryPrincipalResolver(state.roster.snapshot);
+  const issuer = issuerOf(demo);
+  const client = relyingParty(demo);
+  const redirectUri = client.redirectUris[0]!;
+  const sso: ClassLinkSsoInput = { tenantId: classlinkTenantId(roster.seed), issuer, clientId: client.clientId, subjectClaim: "preferred_username" };
+  const tenant = (seed: DistrictSeed) => {
+    const idp = new OidcFake({ seed, preset: { ...OIDC_PRESETS.classlink, issuer }, clients: [client], now: () => roster.clock.ms });
+    return routeFetch(Object.fromEntries(idp.origins.map((origin) => [origin, idp])));
+  };
+  const signIn = async (fetch: typeof globalThis.fetch, personId: string): Promise<VerifiedIdentity> => {
+    const verifier = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+    const challenge = btoa(String.fromCharCode(...digest)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+    const nonce = crypto.randomUUID();
+    const start = classlink.classLinkAuthorizationUrl(sso, { redirectUri, state: "s", nonce, codeChallenge: challenge, loginHint: personId });
+    const back = await fetch(start, { redirect: "manual" });
+    expect(back.status).toBe(302);
+    const code = new URL(back.headers.get("location")!).searchParams.get("code")!;
+    return classlink.classLinkSignIn({
+      sso, clientSecret: client.clientSecret, code, redirectUri, codeVerifier: verifier, nonce, fetch,
+      keys: classlink.classLinkKeys(sso, fetch), clock: () => roster.clock.ms,
+    });
+  };
+  const ours = tenant(roster.seed);
+  const cast = castOf(demo);
+  for (const person of [cast.student, cast.peer, cast.teacher, cast.admin]) {
+    const identity = await signIn(ours, person.id);
+    // The login ID ClassLink asserts is the subject the district's directory holds for the person.
+    expect(identity, person.id).toStrictEqual({ issuer, subject: subjectOfPrincipal(person), credential: "person" });
+    expect((await resolver.resolve(identity)).principalId, person.id).toBe(roster.principal(state, person.id).id);
+  }
+  // A valid sign-in at this tenant by someone the roster no longer holds resolves to no one: the
+  // subject decides, not the tenant or a well-formed token.
+  const snapshot = state.roster.snapshot;
+  const gone = roster.principal(state, cast.peer.id).id;
+  const withoutPeer = createDirectoryPrincipalResolver(DistrictDirectorySnapshot.parse({
+    ...snapshot,
+    principals: snapshot.principals.filter((p) => p.id !== gone),
+    enrollments: snapshot.enrollments.filter((e) => e.principalId !== gone),
+    roleAssignments: snapshot.roleAssignments.filter((r) => r.principalId !== gone),
+  }));
+  const peer = await signIn(ours, cast.peer.id);
+  expect(peer.subject).toBe(subjectOfPrincipal(cast.peer));
+  await expect(withoutPeer.resolve(peer)).rejects.toMatchObject({ code: "unauthenticated" });
+  // The same person's login ID at another ClassLink tenant is refused, whoever it names.
+  const otherSeed = { ...roster.seed, id: `${roster.seed.id}-elsewhere` };
+  expect(classlinkTenantId(otherSeed), "the other tenant has this district's tenant ID").not.toBe(sso.tenantId);
+  await expect(signIn(tenant(otherSeed), cast.student.id)).rejects.toMatchObject({ code: "unauthenticated", message: expect.stringContaining("another organization") });
 }

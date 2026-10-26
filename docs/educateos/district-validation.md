@@ -54,11 +54,11 @@ student exporter and the fleet's entitlement cache. The report lists why for eac
 | Issue | What it turns on |
 | --- | --- |
 | SCHO-203 Clever connector (merged) | On. Cedar Valley's vendor SSO, first and delta sync, hold and outage run against the Clever Data API and OIDC fakes. Its drop and term rollover wait on SCHO-242. |
-| SCHO-204 ClassLink connector | Lakeshore's vendor SSO. Lakeshore's OneRoster REST roster already runs over the existing OAuth2 client. |
-| SCHO-77 Classroom district sync | Harbor's roster, plus Classroom coursework and LMS outage in Cedar Valley and Harbor |
+| SCHO-204 ClassLink connector (merged) | On. Lakeshore's roster syncs through `classLinkRosterSource` from the ClassLink Roster Server fake, and its vendor SSO signs each role in through `classLinkSignIn` against the ClassLink OIDC fake, keyed on `preferred_username` (the OneRoster `username`). Wiring ClassLink sign-in into the district Worker is SCHO-248. |
+| SCHO-77 Classroom district sync (merged) | On. Harbor's first sync, hold and outage run through `classroomRosterSource` against the Google Classroom fake; Classroom has no delta, so `roster-delta` is not in Harbor's profile. Classroom coursework and LMS outage run through `GoogleClassroomProvider` and `GradePassback` in Harbor (over its Classroom-synced directory) and Cedar Valley (over its directory linked to Classroom: every account link there is a name match, accepted in bulk, where production needs an administrator to confirm each). Harbor's drop and term rollover wait on SCHO-242. |
 | SCHO-215 Google Workspace sign-in | Harbor's vendor SSO |
 | SCHO-180 provider health and hold | The large-removal hold for Northfield's CSV upload. The sync runner holds a large removal since SCHO-203, and the REST districts check it, but `admin.applyRoster` does not use the runner. |
-| SCHO-242 apply provider syncs to the district app | Drop and term rollover over HTTP in Riverbend and Lakeshore (OneRoster REST) and Cedar Valley (Clever) |
+| SCHO-242 apply provider syncs to the district app | Drop and term rollover over HTTP in Riverbend and Lakeshore (OneRoster REST), Cedar Valley (Clever) and Harbor (Google Classroom) |
 | SCHO-210 deploy the demo districts | Every scenario against a live district |
 
 ## The live target
@@ -88,9 +88,17 @@ What the first runs found, beyond the scenarios that wait on connectors:
 - **The CSV upload has no large-removal hold.** `runRosterSync` holds a feed that would
   deactivate most of the roster (SCHO-203), but `admin.applyRoster` imports the upload directly,
   so a botched CSV export still applies in full (SCHO-180).
-- **REST syncs never reach a running district.** The district app applies only uploaded CSV
-  rosters, so a OneRoster REST district's drops and term ends never reach the running app
-  (SCHO-242).
+- **Provider syncs never reach a running district.** The district app applies only uploaded CSV
+  rosters, so a OneRoster REST, Clever or Classroom district's drops and term ends never reach the
+  running app (SCHO-242).
+- **`districtSeed`'s usernames are not the directory's subjects.** The adapter derives each
+  username from the fixture ID, while Lakeshore's directory subjects are ClassLink login IDs. The
+  suite's ClassLink roster seeds each username with the person's directory subject, as SCHO-204's
+  own tests do, so the roster sync and ClassLink's `preferred_username` key the same person.
+- **Harbor's fixture subjects are not the Classroom fake's user IDs.** The Classroom fake (and the
+  Google OIDC preset) derive each Google user ID from the seed, so a Classroom-synced Harbor
+  directory keys people on IDs other than the fixture's `1040…` subjects. The scenarios compare by
+  fixture ID, so they are unaffected; Google sign-in (SCHO-215) will need the two to agree.
 - **The harness boots every district as OneRoster-owned.** That includes Prairie, which has no
   roster source, so its administrator could not edit its own directory. The harness also leaves
   out each district's guardian relationships, which the directory snapshot does not carry. The

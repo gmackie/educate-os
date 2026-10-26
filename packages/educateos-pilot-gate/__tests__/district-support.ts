@@ -1,29 +1,48 @@
 // What the district validation suite needs beyond `support.ts`: booting any demo district, picking
 // its cast from its own directory, its roster source served by the provider fakes (OneRoster CSV
-// built from the fixtures' OneRoster seed; OneRoster REST and Clever from `districtSeed`), and its LMS as an LTI
-// platform fake. Nothing here names a district: every scenario runs from the district's own data.
+// built from the fixtures' OneRoster seed; OneRoster REST, ClassLink, Clever and Google Classroom
+// from `districtSeed`), and its LMS as an LTI platform fake or the Google Classroom fake. Nothing here names a district: every scenario runs from the district's own data.
 import { expect } from "vitest";
 import { DistrictDirectorySnapshot, DistrictId, OfferingId, PrincipalId, type Principal } from "@educateos/contracts";
-import { districtSeed, oneRosterSeed, type DemoDistrict, type OneRosterSeed } from "@educateos/fixtures";
+import { classroomSeed, districtSeed, oneRosterSeed, type DemoDistrict, type OneRosterSeed } from "@educateos/fixtures";
 import { bootHarness } from "@educateos/harness";
 import { createDirectoryPrincipalResolver } from "@educateos/identity";
-import { clever, oneroster } from "@educateos/integrations";
+import { classlink, clever, googleclassroom, oneroster, RosterSyncError } from "@educateos/integrations";
 import {
+  CLASSROOM_ISSUER,
+  ClassroomAdapter,
+  ClassroomGradeSink,
   createLtiHandler,
   createToolKeySet,
   generateToolKey,
+  GradePassback,
   importToolKey,
+  InMemoryGradeApprovalStore,
+  InMemoryGradeRouteStore,
+  InMemoryPassbackLedger,
   InMemoryPlatformRegistrationStore,
   InMemorySingleUseStore,
   LtiBroker,
   LtiServiceClient,
   PlatformJwksCache,
   toolJwks,
+  type ClassroomGradeRoute,
   type DeepLinkSession,
   type LoginState,
   type ResolvedLaunch,
 } from "@educateos/lti";
-import { canvasFlavour, CleverDataFake, DEFAULT_ONEROSTER_CLIENT, LtiPlatformFake, OneRosterFake, schoologyFlavour, type DistrictSeed } from "@educateos/provider-fakes";
+import {
+  canvasFlavour,
+  classlinkTenantId,
+  CleverDataFake,
+  DEFAULT_ONEROSTER_CLIENT,
+  type Fake,
+  GoogleClassroomFake,
+  LtiPlatformFake,
+  OneRosterFake,
+  schoologyFlavour,
+  type DistrictSeed,
+} from "@educateos/provider-fakes";
 import { bootDistrictFor, type PilotDistrict, type PilotOverrides } from "./support.ts";
 
 /**
@@ -240,20 +259,19 @@ export function fixtureShape(snapshot: DistrictDirectorySnapshot, toFixture: { p
   return { people, classes };
 }
 
-// ── Roster sync (OneRoster REST, Clever) ──────────────────────────
+// ── Roster sync (OneRoster REST, ClassLink, Clever, Google Classroom) ──
 
 /**
  * The district's roster provider as a provider fake seeded through `districtSeed` (a OneRoster
- * REST server, or Clever's Data API), and a sync runner over it into the shared pipeline
- * (`runRosterSync`). The same scenarios drive either: `drop`, `largeRemoval`, `outage` and
- * `recover` act at the provider as that provider would, and `principal`/`offering` find what a
- * sync made of a fixture record through the provider's own IDs.
+ * REST server, a ClassLink Roster Server, Clever's Data API, or Google Classroom), and a sync
+ * runner over it into the shared pipeline (`runRosterSync`). The same scenarios drive any of them:
+ * `drop`, `largeRemoval`, `outage` and `recover` act at the provider as that provider would, and
+ * `principal`/`offering` find what a sync made of a fixture record through the provider's own IDs.
  */
 export function syncedRoster(demo: DemoDistrict) {
   const clock = { ms: Date.parse("2026-10-20T15:00:00Z") };
-  const seed = districtSeed(demo);
-  const provider = demo.profile.roster === "clever" ? cleverProvider(seed, clock) : oneRosterProvider(seed, clock);
-  const config: oneroster.OneRosterImportConfig = { issuer: demo.directory.district.trustedIssuers[0]!, subject: provider.subject };
+  const provider = rosterProvider(demo, clock);
+  const config: oneroster.OneRosterImportConfig = { issuer: provider.issuer ?? demo.directory.district.trustedIssuers[0]!, subject: provider.subject };
   let runs = 0;
   /** One sync run; `approvedRemoval` is an administrator's approval of a held removal, by its fingerprint. */
   const sync = async (state: oneroster.RosterSyncState, mode: "complete" | "delta", approvedRemoval?: string) => {
@@ -275,6 +293,22 @@ export function syncedRoster(demo: DemoDistrict) {
     clock,
     sync,
     empty,
+    /** The seed the provider fake serves. */
+    seed: provider.seed,
+    /** The provider's Classroom client, when the roster is Google Classroom. */
+    classroom: provider.client === undefined ? undefined : { fake: provider.fake as GoogleClassroomFake, client: provider.client },
+    /** The mode of a routine sync after the first: a delta where the provider has a change feed. */
+    followUp: provider.source.modes.includes("delta") ? ("delta" as const) : ("complete" as const),
+    /**
+     * The fixture's directory as the provider rosters it, by fixture ID, comparable with `shape`:
+     * everyone for a SIS, and for Classroom only the people on a course's roster and the courses it holds.
+     */
+    expected() {
+      const shape = fixtureShape(demo.directory);
+      if (provider.rostered === undefined) return shape;
+      const { people, sections } = provider.rostered;
+      return { people: shape.people.filter((id) => people.has(id)), classes: Object.fromEntries(Object.entries(shape.classes).filter(([id]) => sections.has(id))) };
+    },
     /** Ends one student's enrollment at the provider. */
     drop: provider.drop,
     largeRemoval: (fraction: number) => provider.fake.inject({ kind: "large-removal", fraction }),
@@ -300,8 +334,37 @@ export function syncedRoster(demo: DemoDistrict) {
 
 const sourcedIdOf = (entry: string | { sourcedId: string } | undefined) => (typeof entry === "string" ? entry : entry?.sourcedId ?? "");
 
+/** The district's roster provider, by its roster source. A ClassLink district's OneRoster REST server is ClassLink's Roster Server. */
+function rosterProvider(demo: DemoDistrict, clock: { ms: number }): RosterProvider {
+  switch (demo.profile.roster) {
+    case "clever": return cleverProvider(districtSeed(demo), clock);
+    case "google-classroom": return classroomProvider(demo, clock);
+    case "oneroster-rest": return demo.profile.sso === "classlink" ? classLinkProvider(demo, clock) : oneRosterProvider(districtSeed(demo), clock);
+    default: throw new Error(`${demo.slug}'s roster (${demo.profile.roster}) has no provider to sync from`);
+  }
+}
+
+/** What every roster provider gives `syncedRoster`. */
+interface RosterProvider {
+  fake: Fake;
+  /** The seed the fake serves. */
+  seed: DistrictSeed;
+  source: oneroster.RosterSource;
+  /** The issuer the provider's people are keyed on, when it is not the district's own. */
+  issuer?: string;
+  subject: oneroster.OneRosterImportConfig["subject"];
+  principalSourcedId(id: string): string;
+  offeringSourcedId(id: string): string;
+  subjectOf(id: string): string;
+  drop(offeringId: string, principalId: string): void;
+  /** The Classroom client, when the provider is Google Classroom. */
+  client?: googleclassroom.GoogleClassroomClient;
+  /** The fixture people and sections the provider rosters, when not all of them. */
+  rostered?: { people: ReadonlySet<string>; sections: ReadonlySet<string> };
+}
+
 /** A OneRoster 1.2 REST server: sourcedIds are the seed's IDs, and a person's subject is their username. */
-function oneRosterProvider(seed: DistrictSeed, clock: { ms: number }) {
+function oneRosterProvider(seed: DistrictSeed, clock: { ms: number }): RosterProvider {
   const fake = new OneRosterFake({ seed, now: () => clock.ms });
   const client = new oneroster.OneRosterRestClient({
     config: { baseUrl: fake.baseUrl, tokenUrl: fake.tokenUrl, scopes: [oneroster.ROSTER_CORE_READONLY_SCOPE], pageSize: 5 },
@@ -313,6 +376,7 @@ function oneRosterProvider(seed: DistrictSeed, clock: { ms: number }) {
   const usernames = new Map(seed.people.map((p) => [p.id, p.username ?? p.id]));
   return {
     fake,
+    seed,
     source: oneroster.restRosterSource(client),
     subject: { field: "username" } as const,
     principalSourcedId: (id: string) => id,
@@ -323,8 +387,39 @@ function oneRosterProvider(seed: DistrictSeed, clock: { ms: number }) {
   };
 }
 
+/**
+ * A ClassLink Roster Server (SCHO-204): OneRoster 1.2 REST under OAuth2 client credentials, read
+ * through `classLinkRosterSource`. ClassLink's login ID is the roster's `username` and its
+ * sign-in's `preferred_username`, and in a ClassLink district it is the person's directory subject,
+ * so the seed's usernames are the fixture's subjects rather than `districtSeed`'s ID-derived ones.
+ */
+function classLinkProvider(demo: DemoDistrict, clock: { ms: number }): RosterProvider {
+  const subjects = new Map(demo.directory.principals.map((p) => [p.id as string, subjectOfPrincipal(p)]));
+  const base = districtSeed(demo);
+  const seed: DistrictSeed = { ...base, people: base.people.map((person) => ({ ...person, username: subjects.get(person.id)! })) };
+  const fake = new OneRosterFake({ seed, now: () => clock.ms });
+  const source = classlink.classLinkRosterSource({
+    connection: { tenantId: classlinkTenantId(seed), serverUrl: fake.baseUrl },
+    credentials: DEFAULT_ONEROSTER_CLIENT,
+    fetch: fake.fetch,
+    pageSize: 5,
+    sleep: async () => {},
+    clock: () => clock.ms,
+  });
+  return {
+    fake,
+    seed,
+    source,
+    subject: { field: "username" },
+    principalSourcedId: (id) => id,
+    offeringSourcedId: (id) => id,
+    subjectOf: (id) => subjects.get(id)!,
+    drop: (offeringId, principalId) => fake.remove("enrollments", `${offeringId}:${principalId}`),
+  };
+}
+
 /** Clever's Data API: Clever mints its own IDs, and a person's subject is their Clever user ID. */
-function cleverProvider(seed: DistrictSeed, clock: { ms: number }) {
+function cleverProvider(seed: DistrictSeed, clock: { ms: number }): RosterProvider {
   const fake = new CleverDataFake({ seed, now: () => clock.ms });
   const client = new clever.CleverDataClient({
     connection: { districtId: fake.districtId, pageSize: 5 },
@@ -336,6 +431,7 @@ function cleverProvider(seed: DistrictSeed, clock: { ms: number }) {
   return {
     fake,
     source: clever.cleverRosterSource(client),
+    seed,
     subject: clever.CLEVER_SUBJECT_FIELD,
     principalSourcedId: (id: string) => fake.userId(id),
     offeringSourcedId: (id: string) => fake.idOf("sections", id),
@@ -346,6 +442,183 @@ function cleverProvider(seed: DistrictSeed, clock: { ms: number }) {
       fake.updateSection(offeringId, { studentIds: section.studentIds.filter((id) => id !== principalId) });
     },
   };
+}
+
+/**
+ * Google Classroom as the roster (SCHO-77): every course read through domain-wide delegation by
+ * `classroomRosterSource`, keyed on Google's issuer with each Google user ID as the subject.
+ * Classroom has no change feed, so every sync is complete; a drop is the student leaving the
+ * course's roster.
+ */
+function classroomProvider(demo: DemoDistrict, clock: { ms: number }): RosterProvider {
+  const { seed, fake, client } = classroomWorld(demo, clock);
+  return {
+    fake,
+    seed,
+    client,
+    source: googleclassroom.classroomRosterSource(client, classroomRosterConfig(demo, seed)),
+    issuer: googleclassroom.CLASSROOM_IDENTITY.issuer,
+    subject: googleclassroom.CLASSROOM_IDENTITY.subject,
+    principalSourcedId: (id) => fake.userId(id),
+    offeringSourcedId: (id) => fake.courseId(id),
+    subjectOf: (id) => fake.userId(id),
+    drop: (offeringId, principalId) => fake.removeStudent(offeringId, principalId),
+    rostered: {
+      people: new Set(seed.sections.flatMap((s) => [...s.teacherIds, ...s.studentIds])),
+      sections: new Set(seed.sections.map((s) => s.id)),
+    },
+  };
+}
+
+// ── Google Classroom ───────────────────────────────────────────────
+
+/**
+ * A demo district as the Google Classroom fake serves it: `districtSeed`, narrowed to what
+ * Classroom holds by the fixtures' `classroomSeed` (which the live demo tenant is seeded from
+ * too). Each staff member and student has a Workspace account on the district's Workspace domain
+ * (`<slug>.gedu.example`); guardians have none. Each active-term offering with a lead teacher is a
+ * course named for its catalog course, its section label as Classroom's `section`, aliased
+ * `d:<offering ID>`.
+ */
+export function classroomFakeSeed(demo: DemoDistrict): DistrictSeed {
+  const base = districtSeed(demo);
+  const classroom = classroomSeed(demo, `${demo.slug}.gedu.example`);
+  const accounts = new Map(classroom.users.map((u) => [u.fixtureId, u]));
+  const courses = new Map(classroom.courses.map((c) => [c.fixtureId, c]));
+  return {
+    ...base,
+    domain: classroom.domain,
+    people: base.people.filter((p) => accounts.has(p.id)).map((p) => ({ ...p, email: accounts.get(p.id)!.primaryEmail })),
+    sections: base.sections.filter((s) => courses.has(s.id)).map((s) => {
+      const course = courses.get(s.id)!;
+      return { ...s, title: course.name, section: course.section, aliases: [course.alias] };
+    }),
+  };
+}
+
+/** The district's Classroom roster configuration: its active term, and its schools with the courses each teaches, by alias. */
+export function classroomRosterConfig(demo: DemoDistrict, seed: DistrictSeed): googleclassroom.ClassroomRosterConfigInput {
+  const term = demo.directory.terms.find((t) => t.state === "active")!;
+  const codes = ["KG", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+  return {
+    term: { sourcedId: term.id, title: term.name, startDate: term.startsOn, endDate: term.endsOn },
+    schools: seed.schools.map((school) => ({
+      sourcedId: school.id,
+      name: school.name,
+      grades: codes.slice(codes.indexOf(school.lowGrade!), codes.indexOf(school.highGrade!) + 1),
+      courses: seed.sections.filter((s) => s.schoolId === school.id).map((s) => `d:${s.id}`),
+    })),
+  };
+}
+
+/**
+ * Domain-wide delegation over the Classroom fake: a token acting as a Workspace user is the
+ * fake's token for the seed person with that email, granted the roster and grade scopes.
+ */
+function fakeDelegation(fake: GoogleClassroomFake, seed: DistrictSeed): googleclassroom.DelegatedTokens {
+  const cache = new Map<string, string>();
+  return {
+    async token(subject) {
+      const cached = cache.get(subject);
+      if (cached !== undefined) return cached;
+      const person = seed.people.find((p) => p.email === subject);
+      if (person === undefined) throw new RosterSyncError("auth-failed", "no such Workspace user");
+      const token = fake.issueToken({ userId: person.id, scopes: [...googleclassroom.CLASSROOM_GRADE_SCOPES] });
+      cache.set(subject, token);
+      return token;
+    },
+    invalidate(subject, token) {
+      if (cache.get(subject) === token) cache.delete(subject);
+    },
+  };
+}
+
+/** The district's Google Classroom fake, and the Classroom client acting through delegation as its Workspace administrator. */
+export function classroomWorld(demo: DemoDistrict, clock: { ms: number }) {
+  const seed = classroomFakeSeed(demo);
+  // The server pages at 3 and the client asks for 2, so every list takes several pages.
+  const fake = new GoogleClassroomFake({ seed, now: () => clock.ms, maxPageSize: 3 });
+  const admin = seed.people.find((p) => p.role === "administrator")!.email;
+  const client = new googleclassroom.GoogleClassroomClient({ tokens: fakeDelegation(fake, seed), admin, fetch: fake.fetch, pageSize: 2, clock: () => clock.ms, sleep: async () => {} });
+  return { seed, fake, client };
+}
+
+/**
+ * The district's Classroom grade sync over the Google Classroom fake: `GoogleClassroomProvider`
+ * behind `GradePassback`'s Classroom sink, each offering routed to its Classroom course.
+ *
+ * Where Classroom is the roster, the directory is the one a Classroom sync made. Where another
+ * source rosters the district (Cedar Valley's Clever), the district's own directory is linked to
+ * Classroom (`planClassroomLinks`, then `applyClassroomLinks` once the district trusts Google),
+ * creating nobody. Either way `cast` is the district's cast, by the IDs that directory holds.
+ */
+export async function classroomGrades(demo: DemoDistrict) {
+  const cast = castOf(demo);
+  let clock: { ms: number };
+  let fake: GoogleClassroomFake;
+  let client: googleclassroom.GoogleClassroomClient;
+  let directory: DistrictDirectorySnapshot;
+  let routes: ClassroomGradeRoute[];
+  let ids: { offeringId: OfferingId; studentId: PrincipalId; teacherId: PrincipalId };
+  const authority = `lms:${demo.slug}-classroom` as const;
+  if (demo.profile.roster === "google-classroom") {
+    const roster = syncedRoster(demo);
+    const first = await roster.sync(roster.empty, "complete");
+    if (first.run.outcome !== "succeeded") throw new Error(`the Classroom sync failed: ${JSON.stringify(first.preview?.issues ?? first.run).slice(0, 2000)}`);
+    ({ clock } = roster);
+    ({ fake, client } = roster.classroom!);
+    directory = first.state.roster.snapshot;
+    routes = Object.entries(first.state.roster.sources.offerings).map(([offeringId, course]) => ({
+      offeringId: OfferingId.parse(offeringId), authority, via: "google-classroom" as const, courseId: sourcedIdOf(course),
+    }));
+    ids = {
+      offeringId: OfferingId.parse(roster.offering(first.state, cast.offeringId)),
+      studentId: roster.principal(first.state, cast.student.id).id,
+      teacherId: roster.principal(first.state, cast.teacher.id).id,
+    };
+  } else {
+    clock = { ms: Date.parse("2026-10-20T15:00:00Z") };
+    ({ fake, client } = classroomWorld(demo, clock));
+    const proposed = await googleclassroom.planClassroomLinks({ directory: demo.directory, client });
+    expect(proposed.unresolved, "Classroom accounts or courses the plan could not link").toStrictEqual([]);
+    // Every identity link is a name match: the Workspace accounts are on their own domain, and the
+    // fixture's directory cannot key them by email (several students have no email, and two
+    // siblings share their family's). A name match is applied only once an administrator confirms
+    // it, so without that the apply is refused; here every one is confirmed in bulk.
+    expect(proposed.identities.map((i) => i.basis), "an identity link was not a name match").toStrictEqual(proposed.identities.map(() => "name"));
+    const trusting = DistrictDirectorySnapshot.parse({
+      ...demo.directory,
+      district: { ...demo.directory.district, trustedIssuers: [...demo.directory.district.trustedIssuers, CLASSROOM_ISSUER] },
+    });
+    const apply = (acceptNameMatches: boolean) => googleclassroom.applyClassroomLinks({ directory: trusting, courses: proposed.courses, identities: proposed.identities, authority, acceptNameMatches });
+    expect(() => apply(false)).toThrow(/name match must be confirmed/);
+    ({ directory, routes } = apply(true));
+    expect(directory.principals, "linking created or lost a person").toHaveLength(demo.directory.principals.length);
+    ids = { offeringId: cast.offeringId, studentId: cast.student.id, teacherId: cast.teacher.id };
+  }
+  const now = () => clock.ms;
+  const routeStore = new InMemoryGradeRouteStore(routes);
+  const provider = new googleclassroom.GoogleClassroomProvider(client);
+  const approvals = new InMemoryGradeApprovalStore();
+  const passback = new GradePassback({
+    districtId: directory.district.id,
+    directory: async () => directory,
+    routes: routeStore,
+    approvals,
+    ledger: new InMemoryPassbackLedger(),
+    sinks: [new ClassroomGradeSink(provider)],
+    now,
+  });
+  const adapter = new ClassroomAdapter({ districtId: directory.district.id, provider, routes: routeStore, now });
+  const courseId = routes.find((r) => r.offeringId === ids.offeringId)!.courseId;
+  /** The submission of the cast's student on a coursework, as Classroom holds it. */
+  const submission = (courseWorkId: string) => fake.submission(fake.submissionId(courseWorkId, cast.student.id));
+  /** A passback request for the cast's student, and the cast's teacher's approval of it. */
+  const request = (column: string, scoreGiven: number, scoreMaximum = 10) => ({ offeringId: ids.offeringId, studentId: ids.studentId, column, gradeVersion: 1, scoreGiven, scoreMaximum });
+  const approve = (r: ReturnType<typeof request>) => approvals.record({ ...r, approverId: ids.teacherId, approvedAt: new Date(now() - 5 * 60_000).toISOString() });
+  /** The PATCH requests Classroom has received, which is how a grade is written. */
+  const patches = () => fake.requests.filter((r) => r.method === "PATCH").length;
+  return { cast, clock, now, fake, client, directory, provider, adapter, passback, courseId, ids, submission, request, approve, patches };
 }
 
 // ── LTI ────────────────────────────────────────────────────────────

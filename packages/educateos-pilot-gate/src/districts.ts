@@ -34,31 +34,29 @@ const runs = (direct?: string): Applicability => (direct === undefined ? { kind:
 const blocked = (reason: string, ...blockedBy: string[]): Applicability => ({ kind: "blocked", blockedBy: blockedBy.map((id) => IssueId.parse(id)), reason });
 const notInProfile: Applicability = { kind: "not-in-profile" };
 
-const CLASSLINK = "SCHO-204";
-const CLASSROOM_SYNC = "SCHO-77";
 const GOOGLE_SIGN_IN = "SCHO-215";
 const PROVIDER_HOLD = "SCHO-180";
 const REST_APPLY = "SCHO-242";
 
-const NO_CLASSLINK = "There is no ClassLink connector yet (OneRoster OAuth2 profile and ClassLink SSO).";
-const NO_CLASSROOM_SYNC = "There is no district-wide Google Classroom sync into the directory yet.";
 const NO_CSV_HOLD = "The CSV upload (admin.applyRoster) applies a feed that drops most students in full: the removal hold (SCHO-203) is in the sync runner, which the upload does not use.";
-const NO_SYNC_APPLY = "The district app applies only uploaded CSV rosters; nothing applies a OneRoster REST or Clever sync to a running district, so a drop or a term's end at the source never reaches it.";
+const NO_SYNC_APPLY = "The district app applies only uploaded CSV rosters; nothing applies a OneRoster REST, Clever or Google Classroom sync to a running district, so a drop or a term's end at the source never reaches it.";
 const CLEVER_DIRECT = "The district app has no Clever sync route, so the sync runs through `runRosterSync` over the Clever connector (`cleverRosterSource`) and the Clever Data API fake.";
-const REST_DIRECT = "The district app has no OneRoster REST sync route, so the sync runs through `runRosterSync` over the OneRoster fake.";
+const REST_DIRECT = "The district app has no OneRoster REST sync route, so the sync runs through `runRosterSync` over the OneRoster fake (for a ClassLink district, through `classLinkRosterSource` and its Roster Server).";
+const CLASSROOM_DIRECT = "The district app has no Classroom sync route, so the sync runs through `runRosterSync` over the Classroom connector (`classroomRosterSource`, domain-wide delegation) and the Google Classroom fake.";
+const CLASSROOM_LMS_DIRECT = "The district app routes no Classroom grade sync, so coursework and grades go through `GoogleClassroomProvider` and `GradePassback`'s Classroom sink against the Google Classroom fake, over the directory the Classroom sync made. Where another source rosters the district, they run over its directory linked to Classroom: courses by alias, and accounts by name only (the Workspace accounts share no email with the directory), so every name link is accepted in bulk where production needs an administrator to confirm each one.";
 const LTI_DIRECT = "The district app has no LTI routes; the district Worker serves `@educateos/lti`'s handler, which is driven here over the app's directory.";
 
 /** A roster scenario: by the district's roster source. */
 function byRoster(profile: IntegrationProfile, rules: { local?: Applicability; csv: Applicability; rest: Applicability; clever?: Applicability; classroom?: Applicability }): Applicability {
-  // The Clever connector (SCHO-203) syncs through the same runner as OneRoster REST, so a rule for
-  // REST applies to Clever too unless the scenario says otherwise.
+  // The Clever connector (SCHO-203) and Classroom sync (SCHO-77) run through the same runner as
+  // OneRoster REST, so a rule for REST applies to them too unless the scenario says otherwise.
   switch (profile.roster) {
     case "local": return rules.local ?? notInProfile;
     case "oneroster-csv": return rules.csv;
-    // ClassLink's OneRoster is the OAuth2 REST profile the existing client speaks; SCHO-204 adds its tenant configuration and SSO.
+    // ClassLink's Roster Server is OneRoster REST under OAuth2, read through SCHO-204's `classLinkRosterSource`.
     case "oneroster-rest": return rules.rest;
     case "clever": return rules.clever ?? (rules.rest.kind === "runs" ? runs(CLEVER_DIRECT) : rules.rest);
-    case "google-classroom": return rules.classroom ?? blocked(NO_CLASSROOM_SYNC, CLASSROOM_SYNC);
+    case "google-classroom": return rules.classroom ?? (rules.rest.kind === "runs" ? runs(CLASSROOM_DIRECT) : rules.rest);
   }
 }
 
@@ -90,7 +88,7 @@ export const SCENARIOS: readonly Scenario[] = [
     applies: ({ profile: p }) => {
       switch (p.sso) {
         case "clever": return runs("Cloudflare Access passes Clever's claims to the district Worker, which reads them with `identityFromCleverClaims`; here the claims come from the Clever OIDC fake's userinfo, and resolve against the directory the Clever roster sync made.");
-        case "classlink": return blocked(NO_CLASSLINK, CLASSLINK);
+        case "classlink": return runs("The district Worker has no ClassLink sign-in route yet (SCHO-248), so each role signs in through `classLinkSignIn` (authorization code with PKCE, id_token verified, `preferred_username` as the subject) against the ClassLink OIDC fake, and resolves against the directory the ClassLink roster sync made.");
         case "google": return blocked("Google Workspace sign-in for a district is not built yet.", GOOGLE_SIGN_IN);
         default: return notInProfile;
       }
@@ -113,7 +111,8 @@ export const SCENARIOS: readonly Scenario[] = [
     id: "roster-delta",
     group: "roster",
     title: "a later sync applies only what changed at the source",
-    applies: ({ profile: p }) => byRoster(p, { csv: runs(), rest: runs(REST_DIRECT) }),
+    // Classroom has no change feed: every Classroom sync is complete.
+    applies: ({ profile: p }) => byRoster(p, { csv: runs(), rest: runs(REST_DIRECT), classroom: notInProfile }),
   },
   {
     id: "drop",
@@ -160,13 +159,13 @@ export const SCENARIOS: readonly Scenario[] = [
     id: "lms-outage",
     group: "lms",
     title: "while the LMS is down, grade passback fails without being recorded as posted, and posts once after recovery",
-    applies: ({ profile: p }) => byLms(p, runs(LTI_DIRECT), blocked(NO_CLASSROOM_SYNC, CLASSROOM_SYNC)),
+    applies: ({ profile: p }) => byLms(p, runs(LTI_DIRECT), runs(CLASSROOM_LMS_DIRECT)),
   },
   {
     id: "classroom-coursework",
     group: "lms",
     title: "Google Classroom coursework is created and its teacher-approved grades are synced back",
-    applies: ({ profile: p }) => byLms(p, notInProfile, blocked(NO_CLASSROOM_SYNC, CLASSROOM_SYNC)),
+    applies: ({ profile: p }) => byLms(p, notInProfile, runs(CLASSROOM_LMS_DIRECT)),
   },
   // Operations.
   {
