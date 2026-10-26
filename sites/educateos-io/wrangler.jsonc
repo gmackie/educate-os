@@ -35,7 +35,12 @@
     // The Access application "EducateOS operator console" (9074c7b7) guards educateos.io/app: anyone
     // with a verified email (one-time PIN or GitHub). The Worker verifies each assertion with these.
     "ACCESS_ISSUER": "https://gmacko.cloudflareaccess.com",
-    "ACCESS_AUD": "a44a7642d3b9478736c0ba4f218608ab9934fd9e0b8b45cb642ebd2709654a92"
+    "ACCESS_AUD": "a44a7642d3b9478736c0ba4f218608ab9934fd9e0b8b45cb642ebd2709654a92",
+    // Clever portal launches (SCHO-249) for the project's own demo districts, which are not
+    // registered installations: Clever district ID to managed hostname. A demo bridge until the
+    // guided install writes installation rows; the registry is consulted first. Only
+    // <slug>.educateos.io hosts are accepted. 6ade4156… is the educateos-dev app's sandbox district.
+    "CLEVER_LAUNCH_DISTRICTS": "{\"6ade41569b8cebb96d733c48\":\"northfield.educateos.io\"}"
   },
   "routes": [
     { "pattern": "educateos.io", "custom_domain": true },

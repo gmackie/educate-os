@@ -76,6 +76,11 @@ export interface ControlPlaneDeps {
   clever?: CleverAppCredentials;
   /** Reaches Clever for portal launches. Defaults to the global `fetch`. */
   cleverFetch?: (input: string, init: RequestInit) => Promise<Response>;
+  /**
+   * Clever district ID to hostname for the project's own districts, which aren't registered
+   * installations (`CLEVER_LAUNCH_DISTRICTS`). Consulted only when the registry has no match.
+   */
+  cleverLaunchDistricts?: ReadonlyMap<string, string>;
 }
 
 function respond(body: string, status = 200, headers: Record<string, string> = {}): Response {
@@ -119,7 +124,8 @@ async function route(request: Request, deps: ControlPlaneDeps): Promise<Response
     return cleverLaunch(request, {
       shell: deps.shell,
       credentials: deps.clever,
-      hostnameFor: (cleverDistrictId) => deps.store().cleverLaunchHostname(cleverDistrictId),
+      hostnameFor: async (cleverDistrictId) =>
+        (await deps.store().cleverLaunchHostname(cleverDistrictId)) ?? deps.cleverLaunchDistricts?.get(cleverDistrictId),
       fetch: deps.cleverFetch ?? ((input, init) => fetch(input, init)),
     });
   }

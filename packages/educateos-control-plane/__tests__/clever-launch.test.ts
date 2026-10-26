@@ -7,7 +7,7 @@ import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { DistrictAgent, InMemorySequenceCounter, SigningIdentity } from "@educateos/fleet";
 import { importJWK, SignJWT, type JWK } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CLEVER_LAUNCH_PATH, cleverLaunch, type CleverLaunchDeps } from "../src/clever-launch.ts";
+import { CLEVER_LAUNCH_PATH, cleverLaunch, configuredLaunchDistricts, type CleverLaunchDeps } from "../src/clever-launch.ts";
 import { TABLES } from "../src/store.ts";
 import { CONTROL_PLANE_OBJECT } from "../src/worker.ts";
 import { CLEVER_CLIENT, fakeClever, tokenFor } from "./clever-fake.ts";
@@ -204,6 +204,18 @@ describe("/clever/launch on the site Worker", () => {
     const response = await SELF.fetch(`${ORIGIN}${CLEVER_LAUNCH_PATH}?code=launch-${district}`, { redirect: "manual" });
     expect(response.headers.get("location")).toBe("https://first-claim.educateos.io/");
     await response.body?.cancel();
+  });
+
+  it("sends a launch for one of the project's own districts by the configured map, and only to educateos.io", async () => {
+    const demo = await SELF.fetch(`${ORIGIN}${CLEVER_LAUNCH_PATH}?code=launch-abcdefabcdefabcdefabcdef`, { redirect: "manual" });
+    expect(demo.status).toBe(303);
+    expect(demo.headers.get("location")).toBe("https://demo-district.educateos.io/");
+    await demo.body?.cancel();
+    const foreign = await SELF.fetch(`${ORIGIN}${CLEVER_LAUNCH_PATH}?code=launch-fedcbafedcbafedcbafedcba`, { redirect: "manual" });
+    expect(foreign.status).toBe(404);
+    await foreign.body?.cancel();
+    expect(configuredLaunchDistricts("not json").size).toBe(0);
+    expect(configuredLaunchDistricts(undefined).size).toBe(0);
   });
 
   it("refuses a POST", async () => {

@@ -36,6 +36,28 @@ export interface CleverAppCredentials {
   clientSecret: string;
 }
 
+/**
+ * Reads the site Worker's `CLEVER_LAUNCH_DISTRICTS` var: a JSON object from Clever district ID to
+ * the managed hostname of a district the project runs itself (the demo districts), which are not
+ * control-plane installations and so are not in the registry. Entries that aren't a Clever ID
+ * mapped to a `<slug>.educateos.io` hostname are dropped, and so is a var that isn't JSON.
+ */
+export function configuredLaunchDistricts(value: string | undefined): ReadonlyMap<string, string> {
+  if (value === undefined || value.trim() === "") return new Map();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return new Map();
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return new Map();
+  return new Map(Object.entries(parsed).filter((entry): entry is [string, string] =>
+    CleverId.safeParse(entry[0]).success && typeof entry[1] === "string" && MANAGED_HOSTNAME.test(entry[1])));
+}
+
+// A managed hostname, as the control plane stores one.
+const MANAGED_HOSTNAME = /^[a-z][a-z0-9-]{1,30}[a-z0-9]\.educateos\.io$/;
+
 /** What {@link cleverLaunch} is given. */
 export interface CleverLaunchDeps {
   shell: SiteShell;

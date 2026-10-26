@@ -30,6 +30,8 @@ export default defineConfig({
           FG_COMMIT_HASH: "0".repeat(40),
           CLEVER_CLIENT_ID: CLEVER_CLIENT.clientId,
           CLEVER_CLIENT_SECRET: CLEVER_CLIENT.clientSecret,
+          // A demo district that isn't a registered installation, and an entry that must be dropped.
+          CLEVER_LAUNCH_DISTRICTS: JSON.stringify({ "abcdefabcdefabcdefabcdef": "demo-district.educateos.io", "fedcbafedcbafedcbafedcba": "evil.example.com" }),
           TEST_ACCESS_PRIVATE_JWK: jwk(access.privateKey),
           TEST_ACCESS_PUBLIC_JWK: jwk(access.publicKey),
           TEST_STRANGER_PRIVATE_JWK: jwk(stranger.privateKey),

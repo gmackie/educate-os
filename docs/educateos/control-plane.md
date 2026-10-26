@@ -153,8 +153,12 @@ district ID (`control_plane_registry_clever_districts`). The ID is written by th
 `linkCleverDistrict`, which, like registration, is never served over HTTP; a Clever district names
 one installation, first come. Installations that never opted in, and the demo districts (which are
 not control-plane installations), can't take portal launches: their users start from the district's
-own address. Before the guided install offers the link, it needs a proof that the operator speaks
-for that Clever district.
+own address, except those named in the site Worker's `CLEVER_LAUNCH_DISTRICTS` var: a JSON map from
+Clever district ID to a `<slug>.educateos.io` hostname, consulted only when the registry has no
+match. It is a demo bridge until the guided install writes installation rows; today it maps the
+`educateos-dev` sandbox district `6ade41569b8cebb96d733c48` to `northfield.educateos.io`. Before
+the guided install offers the link, it needs a proof that the operator speaks for that Clever
+district.
 
 **Setup.**
 

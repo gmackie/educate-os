@@ -133,6 +133,12 @@ asks that the first URI serve every district without district-specific subdomain
   inside the control plane, like registration. Before the guided install offers it, the operator
   must prove the Clever district is theirs (for example, a Clever district-admin sign-in); until then
   nothing writes it except the control plane's own tooling.
+- **A demo bridge until then.** The project's own demo districts are standalone district Workers,
+  not control-plane installations, so the registry can't name them. The site Worker's var
+  `CLEVER_LAUNCH_DISTRICTS` maps a Clever district ID to a `<slug>.educateos.io` hostname for those
+  only (today the `educateos-dev` sandbox district to `northfield.educateos.io`). It is consulted
+  only when the registry has no match, accepts no other host, and is removed once the guided
+  install writes installation rows.
 - **Self-hosting is the alternative.** An organization with its own Clever app, or that wants no
   educateos.io in any sign-in, registers its own landing page as that app's first redirect URI: any
   Access-exempt page that drops the code and redirects to the district root does the same job.

@@ -8,6 +8,7 @@ import { DurableObject } from "cloudflare:workers";
 import type { JWTVerifyGetKey } from "jose";
 import { operatorVerifier, type OperatorIdentity, type OperatorVerifier } from "./access.ts";
 import { handleRequest, type ControlPlaneApi } from "./app.ts";
+import { configuredLaunchDistricts } from "./clever-launch.ts";
 import type { SiteShell } from "./pages.ts";
 import type { ProbeResult } from "./probe.ts";
 import { ControlPlaneRegistry, type DashboardEntry, type RegistryMessage, type RegistryReply } from "./registry.ts";
@@ -27,6 +28,11 @@ export interface ControlPlaneEnv {
    */
   CLEVER_CLIENT_ID?: string;
   CLEVER_CLIENT_SECRET?: string;
+  /**
+   * JSON object from Clever district ID to `<slug>.educateos.io`, for the project's own districts
+   * that aren't registered installations (the demo districts). A var, not a secret.
+   */
+  CLEVER_LAUNCH_DISTRICTS?: string;
   /** Stamped by the ForgeGraph build (`scripts/production/stamp-commit.ts`). */
   FG_COMMIT_HASH?: string;
 }
@@ -110,6 +116,7 @@ export function siteWorker(shell: SiteShell, options: SiteWorkerOptions = {}): E
           ? { clever: { clientId: env.CLEVER_CLIENT_ID, clientSecret: env.CLEVER_CLIENT_SECRET } }
           : {}),
         ...(options.cleverFetch === undefined ? {} : { cleverFetch: options.cleverFetch }),
+        cleverLaunchDistricts: configuredLaunchDistricts(env.CLEVER_LAUNCH_DISTRICTS),
       });
     },
   };
