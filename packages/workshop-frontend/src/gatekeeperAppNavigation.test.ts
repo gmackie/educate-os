@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_GATEKEEPER_APP_PROMPT_LENGTH,
   normalizeGatekeeperAppPrompt,
+  parseGatekeeperAppSearch,
   parseGatekeeperAppWorkspaceTarget,
 } from "./gatekeeperAppNavigation";
 
@@ -44,5 +45,25 @@ describe("normalizeGatekeeperAppPrompt", () => {
     expect(() =>
       normalizeGatekeeperAppPrompt("x".repeat(MAX_GATEKEEPER_APP_PROMPT_LENGTH + 1)),
     ).toThrow("too long");
+  });
+});
+
+describe("parseGatekeeperAppSearch", () => {
+  it("keeps a valid path and nothing else", () => {
+    expect(parseGatekeeperAppSearch({ path: "/classes/42", other: "x" })).toEqual({
+      path: "/classes/42",
+    });
+    expect(parseGatekeeperAppSearch({})).toEqual({});
+  });
+
+  it.each([
+    ["https://evil.example/"],
+    ["//evil.example"],
+    ["classes/42"],
+    ["/a?b"],
+    [42],
+    [["/a"]],
+  ])("drops the path %j", (path) => {
+    expect(parseGatekeeperAppSearch({ path })).toEqual({});
   });
 });

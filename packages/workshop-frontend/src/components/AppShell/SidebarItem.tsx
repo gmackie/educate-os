@@ -12,6 +12,8 @@ export type SidebarItemProps = {
   label: string
   to: LinkProps['to']
   params?: LinkProps['params']
+  /** Search params of the link; the item is active only while the URL carries all of them too. */
+  search?: Record<string, string>
   trailing?: ReactNode
   collapsed?: boolean
   /** When true, match this item active when the current path starts with `to`. */
@@ -23,6 +25,7 @@ export default function SidebarItem({
   label,
   to,
   params,
+  search,
   trailing,
   collapsed = false,
   matchPrefix = false,
@@ -30,18 +33,20 @@ export default function SidebarItem({
   // Resolve the active path manually so we can style the icon as well as the row. For parameterized
   // routes (e.g. "/gatekeepers/$appId"), substitute the params so the resolved path can match.
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const currentSearch = useRouterState({ select: (s) => s.location.search }) as Record<string, unknown>
   let target = typeof to === 'string' ? to : ''
   if (params) {
     for (const [key, value] of Object.entries(params as Record<string, string>)) {
       target = target.replaceAll(`$${key}`, String(value))
     }
   }
-  const isActive = matchPrefix
+  const isActive = (matchPrefix
     ? pathname === target || pathname.startsWith(target + '/')
-    : pathname === target
+    : pathname === target) &&
+    Object.entries(search ?? {}).every(([key, value]) => currentSearch[key] === value)
 
   // Kept loose: the generated route-tree union is stricter than is convenient for a generic row.
-  const linkProps = { to, params } as unknown as LinkProps
+  const linkProps = { to, params, search } as unknown as LinkProps
 
   return (
     <Link
