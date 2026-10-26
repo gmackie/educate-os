@@ -1,0 +1,26 @@
+{
+  "name": "@educateos/demo-fakes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The public provider-fakes Worker the EducateOS demo districts connect to (SCHO-210): the wire-faithful fakes of @educateos/provider-fakes served at fakes.demo.educateos.io, one Durable Object per demo district, with secret-derived credentials and an Access-protected admin surface. Outside packages/ so no district release, staging or preview build picks it up.",
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "@educateos/fixtures": "workspace:*",
+    "@educateos/provider-fakes": "workspace:*",
+    "jose": "^6.2.12"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
+    "@educateos/integrations": "workspace:*",
+    "@gadgets/scripts": "workspace:*",
+    "miniflare": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

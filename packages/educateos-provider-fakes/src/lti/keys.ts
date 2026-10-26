@@ -5,6 +5,7 @@
 // a counter alone would repeat after a Worker restart, and a tool holding a cached JWKS would then
 // verify a new key's signatures against the old key.
 import { SignJWT, type JWK } from "jose";
+import type { KeyPair } from "../types.ts";
 
 /** A platform signing key: its `kid`, the private key, and the public half as a JWK. */
 export interface PlatformKey {
@@ -21,7 +22,7 @@ export async function generatePlatformKey(modulusLength = 2048): Promise<Platfor
     { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256", modulusLength, publicExponent: new Uint8Array([1, 0, 1]) },
     true,
     ["sign", "verify"],
-  )) as CryptoKeyPair;
+  )) as KeyPair;
   const publicJwk = (await crypto.subtle.exportKey("jwk", pair.publicKey)) as JWK;
   kidCounter += 1;
   return { kid: `platform-key-${kidCounter}-${crypto.randomUUID().slice(0, 8)}`, privateKey: pair.privateKey, publicJwk };

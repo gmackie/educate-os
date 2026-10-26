@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // The Worker is written against Workers' typings. The libraries it composes (provider-fakes,
+    // fixtures) are web-standard sources written to compile under them too (ADR-0009).
+    "types": ["@cloudflare/workers-types"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  // The workerd suite is checked by running it (`vitest run`), as the other EducateOS workerd
+  // suites are: the OneRoster client it drives does not compile under Workers' typings.
+  "include": ["src"],
+  "exclude": ["node_modules", ".wrangler"]
+}

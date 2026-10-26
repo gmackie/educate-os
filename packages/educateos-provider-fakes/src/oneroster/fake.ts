@@ -16,7 +16,7 @@
 import { Fake, basicCredentials, bearer, decodeSegments, formOf, TokenIssuer } from "../fake.ts";
 import type { FakeOptions } from "../fake.ts";
 import { validateSeed } from "../seed.ts";
-import type { DistrictSeed } from "../types.ts";
+import type { DistrictSeed, HeadersSource } from "../types.ts";
 import { QueryError, parseFilter, passes, selectFields, sortRecords } from "./query.ts";
 import { COLLECTION_FIELDS, ONEROSTER_COLLECTIONS, ROSTERING_PATH, SINGULAR, malform, projectSeed } from "./records.ts";
 import type { OneRosterCollection, OneRosterRecord } from "./records.ts";
@@ -91,7 +91,7 @@ export type OneRosterCodeMinor =
   | "internal_server_error" | "server_busy" | "unknownobject" | "invaliddata" | "unsupported";
 
 /** An imsx_StatusInfo error response. */
-export function oneRosterStatusInfo(status: number, codeMinor: OneRosterCodeMinor, description: string, headers?: HeadersInit): Response {
+export function oneRosterStatusInfo(status: number, codeMinor: OneRosterCodeMinor, description: string, headers?: HeadersSource): Response {
   return Response.json({
     imsx_codeMajor: "failure",
     imsx_severity: "error",
@@ -100,7 +100,7 @@ export function oneRosterStatusInfo(status: number, codeMinor: OneRosterCodeMino
   }, { status, ...(headers === undefined ? {} : { headers }) });
 }
 
-const oauthError = (status: number, error: string, description: string, headers?: HeadersInit) =>
+const oauthError = (status: number, error: string, description: string, headers?: HeadersSource) =>
   Response.json({ error, error_description: description }, { status, headers: { "cache-control": "no-store", pragma: "no-cache", ...headers } });
 
 const ASSOCIATIONS: Readonly<Record<string, Readonly<Record<string, (id: string) => (r: OneRosterRecord) => boolean>>>> = {

@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   Fake,
+  GoogleClassroomFake,
   SAMPLE_DISTRICT,
+  CleverDataFake,
+  cleverLegacyId,
+  cleverUserId,
+  googleSubjectId,
   SeedError,
   enrollmentsOf,
   hexId,
   numericId,
   routeFetch,
+  setBounded,
   studentsToRemove,
   tokenId,
   validateSeed,
@@ -61,6 +67,34 @@ describe("seeds", () => {
   });
 });
 
+describe("vendor IDs a seed carries", () => {
+  const CLEVER = "6650c1a0e1b2c3d4e5f62001";
+  const GOOGLE = "104000000000000002001";
+  const seed = {
+    ...SAMPLE_DISTRICT,
+    people: SAMPLE_DISTRICT.people.map((p) => (p.id === "mw-s-01" ? { ...p, vendorIds: { clever: CLEVER, google: GOOGLE } } : p)),
+  };
+
+  it("replace the derived ones in sign-in and roster alike, and only for that person", () => {
+    expect(cleverUserId(seed, "mw-s-01")).toBe(CLEVER);
+    expect(cleverLegacyId(seed, "mw-s-01", "student")).toBe(CLEVER);
+    expect(googleSubjectId(seed, "mw-s-01")).toBe(GOOGLE);
+    expect(new CleverDataFake({ seed }).userId("mw-s-01")).toBe(CLEVER);
+    expect(new GoogleClassroomFake({ seed }).userId("mw-s-01")).toBe(GOOGLE);
+    expect(cleverUserId(seed, "mw-s-02")).toBe(cleverUserId(SAMPLE_DISTRICT, "mw-s-02"));
+  });
+
+  it("must be shaped like the vendor's and belong to one person", () => {
+    const withIds = (ids: Record<string, { clever?: string; google?: string }>) => ({
+      ...SAMPLE_DISTRICT,
+      people: SAMPLE_DISTRICT.people.map((p) => (ids[p.id] === undefined ? p : { ...p, vendorIds: ids[p.id] })),
+    });
+    expect(() => validateSeed(withIds({ "mw-s-01": { clever: "not-hex" } }))).toThrow(/not 24 hex digits/);
+    expect(() => validateSeed(withIds({ "mw-s-01": { google: "0123" } }))).toThrow(/not a decimal ID/);
+    expect(() => validateSeed(withIds({ "mw-s-01": { clever: CLEVER }, "mw-s-02": { clever: CLEVER } }))).toThrow(/shares clever ID/);
+  });
+});
+
 describe("ids", () => {
   it("are deterministic, shaped like the vendor's, and namespaced", () => {
     expect(hexId("clever:user", "a")).toMatch(/^[0-9a-f]{24}$/);
@@ -68,6 +102,19 @@ describe("ids", () => {
     expect(hexId("clever:user", "a")).not.toBe(hexId("clever:section", "a"));
     expect(numericId("google:course", "a")).toMatch(/^[1-9]\d{11}$/);
     expect(tokenId("google:submission", "a")).toMatch(/^[A-Za-z0-9_-]{16}$/);
+  });
+});
+
+describe("setBounded", () => {
+  it("drops expired entries from the front and the oldest past the cap", () => {
+    const map = new Map<string, number>();
+    const evicted: string[] = [];
+    for (const [key, expiry] of [["a", 1], ["b", 2], ["c", 5]] as const) setBounded(map, key, expiry, 3, (v) => v <= 0, (k) => evicted.push(k));
+    setBounded(map, "d", 6, 3, (v) => v <= 2, (k) => evicted.push(k));
+    expect([...map.keys()]).toEqual(["c", "d"]);
+    setBounded(map, "e", 7, 2, () => false, (k) => evicted.push(k));
+    expect([...map.keys()]).toEqual(["d", "e"]);
+    expect(evicted).toEqual(["a", "b", "c"]);
   });
 });
 

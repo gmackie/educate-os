@@ -4,9 +4,10 @@
 // specifics come from a preset (see `presets.ts`). There is no sign-in UI: the person signing in
 // is named by `login_hint` or the `selectUser` option.
 import { SignJWT, type JWK } from "jose";
-import { Fake, basicCredentials, bearer, formOf, TokenIssuer, type FakeOptions } from "../fake.ts";
+import { Fake, basicCredentials, bearer, formOf, setBounded, TokenIssuer, type FakeOptions } from "../fake.ts";
+import type { PlatformKey } from "../lti/keys.ts";
 import { studentsToRemove, validateSeed, withoutPeople } from "../seed.ts";
-import type { DistrictSeed, PersonSeed } from "../types.ts";
+import type { DistrictSeed, KeyPair, PersonSeed } from "../types.ts";
 import { OIDC_PRESETS, type OidcPreset, type OidcPresetName } from "./presets.ts";
 
 /** A registered relying party. */
@@ -28,6 +29,24 @@ export interface OidcFakeOptions extends FakeOptions {
    * or the issuer's subject. Returning undefined falls back to `login_hint`.
    */
   readonly selectUser?: (params: URLSearchParams) => string | undefined;
+  /**
+   * The most authorization codes waiting to be redeemed. Anyone who knows a client ID and one of
+   * its redirect URIs can ask for codes, so past this the oldest are forgotten. Default 1,000.
+   */
+  readonly maxPendingCodes?: number;
+  /**
+   * The RS256 key id_tokens are signed with. Defaults to a fresh one. A long-running fake that
+   * restarts (a demo Worker) passes a stored key, so its JWKS and `kid` survive the restart.
+   */
+  readonly signingKey?: PlatformKey;
+}
+
+/** What a live access token grants, as {@link OidcFake.accessGrant} reports it. */
+export interface OidcAccessGrant {
+  /** The seed person the token was issued to. */
+  readonly personId: string;
+  readonly clientId: string;
+  readonly scopes: readonly string[];
 }
 
 interface PendingCode {
@@ -78,6 +97,7 @@ export class OidcFake extends Fake {
   readonly #clients: Map<string, OidcClient>;
   readonly #selectUser: OidcFakeOptions["selectUser"];
   readonly #codes = new Map<string, PendingCode>();
+  readonly #maxCodes: number;
   readonly #tokens: TokenIssuer<AccessGrant>;
   readonly #revoked = new Set<string>();
   readonly #removed = new Set<string>();
@@ -87,16 +107,18 @@ export class OidcFake extends Fake {
     super(options);
     this.seed = validateSeed(options.seed);
     this.preset = typeof options.preset === "string" ? OIDC_PRESETS[options.preset] : options.preset;
-    this.kid = `${this.preset.name}-${crypto.randomUUID().slice(0, 8)}`;
+    this.kid = options.signingKey?.kid ?? `${this.preset.name}-${crypto.randomUUID().slice(0, 8)}`;
     this.#clients = new Map(options.clients.map((c) => [c.clientId, c]));
     this.#selectUser = options.selectUser;
+    this.#maxCodes = options.maxPendingCodes ?? 1000;
     this.#tokens = new TokenIssuer(this.preset.accessTokenPrefix, this.now);
-    this.#keys = crypto.subtle
+    const given = options.signingKey;
+    this.#keys = given !== undefined ? Promise.resolve({ privateKey: given.privateKey, publicJwk: given.publicJwk }) : crypto.subtle
       .generateKey({ name: "RSASSA-PKCS1-v1_5", hash: "SHA-256", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]) }, true, ["sign", "verify"])
       // Cast: Workers' typings overload `generateKey` as `CryptoKey | CryptoKeyPair`, and
       // `exportKey` as `ArrayBuffer | JsonWebKey`; an RSA pair exported as "jwk" is a pair and a JWK.
       .then(async (generated) => {
-        const pair = generated as CryptoKeyPair;
+        const pair = generated as KeyPair;
         return { privateKey: pair.privateKey, publicJwk: (await crypto.subtle.exportKey("jwk", pair.publicKey)) as JWK };
       });
   }
@@ -110,6 +132,17 @@ export class OidcFake extends Fake {
   /** The discovery document's URL. */
   get discoveryUrl(): string {
     return `${this.preset.issuer.replace(/\/$/, "")}/.well-known/openid-configuration`;
+  }
+
+  /**
+   * What a live access token grants, or undefined for an unknown, expired or revoked one, or one
+   * whose holder a `large-removal` has since removed. Lets a resource server that trusts this issuer
+   * (a Classroom fake behind Google sign-in) accept its tokens.
+   */
+  accessGrant(token: string | undefined): OidcAccessGrant | undefined {
+    if (token === undefined || this.#revoked.has(token)) return undefined;
+    const grant = this.#tokens.lookup(token);
+    return grant === undefined || this.#removed.has(grant.personId) ? undefined : grant;
   }
 
   /** The issuer's subject for a seed person. */
@@ -189,7 +222,8 @@ export class OidcFake extends Fake {
     const scopes = (params.get("scope") ?? "").split(" ").filter((s) => s !== "");
     if (!scopes.includes("openid")) return fail("invalid_scope", "The scope must include openid.");
     const supported = this.preset.discovery["scopes_supported"] as readonly string[] | undefined;
-    const unknown = scopes.find((s) => supported !== undefined && !supported.includes(s));
+    const accepted = this.preset.acceptedScopes ?? [];
+    const unknown = scopes.find((s) => supported !== undefined && !supported.includes(s) && !accepted.includes(s));
     if (unknown !== undefined) return fail("invalid_scope", `Unsupported scope ${unknown}.`);
     const challenge = params.get("code_challenge");
     const method = params.get("code_challenge_method") ?? "plain";
@@ -204,19 +238,20 @@ export class OidcFake extends Fake {
       return fail("access_denied", "The user is not authorized for this application.");
     }
     const code = `${crypto.randomUUID().replaceAll("-", "")}`;
-    // Codes are short-lived; forgetting expired ones keeps a long-running fake's memory bounded.
-    for (const [old, pending] of this.#codes) if (pending.expiresAt <= this.now()) this.#codes.delete(old);
-    this.#codes.set(code, {
+    // Codes are short-lived and all live as long: expired ones are at the front, and are forgotten
+    // with the oldest live ones once the cap is reached, so memory stays bounded and cheap to keep.
+    const now = this.now();
+    setBounded(this.#codes, code, {
       clientId: client.clientId,
       redirectUri,
       personId: person.id,
       scopes,
       nonce: params.get("nonce") ?? undefined,
       challenge: challenge === null ? undefined : { value: challenge, method: method as "S256" | "plain" },
-      expiresAt: this.now() + this.preset.codeLifetimeSeconds * 1000,
+      expiresAt: now + this.preset.codeLifetimeSeconds * 1000,
       used: false,
       accessTokens: [],
-    });
+    }, this.#maxCodes, (pending) => pending.expiresAt <= now);
     return back({ code, ...(this.preset.name === "google" ? { scope: scopes.join(" ") } : {}) });
   }
 
@@ -264,6 +299,8 @@ export class OidcFake extends Fake {
       if (derived !== pending.challenge.value) return invalid();
     } else if (form.get("code_verifier") !== null) return invalid();
 
+    // A code issued before a large removal does not sign its holder in afterwards.
+    if (this.#removed.has(pending.personId)) return invalid();
     const person = this.#person(pending.personId)!;
     const p = this.preset;
     const accessToken = this.#tokens.issue({ personId: person.id, clientId: client.clientId, scopes: pending.scopes }, p.accessTokenLifetimeSeconds);
@@ -291,7 +328,8 @@ export class OidcFake extends Fake {
 
   #userinfo(request: Request): Response {
     const token = bearer(request);
-    const grant = token === undefined || this.#revoked.has(token) ? undefined : this.#tokens.lookup(token);
+    // A token issued before a large removal stops working once its holder is removed.
+    const grant = this.accessGrant(token);
     if (grant === undefined) {
       // RFC 6750 §3.1.
       return Response.json(

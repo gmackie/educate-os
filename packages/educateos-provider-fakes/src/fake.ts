@@ -136,6 +136,21 @@ export abstract class Fake implements ProviderFake {
   protected abstract removeLargeShare(fraction: number): void;
 }
 
+/**
+ * Adds `key` to a map of short-lived entries whose expiries rise in insertion order (one lifetime
+ * for all), keeping it bounded: expired entries are dropped from the front, where the oldest are,
+ * so a call costs only what it removes; then the oldest live entries go while the map is at `max`.
+ * For anything a caller without credentials can make the fake remember.
+ */
+export function setBounded<K, V>(map: Map<K, V>, key: K, value: V, max: number, expired: (value: V) => boolean, onEvict?: (key: K) => void): void {
+  for (const [old, entry] of map) {
+    if (map.size < max && !expired(entry)) break;
+    map.delete(old);
+    onEvict?.(old);
+  }
+  map.set(key, value);
+}
+
 /** The bearer token of a request, if it has one. */
 export function bearer(request: Request): string | undefined {
   return /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") ?? "")?.[1];
@@ -196,6 +211,11 @@ export class TokenIssuer<Grant> {
   /** Accepts an existing token, such as one a caller configured, until `expiresAt`. */
   register(token: string, grant: Grant, expiresAt = Number.POSITIVE_INFINITY): void {
     this.#tokens.set(token, { grant, expiresAt });
+  }
+
+  /** Withdraws one token, so it is unknown from now on (a single-use token once spent). */
+  revoke(token: string): void {
+    this.#tokens.delete(token);
   }
 
   revokeAll(): void {

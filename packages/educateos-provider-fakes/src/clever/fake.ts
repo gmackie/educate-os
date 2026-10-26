@@ -41,6 +41,18 @@ export interface CleverDataFakeOptions extends FakeOptions {
   readonly extraRoles?: CleverExtraRoles;
   /** Requests per token per minute before a real 429. Defaults to {@link CLEVER_RATE_LIMIT_PER_MINUTE}. */
   readonly rateLimitPerMinute?: number;
+  /**
+   * Where the API is served. Defaults to {@link CLEVER_API_ORIGIN}. A base with a path (one host
+   * serving several fakes) serves `/v3.1/…` below that path, and its `links` and `uri`s carry the
+   * path, so they resolve against the origin as Clever's do.
+   */
+  readonly baseUrl?: string;
+  /**
+   * Who is calling, for the rate limit: each distinct key gets its own budget per token. Defaults to
+   * one budget per token, as Clever counts. A fake whose token is shared by callers who do not trust
+   * each other (a public demo) keys by caller, so one caller cannot spend another's budget.
+   */
+  readonly clientKey?: (request: Request) => string;
 }
 
 /** Collections in dependency order: creates and updates go this way, deletes the reverse. */
@@ -88,6 +100,12 @@ export class CleverDataFake extends Fake {
   readonly #extraRoles: CleverExtraRoles;
   readonly #limit: number;
   readonly #usage = new Map<string, { window: number; count: number }>();
+  readonly #clientKey: ((request: Request) => string) | undefined;
+  /** The path the API is served below: empty at Clever's own origin. */
+  readonly #prefix: string;
+  readonly #origin: string;
+  /** Each event's position in {@link events}, so a cursor is found without a scan. */
+  readonly #eventIndex = new Map<string, number>();
   #seed: DistrictSeed;
   #records: CleverRecords;
   #eventCount = 0;
@@ -100,6 +118,10 @@ export class CleverDataFake extends Fake {
     this.#tokens = new Set(options.districtTokens ?? [this.districtToken]);
     this.#extraRoles = options.extraRoles ?? {};
     this.#limit = options.rateLimitPerMinute ?? CLEVER_RATE_LIMIT_PER_MINUTE;
+    this.#clientKey = options.clientKey;
+    const base = new URL(options.baseUrl ?? CLEVER_API_ORIGIN);
+    this.#origin = base.origin;
+    this.#prefix = base.pathname.replace(/\/+$/, "");
     this.#records = projectClever(this.#seed, this.#extraRoles);
   }
 
@@ -171,7 +193,10 @@ export class CleverDataFake extends Fake {
       const final = { ...event, id: `${seconds}${this.#eventCount.toString(16).padStart(6, "0")}${tokenIdHex(this.#seed.id, this.#eventCount)}` };
       return final;
     });
-    this.events.push(...batch);
+    for (const event of batch) {
+      this.#eventIndex.set(event.id, this.events.length);
+      this.events.push(event);
+    }
     return batch;
   }
 
@@ -247,11 +272,17 @@ export class CleverDataFake extends Fake {
   protected async serve(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const token = bearer(request);
+    if (url.origin !== this.#origin || (this.#prefix !== "" && !url.pathname.startsWith(`${this.#prefix}/`))) return json({ error: "Resource not found" }, 404);
     if (token === undefined || !this.#tokens.has(token)) return json({ error: "Unauthorized" }, 401);
     const window = Math.floor(this.now() / 60000);
-    const usage = this.#usage.get(token);
+    const budget = this.#clientKey === undefined ? token : `${token}\u0000${this.#clientKey(request)}`;
+    const usage = this.#usage.get(budget);
     const count = usage !== undefined && usage.window === window ? usage.count + 1 : 1;
-    this.#usage.set(token, { window, count });
+    if (usage === undefined || usage.window !== window) {
+      // Budgets of past minutes are spent; forgetting them bounds a long-running fake's memory.
+      for (const [key, old] of this.#usage) if (old.window !== window) this.#usage.delete(key);
+    }
+    this.#usage.set(budget, { window, count });
     const headers = this.#rateHeaders(token, this.#limit - count);
     if (count > this.#limit) return new Response(null, { status: 429, headers });
     const response = this.#route(request, url);
@@ -260,11 +291,11 @@ export class CleverDataFake extends Fake {
   }
 
   #route(request: Request, url: URL): Response {
-    const match = /^\/(v3\.[01])\/([a-z_]+)(?:\/([0-9a-f]{24}|[^/]+))?(?:\/([a-z_]+))?\/?$/.exec(url.pathname);
+    const match = /^\/(v3\.[01])\/([a-z_]+)(?:\/([0-9a-f]{24}|[^/]+))?(?:\/([a-z_]+))?\/?$/.exec(url.pathname.slice(this.#prefix.length));
     if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
     if (match === null) return json({ error: "Resource not found" }, 404);
     const [, version, resource, id, nested] = match as unknown as [string, string, string, string | undefined, string | undefined];
-    const base = `/${version}`;
+    const base = `${this.#prefix}/${version}`;
     if (resource === "events") {
       if (nested !== undefined) return json({ error: "Resource not found" }, 404);
       return id === undefined ? this.#eventList(request, url, base) : this.#eventOne(id, base);
@@ -391,7 +422,7 @@ export class CleverDataFake extends Fake {
     const ids = rows.map((r) => r.id);
     const start = after === null ? 0 : ids.filter((id) => id <= after).length;
     const end = before === null || before === "last" ? ids.length : ids.filter((id) => id < before).length;
-    const page = this.#page(ids, start, end, limit, before !== null);
+    const page = this.#page(start, end, limit, before !== null);
     const items = rows.slice(page.from, page.to).map((data) => ({ data, uri: `${base}/${collection}/${data.id}` }));
     if (items.length > 0 && this.takeMalformed(request)) {
       const victim = items[Math.floor(items.length / 2)]!;
@@ -400,7 +431,7 @@ export class CleverDataFake extends Fake {
     return json({ data: items, links: this.#links(url, ids, page) });
   }
 
-  #page(ids: readonly string[], start: number, end: number, limit: number, fromEnd: boolean): { from: number; to: number } {
+  #page(start: number, end: number, limit: number, fromEnd: boolean): { from: number; to: number } {
     if (fromEnd) return { from: Math.max(start, end - limit), to: end };
     return { from: start, to: Math.min(end, start + limit) };
   }
@@ -429,16 +460,27 @@ export class CleverDataFake extends Fake {
     const ids = rows.map((e) => e.id);
     const after = url.searchParams.get("starting_after");
     const before = url.searchParams.get("ending_before");
-    const position = (cursor: string) => this.events.findIndex((e) => e.id === cursor);
     // An events cursor must name a real event (events-api: starting_after "requires a valid event_id").
     for (const cursor of [after, before === "last" ? null : before]) {
-      if (cursor !== null && position(cursor) === -1) return json({ error: `invalid event id: ${cursor}` }, 400);
+      if (cursor !== null && !this.#eventIndex.has(cursor)) return json({ error: `invalid event id: ${cursor}` }, 400);
     }
-    const countBefore = (cursor: string, inclusive: boolean) =>
-      rows.filter((e) => (inclusive ? position(e.id) <= position(cursor) : position(e.id) < position(cursor))).length;
+    // `rows` keeps the events' order, so the rows before a cursor are found by binary search on
+    // their positions: one pass to filter, then O(log n) per cursor, rather than a scan per row.
+    const positions = rows.map((e) => this.#eventIndex.get(e.id)!);
+    const countBefore = (cursor: string, inclusive: boolean) => {
+      const at = this.#eventIndex.get(cursor)!;
+      let low = 0;
+      let high = positions.length;
+      while (low < high) {
+        const mid = (low + high) >>> 1;
+        if (inclusive ? positions[mid]! <= at : positions[mid]! < at) low = mid + 1;
+        else high = mid;
+      }
+      return low;
+    };
     const start = after === null ? 0 : countBefore(after, true);
     const end = before === null || before === "last" ? rows.length : countBefore(before, false);
-    const page = this.#page(ids, start, end, limit, before !== null);
+    const page = this.#page(start, end, limit, before !== null);
     const items: { data: unknown; uri: string }[] = rows.slice(page.from, page.to).map((event) => ({ data: event, uri: `${base}/events/${event.id}` }));
     if (items.length > 0 && this.takeMalformed(request)) {
       const victim = items[Math.floor(items.length / 2)]!;
@@ -450,7 +492,8 @@ export class CleverDataFake extends Fake {
   }
 
   #eventOne(id: string, base: string): Response {
-    const event = this.events.find((e) => e.id === id);
+    const at = this.#eventIndex.get(id);
+    const event = at === undefined ? undefined : this.events[at];
     if (event === undefined) return json({ error: "Resource not found" }, 404);
     return json({ data: event, links: [{ rel: "self", uri: `${base}/events/${id}` }] });
   }

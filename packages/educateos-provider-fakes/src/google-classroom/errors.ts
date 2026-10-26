@@ -4,6 +4,7 @@
 // machine-readable `reason`; and the Classroom API's habit of prefixing its own error codes to the
 // message (`@ProjectPermissionDenied ...`, `@ClassroomApiDisabled ...`), which the Classroom
 // documentation's "Access errors" and "Request errors" guides describe.
+import type { HeadersSource } from "../types.ts";
 
 /** The `google.rpc.Code` names this fake answers with. */
 export type GoogleStatus =
@@ -18,7 +19,7 @@ export interface ErrorInfo {
 }
 
 /** A Google API error response. */
-export function googleErrorResponse(code: number, status: GoogleStatus, message: string, options: { info?: ErrorInfo; headers?: HeadersInit } = {}): Response {
+export function googleErrorResponse(code: number, status: GoogleStatus, message: string, options: { info?: ErrorInfo; headers?: HeadersSource } = {}): Response {
   const details = options.info === undefined
     ? undefined
     : [{ "@type": "type.googleapis.com/google.rpc.ErrorInfo", reason: options.info.reason, domain: options.info.domain ?? "googleapis.com", ...(options.info.metadata === undefined ? {} : { metadata: options.info.metadata }) }];
@@ -34,9 +35,9 @@ export class GoogleError extends Error {
   readonly code: number;
   readonly status: GoogleStatus;
   readonly info: ErrorInfo | undefined;
-  readonly headers: HeadersInit | undefined;
+  readonly headers: HeadersSource | undefined;
 
-  constructor(code: number, status: GoogleStatus, message: string, info?: ErrorInfo, headers?: HeadersInit) {
+  constructor(code: number, status: GoogleStatus, message: string, info?: ErrorInfo, headers?: HeadersSource) {
     super(message);
     this.code = code;
     this.status = status;

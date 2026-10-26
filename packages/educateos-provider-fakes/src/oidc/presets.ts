@@ -30,6 +30,11 @@ export interface OidcPreset {
   readonly userinfoEndpoint: string;
   /** Discovery fields beyond `issuer` and the four endpoints. */
   readonly discovery: Readonly<Record<string, unknown>>;
+  /**
+   * Scopes the authorization endpoint grants beyond the discovery document's `scopes_supported`,
+   * such as the Google API scopes Google accepts but does not list. Defaults to none.
+   */
+  readonly acceptedScopes?: readonly string[];
   /** PKCE methods accepted. A `code_challenge` is honoured on every preset when sent. */
   readonly pkceMethods: readonly ("S256" | "plain")[];
   /** Whether the authorization response carries `iss` (RFC 9207). */
@@ -261,8 +266,8 @@ const classlinkPreset: OidcPreset = {
 };
 
 /** A seed person's Google account ID (`sub`): 21 decimal digits. */
-export function googleSubjectId(seed: Pick<DistrictSeed, "id">, personId: string): string {
-  return numericId("google:user", `${seed.id}\u0000${personId}`, 21);
+export function googleSubjectId(seed: Pick<DistrictSeed, "id"> & Partial<Pick<DistrictSeed, "people">>, personId: string): string {
+  return seed.people?.find((p) => p.id === personId)?.vendorIds?.google ?? numericId("google:user", `${seed.id}\u0000${personId}`, 21);
 }
 
 const googlePreset: OidcPreset = {
@@ -318,6 +323,36 @@ const googlePreset: OidcPreset = {
   // Google's historical slip: `email_verified` as the string "true" rather than a boolean.
   malform: (claims) => ({ ...claims, email_verified: "true" }),
 };
+
+/**
+ * A preset moved under `baseUrl`, as when one host serves several issuers by path: the issuer
+ * becomes `baseUrl`, and every endpoint (and every URL in the discovery extras) keeps its path and
+ * query below it. Clever's `https://clever.com/oauth/tokens` under `https://fakes.example/d/clever`
+ * becomes `https://fakes.example/d/clever/oauth/tokens`. The preset's endpoints must keep distinct
+ * paths, which every built-in preset's do.
+ */
+export function rebasePreset(preset: OidcPreset, baseUrl: string): OidcPreset {
+  const base = baseUrl.replace(/\/+$/, "");
+  const move = (url: string) => {
+    const { pathname, search } = new URL(url);
+    return `${base}${pathname === "/" ? "" : pathname}${search}`;
+  };
+  const discovery = Object.fromEntries(
+    Object.entries(preset.discovery).map(([key, value]) => [key, typeof value === "string" && value.startsWith("https://") ? move(value) : value]),
+  );
+  const moved = {
+    ...preset,
+    issuer: base,
+    authorizationEndpoint: move(preset.authorizationEndpoint),
+    tokenEndpoint: move(preset.tokenEndpoint),
+    jwksUri: move(preset.jwksUri),
+    userinfoEndpoint: move(preset.userinfoEndpoint),
+    discovery,
+  };
+  const paths = [moved.authorizationEndpoint, moved.tokenEndpoint, moved.jwksUri, moved.userinfoEndpoint, `${base}/.well-known/openid-configuration`];
+  if (new Set(paths).size !== paths.length) throw new Error(`rebasePreset: ${preset.name}'s endpoints share a path under ${base}`);
+  return moved;
+}
 
 /** The built-in presets. Spread one to make a variant: `{ ...OIDC_PRESETS.google, issuer: … }`. */
 export const OIDC_PRESETS: Readonly<Record<OidcPresetName, OidcPreset>> = {
