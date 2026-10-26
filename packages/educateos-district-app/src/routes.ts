@@ -312,6 +312,11 @@ export const TeachingOfferingBody = z.strictObject({
 /** A teaching offering. */
 export type TeachingOfferingBody = z.infer<typeof TeachingOfferingBody>;
 
+/** A class a student is or was enrolled in, with its course and term, so a screen can name it (SCHO-222). */
+export const StudentOfferingBody = z.strictObject({ offering: CourseOffering, course: CatalogCourse, term: AcademicTerm });
+/** A student's class. */
+export type StudentOfferingBody = z.infer<typeof StudentOfferingBody>;
+
 /** One roster row: an enrollment and the enrolled principal's display name. */
 export const RosterEntryBody = z.strictObject({ enrollment: Enrollment, displayName: z.string() });
 /** A roster entry. */
@@ -567,7 +572,14 @@ export type GuardianOfferingBody = z.infer<typeof GuardianOfferingBody>;
  * released to the child, as the child sees it, and their official grades. Never the submission.
  */
 export const GuardianAssignmentBody = z.strictObject({
-  assignment: z.strictObject({ id: AssignmentId, offeringId: OfferingId, title: z.string(), dueAt: z.string() }),
+  assignment: z.strictObject({
+    id: AssignmentId,
+    offeringId: OfferingId,
+    title: z.string(),
+    dueAt: z.string(),
+    /** A quiz's assignment is scored automatically, so it carries a grade and no written feedback (SCHO-222). */
+    kind: z.enum(["activity", "quiz"]),
+  }),
   feedback: z.array(FeedbackRecord),
   grades: z.array(OfficialGradeVersion),
 });
@@ -575,7 +587,11 @@ export const GuardianAssignmentBody = z.strictObject({
 export type GuardianAssignmentBody = z.infer<typeof GuardianAssignmentBody>;
 
 /** A child's class with its assignments. */
-export const GuardianCourseBody = GuardianOfferingBody.extend({ assignments: z.array(GuardianAssignmentBody) });
+export const GuardianCourseBody = GuardianOfferingBody.extend({
+  assignments: z.array(GuardianAssignmentBody),
+  /** The class's published announcements, newest first, where the relationship's scope covers them (SCHO-222). */
+  announcements: z.array(Announcement),
+});
 /** A child's class in full. */
 export type GuardianCourseBody = z.infer<typeof GuardianCourseBody>;
 
@@ -820,6 +836,9 @@ export const ROUTES = {
     method: "POST", path: "/api/student/offerings/:offeringId/workspace", surface: "student",
     params: params({ offeringId: OfferingId }), body: NoBody, response: WorkspaceViewBody,
   }),
+  "student.listOfferings": route({
+    method: "GET", path: "/api/student/offerings", surface: "student", response: z.array(StudentOfferingBody),
+  }),
   // Student: activities
   "student.listActivities": route({
     method: "GET", path: "/api/student/offerings/:offeringId/activities", surface: "student",
@@ -909,6 +928,10 @@ export const ROUTES = {
   "student.getFeedback": route({
     method: "GET", path: "/api/student/submissions/:submissionId/feedback", surface: "student",
     params: params({ submissionId: SubmissionId }), response: FeedbackRecord,
+  }),
+  "student.assignmentFeedback": route({
+    method: "GET", path: "/api/student/assignments/:assignmentId/feedback", surface: "student",
+    params: params({ assignmentId: AssignmentId }), response: z.array(FeedbackRecord),
   }),
   "student.withdrawSubmission": route({
     method: "POST", path: "/api/student/submissions/:submissionId/withdraw", surface: "student",
@@ -1288,6 +1311,11 @@ export const ROUTES = {
   "guardian.childCourse": route({
     method: "GET", path: "/api/guardian/children/:studentId/offerings/:offeringId", surface: "guardian",
     params: params({ studentId: PrincipalId, offeringId: OfferingId }), response: GuardianCourseBody,
+  }),
+  "onboarding.previewGuardianInvitation": route({
+    method: "POST", path: "/api/onboarding/guardian-invitations/preview", surface: "onboarding",
+    body: z.strictObject({ token: z.string().min(1).max(100) }),
+    response: z.strictObject({ studentDisplayName: z.string(), schoolName: z.string() }),
   }),
   "onboarding.redeemGuardianInvitation": route({
     method: "POST", path: "/api/onboarding/guardian-invitations/redeem", surface: "onboarding",

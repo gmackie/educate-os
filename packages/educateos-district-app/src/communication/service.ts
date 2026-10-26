@@ -107,11 +107,15 @@ export const MAX_CALENDAR_RANGE_DAYS = 400;
  */
 const UID_DOMAIN = "schoolos"; // rename-educateos: keep
 
-/** A course offering's label: its course title and section. */
+/**
+ * A course offering's label: its course title and section, such as "Earth Science · Tuesday
+ * mornings", the way every EducateOS screen names a class. No parentheses, so a label can sit inside
+ * a parenthesised title without doubling them (SCHO-222).
+ */
 export function courseLabelOf(snapshot: DistrictDirectorySnapshot, offeringId: OfferingId): string {
   const offering = snapshot.offerings.find((o) => o.id === offeringId);
   const course = snapshot.courses.find((c) => c.id === offering?.courseId);
-  return course === undefined ? "Class" : `${course.title} (${offering!.sectionName})`;
+  return course === undefined ? "Class" : `${course.title} · ${offering!.sectionName}`;
 }
 
 async function sha256Hex(text: string): Promise<string> {
@@ -523,13 +527,13 @@ export class CommunicationService {
       for (const { submission, assignment, releasedAt } of view.releasedFeedback) {
         if (!recent(releasedAt)) continue;
         await add("feedback-released", submission.id, {
-          offeringId, title: `Feedback on ${assignment.title} (${courseLabel})`, ref: { assignmentId: assignment.id, submissionId: submission.id }, occurredAt: releasedAt,
+          offeringId, title: `Feedback on ${assignment.title} in ${courseLabel}`, ref: { assignmentId: assignment.id, submissionId: submission.id }, occurredAt: releasedAt,
         });
       }
       for (const { assignment, version, approvedAt } of view.grades) {
         if (!recent(approvedAt)) continue;
         await add("grade-released", `${assignment.id} ${version}`, {
-          offeringId, title: `Grade posted for ${assignment.title} (${courseLabel})`, ref: { assignmentId: assignment.id }, occurredAt: approvedAt,
+          offeringId, title: `Grade posted for ${assignment.title} in ${courseLabel}`, ref: { assignmentId: assignment.id }, occurredAt: approvedAt,
         });
       }
     }

@@ -1,6 +1,7 @@
 import {
   AuthorizationRequest,
   EducateOsError,
+  UnlinkedSignInError,
   type Action,
   type Authorizer,
   type Caller,
@@ -44,7 +45,7 @@ import { GuardianInvitations, IdentityLinkAdminService } from "@educateos/identi
 import { guardianHandlers, type GuardianRouteName } from "./guardians.ts";
 // Communication (SCHO-189)
 import { calendarFeedPath } from "./routes.ts";
-import { CommunicationService, digestWeekOf, FamilyDigest, isEmpty, renderDigest, type MailSender } from "./communication/index.ts";
+import { CommunicationService, digestWeekOf, FamilyDigest, isEmpty, renderDigest, type Announcement, type MailSender } from "./communication/index.ts";
 // Discussions (SCHO-190)
 import { DiscussionService, studentPostView, type DiscussionScreening } from "@educateos/discussions";
 // Quizzes (SCHO-191)
@@ -197,6 +198,9 @@ export interface DistrictApp {
 
 /** The default `DistrictAppOptions.authority`: the OneRoster roster owns every directory record type. */
 export const DEFAULT_AUTHORITY = ONEROSTER_AUTHORITY;
+
+/** The routes a verified sign-in reaches before it is anyone's principal (ADR-0012). */
+type OnboardingRouteName = "onboarding.previewGuardianInvitation" | "onboarding.redeemGuardianInvitation";
 
 /** Which principal kinds a surface answers. */
 const SURFACE_KINDS: Record<Exclude<Surface, "onboarding">, readonly ResolvedPrincipal["kind"][]> = {
@@ -410,6 +414,14 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       return guardianInvitationsFor(this.decider);
     }
 
+    async publishedAnnouncements(offeringId: OfferingId): Promise<Announcement[]> {
+      const listed = await communicationFor(this.decider, this.assessment()).listAnnouncements(this.caller, offeringId).catch((error: unknown) => {
+        if (error instanceof EducateOsError && error.code === "not-found") return undefined;
+        throw error;
+      });
+      return (listed?.announcements ?? []).filter((view) => view.published).map((view) => view.announcement);
+    }
+
     identityLinks(): IdentityLinkAdminService {
       return new IdentityLinkAdminService({ store: stores.identityLinks, directory: stores.directory, policy: this.decider, now });
     }
@@ -521,6 +533,19 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     }
   }
 
+  /**
+   * An unlinked sign-in's error, marked `awaitingApproval` when that sign-in already asked to be
+   * linked and an administrator has not decided yet (a guardian who accepted an invitation), so the
+   * Learning Home can say "wait" instead of "send this ID" (SCHO-222). Any other error is unchanged.
+   */
+  const withLinkRequest = async (error: unknown): Promise<unknown> => {
+    if (!(error instanceof UnlinkedSignInError)) return error;
+    const { issuer, subject } = error.signIn;
+    const waiting = (await stores.identityLinks.read()).open()
+      .some((request) => request.kind === "identity-link" && request.link.identity.issuer === issuer && request.link.identity.subject === subject);
+    return waiting ? new UnlinkedSignInError({ issuer, subject, awaitingApproval: true }, error.message) : error;
+  };
+
   const guardianInvitationsFor = (decider: PolicyDecider) => new GuardianInvitations({
     store: stores.guardianInvitations,
     relationships: new GuardianRelationships({ store: stores.guardianRelationships, directory: stores.directory, policy: decider, now }),
@@ -581,7 +606,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     });
   }
 
-  type Handlers = { [N in Exclude<RouteName, GuardianRouteName | "onboarding.redeemGuardianInvitation">]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
+  type Handlers = { [N in Exclude<RouteName, GuardianRouteName | OnboardingRouteName>]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
 
   const handlers: Handlers = {
     "me.get": async (ctx) => {
@@ -605,6 +630,18 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     },
 
     // Student
+    "student.listOfferings": async (ctx) => {
+      // Every class the student was ever enrolled in, so a finished class keeps its name too.
+      const offeringIds = new Set(ctx.snapshot.enrollments
+        .filter((e) => e.principalId === ctx.principal.principalId && e.role === "student")
+        .map((e) => e.offeringId));
+      return [...offeringIds].flatMap((offeringId) => {
+        const offering = ctx.snapshot.offerings.find((o) => o.id === offeringId);
+        const course = ctx.snapshot.courses.find((c) => c.id === offering?.courseId);
+        const term = ctx.snapshot.terms.find((t) => t.id === offering?.termId);
+        return offering === undefined || course === undefined || term === undefined ? [] : [{ offering, course, term }];
+      });
+    },
     "student.listWorkspaces": (ctx) => ctx.workspaces().listMyWorkspaces(ctx.caller),
     "student.openPersonalWorkspace": (ctx) => ctx.workspaces().ensurePersonalWorkspace(ctx.caller),
     "student.openCourseWorkspace": (ctx, { params }) => ctx.workspaces().ensureCourseWorkspace(ctx.caller, params.offeringId),
@@ -644,6 +681,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "student.submit": (ctx, { params, body }) => ctx.assessment().submit(ctx.caller, params.assignmentId, body.revisions),
     "student.listSubmissions": (ctx, { params }) => ctx.assessment().listSubmissions(ctx.caller, params.assignmentId),
     "student.getFeedback": (ctx, { params }) => ctx.assessment().getFeedback(ctx.caller, params.submissionId),
+    "student.assignmentFeedback": (ctx, { params }) =>
+      ctx.assessment().releasedFeedback(ctx.caller, params.assignmentId, ctx.principal.principalId),
     "student.withdrawSubmission": (ctx, { params }) => ctx.assessment().withdraw(ctx.caller, params.submissionId),
     "student.officialGrades": (ctx, { params }) =>
       ctx.assessment().officialGrades(ctx.caller, params.assignmentId, ctx.principal.principalId),
@@ -1196,10 +1235,16 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       // starts a request an administrator decides, so it needs no principal and grants nothing.
       if (spec.surface === "onboarding") {
         const { body } = await parseInput() as { body: { token: string } };
-        return jsonResponse(await guardianInvitationsFor(engine).redeem(identity, body.token), spec.status ?? 200, correlationId);
+        const invitations = guardianInvitationsFor(engine);
+        const answer = (matched.name as OnboardingRouteName) === "onboarding.previewGuardianInvitation"
+          ? await invitations.preview(body.token)
+          : await invitations.redeem(identity, body.token);
+        return jsonResponse(answer, spec.status ?? 200, correlationId);
       }
       ({ snapshot } = await stores.directory.load());
-      principal = await resolverFor(snapshot).resolve(identity);
+      principal = await resolverFor(snapshot).resolve(identity).catch(async (error: unknown) => {
+        throw await withLinkRequest(error);
+      });
     } else {
       // Someone served as a principal already is one, so there is nothing for onboarding to start.
       if (spec.surface === "onboarding") throw new EducateOsError("forbidden", "This part of EducateOS is not available to your account.");

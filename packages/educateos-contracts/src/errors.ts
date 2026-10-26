@@ -26,7 +26,14 @@ export type ErrorCode = z.infer<typeof ErrorCode>;
  * console calls the person's sign-in ID, and the issuer is the provider they signed in through:
  * together, what an administrator enters to add them.
  */
-export const UnlinkedSignIn = VerifiedIdentity.pick({ issuer: true, subject: true });
+export const UnlinkedSignIn = VerifiedIdentity.pick({ issuer: true, subject: true }).extend({
+  /**
+   * Present when this sign-in already asked to be linked (a guardian who accepted an invitation)
+   * and an administrator has yet to decide, so the person is told to wait rather than to send the
+   * ID (SCHO-222).
+   */
+  awaitingApproval: z.literal(true).optional(),
+});
 /** An unlinked sign-in. */
 export type UnlinkedSignIn = z.infer<typeof UnlinkedSignIn>;
 
@@ -84,7 +91,7 @@ export class UnlinkedSignInError extends EducateOsError {
   constructor(signIn: UnlinkedSignIn, message: string) {
     super("unauthenticated", message);
     this.name = "UnlinkedSignInError";
-    this.signIn = { issuer: signIn.issuer, subject: signIn.subject };
+    this.signIn = { issuer: signIn.issuer, subject: signIn.subject, ...(signIn.awaitingApproval === true ? { awaitingApproval: true } : {}) };
   }
 
   override toBody(): EducateOsErrorBody {

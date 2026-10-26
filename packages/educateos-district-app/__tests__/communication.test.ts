@@ -64,7 +64,7 @@ describe("announcements", () => {
   it("are posted by the class's teachers and read by its students, in the class and across classes", async () => {
     const { district } = await boot();
     const posted = await post(district, "Library visit on Friday");
-    expect(posted).toMatchObject({ published: true, courseLabel: "English 9 (Period 3)", announcement: { offeringId: NF.eng9, created: { by: NF.rivera } } });
+    expect(posted).toMatchObject({ published: true, courseLabel: "English 9 · Period 3", announcement: { offeringId: NF.eng9, created: { by: NF.rivera } } });
     // The co-teacher posts too.
     await district.ok(district.tokenFor(NF.chen), "teacher.createAnnouncement", { params: { offeringId: NF.eng9 }, body: { title: "Bring a novel", body: "Any novel." } });
 
@@ -159,13 +159,13 @@ describe("calendar", () => {
 
     const student = await district.ok(district.tokenFor(NF.amara), "me.calendar");
     expect(student.events.map((e) => [e.kind, e.title])).toStrictEqual([
-      ["announcement", "Announcement: Welcome — English 9 (Period 3)"],
+      ["announcement", "Announcement: Welcome — English 9 · Period 3"],
       ["term-start", "Fall 2026 begins"],
-      ["assignment-due", `Due: ${assignment.title} — English 9 (Period 3)`],
+      ["assignment-due", `Due: ${assignment.title} — English 9 · Period 3`],
     ]);
     expect(student.events.find((e) => e.kind === "assignment-due")).toMatchObject({ uid: `due-${assignment.id}@dst_northfield.schoolos`, start: assignment.dueAt, allDay: false }); // rename-educateos: keep
     const teacher = await district.ok(district.tokenFor(NF.rivera), "me.calendar");
-    expect(teacher.events.map((e) => e.title)).toContain("Scheduled announcement: First quiz — English 9 (Period 3)");
+    expect(teacher.events.map((e) => e.title)).toContain("Scheduled announcement: First quiz — English 9 · Period 3");
 
     // A wider range reaches the term's end; nothing outside a student's classes ever appears.
     const term = await district.ok(district.tokenFor(NF.amara), "me.calendar", { query: { from: "2026-08-01T00:00:00Z", to: "2027-02-01T00:00:00Z" } });
@@ -219,7 +219,7 @@ describe("notifications", () => {
     const first = await district.ok(amara, "me.notifications");
     expect(first.notifications.map((n) => n.kind).toSorted()).toStrictEqual(["announcement", "assignment-published"]);
     expect(first.unread).toBe(2);
-    expect(first.notifications.find((n) => n.kind === "assignment-published")).toMatchObject({ ref: { assignmentId: assignment.id }, title: `New assignment in English 9 (Period 3): ${assignment.title}` });
+    expect(first.notifications.find((n) => n.kind === "assignment-published")).toMatchObject({ ref: { assignmentId: assignment.id }, title: `New assignment in English 9 · Period 3: ${assignment.title}` });
     // Asking again adds nothing.
     expect((await district.ok(amara, "me.notifications")).notifications).toHaveLength(2);
 
@@ -262,7 +262,7 @@ describe("notifications", () => {
     await post(district, "Library visit");
     let result = await district.app.communication.runNotificationJob();
     // Amara has an address and gets it; Elena and Dmitri have none on file.
-    expect(mail.sent.map((m) => [m.to, m.subject])).toStrictEqual([["family.okafor@northfield.example", "New announcement in English 9 (Period 3): Library visit"]]);
+    expect(mail.sent.map((m) => [m.to, m.subject])).toStrictEqual([["family.okafor@northfield.example", "New announcement in English 9 · Period 3: Library visit"]]);
     expect(mail.sent[0]!.text).toContain("https://learn.northfield.example");
     expect(result).toMatchObject({ added: 2, emailed: 1, skipped: 1 });
     expect(await district.app.communication.runNotificationJob()).toStrictEqual({ added: 0, emailed: 0, skipped: 0, failed: 0 });
