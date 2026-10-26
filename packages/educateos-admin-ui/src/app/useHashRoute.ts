@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { readHash, subscribeToHash } from "@gadgets/ui/hash-location";
 
 /** The console's screens, in navigation order. */
 export const SCREENS = [
@@ -18,15 +19,10 @@ export const SCREENS = [
 /** A screen's path. */
 export type ScreenPath = (typeof SCREENS)[number]["path"];
 
-const subscribe = (onChange: () => void) => {
-  window.addEventListener("hashchange", onChange);
-  return () => window.removeEventListener("hashchange", onChange);
-};
-
 const current = (): ScreenPath => {
-  const path = window.location.hash.replace(/^#\/?/, "");
+  const path = readHash().replace(/^#\/?/, "");
   return SCREENS.find((screen) => screen.path === path)?.path ?? "dashboard";
 };
 
 /** The screen the location's hash names, so links, history and reloads all work. */
-export const useHashRoute = (): ScreenPath => useSyncExternalStore(subscribe, current, () => "dashboard");
+export const useHashRoute = (): ScreenPath => useSyncExternalStore(subscribeToHash, current, () => "dashboard");

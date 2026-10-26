@@ -38,7 +38,7 @@ const Probe = () => {
   return (
     <>
       <output>{`${themeMode}/${resolvedThemeMode}`}</output>
-      <button type="button" onClick={() => setThemeMode("light")}>light</button>
+      <button type="button" onClick={() => setThemeMode?.("light")}>light</button>
     </>
   );
 };
@@ -154,5 +154,43 @@ describe("ThemeModeButton", () => {
     expect(themeButton().getAttribute("aria-label")).toBe("Theme: system (dark). Switch to light.");
     expect(announced).toStrictEqual(["Theme: light", "Theme: dark", "Theme: system (dark)"]);
     expect(themeButton().type).toBe("button");
+  });
+});
+
+/** A host that pushes its resolved mode, as the Workshop does to an embedded app. */
+const hostSource = (initial: "light" | "dark") => {
+  let current = initial;
+  const listeners = new Set<() => void>();
+  return {
+    source: {
+      read: () => current,
+      subscribe: (onChange: () => void) => {
+        listeners.add(onChange);
+        return () => listeners.delete(onChange);
+      },
+    } satisfies ThemeModeSource,
+    push: (next: "light" | "dark") => act(() => {
+      current = next;
+      for (const listener of listeners) listener();
+    }),
+  };
+};
+
+describe("a host's theme", () => {
+  it("follows the host as it changes, whatever the system prefers", () => {
+    fakeSystem("light");
+    const host = hostSource("dark");
+    render(host.source);
+    expect(shown()).toBe("dark/dark");
+    expect(mode()).toBe("dark");
+    host.push("light");
+    expect(shown()).toBe("light/light");
+    expect(mode()).toBe("light");
+  });
+
+  it("offers no theme choice of its own", () => {
+    fakeSystem("light");
+    render(hostSource("dark").source);
+    expect(container!.querySelector("button[aria-label^='Theme:']")).toBeNull();
   });
 });

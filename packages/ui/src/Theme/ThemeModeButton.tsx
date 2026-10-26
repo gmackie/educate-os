@@ -12,10 +12,12 @@ const describe = (mode: ThemeMode, resolved: ResolvedThemeMode) => (mode === "sy
 /**
  * The theme control the Workshop's sidebar has: one button that steps through system, light and
  * dark, named for the mode in force and the one it switches to. `onAnnounce` receives the new mode
- * to say, so it reaches the app's own live region rather than a second one.
+ * to say, so it reaches the app's own live region rather than a second one. Where a host decides
+ * the theme there is nothing to choose, and the button is not shown.
  */
 export const ThemeModeButton = ({ onAnnounce }: { onAnnounce: (message: string) => void }) => {
   const { themeMode, resolvedThemeMode, setThemeMode } = useTheme();
+  if (setThemeMode === undefined) return null;
   const nextMode = NEXT_MODE[themeMode];
   const label = `${describe(themeMode, resolvedThemeMode)}. Switch to ${nextMode}.`;
   const Icon = ICONS[themeMode];

@@ -13,12 +13,22 @@ export type ResolvedThemeMode = "light" | "dark";
  * a host that sets the theme itself (an app embedded in the Workshop, say) can supply one without
  * the theme control or the screens changing.
  */
-export interface ThemeModeSource {
-  /** The mode to start in. */
-  read(): ThemeMode;
-  /** Records a mode the person chose. */
-  write(mode: ThemeMode): void;
-}
+export type ThemeModeSource =
+  | {
+      /** The mode to start in. */
+      read(): ThemeMode;
+      /** Records a mode the person chose. */
+      write(mode: ThemeMode): void;
+    }
+  | {
+      /** The mode the host has in force. */
+      read(): ResolvedThemeMode;
+      /**
+       * Calls `onChange` whenever the host's mode changes, until the returned function is called.
+       * The host decides the theme, so the app offers no choice of its own.
+       */
+      subscribe(onChange: () => void): () => void;
+    };
 
 const isThemeMode = (value: string | null): value is ThemeMode => value === "light" || value === "dark" || value === "system";
 
