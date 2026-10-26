@@ -13,6 +13,7 @@ import {
   type ResourceKey,
 } from "./desired.ts";
 import { InstallerHaltedError, isCredentialFailure } from "./errors.ts";
+import { type ManagedHostnameOp, planManagedHostname } from "./managed-hostname.ts";
 import { migrationsFrom, type ResourceOutputs, resolveBindings, workerDigest } from "./render.ts";
 
 /** What observation found for one desired resource. */
@@ -36,6 +37,8 @@ export interface PlanStep {
   observedMigrationTag?: string;
   /** D1 only: migration IDs not yet applied. */
   pendingMigrations?: string[];
+  /** The managed hostname only: the operations applying runs, in order. */
+  managedOps?: ManagedHostnameOp[];
 }
 
 /** Billable products the plan touches, for the operator's cost review. */
@@ -148,9 +151,10 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
       }
       case "access_application": {
         const ours = apps.find((a) => a.name === resource.name);
-        const onDomain = apps.find((a) => a.domain === resource.domain && a.name !== resource.name);
+        const onDomain = apps.find((a) => a.name !== resource.name && a.destinations.some((d) => resource.destinations.includes(d)));
         if (onDomain) {
-          step("refuse", `Access application "${onDomain.name}" already protects ${resource.domain} and is not this instance's`);
+          const shared = onDomain.destinations.filter((d) => resource.destinations.includes(d)).join(", ");
+          step("refuse", `Access application "${onDomain.name}" already protects ${shared} and is not this instance's`);
           break;
         }
         if (!ours) {
@@ -159,8 +163,9 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
         }
         outputs.set(resource.key, { id: ours.id, aud: ours.aud });
         const policyId = outputs.get(resource.policyKey)?.id;
-        const same = ours.domain === resource.domain && policyId !== undefined && ours.policyIds.length === 1 && ours.policyIds[0] === policyId;
-        step(same ? "noop" : "update", same ? "application matches" : "domain or policy differs");
+        const same = ours.domain === resource.domain && ours.destinations.toSorted().join() === resource.destinations.toSorted().join() &&
+          policyId !== undefined && ours.policyIds.length === 1 && ours.policyIds[0] === policyId;
+        step(same ? "noop" : "update", same ? "application matches" : "hostnames or policy differ");
         break;
       }
       case "worker_script": {
@@ -217,6 +222,11 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
         } else {
           step(found ? "noop" : "create", found ? "domain attached" : "domain not attached");
         }
+        break;
+      }
+      case "managed_hostname": {
+        const managed = await planManagedHostname(api, resource, { accountId: account, instanceId: desired.instanceId, domains, zone });
+        step(managed.action, managed.reason, { managedOps: managed.ops });
         break;
       }
     }

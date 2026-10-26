@@ -116,6 +116,73 @@ describe("Cloudflare HTTP client", () => {
     expect(requests[0]!.headers.get("authorization")).toBe("Bearer session-jwt");
   });
 
+  it("speaks Cloudflare for SaaS: TXT-validated custom hostnames, and SaaS being off read as such", async () => {
+    const { fetchImpl, requests } = stubFetch((request) => {
+      const path = new URL(request.url).pathname;
+      if (path.endsWith("/fallback_origin")) {
+        return Response.json({ success: false, errors: [{ code: 1456, message: "available with SSL for SaaS" }], result: null }, { status: 401 });
+      }
+      return ok(request.method === "POST"
+        ? { id: "ch-1", hostname: "northfield.educateos.io", status: "pending", ssl: { status: "initializing" } }
+        : [{
+          id: "ch-1",
+          hostname: "northfield.educateos.io",
+          status: "pending",
+          ssl: { status: "pending_validation", validation_records: [{ txt_name: "_acme-challenge.northfield.educateos.io", txt_value: "cert-1" }] },
+          ownership_verification: { type: "txt", name: "_cf-custom-hostname.northfield.educateos.io", value: "own-1" },
+        }]);
+    });
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+
+    // Cloudflare answers 401 here, which must not read as a revoked credential.
+    expect(await api.getFallbackOrigin("zone-1")).toEqual({ saas: false });
+    // Validation values can be missing from the create response; they are read back later.
+    expect(await api.createCustomHostname("zone-1", "northfield.educateos.io")).toMatchObject({ id: "ch-1", certificateValidation: [] });
+    expect(await requests[1]!.json()).toEqual({ hostname: "northfield.educateos.io", ssl: { method: "txt", type: "dv" } });
+    expect(await api.findCustomHostname("zone-1", "northfield.educateos.io")).toEqual({
+      id: "ch-1",
+      hostname: "northfield.educateos.io",
+      status: "pending",
+      sslStatus: "pending_validation",
+      ownership: { name: "_cf-custom-hostname.northfield.educateos.io", value: "own-1" },
+      certificateValidation: [{ name: "_acme-challenge.northfield.educateos.io", value: "cert-1" }],
+    });
+    expect(new URL(requests[2]!.url).searchParams.get("hostname")).toBe("northfield.educateos.io");
+  });
+
+  it("writes every Access destination and reads them back, primary first", async () => {
+    const { fetchImpl, requests } = stubFetch(() => ok({
+      id: "app-1",
+      name: "educateos-northfield",
+      domain: "educateos.northfield.example",
+      destinations: [{ type: "public", uri: "educateos.northfield.example" }, { type: "public", uri: "northfield.educateos.io" }],
+      aud: "aud-1",
+      policies: [{ id: "pol-1" }],
+    }));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+    const app = await api.createAccessApplication(ACCOUNT, {
+      name: "educateos-northfield",
+      domain: "educateos.northfield.example",
+      destinations: ["educateos.northfield.example", "northfield.educateos.io"],
+      type: "self_hosted",
+      sessionDuration: "12h",
+      policyIds: ["pol-1"],
+    });
+    expect(await requests[0]!.json()).toMatchObject({
+      domain: "educateos.northfield.example",
+      destinations: [{ type: "public", uri: "educateos.northfield.example" }, { type: "public", uri: "northfield.educateos.io" }],
+    });
+    expect(app.destinations).toEqual(["educateos.northfield.example", "northfield.educateos.io"]);
+  });
+
+  it("reads a DNS record's ownership comment, null as empty", async () => {
+    const { fetchImpl } = stubFetch(() => ok([{ id: "r1", type: "CNAME", name: "northfield.educateos.io", content: "x.example", proxied: false, comment: null }]));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+    expect(await api.listDnsRecords("zone-1", "northfield.educateos.io")).toEqual([
+      { id: "r1", type: "CNAME", name: "northfield.educateos.io", content: "x.example", proxied: false, comment: "" },
+    ]);
+  });
+
   it("reads the district-run token from the environment and fails cleanly without it", async () => {
     await expect(districtRunTokenProvider({ CLOUDFLARE_API_TOKEN: TOKEN }).accessToken()).resolves.toBe(TOKEN);
     const { fetchImpl, requests } = stubFetch(() => ok({}));

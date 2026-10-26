@@ -132,7 +132,11 @@ describe("dry run", () => {
 
     expect(report.status).toBe("planned");
     expect(mutations(fake)).toHaveLength(0);
-    expect(report.plan!.steps.filter((s) => s.action === "create")).toHaveLength(report.plan!.steps.length);
+    // Everything is created, except the managed hostname, which this config does not ask for and a
+    // fresh account has none of to release.
+    const [managed, ...rest] = report.plan!.steps.filter((s) => s.kind === "managed_hostname" || s.action !== "create");
+    expect(rest).toEqual([]);
+    expect(managed).toMatchObject({ key: "domain:managed:release", action: "noop" });
     const products = Object.fromEntries(report.plan!.cost.map((line) => [line.product, line]));
     expect(products["Workers (Workers Paid plan)"]).toMatchObject({ total: 6, creating: 6 });
     expect(products["Workers KV"]).toMatchObject({ total: 3, creating: 3 });

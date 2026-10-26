@@ -2,7 +2,10 @@
 // harnesses. It enforces the constraints the reconciler depends on: unique names, service and
 // storage bindings that must point at existing resources, Durable Object migration tags that must
 // chain, versions that cannot be redeployed across a migration, and bearer tokens that can be
-// revoked. Faults can be injected at the Nth mutation, with or without the effect landing.
+// revoked. Faults can be injected at the Nth mutation, with or without the effect landing. For the
+// managed hostname it also models DNS records (a CNAME owns its name), Cloudflare for SaaS (off
+// unless the zone is listed, TXT-validated custom hostnames) and zone Worker routes; see
+// managed-hostname.ts for which of those behaviours are unverified on a real account.
 import type {
   AccessApplication,
   AccessApplicationSpec,
@@ -10,7 +13,11 @@ import type {
   AccessPolicy,
   AccessPolicySpec,
   CloudflareApi,
+  CustomHostname,
+  DnsRecord,
+  DnsRecordSpec,
   ObservedBinding,
+  WorkerRoute,
   WorkerDomain,
   WorkerUpload,
 } from "./cloudflare-api.ts";
@@ -33,7 +40,9 @@ export interface FakeAccountOptions {
   /** Zones in the account. Status defaults to `active`. */
   zones?: { name: string; status?: string }[];
   /** DNS records already present, by full name. */
-  dnsRecords?: { name: string; type: string }[];
+  dnsRecords?: { name: string; type: string; content?: string; comment?: string }[];
+  /** Zones with Cloudflare for SaaS enabled, by name. */
+  saasZones?: string[];
 }
 
 /** One recorded port call. */
@@ -61,6 +70,8 @@ const MUTATIONS = new Set([
   "uploadWorkerScript", "deleteWorkerScript", "createAssetsUploadSession", "uploadAssets", "putWorkerSecret", "deployWorkerVersion",
   "attachWorkerDomain", "createKvNamespace", "createR2Bucket", "createD1Database", "createAccessPolicy",
   "updateAccessPolicy", "createAccessApplication", "updateAccessApplication", "createAiGateway",
+  "createDnsRecord", "updateDnsRecord", "deleteDnsRecord", "setFallbackOrigin", "createCustomHostname",
+  "deleteCustomHostname", "createWorkerRoute", "deleteWorkerRoute", "detachWorkerDomain",
 ]);
 
 const LEDGER_INSERT = /INSERT INTO _educateos_migrations \(id, sha256\) VALUES \(\?, \?\)\s*$/;
@@ -85,12 +96,21 @@ export class FakeCloudflare {
   readonly #assets = new Set<string>();
   readonly #assetSessions = new Map<string, { pending: Set<string> }>();
   readonly #completions = new Set<string>();
+  readonly #dns = new Map<string, DnsRecord & { zoneId: string }>();
+  readonly #fallbackOrigins = new Map<string, string>();
+  readonly #customHostnames = new Map<string, CustomHostname & { zoneId: string }>();
+  readonly #routes = new Map<string, WorkerRoute & { zoneId: string }>();
   #nextId = 1;
   #mutations = 0;
   #fault: { at: number; effectApplied: boolean } | undefined;
 
   constructor(options: FakeAccountOptions) {
     this.#options = options;
+    for (const record of options.dnsRecords ?? []) {
+      const id = `dns-${this.#id()}`;
+      const zoneId = this.#zone(record.name)?.id ?? "zone-unknown";
+      this.#dns.set(id, { id, zoneId, type: record.type, name: record.name, content: record.content ?? "", proxied: false, comment: record.comment ?? "" });
+    }
   }
 
   /** Mints a valid bearer token, like creating an API token or completing an OAuth grant. */
@@ -118,12 +138,42 @@ export class FakeCloudflare {
     return new FakeCloudflareApi(this, tokens);
   }
 
-  /** What the public hostname serves right now: the router's script and its active release. */
+  /**
+   * What a hostname this account terminates serves right now: the Worker and its active release.
+   * That is a custom domain, or an active custom hostname with a route for it on the same zone.
+   */
   serving(hostname: string): { scriptName: string; releaseId: string | undefined } | undefined {
-    const domain = this.#domains.get(hostname);
-    const script = domain && this.#scripts.get(domain.service);
-    if (!domain || !script) return undefined;
-    return { scriptName: domain.service, releaseId: varOf(activeVersion(script), MARKER_VARS.release) };
+    const custom = [...this.#customHostnames.values()]
+      .find((c) => c.hostname === hostname && c.status === "active" && c.sslStatus === "active");
+    const route = custom && [...this.#routes.values()].find((r) => r.zoneId === custom.zoneId && r.pattern === `${hostname}/*`);
+    // Without its route, an active custom hostname is proxied to the zone's fallback origin.
+    const origin = custom && !route ? this.#fallbackOrigins.get(custom.zoneId) : undefined;
+    const service = this.#domains.get(hostname)?.service ?? route?.script ?? (origin ? this.#domains.get(origin)?.service : undefined);
+    const script = service && this.#scripts.get(service);
+    if (!service || !script) return undefined;
+    return { scriptName: service, releaseId: varOf(activeVersion(script), MARKER_VARS.release) };
+  }
+
+  /** Every DNS record, as the zone's resolver would answer. */
+  dnsRecords(): DnsRecord[] {
+    return [...this.#dns.values()].map(({ zoneId: _zoneId, ...record }) => record);
+  }
+
+  /**
+   * Validates pending custom hostnames against TXT values published elsewhere (the managed zone's
+   * account), as Cloudflare's checks would: ownership, then the certificate.
+   */
+  validateCustomHostnames(publishedTxt: (name: string) => string[]): void {
+    for (const custom of this.#customHostnames.values()) {
+      if (custom.ownership && publishedTxt(custom.ownership.name).includes(custom.ownership.value)) {
+        delete custom.ownership;
+        custom.status = "active";
+      }
+      if (custom.certificateValidation.length > 0 && custom.certificateValidation.every((r) => publishedTxt(r.name).includes(r.value))) {
+        custom.certificateValidation = [];
+        custom.sslStatus = "active";
+      }
+    }
   }
 
   /** How many of each resource kind exist, for duplicate checks. */
@@ -137,6 +187,8 @@ export class FakeCloudflare {
       accessApplications: this.#apps.size,
       aiGateways: this.#gateways.size,
       domains: this.#domains.size,
+      customHostnames: this.#customHostnames.size,
+      workerRoutes: this.#routes.size,
       secrets: [...this.#scripts.values()].reduce((n, s) => n + s.secrets.size, 0),
     };
   }
@@ -180,7 +232,20 @@ export class FakeCloudflare {
   /** Adds an Access application the installer did not create. */
   seedAccessApplication(name: string, domain: string): void {
     const id = this.#id();
-    this.#apps.set(id, { id, name, domain, aud: `aud-${id}`, policyIds: [] });
+    this.#apps.set(id, { id, name, domain, destinations: [domain], aud: `aud-${id}`, policyIds: [] });
+  }
+
+  /** An Access application's protected hostnames, for assertions. */
+  accessApplication(name: string): { destinations: string[]; aud: string } | undefined {
+    const app = [...this.#apps.values()].find((a) => a.name === name);
+    return app && { destinations: [...app.destinations], aud: app.aud };
+  }
+
+  /** Adds a Worker route the installer did not create. */
+  seedWorkerRoute(zoneName: string, pattern: string, script: string): void {
+    const zoneId = this.#zones().find((z) => z.name === zoneName)!.id;
+    const id = `route-${this.#id()}`;
+    this.#routes.set(id, { id, zoneId, pattern, script });
   }
 
   /** Adds a Worker custom domain the installer did not create. */
@@ -240,9 +305,86 @@ export class FakeCloudflare {
     subscriptions: () => (this.#options.ratePlans ?? ["workers_paid", "teams_standard"]).map((ratePlanId) => ({ ratePlanId })),
     findZone: (name: string) => this.#zones().find((z) => z.name === name),
     dnsRecords: (zoneId: string, name: string) =>
-      (this.#options.dnsRecords ?? [])
-        .filter((r) => r.name === name && this.#zone(r.name)?.id === zoneId)
-        .map((r, i) => ({ id: `dns-${i}`, type: r.type, name: r.name })),
+      [...this.#dns.values()].filter((r) => r.zoneId === zoneId && r.name === name).map(({ zoneId: _zoneId, ...r }) => r),
+    putDns: (zoneId: string, id: string | undefined, spec: DnsRecordSpec) => {
+      const operation = id === undefined ? "createDnsRecord" : "updateDnsRecord";
+      if (!this.#zones().some((z) => z.id === zoneId)) throw new CloudflareApiError(operation, 404, [7003]);
+      if (id !== undefined && this.#dns.get(id)?.zoneId !== zoneId) throw new CloudflareApiError(operation, 404, [81044]);
+      const others = [...this.#dns.values()].filter((r) => r.zoneId === zoneId && r.name === spec.name && r.id !== id);
+      // A CNAME owns its name: it cannot share it with any other record (Cloudflare code 81053).
+      if (others.length > 0 && (spec.type === "CNAME" || others.some((r) => r.type === "CNAME"))) {
+        throw new CloudflareApiError(operation, 400, [81053]);
+      }
+      if (others.some((r) => r.type === spec.type && r.content === spec.content)) throw new CloudflareApiError(operation, 400, [81058]);
+      const record = { id: id ?? `dns-${this.#id()}`, zoneId, ...spec };
+      this.#dns.set(record.id, record);
+      const { zoneId: _zoneId, ...observed } = record;
+      return observed;
+    },
+    deleteDns: (zoneId: string, id: string) => {
+      if (this.#dns.get(id)?.zoneId !== zoneId) throw new CloudflareApiError("deleteDnsRecord", 404, [81044]);
+      this.#dns.delete(id);
+    },
+    fallbackOrigin: (zoneId: string) => {
+      if (!this.#saas(zoneId)) return { saas: false as const };
+      const origin = this.#fallbackOrigins.get(zoneId);
+      return origin ? { saas: true as const, origin } : { saas: true as const };
+    },
+    setFallbackOrigin: (zoneId: string, origin: string) => {
+      if (!this.#saas(zoneId)) throw new CloudflareApiError("setFallbackOrigin", 400, [1456]);
+      // The origin must be a proxied record on the zone.
+      const onZone = [...this.#dns.values()].some((r) => r.zoneId === zoneId && r.name === origin && r.proxied);
+      if (!onZone) throw new CloudflareApiError("setFallbackOrigin", 400, [1400]);
+      this.#fallbackOrigins.set(zoneId, origin);
+    },
+    findCustomHostname: (zoneId: string, hostname: string) => {
+      if (!this.#saas(zoneId)) throw new CloudflareApiError("findCustomHostname", 403, [1404]);
+      const found = [...this.#customHostnames.values()].find((c) => c.zoneId === zoneId && c.hostname === hostname);
+      return found && withoutZone(found);
+    },
+    createCustomHostname: (zoneId: string, hostname: string) => {
+      if (!this.#saas(zoneId)) throw new CloudflareApiError("createCustomHostname", 400, [1456]);
+      const zone = this.#zones().find((z) => z.id === zoneId)!;
+      if (hostname === zone.name || hostname.endsWith(`.${zone.name}`)) throw new CloudflareApiError("createCustomHostname", 400, [1414]);
+      if ([...this.#customHostnames.values()].some((c) => c.hostname === hostname)) throw new CloudflareApiError("createCustomHostname", 409, [1406]);
+      const id = `ch-${this.#id()}`;
+      const custom = {
+        id,
+        zoneId,
+        hostname,
+        status: "pending",
+        sslStatus: "pending_validation",
+        ownership: { name: `_cf-custom-hostname.${hostname}`, value: crypto.randomUUID() },
+        certificateValidation: [{ name: `_acme-challenge.${hostname}`, value: crypto.randomUUID() }],
+      };
+      this.#customHostnames.set(id, custom);
+      return withoutZone(custom);
+    },
+    deleteCustomHostname: (zoneId: string, id: string) => {
+      if (this.#customHostnames.get(id)?.zoneId !== zoneId) throw new CloudflareApiError("deleteCustomHostname", 404, [1436]);
+      this.#customHostnames.delete(id);
+    },
+    routes: (zoneId: string) =>
+      [...this.#routes.values()].filter((r) => r.zoneId === zoneId).map(({ zoneId: _zoneId, ...r }) => r),
+    createRoute: (zoneId: string, pattern: string, script: string) => {
+      if (!this.#zones().some((z) => z.id === zoneId)) throw new CloudflareApiError("createWorkerRoute", 404, [7003]);
+      if (!this.#scripts.has(script)) throw new CloudflareApiError("createWorkerRoute", 400, [10019]);
+      if ([...this.#routes.values()].some((r) => r.zoneId === zoneId && r.pattern === pattern)) {
+        throw new CloudflareApiError("createWorkerRoute", 409, [10020]);
+      }
+      const id = `route-${this.#id()}`;
+      this.#routes.set(id, { id, zoneId, pattern, script });
+      return { id, pattern, script };
+    },
+    deleteRoute: (zoneId: string, id: string) => {
+      if (this.#routes.get(id)?.zoneId !== zoneId) throw new CloudflareApiError("deleteWorkerRoute", 404, [10021]);
+      this.#routes.delete(id);
+    },
+    detachDomain: (id: string) => {
+      const domain = [...this.#domains.values()].find((d) => d.id === id);
+      if (!domain) throw new CloudflareApiError("detachWorkerDomain", 404, [100116]);
+      this.#domains.delete(domain.hostname);
+    },
     scripts: () => [...this.#scripts].map(([name, s]) => ({ name, ...(s.migrationTag ? { migrationTag: s.migrationTag } : {}) })),
     settings: (name: string) => {
       const script = this.#script(name, "getWorkerSettings");
@@ -350,8 +492,9 @@ export class FakeCloudflare {
     },
     apps: () => [...this.#apps.values()],
     putApp: (id: string | undefined, spec: AccessApplicationSpec) => {
-      if (id === undefined && [...this.#apps.values()].some((a) => a.domain === spec.domain)) {
-        throw new CloudflareApiError("createAccessApplication", 400, [12130]);
+      // A hostname belongs to one application at a time.
+      if ([...this.#apps.values()].some((a) => a.id !== id && a.destinations.some((d) => spec.destinations.includes(d)))) {
+        throw new CloudflareApiError(id === undefined ? "createAccessApplication" : "updateAccessApplication", 400, [12130]);
       }
       const existing = id === undefined ? undefined : this.#apps.get(id);
       if (id !== undefined && !existing) throw new CloudflareApiError("updateAccessApplication", 404, []);
@@ -359,7 +502,14 @@ export class FakeCloudflare {
         if (!this.#policies.has(policyId)) throw new CloudflareApiError("createAccessApplication", 400, [12131]);
       }
       const appId = id ?? `app-${this.#id()}`;
-      const app = { id: appId, name: spec.name, domain: spec.domain, aud: existing?.aud ?? `aud-${appId}`, policyIds: [...spec.policyIds] };
+      const app = {
+        id: appId,
+        name: spec.name,
+        domain: spec.domain,
+        destinations: [...spec.destinations],
+        aud: existing?.aud ?? `aud-${appId}`,
+        policyIds: [...spec.policyIds],
+      };
       this.#apps.set(appId, app);
       return app;
     },
@@ -444,6 +594,11 @@ export class FakeCloudflare {
     return (this.#options.zones ?? []).map((z, i) => ({ id: `zone-${i}`, name: z.name, status: z.status ?? "active" }));
   }
 
+  #saas(zoneId: string): boolean {
+    const zone = this.#zones().find((z) => z.id === zoneId);
+    return zone !== undefined && (this.#options.saasZones ?? []).includes(zone.name);
+  }
+
   #zone(hostname: string) {
     return this.#zones().find((z) => hostname === z.name || hostname.endsWith(`.${z.name}`));
   }
@@ -459,6 +614,10 @@ export class FakeCloudflare {
 
 function activeVersion(script: Script): Version {
   return script.versions.find((v) => v.id === script.activeVersionId)!;
+}
+
+function withoutZone({ zoneId: _zoneId, ...custom }: CustomHostname & { zoneId: string }): CustomHostname {
+  return structuredClone(custom);
 }
 
 function varOf(version: Version, name: string): string | undefined {
@@ -482,6 +641,17 @@ class FakeCloudflareApi implements CloudflareApi {
   listSubscriptions(a: string) { return this.#call(a, "listSubscriptions", () => this.#fake.op.subscriptions()); }
   findZone(a: string, name: string) { return this.#call(a, "findZone", () => this.#fake.op.findZone(name)); }
   listDnsRecords(zoneId: string, name: string) { return this.#call(undefined, "listDnsRecords", () => this.#fake.op.dnsRecords(zoneId, name)); }
+  createDnsRecord(zoneId: string, spec: DnsRecordSpec) { return this.#call(undefined, "createDnsRecord", () => this.#fake.op.putDns(zoneId, undefined, spec)); }
+  updateDnsRecord(zoneId: string, id: string, spec: DnsRecordSpec) { return this.#call(undefined, "updateDnsRecord", () => this.#fake.op.putDns(zoneId, id, spec)); }
+  deleteDnsRecord(zoneId: string, id: string) { return this.#call(undefined, "deleteDnsRecord", () => this.#fake.op.deleteDns(zoneId, id)); }
+  getFallbackOrigin(zoneId: string) { return this.#call(undefined, "getFallbackOrigin", () => this.#fake.op.fallbackOrigin(zoneId)); }
+  setFallbackOrigin(zoneId: string, origin: string) { return this.#call(undefined, "setFallbackOrigin", () => this.#fake.op.setFallbackOrigin(zoneId, origin)); }
+  findCustomHostname(zoneId: string, hostname: string) { return this.#call(undefined, "findCustomHostname", () => this.#fake.op.findCustomHostname(zoneId, hostname)); }
+  createCustomHostname(zoneId: string, hostname: string) { return this.#call(undefined, "createCustomHostname", () => this.#fake.op.createCustomHostname(zoneId, hostname)); }
+  deleteCustomHostname(zoneId: string, id: string) { return this.#call(undefined, "deleteCustomHostname", () => this.#fake.op.deleteCustomHostname(zoneId, id)); }
+  listWorkerRoutes(zoneId: string) { return this.#call(undefined, "listWorkerRoutes", () => this.#fake.op.routes(zoneId)); }
+  createWorkerRoute(zoneId: string, pattern: string, script: string) { return this.#call(undefined, "createWorkerRoute", () => this.#fake.op.createRoute(zoneId, pattern, script)); }
+  deleteWorkerRoute(zoneId: string, id: string) { return this.#call(undefined, "deleteWorkerRoute", () => this.#fake.op.deleteRoute(zoneId, id)); }
   listWorkerScripts(a: string) { return this.#call(a, "listWorkerScripts", () => this.#fake.op.scripts()); }
   getWorkerSettings(a: string, s: string) { return this.#call(a, "getWorkerSettings", () => this.#fake.op.settings(s)); }
   uploadWorkerScript(a: string, s: string, u: WorkerUpload) { return this.#call(a, "uploadWorkerScript", () => this.#fake.op.upload(s, u)); }
@@ -498,6 +668,7 @@ class FakeCloudflareApi implements CloudflareApi {
   deployWorkerVersion(a: string, s: string, v: string) { return this.#call(a, "deployWorkerVersion", () => this.#fake.op.deploy(s, v)); }
   listWorkerDomains(a: string) { return this.#call(a, "listWorkerDomains", () => this.#fake.op.domains()); }
   attachWorkerDomain(a: string, d: Omit<WorkerDomain, "id">) { return this.#call(a, "attachWorkerDomain", () => this.#fake.op.attachDomain(d)); }
+  detachWorkerDomain(a: string, id: string) { return this.#call(a, "detachWorkerDomain", () => this.#fake.op.detachDomain(id)); }
   listKvNamespaces(a: string) { return this.#call(a, "listKvNamespaces", () => this.#fake.op.kv()); }
   createKvNamespace(a: string, t: string) { return this.#call(a, "createKvNamespace", () => this.#fake.op.createKv(t)); }
   listR2Buckets(a: string) { return this.#call(a, "listR2Buckets", () => this.#fake.op.r2()); }

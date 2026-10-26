@@ -328,7 +328,14 @@ export async function verifyAccount(options: VerificationOptions): Promise<Verif
           return;
         }
         const app = await probe("write.accessApplication", "Access: Apps and Policies: Edit covers createAccessApplication", "create-delete", () =>
-          api.createAccessApplication(account, { name, domain: `${name}.${options.zone}`, type: "self_hosted", sessionDuration: "1h", policyIds: [policy.id] }),
+          api.createAccessApplication(account, {
+            name,
+            domain: `${name}.${options.zone}`,
+            destinations: [`${name}.${options.zone}`],
+            type: "self_hosted",
+            sessionDuration: "1h",
+            policyIds: [policy.id],
+          }),
           (a) => ({ audienceIssued: a.aud.length > 0 }));
         if (app) onCleanup(`access-app:${app.id}`, () => raw("DELETE", `/accounts/${seg(account)}/access/apps/${seg(app.id)}`));
       },

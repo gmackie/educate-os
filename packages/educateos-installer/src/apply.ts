@@ -8,6 +8,7 @@ import type { CloudflareApi } from "./cloudflare-api.ts";
 import type { SecretSource } from "./config.ts";
 import type { DesiredD1Database, DesiredWorker } from "./desired.ts";
 import { CloudflareApiError } from "./errors.ts";
+import { applyManagedHostname } from "./managed-hostname.ts";
 import { D1_LEDGER_TABLE, guarded, type InstallPlan, type PlanStep } from "./plan.ts";
 import { migrationsFrom, type ResourceOutputs, resolveBindings, uploadMetadata, workerDigest } from "./render.ts";
 
@@ -79,7 +80,14 @@ export async function applyPlan(plan: InstallPlan, context: ApplyContext): Promi
       case "access_application": {
         const policyId = outputs.get(resource.policyKey)?.id;
         if (!policyId) throw new EducateOsError("unavailable", "Access policy has no ID");
-        const spec = { name: resource.name, domain: resource.domain, type: "self_hosted" as const, sessionDuration: resource.sessionDuration, policyIds: [policyId] };
+        const spec = {
+          name: resource.name,
+          domain: resource.domain,
+          destinations: resource.destinations,
+          type: "self_hosted" as const,
+          sessionDuration: resource.sessionDuration,
+          policyIds: [policyId],
+        };
         const existing = outputs.get(resource.key)?.id;
         const app = existing
           ? await guarded(() => api.updateAccessApplication(account, existing, spec))
@@ -110,6 +118,9 @@ export async function applyPlan(plan: InstallPlan, context: ApplyContext): Promi
         await guarded(() => api.attachWorkerDomain(account, { hostname: resource.hostname, service: resource.scriptName, zoneId }));
         break;
       }
+      case "managed_hostname":
+        await applyManagedHostname(api, account, plan.desired.instanceId, resource.scriptName, step.managedOps ?? []);
+        break;
     }
     changed.push(step.key);
     context.onStep?.(step);

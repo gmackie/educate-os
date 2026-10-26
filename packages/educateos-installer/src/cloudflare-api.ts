@@ -1,7 +1,9 @@
 // The Cloudflare operations the installer uses, and nothing else. Every method maps to one
 // documented `api.cloudflare.com/client/v4` endpoint (see cloudflare-http.ts), and every failure
 // is a CloudflareApiError. The port deliberately has no operation that reads district data: no KV
-// value or R2 object read, and D1 queries only for the migration ledger.
+// value or R2 object read, and D1 queries only for the migration ledger. The DNS and Cloudflare for
+// SaaS operations serve the managed hostname (SCHO-207): the DNS writes are the managed zone's,
+// run with educateos.io's credential, and the rest the district's.
 import type { ModuleType } from "./manifest.ts";
 
 /** An account the credential can reach. */
@@ -28,6 +30,57 @@ export interface DnsRecord {
   id: string;
   type: string;
   name: string;
+  content: string;
+  proxied: boolean;
+  /** Free text; the managed zone keeps its ownership marker here. */
+  comment: string;
+}
+
+/**
+ * What the installer writes to a DNS record: the managed zone's DNS-only CNAME and TXT records, and
+ * a district zone's proxied, originless fallback origin.
+ */
+export interface DnsRecordSpec {
+  type: "AAAA" | "CNAME" | "TXT";
+  name: string;
+  content: string;
+  proxied: boolean;
+  /** The owning instance's marker, `educateos:<instanceId>`. */
+  comment: string;
+}
+
+/** A TXT record a Cloudflare for SaaS custom hostname asks its hostname's zone to publish. */
+export interface ValidationRecord {
+  name: string;
+  value: string;
+}
+
+/** A Cloudflare for SaaS custom hostname, on the provider's zone. */
+export interface CustomHostname {
+  id: string;
+  hostname: string;
+  /** `active` once ownership is validated. */
+  status: string;
+  /** The certificate's status; `active` once issued. */
+  sslStatus: string;
+  /** The `_cf-custom-hostname` TXT record, until ownership is validated. */
+  ownership?: ValidationRecord;
+  /** The `_acme-challenge` TXT records, until the certificate is issued. */
+  certificateValidation: ValidationRecord[];
+}
+
+/** A zone's Cloudflare for SaaS fallback origin, as far as observation can tell. */
+export type FallbackOrigin =
+  /** Cloudflare for SaaS is not enabled on the zone. */
+  | { saas: false }
+  | { saas: true; origin?: string };
+
+/** A Worker route on a zone. */
+export interface WorkerRoute {
+  id: string;
+  pattern: string;
+  /** The Worker the route runs; absent for a route that disables Workers. */
+  script?: string;
 }
 
 /** A Worker script as the account lists it. */
@@ -161,6 +214,8 @@ export interface AccessApplication {
   id: string;
   name: string;
   domain: string;
+  /** Every public hostname it protects, the primary `domain` first. */
+  destinations: string[];
   /** The application audience tag the backend verifies Access JWTs against. */
   aud: string;
   policyIds: string[];
@@ -170,6 +225,8 @@ export interface AccessApplication {
 export interface AccessApplicationSpec {
   name: string;
   domain: string;
+  /** Every public hostname to protect, `domain` first. One application keeps one audience. */
+  destinations: string[];
   type: "self_hosted";
   sessionDuration: string;
   policyIds: string[];
@@ -193,6 +250,20 @@ export interface CloudflareApi {
 
   findZone(accountId: string, name: string): Promise<Zone | undefined>;
   listDnsRecords(zoneId: string, name: string): Promise<DnsRecord[]>;
+  createDnsRecord(zoneId: string, spec: DnsRecordSpec): Promise<DnsRecord>;
+  updateDnsRecord(zoneId: string, recordId: string, spec: DnsRecordSpec): Promise<DnsRecord>;
+  deleteDnsRecord(zoneId: string, recordId: string): Promise<void>;
+
+  /** The zone's fallback origin, or that Cloudflare for SaaS is off on it. */
+  getFallbackOrigin(zoneId: string): Promise<FallbackOrigin>;
+  setFallbackOrigin(zoneId: string, origin: string): Promise<void>;
+  findCustomHostname(zoneId: string, hostname: string): Promise<CustomHostname | undefined>;
+  /** Creates a custom hostname whose ownership and certificate are both validated by TXT record. */
+  createCustomHostname(zoneId: string, hostname: string): Promise<CustomHostname>;
+  deleteCustomHostname(zoneId: string, customHostnameId: string): Promise<void>;
+  listWorkerRoutes(zoneId: string): Promise<WorkerRoute[]>;
+  createWorkerRoute(zoneId: string, pattern: string, script: string): Promise<WorkerRoute>;
+  deleteWorkerRoute(zoneId: string, routeId: string): Promise<void>;
 
   listWorkerScripts(accountId: string): Promise<WorkerScriptSummary[]>;
   getWorkerSettings(accountId: string, scriptName: string): Promise<WorkerSettings>;
@@ -216,6 +287,7 @@ export interface CloudflareApi {
 
   listWorkerDomains(accountId: string): Promise<WorkerDomain[]>;
   attachWorkerDomain(accountId: string, domain: Omit<WorkerDomain, "id">): Promise<WorkerDomain>;
+  detachWorkerDomain(accountId: string, domainId: string): Promise<void>;
 
   listKvNamespaces(accountId: string): Promise<KvNamespace[]>;
   createKvNamespace(accountId: string, title: string): Promise<KvNamespace>;

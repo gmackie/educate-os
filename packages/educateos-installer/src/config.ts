@@ -2,6 +2,7 @@ import { CapabilityId, CommercialAccountId, InstanceId } from "@educateos/contra
 import { ContactRole } from "@educateos/fleet";
 import { z } from "zod";
 import { ReleasePin } from "./manifest.ts";
+import { DistrictSlug, MANAGED_ZONE } from "./slug.ts";
 
 const DnsLabel = z.string().regex(/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/, "expected a DNS label");
 const DomainName = z
@@ -68,8 +69,14 @@ export const DistrictInstallConfig = z.strictObject({
   ),
   /** The district's Cloudflare account ID. */
   accountId: z.string().regex(/^[0-9a-f]{32}$/, "expected a Cloudflare account ID"),
-  /** The district-owned zone EducateOS is served under, e.g. `northfield.example`. */
-  baseDomain: DomainName,
+  /**
+   * The district-owned zone EducateOS is served under, e.g. `northfield.example`. Never the managed
+   * zone: a public hostname there would look like a managed hostname, which the installer releases.
+   */
+  baseDomain: DomainName.refine(
+    (domain) => domain !== MANAGED_ZONE && !domain.endsWith(`.${MANAGED_ZONE}`),
+    `the district's own domain, not one under ${MANAGED_ZONE}`,
+  ),
   /** The label under {@link DistrictInstallConfig.baseDomain} EducateOS is served on. */
   subdomain: DnsLabel.default("educateos"),
   access: z.strictObject({
@@ -98,6 +105,12 @@ export const DistrictInstallConfig = z.strictObject({
     .default({}),
   /** Creates an AI Gateway named after the instance and points the backend at it. */
   aiGateway: z.boolean().default(false),
+  /**
+   * The managed default hostname, `<slug>.educateos.io` (ADR-0013 addendum A1). It is an alias of
+   * the public hostname, which stays the instance's identity, so removing it moves no data: an
+   * apply without it releases any managed hostname that routes to this instance.
+   */
+  managedHostname: z.strictObject({ slug: DistrictSlug }).optional(),
   /**
    * What the installer tells the root's registry after a successful apply. Absent for a
    * district-run install that does not register with the root.

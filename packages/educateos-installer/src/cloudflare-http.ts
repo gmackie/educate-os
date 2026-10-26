@@ -10,6 +10,9 @@ import type {
   AccessPolicy,
   AccessPolicySpec,
   CloudflareApi,
+  CustomHostname,
+  DnsRecordSpec,
+  FallbackOrigin,
   WorkerDomain,
   WorkerUpload,
 } from "./cloudflare-api.ts";
@@ -35,7 +38,26 @@ const Id = z.object({ id: z.string() });
 const Account = z.object({ id: z.string(), name: z.string() });
 const SubscriptionWire = z.object({ rate_plan: z.object({ id: z.string() }).optional() });
 const ZoneWire = z.object({ id: z.string(), name: z.string(), status: z.string() });
-const DnsRecordWire = z.object({ id: z.string(), type: z.string(), name: z.string() });
+const DnsRecordWire = z.object({
+  id: z.string(),
+  type: z.string(),
+  name: z.string(),
+  content: z.string().default(""),
+  proxied: z.boolean().default(false),
+  comment: z.string().nullish(),
+});
+const FallbackOriginWire = z.object({ origin: z.string().nullish() }).nullish();
+const CustomHostnameWire = z.object({
+  id: z.string(),
+  hostname: z.string(),
+  status: z.string(),
+  ssl: z.object({
+    status: z.string(),
+    validation_records: z.array(z.object({ txt_name: z.string().optional(), txt_value: z.string().optional() })).default([]),
+  }),
+  ownership_verification: z.object({ type: z.string(), name: z.string(), value: z.string() }).optional(),
+});
+const RouteWire = z.object({ id: z.string(), pattern: z.string(), script: z.string().nullish() });
 const ScriptWire = z.object({ id: z.string(), migration_tag: z.string().optional() });
 const BindingWire = z.looseObject({ type: z.string(), name: z.string(), text: z.string().optional() });
 const SettingsWire = z.object({ bindings: z.array(BindingWire).default([]) });
@@ -61,11 +83,25 @@ const AppWire = z.object({
   id: z.string(),
   name: z.string(),
   domain: z.string().default(""),
+  destinations: z.array(z.object({ type: z.string(), uri: z.string().optional() })).default([]),
   aud: z.string(),
   policies: z.array(z.object({ id: z.string() })).default([]),
 });
 const AssetsSessionWire = z.object({ jwt: z.string(), buckets: z.array(z.array(z.string())).default([]) });
 const AssetsUploadWire = z.object({ jwt: z.string().optional() }).nullish();
+
+/**
+ * Cloudflare's code for "this feature is available with SSL for SaaS" on a zone without it. Reading
+ * the fallback origin of educateos.io (a Free zone) returned it with HTTP 401 on 2026-10-25, so it is
+ * checked before the status, which would otherwise read as a failed credential.
+ */
+export const SAAS_NOT_ENABLED_CODE = 1456;
+
+/**
+ * Cloudflare's "no quota has been allocated for this zone" (SSL for SaaS). Listing custom hostnames
+ * on educateos.io, a zone without SaaS, returned it with HTTP 403 on 2026-10-25.
+ */
+export const SAAS_NO_QUOTA_CODE = 1404;
 
 /** Cloudflare's code for "R2 is not enabled on this account". */
 export const R2_NOT_ENABLED_CODE = 10042;
@@ -127,7 +163,78 @@ export class CloudflareHttpApi implements CloudflareApi {
   async listDnsRecords(zoneId: string, name: string) {
     return z.array(DnsRecordWire).parse(
       await this.#result("listDnsRecords", "GET", `/zones/${seg(zoneId)}/dns_records`, { query: { name } }),
+    ).map(toDnsRecord);
+  }
+
+  async createDnsRecord(zoneId: string, spec: DnsRecordSpec) {
+    return toDnsRecord(DnsRecordWire.parse(
+      await this.#result("createDnsRecord", "POST", `/zones/${seg(zoneId)}/dns_records`, { json: spec }),
+    ));
+  }
+
+  async updateDnsRecord(zoneId: string, recordId: string, spec: DnsRecordSpec) {
+    return toDnsRecord(DnsRecordWire.parse(
+      await this.#result("updateDnsRecord", "PUT", `/zones/${seg(zoneId)}/dns_records/${seg(recordId)}`, { json: spec }),
+    ));
+  }
+
+  async deleteDnsRecord(zoneId: string, recordId: string) {
+    await this.#result("deleteDnsRecord", "DELETE", `/zones/${seg(zoneId)}/dns_records/${seg(recordId)}`);
+  }
+
+  async getFallbackOrigin(zoneId: string): Promise<FallbackOrigin> {
+    try {
+      const wire = FallbackOriginWire.parse(
+        await this.#result("getFallbackOrigin", "GET", `/zones/${seg(zoneId)}/custom_hostnames/fallback_origin`),
+      );
+      return wire?.origin ? { saas: true, origin: wire.origin } : { saas: true };
+    } catch (error) {
+      if (error instanceof CloudflareApiError && error.cloudflareCodes.includes(SAAS_NOT_ENABLED_CODE)) return { saas: false };
+      // That a SaaS zone with no fallback origin answers 404 is unverified; 7003 is a missing zone.
+      if (error instanceof CloudflareApiError && error.status === 404 && !error.cloudflareCodes.includes(7003)) return { saas: true };
+      throw error;
+    }
+  }
+
+  async setFallbackOrigin(zoneId: string, origin: string) {
+    await this.#result("setFallbackOrigin", "PUT", `/zones/${seg(zoneId)}/custom_hostnames/fallback_origin`, { json: { origin } });
+  }
+
+  async findCustomHostname(zoneId: string, hostname: string) {
+    const found = z.array(CustomHostnameWire).parse(
+      await this.#result("findCustomHostname", "GET", `/zones/${seg(zoneId)}/custom_hostnames`, { query: { hostname } }),
     );
+    const match = found.find((custom) => custom.hostname === hostname);
+    return match ? toCustomHostname(match) : undefined;
+  }
+
+  async createCustomHostname(zoneId: string, hostname: string) {
+    return toCustomHostname(CustomHostnameWire.parse(
+      await this.#result("createCustomHostname", "POST", `/zones/${seg(zoneId)}/custom_hostnames`, {
+        // TXT for both, so validation can finish before the managed zone's CNAME points here.
+        json: { hostname, ssl: { method: "txt", type: "dv" } },
+      }),
+    ));
+  }
+
+  async deleteCustomHostname(zoneId: string, customHostnameId: string) {
+    await this.#result("deleteCustomHostname", "DELETE", `/zones/${seg(zoneId)}/custom_hostnames/${seg(customHostnameId)}`);
+  }
+
+  async listWorkerRoutes(zoneId: string) {
+    const routes = z.array(RouteWire).parse(await this.#result("listWorkerRoutes", "GET", `/zones/${seg(zoneId)}/workers/routes`));
+    return routes.map((r) => ({ id: r.id, pattern: r.pattern, ...(r.script ? { script: r.script } : {}) }));
+  }
+
+  async createWorkerRoute(zoneId: string, pattern: string, script: string) {
+    const route = RouteWire.parse(
+      await this.#result("createWorkerRoute", "POST", `/zones/${seg(zoneId)}/workers/routes`, { json: { pattern, script } }),
+    );
+    return { id: route.id, pattern, script };
+  }
+
+  async deleteWorkerRoute(zoneId: string, routeId: string) {
+    await this.#result("deleteWorkerRoute", "DELETE", `/zones/${seg(zoneId)}/workers/routes/${seg(routeId)}`);
   }
 
   async listWorkerScripts(accountId: string) {
@@ -230,6 +337,10 @@ export class CloudflareHttpApi implements CloudflareApi {
         json: { hostname: domain.hostname, service: domain.service, zone_id: domain.zoneId, environment: "production" },
       }),
     ));
+  }
+
+  async detachWorkerDomain(accountId: string, domainId: string) {
+    await this.#result("detachWorkerDomain", "DELETE", `/accounts/${seg(accountId)}/workers/domains/${seg(domainId)}`);
   }
 
   async listKvNamespaces(accountId: string) {
@@ -410,6 +521,21 @@ function toDomain(wire: z.infer<typeof DomainWire>): WorkerDomain {
   return { id: wire.id, hostname: wire.hostname, service: wire.service, zoneId: wire.zone_id };
 }
 
+function toDnsRecord(wire: z.infer<typeof DnsRecordWire>) {
+  return { id: wire.id, type: wire.type, name: wire.name, content: wire.content, proxied: wire.proxied, comment: wire.comment ?? "" };
+}
+
+function toCustomHostname(wire: z.infer<typeof CustomHostnameWire>): CustomHostname {
+  return {
+    id: wire.id,
+    hostname: wire.hostname,
+    status: wire.status,
+    sslStatus: wire.ssl.status,
+    ...(wire.ownership_verification ? { ownership: { name: wire.ownership_verification.name, value: wire.ownership_verification.value } } : {}),
+    certificateValidation: wire.ssl.validation_records.flatMap((r) => (r.txt_name && r.txt_value ? [{ name: r.txt_name, value: r.txt_value }] : [])),
+  };
+}
+
 function toPolicy(wire: z.infer<typeof PolicyWire>): AccessPolicy {
   const include = wire.include.flatMap((rule) => {
     const parsed = EmailDomainRuleWire.safeParse(rule);
@@ -419,13 +545,23 @@ function toPolicy(wire: z.infer<typeof PolicyWire>): AccessPolicy {
 }
 
 function toApp(wire: z.infer<typeof AppWire>): AccessApplication {
-  return { id: wire.id, name: wire.name, domain: wire.domain, aud: wire.aud, policyIds: wire.policies.map((p) => p.id) };
+  const destinations = wire.destinations.flatMap((d) => (d.type === "public" && d.uri ? [d.uri] : []));
+  return {
+    id: wire.id,
+    name: wire.name,
+    domain: wire.domain,
+    destinations: destinations.length > 0 ? destinations : [wire.domain],
+    aud: wire.aud,
+    policyIds: wire.policies.map((p) => p.id),
+  };
 }
 
 function appBody(spec: AccessApplicationSpec) {
   return {
     name: spec.name,
     domain: spec.domain,
+    // Supersedes the deprecated self_hosted_domains. One application, so one audience for all.
+    destinations: spec.destinations.map((uri) => ({ type: "public", uri })),
     type: spec.type,
     session_duration: spec.sessionDuration,
     policies: spec.policyIds.map((id, i) => ({ id, precedence: i + 1 })),

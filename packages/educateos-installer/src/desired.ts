@@ -14,6 +14,7 @@ import {
   workerScriptName,
   WorkerScriptName,
 } from "./config.ts";
+import { managedHostname } from "./slug.ts";
 import type {
   AssetManifestEntry,
   D1Migration,
@@ -75,11 +76,13 @@ export interface DesiredAccessPolicy extends ResourceBase {
   spec: AccessPolicySpec;
 }
 
-/** The Access application in front of the public hostname. */
+/** The Access application in front of the public hostname, and the managed hostname if any. */
 export interface DesiredAccessApplication extends ResourceBase {
   kind: "access_application";
   name: string;
   domain: string;
+  /** `domain`, then the managed hostname. One application, so one audience for both. */
+  destinations: string[];
   sessionDuration: string;
   policyKey: ResourceKey;
 }
@@ -130,6 +133,26 @@ export interface DesiredCustomDomain extends ResourceBase {
   scriptName: string;
 }
 
+/**
+ * The managed default hostname, `<slug>.educateos.io`, an alias routed to the router (ADR-0013
+ * addendum A1). Planning picks the path from observation: a Workers custom domain when the managed
+ * zone is in the district's account, otherwise a Cloudflare for SaaS custom hostname on the
+ * district's own zone, whose validation records the managed zone publishes (managed-zone.ts).
+ *
+ * It is two resources, so an alias is never served without the Access application covering it.
+ * `release` runs before the application is updated and removes every managed hostname routing to
+ * the router except `hostname`; `attach` runs after it and adds `hostname`.
+ */
+export interface DesiredManagedHostname extends ResourceBase {
+  kind: "managed_hostname";
+  phase: "release" | "attach";
+  /** The alias the config wants, or null for none. */
+  hostname: string | null;
+  scriptName: string;
+  /** The district's own zone, which holds the custom hostname on the cross-account path. */
+  zoneName: string;
+}
+
 /** One node of the desired resource graph. */
 export type DesiredResource =
   | DesiredKvNamespace
@@ -141,7 +164,8 @@ export type DesiredResource =
   | DesiredWorker
   | DesiredWorkerSecret
   | DesiredRetiredWorker
-  | DesiredCustomDomain;
+  | DesiredCustomDomain
+  | DesiredManagedHostname;
 
 /**
  * A deploy input an installed service needs. Var values come from the config, so whether one is
@@ -185,6 +209,8 @@ export const RESOURCE_KEYS = {
   accessApplication: "access:application",
   aiGateway: "ai-gateway",
   customDomain: "domain:public",
+  managedHostnameRelease: "domain:managed:release",
+  managedHostname: "domain:managed",
 } as const;
 
 /** The resource key of a release package's Worker. */
@@ -253,6 +279,7 @@ function gatekeeperInputVars(pkgName: string, entry: WorkerEntry, config: Distri
 export function compileDesiredState(manifest: ReleaseManifest, config: DistrictInstallConfig): DesiredState {
   if (manifest.releaseId !== config.release.releaseId) invalid("manifest and config pin different releases");
   const hostname = publicHostname(config);
+  const alias = config.managedHostname ? managedHostname(config.managedHostname.slug) : null;
   const publicBaseUrl = `https://${hostname}`;
   const prefix = resourcePrefix(config);
 
@@ -319,9 +346,11 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   const accessApplication: DesiredAccessApplication = {
     kind: "access_application",
     key: RESOURCE_KEYS.accessApplication,
-    dependsOn: [accessPolicy.key],
+    // A released alias is gone before the application stops listing it.
+    dependsOn: [accessPolicy.key, RESOURCE_KEYS.managedHostnameRelease],
     name: prefix,
     domain: hostname,
+    destinations: alias ? [hostname, alias] : [hostname],
     sessionDuration: ACCESS_SESSION_DURATION,
     policyKey: accessPolicy.key,
   };
@@ -517,6 +546,13 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     scriptName: scriptNames.get(routerPkg)!,
   };
 
+  const managed = { kind: "managed_hostname" as const, hostname: alias, scriptName: scriptNames.get(routerPkg)!, zoneName: config.baseDomain };
+  const releaseManaged: DesiredManagedHostname = { ...managed, key: RESOURCE_KEYS.managedHostnameRelease, dependsOn: [], phase: "release" };
+  // Attaching waits for the router and for the application that protects the alias.
+  const attachManaged: DesiredManagedHostname | undefined = alias
+    ? { ...managed, key: RESOURCE_KEYS.managedHostname, dependsOn: [workerKey(routerPkg), accessApplication.key], phase: "attach" }
+    : undefined;
+
   const resources = topologicalOrder([
     ...[...storage.values()].toSorted((a, b) => a.key.localeCompare(b.key)),
     ...(aiGateway ? [aiGateway] : []),
@@ -526,6 +562,8 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     ...secrets,
     ...retired,
     customDomain,
+    releaseManaged,
+    ...(attachManaged ? [attachManaged] : []),
   ]);
   return { instanceId: config.instanceId, accountId: config.accountId, releaseId: manifest.releaseId, hostname, inputs, resources };
 }

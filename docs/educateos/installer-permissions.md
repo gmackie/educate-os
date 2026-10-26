@@ -48,6 +48,10 @@ guess.
 | `listWorkerSecrets`, `putWorkerSecret` | `.../scripts/{name}/secrets` | Workers Scripts: Edit | `workers_scripts:write` | wrangler-requested |
 | `listWorkerVersions`, `deployWorkerVersion` (rollback) | `.../versions`, `.../deployments` | Workers Scripts: Edit | `workers_scripts:write` | wrangler-requested |
 | `listWorkerDomains`, `attachWorkerDomain` | `/accounts/{id}/workers/domains` | Workers Scripts: Edit, plus Workers Routes: Edit on the zone | `workers_routes:write` | wrangler-requested |
+| `detachWorkerDomain` (releasing a managed hostname) | `DELETE /accounts/{id}/workers/domains/{domain}` | Workers Scripts: Edit, plus Workers Routes: Edit on the zone | `workers_routes:write` | unverified |
+| `getFallbackOrigin`, `setFallbackOrigin`, `findCustomHostname`, `createCustomHostname`, `deleteCustomHostname` (the managed hostname, cross-account) | `/zones/{zone}/custom_hostnames[/fallback_origin]` | SSL and Certificates: Edit | `ssl_certs:write` | wrangler-requested |
+| `listWorkerRoutes`, `createWorkerRoute`, `deleteWorkerRoute` (the managed hostname, cross-account) | `/zones/{zone}/workers/routes` | Workers Routes: Edit | `workers_routes:write` | wrangler-requested |
+| `createDnsRecord` (the managed hostname's originless fallback origin, `<slug>-educateos-origin.<zone>`, only on a zone with no fallback origin) | `POST /zones/{zone}/dns_records` | DNS: Edit | none known: Wrangler requests no DNS write scope, so an OAuth install on such a zone fails here until one is verified | unverified |
 | `listKvNamespaces`, `createKvNamespace` | `/accounts/{id}/storage/kv/namespaces` | Workers KV Storage: Edit | `workers_kv:write` | wrangler-requested |
 | `listR2Buckets`, `createR2Bucket` | `/accounts/{id}/r2/buckets` | Workers R2 Storage: Edit | `workers:write` | unverified (R2 coverage inferred) |
 | `listD1Databases`, `createD1Database`, `queryD1` | `/accounts/{id}/d1/database[/{uuid}/query]` | D1: Edit | `d1:write` | wrangler-requested |
@@ -69,6 +73,12 @@ open. [runbooks/installer-sandbox-verification.md](runbooks/installer-sandbox-ve
    Access, an OAuth install cannot create the Access application. The fallback is a district-run
    step for Access only. The reconciler already supports that: run district-run once, and OAuth
    runs then see Access as `noop`.
+
+The managed zone's half of a managed hostname (`planManagedZone`, `applyManagedZone`) runs with
+educateos.io's own token, never a district's: DNS: Edit on the educateos.io zone (`listDnsRecords`,
+`createDnsRecord`, `updateDnsRecord`, `deleteDnsRecord`). That token is the Keychain item
+`educateos-cf-subdomains-token` ("EducateOS subdomains (educateos.io)": Zone Read, DNS Edit, SSL and
+Certificates Edit and Workers Routes Edit on educateos.io, and Workers Scripts Edit on the account).
 
 ## Account requirements preflight blocks on
 

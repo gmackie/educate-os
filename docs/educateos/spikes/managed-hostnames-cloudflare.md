@@ -6,8 +6,11 @@
 - Issue: SCHO-207 (umbrella SCHO-198). Decision: [ADR-0013](../adr/0013-educateos-open-core-control-plane.md),
   addendum A1.
 - Code: the demo's alias is `district.aliases` in `scripts/production/schoolos-gmac-io.ts` (see the
-  [production runbook](../runbooks/production-instance.md#the-district-lms-lite)). Installer support
-  for both paths, and the slug rules, follow in `packages/educateos-installer`.
+  [production runbook](../runbooks/production-instance.md#the-district-lms-lite)). In the installer
+  (`packages/educateos-installer/src`): `slug.ts` (the slug rules), `managed-hostname.ts` (the
+  district half, a `managed_hostname` resource in plan and apply, set by `managedHostname.slug` in
+  the install config) and `managed-zone.ts` (the educateos.io half). `__tests__/managed-hostname.test.ts`
+  runs both halves against two fake accounts.
 
 ## The question
 
@@ -53,7 +56,9 @@ Read on 2026-10-25 from Cloudflare's docs. Each line links its source.
    pre-validated with a TXT record at `_cf-custom-hostname.<host>`, and the certificate with
    `ssl.method: txt` at `_acme-challenge.<host>`. Both are records in educateos.io, which we
    publish. The validation values may be missing from the create response, so the installer reads
-   the custom hostname again on its next run.
+   the custom hostname again on its next run. A TXT-validated certificate needs new TXT values at
+   each renewal, so the managed zone's records are re-synced on a schedule
+   (`managedHostnameRecords`, then `planManagedZone`), not once.
    <https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/domain-support/hostname-validation/pre-validation/>,
    <https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/security/certificate-management/issue-and-validate/validate-certificates/txt/>
 8. **Access works on a cross-account custom hostname, but not on a same-account one.** The Access
@@ -115,6 +120,14 @@ ownership comment, `educateos:<instanceId>`.
 - **If the educateos.io site Worker is down:** nothing changes, because no educateos.io Worker is
   on the path in either case. In the cross-account case our zone only answers DNS.
 
+### Limits of observation
+
+The installer picks the same-account path when it can read the managed zone as an active zone in
+the district's account. A district-run token scoped to specific zones in an account that does hold
+educateos.io would not see it, would take the SaaS path, and Cloudflare would not apply Access to
+that same-account custom hostname. Only the owner's account holds educateos.io, so the demo token
+must include the zone. A second account never sees it.
+
 ## Verified, and not yet verified
 
 Verified live (same account): see the SCHO-207 issue for the hostname, certificate, Access and
@@ -126,7 +139,9 @@ SCHO-210):
 - the TXT-pre-validated custom hostname reaching `active` without traffic,
 - the hostname route firing for a DNS-only custom hostname,
 - Access applying on a custom-input destination in the district's account,
-- WebSockets (the Workshop's RPC) through the custom hostname.
+- WebSockets (the Workshop's RPC) through the custom hostname,
+- that a SaaS zone with no fallback origin answers its read with 404, and which OAuth scope, if
+  any, covers creating the originless fallback origin record.
 
 The installer's fake account models these as the docs describe them. Prove them on a real second
 account before the first BYOA district uses a managed hostname.
