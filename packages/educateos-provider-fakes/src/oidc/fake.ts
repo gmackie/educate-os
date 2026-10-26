@@ -4,7 +4,7 @@
 // specifics come from a preset (see `presets.ts`). There is no sign-in UI: the person signing in
 // is named by `login_hint` or the `selectUser` option.
 import { SignJWT, type JWK } from "jose";
-import { Fake, basicCredentials, bearer, formOf, TokenIssuer, type FakeOptions } from "../fake.ts";
+import { Fake, basicCredentials, bearer, formOf, setBounded, TokenIssuer, type FakeOptions } from "../fake.ts";
 import type { PlatformKey } from "../lti/keys.ts";
 import { studentsToRemove, validateSeed, withoutPeople } from "../seed.ts";
 import type { DistrictSeed, KeyPair, PersonSeed } from "../types.ts";
@@ -29,6 +29,11 @@ export interface OidcFakeOptions extends FakeOptions {
    * or the issuer's subject. Returning undefined falls back to `login_hint`.
    */
   readonly selectUser?: (params: URLSearchParams) => string | undefined;
+  /**
+   * The most authorization codes waiting to be redeemed. Anyone who knows a client ID and one of
+   * its redirect URIs can ask for codes, so past this the oldest are forgotten. Default 1,000.
+   */
+  readonly maxPendingCodes?: number;
   /**
    * The RS256 key id_tokens are signed with. Defaults to a fresh one. A long-running fake that
    * restarts (a demo Worker) passes a stored key, so its JWKS and `kid` survive the restart.
@@ -92,6 +97,7 @@ export class OidcFake extends Fake {
   readonly #clients: Map<string, OidcClient>;
   readonly #selectUser: OidcFakeOptions["selectUser"];
   readonly #codes = new Map<string, PendingCode>();
+  readonly #maxCodes: number;
   readonly #tokens: TokenIssuer<AccessGrant>;
   readonly #revoked = new Set<string>();
   readonly #removed = new Set<string>();
@@ -104,6 +110,7 @@ export class OidcFake extends Fake {
     this.kid = options.signingKey?.kid ?? `${this.preset.name}-${crypto.randomUUID().slice(0, 8)}`;
     this.#clients = new Map(options.clients.map((c) => [c.clientId, c]));
     this.#selectUser = options.selectUser;
+    this.#maxCodes = options.maxPendingCodes ?? 1000;
     this.#tokens = new TokenIssuer(this.preset.accessTokenPrefix, this.now);
     const given = options.signingKey;
     this.#keys = given !== undefined ? Promise.resolve({ privateKey: given.privateKey, publicJwk: given.publicJwk }) : crypto.subtle
@@ -231,19 +238,20 @@ export class OidcFake extends Fake {
       return fail("access_denied", "The user is not authorized for this application.");
     }
     const code = `${crypto.randomUUID().replaceAll("-", "")}`;
-    // Codes are short-lived; forgetting expired ones keeps a long-running fake's memory bounded.
-    for (const [old, pending] of this.#codes) if (pending.expiresAt <= this.now()) this.#codes.delete(old);
-    this.#codes.set(code, {
+    // Codes are short-lived and all live as long: expired ones are at the front, and are forgotten
+    // with the oldest live ones once the cap is reached, so memory stays bounded and cheap to keep.
+    const now = this.now();
+    setBounded(this.#codes, code, {
       clientId: client.clientId,
       redirectUri,
       personId: person.id,
       scopes,
       nonce: params.get("nonce") ?? undefined,
       challenge: challenge === null ? undefined : { value: challenge, method: method as "S256" | "plain" },
-      expiresAt: this.now() + this.preset.codeLifetimeSeconds * 1000,
+      expiresAt: now + this.preset.codeLifetimeSeconds * 1000,
       used: false,
       accessTokens: [],
-    });
+    }, this.#maxCodes, (pending) => pending.expiresAt <= now);
     return back({ code, ...(this.preset.name === "google" ? { scope: scopes.join(" ") } : {}) });
   }
 

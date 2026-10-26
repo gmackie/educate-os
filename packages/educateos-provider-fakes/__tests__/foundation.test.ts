@@ -12,6 +12,7 @@ import {
   hexId,
   numericId,
   routeFetch,
+  setBounded,
   studentsToRemove,
   tokenId,
   validateSeed,
@@ -101,6 +102,19 @@ describe("ids", () => {
     expect(hexId("clever:user", "a")).not.toBe(hexId("clever:section", "a"));
     expect(numericId("google:course", "a")).toMatch(/^[1-9]\d{11}$/);
     expect(tokenId("google:submission", "a")).toMatch(/^[A-Za-z0-9_-]{16}$/);
+  });
+});
+
+describe("setBounded", () => {
+  it("drops expired entries from the front and the oldest past the cap", () => {
+    const map = new Map<string, number>();
+    const evicted: string[] = [];
+    for (const [key, expiry] of [["a", 1], ["b", 2], ["c", 5]] as const) setBounded(map, key, expiry, 3, (v) => v <= 0, (k) => evicted.push(k));
+    setBounded(map, "d", 6, 3, (v) => v <= 2, (k) => evicted.push(k));
+    expect([...map.keys()]).toEqual(["c", "d"]);
+    setBounded(map, "e", 7, 2, () => false, (k) => evicted.push(k));
+    expect([...map.keys()]).toEqual(["d", "e"]);
+    expect(evicted).toEqual(["a", "b", "c"]);
   });
 });
 

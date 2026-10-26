@@ -28,10 +28,14 @@
   },
   "vars": {
     "PUBLIC_ORIGIN": "https://fakes.demo.educateos.io",
-    // Where the OIDC fakes may send a signed-in user back to: the Access team's callback, for a
-    // demo district whose Access application signs in through a fake issuer. Comma-separated,
-    // exact-match; `{slug}` is the district.
-    "OIDC_REDIRECT_URIS": "https://gmacko.cloudflareaccess.com/cdn-cgi/access/callback",
+    // Where the OIDC fakes may send a signed-in user back to: a demo district's own SSO callback.
+    // Comma-separated, exact-match, https; `{slug}` is the district.
+    //
+    // NEVER register these fake issuers as Cloudflare Access identity providers, and never list an
+    // Access callback here. They have no sign-in page: `login_hint` signs in whoever the caller
+    // names, administrators included, so an Access team trusting one would admit anyone to its
+    // applications. The Worker refuses to serve while any URI here is on *.cloudflareaccess.com.
+    "OIDC_REDIRECT_URIS": "https://{slug}.educateos.io/api/sso/callback",
     "RATE_LIMIT_PER_MINUTE": "600"
   },
   // One object per demo district, reached through ctx.exports; no binding is needed.

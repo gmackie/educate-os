@@ -38,16 +38,15 @@ export function clientFetch(ip: string): typeof fetch {
 }
 
 /** An Access assertion for the admin application, signed with this run's key unless told otherwise. */
-export async function assertion(options: { audience?: string; key?: JWK; issuer?: string } = {}): Promise<string> {
+export async function assertion(options: { audience?: string; key?: JWK; issuer?: string; withoutExpiry?: boolean } = {}): Promise<string> {
   const jwk = options.key ?? (JSON.parse(env.TEST_ACCESS_PRIVATE_JWK) as JWK);
   const key = await importJWK(jwk, "RS256");
-  return new SignJWT({ common_name: "test-service-token.access", type: "app" })
+  const jwt = new SignJWT({ common_name: "test-service-token.access", type: "app" })
     .setProtectedHeader({ alg: "RS256", kid: jwk.kid ?? "test-access-key" })
     .setIssuer(options.issuer ?? ACCESS_ISSUER)
     .setAudience(options.audience ?? ADMIN_AUDIENCE)
-    .setIssuedAt()
-    .setExpirationTime("5m")
-    .sign(key);
+    .setIssuedAt();
+  return (options.withoutExpiry === true ? jwt : jwt.setExpirationTime("5m")).sign(key);
 }
 
 /** An admin request with a valid assertion. */

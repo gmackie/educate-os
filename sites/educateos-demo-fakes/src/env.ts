@@ -17,8 +17,9 @@ export interface Env {
   /** The public origin the fakes' URLs are built on. Defaults to https://fakes.demo.educateos.io. */
   readonly PUBLIC_ORIGIN?: string;
   /**
-   * The redirect URIs every OIDC client is registered with, comma-separated, exact-match.
-   * `{slug}` in one is replaced by the district's slug.
+   * The redirect URIs every OIDC client is registered with, comma-separated, exact-match, https.
+   * `{slug}` in one is replaced by the district's slug. Never a Cloudflare Access callback: the
+   * Worker refuses to serve while one names a `*.cloudflareaccess.com` host (config.ts).
    */
   readonly OIDC_REDIRECT_URIS?: string;
   /** Requests one client IP may make to one district's fakes per minute. Default 600. */

@@ -245,6 +245,16 @@ describe.each(["clever", "classlink", "google"] as const)("OIDC fake, %s preset"
   });
 });
 
+describe("OIDC fake, pending codes", () => {
+  it("forgets the oldest codes past its cap", async () => {
+    const s = setup("clever", { maxPendingCodes: 3 });
+    const codes: string[] = [];
+    for (let i = 0; i < 4; i++) codes.push((await codeFrom(await authorize(s, { login_hint: "mw-s-02", state: `st-${i}` }))).code!);
+    expect(await (await exchange(s, codes[0]!)).json()).toMatchObject({ error: "invalid_grant" });
+    expect((await exchange(s, codes[3]!)).status).toBe(200);
+  });
+});
+
 describe("OIDC fake, accepted scopes", () => {
   it("grants a preset's accepted scopes beyond scopes_supported, and still refuses unknown ones", async () => {
     const extra = "https://www.googleapis.com/auth/classroom.courses.readonly";

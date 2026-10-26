@@ -18,6 +18,7 @@ describe("admin access", () => {
       { "cf-access-jwt-assertion": await assertion({ key: foreign }) },
       { "cf-access-jwt-assertion": await assertion({ audience: "another-application" }) },
       { "cf-access-jwt-assertion": await assertion({ issuer: "https://someone-else.cloudflareaccess.com" }) },
+      { "cf-access-jwt-assertion": await assertion({ withoutExpiry: true }) },
     ];
     for (const headers of attempts) {
       for (const path of ["/_admin/riverbend/credentials", "/_admin/riverbend/reset"]) {

@@ -12,6 +12,7 @@
 // describes the whole surface.
 import type { JWTVerifyGetKey } from "jose";
 import { verifyAdminAssertion } from "./access.ts";
+import { clientKeyOf, redirectUrisProblem } from "./config.ts";
 import type { DemoFakesDistrict } from "./district.ts";
 import { publicOrigin, type Env } from "./env.ts";
 import { districtOf, publicIndex, publicTarget } from "./layout.ts";
@@ -75,6 +76,13 @@ export function createWorker(options: WorkerOptions = {}): ExportedHandler<Env> 
       if (pathname === "/healthz") return new Response("ok", { headers: { "content-type": "text/plain" } });
       if (pathname === "/" && request.method === "GET") return json({ service: "educateos-demo-fakes", ...publicIndex(publicOrigin(env)) });
       const exports = (ctx as unknown as { exports: Exports }).exports;
+      // A refused OIDC_REDIRECT_URIS (a Cloudflare Access callback above all) serves no fake and no
+      // admin request until it is fixed.
+      const problem = redirectUrisProblem(env);
+      if (problem !== undefined) {
+        console.error(JSON.stringify({ event: "config.refused", problem }));
+        return json({ error: "misconfigured", error_description: "The Worker's OIDC_REDIRECT_URIS is refused; see its logs." }, 503);
+      }
 
       if (pathname === "/_admin" || pathname.startsWith("/_admin/")) {
         // Everything admin is refused unless the Access application's audience is configured and
@@ -93,7 +101,8 @@ export function createWorker(options: WorkerOptions = {}): ExportedHandler<Env> 
       const body = await capped(request);
       if (body instanceof Response) return body;
       // Cloudflare sets CF-Connecting-IP on every request it proxies, replacing any the client sent.
-      const client = request.headers.get("cf-connecting-ip") ?? "unknown";
+      // IPv6 callers count by /64.
+      const client = clientKeyOf(request.headers.get("cf-connecting-ip"));
       return exports.DemoFakesDistrict.getByName(target.district.slug).serve(target.district.slug, body, client);
     },
   };

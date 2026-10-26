@@ -31,7 +31,7 @@ export async function verifyAdminAssertion(request: Request, audience: string | 
   const token = request.headers.get(ACCESS_ASSERTION_HEADER);
   if (token === null || token === "") return null;
   try {
-    return (await jwtVerify(token, keys, { issuer: ACCESS_ISSUER, audience: audience.trim(), algorithms: ["RS256"] })).payload;
+    return (await jwtVerify(token, keys, { issuer: ACCESS_ISSUER, audience: audience.trim(), algorithms: ["RS256"], requiredClaims: ["exp"] })).payload;
   } catch {
     return null;
   }

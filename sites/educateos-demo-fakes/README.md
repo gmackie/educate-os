@@ -6,6 +6,12 @@ serves the wire-faithful fakes of [`@educateos/provider-fakes`](../../packages/e
 at `https://fakes.demo.educateos.io`, one Durable Object per district, with credentials derived
 from a Worker secret and an admin surface behind Cloudflare Access.
 
+> **Never register these issuers as Cloudflare Access identity providers** (in the `gmacko` team or
+> any other), and never point anything that guards real access at them. The OIDC fakes have no
+> sign-in page: `login_hint` signs in whichever synthetic person the caller names, administrators
+> included. The Worker refuses to serve while `OIDC_REDIRECT_URIS` names a `*.cloudflareaccess.com`
+> callback.
+
 These are fakes. A district working against them proves nothing about the real vendors (see
 [maturity.md](../../docs/educateos/maturity.md#provider-fakes)), and every person in them is
 synthetic.
@@ -72,8 +78,12 @@ rotates them all. They are:
   `roster-demographics.readonly`.
 
 OIDC clients accept the redirect URIs in the `OIDC_REDIRECT_URIS` var (comma-separated, exact
-match, `{slug}` replaced by the district). It defaults to the Access team callback,
-`https://gmacko.cloudflareaccess.com/cdn-cgi/access/callback`.
+match, https, `{slug}` replaced by the district). It defaults to
+`https://{slug}.educateos.io/api/sso/callback`, a district-side callback. No SSO connector in the
+repository receives codes yet (SCHO-203/204), so that path is a neutral choice: change the var to
+the connector's real callback when it exists. A URI that is not https, or whose host is
+`cloudflareaccess.com` or below it, makes the Worker answer 503 to every fake and admin request
+until it is fixed.
 
 LTI tools are not derived: an operator registers them (admin `lti/<flavour>/tools`), or a tool
 registers itself by Dynamic Registration (Canvas) with a token an operator starts. Each gets a
@@ -122,11 +132,18 @@ What a public deployment needed beyond the in-process fakes (SCHO-201's review):
   hold client secrets.
 - Credentials are secret-derived (above). The fakes' public defaults (the seed-derived Clever token,
   `DEFAULT_ONEROSTER_CLIENT`) are refused.
-- Clever's rate limit gives each caller (by IP) its own 1,200-a-minute budget per token, so one
+- Clever's rate limit gives each caller (by IPv4 address or IPv6 /64) its own 1,200-a-minute budget per token, so one
   caller cannot spend a district's budget.
 - Request bodies are capped at 64 KiB, declared or streamed (413).
-- Each client IP may make `RATE_LIMIT_PER_MINUTE` (600) requests a minute to one district's fakes,
-  counted in the object's memory (429 with `Retry-After`). No paid rate-limiting product is used.
+- Each client may make `RATE_LIMIT_PER_MINUTE` (600) requests a minute to one district's fakes,
+  counted in the object's memory (429 with `Retry-After`). A client is an IPv4 address or an IPv6
+  /64, so one subscriber cannot multiply itself across its prefix. Clever's per-caller budget
+  counts the same way. No paid rate-limiting product is used.
+- Pending OIDC authorization codes, which anyone knowing a client ID and redirect URI can request,
+  are capped at 1,000 per issuer (oldest forgotten), as are LTI launches and deep linking requests.
+- A tool's JWKS is fetched at most every five minutes (sooner, once per 30 seconds, when the tool
+  signs with a key it lacks).
+- Admin assertions must carry `exp`.
 - Unknown districts, fakes and paths are 404s.
 
 Fixed in the fakes themselves, with tests, in `@educateos/provider-fakes`: LTI Dynamic Registration
@@ -140,8 +157,8 @@ Not hardened:
 
 - **Anyone can sign in as anyone.** The OIDC fakes have no sign-in page: the person is named by
   `login_hint` (a seed ID, email or subject). Whoever can start a district's sign-in can be any of
-  its synthetic people, administrators included. That suits a public demo of synthetic districts;
-  gate it before pointing anything that matters at these issuers.
+  its synthetic people, administrators included. That suits a public demo of synthetic districts
+  and nothing else: never make one a Cloudflare Access identity provider (see the warning above).
 - LTI tools' JWKS URLs are fetched from the Worker. Only an operator, or a tool holding an
   operator-issued registration token, can set one.
 - The per-IP limit is per object instance and per minute; it bounds abuse, it does not stop a

@@ -270,6 +270,37 @@ describe.each(flavours)("LTI platform fake (%s)", (name, flavour) => {
       const world = { clock, key, fake, tool: [...fake.tools.values()][0]! };
       expect((await token(world, [LTI_SCOPES.score])).status).toBe(200);
       expect(fetched).toEqual([`${TOOL}/lti/jwks`]);
+      // Reused for a few minutes rather than fetched per request.
+      clock.ms += 60_000;
+      expect((await token(world, [LTI_SCOPES.score])).status).toBe(200);
+      expect(fetched).toHaveLength(1);
+      clock.ms += 5 * 60_000;
+      expect((await token(world, [LTI_SCOPES.score])).status).toBe(200);
+      expect(fetched).toHaveLength(2);
+    });
+
+    it("refetches a cached JWKS when the tool signs with a key it lacks, at most once per cooldown", async () => {
+      const keys = { current: await toolKey("old") };
+      let fetches = 0;
+      const clock = new Clock();
+      const fake = await LtiPlatformFake.create({
+        flavour: flavour(),
+        seed: SAMPLE_DISTRICT,
+        now: clock.now,
+        fetch: (async () => {
+          fetches += 1;
+          return Response.json(keys.current.jwks);
+        }) as typeof fetch,
+        tools: [{ initiateLoginUri: `${TOOL}/lti/login`, redirectUris: [LAUNCH], jwksUri: `${TOOL}/lti/jwks` }],
+      });
+      const tool = [...fake.tools.values()][0]!;
+      expect((await token({ clock, key: keys.current, fake, tool }, [LTI_SCOPES.score])).status).toBe(200);
+      keys.current = await toolKey("new");
+      // Within the cooldown the cached keys stand.
+      expect((await token({ clock, key: keys.current, fake, tool }, [LTI_SCOPES.score])).status).toBe(401);
+      clock.ms += 31_000;
+      expect((await token({ clock, key: keys.current, fake, tool }, [LTI_SCOPES.score])).status).toBe(200);
+      expect(fetches).toBe(2);
     });
   });
 

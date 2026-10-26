@@ -202,6 +202,13 @@ describe("public limits", () => {
     expect((await call("/lakeshore/oneroster/ims/oneroster/rostering/v1p2/orgs", { ip: "192.0.2.50" })).status).toBe(401);
   });
 
+  it("counts IPv6 callers by /64", async () => {
+    const path = "/lakeshore/classlink/.well-known/openid-configuration";
+    for (let i = 0; i < 60; i++) expect((await call(path, { ip: `2001:db8:77:1::${(i + 1).toString(16)}` })).status).toBe(200);
+    expect((await call(path, { ip: "2001:db8:77:1:ffff::9" })).status).toBe(429);
+    expect((await call(path, { ip: "2001:db8:77:2::1" })).status).toBe(200);
+  });
+
   it("refuses a body over the cap, declared or streamed", async () => {
     const big = "x".repeat(MAX_BODY_BYTES + 1);
     const declared = await call("/riverbend/oneroster/token", { method: "POST", ip: "192.0.2.52", headers: { "content-type": "application/x-www-form-urlencoded" }, body: big });

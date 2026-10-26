@@ -11,8 +11,8 @@
 // students the members, with LIS roles. Seeded assignments made by the integration are the tool's
 // AGS line items; teacher-made ones are not visible through AGS (Canvas serves a tool only its own
 // line items). Everything is in memory and deterministic apart from token values.
-import { createLocalJWKSet, decodeJwt, decodeProtectedHeader, jwtVerify, type JWK, type JWTPayload } from "jose";
-import { Fake, TokenIssuer, bearer, formOf, type FakeOptions } from "../fake.ts";
+import { createLocalJWKSet, decodeJwt, decodeProtectedHeader, errors as joseErrors, jwtVerify, type JWK, type JWTPayload, type JWTVerifyOptions } from "jose";
+import { Fake, TokenIssuer, bearer, formOf, setBounded, type FakeOptions } from "../fake.ts";
 import { hexId } from "../ids.ts";
 import { enrollmentsOf, studentsToRemove, validateSeed, withoutPeople } from "../seed.ts";
 import type { DistrictSeed, PersonSeed, SectionSeed } from "../types.ts";
@@ -345,6 +345,15 @@ interface PendingLaunch {
 /** How long a deep linking request stays answerable. */
 const DEEP_LINK_LIFETIME_MS = 3600 * 1000;
 
+/** The most launches, and deep linking requests, the platform remembers at once. */
+const MAX_PENDING = 1000;
+
+/** How long a tool's JWKS fetched from its URL is reused. */
+const TOOL_JWKS_TTL_MS = 5 * 60 * 1000;
+
+/** How soon a cached JWKS may be refetched for a signature whose key it lacks (a tool's rotation). */
+const TOOL_JWKS_COOLDOWN_MS = 30 * 1000;
+
 /** An unguessable token: launches and deep linking requests are bearer capabilities. */
 function randomToken(): string {
   return crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
@@ -388,6 +397,8 @@ export class LtiPlatformFake extends Fake {
   readonly #registrationDeploymentId: "top-level" | "tool-configuration";
   readonly #pending = new Map<string, PendingLaunch>();
   readonly #deepLinkExpiry = new Map<string, number>();
+  /** Tools' JWKS fetched from their URLs, by client ID. */
+  readonly #toolKeys = new Map<string, { uri: string; jwks: JwksDocument; fetchedAt: number }>();
   readonly #launchLifetimeMs: number;
   /** Service URLs by base, for every tool × section; rebuilt when either changes. */
   #index: ServiceIndex | undefined;
@@ -546,9 +557,8 @@ export class LtiPlatformFake extends Fake {
     // signed launch. So it is random, and it expires; expired launches are forgotten.
     const messageHint = `${this.flavour.name}-hint-${++this.#hints}-${randomToken()}`;
     const now = this.now();
-    for (const [hint, old] of this.#pending) if (old.expiresAt <= now) this.#pending.delete(hint);
     pending.expiresAt = now + this.#launchLifetimeMs;
-    this.#pending.set(messageHint, pending);
+    setBounded(this.#pending, messageHint, pending, MAX_PENDING, (old) => old.expiresAt <= now);
     const user = this.flavour.userIds(pending.person);
     const params: Record<string, string> = {
       iss: this.issuer,
@@ -802,12 +812,7 @@ export class LtiPlatformFake extends Fake {
     const placement: DeepLinkPlacement = this.flavour.deepLinkPlacement(launch.placement);
     const data = `dl-${randomToken()}`;
     const now = this.now();
-    for (const [old, expiresAt] of this.#deepLinkExpiry) {
-      if (expiresAt > now) continue;
-      this.#deepLinkExpiry.delete(old);
-      this.deepLinkRequests.delete(old);
-    }
-    this.#deepLinkExpiry.set(data, now + DEEP_LINK_LIFETIME_MS);
+    setBounded(this.#deepLinkExpiry, data, now + DEEP_LINK_LIFETIME_MS, MAX_PENDING, (expiresAt) => expiresAt <= now, (old) => this.deepLinkRequests.delete(old));
     const returnUrl = new URL(this.flavour.deepLinkReturnUrl(context, launch.tool.clientId));
     if (this.flavour.deepLinkData === "return-url") returnUrl.searchParams.set("data", data);
     const settings: Record<string, unknown> = {
@@ -886,14 +891,14 @@ export class LtiPlatformFake extends Fake {
     if (tool === undefined) return oauthError("invalid_client", "Unknown client.", 401);
     let payload: JWTPayload;
     try {
-      ({ payload } = await jwtVerify(assertion, createLocalJWKSet(await this.#toolJwks(tool)), {
+      payload = await this.#verifyFromTool(tool, assertion, {
         algorithms: ["RS256"],
         issuer: tool.clientId,
         subject: tool.clientId,
         audience: this.flavour.tokenEndpoint,
         currentDate: new Date(this.now()),
         requiredClaims: ["exp", "iat", "jti"],
-      }));
+      });
     } catch {
       return oauthError("invalid_client", "The client assertion could not be verified.", 401);
     }
@@ -909,12 +914,32 @@ export class LtiPlatformFake extends Fake {
     );
   }
 
-  async #toolJwks(tool: LtiTool): Promise<JwksDocument> {
-    if (tool.jwks !== undefined) return tool.jwks();
+  /**
+   * Verifies a JWT the tool signed. A JWKS fetched from the tool's URL is reused for a few minutes
+   * rather than fetched per request; a signature by a key it lacks (the tool rotated) refetches it,
+   * at most once per cooldown.
+   */
+  async #verifyFromTool(tool: LtiTool, jwt: string, options: JWTVerifyOptions): Promise<JWTPayload> {
+    const { jwks, cached } = await this.#toolJwks(tool, false);
+    try {
+      return (await jwtVerify(jwt, createLocalJWKSet(jwks), options)).payload;
+    } catch (error) {
+      const entry = this.#toolKeys.get(tool.clientId);
+      if (!cached || !(error instanceof joseErrors.JWKSNoMatchingKey) || entry === undefined || this.now() - entry.fetchedAt < TOOL_JWKS_COOLDOWN_MS) throw error;
+      return (await jwtVerify(jwt, createLocalJWKSet((await this.#toolJwks(tool, true)).jwks), options)).payload;
+    }
+  }
+
+  async #toolJwks(tool: LtiTool, refresh: boolean): Promise<{ jwks: JwksDocument; cached: boolean }> {
+    if (tool.jwks !== undefined) return { jwks: await tool.jwks(), cached: false };
     if (tool.jwksUri === undefined || this.#fetch === undefined) throw new Error("the tool has no keys the platform can reach");
+    const entry = this.#toolKeys.get(tool.clientId);
+    if (!refresh && entry !== undefined && entry.uri === tool.jwksUri && this.now() - entry.fetchedAt < TOOL_JWKS_TTL_MS) return { jwks: entry.jwks, cached: true };
     const response = await this.#fetch(tool.jwksUri, { headers: { accept: "application/json" } });
     if (!response.ok) throw new Error(`tool JWKS answered ${response.status}`);
-    return (await response.json()) as JwksDocument;
+    const jwks = (await response.json()) as JwksDocument;
+    this.#toolKeys.set(tool.clientId, { uri: tool.jwksUri, jwks, fetchedAt: this.now() });
+    return { jwks, cached: false };
   }
 
   /** Runs `respond` for the service match whose tool the bearer token belongs to, after a scope check. */
@@ -1232,13 +1257,13 @@ export class LtiPlatformFake extends Fake {
     if (tool === undefined) return fail("Client not found");
     let payload: JWTPayload;
     try {
-      ({ payload } = await jwtVerify(jwt, createLocalJWKSet(await this.#toolJwks(tool)), {
+      payload = await this.#verifyFromTool(tool, jwt, {
         algorithms: ["RS256"],
         issuer: tool.clientId,
         audience: this.issuer,
         currentDate: new Date(this.now()),
         requiredClaims: ["iat", "exp", "nonce"],
-      }));
+      });
     } catch {
       return fail("JWT verification failure");
     }

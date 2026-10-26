@@ -12,6 +12,7 @@ import { CLASSROOM_SCOPES, generatePlatformKey, type FaultSpec, type PlatformKey
 import type { DemoDistrictSlug } from "@educateos/fixtures";
 import type { JWK } from "jose";
 import { InputError, jsonBody, parseClassroomToken, parseFault, parseLaunch, parseRegistration, parseTool } from "./admin-input.ts";
+import { redirectUrisOf, redirectUrisProblem } from "./config.ts";
 import { deriveCredentials, secretUsable } from "./credentials.ts";
 import { publicOrigin, type Env } from "./env.ts";
 import { CLIENT_HEADER, buildFakes, fakeFor, fakesOf, storedTool, type DistrictFakes, type StoredTool } from "./fakes.ts";
@@ -59,14 +60,6 @@ export class MinuteLimiter {
     this.#counts.set(key, count);
     return count > this.#limit ? Math.max(1, Math.ceil(((window + 1) * 60_000 - now) / 1000)) : undefined;
   }
-}
-
-/** The redirect URIs OIDC clients are registered with, for one district. */
-export function redirectUrisOf(env: Env, slug: string): string[] {
-  return (env.OIDC_REDIRECT_URIS ?? "")
-    .split(",")
-    .map((uri) => uri.trim().replaceAll("{slug}", slug))
-    .filter((uri) => uri !== "");
 }
 
 /** One demo district's fakes. */
@@ -123,7 +116,7 @@ export class DemoFakesDistrict extends DurableObject<Env> {
   /** Serves one admin request. The Worker has verified its Access assertion already. */
   async admin(slug: string, request: Request): Promise<Response> {
     const fakes = await this.#district(slug);
-    if (fakes === undefined) return json({ error: "not_configured", error_description: "FAKES_SECRET is unset or too short." }, 503);
+    if (fakes === undefined) return json({ error: "not_configured", error_description: "FAKES_SECRET is unset or too short, or OIDC_REDIRECT_URIS is refused." }, 503);
     const path = new URL(request.url).pathname.split("/").slice(3).join("/");
     const method = request.method;
     try {
@@ -154,7 +147,8 @@ export class DemoFakesDistrict extends DurableObject<Env> {
     const district = districtOf(slug);
     // One object per district: a slug other than the first this object served is refused.
     if (district === undefined || (this.#slug !== undefined && this.#slug !== district.slug)) return Promise.resolve(undefined);
-    if (!secretUsable(this.env.FAKES_SECRET)) return Promise.resolve(undefined);
+    // No secret, or a redirect URI the fakes must never send people to: serve nothing.
+    if (!secretUsable(this.env.FAKES_SECRET) || redirectUrisProblem(this.env) !== undefined) return Promise.resolve(undefined);
     this.#slug = district.slug;
     if (this.#fakes === undefined) {
       const building = this.#build(district.slug);
