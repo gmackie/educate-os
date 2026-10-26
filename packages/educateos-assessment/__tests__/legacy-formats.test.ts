@@ -1,5 +1,5 @@
-// SCHO-232: records stored and receipts signed before the EducateOS rename carry `schoolos.*`
-// format names and the `schoolos-submission-receipt/v1` signing context. They still parse and
+// SCHO-232: records stored and receipts signed before the EducateOS rename carry `schoolos.*` (rename-educateos: keep)
+// format names and the `schoolos-submission-receipt/v1` signing context. They still parse and (rename-educateos: keep)
 // verify, exactly as stored, while new records are written with the new names.
 import { ArtifactId, ContentDigest, DistrictId, RevisionId, SubmissionId } from "@educateos/contracts";
 import { SigningIdentity, canonicalJson } from "@educateos/fleet";
@@ -26,7 +26,7 @@ const items = [{
 
 /** The submission digest exactly as the code before the rename computed it. */
 async function legacyDigest(): Promise<ContentDigest> {
-  return sha256Digest(new TextEncoder().encode(JSON.stringify({ format: "schoolos.submission-digest.v1", items })));
+  return sha256Digest(new TextEncoder().encode(JSON.stringify({ format: "schoolos.submission-digest.v1", items }))); // rename-educateos: keep
 }
 
 async function receipt(format: string, digest: ContentDigest): Promise<SubmissionReceipt> {
@@ -45,7 +45,7 @@ async function receipt(format: string, digest: ContentDigest): Promise<Submissio
 
 /** Signs `value` exactly as `signSubmissionReceipt` did before the rename. */
 async function signLegacy(value: SubmissionReceipt, key: SigningIdentity) {
-  const bytes = new TextEncoder().encode(`schoolos-submission-receipt/v1\0${NF}\0${canonicalJson(value)}`);
+  const bytes = new TextEncoder().encode(`schoolos-submission-receipt/v1\0${NF}\0${canonicalJson(value)}`); // rename-educateos: keep
   return { receipt: value, districtId: NF, signature: { alg: "Ed25519", keyId: key.keyId, value: await key.sign(bytes) } };
 }
 
@@ -60,7 +60,7 @@ describe("records from before the EducateOS rename", () => {
 
   it("verify a receipt signed before the rename, exactly as it was kept", async () => {
     const key = await SigningIdentity.generate();
-    const old = await receipt("schoolos.submission-receipt.v1", await legacyDigest());
+    const old = await receipt("schoolos.submission-receipt.v1", await legacyDigest()); // rename-educateos: keep
     const kept: unknown = JSON.parse(JSON.stringify(await signLegacy(old, key)));
     expect(await verifySubmissionReceipt(kept, NF, [key.publicKey])).toEqual(old);
     // The legacy context grants nothing beyond what it signed.
@@ -77,7 +77,7 @@ describe("records from before the EducateOS rename", () => {
 
   it("parse a stored official grade with the legacy format, keeping its spelling", () => {
     const version = {
-      format: "schoolos.official-grade.v1",
+      format: "schoolos.official-grade.v1", // rename-educateos: keep
       districtId: NF,
       offeringId: "off_bio-fall",
       assignmentId: "asg_essay",
@@ -88,7 +88,7 @@ describe("records from before the EducateOS rename", () => {
       score: { points: 17, maxPoints: 20 },
       approval: { approvedBy: "prn_morgan", approvedAt: "2026-10-02T12:00:00.000Z", channel: "http" },
     };
-    expect(OfficialGradeVersion.parse(version).format).toBe("schoolos.official-grade.v1");
+    expect(OfficialGradeVersion.parse(version).format).toBe("schoolos.official-grade.v1"); // rename-educateos: keep
     const state = { assignments: [], starterMaterials: [], submissions: [], feedback: [], gradeProposals: [], gradeVersions: [version] };
     expect(AssessmentState.parse(state).gradeVersions[0]).toEqual(version);
     expect(OfficialGradeVersion.safeParse({ ...version, format: "other.official-grade.v1" }).success).toBe(false);

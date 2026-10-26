@@ -51,7 +51,7 @@ import { aiSuggestedLevel, studentReportView, teacherReportView, type StudentRep
 
 const OPTIONAL_EVALUATOR_FORMAT = "educateos.optional-evaluator.v1";
 /** SCHO-232: the optional evaluator release format's name before the EducateOS rename, in run keys derived then. */
-const LEGACY_OPTIONAL_EVALUATOR_FORMAT = "schoolos.optional-evaluator.v1";
+const LEGACY_OPTIONAL_EVALUATOR_FORMAT = "schoolos.optional-evaluator.v1"; // rename-educateos: keep
 
 /** What requesting AI feedback on a submission takes. */
 export const AiRunRequest = z.strictObject({

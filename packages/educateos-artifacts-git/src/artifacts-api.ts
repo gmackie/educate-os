@@ -104,7 +104,7 @@ export const VERSION_REF_PREFIX = "educateos/versions/";
  * keep those versions reachable, so they are protected as the current ones are; nothing writes
  * new ones.
  */
-export const LEGACY_VERSION_REF_PREFIX = "schoolos/versions/";
+export const LEGACY_VERSION_REF_PREFIX = "schoolos/versions/"; // rename-educateos: keep
 
 /** Whether `branch` is a protected version ref, under either namespace. */
 export function isVersionRef(branch: string): boolean {

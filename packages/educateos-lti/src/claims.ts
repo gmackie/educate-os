@@ -145,7 +145,7 @@ export const EDUCATEOS_LINK_PARAMETER = "educateos_link";
  * SCHO-232: the same parameter as content items deep-linked before the EducateOS rename name it.
  * The LMS keeps those items as they were written, so launches from them still carry it.
  */
-export const LEGACY_LINK_PARAMETER = "schoolos_link";
+export const LEGACY_LINK_PARAMETER = "schoolos_link"; // rename-educateos: keep
 
 /**
  * Parses a verified payload. Returns `undefined` when a required claim is missing or malformed,

@@ -26,7 +26,7 @@ export type ReleaseMessageKind = z.infer<typeof ReleaseMessageKind>;
 
 const RELEASE_CONTEXT = "educateos-releases/v1";
 /** SCHO-232: the context of release messages signed before the EducateOS rename, which still verify. */
-const LEGACY_RELEASE_CONTEXT = "schoolos-releases/v1";
+const LEGACY_RELEASE_CONTEXT = "schoolos-releases/v1"; // rename-educateos: keep
 
 // `slice()` gives a view over a plain `ArrayBuffer` under every runtime's typings (ADR-0009).
 function signedBytes(kind: ReleaseMessageKind, payload: unknown, context = RELEASE_CONTEXT): Uint8Array<ArrayBuffer> {

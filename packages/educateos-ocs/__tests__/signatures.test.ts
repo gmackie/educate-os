@@ -37,7 +37,7 @@ describe("publisher signatures", () => {
 
   it("accept a publication signed before the EducateOS rename, in its legacy context (SCHO-232)", async () => {
     const { publisher, pkg, statement, trust } = await setup();
-    const bytes = new TextEncoder().encode(`schoolos-ocs/v1\0package-publication\0${canonicalJson(statement)}`);
+    const bytes = new TextEncoder().encode(`schoolos-ocs/v1\0package-publication\0${canonicalJson(statement)}`); // rename-educateos: keep
     const legacy = { payload: JSON.parse(canonicalJson(statement)), signature: await publisher.sign(bytes), keyId: publisher.keyId };
     expect(await checkPublication(pkg, legacy, trust, NOW)).toStrictEqual({ ok: true, signed: true });
     expect(await checkPublication(pkg, { ...legacy, payload: { ...legacy.payload, version: "2.0.1" } }, trust, NOW)).toStrictEqual({ ok: false, reason: "bad-signature" });

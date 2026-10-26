@@ -35,7 +35,7 @@ describe("release messages signed before the EducateOS rename (SCHO-232)", () =>
     const { rootKeys, trust } = await makeSigner();
     const next = await SigningIdentity.generate();
     const payload = keySet(1, [{ identity: next }], clock.now());
-    const bytes = new TextEncoder().encode(`schoolos-releases/v1\0release-key-set\0${canonicalJson(payload)}`);
+    const bytes = new TextEncoder().encode(`schoolos-releases/v1\0release-key-set\0${canonicalJson(payload)}`); // rename-educateos: keep
     const signatures = await Promise.all(rootKeys.slice(0, 2).map(async (key) => ({ keyId: key.keyId, signature: await key.sign(bytes) })));
     const legacy = { payload: JSON.parse(canonicalJson(payload)), signatures };
     expect(keyIds(await acceptReleaseKeySet(trust, legacy, clock.now()))).toEqual([next.keyId]);

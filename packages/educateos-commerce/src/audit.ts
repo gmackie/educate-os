@@ -106,7 +106,7 @@ export type FinanceAuditEvent = z.infer<typeof FinanceAuditEvent>;
 
 const AUDIT_CONTEXT = "educateos-finance-audit/v1";
 /** SCHO-232: the context events chained before the EducateOS rename were hashed under. */
-const LEGACY_AUDIT_CONTEXT = "schoolos-finance-audit/v1";
+const LEGACY_AUDIT_CONTEXT = "schoolos-finance-audit/v1"; // rename-educateos: keep
 
 /** The hash of an audit event: SHA-256 over a context string and the canonical JSON of every field but `hash`. */
 export async function hashFinanceAuditEvent(event: Omit<FinanceAuditEvent, "hash">): Promise<string> {

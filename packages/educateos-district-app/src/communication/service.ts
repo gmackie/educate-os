@@ -105,7 +105,7 @@ export const MAX_CALENDAR_RANGE_DAYS = 400;
  * as long as they hold it, so UIDs keep the domain they had before the EducateOS rename (SCHO-232);
  * changing it would make every subscribed event look deleted and re-added.
  */
-const UID_DOMAIN = "schoolos";
+const UID_DOMAIN = "schoolos"; // rename-educateos: keep
 
 /** A course offering's label: its course title and section. */
 export function courseLabelOf(snapshot: DistrictDirectorySnapshot, offeringId: OfferingId): string {

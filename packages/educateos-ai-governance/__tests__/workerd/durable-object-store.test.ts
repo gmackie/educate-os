@@ -113,8 +113,8 @@ describe("DurableObjectLedgerStore", () => {
     await runInDurableObject(ledger, (_instance, state) => {
       const [ddl, list] = [schema(state.storage), rows(state.storage)];
       state.storage.sql.exec(`DROP TABLE ${LEDGER_ENTRIES_TABLE}`);
-      for (const statement of ddl) state.storage.sql.exec(statement.replaceAll("educateos_", "schoolos_"));
-      insert(state.storage, "schoolos_ai_ledger_entries", list);
+      for (const statement of ddl) state.storage.sql.exec(statement.replaceAll("educateos_", "schoolos_")); // rename-educateos: keep
+      insert(state.storage, "schoolos_ai_ledger_entries", list); // rename-educateos: keep
     });
     // ...and what the renamed code appended since, in a new table of its own.
     const since = fresh();
@@ -139,10 +139,10 @@ describe("DurableObjectLedgerStore", () => {
     await runInDurableObject(ledger, (_instance, state) => {
       expect(state.storage.sql.exec(`SELECT seq, request_id FROM ${LEDGER_ENTRIES_TABLE} ORDER BY seq`).toArray().map((row) => row.request_id))
         .toEqual(["req-1", "req-1", "req-2", "req-3", "req-2"]);
-      expect(state.storage.sql.exec("SELECT COUNT(*) AS n FROM schoolos_ai_ledger_entries_premigration").one().n).toBe(3);
+      expect(state.storage.sql.exec("SELECT COUNT(*) AS n FROM schoolos_ai_ledger_entries_premigration").one().n).toBe(3); // rename-educateos: keep
       // Both the ledger and its backup stay append-only.
       expect(() => state.storage.sql.exec(`DELETE FROM ${LEDGER_ENTRIES_TABLE}`)).toThrow(/append-only/);
-      expect(() => state.storage.sql.exec("UPDATE schoolos_ai_ledger_entries_premigration SET entry_json = '{}'")).toThrow(/append-only/);
+      expect(() => state.storage.sql.exec("UPDATE schoolos_ai_ledger_entries_premigration SET entry_json = '{}'")).toThrow(/append-only/); // rename-educateos: keep
     });
     // A second start finds nothing left to migrate.
     await evictDurableObject(ledger);

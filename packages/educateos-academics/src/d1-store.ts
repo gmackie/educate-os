@@ -23,7 +23,7 @@ export interface D1DatabaseLike {
 
 const VERSION_CONFLICT = "educateos: academic directory version conflict";
 /** SCHO-232: the trigger's message in databases migrated before the EducateOS rename. */
-const LEGACY_VERSION_CONFLICT = "schoolos: academic directory version conflict";
+const LEGACY_VERSION_CONFLICT = "schoolos: academic directory version conflict"; // rename-educateos: keep
 
 function isVersionConflict(error: unknown): boolean {
   return error instanceof Error && (error.message.includes(VERSION_CONFLICT) || error.message.includes(LEGACY_VERSION_CONFLICT));

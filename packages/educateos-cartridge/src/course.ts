@@ -110,8 +110,8 @@ function rawText(element: XmlElement | undefined): string {
 const WEB_LINK = /^imswl_xmlv1p[0-3]$/;
 const LTI_LINK = /^imsbasiclti_xmlv1p[0-3]$/;
 const HTML_FILE = /\.x?html?$/i;
-// A cartridge exported before the EducateOS rename marks its blocks `schoolos-markdown` (SCHO-232).
-const MARKDOWN_BLOCK = /<pre class="(?:educateos|schoolos)-markdown">([\s\S]*?)<\/pre>/;
+// A cartridge exported before the EducateOS rename marks its blocks `schoolos-markdown` (SCHO-232). (rename-educateos: keep)
+const MARKDOWN_BLOCK = /<pre class="(?:educateos|schoolos)-markdown">([\s\S]*?)<\/pre>/; // rename-educateos: keep
 const UNTITLED = "Untitled";
 
 const NAMED_ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'", nbsp: " " };

@@ -64,7 +64,7 @@ describe("unsaved work", () => {
     await user.type(await screen.findByRole("textbox", EDITOR), "Typed before the rename.");
     // Re-key the draft as the code before the rename kept it.
     const key = Object.keys(sessionStorage).find((k) => k.startsWith("educateos.student.draft:"))!;
-    sessionStorage.setItem(key.replace("educateos.", "schoolos."), sessionStorage.getItem(key)!);
+    sessionStorage.setItem(key.replace("educateos.", "schoolos."), sessionStorage.getItem(key)!); // rename-educateos: keep
     sessionStorage.removeItem(key);
     first.unmount();
 

@@ -27,7 +27,7 @@ describe("signed envelopes", () => {
   it("verify when signed before the EducateOS rename, in its legacy context (SCHO-232)", async () => {
     const identity = await SigningIdentity.generate();
     const payload = { instanceId: "ins_northfield", sequence: 1 };
-    const legacyBytes = (kind: string) => new TextEncoder().encode(`schoolos-fleet/v1\0${kind}\0${canonicalJson(payload)}`);
+    const legacyBytes = (kind: string) => new TextEncoder().encode(`schoolos-fleet/v1\0${kind}\0${canonicalJson(payload)}`); // rename-educateos: keep
     const envelope = { payload, signature: await identity.sign(legacyBytes("heartbeat")), keyId: identity.keyId };
     expect(await verifyEnvelope(envelope, "heartbeat", identity.publicKey)).toBe(true);
     expect(await verifyEnvelope(envelope, "entitlement", identity.publicKey)).toBe(false);

@@ -6,7 +6,7 @@ import { useSyncExternalStore } from "react";
 
 const PREFIX = "educateos.student.draft:";
 /** SCHO-232: drafts kept by a tab opened before the EducateOS rename, read until saved or dropped. */
-const LEGACY_PREFIX = "schoolos.student.draft:";
+const LEGACY_PREFIX = "schoolos.student.draft:"; // rename-educateos: keep
 const listeners = new Set<() => void>();
 
 const notify = () => {

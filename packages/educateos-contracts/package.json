@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@gadgets/scripts": "workspace:*",
+    "@types/node": "26.1.0",
     "vitest": "catalog:"
   }
 }

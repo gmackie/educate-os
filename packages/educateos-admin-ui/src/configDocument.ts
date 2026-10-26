@@ -19,7 +19,7 @@ import {
 export const CONFIG_API_VERSION = "educateos.io/v1alpha1";
 
 /** SCHO-232: the version of revisions stored before the EducateOS rename, which the console still reads. */
-export const LEGACY_CONFIG_API_VERSION = "schoolos.dev/v1alpha1";
+export const LEGACY_CONFIG_API_VERSION = "schoolos.dev/v1alpha1"; // rename-educateos: keep
 
 /** A module's state in a configuration document. */
 export const ModuleState = z.enum(["enabled", "advisory", "disabled"]);
@@ -61,7 +61,7 @@ export type DesiredModule = DesiredStateView["modules"][CapabilityId];
 export type ConfigDocument = Record<string, unknown>;
 
 /** SCHO-232: pack IDs the EducateOS rename changed, as revisions stored before it name them. */
-const RENAMED_PACKS: Readonly<Record<string, string>> = { "schoolos-lti": "educateos-lti" };
+const RENAMED_PACKS: Readonly<Record<string, string>> = { "schoolos-lti": "educateos-lti" }; // rename-educateos: keep
 
 /**
  * Reads a revision's desired state, or throws if the district returned something the console cannot

@@ -1,5 +1,5 @@
 // SCHO-232: rubric releases signed, runs requested and reports stored before the EducateOS rename
-// carry `schoolos.*` format names, in their own fields and in what their digests and IDs were
+// carry `schoolos.*` format names, in their own fields and in what their digests and IDs were (rename-educateos: keep)
 // derived from. They still verify, are found again, and parse, while new ones use the new names.
 import { describe, expect, it } from "vitest";
 import { ArtifactId, ContentDigest, RevisionId } from "@educateos/contracts";
@@ -28,8 +28,8 @@ import { ESSAY, NOW, P, essayRubric } from "./setup.ts";
 /** `release` as the code before the rename signed it: the legacy format, in the record and its digest. */
 async function asLegacy(release: RubricRelease): Promise<RubricRelease> {
   const { signature, format: _format, ...body } = release;
-  const digest = await canonicalDigest({ format: "schoolos.rubric-release.v1", ...body });
-  return { format: "schoolos.rubric-release.v1", ...body, signature: { ...signature, digest } };
+  const digest = await canonicalDigest({ format: "schoolos.rubric-release.v1", ...body }); // rename-educateos: keep
+  return { format: "schoolos.rubric-release.v1", ...body, signature: { ...signature, digest } }; // rename-educateos: keep
 }
 
 async function essayWork() {
@@ -45,7 +45,7 @@ async function essayWork() {
   }];
   const work: SubmittedWork = { items, readText: async () => ESSAY };
   const canonical = items.map(({ artifactId, revisionId, digest }) => ({ artifactId, revisionId, digest }));
-  const legacyDigest = await sha256Digest(new TextEncoder().encode(JSON.stringify({ format: "schoolos.submission-digest.v1", items: canonical })));
+  const legacyDigest = await sha256Digest(new TextEncoder().encode(JSON.stringify({ format: "schoolos.submission-digest.v1", items: canonical }))); // rename-educateos: keep
   return { work, legacyDigest: ContentDigest.parse(legacyDigest) };
 }
 
@@ -73,10 +73,10 @@ describe("records from before the EducateOS rename", () => {
 
     // What the new code would queue for the request, and the run the old code queued for it.
     const scratch = await new AssessmentRuns({ runs: new InMemoryAssessmentRunStore(), rubrics, registry, now: () => NOW }).request(request);
-    const legacyEvaluators = await canonicalDigest({ format: "schoolos.evaluator-set.v1", releases: scratch.evaluators });
+    const legacyEvaluators = await canonicalDigest({ format: "schoolos.evaluator-set.v1", releases: scratch.evaluators }); // rename-educateos: keep
     const legacyKey = { ...scratch.key, evaluatorRelease: legacyEvaluators };
     const legacyId = await legacyAssessmentRunIdFor(scratch.key, legacyEvaluators);
-    expect(legacyId).toBe(`asr_${(await canonicalDigest({ format: "schoolos.assessment-run-key.v1", key: legacyKey })).slice(7, 47)}`);
+    expect(legacyId).toBe(`asr_${(await canonicalDigest({ format: "schoolos.assessment-run-key.v1", key: legacyKey })).slice(7, 47)}`); // rename-educateos: keep
     expect(legacyId).not.toBe(scratch.id);
     expect(scratch.id).toBe(await assessmentRunIdFor(scratch.key));
     const stored: AssessmentRun = { ...scratch, id: legacyId, key: legacyKey };
@@ -114,10 +114,10 @@ describe("records from before the EducateOS rename", () => {
     const digest = await submissionDigest(work.items);
     const run = await runs.request({ submissionDigest: digest, rubricRelease: rubricRef(essayRubric()), executionProfile: DETERMINISTIC_PROFILE.id, idempotencyKey: "k" });
     const report = (await runs.execute(run.id, work)).report!;
-    const legacy = { ...report, format: "schoolos.assessment-report.v2" };
+    const legacy = { ...report, format: "schoolos.assessment-report.v2" }; // rename-educateos: keep
     expect(AssessmentReport.parse(legacy)).toEqual(legacy);
-    const student = StudentAssessmentReport.parse({ format: "schoolos.assessment-report.student.v1", runId: run.id, rubric: rubricRef(essayRubric()), criteria: [], summary: report.summary });
-    expect(student.format).toBe("schoolos.assessment-report.student.v1");
+    const student = StudentAssessmentReport.parse({ format: "schoolos.assessment-report.student.v1", runId: run.id, rubric: rubricRef(essayRubric()), criteria: [], summary: report.summary }); // rename-educateos: keep
+    expect(student.format).toBe("schoolos.assessment-report.student.v1"); // rename-educateos: keep
     expect(AssessmentReport.safeParse({ ...report, format: "other.assessment-report.v2" }).success).toBe(false);
   });
 });

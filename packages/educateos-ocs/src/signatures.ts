@@ -13,7 +13,7 @@ import { SemVer } from "./semver.ts";
 
 const OCS_SIGNING_CONTEXT = "educateos-ocs/v1\0package-publication";
 /** SCHO-232: the context of publications signed before the EducateOS rename, which still verify. */
-const LEGACY_OCS_SIGNING_CONTEXT = "schoolos-ocs/v1\0package-publication";
+const LEGACY_OCS_SIGNING_CONTEXT = "schoolos-ocs/v1\0package-publication"; // rename-educateos: keep
 
 /** What a publisher signs: one version of one package, by its digest. */
 export const PackagePublication = z.strictObject({

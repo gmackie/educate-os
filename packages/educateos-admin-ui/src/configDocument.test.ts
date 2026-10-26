@@ -40,13 +40,13 @@ describe("rebuilding a revision's document", () => {
   it("reads a revision stored before the EducateOS rename with the current names (SCHO-232)", async () => {
     const stored = (await admin.call("admin.getConfig")).head!;
     const lti = { state: "disabled", version: "1.0.0", config: {} };
-    const legacy = { ...stored, desired: { ...stored.desired, apiVersion: "schoolos.dev/v1alpha1", modules: { ...(stored.desired.modules as object), "schoolos-lti": lti } } };
+    const legacy = { ...stored, desired: { ...stored.desired, apiVersion: "schoolos.dev/v1alpha1", modules: { ...(stored.desired.modules as object), "schoolos-lti": lti } } }; // rename-educateos: keep
     const read = readDesired(legacy);
     expect(read.modules).toMatchObject({ "educateos-lti": lti });
-    expect(read.modules).not.toHaveProperty("schoolos-lti");
+    expect(read.modules).not.toHaveProperty("schoolos-lti"); // rename-educateos: keep
     expect(documentFromDesired(read).apiVersion).toBe("educateos.io/v1alpha1");
-    expect(readDesired({ ...stored, desired: { ...stored.desired, apiVersion: "schoolos.dev/v1alpha1" } })).toStrictEqual({ ...head, apiVersion: "schoolos.dev/v1alpha1" });
-    expect((await plan(readDesired({ ...stored, desired: { ...stored.desired, apiVersion: "schoolos.dev/v1alpha1" } }))).diff).toStrictEqual([]);
+    expect(readDesired({ ...stored, desired: { ...stored.desired, apiVersion: "schoolos.dev/v1alpha1" } })).toStrictEqual({ ...head, apiVersion: "schoolos.dev/v1alpha1" }); // rename-educateos: keep
+    expect((await plan(readDesired({ ...stored, desired: { ...stored.desired, apiVersion: "schoolos.dev/v1alpha1" } }))).diff).toStrictEqual([]); // rename-educateos: keep
   });
 
   it("carries a district policy edit through as exactly that edit", async () => {

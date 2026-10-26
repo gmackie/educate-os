@@ -114,7 +114,7 @@ describe("SCHO-99 hash-chained finance audit", () => {
     const rechained: typeof trail = [];
     for (const [index, event] of trail.entries()) {
       const { hash: _hash, ...fields } = { ...event, previousHash: rechained.at(-1)?.hash ?? GENESIS_AUDIT_HASH };
-      const hash = index < 3 ? await sha256(`schoolos-finance-audit/v1\0${canonicalJson(fields)}`) : await hashFinanceAuditEvent(fields);
+      const hash = index < 3 ? await sha256(`schoolos-finance-audit/v1\0${canonicalJson(fields)}`) : await hashFinanceAuditEvent(fields); // rename-educateos: keep
       rechained.push({ ...fields, hash });
     }
     expect(rechained[0]!.hash).not.toBe(trail[0]!.hash);

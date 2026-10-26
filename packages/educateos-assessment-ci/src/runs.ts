@@ -73,8 +73,8 @@ export interface AssessmentRunsOptions {
 const EVALUATOR_SET_FORMAT = "educateos.evaluator-set.v1";
 const RUN_KEY_FORMAT = "educateos.assessment-run-key.v1";
 /** SCHO-232: the names of the same formats before the EducateOS rename, which runs requested then are keyed under. */
-const LEGACY_EVALUATOR_SET_FORMAT = "schoolos.evaluator-set.v1";
-const LEGACY_RUN_KEY_FORMAT = "schoolos.assessment-run-key.v1";
+const LEGACY_EVALUATOR_SET_FORMAT = "schoolos.evaluator-set.v1"; // rename-educateos: keep
+const LEGACY_RUN_KEY_FORMAT = "schoolos.assessment-run-key.v1"; // rename-educateos: keep
 
 /** The digest a run key's `evaluatorRelease` holds: of the exact releases, sorted by ID. */
 export async function evaluatorSetDigest(releases: readonly EvaluatorRelease[]): Promise<ContentDigest> {

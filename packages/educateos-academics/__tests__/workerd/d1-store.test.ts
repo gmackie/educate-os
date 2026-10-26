@@ -135,7 +135,7 @@ BEGIN
   UPDATE academic_directory SET version = version + 1 WHERE singleton = 1;
 END`;
     const replaceGuard = (message: string) => env.DB.batch([env.DB.prepare("DROP TRIGGER academic_directory_commit_guard"), env.DB.prepare(guard(message))]);
-    await replaceGuard("schoolos: academic directory version conflict");
+    await replaceGuard("schoolos: academic directory version conflict"); // rename-educateos: keep
     try {
       await D1AcademicStore.seed(env.DB, NORTHFIELD);
       const first = new D1AcademicStore(env.DB);

@@ -1,5 +1,5 @@
 // SCHO-232: configuration documents and revisions written before the EducateOS rename carry the
-// `schoolos.dev/v1alpha1` apiVersion, the `schoolos-lti` pack ID and the `schoolos-catalog`
+// `schoolos.dev/v1alpha1` apiVersion, the `schoolos-lti` pack ID and the `schoolos-catalog` (rename-educateos: keep)
 // imported source. They are read as the current names, stored revisions still verify as stored,
 // and anything compiled or rolled back from them is written with the current names.
 import { ConfigurationRevision, PrincipalId } from "@educateos/contracts";
@@ -30,8 +30,8 @@ function currentDocument(): Record<string, any> {
 function legacyDocument(): Record<string, any> {
   const document = northfieldDocument();
   document.apiVersion = LEGACY_CONFIG_API_VERSION;
-  document.modules["schoolos-lti"] = LTI;
-  document.curriculum.importedSources = ["district-approved", "schoolos-catalog"];
+  document.modules["schoolos-lti"] = LTI; // rename-educateos: keep
+  document.curriculum.importedSources = ["district-approved", "schoolos-catalog"]; // rename-educateos: keep
   return document;
 }
 
@@ -47,8 +47,8 @@ function asLegacy(desired: Record<string, any>): Record<string, any> {
   return {
     ...desired,
     apiVersion: LEGACY_CONFIG_API_VERSION,
-    modules: { ...modules, "schoolos-lti": lti },
-    curriculum: { ...desired.curriculum, importedSources: desired.curriculum.importedSources.map((s: string) => s.replace("educateos-", "schoolos-")) },
+    modules: { ...modules, "schoolos-lti": lti }, // rename-educateos: keep
+    curriculum: { ...desired.curriculum, importedSources: desired.curriculum.importedSources.map((s: string) => s.replace("educateos-", "schoolos-")) }, // rename-educateos: keep
   };
 }
 

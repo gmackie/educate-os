@@ -45,7 +45,7 @@ export async function isSubmissionDigestOf(items: readonly DigestedItem[], expec
 
 const DIGEST_FORMAT = "educateos.submission-digest.v1";
 /** SCHO-232: the digest format name before the EducateOS rename. */
-const LEGACY_DIGEST_FORMAT = "schoolos.submission-digest.v1";
+const LEGACY_DIGEST_FORMAT = "schoolos.submission-digest.v1"; // rename-educateos: keep
 
 function digestBytes(format: string, items: readonly DigestedItem[]): Uint8Array<ArrayBuffer> {
   const canonical = canonicalItems(items).map(({ artifactId, revisionId, digest }) => ({ artifactId, revisionId, digest }));

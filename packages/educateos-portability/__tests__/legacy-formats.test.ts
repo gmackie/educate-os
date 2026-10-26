@@ -1,5 +1,5 @@
 // SCHO-232: a learner may still hold a transfer file made before the EducateOS rename: its wire
-// format, transfer statement, archive manifest and provenance carry `schoolos.*` names, and the
+// format, transfer statement, archive manifest and provenance carry `schoolos.*` names, and the (rename-educateos: keep)
 // statement is signed in the fleet's legacy context. It still validates, verifies and imports.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SigningIdentity, canonicalJson, toBase64Url } from "@educateos/fleet";
@@ -23,11 +23,11 @@ async function legacyExport() {
   const exported = await source.exporter.exportStudentArchive(P.amara);
   const archive = await rewrite(exported.bytes, (entries) => {
     editJson(entries, "provenance.json", (provenance) => {
-      provenance.format = "schoolos.student-archive.provenance";
-      provenance.generator = "@schoolos/portability";
+      provenance.format = "schoolos.student-archive.provenance"; // rename-educateos: keep
+      provenance.generator = "@schoolos/portability"; // rename-educateos: keep
     });
     editJson(entries, "manifest.json", (manifest) => {
-      manifest.format = "schoolos.student-archive";
+      manifest.format = "schoolos.student-archive"; // rename-educateos: keep
     });
   }, { refreshManifest: true });
   return { source, exported, archive };
@@ -37,8 +37,8 @@ describe("a transfer made before the EducateOS rename", () => {
   it("validates as an archive, keeping the names it was written with", async () => {
     const { archive } = await legacyExport();
     const validated = await validateArchive(archive);
-    expect(validated.manifest.format).toBe("schoolos.student-archive");
-    expect(validated.provenance).toMatchObject({ format: "schoolos.student-archive.provenance", generator: "@schoolos/portability" });
+    expect(validated.manifest.format).toBe("schoolos.student-archive"); // rename-educateos: keep
+    expect(validated.provenance).toMatchObject({ format: "schoolos.student-archive.provenance", generator: "@schoolos/portability" }); // rename-educateos: keep
   });
 
   it("verifies against the pinned key and imports, from a learner-carried file", async () => {
@@ -54,7 +54,7 @@ describe("a transfer made before the EducateOS rename", () => {
       validForDays: 30,
     }, source.clock.now);
     const statement = {
-      format: "schoolos.transfer-statement",
+      format: "schoolos.transfer-statement", // rename-educateos: keep
       formatVersion: 1,
       archiveDigest: await sha256Digest(archive),
       exportId: exported.manifest.exportId,
@@ -66,9 +66,9 @@ describe("a transfer made before the EducateOS rename", () => {
       issuedAt: source.clock.now.toISOString(),
     };
     // Signed as `signEnvelope` signed before the rename.
-    const signedBytes = new TextEncoder().encode(`schoolos-fleet/v1\0student-transfer\0${canonicalJson(statement)}`);
+    const signedBytes = new TextEncoder().encode(`schoolos-fleet/v1\0student-transfer\0${canonicalJson(statement)}`); // rename-educateos: keep
     const signature = { payload: JSON.parse(canonicalJson(statement)), signature: await identity.sign(signedBytes), keyId: identity.keyId };
-    const file = new TextEncoder().encode(JSON.stringify({ format: "schoolos.transfer", formatVersion: 1, archive: toBase64Url(archive), consent, signature }));
+    const file = new TextEncoder().encode(JSON.stringify({ format: "schoolos.transfer", formatVersion: 1, archive: toBase64Url(archive), consent, signature })); // rename-educateos: keep
 
     const dest = riverbend({ pinned: [{ ...NORTHFIELD_PARTY, publicKey: identity.publicKey }] });
     await dest.linkLearner(exported.manifest.subject, R.amara);

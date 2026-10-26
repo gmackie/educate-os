@@ -50,7 +50,7 @@ export type SignedEnvelope = z.infer<typeof SignedEnvelope>;
 
 const PROTOCOL_CONTEXT = "educateos-fleet/v1";
 /** SCHO-232: the context of envelopes signed before the EducateOS rename, which still verify. */
-const LEGACY_PROTOCOL_CONTEXT = "schoolos-fleet/v1";
+const LEGACY_PROTOCOL_CONTEXT = "schoolos-fleet/v1"; // rename-educateos: keep
 
 // `slice()` gives a view over a plain `ArrayBuffer` under every runtime's typings (ADR-0009).
 function signedBytes(kind: FleetMessageKind, payload: unknown, context = PROTOCOL_CONTEXT): Uint8Array<ArrayBuffer> {

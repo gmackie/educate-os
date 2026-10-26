@@ -1,13 +1,13 @@
 // Recovery of the tables the EducateOS rename orphaned (SCHO-232), published as its own entry point
 // (`@educateos/contracts/legacy-tables`).
 //
-// The rename (SCHO-200) renamed every SQLite table a Durable Object store keeps from `schoolos_*`
+// The rename (SCHO-200) renamed every SQLite table a Durable Object store keeps from `schoolos_*` (rename-educateos: keep)
 // to `educateos_*`. The first deploy of it created the new tables empty beside the old ones, so a
 // live district's data stayed in tables nothing read any more, while new rows went to the new ones.
 // Each store therefore calls `migrateLegacyTables` in its schema setup, inside the transaction that
 // creates its tables and before it reads them: for each of its tables whose legacy twin exists, the
 // legacy rows are copied in, every conflict with a row written since is settled by a rule the store
-// names, and the legacy table is renamed to `schoolos_<name>_premigration` and kept, never dropped.
+// names, and the legacy table is renamed to `schoolos_<name>_premigration` and kept, never dropped. (rename-educateos: keep)
 // Once that table is gone the call costs one `sqlite_master` lookup.
 //
 // The helper names the storage it needs structurally, like the stores, so it runs over a Durable
@@ -27,7 +27,7 @@ export interface LegacySql {
 export const TABLE_PREFIX = "educateos_";
 
 /** The prefix the same tables had before the rename. */
-export const LEGACY_TABLE_PREFIX = "schoolos_";
+export const LEGACY_TABLE_PREFIX = "schoolos_"; // rename-educateos: keep
 
 /** Appended to a legacy table's name once its rows are copied: the table is kept as a backup. */
 export const PREMIGRATION_SUFFIX = "_premigration";

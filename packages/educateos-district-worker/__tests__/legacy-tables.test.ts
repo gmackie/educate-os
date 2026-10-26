@@ -1,6 +1,6 @@
 // The district's recovery of the tables the rename orphaned (SCHO-232), against real Durable Object
 // SQLite storage. Each test builds the state production was left in: the district's rows from
-// before the rename in `schoolos_*` tables, made with the old DDL, and rows written since in the new
+// before the rename in `schoolos_*` tables, made with the old DDL, and rows written since in the new (rename-educateos: keep)
 // `educateos_*` tables, without the migration having run. Then the stores start, as a deploy of
 // this code would start them, and every row of both sides must be readable.
 
@@ -62,7 +62,7 @@ function restore(storage: Storage, { schema, rows }: Dump, rename: (text: string
 }
 
 /** The DDL the rename rewrote: every name and message, as the code before it wrote them. */
-const asLegacy = (text: string) => text.replaceAll("educateos_", "schoolos_");
+const asLegacy = (text: string) => text.replaceAll("educateos_", "schoolos_"); // rename-educateos: keep
 
 const tablesOf = (storage: Storage, pattern: string) =>
   storage.sql.exec("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE ? ESCAPE '\\' ORDER BY name", pattern).toArray().map((r) => String(r.name));
@@ -266,11 +266,11 @@ describe("the district's stores after the rename (SCHO-232)", () => {
 
     await runInDurableObject(object, async (_instance, state) => {
       // Every legacy table is kept, renamed; none is left under its legacy name.
-      const backups = tablesOf(state.storage, "schoolos\\_%");
+      const backups = tablesOf(state.storage, "schoolos\\_%"); // rename-educateos: keep
       expect(backups.every((name) => name.endsWith("_premigration"))).toBe(true);
-      expect(backups).toContain("schoolos_quizzes_premigration");
-      expect(backups).toContain("schoolos_district_funding_revisions_premigration");
-      expect(state.storage.sql.exec("SELECT COUNT(*) AS n FROM schoolos_guardian_relationships_premigration").one().n).toBe(2);
+      expect(backups).toContain("schoolos_quizzes_premigration"); // rename-educateos: keep
+      expect(backups).toContain("schoolos_district_funding_revisions_premigration"); // rename-educateos: keep
+      expect(state.storage.sql.exec("SELECT COUNT(*) AS n FROM schoolos_guardian_relationships_premigration").one().n).toBe(2); // rename-educateos: keep
       // The merged rows take writes as usual: the next edit is planned over the merged revision.
       await expect(new DurableObjectQuizStorage(state.storage).commit(BIO, quizWrite(2, {}), 1)).rejects.toMatchObject({ code: "conflict" });
       await new DurableObjectQuizStorage(state.storage).commit(BIO, quizWrite(4, { releases: [quizRelease("qzr_next", "qz_b435127a")] }), 3);
@@ -281,7 +281,7 @@ describe("the district's stores after the rename (SCHO-232)", () => {
     await evictDurableObject(object);
     const second = await runInDurableObject(object, async (_instance, state) => {
       const result = await read(state.storage);
-      return { result, backups: tablesOf(state.storage, "schoolos\\_%") };
+      return { result, backups: tablesOf(state.storage, "schoolos\\_%") }; // rename-educateos: keep
     });
     expect(second.result.quizzes?.releases.map((r) => r.id)).toStrictEqual(["qzr_old", "qzr_new", "qzr_next"]);
     expect(second.result.funding).toStrictEqual(["far_one", "far_two", "far_three", "far_four"]);
@@ -350,7 +350,7 @@ describe("the district's stores after the rename (SCHO-232)", () => {
     await renamedDistrict(object, seed("wsp_before"), seed("wsp_since"));
     await runInDurableObject(object, async (_instance, state) => {
       await expect(durableDistrictStores(state.storage, NORTHFIELD).workspaces.load()).rejects.toThrow(/cannot be merged/);
-      expect(tablesOf(state.storage, "schoolos\\_workspace%")).toStrictEqual(["schoolos_workspace_state", "schoolos_workspaces"]);
+      expect(tablesOf(state.storage, "schoolos\\_workspace%")).toStrictEqual(["schoolos_workspace_state", "schoolos_workspaces"]); // rename-educateos: keep
       expect(state.storage.sql.exec("SELECT id FROM educateos_workspaces").toArray()).toStrictEqual([{ id: "wsp_since" }]);
     });
   });
@@ -414,7 +414,7 @@ describe("the district Worker after the rename (SCHO-232)", () => {
     const quizzes = await get(rivera, "teacher.listQuizzes", { offeringId: ENG9 }) as { quizzes: { quiz: { id: string } }[] };
     expect(quizzes.quizzes.map((q) => q.quiz.id).toSorted()).toStrictEqual(["qz_0d44bf2e", "qz_b435127a"]);
     await runInDurableObject(district, async (_instance, state) => {
-      expect(tablesOf(state.storage, "schoolos\\_%").filter((name) => !name.endsWith("_premigration"))).toStrictEqual([]);
+      expect(tablesOf(state.storage, "schoolos\\_%").filter((name) => !name.endsWith("_premigration"))).toStrictEqual([]); // rename-educateos: keep
     });
   });
 });

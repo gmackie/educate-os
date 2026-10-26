@@ -163,7 +163,7 @@ describe("calendar", () => {
       ["term-start", "Fall 2026 begins"],
       ["assignment-due", `Due: ${assignment.title} — English 9 (Period 3)`],
     ]);
-    expect(student.events.find((e) => e.kind === "assignment-due")).toMatchObject({ uid: `due-${assignment.id}@dst_northfield.schoolos`, start: assignment.dueAt, allDay: false });
+    expect(student.events.find((e) => e.kind === "assignment-due")).toMatchObject({ uid: `due-${assignment.id}@dst_northfield.schoolos`, start: assignment.dueAt, allDay: false }); // rename-educateos: keep
     const teacher = await district.ok(district.tokenFor(NF.rivera), "me.calendar");
     expect(teacher.events.map((e) => e.title)).toContain("Scheduled announcement: First quiz — English 9 (Period 3)");
 
@@ -193,7 +193,7 @@ describe("calendar", () => {
     expect(response.headers.get("content-type")).toBe("text/calendar; charset=utf-8");
     const ics = await response.text();
     expect(ics).toMatch(/^BEGIN:VCALENDAR\r\n/);
-    expect(ics).toContain(`UID:due-${assignment.id}@dst_northfield.schoolos\r\n`);
+    expect(ics).toContain(`UID:due-${assignment.id}@dst_northfield.schoolos\r\n`); // rename-educateos: keep
     expect(ics).not.toMatch(/grade|feedback|score/i);
 
     // Rotating ends the old URL; revoking ends the new one. A malformed token is just as unknown.

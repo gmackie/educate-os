@@ -172,7 +172,7 @@ describe("bill reconciliation", () => {
 
   it("imports an export prepared before the EducateOS rename (SCHO-232)", () => {
     const row = { date: "2026-10-05", provider: "anthropic", model: "claude-sonnet-example", cost_usd: "0.80" } as const;
-    expect(parseCostExportJson({ format: "schoolos.ai-cost-export.v1", rows: [row] }))
+    expect(parseCostExportJson({ format: "schoolos.ai-cost-export.v1", rows: [row] })) // rename-educateos: keep
       .toEqual(parseCostExportJson({ format: "educateos.ai-cost-export.v1", rows: [row] }));
   });
 });

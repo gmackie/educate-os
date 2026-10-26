@@ -17,10 +17,10 @@ import { AiAssistance, ContentRef, MediaType } from "@educateos/learning-artifac
 const idBody = "[a-z0-9][a-z0-9-]{0,62}";
 
 /** SCHO-232: the prefix record formats carried before the EducateOS rename. */
-const LEGACY_FORMAT_PREFIX = "schoolos";
+const LEGACY_FORMAT_PREFIX = "schoolos"; // rename-educateos: keep
 
 /**
- * The record format `educateos.<name>`, also accepting the `schoolos.<name>` spelling of records
+ * The record format `educateos.<name>`, also accepting the `schoolos.<name>` spelling of records (rename-educateos: keep)
  * stored or signed before the rename (SCHO-232). A parsed record keeps the spelling it was stored
  * with, so stored records stay unchanged and signatures over them still verify; new records are
  * always written with the `educateos.` spelling.

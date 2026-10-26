@@ -1,5 +1,5 @@
 // SCHO-232: project versions saved before the EducateOS rename are stored under the
-// `text/vnd.schoolos.project+json` media type with a `schoolos.project.v1` manifest. They are
+// `text/vnd.schoolos.project+json` media type with a `schoolos.project.v1` manifest. They are (rename-educateos: keep)
 // still projects, readable as they were saved, while new versions use the new names.
 import { describe, expect, it } from "vitest";
 import { LEGACY_PROJECT_MANIFEST_MEDIA_TYPE, PROJECT_MANIFEST_MEDIA_TYPE } from "../src/index.ts";
@@ -16,7 +16,7 @@ describe("project versions from before the EducateOS rename", () => {
     expect(current.format).toBe("educateos.project.v1");
 
     // The same version as the code before the rename saved it.
-    const legacy = { ...current, format: "schoolos.project.v1", message: "Saved before the rename" };
+    const legacy = { ...current, format: "schoolos.project.v1", message: "Saved before the rename" }; // rename-educateos: keep
     const saved = await artifacts.saveRevision(P.amara, created.artifact.id, {
       content: { kind: "text", mediaType: LEGACY_PROJECT_MANIFEST_MEDIA_TYPE, text: JSON.stringify(legacy) },
       aiAssistance: { level: "none" },

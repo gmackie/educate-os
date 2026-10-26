@@ -17,11 +17,11 @@ import { parseRange } from "./semver.ts";
 export const CONFIG_API_VERSION = "educateos.io/v1alpha1";
 
 /** SCHO-232: the `apiVersion` of documents and desired states written before the EducateOS rename. */
-export const LEGACY_CONFIG_API_VERSION = "schoolos.dev/v1alpha1";
+export const LEGACY_CONFIG_API_VERSION = "schoolos.dev/v1alpha1"; // rename-educateos: keep
 
 /** SCHO-232: the names the EducateOS rename changed inside a document or desired state, old to new. */
-const RENAMED_PACKS: Readonly<Record<string, string>> = { "schoolos-lti": "educateos-lti" };
-const RENAMED_SOURCES: Readonly<Record<string, string>> = { "schoolos-catalog": "educateos-catalog" };
+const RENAMED_PACKS: Readonly<Record<string, string>> = { "schoolos-lti": "educateos-lti" }; // rename-educateos: keep
+const RENAMED_SOURCES: Readonly<Record<string, string>> = { "schoolos-catalog": "educateos-catalog" }; // rename-educateos: keep
 
 /**
  * A document or desired state with the names it may carry from before the EducateOS rename

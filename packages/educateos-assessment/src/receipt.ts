@@ -23,7 +23,7 @@ export type SignedSubmissionReceipt = z.infer<typeof SignedSubmissionReceipt>;
 
 const CONTEXT = "educateos-submission-receipt/v1";
 /** SCHO-232: the signing context of receipts signed before the EducateOS rename. */
-const LEGACY_CONTEXT = "schoolos-submission-receipt/v1";
+const LEGACY_CONTEXT = "schoolos-submission-receipt/v1"; // rename-educateos: keep
 
 function signedBytes(districtId: DistrictId, receipt: SubmissionReceipt, context = CONTEXT): Uint8Array<ArrayBuffer> {
   return new TextEncoder().encode(`${context}\0${districtId}\0${canonicalJson(receipt)}`);
