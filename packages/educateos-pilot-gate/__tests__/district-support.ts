@@ -1,13 +1,13 @@
 // What the district validation suite needs beyond `support.ts`: booting any demo district, picking
 // its cast from its own directory, its roster source served by the provider fakes (OneRoster CSV
-// built from the fixtures' OneRoster seed, OneRoster REST from `districtSeed`), and its LMS as an LTI
+// built from the fixtures' OneRoster seed; OneRoster REST and Clever from `districtSeed`), and its LMS as an LTI
 // platform fake. Nothing here names a district: every scenario runs from the district's own data.
 import { expect } from "vitest";
 import { DistrictDirectorySnapshot, DistrictId, OfferingId, PrincipalId, type Principal } from "@educateos/contracts";
 import { districtSeed, oneRosterSeed, type DemoDistrict, type OneRosterSeed } from "@educateos/fixtures";
 import { bootHarness } from "@educateos/harness";
 import { createDirectoryPrincipalResolver } from "@educateos/identity";
-import { oneroster } from "@educateos/integrations";
+import { clever, oneroster } from "@educateos/integrations";
 import {
   createLtiHandler,
   createToolKeySet,
@@ -23,7 +23,7 @@ import {
   type LoginState,
   type ResolvedLaunch,
 } from "@educateos/lti";
-import { canvasFlavour, DEFAULT_ONEROSTER_CLIENT, LtiPlatformFake, OneRosterFake, schoologyFlavour } from "@educateos/provider-fakes";
+import { canvasFlavour, CleverDataFake, DEFAULT_ONEROSTER_CLIENT, LtiPlatformFake, OneRosterFake, schoologyFlavour, type DistrictSeed } from "@educateos/provider-fakes";
 import { bootDistrictFor, type PilotDistrict, type PilotOverrides } from "./support.ts";
 
 /**
@@ -68,8 +68,6 @@ export function withEnrollmentEnded(directory: DistrictDirectorySnapshot, princi
   };
 }
 
-/** The OneRoster fake's sourcedId for an enrollment: `<section>:<person>` (see `enrollmentsOf` in the fakes). */
-export const fakeEnrollmentId = (offeringId: string, principalId: string) => `${offeringId}:${principalId}`;
 
 /** The people and class a district's scenarios act through, chosen from its own directory. */
 export interface Cast {
@@ -228,27 +226,40 @@ export async function importedPrincipal(district: PilotDistrict, fixturePrincipa
   return PrincipalId.parse(importedId((await district.stores.rosterSources.load()).principals, "principal", fixturePrincipalId));
 }
 
-// ── OneRoster REST ─────────────────────────────────────────────────
+/**
+ * A roster by fixture ID: the active staff and students, and each class's active students. A
+ * synced directory's IDs are mapped back to the fixture's with `toFixture` (see `syncedRoster`),
+ * since an import mints its own.
+ */
+export function fixtureShape(snapshot: DistrictDirectorySnapshot, toFixture: { principal(id: string): string; offering(id: string): string } = { principal: (id) => id, offering: (id) => id }) {
+  const people = snapshot.principals.filter((p) => p.kind !== "guardian" && p.status === "active").map((p) => toFixture.principal(p.id)).toSorted();
+  const classes = Object.fromEntries(snapshot.offerings.map((o) => [
+    toFixture.offering(o.id),
+    snapshot.enrollments.filter((e) => e.offeringId === o.id && e.role === "student" && e.status === "active").map((e) => toFixture.principal(e.principalId)).toSorted(),
+  ]).toSorted(([x], [y]) => (x! < y! ? -1 : 1)));
+  return { people, classes };
+}
 
-/** The district's OneRoster server as the provider fake, seeded through `districtSeed`, and a sync runner over it. */
-export function restRoster(demo: DemoDistrict) {
+// ── Roster sync (OneRoster REST, Clever) ──────────────────────────
+
+/**
+ * The district's roster provider as a provider fake seeded through `districtSeed` (a OneRoster
+ * REST server, or Clever's Data API), and a sync runner over it into the shared pipeline
+ * (`runRosterSync`). The same scenarios drive either: `drop`, `largeRemoval`, `outage` and
+ * `recover` act at the provider as that provider would, and `principal`/`offering` find what a
+ * sync made of a fixture record through the provider's own IDs.
+ */
+export function syncedRoster(demo: DemoDistrict) {
   const clock = { ms: Date.parse("2026-10-20T15:00:00Z") };
-  const fake = new OneRosterFake({ seed: districtSeed(demo), now: () => clock.ms });
-  const client = new oneroster.OneRosterRestClient({
-    config: { baseUrl: fake.baseUrl, tokenUrl: fake.tokenUrl, scopes: [oneroster.ROSTER_CORE_READONLY_SCOPE], pageSize: 5 },
-    credentials: DEFAULT_ONEROSTER_CLIENT,
-    fetch: fake.fetch,
-    sleep: async () => {},
-    clock: () => clock.ms,
-  });
-  const source = oneroster.restRosterSource(client);
-  const config: oneroster.OneRosterImportConfig = { issuer: demo.directory.district.trustedIssuers[0]!, subject: { field: "username" } };
+  const seed = districtSeed(demo);
+  const provider = demo.profile.roster === "clever" ? cleverProvider(seed, clock) : oneRosterProvider(seed, clock);
+  const config: oneroster.OneRosterImportConfig = { issuer: demo.directory.district.trustedIssuers[0]!, subject: provider.subject };
   let runs = 0;
   /** One sync run; `approvedRemoval` is an administrator's approval of a held removal, by its fingerprint. */
   const sync = async (state: oneroster.RosterSyncState, mode: "complete" | "delta", approvedRemoval?: string) => {
     clock.ms += 60_000;
     runs += 1;
-    return oneroster.runRosterSync({ state, source, mode, config, runId: `run-${runs}-${mode}`, clock: () => new Date(clock.ms), ...(approvedRemoval === undefined ? {} : { approvedRemoval }) });
+    return oneroster.runRosterSync({ state, source: provider.source, mode, config, runId: `run-${runs}-${mode}`, clock: () => new Date(clock.ms), ...(approvedRemoval === undefined ? {} : { approvedRemoval }) });
   };
   const empty: oneroster.RosterSyncState = {
     roster: {
@@ -256,34 +267,85 @@ export function restRoster(demo: DemoDistrict) {
       sources: oneroster.EMPTY_SOURCE_MAP,
     },
   };
-  return { fake, clock, sync, empty };
+  const fixtureOf = {
+    principal: new Map(demo.directory.principals.map((p) => [provider.principalSourcedId(p.id), p.id as string])),
+    offering: new Map(demo.directory.offerings.map((o) => [provider.offeringSourcedId(o.id), o.id as string])),
+  };
+  return {
+    clock,
+    sync,
+    empty,
+    /** Ends one student's enrollment at the provider. */
+    drop: provider.drop,
+    largeRemoval: (fraction: number) => provider.fake.inject({ kind: "large-removal", fraction }),
+    outage: () => provider.fake.inject({ kind: "outage", status: 503 }),
+    recover: () => provider.fake.clearFaults(),
+    /** A fixture principal's subject in a synced directory, as the provider asserts it. */
+    subjectOf: provider.subjectOf,
+    /** The principal a sync made of a fixture principal. */
+    principal(state: oneroster.RosterSyncState, fixtureId: string): Principal {
+      const id = importedId(state.roster.sources.principals, "principal", provider.principalSourcedId(fixtureId));
+      return state.roster.snapshot.principals.find((p) => p.id === id)!;
+    },
+    /** The offering a sync made of a fixture offering. */
+    offering: (state: oneroster.RosterSyncState, fixtureId: string): string =>
+      importedId(state.roster.sources.offerings, "offering", provider.offeringSourcedId(fixtureId)),
+    /** The synced directory by fixture ID, comparable with `fixtureShape(demo.directory)`. */
+    shape: (state: oneroster.RosterSyncState) => fixtureShape(state.roster.snapshot, {
+      principal: (id) => fixtureOf.principal.get(sourcedIdOf(state.roster.sources.principals[id as never])) ?? `(unmapped ${id})`,
+      offering: (id) => fixtureOf.offering.get(sourcedIdOf(state.roster.sources.offerings[id as never])) ?? `(unmapped ${id})`,
+    }),
+  };
 }
 
-/**
- * A roster by fixture ID: the active staff and students, and each class's active students. For a
- * directory synced from the fakes, IDs are mapped back through the sync's source map, since the
- * import mints its own and `districtSeed`'s sourcedIds are the fixture's.
- */
-export function fixtureShape(snapshot: DistrictDirectorySnapshot, sources?: oneroster.RosterSyncState["roster"]["sources"]) {
-  const principal = (id: string) => (sources === undefined ? id : sources.principals[id as never]?.sourcedId ?? `(unmapped ${id})`);
-  const offering = (id: string) => (sources === undefined ? id : (sources.offerings[id as never] as string | undefined) ?? `(unmapped ${id})`);
-  const people = snapshot.principals.filter((p) => p.kind !== "guardian" && p.status === "active").map((p) => principal(p.id)).toSorted();
-  const classes = Object.fromEntries(snapshot.offerings.map((o) => [
-    offering(o.id),
-    snapshot.enrollments.filter((e) => e.offeringId === o.id && e.role === "student" && e.status === "active").map((e) => principal(e.principalId)).toSorted(),
-  ]).toSorted(([a], [b]) => (a! < b! ? -1 : 1)));
-  return { people, classes };
+const sourcedIdOf = (entry: string | { sourcedId: string } | undefined) => (typeof entry === "string" ? entry : entry?.sourcedId ?? "");
+
+/** A OneRoster 1.2 REST server: sourcedIds are the seed's IDs, and a person's subject is their username. */
+function oneRosterProvider(seed: DistrictSeed, clock: { ms: number }) {
+  const fake = new OneRosterFake({ seed, now: () => clock.ms });
+  const client = new oneroster.OneRosterRestClient({
+    config: { baseUrl: fake.baseUrl, tokenUrl: fake.tokenUrl, scopes: [oneroster.ROSTER_CORE_READONLY_SCOPE], pageSize: 5 },
+    credentials: DEFAULT_ONEROSTER_CLIENT,
+    fetch: fake.fetch,
+    sleep: async () => {},
+    clock: () => clock.ms,
+  });
+  const usernames = new Map(seed.people.map((p) => [p.id, p.username ?? p.id]));
+  return {
+    fake,
+    source: oneroster.restRosterSource(client),
+    subject: { field: "username" } as const,
+    principalSourcedId: (id: string) => id,
+    offeringSourcedId: (id: string) => id,
+    subjectOf: (id: string) => usernames.get(id)!,
+    /** The SIS ends one enrollment: `tobedeleted` (sourcedId `<section>:<person>`), as a delta reports it. */
+    drop: (offeringId: string, principalId: string) => fake.remove("enrollments", `${offeringId}:${principalId}`),
+  };
 }
 
-/** The principal a REST sync made of a fixture principal. */
-export function syncedPrincipal(state: oneroster.RosterSyncState, fixturePrincipalId: string): Principal {
-  const id = importedId(state.roster.sources.principals, "principal", fixturePrincipalId);
-  return state.roster.snapshot.principals.find((p) => p.id === id)!;
-}
-
-/** The offering a REST sync made of a fixture offering. */
-export function syncedOffering(state: oneroster.RosterSyncState, fixtureOfferingId: string): string {
-  return importedId(state.roster.sources.offerings, "offering", fixtureOfferingId);
+/** Clever's Data API: Clever mints its own IDs, and a person's subject is their Clever user ID. */
+function cleverProvider(seed: DistrictSeed, clock: { ms: number }) {
+  const fake = new CleverDataFake({ seed, now: () => clock.ms });
+  const client = new clever.CleverDataClient({
+    connection: { districtId: fake.districtId, pageSize: 5 },
+    token: fake.districtToken,
+    fetch: fake.fetch,
+    sleep: async () => {},
+    clock: () => clock.ms,
+  });
+  return {
+    fake,
+    source: clever.cleverRosterSource(client),
+    subject: clever.CLEVER_SUBJECT_FIELD,
+    principalSourcedId: (id: string) => fake.userId(id),
+    offeringSourcedId: (id: string) => fake.idOf("sections", id),
+    subjectOf: (id: string) => fake.userId(id),
+    /** The student leaves the section's roster: a `sections.updated` event, as Clever reports it. */
+    drop: (offeringId: string, principalId: string) => {
+      const section = fake.seed.sections.find((s) => s.id === offeringId)!;
+      fake.updateSection(offeringId, { studentIds: section.studentIds.filter((id) => id !== principalId) });
+    },
+  };
 }
 
 // ── LTI ────────────────────────────────────────────────────────────

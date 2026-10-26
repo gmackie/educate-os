@@ -53,12 +53,12 @@ student exporter and the fleet's entitlement cache. The report lists why for eac
 
 | Issue | What it turns on |
 | --- | --- |
-| SCHO-203 Clever connector (merged) | Cedar Valley's vendor SSO, roster sync, drop, hold, outage and term rollover, in a follow-up PR |
+| SCHO-203 Clever connector (merged) | On. Cedar Valley's vendor SSO, first and delta sync, hold and outage run against the Clever Data API and OIDC fakes. Its drop and term rollover wait on SCHO-242. |
 | SCHO-204 ClassLink connector | Lakeshore's vendor SSO. Lakeshore's OneRoster REST roster already runs over the existing OAuth2 client. |
 | SCHO-77 Classroom district sync | Harbor's roster, plus Classroom coursework and LMS outage in Cedar Valley and Harbor |
 | SCHO-215 Google Workspace sign-in | Harbor's vendor SSO |
 | SCHO-180 provider health and hold | The large-removal hold for Northfield's CSV upload. The sync runner holds a large removal since SCHO-203, and the REST districts check it, but `admin.applyRoster` does not use the runner. |
-| SCHO-242 apply REST syncs to the district app | Riverbend and Lakeshore drop and term rollover over HTTP |
+| SCHO-242 apply provider syncs to the district app | Drop and term rollover over HTTP in Riverbend and Lakeshore (OneRoster REST) and Cedar Valley (Clever) |
 | SCHO-210 deploy the demo districts | Every scenario against a live district |
 
 ## The live target

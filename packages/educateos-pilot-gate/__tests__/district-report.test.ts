@@ -58,7 +58,7 @@ describe("the in-process report", () => {
   it("renders a district × scenario table with each blocked cell's issues", () => {
     const markdown = renderDistrictReport(inProcessReport(new Map(), meta));
     expect(markdown).toContain(`| Scenario | ${DEMO_DISTRICTS.map((d) => d.slug).join(" | ")} |`);
-    expect(markdown).toMatch(/`vendor-sso` \|.*NYA \(SCHO-203\)/);
+    expect(markdown).toMatch(/`vendor-sso` \|.*NYA \(SCHO-204\)/);
   });
 });
 
