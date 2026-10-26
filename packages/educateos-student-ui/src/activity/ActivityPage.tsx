@@ -5,7 +5,7 @@ import { useApi, useQuery } from "../api.tsx";
 import { isFinished, workByStep, workSteps, workTitle } from "../courses.ts";
 import { useHasDrafts } from "../drafts.ts";
 import { ErrorState } from "../ErrorState.tsx";
-import { courseTitle, formatDateTime } from "../labels.ts";
+import { classTitleIn, formatDateTime } from "../labels.ts";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import type { AssignedActivity, ArtifactView, CourseWorkspaceView } from "../model.ts";
 import { PrivacyNote } from "../PrivacyNote.tsx";
@@ -126,25 +126,26 @@ const ActivityView = ({ offeringId, courseName, entry, workspace, saved: initial
         )}
       </Section>
 
-      <Section id="feedback" title="Feedback">
+      <Section id="feedback" title="Grade and feedback">
         <FeedbackSection assignmentId={assignment.id} refreshKey={String(submissions)} />
       </Section>
     </div>
   );
 };
 
-/** An activity: instructions, permitted resources, the student's work with its actions, and feedback. */
+/** An activity: instructions, permitted resources, the student's work with its actions, and their grade and feedback. */
 export const ActivityPage = ({ offeringId, assignmentId }: { offeringId: string; assignmentId: string }) => {
   const [page, reload] = useQuery(`activity:${offeringId}:${assignmentId}`, async (api): Promise<ActivityData | undefined> => {
-    const [activities, workspaces] = await Promise.all([
+    const [activities, workspaces, offerings] = await Promise.all([
       api.call("student.listActivities", { params: { offeringId } }),
       api.call("student.listWorkspaces"),
+      api.call("student.listOfferings"),
     ]);
     const entry = activities.find((a) => a.assignment.id === assignmentId);
     if (entry === undefined) return undefined;
     const workspace = workspaces.find((w): w is CourseWorkspaceView => w.kind === "course" && w.offeringId === offeringId);
     const artifacts = workspace === undefined ? [] : await api.call("student.listArtifacts", { params: { workspaceId: workspace.id } });
-    return { offeringId, courseName: courseTitle(activities), entry, workspace, saved: workByStep(entry.assignment, entry.activity.content, artifacts) };
+    return { offeringId, courseName: classTitleIn(offerings, offeringId), entry, workspace, saved: workByStep(entry.assignment, entry.activity.content, artifacts) };
   });
 
   if (page.status === "loading") return <LoadingSkeleton label="Loading this activity" lines={6} />;

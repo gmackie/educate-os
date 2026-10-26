@@ -30,10 +30,15 @@ describe("the family view (ADR-0012)", () => {
     // A family's navigation, never a student's places.
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(within(nav).getAllByRole("link").map((l) => l.textContent)).toStrictEqual(["My children"]);
-    // Notifications and settings are a student's (SCHO-189); a guardian is not offered them.
-    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+    // Notifications are a student's (SCHO-189); a guardian has their own settings and can sign out (SCHO-222).
+    expect(screen.queryByRole("link", { name: /Notifications/ })).toBeNull();
+    expect(screen.getByRole("link", { name: "Settings" }).getAttribute("href")).toBe("/family/settings");
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+    // Each class says what its graded work adds up to so far (SCHO-222).
+    expect(await within(current).findByText("Graded so far: 11 of 13 points")).toBeTruthy();
+    expect(await within(past).findByText("Nothing graded yet")).toBeTruthy();
     // Only the routes a guardian may call.
-    expect(new Set(family.calls.map((c) => c.name))).toStrictEqual(new Set(["me.get", "guardian.listChildren", "guardian.childOfferings"]));
+    expect(new Set(family.calls.map((c) => c.name))).toStrictEqual(new Set(["me.get", "guardian.listChildren", "guardian.childOfferings", "guardian.childCourse"]));
   });
 
   it("switches between children with the keyboard and says whose classes are showing", async () => {
@@ -62,14 +67,25 @@ describe("the family view (ADR-0012)", () => {
     const assignments = screen.getByRole("list", { name: "Assignments" });
     const essay = within(assignments).getByRole("region", { name: "Should the school day start later?" });
     expect(essay.querySelector("time")?.getAttribute("datetime")).toBe("2026-11-03T21:00:00.000Z");
-    expect(within(essay).getByText("Graded: 8 of 10 points")).toBeTruthy();
-    expect(within(essay).getByText("Official grade: 8 of 10 points")).toBeTruthy();
+    // The grade is said once (SCHO-222).
+    expect(within(essay).getAllByText(/8 of 10 points/).map((e) => e.textContent)).toStrictEqual(["Official grade: 8 of 10 points"]);
     expect(within(essay).getByText("Strong claim; add a counterclaim.")).toBeTruthy();
     expect(within(essay).getByText("Shared by the teacher")).toBeTruthy();
     expect(within(essay).getByRole("table", { name: "Criterion results" })).toBeTruthy();
 
     const poem = within(assignments).getByRole("region", { name: "Analyse a poem" });
     expect(within(poem).getByText("No feedback yet. It shows here once the teacher shares it with Amara Okafor.")).toBeTruthy();
+    // A quiz is scored automatically: its grade, and no wait for written feedback (SCHO-222).
+    const quiz = within(assignments).getByRole("region", { name: "Poetry terms" });
+    expect(within(quiz).getByText("Official grade: 3 of 3 points")).toBeTruthy();
+    expect(within(quiz).queryByText(/No feedback yet/)).toBeNull();
+
+    // The class's announcements, as the child sees them (SCHO-222).
+    const announcements = screen.getByRole("region", { name: "Announcements" });
+    expect(within(announcements).getByRole("article", { name: "Library visit" }).textContent).toContain("We meet at the door.");
+    // One way back, to the child's classes: no breadcrumb trail repeating the heading (SCHO-222).
+    expect(screen.queryByRole("navigation", { name: "breadcrumb" })).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Amara Okafor's classes" })).toHaveLength(1);
     // Nothing to do, and nothing of the child's own work: the view is read-only.
     expect(within(assignments).queryAllByRole("button")).toStrictEqual([]);
     expect(screen.queryByText(/Receipt code|Your work|Submit/)).toBeNull();
@@ -83,7 +99,25 @@ describe("the family view (ADR-0012)", () => {
 
   it("tells a guardian the school has not confirmed them yet", async () => {
     await renderApp(fakeFamily({ children: [] }));
-    expect(await screen.findByText("No children connected yet")).toBeTruthy();
+    expect(await screen.findByText("Waiting for your school to confirm you")).toBeTruthy();
+  });
+
+  it("lets a guardian turn the weekly email update off, and offers no switch where the school sends no email (SCHO-222)", async () => {
+    const user = userEvent.setup();
+    const family = fakeFamily();
+    // A guardian following a student's settings link lands on their own.
+    await renderApp(family, "/settings");
+    expect(await screen.findByRole("heading", { level: 1, name: "Settings" })).toBeTruthy();
+    const weekly = await screen.findByRole("switch", { name: "A weekly update about my children's classes" });
+    expect(weekly.getAttribute("aria-checked")).toBe("true");
+    // Only the family's email, never a student's notification kinds.
+    expect(screen.getAllByRole("switch")).toHaveLength(1);
+    await user.click(weekly);
+    await waitFor(() => expect(family.calls.find((c) => c.name === "me.updatePreferences")?.input).toStrictEqual({ body: { email: { digest: false } } }));
+
+    const { container } = await renderApp(fakeFamily({ emailEnabled: false }), "/family/settings");
+    expect(await within(container).findByText("Your school doesn't send email from EducateOS")).toBeTruthy();
+    expect(within(container).queryAllByRole("switch")).toStrictEqual([]);
   });
 
   it("never offers a student the family view", async () => {
@@ -98,11 +132,14 @@ describe("accepting an invitation", () => {
     const user = userEvent.setup();
     const family = fakeFamily();
     await renderApp(family, "/family/invitation#invitation=tok_valid");
+    // Who and where, before accepting (SCHO-222).
+    expect(await screen.findByRole("heading", { level: 1, name: "Connect to Amara Okafor's classes" })).toBeTruthy();
+    expect(screen.getByText(/Northfield High School invited you to follow Amara Okafor's classes/)).toBeTruthy();
     await user.click(await screen.findByRole("button", { name: "Accept invitation" }));
     expect(await screen.findByText(/Your school will check your sign-in and confirm you as a guardian/)).toBeTruthy();
     await waitFor(() => expect(announcement()).toBe("Invitation accepted"));
-    expect(family.calls.map((c) => c.name)).toStrictEqual(["onboarding.redeemGuardianInvitation"]);
-    expect(family.calls[0]!.input).toStrictEqual({ body: { token: "tok_valid" } });
+    expect(family.calls.map((c) => c.name)).toStrictEqual(["onboarding.previewGuardianInvitation", "onboarding.redeemGuardianInvitation"]);
+    expect(family.calls.map((c) => c.input)).toStrictEqual([{ body: { token: "tok_valid" } }, { body: { token: "tok_valid" } }]);
     expect(window.location.hash).toBe("");
   });
 

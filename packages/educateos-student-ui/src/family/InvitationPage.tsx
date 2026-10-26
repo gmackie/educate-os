@@ -36,6 +36,21 @@ export const InvitationPage = () => {
     if (hash !== "") void navigate({ to: INVITATION_PATH, hash: "", replace: true });
   }, [hash]);
 
+  // Who and where the invitation is for, so the guardian knows before accepting. A link that can't
+  // be used answers as redeeming it would; that is said once they try.
+  const [preview, setPreview] = useState<{ studentDisplayName: string; schoolName: string } | undefined>(undefined);
+  useEffect(() => {
+    if (token === undefined) return;
+    let current = true;
+    api.call("onboarding.previewGuardianInvitation", { body: { token } }).then(
+      (found) => current && setPreview(found),
+      () => {},
+    );
+    return () => {
+      current = false;
+    };
+  }, [api, token]);
+
   const redeem = async (invitation: string) => {
     setState({ status: "sending" });
     try {
@@ -52,7 +67,7 @@ export const InvitationPage = () => {
 
   return (
     <div className="flex max-w-xl flex-col gap-4">
-      <Text variant="heading" size="lg" as="h1">Connect to your child's classes</Text>
+      <Text variant="heading" size="lg" as="h1">{preview === undefined ? "Connect to your child's classes" : `Connect to ${preview.studentDisplayName}'s classes`}</Text>
       {token === undefined ? (
         <Text>Open the invitation link your school gave you. It works once.</Text>
       ) : state.status === "done" ? (
@@ -61,7 +76,12 @@ export const InvitationPage = () => {
         </div>
       ) : (
         <>
-          <Text>Your school invited you to follow a child's classes, assignments, feedback and grades. You can't change anything, and you won't see the child's own work.</Text>
+          <Text>
+            {preview === undefined
+              ? "Your school invited you to follow a child's classes, assignments, feedback and grades."
+              : `${preview.schoolName} invited you to follow ${preview.studentDisplayName}'s classes, assignments, feedback and grades.`}
+            {" You can't change anything, and you won't see the child's own work."}
+          </Text>
           {state.status === "failed" ? (
             <div role="alert">
               <Banner variant="error" icon={<WarningCircleIcon weight="fill" />} title="The invitation could not be accepted" description={state.message} />

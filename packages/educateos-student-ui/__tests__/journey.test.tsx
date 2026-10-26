@@ -19,11 +19,11 @@ describe("the student journey", () => {
     expect(within(courses).getByText(COURSE)).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "My space" })).getByText(PERSONAL)).toBeTruthy();
     const past = screen.getByRole("region", { name: "Past courses (read-only)" });
-    expect(await within(past).findByRole("link", { name: "Art · Grades 9–12" })).toBeTruthy();
+    expect(await within(past).findByRole("link", { name: "Art · Period 2" })).toBeTruthy();
 
     // Course: the activity with its due date and status.
-    await user.click(await within(courses).findByRole("link", { name: "English Language Arts · Grades 9–12" }));
-    expect(await screen.findByRole("heading", { level: 1, name: "English Language Arts · Grades 9–12" })).toBeTruthy();
+    await user.click(await within(courses).findByRole("link", { name: "English 9 · Period 3" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "English 9 · Period 3" })).toBeTruthy();
     expect(screen.getByText(COURSE)).toBeTruthy();
     const row = (await screen.findByRole("link", { name: "Should the school day start later?" })).closest("li")!;
     expect(row.querySelector("time")?.getAttribute("datetime")).toBe("2026-11-03T21:00:00.000Z");
@@ -56,16 +56,16 @@ describe("the student journey", () => {
     await user.click(within(receipt).getByRole("button", { name: "Done" }));
 
     // Feedback: nothing until the teacher releases it, then their comments and criterion results.
-    const feedback = screen.getByRole("region", { name: "Feedback" });
+    const feedback = screen.getByRole("region", { name: "Grade and feedback" });
     expect(await within(feedback).findByText(/No feedback yet/)).toBeTruthy();
     expect(within(feedback).getByText(code)).toBeTruthy();
     district.releaseFeedback(district.submissions[0]!.id, { comments: ["A clear claim. Add evidence."], scores: [{ criterionId: "use-of-evidence", points: 2, maxPoints: 4 }] });
 
     // Back to the class through the breadcrumbs (Kumo renders them once per breakpoint).
-    await user.click(screen.getAllByRole("link", { name: "English Language Arts · Grades 9–12" })[0]!);
+    await user.click(screen.getAllByRole("link", { name: "English 9 · Period 3" })[0]!);
     expect(await screen.findByText("Feedback ready")).toBeTruthy();
     await user.click(screen.getByRole("link", { name: "Should the school day start later?" }));
-    const released = await screen.findByRole("region", { name: "Feedback" });
+    const released = await screen.findByRole("region", { name: "Grade and feedback" });
     expect(await within(released).findByText("A clear claim. Add evidence.")).toBeTruthy();
     const results = within(released).getByRole("table", { name: "Criterion results" });
     expect(within(results).getByRole("row", { name: "Use of evidence 2 of 4" })).toBeTruthy();

@@ -6,7 +6,7 @@ import { ErrorState } from "../ErrorState.tsx";
 import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import { childPath } from "../router.tsx";
 
-/** A guardian's home: their first child's classes, or a note that no child is connected yet. */
+/** A guardian's home: their first child's classes, or a note that the school has yet to confirm them. */
 export const FamilyHomePage = () => {
   const [children, reload] = useQuery("children", (api) => api.call("guardian.listChildren"));
   if (children.status === "loading") return <LoadingSkeleton label="Loading your children" />;
@@ -16,8 +16,8 @@ export const FamilyHomePage = () => {
     return (
       <Empty
         icon={<UsersThreeIcon aria-hidden size={32} />}
-        title="No children connected yet"
-        description="When your school confirms you as a guardian, your child's classes show up here."
+        title="Waiting for your school to confirm you"
+        description="Your school still has to confirm you as your child's guardian. Once it has, your child's classes show up here."
       />
     );
   }

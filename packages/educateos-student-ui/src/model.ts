@@ -5,6 +5,8 @@ import type { RouteResponse } from "@educateos/api-client";
 
 /** The signed-in student. */
 export type Me = RouteResponse<"me.get">;
+/** A class the student is or was enrolled in, with its course and term, which name it (SCHO-222). */
+export type StudentOffering = RouteResponse<"student.listOfferings">[number];
 /** A personal or course workspace, with its lifecycle. */
 export type WorkspaceView = RouteResponse<"student.listWorkspaces">[number];
 /** A course workspace. */
@@ -31,6 +33,8 @@ export type SubmissionReceipt = RouteResponse<"student.submit">;
 export type Submission = RouteResponse<"student.listSubmissions">[number];
 /** Released feedback on one submission. */
 export type Feedback = RouteResponse<"student.getFeedback">;
+/** A comment in released feedback. */
+export type FeedbackComment = Feedback["comments"][number];
 /** One version of the student's official grade for an assignment. */
 export type OfficialGrade = RouteResponse<"student.officialGrades">[number];
 /** The student's own gradebook row in a class: course totals and letter grade (SCHO-187). */

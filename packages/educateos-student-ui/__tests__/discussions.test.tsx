@@ -108,15 +108,22 @@ describe("class discussions", () => {
     const teacher = within(within(replies).getByRole("list", { name: "Replies to a removed post" })).getByRole("article", { name: "Ms. Rivera" });
     expect(within(teacher).getByText("Teacher")).toBeTruthy();
     expect(within(posts).getByRole("article", { name: "You" })).toBeTruthy();
+    // A reply to the student's own post is named for the post, not "Reply to You" (SCHO-222).
+    expect(within(posts).getByRole("button", { name: "Reply to your post" })).toBeTruthy();
+    expect(within(posts).queryByRole("button", { name: "Reply to You" })).toBeNull();
   });
 
   it("posts and replies, announcing each", async () => {
     await renderApp(withDiscussions().district, `/courses/${ENGLISH}`);
     const { user, posts } = await openDebate();
+    const debate = screen.getByRole("region", { name: "Later start?" });
+    expect(within(debate).getByText("3 posts")).toBeTruthy();
     await user.type(screen.getByRole("textbox", { name: "Your post" }), "Buses would need to change.");
     await user.click(screen.getByRole("button", { name: "Post" }));
     await waitFor(() => expect(within(posts).getByText("Buses would need to change.")).toBeTruthy());
     expect(announcement()).toBe("Your post was posted.");
+    // The topic's count keeps up with the post (SCHO-222).
+    expect(await within(debate).findByText("4 posts")).toBeTruthy();
 
     await user.click(within(posts).getByRole("button", { name: "Reply to Elena Petrova" }));
     await user.type(screen.getByRole("textbox", { name: "Reply to Elena Petrova" }), "Agreed!");

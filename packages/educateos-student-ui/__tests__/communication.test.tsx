@@ -27,7 +27,7 @@ describe("announcements", () => {
   it("show the newest across classes on Home", async () => {
     await renderApp(fakeDistrict({ announcements: true }));
     const section = await screen.findByRole("region", { name: "Announcements" });
-    expect(within(section).getByText(/English 9 \(Period 3\)/)).toBeTruthy();
+    expect(within(section).getByText(/English 9 · Period 3/)).toBeTruthy();
   });
 });
 
@@ -40,12 +40,12 @@ describe("notifications", () => {
     await screen.findByRole("heading", { level: 1, name: "Notifications" });
     const links = screen.getAllByRole("link", { name: /announcement|Due soon/ });
     expect(links.map((l) => l.textContent)).toStrictEqual([
-      "Unread: New announcement in English 9 (Period 3): Library visit <Friday>",
-      "Due soon in Biology (Period 1): Osmosis in potato cores",
+      "Unread: New announcement in English 9 · Period 3: Library visit <Friday>",
+      "Due soon in Biology · Period 1: Osmosis in potato cores",
     ]);
     expect(links[1]!.getAttribute("href")).toContain("asg_osmosis-lab");
 
-    await user.click(screen.getByRole("button", { name: 'Mark "New announcement in English 9 (Period 3): Library visit <Friday>" as read' }));
+    await user.click(screen.getByRole("button", { name: 'Mark "New announcement in English 9 · Period 3: Library visit <Friday>" as read' }));
     await waitFor(() => expect(announcement()).toBe("Marked as read"));
     expect(district.calls.filter((c) => c.name === "me.markNotificationsRead").map((c) => c.input)).toStrictEqual([{ body: { ids: [`ntf_${"1".repeat(32)}`] } }]);
     await waitFor(() => expect(screen.queryByRole("button", { name: "Mark all as read" })).toBeNull());
@@ -70,7 +70,7 @@ describe("calendar", () => {
     await screen.findByRole("heading", { level: 1, name: "Calendar" });
     const dueDay = dayHeading.format(new Date("2026-10-22T21:00:00.000Z"));
     const day = await screen.findByRole("region", { name: dueDay });
-    const due = within(day).getByRole("link", { name: "Due: Should the school day start later? — English 9 (Period 3)" });
+    const due = within(day).getByRole("link", { name: "Due: Should the school day start later? — English 9 · Period 3" });
     expect(due.getAttribute("href")).toContain(ESSAY);
     expect(within(screen.getByRole("region", { name: dayHeading.format(new Date(2026, 9, 19)) })).getByText("All day")).toBeTruthy();
     expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(7);
@@ -80,7 +80,7 @@ describe("calendar", () => {
     await waitFor(() => expect(screen.getAllByText("Nothing scheduled")).toHaveLength(7));
 
     await user.click(screen.getByRole("button", { name: "Agenda" }));
-    const lab = await screen.findByRole("link", { name: "Due: Osmosis lab report — Biology (Period 1)" });
+    const lab = await screen.findByRole("link", { name: "Due: Osmosis lab report — Biology · Period 1" });
     expect(lab.closest("section")?.getAttribute("aria-labelledby")).toMatch(/^day-2026-11-1[23]$/);
     expect(screen.queryByText("Nothing scheduled")).toBeNull();
   });
@@ -97,6 +97,14 @@ describe("settings", () => {
     await waitFor(() => expect(screen.getByRole("switch", { name: "New announcements" }).getAttribute("aria-checked")).toBe("false"));
     expect(district.calls.filter((c) => c.name === "me.updatePreferences").map((c) => c.input)).toStrictEqual([{ body: { email: { announcements: false } } }]);
     expect(announcement()).toBe("Email turned off");
+  });
+
+  it("offers no email switches where the school sends no email, only saying so (SCHO-222)", async () => {
+    const district = fakeDistrict();
+    district.setEmailEnabled(false);
+    await renderApp(district, "/settings");
+    expect(await screen.findByText("Your school doesn't send email from EducateOS")).toBeTruthy();
+    expect(screen.queryAllByRole("switch")).toStrictEqual([]);
   });
 
   it("makes a calendar link shown once, replaces it, and turns it off", async () => {

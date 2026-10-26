@@ -6,11 +6,10 @@ import { useAnnounce } from "./AppContext.tsx";
 import { canKeepFrom, personalWorkspace } from "./courses.ts";
 import { clearDraft, readDraft, writeDraft } from "./drafts.ts";
 import { ErrorState } from "./ErrorState.tsx";
-import { courseTitle, formatDateTime } from "./labels.ts";
+import { classTitleIn, formatDateTime } from "./labels.ts";
 import { LoadingSkeleton } from "./LoadingSkeleton.tsx";
 import type { ArtifactView, CourseWorkspaceView } from "./model.ts";
 import { PrivacyNote } from "./PrivacyNote.tsx";
-import { useCourseActivities } from "./useCourseActivities.ts";
 import { ArtifactViewer } from "./viewers/ArtifactViewer.tsx";
 
 const NOTE_DRAFT = "my-space/new-note";
@@ -86,28 +85,24 @@ const KeepButton = ({ workspaceId, view, onKept }: { workspaceId: string; view: 
   );
 };
 
-const FinishedCourse = ({ workspace, artifacts, onKept }: { workspace: CourseWorkspaceView; artifacts: ArtifactView[]; onKept: () => void }) => {
-  const [activities] = useCourseActivities(workspace.offeringId);
-  const name = activities.status === "ready" ? courseTitle(activities.data) : "A finished class";
-  return (
-    <section aria-label={name} className="flex flex-col gap-2">
-      <Text variant="heading" as="h3">
-        {name}
-      </Text>
-      {artifacts.length === 0 ? (
-        <Text variant="secondary">No saved work in this class.</Text>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {artifacts.map((view) => (
-            <li key={view.artifact.id}>
-              <ArtifactRow view={view} action={<KeepButton workspaceId={workspace.id} view={view} onKept={onKept} />} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-};
+const FinishedCourse = ({ workspace, name, artifacts, onKept }: { workspace: CourseWorkspaceView; name: string; artifacts: ArtifactView[]; onKept: () => void }) => (
+  <section aria-label={name} className="flex flex-col gap-2">
+    <Text variant="heading" as="h3">
+      {name}
+    </Text>
+    {artifacts.length === 0 ? (
+      <Text variant="secondary">No saved work in this class.</Text>
+    ) : (
+      <ul className="flex flex-col gap-2">
+        {artifacts.map((view) => (
+          <li key={view.artifact.id}>
+            <ArtifactRow view={view} action={<KeepButton workspaceId={workspace.id} view={view} onKept={onKept} />} />
+          </li>
+        ))}
+      </ul>
+    )}
+  </section>
+);
 
 /** A new private note. Its text is kept as a draft until it saves, like work in a class. */
 const NoteForm = ({ onSaved, onCancel }: { onSaved: () => void; onCancel: () => void }) => {
@@ -173,11 +168,12 @@ export const MySpacePage = () => {
     const workspaces = await api.call("student.listWorkspaces");
     const personal = personalWorkspace(workspaces);
     const finished = workspaces.filter((w): w is CourseWorkspaceView => w.kind === "course" && canKeepFrom(w));
-    const [mine, fromCourses] = await Promise.all([
+    const [mine, fromCourses, offerings] = await Promise.all([
       personal === undefined ? [] : api.call("student.listArtifacts", { params: { workspaceId: personal.id } }),
       Promise.all(finished.map(async (workspace) => ({ workspace, artifacts: await api.call("student.listArtifacts", { params: { workspaceId: workspace.id } }) }))),
+      finished.length === 0 ? [] : api.call("student.listOfferings"),
     ]);
-    return { mine, fromCourses };
+    return { mine, fromCourses: fromCourses.map((entry) => ({ ...entry, name: classTitleIn(offerings, entry.workspace.offeringId) })) };
   });
 
   return (
@@ -226,8 +222,8 @@ export const MySpacePage = () => {
                 </Text>
                 <Text variant="secondary">A copy you keep moves here, where only you can see it.</Text>
               </div>
-              {space.data.fromCourses.map(({ workspace, artifacts }) => (
-                <FinishedCourse key={workspace.id} workspace={workspace} artifacts={artifacts} onKept={reload} />
+              {space.data.fromCourses.map(({ workspace, name, artifacts }) => (
+                <FinishedCourse key={workspace.id} workspace={workspace} name={name} artifacts={artifacts} onKept={reload} />
               ))}
             </section>
           )}

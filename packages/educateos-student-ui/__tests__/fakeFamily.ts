@@ -19,6 +19,7 @@ export const MATH = "off_nf-math7-fall-p1";
 /** Assignments in English. */
 export const ESSAY = "asg_essay-later-start";
 export const POEM = "asg_poem-analysis";
+export const QUIZ = "asg_poetry-quiz";
 
 const notFound = () => new DistrictApiError(404, { code: "not-found", message: "We couldn't find that." });
 const forbidden = () => new DistrictApiError(403, { code: "forbidden", message: "This part of EducateOS is not available to your account." });
@@ -49,30 +50,40 @@ const feedback = (submissionId: string, comment: string) => ({
   updatedAt: NOW,
 });
 
-const assignment = (id: string, offeringId: string, title: string, dueAt: string) => ({ id, offeringId, title, dueAt });
+const assignment = (id: string, offeringId: string, title: string, dueAt: string, kind: "activity" | "quiz" = "activity") => ({ id, offeringId, title, dueAt, kind });
 
-const COURSES: Record<string, { assignments: unknown[] }> = {
+const grade = (assignmentId: string, submissionId: string, points: number, maxPoints: number) => ({
+  assignmentId,
+  studentPrincipalId: AMARA,
+  submissionId,
+  version: 1,
+  score: { points, maxPoints },
+  recordedBy: "prn_nf-teacher-rivera",
+  recordedVia: "ui",
+  recordedAt: NOW,
+});
+
+const LIBRARY = {
+  id: "ann_library", districtId: DISTRICT, offeringId: ENGLISH, title: "Library visit", body: "Bring your card.\nWe meet at the door.",
+  publishAt: "2026-10-19T13:00:00.000Z", created: { by: "prn_nf-teacher-rivera", at: "2026-10-19T13:00:00.000Z" },
+};
+
+const COURSES: Record<string, { assignments: unknown[]; announcements: unknown[] }> = {
   [`${AMARA}:${ENGLISH}`]: {
     assignments: [
       {
         assignment: assignment(ESSAY, ENGLISH, "Should the school day start later?", "2026-11-03T21:00:00.000Z"),
         feedback: [feedback("sub_amara-essay", "Strong claim; add a counterclaim.")],
-        grades: [{
-          assignmentId: ESSAY,
-          studentPrincipalId: AMARA,
-          submissionId: "sub_amara-essay",
-          version: 1,
-          score: { points: 8, maxPoints: 10 },
-          recordedBy: "prn_nf-teacher-rivera",
-          recordedVia: "ui",
-          recordedAt: NOW,
-        }],
+        grades: [grade(ESSAY, "sub_amara-essay", 8, 10)],
       },
+      // A quiz is scored automatically: a grade, never written feedback.
+      { assignment: assignment(QUIZ, ENGLISH, "Poetry terms", "2026-11-06T20:00:00.000Z", "quiz"), feedback: [], grades: [grade(QUIZ, "sub_amara-quiz", 3, 3)] },
       { assignment: assignment(POEM, ENGLISH, "Analyse a poem", "2026-11-10T21:00:00.000Z"), feedback: [], grades: [] },
     ],
+    announcements: [LIBRARY],
   },
-  [`${AMARA}:${ART_SPRING}`]: { assignments: [] },
-  [`${SAM}:${MATH}`]: { assignments: [] },
+  [`${AMARA}:${ART_SPRING}`]: { assignments: [], announcements: [] },
+  [`${SAM}:${MATH}`]: { assignments: [], announcements: [] },
 };
 
 type Handlers = { [N in RouteName]?: (input: RouteInput<N>) => unknown };
@@ -86,7 +97,8 @@ export interface FakeFamily extends DistrictApiClient {
 }
 
 /** A guardian of Amara and Sam, or, with `children: []`, one the school has not confirmed yet. */
-export function fakeFamily(options: { children?: readonly string[] } = {}): FakeFamily {
+export function fakeFamily(options: { children?: readonly string[]; emailEnabled?: boolean } = {}): FakeFamily {
+  let preferences = { email: { announcements: true, assignments: true, feedback: true, grades: true, digest: true }, hasEmailAddress: true, emailEnabled: options.emailEnabled ?? true };
   const mine = new Set(options.children ?? [AMARA, SAM]);
   const names: Record<string, string> = { [AMARA]: "Amara Okafor", [SAM]: "Sam Okafor" };
   const calls: FakeFamily["calls"] = [];
@@ -105,6 +117,12 @@ export function fakeFamily(options: { children?: readonly string[] } = {}): Fake
       const course = COURSES[`${params.studentId}:${params.offeringId}`];
       if (found === undefined || course === undefined) throw notFound();
       return { ...found, ...course };
+    },
+    "me.preferences": () => preferences,
+    "me.updatePreferences": ({ body }) => (preferences = { ...preferences, email: { ...preferences.email, ...body.email } }),
+    "onboarding.previewGuardianInvitation": ({ body }) => {
+      if (body.token !== "tok_valid") throw new DistrictApiError(404, { code: "not-found", message: "This invitation link can't be used. Ask the school for a new one." });
+      return { studentDisplayName: "Amara Okafor", schoolName: "Northfield High School" };
     },
     "onboarding.redeemGuardianInvitation": ({ body }) => {
       if (body.token !== "tok_valid") throw new DistrictApiError(404, { code: "not-found", message: "This invitation link can't be used. Ask the school for a new one." });

@@ -10,12 +10,19 @@ import { PostComposer } from "./PostComposer.tsx";
 import { PostItem } from "./PostItem.tsx";
 import { threadTree } from "./threadTree.ts";
 
-/** An open topic: its prompt, the class's posts as a reply tree, and a box to post in. */
-export const TopicThread = ({ topic }: { topic: DiscussionTopic }) => {
+/**
+ * An open topic: its prompt, the class's posts as a reply tree, and a box to post in. `onChanged`
+ * runs after the student posts, edits or deletes, so what lists the topic (its post count) keeps up.
+ */
+export const TopicThread = ({ topic, onChanged }: { topic: DiscussionTopic; onChanged: () => void }) => {
   const api = useApi();
   const announce = useAnnounce();
   const params = { offeringId: topic.offeringId, topicId: topic.id };
-  const [thread, reload] = useQuery(`discussion:${topic.offeringId}:${topic.id}`, (client) => client.call("student.discussionThread", { params }));
+  const [thread, reloadThread] = useQuery(`discussion:${topic.offeringId}:${topic.id}`, (client) => client.call("student.discussionThread", { params }));
+  const reload = () => {
+    reloadThread();
+    onChanged();
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -24,7 +31,7 @@ export const TopicThread = ({ topic }: { topic: DiscussionTopic }) => {
         <Banner variant="secondary" size="sm" icon={<LockSimpleIcon weight="fill" />} title="This discussion is closed" description="You can read it, but your teacher has stopped new posts." />
       ) : null}
       {thread.status === "loading" ? <LoadingSkeleton label="Loading the discussion" lines={3} /> : null}
-      {thread.status === "error" ? <ErrorState error={thread.error} title="We couldn't load this discussion" onRetry={reload} /> : null}
+      {thread.status === "error" ? <ErrorState error={thread.error} title="We couldn't load this discussion" onRetry={reloadThread} /> : null}
       {thread.status === "ready" ? (
         thread.data.posts.length === 0 ? (
           <Text variant="secondary">No posts yet.</Text>

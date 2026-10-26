@@ -34,7 +34,7 @@ describe("layout", () => {
   it("puts the navigation along the bottom on a phone", async () => {
     setViewport("phone");
     const { container } = await renderApp(fakeDistrict());
-    await screen.findByRole("link", { name: "Art · Grades 9–12" });
+    await screen.findByRole("link", { name: "Art · Period 2" });
     const layout = container.querySelector("[data-layout]")!;
     expect(layout.getAttribute("data-layout")).toBe("phone");
     // The navigation comes after the main content, within thumb reach, and not in the header.

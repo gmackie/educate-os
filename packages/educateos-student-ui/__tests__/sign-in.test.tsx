@@ -46,6 +46,37 @@ describe("someone the school has not added yet", () => {
   });
 });
 
+describe("a guardian who accepted an invitation the school has yet to approve (SCHO-222)", () => {
+  it("is told to wait for the school, not to send a sign-in ID", async () => {
+    const district = fakeDistrict();
+    district.failNext("me.get", { code: "unauthenticated", message: "This sign-in is not linked to a principal in this district.", unlinkedSignIn: { issuer: ISSUER, subject: "gina-okafor", awaitingApproval: true } });
+    await renderApp(district);
+    const heading = await screen.findByRole("heading", { level: 1, name: "Waiting for your school to confirm you" });
+    const section = heading.closest("section")!;
+    expect(within(section).queryByRole("group", { name: "Your sign-in ID" })).toBeNull();
+    expect(section.textContent).not.toContain("Send this ID");
+    expect(within(section).getByRole("link", { name: "Sign out" })).toBeTruthy();
+  });
+});
+
+describe("signing out (SCHO-222)", () => {
+  it("is offered to a signed-in student: Access's logout behind Access", async () => {
+    vi.stubEnv("VITE_CF_ACCESS_MODE", "true");
+    await renderApp(fakeDistrict());
+    await screen.findByRole("heading", { level: 1, name: "Hi, Amara Okafor" });
+    expect(screen.getByRole("link", { name: "Sign out" }).getAttribute("href")).toBe(`${window.location.origin}/cdn-cgi/access/logout`);
+  });
+
+  it("with a development sign-in link, forgets the tab's token", async () => {
+    vi.stubEnv("VITE_CF_ACCESS_MODE", "");
+    sessionStorage.setItem("educateos.student.token", "tok_dev");
+    const user = userEvent.setup();
+    await renderApp(fakeDistrict());
+    await user.click(await screen.findByRole("button", { name: "Sign out" }));
+    expect(sessionStorage.getItem("educateos.student.token")).toBeNull();
+  });
+});
+
 describe("a sign-in that ended or did not verify", () => {
   const ended = () => {
     const district = fakeDistrict();

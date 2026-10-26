@@ -19,7 +19,7 @@ describe("keyboard only", () => {
     const user = userEvent.setup();
     await renderApp(district);
 
-    const course = await screen.findByRole("link", { name: "Science · Grades 9–12" });
+    const course = await screen.findByRole("link", { name: "Biology · Period 1" });
     await tabTo(user, course);
     await user.keyboard("{Enter}");
 

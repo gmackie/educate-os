@@ -1,7 +1,8 @@
 // A scripted district for the UI tests: the student routes over in-memory state built from
 // synthetic `.example` data, with a hook to make the next call to a route fail and a log of calls.
 // It answers the way the district does where the UI depends on it: feedback is not-found until the
-// teacher releases it, and a finished class's work can be kept only once the term has closed.
+// teacher releases it (and an assignment's released feedback an empty list), and a finished class's
+// work can be kept only once the term has closed.
 import { DistrictApiError, type DistrictApiClient, type RouteInput, type RouteName, type RouteResponse } from "@educateos/api-client";
 
 const NOW = "2026-10-20T15:00:00.000Z";
@@ -85,7 +86,7 @@ interface StoredArtifact {
  */
 export type InjectedFailure =
   | { code: "unavailable" | "conflict" | "forbidden"; message?: string }
-  | { code: "unauthenticated"; message?: string; unlinkedSignIn?: { issuer: string; subject: string } }
+  | { code: "unauthenticated"; message?: string; unlinkedSignIn?: { issuer: string; subject: string; awaitingApproval?: true } }
   | "network";
 
 const STATUS: Record<Exclude<InjectedFailure, "network">["code"], number> = { unavailable: 503, conflict: 409, forbidden: 403, unauthenticated: 401 };
@@ -97,7 +98,9 @@ export interface FakeDistrict extends DistrictApiClient {
   /** Makes the next call to `name` fail. */
   failNext(name: RouteName, failure: InjectedFailure): void;
   /** Releases teacher feedback on a submission, as the teacher's "share with student" does. */
-  releaseFeedback(submissionId: string, feedback: { comments: string[]; scores: { criterionId: string; points: number; maxPoints?: number }[] }): void;
+  releaseFeedback(submissionId: string, feedback: { comments: (string | { body: string; anchor: { artifactId: string; revisionId: string; start: number; end: number } })[]; scores: { criterionId: string; points: number; maxPoints?: number }[] }): void;
+  /** Lets the district send email, or not (SCHO-222). */
+  setEmailEnabled(enabled: boolean): void;
   /** Adds a saved artifact directly, as if made earlier. */
   addArtifact(workspaceId: string, title: string, type: string, mediaType: string, content: unknown): string;
   /** Records an official grade version for an assignment, as the teacher's approval does. */
@@ -225,22 +228,40 @@ export function fakeDistrict(options: {
       id: "ann_library", districtId: DISTRICT, offeringId: ENGLISH, title: "Library visit <Friday>", body: "Bring your card.\nWe meet at the door.",
       publishAt: "2026-10-19T13:00:00.000Z", created: { by: "prn_nf-teacher-rivera", at: "2026-10-19T13:00:00.000Z" },
     },
-    courseLabel: "English 9 (Period 3)",
+    courseLabel: "English 9 · Period 3",
     published: true,
   };
   const notifications: (Record<string, unknown> & { id: string; readAt?: string })[] = [
-    { id: `ntf_${"1".repeat(32)}`, principalId: ME, kind: "announcement", offeringId: ENGLISH, title: "New announcement in English 9 (Period 3): Library visit <Friday>", ref: { announcementId: "ann_library" }, occurredAt: "2026-10-19T13:00:00.000Z", createdAt: NOW },
-    { id: `ntf_${"2".repeat(32)}`, principalId: ME, kind: "assignment-due-soon", offeringId: SCIENCE, title: "Due soon in Biology (Period 1): Osmosis in potato cores", ref: { assignmentId: OSMOSIS }, occurredAt: "2026-10-18T13:00:00.000Z", createdAt: NOW, readAt: NOW },
+    { id: `ntf_${"1".repeat(32)}`, principalId: ME, kind: "announcement", offeringId: ENGLISH, title: "New announcement in English 9 · Period 3: Library visit <Friday>", ref: { announcementId: "ann_library" }, occurredAt: "2026-10-19T13:00:00.000Z", createdAt: NOW },
+    { id: `ntf_${"2".repeat(32)}`, principalId: ME, kind: "assignment-due-soon", offeringId: SCIENCE, title: "Due soon in Biology · Period 1: Osmosis in potato cores", ref: { assignmentId: OSMOSIS }, occurredAt: "2026-10-18T13:00:00.000Z", createdAt: NOW, readAt: NOW },
   ];
   let preferences = { email: { announcements: true, assignments: true, feedback: true, grades: true, digest: true }, hasEmailAddress: true, emailEnabled: true };
   let feed: { createdAt: string; path: string } | undefined;
   const CALENDAR = [
     { uid: "term-start-trm_fall@dst_northfield.schoolos", kind: "term-start", title: "Fall 2026 begins", start: "2026-10-19", allDay: true }, // rename-educateos: keep
-    { uid: `due-${ESSAY}@dst_northfield.schoolos`, kind: "assignment-due", title: "Due: Should the school day start later? — English 9 (Period 3)", start: "2026-10-22T21:00:00.000Z", allDay: false, offeringId: ENGLISH, assignmentId: ESSAY }, // rename-educateos: keep
-    { uid: `due-${LAB_REPORT}@dst_northfield.schoolos`, kind: "assignment-due", title: "Due: Osmosis lab report — Biology (Period 1)", start: "2026-11-12T21:00:00.000Z", allDay: false, offeringId: SCIENCE, assignmentId: LAB_REPORT }, // rename-educateos: keep
+    { uid: `due-${ESSAY}@dst_northfield.schoolos`, kind: "assignment-due", title: "Due: Should the school day start later? — English 9 · Period 3", start: "2026-10-22T21:00:00.000Z", allDay: false, offeringId: ENGLISH, assignmentId: ESSAY }, // rename-educateos: keep
+    { uid: `due-${LAB_REPORT}@dst_northfield.schoolos`, kind: "assignment-due", title: "Due: Osmosis lab report — Biology · Period 1", start: "2026-11-12T21:00:00.000Z", allDay: false, offeringId: SCIENCE, assignmentId: LAB_REPORT }, // rename-educateos: keep
+  ];
+
+  // The student's classes, by name (SCHO-222).
+  const term = (id: string, name: string, state: string) => ({ id, districtId: DISTRICT, name, startsOn: "2026-01-12", endsOn: "2027-01-22", state });
+  const FALL = term("trm_fall", "Fall 2026", "active");
+  const SPRING = term("trm_spring", "Spring 2026", "completed");
+  const offering = (id: string, courseId: string, title: string, subject: string, termValue: typeof FALL, sectionName: string) => ({
+    offering: { id, districtId: DISTRICT, schoolId: "sch_nf-high", termId: termValue.id, courseId, sectionName },
+    course: { id: courseId, districtId: DISTRICT, title, subject, gradeBand: "9-12" },
+    term: termValue,
+  });
+  const OFFERINGS = [
+    offering(ENGLISH, "crs_nf-english-9", "English 9", "english-language-arts", FALL, "Period 3"),
+    offering(SCIENCE, "crs_nf-biology", "Biology", "science", FALL, "Period 1"),
+    offering(ART_SPRING, "crs_nf-art", "Art", "arts", SPRING, "Period 2"),
   ];
 
   const handlers: Handlers = {
+    "student.listOfferings": () => OFFERINGS,
+    "student.assignmentFeedback": ({ params }) =>
+      submissions.filter((s) => s.assignmentId === params.assignmentId).flatMap((s) => (feedback.has(s.id) ? [feedback.get(s.id)] : [])),
     "student.announcements": () => (options.announcements === true ? [ANNOUNCEMENT] : []),
     "student.courseAnnouncements": ({ params }) => (options.announcements === true && params.offeringId === ENGLISH ? [ANNOUNCEMENT] : []),
     "me.notifications": () => ({ notifications, unread: notifications.filter((n) => n.readAt === undefined).length }),
@@ -326,6 +347,7 @@ export function fakeDistrict(options: {
     submissions,
     addArtifact,
     failNext: (name, failure) => void failures.set(name, failure),
+    setEmailEnabled: (enabled) => void (preferences = { ...preferences, emailEnabled: enabled }),
     markAssignment: (assignmentId, marker) => void markers.set(assignmentId, marker),
     recordGrade(assignmentId, score) {
       const course = Object.values(activities).flat().find((a) => a.assignment.id === assignmentId)!.assignment;
@@ -346,7 +368,13 @@ export function fakeDistrict(options: {
       feedback.set(submissionId, {
         submissionId,
         state: "shared-with-student",
-        comments: comments.map((body) => ({ id: next("fbc"), body, source: { kind: "teacher" }, enteredBy: "prn_nf-teacher-rivera", enteredAt: time() })),
+        comments: comments.map((comment) => {
+          const { body, anchor } = typeof comment === "string" ? { body: comment, anchor: undefined } : comment;
+          return {
+            id: next("fbc"), body, source: { kind: "teacher" }, enteredBy: "prn_nf-teacher-rivera", enteredAt: time(),
+            ...(anchor === undefined ? {} : { anchor: { artifactId: anchor.artifactId, revisionId: anchor.revisionId, region: { kind: "text-range", start: anchor.start, end: anchor.end } } }),
+          };
+        }),
         scores: scores.map((score) => ({ ...score, source: { kind: "teacher" }, enteredBy: "prn_nf-teacher-rivera", enteredAt: time() })),
         updatedAt: time(),
       });
