@@ -99,14 +99,14 @@ describe("ensureExternalWorkspace", () => {
     expect(bobRef).not.toBe(aliceRef);
 
     // The owner can open it, as its owner, with no collaborators.
-    using workspace = alice.openGadget(aliceRef);
+    using workspace = alice.openWorkspace(aliceRef);
     expect((await workspace.getMetadata()).owner).toBeUndefined();
     expect(await workspace.listCollaborators()).toEqual([]);
 
     // Anyone else, knowing its ID, is denied, and it never appears in their listing.
-    using intruderView = bob.openGadget(aliceRef);
+    using intruderView = bob.openWorkspace(aliceRef);
     await expect(intruderView.getMetadata()).rejects.toThrow("You don't have access to this workspace.");
-    expect((await bob.listGadgets()).map(g => g.id)).not.toContain(aliceRef);
+    expect((await bob.listWorkspaces()).map(g => g.id)).not.toContain(aliceRef);
     expect(await storedRecord(b.username, aliceRef)).toBeUndefined();
   });
 });
