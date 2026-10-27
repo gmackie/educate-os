@@ -82,6 +82,19 @@ describe("the launch handler", () => {
     expect(logged(consoleSpies)).not.toContain("expired-code");
   });
 
+  it("logs Clever's status and OAuth error code with a refusal, and nothing else of its reply", async () => {
+    const consoleSpies = spyOnConsole();
+    const fetch: CleverLaunchDeps["fetch"] = async () =>
+      Response.json({ error: "invalid_client", error_description: "client secret-ish detail" }, { status: 401 });
+    const response = await cleverLaunch(launch(`launch-${SANDBOX_DISTRICT}`), deps({ fetch }));
+    expect(response.status).toBe(502);
+    await response.body?.cancel();
+    expect(consoleSpies[2]!.mock.calls).toEqual([
+      ["clever launch refused", { event: "clever.launch.refused", reason: "exchange-failed", cleverStatus: 401, cleverError: "invalid_client" }],
+    ]);
+    expect(logged(consoleSpies)).not.toContain("secret-ish");
+  });
+
   it("answers Clever being down or redirecting like a refusal", async () => {
     const down = await cleverLaunch(launch(`launch-${SANDBOX_DISTRICT}`), deps({ fetch: async () => { throw new TypeError("network"); } }));
     expect(down.status).toBe(502);
