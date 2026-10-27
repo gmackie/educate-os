@@ -1,6 +1,19 @@
 import { isDeviceHandoffState, type DeviceSessionHandoff } from "./device-session-handoff.js";
 
-const CALLBACK_URL = "https://os.cloudflare.app/oauthredirect";
+const DEFAULT_NATIVE_CALLBACK_ORIGIN = "https://mobile.educateos.io";
+
+/** The redirect target belongs to one installed app, never to the calling browser. */
+export function nativeCallbackOrigin(value?: string): string {
+  if (!value) return DEFAULT_NATIVE_CALLBACK_ORIGIN;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password ||
+        url.search || url.hash || url.pathname !== "/" || url.port) throw new Error("Invalid");
+    return url.origin;
+  } catch {
+    throw new Error("NATIVE_APP_CALLBACK_ORIGIN must be one canonical HTTPS origin.");
+  }
+}
 const LOWER_HEX_64 = /^[0-9a-f]{64}$/;
 
 type ConsumeDeviceHandoff = (
@@ -19,6 +32,7 @@ export async function deviceSessionCallback(
     req: Request,
     consume: ConsumeDeviceHandoff,
     expectedUserDoId?: string,
+    appOrigin?: string,
 ): Promise<Response> {
   const headers = {
     "Cache-Control": "no-store",
@@ -68,7 +82,7 @@ export async function deviceSessionCallback(
   }
   const callback = new URL(desktop
     ? `http://127.0.0.1:${desktop[1]}/oauthredirect`
-    : CALLBACK_URL);
+    : nativeCallbackOrigin(appOrigin) + "/oauthredirect");
   callback.searchParams.set("cfos_callback", "install-connected");
   for (const [name, value] of Object.entries({ state, ...handoff })) {
     callback.searchParams.set(name, value);

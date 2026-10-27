@@ -75,6 +75,7 @@ declare global {
       // Cloudflare Access (SSO). (Also referenced via a local Env extension in server.ts.)
       CF_ACCESS_AUD?: string;   // audience
       CF_ACCESS_ISS?: string;   // team URL, e.g. https://<team>.cloudflareaccess.com
+      NATIVE_APP_CALLBACK_ORIGIN?: string; // canonical HTTPS origin for a claimed app callback
 
       // Optional principal resolver (see auth/principal-sign-in.ts). The deployment binds it; when
       // it is bound, Access sign-in names users by principal and every other sign-in is refused.

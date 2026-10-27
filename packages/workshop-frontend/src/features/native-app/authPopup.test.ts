@@ -176,7 +176,7 @@ describe('external browser relay', () => {
     expect(bootstrap.destination).toBe(FLOW)
     const returned = nativeAuthRelay('#' + TICKET, bootstrap.record, 2000)!
     const url = new URL(returned.destination)
-    expect(url.origin + url.pathname).toBe('https://os.cloudflare.app/authpopup')
+    expect(url.origin + url.pathname).toBe('https://mobile.educateos.io/authpopup')
     expect(url.search).toBe('')
     expect(new URLSearchParams(url.hash.slice(1)).get('id')).toBe(ID)
     expect(new URLSearchParams(url.hash.slice(1)).get('ticket')).toBe(TICKET)

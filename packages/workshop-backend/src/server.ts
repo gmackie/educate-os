@@ -85,6 +85,7 @@ type Env = Cloudflare.Env & {
   // Set these if using Cloudflare Access for authentication, otherwise username/password is used.
   CF_ACCESS_AUD?: string,  // audience
   CF_ACCESS_ISS?: string,  // team URL, i.e. https://<team>.cloudflareaccess.com
+  NATIVE_APP_CALLBACK_ORIGIN?: string, // claimed HTTPS mobile app origin
   DEV?: boolean;
   FLAGS?: Flagship;
 }
@@ -1002,7 +1003,7 @@ export default {
           return null;
         }
         return await ctx.exports.UserDurableObject.get(id).consumeDeviceSessionHandoff(state, ticket);
-      }, expectedUserDoId);
+      }, expectedUserDoId, env.NATIVE_APP_CALLBACK_ORIGIN);
     }
 
     if (url.pathname === "/api") {

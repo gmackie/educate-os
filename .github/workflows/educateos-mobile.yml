@@ -1,0 +1,41 @@
+name: EducateOS Mobile
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/workshop-backend/src/auth/device-session-callback.ts'
+      - 'packages/workshop-frontend/src/features/native-app/authPopup.ts'
+      - '.github/workflows/educateos-mobile.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/educateos-mobile.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  native-source:
+    name: Expo source and UI
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.3.0'
+      - name: Install isolated mobile dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check Expo dependencies
+        run: npx expo install --check
+      - name: Typecheck mobile UI
+        run: npm run typecheck
+      - name: Security unit tests
+        run: npm test
+      - name: Validate public Expo configuration
+        run: npx expo config --type public --json > /dev/null
