@@ -105,6 +105,15 @@ export interface CardSetupOutcome {
   charge?: InvoiceChargeState;
 }
 
+/**
+ * What a Stripe webhook delivery came to. `retry` asks Stripe to redeliver it: an event about one
+ * of EducateOS's own charges that couldn't be matched yet.
+ */
+export interface WebhookOutcome {
+  outcome: string;
+  retry?: true;
+}
+
 /** What the routes need from billing. The Durable Object's RPC stub satisfies it. */
 export interface BillingApi {
   billingOverview(operator: Operator): Promise<BillingReply<BillingOverview>>;
@@ -114,7 +123,7 @@ export interface BillingApi {
   payInvoice(operator: Operator): Promise<BillingReply<InvoiceChargeState>>;
   paymentMethodPortal(operator: Operator, origin: string): Promise<BillingReply<{ url: string }>>;
   cancelSubscription(operator: Operator): Promise<BillingReply<Subscription>>;
-  receiveStripeWebhook(payload: string, signature: string): Promise<BillingReply<{ outcome: string }>>;
+  receiveStripeWebhook(payload: string, signature: string): Promise<BillingReply<WebhookOutcome>>;
 }
 
 /** Where the routes are. */
@@ -217,8 +226,9 @@ export class ControlPlaneBilling {
 
   /**
    * Finishes the card setup the operator came back from. Once the subscription is active, its
-   * term's invoice is issued if it hasn't been and charged to the saved card unless a charge is
-   * already paid, on its way, or was declined (which the operator retries with Pay now). Coming
+   * term's invoice is issued if it hasn't been and charged to the saved card if it has never had a
+   * charge. One paid, on its way, declined, or reopened by a refund is left for the operator's
+   * explicit Pay now, so reopening an old return address (Back, a bookmark) never charges. Coming
    * back again therefore issues no second invoice, and finishes a charge an earlier visit couldn't
    * make: Stripe unreachable, or the object restarted between the steps. The charge's outcome
    * arrives by webhook.
@@ -283,20 +293,22 @@ export class ControlPlaneBilling {
 
   /**
    * Applies a Stripe webhook delivery, verified against the endpoint's signing secret first. Each
-   * event is applied once, by its ID. An event about a charge commerce has no record of yet is
-   * `unmatched`, logged by Stripe's IDs, and answered with a 503 by the route, so Stripe keeps
-   * redelivering it (for up to three days): a charge whose creation reply was lost is recorded the
-   * next time its invoice is charged or reconciled, and the redelivery then matches it.
+   * event is applied once, by its ID. An event about a charge commerce never heard back about is
+   * matched by reconciling the invoice the PaymentIntent names (CommerceService), so it applies at
+   * once. One that still can't be matched is `unmatched` and logged by Stripe's IDs. Only if it is
+   * one of EducateOS's own charges does the route answer 503 so Stripe redelivers it; anything
+   * EducateOS will never record (a Dashboard refund, a Payment Link, another product on the same
+   * account) is answered 200, so Stripe neither retries it for days nor disables the endpoint.
    */
-  receiveStripeWebhook(payload: string, signature: string): Promise<BillingReply<{ outcome: string }>> {
+  receiveStripeWebhook(payload: string, signature: string): Promise<BillingReply<WebhookOutcome>> {
     return reply(async () => {
       try {
         const { outcome } = await this.#commerce.handleProcessorDelivery({ payload, signature });
         return { outcome };
       } catch (error) {
         if (error instanceof UnmatchedProcessorEventError) {
-          console.error("stripe webhook unmatched", { eventId: error.eventId, operationRef: error.operationRef });
-          return { outcome: "unmatched" };
+          console.error("stripe webhook unmatched", { eventId: error.eventId, operationRef: error.operationRef, ours: error.ours });
+          return error.ours ? { outcome: "unmatched", retry: true } : { outcome: "unmatched" };
         }
         throw error;
       }

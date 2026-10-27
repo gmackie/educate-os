@@ -2,6 +2,7 @@
 // reply was lost is found rather than made twice, a reply's status is recorded at once, a declined
 // attempt is cancelled before it is replaced, and a refund leaves the rest chargeable again.
 import { describe, expect, it } from "vitest";
+import { UnmatchedProcessorEventError } from "../src/index.ts";
 import { CLERK, DAY, setup } from "./support.ts";
 
 async function cardInvoice(amountCents = 100_000) {
@@ -25,7 +26,7 @@ describe("charging an invoice", () => {
     await expect(service.chargeState(invoice.invoiceId)).resolves.toBe("uncharged"); // Nothing recorded yet.
 
     const ref = await service.chargeInvoice(invoice.invoiceId, CLERK);
-    expect((await processor.chargesFor((await service.account(accountId))!.processorCustomerRef!, invoice.invoiceId))).toHaveLength(1);
+    expect((await processor.chargesFor((await service.account(accountId))!.processorCustomerRef!, invoice.invoiceId, invoice.issuedAt))).toHaveLength(1);
     expect(ref).toMatch(/^ch_fake/);
     await expect(service.chargeState(invoice.invoiceId)).resolves.toBe("pending");
     await expect(deliverWebhooks()).resolves.toMatchObject([{ outcome: "applied" }]);
@@ -64,6 +65,33 @@ describe("charging an invoice", () => {
     expect(processor.takeDeliveries()).toHaveLength(1);
   });
 
+  it("applies the webhook of a charge whose reply was lost at once, by reconciling the invoice it names", async () => {
+    const { service, processor, invoice, subscription } = await cardInvoice();
+    processor.loseNextChargeReply();
+    await service.chargeInvoice(invoice.invoiceId, CLERK).catch(() => undefined);
+    const [delivery] = processor.takeDeliveries();
+    // No further charge or return: the webhook alone finds the charge and pays the invoice.
+    await expect(service.handleProcessorDelivery(delivery)).resolves.toMatchObject({ eventId: expect.any(String) });
+    await expect(service.invoice(invoice.invoiceId)).resolves.toMatchObject({ status: "paid" });
+    await expect(service.subscription(subscription.subscriptionId)).resolves.toMatchObject({ status: "active" });
+  });
+
+  it("tells a charge for one of its invoices it still can't find (transient) from one it will never record", async () => {
+    const { service, processor, invoice } = await cardInvoice();
+    const event = (operationRef: string) => ({ tag: "fake-processor", event: { eventId: `evt_${operationRef}`, type: "charge.succeeded", operationRef, amountCents: 1, occurredAt: invoice.issuedAt } });
+
+    const elsewhere = await service.handleProcessorDelivery(event("pi_elsewhere")).catch((caught: unknown) => caught);
+    expect(elsewhere).toBeInstanceOf(UnmatchedProcessorEventError);
+    expect(elsewhere).toMatchObject({ ours: false });
+
+    // A charge naming this invoice that reconciling doesn't turn up: made for another customer.
+    const stray = await processor.charge({ customerRef: "cus_stranger", amountCents: 1, idempotencyKey: "stray", invoiceRef: invoice.invoiceId });
+    const transient = await service.handleProcessorDelivery(event(stray.chargeRef)).catch((caught: unknown) => caught);
+    expect(transient).toBeInstanceOf(UnmatchedProcessorEventError);
+    expect(transient).toMatchObject({ ours: true, operationRef: stray.chargeRef });
+    await expect(service.invoice(invoice.invoiceId)).resolves.toMatchObject({ status: "open" });
+  });
+
   it("leaves what a partial refund reopened chargeable, not pending", async () => {
     const { service, invoice, accountId, deliverWebhooks } = await cardInvoice(100_000);
     await service.chargeInvoice(invoice.invoiceId, CLERK);
@@ -72,7 +100,7 @@ describe("charging an invoice", () => {
     await service.refundPayment(payment!.paymentId, 30_000, CLERK);
     await deliverWebhooks();
     await expect(service.invoice(invoice.invoiceId)).resolves.toMatchObject({ status: "open" });
-    await expect(service.chargeState(invoice.invoiceId)).resolves.toBe("uncharged");
+    await expect(service.chargeState(invoice.invoiceId)).resolves.toBe("reopened");
     await service.chargeInvoice(invoice.invoiceId, CLERK);
     await deliverWebhooks();
     await expect(service.chargeState(invoice.invoiceId)).resolves.toBe("paid");

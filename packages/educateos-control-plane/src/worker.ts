@@ -13,6 +13,7 @@ import { operatorVerifier, type OperatorIdentity, type OperatorVerifier } from "
 import { handleRequest, type ControlPlaneApi, type ControlPlaneDeps } from "./app.ts";
 import {
   type BillingOverview, type BillingReply, type CardSetupOutcome, ControlPlaneBilling, keepUnlessRejected, UNCONFIGURED_BILLING_REPLY,
+  type WebhookOutcome,
 } from "./billing.ts";
 import { configuredLaunchDistricts } from "./clever-launch.ts";
 import type { SiteShell } from "./pages.ts";
@@ -147,7 +148,7 @@ export class ControlPlane extends DurableObject<ControlPlaneEnv> implements Cont
     return (await this.#billingConfigured())?.cancelSubscription(operator) ?? UNCONFIGURED_BILLING_REPLY;
   }
 
-  async receiveStripeWebhook(payload: string, signature: string): Promise<BillingReply<{ outcome: string }>> {
+  async receiveStripeWebhook(payload: string, signature: string): Promise<BillingReply<WebhookOutcome>> {
     return (await this.#billingConfigured())?.receiveStripeWebhook(payload, signature) ?? UNCONFIGURED_BILLING_REPLY;
   }
 

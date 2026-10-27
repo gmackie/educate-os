@@ -101,8 +101,13 @@ export interface PaymentProcessor {
    * final; a pending one's outcome arrives as a webhook event.
    */
   charge(request: ChargeRequest): Promise<ChargeResult>;
-  /** Every charge the processor holds for the customer and invoice, as it stands now. */
-  chargesFor(customerRef: ProcessorRef, invoiceRef: string): Promise<ChargeResult[]>;
+  /**
+   * Every charge the processor holds for the customer and invoice, as it stands now. `since` is
+   * when the invoice was issued: no charge for it is older.
+   */
+  chargesFor(customerRef: ProcessorRef, invoiceRef: string, since: string): Promise<ChargeResult[]>;
+  /** The invoice a charge was made for, as the processor keeps it, or undefined for a charge that names none or doesn't exist. */
+  chargeInvoiceRef(chargeRef: ProcessorRef): Promise<string | undefined>;
   /**
    * Cancels a charge that hasn't succeeded, so it can never succeed after a replacement is made.
    * Returns where it then stands: `failed` once cancelled, or `succeeded` (or `pending`) if it got
@@ -202,7 +207,11 @@ export class FakePaymentProcessor implements PaymentProcessor {
     return this.#result(chargeRef);
   }
 
-  async chargesFor(customerRef: ProcessorRef, invoiceRef: string): Promise<ChargeResult[]> {
+  async chargeInvoiceRef(chargeRef: ProcessorRef): Promise<string | undefined> {
+    return this.#charges.get(chargeRef)?.invoiceRef;
+  }
+
+  async chargesFor(customerRef: ProcessorRef, invoiceRef: string, _since: string): Promise<ChargeResult[]> {
     return [...this.#charges.entries()]
       .filter(([, charge]) => charge.customerRef === customerRef && charge.invoiceRef === invoiceRef)
       .map(([ref]) => this.#result(ref));

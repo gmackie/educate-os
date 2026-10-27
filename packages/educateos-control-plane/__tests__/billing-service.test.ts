@@ -110,7 +110,7 @@ describe("the return from Stripe and a cancel", () => {
 });
 
 describe("paying what a refund reopened", () => {
-  it("charges the remainder with Pay now, not reporting it as pending", async () => {
+  it("charges the remainder only with Pay now: not pending, and not again from the old return address", async () => {
     const processor = new FakePaymentProcessor();
     const { billing, staff } = await billingWith(processor);
     const { setupRef, subscriptionId } = await subscribedWithCard(billing, processor);
@@ -120,7 +120,11 @@ describe("paying what a refund reopened", () => {
     const [payment] = await staff.payments(OPERATOR.accountId);
     await staff.refundPayment(payment!.paymentId, 40, STAFF);
     for (const delivery of processor.takeDeliveries()) await staff.handleProcessorDelivery(delivery);
-    expect(await billing.overview(OPERATOR)).toMatchObject({ ok: true, value: { invoices: [{ invoice: { status: "open" }, charge: "uncharged" }] } });
+    expect(await billing.overview(OPERATOR)).toMatchObject({ ok: true, value: { invoices: [{ invoice: { status: "open" }, charge: "reopened" }] } });
+
+    // Opening the old return address again (Back, a bookmark) charges nothing: only Pay now does.
+    await expect(billing.completeCardSetup(OPERATOR, subscriptionId, setupRef)).resolves.toMatchObject({ ok: true, value: { charge: "reopened" } });
+    expect(processor.takeDeliveries()).toHaveLength(0);
 
     await expect(billing.payInvoice(OPERATOR)).resolves.toMatchObject({ ok: true, value: "pending" });
     for (const delivery of processor.takeDeliveries()) await staff.handleProcessorDelivery(delivery);
@@ -132,7 +136,8 @@ describe("paying what a refund reopened", () => {
 describe("an unmatched webhook", () => {
   it("is logged by Stripe's event and PaymentIntent IDs, and reported unmatched", async () => {
     const secret = "whsec_billing_service_test";
-    const processor = new StripePaymentProcessor({ apiKey: "sk_test_unused", webhookSecret: secret, fetch: () => Promise.reject(new Error("no network")) });
+    // Stripe has no such PaymentIntent: not one of EducateOS's charges.
+    const processor = new StripePaymentProcessor({ apiKey: "sk_test_unused", webhookSecret: secret, fetch: async () => Response.json({ error: {} }, { status: 404 }) });
     const billing = new ControlPlaneBilling({ store: new InMemoryCommerceStore(), processor, signer: await SigningIdentity.generate() });
     const timestamp = Math.floor(Date.now() / 1000);
     const payload = JSON.stringify({
@@ -146,7 +151,7 @@ describe("an unmatched webhook", () => {
 
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     await expect(billing.receiveStripeWebhook(payload, signature)).resolves.toEqual({ ok: true, value: { outcome: "unmatched" } });
-    expect(log).toHaveBeenCalledWith("stripe webhook unmatched", { eventId: "evt_unmatched", operationRef: "pi_unmatched" });
+    expect(log).toHaveBeenCalledWith("stripe webhook unmatched", { eventId: "evt_unmatched", operationRef: "pi_unmatched", ours: false });
   });
 });
 

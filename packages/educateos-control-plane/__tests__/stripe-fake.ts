@@ -7,7 +7,9 @@
 // `POST /test/next-charge/<mode>` sets how the next charge request goes: `unreachable` fails it
 // before anything is made; `decline` makes a declined PaymentIntent, answered 402 as Stripe does;
 // `lose-reply` makes a `processing` PaymentIntent and then answers 500, as a lost reply would.
-// Charges otherwise succeed at once, as Stripe's 4242 test card does.
+// Charges otherwise succeed at once, as Stripe's 4242 test card does. `POST /test/payment_intents`
+// (form: customer, invoice) makes a PaymentIntent outside billing, as a Dashboard charge, a Payment
+// Link or another product on the same account would.
 
 /** The test Stripe secret key and webhook signing secret, as the suite's bindings carry them. */
 export const STRIPE_FIXTURE = { secretKey: "sk_test_educateos_fixture", webhookSecret: "whsec_educateos_fixture_not_a_real_secret" };
@@ -95,7 +97,19 @@ export async function fakeStripe(request: Request): Promise<Response> {
   }
   if (request.method === "GET" && path === "/v1/payment_intents") {
     const customer = url.searchParams.get("customer");
-    return Response.json({ object: "list", data: intents.filter((intent) => intent.customer === customer).toReversed().map(wire) });
+    return Response.json({ object: "list", has_more: false, data: intents.filter((intent) => intent.customer === customer).toReversed().map(wire) });
+  }
+  if (request.method === "GET" && (match = /^\/v1\/payment_intents\/(pi_[a-z0-9]+)$/.exec(path)) !== null) {
+    const intent = intents.find((candidate) => candidate.id === match![1]);
+    return intent === undefined ? error(404, "No such payment_intent") : Response.json(wire(intent));
+  }
+  if (request.method === "POST" && path === "/test/payment_intents") {
+    const intent: Intent = {
+      id: next("pi"), customer: form.get("customer") ?? "cus_elsewhere", amount: Number(form.get("amount") ?? "100"), paymentMethod: "pm_elsewhere",
+      status: "succeeded", invoice: form.get("invoice") ?? "", idempotencyKey: next("key"),
+    };
+    intents.push(intent);
+    return Response.json(wire(intent));
   }
   if (request.method === "POST" && (match = /^\/v1\/payment_intents\/(pi_[a-z0-9]+)\/cancel$/.exec(path)) !== null) {
     const intent = intents.find((candidate) => candidate.id === match![1]);
@@ -148,6 +162,6 @@ function wire(intent: Intent) {
   return {
     id: intent.id, object: "payment_intent", status: intent.status, amount: intent.amount,
     amount_received: intent.status === "succeeded" ? intent.amount : 0, currency: "usd", customer: intent.customer,
-    metadata: { educateos_invoice: intent.invoice },
+    metadata: intent.invoice === "" ? {} : { educateos_invoice: intent.invoice },
   };
 }

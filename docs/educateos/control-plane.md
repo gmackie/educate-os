@@ -161,15 +161,22 @@ runs, and Stripe runs none here.
    subscription, so a setup page left from an earlier subscription can't start a later one. It
    makes the saved card the customer's default, which activates the subscription; the term starts
    then. It issues the term's invoice (due in 7 days) if it has none, and charges it off-session
-   unless a charge is already paid, on its way, or declined. So coming back again charges nothing
+   only if it has never had a charge. One paid, on its way, declined or reopened by a refund
+   waits for an explicit Pay now, so reopening an old return address never charges. So coming back again charges nothing
    more, but does make a charge an earlier return couldn't (Stripe unreachable, or the object
    restarted between the steps). The notice says what actually happened to the invoice.
 4. Stripe's `payment_intent.succeeded` (or `payment_failed`) webhook at `/stripe/webhook` marks the
    invoice paid (or the subscription past due), once per event ID, unless the charge's reply
    already recorded that outcome. Its signature is checked against `STRIPE_WEBHOOK_SECRET` before
-   anything in it is read. An event about a charge commerce has no record of yet is answered 503
-   `{"outcome":"unmatched"}` and logged as `stripe webhook unmatched` with Stripe's event and
-   PaymentIntent IDs, so Stripe keeps redelivering it (for up to three days) until it matches.
+   anything in it is read. An event about a charge commerce never heard back about is matched in
+   the same step: the Worker reads the PaymentIntent, and if its `educateos_invoice` names an
+   invoice this store holds, reconciles that invoice and applies the event, answering 200. A
+   paying customer whose charge reply was lost is never left past due waiting for a retry.
+   Anything still unmatched is logged as `stripe webhook unmatched` with Stripe's event and
+   PaymentIntent IDs. Only one of EducateOS's own charges that reconciling couldn't find yet is
+   answered 503, so Stripe redelivers it; what EducateOS will never record (a Dashboard refund, a
+   Payment Link, another product or a preview deploy on the same Stripe account) gets 200
+   `{"outcome":"unmatched"}`, so Stripe neither retries it for days nor disables the endpoint.
 5. `POST /app/billing/pay` (**Pay now**, shown while the invoice is uncharged or declined) charges
    it again; it is refused while a charge is on its way. `POST /app/billing/portal` answers 303 to
    a Customer Portal session; `POST /app/billing/card` reopens Checkout for a subscription left
@@ -187,8 +194,9 @@ invoice, made under the idempotency key `<invoice>:<attempt>`. Commerce (`charge
 trusts that a missing reply means no charge:
 
 - Before charging it reconciles the invoice with Stripe: it lists the customer's PaymentIntents
-  (the list endpoint, which sees a PaymentIntent at once, unlike search) and records any made for
-  the invoice that it never heard back about, with Stripe's current status. A charge whose reply
+  (the list endpoint, which sees a PaymentIntent at once, unlike search), page by page from when
+  the invoice was issued less an hour (`created[gte]`, `starting_after`), and records any made
+  for the invoice that it never heard back about, with Stripe's current status. A charge whose reply
   was lost is found, not made again, however long ago; it is pending until it settles, and its
   redelivered webhook then matches it.
 - Stripe's reply records the charge's status at once: `succeeded` pays the invoice, a decline
@@ -200,7 +208,11 @@ trusts that a missing reply means no charge:
 - While a charge is pending nothing new is charged, and Pay now is refused.
 
 An invoice's charge is `paid`, `pending` (a charge awaits its outcome), `declined` (every charge
-for it was declined) or `uncharged` (none yet, or paid and then reopened by a refund).
+for it was declined), `uncharged` (never charged) or `reopened` (paid, then reopened by a refund).
+
+Known gaps: a refund whose reply was lost isn't reconciled the same way, so a refund retried
+after Stripe's 24-hour idempotency window could be made twice; and a 4xx Stripe stores under an
+attempt's idempotency key blocks that attempt for 24 hours.
 
 **Setup.** Secrets on the site Worker (`wrangler secret put`, never `wrangler.jsonc`):
 

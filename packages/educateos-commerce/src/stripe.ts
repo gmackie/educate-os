@@ -74,7 +74,9 @@ const StripeCharge = z.object({
   currency: z.string(),
   metadata: z.record(z.string(), z.string()).nullable().optional(),
 });
-const StripeCharges = z.object({ data: z.array(StripeCharge) });
+const StripeCharges = z.object({ data: z.array(StripeCharge), has_more: z.boolean() });
+/** How many pages of 100 PaymentIntents one reconciliation reads at most. */
+const MAX_CHARGE_PAGES = 20;
 // A refused PaymentIntent request whose error carries the PaymentIntent: an off-session decline
 // (402), or a cancel of one that already succeeded or was cancelled (400).
 const StripeCardError = z.object({ error: z.object({ payment_intent: StripeCharge }) });
@@ -154,11 +156,28 @@ export class StripePaymentProcessor implements PaymentProcessor {
 
   /**
    * The customer's PaymentIntents made for the invoice. Read from the list endpoint, which, unlike
-   * search, sees a PaymentIntent the moment it exists.
+   * search, sees a PaymentIntent the moment it exists, page by page from when the invoice was issued
+   * (less an hour, for clock skew), so the pages are bounded however many charges the customer has.
    */
-  async chargesFor(customerRef: ProcessorRef, invoiceRef: string): Promise<ChargeResult[]> {
-    const page = await this.#request("GET", `/v1/payment_intents?customer=${encodeURIComponent(customerRef)}&limit=100`, StripeCharges, {});
-    return page.data.filter((intent) => intent.metadata?.educateos_invoice === invoiceRef).map(chargeResult);
+  async chargesFor(customerRef: ProcessorRef, invoiceRef: string, since: string): Promise<ChargeResult[]> {
+    const from = Math.floor(Date.parse(since) / 1000) - 60 * 60;
+    const found: ChargeResult[] = [];
+    let after: string | undefined;
+    for (let page = 0; page < MAX_CHARGE_PAGES; page++) {
+      const query = new URLSearchParams({ "customer": customerRef, "limit": "100", "created[gte]": String(from) });
+      if (after !== undefined) query.set("starting_after", after);
+      const listed = await this.#request("GET", `/v1/payment_intents?${query}`, StripeCharges, {});
+      found.push(...listed.data.filter((intent) => intent.metadata?.educateos_invoice === invoiceRef).map(chargeResult));
+      if (!listed.has_more || listed.data.length === 0) return found;
+      after = listed.data.at(-1)!.id;
+    }
+    throw new EducateOsError("unavailable", "too many payment processor charges to reconcile");
+  }
+
+  /** The invoice a PaymentIntent names (`educateos_invoice`), or undefined if it names none or Stripe has no such PaymentIntent. */
+  async chargeInvoiceRef(chargeRef: ProcessorRef): Promise<string | undefined> {
+    const intent = await this.#request("GET", `/v1/payment_intents/${encodeURIComponent(chargeRef)}`, StripeCharge, { missing: true });
+    return intent?.metadata?.educateos_invoice;
   }
 
   /**
@@ -297,8 +316,20 @@ export class StripePaymentProcessor implements PaymentProcessor {
     method: "GET" | "POST",
     path: string,
     schema: T,
-    options: { body?: Record<string, string>; idempotencyKey?: string; carriesIntent?: number[] },
-  ): Promise<z.infer<T>> {
+    options: { body?: Record<string, string>; idempotencyKey?: string; carriesIntent?: number[]; missing: true },
+  ): Promise<z.infer<T> | undefined>;
+  async #request<T extends z.ZodType>(
+    method: "GET" | "POST",
+    path: string,
+    schema: T,
+    options: { body?: Record<string, string>; idempotencyKey?: string; carriesIntent?: number[]; missing?: false },
+  ): Promise<z.infer<T>>;
+  async #request<T extends z.ZodType>(
+    method: "GET" | "POST",
+    path: string,
+    schema: T,
+    options: { body?: Record<string, string>; idempotencyKey?: string; carriesIntent?: number[]; missing?: boolean },
+  ): Promise<z.infer<T> | undefined> {
     const headers: Record<string, string> = { Authorization: `Bearer ${this.#apiKey}`, "Stripe-Version": STRIPE_API_VERSION };
     if (options.body !== undefined) headers["Content-Type"] = "application/x-www-form-urlencoded";
     if (options.idempotencyKey !== undefined) headers["Idempotency-Key"] = options.idempotencyKey;
@@ -314,6 +345,8 @@ export class StripePaymentProcessor implements PaymentProcessor {
     }
     const json: unknown = await response.json().catch(() => undefined);
     if (response.ok) return parseWire(schema, json, "payment processor response");
+    // With `missing`, a 404 means there is no such object.
+    if (options.missing === true && response.status === 404) return undefined;
     // A declined off-session charge (402), or a refused cancel (400): Stripe returns the error
     // with the PaymentIntent, whose status says where it stands.
     if (options.carriesIntent?.includes(response.status) === true) {

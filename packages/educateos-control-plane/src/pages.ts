@@ -185,6 +185,7 @@ const CHARGE_LABELS: Record<BilledInvoice["charge"], Html> = {
   pending: html`<span class="status planned">Open</span> <small class="muted">charge on its way</small>`,
   declined: html`<span class="badge warn">Declined</span>`,
   uncharged: html`<span class="status planned">Open</span> <small class="muted">not charged yet</small>`,
+  reopened: html`<span class="status planned">Open</span> <small class="muted">due again after a refund</small>`,
 };
 
 const STATUS_LABELS: Record<NonNullable<BillingOverview["subscription"]>["status"], Html> = {
@@ -203,7 +204,7 @@ const STATUS_LABELS: Record<NonNullable<BillingOverview["subscription"]>["status
 export function billingPage(shell: SiteShell, operator: Operator, overview: BillingOverview, notice?: string): string {
   const { subscription } = overview;
   const payable = subscription !== undefined && subscription.status !== "trialing" &&
-    overview.invoices.some(({ invoice, charge }) => invoice.subscriptionId === subscription.subscriptionId && (charge === "declined" || charge === "uncharged"));
+    overview.invoices.some(({ invoice, charge }) => invoice.subscriptionId === subscription.subscriptionId && (charge === "declined" || charge === "uncharged" || charge === "reopened"));
   const planName = (planId: string) => MANAGED_PLANS.find(({ plan }) => plan.planId === planId)?.name ?? planId;
   const current = subscription === undefined
     ? html`<form method="post" action="${BILLING_PATHS.subscribe}" class="card">

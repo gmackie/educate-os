@@ -198,17 +198,34 @@ describe("Stripe REST calls", () => {
       .toEqual({ chargeRef: "pi_nf", status: "succeeded", amountCents: 500 });
   });
 
-  it("finds the customer's PaymentIntents for an invoice by their metadata", async () => {
+  it("finds the customer's PaymentIntents for an invoice by their metadata, page by page from its issue", async () => {
     const intent = (id: string, status: string, invoice: string) => ({ id, status, amount: 500, amount_received: status === "succeeded" ? 500 : 0, currency: "usd", metadata: { educateos_invoice: invoice } });
+    let pages = 0;
     const { processor, requests } = processorAt(T, {
-      "GET /v1/payment_intents": () => ({ body: { data: [intent("pi_a", "succeeded", "inv_1"), intent("pi_b", "requires_payment_method", "inv_1"), intent("pi_c", "succeeded", "inv_2"), intent("pi_d", "processing", "inv_1")] } }),
+      "GET /v1/payment_intents": () => (pages++ === 0
+        ? { body: { has_more: true, data: [intent("pi_a", "succeeded", "inv_1"), intent("pi_b", "requires_payment_method", "inv_1"), intent("pi_c", "succeeded", "inv_2")] } }
+        : { body: { has_more: false, data: [intent("pi_d", "processing", "inv_1")] } }),
     });
-    expect(await processor.chargesFor("cus_nf", "inv_1")).toEqual([
+    expect(await processor.chargesFor("cus_nf", "inv_1", "2026-10-20T12:00:00.000Z")).toEqual([
       { chargeRef: "pi_a", status: "succeeded", amountCents: 500 },
       { chargeRef: "pi_b", status: "failed", amountCents: 500 },
       { chargeRef: "pi_d", status: "pending", amountCents: 500 },
     ]);
-    expect(requests[0]!.url).toBe("https://api.stripe.com/v1/payment_intents?customer=cus_nf&limit=100");
+    const since = String(T - 3600); // The invoice's issue, less an hour.
+    expect(requests.map((r) => r.url)).toEqual([
+      `https://api.stripe.com/v1/payment_intents?customer=cus_nf&limit=100&created%5Bgte%5D=${since}`,
+      `https://api.stripe.com/v1/payment_intents?customer=cus_nf&limit=100&created%5Bgte%5D=${since}&starting_after=pi_c`,
+    ]);
+  });
+
+  it("reads the invoice a PaymentIntent names, and none for one that names none or doesn't exist", async () => {
+    const { processor } = processorAt(T, {
+      "GET /v1/payment_intents/pi_ours": () => ({ body: { id: "pi_ours", status: "succeeded", amount: 1, amount_received: 1, currency: "usd", metadata: { educateos_invoice: "inv_1" } } }),
+      "GET /v1/payment_intents/pi_link": () => ({ body: { id: "pi_link", status: "succeeded", amount: 1, amount_received: 1, currency: "usd", metadata: {} } }),
+    });
+    await expect(processor.chargeInvoiceRef("pi_ours")).resolves.toBe("inv_1");
+    await expect(processor.chargeInvoiceRef("pi_link")).resolves.toBeUndefined();
+    await expect(processor.chargeInvoiceRef("pi_gone")).resolves.toBeUndefined(); // The fake answers 404.
   });
 
   it("cancels a declined PaymentIntent, and reports one that succeeded first", async () => {
@@ -328,7 +345,7 @@ describe("Stripe through the commerce service", () => {
     const { fetch } = fakeStripe({
       "POST /v1/customers": () => ({ body: { id: "cus_nf" } }),
       "GET /v1/customers/cus_nf": () => ({ body: { id: "cus_nf", invoice_settings: { default_payment_method: "pm_card" } } }),
-      "GET /v1/payment_intents": () => ({ body: { data: [] } }),
+      "GET /v1/payment_intents": () => ({ body: { data: [], has_more: false } }),
       "POST /v1/payment_intents": () => ({ body: { id: "pi_nf", status: "processing", amount: 40_000, amount_received: 0, currency: "usd" } }),
       "POST /v1/refunds": () => ({ body: { id: "re_nf" } }),
     });

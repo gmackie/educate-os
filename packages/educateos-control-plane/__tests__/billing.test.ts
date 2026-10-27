@@ -188,7 +188,7 @@ describe("charging the first invoice", () => {
     expect(await chargesFor()).toHaveLength(before + 1);
   });
 
-  it("finds a charge Stripe made but whose reply was lost: no second charge, and its webhook matches once recorded", async () => {
+  it("pays the invoice from the webhook alone when a succeeded charge's reply was lost", async () => {
     const { token, checkout } = await subscribed();
     await saveCard(checkout);
     const returnUrl = await returnAddress(checkout);
@@ -200,32 +200,28 @@ describe("charging the first invoice", () => {
     const lost = charges.at(-1)!;
     expect(lost.status).toBe("processing");
 
-    // Stripe's webhook for it arrives before commerce knows the charge: 503, so Stripe redelivers.
+    // Stripe finishes the charge and sends its webhook. Nobody returns or pays: the webhook finds
+    // the PaymentIntent's invoice, reconciles it, and the invoice is paid with a 200.
     await succeed(lost.id);
     const event = succeeded(`evt_lost_${lost.id}`, lost);
-    const early = await webhook(event);
-    expect(early.status).toBe(503);
-    expect(await early.json()).toEqual({ outcome: "unmatched" });
+    const hook = await webhook(event);
+    expect(hook.status).toBe(200);
+    expect(await hook.json()).toEqual({ outcome: "duplicate" }); // Reconciling recorded the success.
+    const page = await (await get("/app/billing", token)).text();
+    expect(page).toContain('<span class="status avail">Paid</span>');
+    expect(page).toContain(">Active<");
 
-    // The next return finds the charge by its metadata instead of making another.
+    // A return afterwards charges nothing more.
     expect((await get(returnUrl, token)).headers.get("location")).toBe("/app/billing?card=saved");
     expect(await chargesFor()).toHaveLength(before + 1);
-    expect(await (await get("/app/billing", token)).text()).toContain('<span class="status avail">Paid</span>');
-    // The redelivery now matches a recorded charge.
-    const redelivered = await webhook(event);
-    expect(redelivered.status).toBe(200);
-    expect(await redelivered.json()).toEqual({ outcome: "duplicate" });
   });
 
-  it("matches a redelivered webhook for a lost charge that is still processing, and refuses Pay now meanwhile", async () => {
+  it("applies the webhook of a lost charge still processing, after Pay now refused to charge again", async () => {
     const { token, checkout } = await subscribed();
     await saveCard(checkout);
-    const returnUrl = await returnAddress(checkout);
     await nextCharge("lose-reply");
-    await get(returnUrl, token);
+    await get(await returnAddress(checkout), token);
     const lost = (await chargesFor()).at(-1)!;
-    const event = succeeded(`evt_processing_${lost.id}`, lost);
-    expect((await webhook(event)).status).toBe(503);
 
     // Pay now reconciles first: the charge is on its way, so it makes no other.
     const before = (await chargesFor()).length;
@@ -233,10 +229,25 @@ describe("charging the first invoice", () => {
     expect(await chargesFor()).toHaveLength(before);
     expect(await (await get("/app/billing", token)).text()).toContain("charge on its way");
 
-    const redelivered = await webhook(event);
-    expect(redelivered.status).toBe(200);
-    expect(await redelivered.json()).toEqual({ outcome: "applied" });
+    const hook = await webhook(succeeded(`evt_processing_${lost.id}`, lost));
+    expect(hook.status).toBe(200);
+    expect(await hook.json()).toEqual({ outcome: "applied" });
     expect(await (await get("/app/billing", token)).text()).toContain('<span class="status avail">Paid</span>');
+  });
+
+  it("asks Stripe to redeliver an event for one of its invoices that reconciling can't match yet", async () => {
+    const { token, checkout } = await subscribed();
+    await saveCard(checkout);
+    await nextCharge("unreachable");
+    await get(await returnAddress(checkout), token);
+    const invoiceId = /<code>(inv_[a-z0-9-]+)<\/code>/.exec(await (await get("/app/billing", token)).text())![1]!;
+    // A PaymentIntent naming this invoice that its customer's charges don't include.
+    const stray: FakeIntent = await (await fetch("https://api.stripe.com/test/payment_intents", {
+      method: "POST", body: new URLSearchParams({ customer: "cus_elsewhere", invoice: invoiceId }),
+    })).json();
+    const hook = await webhook(succeeded(`evt_stray_${stray.id}`, stray));
+    expect(hook.status).toBe(503);
+    expect(await hook.json()).toEqual({ outcome: "unmatched" });
   });
 
   it("retries a declined charge with Pay now as a new attempt, cancelling the declined one first", async () => {
@@ -303,10 +314,27 @@ describe("the Stripe webhook", () => {
     expect((await webhook(payload, "whsec_someone_else")).status).toBe(400);
   });
 
-  it("answers a charge commerce has no record of with 503, so Stripe redelivers it", async () => {
-    const response = await webhook(succeeded("evt_stranger", { id: "pi_not_ours", amount: 100 }));
-    expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ outcome: "unmatched" });
+  it("answers 200 unmatched for what EducateOS will never record, so Stripe doesn't retry it for days", async () => {
+    // A PaymentIntent Stripe doesn't know, one that names no invoice (a Payment Link, the
+    // Dashboard), one naming an invoice this store doesn't hold, and a refund made outside billing.
+    const link: FakeIntent = await (await fetch("https://api.stripe.com/test/payment_intents", { method: "POST", body: new URLSearchParams({}) })).json();
+    const other: FakeIntent = await (await fetch("https://api.stripe.com/test/payment_intents", {
+      method: "POST", body: new URLSearchParams({ invoice: "inv_from-a-preview-deploy" }),
+    })).json();
+    const refund = JSON.stringify({
+      id: "evt_dashboard_refund", object: "event", type: "refund.updated", created: Math.floor(Date.now() / 1000),
+      data: { object: { id: "re_dashboard", object: "refund", amount: 100, currency: "usd", status: "succeeded" } },
+    });
+    for (const payload of [
+      succeeded("evt_stranger", { id: "pi_not_ours", amount: 100 }),
+      succeeded(`evt_link_${link.id}`, link),
+      succeeded(`evt_other_${other.id}`, other),
+      refund,
+    ]) {
+      const response = await webhook(payload);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ outcome: "unmatched" });
+    }
   });
 
   it("ignores event types billing doesn't act on", async () => {

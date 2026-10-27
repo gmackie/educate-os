@@ -134,23 +134,29 @@ export type AwardGrantRequest = z.input<typeof AwardGrantRequest>;
 /**
  * A verified processor event about a charge or refund commerce has no record of: `not-found`,
  * naming the processor's IDs (never anything personal) so the caller can log what went unmatched.
+ * `ours` is true for a charge made for an invoice commerce holds that reconciling still couldn't
+ * find, which is transient (the processor should redeliver); false for anything else, which
+ * commerce will never record: another product's charge, a refund made outside commerce.
  */
 export class UnmatchedProcessorEventError extends EducateOsError {
   readonly eventId: ProcessorRef;
   readonly operationRef: ProcessorRef;
-  constructor(eventId: ProcessorRef, operationRef: ProcessorRef) {
+  readonly ours: boolean;
+  constructor(eventId: ProcessorRef, operationRef: ProcessorRef, ours = false) {
     super("not-found", "processor operation not found");
     this.eventId = eventId;
     this.operationRef = operationRef;
+    this.ours = ours;
   }
 }
 
 /**
  * Where an invoice's charge stands: `paid`; `pending` while a charge is requested and its outcome
- * hasn't arrived; `declined` if every charge made for it was declined; `uncharged` if nothing is
- * pending and it was never charged, or was paid and then reopened by a refund.
+ * hasn't arrived; `declined` if every charge made for it was declined; `uncharged` if it was never
+ * charged; `reopened` if it was paid and a refund reopened it, which only an explicit new charge
+ * pays again.
  */
-export type InvoiceChargeState = "paid" | "pending" | "declined" | "uncharged";
+export type InvoiceChargeState = "paid" | "pending" | "declined" | "uncharged" | "reopened";
 
 /** The outcome of {@link CommerceService.handleProcessorDelivery}. */
 export interface ProcessorDeliveryOutcome {
@@ -663,7 +669,7 @@ export class CommerceService implements CommercialAccountVerifier {
   }
 
   async #reconcileCharges(invoice: Invoice, customerRef: ProcessorRef): Promise<void> {
-    for (const result of await this.#processor.chargesFor(customerRef, invoice.invoiceId)) await this.#recordCharge(invoice, result);
+    for (const result of await this.#processor.chargesFor(customerRef, invoice.invoiceId, invoice.issuedAt)) await this.#recordCharge(invoice, result);
   }
 
   // Records a charge as the processor reported it: a new one with its status, or a known one's
@@ -736,7 +742,11 @@ export class CommerceService implements CommercialAccountVerifier {
   // refund.updated for one refund), so event IDs alone don't stop money being counted twice. Once
   // an operation succeeded it is settled; a declined charge can still succeed on a later attempt.
   async #applyEvent(event: ProcessorEvent): Promise<boolean> {
-    const operation = await this.#store.get("processorOperation", event.operationRef);
+    let operation = await this.#store.get("processorOperation", event.operationRef);
+    // A charge commerce never heard back about: the processor says which invoice it was for, and
+    // reconciling that invoice records it, so the event applies now rather than waiting for the
+    // invoice's next charge. A paying customer's charge whose reply was lost can't lapse them.
+    if (operation === undefined && event.type !== "refund.succeeded") operation = await this.#reconcileForEvent(event);
     if (operation === undefined || operation.kind !== (event.type === "refund.succeeded" ? "refund" : "charge")) {
       throw new UnmatchedProcessorEventError(event.eventId, event.operationRef);
     }
@@ -749,6 +759,20 @@ export class CommerceService implements CommercialAccountVerifier {
     await this.#recordPayment(invoice, "refund", event.amountCents, event.operationRef, PROCESSOR_ACTOR, operation.refundOf);
     await this.#settle(invoice, PROCESSOR_ACTOR);
     return true;
+  }
+
+  // The charge's operation once its invoice is reconciled, if the processor names an invoice
+  // commerce holds. One commerce holds but reconciling still can't find is transient: `ours`.
+  async #reconcileForEvent(event: ProcessorEvent): Promise<ProcessorOperation | undefined> {
+    const invoiceRef = await this.#processor.chargeInvoiceRef(event.operationRef);
+    const invoiceId = InvoiceId.safeParse(invoiceRef);
+    const invoice = invoiceId.success ? await this.#store.get("invoice", invoiceId.data) : undefined;
+    if (invoice === undefined) return undefined;
+    const account = await this.#require("account", invoice.accountId);
+    if (account.processorCustomerRef !== undefined) await this.#reconcileCharges(invoice, account.processorCustomerRef);
+    const operation = await this.#store.get("processorOperation", event.operationRef);
+    if (operation === undefined) throw new UnmatchedProcessorEventError(event.eventId, event.operationRef, true);
+    return operation;
   }
 
   // Records a charge's outcome, from a webhook or the processor's own reply. Returns false if that
@@ -857,8 +881,8 @@ export class CommerceService implements CommercialAccountVerifier {
       if (invoice.status === "paid") return "paid";
       const charges = await this.#charges(invoice);
       if (charges.some((op) => op.outcome === undefined)) return "pending";
-      const declined = charges.length > 0 && charges.every((op) => op.outcome === "failed");
-      return declined ? "declined" : "uncharged";
+      if (charges.length === 0) return "uncharged";
+      return charges.every((op) => op.outcome === "failed") ? "declined" : "reopened";
     });
   }
 
