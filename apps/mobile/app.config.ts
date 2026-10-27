@@ -20,7 +20,6 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'io.educateos.mobile',
-    edgeToEdgeEnabled: true,
     intentFilters: [{
       action: 'VIEW',
       data: [{ scheme: 'https', host: 'mobile.educateos.io', pathPrefix: '/oauthredirect' },

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Pressable, StatusBar, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { CalendarDays, ChevronLeft, GraduationCap, Home, Library, MessageCircle,
-  Settings2, Sparkles } from 'lucide-react-native';
+import { CalendarDays, ChevronLeft, GraduationCap, Home, Library, MessageCircle, Settings2, Sparkles } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 import type { Detail, District, Principal, Session, Tab } from './types';
@@ -11,7 +10,7 @@ import { consumeIncomingUrl, signIn } from './auth/auth';
 import { clearSession, prepareWebView, restoreSession } from './auth/session';
 import { getDistricts, removeDistrict, saveDistrict } from './district';
 import { palette } from './theme';
-import { Button, Loading, Page, Placeholder } from './ui/Primitives';
+import { Button, Loading, Page } from './ui/Primitives';
 import { Onboarding } from './screens/Onboarding';
 import { Today } from './screens/Today';
 import { Classes, FamilyChild, FamilyClass, StudentClass, TeacherClass } from './screens/Classes';

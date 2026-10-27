@@ -1,16 +1,12 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { BookOpen, CheckCircle2, ClipboardList, FilePenLine, GraduationCap, Send } from 'lucide-react-native';
+import { Alert, Text, TextInput, View } from 'react-native';
+import { BookOpen, FilePenLine, GraduationCap, Send } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
-import type { Activity, Assignment, Detail, GradeSummary, Submission } from '../types';
+import type { Detail } from '../types';
 import { useLoad } from '../hooks/useLoad';
 import { palette } from '../theme';
-import { Button, Card, Chip, dateLabel, Field, Item, Page, Placeholder, QueryState, Section, Title } from '../ui/Primitives';
+import { Button, Card, Chip, dateLabel, Field, Item, Page, QueryState, Section, Title } from '../ui/Primitives';
 
-type StudentAssignmentRecord = {
-  assignment: Assignment;
-  starterMaterials?: { id: string; title: string }[];
-};
 
 /** Never renders staff-only fields or answer keys; the district returns a student-filtered activity view. */
 export function AssignmentScreen({ client, assignmentId, offeringId, navigate }: {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
-import { Building2, CheckCircle2, GraduationCap, LockKeyhole, Plus, School, Trash2 } from 'lucide-react-native';
+import { CheckCircle2, GraduationCap, LockKeyhole, Plus, School, Trash2 } from 'lucide-react-native';
 import type { District } from '../types';
 import { makeDistrict } from '../district';
 import { palette } from '../theme';

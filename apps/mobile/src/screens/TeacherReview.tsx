@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
-import { ClipboardCheck, FileText, GraduationCap, MessageSquareText, Users } from 'lucide-react-native';
+import { FileText, MessageSquareText } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
-import type { Assignment, Detail, Submission } from '../types';
+import type { Detail } from '../types';
 import { useLoad } from '../hooks/useLoad';
 import { palette } from '../theme';
 import { Button, Card, Chip, dateLabel, Field, Item, Page, Placeholder, QueryState, Section, Title } from '../ui/Primitives';

@@ -1,11 +1,10 @@
-import { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Bell, BookOpen, CalendarDays, ChevronRight, ClipboardList, GraduationCap, Megaphone, Users } from 'lucide-react-native';
+import { Bell, BookOpen, ChevronRight, ClipboardList, GraduationCap, Megaphone, Users } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Activity, Announcement, ClassItem, Detail, GuardianChild, Notifications, Principal, Tab } from '../types';
 import { useLoad } from '../hooks/useLoad';
-import { font, palette } from '../theme';
-import { Card, Chip, dateLabel, Eyebrow, Item, Page, QueryState, Section, shortName, Title } from '../ui/Primitives';
+import { palette } from '../theme';
+import { Card, dateLabel, Eyebrow, Item, Page, QueryState, Section, shortName, Title } from '../ui/Primitives';
 
 type Upcoming = { assignment: Activity['assignment']; course: ClassItem };
 type Home = { classes: ClassItem[]; notifications: Notifications | null; upcoming: Upcoming[];
@@ -31,7 +30,7 @@ async function loadHome(api: DistrictClient, me: Principal): Promise<Home> {
   const now = Date.now();
   const upcoming = assignments.flat()
     .filter(({ assignment }) => Date.parse(assignment.dueAt) >= now - 86_400_000)
-    .sort((a, b) => Date.parse(a.assignment.dueAt) - Date.parse(b.assignment.dueAt))
+    .toSorted((a, b) => Date.parse(a.assignment.dueAt) - Date.parse(b.assignment.dueAt))
     .slice(0, 8);
   return { classes, notifications, upcoming, announcements, children };
 }

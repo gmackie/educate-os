@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
@@ -23,7 +23,7 @@ function groupByDay(events: CalendarEvent[]): [string, CalendarEvent[]][] {
     if (!groups.has(date)) groups.set(date, []);
     groups.get(date)!.push(item);
   }
-  return [...groups].sort(([a], [b]) => a.localeCompare(b));
+  return [...groups].toSorted(([a], [b]) => a.localeCompare(b));
 }
 export function CalendarScreen({ client, navigate }: { client: DistrictClient; navigate: (detail: Detail) => void }) {
   const [start, setStart] = useState(() => beginningOfWeek(new Date()));

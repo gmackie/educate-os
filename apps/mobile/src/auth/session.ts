@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import * as Crypto from 'expo-crypto';
-import CookieManager from '@react-native-cookies/cookies';
+import CookieManager from '@preeternal/react-native-cookie-manager';
 import type { Credential, District, Session } from '../types';
 import { tokenExpiresAt } from './crypto';
 
@@ -49,9 +49,9 @@ export async function prepareWebView(session: Session): Promise<void> {
     path: '/',
     secure: true,
     httpOnly: true,
-    sameSite: 'Lax',
+    sameSite: 'lax',
     expires: new Date(tokenExpiresAt(session.credential)).toISOString(),
-  });
+  }, { iosCookieStore: 'webKit' });
   if (!ok) throw new Error('Unable to prepare your secure web session.');
 }
 

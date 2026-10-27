@@ -4,7 +4,7 @@ import { strictOrigin } from './security';
 export { strictOrigin, trustedUrl } from './security';
 
 const KEY = 'educateos.installations.v1';
-export const CALLBACK_ORIGIN = 'https://mobile.educateos.io';
+export { CALLBACK_ORIGIN } from './security';
 export function makeDistrict(name: string, portal: string, workshop: string, allowLocal = false): District {
   const school = strictOrigin(portal, allowLocal);
   const workspace = strictOrigin(workshop, allowLocal);

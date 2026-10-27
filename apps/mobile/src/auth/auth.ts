@@ -1,8 +1,26 @@
+import * as ExpoCrypto from 'expo-crypto';
+import { p256 } from '@noble/curves/nist.js';
+import { base64urlnopad } from '@scure/base';
 import * as WebBrowser from 'expo-web-browser';
 import type { District, Session } from '../types';
 import { CALLBACK_ORIGIN } from '../district';
-import { newAttempt, parseSessionLink, unseal, type Attempt } from './crypto';
+import { parseSessionLink, unseal, type Attempt } from './crypto';
 import { storeSession } from './session';
+
+const ORDER = BigInt('0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551');
+
+/** Separate P-256 key material for each sign-in. Never persist it or send it to the browser. */
+export async function newAttempt(): Promise<Attempt> {
+  let privateKey: Uint8Array;
+  for (;;) {
+    privateKey = await ExpoCrypto.getRandomBytesAsync(32);
+    const scalar = BigInt('0x' + Array.from(privateKey, (b) => b.toString(16).padStart(2, '0')).join(''));
+    if (scalar > 0n && scalar < ORDER) break;
+  }
+  const state = base64urlnopad.encode(await ExpoCrypto.getRandomBytesAsync(32));
+  return { state, publicKey: base64urlnopad.encode(p256.getPublicKey(privateKey, false)), privateKey, startedAt: Date.now() };
+}
+
 
 let activeAttempt: Attempt | null = null;
 let onLink: ((url: string) => void) | null = null;
@@ -42,7 +60,7 @@ export async function signIn(district: District): Promise<Session> {
       url = result.type === 'success' ? result.url : await Promise.race([
         viaLink,
         new Promise<string>((_, reject) => { timeout = setTimeout(() =>
-          reject(new Error('The school's app-link sign-in timed out.')), 120_000); }),
+          reject(new Error("The school's app-link sign-in timed out.")), 120_000); }),
       ]);
     } finally { if (timeout) clearTimeout(timeout); }
     const credential = unseal(parseSessionLink(url, attempt), attempt);

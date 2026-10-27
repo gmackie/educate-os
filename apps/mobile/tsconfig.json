@@ -7,8 +7,15 @@
     "jsx": "react-jsx",
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "noUncheckedIndexedAccess": true
+    "noUncheckedIndexedAccess": true,
+    "allowImportingTsExtensions": true
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", "tests"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "tests"
+  ]
 }

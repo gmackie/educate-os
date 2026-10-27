@@ -29,6 +29,8 @@ export class DistrictClient {
       headers: {
         accept: 'application/json',
         'cf-access-jwt-assertion': this.credential.token,
+        // Access's edge checks the cookie before the district Worker validates the assertion.
+        cookie: 'CF_Authorization=' + this.credential.token,
         ...(method === 'POST' ? { 'content-type': 'application/json' } : {}),
       },
       ...(method === 'POST' ? { body: JSON.stringify(body ?? {}) } : {}),
@@ -48,7 +50,7 @@ export class DistrictClient {
   studentActivities(offeringId: string): Promise<Activity[]> {
     return this.call('GET', '/api/student/offerings/' + this.id(offeringId) + '/activities');
   }
-  studentAssignment(assignmentId: string): Promise<{ assignment: Assignment }> {
+  studentAssignment(assignmentId: string): Promise<{ assignment: Assignment; starterMaterials: { id: string; title: string }[] }> {
     return this.call('GET', '/api/student/assignments/' + this.id(assignmentId));
   }
   studentSubmissions(assignmentId: string): Promise<Submission[]> {

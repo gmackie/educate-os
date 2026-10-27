@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { BookOpen, ClipboardCheck, ClipboardList, FileText, GraduationCap, Users } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
-import type { Activity, Assignment, ClassItem, Detail, GuardianChild, GuardianCourse, Principal } from '../types';
+import type { Assignment, ClassItem, Detail, GuardianChild, Principal } from '../types';
 import { useLoad } from '../hooks/useLoad';
 import { palette } from '../theme';
 import { Button, Card, Chip, dateLabel, Item, Page, Placeholder, QueryState, Section, Title } from '../ui/Primitives';
@@ -155,7 +155,7 @@ export function FamilyClass({ client, studentId, offeringId }: {
               detail={'Due ' + dateLabel(assignment.dueAt)}
               leading={<FileText size={20} color={palette.primary}/>}
               trailing={<Chip label={grade ? grade.score.points + '/' + grade.score.maxPoints : 'Not graded'}
-                tone={grade ? 'green' : 'neutral'}/>};
+                tone={grade ? 'green' : 'neutral'}/>}/>;
           })}</Card>}
       </Section>
       {data.announcements && data.announcements.length > 0 && <Section title="Announcements">

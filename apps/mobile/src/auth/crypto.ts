@@ -1,35 +1,20 @@
-import * as ExpoCrypto from 'expo-crypto';
 import { p256 } from '@noble/curves/nist.js';
 import { hkdf } from '@noble/hashes/hkdf.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { gcm } from '@noble/ciphers/aes.js';
 import { base64urlnopad } from '@scure/base';
 import type { Credential } from '../types';
-import { CALLBACK_ORIGIN } from '../district';
-import { appLink, uniqueParam } from '../security';
+import { appLink, uniqueParam, CALLBACK_ORIGIN } from '../security.ts';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const CONTEXT = encoder.encode('cloudflare-os-device-session-v1');
-const ORDER = BigInt('0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551');
 const STATE = /^[A-Za-z0-9._~-]{16,512}$/;
 
 export type Attempt = {
   state: string; publicKey: string; privateKey: Uint8Array; startedAt: number;
 };
 export type Handoff = { publicKey: string; salt: string; iv: string; ciphertext: string };
-
-/** Separate P-256 key material for each sign-in. Never persist it or send it to the browser. */
-export async function newAttempt(): Promise<Attempt> {
-  let privateKey: Uint8Array;
-  for (;;) {
-    privateKey = await ExpoCrypto.getRandomBytesAsync(32);
-    const scalar = BigInt('0x' + Array.from(privateKey, (b) => b.toString(16).padStart(2, '0')).join(''));
-    if (scalar > 0n && scalar < ORDER) break;
-  }
-  const state = base64urlnopad.encode(await ExpoCrypto.getRandomBytesAsync(32));
-  return { state, publicKey: base64urlnopad.encode(p256.getPublicKey(privateKey, false)), privateKey, startedAt: Date.now() };
-}
 
 /** Accept an app-owned universal link only, never arbitrary redirect URLs or duplicate fields. */
 export function parseSessionLink(link: string, attempt: Attempt): Handoff {

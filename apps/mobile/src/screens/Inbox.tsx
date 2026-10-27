@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
-import { Bell, CheckCheck, Megaphone } from 'lucide-react-native';
+import { Bell, CheckCheck } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Detail, Notification } from '../types';
 import { useLoad } from '../hooks/useLoad';
@@ -14,7 +14,7 @@ export function Inbox({ client, navigate }: { client: DistrictClient; navigate: 
     if (saving) return;
     setSaving(true);
     try { await client.markRead(ids); reload(); }
-    catch (e) { Alert.alert('Couldn't update messages', e instanceof Error ? e.message : 'Try again.'); }
+    catch (e) { Alert.alert("Couldn't update messages", e instanceof Error ? e.message : 'Try again.'); }
     finally { setSaving(false); }
   };
   const open = (item: Notification) => {

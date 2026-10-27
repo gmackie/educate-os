@@ -1,3 +1,5 @@
+export const CALLBACK_ORIGIN = 'https://mobile.educateos.io';
+
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
 
 /** A school address must name exactly one HTTPS origin, never a redirectable subresource. */

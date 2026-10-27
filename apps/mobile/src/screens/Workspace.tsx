@@ -48,7 +48,7 @@ function popupResult(link: string, id: string): { id: string; ticket: string } |
 }
 
 export function Workspace({ session, onReturn }: { session: Session; onReturn: () => void }) {
-  const view = useRef<WebView>(null);
+  const view = useRef<WebView<object>>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -108,7 +108,7 @@ export function Workspace({ session, onReturn }: { session: Session; onReturn: (
       <Placeholder title="Workspace unavailable" message="Check your school's address and your internet connection."/>
       <Button label="Try again" variant="outline" onPress={() => { setFailed(false); view.current?.reload(); }}/>
     </View> : null}
-    <WebView ref={view} key={session.district.id + ':' + session.confirmedAt}
+    <WebView<object> ref={view} key={session.district.id + ':' + session.confirmedAt}
       source={{ uri: origin + '/' }} style={{ flex: 1, opacity: failed ? 0 : 1 }}
       javaScriptEnabled domStorageEnabled sharedCookiesEnabled
       thirdPartyCookiesEnabled={false} mixedContentMode="never"

@@ -3,7 +3,7 @@
 Native iOS, iPadOS, and Android EducateOS, built with Expo SDK 58 and React Native 0.88.
 
 STATUS: SOURCE IMPLEMENTATION FOR REVIEW. This is NOT yet a signed, tested or deployed app.
-A subsequent EAS agent will finish dependency pinning, verified app links, signing and device tests.
+Dependencies are locked with pnpm. Verified app links, signing and physical-device tests remain release prerequisites.
 
 ## Implemented mobile UI
 
@@ -19,18 +19,20 @@ A subsequent EAS agent will finish dependency pinning, verified app links, signi
 
 ## Setup
 
-This is an independent npm project under apps/mobile and does not modify the pnpm/workerd lockfile.
+This is an independent pnpm project under apps/mobile and does not modify the pnpm/workerd lockfile.
 Run these commands from the repository root:
 
     cd apps/mobile
-    npm install
-    npx expo install --check
-    npm run typecheck
-    npm test
-    npx expo start --dev-client
+    pnpm install --frozen-lockfile
+    pnpm exec expo install --check
+    pnpm run typecheck
+    pnpm test
+    pnpm exec expo start --dev-client
 
 Native cookies and universal links require an Expo development build, not plain Expo Go.
-The build agent must generate and commit a reproducible package-lock.json.
+The committed pnpm-lock.yaml pins the isolated mobile dependency tree.
+Expo patch versions are pinned below today's releases to respect the 24-hour dependency-age policy;
+`expo.install.exclude` records these three deliberate pins.
 
 ## Authentication
 
@@ -60,7 +62,7 @@ app opens the full Workshop but academic native pages explain why Access is not 
 
 ## EAS handoff checklist
 
-1. npm install in apps/mobile, pin versions via expo install --fix if necessary, commit lockfile.
+1. Run pnpm install --frozen-lockfile in apps/mobile; check deliberate Expo patch pins before updates.
 2. Run typecheck, unit tests, expo-doctor, and PR CI.
 3. Use a simulator and physical iOS/Android devices to test P-256 auth interoperability, logout,
    callback replay, expiry, origin switching, and secondary gatekeeper OAuth.

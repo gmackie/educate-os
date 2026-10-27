@@ -37,10 +37,23 @@ policies remain server-side.
 ## Deployment readiness is separate
 
 This PR implements mobile UI and adapter/source code. The EAS handoff agent is responsible for
-dependency lockfile, Expo tooling compatibility corrections, on-device authentication tests,
+on-device authentication tests,
 native app signing, callback-domain deployment, release/distribution, icons and splash,
 privacy/store review, and any approved native push notification backend.
 
 Do not mistake JS compilation or a WebView simulator screenshot for a successful school rollout.
 Verify revoked users, switched users, multi-district profiles, role-scoped access, storage on
 device lock, sign-out data removal, and real grade-approval policy before release.
+
+## Development verification (SCHO-254)
+
+Mobile dependencies live in their own pnpm workspace under `apps/mobile`; run
+`pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm test`, and
+`pnpm exec expo install --check` there. `pnpm exec expo export --platform all` checks
+both Hermes bundles. The handoff tests exercise the real backend WebCrypto encryptor
+against the native decryptor, plus state substitution, expiry and tampering.
+
+SDK 58's ExpoModulesJSI requires Swift 6.2 or newer: Xcode 16.4 cannot build it.
+Use Xcode 26 or newer for native iOS builds. Simulator builds need no signing identity.
+The callback origin must have working DNS, HTTPS and verified platform association
+files before testing sign-in; source and simulator checks do not establish that setup.

@@ -85,6 +85,7 @@ const EXPECTED: Record<string, ExpectedArea> = {
       "VITE_DEV_PASSWORD",
       "VITE_DEV_USERNAME",
       "VITE_FRONTEND_ERROR_REPORTING",
+      "VITE_NATIVE_APP_CALLBACK_ORIGIN",
     ],
     injected: ["NODE_ENV"],
   },

@@ -26,16 +26,21 @@ jobs:
         working-directory: apps/mobile
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.17.0
       - uses: actions/setup-node@v4
         with:
           node-version: '24.3.0'
       - name: Install isolated mobile dependencies
-        run: npm install --no-audit --no-fund
+        run: pnpm install --frozen-lockfile
       - name: Check Expo dependencies
-        run: npx expo install --check
+        run: pnpm exec expo install --check
       - name: Typecheck mobile UI
-        run: npm run typecheck
+        run: pnpm run typecheck
       - name: Security unit tests
-        run: npm test
+        run: pnpm test
       - name: Validate public Expo configuration
-        run: npx expo config --type public --json > /dev/null
+        run: pnpm exec expo config --type public --json > /dev/null
+      - name: Bundle iOS and Android
+        run: pnpm exec expo export --platform all --output-dir dist --max-workers 2
