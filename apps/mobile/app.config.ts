@@ -3,6 +3,7 @@ import type { ExpoConfig } from 'expo/config';
 const config: ExpoConfig = {
   name: 'EducateOS',
   slug: 'educateos-mobile',
+  owner: 'gmacko',
   version: '0.1.0',
   scheme: 'educateos',
   orientation: 'default',
@@ -33,7 +34,7 @@ const config: ExpoConfig = {
   experiments: { tsconfigPaths: true },
   extra: {
     mobileCallbackOrigin: 'https://mobile.educateos.io',
-    // Set eas.projectId after creating the EAS project. Never put credentials here.
+    eas: { projectId: '4bb5e5bd-0dbb-453e-843b-1c96c4307851' },
   },
 };
 export default config;

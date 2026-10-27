@@ -82,3 +82,30 @@ to an untrusted central relay.
 Rich quizzes, complex content authoring, and advanced district administration are available
 through the authenticated Workshop/School apps instead of duplicated native editors. Student
 work is never cached offline without an approved encryption, retention and revocation plan.
+
+## EAS Build
+
+EAS project: https://expo.dev/accounts/gmacko/projects/educateos-mobile
+(project ID `4bb5e5bd-0dbb-453e-843b-1c96c4307851`).
+
+Run EAS commands from `apps/mobile`, using the account and project linked in `app.config.ts`.
+The root `.easignore` uploads only this standalone app and excludes native output, dependencies,
+local environment files and signing credentials. Inspect the upload before changing that boundary:
+
+    eas build:inspect --platform ios --profile development-simulator --stage archive --output /tmp/educateos-eas-archive
+
+Build profiles:
+
+- `development-simulator`: iOS simulator development client; no Apple signing required.
+- `development`: physical iOS development client and Android APK; iOS needs registered devices.
+- `preview`: standalone internal distribution; Android APK and iOS ad hoc signing.
+- `production`: store distribution, Android AAB, and remote build-number/version-code increments.
+
+    eas build --platform ios --profile development-simulator
+    eas build --platform android --profile development
+    eas build --platform ios --profile development
+
+Profiles pin Node 24.14.0 and pnpm 11.17.0. Both platforms use EAS's latest image; SDK 58
+requires Xcode 26 or newer. Channels are omitted until `expo-updates` and a runtime-version
+policy are configured. Store builds do not submit themselves; `eas submit` is a separate step.
+EAS manages signing credentials remotely; never commit downloaded credentials or private keys.
