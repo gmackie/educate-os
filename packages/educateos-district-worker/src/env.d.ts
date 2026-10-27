@@ -22,5 +22,7 @@ declare namespace Cloudflare {
      * Unset, no Clever roster syncs.
      */
     CLEVER_DISTRICT_TOKEN?: string;
+    /** JSON key for the district-authorized Classroom DWD service account. */
+    GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY?: string;
   }
 }

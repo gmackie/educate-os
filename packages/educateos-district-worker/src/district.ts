@@ -8,11 +8,11 @@ import type { ImportFetch } from "@educateos/content-studio";
 import { createDirectoryPrincipalResolver } from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
 import { authorityFor, createDistrictApp, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
-import { clever } from "@educateos/integrations";
+import { clever, googleclassroom } from "@educateos/integrations";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
 import { accessAudiences, accessRequestVerifier } from "./access.ts";
-import { readDistrictWorkerConfig } from "./config.ts";
+import { readDistrictWorkerConfig, type DistrictWorkerConfig } from "./config.ts";
 // Communication (SCHO-189)
 import { cloudflareEmailSender, type SendEmailBinding } from "./mail.ts";
 // LTI 1.3 Tool (SCHO-177)
@@ -40,6 +40,8 @@ export interface DistrictSettings {
   ltiToolOrigin?: string | undefined;
   /** `CLEVER_DISTRICT_TOKEN`, the district-app token Clever issued for the district (SCHO-203). Without it no Clever roster syncs. */
   cleverDistrictToken?: string | undefined;
+  /** `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY`, a JSON service-account key with district-authorized DWD. */
+  classroomServiceAccountKey?: string | undefined;
 }
 
 /** What a district reaches outside its storage. */
@@ -64,25 +66,43 @@ export function configuredDistrictId(config: string | undefined): string {
 }
 
 /**
- * Starts the district in `storage`: its stores (the directory seeded from the configuration on
- * first start), the application over them, and the directory's operations as school tools,
- * decided by the application's engine with writes queued in the same storage. Both the `/api`
- * surface and the gatekeeper's `authenticate` sign in through Cloudflare Access and resolve the
- * identity through the directory as it stands, so they cannot disagree about who a caller is.
+ * Builds a Clever or Classroom roster source using deployment credentials. Other providers
+ * return an explicit unavailable reason; credentials never come from configuration revisions.
  */
-/**
- * The roster sources the district Worker can build (SCHO-203): a Clever roster read with the
- * district's token. OneRoster REST is not wired into the Worker yet, so any other provider says so.
- */
-export function workerRosterSource(token: string | undefined, rosterFetch: typeof fetch): RosterSourceFactory {
+export function workerRosterSource(
+  token: string | undefined,
+  rosterFetch: typeof fetch,
+  classroom?: { config: NonNullable<DistrictWorkerConfig["classroom"]>; key: string | undefined },
+): RosterSourceFactory {
   return (rostering) => {
-    if (rostering.provider !== "clever") return { reason: `the district Worker syncs a Clever roster only, not ${rostering.provider}` };
+    if (rostering.provider === "google-classroom") {
+      if (classroom === undefined) return { reason: "no Classroom connection is configured" };
+      if (!classroom.key) return { reason: "no GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY secret is set" };
+      const tokens = googleclassroom.serviceAccountTokens({
+        key: classroom.key,
+        scopes: classroom.config.rosterScopes === "read-write"
+          ? googleclassroom.CLASSROOM_ROSTER_SCOPES_READ_WRITE
+          : googleclassroom.CLASSROOM_ROSTER_SCOPES,
+        fetch: rosterFetch,
+      });
+      return { source: googleclassroom.classroomRosterSource(new googleclassroom.GoogleClassroomClient({
+        tokens, admin: classroom.config.admin, fetch: rosterFetch,
+      }), classroom.config.roster) };
+    }
+    if (rostering.provider !== "clever") return { reason: `the district Worker has no roster source for ${rostering.provider}` };
     if (rostering.clever === undefined) return { reason: "the roster names no Clever district" };
     if (token === undefined || token === "") return { reason: "no CLEVER_DISTRICT_TOKEN secret is set" };
     return { source: clever.cleverRosterSource(new clever.CleverDataClient({ connection: rostering.clever, token, fetch: rosterFetch })) };
   };
 }
 
+/**
+ * Starts the district in `storage`: its stores (the directory seeded from the configuration on
+ * first start), the application over them, and the directory's operations as school tools,
+ * decided by the application's engine with writes queued in the same storage. Both the `/api`
+ * surface and the gatekeeper's `authenticate` sign in through Cloudflare Access and resolve the
+ * identity through the directory as it stands, so they cannot disagree about who a caller is.
+ */
 export async function startDistrict(storage: DistrictSqlStorage, settings: DistrictSettings, seams: DistrictSeams): Promise<District> {
   const config = readDistrictWorkerConfig(settings.config);
   const stores = durableDistrictStores(storage, config.directory);
@@ -100,7 +120,8 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(seams.onUnreadableConfigRevision === undefined ? {} : { onUnreadableConfigRevision: seams.onUnreadableConfigRevision }),
     authority,
     // Scheduled roster sync (SCHO-203)
-    rosterSource: workerRosterSource(settings.cleverDistrictToken, seams.rosterFetch ?? ((input, init) => fetch(input, init))),
+    rosterSource: workerRosterSource(settings.cleverDistrictToken, seams.rosterFetch ?? ((input, init) => fetch(input, init)),
+      config.classroom === undefined ? undefined : { config: config.classroom, key: settings.classroomServiceAccountKey }),
     ...(config.rosterServicePrincipalId === undefined ? {} : { rosterServicePrincipalId: config.rosterServicePrincipalId }),
     ...(config.fundingPools === undefined ? {} : { fundingPools: config.fundingPools }),
     ...(config.aiMonthlyDistrictCapUsdNano === undefined ? {} : { aiMonthlyDistrictCapUsdNano: config.aiMonthlyDistrictCapUsdNano }),

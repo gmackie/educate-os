@@ -411,3 +411,27 @@ The steps go in order. Steps 1-4 can be built and tested now against a fake Goog
    (b) is the better fit for ADR-0001. (a) is easier to onboard.
 2. **Whether to accept the deployment's one-project-forever constraint** at install, with a refusal
    to change it while any Classroom grade routes exist.
+
+
+## District Worker connection (SCHO-255)
+
+The district Worker can build the Classroom roster source through its existing administrator and
+scheduled sync paths. Configure `rostering.provider: google-classroom` in the district revision,
+with `identityMapping: { issuer: "https://accounts.google.com", subject: { field: "username" } }`.
+The directory must already trust that issuer. The source uses the existing OneRoster import
+pipeline and `external:oneroster` authority; do not change a live directory's authority implicitly.
+
+Set `DISTRICT_CONFIG.classroom` to `{ admin, roster, rosterScopes }`, where `roster` is the
+`ClassroomRosterConfig` above and `admin` is the Workspace administrator's primary email. Use
+`courseSelection: "listed"` for shared demo domains. `rosterScopes` defaults to `readonly`; use
+`read-write` only when the domain delegated the broader course/roster scopes instead. The source
+still makes only roster reads, and never requests coursework scopes.
+
+Keep the service-account JSON key in `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY`, a Worker secret.
+Missing connection settings or credentials report why sync cannot run. Existing sync history,
+removal holds, scheduling and administrator authorization remain the authority for applying it.
+This wiring does not implement Google sign-in or establish a person's identity link: deployed
+Access sign-ins still require an administrator-confirmed link to the rostered principal.
+
+Production verification remains open in SCHO-255. Library tests and Worker tests are not evidence
+that a demo district has been configured, synced, or used successfully by a teacher or learner.

@@ -227,6 +227,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         accessAudiences: this.env.CF_ACCESS_AUD,
         ltiToolOrigin: this.env.LTI_TOOL_ORIGIN,
         cleverDistrictToken: this.env.CLEVER_DISTRICT_TOKEN,
+        classroomServiceAccountKey: this.env.GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY,
       },
       {
         importFetch: (url, init) => this.importFetch(url, init),

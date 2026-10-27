@@ -180,7 +180,7 @@ const Identity = z.strictObject({
 });
 
 const Rostering = z.strictObject({
-  provider: z.enum(["oneroster-csv", "oneroster-api", "clever", "manual"]),
+  provider: z.enum(["oneroster-csv", "oneroster-api", "clever", "google-classroom", "manual"]),
   mode: z.enum(["preview-before-apply", "apply-automatically"]),
   /**
    * How the roster's users map to the IdP's subjects, for a OneRoster provider. The issuer must be
@@ -207,6 +207,12 @@ const Rostering = z.strictObject({
       if (rostering[field] !== undefined) context.addIssue({ code: "custom", path: [field], message: `a manual roster has no ${field}` });
     }
     return;
+  }
+  if (rostering.provider === "google-classroom") {
+    const mapping = rostering.identityMapping;
+    if (mapping?.issuer !== "https://accounts.google.com" || mapping.subject.field !== "username") {
+      context.addIssue({ code: "custom", path: ["identityMapping"], message: "a Classroom roster uses the Google issuer and Google user ID as username" });
+    }
   }
   if (rostering.provider === "clever") {
     if (rostering.clever === undefined) context.addIssue({ code: "custom", path: ["clever"], message: "a Clever roster names its Clever district" });

@@ -4,6 +4,7 @@
 // stores. Everything administrators change later (configuration, funding allocations, the roster)
 // is stored in the district's Durable Object, not here.
 import { z } from "zod";
+import { googleclassroom } from "@educateos/integrations";
 import { DistrictDirectorySnapshot, PrincipalId } from "@educateos/contracts";
 import { AuthoritySetting } from "@educateos/district-app";
 import { CloudflareAccountFacts, FundingPoolSet, GovernedModel, UsdNano } from "@educateos/ai-governance";
@@ -43,6 +44,15 @@ export const DistrictWorkerConfig = z.strictObject({
    * grant. Without it the hourly roster sync does not run; an administrator can still run one.
    */
   rosterServicePrincipalId: PrincipalId.optional(),
+  /** Classroom DWD connection. The private key is a Worker secret, never configuration. */
+  classroom: z.strictObject({
+    /** Workspace administrator the roster reads act as. */
+    admin: z.email(),
+    /** Course selection, schools, term and allowed domains for this district. */
+    roster: googleclassroom.ClassroomRosterConfig,
+    /** Match the exact scopes delegated by the Workspace administrator. */
+    rosterScopes: z.enum(["readonly", "read-write"]).default("readonly"),
+  }).optional(),
   /** The district's AI funding pools. Defaults to none, so no AI request is funded. */
   fundingPools: FundingPoolSet.optional(),
   /** The district's monthly cap on its course and personal pools' allocations together. */
