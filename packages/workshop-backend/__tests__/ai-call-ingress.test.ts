@@ -19,6 +19,7 @@ import type {
   AiCallDecision, AiCallDescriptor, AiCallSite,
 } from "@gadgets/workshop-shared/ai-call-guard";
 import { runAgent } from "../src/agent";
+import type { AgentSpawnerBinding } from "../src/agent-spawner-binding";
 import { guardModelHandle } from "../src/ai-call-guard.js";
 import { AiCallDeniedError } from "../src/ai-invoke.js";
 import {
@@ -197,12 +198,22 @@ describe("every ingress path that reaches a model asks the guard", () => {
 
   it("agent spawn (row 9): agent.spawn", async () => {
     let { calls, guard } = recordingGuard();
-    await withOverseer(guard, async (impl, instance) => {
-      let config: AgentSpawnerConfig = { displayName: "Spawner", modelId: MODEL.id, env: {} };
+    await withOverseer(guard, async impl => {
+      let config: Omit<AgentSpawnerConfig, "env"> = { displayName: "Spawner", modelId: MODEL.id };
+      // Follow the real facet/session route: the spawner's approval queue, rather than an
+      // overseer entrypoint, now owns spawning and reads the accepted binding edges.
+      let cls = impl.ctx.exports.AgentSpawnerGatekeeper({ props: {
+        config, creatorUserId: OWNER_USER_ID,
+      } });
+      using client = await impl.addGatekeeper(
+          cls, { type: "agentSpawner", config }, OWNER_USER_ID, undefined, {});
+      using binding: RpcStub<AgentSpawnerBinding> = await client.openSession();
       let text = "Draft feedback for every submitted essay.";
-      await instance.spawnAgent("Feedback", text, config, OWNER_USER_ID);
+      await binding.spawn("Feedback", text);
       let [call] = await callsFrom(calls, "agent.spawn");
       expectText(call, text);
+      expect(call.initiator).toEqual({ type: "gadget", id: OWNER.id });
+      expect(calls.map(each => each.callSite)).toEqual(["agent.spawn"]);
       await impl.waitForAllAgentsToComplete();
     });
   });

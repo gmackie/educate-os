@@ -242,6 +242,16 @@ function reportedUsage(usage: Usage | undefined): AiCallOutcome["usage"] {
 export function guardModelHandle(
     guard: AiCallGuardClient | undefined, handle: ModelHandle, scope: AiCallScope): ModelHandle {
   if (!guard) return handle;
+  // A cached resend replays a frozen provider payload outside stream(), so it cannot honor a
+  // fresh guard decision or instructions. Do not expose it on guarded handles. A setter also
+  // discards requests captured asynchronously by the inner stream after it finishes; clearing
+  // lastRequest just once would leave that path open again. Normal provider prompt caching is
+  // unchanged, and deployments without a guard keep background cache warming.
+  Object.defineProperty(handle, "lastRequest", {
+    configurable: true,
+    get: () => undefined,
+    set: () => {},
+  });
   let stream = handle.stream;
   handle.stream = (model, context, { callSite, ...options } = {}) => {
     let callScope = callSite ? { ...scope, callSite } : scope;

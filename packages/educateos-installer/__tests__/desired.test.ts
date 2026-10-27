@@ -1,11 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { compileDesiredState, DistrictInstallConfig, loadPinnedManifest } from "../src/index.ts";
+import { compileDesiredState, DistrictInstallConfig, loadPinnedManifest, ManifestBinding } from "../src/index.ts";
 import { configFor, deriveRelease, goldenRelease, NORTHFIELD } from "./support.ts";
 
 describe("release manifest", () => {
   it("accepts the release pipeline's golden manifest against the root's signed statement", async () => {
     const release = await goldenRelease();
     expect(Object.keys(release.manifest.workers)).toContain("workshop-backend");
+  });
+
+  it("accepts version metadata without relaxing the closed binding schema", () => {
+    expect(ManifestBinding.parse({ type: "version_metadata", name: "CF_VERSION_METADATA" }))
+      .toEqual({ type: "version_metadata", name: "CF_VERSION_METADATA" });
+    expect(ManifestBinding.safeParse({ type: "version_metadata", name: "invalid-name" }).success).toBe(false);
+    expect(ManifestBinding.safeParse({ type: "version_metadata", name: "CF_VERSION_METADATA", id: "unexpected" }).success).toBe(false);
+    expect(ManifestBinding.safeParse({ type: "unknown_binding", name: "UNKNOWN" }).success).toBe(false);
   });
 
   it("rejects bytes that do not match the signed digest", async () => {
