@@ -258,6 +258,33 @@ describe("Harbor's Classroom roster sync", () => {
     expect(fake.requests.some((r) => r.url.pathname.endsWith("/aliases"))).toBe(true);
   });
 
+  it("imports only listed courses in a shared domain, even with a default school", async () => {
+    const { client, fake } = world(harbor);
+    const batch = await googleclassroom.classroomRosterSource(client, {
+      ...HARBOR_CONFIG,
+      courseSelection: "listed",
+    }).read({ mode: "complete" });
+    expect(batch.issues).toEqual([]);
+    expect(batch.feed["classes.csv"]).toHaveLength(1);
+    expect(batch.feed["courses.csv"].map((c) => c.title)).toEqual(["Math 7"]);
+    expect(batch.feed["users.csv"].map((u) => `${u.givenName} ${u.familyName}`).toSorted()).toEqual(["Rosa Iqbal", "Ruth Delaney", "Sami Torres"]);
+    const rosterRequests = fake.requests.filter((r) => /\/(teachers|students)$/.test(r.url.pathname));
+    expect(rosterRequests.length).toBeGreaterThan(0);
+    const ids = new Set(batch.feed["classes.csv"].map((c) => c.sourcedId));
+    expect(rosterRequests.every((r) => ids.has(r.url.pathname.split("/").at(-2)!))).toBe(true);
+  });
+
+  it("keeps conflicting school mappings as errors when reading listed courses", async () => {
+    const { client } = world(harbor);
+    const math = (await client.listCourses()).records.find((c) => c.name === "Math 7")!;
+    const batch = await googleclassroom.classroomRosterSource(client, {
+      ...HARBOR_CONFIG, courseSelection: "listed",
+      schools: HARBOR_CONFIG.schools.map((s, i) => ({ ...s, courses: [i === 0 ? math.id : "d:off_hb-math7-b1"] })),
+    }).read({ mode: "complete" });
+    expect(batch.feed["classes.csv"]).toEqual([]);
+    expect(batch.issues).toContainEqual(expect.objectContaining({ severity: "error", message: expect.stringContaining("more than one school") }));
+  });
+
   it("is idempotent, and deactivates a student Classroom drops", async () => {
     const { client, fake } = world(harbor);
     const first = await synced(client);

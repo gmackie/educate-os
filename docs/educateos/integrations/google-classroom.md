@@ -320,6 +320,40 @@ When the seed completes, the next live run should sync Harbor as classroom-sync,
 with the Harbor fixture, check the `sub` by signing in as a test account, and run Cedar Valley's
 link plan over all 4 courses.
 
+### Demo tenant approval and follow-up, 2026-10-27
+
+Google approved the demo domain and provisioned ten Education Plus seats. All 18 synthetic
+accounts, six organizational units and eight active courses (four per district) now exist;
+`seed-google-demo.ts --verify` passed with exact owners and rosters. Plus is assigned to Whitaker,
+Ferreira, Asante and Delaney (six seats remain). Both Staff OUs are 18+, both Students OUs retain
+under-18 access, Classroom API data access is on, and the existing Internal EducateOS OAuth client
+is Trusted for this synthetic tenant. License effects may take up to 24 hours.
+
+A live Harbor read exposed the shared-domain boundary: the source sees Cedar Valley's active
+courses too. With the default `courseSelection: "all"`, unmapped courses block import. Set
+`courseSelection: "listed"` and explicitly list Harbor's four `d:off_hb-*` aliases under their
+schools when a domain holds several districts. This excludes unlisted courses and their rosters,
+even with `defaultSchool`; conflicting ID/alias school mappings still block apply. Without the
+option, existing whole-domain behavior is preserved.
+
+Using `classroom-sync` and the shipped sync pipeline with this configuration, an **in-memory**
+Harbor import succeeded: two schools, one term, four catalog courses, four offerings, eight people,
+14 enrollments and four teaching-role assignments. Active enrollment names, courses, sections and
+roles matched the Harbor fixture exactly; no issues were reported. This did not apply a roster
+to the deployed Harbor installation. Cedar Valley's link plan matched all four offerings by alias
+and its eight roster principals by name; Harbor's courses remained unresolved in that directory.
+
+Grade passback also passed against an actual seeded student in Earth Science 8, replacing the
+previous admin-student test. Coursework `896162560763`, created at `2026-10-27T17:52:08.671Z`, was
+app-owned. An approved 8.5/10 posted, a retry was `already-posted`, and an unapproved version was
+refused as `policy-violation`. Owner read-back of submission `Cg4I8ZmlsYoaEPv1zbuKGg` returned
+`assignedGrade=8.5`, `draftGrade=8.5`. The runner used existing fixture principals rather than
+injecting a principal named from the live roster.
+
+Still pending: interactive OpenID `sub` comparison, deployed district sync configuration/apply,
+and Google's own refusal of teacher-created coursework. This evidence does not establish complete
+external conformance or production delivery; do not raise the connector's maturity on that basis.
+
 ## Implementation plan (2026-10-21, superseded by District sync above)
 
 The steps go in order. Steps 1-4 can be built and tested now against a fake Google HTTP surface. Steps
