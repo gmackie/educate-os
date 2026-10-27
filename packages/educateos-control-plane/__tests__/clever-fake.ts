@@ -1,7 +1,12 @@
 // A stand-in for Clever's token and identity endpoints, as the launch handler calls them. A code
-// `launch-<district>` signs in a user of that Clever district; any other code is refused, as an
-// expired or reused one would be. The token it issues names the code, so a suite can look for it.
-import { CLEVER_LAUNCH_REDIRECT_URI, CLEVER_ME_URL, CLEVER_TOKEN_URL } from "../src/clever-launch.ts";
+// `launch-<district>` signs in a user of that Clever district; `launch-teacher-<district>` signs one
+// in through a teacher's authorization, whose /me names no district, so it is read from /users. Any
+// other code is refused, as an expired or reused one would be. The token it issues names the code,
+// so a suite can look for it.
+import { CLEVER_LAUNCH_REDIRECT_URI, CLEVER_ME_URL, CLEVER_TOKEN_URL, CLEVER_USERS_URL } from "../src/clever-launch.ts";
+
+/** The Clever user ID the fake signs in. */
+export const CLEVER_USER = "1".repeat(24);
 
 /** The test Clever app's client. */
 export const CLEVER_CLIENT = { clientId: "test-clever-client", clientSecret: "test-clever-secret" };
@@ -22,15 +27,19 @@ export async function fakeClever(input: string, init: RequestInit): Promise<Resp
     }
     return Response.json({ access_token: tokenFor(code), token_type: "bearer" });
   }
+  const match = /^Bearer clever-access-token-launch-(teacher-)?(.+)$/.exec(headers.get("authorization") ?? "");
+  if ((input === CLEVER_ME_URL || input.startsWith(`${CLEVER_USERS_URL}/`)) && init.method === "GET" && match === null) {
+    return Response.json({ error: "unauthorized" }, { status: 401 });
+  }
   if (input === CLEVER_ME_URL && init.method === "GET") {
-    const match = /^Bearer clever-access-token-launch-(.+)$/.exec(headers.get("authorization") ?? "");
-    if (match === null) return Response.json({ error: "unauthorized" }, { status: 401 });
-    const district = match[1]!;
-    return Response.json({
-      type: "user",
-      data: { id: "1".repeat(24), district, type: "user", authorized_by: "district" },
-      links: [{ rel: "self", uri: "/me" }],
-    });
+    const [, teacher, district] = match!;
+    const data = teacher === undefined
+      ? { id: CLEVER_USER, district, type: "user", authorized_by: "district" }
+      : { id: CLEVER_USER, type: "user", authorized_by: "teacher" };
+    return Response.json({ type: "user", data, links: [{ rel: "self", uri: "/me" }, { rel: "canonical", uri: `/v3.0/users/${CLEVER_USER}` }] });
+  }
+  if (input === `${CLEVER_USERS_URL}/${CLEVER_USER}` && init.method === "GET") {
+    return Response.json({ data: { id: CLEVER_USER, district: match![2], roles: { teacher: {} } } });
   }
   return new Response("not found", { status: 404 });
 }
