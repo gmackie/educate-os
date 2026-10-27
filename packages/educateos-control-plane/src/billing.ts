@@ -250,7 +250,11 @@ export class ControlPlaneBilling {
           .filter((invoice) => invoice.subscriptionId === subscription.subscriptionId && invoice.status === "open")
           .toSorted((a, b) => b.issuedAt.localeCompare(a.issuedAt))[0];
       if (open === undefined) throw new EducateOsError("not-found", "there is no open invoice to pay");
-      if ((await this.#commerce.chargeState(open.invoiceId)) === "pending") throw new EducateOsError("conflict", "a charge for this invoice is already on its way");
+      // What Stripe holds first: a charge made but never answered is pending, or already settled.
+      await this.#commerce.reconcileCharges(open.invoiceId);
+      const state = await this.#commerce.chargeState(open.invoiceId);
+      if (state === "pending") throw new EducateOsError("conflict", "a charge for this invoice is already on its way");
+      if (state === "paid") return state;
       return await this.#charge(open, customer(operator), { retryLater: false });
     });
   }
@@ -279,9 +283,10 @@ export class ControlPlaneBilling {
 
   /**
    * Applies a Stripe webhook delivery, verified against the endpoint's signing secret first. Each
-   * event is applied once, by its ID. An event about a charge commerce never made is answered
-   * `unmatched`, not refused, so Stripe stops redelivering it, and logged by Stripe's IDs so it can
-   * be found and reconciled by hand.
+   * event is applied once, by its ID. An event about a charge commerce has no record of yet is
+   * `unmatched`, logged by Stripe's IDs, and answered with a 503 by the route, so Stripe keeps
+   * redelivering it (for up to three days): a charge whose creation reply was lost is recorded the
+   * next time its invoice is charged or reconciled, and the redelivery then matches it.
    */
   receiveStripeWebhook(payload: string, signature: string): Promise<BillingReply<{ outcome: string }>> {
     return reply(async () => {
@@ -318,9 +323,13 @@ export class ControlPlaneBilling {
   async #charge(invoice: Invoice, actor: FinanceActor, { retryLater }: { retryLater: boolean }): Promise<InvoiceChargeState> {
     if (invoice.status !== "open") return await this.#commerce.chargeState(invoice.invoiceId);
     try {
+      // chargeInvoice reconciles with Stripe first: a charge made but never answered is found and
+      // recorded, and settles the invoice or stays pending, instead of being made again.
       await this.#commerce.chargeInvoice(invoice.invoiceId, actor);
     } catch (error) {
       if (!retryLater || !(error instanceof EducateOsError) || error.code !== "unavailable") throw error;
+      // Stripe may have made the charge and lost only its reply. The next charge or Pay now finds it
+      // by its metadata before making another (CommerceService.chargeInvoice).
       console.error("billing charge deferred", { invoiceId: invoice.invoiceId, error: error.code });
     }
     return await this.#commerce.chargeState(invoice.invoiceId);
@@ -368,6 +377,21 @@ async function reply<T>(work: () => Promise<T>): Promise<BillingReply<T>> {
     if (error instanceof EducateOsError) return { ok: false, code: error.code, message: error.message };
     throw error;
   }
+}
+
+/**
+ * A promise-returning build run once and its result kept, unless it rejects: then the next call
+ * builds again, rather than every call failing with the first rejection until a restart.
+ */
+export function keepUnlessRejected<T>(build: () => Promise<T>): () => Promise<T> {
+  let kept: Promise<T> | undefined;
+  return () => {
+    kept ??= build().catch((error: unknown) => {
+      kept = undefined;
+      throw error;
+    });
+    return kept;
+  };
 }
 
 /** A {@link BillingApi} for a deploy without billing configured: every operation is refused as unavailable. */

@@ -59,7 +59,9 @@ function succeeded(eventId: string, intent: { id: string; amount: number }): str
   });
 }
 
-async function chargesFor(): Promise<{ id: string; amount: number }[]> {
+interface FakeIntent { id: string; amount: number; status: string; invoice: string; idempotencyKey: string }
+
+async function chargesFor(): Promise<FakeIntent[]> {
   return await (await fetch("https://api.stripe.com/test/payment_intents")).json();
 }
 
@@ -93,7 +95,7 @@ describe("the billing page", () => {
 });
 
 describe("subscribing", () => {
-  it("runs subscribe, card setup, first invoice, webhook payment and cancellation", async () => {
+  it("runs subscribe, card setup, first invoice paid at once, its webhook, the portal and cancellation", async () => {
     const { token, checkout } = await subscribed();
     expect(checkout).toMatch(/^https:\/\/checkout\.stripe\.com\/c\/pay\/cs_test_/);
 
@@ -111,19 +113,18 @@ describe("subscribing", () => {
     // Coming back again charges nothing more.
     await get(returnUrl, token);
 
+    // Stripe answered the charge as succeeded, as it does for the 4242 test card: the invoice is
+    // paid from that reply, and the webhook that follows changes nothing.
     const active = await (await get("/app/billing?card=saved", token)).text();
     expect(active).toContain("Your card is saved");
     expect(active).toContain(">Active<");
     expect(active).toContain("$1.00");
-    expect(active.match(/<span class="status planned">Open<\/span>/g)).toHaveLength(1);
-
-    const charges = (await chargesFor()).filter((charge) => charge.amount === MANAGED_PLANS[0]!.plan.termFeeCents);
-    const charge = charges.at(-1)!;
-    const first = await webhook(succeeded(`evt_paid_${charge.id}`, charge));
-    expect(first.status).toBe(200);
-    expect(await first.json()).toEqual({ outcome: "applied" });
-    expect(await (await webhook(succeeded(`evt_paid_${charge.id}`, charge))).json()).toEqual({ outcome: "duplicate" });
-    expect(await (await get("/app/billing", token)).text()).toContain('<span class="status avail">Paid</span>');
+    expect(active).toContain('<span class="status avail">Paid</span>');
+    const charge = (await chargesFor()).at(-1)!;
+    expect(charge).toMatchObject({ amount: MANAGED_PLANS[0]!.plan.termFeeCents, status: "succeeded" });
+    const hook = await webhook(succeeded(`evt_paid_${charge.id}`, charge));
+    expect(hook.status).toBe(200);
+    expect(await hook.json()).toEqual({ outcome: "duplicate" });
 
     const portal = await post("/app/billing/portal", token);
     expect(portal.status).toBe(303);
@@ -172,7 +173,7 @@ describe("charging the first invoice", () => {
     await saveCard(checkout);
     const returnUrl = await returnAddress(checkout);
     const before = (await chargesFor()).length;
-    await failNextCharge();
+    await nextCharge("unreachable");
     expect((await get(returnUrl, token)).headers.get("location")).toBe("/app/billing?card=uncharged");
     const page = await (await get("/app/billing?card=uncharged", token)).text();
     expect(page).toContain("couldn&#39;t be charged just now");
@@ -187,33 +188,83 @@ describe("charging the first invoice", () => {
     expect(await chargesFor()).toHaveLength(before + 1);
   });
 
-  it("charges an uncharged invoice with Pay now, and refuses a second while that charge is on its way", async () => {
-    const { token, checkout } = await subscribed();
-    await saveCard(checkout);
-    await failNextCharge();
-    await get(await returnAddress(checkout), token);
-    const before = (await chargesFor()).length;
-    const paid = await post("/app/billing/pay", token);
-    expect(paid.status).toBe(303);
-    expect(paid.headers.get("location")).toBe("/app/billing?card=saved");
-    expect(await chargesFor()).toHaveLength(before + 1);
-    expect((await post("/app/billing/pay", token)).status).toBe(409);
-  });
-
-  it("never invoices a subscription cancelled while its return from Stripe was in flight", async () => {
+  it("finds a charge Stripe made but whose reply was lost: no second charge, and its webhook matches once recorded", async () => {
     const { token, checkout } = await subscribed();
     await saveCard(checkout);
     const returnUrl = await returnAddress(checkout);
     const before = (await chargesFor()).length;
-    const [back, cancelled] = await Promise.all([get(returnUrl, token), post("/app/billing/cancel", token)]);
-    expect(cancelled.status).toBe(303);
-    const charged = (await chargesFor()).length - before;
-    if (back.headers.get("location") === "/app/billing?card=cancelled") {
-      expect(charged).toBe(0); // The cancel ran first: the return found nothing to start.
-    } else {
-      expect(charged).toBe(1); // The return ran first and the cancel then stopped further charges.
-    }
-    expect(await (await get("/app/billing", token)).text()).toContain("Continue to add a card");
+    await nextCharge("lose-reply");
+    expect((await get(returnUrl, token)).headers.get("location")).toBe("/app/billing?card=uncharged");
+    const charges = await chargesFor();
+    expect(charges).toHaveLength(before + 1);
+    const lost = charges.at(-1)!;
+    expect(lost.status).toBe("processing");
+
+    // Stripe's webhook for it arrives before commerce knows the charge: 503, so Stripe redelivers.
+    await succeed(lost.id);
+    const event = succeeded(`evt_lost_${lost.id}`, lost);
+    const early = await webhook(event);
+    expect(early.status).toBe(503);
+    expect(await early.json()).toEqual({ outcome: "unmatched" });
+
+    // The next return finds the charge by its metadata instead of making another.
+    expect((await get(returnUrl, token)).headers.get("location")).toBe("/app/billing?card=saved");
+    expect(await chargesFor()).toHaveLength(before + 1);
+    expect(await (await get("/app/billing", token)).text()).toContain('<span class="status avail">Paid</span>');
+    // The redelivery now matches a recorded charge.
+    const redelivered = await webhook(event);
+    expect(redelivered.status).toBe(200);
+    expect(await redelivered.json()).toEqual({ outcome: "duplicate" });
+  });
+
+  it("matches a redelivered webhook for a lost charge that is still processing, and refuses Pay now meanwhile", async () => {
+    const { token, checkout } = await subscribed();
+    await saveCard(checkout);
+    const returnUrl = await returnAddress(checkout);
+    await nextCharge("lose-reply");
+    await get(returnUrl, token);
+    const lost = (await chargesFor()).at(-1)!;
+    const event = succeeded(`evt_processing_${lost.id}`, lost);
+    expect((await webhook(event)).status).toBe(503);
+
+    // Pay now reconciles first: the charge is on its way, so it makes no other.
+    const before = (await chargesFor()).length;
+    expect((await post("/app/billing/pay", token)).status).toBe(409);
+    expect(await chargesFor()).toHaveLength(before);
+    expect(await (await get("/app/billing", token)).text()).toContain("charge on its way");
+
+    const redelivered = await webhook(event);
+    expect(redelivered.status).toBe(200);
+    expect(await redelivered.json()).toEqual({ outcome: "applied" });
+    expect(await (await get("/app/billing", token)).text()).toContain('<span class="status avail">Paid</span>');
+  });
+
+  it("retries a declined charge with Pay now as a new attempt, cancelling the declined one first", async () => {
+    const { token, checkout } = await subscribed();
+    await saveCard(checkout);
+    const returnUrl = await returnAddress(checkout);
+    await nextCharge("decline");
+    expect((await get(returnUrl, token)).headers.get("location")).toBe("/app/billing?card=declined");
+    const page = await (await get("/app/billing?card=declined", token)).text();
+    expect(page).toContain("Your card was declined");
+    expect(page).toContain("Payment due");
+    expect(page).toContain('<span class="badge warn">Declined</span>');
+    // Reloading the old return address says what is true now: a payment is due.
+    expect((await get(returnUrl, token)).headers.get("location")).toBe("/app/billing?card=due");
+
+    const declined = (await chargesFor()).at(-1)!;
+    const paid = await post("/app/billing/pay", token);
+    expect(paid.headers.get("location")).toBe("/app/billing?card=saved");
+    const charges = await chargesFor();
+    const retry = charges.at(-1)!;
+    expect(retry.id).not.toBe(declined.id);
+    expect(retry.idempotencyKey).not.toBe(declined.idempotencyKey);
+    expect(retry.status).toBe("succeeded");
+    expect(charges.find((charge) => charge.id === declined.id)!.status).toBe("canceled");
+    const after = await (await get("/app/billing", token)).text();
+    expect(after).toContain('<span class="status avail">Paid</span>');
+    expect(after).toContain(">Active<");
+    expect((await post("/app/billing/pay", token)).status).toBe(404);
   });
 
   it("won't let a setup page from an earlier subscription start a later one", async () => {
@@ -252,9 +303,9 @@ describe("the Stripe webhook", () => {
     expect((await webhook(payload, "whsec_someone_else")).status).toBe(400);
   });
 
-  it("answers a charge commerce never made as unmatched, so Stripe stops redelivering it", async () => {
+  it("answers a charge commerce has no record of with 503, so Stripe redelivers it", async () => {
     const response = await webhook(succeeded("evt_stranger", { id: "pi_not_ours", amount: 100 }));
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ outcome: "unmatched" });
   });
 
@@ -297,8 +348,13 @@ describe("a deploy without billing's secrets", () => {
   });
 });
 
-async function failNextCharge(): Promise<void> {
-  expect((await fetch("https://api.stripe.com/test/fail-next-charge", { method: "POST" })).status).toBe(200);
+async function nextCharge(mode: "unreachable" | "decline" | "lose-reply"): Promise<void> {
+  expect((await fetch(`https://api.stripe.com/test/next-charge/${mode}`, { method: "POST" })).status).toBe(200);
+}
+
+/** Has Stripe finish a processing charge. */
+async function succeed(intentId: string): Promise<void> {
+  expect((await fetch(`https://api.stripe.com/test/payment_intents/${intentId}/succeed`, { method: "POST" })).status).toBe(200);
 }
 
 // The address Stripe sends the operator back to, as the session was created with it, relative to

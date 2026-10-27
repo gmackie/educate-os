@@ -3,8 +3,11 @@
 // through workerd's own fetch. A suite plays the customer through two test-only routes on the same
 // host: `GET /test/checkout/<session>` gives the address Stripe would send the customer back to,
 // `POST /test/checkout/<session>/complete` saves a card on that setup page, and
-// `GET /test/payment_intents` lists the charges made, so the suite can sign their webhooks, and
-// `POST /test/fail-next-charge` makes the next charge request fail as an unreachable Stripe would.
+// `GET /test/payment_intents` lists the charges made, so the suite can sign their webhooks.
+// `POST /test/next-charge/<mode>` sets how the next charge request goes: `unreachable` fails it
+// before anything is made; `decline` makes a declined PaymentIntent, answered 402 as Stripe does;
+// `lose-reply` makes a `processing` PaymentIntent and then answers 500, as a lost reply would.
+// Charges otherwise succeed at once, as Stripe's 4242 test card does.
 
 /** The test Stripe secret key and webhook signing secret, as the suite's bindings carry them. */
 export const STRIPE_FIXTURE = { secretKey: "sk_test_educateos_fixture", webhookSecret: "whsec_educateos_fixture_not_a_real_secret" };
@@ -20,9 +23,19 @@ interface Session {
 
 const customers = new Map<string, { defaultPaymentMethod: string | null }>();
 const sessions = new Map<string, Session>();
-const intents: { id: string; customer: string; amount: number; paymentMethod: string }[] = [];
+interface Intent {
+  id: string;
+  customer: string;
+  amount: number;
+  paymentMethod: string;
+  status: "succeeded" | "processing" | "requires_payment_method" | "canceled";
+  invoice: string;
+  idempotencyKey: string;
+}
+const intents: Intent[] = [];
+const byIdempotencyKey = new Map<string, Intent>();
 let counter = 0;
-let failNextCharge = false;
+let nextCharge: "unreachable" | "decline" | "lose-reply" | undefined;
 const next = (prefix: string) => `${prefix}_fake${++counter}`;
 
 const error = (status: number, message: string) => Response.json({ error: { message } }, { status });
@@ -76,29 +89,65 @@ export async function fakeStripe(request: Request): Promise<Response> {
     Object.assign(session, { status: "complete", paymentMethod: next("pm") });
     return Response.json({ completed: session.id });
   }
-  if (request.method === "POST" && path === "/test/fail-next-charge") {
-    failNextCharge = true;
-    return Response.json({ armed: true });
+  if (request.method === "POST" && (match = /^\/test\/next-charge\/(unreachable|decline|lose-reply)$/.exec(path)) !== null) {
+    nextCharge = match[1] as typeof nextCharge;
+    return Response.json({ armed: nextCharge });
+  }
+  if (request.method === "GET" && path === "/v1/payment_intents") {
+    const customer = url.searchParams.get("customer");
+    return Response.json({ object: "list", data: intents.filter((intent) => intent.customer === customer).toReversed().map(wire) });
+  }
+  if (request.method === "POST" && (match = /^\/v1\/payment_intents\/(pi_[a-z0-9]+)\/cancel$/.exec(path)) !== null) {
+    const intent = intents.find((candidate) => candidate.id === match![1]);
+    if (intent === undefined) return error(404, "No such payment_intent");
+    if (intent.status === "succeeded" || intent.status === "canceled") {
+      return Response.json({ error: { code: "payment_intent_unexpected_state", payment_intent: wire(intent) } }, { status: 400 });
+    }
+    intent.status = "canceled";
+    return Response.json(wire(intent));
   }
   if (request.method === "POST" && path === "/v1/payment_intents") {
-    if (failNextCharge) {
-      failNextCharge = false;
-      return error(500, "An unknown error occurred");
-    }
+    const key = request.headers.get("idempotency-key") ?? "";
+    const replayed = byIdempotencyKey.get(key);
+    if (replayed !== undefined) return Response.json(wire(replayed));
+    const mode = nextCharge;
+    nextCharge = undefined;
+    if (mode === "unreachable") return error(500, "An unknown error occurred");
     const customer = customers.get(form.get("customer") ?? "");
     const paymentMethod = form.get("payment_method") ?? "";
     if (customer === undefined || customer.defaultPaymentMethod !== paymentMethod || form.get("off_session") !== "true") {
       return error(400, "unexpected charge");
     }
-    const intent = { id: next("pi"), customer: form.get("customer")!, amount: Number(form.get("amount")), paymentMethod };
+    const intent: Intent = {
+      id: next("pi"), customer: form.get("customer")!, amount: Number(form.get("amount")), paymentMethod,
+      status: mode === "decline" ? "requires_payment_method" : mode === "lose-reply" ? "processing" : "succeeded",
+      invoice: form.get("metadata[educateos_invoice]") ?? "", idempotencyKey: key,
+    };
     intents.push(intent);
-    return Response.json({ id: intent.id, object: "payment_intent", status: "succeeded" });
+    byIdempotencyKey.set(key, intent);
+    if (mode === "lose-reply") return error(500, "An unknown error occurred");
+    if (mode === "decline") return Response.json({ error: { type: "card_error", code: "card_declined", payment_intent: wire(intent) } }, { status: 402 });
+    return Response.json(wire(intent));
   }
   if (request.method === "GET" && path === "/test/payment_intents") return Response.json(intents);
+  if (request.method === "POST" && (match = /^\/test\/payment_intents\/(pi_[a-z0-9]+)\/succeed$/.exec(path)) !== null) {
+    const intent = intents.find((candidate) => candidate.id === match![1]);
+    if (intent === undefined) return error(404, "No such payment_intent");
+    intent.status = "succeeded";
+    return Response.json(wire(intent));
+  }
   if (request.method === "POST" && path === "/v1/billing_portal/sessions") {
     const customer = form.get("customer") ?? "";
     if (!customers.has(customer) || !form.get("return_url")) return error(400, "unexpected portal request");
     return Response.json({ id: next("bps"), object: "billing_portal.session", url: `https://billing.stripe.com/p/session/test_${customer}` });
   }
   return error(404, `no fake for ${request.method} ${path}`);
+}
+
+function wire(intent: Intent) {
+  return {
+    id: intent.id, object: "payment_intent", status: intent.status, amount: intent.amount,
+    amount_received: intent.status === "succeeded" ? intent.amount : 0, currency: "usd", customer: intent.customer,
+    metadata: { educateos_invoice: intent.invoice },
+  };
 }

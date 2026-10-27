@@ -7,6 +7,8 @@ import {
   type CardSetup,
   type CardSetupRequest,
   type ChargeRequest,
+  type ChargeResult,
+  type ChargeStatus,
   type PaymentProcessor,
   type ProcessorEvent,
   type RefundRequest,
@@ -63,7 +65,19 @@ const StripeCustomer = z.object({
   id: ProcessorRef,
   invoice_settings: z.object({ default_payment_method: ProcessorRef.nullable() }),
 });
-const StripeCardError = z.object({ error: z.object({ payment_intent: StripeId }) });
+// A PaymentIntent as a charge: its status, amounts and the invoice it was made for.
+const StripeCharge = z.object({
+  id: ProcessorRef,
+  status: z.string(),
+  amount: Cents,
+  amount_received: Cents,
+  currency: z.string(),
+  metadata: z.record(z.string(), z.string()).nullable().optional(),
+});
+const StripeCharges = z.object({ data: z.array(StripeCharge) });
+// A refused PaymentIntent request whose error carries the PaymentIntent: an off-session decline
+// (402), or a cancel of one that already succeeded or was cancelled (400).
+const StripeCardError = z.object({ error: z.object({ payment_intent: StripeCharge }) });
 const StripeEvent = z.object({
   id: ProcessorRef,
   type: z.string(),
@@ -112,27 +126,52 @@ export class StripePaymentProcessor implements PaymentProcessor {
   }
 
   /**
-   * Charges the customer's default payment method off-session. A decline is not an error here:
-   * Stripe answers with the failed PaymentIntent, whose reference is returned, and its
-   * `payment_intent.payment_failed` webhook reports the outcome as for any other charge.
+   * Charges the customer's default payment method off-session, naming the invoice in the
+   * PaymentIntent's metadata (`educateos_invoice`) so {@link chargesFor} can find it if this reply
+   * is lost. A decline is not an error here: Stripe answers with the failed PaymentIntent, which is
+   * returned as `failed`. The status Stripe answers with is returned as it stands, so a request
+   * Stripe replays for a repeated idempotency key reports the charge's outcome at once.
    */
-  async charge(request: ChargeRequest): Promise<ProcessorRef> {
+  async charge(request: ChargeRequest): Promise<ChargeResult> {
     const customer = await this.#request("GET", `/v1/customers/${encodeURIComponent(request.customerRef)}`, StripeCustomer, {});
     const paymentMethod = customer.invoice_settings.default_payment_method;
     if (paymentMethod === null) throw new EducateOsError("policy-violation", "the processor customer has no default payment method");
-    const intent = await this.#request("POST", "/v1/payment_intents", StripeId, {
+    const intent = await this.#request("POST", "/v1/payment_intents", StripeCharge, {
       body: {
-        amount: String(request.amountCents),
-        currency: "usd",
-        customer: customer.id,
-        payment_method: paymentMethod,
-        confirm: "true",
-        off_session: "true",
+        "amount": String(request.amountCents),
+        "currency": "usd",
+        "customer": customer.id,
+        "payment_method": paymentMethod,
+        "confirm": "true",
+        "off_session": "true",
+        "metadata[educateos_invoice]": request.invoiceRef,
       },
       idempotencyKey: `educateos:charge:${request.idempotencyKey}`,
-      declineCarries: true,
+      carriesIntent: [402],
     });
-    return intent.id;
+    return chargeResult(intent);
+  }
+
+  /**
+   * The customer's PaymentIntents made for the invoice. Read from the list endpoint, which, unlike
+   * search, sees a PaymentIntent the moment it exists.
+   */
+  async chargesFor(customerRef: ProcessorRef, invoiceRef: string): Promise<ChargeResult[]> {
+    const page = await this.#request("GET", `/v1/payment_intents?customer=${encodeURIComponent(customerRef)}&limit=100`, StripeCharges, {});
+    return page.data.filter((intent) => intent.metadata?.educateos_invoice === invoiceRef).map(chargeResult);
+  }
+
+  /**
+   * Cancels a PaymentIntent that hasn't succeeded. One that succeeded, or was already cancelled,
+   * can't be: Stripe refuses with the PaymentIntent, whose status is returned.
+   */
+  async cancelCharge(chargeRef: ProcessorRef): Promise<ChargeStatus> {
+    const intent = await this.#request("POST", `/v1/payment_intents/${encodeURIComponent(chargeRef)}/cancel`, StripeCharge, {
+      body: {},
+      idempotencyKey: `educateos:cancel-charge:${chargeRef}`,
+      carriesIntent: [400],
+    });
+    return chargeResult(intent).status;
   }
 
   async refund(request: RefundRequest): Promise<ProcessorRef> {
@@ -258,7 +297,7 @@ export class StripePaymentProcessor implements PaymentProcessor {
     method: "GET" | "POST",
     path: string,
     schema: T,
-    options: { body?: Record<string, string>; idempotencyKey?: string; declineCarries?: boolean },
+    options: { body?: Record<string, string>; idempotencyKey?: string; carriesIntent?: number[] },
   ): Promise<z.infer<T>> {
     const headers: Record<string, string> = { Authorization: `Bearer ${this.#apiKey}`, "Stripe-Version": STRIPE_API_VERSION };
     if (options.body !== undefined) headers["Content-Type"] = "application/x-www-form-urlencoded";
@@ -275,14 +314,24 @@ export class StripePaymentProcessor implements PaymentProcessor {
     }
     const json: unknown = await response.json().catch(() => undefined);
     if (response.ok) return parseWire(schema, json, "payment processor response");
-    // A declined off-session charge: Stripe returns 402 with the PaymentIntent it created.
-    if (options.declineCarries === true && response.status === 402) {
-      const declined = StripeCardError.safeParse(json);
-      if (declined.success) return parseWire(schema, declined.data.error.payment_intent, "payment processor response");
+    // A declined off-session charge (402), or a refused cancel (400): Stripe returns the error
+    // with the PaymentIntent, whose status says where it stands.
+    if (options.carriesIntent?.includes(response.status) === true) {
+      const refused = StripeCardError.safeParse(json);
+      if (refused.success) return parseWire(schema, refused.data.error.payment_intent, "payment processor response");
     }
     // The status only: an error body can quote back request fields.
     throw new EducateOsError("unavailable", `the payment processor refused the request (HTTP ${response.status})`);
   }
+}
+
+// Stripe's PaymentIntent statuses, for an off-session charge: `processing` is still going;
+// `requires_payment_method` (declined), `requires_action` (needs the customer, who isn't there)
+// and `canceled` can no longer succeed without a new attempt.
+function chargeResult(intent: z.infer<typeof StripeCharge>): ChargeResult {
+  usd(intent);
+  const status: ChargeStatus = intent.status === "succeeded" ? "succeeded" : intent.status === "processing" ? "pending" : "failed";
+  return { chargeRef: intent.id, status, amountCents: status === "succeeded" ? intent.amount_received : intent.amount };
 }
 
 function usd<T extends { currency: string }>(object: T): T {

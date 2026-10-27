@@ -259,9 +259,16 @@ const REFERENCE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
 // The notice after a return from Stripe says what actually happened to the first invoice.
 function returnNotice({ subscription, charge }: CardSetupOutcome): string {
-  if (subscription.status === "trialing") return "pending";
-  if (subscription.status === "cancelled") return "cancelled";
-  return charge === undefined ? "saved" : CHARGE_NOTICES[charge];
+  switch (subscription.status) {
+    case "trialing":
+      return "pending";
+    case "cancelled":
+      return "cancelled";
+    case "active":
+      return charge === undefined ? "saved" : CHARGE_NOTICES[charge];
+    default:
+      return "due";
+  }
 }
 
 const CHARGE_NOTICES: Record<InvoiceChargeState, string> = { paid: "saved", pending: "saved", declined: "declined", uncharged: "uncharged" };
@@ -272,6 +279,7 @@ const BILLING_NOTICES: Record<string, string> = {
   declined: "Your card was declined. Update it under Manage payment methods, then use Pay now.",
   uncharged: "Your card is saved and your subscription is active, but its invoice couldn't be charged just now. Use Pay now to try again.",
   cancelled: "Your subscription is cancelled. Nothing more will be charged for it.",
+  due: "Your subscription has a payment due. Update your card under Manage payment methods, then use Pay now.",
 };
 
 // Stripe's webhook deliveries. The body is passed on exactly as received, because the signature
@@ -283,7 +291,8 @@ async function receiveStripeWebhook(request: Request, deps: ControlPlaneDeps): P
   const payload = await boundedText(request, MAX_WEBHOOK_BODY_BYTES);
   if (payload === undefined) return json({ error: "validation-failed", message: "delivery too large" }, 413);
   const reply = await deps.store().receiveStripeWebhook(payload, signature);
-  if (reply.ok) return json(reply.value);
+  // An event about a charge not recorded yet is answered 503 so Stripe redelivers it until it is.
+  if (reply.ok) return json(reply.value, reply.value.outcome === "unmatched" ? 503 : 200);
   // Stripe redelivers anything but a 2xx. A delivery that fails verification or doesn't parse is
   // answered 400 so it shows as failing in Stripe's dashboard; billing being down is 503.
   return json({ error: reply.code }, reply.code === "unavailable" ? 503 : 400);

@@ -12,7 +12,7 @@ import type { JWTVerifyGetKey } from "jose";
 import { operatorVerifier, type OperatorIdentity, type OperatorVerifier } from "./access.ts";
 import { handleRequest, type ControlPlaneApi, type ControlPlaneDeps } from "./app.ts";
 import {
-  type BillingOverview, type BillingReply, type CardSetupOutcome, ControlPlaneBilling, UNCONFIGURED_BILLING_REPLY,
+  type BillingOverview, type BillingReply, type CardSetupOutcome, ControlPlaneBilling, keepUnlessRejected, UNCONFIGURED_BILLING_REPLY,
 } from "./billing.ts";
 import { configuredLaunchDistricts } from "./clever-launch.ts";
 import type { SiteShell } from "./pages.ts";
@@ -66,12 +66,16 @@ export const CONTROL_PLANE_OBJECT = "educateos.io";
 export class ControlPlane extends DurableObject<ControlPlaneEnv> implements ControlPlaneApi {
   readonly #store: ControlPlaneStore;
   readonly #registry: ControlPlaneRegistry;
-  #billing: Promise<ControlPlaneBilling | undefined> | undefined;
+  readonly #billing: () => Promise<ControlPlaneBilling | undefined>;
 
   constructor(ctx: DurableObjectState, env: ControlPlaneEnv) {
     super(ctx, env);
     this.#store = new ControlPlaneStore(ctx.storage);
     this.#registry = new ControlPlaneRegistry(ctx.storage, this.#store);
+    // Built on first use. Commerce's tables live in this same object, beside the operators: one
+    // writer, so an operator's account and their billing never disagree. A build that failed is
+    // forgotten, so the next request tries again rather than the object failing until it restarts.
+    this.#billing = keepUnlessRejected(() => configuredBilling(ctx.storage, env));
   }
 
   signIn(identity: OperatorIdentity): Operator {
@@ -147,15 +151,8 @@ export class ControlPlane extends DurableObject<ControlPlaneEnv> implements Cont
     return (await this.#billingConfigured())?.receiveStripeWebhook(payload, signature) ?? UNCONFIGURED_BILLING_REPLY;
   }
 
-  // Built on first use. Commerce's tables live in this same object, beside the operators: one
-  // writer, so an operator's account and their billing never disagree. A build that failed is
-  // forgotten, so the next request tries again rather than the object failing until it restarts.
   #billingConfigured(): Promise<ControlPlaneBilling | undefined> {
-    this.#billing ??= configuredBilling(this.ctx.storage, this.env).catch((error: unknown) => {
-      this.#billing = undefined;
-      throw error;
-    });
-    return this.#billing;
+    return this.#billing();
   }
 }
 

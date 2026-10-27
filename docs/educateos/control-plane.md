@@ -165,10 +165,11 @@ runs, and Stripe runs none here.
    more, but does make a charge an earlier return couldn't (Stripe unreachable, or the object
    restarted between the steps). The notice says what actually happened to the invoice.
 4. Stripe's `payment_intent.succeeded` (or `payment_failed`) webhook at `/stripe/webhook` marks the
-   invoice paid (or the subscription past due), once per event ID. Its signature is checked
-   against `STRIPE_WEBHOOK_SECRET` before anything in it is read. An event about a charge commerce
-   never made is answered `{"outcome":"unmatched"}` with 200, so Stripe stops redelivering it, and
-   logged as `stripe webhook unmatched` with Stripe's event and PaymentIntent IDs.
+   invoice paid (or the subscription past due), once per event ID, unless the charge's reply
+   already recorded that outcome. Its signature is checked against `STRIPE_WEBHOOK_SECRET` before
+   anything in it is read. An event about a charge commerce has no record of yet is answered 503
+   `{"outcome":"unmatched"}` and logged as `stripe webhook unmatched` with Stripe's event and
+   PaymentIntent IDs, so Stripe keeps redelivering it (for up to three days) until it matches.
 5. `POST /app/billing/pay` (**Pay now**, shown while the invoice is uncharged or declined) charges
    it again; it is refused while a charge is on its way. `POST /app/billing/portal` answers 303 to
    a Customer Portal session; `POST /app/billing/card` reopens Checkout for a subscription left
@@ -180,6 +181,26 @@ The operator acts as a commerce `customer` actor, never as finance staff, so the
 approve purchase orders, record manual payments or refund. The billing page's CSP also admits
 `https://checkout.stripe.com` and `https://billing.stripe.com` as form targets, since its forms
 answer with redirects there; every other console page keeps `form-action 'self'`.
+
+**Charging.** Each charge is a PaymentIntent whose metadata `educateos_invoice` names the
+invoice, made under the idempotency key `<invoice>:<attempt>`. Commerce (`chargeInvoice`) never
+trusts that a missing reply means no charge:
+
+- Before charging it reconciles the invoice with Stripe: it lists the customer's PaymentIntents
+  (the list endpoint, which sees a PaymentIntent at once, unlike search) and records any made for
+  the invoice that it never heard back about, with Stripe's current status. A charge whose reply
+  was lost is found, not made again, however long ago; it is pending until it settles, and its
+  redelivered webhook then matches it.
+- Stripe's reply records the charge's status at once: `succeeded` pays the invoice, a decline
+  (`requires_payment_method`, or `requires_action`, which an off-session charge can't take) is
+  `failed`, `processing` stays pending for the webhook. So a replayed PaymentIntent reports its
+  outcome immediately.
+- A declined attempt is cancelled at Stripe before the next one is made, so it can never also
+  succeed. If cancelling finds it succeeded after all, that is recorded and nothing new is charged.
+- While a charge is pending nothing new is charged, and Pay now is refused.
+
+An invoice's charge is `paid`, `pending` (a charge awaits its outcome), `declined` (every charge
+for it was declined) or `uncharged` (none yet, or paid and then reopened by a refund).
 
 **Setup.** Secrets on the site Worker (`wrangler secret put`, never `wrangler.jsonc`):
 

@@ -73,18 +73,21 @@ In a browser signed in to educateos.io/app:
 1. Open `/app/billing`. Three plans are listed, each marked as a placeholder price.
 2. Choose **Managed hostname**, name an organization, and continue. Stripe's Checkout asks for a
    card and says nothing will be charged now. Use `4242 4242 4242 4242`, any future date, any CVC.
-3. Back on `/app/billing`: "Your card is saved", the subscription **Active**, and one **Open**
-   invoice for $1.00, its charge on its way.
-4. Within a few seconds Stripe delivers `payment_intent.succeeded`. Reload: the invoice is **Paid**.
-   In the Stripe Dashboard (sandbox) the webhook endpoint shows the delivery answered 200
-   `{"outcome":"applied"}`, and Payments shows the $1.00 charge to the customer whose metadata
-   `commercial_account_id` is the operator's `acct_…`.
+3. Back on `/app/billing`: "Your card is saved", the subscription **Active**, and one invoice for
+   $1.00, already **Paid**: the 4242 card's PaymentIntent succeeds at once, and Stripe's reply says
+   so.
+4. Within a few seconds Stripe delivers `payment_intent.succeeded`. In the Stripe Dashboard
+   (sandbox) the webhook endpoint shows it answered 200 `{"outcome":"duplicate"}` (the reply had
+   recorded it), and Payments shows the $1.00 charge, with metadata `educateos_invoice`, to the
+   customer whose metadata `commercial_account_id` is the operator's `acct_…`. A 503
+   `{"outcome":"unmatched"}` there means a charge commerce hasn't recorded yet; Stripe redelivers it.
 5. **Manage payment methods** opens the Customer Portal; its return link comes back to billing.
 6. **Cancel subscription**: "Your subscription is cancelled", and the plans are offered again.
 
 For a decline, subscribe with `4000 0000 0000 0341` (saves, then declines when charged): the
-invoice shows **Declined** after `payment_intent.payment_failed`, the subscription shows
-**Payment due**, and **Pay now** charges again once the card is updated in the portal.
+notice says the card was declined, the invoice shows **Declined** and the subscription **Payment
+due**. Update the card in the portal to 4242, then **Pay now**: the declined PaymentIntent is
+cancelled and a new one charges the invoice.
 
 ## 4. Evidence
 
