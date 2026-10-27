@@ -52,7 +52,7 @@ import {
   Subscription,
 } from "./model.ts";
 import { Cents, multiplyCents, subtractCents, sumCents } from "./money.ts";
-import type { PaymentProcessor, ProcessorEvent } from "./processor.ts";
+import type { CardSetup, PaymentProcessor, ProcessorEvent } from "./processor.ts";
 import { reconcile, type ReconciliationReport } from "./reconciliation.ts";
 import type { CommerceRecords, CommerceStore } from "./store.ts";
 
@@ -223,14 +223,70 @@ export class CommerceService implements CommercialAccountVerifier {
 
   /** Creates the account's processor customer if it has none, passing only the opaque account ID. */
   async ensureProcessorCustomer(accountId: CommercialAccountId, actor: FinanceActor): Promise<ProcessorRef> {
+    return this.#store.atomically(() => this.#ensureProcessorCustomer(accountId, actor));
+  }
+
+  async #ensureProcessorCustomer(accountId: CommercialAccountId, actor: FinanceActor): Promise<ProcessorRef> {
+    const account = await this.#require("account", accountId);
+    if (account.processorCustomerRef !== undefined) return account.processorCustomerRef;
+    const customerRef = await this.#processor.createCustomer(account.accountId);
+    await this.#store.put("account", accountId, CommercialAccount.parse({ ...account, processorCustomerRef: customerRef }));
+    await this.#audit(accountId, actor, "account.processor-customer-created", { kind: "account", id: accountId });
+    return customerRef;
+  }
+
+  // Cards (SCHO-208)
+
+  /**
+   * Opens the processor's hosted page where the account saves the card a trialing card
+   * subscription will be charged to, creating the processor customer first if need be. Nothing is
+   * charged. The customer comes back to `returnUrl`, which names the setup by the processor's
+   * `SETUP_REF_PLACEHOLDER`, for {@link CommerceService.completeCardSetup}.
+   */
+  async startCardSetup(
+    subscriptionId: SubscriptionId,
+    urls: { returnUrl: string; cancelUrl: string; idempotencyKey: string },
+    actor: FinanceActor,
+  ): Promise<CardSetup> {
+    return this.#store.atomically(async () => {
+      const subscription = await this.#cardSubscription(subscriptionId);
+      if (subscription.status !== "trialing") throw new EducateOsError("conflict", "only a trialing subscription needs a card set up");
+      const customerRef = await this.#ensureProcessorCustomer(subscription.accountId, actor);
+      return await this.#processor.startCardSetup({ customerRef, ...urls });
+    });
+  }
+
+  /**
+   * Finishes a card setup the customer came back from, and activates the trialing subscription it
+   * was for once the card is the customer's default. A setup the customer hasn't finished leaves
+   * the subscription trialing. Repeating it, or calling it for a subscription already past
+   * trialing, changes nothing.
+   */
+  async completeCardSetup(subscriptionId: SubscriptionId, setupRef: ProcessorRef, actor: FinanceActor): Promise<Subscription> {
+    return this.#store.atomically(async () => {
+      const subscription = await this.#cardSubscription(subscriptionId);
+      if (subscription.status !== "trialing") return subscription;
+      const account = await this.#require("account", subscription.accountId);
+      if (account.processorCustomerRef === undefined) throw new EducateOsError("not-found", "card setup not found");
+      if (!(await this.#processor.completeCardSetup(account.processorCustomerRef, setupRef))) return subscription;
+      await this.#audit(account.accountId, actor, "account.payment-method-saved", { kind: "account", id: account.accountId });
+      return await this.#activate(subscription, actor);
+    });
+  }
+
+  /** Opens the processor's hosted page where the account manages its saved cards. Returns its URL. */
+  async paymentMethodPortal(accountId: CommercialAccountId, returnUrl: string): Promise<string> {
     return this.#store.atomically(async () => {
       const account = await this.#require("account", accountId);
-      if (account.processorCustomerRef !== undefined) return account.processorCustomerRef;
-      const customerRef = await this.#processor.createCustomer(account.accountId);
-      await this.#store.put("account", accountId, CommercialAccount.parse({ ...account, processorCustomerRef: customerRef }));
-      await this.#audit(accountId, actor, "account.processor-customer-created", { kind: "account", id: accountId });
-      return customerRef;
+      if (account.processorCustomerRef === undefined) throw new EducateOsError("conflict", "the account has no saved payment method");
+      return await this.#processor.openPaymentMethodPortal(account.processorCustomerRef, returnUrl);
     });
+  }
+
+  async #cardSubscription(subscriptionId: SubscriptionId): Promise<Subscription> {
+    const subscription = await this.#reconcileStatus(subscriptionId);
+    if (subscription.paymentMethod !== "card") throw new EducateOsError("validation-failed", "only a card subscription is paid by card");
+    return subscription;
   }
 
   /**
@@ -280,19 +336,20 @@ export class CommerceService implements CommercialAccountVerifier {
    * subscription needs a processor customer.
    */
   async activate(subscriptionId: SubscriptionId, actor: FinanceActor): Promise<Subscription> {
-    return this.#store.atomically(async () => {
-      const subscription = await this.#reconcileStatus(subscriptionId);
-      if (subscription.status !== "trialing") throw new EducateOsError("conflict", "only a trialing subscription can be activated");
-      if (subscription.paymentMethod === "purchase-order") {
-        const po = subscription.purchaseOrderId && (await this.#store.get("purchaseOrder", subscription.purchaseOrderId));
-        if (!po || po.state !== "approved") throw new EducateOsError("policy-violation", "an approved purchase order is required");
-      }
-      if (subscription.paymentMethod === "card") {
-        const account = await this.#require("account", subscription.accountId);
-        if (account.processorCustomerRef === undefined) throw new EducateOsError("policy-violation", "a processor customer is required");
-      }
-      return await this.#transition(subscription, { status: "active" }, actor, "subscription.activated");
-    });
+    return this.#store.atomically(async () => this.#activate(await this.#reconcileStatus(subscriptionId), actor));
+  }
+
+  async #activate(subscription: Subscription, actor: FinanceActor): Promise<Subscription> {
+    if (subscription.status !== "trialing") throw new EducateOsError("conflict", "only a trialing subscription can be activated");
+    if (subscription.paymentMethod === "purchase-order") {
+      const po = subscription.purchaseOrderId && (await this.#store.get("purchaseOrder", subscription.purchaseOrderId));
+      if (!po || po.state !== "approved") throw new EducateOsError("policy-violation", "an approved purchase order is required");
+    }
+    if (subscription.paymentMethod === "card") {
+      const account = await this.#require("account", subscription.accountId);
+      if (account.processorCustomerRef === undefined) throw new EducateOsError("policy-violation", "a processor customer is required");
+    }
+    return await this.#transition(subscription, { status: "active" }, actor, "subscription.activated");
   }
 
   /** Extends the term. Delinquency from a missed payment stands until an invoice is paid. */
@@ -686,6 +743,28 @@ export class CommerceService implements CommercialAccountVerifier {
   async subscription(subscriptionId: SubscriptionId): Promise<Subscription> {
     return this.#store.atomically(async () => {
       return await this.#require("subscription", subscriptionId);
+    });
+  }
+
+  /** The account's subscriptions, as stored, after applying any clock-driven transitions now due. */
+  async subscriptions(accountId: CommercialAccountId): Promise<Subscription[]> {
+    return this.#store.atomically(async () => {
+      const stored = await this.#store.list("subscription", accountId);
+      return Promise.all(stored.map((subscription) => this.#reconcileStatus(subscription.subscriptionId)));
+    });
+  }
+
+  /** The account, if it has been opened. */
+  async account(accountId: CommercialAccountId): Promise<CommercialAccount | undefined> {
+    return this.#store.atomically(async () => {
+      return await this.#store.get("account", accountId);
+    });
+  }
+
+  /** The account's invoices, as stored. */
+  async invoices(accountId: CommercialAccountId): Promise<Invoice[]> {
+    return this.#store.atomically(async () => {
+      return await this.#store.list("invoice", accountId);
     });
   }
 

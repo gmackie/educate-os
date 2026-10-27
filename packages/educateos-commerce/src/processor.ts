@@ -38,8 +38,34 @@ export interface RefundRequest {
 }
 
 /**
+ * Where a {@link CardSetupRequest}'s `returnUrl` names the setup's own reference. The processor
+ * fills it in, so the page the customer comes back to can finish that setup and no other.
+ */
+export const SETUP_REF_PLACEHOLDER = "{SETUP_REF}";
+
+/** A request to open the processor's hosted page where a customer saves a card for later charges. */
+export interface CardSetupRequest {
+  customerRef: ProcessorRef;
+  /** Where the customer is sent once the card is saved. {@link SETUP_REF_PLACEHOLDER} is replaced by the setup's reference. */
+  returnUrl: string;
+  /** Where the customer is sent if they leave without saving a card. */
+  cancelUrl: string;
+  /** The processor must treat a repeated key as the same setup page. */
+  idempotencyKey: string;
+}
+
+/** The hosted card setup page the processor opened. */
+export interface CardSetup {
+  /** The setup's reference, which {@link PaymentProcessor.completeCardSetup} is later given. */
+  setupRef: ProcessorRef;
+  /** The page to send the customer to. */
+  url: string;
+}
+
+/**
  * What commerce needs from a payment processor. Charges and refunds are asynchronous: the call
- * returns the processor's reference, and the outcome arrives later as a webhook event.
+ * returns the processor's reference, and the outcome arrives later as a webhook event. Cards are
+ * saved on the processor's own hosted pages, so no card number ever reaches EducateOS.
  */
 export interface PaymentProcessor {
   /** Creates a processor customer for an account. Only the opaque account ID is passed; no contact details. */
@@ -54,6 +80,16 @@ export interface PaymentProcessor {
    * verification.
    */
   mapWebhookEvent(delivery: unknown): Promise<ProcessorEvent | undefined>;
+  /** Opens a hosted page where the customer saves a card, without charging it. */
+  startCardSetup(request: CardSetupRequest): Promise<CardSetup>;
+  /**
+   * Finishes a card setup the customer came back from: makes the saved card the customer's default
+   * payment method, which {@link PaymentProcessor.charge} uses. Returns false if the customer hasn't
+   * saved a card on that page. A setup belonging to another customer is `not-found`.
+   */
+  completeCardSetup(customerRef: ProcessorRef, setupRef: ProcessorRef): Promise<boolean>;
+  /** Opens the processor's hosted page where the customer manages their saved payment methods. Returns its URL. */
+  openPaymentMethodPortal(customerRef: ProcessorRef, returnUrl: string): Promise<string>;
 }
 
 /** The raw delivery the {@link FakePaymentProcessor} emits: a normalized event plus a shared-secret tag. */
@@ -67,6 +103,9 @@ const FakeDelivery = z.strictObject({ tag: z.literal("fake-processor"), event: z
 export class FakePaymentProcessor implements PaymentProcessor {
   /** Every account ID a customer was created for, in order. */
   readonly customersCreated: CommercialAccountId[] = [];
+  /** Each customer's default payment method, once a card setup made one. */
+  readonly defaultPaymentMethods = new Map<ProcessorRef, ProcessorRef>();
+  readonly #setups = new Map<ProcessorRef, { customerRef: ProcessorRef; saved: boolean }>();
   readonly #operations = new Map<string, ProcessorRef>();
   readonly #deliveries: unknown[] = [];
   readonly #now: () => Date;
@@ -80,6 +119,13 @@ export class FakePaymentProcessor implements PaymentProcessor {
   /** Makes the next new charge fail, as a declined card would. */
   failNextCharge(): void {
     this.#failNextCharge = true;
+  }
+
+  /** Saves a card on an open setup page, as the customer would. */
+  saveCard(setupRef: ProcessorRef): void {
+    const setup = this.#setups.get(setupRef);
+    if (setup === undefined) throw new EducateOsError("not-found", "card setup not found");
+    setup.saved = true;
   }
 
   /** Takes the queued webhook deliveries. */
@@ -108,6 +154,23 @@ export class FakePaymentProcessor implements PaymentProcessor {
     const parsed = FakeDelivery.safeParse(delivery);
     if (!parsed.success) throw new EducateOsError("unauthenticated", "webhook delivery failed verification");
     return parseWire(ProcessorEvent, parsed.data.event, "processor event");
+  }
+
+  async startCardSetup(request: CardSetupRequest): Promise<CardSetup> {
+    const setupRef = this.#once(`setup:${request.idempotencyKey}`, "cs", (ref) => this.#setups.set(ref, { customerRef: request.customerRef, saved: false }));
+    return { setupRef, url: `https://fake-processor.invalid/setup/${setupRef}` };
+  }
+
+  async completeCardSetup(customerRef: ProcessorRef, setupRef: ProcessorRef): Promise<boolean> {
+    const setup = this.#setups.get(setupRef);
+    if (setup === undefined || setup.customerRef !== customerRef) throw new EducateOsError("not-found", "card setup not found");
+    if (!setup.saved) return false;
+    if (!this.defaultPaymentMethods.has(customerRef)) this.defaultPaymentMethods.set(customerRef, this.#ref("pm"));
+    return true;
+  }
+
+  async openPaymentMethodPortal(customerRef: ProcessorRef, returnUrl: string): Promise<string> {
+    return `https://fake-processor.invalid/portal/${customerRef}?return=${encodeURIComponent(returnUrl)}`;
   }
 
   #once(key: string, prefix: string, onCreate: (ref: ProcessorRef) => void): ProcessorRef {

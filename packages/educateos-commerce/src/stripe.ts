@@ -3,12 +3,22 @@ import { parseWire } from "@educateos/fleet";
 import { z } from "zod";
 import { ProcessorRef } from "./ids.ts";
 import { Cents } from "./money.ts";
-import type { ChargeRequest, PaymentProcessor, ProcessorEvent, RefundRequest } from "./processor.ts";
+import {
+  type CardSetup,
+  type CardSetupRequest,
+  type ChargeRequest,
+  type PaymentProcessor,
+  type ProcessorEvent,
+  type RefundRequest,
+  SETUP_REF_PLACEHOLDER,
+} from "./processor.ts";
 
 // The Stripe adapter for the payment processor port (SCHO-99). It speaks Stripe's REST API with
 // `fetch` and no SDK, so it runs unchanged in a Worker. Charges are off-session PaymentIntents on
 // the customer's default payment method; their outcomes, and refunds', arrive as webhooks, which
-// are verified against the endpoint's signing secret before anything is read from them.
+// are verified against the endpoint's signing secret before anything is read from them. Cards are
+// saved through Checkout in setup mode, which charges nothing, and managed in the Customer Portal
+// (SCHO-208): EducateOS keeps the subscriptions and invoices, Stripe only holds the card.
 
 const API_BASE = "https://api.stripe.com";
 /** The Stripe API version every request pins, so a dashboard upgrade can't change response shapes. */
@@ -30,10 +40,15 @@ export type StripeWebhookDelivery = z.infer<typeof StripeWebhookDelivery>;
 
 /** What a {@link StripePaymentProcessor} needs. */
 export interface StripePaymentProcessorOptions {
-  /** A Stripe secret key, ideally restricted to customers, PaymentIntents and refunds. */
+  /**
+   * A Stripe secret key, ideally restricted to customers, PaymentIntents, refunds, SetupIntents,
+   * Checkout Sessions and Customer Portal sessions.
+   */
   apiKey: string;
   /** The webhook endpoint's signing secret (`whsec_…`). */
   webhookSecret: string;
+  /** The Customer Portal configuration (`bpc_…`) to open. Defaults to the account's default configuration. */
+  portalConfiguration?: string;
   /** Defaults to the global `fetch`. Tests pass a fake; the adapter makes no other network calls. */
   fetch?: typeof fetch;
   /** The clock webhook timestamps are checked against. Defaults to the system clock. */
@@ -56,6 +71,15 @@ const StripeEvent = z.object({
   data: z.object({ object: z.unknown() }),
 });
 const StripePaymentIntent = z.object({ id: ProcessorRef, amount: Cents, amount_received: Cents, currency: z.string() });
+const StripeCheckoutSession = z.object({ id: ProcessorRef, url: z.string().url() });
+const StripeSetupSession = z.object({
+  id: ProcessorRef,
+  mode: z.string(),
+  status: z.string().nullable(),
+  customer: ProcessorRef.nullable(),
+  setup_intent: z.object({ status: z.string(), payment_method: ProcessorRef.nullable() }).nullable(),
+});
+const StripePortalSession = z.object({ url: z.string().url() });
 const StripeRefund = z.object({ id: ProcessorRef, amount: Cents, currency: z.string(), status: z.string() });
 
 /**
@@ -66,12 +90,14 @@ const StripeRefund = z.object({ id: ProcessorRef, amount: Cents, currency: z.str
 export class StripePaymentProcessor implements PaymentProcessor {
   readonly #apiKey: string;
   readonly #webhookSecret: string;
+  readonly #portalConfiguration: string | undefined;
   readonly #fetch: typeof fetch;
   readonly #now: () => Date;
 
   constructor(options: StripePaymentProcessorOptions) {
     this.#apiKey = options.apiKey;
     this.#webhookSecret = options.webhookSecret;
+    this.#portalConfiguration = options.portalConfiguration;
     this.#fetch = options.fetch ?? ((input, init) => fetch(input, init));
     this.#now = options.now ?? (() => new Date());
   }
@@ -114,6 +140,54 @@ export class StripePaymentProcessor implements PaymentProcessor {
       idempotencyKey: `educateos:refund:${request.idempotencyKey}`,
     });
     return refund.id;
+  }
+
+  /**
+   * Opens a Checkout Session in setup mode for the customer: Stripe's hosted page saves a card for
+   * off-session charges and charges nothing. Stripe fills in the session's ID where the return URL
+   * names {@link SETUP_REF_PLACEHOLDER}.
+   */
+  async startCardSetup(request: CardSetupRequest): Promise<CardSetup> {
+    const session = await this.#request("POST", "/v1/checkout/sessions", StripeCheckoutSession, {
+      body: {
+        "mode": "setup",
+        "customer": request.customerRef,
+        "payment_method_types[0]": "card",
+        "success_url": request.returnUrl.replaceAll(SETUP_REF_PLACEHOLDER, "{CHECKOUT_SESSION_ID}"),
+        "cancel_url": request.cancelUrl,
+      },
+      idempotencyKey: `educateos:card-setup:${request.idempotencyKey}`,
+    });
+    return { setupRef: session.id, url: session.url };
+  }
+
+  /**
+   * Reads the Checkout Session back with its SetupIntent and, once the customer has saved a card on
+   * it, makes that card the customer's default payment method, which {@link charge} uses. A session
+   * for another customer, or not in setup mode, is `not-found`.
+   */
+  async completeCardSetup(customerRef: ProcessorRef, setupRef: ProcessorRef): Promise<boolean> {
+    const session = await this.#request("GET", `/v1/checkout/sessions/${encodeURIComponent(setupRef)}?expand%5B%5D=setup_intent`, StripeSetupSession, {});
+    if (session.customer !== customerRef || session.mode !== "setup") throw new EducateOsError("not-found", "card setup not found");
+    const paymentMethod = session.setup_intent?.status === "succeeded" ? session.setup_intent.payment_method : null;
+    if (session.status !== "complete" || paymentMethod === null) return false;
+    await this.#request("POST", `/v1/customers/${encodeURIComponent(customerRef)}`, StripeId, {
+      body: { "invoice_settings[default_payment_method]": paymentMethod },
+      idempotencyKey: `educateos:default-payment-method:${session.id}`,
+    });
+    return true;
+  }
+
+  /** Opens a Customer Portal session, where the customer manages their saved cards. */
+  async openPaymentMethodPortal(customerRef: ProcessorRef, returnUrl: string): Promise<string> {
+    const session = await this.#request("POST", "/v1/billing_portal/sessions", StripePortalSession, {
+      body: {
+        customer: customerRef,
+        return_url: returnUrl,
+        ...(this.#portalConfiguration === undefined ? {} : { configuration: this.#portalConfiguration }),
+      },
+    });
+    return session.url;
   }
 
   /**

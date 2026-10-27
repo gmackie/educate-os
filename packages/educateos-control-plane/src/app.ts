@@ -5,23 +5,31 @@
 //   /app, /app/*   the operator console, behind Cloudflare Access, on educateos.io only
 //   /registry/*    the opt-in instance registry's heartbeats: signed by installations, no sign-in
 //   /clever/launch Clever portal launches, sent on to the registered district (SCHO-249), no sign-in
+//   /stripe/webhook Stripe's webhook deliveries for billing (SCHO-208): signed by Stripe, no sign-in
 //
 // Anything else that reaches the Worker is handed back to the assets binding, whose 404 page the
 // static site already defines.
 import type { ErrorCode } from "@educateos/contracts";
 import { Heartbeat, SignedEnvelope } from "@educateos/fleet";
 import { AccessUnavailableError, type OperatorIdentity, type OperatorVerifier } from "./access.ts";
+import { BILLING_PATHS, type BillingApi, type BillingReply } from "./billing.ts";
 import { CLEVER_LAUNCH_PATH, cleverLaunch, type CleverAppCredentials } from "./clever-launch.ts";
 import { ECHOED_FIELDS, GuidedInstallForm, runGuidedInstall, type GuidedInstallDeps, type ReleaseBucket } from "./guided-install.ts";
 import {
-  dashboardPage, installPage, installProgressEvent, installProgressHead, installProgressTail, messagePage, PAGE_HEADERS, type SiteShell,
+  BILLING_PAGE_HEADERS, billingPage, dashboardPage, installPage, installProgressEvent, installProgressHead, installProgressTail, messagePage, PAGE_HEADERS, type SiteShell,
 } from "./pages.ts";
 import { probeInstallation, type ProbeResult } from "./probe.ts";
 import type { DashboardEntry, RegistryMessage, RegistryReply } from "./registry.ts";
 import type { Installation, Operator, Reservation } from "./store.ts";
 
 /** The paths the Worker handles before the assets binding, as `run_worker_first` lists them. */
-export const DYNAMIC_PATHS = ["/healthz", "/app", "/app/*", "/registry/*", CLEVER_LAUNCH_PATH] as const;
+export const DYNAMIC_PATHS = ["/healthz", "/app", "/app/*", "/registry/*", CLEVER_LAUNCH_PATH, BILLING_PATHS.webhook] as const;
+
+/** The largest Stripe webhook delivery accepted. Stripe's events are a few kilobytes. */
+export const MAX_WEBHOOK_BODY_BYTES = 256 * 1024;
+
+/** The console's form posts. Each must come from the console itself. */
+const FORM_POSTS = new Set<string>(["/app/install", BILLING_PATHS.subscribe, BILLING_PATHS.card, BILLING_PATHS.portal, BILLING_PATHS.cancel]);
 
 /** The largest registry message accepted. A heartbeat is a few kilobytes. */
 export const MAX_REGISTRY_BODY_BYTES = 64 * 1024;
@@ -55,7 +63,7 @@ const REGISTRY_STATUS: Record<ErrorCode, number> = {
 export const CONSOLE_ORIGIN = "https://educateos.io";
 
 /** What the routes need from the store. The Durable Object's RPC stub satisfies it. */
-export interface ControlPlaneApi {
+export interface ControlPlaneApi extends BillingApi {
   signIn(identity: OperatorIdentity): Promise<Operator> | Operator;
   installations(operatorSubject: string): Promise<Installation[]> | Installation[];
   dashboard(operator: Operator): Promise<DashboardEntry[]>;
@@ -142,6 +150,8 @@ async function route(request: Request, deps: ControlPlaneDeps): Promise<Response
     });
   }
 
+  if (pathname === BILLING_PATHS.webhook) return receiveStripeWebhook(request, deps);
+
   if (pathname.startsWith("/registry/")) {
     try {
       return await receiveRegistryMessage(request, pathname, deps);
@@ -163,7 +173,7 @@ async function route(request: Request, deps: ControlPlaneDeps): Promise<Response
     return respond(messagePage(deps.shell, "Sign-in required",
       "This page is for signed-in operators. Open it again to sign in with your email address."), 401);
   }
-  const posting = request.method === "POST" && pathname === "/app/install";
+  const posting = request.method === "POST" && FORM_POSTS.has(pathname);
   if (request.method !== "GET" && request.method !== "HEAD" && !posting) {
     return respond(messagePage(deps.shell, "Not allowed", "That request isn't supported here."), 405, { allow: "GET, HEAD" });
   }
@@ -175,7 +185,8 @@ async function route(request: Request, deps: ControlPlaneDeps): Promise<Response
 
   const store = deps.store();
   const operator = await store.signIn(identity);
-  if (posting) return startInstall(request, operator, deps);
+  if (posting && pathname === "/app/install") return startInstall(request, operator, deps);
+  if (posting || pathname === BILLING_PATHS.page || pathname === BILLING_PATHS.ret) return billing(request, url, operator, deps);
   switch (pathname) {
     case "/app/install":
       return respond(installPage(deps.shell, operator));
@@ -188,6 +199,78 @@ async function route(request: Request, deps: ControlPlaneDeps): Promise<Response
     default:
       return respond(messagePage(deps.shell, "Not found", "There's no operator console page at this address."), 404);
   }
+}
+
+// The billing routes (SCHO-208). Each form answers with a redirect: to Stripe's hosted pages, or
+// back to the billing page, so reloading it never repeats a post.
+async function billing(request: Request, url: URL, operator: Operator, deps: ControlPlaneDeps): Promise<Response> {
+  const store = deps.store();
+  const seeOther = (location: string) => new Response(null, { status: 303, headers: { location, "cache-control": "no-store" } });
+  const refused = (reply: Extract<BillingReply<unknown>, { ok: false }>) => {
+    if (reply.code === "unavailable") {
+      return respond(messagePage(deps.shell, "Billing is unavailable", "educateos.io can't take payments just now. Try again shortly."), 503);
+    }
+    return respond(messagePage(deps.shell, "That didn't work", `${reply.message[0]!.toUpperCase()}${reply.message.slice(1)}.`), REGISTRY_STATUS[reply.code]);
+  };
+  switch (url.pathname) {
+    case BILLING_PATHS.page: {
+      const overview = await store.billingOverview(operator);
+      if (!overview.ok) return refused(overview);
+      const notice = BILLING_NOTICES[url.searchParams.get("card") ?? ""];
+      return respond(billingPage(deps.shell, operator, overview.value, notice), 200, BILLING_PAGE_HEADERS);
+    }
+    case BILLING_PATHS.ret: {
+      const subscription = url.searchParams.get("subscription") ?? "";
+      const setup = url.searchParams.get("setup") ?? "";
+      if (!REFERENCE.test(subscription) || !REFERENCE.test(setup)) {
+        return respond(messagePage(deps.shell, "That didn't work", "This return address is incomplete. Open billing again."), 400);
+      }
+      const done = await store.completeCardSetup(operator, subscription, setup);
+      if (!done.ok) return refused(done);
+      return seeOther(`${BILLING_PATHS.page}?card=${done.value.status === "trialing" ? "pending" : "saved"}`);
+    }
+    case BILLING_PATHS.subscribe: {
+      const form = await request.formData();
+      const started = await store.subscribe(operator, String(form.get("plan") ?? ""), String(form.get("organization") ?? ""), CONSOLE_ORIGIN);
+      return started.ok ? seeOther(started.value.url) : refused(started);
+    }
+    case BILLING_PATHS.card: {
+      const resumed = await store.resumeCardSetup(operator, CONSOLE_ORIGIN);
+      return resumed.ok ? seeOther(resumed.value.url) : refused(resumed);
+    }
+    case BILLING_PATHS.portal: {
+      const portal = await store.paymentMethodPortal(operator, CONSOLE_ORIGIN);
+      return portal.ok ? seeOther(portal.value.url) : refused(portal);
+    }
+    default: {
+      const cancelled = await store.cancelSubscription(operator);
+      return cancelled.ok ? seeOther(`${BILLING_PATHS.page}?card=cancelled`) : refused(cancelled);
+    }
+  }
+}
+
+// A subscription ID or a Stripe Checkout Session ID, as the return address carries them.
+const REFERENCE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+
+const BILLING_NOTICES: Record<string, string> = {
+  saved: "Your card is saved and your subscription is active. Its first invoice has been charged to that card.",
+  pending: "No card was saved yet. Add a card to start your subscription.",
+  cancelled: "Your subscription is cancelled. Nothing more will be charged for it.",
+};
+
+// Stripe's webhook deliveries. The body is passed on exactly as received, because the signature
+// covers those bytes; commerce verifies it before reading anything.
+async function receiveStripeWebhook(request: Request, deps: ControlPlaneDeps): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "method not allowed" }, 405);
+  const signature = request.headers.get("stripe-signature");
+  if (signature === null) return json({ error: "unauthenticated" }, 400);
+  const payload = await boundedText(request, MAX_WEBHOOK_BODY_BYTES);
+  if (payload === undefined) return json({ error: "validation-failed", message: "delivery too large" }, 413);
+  const reply = await deps.store().receiveStripeWebhook(payload, signature);
+  if (reply.ok) return json(reply.value);
+  // Stripe redelivers anything but a 2xx. A delivery that fails verification or doesn't parse is
+  // answered 400 so it shows as failing in Stripe's dashboard; billing being down is 503.
+  return json({ error: reply.code }, reply.code === "unavailable" ? 503 : 400);
 }
 
 /** A dashboard row with what the probe saw. */

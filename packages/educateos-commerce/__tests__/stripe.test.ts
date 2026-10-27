@@ -201,6 +201,83 @@ describe("Stripe REST calls", () => {
   });
 });
 
+describe("Stripe card setup (SCHO-208)", () => {
+  const session = (overrides: Record<string, unknown> = {}) => ({
+    id: "cs_test_nf",
+    object: "checkout.session",
+    mode: "setup",
+    status: "complete",
+    customer: "cus_nf",
+    setup_intent: { id: "seti_nf", object: "setup_intent", status: "succeeded", payment_method: "pm_saved" },
+    ...overrides,
+  });
+
+  it("opens Checkout in setup mode for cards, naming the session in the return URL, idempotently", async () => {
+    const { processor, requests } = processorAt(T, {
+      "POST /v1/checkout/sessions": () => ({ body: { id: "cs_test_nf", object: "checkout.session", url: "https://checkout.stripe.com/c/pay/cs_test_nf" } }),
+    });
+    await expect(processor.startCardSetup({
+      customerRef: "cus_nf",
+      returnUrl: "https://educateos.io/app/billing/return?subscription=sbn_1&setup={SETUP_REF}",
+      cancelUrl: "https://educateos.io/app/billing",
+      idempotencyKey: "sbn_1:0",
+    })).resolves.toEqual({ setupRef: "cs_test_nf", url: "https://checkout.stripe.com/c/pay/cs_test_nf" });
+    const [request] = requests;
+    expect(Object.fromEntries(request!.body!)).toEqual({
+      "mode": "setup",
+      "customer": "cus_nf",
+      "payment_method_types[0]": "card",
+      "success_url": "https://educateos.io/app/billing/return?subscription=sbn_1&setup={CHECKOUT_SESSION_ID}",
+      "cancel_url": "https://educateos.io/app/billing",
+    });
+    expect(request!.headers["Idempotency-Key"]).toBe("educateos:card-setup:sbn_1:0");
+  });
+
+  it("makes the saved card the customer's default once the session is complete", async () => {
+    const { processor, requests } = processorAt(T, {
+      "GET /v1/checkout/sessions/cs_test_nf": () => ({ body: session() }),
+      "POST /v1/customers/cus_nf": () => ({ body: { id: "cus_nf", object: "customer" } }),
+    });
+    await expect(processor.completeCardSetup("cus_nf", "cs_test_nf")).resolves.toBe(true);
+    expect(requests.map((r) => `${r.method} ${r.url}`)).toEqual([
+      "GET https://api.stripe.com/v1/checkout/sessions/cs_test_nf?expand%5B%5D=setup_intent",
+      "POST https://api.stripe.com/v1/customers/cus_nf",
+    ]);
+    expect(Object.fromEntries(requests[1]!.body!)).toEqual({ "invoice_settings[default_payment_method]": "pm_saved" });
+    expect(requests[1]!.headers["Idempotency-Key"]).toBe("educateos:default-payment-method:cs_test_nf");
+  });
+
+  for (const [what, overrides] of [
+    ["an open session", { status: "open", setup_intent: { status: "requires_payment_method", payment_method: null } }],
+    ["a session whose SetupIntent hasn't succeeded", { setup_intent: { status: "requires_action", payment_method: "pm_saved" } }],
+  ] as const) {
+    it(`saves nothing for ${what}`, async () => {
+      const { processor, requests } = processorAt(T, { "GET /v1/checkout/sessions/cs_test_nf": () => ({ body: session(overrides) }) });
+      await expect(processor.completeCardSetup("cus_nf", "cs_test_nf")).resolves.toBe(false);
+      expect(requests).toHaveLength(1);
+    });
+  }
+
+  for (const [what, overrides] of [["another customer's session", { customer: "cus_other" }], ["a payment-mode session", { mode: "payment" }]] as const) {
+    it(`refuses ${what} as not found`, async () => {
+      const { processor, requests } = processorAt(T, { "GET /v1/checkout/sessions/cs_test_nf": () => ({ body: session(overrides) }) });
+      await expect(processor.completeCardSetup("cus_nf", "cs_test_nf")).rejects.toMatchObject({ code: "not-found" });
+      expect(requests).toHaveLength(1);
+    });
+  }
+
+  it("opens the Customer Portal for the customer, with the configured portal configuration", async () => {
+    const stripe = fakeStripe({ "POST /v1/billing_portal/sessions": () => ({ body: { id: "bps_1", url: "https://billing.stripe.com/p/session/test_1" } }) });
+    const processor = new StripePaymentProcessor({ apiKey: "rk_test_fixture", webhookSecret: SECRET, portalConfiguration: "bpc_educateos", fetch: stripe.fetch });
+    await expect(processor.openPaymentMethodPortal("cus_nf", "https://educateos.io/app/billing")).resolves.toBe("https://billing.stripe.com/p/session/test_1");
+    expect(Object.fromEntries(stripe.requests[0]!.body!)).toEqual({
+      customer: "cus_nf",
+      return_url: "https://educateos.io/app/billing",
+      configuration: "bpc_educateos",
+    });
+  });
+});
+
 describe("Stripe through the commerce service", () => {
   it("pays an invoice from a signed webhook, and counts a refund Stripe reports twice only once", async () => {
     const clock = manualClock(new Date(T * 1000).toISOString());
