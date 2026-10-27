@@ -62,6 +62,28 @@ describe("the launch handler", () => {
     for (const secret of [code, tokenFor(code), SANDBOX_DISTRICT, CLEVER_CLIENT.clientSecret]) expect(logs).not.toContain(secret);
   });
 
+  it("reads the district from the user's record when a teacher-authorized /me leaves it out", async () => {
+    const consoleSpies = spyOnConsole();
+    const code = `launch-teacher-${SANDBOX_DISTRICT}`;
+    const response = await cleverLaunch(launch(code), deps());
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("https://cedarvalley.educateos.io/");
+    const logs = logged(consoleSpies);
+    for (const secret of [code, tokenFor(code), SANDBOX_DISTRICT]) expect(logs).not.toContain(secret);
+  });
+
+  it("refuses a teacher-authorized launch whose user record Clever won't show", async () => {
+    const fetch: CleverLaunchDeps["fetch"] = async (input, init) =>
+      input.includes("/users/") ? Response.json({ error: "forbidden" }, { status: 403 }) : fakeClever(input, init);
+    const consoleSpies = spyOnConsole();
+    const response = await cleverLaunch(launch(`launch-teacher-${SANDBOX_DISTRICT}`), deps({ fetch }));
+    expect(response.status).toBe(502);
+    await response.body?.cancel();
+    expect(consoleSpies[2]!.mock.calls).toEqual([
+      ["clever launch refused", { event: "clever.launch.refused", reason: "identity-failed", cleverStatus: 403, cleverError: "forbidden" }],
+    ]);
+  });
+
   it("tells a user whose district registered no installation so, without naming the district", async () => {
     const response = await cleverLaunch(launch(`launch-${OTHER_DISTRICT}`), deps());
     expect(response.status).toBe(404);

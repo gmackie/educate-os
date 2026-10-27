@@ -26,6 +26,8 @@ export const CLEVER_LAUNCH_REDIRECT_URI = `https://educateos.io${CLEVER_LAUNCH_P
 export const CLEVER_TOKEN_URL = "https://clever.com/oauth/tokens";
 /** Clever's identity endpoint, at an explicit API version as Clever asks. */
 export const CLEVER_ME_URL = "https://api.clever.com/v3.0/me";
+/** Clever's user records, read by ID when `/me` leaves out the user's district. */
+export const CLEVER_USERS_URL = "https://api.clever.com/v3.0/users";
 
 /** How long each call to Clever may take. A launch is a person waiting on a redirect. */
 export const CLEVER_REQUEST_TIMEOUT_MS = 10_000;
@@ -74,7 +76,9 @@ const CleverId = z.string().regex(/^[0-9a-f]{24}$/);
 // Clever's codes are opaque; this only keeps an absurd one from being sent on.
 const Code = z.string().regex(/^[\x21-\x7e]{1,512}$/);
 const TokenResponse = z.object({ access_token: z.string().min(1) });
-const MeResponse = z.object({ data: z.object({ district: CleverId }) });
+// A teacher-authorized sign-in's /me carries no district: only the user's ID, read from /users next.
+const MeResponse = z.object({ data: z.object({ id: CleverId, district: CleverId.optional() }) });
+const UserResponse = z.object({ data: z.object({ district: CleverId }) });
 // An OAuth error reply's code (RFC 6749 §5.2): a short token, safe to log, unlike the rest of the body.
 const OAuthError = z.object({ error: z.string().regex(/^[a-z_]{1,64}$/) });
 
@@ -196,20 +200,29 @@ async function exchange(code: string, deps: CleverLaunchDeps, credentials: Cleve
   }
 }
 
-// Reads the signed-in user's Clever district with the token, the token's one use.
-async function districtOf(token: string, deps: CleverLaunchDeps): Promise<CleverResult<string>> {
+// Reads one of Clever's identity endpoints with the user's token.
+async function readClever<T>(url: string, token: string, deps: CleverLaunchDeps, schema: z.ZodType<T>): Promise<CleverResult<T>> {
   try {
-    const response = await deps.fetch(CLEVER_ME_URL, {
+    const response = await deps.fetch(url, {
       method: "GET",
       headers: { authorization: `Bearer ${token}`, accept: "application/json" },
       redirect: "manual",
       signal: AbortSignal.timeout(CLEVER_REQUEST_TIMEOUT_MS),
     });
-    const read = await readJson(response, MeResponse);
-    return read.ok ? { ok: true, value: read.value.data.district } : read;
+    return await readJson(response, schema);
   } catch {
     return { ok: false, reply: {} };
   }
+}
+
+// Reads the signed-in user's Clever district with the token, the token's only use: from /me, or
+// from the user's own record when /me leaves it out.
+async function districtOf(token: string, deps: CleverLaunchDeps): Promise<CleverResult<string>> {
+  const me = await readClever(CLEVER_ME_URL, token, deps, MeResponse);
+  if (!me.ok) return me;
+  if (me.value.data.district !== undefined) return { ok: true, value: me.value.data.district };
+  const user = await readClever(`${CLEVER_USERS_URL}/${me.value.data.id}`, token, deps, UserResponse);
+  return user.ok ? { ok: true, value: user.value.data.district } : user;
 }
 
 /**
