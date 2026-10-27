@@ -75,9 +75,23 @@ const CleverId = z.string().regex(/^[0-9a-f]{24}$/);
 const Code = z.string().regex(/^[\x21-\x7e]{1,512}$/);
 const TokenResponse = z.object({ access_token: z.string().min(1) });
 const MeResponse = z.object({ data: z.object({ district: CleverId }) });
+// An OAuth error reply's code (RFC 6749 §5.2): a short token, safe to log, unlike the rest of the body.
+const OAuthError = z.object({ error: z.string().regex(/^[a-z_]{1,64}$/) });
 
 /** Why a launch was turned away, as logged. Never the code, the token, or anyone's IDs. */
 export type CleverLaunchFailure = "missing-code" | "unconfigured" | "exchange-failed" | "identity-failed" | "unknown-district";
+
+/**
+ * What Clever answered when a call to it failed, as logged beside the failure: its HTTP status
+ * (absent when Clever was never reached) and its OAuth error code, if it sent one.
+ */
+export interface CleverReply {
+  cleverStatus?: number;
+  cleverError?: string;
+}
+
+// A call to Clever: what it was asked for, or what it answered instead.
+type CleverResult<T> = { ok: true; value: T } | { ok: false; reply: CleverReply };
 
 // Every launch response: never cached, and no Referer, since the launch URL carries the code.
 const LAUNCH_HEADERS = { "cache-control": "no-store", "referrer-policy": "no-referrer" } as const;
@@ -110,8 +124,8 @@ const MESSAGES: Record<CleverLaunchFailure, { status: number; title: string; mes
   },
 };
 
-function refuse(shell: SiteShell, failure: CleverLaunchFailure): Response {
-  console.warn("clever launch refused", { event: "clever.launch.refused", reason: failure });
+function refuse(shell: SiteShell, failure: CleverLaunchFailure, reply: CleverReply = {}): Response {
+  console.warn("clever launch refused", { event: "clever.launch.refused", reason: failure, ...reply });
   const { status, title, message } = MESSAGES[failure];
   const body = page(shell, title, html`<section class="page-hero">
     <div class="wrap">
@@ -124,22 +138,26 @@ function refuse(shell: SiteShell, failure: CleverLaunchFailure): Response {
   return new Response(body, { status, headers: { ...PAGE_HEADERS, ...LAUNCH_HEADERS } });
 }
 
-async function readJson<T>(response: Response, schema: z.ZodType<T>): Promise<T | undefined> {
+async function readJson<T>(response: Response, schema: z.ZodType<T>): Promise<CleverResult<T>> {
+  const cleverStatus = response.status;
   // A redirect counts as a failure like any other non-2xx: `redirect: "manual"` keeps it unfollowed.
   if (!response.ok) {
-    await response.body?.cancel();
-    return undefined;
+    try {
+      return { ok: false, reply: { cleverStatus, cleverError: OAuthError.safeParse(await response.json()).data?.error } };
+    } catch {
+      return { ok: false, reply: { cleverStatus } };
+    }
   }
   try {
     const parsed = schema.safeParse(await response.json());
-    return parsed.success ? parsed.data : undefined;
+    return parsed.success ? { ok: true, value: parsed.data } : { ok: false, reply: { cleverStatus } };
   } catch {
-    return undefined;
+    return { ok: false, reply: { cleverStatus } };
   }
 }
 
 // Exchanges the code for an access token (HTTP Basic with the app's client, as Clever documents).
-async function exchange(code: string, deps: CleverLaunchDeps, credentials: CleverAppCredentials): Promise<string | undefined> {
+async function exchange(code: string, deps: CleverLaunchDeps, credentials: CleverAppCredentials): Promise<CleverResult<string>> {
   try {
     const response = await deps.fetch(CLEVER_TOKEN_URL, {
       method: "POST",
@@ -153,14 +171,15 @@ async function exchange(code: string, deps: CleverLaunchDeps, credentials: Cleve
       redirect: "manual",
       signal: AbortSignal.timeout(CLEVER_REQUEST_TIMEOUT_MS),
     });
-    return (await readJson(response, TokenResponse))?.access_token;
+    const read = await readJson(response, TokenResponse);
+    return read.ok ? { ok: true, value: read.value.access_token } : read;
   } catch {
-    return undefined;
+    return { ok: false, reply: {} };
   }
 }
 
 // Reads the signed-in user's Clever district with the token, the token's one use.
-async function districtOf(token: string, deps: CleverLaunchDeps): Promise<string | undefined> {
+async function districtOf(token: string, deps: CleverLaunchDeps): Promise<CleverResult<string>> {
   try {
     const response = await deps.fetch(CLEVER_ME_URL, {
       method: "GET",
@@ -168,9 +187,10 @@ async function districtOf(token: string, deps: CleverLaunchDeps): Promise<string
       redirect: "manual",
       signal: AbortSignal.timeout(CLEVER_REQUEST_TIMEOUT_MS),
     });
-    return (await readJson(response, MeResponse))?.data.district;
+    const read = await readJson(response, MeResponse);
+    return read.ok ? { ok: true, value: read.value.data.district } : read;
   } catch {
-    return undefined;
+    return { ok: false, reply: {} };
   }
 }
 
@@ -189,11 +209,11 @@ export async function cleverLaunch(request: Request, deps: CleverLaunchDeps): Pr
   if (deps.credentials === undefined) return refuse(deps.shell, "unconfigured");
 
   const token = await exchange(code.data, deps, deps.credentials);
-  if (token === undefined) return refuse(deps.shell, "exchange-failed");
-  const district = await districtOf(token, deps);
-  if (district === undefined) return refuse(deps.shell, "identity-failed");
+  if (!token.ok) return refuse(deps.shell, "exchange-failed", token.reply);
+  const district = await districtOf(token.value, deps);
+  if (!district.ok) return refuse(deps.shell, "identity-failed", district.reply);
 
-  const hostname = await deps.hostnameFor(district);
+  const hostname = await deps.hostnameFor(district.value);
   if (hostname === undefined) return refuse(deps.shell, "unknown-district");
   console.info("clever launch redirected", { event: "clever.launch.redirected" });
   return new Response(null, { status: 303, headers: { ...LAUNCH_HEADERS, location: `https://${hostname}/` } });
