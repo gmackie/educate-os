@@ -3,7 +3,7 @@
 // Every value that reaches a page passes through `html`, which escapes it.
 import { ACCESS_LOGOUT_PATH } from "./access.ts";
 import type { ProbedEntry } from "./app.ts";
-import { BILLING_PATHS, type BillingOverview, MANAGED_PLANS, PLACEHOLDER_PRICE_NOTE, TERM_DAYS } from "./billing.ts";
+import { BILLING_PATHS, type BilledInvoice, type BillingOverview, MANAGED_PLANS, PLACEHOLDER_PRICE_NOTE, TERM_DAYS } from "./billing.ts";
 import { ECHOED_FIELDS, type InstallEvent } from "./guided-install.ts";
 import type { ProbeResult } from "./probe.ts";
 import type { Registration } from "./registry.ts";
@@ -180,6 +180,13 @@ function dollars(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+const CHARGE_LABELS: Record<BilledInvoice["charge"], Html> = {
+  paid: html`<span class="status avail">Paid</span>`,
+  pending: html`<span class="status planned">Open</span> <small class="muted">charge on its way</small>`,
+  declined: html`<span class="badge warn">Declined</span>`,
+  uncharged: html`<span class="status planned">Open</span> <small class="muted">not charged yet</small>`,
+};
+
 const STATUS_LABELS: Record<NonNullable<BillingOverview["subscription"]>["status"], Html> = {
   "trialing": html`<span class="status planned">Waiting for a card</span>`,
   "active": html`<span class="status avail">Active</span>`,
@@ -195,6 +202,8 @@ const STATUS_LABELS: Record<NonNullable<BillingOverview["subscription"]>["status
  */
 export function billingPage(shell: SiteShell, operator: Operator, overview: BillingOverview, notice?: string): string {
   const { subscription } = overview;
+  const payable = subscription !== undefined && subscription.status !== "trialing" &&
+    overview.invoices.some(({ invoice, charge }) => invoice.subscriptionId === subscription.subscriptionId && (charge === "declined" || charge === "uncharged"));
   const planName = (planId: string) => MANAGED_PLANS.find(({ plan }) => plan.planId === planId)?.name ?? planId;
   const current = subscription === undefined
     ? html`<form method="post" action="${BILLING_PATHS.subscribe}" class="card">
@@ -215,6 +224,7 @@ export function billingPage(shell: SiteShell, operator: Operator, overview: Bill
         ${subscription.status === "trialing"
           ? html`<form method="post" action="${BILLING_PATHS.card}"><p><button class="btn primary" type="submit">Add a card</button></p></form>`
           : ""}
+        ${payable ? html`<form method="post" action="${BILLING_PATHS.pay}"><p><button class="btn primary" type="submit">Pay now</button></p></form>` : ""}
         <p>${overview.hasCustomer ? html`<form method="post" action="${BILLING_PATHS.portal}" class="inline"><button class="btn" type="submit">Manage payment methods</button></form>` : ""}
         <form method="post" action="${BILLING_PATHS.cancel}" class="inline"><button class="btn" type="submit">Cancel subscription</button></form></p>
         <small class="muted">Cancelling stops further charges. Your installations keep running and keep their data.</small>
@@ -223,12 +233,12 @@ export function billingPage(shell: SiteShell, operator: Operator, overview: Bill
     ? ""
     : html`<h2>Invoices</h2><div class="table-scroll"><table class="spec">
         <thead><tr><th>Invoice</th><th>Issued</th><th>Due</th><th>Total</th><th>Status</th></tr></thead>
-        <tbody>${overview.invoices.map((invoice) => html`<tr>
+        <tbody>${overview.invoices.map(({ invoice, charge }) => html`<tr>
           <td><code>${invoice.invoiceId}</code></td>
           <td>${invoice.issuedAt.slice(0, 10)}</td>
           <td>${invoice.dueAt.slice(0, 10)}</td>
           <td>${dollars(invoice.totalCents)}</td>
-          <td>${invoice.status === "paid" ? html`<span class="status avail">Paid</span>` : html`<span class="status planned">Open</span>`}</td>
+          <td>${CHARGE_LABELS[charge]}</td>
         </tr>`)}</tbody>
       </table></div>`;
   return page(shell, "Billing", html`<section class="page-hero">

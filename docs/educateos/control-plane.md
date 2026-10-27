@@ -154,17 +154,27 @@ runs, and Stripe runs none here.
 2. `POST /app/billing/subscribe` (plan, organization billed) opens the operator's commercial
    account if need be (their `acct_…`, the organization as its label), starts a trialing card
    subscription for one 30-day term, creates the Stripe customer (carrying only the account ID),
-   and answers 303 to a Checkout Session in setup mode.
+   and answers 303 to a Checkout Session in setup mode. The session's metadata
+   `educateos_reference` names the subscription.
 3. Stripe sends the operator back to `GET /app/billing/return?subscription=…&setup=<session>`. The
-   Worker reads the session back, refuses one for another customer, and makes the saved card the
-   customer's default. That activates the subscription, issues the term's invoice (due in 7 days)
-   and charges it off-session. Coming back again charges nothing more.
+   Worker reads the session back and refuses (404) one for another customer or made for another
+   subscription, so a setup page left from an earlier subscription can't start a later one. It
+   makes the saved card the customer's default, which activates the subscription; the term starts
+   then. It issues the term's invoice (due in 7 days) if it has none, and charges it off-session
+   unless a charge is already paid, on its way, or declined. So coming back again charges nothing
+   more, but does make a charge an earlier return couldn't (Stripe unreachable, or the object
+   restarted between the steps). The notice says what actually happened to the invoice.
 4. Stripe's `payment_intent.succeeded` (or `payment_failed`) webhook at `/stripe/webhook` marks the
    invoice paid (or the subscription past due), once per event ID. Its signature is checked
    against `STRIPE_WEBHOOK_SECRET` before anything in it is read. An event about a charge commerce
-   never made is answered `{"outcome":"unmatched"}` with 200, so Stripe stops redelivering it.
-5. `POST /app/billing/portal` answers 303 to a Customer Portal session; `POST /app/billing/card`
-   reopens Checkout for a subscription left waiting for a card; `POST /app/billing/cancel` cancels.
+   never made is answered `{"outcome":"unmatched"}` with 200, so Stripe stops redelivering it, and
+   logged as `stripe webhook unmatched` with Stripe's event and PaymentIntent IDs.
+5. `POST /app/billing/pay` (**Pay now**, shown while the invoice is uncharged or declined) charges
+   it again; it is refused while a charge is on its way. `POST /app/billing/portal` answers 303 to
+   a Customer Portal session; `POST /app/billing/card` reopens Checkout for a subscription left
+   waiting for a card; `POST /app/billing/cancel` cancels. Billing's operations run one at a
+   time, so a cancel can't land between activation and the first invoice, and commerce refuses to
+   invoice a cancelled subscription anyway.
 
 The operator acts as a commerce `customer` actor, never as finance staff, so the console can't
 approve purchase orders, record manual payments or refund. The billing page's CSP also admits
@@ -180,9 +190,9 @@ answer with redirects there; every other console page keeps `form-action 'self'`
 | `COMMERCE_SIGNING_KEY` | The root's entitlement signing key, an Ed25519 private JWK. Commerce requires one; billing issues no entitlements yet. |
 
 Without all three, `/app/billing` says billing is unavailable and the webhook answers 503; the rest
-of the site is unaffected. The optional var `STRIPE_PORTAL_CONFIGURATION` names a Customer Portal
-configuration (`bpc_…`); without it Stripe uses the account's default, which must have been saved
-once. [The sandbox runbook](runbooks/billing-sandbox.md) sets all of this up and runs the flow end
+of the site is unaffected. The var `STRIPE_PORTAL_CONFIGURATION` names the Customer Portal configuration
+(`bpc_…`, the sandbox's, payment methods only); without it Stripe uses the account's default,
+which must have been saved once. [The sandbox runbook](runbooks/billing-sandbox.md) sets all of this up and runs the flow end
 to end.
 
 **Not yet.**

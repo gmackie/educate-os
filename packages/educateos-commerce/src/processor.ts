@@ -46,6 +46,12 @@ export const SETUP_REF_PLACEHOLDER = "{SETUP_REF}";
 /** A request to open the processor's hosted page where a customer saves a card for later charges. */
 export interface CardSetupRequest {
   customerRef: ProcessorRef;
+  /**
+   * What the setup is for: commerce's subscription ID. The processor keeps it on the setup, and
+   * {@link PaymentProcessor.completeCardSetup} refuses a setup made for anything else, so a page
+   * left from an earlier subscription can't finish a later one.
+   */
+  reference: string;
   /** Where the customer is sent once the card is saved. {@link SETUP_REF_PLACEHOLDER} is replaced by the setup's reference. */
   returnUrl: string;
   /** Where the customer is sent if they leave without saving a card. */
@@ -85,9 +91,10 @@ export interface PaymentProcessor {
   /**
    * Finishes a card setup the customer came back from: makes the saved card the customer's default
    * payment method, which {@link PaymentProcessor.charge} uses. Returns false if the customer hasn't
-   * saved a card on that page. A setup belonging to another customer is `not-found`.
+   * saved a card on that page. A setup belonging to another customer, or made for another
+   * `reference`, is `not-found`.
    */
-  completeCardSetup(customerRef: ProcessorRef, setupRef: ProcessorRef): Promise<boolean>;
+  completeCardSetup(customerRef: ProcessorRef, setupRef: ProcessorRef, reference: string): Promise<boolean>;
   /** Opens the processor's hosted page where the customer manages their saved payment methods. Returns its URL. */
   openPaymentMethodPortal(customerRef: ProcessorRef, returnUrl: string): Promise<string>;
 }
@@ -105,7 +112,7 @@ export class FakePaymentProcessor implements PaymentProcessor {
   readonly customersCreated: CommercialAccountId[] = [];
   /** Each customer's default payment method, once a card setup made one. */
   readonly defaultPaymentMethods = new Map<ProcessorRef, ProcessorRef>();
-  readonly #setups = new Map<ProcessorRef, { customerRef: ProcessorRef; saved: boolean }>();
+  readonly #setups = new Map<ProcessorRef, { customerRef: ProcessorRef; reference: string; saved: boolean }>();
   readonly #operations = new Map<string, ProcessorRef>();
   readonly #deliveries: unknown[] = [];
   readonly #now: () => Date;
@@ -157,13 +164,13 @@ export class FakePaymentProcessor implements PaymentProcessor {
   }
 
   async startCardSetup(request: CardSetupRequest): Promise<CardSetup> {
-    const setupRef = this.#once(`setup:${request.idempotencyKey}`, "cs", (ref) => this.#setups.set(ref, { customerRef: request.customerRef, saved: false }));
+    const setupRef = this.#once(`setup:${request.idempotencyKey}`, "cs", (ref) => this.#setups.set(ref, { customerRef: request.customerRef, reference: request.reference, saved: false }));
     return { setupRef, url: `https://fake-processor.invalid/setup/${setupRef}` };
   }
 
-  async completeCardSetup(customerRef: ProcessorRef, setupRef: ProcessorRef): Promise<boolean> {
+  async completeCardSetup(customerRef: ProcessorRef, setupRef: ProcessorRef, reference: string): Promise<boolean> {
     const setup = this.#setups.get(setupRef);
-    if (setup === undefined || setup.customerRef !== customerRef) throw new EducateOsError("not-found", "card setup not found");
+    if (setup === undefined || setup.customerRef !== customerRef || setup.reference !== reference) throw new EducateOsError("not-found", "card setup not found");
     if (!setup.saved) return false;
     if (!this.defaultPaymentMethods.has(customerRef)) this.defaultPaymentMethods.set(customerRef, this.#ref("pm"));
     return true;

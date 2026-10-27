@@ -13,11 +13,13 @@ import {
   type CommerceStore,
   type FinanceActor,
   type Invoice,
+  type InvoiceChargeState,
   type PaymentProcessor,
   type Plan,
   PlanId,
   SETUP_REF_PLACEHOLDER,
   type Subscription,
+  UnmatchedProcessorEventError,
 } from "@educateos/commerce";
 import { SerialQueue, type SigningIdentity } from "@educateos/fleet";
 import type { Operator } from "./store.ts";
@@ -84,8 +86,23 @@ export interface BillingOverview {
   hasCustomer: boolean;
   /** The newest subscription that isn't cancelled, if any. */
   subscription?: Subscription;
-  /** Every invoice, newest first. */
-  invoices: Invoice[];
+  /** Every invoice, newest first, with where its charge stands. */
+  invoices: BilledInvoice[];
+}
+
+/** An invoice and where its charge stands. */
+export interface BilledInvoice {
+  invoice: Invoice;
+  charge: InvoiceChargeState;
+}
+
+/**
+ * What coming back from Stripe's card setup gave: the subscription, and once it is active, where
+ * its first invoice's charge stands.
+ */
+export interface CardSetupOutcome {
+  subscription: Subscription;
+  charge?: InvoiceChargeState;
 }
 
 /** What the routes need from billing. The Durable Object's RPC stub satisfies it. */
@@ -93,7 +110,8 @@ export interface BillingApi {
   billingOverview(operator: Operator): Promise<BillingReply<BillingOverview>>;
   subscribe(operator: Operator, planId: string, organization: string, origin: string): Promise<BillingReply<{ url: string }>>;
   resumeCardSetup(operator: Operator, origin: string): Promise<BillingReply<{ url: string }>>;
-  completeCardSetup(operator: Operator, subscriptionId: string, setupRef: string): Promise<BillingReply<Subscription>>;
+  completeCardSetup(operator: Operator, subscriptionId: string, setupRef: string): Promise<BillingReply<CardSetupOutcome>>;
+  payInvoice(operator: Operator): Promise<BillingReply<InvoiceChargeState>>;
   paymentMethodPortal(operator: Operator, origin: string): Promise<BillingReply<{ url: string }>>;
   cancelSubscription(operator: Operator): Promise<BillingReply<Subscription>>;
   receiveStripeWebhook(payload: string, signature: string): Promise<BillingReply<{ outcome: string }>>;
@@ -106,6 +124,7 @@ export const BILLING_PATHS = {
   card: "/app/billing/card",
   ret: "/app/billing/return",
   portal: "/app/billing/portal",
+  pay: "/app/billing/pay",
   cancel: "/app/billing/cancel",
   webhook: "/stripe/webhook",
 } as const;
@@ -145,7 +164,9 @@ export class ControlPlaneBilling {
     return this.#serial(async () => {
       const account = await this.#commerce.account(operator.accountId);
       if (account === undefined) return { hasCustomer: false, invoices: [] };
-      const invoices = (await this.#commerce.invoices(account.accountId)).toSorted((a, b) => b.issuedAt.localeCompare(a.issuedAt));
+      const invoices = await Promise.all((await this.#commerce.invoices(account.accountId))
+        .toSorted((a, b) => b.issuedAt.localeCompare(a.issuedAt))
+        .map(async (invoice) => ({ invoice, charge: await this.#commerce.chargeState(invoice.invoiceId) })));
       const subscription = await this.#current(account.accountId);
       return {
         organization: account.districtLabel,
@@ -195,34 +216,48 @@ export class ControlPlaneBilling {
   }
 
   /**
-   * Finishes the card setup the operator came back from. The first time it activates the
-   * subscription, the term's invoice is issued and charged to the saved card; the charge's outcome
-   * arrives by webhook. Coming back again, or after a crash between the steps, issues no second
-   * invoice: a subscription with an invoice already has its charge.
+   * Finishes the card setup the operator came back from. Once the subscription is active, its
+   * term's invoice is issued if it hasn't been and charged to the saved card unless a charge is
+   * already paid, on its way, or was declined (which the operator retries with Pay now). Coming
+   * back again therefore issues no second invoice, and finishes a charge an earlier visit couldn't
+   * make: Stripe unreachable, or the object restarted between the steps. The charge's outcome
+   * arrives by webhook.
    */
-  completeCardSetup(operator: Operator, subscriptionId: string, setupRef: string): Promise<BillingReply<Subscription>> {
+  completeCardSetup(operator: Operator, subscriptionId: string, setupRef: string): Promise<BillingReply<CardSetupOutcome>> {
     return this.#serial(async () => {
       const subscription = await this.#owned(operator, subscriptionId);
       const actor = customer(operator);
       const after = await this.#commerce.completeCardSetup(subscription.subscriptionId, setupRef, actor);
-      if (after.status !== "active") return after;
-      const invoiced = (await this.#commerce.invoices(operator.accountId)).some((invoice) => invoice.subscriptionId === after.subscriptionId);
-      if (invoiced) return after;
-      const plan = MANAGED_PLANS.find(({ plan: offered }) => offered.planId === after.planId)!.plan;
-      const invoice = await this.#commerce.issueInvoice({
-        accountId: operator.accountId,
-        subscriptionId: after.subscriptionId,
-        lines: [{ kind: "plan-fee", code: plan.planId.slice("pln_".length), quantity: 1, unitAmountCents: plan.termFeeCents }],
-        dueAt: new Date(this.#now().getTime() + INVOICE_DUE_DAYS * DAY_MS).toISOString(),
-      }, actor);
-      if (invoice.status === "open") await this.#commerce.chargeInvoice(invoice.invoiceId, actor);
-      return after;
+      if (after.status !== "active") return { subscription: after };
+      const invoice = await this.#firstInvoice(operator, after, actor);
+      let charge = await this.#commerce.chargeState(invoice.invoiceId);
+      if (charge === "uncharged") charge = await this.#charge(invoice, actor, { retryLater: true });
+      return { subscription: after, charge };
+    });
+  }
+
+  /**
+   * Charges the current subscription's open invoice to the saved card: one never charged, or whose
+   * charges were all declined (a new charge, after the operator updated their card). Refused while
+   * a charge is on its way.
+   */
+  payInvoice(operator: Operator): Promise<BillingReply<InvoiceChargeState>> {
+    return this.#serial(async () => {
+      const subscription = await this.#current(operator.accountId);
+      const open = subscription === undefined
+        ? undefined
+        : (await this.#commerce.invoices(operator.accountId))
+          .filter((invoice) => invoice.subscriptionId === subscription.subscriptionId && invoice.status === "open")
+          .toSorted((a, b) => b.issuedAt.localeCompare(a.issuedAt))[0];
+      if (open === undefined) throw new EducateOsError("not-found", "there is no open invoice to pay");
+      if ((await this.#commerce.chargeState(open.invoiceId)) === "pending") throw new EducateOsError("conflict", "a charge for this invoice is already on its way");
+      return await this.#charge(open, customer(operator), { retryLater: false });
     });
   }
 
   /** Opens Stripe's Customer Portal, where the operator manages their saved cards. */
   paymentMethodPortal(operator: Operator, origin: string): Promise<BillingReply<{ url: string }>> {
-    return reply(async () => {
+    return this.#serial(async () => {
       if ((await this.#commerce.account(operator.accountId)) === undefined) throw new EducateOsError("conflict", "the account has no saved payment method");
       return { url: await this.#commerce.paymentMethodPortal(operator.accountId, `${origin}${BILLING_PATHS.page}`) };
     });
@@ -230,10 +265,12 @@ export class ControlPlaneBilling {
 
   /**
    * Cancels the operator's subscription. Nothing more is charged for it; their installations keep
-   * running and keep their data (ADR-0013).
+   * running and keep their data (ADR-0013). Serialized with the return from Stripe, so a cancel
+   * can't land between activation and the first invoice, and commerce refuses to invoice a
+   * cancelled subscription anyway.
    */
   cancelSubscription(operator: Operator): Promise<BillingReply<Subscription>> {
-    return reply(async () => {
+    return this.#serial(async () => {
       const subscription = await this.#current(operator.accountId);
       if (subscription === undefined) throw new EducateOsError("not-found", "the account has no subscription to cancel");
       return await this.#commerce.cancel(subscription.subscriptionId, customer(operator));
@@ -243,7 +280,8 @@ export class ControlPlaneBilling {
   /**
    * Applies a Stripe webhook delivery, verified against the endpoint's signing secret first. Each
    * event is applied once, by its ID. An event about a charge commerce never made is answered
-   * `unmatched`, not refused, so Stripe stops redelivering it.
+   * `unmatched`, not refused, so Stripe stops redelivering it, and logged by Stripe's IDs so it can
+   * be found and reconciled by hand.
    */
   receiveStripeWebhook(payload: string, signature: string): Promise<BillingReply<{ outcome: string }>> {
     return reply(async () => {
@@ -251,10 +289,41 @@ export class ControlPlaneBilling {
         const { outcome } = await this.#commerce.handleProcessorDelivery({ payload, signature });
         return { outcome };
       } catch (error) {
-        if (error instanceof EducateOsError && error.code === "not-found") return { outcome: "unmatched" };
+        if (error instanceof UnmatchedProcessorEventError) {
+          console.error("stripe webhook unmatched", { eventId: error.eventId, operationRef: error.operationRef });
+          return { outcome: "unmatched" };
+        }
         throw error;
       }
     });
+  }
+
+  // The subscription's invoice, issued now if it has none.
+  async #firstInvoice(operator: Operator, subscription: Subscription, actor: FinanceActor): Promise<Invoice> {
+    const issued = (await this.#commerce.invoices(operator.accountId))
+      .filter((invoice) => invoice.subscriptionId === subscription.subscriptionId)
+      .toSorted((a, b) => a.issuedAt.localeCompare(b.issuedAt))[0];
+    if (issued !== undefined) return issued;
+    const plan = MANAGED_PLANS.find(({ plan: offered }) => offered.planId === subscription.planId)!.plan;
+    return await this.#commerce.issueInvoice({
+      accountId: operator.accountId,
+      subscriptionId: subscription.subscriptionId,
+      lines: [{ kind: "plan-fee", code: plan.planId.slice("pln_".length), quantity: 1, unitAmountCents: plan.termFeeCents }],
+      dueAt: new Date(this.#now().getTime() + INVOICE_DUE_DAYS * DAY_MS).toISOString(),
+    }, actor);
+  }
+
+  // Requests the charge and reports where it then stands. With `retryLater`, a Stripe that can't
+  // be reached leaves the invoice uncharged, for the next return or Pay now, instead of failing.
+  async #charge(invoice: Invoice, actor: FinanceActor, { retryLater }: { retryLater: boolean }): Promise<InvoiceChargeState> {
+    if (invoice.status !== "open") return await this.#commerce.chargeState(invoice.invoiceId);
+    try {
+      await this.#commerce.chargeInvoice(invoice.invoiceId, actor);
+    } catch (error) {
+      if (!retryLater || !(error instanceof EducateOsError) || error.code !== "unavailable") throw error;
+      console.error("billing charge deferred", { invoiceId: invoice.invoiceId, error: error.code });
+    }
+    return await this.#commerce.chargeState(invoice.invoiceId);
   }
 
   #serial<T>(work: () => Promise<T>): Promise<BillingReply<T>> {

@@ -1,6 +1,7 @@
 # Runbook: billing end to end in the Stripe sandbox
 
-- Status: Ready to run once the PR deploys. Not yet run against the deployed site.
+- Status: Steps 1 and 2 were done on 2026-10-27. Step 3 runs once the PR deploys; not yet run
+  against the deployed site.
 - Issue: SCHO-208. Design: [control-plane.md, Billing](../control-plane.md#billing).
 - Who runs it: someone who can set the `educateos-site` Worker's secrets and sign in to the
   operator console. About 20 minutes.
@@ -12,6 +13,11 @@ Every command reads keys from the macOS Keychain and prints none. The sandbox's 
 `stripe-educateos-test-secret` and `stripe-educateos-test-publishable`.
 
 ## 1. Webhook endpoint and portal configuration
+
+Done on 2026-10-27: webhook endpoint `we_1UV3R5L1y99jAIetGYQtYV1W` (its signing secret is the
+Worker's `STRIPE_WEBHOOK_SECRET`), and portal configuration
+`bpc_1UV3R5L1y99jAIetN8fGRXZK`, set as `STRIPE_PORTAL_CONFIGURATION` in `wrangler.jsonc`. To make
+them again:
 
 Create the endpoint once. Its signing secret is shown only in the create response, so it goes
 straight into the Keychain:
@@ -39,6 +45,9 @@ curl -sS https://api.stripe.com/v1/billing_portal/configurations -u "$key:" \
 
 ## 2. The site Worker's secrets
 
+Done on 2026-10-27: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `COMMERCE_SIGNING_KEY` are set
+on `educateos-site`. To set them again:
+
 ```sh
 cd sites/educateos-io
 security find-generic-password -s stripe-educateos-test-secret -w | pnpm exec wrangler secret put STRIPE_SECRET_KEY
@@ -55,8 +64,7 @@ node -e 'const {generateKeyPairSync, execFileSync} = {...require("node:crypto"),
 security find-generic-password -s educateos-commerce-signing-key -w | pnpm exec wrangler secret put COMMERCE_SIGNING_KEY
 ```
 
-Set the portal configuration as the var `STRIPE_PORTAL_CONFIGURATION` in `wrangler.jsonc`, or leave
-it out and save the sandbox's default portal configuration once in the Stripe Dashboard.
+The portal configuration is the var `STRIPE_PORTAL_CONFIGURATION` in `wrangler.jsonc`.
 
 ## 3. Run it
 
@@ -66,7 +74,7 @@ In a browser signed in to educateos.io/app:
 2. Choose **Managed hostname**, name an organization, and continue. Stripe's Checkout asks for a
    card and says nothing will be charged now. Use `4242 4242 4242 4242`, any future date, any CVC.
 3. Back on `/app/billing`: "Your card is saved", the subscription **Active**, and one **Open**
-   invoice for $1.00.
+   invoice for $1.00, its charge on its way.
 4. Within a few seconds Stripe delivers `payment_intent.succeeded`. Reload: the invoice is **Paid**.
    In the Stripe Dashboard (sandbox) the webhook endpoint shows the delivery answered 200
    `{"outcome":"applied"}`, and Payments shows the $1.00 charge to the customer whose metadata
@@ -75,8 +83,8 @@ In a browser signed in to educateos.io/app:
 6. **Cancel subscription**: "Your subscription is cancelled", and the plans are offered again.
 
 For a decline, subscribe with `4000 0000 0000 0341` (saves, then declines when charged): the
-invoice stays open and, after `payment_intent.payment_failed`, the subscription shows
-**Payment due**.
+invoice shows **Declined** after `payment_intent.payment_failed`, the subscription shows
+**Payment due**, and **Pay now** charges again once the card is updated in the portal.
 
 ## 4. Evidence
 

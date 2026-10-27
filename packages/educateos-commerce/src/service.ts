@@ -130,6 +130,27 @@ export const AwardGrantRequest = z.strictObject({
 /** An award-grant request. */
 export type AwardGrantRequest = z.input<typeof AwardGrantRequest>;
 
+/**
+ * A verified processor event about a charge or refund commerce has no record of: `not-found`,
+ * naming the processor's IDs (never anything personal) so the caller can log what went unmatched.
+ */
+export class UnmatchedProcessorEventError extends EducateOsError {
+  readonly eventId: ProcessorRef;
+  readonly operationRef: ProcessorRef;
+  constructor(eventId: ProcessorRef, operationRef: ProcessorRef) {
+    super("not-found", "processor operation not found");
+    this.eventId = eventId;
+    this.operationRef = operationRef;
+  }
+}
+
+/**
+ * Where an invoice's charge stands: `paid`; `pending` while a charge is requested and its outcome
+ * hasn't arrived, or has succeeded and the invoice is settling; `declined` once every charge
+ * requested has failed; `uncharged` if no charge was ever requested.
+ */
+export type InvoiceChargeState = "paid" | "pending" | "declined" | "uncharged";
+
 /** The outcome of {@link CommerceService.handleProcessorDelivery}. */
 export interface ProcessorDeliveryOutcome {
   /** `applied` the first time an event is seen, `duplicate` on any redelivery, `ignored` for event types commerce doesn't act on. */
@@ -252,15 +273,16 @@ export class CommerceService implements CommercialAccountVerifier {
       const subscription = await this.#cardSubscription(subscriptionId);
       if (subscription.status !== "trialing") throw new EducateOsError("conflict", "only a trialing subscription needs a card set up");
       const customerRef = await this.#ensureProcessorCustomer(subscription.accountId, actor);
-      return await this.#processor.startCardSetup({ customerRef, ...urls });
+      return await this.#processor.startCardSetup({ customerRef, reference: subscription.subscriptionId, ...urls });
     });
   }
 
   /**
    * Finishes a card setup the customer came back from, and activates the trialing subscription it
-   * was for once the card is the customer's default. A setup the customer hasn't finished leaves
-   * the subscription trialing. Repeating it, or calling it for a subscription already past
-   * trialing, changes nothing.
+   * was for once the card is the customer's default. The term starts then, keeping its length, so
+   * time spent before a card was saved isn't billed. A setup the customer hasn't finished leaves the
+   * subscription trialing; one made for another subscription is `not-found`. Repeating it, or
+   * calling it for a subscription already past trialing, changes nothing.
    */
   async completeCardSetup(subscriptionId: SubscriptionId, setupRef: ProcessorRef, actor: FinanceActor): Promise<Subscription> {
     return this.#store.atomically(async () => {
@@ -268,9 +290,11 @@ export class CommerceService implements CommercialAccountVerifier {
       if (subscription.status !== "trialing") return subscription;
       const account = await this.#require("account", subscription.accountId);
       if (account.processorCustomerRef === undefined) throw new EducateOsError("not-found", "card setup not found");
-      if (!(await this.#processor.completeCardSetup(account.processorCustomerRef, setupRef))) return subscription;
+      if (!(await this.#processor.completeCardSetup(account.processorCustomerRef, setupRef, subscription.subscriptionId))) return subscription;
       await this.#audit(account.accountId, actor, "account.payment-method-saved", { kind: "account", id: account.accountId });
-      return await this.#activate(subscription, actor);
+      const now = this.#now().getTime();
+      const length = Date.parse(subscription.termEnd) - Date.parse(subscription.termStart);
+      return await this.#activate(subscription, actor, { termStart: new Date(now).toISOString(), termEnd: new Date(now + length).toISOString() });
     });
   }
 
@@ -339,7 +363,7 @@ export class CommerceService implements CommercialAccountVerifier {
     return this.#store.atomically(async () => this.#activate(await this.#reconcileStatus(subscriptionId), actor));
   }
 
-  async #activate(subscription: Subscription, actor: FinanceActor): Promise<Subscription> {
+  async #activate(subscription: Subscription, actor: FinanceActor, term: Partial<Subscription> = {}): Promise<Subscription> {
     if (subscription.status !== "trialing") throw new EducateOsError("conflict", "only a trialing subscription can be activated");
     if (subscription.paymentMethod === "purchase-order") {
       const po = subscription.purchaseOrderId && (await this.#store.get("purchaseOrder", subscription.purchaseOrderId));
@@ -349,7 +373,7 @@ export class CommerceService implements CommercialAccountVerifier {
       const account = await this.#require("account", subscription.accountId);
       if (account.processorCustomerRef === undefined) throw new EducateOsError("policy-violation", "a processor customer is required");
     }
-    return await this.#transition(subscription, { status: "active" }, actor, "subscription.activated");
+    return await this.#transition(subscription, { status: "active", ...term }, actor, "subscription.activated");
   }
 
   /** Extends the term. Delinquency from a missed payment stands until an invoice is paid. */
@@ -466,6 +490,7 @@ export class CommerceService implements CommercialAccountVerifier {
       const request = parseWire(IssueInvoiceRequest, input, "invoice request");
       const account = await this.#require("account", request.accountId);
       const subscription = request.subscriptionId && (await this.#owned("subscription", request.subscriptionId, account.accountId));
+      if (subscription && subscription.status === "cancelled") throw new EducateOsError("conflict", "subscription is cancelled");
       const lines: InvoiceLine[] = request.lines.map((line) => ({ ...line, amountCents: multiplyCents(line.unitAmountCents, line.quantity) }));
       if (request.aiUsageHeartbeat !== undefined) {
         const report = this.#aiUsageReportLine(account, subscription || undefined, request.aiUsageHeartbeat);
@@ -663,7 +688,7 @@ export class CommerceService implements CommercialAccountVerifier {
   async #applyEvent(event: ProcessorEvent): Promise<boolean> {
     const operation = await this.#store.get("processorOperation", event.operationRef);
     if (operation === undefined || operation.kind !== (event.type === "refund.succeeded" ? "refund" : "charge")) {
-      throw new EducateOsError("not-found", "processor operation not found");
+      throw new UnmatchedProcessorEventError(event.eventId, event.operationRef);
     }
     const outcome = event.type === "charge.failed" ? "failed" : "succeeded";
     if (operation.outcome === "succeeded" || operation.outcome === outcome) return false;
@@ -765,6 +790,19 @@ export class CommerceService implements CommercialAccountVerifier {
   async invoices(accountId: CommercialAccountId): Promise<Invoice[]> {
     return this.#store.atomically(async () => {
       return await this.#store.list("invoice", accountId);
+    });
+  }
+
+  /** Where the invoice's charge stands (see {@link InvoiceChargeState}). */
+  async chargeState(invoiceId: InvoiceId): Promise<InvoiceChargeState> {
+    return this.#store.atomically(async () => {
+      const invoice = await this.#require("invoice", invoiceId);
+      if (invoice.status === "paid") return "paid";
+      const charges = (await this.#store.list("processorOperation", invoice.accountId)).filter(
+        (op) => op.kind === "charge" && op.invoiceId === invoice.invoiceId,
+      );
+      if (charges.some((op) => op.outcome !== "failed")) return "pending";
+      return charges.length > 0 ? "declined" : "uncharged";
     });
   }
 

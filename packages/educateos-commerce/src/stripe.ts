@@ -77,6 +77,7 @@ const StripeSetupSession = z.object({
   mode: z.string(),
   status: z.string().nullable(),
   customer: ProcessorRef.nullable(),
+  metadata: z.record(z.string(), z.string()).nullable(),
   setup_intent: z.object({ status: z.string(), payment_method: ProcessorRef.nullable() }).nullable(),
 });
 const StripePortalSession = z.object({ url: z.string().url() });
@@ -155,6 +156,7 @@ export class StripePaymentProcessor implements PaymentProcessor {
         "payment_method_types[0]": "card",
         "success_url": request.returnUrl.replaceAll(SETUP_REF_PLACEHOLDER, "{CHECKOUT_SESSION_ID}"),
         "cancel_url": request.cancelUrl,
+        "metadata[educateos_reference]": request.reference,
       },
       idempotencyKey: `educateos:card-setup:${request.idempotencyKey}`,
     });
@@ -164,11 +166,12 @@ export class StripePaymentProcessor implements PaymentProcessor {
   /**
    * Reads the Checkout Session back with its SetupIntent and, once the customer has saved a card on
    * it, makes that card the customer's default payment method, which {@link charge} uses. A session
-   * for another customer, or not in setup mode, is `not-found`.
+   * for another customer, not in setup mode, or made for another reference (its
+   * `educateos_reference` metadata) is `not-found`.
    */
-  async completeCardSetup(customerRef: ProcessorRef, setupRef: ProcessorRef): Promise<boolean> {
+  async completeCardSetup(customerRef: ProcessorRef, setupRef: ProcessorRef, reference: string): Promise<boolean> {
     const session = await this.#request("GET", `/v1/checkout/sessions/${encodeURIComponent(setupRef)}?expand%5B%5D=setup_intent`, StripeSetupSession, {});
-    if (session.customer !== customerRef || session.mode !== "setup") throw new EducateOsError("not-found", "card setup not found");
+    if (session.customer !== customerRef || session.mode !== "setup" || session.metadata?.educateos_reference !== reference) throw new EducateOsError("not-found", "card setup not found");
     const paymentMethod = session.setup_intent?.status === "succeeded" ? session.setup_intent.payment_method : null;
     if (session.status !== "complete" || paymentMethod === null) return false;
     await this.#request("POST", `/v1/customers/${encodeURIComponent(customerRef)}`, StripeId, {

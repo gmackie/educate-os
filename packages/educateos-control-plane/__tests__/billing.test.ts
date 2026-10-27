@@ -5,7 +5,9 @@
 import { env, SELF } from "cloudflare:test";
 import { importJWK, SignJWT, type JWK } from "jose";
 import { describe, expect, it } from "vitest";
-import { MANAGED_PLANS, PLACEHOLDER_PRICE_NOTE } from "../src/billing.ts";
+import { handleRequest } from "../src/app.ts";
+import { MANAGED_PLANS, PLACEHOLDER_PRICE_NOTE, UNCONFIGURED_BILLING_REPLY } from "../src/billing.ts";
+import { configuredBilling } from "../src/worker.ts";
 import { ACCESS_AUD, ACCESS_ISSUER } from "./fixtures.ts";
 
 const ORIGIN = "https://educateos.io";
@@ -42,8 +44,7 @@ async function saveCard(checkoutUrl: string): Promise<string> {
   return session;
 }
 
-async function webhook(payload: string, secret = env.STRIPE_WEBHOOK_SECRET!): Promise<Response> {
-  const timestamp = Math.floor(Date.now() / 1000);
+async function webhook(payload: string, secret = env.STRIPE_WEBHOOK_SECRET!, timestamp = Math.floor(Date.now() / 1000)): Promise<Response> {
   const hmac = { name: "HMAC", hash: "SHA-256" } as const;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), hmac, false, ["sign"]);
   const mac = new Uint8Array(await crypto.subtle.sign(hmac, key, new TextEncoder().encode(`${timestamp}.${payload}`)));
@@ -165,7 +166,85 @@ describe("subscribing", () => {
   });
 });
 
+describe("charging the first invoice", () => {
+  it("leaves the invoice uncharged when Stripe can't be reached, and charges it on the next return", async () => {
+    const { token, checkout } = await subscribed();
+    await saveCard(checkout);
+    const returnUrl = await returnAddress(checkout);
+    const before = (await chargesFor()).length;
+    await failNextCharge();
+    expect((await get(returnUrl, token)).headers.get("location")).toBe("/app/billing?card=uncharged");
+    const page = await (await get("/app/billing?card=uncharged", token)).text();
+    expect(page).toContain("couldn&#39;t be charged just now");
+    expect(page).toContain("not charged yet");
+    expect(page).toContain('action="/app/billing/pay"');
+    expect(await chargesFor()).toHaveLength(before);
+
+    expect((await get(returnUrl, token)).headers.get("location")).toBe("/app/billing?card=saved");
+    expect(await chargesFor()).toHaveLength(before + 1);
+    // And a further return charges nothing more.
+    await get(returnUrl, token);
+    expect(await chargesFor()).toHaveLength(before + 1);
+  });
+
+  it("charges an uncharged invoice with Pay now, and refuses a second while that charge is on its way", async () => {
+    const { token, checkout } = await subscribed();
+    await saveCard(checkout);
+    await failNextCharge();
+    await get(await returnAddress(checkout), token);
+    const before = (await chargesFor()).length;
+    const paid = await post("/app/billing/pay", token);
+    expect(paid.status).toBe(303);
+    expect(paid.headers.get("location")).toBe("/app/billing?card=saved");
+    expect(await chargesFor()).toHaveLength(before + 1);
+    expect((await post("/app/billing/pay", token)).status).toBe(409);
+  });
+
+  it("never invoices a subscription cancelled while its return from Stripe was in flight", async () => {
+    const { token, checkout } = await subscribed();
+    await saveCard(checkout);
+    const returnUrl = await returnAddress(checkout);
+    const before = (await chargesFor()).length;
+    const [back, cancelled] = await Promise.all([get(returnUrl, token), post("/app/billing/cancel", token)]);
+    expect(cancelled.status).toBe(303);
+    const charged = (await chargesFor()).length - before;
+    if (back.headers.get("location") === "/app/billing?card=cancelled") {
+      expect(charged).toBe(0); // The cancel ran first: the return found nothing to start.
+    } else {
+      expect(charged).toBe(1); // The return ran first and the cancel then stopped further charges.
+    }
+    expect(await (await get("/app/billing", token)).text()).toContain("Continue to add a card");
+  });
+
+  it("won't let a setup page from an earlier subscription start a later one", async () => {
+    const first = await subscribed();
+    await saveCard(first.checkout);
+    const oldReturn = await returnAddress(first.checkout);
+    await get(oldReturn, first.token);
+    await post("/app/billing/cancel", first.token);
+    const again = await post("/app/billing/subscribe", first.token, { plan: MANAGED_PLANS[1]!.plan.planId, organization: "Riverbend" });
+    const later = new URL(await returnAddress(again.headers.get("location")!), ORIGIN).searchParams.get("subscription")!;
+    const before = (await chargesFor()).length;
+    const reused = oldReturn.replace(/subscription=[^&]+/, `subscription=${later}`);
+    expect((await get(reused, first.token)).status).toBe(404);
+    expect(await chargesFor()).toHaveLength(before);
+    expect(await (await get("/app/billing", first.token)).text()).toContain("Waiting for a card");
+  });
+});
+
 describe("the Stripe webhook", () => {
+  it("refuses a delivery signed more than five minutes ago", async () => {
+    const payload = succeeded("evt_stale", { id: "pi_stale", amount: 100 });
+    expect((await webhook(payload, env.STRIPE_WEBHOOK_SECRET!, Math.floor(Date.now() / 1000) - 600)).status).toBe(400);
+  });
+
+  it("refuses a delivery larger than its cap without reading it all", async () => {
+    const response = await SELF.fetch(`${ORIGIN}/stripe/webhook`, {
+      method: "POST", headers: { "stripe-signature": "t=1,v1=" + "0".repeat(64) }, body: "x".repeat(300 * 1024),
+    });
+    expect(response.status).toBe(413);
+  });
+
   it("is outside the console's sign-in, and accepts only POSTs signed with the endpoint's secret", async () => {
     expect((await SELF.fetch(`${ORIGIN}/stripe/webhook`)).status).toBe(405);
     const payload = succeeded("evt_forged", { id: "pi_forged", amount: 100 });
@@ -184,6 +263,43 @@ describe("the Stripe webhook", () => {
     expect(await (await webhook(payload)).json()).toEqual({ outcome: "ignored" });
   });
 });
+
+describe("a deploy without billing's secrets", () => {
+  it("builds no billing unless every secret is set", async () => {
+    const storage = {} as DurableObjectStorage; // Never reached: a missing secret returns first.
+    const all = { STRIPE_SECRET_KEY: "sk", STRIPE_WEBHOOK_SECRET: "whsec", COMMERCE_SIGNING_KEY: env.COMMERCE_SIGNING_KEY };
+    for (const missing of Object.keys(all)) {
+      await expect(configuredBilling(storage, { ...env, ...all, [missing]: undefined })).resolves.toBeUndefined();
+    }
+    await expect(configuredBilling(storage, { ...env, ...all, COMMERCE_SIGNING_KEY: "{not a key" })).resolves.toBeUndefined();
+  });
+
+  it("answers the billing page and the webhook with 503, and leaves the rest of the console alone", async () => {
+    const operator = { subject: "s", accountId: "acct_" + "0".repeat(32), email: "operator@example.org", firstSeenAt: "", lastSeenAt: "" };
+    const unconfigured = async () => UNCONFIGURED_BILLING_REPLY;
+    const store = {
+      signIn: () => operator, ping: () => true as const, installations: () => [], dashboard: async () => [],
+      billingOverview: unconfigured, subscribe: unconfigured, resumeCardSetup: unconfigured, completeCardSetup: unconfigured,
+      payInvoice: unconfigured, paymentMethodPortal: unconfigured, cancelSubscription: unconfigured, receiveStripeWebhook: unconfigured,
+    } as unknown as Parameters<typeof handleRequest>[1]["store"] extends () => infer S ? S : never;
+    const deps = {
+      shell: { header: "", footer: "" },
+      verifyOperator: async () => ({ issuer: ACCESS_ISSUER, subject: "s", email: "operator@example.org" }),
+      store: () => store,
+      assets: async () => new Response("static"),
+    };
+    const page = await handleRequest(new Request(`${ORIGIN}/app/billing`), deps);
+    expect(page.status).toBe(503);
+    expect(await page.text()).toContain("Billing is unavailable");
+    const hook = await handleRequest(new Request(`${ORIGIN}/stripe/webhook`, { method: "POST", headers: { "stripe-signature": "t=1,v1=x" }, body: "{}" }), deps);
+    expect(hook.status).toBe(503);
+    expect((await handleRequest(new Request(`${ORIGIN}/app/`), deps)).status).toBe(200);
+  });
+});
+
+async function failNextCharge(): Promise<void> {
+  expect((await fetch("https://api.stripe.com/test/fail-next-charge", { method: "POST" })).status).toBe(200);
+}
 
 // The address Stripe sends the operator back to, as the session was created with it, relative to
 // the console.

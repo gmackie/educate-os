@@ -3,7 +3,8 @@
 // through workerd's own fetch. A suite plays the customer through two test-only routes on the same
 // host: `GET /test/checkout/<session>` gives the address Stripe would send the customer back to,
 // `POST /test/checkout/<session>/complete` saves a card on that setup page, and
-// `GET /test/payment_intents` lists the charges made, so the suite can sign their webhooks.
+// `GET /test/payment_intents` lists the charges made, so the suite can sign their webhooks, and
+// `POST /test/fail-next-charge` makes the next charge request fail as an unreachable Stripe would.
 
 /** The test Stripe secret key and webhook signing secret, as the suite's bindings carry them. */
 export const STRIPE_FIXTURE = { secretKey: "sk_test_educateos_fixture", webhookSecret: "whsec_educateos_fixture_not_a_real_secret" };
@@ -13,6 +14,7 @@ interface Session {
   customer: string;
   status: "open" | "complete";
   returnUrl: string;
+  reference: string;
   paymentMethod?: string;
 }
 
@@ -20,6 +22,7 @@ const customers = new Map<string, { defaultPaymentMethod: string | null }>();
 const sessions = new Map<string, Session>();
 const intents: { id: string; customer: string; amount: number; paymentMethod: string }[] = [];
 let counter = 0;
+let failNextCharge = false;
 const next = (prefix: string) => `${prefix}_fake${++counter}`;
 
 const error = (status: number, message: string) => Response.json({ error: { message } }, { status });
@@ -52,7 +55,7 @@ export async function fakeStripe(request: Request): Promise<Response> {
       return error(400, "unexpected session request");
     }
     const id = next("cs_test");
-    sessions.set(id, { id, customer, status: "open", returnUrl: form.get("success_url")!.replaceAll("{CHECKOUT_SESSION_ID}", id) });
+    sessions.set(id, { id, customer, status: "open", reference: form.get("metadata[educateos_reference]") ?? "", returnUrl: form.get("success_url")!.replaceAll("{CHECKOUT_SESSION_ID}", id) });
     return Response.json({ id, object: "checkout.session", url: `https://checkout.stripe.com/c/pay/${id}` });
   }
   if (request.method === "GET" && (match = /^\/v1\/checkout\/sessions\/(cs_test_[a-z0-9]+)$/.exec(path)) !== null) {
@@ -61,7 +64,7 @@ export async function fakeStripe(request: Request): Promise<Response> {
     const setupIntent = url.searchParams.getAll("expand[]").includes("setup_intent")
       ? { id: `seti_${session.id}`, object: "setup_intent", status: session.paymentMethod ? "succeeded" : "requires_payment_method", payment_method: session.paymentMethod ?? null }
       : `seti_${session.id}`;
-    return Response.json({ id: session.id, object: "checkout.session", mode: "setup", status: session.status, customer: session.customer, setup_intent: setupIntent });
+    return Response.json({ id: session.id, object: "checkout.session", mode: "setup", status: session.status, customer: session.customer, metadata: { educateos_reference: session.reference }, setup_intent: setupIntent });
   }
   if (request.method === "GET" && (match = /^\/test\/checkout\/(cs_test_[a-z0-9]+)$/.exec(path)) !== null) {
     const session = sessions.get(match[1]!);
@@ -73,7 +76,15 @@ export async function fakeStripe(request: Request): Promise<Response> {
     Object.assign(session, { status: "complete", paymentMethod: next("pm") });
     return Response.json({ completed: session.id });
   }
+  if (request.method === "POST" && path === "/test/fail-next-charge") {
+    failNextCharge = true;
+    return Response.json({ armed: true });
+  }
   if (request.method === "POST" && path === "/v1/payment_intents") {
+    if (failNextCharge) {
+      failNextCharge = false;
+      return error(500, "An unknown error occurred");
+    }
     const customer = customers.get(form.get("customer") ?? "");
     const paymentMethod = form.get("payment_method") ?? "";
     if (customer === undefined || customer.defaultPaymentMethod !== paymentMethod || form.get("off_session") !== "true") {

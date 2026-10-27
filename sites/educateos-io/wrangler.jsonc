@@ -43,6 +43,9 @@
     // registered installations: Clever district ID to managed hostname. A demo bridge until the
     // guided install writes installation rows; the registry is consulted first. Only
     // <slug>.educateos.io hosts are accepted. 6ade4156… is the educateos-dev app's sandbox district.
+    // The Stripe Customer Portal configuration billing opens (SCHO-208): the EducateOS sandbox's,
+    // payment methods only. Stripe test mode until pricing is decided.
+    "STRIPE_PORTAL_CONFIGURATION": "bpc_1UV3R5L1y99jAIetN8fGRXZK",
     "CLEVER_LAUNCH_DISTRICTS": "{\"6ade41569b8cebb96d733c48\":\"northfield.educateos.io\"}",
     // The release keys the guided install verifies every release against before installing it
     // (docs/educateos/control-plane.md, "Release keys"). Public halves only.

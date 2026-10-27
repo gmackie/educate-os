@@ -12,7 +12,8 @@
 import type { ErrorCode } from "@educateos/contracts";
 import { Heartbeat, SignedEnvelope } from "@educateos/fleet";
 import { AccessUnavailableError, type OperatorIdentity, type OperatorVerifier } from "./access.ts";
-import { BILLING_PATHS, type BillingApi, type BillingReply } from "./billing.ts";
+import type { InvoiceChargeState } from "@educateos/commerce";
+import { BILLING_PATHS, type BillingApi, type BillingReply, type CardSetupOutcome } from "./billing.ts";
 import { CLEVER_LAUNCH_PATH, cleverLaunch, type CleverAppCredentials } from "./clever-launch.ts";
 import { ECHOED_FIELDS, GuidedInstallForm, runGuidedInstall, type GuidedInstallDeps, type ReleaseBucket } from "./guided-install.ts";
 import {
@@ -29,7 +30,7 @@ export const DYNAMIC_PATHS = ["/healthz", "/app", "/app/*", "/registry/*", CLEVE
 export const MAX_WEBHOOK_BODY_BYTES = 256 * 1024;
 
 /** The console's form posts. Each must come from the console itself. */
-const FORM_POSTS = new Set<string>(["/app/install", BILLING_PATHS.subscribe, BILLING_PATHS.card, BILLING_PATHS.portal, BILLING_PATHS.cancel]);
+const FORM_POSTS = new Set<string>(["/app/install", BILLING_PATHS.subscribe, BILLING_PATHS.card, BILLING_PATHS.pay, BILLING_PATHS.portal, BILLING_PATHS.cancel]);
 
 /** The largest registry message accepted. A heartbeat is a few kilobytes. */
 export const MAX_REGISTRY_BODY_BYTES = 64 * 1024;
@@ -227,7 +228,7 @@ async function billing(request: Request, url: URL, operator: Operator, deps: Con
       }
       const done = await store.completeCardSetup(operator, subscription, setup);
       if (!done.ok) return refused(done);
-      return seeOther(`${BILLING_PATHS.page}?card=${done.value.status === "trialing" ? "pending" : "saved"}`);
+      return seeOther(`${BILLING_PATHS.page}?card=${returnNotice(done.value)}`);
     }
     case BILLING_PATHS.subscribe: {
       const form = await request.formData();
@@ -237,6 +238,10 @@ async function billing(request: Request, url: URL, operator: Operator, deps: Con
     case BILLING_PATHS.card: {
       const resumed = await store.resumeCardSetup(operator, CONSOLE_ORIGIN);
       return resumed.ok ? seeOther(resumed.value.url) : refused(resumed);
+    }
+    case BILLING_PATHS.pay: {
+      const paid = await store.payInvoice(operator);
+      return paid.ok ? seeOther(`${BILLING_PATHS.page}?card=${CHARGE_NOTICES[paid.value]}`) : refused(paid);
     }
     case BILLING_PATHS.portal: {
       const portal = await store.paymentMethodPortal(operator, CONSOLE_ORIGIN);
@@ -252,9 +257,20 @@ async function billing(request: Request, url: URL, operator: Operator, deps: Con
 // A subscription ID or a Stripe Checkout Session ID, as the return address carries them.
 const REFERENCE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
+// The notice after a return from Stripe says what actually happened to the first invoice.
+function returnNotice({ subscription, charge }: CardSetupOutcome): string {
+  if (subscription.status === "trialing") return "pending";
+  if (subscription.status === "cancelled") return "cancelled";
+  return charge === undefined ? "saved" : CHARGE_NOTICES[charge];
+}
+
+const CHARGE_NOTICES: Record<InvoiceChargeState, string> = { paid: "saved", pending: "saved", declined: "declined", uncharged: "uncharged" };
+
 const BILLING_NOTICES: Record<string, string> = {
-  saved: "Your card is saved and your subscription is active. Its first invoice has been charged to that card.",
+  saved: "Your card is saved and your subscription is active. Its invoice has been charged to that card.",
   pending: "No card was saved yet. Add a card to start your subscription.",
+  declined: "Your card was declined. Update it under Manage payment methods, then use Pay now.",
+  uncharged: "Your card is saved and your subscription is active, but its invoice couldn't be charged just now. Use Pay now to try again.",
   cancelled: "Your subscription is cancelled. Nothing more will be charged for it.",
 };
 

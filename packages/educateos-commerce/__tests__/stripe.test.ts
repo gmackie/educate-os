@@ -208,6 +208,7 @@ describe("Stripe card setup (SCHO-208)", () => {
     mode: "setup",
     status: "complete",
     customer: "cus_nf",
+    metadata: { educateos_reference: "sbn_1" },
     setup_intent: { id: "seti_nf", object: "setup_intent", status: "succeeded", payment_method: "pm_saved" },
     ...overrides,
   });
@@ -221,6 +222,7 @@ describe("Stripe card setup (SCHO-208)", () => {
       returnUrl: "https://educateos.io/app/billing/return?subscription=sbn_1&setup={SETUP_REF}",
       cancelUrl: "https://educateos.io/app/billing",
       idempotencyKey: "sbn_1:0",
+      reference: "sbn_1",
     })).resolves.toEqual({ setupRef: "cs_test_nf", url: "https://checkout.stripe.com/c/pay/cs_test_nf" });
     const [request] = requests;
     expect(Object.fromEntries(request!.body!)).toEqual({
@@ -229,6 +231,7 @@ describe("Stripe card setup (SCHO-208)", () => {
       "payment_method_types[0]": "card",
       "success_url": "https://educateos.io/app/billing/return?subscription=sbn_1&setup={CHECKOUT_SESSION_ID}",
       "cancel_url": "https://educateos.io/app/billing",
+      "metadata[educateos_reference]": "sbn_1",
     });
     expect(request!.headers["Idempotency-Key"]).toBe("educateos:card-setup:sbn_1:0");
   });
@@ -238,7 +241,7 @@ describe("Stripe card setup (SCHO-208)", () => {
       "GET /v1/checkout/sessions/cs_test_nf": () => ({ body: session() }),
       "POST /v1/customers/cus_nf": () => ({ body: { id: "cus_nf", object: "customer" } }),
     });
-    await expect(processor.completeCardSetup("cus_nf", "cs_test_nf")).resolves.toBe(true);
+    await expect(processor.completeCardSetup("cus_nf", "cs_test_nf", "sbn_1")).resolves.toBe(true);
     expect(requests.map((r) => `${r.method} ${r.url}`)).toEqual([
       "GET https://api.stripe.com/v1/checkout/sessions/cs_test_nf?expand%5B%5D=setup_intent",
       "POST https://api.stripe.com/v1/customers/cus_nf",
@@ -253,15 +256,20 @@ describe("Stripe card setup (SCHO-208)", () => {
   ] as const) {
     it(`saves nothing for ${what}`, async () => {
       const { processor, requests } = processorAt(T, { "GET /v1/checkout/sessions/cs_test_nf": () => ({ body: session(overrides) }) });
-      await expect(processor.completeCardSetup("cus_nf", "cs_test_nf")).resolves.toBe(false);
+      await expect(processor.completeCardSetup("cus_nf", "cs_test_nf", "sbn_1")).resolves.toBe(false);
       expect(requests).toHaveLength(1);
     });
   }
 
-  for (const [what, overrides] of [["another customer's session", { customer: "cus_other" }], ["a payment-mode session", { mode: "payment" }]] as const) {
+  for (const [what, overrides] of [
+    ["another customer's session", { customer: "cus_other" }],
+    ["a payment-mode session", { mode: "payment" }],
+    ["a session made for another subscription", { metadata: { educateos_reference: "sbn_earlier" } }],
+    ["a session with no reference", { metadata: {} }],
+  ] as const) {
     it(`refuses ${what} as not found`, async () => {
       const { processor, requests } = processorAt(T, { "GET /v1/checkout/sessions/cs_test_nf": () => ({ body: session(overrides) }) });
-      await expect(processor.completeCardSetup("cus_nf", "cs_test_nf")).rejects.toMatchObject({ code: "not-found" });
+      await expect(processor.completeCardSetup("cus_nf", "cs_test_nf", "sbn_1")).rejects.toMatchObject({ code: "not-found" });
       expect(requests).toHaveLength(1);
     });
   }
