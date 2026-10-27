@@ -88,6 +88,23 @@ export type CleverLaunchFailure = "missing-code" | "unconfigured" | "exchange-fa
 export interface CleverReply {
   cleverStatus?: number;
   cleverError?: string;
+  /** The shape of a 2xx reply that didn't parse, from {@link shapeOf}. */
+  cleverShape?: string;
+}
+
+/**
+ * Describes a JSON value by field names and types alone, two levels deep: `{data:{district:string(24)}}`.
+ * Strings show only their length and arrays their count, so no value Clever sent is logged. Field
+ * names that aren't plain words are dropped, in case a reply is keyed by IDs.
+ */
+export function shapeOf(value: unknown, depth = 0): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return `array(${value.length})`;
+  if (typeof value === "string") return `string(${value.length})`;
+  if (typeof value !== "object") return typeof value;
+  if (depth >= 2) return "object";
+  const fields = Object.entries(value).filter(([key]) => /^[A-Za-z_]{1,32}$/.test(key)).slice(0, 20);
+  return `{${fields.map(([key, field]) => `${key}:${shapeOf(field, depth + 1)}`).join(",")}}`;
 }
 
 // A call to Clever: what it was asked for, or what it answered instead.
@@ -149,8 +166,9 @@ async function readJson<T>(response: Response, schema: z.ZodType<T>): Promise<Cl
     }
   }
   try {
-    const parsed = schema.safeParse(await response.json());
-    return parsed.success ? { ok: true, value: parsed.data } : { ok: false, reply: { cleverStatus } };
+    const body: unknown = await response.json();
+    const parsed = schema.safeParse(body);
+    return parsed.success ? { ok: true, value: parsed.data } : { ok: false, reply: { cleverStatus, cleverShape: shapeOf(body).slice(0, 500) } };
   } catch {
     return { ok: false, reply: { cleverStatus } };
   }
