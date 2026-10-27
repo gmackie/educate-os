@@ -106,12 +106,19 @@ describe("the launch handler", () => {
     await moved.body?.cancel();
   });
 
-  it("refuses an identity without a Clever district ID", async () => {
+  it("refuses an identity without a Clever district ID, logging only its shape", async () => {
+    const consoleSpies = spyOnConsole();
     const fetch: CleverLaunchDeps["fetch"] = async (input, init) =>
       input.endsWith("/me") ? Response.json({ data: { id: "x", district: "../../evil" } }) : fakeClever(input, init);
     const response = await cleverLaunch(launch(`launch-${SANDBOX_DISTRICT}`), deps({ fetch, hostnameFor: async () => "evil.educateos.io" }));
     expect(response.status).toBe(502);
     await response.body?.cancel();
+    expect(consoleSpies[2]!.mock.calls).toEqual([
+      ["clever launch refused", {
+        event: "clever.launch.refused", reason: "identity-failed", cleverStatus: 200, cleverShape: "{data:{id:string(1),district:string(10)}}",
+      }],
+    ]);
+    expect(logged(consoleSpies)).not.toContain("evil");
   });
 
   it("refuses a launch without a code, or with no Clever client configured, before calling Clever", async () => {
