@@ -336,8 +336,8 @@ export const RESOURCE_SCOPES: {resource: SupportedResource, scopes: string[]}[] 
   {
     resource: GOOGLE_CLASSROOM_COURSE_RESOURCE,
     scopes: [
-      // The course picker and the bound course's details; its teachers and students.
-      "https://www.googleapis.com/auth/classroom.courses.readonly",
+      // Course discovery/details and approved grading-period configuration; no general course mutation API.
+      "https://www.googleapis.com/auth/classroom.courses",
       "https://www.googleapis.com/auth/classroom.rosters.readonly",
       // Creating, reading and grading this project's coursework. Email addresses and photos
       // (`classroom.profile.*`) are deliberately not requested.

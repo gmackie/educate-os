@@ -340,3 +340,23 @@ PR176 was approved with exact-head green CI and merged as
 Production target deployment `083387c4-6dc1-4487-8cfe-c26e34dbecd2` was active for that commit at
 04:53:40 UTC; other targets were still pending when inspected. SCHO-255 remains open for the
 remaining district/student/collaborator authorization, recovery and full Plus/add-on acceptance.
+
+### Plus management implementation follow-up
+
+The teacher connector now adds `updateRubric`, `deleteRubric` and
+`updateGradingPeriodSettings` on the existing course session. Changes wait for a decision through
+the existing action journal; no speculative Plus mutation is shown. Rubric writes recheck
+project ownership when applied, preserve existing criterion/level IDs for edits and rely on
+Google's post-grading restrictions. Period replacement requires explicit
+`applyToExistingCoursework`, validates real calendar dates, chronological non-overlap and unique
+titles/IDs, and warns that omitted entries are deleted. An uncertain mutation is claimed and
+not resent, since missing IDs could create new items on a repeated request.
+
+The course resource now requests `classroom.courses` rather than its readonly variant because
+Google's grading-period update endpoint requires it. Existing readonly connections need renewed
+consent. This does not expose general course editing. Add-on scopes remain absent.
+
+Implementation validation is separate from live acceptance. Use the rehearsal sequence in
+[classroom-customer-demo.md](classroom-customer-demo.md) after deployment. Do not edit/delete the
+graded weathering exemplar. Harbor still shows the current Google admin as an unlinked identity;
+the existing operator administrator must sign in before supported roster/identity setup proceeds.

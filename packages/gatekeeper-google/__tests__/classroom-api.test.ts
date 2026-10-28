@@ -208,3 +208,30 @@ it("refuses to mutate a grade before student turn-in, and regrades returned work
   await api.gradeAndReturn("101", "201", "Cg4Isub1", 8.5);
   expect(classroom.requests.map(r => r.method)).toEqual(["GET", "GET", "PATCH"]);
 });
+
+
+describe("Classroom Plus management", () => {
+  it("replaces rubric criteria retaining IDs, deletes it, and refuses foreign coursework", async () => {
+    const created = await api.createRubric("101", "201", rubricDraft);
+    const update = { criteria: [{ id: "criterion1", title: "Revised evidence", levels: [{ id: "level1", title: "Supported", points: 10 }] }] };
+    expect(await api.updateRubric("101", "201", created.id, update)).toEqual({ id: created.id, ...update });
+    expect(classroom.requests.at(-1)?.query.get("updateMask")).toBe("criteria");
+    await api.deleteRubric("101", "201", created.id);
+    expect(await api.listRubrics("101", "201")).toEqual([]);
+    const before = classroom.requests.length;
+    await expect(api.updateRubric("101", "202", created.id, update)).rejects.toBeInstanceOf(ClassroomNotOwnedError);
+    await expect(api.deleteRubric("101", "202", created.id)).rejects.toBeInstanceOf(ClassroomNotOwnedError);
+    expect(classroom.requests.slice(before).map(r => r.method)).toEqual(["GET", "GET"]);
+  });
+
+  it("validates and replaces grading periods, explicitly retaining the apply flag", async () => {
+    const settings = { gradingPeriods: [{ title: "Demo period", startDate: { year: 2026, month: 9, day: 1 }, endDate: { year: 2026, month: 12, day: 31 } }], applyToExistingCoursework: false };
+    expect(await api.updateGradingPeriodSettings("101", settings)).toMatchObject(settings);
+    expect(classroom.requests.at(-1)?.query.get("updateMask")).toBe("grading_periods,apply_to_existing_coursework");
+    const before = classroom.requests.length;
+    await expect(api.updateGradingPeriodSettings("101", { ...settings, gradingPeriods: [settings.gradingPeriods[0], settings.gradingPeriods[0]] })).rejects.toThrow(/unique/);
+    await expect(api.updateGradingPeriodSettings("101", { ...settings, gradingPeriods: [{ ...settings.gradingPeriods[0], startDate: { year: 2026, month: 2, day: 30 } }] })).rejects.toThrow(/date/);
+    expect(classroom.requests).toHaveLength(before);
+    expect(await api.updateGradingPeriodSettings("101", { gradingPeriods: [], applyToExistingCoursework: false })).toEqual({ gradingPeriods: [], applyToExistingCoursework: false });
+  });
+});

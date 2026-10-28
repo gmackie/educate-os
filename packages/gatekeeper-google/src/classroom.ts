@@ -12,7 +12,7 @@ import {
   ClassroomApi, assertClassroomSubmissionReady, validateClassroomCourseWorkId, validateClassroomGrade,
 } from "./classroom-api";
 import type {
-  ClassroomRubric, ClassroomRubricDraft, ClassroomGradingPeriodSettings,
+  ClassroomRubricUpdate, ClassroomGradingPeriodUpdate, ClassroomRubric, ClassroomRubricDraft, ClassroomGradingPeriodSettings,
   ClassroomCourse, ClassroomCourseWork, ClassroomCourseWorkDraft, ClassroomRoster,
   ClassroomSubmission, GoogleClassroomCourseSession,
 } from "./classroom-types";
@@ -32,7 +32,7 @@ export type ClassroomChanges = {
   submit<K extends keyof ClassroomActions>(kind: K, payload: ClassroomActions[K]): Promise<void>;
 };
 
-import { classroomRubricDraft } from "./classroom-plus";
+import { classroomRubricUpdate, classroomGradingPeriodUpdate, classroomRubricDraft } from "./classroom-plus";
 
 const PENDING_COURSE_WORK_PREFIX = "pending:create:";
 
@@ -157,6 +157,23 @@ export class GoogleClassroomCourseSessionImpl extends RpcTarget implements Googl
     const parsed = classroomRubricDraft(draft);
     await this.#api.getOwnedCourseWork(this.#courseId, courseWorkId);
     await this.#changes.submit("createRubric", { courseWorkId, draft: parsed });
+  }
+
+  async updateRubric(courseWorkId: string, rubricId: string, update: ClassroomRubricUpdate): Promise<void> {
+    const parsed = classroomRubricUpdate(update);
+    validateClassroomCourseWorkId(rubricId);
+    await this.#api.getOwnedCourseWork(this.#courseId, courseWorkId);
+    await this.#changes.submit("updateRubric", { courseWorkId, rubricId, update: parsed });
+  }
+
+  async deleteRubric(courseWorkId: string, rubricId: string): Promise<void> {
+    validateClassroomCourseWorkId(rubricId);
+    await this.#api.getOwnedCourseWork(this.#courseId, courseWorkId);
+    await this.#changes.submit("deleteRubric", { courseWorkId, rubricId });
+  }
+
+  async updateGradingPeriodSettings(settings: ClassroomGradingPeriodUpdate): Promise<void> {
+    await this.#changes.submit("updateGradingPeriodSettings", { settings: classroomGradingPeriodUpdate(settings) });
   }
 
   async getCourse(): Promise<ClassroomCourse> {

@@ -95,6 +95,12 @@ export type ClassroomRubric = { id: string; criteria: ClassroomRubricCriterion[]
 /** The rubric to create. IDs are assigned by Google. */
 export type ClassroomRubricDraft = { criteria: { title: string; description?: string; levels: { title: string; description?: string; points?: number }[] }[] };
 
+/** Replacement rubric criteria; keep existing criterion/level IDs to preserve their identity. */
+export type ClassroomRubricUpdate = { criteria: ClassroomRubricCriterion[] };
+
+/** A grading-period replacement; omitted IDs create periods, omitted existing periods are deleted. */
+export type ClassroomGradingPeriodUpdate = { gradingPeriods: (Omit<ClassroomGradingPeriod, "id"> & { id?: string })[]; applyToExistingCoursework: boolean };
+
 /** Calendar date in the course's grading-period configuration. */
 export type ClassroomDate = { year: number; month: number; day: number };
 
@@ -124,6 +130,15 @@ export interface GoogleClassroomCourseSession {
    * The API cannot publish rubric-level grades. Use setGrade for the teacher-approved total.
    */
   createRubric(courseWorkId: string, draft: ClassroomRubricDraft): Promise<void>;
+
+  /** Replace an app-owned rubric's criteria. Google restricts changes once grading has started. */
+  updateRubric(courseWorkId: string, rubricId: string, update: ClassroomRubricUpdate): Promise<void>;
+
+  /** Delete an app-owned rubric. Google refuses deletion once grading has started. */
+  deleteRubric(courseWorkId: string, rubricId: string): Promise<void>;
+
+  /** Replace the bound course's grading periods. Omitted existing periods are deleted. */
+  updateGradingPeriodSettings(settings: ClassroomGradingPeriodUpdate): Promise<void>;
 
   /** Return the course's details. */
   getCourse(): Promise<ClassroomCourse>;

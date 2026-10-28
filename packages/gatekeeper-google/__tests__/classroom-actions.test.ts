@@ -144,3 +144,33 @@ describe("Classroom rubric approval", () => {
     expect(classroom.requests.filter(r => r.method === "POST").map(r => r.path)).toEqual(["/courses/101/courseWork/201/rubrics"]);
   });
 });
+
+it("holds rubric replacement until approval and does not resend an uncertain mutation", async () => {
+  const draft = { criteria: [{ title: "Evidence", levels: [{ title: "Supported", points: 10 }] }] };
+  classroom.rubrics = [{ id: "901", courseWorkId: "201", ...draft }];
+  const id = await actions.submit(queue, "updateRubric", { courseWorkId: "201", rubricId: "901", update: draft });
+  expect(classroom.requests).toEqual([]);
+  expect(submitted[0].title).toMatch(/Replace.*rubric/);
+  classroom.intercept = r => r.method === "PATCH" ? googleError(503, "UNAVAILABLE") : undefined;
+  await expect(actions.apply(id)).rejects.toThrow(APPLY_OUTCOME_UNKNOWN_MESSAGE);
+  await expect(actions.apply(id)).rejects.toThrow();
+  expect(classroom.requests.filter(r => r.method === "PATCH")).toHaveLength(1);
+});
+
+it("keeps grading-period replacement behind approval and surfaces an eligibility refusal", async () => {
+  const id = await actions.submit(queue, "updateGradingPeriodSettings", { settings: { gradingPeriods: [], applyToExistingCoursework: false } });
+  expect(classroom.requests).toEqual([]);
+  classroom.intercept = r => r.method === "PATCH" ? googleError(403, "PERMISSION_DENIED", "UserIneligibleToUpdateGradingPeriodSettings") : undefined;
+  await expect(actions.apply(id)).rejects.toThrow();
+  expect(journal.get(id)).toMatchObject({ state: "failed" });
+  expect(classroom.gradingPeriodSettings).toEqual({});
+});
+
+it("deletes a rubric only after approval", async () => {
+  classroom.rubrics = [{ id: "901", courseWorkId: "201", criteria: [] }];
+  const id = await actions.submit(queue, "deleteRubric", { courseWorkId: "201", rubricId: "901" });
+  expect(classroom.rubrics).toHaveLength(1);
+  expect(classroom.requests).toEqual([]);
+  await actions.apply(id);
+  expect(classroom.rubrics).toEqual([]);
+});

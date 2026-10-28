@@ -78,7 +78,13 @@ export class FakeClassroom {
     if (parts[2] === "teachers" || parts[2] === "students") {
       return this.#page(parts[2] === "teachers" ? this.teachers : this.students, query, parts[2]);
     }
-    if (parts[2] === "gradingPeriodSettings") return Response.json(this.gradingPeriodSettings);
+    if (parts[2] === "gradingPeriodSettings") {
+      if (method === "PATCH") {
+        if (!body) return googleError(400, "INVALID_ARGUMENT");
+        this.gradingPeriodSettings = { ...body, gradingPeriods: (body.gradingPeriods as Item[]).map(p => ({ ...p, id: p.id ?? String(this.#nextId++) })) };
+      }
+      return Response.json(this.gradingPeriodSettings);
+    }
     if (parts[2] !== "courseWork") return googleError(404, "NOT_FOUND");
 
     if (parts.length === 3 && method === "POST") {
@@ -98,6 +104,12 @@ export class FakeClassroom {
 
     if (parts[4] === "rubrics") {
       if (work.associatedWithDeveloper !== true) return googleError(403, "PERMISSION_DENIED", "ProjectPermissionDenied");
+      if (parts[5]) {
+        const rubric = this.rubrics.find(r => r.id === parts[5] && r.courseWorkId === work.id);
+        if (!rubric) return googleError(404, "NOT_FOUND");
+        if (method === "PATCH") { Object.assign(rubric, body); return Response.json(rubric); }
+        if (method === "DELETE") { this.rubrics = this.rubrics.filter(r => r !== rubric); return new Response(null, { status: 204 }); }
+      }
       if (method === "POST") {
         const created = { ...body, id: String(this.#nextId++), courseWorkId: work.id };
         this.rubrics.push(created);

@@ -159,3 +159,27 @@ describe("Classroom Plus session", () => {
     expect(writes()).toEqual([]);
   });
 });
+
+it("queues Plus replacements in the bound course and applies only the selected decision", async () => {
+  const update = { criteria: [{ id: "c1", title: "Evidence", levels: [{ id: "l1", title: "Supported", points: 10 }] }] };
+  classroom.rubrics = [{ id: "901", courseWorkId: "201", ...update }];
+  await session.updateRubric("201", "901", update);
+  await session.updateGradingPeriodSettings({ gradingPeriods: [], applyToExistingCoursework: false });
+  expect(writes()).toEqual([]);
+  expect(queue.submitted.map(s => s.title)).toEqual(["Replace Google Classroom rubric criteria", "Replace Google Classroom grading periods"]);
+  await actions.apply(journal.listPending()[0].id);
+  expect(writes().map(r => r.path)).toEqual(["/courses/101/courseWork/201/rubrics/901"]);
+  expect(journal.listPending()).toHaveLength(1);
+  await session.deleteRubric("201", "901");
+  expect(classroom.rubrics).toHaveLength(1);
+});
+
+it("refuses foreign rubric mutations, path injection and malformed period ranges before queueing", async () => {
+  const update = { criteria: [{ title: "Evidence", levels: [{ title: "Supported", points: 10 }] }] };
+  await expect(session.updateRubric("202", "901", update)).rejects.toThrow(/not created/);
+  await expect(session.deleteRubric("202", "901")).rejects.toThrow(/not created/);
+  await expect(session.deleteRubric("201", "../901")).rejects.toThrow(/Invalid/);
+  await expect(session.updateGradingPeriodSettings({ gradingPeriods: [{ title: "Invalid", startDate: { year: 2026, month: 12, day: 1 }, endDate: { year: 2026, month: 9, day: 1 } }], applyToExistingCoursework: false })).rejects.toThrow(/chronological/);
+  expect(queue.submitted).toEqual([]);
+  expect(writes()).toEqual([]);
+});

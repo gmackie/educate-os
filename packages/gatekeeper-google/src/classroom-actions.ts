@@ -12,7 +12,7 @@ import {
 } from "@gadgets/gatekeeper-kit/actions";
 import { buildDescription, codeSpan, sanitizeTitle } from "@gadgets/gatekeeper-kit/action-description";
 import { ClassroomNotOwnedError, ClassroomSubmissionNotReadyError, type ClassroomApi } from "./classroom-api";
-import type { ClassroomCourseWorkDraft, ClassroomRubricDraft } from "./classroom-types";
+import type { ClassroomRubricUpdate, ClassroomGradingPeriodUpdate, ClassroomCourseWorkDraft, ClassroomRubricDraft } from "./classroom-types";
 import { GoogleApiError } from "./google-response";
 import { obsContext } from "./observability";
 
@@ -35,6 +35,9 @@ export type ClassroomGrade = {
 export type ClassroomActions = {
   createCourseWork: { draft: ClassroomCourseWorkDraft };
   setGrade: ClassroomGrade;
+  updateRubric: { courseWorkId: string; rubricId: string; update: ClassroomRubricUpdate };
+  deleteRubric: { courseWorkId: string; rubricId: string };
+  updateGradingPeriodSettings: { settings: ClassroomGradingPeriodUpdate };
   createRubric: { courseWorkId: string; draft: ClassroomRubricDraft };
 };
 
@@ -64,6 +67,16 @@ function refusedOrRetryable(error: unknown): never {
     throw new ActionApplyError((error as Error).message);
   }
   throw error;
+}
+
+/** A Plus write with no conclusive provider refusal must never be resent automatically. */
+function plusMutationFailed(error: unknown): never {
+  const status = googleError(error)?.providerStatus;
+  if (!(error instanceof ClassroomNotOwnedError) &&
+      (status === undefined || !(REFUSED_STATUSES.has(status) || status === "RESOURCE_EXHAUSTED"))) {
+    throw new ActionOutcomeUnknownError(APPLY_OUTCOME_UNKNOWN_MESSAGE);
+  }
+  return refusedOrRetryable(error);
 }
 
 /** The Classroom action set, bound once per course binding. */
@@ -111,12 +124,55 @@ export const CLASSROOM_ACTIONS = defineActions<ClassroomHost, ClassroomActions>(
       try {
         await api.createRubric(courseId, courseWorkId, draft);
       } catch (error) {
-        const status = googleError(error)?.providerStatus;
-        if (!(error instanceof ClassroomNotOwnedError) &&
-            (status === undefined || !(REFUSED_STATUSES.has(status) || status === "RESOURCE_EXHAUSTED"))) {
-          throw new ActionOutcomeUnknownError(APPLY_OUTCOME_UNKNOWN_MESSAGE);
-        }
-        refusedOrRetryable(error);
+        plusMutationFailed(error);
+      }
+    },
+  },
+
+  updateRubric: {
+    delivery: "await-decision",
+    claimBeforeApply: true,
+    describe: (payload, { courseId }) => ({
+      title: "Replace Google Classroom rubric criteria",
+      ...buildDescription("Replace the entire rubric criteria list. Omitted criteria and levels are removed; retained IDs preserve existing items. Google restricts edits once grading has started.")
+        .inline("Course ID", courseId).json("Change", payload).finish(),
+      implementsRevert: false,
+    }),
+    apply: async ({ courseWorkId, rubricId, update }, { api, courseId }) => {
+      try { await api.updateRubric(courseId, courseWorkId, rubricId, update); } catch (error) {
+        plusMutationFailed(error);
+      }
+    },
+  },
+
+  deleteRubric: {
+    delivery: "await-decision",
+    claimBeforeApply: true,
+    describe: (payload, { courseId }) => ({
+      title: "Delete Google Classroom rubric",
+      ...buildDescription("Delete this rubric. Google refuses deletion once grading has started. This action cannot be reverted.")
+        .inline("Course ID", courseId).json("Change", payload).finish(),
+      implementsRevert: false,
+    }),
+    apply: async ({ courseWorkId, rubricId }, { api, courseId }) => {
+      try { await api.deleteRubric(courseId, courseWorkId, rubricId); } catch (error) {
+        plusMutationFailed(error);
+      }
+    },
+  },
+
+  updateGradingPeriodSettings: {
+    delivery: "await-decision",
+    claimBeforeApply: true,
+    describe: (payload, { courseId }) => ({
+      title: "Replace Google Classroom grading periods",
+      ...buildDescription("Replace the entire grading-period list for this course. Omitted existing periods are deleted. The explicit applyToExistingCoursework flag controls whether existing work is reassigned.")
+        .inline("Course ID", courseId).json("Change", payload).finish(),
+      implementsRevert: false,
+    }),
+    apply: async ({ settings }, { api, courseId }) => {
+      try { await api.updateGradingPeriodSettings(courseId, settings); } catch (error) {
+        plusMutationFailed(error);
       }
     },
   },

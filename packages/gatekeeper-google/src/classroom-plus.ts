@@ -1,7 +1,7 @@
 // Normalize the licensed Classroom response surface. Provider fields outside these types never
 // cross the capability boundary, and malformed required fields fail instead of inventing values.
 import type {
-  ClassroomDate, ClassroomGradingPeriodSettings, ClassroomRubric, ClassroomRubricCriterion,
+  ClassroomRubricUpdate, ClassroomGradingPeriodUpdate, ClassroomDate, ClassroomGradingPeriodSettings, ClassroomRubric, ClassroomRubricCriterion,
   ClassroomRubricDraft,
 } from "./classroom-types";
 
@@ -74,4 +74,35 @@ export function classroomGradingPeriodsFromRaw(value: unknown): ClassroomGrading
     }),
     ...(typeof raw.applyToExistingCoursework === "boolean" ? { applyToExistingCoursework: raw.applyToExistingCoursework } : {}),
   };
+}
+
+/** Validate replacement criteria while retaining existing provider IDs. */
+export function classroomRubricUpdate(value: ClassroomRubricUpdate): ClassroomRubricUpdate {
+  return { criteria: criteria(record(value).criteria, true) };
+}
+
+/** Validate a complete, chronological, non-overlapping period replacement before any request. */
+export function classroomGradingPeriodUpdate(value: ClassroomGradingPeriodUpdate): ClassroomGradingPeriodUpdate {
+  const raw = record(value);
+  if (!Array.isArray(raw.gradingPeriods) || raw.gradingPeriods.length > 100 || typeof raw.applyToExistingCoursework !== "boolean") {
+    throw new Error("A grading-period replacement needs periods and an explicit applyToExistingCoursework choice.");
+  }
+  const titles = new Set<string>();
+  const ids = new Set<string>();
+  let previousEnd = "";
+  const key = (d: ClassroomDate) => [d.year.toString().padStart(4, "0"), d.month.toString().padStart(2, "0"), d.day.toString().padStart(2, "0")].join("-");
+  const gradingPeriods = raw.gradingPeriods.map(value => {
+    const period = record(value);
+    const title = text(period.title).trim();
+    const startDate = date(period.startDate), endDate = date(period.endDate);
+    const id = identifier(period.id);
+    if (titles.has(title) || key(startDate) > key(endDate) || key(startDate) <= previousEnd || (id.id !== undefined && ids.has(id.id))) {
+      throw new Error("Grading periods require unique titles/IDs and chronological non-overlapping dates.");
+    }
+    titles.add(title);
+    if (id.id !== undefined) ids.add(id.id);
+    previousEnd = key(endDate);
+    return { ...id, title, startDate, endDate };
+  });
+  return { gradingPeriods, applyToExistingCoursework: raw.applyToExistingCoursework };
 }

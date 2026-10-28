@@ -187,7 +187,7 @@ describe("resourceUrlPatternsToOAuthScopes", () => {
   // (email addresses, photos) or the guardian, announcement or add-on ones.
   it("asks only a Classroom course for the Classroom scopes", () => {
     const classroomScopes = [
-      "https://www.googleapis.com/auth/classroom.courses.readonly",
+      "https://www.googleapis.com/auth/classroom.courses",
       "https://www.googleapis.com/auth/classroom.rosters.readonly",
       "https://www.googleapis.com/auth/classroom.coursework.students",
     ];
@@ -197,7 +197,7 @@ describe("resourceUrlPatternsToOAuthScopes", () => {
       .map(resource => resource.urlPattern);
     expect(resourceUrlPatternsToOAuthScopes(others).filter(scope => scope.includes("classroom")))
       .toEqual([]);
-    // The read-write course and roster scopes cover the read-only ones.
+    // The bound course requires the write scope for grading-period changes.
     expect(resourcesCoveredByScopes([GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern], [
       "https://www.googleapis.com/auth/classroom.courses",
       "https://www.googleapis.com/auth/classroom.rosters",

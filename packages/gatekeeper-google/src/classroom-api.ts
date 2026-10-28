@@ -8,13 +8,13 @@
 
 import { AccessTokenProvider, fetchWithAuthRetry } from "./auth-retry";
 import type {
-  ClassroomRubric, ClassroomRubricDraft, ClassroomGradingPeriodSettings,
+  ClassroomRubricUpdate, ClassroomGradingPeriodUpdate, ClassroomRubric, ClassroomRubricDraft, ClassroomGradingPeriodSettings,
   ClassroomCourse, ClassroomCourseWork, ClassroomCourseWorkDraft, ClassroomRoster,
   ClassroomRosterMember, ClassroomSubmission,
 } from "./classroom-types";
 import { GoogleApiError, readGoogleJson } from "./google-response";
 
-import { classroomRubricDraft, classroomRubricFromRaw, classroomGradingPeriodsFromRaw } from "./classroom-plus";
+import { classroomRubricUpdate, classroomGradingPeriodUpdate, classroomRubricDraft, classroomRubricFromRaw, classroomGradingPeriodsFromRaw } from "./classroom-plus";
 
 const CLASSROOM_API_BASE = "https://classroom.googleapis.com/v1";
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
@@ -241,6 +241,7 @@ export class ClassroomApi {
       let response = await fetchWithAuthRetry(
         `${CLASSROOM_API_BASE}${path}`, { ...init, headers }, this.getAccessToken,
         { timeoutMs: REQUEST_TIMEOUT_MS, idempotent });
+      if (init.method === "DELETE" && response.status === 204) return {};
       return record(await readGoogleJson<unknown>(response, {
         provider: "Google Classroom", operation, maxBytes: MAX_RESPONSE_BYTES,
       }));
@@ -330,6 +331,27 @@ export class ClassroomApi {
     return classroomRubricFromRaw(await this.#request(`${this.#courseWork(courseId, courseWorkId)}/rubrics`, "create rubric", {
       method: "POST", body: JSON.stringify(body),
     }));
+  }
+
+  /** Replace only criteria on coursework owned by this OAuth project. */
+  async updateRubric(courseId: string, courseWorkId: string, rubricId: string, update: ClassroomRubricUpdate): Promise<ClassroomRubric> {
+    const body = classroomRubricUpdate(update);
+    const id = validated(rubricId, NUMERIC_ID_RE, "rubric ID");
+    await this.getOwnedCourseWork(courseId, courseWorkId);
+    return classroomRubricFromRaw(await this.#request(`${this.#courseWork(courseId, courseWorkId)}/rubrics/${id}?updateMask=criteria`, "update rubric", { method: "PATCH", body: JSON.stringify(body) }));
+  }
+
+  /** Delete a rubric only after rechecking coursework ownership at apply time. */
+  async deleteRubric(courseId: string, courseWorkId: string, rubricId: string): Promise<void> {
+    const id = validated(rubricId, NUMERIC_ID_RE, "rubric ID");
+    await this.getOwnedCourseWork(courseId, courseWorkId);
+    await this.#request(`${this.#courseWork(courseId, courseWorkId)}/rubrics/${id}`, "delete rubric", { method: "DELETE" });
+  }
+
+  /** Replace the bound course's periods; new periods can be minted, so never retry an uncertain PATCH. */
+  async updateGradingPeriodSettings(courseId: string, settings: ClassroomGradingPeriodUpdate): Promise<ClassroomGradingPeriodSettings> {
+    const body = classroomGradingPeriodUpdate(settings);
+    return classroomGradingPeriodsFromRaw(await this.#request(`${this.#course(courseId)}/gradingPeriodSettings?updateMask=grading_periods,apply_to_existing_coursework`, "update grading periods", { method: "PATCH", body: JSON.stringify(body) }));
   }
 
   /** The course's published and draft coursework that this connection's project created. */
