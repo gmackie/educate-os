@@ -32,7 +32,9 @@ export default defineGadgetsWorker({
     // hostname adds the district Worker as `DISTRICT`, sets the assets' `run_worker_first` to
     // `true` (the Workshop's assets move under /ai, and would otherwise answer `/` and shadow the
     // district's `/assets/*`), and may set `AI_ENABLED: "false"` with `AI_DEMO_URL` for a district
-    // with no Workshop. No checked-in config does yet; the production cutover adds it. For example:
+    // with no Workshop. At a cutover the old hostnames stay attached and redirect, through
+    // `LEGACY_HOSTS` (src/legacy-hosts.ts). No checked-in config does yet; the production cutover
+    // (scripts/production, `oneOrigin`) adds it. For example:
     //
     //   DISTRICT: bindings.worker({ worker: "educateos-district-worker" }),
   },

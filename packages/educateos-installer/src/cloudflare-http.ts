@@ -9,6 +9,7 @@ import type {
   AccessApplicationSpec,
   AccessPolicy,
   AccessPolicySpec,
+  AccessRule,
   CloudflareApi,
   CustomHostname,
   DnsRecordSpec,
@@ -74,6 +75,7 @@ const D1QueryWire = z.array(z.object({ results: z.array(z.record(z.string(), z.u
 const OrganizationWire = z.object({ auth_domain: z.string() });
 const IdpWire = z.object({ id: z.string(), name: z.string(), type: z.string() });
 const EmailDomainRuleWire = z.object({ email_domain: z.object({ domain: z.string() }) });
+const EveryoneRuleWire = z.object({ everyone: z.object({}) });
 const PolicyWire = z.object({
   id: z.string(),
   name: z.string(),
@@ -544,9 +546,10 @@ function toCustomHostname(wire: z.infer<typeof CustomHostnameWire>): CustomHostn
 }
 
 function toPolicy(wire: z.infer<typeof PolicyWire>): AccessPolicy {
-  const include = wire.include.flatMap((rule) => {
+  const include = wire.include.flatMap((rule): AccessRule[] => {
     const parsed = EmailDomainRuleWire.safeParse(rule);
-    return parsed.success ? [{ email_domain: { domain: parsed.data.email_domain.domain } }] : [];
+    if (parsed.success) return [{ email_domain: { domain: parsed.data.email_domain.domain } }];
+    return EveryoneRuleWire.safeParse(rule).success ? [{ everyone: {} }] : [];
   });
   return { id: wire.id, name: wire.name, decision: wire.decision, include };
 }

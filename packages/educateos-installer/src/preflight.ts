@@ -182,7 +182,8 @@ async function checkServiceInputs(
       }
       continue;
     }
-    if (!secrets || secrets.get(input.pkgName, input.name) !== undefined) continue;
+    // A generated secret needs nobody: applying makes it when the Worker has none.
+    if (input.generated || !secrets || secrets.get(input.pkgName, input.name) !== undefined) continue;
     const scriptName = scriptOf.get(input.pkgName);
     if (scriptName && existingScripts?.has(scriptName)) {
       if (!setSecrets.has(scriptName)) {

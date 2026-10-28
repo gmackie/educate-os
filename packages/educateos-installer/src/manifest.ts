@@ -84,7 +84,12 @@ export const DeployInput = z.strictObject({
   consoleUrl: z.string().optional(),
   setupSteps: z.array(z.string()).optional(),
   redirectUriTemplate: z.string().optional(),
-});
+  /**
+   * Secrets only: the installer generates the value when the Worker has none (32 random bytes,
+   * base64url) and never rotates it, so nobody supplies it.
+   */
+  generated: z.literal(true).optional(),
+}).refine((input) => input.generated === undefined || input.kind === "secret", "only a secret input can be generated");
 /** A deploy input. */
 export type DeployInput = z.infer<typeof DeployInput>;
 
@@ -143,7 +148,24 @@ export const WorkerEntry = z.strictObject({
   assetsConfig: z.strictObject({
     not_found_handling: z.string().optional(),
     run_worker_first: z.array(z.string()).optional(),
-    variants: z.record(z.string(), z.strictObject({ manifest: z.record(z.string(), AssetManifestEntry) })),
+    variants: z.record(z.string(), z.strictObject({
+      manifest: z.record(z.string(), AssetManifestEntry),
+      /** The build-time env the variant was built with, e.g. `VITE_WORKSHOP_BASE_PATH`. Informational. */
+      buildEnv: z.record(z.string(), z.string()).optional(),
+    })),
+  }).optional(),
+  /**
+   * Router only: how it serves a district's one origin (ADR-0014; manifest-lib's
+   * `DistrictOriginWiring`). Used when the install includes the district service; see desired.ts.
+   */
+  districtOrigin: z.strictObject({
+    binding: z.strictObject({
+      type: z.literal("service"),
+      name: BindingName,
+      service: z.string().regex(/^\$WORKER_NAME\([a-z0-9-]+\)$/, "expected $WORKER_NAME(<package>)"),
+    }),
+    assetVariant: z.string().min(1),
+    basePath: z.string().regex(/^(\/[a-z0-9-]+)+$/, "expected a path such as /ai"),
   }).optional(),
   inputs: z.array(DeployInput).optional(),
   d1Migrations: z.array(D1Migration).optional(),

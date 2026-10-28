@@ -24,6 +24,7 @@ import type { SchoolToolService } from "@educateos/gatekeeper";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
 import { configuredDistrictId } from "./district.ts";
 import { SCHOOL_MANIFEST_PATH, serveSchoolManifest } from "./school-manifest.ts";
+import { aiDisabledResponse, isAiPath } from "./ai-disabled.ts";
 
 /** The pairing relay's page for a phone with no computer nearby (SCHO-261), behind Access like the LMS. */
 const CONNECT_PHONE_PATH = "/connect-phone";
@@ -178,6 +179,7 @@ export default {
     if (pathname.startsWith("/lti/")) return districtObject(env, ctx.exports).fetch(request);
     // The pairing relay's connect page (SCHO-261). Its API, `/api/pair/*`, is under `/api/` below.
     if (pathname === CONNECT_PHONE_PATH) return districtObject(env, ctx.exports).fetch(request);
+    if (isAiPath(pathname)) return aiDisabledResponse(request, env.AI_DEMO_URL);
     return serveApi(request, env, ctx.exports);
   },
   /** The district's Cron Triggers (SCHO-189): notifications hourly, the family digest weekly. See schedule.ts. */

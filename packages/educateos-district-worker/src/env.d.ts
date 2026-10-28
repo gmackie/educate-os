@@ -39,5 +39,10 @@ declare namespace Cloudflare {
      * characters. Unset, device sign-in is off and `/api/m/*` answers 503.
      */
     DEVICE_TOKEN_SECRET?: string;
+    /**
+     * The AI-enabled demo district the "AI isn't enabled" page at `/ai` links to (ai-disabled.ts), on a
+     * district with no Workshop that serves `/ai` itself. Unset, the page has no link.
+     */
+    AI_DEMO_URL?: string;
   }
 }

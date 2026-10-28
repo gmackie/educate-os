@@ -16,7 +16,22 @@ import type { DemoDistrictDeployment } from "./production-config.ts";
 /** The owner's account, which holds schoolos.gmac.io and the educateos.io zone. */
 const OWNER_ACCOUNT = "c07a7e704db1808e1fff91bed2b1cd49";
 
+/**
+ * One origin per district (ADR-0014 D7, SCHO-259): off until the cutover
+ * (docs/educateos/runbooks/one-origin-cutover.md). On, each demo district answers `/ai` itself with
+ * an "AI isn't enabled at your school" page linking to Northfield, the one AI-enabled demo district.
+ */
+export const DEMO_DISTRICTS_ONE_ORIGIN = false;
+
+/** Northfield's Workshop, on its one origin: where the other demo districts' `/ai` page points. */
+export const AI_DEMO_URL = "https://northfield.educateos.io/ai/";
+
 /** The demo districts deployed as their own district Workers, in fixture order. */
 export const DEMO_DISTRICT_DEPLOYMENTS: readonly DemoDistrictDeployment[] = [
   "riverbend", "prairie", "cedarvalley", "lakeshore", "harbor",
-].map((slug) => ({ slug, accountId: OWNER_ACCOUNT, hostname: `${slug}.educateos.io` }));
+].map((slug) => ({
+  slug,
+  accountId: OWNER_ACCOUNT,
+  hostname: `${slug}.educateos.io`,
+  oneOrigin: { enabled: DEMO_DISTRICTS_ONE_ORIGIN, aiDemoUrl: AI_DEMO_URL },
+}));
