@@ -1,6 +1,18 @@
 /** Mobile projections of the public /api route table, not authorization decisions. */
-export type District = { id: string; name: string; portal: string; workshop: string };
+export type District = {
+  id: string; name: string;
+  /** The school's one origin: the LMS at `/`, the district API at `/api`. */
+  origin: string;
+  /** The AI workspace URL: `<origin>/ai/`, or a legacy Workshop origin. */
+  workshop: string;
+  /** Saved before the one-origin manifest; signs in through the legacy Workshop handoff. */
+  legacy?: boolean;
+  brand?: { logo: string | null; accent: string | null };
+  features?: { ai: boolean; mobile: boolean; family: boolean };
+};
 export type Credential =
+  /** A district-issued, key-bound device credential (preferred). Tokens live in SecureStore. */
+  | { kind: 'device'; deviceId: string; principalId: string }
   | { kind: 'workshop'; token: string; expiresAt: number }
   | { kind: 'cloudflare-access'; token: string };
 export type Session = { district: District; credential: Credential; confirmedAt: number };
@@ -44,8 +56,14 @@ export type GuardianCourse = ClassItem & {
   assignments: { assignment: { id: string; title: string; dueAt: string; kind: string }; grades: { score: { points: number; maxPoints: number } }[] }[];
   announcements?: Announcement[];
 };
+export type DeviceSummary = {
+  id: string; label: string; platform: 'ios' | 'android' | 'web' | 'other'; model: string; appVersion: string;
+  createdAt: string; lastSeenAt: string; lastCountry: string | null; push: boolean;
+  status: 'active' | 'revoked'; revokedAt: string | null; revokedReason: string | null;
+};
 export type RouteErrorCode = 'unauthenticated' | 'forbidden' | 'not-found' | 'conflict' | 'validation-failed' | 'unavailable';
-export type Tab = 'today' | 'classes' | 'calendar' | 'inbox' | 'workspace' | 'account';
+export type Tab = 'today' | 'classes' | 'review' | 'ai' | 'inbox' | 'family' | 'agenda' | 'me';
+export type Role = 'student' | 'teacher' | 'guardian';
 export type Detail =
   | { type: 'class'; id: string }
   | { type: 'assignment'; id: string; offeringId: string }

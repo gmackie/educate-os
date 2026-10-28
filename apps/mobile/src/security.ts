@@ -17,6 +17,12 @@ export function strictOrigin(value: string, allowLoopback = false): string {
   return url.origin;
 }
 
+/** A typed school address: "learn.example.org" → "https://learn.example.org"; otherwise one exact HTTPS origin. */
+export function normalizeAddress(value: string): string {
+  const text = value.trim();
+  return strictOrigin(/^[a-z][a-z0-9+.-]*:/i.test(text) ? text : 'https://' + text);
+}
+
 export function trustedUrl(value: string, origin: string): boolean {
   try {
     const u = new URL(value);
@@ -55,6 +61,34 @@ export function parseEnrollmentLink(value: string): { name: string; portal: stri
   const portal = strictOrigin(uniqueParam(url.searchParams, 'portal'));
   const workshop = strictOrigin(uniqueParam(url.searchParams, 'workshop'));
   return { name, portal, workshop };
+}
+
+const ROOM = /^[A-Za-z0-9_-]{8,128}$/;
+const ROOM_SECRET = /^[A-Za-z0-9_-]{16,256}$/;
+
+/**
+ * The one-origin pairing QR: `https://mobile.educateos.io/j#o=<origin>&r=<room>&s=<secret>`, or the
+ * `educateos://j?o=…` form the landing page hands to the app. The school is one exact HTTPS origin;
+ * the room and secret only let this phone claim a two-minute room, which the person still approves.
+ */
+export function parseJoinLink(value: string): { origin: string; room: string; secret: string } {
+  let url: URL;
+  try { url = new URL(value.trim()); } catch { throw new Error('This is not an EducateOS school code.'); }
+  let params: URLSearchParams;
+  if (url.protocol === 'https:' && url.origin === CALLBACK_ORIGIN && url.pathname === '/j' &&
+      !url.search && !url.username && !url.password && url.hash.length > 1) {
+    params = new URLSearchParams(url.hash.slice(1));
+  } else if (url.protocol === 'educateos:' && url.hostname === 'j' && (url.pathname === '' || url.pathname === '/') &&
+      !url.username && !url.password && !url.port && !url.hash) {
+    params = url.searchParams;
+  } else {
+    throw new Error('This is not an EducateOS school code.');
+  }
+  if ([...params.keys()].some((key) => !['o', 'r', 's'].includes(key))) throw new Error('This school code is not valid.');
+  const origin = strictOrigin(uniqueParam(params, 'o'));
+  const room = uniqueParam(params, 'r'), secret = uniqueParam(params, 's');
+  if (!ROOM.test(room) || !ROOM_SECRET.test(secret)) throw new Error('This school code is not valid.');
+  return { origin, room, secret };
 }
 
 /** A QR grants only an expiring pairing attempt; both devices must still confirm the transfer. */

@@ -73,6 +73,8 @@ export function unseal(envelope: Handoff, attempt: Attempt): Credential {
 
 export function tokenExpiresAt(credential: Credential): number {
   if (credential.kind === 'workshop') return credential.expiresAt;
+  // Device credentials refresh themselves; their lifetime is the stored refresh token's (device.ts).
+  if (credential.kind === 'device') return Number.POSITIVE_INFINITY;
   try {
     const [, payload] = credential.token.split('.');
     if (!payload) return 0;
