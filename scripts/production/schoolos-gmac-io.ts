@@ -63,15 +63,14 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
     // plain custom domain; both district Access applications list it as a second destination.
     aliases: ["northfield.educateos.io"],
   },
-  // One origin per district (ADR-0014, SCHO-259): off until the cutover
-  // (docs/educateos/runbooks/one-origin-cutover.md). On, the router serves northfield.educateos.io,
+  // One origin per district (ADR-0014, SCHO-259), on since the cutover
+  // (docs/educateos/runbooks/one-origin-cutover.md): the router serves northfield.educateos.io,
   // with the district at the root and the Workshop under /ai, and schoolos.gmac.io and
   // district.schoolos.gmac.io redirect there.
-  oneOrigin: { enabled: false, hostname: "northfield.educateos.io" },
-  // Cutover step 3 (SCHO-259): the backend binds the district's directory as PRINCIPAL_MIGRATION, so
-  // an administrator can alias the email-keyed users to their principals. Sign-in is unchanged
-  // until "resolver" binds PRINCIPAL_RESOLVER as well, in the flip.
-  principalBinding: "migration",
+  oneOrigin: { enabled: true, hostname: "northfield.educateos.io" },
+  // Workshop sign-in resolves the Access subject to a district principal (PRINCIPAL_RESOLVER); the
+  // users the migration aliased keep their email-keyed accounts.
+  principalBinding: "resolver",
   // Deployed before the EducateOS rename (SCHO-200), and pinned so it is never deployed under its
   // package's new name (SCHO-231). Its Durable Object holds the demo district's data, a Worker's
   // Durable Object namespace belongs to its name, and district.schoolos.gmac.io is attached to it:
