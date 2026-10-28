@@ -58,3 +58,17 @@ export function onPendingLink(listener: (link: PendingLink) => void): () => void
   listeners.add(listener);
   return () => { listeners.delete(listener); };
 }
+
+// Self-rooms this phone opened ("sign in on this phone"). The school's /connect-phone page ends at
+// the room's own /j link; on Android that arrives as an App Link rather than to the auth session.
+// It must not be treated as a new code to claim: the phone is already polling that room.
+const ownRooms: string[] = [];
+/** Remembers a self-room id (the last few) so its returning /j link is ignored. */
+export function rememberOwnRoom(room: string): void {
+  ownRooms.push(room);
+  if (ownRooms.length > 8) ownRooms.shift();
+}
+/** Whether a join link is the return from a self-room this phone opened. */
+export function isOwnRoomReturn(link: Incoming): boolean {
+  return link.kind === 'join' && ownRooms.includes(link.join.room);
+}

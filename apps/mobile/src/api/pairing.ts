@@ -1,8 +1,9 @@
 /**
  * QR phone pairing against the district's own relay (`/api/pair/*`, one-origin design, SCHO-262).
+ * The district end is packages/educateos-district-app/src/pairing.ts; docs/educateos/mobile.md
+ * ("Pairing v2") is the contract. Keep the two in step.
  *
- * The contract this client implements (the relay is built in parallel; keep the two in step):
- *
+ * With a computer:
  * 1. A signed-in browser creates a room: `POST <origin>/api/pair/rooms`. The page shows the QR
  *    `https://mobile.educateos.io/j#o=<origin>&r=<room>&s=<secret>` (parsed by security.ts
  *    `parseJoinLink`). The room lasts about two minutes and holds one phone.
@@ -12,12 +13,23 @@
  *       "device": {"label": "Ava's iPhone", "platform": "ios", "model": "iPhone 16", "appVersion": "0.1.0"}}
  *    → 200 {"code": "K7Q4M2XD"}
  *    Both screens show the same 8-character code; the person compares them and approves in the browser.
- * 3. The phone polls:
+ *    The phone derives the code itself ({@link pairingCode}) and refuses a room that names another.
+ *
+ * Without a computer (manifest `mobileApi.max >= 2`):
+ * 1. The phone opens a room already claimed by its key: `POST <origin>/api/pair/self-rooms`
+ *    {"publicJwk", "device"} → 201 {"room", "secret", "code", "expiresAt"}.
+ * 2. It opens the system browser at `<origin>/connect-phone?method=<id>&r=<room>&s=<secret>&k=<thumbprint>`,
+ *    where the person signs in and approves; the page then returns to `https://mobile.educateos.io/j#…`.
+ *
+ * Either way the phone then polls (never claims a self-room):
  *      GET <origin>/api/pair/rooms/:room?secret=<s>
  *    → 200 {"state": "waiting" | "approved" | "denied" | "expired", "sealed"?: {"epk": JWK, "iv": b64url, "ct": b64url}}
- * 4. On approval the district has registered the device (SCHO-261 `registerDevice`) and sealed
- *    `{"deviceId", "accessToken", "refreshToken", "principalId"}` (optionally with
- *    `accessTokenExpiresAt` / `refreshTokenExpiresAt`) to the phone's key:
+ *    `sealed` comes once; a later poll answers 410.
+ *
+ * On approval the district has registered the device (SCHO-261 `registerDevice`) and sealed
+ * `{"deviceId", "accessToken", "refreshToken", "principalId"}` with the expiries (named
+ * `accessTokenExpiresAt` / `refreshTokenExpiresAt`, or `accessExpiresAt` / `refreshExpiresAt` as the
+ * contract first wrote them) to the phone's key:
  *      shared = ECDH-P256(epk, device key)  — the X coordinate, as WebCrypto deriveBits returns
  *      key    = HKDF-SHA-256(ikm = shared, salt = UTF-8 bytes of the room id, info = "educateos-pair-v2", 32 bytes)
  *      ct     = AES-256-GCM(key, iv (12 bytes), plaintext JSON), no additional data; ct includes the tag
@@ -47,7 +59,7 @@ export type PairCredential = {
 };
 
 export class PairingError extends Error {
-  constructor(public readonly code: 'expired' | 'denied' | 'used' | 'unavailable' | 'unreachable' | 'invalid' | 'cancelled', message: string) {
+  constructor(public readonly code: 'expired' | 'denied' | 'used' | 'unavailable' | 'busy' | 'unreachable' | 'invalid' | 'cancelled', message: string) {
     super(message);
     this.name = 'PairingError';
   }
@@ -58,6 +70,7 @@ const MESSAGE = {
   denied: 'The connection was declined on the computer.',
   used: 'Another phone already used this code. Make a new one on the computer.',
   unavailable: "Your school hasn't turned on phone pairing yet.",
+  busy: 'Too many phones are connecting to your school right now. Try again in a minute.',
   unreachable: "We couldn't reach your school. Check your internet connection and try again.",
   invalid: 'The school sent a response this app could not verify. Make a new code and try again.',
   cancelled: 'Pairing cancelled.',
@@ -76,6 +89,29 @@ export function clampDevice(device: PairDevice): PairDevice {
 /** "K7Q4M2XD" → "K7Q4·M2XD". */
 export function formatCode(code: string): string { return code.slice(0, 4) + '·' + code.slice(4); }
 
+/** The RFC 7638 thumbprint of the device key, base64url: what `/connect-phone?k=` carries. */
+export function jwkThumbprint(jwk: PublicJwk): string {
+  return base64urlnopad.encode(sha256(encoder.encode(JSON.stringify({ crv: jwk.crv, kty: jwk.kty, x: jwk.x, y: jwk.y }))));
+}
+
+const CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+/**
+ * The 8-character code both screens show, derived as the district derives it: SHA-256 over the
+ * UTF-8 bytes of the room id followed by the key thumbprint, each of the first eight bytes mod 36
+ * into A–Z then 0–9.
+ */
+export function pairingCode(room: string, thumbprint: string): string {
+  return Array.from(sha256(encoder.encode(room + thumbprint)).subarray(0, 8), (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('');
+}
+
+/** A server code must be the one this phone derives for its own key, or another key was bound. */
+function checkedCode(value: unknown, room: string, publicJwk: PublicJwk): string {
+  const code = typeof value === 'string' ? value.toUpperCase() : '';
+  if (!/^[0-9A-Z]{8}$/.test(code) || code !== pairingCode(room, jwkThumbprint(publicJwk))) throw fail('invalid');
+  return code;
+}
+
 type Fetch = typeof fetch;
 
 async function call(fetchImpl: Fetch, url: string, init: RequestInit): Promise<unknown> {
@@ -90,6 +126,7 @@ async function call(fetchImpl: Fetch, url: string, init: RequestInit): Promise<u
   if (response.status === 404 || response.status === 410) throw fail('expired');
   if (response.status === 409) throw fail('used');
   if (response.status === 403) throw fail('denied');
+  if (response.status === 429) throw fail('busy');
   if (!response.ok) throw fail(response.status === 503 || response.status === 501 ? 'unavailable' : 'invalid');
   const value: unknown = await response.json().catch(() => null);
   if (!value || typeof value !== 'object') throw fail('invalid');
@@ -105,9 +142,34 @@ export async function claimRoom(fetchImpl: Fetch, link: JoinLink, publicJwk: Pub
     method: 'POST', signal, headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ secret: link.secret, publicJwk, device: clampDevice(device) }),
   }) as { code?: unknown };
-  const code = typeof value.code === 'string' ? value.code.toUpperCase() : '';
-  if (!/^[0-9A-Z]{8}$/.test(code)) throw fail('invalid');
-  return code;
+  return checkedCode(value.code, link.room, publicJwk);
+}
+
+const ROOM_ID = /^[A-Za-z0-9_-]{8,128}$/;
+const ROOM_SECRET = /^[A-Za-z0-9_-]{16,256}$/;
+
+/** A room this phone opened for itself, already claimed by its key. */
+export type SelfRoom = { link: JoinLink; code: string; thumbprint: string };
+
+/** `POST /api/pair/self-rooms`: the start of "sign in on this phone". */
+export async function createSelfRoom(fetchImpl: Fetch, origin: string, publicJwk: PublicJwk, device: PairDevice, signal?: AbortSignal): Promise<SelfRoom> {
+  const value = await call(fetchImpl, origin + '/api/pair/self-rooms', {
+    method: 'POST', signal, headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ publicJwk, device: clampDevice(device) }),
+  }) as { room?: unknown; secret?: unknown; code?: unknown };
+  if (typeof value.room !== 'string' || !ROOM_ID.test(value.room) || typeof value.secret !== 'string' || !ROOM_SECRET.test(value.secret)) throw fail('invalid');
+  const code = checkedCode(value.code ?? pairingCode(value.room, jwkThumbprint(publicJwk)), value.room, publicJwk);
+  return { link: { origin, room: value.room, secret: value.secret }, code, thumbprint: jwkThumbprint(publicJwk) };
+}
+
+/** The school's own sign-in-and-approve page for a self-room, opened in the system browser. */
+export function connectPhoneUrl(room: SelfRoom, method: string): string {
+  const url = new URL('/connect-phone', room.link.origin);
+  url.searchParams.set('method', method);
+  url.searchParams.set('r', room.link.room);
+  url.searchParams.set('s', room.link.secret);
+  url.searchParams.set('k', room.thumbprint);
+  return url.href;
 }
 
 export async function pollRoom(fetchImpl: Fetch, link: JoinLink, signal?: AbortSignal): Promise<PairState> {
@@ -147,7 +209,9 @@ export function unsealPairing(sealed: Sealed | undefined, privateKey: Uint8Array
       deviceId: text('deviceId', 80), accessToken: text('accessToken'), refreshToken: text('refreshToken'),
       principalId: text('principalId', 200),
     };
-    const at = optional('accessTokenExpiresAt'), rt = optional('refreshTokenExpiresAt');
+    // Both spellings: the client's (`accessTokenExpiresAt`) and the contract's first (`accessExpiresAt`).
+    const at = optional('accessTokenExpiresAt') ?? optional('accessExpiresAt');
+    const rt = optional('refreshTokenExpiresAt') ?? optional('refreshExpiresAt');
     if (at) credential.accessTokenExpiresAt = at;
     if (rt) credential.refreshTokenExpiresAt = rt;
     if (!/^dev_[A-Za-z0-9_-]{16,64}$/.test(credential.deviceId)) throw new Error('deviceId');
@@ -160,16 +224,21 @@ export function unsealPairing(sealed: Sealed | undefined, privateKey: Uint8Array
   }
 }
 
-export type PairOptions = {
+export type PollOptions = {
   link: JoinLink;
   privateKey: Uint8Array;
-  publicJwk: PublicJwk;
-  device: PairDevice;
-  onCode: (code: string) => void;
   signal: AbortSignal;
   fetch?: Fetch;
   now?: () => number;
   intervalMs?: number;
+  /** When the room was opened or claimed; the poll gives up {@link PAIRING_TIMEOUT_MS} after it. */
+  startedAt?: number;
+};
+
+export type PairOptions = Omit<PollOptions, 'startedAt'> & {
+  publicJwk: PublicJwk;
+  device: PairDevice;
+  onCode: (code: string) => void;
 };
 
 function wait(ms: number, signal: AbortSignal): Promise<void> {
@@ -180,13 +249,11 @@ function wait(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-/** Claim, show the code, wait for approval, and open the credential. */
-export async function pairPhone(options: PairOptions): Promise<PairCredential> {
+/** Polls a claimed room (a scanned one or a self-room) until it is decided, and opens the credential. */
+export async function waitForApproval(options: PollOptions): Promise<PairCredential> {
   const fetchImpl = options.fetch ?? fetch.bind(globalThis);
   const now = options.now ?? Date.now;
-  const started = now();
-  const code = await claimRoom(fetchImpl, options.link, options.publicJwk, options.device, options.signal);
-  options.onCode(code);
+  const started = options.startedAt ?? now();
   while (now() - started < PAIRING_TIMEOUT_MS) {
     await wait(options.intervalMs ?? 1500, options.signal);
     const room = await pollRoom(fetchImpl, options.link, options.signal);
@@ -195,4 +262,13 @@ export async function pairPhone(options: PairOptions): Promise<PairCredential> {
     if (room.state === 'expired') throw fail('expired');
   }
   throw fail('expired');
+}
+
+/** Claim, show the code, wait for approval, and open the credential. */
+export async function pairPhone(options: PairOptions): Promise<PairCredential> {
+  const fetchImpl = options.fetch ?? fetch.bind(globalThis);
+  const startedAt = (options.now ?? Date.now)();
+  const code = await claimRoom(fetchImpl, options.link, options.publicJwk, options.device, options.signal);
+  options.onCode(code);
+  return waitForApproval({ ...options, fetch: fetchImpl, startedAt });
 }
