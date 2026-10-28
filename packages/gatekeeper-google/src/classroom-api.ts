@@ -11,7 +11,9 @@ import type {
   ClassroomRubricUpdate, ClassroomGradingPeriodUpdate, ClassroomRubric, ClassroomRubricDraft, ClassroomGradingPeriodSettings,
   ClassroomCourse, ClassroomCourseWork, ClassroomCourseWorkDraft, ClassroomRoster,
   ClassroomRosterMember, ClassroomSubmission,
+  ClassroomMySubmission, ClassroomCourseWorkMaterial,
 } from "./classroom-types";
+import type { ClassroomStudentCourseWork, ClassroomStudentSubmission } from "./classroom-student-types";
 import { GoogleApiError, readGoogleJson } from "./google-response";
 
 import { classroomRubricUpdate, classroomGradingPeriodUpdate, classroomRubricDraft, classroomRubricFromRaw, classroomGradingPeriodsFromRaw } from "./classroom-plus";
@@ -84,6 +86,13 @@ export class ClassroomNotOwnedError extends Error {
 export class ClassroomSubmissionNotReadyError extends Error {
   constructor() {
     super("This submission has not been turned in. Ask the student to turn it in before grading and returning it.");
+  }
+}
+
+/** A student action is unavailable until the signed-in student has editable own work. */
+export class ClassroomStudentSubmissionNotReadyError extends Error {
+  constructor(message = "There is no editable Classroom submission for the signed-in student.") {
+    super(message);
   }
 }
 
@@ -194,6 +203,18 @@ export type OwnedCourseWork = { courseWork: ClassroomCourseWork; owned: boolean 
 export function classroomCourseWorkFromRaw(value: unknown): OwnedCourseWork {
   let raw = record(value);
   let updateTime = text(raw.updateTime);
+  let materials: ClassroomCourseWorkMaterial[] | undefined = Array.isArray(raw.materials) ? raw.materials.flatMap((value): ClassroomCourseWorkMaterial[] => {
+    let material = record(value);
+    for (let kind of ["driveFile", "link", "youtubeVideo", "form"] as const) {
+      if (!(kind in material)) continue;
+      let item = record(material[kind]);
+      let drive = kind === "driveFile" ? record(item.driveFile) : item;
+      let url = kind === "form" ? text(item.formUrl) : text(drive.alternateLink) ?? text(item.url);
+      let mimeType = kind === "driveFile" ? text(drive.mimeType) : undefined;
+      return [{ kind, title: text(drive.title) ?? text(item.title) ?? "Class material", ...present({ url, mimeType }) }];
+    }
+    return [];
+  }) : undefined;
   return {
     courseWork: {
       id: requiredId(raw, "id", "coursework item"),
@@ -201,7 +222,7 @@ export function classroomCourseWorkFromRaw(value: unknown): OwnedCourseWork {
       state: oneOf(raw.state, COURSE_WORK_STATES, "COURSE_WORK_STATE_UNSPECIFIED"),
       ...present({
         description: text(raw.description), maxPoints: finite(raw.maxPoints),
-        alternateLink: text(raw.alternateLink),
+        alternateLink: text(raw.alternateLink), materials: materials?.length ? materials : undefined,
         updateTime: updateTime === undefined ? undefined : new Date(updateTime),
       }),
     },
@@ -221,6 +242,37 @@ export function classroomSubmissionFromRaw(value: unknown): ClassroomSubmission 
       late: raw.late === true ? true : undefined,
       assignedGrade: finite(raw.assignedGrade), draftGrade: finite(raw.draftGrade),
       alternateLink: text(raw.alternateLink),
+    }),
+  };
+}
+
+/** A submission as its own signed-in student sees it, with identity and draft grades discarded. */
+export function classroomMySubmissionFromRaw(value: unknown): ClassroomMySubmission {
+  let raw = record(value);
+  let assignment = record(raw.assignmentSubmission);
+  let rawAttachments = Array.isArray(assignment.attachments) ? assignment.attachments : [];
+  const attachments = rawAttachments.map(value => {
+    let attachment = record(value);
+    let driveFile = record(attachment.driveFile);
+    let link = record(attachment.link);
+    return {
+      title: text(driveFile.title) ?? text(link.title) ?? "Classroom attachment",
+      ...present({
+        url: text(driveFile.alternateLink) ?? text(link.url),
+        mimeType: text(driveFile.mimeType),
+      }),
+    };
+  });
+  const answer = text(record(raw.shortAnswerSubmission).answer) ??
+    text(record(raw.multipleChoiceSubmission).answer);
+  return {
+    courseWorkId: requiredId(raw, "courseWorkId", "student submission"),
+    state: oneOf(raw.state, SUBMISSION_STATES, "SUBMISSION_STATE_UNSPECIFIED"),
+    ...present({
+      late: raw.late === true ? true : undefined,
+      alternateLink: text(raw.alternateLink),
+      answer,
+      attachments: attachments.length ? attachments : undefined,
     }),
   };
 }
@@ -290,8 +342,68 @@ export class ClassroomApi {
       .map(classroomCourseFromRaw);
   }
 
+  /** Active courses in which the connected account is enrolled as a student. */
+  async listStudentCourses(): Promise<ClassroomCourse[]> {
+    let params = new URLSearchParams({ studentId: "me", courseStates: "ACTIVE" });
+    return (await this.#listAll("/courses", params, "courses", "list student courses"))
+      .map(classroomCourseFromRaw);
+  }
+
   async getCourse(courseId: string): Promise<ClassroomCourse> {
     return classroomCourseFromRaw(await this.#request(this.#course(courseId), "get course"));
+  }
+
+  /** Whether the connected account is a student of this course; no roster data is returned. */
+  async isStudent(courseId: string): Promise<boolean> {
+    return (await this.listStudentCourses()).some(course => course.id === courseId);
+  }
+
+  /** Published coursework visible to the signed-in student. Drafts are excluded by Google. */
+  async listStudentCourseWork(courseId: string): Promise<ClassroomStudentCourseWork[]> {
+    const params = new URLSearchParams({ courseWorkStates: "PUBLISHED" });
+    return (await this.#listAll(`${this.#course(courseId)}/courseWork`, params, "courseWork", "list student coursework"))
+      .map(classroomCourseWorkFromRaw)
+      .map(({ courseWork }) => courseWork)
+      .filter((courseWork): courseWork is ClassroomCourseWork & { state: "PUBLISHED" } => courseWork.state === "PUBLISHED");
+  }
+
+  /** Read the one submission Google associates with the signed-in student. */
+  async getMySubmission(courseId: string, courseWorkId: string): Promise<ClassroomStudentSubmission | null> {
+    const params = new URLSearchParams({ userId: "me" });
+    const rows = (await this.#listAll(
+      `${this.#courseWork(courseId, courseWorkId)}/studentSubmissions`, params,
+      "studentSubmissions", "read own student submission"))
+      .map(classroomMySubmissionFromRaw);
+    if (rows.length > 1) throw new Error("Google Classroom returned multiple submissions for the signed-in student.");
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      courseWorkId: row.courseWorkId,
+      state: row.state,
+      ...present({
+        late: row.late,
+        alternateLink: row.alternateLink,
+        answer: row.answer,
+        attachments: row.attachments,
+      }),
+    };
+  }
+
+  /** Turn in the signed-in student's existing submission, using its ID only inside the gatekeeper. */
+  async turnInMySubmission(courseId: string, courseWorkId: string): Promise<void> {
+    const params = new URLSearchParams({ userId: "me" });
+    const rows = (await this.#listAll(
+      `${this.#courseWork(courseId, courseWorkId)}/studentSubmissions`, params,
+      "studentSubmissions", "check own submission before turn-in"))
+      .map(classroomSubmissionFromRaw);
+    if (rows.length !== 1) throw new ClassroomStudentSubmissionNotReadyError("There is no Classroom submission for the signed-in student to turn in.");
+    const row = rows[0];
+    if (row.state !== "CREATED" && row.state !== "RECLAIMED_BY_STUDENT") {
+      throw new ClassroomStudentSubmissionNotReadyError("Only a created or reclaimed Classroom submission can be turned in.");
+    }
+    await this.#request(
+      `${this.#submission(courseId, courseWorkId, row.id)}:turnIn`, "turn in own student submission",
+      { method: "POST", body: "{}" });
   }
 
   /** Whether the connected account teaches the course. */
