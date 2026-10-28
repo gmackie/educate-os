@@ -84,9 +84,20 @@ describe("the launch handler", () => {
     ]);
   });
 
+  it("reads a demo login's district from its district record when its user record names none", async () => {
+    const consoleSpies = spyOnConsole();
+    const code = `launch-demo-${SANDBOX_DISTRICT}`;
+    const response = await cleverLaunch(launch(code), deps());
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("https://cedarvalley.educateos.io/");
+    const logs = logged(consoleSpies);
+    expect(logs).toContain("clever.launch.user-record");
+    for (const secret of [code, tokenFor(code), SANDBOX_DISTRICT]) expect(logs).not.toContain(secret);
+  });
+
   it("refuses a user record whose roles name two districts", async () => {
     const fetch: CleverLaunchDeps["fetch"] = async (input, init) =>
-      input.includes("/users/")
+      input.endsWith(`/users/${CLEVER_USER}`)
         ? Response.json({ data: { id: CLEVER_USER, roles: { teacher: { district: SANDBOX_DISTRICT }, staff: { district: OTHER_DISTRICT } } } })
         : fakeClever(input, init);
     const response = await cleverLaunch(launch(`launch-teacher-${SANDBOX_DISTRICT}`), deps({ fetch }));
