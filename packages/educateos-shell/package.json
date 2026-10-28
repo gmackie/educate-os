@@ -1,0 +1,36 @@
+{
+  "name": "@educateos/shell",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The EducateOS web shell (SCHO-260): one frame for every SPA on a district origin. A responsive sidebar with the school's branding from /.well-known/educateos.json, role-aware navigation across the Learning Home, Teacher Studio, the admin console and the AI workspace, a user menu, and the one shared theme. Exports source; consumers compile it.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "peerDependencies": {
+    "@cloudflare/kumo": "^2.14.0",
+    "react": "^19.2.8"
+  },
+  "dependencies": {
+    "@gadgets/ui": "workspace:*",
+    "@gadgets/workshop-shared": "workspace:*",
+    "@phosphor-icons/react": "^2.1.10"
+  },
+  "devDependencies": {
+    "@cloudflare/kumo": "^2.14.0",
+    "@gadgets/scripts": "workspace:*",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/user-event": "14.6.7",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "jsdom": "^26.1.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}
