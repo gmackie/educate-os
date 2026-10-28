@@ -2,8 +2,9 @@
 // the open-source one. Its D1 binding is DB; the SPA is the ASSETS binding.
 //
 // wrangler.local.jsonc runs it locally. wrangler.production.jsonc is the hosted edition at
-// admin.educateos.io (docs/educateos/runbooks/admin-hosted.md); the installer adding the OSS admin to
-// a district's account comes in a later phase 5 PR.
+// admin.educateos.io (docs/educateos/runbooks/admin-hosted.md). District releases carry the OSS
+// edition from wrangler.release.jsonc, and the installer adds it to a district's account
+// (`admin.enabled`; docs/educateos/admin.md, "Install the OSS admin").
 import { operatorVerifier, type OperatorVerifier } from "@educateos/control-plane/access";
 import type { JWTVerifyGetKey } from "jose";
 import { handleAdminRequest } from "./app.ts";

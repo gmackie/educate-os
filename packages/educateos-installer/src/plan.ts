@@ -11,6 +11,7 @@ import {
   type DesiredState,
   type DesiredWorker,
   MARKER_VARS,
+  RESOURCE_KEYS,
   type ResourceKey,
 } from "./desired.ts";
 import { InstallerHaltedError, isCredentialFailure } from "./errors.ts";
@@ -298,7 +299,7 @@ async function appliedD1Migrations(api: CloudflareApi, account: string, database
 }
 
 function zoneNameOf(desired: DesiredState): string {
-  const domain = desired.resources.find((r) => r.kind === "custom_domain");
+  const domain = desired.resources.find((r) => r.key === RESOURCE_KEYS.customDomain);
   if (domain?.kind !== "custom_domain") throw new EducateOsError("validation-failed", "desired state has no custom domain");
   return domain.zoneName;
 }

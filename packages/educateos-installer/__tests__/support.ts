@@ -28,6 +28,8 @@ import { sha256Hex } from "../src/digest.ts";
 // The release pipeline's own golden manifest and fixture bundles: the installer consumes exactly
 // what manifest-lib produces.
 const TESTDATA = fileURLToPath(new URL("../../../scripts/release/testdata/", import.meta.url));
+/** The OSS admin's D1 migrations, which the release ships as blobs. */
+const ADMIN_MIGRATIONS = fileURLToPath(new URL("../../educateos-admin/migrations/", import.meta.url));
 
 function bytesOf(path: string): Uint8Array<ArrayBuffer> {
   const buffer = readFileSync(path);
@@ -92,6 +94,13 @@ export async function goldenRelease(): Promise<TestRelease> {
   for (const [path, entry] of Object.entries(variant)) {
     artifacts.addAsset(entry.hash, bytesOf(join(TESTDATA, "fixture-assets", "access", path)));
   }
+  // The OSS admin (SCHO-263): its own SPA fixture, and its real D1 migrations, as build-release
+  // writes them.
+  const admin = parsed.workers["educateos-admin"]!;
+  for (const [path, entry] of Object.entries(admin.assetsConfig!.variants.spa!.manifest)) {
+    artifacts.addAsset(entry.hash, bytesOf(join(TESTDATA, "fixture-assets", "educateos-admin", path)));
+  }
+  for (const file of filesUnder(ADMIN_MIGRATIONS)) await artifacts.addBlob(bytesOf(file));
   return await signedRelease(bytes, parsed.releaseId, "0.1.0", artifacts);
 }
 

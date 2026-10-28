@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { parse } from "jsonc-parser";
 import { workerConfigDirs } from "./generate-worker-configs.ts";
-import { readDeployablePackages } from "./release/manifest-lib.ts";
+import { ADMIN_PACKAGE, readDeployablePackages, readReleaseComponents } from "./release/manifest-lib.ts";
 
 const ADMIN_DIR = join("packages", "educateos-admin");
 /** The parts of the config these tests read. */
@@ -39,6 +39,20 @@ test("release discovery and the config generators don't see the admin", () => {
     "release discovery (and the staging, preview and production generators built on it) found the admin");
   assert.ok(!workerConfigDirs().some((dir) => dir.endsWith(join("packages", "educateos-admin"))),
     "the worker config generator found the admin");
+});
+
+// SCHO-263: the district release carries the OSS admin, built from its own config template through
+// manifest-lib's RELEASE_COMPONENTS rather than discovery. The template names nothing account-specific.
+test("the release finds the admin only as a component, from a template with nothing account-specific", () => {
+  const components = readReleaseComponents("packages");
+  assert.deepEqual(components.map((pkg) => [pkg.name, pkg.component?.configFile]), [[ADMIN_PACKAGE, "wrangler.release.jsonc"]]);
+  const template = components[0]!.config as unknown as AdminProductionConfig;
+  assert.equal(template.name, "educateos-admin");
+  assert.deepEqual(template.vars, { EDITION: "oss" });
+  assert.equal(template.routes, undefined, "the installer attaches the district's hostname");
+  assert.equal(template.services, undefined, "the OSS admin has no control-plane binding");
+  assert.deepEqual(template.assets.run_worker_first, ["/api/*", "/healthz"]);
+  assert.deepEqual(template.d1_databases.map((db) => [db.binding, db.migrations_dir]), [["DB", "migrations"]]);
 });
 
 test("the primary app's ForgeGraph config doesn't deploy it", () => {

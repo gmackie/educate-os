@@ -42,7 +42,10 @@ test("a signed manifest verifies against the pinned root key and names the manif
   assert.equal(statement.version, "1.2.0");
   assert.equal(statement.minimumCompatibleVersion, "1.2.0");
   assert.equal(statement.channel, "stable");
-  assert.deepEqual(statement.migrations, []);
+  // The golden release's only D1 migrations are the OSS admin's (SCHO-263).
+  assert.deepEqual(statement.migrations, ["0001_initial", "0002_control_plane"].map((migrationId) => ({
+    migrationId, summary: "D1 migration on educateos-admin DB", irreversible: true,
+  })));
   assert.equal(Date.parse(statement.expiresAt) - NOW.getTime(), 90 * 24 * 60 * 60_000);
 });
 

@@ -143,7 +143,9 @@ export async function preflight(
   }
 
   await checkAccess(probe, api, config, blocking);
-  await checkDns(probe, api, config, desired.hostname, blocking);
+  // The public hostname, and the OSS admin's when the install has one; both in the base domain's zone.
+  const others = desired.resources.flatMap((r) => (r.kind === "custom_domain" && r.hostname !== desired.hostname ? [r.hostname] : []));
+  await checkDns(probe, api, config, [desired.hostname, ...others], blocking);
 
   if (config.aiGateway) {
     // Optional product: a failure here is a warning, and the install still tries to create it.
@@ -241,7 +243,8 @@ async function checkAccess(probe: Probe, api: CloudflareApi, config: DistrictIns
   }
 }
 
-async function checkDns(probe: Probe, api: CloudflareApi, config: DistrictInstallConfig, hostname: string, blocking: PreflightItem[]) {
+// `hostnames`: the public hostname first, then any other the install attaches (the OSS admin's).
+async function checkDns(probe: Probe, api: CloudflareApi, config: DistrictInstallConfig, hostnames: string[], blocking: PreflightItem[]) {
   const found = await probe("reading zones", "Zone: Read", () => api.findZone(config.accountId, config.baseDomain));
   if (found.failed) return;
   const zone = found.value;
@@ -260,15 +263,18 @@ async function checkDns(probe: Probe, api: CloudflareApi, config: DistrictInstal
       operatorAction: `Finish the nameserver change for ${config.baseDomain} at the registrar and wait for Cloudflare to mark the zone active.`,
     });
   }
-  const records = await probe(`reading DNS records for ${hostname}`, "DNS: Read", () => api.listDnsRecords(zone.id, hostname));
-  const domains = await probe("listing Worker custom domains", "Workers Scripts: Edit", () => api.listWorkerDomains(config.accountId));
-  const attached = !domains.failed && domains.value.some((d) => d.hostname === hostname);
-  if (!records.failed && records.value.length > 0 && !attached) {
-    blocking.push({
-      code: "dns.record-conflict",
-      message: `${hostname} already has DNS records (${records.value.map((r) => r.type).join(", ")}). A Workers custom domain needs the name free.`,
-      operatorAction: `Delete the existing records for ${hostname}, or choose another subdomain in the install config.`,
-    });
+  let domains: ProbeResult<Awaited<ReturnType<CloudflareApi["listWorkerDomains"]>>> | undefined;
+  for (const hostname of hostnames) {
+    const records = await probe(`reading DNS records for ${hostname}`, "DNS: Read", () => api.listDnsRecords(zone.id, hostname));
+    domains ??= await probe("listing Worker custom domains", "Workers Scripts: Edit", () => api.listWorkerDomains(config.accountId));
+    const attached = !domains.failed && domains.value.some((d) => d.hostname === hostname);
+    if (!records.failed && records.value.length > 0 && !attached) {
+      blocking.push({
+        code: "dns.record-conflict",
+        message: `${hostname} already has DNS records (${records.value.map((r) => r.type).join(", ")}). A Workers custom domain needs the name free.`,
+        operatorAction: `Delete the existing records for ${hostname}, or choose another ${hostname === hostnames[0] ? "subdomain" : "admin.hostname"} in the install config.`,
+      });
+    }
   }
 }
 

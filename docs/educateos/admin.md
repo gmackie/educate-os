@@ -6,7 +6,8 @@
   edition's production config, the import of educateos.io's operators and installations, and the
   redirect of educateos.io/app are in place ([runbook](runbooks/admin-hosted.md)). Not deployed: the
   hosted admin isn't provisioned, and no production district has `/api/ops` as an Access bypass path
-  yet. The installer's OSS admin comes in a later phase 5 PR.
+  yet. The installer installs the OSS admin into a district's account on request
+  ([Install the OSS admin](#install-the-oss-admin)); no district has one yet.
 - Issue: SCHO-263 (phase 5 of SCHO-257). Plan: `docs/plans/2026-10-28-educateos-one-domain-design.html`,
   section 6.
 - Code: `packages/educateos-admin` (Worker + D1 + SPA), and the protocol in
@@ -226,7 +227,56 @@ Deployment isn't wired yet:
   picks it up (`scripts/educateos-admin-config.test.ts`). Its D1 ID and Access audience are
   placeholders until [the runbook](runbooks/admin-hosted.md) provisions them, then the import runs
   and `ADMIN_URL` on the site Worker redirects educateos.io/app here.
-- OSS: the installer (`packages/educateos-installer/src/desired.ts`) will add the admin Worker, its
-  D1 database, the migrations, an Access application and `ADMIN_KEY_ENCRYPTION_KEY` to the district's
-  account, with `EDITION=oss` and `OSS_WORKSPACE_ORIGINS` set to the district's origin, and register
-  the admin's key with the district during the install.
+- OSS: every district release carries the admin, and the installer installs it when the install
+  config asks for it. See [Install the OSS admin](#install-the-oss-admin).
+
+## Install the OSS admin
+
+A district that runs its own install (`packages/educateos-installer`) can put the open-source admin
+in its own Cloudflare account beside the district. Add this to the install config:
+
+```json
+"admin": { "enabled": true }
+```
+
+or, for a hostname other than `admin.<base domain>`, `"admin": { "enabled": true, "hostname":
+"ops.northfield.example" }`. The hostname must be in the base domain's zone (the installer attaches it
+there) and must not be the district's own. The admin manages the district through `/api/ops/*`, so
+it needs a one-origin install: the district service enabled, from a release that wires it.
+
+The installer then adds, with the instance's prefix (`educateos-<slug>-…`):
+
+| Resource | What it is |
+| --- | --- |
+| Worker `educateos-<slug>-educateos-admin` | The admin, with `EDITION=oss`, `OSS_WORKSPACE_ORIGINS` set to the install's public origin (`https://<subdomain>.<base domain>`), `ACCESS_ISSUER` from `access.teamName`, `ACCESS_AUD` from its own Access application, and `ADMINS` from the install's `admins` (comma-separated, each an admin). |
+| D1 database `educateos-<slug>-admin-db` | The admin's database, with the release's `migrations/` applied through the installer's ledger like any D1 migration. Its own database: no other Worker binds it. |
+| Secret `ADMIN_KEY_ENCRYPTION_KEY` | 32 random bytes, base64url, generated at the first install (as the district's `DEVICE_TOKEN_SECRET` is) and never rotated or read back. Supply one through the secret source (`EDUCATEOS_SECRET_EDUCATEOS_ADMIN__ADMIN_KEY_ENCRYPTION_KEY`) to choose it yourself. |
+| Access application `educateos-<slug>-admin` | The admin's hostname, behind the install's members policy (its email domains). Access lets the district's people reach the sign-in; `ADMINS` decides who may use the admin. |
+| Access application `educateos-<slug>-admin-bypass` | `<admin hostname>/healthz` only, under the install's bypass policy. |
+| Custom domain | The admin's hostname on the admin Worker, attached after both applications exist. |
+
+`installer plan` shows each of these as a step, and the preflight checks the admin's hostname for DNS
+records as it does the district's. A later release updates the admin's code and applies its new
+migrations like any other component, and a rollback returns it to its previous version (or, to a
+release from before the admin, leaves it running). `admin.enabled: false`, the default, leaves the
+install exactly as it was. It doesn't remove an admin installed earlier either: to remove one, delete
+the Worker, the two Access applications and, once nothing in it is needed, the D1 database, in the
+Cloudflare dashboard.
+
+The installer can't enroll the admin with the district itself. The admin makes each workspace's
+ops key pair when an operator enrolls it, sealed under a key the installer generated and does not
+keep, and the district records which of its administrators enrolled each key. So enrollment is the
+same three steps as for any admin, which the CLI prints after the install as next steps:
+
+1. Open the admin at `https://admin.<base domain>` as one of the install's `admins` and enroll the
+   district under Workspaces → Enroll, with the install's public origin.
+2. Copy the registration it shows, open the district's `/admin` → Operations, paste it under Enroll
+   an admin, and grant the scopes it asks for.
+3. In the admin, choose Verify connection.
+
+The release side: the admin has no `wrangler.jsonc`, so release discovery doesn't find it.
+`scripts/release/manifest-lib.ts` lists it in `RELEASE_COMPONENTS`; `build-release.ts` builds its SPA
+(`vp run -F @educateos/admin build`) and bundles it from `wrangler.release.jsonc`, the config template
+(`EDITION=oss`, the `DB` binding, the assets, nothing account-specific). Its manifest entry has kind
+`admin`, its SPA as the one asset variant `spa`, its migrations as content-addressed blobs, and
+`ADMIN_KEY_ENCRYPTION_KEY` as a generated secret input (`deploy-inputs.json`).
