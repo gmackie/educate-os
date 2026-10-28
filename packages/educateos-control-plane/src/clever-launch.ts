@@ -60,6 +60,17 @@ export function configuredLaunchDistricts(value: string | undefined): ReadonlyMa
 // A managed hostname, as the control plane stores one.
 const MANAGED_HOSTNAME = /^[a-z][a-z0-9-]{1,30}[a-z0-9]\.educateos\.io$/;
 
+/**
+ * Reads the site Worker's `CLEVER_LAUNCH_UNAFFILIATED` var: the managed hostname a launch goes to
+ * when Clever places its user in no district, as it does a teacher who authorized the app
+ * themselves (the sandbox's demo logins among them). Undefined, or not a `<slug>.educateos.io`
+ * hostname, refuses such launches.
+ */
+export function configuredUnaffiliatedHostname(value: string | undefined): string | undefined {
+  const hostname = value?.trim();
+  return hostname !== undefined && MANAGED_HOSTNAME.test(hostname) ? hostname : undefined;
+}
+
 /** What {@link cleverLaunch} is given. */
 export interface CleverLaunchDeps {
   shell: SiteShell;
@@ -67,6 +78,8 @@ export interface CleverLaunchDeps {
   credentials: CleverAppCredentials | undefined;
   /** The hostname of the registered installation for a Clever district ID, if any. */
   hostnameFor: (cleverDistrictId: string) => Promise<string | undefined>;
+  /** Where a user Clever places in no district goes, from {@link configuredUnaffiliatedHostname}. */
+  unaffiliatedHostname?: string;
   /** Reaches Clever. Tests stand a fake in its place. */
   fetch: (input: string, init: RequestInit) => Promise<Response>;
 }
@@ -96,7 +109,8 @@ const UserResponse = z.object({
 const OAuthError = z.object({ error: z.string().regex(/^[a-z_]{1,64}$/) });
 
 /** Why a launch was turned away, as logged. Never the code, the token, or anyone's IDs. */
-export type CleverLaunchFailure = "missing-code" | "unconfigured" | "exchange-failed" | "identity-failed" | "unknown-district";
+export type CleverLaunchFailure =
+  "missing-code" | "unconfigured" | "exchange-failed" | "identity-failed" | "unknown-district" | "no-district";
 
 /**
  * What Clever answered when a call to it failed, as logged beside the failure: its HTTP status
@@ -155,6 +169,11 @@ const MESSAGES: Record<CleverLaunchFailure, { status: number; title: string; mes
     status: 404,
     title: "Your district isn't set up for Clever launch",
     message: "Your district hasn't connected its EducateOS to Clever's portal yet. Open your district's EducateOS address directly, or ask your district's technology team.",
+  },
+  "no-district": {
+    status: 404,
+    title: "Your Clever account isn't part of a district",
+    message: "EducateOS opens from Clever for districts that use it. Your Clever account isn't linked to a district, so open your district's EducateOS address directly.",
   },
 };
 
@@ -229,9 +248,10 @@ async function readClever<T>(url: string, token: string, deps: CleverLaunchDeps,
 }
 
 // Reads the signed-in user's Clever district with the token, the token's only use: from /me, else
-// from the roles in the user's own record, else from the user's district record. A sandbox demo
-// login's record names no district under its roles, so the district record is asked last.
-async function districtOf(token: string, deps: CleverLaunchDeps): Promise<CleverResult<string>> {
+// from the roles in the user's own record, else from the user's district record. Undefined when
+// Clever has none for the user (its district record is a 404), as for a teacher who authorized the
+// app themselves: their record's roles carry only a legacy ID.
+async function districtOf(token: string, deps: CleverLaunchDeps): Promise<CleverResult<string | undefined>> {
   const me = await readClever(CLEVER_ME_URL, token, deps, MeResponse);
   if (!me.ok) return me;
   if (me.value.data.district !== undefined) return { ok: true, value: me.value.data.district };
@@ -241,7 +261,8 @@ async function districtOf(token: string, deps: CleverLaunchDeps): Promise<Clever
   // Kept for the record: this reply's shape is what tells the next fix where the district went.
   console.info("clever user record names no district", { event: "clever.launch.user-record", ...user.reply });
   const district = await readClever(`${userUrl}/district`, token, deps, DistrictResponse);
-  return district.ok ? { ok: true, value: district.value.data.id } : district;
+  if (district.ok) return { ok: true, value: district.value.data.id };
+  return district.reply.cleverStatus === 404 ? { ok: true, value: undefined } : district;
 }
 
 /**
@@ -263,6 +284,11 @@ export async function cleverLaunch(request: Request, deps: CleverLaunchDeps): Pr
   const district = await districtOf(token.value, deps);
   if (!district.ok) return refuse(deps.shell, "identity-failed", district.reply);
 
+  if (district.value === undefined) {
+    if (deps.unaffiliatedHostname === undefined) return refuse(deps.shell, "no-district");
+    console.info("clever launch redirected", { event: "clever.launch.redirected", unaffiliated: true });
+    return new Response(null, { status: 303, headers: { ...LAUNCH_HEADERS, location: `https://${deps.unaffiliatedHostname}/` } });
+  }
   const hostname = await deps.hostnameFor(district.value);
   if (hostname === undefined) return refuse(deps.shell, "unknown-district");
   console.info("clever launch redirected", { event: "clever.launch.redirected" });

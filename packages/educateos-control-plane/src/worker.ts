@@ -8,7 +8,7 @@ import { DurableObject } from "cloudflare:workers";
 import type { JWTVerifyGetKey } from "jose";
 import { operatorVerifier, type OperatorIdentity, type OperatorVerifier } from "./access.ts";
 import { handleRequest, type ControlPlaneApi, type ControlPlaneDeps } from "./app.ts";
-import { configuredLaunchDistricts } from "./clever-launch.ts";
+import { configuredLaunchDistricts, configuredUnaffiliatedHostname } from "./clever-launch.ts";
 import type { SiteShell } from "./pages.ts";
 import type { ProbeResult } from "./probe.ts";
 import { ControlPlaneRegistry, type DashboardEntry, type RegistryMessage, type RegistryReply } from "./registry.ts";
@@ -33,6 +33,8 @@ export interface ControlPlaneEnv {
    * that aren't registered installations (the demo districts). A var, not a secret.
    */
   CLEVER_LAUNCH_DISTRICTS?: string;
+  /** The `<slug>.educateos.io` a Clever user in no district is sent to (a demo district). A var. */
+  CLEVER_LAUNCH_UNAFFILIATED?: string;
   /** Stamped by the ForgeGraph build (`scripts/production/stamp-commit.ts`). */
   FG_COMMIT_HASH?: string;
   /** Signed releases for the guided install, as `scripts/release/upload-release.ts` lays them out. */
@@ -135,6 +137,7 @@ export function siteWorker(shell: SiteShell, options: SiteWorkerOptions = {}): E
           : {}),
         ...(options.cleverFetch === undefined ? {} : { cleverFetch: options.cleverFetch }),
         cleverLaunchDistricts: configuredLaunchDistricts(env.CLEVER_LAUNCH_DISTRICTS),
+        cleverLaunchUnaffiliated: configuredUnaffiliatedHostname(env.CLEVER_LAUNCH_UNAFFILIATED),
         ...(env.RELEASES && env.RELEASE_TRUST ? { releases: { bucket: env.RELEASES, trust: env.RELEASE_TRUST } } : {}),
         waitUntil: (promise) => ctx.waitUntil(promise),
         ...(options.cloudflareApi ? { cloudflareApi: options.cloudflareApi } : {}),

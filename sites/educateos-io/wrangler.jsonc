@@ -41,6 +41,9 @@
     // guided install writes installation rows; the registry is consulted first. Only
     // <slug>.educateos.io hosts are accepted. 6ade4156… is the educateos-dev app's sandbox district.
     "CLEVER_LAUNCH_DISTRICTS": "{\"6ade41569b8cebb96d733c48\":\"northfield.educateos.io\"}",
+    // Where a Clever user in no district goes: a teacher who authorized the app themselves, as
+    // every sandbox demo login is. Clever names no district for them to route by.
+    "CLEVER_LAUNCH_UNAFFILIATED": "northfield.educateos.io",
     // The release keys the guided install verifies every release against before installing it
     // (docs/educateos/control-plane.md, "Release keys"). Public halves only.
     "RELEASE_TRUST": {"root": {"threshold": 1, "keys": [{"keyId": "ed25519-ZcqIp-xFaMyAdLm9A_VLfM9gzi-04hir2JmHXqornqc", "publicKey": "mUuoDdWb6ERTjC_o3SI4hYf6pdb7tElPlkoVqPxx24k"}]}, "keySetVersion": 0, "keys": [{"keyId": "ed25519-Y5ayv_OFgjE5j_YaqCuiuNvx-H7_d6AVfSjTnQlIc58", "publicKey": "LVFy9O5qtmgvCGs0uhfjF9Q3aJZ4cQhrYYyouuF6YKg"}]}
