@@ -1,5 +1,6 @@
 import { ROUTER_TAG_PROBE_PATH } from '@gadgets/workshop-shared/api'
 import { getBackendHost } from '../../connectHandoff'
+import { workshopPath } from '../../workshopPath'
 
 const PROBE_TIMEOUT_MS = 5_000
 
@@ -11,7 +12,7 @@ const PROBE_TIMEOUT_MS = 5_000
  */
 export const probeRouterTag = async (): Promise<void> => {
   try {
-    await fetch(`${window.location.protocol}//${getBackendHost()}${ROUTER_TAG_PROBE_PATH}`, {
+    await fetch(`${window.location.protocol}//${getBackendHost()}${workshopPath(ROUTER_TAG_PROBE_PATH)}`, {
       method: 'POST',
       mode: 'no-cors',
       cache: 'no-store',

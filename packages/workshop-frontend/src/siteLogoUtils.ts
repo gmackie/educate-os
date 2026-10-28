@@ -1,4 +1,5 @@
 import { MAX_SITE_LOGO_BYTES } from '@gadgets/workshop-shared/api'
+import { workshopPath } from './workshopPath'
 
 const SITE_LOGO_SIZE = 256
 const MAX_SOURCE_BYTES = 5 * 1024 * 1024
@@ -249,7 +250,7 @@ export function applySiteFavicon(logoUrl: string | undefined): () => void {
   let objectUrl: string | undefined
   let disposed = false
   const useDefault = () => {
-    favicon.href = '/favicon.svg'
+    favicon.href = workshopPath('/favicon.svg')
     favicon.type = 'image/svg+xml'
   }
   useDefault()

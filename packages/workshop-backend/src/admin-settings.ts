@@ -13,6 +13,7 @@ import { AiGatewayConfig, GatewayModels, assertGatewayProvider, gatewayModelConf
 import { AgentTurnError, completeText } from './ai-invoke.js';
 import { gatewayBuiltInReasoning, gatewayReasoningLevels, getModel, isRuntimeModel } from './ai-models.js';
 import { SITE_LOGO_R2_KEY, siteLogoImage, validateSiteLogo } from './site-logo.js';
+import { publicBasePath } from './public-path.js';
 import { ambientGatekeeperMode, DEFAULT_AMBIENT_GATEKEEPER_MODE } from './provisioning-policy.js';
 import { buildGatekeeperVendorMap } from './auth/auth-vendors.js';
 import { UserDurableObject } from './user.js';
@@ -492,7 +493,7 @@ export class AdminSettings extends DurableObject<Cloudflare.Env> {
       signupsEnabled: config.signupsEnabled,
       userSearchEnabled: config.userSearchEnabled,
       siteName: config.siteName,
-      siteLogo: siteLogoImage(config.siteLogoConfigured),
+      siteLogo: siteLogoImage(config.siteLogoConfigured, publicBasePath(this.env)),
       instanceInstructions: config.instanceInstructions,
       announcement: config.announcement,
       banner: config.banner,
@@ -1046,7 +1047,9 @@ export class AdminApiImpl extends RpcTarget implements AdminApi {
    * `adminUserId` is the requesting admin's identity, forwarded to gatekeepers when listing the
    * resource catalog (some are RBAC-gated per user). It's plain data — not a user-DO dependency.
    */
-  constructor(private admin: DurableObjectStub<AdminSettings>, private adminUserId: string) {
+  constructor(private admin: DurableObjectStub<AdminSettings>, private adminUserId: string,
+              // Where the Workshop is mounted, for the URLs returned here (see public-path.ts).
+              private basePath = "") {
     super();
   }
 
@@ -1071,7 +1074,7 @@ export class AdminApiImpl extends RpcTarget implements AdminApi {
 
   async setSiteLogo(data: Uint8Array | null): Promise<AdminSettingsView['siteLogo']> {
     if (data !== null) validateSiteLogo(data);
-    return siteLogoImage(await this.admin.setSiteLogo(data));
+    return siteLogoImage(await this.admin.setSiteLogo(data), this.basePath);
   }
 
   async setInstanceInstructions(text: string): Promise<void> {

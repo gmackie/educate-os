@@ -5357,9 +5357,14 @@ export type BlueprintScreenshotUpload = {
 export const BLUEPRINT_SCREENSHOT_R2_PREFIX = 'screenshots/';
 export const BLUEPRINT_SCREENSHOT_PATH_PREFIX = '/blueprint-screenshot/';
 
-export function blueprintScreenshotUrl(id: string, metadata: { screenshot?: true, lastUpdated: Date }): string | undefined {
+/**
+ * The browser URL of a blueprint's screenshot. `basePath` is where the Workshop is mounted on its
+ * origin: `""` at the root (the default), `/ai` on a district origin.
+ */
+export function blueprintScreenshotUrl(
+    id: string, metadata: { screenshot?: true, lastUpdated: Date }, basePath = ""): string | undefined {
   return metadata.screenshot ?
-      `${BLUEPRINT_SCREENSHOT_PATH_PREFIX}${id}?v=${metadata.lastUpdated.valueOf()}` : undefined;
+      `${basePath}${BLUEPRINT_SCREENSHOT_PATH_PREFIX}${id}?v=${metadata.lastUpdated.valueOf()}` : undefined;
 }
 
 /**

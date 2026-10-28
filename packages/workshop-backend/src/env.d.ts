@@ -95,6 +95,12 @@ declare global {
       // Public base URL of the deployment.
       PUBLIC_BASE_URL?: string;
 
+      // Where the Workshop is mounted on that origin: unset (the root) on today's deployments, "/ai"
+      // on a district origin whose router serves the LMS at "/" (SCHO-259). Prefixes the URLs the
+      // backend hands to browsers (site logo, blueprint screenshots, the connect handoff page).
+      // Must match the frontend's VITE_WORKSHOP_BASE_PATH.
+      PUBLIC_BASE_PATH?: string;
+
       // What the service that installed this deployment wrote on its last upload of this Worker: a
       // JSON binding of the release, its version tag and its update links. Typed `unknown` because
       // deployServiceInstall() (deployment-updates.ts) is its only reader, and shape-checks it.

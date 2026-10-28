@@ -47,6 +47,7 @@ import {
 } from "./ai-gateway";
 import { AgentGadgetInfo, AgentHooks, SeedBindingInfo, agentCodeChangeShape, alwaysAvailableResources, formatMissingBlueprintBindings, runAgent, summarizeArgs, type AgentStepChange, type AiChatMessageBodyWithModelData, type ChatHistory, type WorktreeTurnAccess, GIT_BINDING_NAME } from "./agent";
 import { WorktreeSessionImpl } from "./worktree-session";
+import { publicBasePath, publicPath } from "./public-path";
 import { GitImpl } from "./git-binding";
 import { GadgetExportsImpl } from "./exports-session";
 import { scanWorkpieceForGrep, type GrepScan } from "./grep";
@@ -10535,7 +10536,7 @@ export class OverseerDurableObject extends DurableObject<Cloudflare.Env> {
       );
     }
 
-    return { accepted: true, chatPath: `/workspace/${this.ctx.id.toString()}?chat=${chatId}` };
+    return { accepted: true, chatPath: publicPath(this.env, `/workspace/${this.ctx.id.toString()}?chat=${chatId}`) };
   }
 
   /**
@@ -12331,7 +12332,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
         description: record.metadata.description,
         version: record.metadata.version,
         codeVersionDate: await this.#blueprintCodeDate(record),
-        screenshotUrl: blueprintScreenshotUrl(record.id, record.metadata),
+        screenshotUrl: blueprintScreenshotUrl(record.id, record.metadata, publicBasePath(this.impl.env)),
         dirty: record.dirty,
         ...(await this.#hasUnpublishedChanges(record) ? {unpublishedChanges: true} : {}),
       });
@@ -13133,7 +13134,7 @@ class GadgetClientImpl extends RpcTarget implements GadgetClient {
       description: metadata.description,
       version: metadata.version,
       codeVersionDate,
-      screenshotUrl: blueprintScreenshotUrl(id, metadata),
+      screenshotUrl: blueprintScreenshotUrl(id, metadata, publicBasePath(this.impl.env)),
       dirty: record.dirty,
     };
   }
