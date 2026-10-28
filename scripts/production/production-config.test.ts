@@ -447,7 +447,7 @@ test("one origin: a demo district answers /ai itself, linking to Northfield, and
     assert.equal(config.name, before.name);
     assert.deepEqual(config.routes, before.routes);
     assert.deepEqual(config.assets?.run_worker_first,
-        ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/ai", "/ai/*"]);
+        ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone", "/ai", "/ai/*"]);
     assert.deepEqual(config.vars, {
       LTI_TOOL_ORIGIN: `https://${slug}.educateos.io`,
       AI_DEMO_URL,
