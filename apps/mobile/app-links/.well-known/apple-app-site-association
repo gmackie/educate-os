@@ -17,6 +17,10 @@
           },
           {
             "/": "/pair-phone"
+          },
+          {
+            "/": "/j",
+            "comment": "One-origin pairing QR: /j#o=<school origin>&r=<room>&s=<secret>"
           }
         ]
       }

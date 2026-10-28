@@ -6,6 +6,8 @@ Public callback and QR pairing host: https://mobile.educateos.io, owned by accou
 - `/.well-known/apple-app-site-association`: real Apple team/bundle identity and exact app paths.
 - `/pair`: create a two-minute computer pairing QR. Use the computer's existing Workshop login.
 - `/pair-phone` and `/enroll`: HTTPS links open the app, with a custom-scheme button fallback.
+- `/j`: the one-origin pairing QR (`/j#o=<school origin>&r=<room>&s=<secret>`, SCHO-262). The room
+  lives on the school's own `/api/pair/*`; this host only opens the app (or says how to get it).
 - `/oauthredirect`: ordinary app callback fallback, or ciphertext delivery for an approved pairing.
 - `/healthz`: liveness.
 

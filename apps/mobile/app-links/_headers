@@ -17,3 +17,7 @@
 /enroll
   Cache-Control: no-store
   Content-Security-Policy: default-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'
+
+/j
+  Cache-Control: no-store
+  Content-Security-Policy: default-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'
