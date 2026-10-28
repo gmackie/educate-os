@@ -44,10 +44,10 @@
     // Where a Clever user in no district goes: a teacher who authorized the app themselves, as
     // every sandbox demo login is. Clever names no district for them to route by.
     "CLEVER_LAUNCH_UNAFFILIATED": "northfield.educateos.io",
-    // ADMIN_URL (SCHO-263) is deliberately not set yet. Setting it to "https://admin.educateos.io/"
-    // answers /app and /app/* with a 302 there, except the guided install at /app/install. Set it
-    // only after the hosted admin is live and the import has run
-    // (docs/educateos/runbooks/admin-hosted.md).
+    // The hosted admin (SCHO-263, docs/educateos/runbooks/admin-hosted.md step 8): /app and /app/*
+    // answer with a 302 there, except the guided install at /app/install. Remove it to move the
+    // console back here.
+    "ADMIN_URL": "https://admin.educateos.io/",
     // The release keys the guided install verifies every release against before installing it
     // (docs/educateos/control-plane.md, "Release keys"). Public halves only.
     "RELEASE_TRUST": {"root": {"threshold": 1, "keys": [{"keyId": "ed25519-ZcqIp-xFaMyAdLm9A_VLfM9gzi-04hir2JmHXqornqc", "publicKey": "mUuoDdWb6ERTjC_o3SI4hYf6pdb7tElPlkoVqPxx24k"}]}, "keySetVersion": 0, "keys": [{"keyId": "ed25519-Y5ayv_OFgjE5j_YaqCuiuNvx-H7_d6AVfSjTnQlIc58", "publicKey": "LVFy9O5qtmgvCGs0uhfjF9Q3aJZ4cQhrYYyouuF6YKg"}]}
