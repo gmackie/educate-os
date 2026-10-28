@@ -100,6 +100,10 @@ const EXPECTED: Record<string, ExpectedArea> = {
     forwarded: ["EDUCATEOS_ADMIN_API", "EDUCATEOS_UI_BASE"],
     injected: ["NODE_ENV"],
   },
+  // The operations admin (SCHO-263): its SPA build sets NODE_ENV before importing Vite, as above.
+  "packages/educateos-admin": {
+    injected: ["NODE_ENV"],
+  },
   "packages/educateos-student-ui": {
     forwarded: ["VITE_CF_ACCESS_MODE", "VITE_EDUCATEOS_AI_HELP"],
     injected: ["NODE_ENV"],
