@@ -43,6 +43,8 @@ export interface DistrictSettings {
   cleverDistrictToken?: string | undefined;
   /** `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY`, a JSON service-account key with district-authorized DWD. */
   classroomServiceAccountKey?: string | undefined;
+  /** `DEVICE_TOKEN_SECRET`, the key device access tokens are MACed with (SCHO-261). Without it no device signs in. */
+  deviceTokenSecret?: string | undefined;
 }
 
 /** What a district reaches outside its storage. */
@@ -147,6 +149,8 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       ? {}
       : { mail: cloudflareEmailSender(seams.sendEmail, { from: config.email.from, fromName: config.email.fromName }) }),
     ...(config.email?.appUrl === undefined ? {} : { appUrl: config.email.appUrl }),
+    // Devices (SCHO-261)
+    ...(settings.deviceTokenSecret === undefined ? {} : { deviceTokenSecret: settings.deviceTokenSecret }),
   });
 
   const directory = new AcademicDirectory({ store: stores.directory, authority, authorizer: app.engine });

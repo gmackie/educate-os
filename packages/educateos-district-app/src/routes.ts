@@ -2,6 +2,8 @@
 // The server validates requests with these schemas and the typed client (`@educateos/api-client`)
 // is written against the same table, so the two cannot drift.
 import { z } from "zod";
+// Devices (SCHO-261)
+import { DeviceId, DevicePlatform, DeviceRevocationReason, DeviceStatus } from "./devices.ts";
 import {
   AcademicTerm,
   ActivityDefinitionId,
@@ -724,6 +726,29 @@ export const calendarFeedPath = (token: string): `/api/calendar/${string}.ics` =
 export const PreferencesBody = z.strictObject({ email: EmailPreferences, hasEmailAddress: z.boolean(), emailEnabled: z.boolean() });
 /** Email preferences in a response. */
 export type PreferencesBody = z.infer<typeof PreferencesBody>;
+
+// Devices (SCHO-261)
+/**
+ * One of a person's signed-in phones, as Your devices lists it. Never its key, its push token or
+ * its refresh tokens.
+ */
+export const DeviceBody = z.strictObject({
+  id: DeviceId,
+  label: z.string(),
+  platform: DevicePlatform,
+  model: z.string(),
+  appVersion: z.string(),
+  createdAt: z.iso.datetime(),
+  lastSeenAt: z.iso.datetime(),
+  lastCountry: z.string().nullable(),
+  /** Whether the device registered for push notifications. */
+  push: z.boolean(),
+  status: DeviceStatus,
+  revokedAt: z.iso.datetime().nullable(),
+  revokedReason: DeviceRevocationReason.nullable(),
+});
+/** A device in a response. */
+export type DeviceBody = z.infer<typeof DeviceBody>;
 
 /** A guardian's digest for the coming week, as it would be emailed. */
 export const DigestPreviewBody = z.strictObject({
@@ -1511,6 +1536,21 @@ export const ROUTES = {
     method: "POST", path: "/api/me/preferences", surface: "me",
     body: z.strictObject({ email: EmailPreferences.partial() }).refine((body) => Object.keys(body.email).length > 0, "change at least one preference"),
     response: PreferencesBody,
+  }),
+  // Devices (SCHO-261): Your devices. Reachable from a phone too, as /api/m/me/devices.
+  "me.devices": route({
+    method: "GET", path: "/api/me/devices", surface: "me",
+    /** The caller's devices, newest first, revoked ones included. */
+    response: z.strictObject({ devices: z.array(DeviceBody) }),
+  }),
+  "me.revokeDevice": route({
+    method: "POST", path: "/api/me/devices/:deviceId/revoke", surface: "me",
+    params: params({ deviceId: DeviceId }), body: NoBody, response: DeviceBody,
+  }),
+  "me.revokeAllDevices": route({
+    method: "POST", path: "/api/me/devices/revoke-all", surface: "me", body: NoBody,
+    /** Sign out everywhere: how many active devices were signed out. */
+    response: z.strictObject({ revoked: z.int().nonnegative() }),
   }),
   "admin.previewDigest": route({
     method: "GET", path: "/api/admin/guardians/:guardianPrincipalId/digest-preview", surface: "admin",

@@ -51,6 +51,9 @@ import { DiscussionService, studentPostView, type DiscussionScreening } from "@e
 // Quizzes (SCHO-191)
 import { QuizService } from "@educateos/quizzes";
 import { quizGrading } from "./quizzes.ts";
+// Devices (SCHO-261)
+import { DeviceCredentials, isDeviceApiPath, serveDeviceApi, type DeviceRecord } from "./devices.ts";
+import type { DeviceBody } from "./routes.ts";
 
 /**
  * Verifies a request's credential (a bearer token, a Cloudflare Access assertion) and returns the
@@ -161,6 +164,13 @@ export interface DistrictAppOptions {
    * unscreened, and teachers moderate them after (or approve each first, under pre-moderation).
    */
   discussionScreening?: DiscussionScreening;
+
+  // Devices (SCHO-261)
+  /**
+   * `DEVICE_TOKEN_SECRET`: the key the district MACs device access tokens with. Without it (or with
+   * one shorter than 32 characters) device sign-in is off, and `/api/m/*` answers 503.
+   */
+  deviceTokenSecret?: string;
 }
 
 /** Builds a roster source for a configured `rostering`, or says why there is none. */
@@ -217,6 +227,11 @@ export interface DistrictApp {
   readonly communication: CommunicationJobs;
   /** The roster sync job (SCHO-203). Not on the `/api` surface. */
   readonly rostering: RosterJobs;
+  /**
+   * The device token service (SCHO-261): device registration for the pairing relay and the browser
+   * sign-in path, and revocation for administrators and operators. Not on the `/api` surface itself.
+   */
+  readonly devices: DeviceCredentials;
 }
 
 /** The default `DistrictAppOptions.authority`: the OneRoster roster owns every directory record type. */
@@ -326,6 +341,15 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     ? undefined
     : new ArtifactsGitBackend({ plan: options.projects.plan, ledger: new InMemoryCredentialLedger() });
   const resolverFor = options.resolverFor ?? createDirectoryPrincipalResolver;
+  // Devices (SCHO-261)
+  const devices = new DeviceCredentials({
+    districtId,
+    store: stores.devices,
+    secret: options.deviceTokenSecret,
+    now,
+    isActivePrincipal: async (principalId) =>
+      (await stores.directory.load()).snapshot.principals.some((p) => p.id === principalId && p.status === "active"),
+  });
 
   /** The roster sync the head configuration revision sets up: its provider, settings and source, or why it cannot run. */
   async function rosterSyncSetup(): Promise<{ provider: string; settings?: RosterSyncSettings; source?: oneroster.RosterSource; reason?: string }> {
@@ -1169,6 +1193,9 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         grantsRevoked = (await services.workspaces.reconcileCourseGrants(ctx.caller)).revoked;
       } else {
         ({ principal, grantsRevoked } = await transitionPrincipal(services, ctx.caller, params.principalId, body.status));
+        // Devices (SCHO-261): leaving signs out their phones too. A roster sync that deactivates
+        // someone does not pass here; their devices are revoked on their next request instead.
+        await devices.revokePrincipal(params.principalId, { by: ctx.subject.principalId, reason: "principal-inactive" });
       }
       return { principal: authoringPrincipal((await stores.directory.load()).snapshot, principal, now()), grantsRevoked };
     },
@@ -1222,6 +1249,17 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "me.markNotificationsRead": (ctx, { body }) => communicationFor(ctx.decider).markRead(ctx.caller, body),
     "me.preferences": (ctx) => communicationFor(ctx.decider).preferences(ctx.caller),
     "me.updatePreferences": (ctx, { body }) => communicationFor(ctx.decider).setPreferences(ctx.caller, body.email),
+    // Devices (SCHO-261): a person's own devices only. Another's is not-found, as if it did not exist.
+    "me.devices": async (ctx) => ({ devices: (await devices.store.list(ctx.subject.principalId)).map(deviceBody) }),
+    "me.revokeDevice": async (ctx, { params }) => {
+      const device = await devices.store.get(params.deviceId);
+      if (device === undefined || device.principalId !== ctx.subject.principalId) throw new EducateOsError("not-found", "No such device.");
+      await devices.revoke(device.id, { by: ctx.subject.principalId, reason: "signed-out" });
+      return deviceBody((await devices.store.get(device.id))!);
+    },
+    "me.revokeAllDevices": async (ctx) => ({
+      revoked: await devices.revokePrincipal(ctx.subject.principalId, { by: ctx.subject.principalId, reason: "signed-out-everywhere" }),
+    }),
     "admin.previewDigest": async (ctx, { params }) => {
       // The preview shows what a guardian would be told about a child, so it is the decision of the
       // one who decides guardian relationships: a district administrator.
@@ -1376,6 +1414,16 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     return jsonResponse(await handler(ctx, input), spec.status ?? 200, correlationId);
   }
 
+  async function serveAs(principal: VerifiedPrincipal, request: Request): Promise<Response> {
+    try {
+      return await respond(request, (correlationId) => handle(request, correlationId, principal));
+    } finally {
+      // A request refused before its body is read still holds the body open, and one that came
+      // over RPC (as the connector's does) keeps its stream, and the caller, waiting until it closes.
+      if (!request.bodyUsed) await request.body?.cancel();
+    }
+  }
+
   /** Runs `serve` under a fresh correlation ID, answering whatever it throws as an error response. */
   async function respond(request: Request, serve: (correlationId: string) => Promise<Response>): Promise<Response> {
     const correlationId = crypto.randomUUID();
@@ -1432,18 +1480,15 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         );
       },
     },
+    devices,
     fetch(request) {
+      // Devices (SCHO-261): the device API answers only device credentials, never the request's own sign-in.
+      if (isDeviceApiPath(new URL(request.url).pathname)) {
+        return respond(request, () => serveDeviceApi(request, { credentials: devices, serveAs }));
+      }
       return respond(request, async (correlationId) => await serveCalendarFeed(request, correlationId) ?? await handle(request, correlationId));
     },
-    async serveAs(principal, request) {
-      try {
-        return await respond(request, (correlationId) => handle(request, correlationId, principal));
-      } finally {
-        // A request refused before its body is read still holds the body open, and one that came
-        // over RPC (as the connector's does) keeps its stream, and the caller, waiting until it closes.
-        if (!request.bodyUsed) await request.body?.cancel();
-      }
-    },
+    serveAs,
   };
 }
 
@@ -1464,4 +1509,22 @@ function authoringPrincipalById(snapshot: DistrictDirectorySnapshot, principalId
 async function assignmentView(assessment: AssessmentService, caller: Caller, assignmentId: AssignmentId): Promise<AssignmentViewBody> {
   const { assignment, starterMaterials } = await assessment.getAssignment(caller, assignmentId);
   return { assignment, starterMaterials: starterMaterials.map(({ content: _stored, ...material }) => material) };
+}
+
+/** A device as Your devices shows it (SCHO-261): never its key or push token. */
+function deviceBody(device: DeviceRecord): DeviceBody {
+  return {
+    id: device.id,
+    label: device.label,
+    platform: device.platform,
+    model: device.model,
+    appVersion: device.appVersion,
+    createdAt: device.createdAt,
+    lastSeenAt: device.lastSeenAt,
+    lastCountry: device.lastCountry,
+    push: device.pushToken !== null,
+    status: device.status,
+    revokedAt: device.revokedAt,
+    revokedReason: device.revokedReason,
+  };
 }

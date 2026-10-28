@@ -108,6 +108,19 @@ import {
 import { QUIZ_CONFLICT, Quiz, QuizAttempt, QuizBook, QuizRelease, type QuizBookWrite, type QuizStorage } from "@educateos/quizzes";
 import { FundingAllocationRevision } from "./routes.ts";
 import { MAX_ROSTER_SYNC_RUNS, RosterSyncRecord } from "./stores.ts";
+// Devices (SCHO-261)
+import {
+  DeviceId,
+  DevicePlatform,
+  DevicePublicJwk,
+  DeviceRevocationReason,
+  DeviceStatus,
+  type DeviceRecord,
+  type DeviceRevocation,
+  type DeviceStore,
+  type RefreshTokenRecord,
+  type RotationOutcome,
+} from "./devices.ts";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, RosterSyncStore, WorkshopUserLinkStore } from "./stores.ts";
 // Communication (SCHO-189)
 import {
@@ -184,6 +197,10 @@ export const DISTRICT_TABLES = {
   quizzes: "educateos_quizzes",
   quizAttempts: "educateos_quiz_attempts",
   quizReleases: "educateos_quiz_releases",
+  // Devices (SCHO-261)
+  devices: "educateos_devices",
+  deviceRefreshTokens: "educateos_device_refresh_tokens",
+  deviceProofs: "educateos_device_proofs",
 } as const;
 
 /** Thrown when a stored row cannot be read. Nothing is decided on state that cannot be read. */
@@ -1150,6 +1167,8 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     discussions: new DurableObjectDiscussionStorage(storage),
     // Quizzes (SCHO-191)
     quizzes: new DurableObjectQuizStorage(storage),
+    // Devices (SCHO-261)
+    devices: new DurableObjectDeviceStore(storage),
   };
 }
 
@@ -1709,4 +1728,186 @@ export class DurableObjectQuizStorage implements QuizStorage {
     if (!parsed.success) throw new DistrictStoreCorruptionError(`${what} do not match their schema`);
     return parsed.data;
   }
+}
+
+// Devices (SCHO-261)
+
+/** A device row as stored; columns are checked as they are read. */
+const StoredDevice = z.object({
+  id: DeviceId,
+  principal_id: z.string(),
+  label: z.string(),
+  platform: DevicePlatform,
+  model: z.string(),
+  app_version: z.string(),
+  key_thumbprint: z.string(),
+  public_jwk: z.string(),
+  created_at: z.string(),
+  last_seen_at: z.string(),
+  last_country: z.string().nullable(),
+  push_token: z.string().nullable(),
+  status: DeviceStatus,
+  revoked_at: z.string().nullable(),
+  revoked_by: z.string().nullable(),
+  revoked_reason: DeviceRevocationReason.nullable(),
+});
+
+function deviceFromRow(row: Record<string, unknown>): DeviceRecord {
+  const parsed = StoredDevice.safeParse(row);
+  if (!parsed.success) throw new DistrictStoreCorruptionError("a device does not match its schema");
+  const d = parsed.data;
+  return {
+    id: d.id,
+    principalId: d.principal_id as PrincipalId,
+    label: d.label,
+    platform: d.platform,
+    model: d.model,
+    appVersion: d.app_version,
+    keyThumbprint: d.key_thumbprint,
+    publicJwk: parseStored(DevicePublicJwk, d.public_jwk, "a device key"),
+    createdAt: d.created_at,
+    lastSeenAt: d.last_seen_at,
+    lastCountry: d.last_country,
+    pushToken: d.push_token,
+    status: d.status,
+    revokedAt: d.revoked_at,
+    revokedBy: d.revoked_by,
+    revokedReason: d.revoked_reason,
+  };
+}
+
+/**
+ * A {@link DeviceStore} in a Durable Object's SQLite: one row per device; one row per refresh token,
+ * by its hash, kept after use so a second use is recognised; and the proof IDs each device used
+ * within the last minute, so a proof is accepted once. New tables, so they have no legacy twins.
+ */
+export class DurableObjectDeviceStore implements DeviceStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    const t = DISTRICT_TABLES;
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${t.devices} (
+        id TEXT PRIMARY KEY, principal_id TEXT NOT NULL, label TEXT NOT NULL, platform TEXT NOT NULL, model TEXT NOT NULL,
+        app_version TEXT NOT NULL, key_thumbprint TEXT NOT NULL, public_jwk TEXT NOT NULL, created_at TEXT NOT NULL,
+        last_seen_at TEXT NOT NULL, last_country TEXT, push_token TEXT,
+        status TEXT NOT NULL CHECK (status IN ('active', 'revoked')), revoked_at TEXT, revoked_by TEXT, revoked_reason TEXT
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${t.devices}_principal ON ${t.devices} (principal_id)`,
+      // One active device per key: a phone that pairs again makes a new key.
+      `CREATE UNIQUE INDEX IF NOT EXISTS ${t.devices}_active_key ON ${t.devices} (key_thumbprint) WHERE status = 'active'`,
+      `CREATE TABLE IF NOT EXISTS ${t.deviceRefreshTokens} (
+        token_hash TEXT PRIMARY KEY, device_id TEXT NOT NULL, family TEXT NOT NULL, issued_at TEXT NOT NULL, used_at TEXT, expires_at TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${t.deviceRefreshTokens}_device ON ${t.deviceRefreshTokens} (device_id)`,
+      `CREATE TABLE IF NOT EXISTS ${t.deviceProofs} (device_id TEXT NOT NULL, jti TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY (device_id, jti))`,
+    ], []);
+  }
+
+  async register(device: DeviceRecord, refresh: RefreshTokenRecord): Promise<void> {
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      const [existing] = sql.exec(`SELECT id FROM ${t.devices} WHERE id = ? OR (key_thumbprint = ? AND status = 'active')`, device.id, device.keyThumbprint).toArray();
+      if (existing !== undefined) throw new EducateOsError("conflict", "That device key is already registered.");
+      sql.exec(
+        `INSERT INTO ${t.devices} (id, principal_id, label, platform, model, app_version, key_thumbprint, public_jwk, created_at, last_seen_at,
+           last_country, push_token, status, revoked_at, revoked_by, revoked_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        device.id, device.principalId, device.label, device.platform, device.model, device.appVersion, device.keyThumbprint,
+        JSON.stringify(device.publicJwk), device.createdAt, device.lastSeenAt, device.lastCountry, device.pushToken, device.status,
+        device.revokedAt, device.revokedBy, device.revokedReason,
+      );
+      this.#insertRefresh(sql, refresh);
+    });
+  }
+
+  async get(id: DeviceId): Promise<DeviceRecord | undefined> {
+    const [row] = this.#tables.transaction((sql) => sql.exec(`SELECT * FROM ${DISTRICT_TABLES.devices} WHERE id = ?`, id).toArray());
+    return row === undefined ? undefined : deviceFromRow(row);
+  }
+
+  async list(principalId?: PrincipalId): Promise<DeviceRecord[]> {
+    const t = DISTRICT_TABLES;
+    const rows = this.#tables.transaction((sql) =>
+      principalId === undefined
+        ? sql.exec(`SELECT * FROM ${t.devices} ORDER BY rowid DESC`).toArray()
+        : sql.exec(`SELECT * FROM ${t.devices} WHERE principal_id = ? ORDER BY rowid DESC`, principalId).toArray()
+    );
+    return rows.map(deviceFromRow);
+  }
+
+  async touch(id: DeviceId, at: string, country: string | null): Promise<void> {
+    this.#tables.transaction((sql) =>
+      sql.exec(`UPDATE ${DISTRICT_TABLES.devices} SET last_seen_at = ?, last_country = COALESCE(?, last_country) WHERE id = ?`, at, country, id)
+    );
+  }
+
+  async revoke(ids: readonly DeviceId[], at: string, revocation: DeviceRevocation): Promise<DeviceId[]> {
+    const t = DISTRICT_TABLES;
+    return this.#tables.transaction((sql) => {
+      const revoked: DeviceId[] = [];
+      for (const id of ids) {
+        const [row] = sql.exec(`SELECT status FROM ${t.devices} WHERE id = ?`, id).toArray();
+        if (row?.status !== "active") continue;
+        sql.exec(
+          `UPDATE ${t.devices} SET status = 'revoked', revoked_at = ?, revoked_by = ?, revoked_reason = ? WHERE id = ?`,
+          at, revocation.by, revocation.reason, id,
+        );
+        revoked.push(id);
+      }
+      return revoked;
+    });
+  }
+
+  async findRefreshToken(tokenHash: string): Promise<RefreshTokenRecord | undefined> {
+    const [row] = this.#tables.transaction((sql) => sql.exec(`SELECT * FROM ${DISTRICT_TABLES.deviceRefreshTokens} WHERE token_hash = ?`, tokenHash).toArray());
+    return row === undefined ? undefined : refreshFromRow(row);
+  }
+
+  async rotateRefreshToken(tokenHash: string, next: RefreshTokenRecord, at: string): Promise<RotationOutcome> {
+    const t = DISTRICT_TABLES;
+    return this.#tables.transaction((sql): RotationOutcome => {
+      const [row] = sql.exec(`SELECT used_at FROM ${t.deviceRefreshTokens} WHERE token_hash = ?`, tokenHash).toArray();
+      if (row === undefined) return "missing";
+      if (row.used_at !== null) return "reused";
+      sql.exec(`UPDATE ${t.deviceRefreshTokens} SET used_at = ? WHERE token_hash = ?`, at, tokenHash);
+      // Tokens are kept, spent or a revoked device's, so a later use is recognised, until they expire.
+      sql.exec(`DELETE FROM ${t.deviceRefreshTokens} WHERE expires_at < ?`, at);
+      this.#insertRefresh(sql, next);
+      return "rotated";
+    });
+  }
+
+  async claimProofId(deviceId: DeviceId, jti: string, expiresAtMs: number, nowMs: number): Promise<boolean> {
+    const t = DISTRICT_TABLES;
+    return this.#tables.transaction((sql) => {
+      sql.exec(`DELETE FROM ${t.deviceProofs} WHERE expires_at < ?`, nowMs);
+      const [row] = sql.exec(`SELECT 1 AS seen FROM ${t.deviceProofs} WHERE device_id = ? AND jti = ?`, deviceId, jti).toArray();
+      if (row !== undefined) return false;
+      sql.exec(`INSERT INTO ${t.deviceProofs} (device_id, jti, expires_at) VALUES (?, ?, ?)`, deviceId, jti, expiresAtMs);
+      return true;
+    });
+  }
+
+  #insertRefresh(sql: DistrictSqlStorage["sql"], record: RefreshTokenRecord): void {
+    sql.exec(
+      `INSERT INTO ${DISTRICT_TABLES.deviceRefreshTokens} (token_hash, device_id, family, issued_at, used_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)`,
+      record.tokenHash, record.deviceId, record.family, record.issuedAt, record.usedAt, record.expiresAt,
+    );
+  }
+}
+
+const StoredRefreshToken = z.object({
+  token_hash: z.string(),
+  device_id: DeviceId,
+  family: z.string(),
+  issued_at: z.string(),
+  used_at: z.string().nullable(),
+  expires_at: z.string(),
+});
+
+function refreshFromRow(row: Record<string, unknown>): RefreshTokenRecord {
+  const parsed = StoredRefreshToken.safeParse(row);
+  if (!parsed.success) throw new DistrictStoreCorruptionError("a refresh token does not match its schema");
+  const r = parsed.data;
+  return { tokenHash: r.token_hash, deviceId: r.device_id, family: r.family, issuedAt: r.issued_at, usedAt: r.used_at, expiresAt: r.expires_at };
 }
