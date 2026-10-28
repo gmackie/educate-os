@@ -28,6 +28,13 @@ export default defineGadgetsWorker({
     // the static backend binding is checked in.
     WORKSHOP_BACKEND: bindings.worker({ worker: "workshop-backend" }),
     ASSETS: bindings.assets(),
+    // One origin per district (ADR-0014): a deployment that serves a district at the router's
+    // hostname adds the district Worker as `DISTRICT`, sets the assets' `run_worker_first` to
+    // `true` (the Workshop's assets move under /ai, and would otherwise answer `/` and shadow the
+    // district's `/assets/*`), and may set `AI_ENABLED: "false"` with `AI_DEMO_URL` for a district
+    // with no Workshop. No checked-in config does yet; the production cutover adds it. For example:
+    //
+    //   DISTRICT: bindings.worker({ worker: "educateos-district-worker" }),
   },
 
   observability: OBSERVABILITY,

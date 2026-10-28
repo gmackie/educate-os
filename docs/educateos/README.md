@@ -132,6 +132,7 @@ Northfield and Riverbend) landing on a different principal in each. `EDUCATEOS_H
 11. [CASE imports stay strict; publisher deviations go through named adapters](adr/0011-case-publisher-adapters.md)
 12. [Guardians read through confirmed relationships, and roles can be dated](adr/0012-guardians-and-dated-roles.md)
 13. [EducateOS: open core with an optional paid control plane at educateos.io](adr/0013-educateos-open-core-control-plane.md)
+14. [One origin per district](adr/0014-one-origin-per-district.md)
 
 ## Rules every EducateOS change follows
 

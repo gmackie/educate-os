@@ -20,6 +20,7 @@ import type { AdmittedSubjectRequest, GuardDirectory, GuardSubject, GuardSubject
 import type { SchoolToolService } from "@educateos/gatekeeper";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
 import { configuredDistrictId } from "./district.ts";
+import { SCHOOL_MANIFEST_PATH, serveSchoolManifest } from "./school-manifest.ts";
 
 export { DistrictObject } from "./district-object.ts";
 
@@ -120,6 +121,10 @@ export default {
   async fetch(request, env, ctx): Promise<Response> {
     const { pathname } = new URL(request.url);
     if (pathname === "/healthz") return new Response("ok", { headers: { "content-type": "text/plain" } });
+    // The public school manifest (ADR-0014): no sign-in, so a deployment exempts it from Access too.
+    if (pathname === SCHOOL_MANIFEST_PATH) {
+      return serveSchoolManifest(request, { districtConfig: env.DISTRICT_CONFIG, settings: env.SCHOOL_MANIFEST, versionTag: env.CF_VERSION_METADATA?.tag });
+    }
     if (pathname.startsWith("/lti/")) return districtObject(env, ctx.exports).fetch(request);
     return serveApi(request, env, ctx.exports);
   },
