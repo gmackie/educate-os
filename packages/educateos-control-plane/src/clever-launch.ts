@@ -80,6 +80,8 @@ const TokenResponse = z.object({ access_token: z.string().min(1) });
 const MeResponse = z.object({ data: z.object({ id: CleverId, district: CleverId.optional() }) });
 // A v3.0 user record names its district under each of its roles (`roles.teacher.district`), not at
 // the top. One user belongs to one district, so a record whose roles disagree is refused.
+// The district record itself, as /users/{id}/district answers it.
+const DistrictResponse = z.object({ data: z.object({ id: CleverId }) });
 const UserResponse = z.object({
   data: z.object({ roles: z.record(z.string(), z.object({ district: CleverId }).partial()) }),
 }).transform(({ data }, ctx) => {
@@ -108,7 +110,7 @@ export interface CleverReply {
 }
 
 /**
- * Describes a JSON value by field names and types alone, two levels deep: `{data:{district:string(24)}}`.
+ * Describes a JSON value by field names and types alone, four levels deep: `{data:{district:string(24)}}`.
  * Strings show only their length and arrays their count, so no value Clever sent is logged. Field
  * names that aren't plain words are dropped, in case a reply is keyed by IDs.
  */
@@ -117,7 +119,7 @@ export function shapeOf(value: unknown, depth = 0): string {
   if (Array.isArray(value)) return `array(${value.length})`;
   if (typeof value === "string") return `string(${value.length})`;
   if (typeof value !== "object") return typeof value;
-  if (depth >= 2) return "object";
+  if (depth >= 4) return "object";
   const fields = Object.entries(value).filter(([key]) => /^[A-Za-z_]{1,32}$/.test(key)).slice(0, 20);
   return `{${fields.map(([key, field]) => `${key}:${shapeOf(field, depth + 1)}`).join(",")}}`;
 }
@@ -183,7 +185,7 @@ async function readJson<T>(response: Response, schema: z.ZodType<T>): Promise<Cl
   try {
     const body: unknown = await response.json();
     const parsed = schema.safeParse(body);
-    return parsed.success ? { ok: true, value: parsed.data } : { ok: false, reply: { cleverStatus, cleverShape: shapeOf(body).slice(0, 500) } };
+    return parsed.success ? { ok: true, value: parsed.data } : { ok: false, reply: { cleverStatus, cleverShape: shapeOf(body).slice(0, 1000) } };
   } catch {
     return { ok: false, reply: { cleverStatus } };
   }
@@ -226,14 +228,20 @@ async function readClever<T>(url: string, token: string, deps: CleverLaunchDeps,
   }
 }
 
-// Reads the signed-in user's Clever district with the token, the token's only use: from /me, or
-// from the user's own record when /me leaves it out.
+// Reads the signed-in user's Clever district with the token, the token's only use: from /me, else
+// from the roles in the user's own record, else from the user's district record. A sandbox demo
+// login's record names no district under its roles, so the district record is asked last.
 async function districtOf(token: string, deps: CleverLaunchDeps): Promise<CleverResult<string>> {
   const me = await readClever(CLEVER_ME_URL, token, deps, MeResponse);
   if (!me.ok) return me;
   if (me.value.data.district !== undefined) return { ok: true, value: me.value.data.district };
-  const user = await readClever(`${CLEVER_USERS_URL}/${me.value.data.id}`, token, deps, UserResponse);
-  return user;
+  const userUrl = `${CLEVER_USERS_URL}/${me.value.data.id}`;
+  const user = await readClever(userUrl, token, deps, UserResponse);
+  if (user.ok) return user;
+  // Kept for the record: this reply's shape is what tells the next fix where the district went.
+  console.info("clever user record names no district", { event: "clever.launch.user-record", ...user.reply });
+  const district = await readClever(`${userUrl}/district`, token, deps, DistrictResponse);
+  return district.ok ? { ok: true, value: district.value.data.id } : district;
 }
 
 /**
