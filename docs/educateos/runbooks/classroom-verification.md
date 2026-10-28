@@ -292,3 +292,51 @@ grade visibility, and multiple persistent live gadget presentation styles. They 
 - Portable gadget/slide exports: the current custom gadgets expose no verified export workflow.
 
 Keep SCHO-255 open. Do not describe this evidence as full Classroom/Plus surface-area acceptance.
+
+### Assignment Formats Lab — 2026-10-28
+
+Saved gadget: [Classroom — Assignment Formats Lab](https://schoolos.gmac.io/workspace/6803f77edf00585d77d65d58c46267e3f09fb0905131571eaf6658e299532c74?w=13).
+Reproducible source and build instructions are in `../examples/classroom-formats-lab/`.
+The code-mode conversation authorized and wired exact teacher course bindings `SCIENCE`
+(895811762849) and `ALGEBRA` (896141390025), then performed six live resource reads. Final
+files were completed and accepted through Workshop's normal Code editor.
+
+Both classes now provide all four requested customer presentation formats:
+
+| Format | Verified behavior |
+| --- | --- |
+| Worksheet | Live published task, points, success criteria, available Science rubric, response spaces; two-page printable PDF per class |
+| Slide deck | Live learning goal/task/criteria, Science investigation steps or Algebra worked example/practice, discussion prompt, source references; next/previous and arrow keys |
+| Practice quiz | Three class-specific reasoning questions; correct and incorrect explanations, unanswered guard, reset; local only, no saved responses or grade passback |
+| Discussion | Agenda, rotating roles, class-specific prompt, teacher notes, timer start/pause/reset |
+
+Real browser checks passed for both classes: all quiz answers correct (3/3), incorrect-answer
+feedback, reset clearing inputs, timer countdown/pause/reset, expanded notes, slide buttons and
+keyboard navigation, class switching, saved class/format after full reload and persistent CSS.
+Shared preview at 519px also rendered the styled lab. This is teacher-authorized presentation;
+it does not establish student-scoped gadget sharing.
+
+Workshop's normal Export Gadget menu offers six class-specific formats. Actual downloaded
+PowerPoint files passed ZIP CRC, required OPC/presentation XML and per-slide XML validation:
+Science 9 slides (19,861 bytes), Algebra 7 slides (16,903 bytes). PDF deck exports contained 9 and
+7 pages respectively. Final worksheet PDFs each contain 2 pages, with response areas beginning
+on a separate page. PDF signatures, readable assignment text/source IDs, and absence of learner
+names/grade records were checked. Exports fetch the live assignment before capture; browser PDF
+uses a top-level awaited load. PowerPoint reuses the bundled renderer with its existing quotas.
+
+The initial export appeared to stall because Chrome's native Save dialog was awaiting a file
+location. Automated download verification used the platform's supported blob fallback by disabling
+the optional File System Access API in that test page only. Native Save-dialog completion remains
+an operator step; this does not establish that path's automated acceptance.
+
+The source boundary check covers published projection, rejected draft, rejected pending and
+unknown class. Draft/pending assignments are rejected before rubric reads. No roster or submission
+methods are called. A live long-conversation preview returned opaque internal errors even with a
+minimal constant server; opening the saved gadget without `chat=` restored it. This is a recovery
+workaround, not a resolved kernel regression. Preserve this as a remaining recovery gate.
+
+PR176 was approved with exact-head green CI and merged as
+`28cdcc1b53fc51377311acf41903040229804dbf`; it records the earlier assignment lifecycle evidence.
+Production target deployment `083387c4-6dc1-4487-8cfe-c26e34dbecd2` was active for that commit at
+04:53:40 UTC; other targets were still pending when inspected. SCHO-255 remains open for the
+remaining district/student/collaborator authorization, recovery and full Plus/add-on acceptance.
