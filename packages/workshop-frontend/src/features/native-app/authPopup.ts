@@ -5,7 +5,7 @@ export const NATIVE_AUTH_KEY = 'gadgets.nativeAuthPopup'
 const START_PREFIX = '#native-auth='
 // App-owned return endpoint, not an install URL. Other native clients must register their own
 // callback with their shell and domain associations as well as changing this protocol constant.
-const CALLBACK = 'https://os.cloudflare.app/authpopup'
+const CALLBACK = 'https://mobile.educateos.io/authpopup'
 const HEX = /^[0-9a-f]{64}$/
 const LIFETIME = 30 * 60 * 1000
 
