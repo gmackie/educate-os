@@ -66,7 +66,11 @@ describe("sealed ops keys", () => {
     await expect(openPrivateKey(wrongKek, "wks_one", identity.keyId, sealed)).rejects.toBeInstanceOf(KeyEncryptionError);
     await expect(openPrivateKey(kek, "wks_two", identity.keyId, sealed)).rejects.toBeInstanceOf(KeyEncryptionError);
     await expect(openPrivateKey(kek, "wks_one", other.keyId, sealed)).rejects.toBeInstanceOf(KeyEncryptionError);
-    await expect(openPrivateKey(kek, "wks_one", identity.keyId, sealed.replace(/.$/, (c) => (c === "A" ? "B" : "A")))).rejects.toBeInstanceOf(KeyEncryptionError);
+    // Flip a character inside the ciphertext: the last base64url character can carry only padding
+    // bits, so changing it may leave the decoded bytes unchanged.
+    const at = sealed.lastIndexOf(".") + 4;
+    const tampered = sealed.slice(0, at) + (sealed[at] === "A" ? "B" : "A") + sealed.slice(at + 1);
+    await expect(openPrivateKey(kek, "wks_one", identity.keyId, tampered)).rejects.toBeInstanceOf(KeyEncryptionError);
     expect((await openPrivateKey(kek, "wks_one", identity.keyId, sealed)).keyId).toBe(identity.keyId);
   });
 
