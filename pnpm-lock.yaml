@@ -1104,6 +1104,9 @@ importers:
       '@educateos/discussions':
         specifier: workspace:*
         version: link:../educateos-discussions
+      '@educateos/fleet':
+        specifier: workspace:*
+        version: link:../educateos-fleet
       '@educateos/identity':
         specifier: workspace:*
         version: link:../educateos-identity
@@ -1220,6 +1223,9 @@ importers:
       '@educateos/fixtures':
         specifier: workspace:*
         version: link:../educateos-fixtures
+      '@educateos/fleet':
+        specifier: workspace:*
+        version: link:../educateos-fleet
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts

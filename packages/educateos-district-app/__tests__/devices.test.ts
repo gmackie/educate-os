@@ -17,6 +17,9 @@ import {
 import { bootDistrict, expectError, NF, type TestDistrict } from "./support.ts";
 import { read, TestPhone } from "./device-support.ts";
 import { claimRequest, pollRequest, webRequest } from "./pair-support.ts";
+// Operations (SCHO-263)
+import { DirectoryAction, OPS_ROUTES, SigningIdentity, type OpsScope } from "@educateos/fleet/ops";
+import { enrolledKey, opsRequest } from "./ops-support.ts";
 
 const SECRET = "test-device-token-secret-0123456789-abcdef";
 const START = Date.parse("2026-10-28T12:00:00.000Z");
@@ -48,7 +51,7 @@ async function pairedPhone(district: { app: DistrictApp; clock: { now: number } 
 // Each surface lists every route reachable under its prefix and the requests that must each be
 // refused with 401 before any handler runs. The pairing relay's routes (/api/pair) have their own
 // table below, since its phone endpoints answer a bad room secret with 403 or 404 rather than 401.
-// /api/ops (the signed operations API) joins this table when it lands.
+// The signed operations API (/api/ops, SCHO-263) has its own table too, since a wrong scope is a 403.
 // ---------------------------------------------------------------------------------------------
 
 interface BypassRoute {
@@ -276,6 +279,148 @@ describe("every route of the pairing relay", () => {
       });
     }
   }
+});
+
+// ---------------------------------------------------------------------------------------------
+// Generated enforcement for the signed operations API (/api/ops, SCHO-263), also under an Access
+// bypass. Every route in `OPS_ROUTES`, every directory action, and paths no route serves, against
+// every way a request can fail the signature: none reaches a handler, and the refusal carries no
+// district data. A validly signed request for a path no route serves is a 404, after its signature.
+// ---------------------------------------------------------------------------------------------
+
+/** Every ops route with its parameters filled in, and paths outside the table. */
+function opsRoutes(device: string): { method: string; path: string; scope: OpsScope | undefined }[] {
+  const routes = OPS_ROUTES.flatMap((route) => {
+    const fill = (action?: string) => route.path
+      .replace(":principal", NF.amara)
+      .replace(":id", device)
+      .replace(":action", action ?? "");
+    return route.name === "directory.action"
+      ? DirectoryAction.options.map((action) => ({ method: route.method, path: fill(action), scope: route.scope as OpsScope | undefined }))
+      : [{ method: route.method, path: fill(), scope: route.scope as OpsScope | undefined }];
+  });
+  const unmatched = ["/api/ops", "/api/ops/", "/api/ops/nope", `/api/ops/directory/${NF.amara}/delete`, "/api/ops/devices/x/y/revoke"]
+    .map((path) => ({ method: "GET", path, scope: undefined }));
+  return [...routes, ...unmatched, { method: "DELETE", path: "/api/ops/health", scope: undefined }];
+}
+
+interface OpsFixture {
+  district: Awaited<ReturnType<typeof deviceDistrict>>;
+  /** Holds every scope. */
+  full: SigningIdentity;
+  /** Holds only `health`. */
+  healthOnly: SigningIdentity;
+  /** Holds only `releases`. */
+  releasesOnly: SigningIdentity;
+  /** Was enrolled with every scope, then removed. */
+  removed: SigningIdentity;
+  /** Never enrolled. */
+  stranger: SigningIdentity;
+  device: string;
+}
+
+/** The refusals, each with its expected status and reason. `undefined` is "this route's own answer". */
+const OPS_REFUSALS: Record<string, {
+  status: number;
+  reason: string;
+  request(f: OpsFixture, route: { method: string; path: string; scope: OpsScope | undefined }): Promise<Request>;
+}> = {
+  "no signature": { status: 401, reason: "missing-signature", request: async (_f, r) => new Request(`https://district.example${r.path}`, { method: r.method }) },
+  "an Access-style bearer token": {
+    status: 401, reason: "missing-signature",
+    request: async (_f, r) => new Request(`https://district.example${r.path}`, { method: r.method, headers: { authorization: "Bearer anything", "cf-access-jwt-assertion": "x.y.z" } }),
+  },
+  "a key the district never enrolled": { status: 401, reason: "unknown-key", request: (f, r) => opsRequest(f.stranger, f.district.clock, r.method, r.path) },
+  "a removed key": { status: 401, reason: "unknown-key", request: (f, r) => opsRequest(f.removed, f.district.clock, r.method, r.path) },
+  "a bad signature": {
+    status: 401, reason: "bad-signature",
+    request: async (f, r) => {
+      // A real signature, by the enrolled key, over another request.
+      const other = await opsRequest(f.full, f.district.clock, "GET", "/api/ops/health");
+      return opsRequest(f.full, f.district.clock, r.method, r.path, { signature: other.headers.get("educateos-ops-signature")! });
+    },
+  },
+  "a signature from another key under an enrolled key's ID": {
+    status: 401, reason: "bad-signature",
+    request: async (f, r) => {
+      const forged = await opsRequest(f.stranger, f.district.clock, r.method, r.path);
+      return opsRequest(f.full, f.district.clock, r.method, r.path, { signature: forged.headers.get("educateos-ops-signature")! });
+    },
+  },
+  "a stale timestamp": { status: 401, reason: "stale", request: (f, r) => opsRequest(f.full, f.district.clock, r.method, r.path, { at: f.district.clock.now - 61_000 }) },
+  "a timestamp from the future": { status: 401, reason: "stale", request: (f, r) => opsRequest(f.full, f.district.clock, r.method, r.path, { at: f.district.clock.now + 61_000 }) },
+  "a replayed nonce": {
+    status: 401, reason: "replayed",
+    request: async (f, r) => {
+      // The first copy is refused for its scope (so it changes nothing) and spends the nonce.
+      const key = r.scope === "health" ? f.releasesOnly : f.healthOnly;
+      const nonce = `replay-${crypto.randomUUID()}`.replaceAll("-", "_");
+      const first = await read(await f.district.app.fetch(await opsRequest(key, f.district.clock, r.method, r.path, { nonce })));
+      expect([403, 404]).toContain(first.status);
+      return opsRequest(key, f.district.clock, r.method, r.path, { nonce });
+    },
+  },
+  "a key without the route's scope": {
+    status: 403, reason: "scope-denied",
+    request: (f, r) => opsRequest(r.scope === "health" ? f.releasesOnly : f.healthOnly, f.district.clock, r.method, r.path),
+  },
+};
+
+describe("every route of the ops API", () => {
+  let fixture: OpsFixture;
+  beforeAll(async () => {
+    const district = await deviceDistrict();
+    const phone = await pairedPhone(district, NF.amara);
+    const removed = await enrolledKey(district, NF.admin);
+    await district.ok(district.tokenFor(NF.admin), "admin.removeOpsKey", { params: { keyId: removed.keyId } });
+    fixture = {
+      district,
+      full: await enrolledKey(district, NF.admin),
+      healthOnly: await enrolledKey(district, NF.admin, ["health"]),
+      releasesOnly: await enrolledKey(district, NF.admin, ["releases"]),
+      removed,
+      stranger: await SigningIdentity.generate(),
+      device: phone.tokens!.deviceId,
+    };
+  });
+
+  it("covers every route in the protocol's table and every directory action", () => {
+    const paths = new Set(opsRoutes("dev_x").map((r) => `${r.method} ${r.path}`));
+    for (const route of OPS_ROUTES) expect([...paths].some((p) => p.startsWith(`${route.method} ${route.path.split("/:")[0]}`))).toBe(true);
+    for (const action of DirectoryAction.options) expect(paths).toContain(`POST /api/ops/directory/${NF.amara}/${action}`);
+  });
+
+  for (const [scenario, refusal] of Object.entries(OPS_REFUSALS)) {
+    it(`answers ${refusal.status} ${refusal.reason} to ${scenario}, on every route`, async () => {
+      const failures: string[] = [];
+      for (const route of opsRoutes(fixture.device)) {
+        // A path outside the table is refused before its scope, and only after its signature.
+        const unmatched = route.scope === undefined;
+        const expected = unmatched && (refusal.reason === "scope-denied")
+          ? { status: 404, reason: "unknown-route" }
+          : { status: refusal.status, reason: refusal.reason };
+        const { status, body } = await read(await fixture.district.app.fetch(await refusal.request(fixture, route)));
+        const leaked = ["entries", "devices", "entry", "workers", "current", "components"].some((key) => key in body);
+        if (status !== expected.status || body.reason !== expected.reason || leaked) {
+          failures.push(`${route.method} ${route.path}: ${status} ${JSON.stringify(body)}`);
+        }
+      }
+      expect(failures).toStrictEqual([]);
+    });
+  }
+
+  it("answers a validly signed request for a path no route serves with 404 unknown-route", async () => {
+    for (const route of opsRoutes(fixture.device).filter((r) => r.scope === undefined)) {
+      const { status, body } = await read(await fixture.district.app.fetch(await opsRequest(fixture.full, fixture.district.clock, route.method, route.path)));
+      expect({ route: route.path, status, reason: body.reason }).toStrictEqual({ route: route.path, status: 404, reason: "unknown-route" });
+    }
+  });
+
+  it("is not reachable through the device API, even by an administrator's phone", async () => {
+    const phone = await pairedPhone(fixture.district, NF.admin);
+    const { status } = await read(await fixture.district.app.fetch(await phone.request("GET", "/api/m/ops/health")));
+    expect(status).toBe(404);
+  });
 });
 
 describe("the device API", () => {

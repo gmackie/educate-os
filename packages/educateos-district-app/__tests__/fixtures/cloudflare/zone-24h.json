@@ -1,0 +1,19 @@
+{
+  "data": {
+    "viewer": {
+      "zones": [
+        {
+          "http": [
+            { "count": 21890, "avg": { "sampleInterval": 1 }, "dimensions": { "edgeResponseStatus": 200 } },
+            { "count": 3402, "avg": { "sampleInterval": 1 }, "dimensions": { "edgeResponseStatus": 304 } },
+            { "count": 1250, "avg": { "sampleInterval": 1 }, "dimensions": { "edgeResponseStatus": 302 } },
+            { "count": 88, "avg": { "sampleInterval": 1 }, "dimensions": { "edgeResponseStatus": 404 } },
+            { "count": 12, "avg": { "sampleInterval": 1 }, "dimensions": { "edgeResponseStatus": 502 } },
+            { "count": 4, "avg": { "sampleInterval": 1 }, "dimensions": { "edgeResponseStatus": 0 } }
+          ]
+        }
+      ]
+    }
+  },
+  "errors": null
+}

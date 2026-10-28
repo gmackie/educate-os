@@ -480,6 +480,11 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
     if (entry === undefined) throw new DistrictApiError(404, { code: "not-found", message: "No such standards." });
     return entry;
   };
+  const opsKeys: { keyId: string; status: string; [field: string]: unknown }[] = [];
+  const opsAudit = [
+    { id: "opa_1", keyId: "ed25519-earlier", operator: "ops@educateos.io", route: "health", result: "ok", at: "2026-10-28T11:00:00.000Z" },
+    { id: "opa_2", keyId: "ed25519-earlier", operator: "ops@educateos.io", route: "directory.action", target: "prn_fk-student-301/suspend", result: "applied", at: "2026-10-28T11:05:00.000Z" },
+  ];
   const handlers: { [N in RouteName]?: (input: Record<string, unknown>) => RouteResponse<N> } = {
     // Loosely typed, like the other handlers' `as never` answers.
     ...(fakeAuthoring(options.authority ?? "oneroster") as object),
@@ -596,6 +601,33 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
     "admin.listStandards": () => standards as never,
     "admin.approveStandards": (input) => Object.assign(standardsFor(input), { status: "approved", decided: { by: "prn_fk-admin", at: "2026-10-25T15:00:00.000Z" } }) as never,
     "admin.withdrawStandards": (input) => Object.assign(standardsFor(input), { status: "not-approved", decided: { by: "prn_fk-admin", at: "2026-10-25T15:05:00.000Z" } }) as never,
+    // Operations (SCHO-263): the enrolled admin keys and the district's ops log, kept in memory.
+    "admin.opsKeys": () => ({ keys: opsKeys }) as never,
+    "admin.enrollOpsKey": (input) => {
+      const body = input.body as { registration: { adminOrigin: string; keyId: string; scopes: string[] }; scopes: string[]; label?: string };
+      if (opsKeys.some((k) => k.keyId === body.registration.keyId && k.status === "enrolled")) {
+        throw new DistrictApiError(409, { code: "conflict", message: "That admin key is already enrolled." });
+      }
+      const key = {
+        keyId: body.registration.keyId,
+        label: body.label ?? new URL(body.registration.adminOrigin).host,
+        adminOrigin: body.registration.adminOrigin,
+        scopes: body.scopes,
+        requestedScopes: body.registration.scopes,
+        enrolledAt: "2026-10-28T12:00:00.000Z",
+        enrolledBy: { principalId: "prn_fk-admin", displayName: "Avery Admin" },
+        status: "enrolled",
+      };
+      opsKeys.unshift(key);
+      return key as never;
+    },
+    "admin.removeOpsKey": (input) => {
+      const key = opsKeys.find((k) => k.keyId === (input.params as { keyId: string }).keyId && k.status === "enrolled");
+      if (key === undefined) throw new DistrictApiError(404, { code: "not-found", message: "No such admin key is enrolled." });
+      Object.assign(key, { status: "removed", removedAt: "2026-10-28T12:05:00.000Z" });
+      return key as never;
+    },
+    "admin.opsAudit": () => ({ entries: opsAudit }) as never,
     // A route that names students. The aggregate screens must never call it.
     "teacher.roster": () => STUDENT_NAMES.map((displayName) => ({ displayName })) as never,
   };

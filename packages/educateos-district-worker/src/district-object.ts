@@ -31,6 +31,7 @@ import type { SendEmailBinding } from "./mail.ts";
 import { jobForCron } from "./schedule.ts";
 import { onLegacyTableMigrated, type LegacyTableReport } from "@educateos/contracts/legacy-tables";
 import { LTI_API_PREFIX } from "./lti.ts";
+import { readSchoolManifestSettings } from "./school-manifest.ts";
 
 // Each table recovered from before the rename (SCHO-232), with its counts, so the migration's
 // outcome in production can be read from the logs.
@@ -91,6 +92,26 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
   /** The fetch roster syncs reach their provider (Clever's Data API) with (SCHO-203). Tests replace it with a fake. */
   protected rosterFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     return fetch(input, init);
+  }
+
+  /**
+   * The fetch the analytics proxy reaches Cloudflare's API with (SCHO-263). Bound to `globalThis`,
+   * as workerd requires of a fetch kept on an object. Tests replace it with recorded responses.
+   */
+  protected analyticsFetch(request: Request): Promise<Response> {
+    return fetch.bind(globalThis)(request);
+  }
+
+  /** The release this district runs: what `SCHOOL_MANIFEST` says, else the Worker's version tag (SCHO-263). */
+  #releaseVersion(): string | undefined {
+    let release: string | undefined;
+    try {
+      release = readSchoolManifestSettings(this.env.SCHOOL_MANIFEST).release;
+    } catch {
+      release = undefined;
+    }
+    const tag = this.env.CF_VERSION_METADATA?.tag;
+    return release ?? (typeof tag === "string" && tag !== "" ? tag : undefined);
   }
 
   /** The running application, for subclasses that drive it directly (the tests). */
@@ -169,7 +190,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return (await this.#boot()).app.devices.registerDevice(principalId, registration);
   }
 
-  /** Revokes one device, for administrators and operators (`/api/ops`, later). Returns whether it was active. */
+  /** Revokes one device, for administrators and operators. Returns whether it was active. */
   async revokeDevice(deviceId: DeviceId, revocation: DeviceRevocation): Promise<boolean> {
     return (await this.#boot()).app.devices.revoke(deviceId, revocation);
   }
@@ -261,6 +282,12 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         cleverDistrictToken: this.env.CLEVER_DISTRICT_TOKEN,
         classroomServiceAccountKey: this.env.GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY,
         deviceTokenSecret: this.env.DEVICE_TOKEN_SECRET,
+        // Operations (SCHO-263)
+        analyticsToken: this.env.CF_ANALYTICS_TOKEN,
+        analyticsAccountId: this.env.CF_ACCOUNT_ID,
+        analyticsScripts: this.env.ANALYTICS_SCRIPTS,
+        analyticsZoneTag: this.env.ANALYTICS_ZONE_TAG,
+        releaseVersion: this.#releaseVersion(),
       },
       {
         importFetch: (url, init) => this.importFetch(url, init),
@@ -271,6 +298,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         }),
         platformFetch: (input, init) => this.platformFetch(input, init),
         rosterFetch: (input, init) => this.rosterFetch(input, init),
+        analyticsFetch: (request) => this.analyticsFetch(request),
         ...(keys === undefined ? {} : { accessKeys: keys }),
         ...(sendEmail === undefined ? {} : { sendEmail }),
       },

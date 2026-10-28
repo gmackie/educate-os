@@ -14,7 +14,7 @@ import {
   type EmailKeyedUserMatch,
 } from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
-import { authorityFor, createDistrictApp, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
+import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
 import { clever, googleclassroom } from "@educateos/integrations";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
@@ -69,6 +69,17 @@ export interface DistrictSettings {
   classroomServiceAccountKey?: string | undefined;
   /** `DEVICE_TOKEN_SECRET`, the key device access tokens are MACed with (SCHO-261). Without it no device signs in. */
   deviceTokenSecret?: string | undefined;
+  // Operations (SCHO-263)
+  /** `CF_ANALYTICS_TOKEN`, the read-only Cloudflare token `/api/ops/analytics` reads with. Without it analytics is 501. */
+  analyticsToken?: string | undefined;
+  /** `CF_ACCOUNT_ID`, the account the analytics token reads. */
+  analyticsAccountId?: string | undefined;
+  /** `ANALYTICS_SCRIPTS`, the district's Worker names, comma-separated. */
+  analyticsScripts?: string | undefined;
+  /** `ANALYTICS_ZONE_TAG`, the district's zone. Optional. */
+  analyticsZoneTag?: string | undefined;
+  /** The release the district runs: `SCHOOL_MANIFEST`'s `release`, else the Worker's version tag. */
+  releaseVersion?: string | undefined;
 }
 
 /** What a district reaches outside its storage. */
@@ -85,6 +96,8 @@ export interface DistrictSeams {
   platformFetch?: typeof fetch;
   /** The fetch roster syncs reach their provider with (SCHO-203). Defaults to the global fetch. */
   rosterFetch?: typeof fetch;
+  /** The fetch the analytics proxy reaches Cloudflare's API with (SCHO-263). Defaults to the global fetch. */
+  analyticsFetch?: (request: Request) => Promise<Response>;
 }
 
 /** The district ID `DISTRICT_CONFIG` names, which its Durable Object is named by. */
@@ -151,6 +164,12 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }),
   });
   const authority = authorityFor(config.authority);
+  const analytics = analyticsSettings({
+    CF_ANALYTICS_TOKEN: settings.analyticsToken,
+    CF_ACCOUNT_ID: settings.analyticsAccountId,
+    ANALYTICS_SCRIPTS: settings.analyticsScripts,
+    ANALYTICS_ZONE_TAG: settings.analyticsZoneTag,
+  });
   const app = await createDistrictApp({
     stores,
     verifyRequest,
@@ -175,6 +194,11 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(config.email?.appUrl === undefined ? {} : { appUrl: config.email.appUrl }),
     // Devices (SCHO-261)
     ...(settings.deviceTokenSecret === undefined ? {} : { deviceTokenSecret: settings.deviceTokenSecret }),
+    // Operations (SCHO-263): analytics only with a token. The global fetch is bound, as workerd requires.
+    release: { version: settings.releaseVersion },
+    ...(analytics === undefined ? {} : {
+      opsAnalytics: cloudflareAnalytics(analytics, { fetch: seams.analyticsFetch ?? fetch.bind(globalThis), now: () => new Date() }),
+    }),
   });
 
   const directory = new AcademicDirectory({ store: stores.directory, authority, authorizer: app.engine });

@@ -165,6 +165,13 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   `device-auth-unavailable`. It is not yet a deploy input; production sets it at the one-origin
   cutover. The device credential protocol is in
   [docs/educateos/mobile.md](../../docs/educateos/mobile.md#device-credentials-scho-261).
+- `CF_ANALYTICS_TOKEN` (optional secret, SCHO-263), with the vars `CF_ACCOUNT_ID`,
+  `ANALYTICS_SCRIPTS` (the district's Worker names, comma-separated) and `ANALYTICS_ZONE_TAG`
+  (optional): a read-only Cloudflare API token (Account Analytics Read, Access: Audit Logs Read,
+  Workers Scripts Read) that `GET /api/ops/analytics` reads Cloudflare's GraphQL Analytics API and
+  Access authentication logs with. Without the token or account, that route answers 501
+  `analytics-not-configured`. Not yet a deploy input. See
+  [docs/educateos/admin.md](../../docs/educateos/admin.md#the-district-side).
 - `LTI_TOOL_ORIGIN` (optional): the LTI Tool's public origin (see [LTI 1.3 Tool](#lti-13-tool-scho-177)).
   It is not yet a deploy input, so the installer does not offer it; the schoolos.gmac.io production
   config sets it from the district hostname.
