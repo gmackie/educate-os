@@ -1,10 +1,12 @@
 # The EducateOS admin (hosted and open source)
 
 - Status: the ops protocol and the admin package (Worker, D1 schema, API, SPA), tested against a
-  fake district. The hosted edition's production config, the import of educateos.io's operators and
-  installations, and the redirect of educateos.io/app are in place but not provisioned or deployed
-  ([runbook](runbooks/admin-hosted.md)). The district side of `/api/ops/*`, the analytics proxy and
-  the installer's OSS admin come in later phase 5 PRs.
+  fake district; and the district side of `/api/ops/*`, its keyring, audit log and analytics proxy,
+  with district /admin → Operations (see [The district side](#the-district-side)). The hosted
+  edition's production config, the import of educateos.io's operators and installations, and the
+  redirect of educateos.io/app are in place ([runbook](runbooks/admin-hosted.md)). Not deployed: the
+  hosted admin isn't provisioned, and no production district has `/api/ops` as an Access bypass path
+  yet. The installer's OSS admin comes in a later phase 5 PR.
 - Issue: SCHO-263 (phase 5 of SCHO-257). Plan: `docs/plans/2026-10-28-educateos-one-domain-design.html`,
   section 6.
 - Code: `packages/educateos-admin` (Worker + D1 + SPA), and the protocol in
@@ -151,16 +153,63 @@ refusal. At most 4 KiB of an error body is read.
    The admin generates an Ed25519 key pair for that workspace, seals the private key into D1, and
    shows the registration: this admin's origin, the key ID, the public key and the scopes it asks
    for, with the steps below.
-2. A district administrator opens the district's `/admin` → Operations → Admin access, adds the
-   registration and chooses which scopes to grant. (District side: a later phase 5 PR. It reuses the
-   fleet registration and rekey protocol, keeps its own audit log of every ops request, and can drop
-   any scope or remove the admin at any time; opting out leaves a working district.)
+2. A district administrator opens the district's `/admin` → Operations, pastes the registration
+   under Enroll an admin and chooses which scopes to grant. The district keeps its own audit log of
+   every ops request, and can drop any scope or remove the admin at any time; opting out leaves a
+   working district. To rekey, enroll the new key and remove the old one.
 3. The operator chooses Verify connection: the admin makes a signed health call, and the workspace
    becomes active.
 
 Every command an operator sends (suspend, restore, sign out everywhere, roles, AI access, revoke a
 device, revoke below a version) is written to the admin's audit log with its outcome, including
 refusals and unreachable districts; the district records the same request in its own.
+
+## The district side
+
+`packages/educateos-district-app/src/ops.ts` (`DistrictOps`) serves `/api/ops/*` in the district
+application, before any Access-based route: the path is an Access bypass, so the signature is the
+only credential. One choke point verifies every request with `createOpsVerifier` (±60 s, the route
+table's scope) against the district's own keyring, and claims each nonce atomically in the
+district's Durable Object (`educateos_ops_nonces`: a primary key on key and nonce, with expired rows
+deleted in the same transaction).
+
+| Table | Holds |
+| --- | --- |
+| `educateos_ops_keys` | key ID, public JWK, granted and requested scopes, label, admin origin, enrolled at and by (a principal), removed at and by |
+| `educateos_ops_nonces` | key ID, nonce, expiry |
+| `educateos_ops_audit` | ID (the `auditId` actions answer with), key ID, operator (from the signed header), route, target, result, time; kept 400 days |
+
+Every request whose signature verified is recorded, including refusals for scope, route or replay;
+a request that never verified is not, since its operator header is nobody's word.
+
+What each route does at the district:
+
+- `health`: release version (`SCHOOL_MANIFEST.release`, else the Worker's version tag), commit, and
+  counts (people, schools, classes, active devices) in its components.
+- `directory`: the district's principals (not service principals). Roles are the principal's kind
+  plus `admin` for a district administrator; `rostered` when a roster owns principals; status
+  `suspended` for anyone not active. AI access is `standard` (`none` for guardians): the district has
+  no per-person AI setting.
+- `suspend` / `restore`: the principal's existing `inactive` / `active` status; suspending also
+  revokes every device (`principal-inactive`). `sign-out-everywhere` revokes every device. `roles`
+  grants or revokes district administration (`admin`), refusing the last administrator; `staff`, and
+  `ai-access`, answer 501 with reason `not-supported`.
+- `devices`: phones (iOS and Android) only; revoke one, or every phone below a version (a forced update).
+- `releases`: the current version and channel; `available` is empty until the district reads the registry.
+- `analytics`: `ops-analytics.ts` reads `workersInvocationsAdaptive`, `durableObjectsInvocationsAdaptiveGroups`,
+  `durableObjectsStorageGroups`, and with `ANALYTICS_ZONE_TAG` `httpRequestsAdaptiveGroups`, plus the
+  Access authentication log, with the district's `CF_ANALYTICS_TOKEN`; caches each window for five
+  minutes in the object; and adds AI figures from the district's own ledger. Without a token it
+  answers 501 `analytics-not-configured`. R2 and D1 bytes are 0: the district Worker has neither.
+
+Refusals carry `{ code, reason, message }`, where `reason` is the verifier's (`stale`, `replayed`,
+`scope-denied`, ...) or `not-supported`, `analytics-not-configured`, `analytics-unavailable`.
+
+District /admin → Operations (`packages/educateos-admin-ui/src/operations`) lists the enrolled admins,
+enrolls one from the registration the admin shows (pasted as it is; the administrator ticks the
+scopes to grant, among those it asked for), removes one, and shows the recent ops log. Its routes
+(`admin.opsKeys`, `admin.enrollOpsKey`, `admin.setOpsKeyScopes`, `admin.removeOpsKey`,
+`admin.opsAudit`) need `configure` on the district's `capability-config`: a district administrator.
 
 ## Running and deploying
 

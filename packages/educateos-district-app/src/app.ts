@@ -56,6 +56,8 @@ import { DeviceCredentials, isDeviceApiPath, serveDeviceApi, type DeviceRecord }
 import type { DeviceBody } from "./routes.ts";
 // Pairing (SCHO-261)
 import { CONNECT_PHONE_PATH, isPairApiPath, PairingRelay, type WebPrincipal } from "./pairing.ts";
+// Operations (SCHO-263)
+import { DistrictOps, isOpsApiPath, type OpsAiUsage, type OpsAnalyticsSource, type OpsReleaseInfo } from "./ops.ts";
 
 /**
  * Verifies a request's credential (a bearer token, a Cloudflare Access assertion) and returns the
@@ -173,6 +175,16 @@ export interface DistrictAppOptions {
    * one shorter than 32 characters) device sign-in is off, and `/api/m/*` answers 503.
    */
   deviceTokenSecret?: string;
+
+  // Operations (SCHO-263)
+  /** What the district says about the release it runs, on `/api/ops/health` and `/api/ops/releases`. */
+  release?: OpsReleaseInfo;
+  /**
+   * The Cloudflare analytics proxy behind `/api/ops/analytics` (`cloudflareAnalytics`), when the
+   * district holds a read-only analytics token. Without it that route answers 501
+   * `analytics-not-configured`.
+   */
+  opsAnalytics?: OpsAnalyticsSource;
 }
 
 /** Builds a roster source for a configured `rostering`, or says why there is none. */
@@ -237,6 +249,11 @@ export interface DistrictApp {
    * sign-in path, and revocation for administrators and operators. Not on the `/api` surface itself.
    */
   readonly devices: DeviceCredentials;
+  /**
+   * The signed operations API and its keyring (SCHO-263): `/api/ops/*` is served by `fetch`, the
+   * keyring by the `admin.*Ops*` routes.
+   */
+  readonly ops: DistrictOps;
 }
 
 /** The default `DistrictAppOptions.authority`: the OneRoster roster owns every directory record type. */
@@ -354,6 +371,43 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     now,
     isActivePrincipal: async (principalId) =>
       (await stores.directory.load()).snapshot.principals.some((p) => p.id === principalId && p.status === "active"),
+  });
+
+  // Operations (SCHO-263): AI figures come from the district's own ledger, authoritative for budgets.
+  const aiUsage: OpsAiUsage = {
+    async month() {
+      const period = now().toISOString().slice(0, 7);
+      const events = (await ledger.usageEvents()).filter((event) => event.occurredAt.startsWith(period));
+      const report = await ledger.fundingReport();
+      let cost = 0n;
+      for (const event of events) cost += BigInt(event.chargedUsdNano);
+      return {
+        requests: events.length,
+        tokensIn: events.reduce((total, e) => total + e.inputTokens + e.cacheReadTokens + e.cacheWriteTokens, 0),
+        tokensOut: events.reduce((total, e) => total + e.outputTokens, 0),
+        cacheHits: events.filter((e) => e.cacheReadTokens > 0).length,
+        costUsdNanos: Number(cost),
+        ...(report.pools.length === 0 ? {} : { budgetUsdNanos: Number(BigInt(report.generativeAllocationUsdNano)) }),
+      };
+    },
+    async principalMonth(principalId) {
+      const period = now().toISOString().slice(0, 7);
+      let cost = 0n;
+      for (const event of await ledger.usageEvents()) {
+        if (event.principalId === principalId && event.occurredAt.startsWith(period)) cost += BigInt(event.chargedUsdNano);
+      }
+      return Number(cost);
+    },
+  };
+  const ops = new DistrictOps({
+    store: stores.ops,
+    directory: stores.directory,
+    devices,
+    authority,
+    release: options.release ?? {},
+    analytics: options.opsAnalytics,
+    ai: aiUsage,
+    now,
   });
 
   /** The roster sync the head configuration revision sets up: its provider, settings and source, or why it cannot run. */
@@ -1265,6 +1319,27 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "me.revokeAllDevices": async (ctx) => ({
       revoked: await devices.revokePrincipal(ctx.subject.principalId, { by: ctx.subject.principalId, reason: "signed-out-everywhere" }),
     }),
+    // Operations (SCHO-263): only a district administrator decides who may operate the district.
+    "admin.opsKeys": async (ctx) => {
+      await ctx.requireDistrict("configure", "capability-config");
+      return { keys: await ops.keys(ctx.snapshot) };
+    },
+    "admin.enrollOpsKey": async (ctx, { body }) => {
+      await ctx.requireDistrict("configure", "capability-config");
+      return ops.enroll(body, ctx.subject.principalId, ctx.snapshot);
+    },
+    "admin.setOpsKeyScopes": async (ctx, { params, body }) => {
+      await ctx.requireDistrict("configure", "capability-config");
+      return ops.setScopes(params.keyId, body.scopes, ctx.snapshot);
+    },
+    "admin.removeOpsKey": async (ctx, { params }) => {
+      await ctx.requireDistrict("configure", "capability-config");
+      return ops.remove(params.keyId, ctx.subject.principalId, ctx.snapshot);
+    },
+    "admin.opsAudit": async (ctx) => {
+      await ctx.requireDistrict("configure", "capability-config");
+      return { entries: await ops.audit() };
+    },
     "admin.previewDigest": async (ctx, { params }) => {
       // The preview shows what a guardian would be told about a child, so it is the decision of the
       // one who decides guardian relationships: a district administrator.
@@ -1503,6 +1578,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       },
     },
     devices,
+    ops,
     fetch(request) {
       // Devices (SCHO-261): the device API answers only device credentials, never the request's own sign-in.
       const { pathname } = new URL(request.url);
@@ -1511,6 +1587,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       }
       // Pairing (SCHO-261): the relay checks its own credentials, the room secret or the web sign-in.
       if (isPairApiPath(pathname)) return respond(request, () => pairing.serve(request));
+      // Operations (SCHO-263): the ops API answers only a signature from an enrolled admin key.
+      if (isOpsApiPath(pathname)) return respond(request, () => ops.serve(request));
       if (pathname === CONNECT_PHONE_PATH) return pairing.connectPhone(request);
       return respond(request, async (correlationId) => await serveCalendarFeed(request, correlationId) ?? await handle(request, correlationId));
     },

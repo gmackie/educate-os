@@ -26,7 +26,7 @@ import {
   type DistrictDirectorySnapshot,
   type GuardianRelationshipId,
   type OfferingId,
-  type PrincipalId,
+  PrincipalId,
 } from "@educateos/contracts";
 import { DurableObjectAcademicStore } from "@educateos/academics/durable-object-store";
 import { DurableObjectWorkspaceStore, legacyWorkspaceReplacements } from "@educateos/workspaces/durable-object-store";
@@ -123,6 +123,9 @@ import {
 } from "./devices.ts";
 // Pairing (SCHO-261)
 import { PairRoom, type PairRoomStore } from "./pairing.ts";
+// Operations (SCHO-263)
+import { OpsPublicJwk, type OpsAuditRecord, type OpsKeyRecord, type OpsStore } from "./ops.ts";
+import { KeyId, OpsScope } from "@educateos/fleet/ops";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, RosterSyncStore, WorkshopUserLinkStore } from "./stores.ts";
 // Communication (SCHO-189)
 import {
@@ -205,6 +208,10 @@ export const DISTRICT_TABLES = {
   deviceProofs: "educateos_device_proofs",
   // Pairing (SCHO-261)
   pairRooms: "educateos_pair_rooms",
+  // Operations (SCHO-263)
+  opsKeys: "educateos_ops_keys",
+  opsNonces: "educateos_ops_nonces",
+  opsAudit: "educateos_ops_audit",
 } as const;
 
 /** Thrown when a stored row cannot be read. Nothing is decided on state that cannot be read. */
@@ -1175,6 +1182,8 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     devices: new DurableObjectDeviceStore(storage),
     // Pairing (SCHO-261)
     pairRooms: new DurableObjectPairRoomStore(storage),
+    // Operations (SCHO-263)
+    ops: new DurableObjectOpsStore(storage),
   };
 }
 
@@ -2001,5 +2010,148 @@ export class DurableObjectPairRoomStore implements PairRoomStore {
 
   async purge(beforeMs: number): Promise<void> {
     this.#tables.transaction((sql) => sql.exec(`DELETE FROM ${DISTRICT_TABLES.pairRooms} WHERE expires_at < ?`, beforeMs));
+  }
+}
+
+// Operations (SCHO-263)
+
+const StoredOpsKey = z.object({
+  key_id: KeyId,
+  public_jwk: z.string(),
+  scopes_json: z.string(),
+  requested_scopes_json: z.string(),
+  label: z.string(),
+  admin_origin: z.string(),
+  enrolled_at: z.string(),
+  enrolled_by: PrincipalId,
+  revoked_at: z.string().nullable(),
+  revoked_by: PrincipalId.nullable(),
+});
+
+function opsKeyFromRow(row: Record<string, unknown>): OpsKeyRecord {
+  const parsed = StoredOpsKey.safeParse(row);
+  if (!parsed.success) throw new DistrictStoreCorruptionError("an ops key does not match its schema");
+  const r = parsed.data;
+  return {
+    keyId: r.key_id,
+    publicJwk: parseStored(OpsPublicJwk, r.public_jwk, "an ops key's public key"),
+    scopes: parseStored(z.array(OpsScope), r.scopes_json, "an ops key's scopes"),
+    requestedScopes: parseStored(z.array(OpsScope), r.requested_scopes_json, "an ops key's requested scopes"),
+    label: r.label,
+    adminOrigin: r.admin_origin,
+    enrolledAt: r.enrolled_at,
+    enrolledBy: r.enrolled_by,
+    revokedAt: r.revoked_at,
+    revokedBy: r.revoked_by,
+  };
+}
+
+const StoredOpsAudit = z.object({
+  id: z.string(),
+  key_id: z.string(),
+  operator: z.string(),
+  route: z.string(),
+  target: z.string().nullable(),
+  result: z.string(),
+  at: z.string(),
+});
+
+/**
+ * An {@link OpsStore} in a Durable Object's SQLite: the enrolled admin keys, the ops nonces seen
+ * recently, and the district's ops audit log. A nonce is claimed by an insert the table's primary
+ * key makes unique, in the same transaction that forgets expired ones, so of two copies of one
+ * signed request exactly one is served, whatever restarts the object between them. New tables, so
+ * they have no legacy twins.
+ */
+export class DurableObjectOpsStore implements OpsStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    const t = DISTRICT_TABLES;
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${t.opsKeys} (
+        key_id TEXT PRIMARY KEY, public_jwk TEXT NOT NULL, scopes_json TEXT NOT NULL, requested_scopes_json TEXT NOT NULL,
+        label TEXT NOT NULL, admin_origin TEXT NOT NULL, enrolled_at TEXT NOT NULL, enrolled_by TEXT NOT NULL,
+        revoked_at TEXT, revoked_by TEXT
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${t.opsNonces} (key_id TEXT NOT NULL, nonce TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY (key_id, nonce))`,
+      `CREATE INDEX IF NOT EXISTS ${t.opsNonces}_expires ON ${t.opsNonces} (expires_at)`,
+      `CREATE TABLE IF NOT EXISTS ${t.opsAudit} (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, key_id TEXT NOT NULL, operator TEXT NOT NULL,
+        route TEXT NOT NULL, target TEXT, result TEXT NOT NULL, at TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${t.opsAudit}_at ON ${t.opsAudit} (at)`,
+    ], []);
+  }
+
+  async listKeys(): Promise<OpsKeyRecord[]> {
+    const rows = this.#tables.transaction((sql) => sql.exec(`SELECT * FROM ${DISTRICT_TABLES.opsKeys} ORDER BY enrolled_at DESC, rowid DESC`).toArray());
+    return rows.map(opsKeyFromRow);
+  }
+
+  async findKey(keyId: string): Promise<OpsKeyRecord | undefined> {
+    const [row] = this.#tables.transaction((sql) => sql.exec(`SELECT * FROM ${DISTRICT_TABLES.opsKeys} WHERE key_id = ?`, keyId).toArray());
+    return row === undefined ? undefined : opsKeyFromRow(row);
+  }
+
+  async enrollKey(record: OpsKeyRecord): Promise<void> {
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      const [existing] = sql.exec(`SELECT revoked_at FROM ${t.opsKeys} WHERE key_id = ?`, record.keyId).toArray();
+      if (existing !== undefined && existing.revoked_at === null) throw new EducateOsError("conflict", "That admin key is already enrolled.");
+      sql.exec(`DELETE FROM ${t.opsKeys} WHERE key_id = ?`, record.keyId);
+      sql.exec(
+        `INSERT INTO ${t.opsKeys} (key_id, public_jwk, scopes_json, requested_scopes_json, label, admin_origin, enrolled_at, enrolled_by, revoked_at, revoked_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        record.keyId, JSON.stringify(record.publicJwk), JSON.stringify(record.scopes), JSON.stringify(record.requestedScopes),
+        record.label, record.adminOrigin, record.enrolledAt, record.enrolledBy, record.revokedAt, record.revokedBy,
+      );
+    });
+  }
+
+  async setScopes(keyId: string, scopes: readonly OpsScope[]): Promise<boolean> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`UPDATE ${DISTRICT_TABLES.opsKeys} SET scopes_json = ? WHERE key_id = ? AND revoked_at IS NULL RETURNING key_id`, JSON.stringify(scopes), keyId)
+        .toArray().length > 0
+    );
+  }
+
+  async removeKey(keyId: string, at: string, by: PrincipalId): Promise<boolean> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`UPDATE ${DISTRICT_TABLES.opsKeys} SET revoked_at = ?, revoked_by = ? WHERE key_id = ? AND revoked_at IS NULL RETURNING key_id`, at, by, keyId)
+        .toArray().length > 0
+    );
+  }
+
+  async claimNonce(keyId: string, nonce: string, expiresAtMs: number, nowMs: number): Promise<boolean> {
+    const t = DISTRICT_TABLES;
+    return this.#tables.transaction((sql) => {
+      sql.exec(`DELETE FROM ${t.opsNonces} WHERE expires_at < ?`, nowMs);
+      return sql.exec(
+        `INSERT INTO ${t.opsNonces} (key_id, nonce, expires_at) VALUES (?, ?, ?) ON CONFLICT (key_id, nonce) DO NOTHING RETURNING nonce`,
+        keyId, nonce, expiresAtMs,
+      ).toArray().length > 0;
+    });
+  }
+
+  async appendAudit(entry: OpsAuditRecord, retainAfter: string): Promise<void> {
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      sql.exec(`DELETE FROM ${t.opsAudit} WHERE at < ?`, retainAfter);
+      sql.exec(
+        `INSERT INTO ${t.opsAudit} (id, key_id, operator, route, target, result, at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        entry.id, entry.keyId, entry.operator, entry.route, entry.target, entry.result, entry.at,
+      );
+    });
+  }
+
+  async listAudit(limit: number): Promise<OpsAuditRecord[]> {
+    const rows = this.#tables.transaction((sql) => sql.exec(`SELECT * FROM ${DISTRICT_TABLES.opsAudit} ORDER BY seq DESC LIMIT ?`, limit).toArray());
+    return rows.map((row) => {
+      const parsed = StoredOpsAudit.safeParse(row);
+      if (!parsed.success) throw new DistrictStoreCorruptionError("an ops audit entry does not match its schema");
+      const r = parsed.data;
+      return { id: r.id, keyId: r.key_id, operator: r.operator, route: r.route, target: r.target, result: r.result, at: r.at };
+    });
   }
 }

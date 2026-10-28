@@ -4,6 +4,9 @@
 import { z } from "zod";
 // Devices (SCHO-261)
 import { DeviceId, DevicePlatform, DeviceRevocationReason, DeviceStatus } from "./devices.ts";
+// Operations (SCHO-263)
+import { KeyId } from "@educateos/fleet/ops";
+import { EnrollOpsKeyInput, GrantedOpsScopes, OpsAuditBody, OpsKeyBody } from "./ops.ts";
 import {
   AcademicTerm,
   ActivityDefinitionId,
@@ -1699,6 +1702,30 @@ export const ROUTES = {
   "teacher.gradeQuizItem": route({
     method: "POST", path: "/api/teacher/offerings/:offeringId/quiz-attempts/:attemptId/items/:itemId/grade", surface: "teacher",
     params: params({ offeringId: OfferingId, attemptId: QuizAttemptId, itemId: QuizItemId }), body: ItemGradeInput, response: StaffAttemptBody,
+  }),
+
+  // Operations (SCHO-263): district /admin → Operations, where a district administrator enrolls an
+  // admin edition's ops key, chooses its scopes, removes it, and reads the district's ops audit log.
+  // Kept in one block, apart from the routes above.
+  "admin.opsKeys": route({
+    method: "GET", path: "/api/admin/ops/keys", surface: "admin",
+    response: z.strictObject({ keys: z.array(OpsKeyBody) }),
+  }),
+  "admin.enrollOpsKey": route({
+    method: "POST", path: "/api/admin/ops/keys", surface: "admin", status: 201,
+    body: EnrollOpsKeyInput, response: OpsKeyBody,
+  }),
+  "admin.setOpsKeyScopes": route({
+    method: "POST", path: "/api/admin/ops/keys/:keyId/scopes", surface: "admin",
+    params: params({ keyId: KeyId }), body: z.strictObject({ scopes: GrantedOpsScopes }), response: OpsKeyBody,
+  }),
+  "admin.removeOpsKey": route({
+    method: "POST", path: "/api/admin/ops/keys/:keyId/remove", surface: "admin",
+    params: params({ keyId: KeyId }), body: NoBody, response: OpsKeyBody,
+  }),
+  "admin.opsAudit": route({
+    method: "GET", path: "/api/admin/ops/audit", surface: "admin",
+    response: z.strictObject({ entries: z.array(OpsAuditBody) }),
   }),
 } as const satisfies Record<string, RouteSpec>;
 

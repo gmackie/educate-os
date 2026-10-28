@@ -333,7 +333,7 @@ async function enroll({ request, url, deps, config, caller, now }: RouteContext)
     registration: { adminOrigin: url.origin, keyId: identity.keyId, publicKey: identity.publicKey, scopes: REQUESTED_SCOPES },
     instructions: [
       `Sign in to ${origin}/admin as a district administrator.`,
-      "Open Operations, then Admin access, and choose Add an admin.",
+      "Open Operations, and find Enroll an admin under Admin access.",
       `Paste the registration below. It names this admin (${url.origin}) and its public key, ${identity.keyId}.`,
       "Choose which scopes to grant. The district can drop any scope, or remove this admin, at any time.",
       "Come back here and choose Verify connection.",

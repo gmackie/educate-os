@@ -39,6 +39,10 @@ export default defineConfig({
           LTI_TOOL_ORIGIN: LTI_TOOL_ORIGIN,
           // Device sign-in (SCHO-261): a test-only key; production sets none until the cutover.
           DEVICE_TOKEN_SECRET: DEVICE_TOKEN_SECRET,
+          // The ops analytics proxy (SCHO-263): test-only values; the test object answers Cloudflare's API.
+          CF_ANALYTICS_TOKEN: "test-analytics-token",
+          CF_ACCOUNT_ID: "0123456789abcdef0123456789abcdef",
+          ANALYTICS_SCRIPTS: "educateos-district-worker",
           TEST_PLATFORM_PRIVATE_JWK: JSON.stringify({ ...platform.privateKey.export({ format: "jwk" }), kid: PLATFORM_KID, alg: "RS256" }),
           TEST_PLATFORM_PUBLIC_JWK: JSON.stringify({ ...platform.publicKey.export({ format: "jwk" }), kid: PLATFORM_KID, alg: "RS256", use: "sig" }),
         },
