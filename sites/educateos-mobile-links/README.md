@@ -10,9 +10,9 @@ served from `apps/mobile/app-links`.
 - `/.well-known/apple-app-site-association`: the real Apple team and bundle identity, the exact app
   paths below, and `webcredentials` for the HTTPS sign-in callback (static file).
 - `/.well-known/assetlinks.json`: the Android Digital Asset Links statement for
-  `io.educateos.mobile` (`app-links.ts`). **TODO:** the signing-certificate fingerprints
-  (`ANDROID_CERT_SHA256`) are not filled in yet, so Android verification fails closed and links open
-  the pages below, whose "Open EducateOS" button still reaches the app by its custom scheme.
+  `io.educateos.mobile` (`app-links.ts`), listing the SHA-256 of the EAS keystore that signs the
+  preview APKs (SCHO-262). After Play App Signing enrollment, add Google's app signing certificate
+  too (Play Console > Test and release > App integrity), or store installs fail verification.
 - `/j`: the pairing QR (`/j#o=<district origin>&r=<room>&s=<secret>`). The room lives on the
   district's own `/api/pair/*` (pairing v2, docs/educateos/mobile.md); this host only opens the app
   or says how to get it. The district's `/connect-phone` page also returns here.

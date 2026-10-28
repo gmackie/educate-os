@@ -8,12 +8,18 @@ export const ANDROID_PACKAGE = 'io.educateos.mobile';
 /**
  * SHA-256 fingerprints of the certificates that sign the Android app, as `AA:BB:…` (32 bytes).
  *
- * TODO(SCHO-262): add the Play App Signing certificate and the EAS upload certificate
- * (`eas credentials -p android`, or Play Console > Test and release > App integrity). Until they
- * are listed, Android verification fails closed: links open this site's pages, whose
- * "Open EducateOS" button still reaches the app through its custom scheme.
+ * - EAS keystore "Build Credentials 9NfQq4LN-f" (JKS, alias c854ddbcdeebdd37f481477d3f980af5),
+ *   which signs the preview APKs and will be the Play upload key. Read from
+ *   `eas credentials -p android` and confirmed against a locally built preview APK with
+ *   `apksigner verify --print-certs` (SCHO-262).
+ *
+ * When the app is enrolled in Play App Signing, Google re-signs store installs with its own key:
+ * add the "App signing key certificate" SHA-256 from Play Console > Test and release > App
+ * integrity here as well, or store installs fail verification.
  */
-export const ANDROID_CERT_SHA256: readonly string[] = [];
+export const ANDROID_CERT_SHA256: readonly string[] = [
+  '92:39:20:54:A7:89:BA:A5:79:6D:59:8B:DB:45:2D:93:95:D1:CE:C1:87:92:F7:BD:A5:F0:AB:4A:40:27:DF:7D',
+];
 
 const FINGERPRINT = /^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$/;
 

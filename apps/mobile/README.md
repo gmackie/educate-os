@@ -141,8 +141,9 @@ The iOS association file in `app-links/.well-known/apple-app-site-association` u
 Apple team ID P4SWQXAB5H and bundle ID io.educateos.mobile. Publish `app-links` as static assets
 at mobile.educateos.io, with the `_headers` rules, no Access login and no redirects on the
 association file. This host is required independently of QR enrollment. A fresh install may be
-needed after publishing because iOS caches domain associations. Android still needs its own
-assetlinks.json using the actual signing certificate; this directory does not claim Android verification.
+needed after publishing because iOS caches domain associations. The Worker serves Android's
+assetlinks.json from `sites/educateos-mobile-links/app-links.ts`, listing the EAS signing certificate
+SHA-256; add the Play App Signing certificate there once the app is enrolled in Play.
 
 ## Connect a phone to a one-origin school
 
