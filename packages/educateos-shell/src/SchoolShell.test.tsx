@@ -147,6 +147,17 @@ describe("SchoolShell on a wide screen", () => {
     render({ renderLink: ({ children, ...props }) => <a data-routed="yes" {...props}>{children}</a> });
     expect(within(nav()).getAllByRole("link").every((link) => link.getAttribute("data-routed") === "yes")).toBe(true);
   });
+
+  it("gives a fill layout's content the whole pane and leaves the main landmark to it", () => {
+    const { container } = render({ layout: "fill" }, <main>Threads</main>);
+    const frame = container.querySelector("[data-content]");
+    expect(frame?.getAttribute("data-content")).toBe("fill");
+    expect(frame?.classList.contains("h-full")).toBe(true);
+    expect(frame?.classList.contains("min-h-dvh")).toBe(false);
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    expect(screen.getByRole("main").textContent).toBe("Threads");
+    expect(container.querySelector("#main")?.classList.contains("max-w-5xl")).toBe(false);
+  });
 });
 
 describe("SchoolShell on a narrow screen", () => {

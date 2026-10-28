@@ -3495,9 +3495,15 @@ importers:
       '@codemirror/view':
         specifier: ^6.43.14
         version: 6.43.14
+      '@educateos/shell':
+        specifier: workspace:*
+        version: link:../educateos-shell
       '@gadgets/error-reporting':
         specifier: workspace:*
         version: link:../error-reporting
+      '@gadgets/ui':
+        specifier: workspace:*
+        version: link:../ui
       '@gadgets/workshop-shared':
         specifier: workspace:*
         version: link:../workshop-shared

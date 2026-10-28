@@ -20,6 +20,7 @@ import {
   hasDeviceSessionParameters,
 } from '../features/native-app/DeviceSessionHandoff'
 import { NativeAppBridge } from '../features/native-app/NativeAppBridge'
+import { DistrictFrame, useDistrictFrame } from '../features/district-frame/districtFrame'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -152,6 +153,7 @@ function AuthenticatedShell({
 }) {
   // null = still checking, true = needs onboarding, false = onboarding done
   const [onboardingNeeded, setOnboardingNeeded] = useState<boolean | null>(null)
+  const frame = useDistrictFrame()
 
   useEffect(() => {
     let cancelled = false
@@ -165,8 +167,8 @@ function AuthenticatedShell({
     return () => { cancelled = true }
   }, [authenticatedApi])
 
-  // Still checking onboarding status
-  if (onboardingNeeded === null) {
+  // Still checking onboarding status, or (on a district origin) whether to draw the school's frame
+  if (onboardingNeeded === null || frame.status === 'pending') {
     return (
       <div className="flex min-h-full items-center justify-center flex-col gap-4 bg-kumo-base">
         <div className="w-8 h-8 border-2 border-kumo-brand border-t-transparent rounded-full animate-spin" />
@@ -190,6 +192,13 @@ function AuthenticatedShell({
         <main className="h-full min-h-0">
           <Outlet />
         </main>
+      ) : frame.status === 'framed' ? (
+        // On a district origin the school's shell frames the Workshop's own (SCHO-260).
+        <DistrictFrame manifest={frame.manifest}>
+          <AppShell>
+            <Outlet />
+          </AppShell>
+        </DistrictFrame>
       ) : (
         <AppShell>
           <Outlet />

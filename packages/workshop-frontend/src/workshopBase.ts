@@ -34,3 +34,12 @@ export function routerBasepathFor(base: string): string {
   const normalized = normalizeWorkshopBase(base)
   return normalized === '/' ? '/' : normalized.slice(0, -1)
 }
+
+/**
+ * Whether a Workshop at `base` shares its origin with a district's LMS: only a district origin
+ * mounts it below the root (`/ai/`, SCHO-259), where it draws the school's frame and takes "Ask AI
+ * about this" links (SCHO-260).
+ */
+export function isDistrictOrigin(base: string): boolean {
+  return normalizeWorkshopBase(base) !== '/'
+}

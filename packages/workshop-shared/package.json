@@ -42,6 +42,10 @@
     "./theme": {
       "types": "./src/theme.ts",
       "import": "./src/theme.ts"
+    },
+    "./school-context": {
+      "types": "./src/school-context.ts",
+      "import": "./src/school-context.ts"
     }
   },
   "scripts": {
