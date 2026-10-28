@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CLEVER_LAUNCH_PATH, cleverLaunch, configuredLaunchDistricts, type CleverLaunchDeps } from "../src/clever-launch.ts";
 import { TABLES } from "../src/store.ts";
 import { CONTROL_PLANE_OBJECT } from "../src/worker.ts";
-import { CLEVER_CLIENT, fakeClever, tokenFor } from "./clever-fake.ts";
+import { CLEVER_CLIENT, CLEVER_USER, fakeClever, tokenFor } from "./clever-fake.ts";
 import { ACCESS_AUD, ACCESS_ISSUER } from "./fixtures.ts";
 
 const ORIGIN = "https://educateos.io";
@@ -82,6 +82,16 @@ describe("the launch handler", () => {
     expect(consoleSpies[2]!.mock.calls).toEqual([
       ["clever launch refused", { event: "clever.launch.refused", reason: "identity-failed", cleverStatus: 403, cleverError: "forbidden" }],
     ]);
+  });
+
+  it("refuses a user record whose roles name two districts", async () => {
+    const fetch: CleverLaunchDeps["fetch"] = async (input, init) =>
+      input.includes("/users/")
+        ? Response.json({ data: { id: CLEVER_USER, roles: { teacher: { district: SANDBOX_DISTRICT }, staff: { district: OTHER_DISTRICT } } } })
+        : fakeClever(input, init);
+    const response = await cleverLaunch(launch(`launch-teacher-${SANDBOX_DISTRICT}`), deps({ fetch }));
+    expect(response.status).toBe(502);
+    await response.body?.cancel();
   });
 
   it("tells a user whose district registered no installation so, without naming the district", async () => {

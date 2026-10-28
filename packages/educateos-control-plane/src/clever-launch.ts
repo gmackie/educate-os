@@ -78,7 +78,18 @@ const Code = z.string().regex(/^[\x21-\x7e]{1,512}$/);
 const TokenResponse = z.object({ access_token: z.string().min(1) });
 // A teacher-authorized sign-in's /me carries no district: only the user's ID, read from /users next.
 const MeResponse = z.object({ data: z.object({ id: CleverId, district: CleverId.optional() }) });
-const UserResponse = z.object({ data: z.object({ district: CleverId }) });
+// A v3.0 user record names its district under each of its roles (`roles.teacher.district`), not at
+// the top. One user belongs to one district, so a record whose roles disagree is refused.
+const UserResponse = z.object({
+  data: z.object({ roles: z.record(z.string(), z.object({ district: CleverId }).partial()) }),
+}).transform(({ data }, ctx) => {
+  const districts = new Set(Object.values(data.roles).flatMap((role) => (role.district === undefined ? [] : [role.district])));
+  if (districts.size !== 1) {
+    ctx.addIssue({ code: "custom", message: "user record names no single district" });
+    return z.NEVER;
+  }
+  return [...districts][0]!;
+});
 // An OAuth error reply's code (RFC 6749 §5.2): a short token, safe to log, unlike the rest of the body.
 const OAuthError = z.object({ error: z.string().regex(/^[a-z_]{1,64}$/) });
 
@@ -222,7 +233,7 @@ async function districtOf(token: string, deps: CleverLaunchDeps): Promise<Clever
   if (!me.ok) return me;
   if (me.value.data.district !== undefined) return { ok: true, value: me.value.data.district };
   const user = await readClever(`${CLEVER_USERS_URL}/${me.value.data.id}`, token, deps, UserResponse);
-  return user.ok ? { ok: true, value: user.value.data.district } : user;
+  return user;
 }
 
 /**
