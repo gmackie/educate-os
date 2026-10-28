@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./access": "./src/access.ts",
+    "./export": "./src/export.ts",
     "./worker": "./src/worker.ts"
   },
   "dependencies": {

@@ -45,6 +45,6 @@ describe("pass-through without persistence", () => {
   it("has no table for directory or device data", async () => {
     const { results } = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all<{ name: string }>();
     const names = results.map((row) => row.name).filter((name) => !name.startsWith("_cf_") && !name.startsWith("sqlite_") && name !== "d1_migrations");
-    expect(names.toSorted()).toEqual(["analytics_snapshots", "audit_log", "operators", "ops_keys", "workspaces"]);
+    expect(names.toSorted()).toEqual(["analytics_snapshots", "audit_log", "installations", "operators", "ops_keys", "slug_reservations", "workspaces"]);
   });
 });

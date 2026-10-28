@@ -14,6 +14,13 @@ export interface AdminConfig {
   allowedOrigins?: ReadonlySet<string>;
 }
 
+/**
+ * educateos.io's guided install, linked from the hosted admin's Workspaces page. It stays on
+ * educateos.io (SCHO-263): it runs inside the site Worker with the release bucket and the control
+ * plane's slug reservations.
+ */
+export const GUIDED_INSTALL_URL = "https://educateos.io/app/install";
+
 /** A configuration error: the admin refuses every request until it is fixed. */
 export class AdminConfigError extends Error {
   override readonly name = "AdminConfigError";

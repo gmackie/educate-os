@@ -71,13 +71,16 @@ describe("enrollment", () => {
     expect((await auditFor(deps, enrollment.workspace.id))[0]).toMatchObject({ action: "workspace.verify", result: "refused:401" });
   });
 
-  it("refuses to follow a district that redirects (an ops path that isn't an Access bypass)", async () => {
+  it("refuses to follow a district that redirects, and reports it as operations not enabled", async () => {
     const { deps, district, enroll } = setup();
     const enrollment = await enroll();
     district.redirectTo = "https://team.cloudflareaccess.com/login";
+    const before = district.requests;
     const response = await call(deps, "GET", `/api/workspaces/${enrollment.workspace.id}/health`);
-    expect(response.status).toBe(502);
-    expect(await response.json()).toMatchObject({ message: expect.stringContaining("Access bypass") });
+    expect(response.status).toBe(424);
+    expect(await response.json()).toMatchObject({ code: "ops-not-enabled", message: expect.stringContaining("Operations not enabled for this workspace") });
+    // One request, to the district: the redirect was not followed.
+    expect(district.requests).toBe(before + 1);
   });
 });
 

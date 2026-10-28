@@ -17,6 +17,12 @@
 //   POST /api/workspaces/:id/devices/revoke-below-version    → audited
 //   GET  /api/workspaces/:id/releases                        → GET  /api/ops/releases
 //   GET  /api/audit?workspace&cursor                         this admin's audit log
+//   GET  /api/installations                                  hosted: educateos.io's installations, as imported
+//   POST /api/import/control-plane                           hosted: import (or {dryRun}) from educateos.io
+//
+// A district that doesn't serve /api/ops yet (it answers 404, or Access redirects or refuses the
+// request) is reported as code `ops-not-enabled`, status 424, which the SPA shows as a notice rather
+// than an error.
 //
 // Everything else is the SPA, from the assets binding. Every /api route verifies the Access
 // assertion itself and checks ADMINS; mutations need the admin role, a JSON body and a same-origin
@@ -46,6 +52,7 @@ import { PrincipalId } from "@educateos/contracts";
 import type { z } from "zod";
 import {
   EnrollmentRequest,
+  ImportRequest,
   type AnalyticsEnvelope,
   type EnrollmentResponse,
   type Me,
@@ -53,8 +60,9 @@ import {
   type Workspace,
   type WorkspaceDetail,
 } from "../shared/api.ts";
-import { AdminConfigError, normalizeOrigin, originAllowed, roleFor, type AdminConfig, type AdminEntry } from "./config.ts";
+import { AdminConfigError, GUIDED_INSTALL_URL, normalizeOrigin, originAllowed, roleFor, type AdminConfig, type AdminEntry } from "./config.ts";
 import { callDistrict, DistrictError, type FetchLike } from "./district.ts";
+import { importControlPlane, ImportSourceError, type ControlPlaneSource } from "./import.ts";
 import { KeyEncryptionError, openPrivateKey, sealPrivateKey } from "./keys.ts";
 import type { AdminStore } from "./store.ts";
 
@@ -79,6 +87,8 @@ export interface AdminDeps {
   assets?: (request: Request) => Promise<Response>;
   now?: () => Date;
   commit?: string;
+  /** Hosted edition: educateos.io's control plane, for the import. Without it the import is unavailable. */
+  controlPlane?: ControlPlaneSource;
 }
 
 /** A request the route refuses, with what to tell the caller. */
@@ -111,6 +121,12 @@ export async function handleAdminRequest(request: Request, deps: AdminDeps): Pro
     if (url.pathname === "/healthz") {
       if (request.method !== "GET" && request.method !== "HEAD") return errorResponse(405, "method-not-allowed", "GET only.");
       const config = deps.config();
+      try {
+        await deps.store.ping();
+      } catch (error) {
+        console.error("admin health check: D1 unavailable", { error: error instanceof Error ? error.name : typeof error });
+        return json({ status: "unavailable", edition: config.edition }, 503);
+      }
       return json({ status: "ok", edition: config.edition, ...(deps.commit ? { commit: deps.commit } : {}) });
     }
     if (url.pathname === "/api" || url.pathname.startsWith("/api/")) return await api(request, url, deps);
@@ -118,6 +134,8 @@ export async function handleAdminRequest(request: Request, deps: AdminDeps): Pro
     return errorResponse(404, "not-found", "Not found.");
   } catch (error) {
     if (error instanceof Refusal) return errorResponse(error.status, error.code, error.message);
+    if (error instanceof DistrictError && error.result === "ops-not-enabled") return errorResponse(424, "ops-not-enabled", error.message);
+    if (error instanceof ImportSourceError) return errorResponse(502, "control-plane-unavailable", error.message);
     if (error instanceof DistrictError) {
       const status = error.status === 404 ? 404 : error.status === 400 ? 400 : 502;
       return errorResponse(status, status === 502 ? "district-error" : error.status === 404 ? "not-found" : "validation-failed", error.message);
@@ -212,9 +230,13 @@ async function api(request: Request, url: URL, deps: AdminDeps): Promise<Respons
       operator: { email: caller.email, role: caller.role },
       edition: config.edition,
       ...(config.allowedOrigins === undefined ? {} : { allowedOrigins: [...config.allowedOrigins] }),
+      ...(config.edition === "hosted" ? { installUrl: GUIDED_INSTALL_URL } : {}),
     };
     return json(me);
   }
+  // educateos.io's installations exist only for the hosted edition: the OSS admin has no such source.
+  if (config.edition === "hosted" && route === "GET installations" && parts.length === 1) return json(await deps.store.installations());
+  if (config.edition === "hosted" && route === "POST import" && parts.length === 2 && parts[1] === "control-plane") return importRoute(context);
   if (route === "GET audit" && parts.length === 1) {
     const workspace = url.searchParams.get("workspace") ?? undefined;
     const cursor = url.searchParams.get("cursor");
@@ -238,6 +260,30 @@ interface RouteContext {
   config: AdminConfig;
   caller: Caller;
   now: Date;
+}
+
+/** Imports operators, installations and reservations from educateos.io; audited unless a dry run. */
+async function importRoute({ request, deps, caller, now }: RouteContext): Promise<Response> {
+  const input = parse(ImportRequest, await readJson(request), "import");
+  if (deps.controlPlane === undefined) {
+    throw new Refusal(503, "unavailable", "This admin has no CONTROL_PLANE binding to educateos.io's control plane, so there is nothing to import from.");
+  }
+  const dryRun = input.dryRun ?? false;
+  const run = () => importControlPlane({
+    store: deps.store, source: deps.controlPlane!, keyEncryptionKey: deps.keyEncryptionKey, dryRun, now, newWorkspaceId: workspaceId,
+  });
+  // A dry run writes nothing, its audit entry included.
+  if (dryRun) return json(await run());
+  const audit = (result: string) =>
+    deps.store.audit({ operatorSub: caller.sub, action: "control-plane.import", result, at: now.toISOString() });
+  try {
+    const report = await run();
+    await audit(`ok:${report.installations.created}+${report.installations.updated} installations,${report.workspaces.created} workspaces`);
+    return json(report);
+  } catch (error) {
+    await audit(error instanceof ImportSourceError ? "unavailable" : "error");
+    throw error;
+  }
 }
 
 /** Every ops scope, which an enrollment asks the district for. */

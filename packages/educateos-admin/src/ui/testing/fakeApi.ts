@@ -1,7 +1,7 @@
 // A fake of the admin Worker's /api for the SPA's suite: canned workspaces, analytics, people and
 // devices, and a record of every request. Not a test file.
 import type { DeviceEntry, DirectoryEntry, OpsAnalyticsResponse } from "@educateos/fleet/ops";
-import type { AnalyticsEnvelope, Me, Workspace } from "../../shared/api.ts";
+import type { AnalyticsEnvelope, ImportReport, InstallationsResponse, Me, Workspace } from "../../shared/api.ts";
 
 export const NORTHFIELD: Workspace = {
   id: "wks_northfield", slug: "northfield", displayName: "Northfield", origin: "https://northfield.educateos.io",
@@ -43,9 +43,33 @@ export interface FakeAdminApi {
   posts: () => Recorded[];
 }
 
-export function fakeAdminApi(options: { me?: Partial<Me>; workspaces?: Workspace[] } = {}): FakeAdminApi {
+export const INSTALLATIONS: InstallationsResponse = {
+  installations: [{
+    instanceId: "ins_northfield", workspaceId: NORTHFIELD.id, slug: "northfield", hostname: "northfield.educateos.io", installedBy: "installer@example.org",
+    cloudflareAccountId: "c".repeat(32), releaseVersion: "0.1.0", installedAt: "2026-10-26T14:00:00.000Z", importedAt: "2026-10-28T12:00:00.000Z",
+  }],
+  reservations: [],
+};
+
+const importReport = (dryRun: boolean): ImportReport => ({
+  dryRun, exportedAt: "2026-10-28T12:00:00.000Z",
+  operators: { created: 1, updated: 0, unchanged: 1 },
+  workspaces: { created: 1, matched: 0 },
+  installations: { created: 1, updated: 0, unchanged: 1 },
+  reservations: { created: 1, updated: 0, unchanged: 1, removed: 0 },
+  skipped: [{ instanceId: "ins_riverbend", slug: "riverbend", reason: "slug-taken" }],
+});
+
+/** The admin's answer for a district that doesn't serve /api/ops yet. */
+const NOT_ENABLED = { code: "ops-not-enabled", message: "Operations not enabled for this workspace. Its district doesn't answer the ops API (/api/ops) yet." };
+
+export function fakeAdminApi(options: { me?: Partial<Me>; workspaces?: Workspace[]; opsNotEnabled?: boolean } = {}): FakeAdminApi {
   const requests: Recorded[] = [];
-  const me: Me = { operator: { email: "ops@educateos.io", role: "admin" }, edition: "hosted", ...options.me };
+  const hosted = (options.me?.edition ?? "hosted") === "hosted";
+  const me: Me = {
+    operator: { email: "ops@educateos.io", role: "admin" }, edition: "hosted",
+    ...(hosted ? { installUrl: "https://educateos.io/app/install" } : {}), ...options.me,
+  };
   const workspaces = options.workspaces ?? [NORTHFIELD];
   const routes: [RegExp, string, (match: RegExpExecArray, url: URL, body: unknown) => unknown][] = [
     [/^\/api\/me$/, "GET", () => me],
@@ -68,6 +92,8 @@ export function fakeAdminApi(options: { me?: Partial<Me>; workspaces?: Workspace
     [/^\/api\/workspaces\/[^/]+\/devices$/, "GET", () => ({ devices: [PHONE] })],
     [/^\/api\/workspaces\/[^/]+\/devices\/revoke-below-version$/, "POST", () => ({ revoked: 3, auditId: "aud_2" })],
     [/^\/api\/workspaces\/[^/]+\/devices\/[^/]+\/revoke$/, "POST", () => ({ applied: true, auditId: "aud_3" })],
+    [/^\/api\/installations$/, "GET", () => INSTALLATIONS],
+    [/^\/api\/import\/control-plane$/, "POST", (_m, _u, body) => importReport((body as { dryRun?: boolean }).dryRun === true)],
     [/^\/api\/audit$/, "GET", () => ({ entries: [{ id: 1, at: "2026-10-28T12:00:00.000Z", operatorSub: "s", operatorEmail: "ops@educateos.io", action: "workspace.enroll", target: NORTHFIELD.origin, result: "ok" }] })],
   ];
   return {
@@ -78,6 +104,8 @@ export function fakeAdminApi(options: { me?: Partial<Me>; workspaces?: Workspace
       const method = init.method ?? "GET";
       const body = typeof init.body === "string" ? (JSON.parse(init.body) as unknown) : undefined;
       requests.push({ method, path: `${url.pathname}${url.search}`, ...(body === undefined ? {} : { body }) });
+      // A district without the ops API: every call that would reach it answers as the Worker does.
+      if (options.opsNotEnabled === true && /^\/api\/workspaces\/[^/]+\/./.test(url.pathname)) return Response.json(NOT_ENABLED, { status: 424 });
       for (const [pattern, routeMethod, handler] of routes) {
         const match = pattern.exec(url.pathname);
         if (match !== null && routeMethod === method) return Response.json(handler(match, url, body));

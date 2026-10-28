@@ -2,7 +2,9 @@
 // ops keys, analytics snapshots and the audit log. Nothing a district passes through (directory or
 // device data) has a table or a method here, and that is deliberate.
 import type { AnalyticsRange } from "@educateos/fleet/ops";
-import type { AuditEntry, AuditPage, Edition, OperatorRole, Workspace, WorkspaceStatus } from "../shared/api.ts";
+import type {
+  AuditEntry, AuditPage, Edition, InstallationRecord, InstallationsResponse, OperatorRole, SlugReservationRecord, Workspace, WorkspaceStatus,
+} from "../shared/api.ts";
 
 /** A workspace's current key row. */
 export interface OpsKeyRow {
@@ -47,6 +49,89 @@ const toWorkspace = (row: WorkspaceRecord): Workspace => ({
   edition: row.edition,
   enrolledAt: row.enrolled_at,
   status: row.status,
+});
+
+/** An operator as the control-plane import compares it. */
+export interface OperatorImportRow {
+  sub: string;
+  accountId?: string;
+  firstSeenAt: string;
+}
+
+/** An installation row (migrations/0002). */
+export interface InstallationRow {
+  instanceId: string;
+  workspaceId?: string;
+  operatorSub: string;
+  slug: string;
+  hostname: string;
+  cloudflareAccountId: string;
+  releaseVersion: string;
+  installedAt: string;
+  importedAt: string;
+}
+
+/** A slug reservation row (migrations/0002). */
+export interface ReservationRow {
+  slug: string;
+  operatorSub: string;
+  cloudflareAccountId: string;
+  instanceId: string;
+  leaseUntil?: string;
+  importedAt: string;
+}
+
+/** Everything one control-plane import writes, applied in one D1 batch. */
+export interface ImportWrites {
+  newOperators: { sub: string; email: string; accountId: string; firstSeenAt: string; lastSeenAt: string }[];
+  /** Existing operators: their account ID, and the earlier of the two first-seen times. */
+  operatorAccounts: { sub: string; accountId: string; firstSeenAt: string }[];
+  workspaces: { workspace: Workspace; key: OpsKeyRow }[];
+  installations: InstallationRow[];
+  reservations: ReservationRow[];
+  removedReservations: string[];
+}
+
+interface InstallationRecordRow {
+  instance_id: string;
+  workspace_id: string | null;
+  operator_sub: string;
+  slug: string;
+  hostname: string;
+  cloudflare_account_id: string;
+  release_version: string;
+  installed_at: string;
+  imported_at: string;
+}
+
+interface ReservationRecordRow {
+  slug: string;
+  operator_sub: string;
+  cloudflare_account_id: string;
+  instance_id: string;
+  lease_until: string | null;
+  imported_at: string;
+}
+
+const toInstallationRow = (row: InstallationRecordRow): InstallationRow => ({
+  instanceId: row.instance_id,
+  ...(row.workspace_id === null ? {} : { workspaceId: row.workspace_id }),
+  operatorSub: row.operator_sub,
+  slug: row.slug,
+  hostname: row.hostname,
+  cloudflareAccountId: row.cloudflare_account_id,
+  releaseVersion: row.release_version,
+  installedAt: row.installed_at,
+  importedAt: row.imported_at,
+});
+
+const toReservationRow = (row: ReservationRecordRow): ReservationRow => ({
+  slug: row.slug,
+  operatorSub: row.operator_sub,
+  cloudflareAccountId: row.cloudflare_account_id,
+  instanceId: row.instance_id,
+  ...(row.lease_until === null ? {} : { leaseUntil: row.lease_until }),
+  importedAt: row.imported_at,
 });
 
 /** How long a signed-in operator's last-seen time may lag. Saves a write per request. */
@@ -148,6 +233,96 @@ export class AdminStore {
       `INSERT INTO analytics_snapshots (workspace_id, time_range, aggregates_json, fetched_at) VALUES (?1, ?2, ?3, ?4)
        ON CONFLICT (workspace_id, time_range) DO UPDATE SET aggregates_json = excluded.aggregates_json, fetched_at = excluded.fetched_at`,
     ).bind(workspaceId, range, json, fetchedAt).run();
+  }
+
+  /** Answers once D1 does, for /healthz. */
+  async ping(): Promise<void> {
+    await this.#db.prepare("SELECT 1").first();
+  }
+
+  /** Every workspace, removed ones included, for the import's slug and origin checks. */
+  async allWorkspaces(): Promise<Workspace[]> {
+    const { results } = await this.#db.prepare("SELECT * FROM workspaces").all<WorkspaceRecord>();
+    return results.map(toWorkspace);
+  }
+
+  /** Every operator's subject, account ID and first sign-in. */
+  async operatorImportRows(): Promise<OperatorImportRow[]> {
+    const { results } = await this.#db.prepare("SELECT sub, account_id, first_seen_at FROM operators")
+      .all<{ sub: string; account_id: string | null; first_seen_at: string }>();
+    return results.map((row) => ({ sub: row.sub, ...(row.account_id === null ? {} : { accountId: row.account_id }), firstSeenAt: row.first_seen_at }));
+  }
+
+  /** Every installation row. */
+  async installationRows(): Promise<InstallationRow[]> {
+    const { results } = await this.#db.prepare("SELECT * FROM installations").all<InstallationRecordRow>();
+    return results.map(toInstallationRow);
+  }
+
+  /** Every slug reservation row. */
+  async reservationRows(): Promise<ReservationRow[]> {
+    const { results } = await this.#db.prepare("SELECT * FROM slug_reservations").all<ReservationRecordRow>();
+    return results.map(toReservationRow);
+  }
+
+  /** Writes one import, all or nothing. */
+  async applyImport(writes: ImportWrites): Promise<void> {
+    const statements: D1PreparedStatement[] = [
+      ...writes.newOperators.map((op) => this.#db.prepare(
+        "INSERT INTO operators (sub, email, role, account_id, first_seen_at, last_seen_at) VALUES (?1, ?2, 'installer', ?3, ?4, ?5)",
+      ).bind(op.sub, op.email, op.accountId, op.firstSeenAt, op.lastSeenAt)),
+      ...writes.operatorAccounts.map((op) => this.#db.prepare(
+        "UPDATE operators SET account_id = ?2, first_seen_at = min(first_seen_at, ?3) WHERE sub = ?1",
+      ).bind(op.sub, op.accountId, op.firstSeenAt)),
+      ...writes.workspaces.flatMap(({ workspace, key }) => [
+        this.#db.prepare(
+          "INSERT INTO workspaces (id, slug, display_name, origin, edition, enrolled_at, status) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        ).bind(workspace.id, workspace.slug, workspace.displayName, workspace.origin, workspace.edition, workspace.enrolledAt, workspace.status),
+        this.#db.prepare(
+          "INSERT INTO ops_keys (workspace_id, key_id, public_jwk, private_key_ciphertext, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+        ).bind(key.workspaceId, key.keyId, key.publicJwk, key.sealedPrivateKey, key.createdAt),
+      ]),
+      ...writes.installations.map((row) => this.#db.prepare(
+        `INSERT INTO installations (instance_id, workspace_id, operator_sub, slug, hostname, cloudflare_account_id, release_version, installed_at, imported_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+         ON CONFLICT (instance_id) DO UPDATE SET workspace_id = excluded.workspace_id, operator_sub = excluded.operator_sub, slug = excluded.slug,
+           hostname = excluded.hostname, cloudflare_account_id = excluded.cloudflare_account_id, release_version = excluded.release_version,
+           installed_at = excluded.installed_at, imported_at = excluded.imported_at`,
+      ).bind(row.instanceId, row.workspaceId ?? null, row.operatorSub, row.slug, row.hostname, row.cloudflareAccountId, row.releaseVersion, row.installedAt, row.importedAt)),
+      ...writes.removedReservations.map((slug) => this.#db.prepare("DELETE FROM slug_reservations WHERE slug = ?1").bind(slug)),
+      ...writes.reservations.map((row) => this.#db.prepare(
+        `INSERT INTO slug_reservations (slug, operator_sub, cloudflare_account_id, instance_id, lease_until, imported_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+         ON CONFLICT (slug) DO UPDATE SET operator_sub = excluded.operator_sub, cloudflare_account_id = excluded.cloudflare_account_id,
+           instance_id = excluded.instance_id, lease_until = excluded.lease_until, imported_at = excluded.imported_at`,
+      ).bind(row.slug, row.operatorSub, row.cloudflareAccountId, row.instanceId, row.leaseUntil ?? null, row.importedAt)),
+    ];
+    if (statements.length > 0) await this.#db.batch(statements);
+  }
+
+  /** The installations and reservations, newest first, with the installing operator's email. */
+  async installations(): Promise<InstallationsResponse> {
+    const [installations, reservations] = await this.#db.batch<Record<string, string | null>>([
+      this.#db.prepare(
+        `SELECT i.*, o.email AS operator_email FROM installations i LEFT JOIN operators o ON o.sub = i.operator_sub
+         ORDER BY i.installed_at DESC, i.instance_id`,
+      ),
+      this.#db.prepare(
+        "SELECT r.*, o.email AS operator_email FROM slug_reservations r LEFT JOIN operators o ON o.sub = r.operator_sub ORDER BY r.slug",
+      ),
+    ]);
+    return {
+      installations: (installations!.results as unknown as (InstallationRecordRow & { operator_email: string | null })[]).map((row): InstallationRecord => {
+        const { operatorSub: _sub, ...rest } = toInstallationRow(row);
+        return { ...rest, ...(row.operator_email === null ? {} : { installedBy: row.operator_email }) };
+      }),
+      reservations: (reservations!.results as unknown as (ReservationRecordRow & { operator_email: string | null })[]).map((row): SlugReservationRecord => ({
+        slug: row.slug,
+        instanceId: row.instance_id,
+        ...(row.operator_email === null ? {} : { reservedBy: row.operator_email }),
+        cloudflareAccountId: row.cloudflare_account_id,
+        ...(row.lease_until === null ? {} : { leaseUntil: row.lease_until }),
+      })),
+    };
   }
 
   /** Appends to the audit log. */

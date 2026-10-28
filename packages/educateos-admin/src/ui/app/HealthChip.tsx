@@ -1,6 +1,7 @@
 import { Badge, Loader } from "@cloudflare/kumo";
 import type { OpsHealthResponse } from "@educateos/fleet/ops";
 import { useLoad } from "./context.tsx";
+import { OPS_NOT_ENABLED } from "./OpsNotEnabled.tsx";
 
 const LABEL = { ok: "Healthy", degraded: "Degraded", down: "Down" } as const;
 const VARIANT = { ok: "success", degraded: "warning", down: "error" } as const;
@@ -9,7 +10,7 @@ const VARIANT = { ok: "success", degraded: "warning", down: "error" } as const;
 export const HealthChip = ({ workspaceId, showVersion = false }: { workspaceId: string; showVersion?: boolean }) => {
   const health = useLoad(`health:${workspaceId}`, (client) => client.get<OpsHealthResponse>(`/api/workspaces/${encodeURIComponent(workspaceId)}/health`));
   if (health.status === "loading") return <Loader size="sm" />;
-  if (health.status === "error") return <Badge variant="secondary">Unreachable</Badge>;
+  if (health.status === "error") return <Badge variant="secondary">{health.code === OPS_NOT_ENABLED ? "Operations not enabled" : "Unreachable"}</Badge>;
   return (
     <span className="inline-flex items-center gap-2">
       <Badge variant={VARIANT[health.data.status]}>{LABEL[health.data.status]}</Badge>

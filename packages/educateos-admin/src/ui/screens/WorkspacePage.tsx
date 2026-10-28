@@ -8,6 +8,7 @@ import { ConfirmDialog } from "../app/ConfirmDialog.tsx";
 import { useClient, useLoad } from "../app/context.tsx";
 import { estimate, formatBytes, formatCount, formatPercent, formatTime, formatUsdNanos } from "../app/format.ts";
 import { HealthChip } from "../app/HealthChip.tsx";
+import { isOpsNotEnabled, OpsNotEnabled } from "../app/OpsNotEnabled.tsx";
 import { LoadState } from "../app/LoadState.tsx";
 import { WORKSPACE_TABS, workspaceHref, type WorkspaceTab } from "../app/route.ts";
 import { Sparkline } from "../app/Sparkline.tsx";
@@ -193,9 +194,11 @@ const Settings = ({ workspace, me, onChanged }: { workspace: WorkspaceDetail; me
   const announce = useAnnounce();
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState<{ variant: "error" | "default"; text: string }>();
+  const [notEnabled, setNotEnabled] = useState(false);
   const base = `/api/workspaces/${encodeURIComponent(workspace.id)}`;
   const run = async (action: "verify" | "remove") => {
     setConfirming(false);
+    setNotEnabled(false);
     try {
       await client.post(`${base}/${action}`);
       const text = action === "verify" ? "Connected: the district accepted this admin's key." : "Removed from this admin.";
@@ -204,11 +207,17 @@ const Settings = ({ workspace, me, onChanged }: { workspace: WorkspaceDetail; me
       onChanged();
       if (action === "remove") window.location.hash = "#/workspaces";
     } catch (error) {
+      if (isOpsNotEnabled(error)) {
+        setMessage(undefined);
+        setNotEnabled(true);
+        return;
+      }
       setMessage({ variant: "error", text: error instanceof AdminApiError ? error.message : "That didn't work." });
     }
   };
   return (
     <div className="flex flex-col gap-4">
+      {notEnabled && <OpsNotEnabled />}
       <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
         <dt className="text-kumo-subtle">Origin</dt><dd>{workspace.origin}</dd>
         <dt className="text-kumo-subtle">Edition</dt><dd>{workspace.edition === "hosted" ? "Hosted by EducateOS" : "Self-hosted"}</dd>

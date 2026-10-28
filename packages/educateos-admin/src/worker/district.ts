@@ -2,7 +2,12 @@
 // the acting operator, and each answer parsed against the protocol's schema before anything else
 // sees it. A redirect is a failure, not something to follow: on a district host it means the ops
 // path isn't an Access bypass, and following it would send a signed request somewhere else.
-import { signOpsRequest, type SigningIdentity } from "@educateos/fleet/ops";
+//
+// A district that doesn't serve the ops API yet is told apart from one that refuses a request
+// (result `ops-not-enabled`): Access redirecting the call, a 404 for a route with no identifier in
+// its path (only a district without the API has no /api/ops/health), and any 401, 403 or 404 whose
+// body isn't the protocol's error body (Access, or a district Worker without /api/ops, answered).
+import { matchOpsRoute, OpsErrorBody, signOpsRequest, type SigningIdentity } from "@educateos/fleet/ops";
 import type { z } from "zod";
 
 /** How long the admin waits for a district. */
@@ -13,13 +18,54 @@ export class DistrictError extends Error {
   override readonly name = "DistrictError";
   /** The district's HTTP status, or 0 when it never answered. */
   readonly status: number;
-  /** Short and fixed: `refused:403`, `unreachable`, `redirected`, `malformed`. Never the district's body. */
+  /** Short and fixed: `refused:403`, `unreachable`, `ops-not-enabled`, `malformed`. Never the district's body. */
   readonly result: string;
 
   constructor(status: number, result: string, message: string) {
     super(message);
     this.status = status;
     this.result = result;
+  }
+}
+
+/** What the admin says when a district doesn't serve the ops API. */
+export const OPS_NOT_ENABLED_MESSAGE =
+  "Operations not enabled for this workspace. Its district doesn't answer the ops API (/api/ops) yet, so health, analytics, people and devices aren't available here.";
+
+/** The most of an error body the admin reads, to tell the protocol's error body from anything else. */
+const MAX_ERROR_BODY_BYTES = 4096;
+
+/** Reads at most `limit` bytes of a body as text, then drops the rest. */
+async function boundedText(response: Response, limit: number): Promise<string> {
+  if (response.body === null) return "";
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    size += value.byteLength;
+    if (size >= limit) {
+      await reader.cancel();
+      break;
+    }
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes.subarray(0, limit));
+}
+
+/** Whether a body is the ops protocol's error body. */
+function isOpsErrorBody(text: string): boolean {
+  try {
+    return OpsErrorBody.safeParse(JSON.parse(text)).success;
+  } catch {
+    return false;
   }
 }
 
@@ -70,11 +116,20 @@ export async function callDistrict<T extends z.ZodType>(call: DistrictCall<T>): 
     throw new DistrictError(0, "unreachable", "The district could not be reached.");
   }
   if (response.status >= 300 && response.status < 400) {
+    // Access sends a request for a path that isn't a bypass to its sign-in page.
     await response.body?.cancel();
-    throw new DistrictError(response.status, "redirected", "The district redirected the request. Is /api/ops an Access bypass path there?");
+    throw new DistrictError(response.status, "ops-not-enabled", OPS_NOT_ENABLED_MESSAGE);
   }
   if (!response.ok) {
-    await response.body?.cancel();
+    if (response.status === 401 || response.status === 403 || response.status === 404) {
+      const fromOps = isOpsErrorBody(await boundedText(response, MAX_ERROR_BODY_BYTES));
+      const identifiesSomething = matchOpsRoute(call.method, url.pathname)?.route.path.includes(":") ?? false;
+      if (!fromOps || (response.status === 404 && !identifiesSomething)) {
+        throw new DistrictError(response.status, "ops-not-enabled", OPS_NOT_ENABLED_MESSAGE);
+      }
+    } else {
+      await response.body?.cancel();
+    }
     const message = response.status === 401
       ? "The district did not accept this admin's key. Has the key been registered there, or removed?"
       : response.status === 403
