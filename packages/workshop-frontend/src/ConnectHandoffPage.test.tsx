@@ -128,7 +128,7 @@ describe('ConnectHandoffPage', () => {
     const replace = vi.fn<(url: string) => void>()
     vi.stubGlobal('location', { hash: '#' + TICKET, pathname: HANDOFF_PATH, replace })
     await render({ strict: true })
-    expect(replace).toHaveBeenCalledExactlyOnceWith(`https://os.cloudflare.app/authpopup#id=${id}&ticket=${TICKET}`)
+    expect(replace).toHaveBeenCalledExactlyOnceWith(`https://mobile.educateos.io/authpopup#id=${id}&ticket=${TICKET}`)
     expect(sessionStorage.getItem(NATIVE_AUTH_KEY)).toBeNull()
     expect(confirmLogin).not.toHaveBeenCalled()
     expect(completeConnectHandoff).not.toHaveBeenCalled()

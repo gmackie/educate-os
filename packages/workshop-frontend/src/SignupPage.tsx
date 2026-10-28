@@ -14,6 +14,7 @@ import {
   deviceSessionDestination,
   deviceSessionSearch,
 } from "./features/native-app/DeviceSessionHandoff";
+import { workshopPath } from "./workshopPath";
 
 interface SignupPageProps {
   rpcStub: RpcStub<PublicApi>;
@@ -32,7 +33,7 @@ export default function SignupPage({ rpcStub }: SignupPageProps) {
   const [error, setError] = useState<string | null>(null);
 
   const handleSignupSuccess = () => {
-    window.location.href = deviceSessionDestination("/", window.location.search);
+    window.location.href = deviceSessionDestination(workshopPath("/"), window.location.search);
   };
 
   const usernameError =

@@ -9,6 +9,7 @@ import {
   type FrontendErrorReportV1,
   type FrontendErrorSurface,
 } from '@gadgets/error-reporting'
+import { workshopPath } from './workshopPath'
 
 /** Allowlisted context available to a Workshop browser capture site. */
 export type BrowserReportOptions = Readonly<{
@@ -188,7 +189,7 @@ const reporter: BrowserReporter = reportingEnabled
       sessionId: getSessionId(),
       browser: getBrowserFacts(),
       reportedUserId: () => currentReportedUserId,
-      transport: (report) => fetch('/api/client-errors', {
+      transport: (report) => fetch(workshopPath('/api/client-errors'), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(report),

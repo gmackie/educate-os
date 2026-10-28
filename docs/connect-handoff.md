@@ -29,6 +29,10 @@ The defence is that finishing the flow activates nothing. `GatekeeperConnectCall
 - `targetOrigin` is the Workshop's origin, from deployment configuration only:
   `handoffTargetOrigin(env)` reads `PUBLIC_BASE_URL` and fails closed when it is unset. No request
   header is consulted, so nothing a client asserts can route the ticket elsewhere.
+- `targetBasePath`, present only when the Workshop is mounted below the origin root (`/ai` on a
+  district origin, SCHO-259), comes from `PUBLIC_BASE_PATH` the same way (`handoffTarget(env)`).
+  The completion page then navigates to `<targetOrigin><targetBasePath>/connect/handoff`; the kit
+  accepts plain path segments only. Root deployments leave it unset and are unchanged.
 
 Until the ticket is redeemed the gatekeeper holds credentials that are reachable from no Workshop
 account: a connect is staged (`stagePendingConnect`), a reconnect's credentials stay staged in the

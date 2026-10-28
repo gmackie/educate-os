@@ -137,7 +137,7 @@ function scriptLiteral(value: unknown): string {
 
 /**
  * The page a finished connect, reconnect or sign-in flow lands on. It navigates the popup to the
- * Workshop's own handoff page, `<targetOrigin>/connect/handoff#<ticket>`, which redeems the ticket
+ * Workshop's own handoff page, `<targetOrigin>[<targetBasePath>]/connect/handoff#<ticket>`, which redeems the ticket
  * over the popup's own session; this page holds no session and needs no RPC client.
  *
  * The ticket travels in the URL fragment, which a browser never sends to a server nor in a
@@ -173,6 +173,13 @@ export function connectHandoffPageHtml(handoff: ConnectHandoff): string {
   if (origin === "" || origin === "null" || origin !== handoff.targetOrigin) {
     throw new Error("The connect handoff's targetOrigin is not an origin.");
   }
+  // Where the Workshop is mounted on that origin, when not at the root (`/ai` on a district origin).
+  // Plain path segments only, so it cannot leave the origin or smuggle a query or fragment.
+  let basePath = handoff.targetBasePath ?? "";
+  if (basePath !== "" && (!/^(\/[A-Za-z0-9._~-]+)+$/.test(basePath) ||
+      basePath.split("/").some(segment => segment === "." || segment === ".."))) {
+    throw new Error("The connect handoff's targetBasePath is not a plain path.");
+  }
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -183,7 +190,7 @@ export function connectHandoffPageHtml(handoff: ConnectHandoff): string {
 <script>
 (function () {
   var ticket = ${scriptLiteral(handoff.ticket)};
-  var target = ${scriptLiteral(origin)};
+  var target = ${scriptLiteral(origin + basePath)};
   window.location.replace(target + "/connect/handoff#" + encodeURIComponent(ticket));
 })();
 </script></body></html>`;

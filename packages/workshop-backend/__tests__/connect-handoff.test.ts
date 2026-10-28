@@ -4,7 +4,7 @@ import { runInDurableObject } from "cloudflare:test";
 import type { GatekeeperUser } from "@gadgets/workshop-shared/gatekeeper";
 import type { GatekeeperConnectCallbackImpl, UserDurableObject } from "../src/user.js";
 import {
-  CONNECT_FLOW_LIFETIME_MS, handoffTargetOrigin, hashSecret, PENDING_HANDOFF_LIFETIME_MS,
+  CONNECT_FLOW_LIFETIME_MS, handoffTarget, handoffTargetOrigin, hashSecret, PENDING_HANDOFF_LIFETIME_MS,
 } from "../src/connect-handoff.js";
 import type { FakeGatekeeperAccount } from "./test-worker.js";
 
@@ -316,6 +316,15 @@ describe("connect handoff", () => {
     expect(handoffTargetOrigin({ PUBLIC_BASE_URL: `${TARGET}/some/path` } as Cloudflare.Env))
       .toBe(TARGET);
     expect(() => handoffTargetOrigin({} as Cloudflare.Env)).toThrow("PUBLIC_BASE_URL");
+  });
+
+  it("adds the Workshop's mount to the handoff target only when PUBLIC_BASE_PATH sets one", () => {
+    expect(handoffTarget({ PUBLIC_BASE_URL: TARGET } as Cloudflare.Env))
+      .toStrictEqual({ targetOrigin: TARGET });
+    expect(handoffTarget({ PUBLIC_BASE_URL: TARGET, PUBLIC_BASE_PATH: "/" } as Cloudflare.Env))
+      .toStrictEqual({ targetOrigin: TARGET });
+    expect(handoffTarget({ PUBLIC_BASE_URL: TARGET, PUBLIC_BASE_PATH: "/ai/" } as Cloudflare.Env))
+      .toStrictEqual({ targetOrigin: TARGET, targetBasePath: "/ai" });
   });
 
   it("pairs the nonce a reconnect or expansion returns with that account's ticket", async () => {

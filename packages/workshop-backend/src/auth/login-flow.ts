@@ -40,7 +40,7 @@ import { createWorkshopLogger } from "../observability";
 import { CLOUDFLARE_VENDOR_ID, type UserDurableObject } from "../user.js";
 import { readAdminConfig } from "../admin-config.js";
 import {
-  CONNECT_FLOW_LIFETIME_MS, handoffTargetOrigin, hashPresentedSecret, newSecretToken,
+  CONNECT_FLOW_LIFETIME_MS, handoffTarget, hashPresentedSecret, newSecretToken,
   PENDING_HANDOFF_LIFETIME_MS,
 } from "../connect-handoff.js";
 
@@ -189,10 +189,10 @@ export class LoginConnectCallbackImpl
    * handoff whose ticket the popup's page must present to confirmLogin().
    */
   async complete(account: Fetcher<GatekeeperUser>, expiresAt?: Date): Promise<ConnectHandoff> {
-    const targetOrigin = handoffTargetOrigin(this.env);
+    const target = handoffTarget(this.env);
     const { secret, hash } = await newSecretToken();
     await this.#deliver(account, expiresAt, hash);
-    return { targetOrigin, ticket: secret.toHex() };
+    return { ...target, ticket: secret.toHex() };
   }
 
   async #deliver(account: Fetcher<GatekeeperUser>, expiresAt: Date | undefined,

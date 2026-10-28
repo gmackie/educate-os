@@ -85,6 +85,8 @@ const EXPECTED: Record<string, ExpectedArea> = {
       "VITE_DEV_PASSWORD",
       "VITE_DEV_USERNAME",
       "VITE_FRONTEND_ERROR_REPORTING",
+      // The Workshop's mount (`/` by default, `/ai/` on a district origin; SCHO-259).
+      "VITE_WORKSHOP_BASE_PATH",
     ],
     injected: ["NODE_ENV"],
   },
