@@ -164,6 +164,44 @@ describe("guardModelHandle", () => {
     expect(faux.state.callCount).toBe(0);
   });
 
+  it.each([19_000, 60_000])("waits for replay screening with a bounded deadline (%i ms)", async elapsedMs => {
+    vi.useFakeTimers();
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockImplementation(ms => {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(new DOMException("Timed out", "TimeoutError")), ms);
+      return controller.signal;
+    });
+    try {
+      const { faux, handle } = fauxHandle([fauxAssistantMessage(fauxText("Checked."))]);
+      let release!: (decision: AiCallDecision) => void;
+      let started!: () => void;
+      const entered = new Promise<void>(resolve => { started = resolve; });
+      guardModelHandle({
+        beforeModelCall: () => {
+          started();
+          return new Promise<AiCallDecision>(resolve => { release = resolve; });
+        },
+        afterModelCall: async () => {},
+      }, handle, scope());
+      const result = completeText(handle, { prompt: "Resume this conversation" });
+      const outcome = result.then(value => ({ value }), error => ({ error }));
+      await entered;
+      await vi.advanceTimersByTimeAsync(elapsedMs);
+      expect(faux.state.callCount).toBe(0);
+      release(PROCEED);
+      if (elapsedMs < 60_000) {
+        expect(await outcome).toEqual({ value: "Checked." });
+      } else {
+        expect(await outcome).toMatchObject({ error: { reason: "guard_unavailable" } });
+        expect(faux.state.callCount).toBe(0);
+      }
+      expect(timeout).toHaveBeenCalledWith(60_000);
+    } finally {
+      timeout.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   it("denies when the call is stopped while the guard is still deciding", async () => {
     let { faux, handle } = fauxHandle([fauxAssistantMessage(fauxText("Never."))]);
     guardModelHandle({

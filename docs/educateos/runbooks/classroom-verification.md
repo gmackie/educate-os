@@ -85,3 +85,76 @@ Next live acceptance sequence:
 5. Have the learner turn work in; approve the exact grade, return it, and verify learner visibility.
 6. Verify denial, removal/revocation, outage/retry, grading-period management and add-on workflows.
 7. Capture the customer walkthrough only after these gates pass. Use synthetic data throughout.
+
+## Workspace and gadget acceptance, 2026-10-28
+
+These are required customer acceptance gates, in addition to provider verification. A local API
+runner does not satisfy them. Record the workspace URL, connected Google identity, deployed
+revision, tool results, approval decision, and Google readback for each example.
+
+- **Code-mode briefing:** connect course `895811762849` as `CLASSROOM`; inspect its declared API,
+  then use `executeCode` to read the course, roster, app-owned work, submissions, rubrics and
+  grading periods. The response must derive its counts and grades from the observed results,
+  identify failures, and distinguish pending simulated changes from committed data.
+- **Direct gadget:** wire that resource into the gadget with `setGadgetBinding`. Its server must
+  read its own `env.CLASSROOM`, rather than displaying a pasted chat snapshot. Verify refresh,
+  persistence after reload, empty/error states, and a separately authorized collaborator.
+- **Approved changes:** using the seeded teacher's OAuth account, queue synthetic coursework and
+  rubric creation; verify rejection makes no Google change, approval commits once, and subsequent
+  code-mode and gadget reads agree with Google. Grade only an eligible turned-in submission.
+- **Boundaries:** verify a different course cannot be read through this course binding, foreign
+  coursework cannot be mutated, a student cannot perform teacher writes, and expired credentials
+  require reconnection. Never substitute admin authority for a teacher acceptance result.
+
+Workspace started: <https://schoolos.gmac.io/workspace/6803f77edf00585d77d65d58c46267e3f09fb0905131571eaf6658e299532c74>,
+named **Classroom — Earth Science live briefing (SCHO-255)**. Connection discovery and an exact
+course connection request succeeded. Initial authorization used `gmackie@gedu.demo.educateos.io`;
+this is admin access, not teacher sign-in evidence. The teacher-authorized gadget and fresh
+code-mode verification below supersede the initial credential failure.
+
+The shared preview refused OAuth pop-ups twice with “Pop-up blocked. Please allow pop-ups and
+try again.” A separate Chrome validation profile permits the normal OAuth popup/handoff flow.
+Do not bypass the popup nonce or redeem a copied connect URL from a different session.
+
+Tenant preflight now successfully mints delegated tokens for `classroom.coursework.me`,
+`classroom.addons.teacher` and `classroom.addons.student` after the user's Google Admin confirmation.
+Submission `Cg4I8ZmlsYoaEKThsNyKGg` belongs to An Nguyen (`109086804245677102525`). A read as
+Rowan was denied HTTP 403; turn-in as An succeeded HTTP 200. The opt-in shipped connector verifier
+then passed (1/1), confirming teacher return and `RETURNED` with 8.5/10. This remains delegated API
+evidence, distinct from the workspace and gadget acceptance above. Capability discovery still
+returns HTTP 404; rubric listing and grading-period settings return HTTP 200.
+
+Connector production deployment `077ea80d-5cec-4815-b1c0-e9a7de26e99a` reports active at
+`719d37eaf2a99f6b266cb7b0d515c8ff2df8d2cd` (PR #170). Full customer readiness remains incomplete.
+
+
+Teacher OAuth and reusable dashboard acceptance passed at 2026-10-28 01:23–01:28 UTC:
+
+- Normal OAuth reconnect completed as `cv-teacher-whitaker@gedu.demo.educateos.io`. Course
+  discovery returned Earth Science 8 Period 1. The Workshop login remains the admin; this proves
+  teacher connector authorization, not teacher EducateOS principal linking.
+- Replaced the gadget's expired admin binding through Connections with the teacher course binding,
+  named `CLASSROOM`, and accepted the draft. The gadget reads its own binding on every refresh.
+- Live render showed Dana Whitaker, three students, four app-owned assignments, rubric
+  `Scientific explanation`, and no configured grading periods. Work `896231288996` showed
+  An Nguyen `RETURNED` / 8.5; Bao Nguyen and Rowan Ellis `CREATED` / ungraded. Rows join by userId.
+- Refresh advanced the fetched timestamp from 01:23:17 to 01:23:33 UTC. Reload retained the
+  accepted gadget and binding and fetched at 01:23:38 UTC.
+- A fresh conversation in the same workspace invoked `executeCode` against
+  `ES_SCHO_255_BRIEFING.rpc.fetchDashboard()`, corrected an initial roster-shape assumption, then
+  explicitly asserted all three submission states/grades. Its final response reports those exact
+  values, the rubric levels (10/0), no grading periods, and fetch time `2026-10-28T01:26:31.220Z`.
+  This is a real gadget RPC read through the connector, not pasted chat data.
+
+Two defects were exposed during validation. The first conversation initially matched students
+by response order and misattributed An's grade to Rowan; deterministic userId joins corrected it.
+The longer conversation then failed screening: guard call
+`e6dedad6-4a4e-4d50-a505-571813c9b839` admitted after 19,026 ms while the kernel timed out at
+15,000 ms. The fix allows input screening 60 seconds, retains the 15-second output deadline,
+fail-closed behavior and immediate Stop, and tests successful 19-second screening plus refusal at
+60 seconds. This fix still requires deployment and replay of the original failed conversation.
+
+Remaining customer gates: real Workshop approval/rejection and committed readback, student
+EducateOS sign-in and grade visibility, district sync/identity linkage, collaborator isolation,
+Plus grading-period writes/add-ons/rubric editing, and final production health. The live read-only
+example is usable; full Classroom delivery is not complete.
