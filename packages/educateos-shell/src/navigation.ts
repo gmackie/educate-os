@@ -216,6 +216,18 @@ export const navigationFor = (role: ShellRole, features: ShellFeatures): NavGrou
   }
 };
 
+/** What an "Ask AI about this" button opens the AI workspace with. */
+export interface AiContext {
+  kind: "assignment" | "submission";
+  id: string;
+}
+
+/**
+ * Where "✦ Ask AI about this" opens the AI workspace: `/ai/?context=<kind>:<id>`. The workspace
+ * checks the context again for the signed-in person; the link only says where to start.
+ */
+export const askAiHref = (context: AiContext): string => `/ai/?context=${context.kind}:${encodeURIComponent(context.id)}`;
+
 /** The entry the browser is at, if any: the first match, so overlapping hrefs never mark two. */
 export const activeItemId = (groups: readonly NavGroup[], location: ShellLocation): string | undefined =>
   groups.flatMap((group) => group.items).find((item) => item.active(location))?.id;

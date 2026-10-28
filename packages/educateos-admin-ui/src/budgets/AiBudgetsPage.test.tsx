@@ -6,7 +6,8 @@ import { STUDENT_NAMES, fakeDistrict } from "../testing/fakeDistrict.ts";
 import { renderConsole } from "../testing/renderConsole.tsx";
 import { formatUsdNanoExact, parseDollarsToCents } from "./budgetFormat.ts";
 
-const BUDGET_ROUTES = new Set(["admin.directoryNames", "admin.aiFunding", "admin.aiCostSummary", "admin.aiProjection", "admin.updateFundingPools", "admin.getConfig"]);
+// `me.get` is the shell asking who is signed in, to name them and draw their navigation (SCHO-260).
+const BUDGET_ROUTES = new Set(["admin.directoryNames", "admin.aiFunding", "admin.aiCostSummary", "admin.aiProjection", "admin.updateFundingPools", "admin.getConfig", "me.get"]);
 
 /** The value shown for one figure of the cost summary. */
 async function figure(term: string): Promise<string> {

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { fakeDistrict } from "./fakeDistrict.ts";
-import { renderApp } from "./render.tsx";
+import { openAccountMenu, renderApp } from "./render.tsx";
 
 const ISSUER = "https://northfield.cloudflareaccess.com";
 
@@ -64,7 +64,8 @@ describe("signing out (SCHO-222)", () => {
     vi.stubEnv("VITE_CF_ACCESS_MODE", "true");
     await renderApp(fakeDistrict());
     await screen.findByRole("heading", { level: 1, name: "Hi, Amara Okafor" });
-    expect(screen.getByRole("link", { name: "Sign out" }).getAttribute("href")).toBe(`${window.location.origin}/cdn-cgi/access/logout`);
+    // In the shell's account menu (SCHO-260).
+    expect(within(await openAccountMenu()).getByRole("link", { name: "Sign out" }).getAttribute("href")).toBe(`${window.location.origin}/cdn-cgi/access/logout`);
   });
 
   it("with a development sign-in link, forgets the tab's token", async () => {
@@ -72,7 +73,7 @@ describe("signing out (SCHO-222)", () => {
     sessionStorage.setItem("educateos.student.token", "tok_dev");
     const user = userEvent.setup();
     await renderApp(fakeDistrict());
-    await user.click(await screen.findByRole("button", { name: "Sign out" }));
+    await user.click(within(await openAccountMenu()).getByRole("button", { name: "Sign out" }));
     expect(sessionStorage.getItem("educateos.student.token")).toBeNull();
   });
 });

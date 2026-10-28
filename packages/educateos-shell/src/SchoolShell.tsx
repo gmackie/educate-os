@@ -110,7 +110,10 @@ export interface ShellAccount {
   connectPhoneHref?: string;
   /** The "Your devices" page. Offered only where the school's manifest has `features.mobile`. */
   devicesHref?: string;
-  /** The sign-out control, which differs by how the SPA signs in. Defaults to Access's logout. */
+  /**
+   * The sign-out control, which differs by how the SPA signs in. Defaults to Access's logout;
+   * `null` offers none, for a host that signs people in and out itself.
+   */
   signOut?: ReactNode;
 }
 
@@ -178,6 +181,8 @@ const Navigation = ({
 }) => {
   const baseId = useId();
   const active = activeItemId(groups, location);
+  // No landmark until there is somewhere to go: an empty navigation is only noise to a screen reader.
+  if (groups.every((group) => group.items.length === 0)) return null;
   return (
     <nav aria-label="Main" className="flex flex-col gap-4">
       {groups.map((group) => {
@@ -255,7 +260,7 @@ const AccountMenu = ({
     }
   };
   const mobile = school.features.mobile;
-  const signOut = account.signOut ?? (
+  const signOut = account.signOut !== undefined ? account.signOut : (
     <a href="/cdn-cgi/access/logout" className={ITEM_CLASS}>
       <SignOutIcon aria-hidden size={20} />
       Sign out
@@ -281,7 +286,7 @@ const AccountMenu = ({
               </li>
             </>
           ) : null}
-          <li>{signOut}</li>
+          {signOut === null ? null : <li>{signOut}</li>}
         </ul>
       ) : null}
       <div className="flex items-center gap-1">
@@ -395,7 +400,14 @@ export const SchoolShell = ({
       data-content={layout}
       className={`flex bg-kumo-base text-kumo-default ${fill ? "h-full min-h-0 overflow-hidden" : "min-h-dvh"}`}
     >
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-kumo-elevated focus:p-2">
+      {/* Focuses the content directly: following `#main` would replace a hash-routed SPA's screen. */}
+      <a
+        href="#main"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById("main")?.focus();
+        }}
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-kumo-elevated focus:p-2">
         Skip to content
       </a>
       {narrow ? null : (

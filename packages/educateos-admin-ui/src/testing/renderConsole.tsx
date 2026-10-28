@@ -7,6 +7,7 @@ import { configure } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import type { DistrictApiClient } from "@educateos/api-client";
 import { ThemeProvider, storedThemeMode } from "@gadgets/ui/theme";
+import type { SchoolManifest } from "@educateos/shell";
 import { AdminApp } from "../App.tsx";
 
 // jsdom has no PointerEvent, which Base UI's controls construct when they are pressed.
@@ -70,14 +71,27 @@ afterEach(() => {
   localStorage.clear();
 });
 
-/** Renders the console at `screen` against `client`, and a user-event session to drive it. */
-export function renderConsole(client: DistrictApiClient, screen = "dashboard") {
+/** The school whose shell frames the console on the district origin. */
+export const SCHOOL: SchoolManifest = {
+  v: 1,
+  name: "Northfield",
+  origin: "https://learn.northfield.example",
+  brand: {},
+  signIn: [],
+  features: { ai: true, mobile: false, family: true },
+};
+
+/**
+ * Renders the console at `screen` against `client`, framed by `school`'s shell as main.tsx frames
+ * it (or unframed, `false`, as a host that embeds it does), and a user-event session to drive it.
+ */
+export function renderConsole(client: DistrictApiClient, screen = "dashboard", school: SchoolManifest | false = SCHOOL) {
   window.location.hash = `#/${screen}`;
   const container = document.body.appendChild(document.createElement("div"));
   const root = createRoot(container);
   act(() => root.render(
     <ThemeProvider source={storedThemeMode(THEME_KEY)}>
-      <AdminApp client={client} />
+      <AdminApp client={client} {...(school === false ? {} : { shell: { school } })} />
     </ThemeProvider>,
   ));
   mounted.push(() => {

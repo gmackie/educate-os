@@ -7,7 +7,8 @@ import { STUDENT_NAMES, fakeDistrict } from "../testing/fakeDistrict.ts";
 import { renderConsole } from "../testing/renderConsole.tsx";
 
 /** The routes whose answers are counts and totals only. */
-const AGGREGATE_ROUTES = new Set(["admin.health", "admin.aiUsage", "admin.getConfig", "admin.planConfig"]);
+// `me.get` is the shell asking who is signed in, to name them and draw their navigation (SCHO-260).
+const AGGREGATE_ROUTES = new Set(["admin.health", "admin.aiUsage", "admin.getConfig", "admin.planConfig", "me.get"]);
 
 describe("the dashboard", () => {
   it("shows counts and totals for every area, and no student's name", async () => {
@@ -49,7 +50,7 @@ describe("AI usage", () => {
     expect(await screen.findByRole("region", { name: "By class" })).toBeTruthy();
     // Classes are named by their course and section, from routes that name no person.
     expect(await within(screen.getByRole("region", { name: "By class" })).findByText("Biology · Section A")).toBeTruthy();
-    expect(district.calls.every((c) => ["admin.aiUsage", "admin.directoryNames", "admin.getConfig"].includes(c.name))).toBe(true);
+    expect(district.calls.every((c) => ["admin.aiUsage", "admin.directoryNames", "admin.getConfig", "me.get"].includes(c.name))).toBe(true);
     expect(within(screen.getByRole("region", { name: "By funding pool" })).getByText("fpl_fk-courses")).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "By model" })).getByText("cloudflare/synthetic-model")).toBeTruthy();
     // The cap is $2.00: one person reached it and one ($1.70) is within 20%.

@@ -10,6 +10,7 @@ import { LoadingSkeleton } from "../LoadingSkeleton.tsx";
 import type { AssignedActivity, ArtifactView, CourseWorkspaceView } from "../model.ts";
 import { PrivacyNote } from "../PrivacyNote.tsx";
 import { coursePath } from "../router.tsx";
+import { AskAi } from "../AskAi.tsx";
 import { AiHelpSlot } from "./AiHelpSlot.tsx";
 import { FeedbackSection } from "./FeedbackSection.tsx";
 import { ResourceList } from "./ResourceList.tsx";
@@ -83,6 +84,7 @@ const ActivityView = ({ offeringId, courseName, entry, workspace, saved: initial
         </Text>
         <PrivacyNote scope="course" />
       </div>
+      <AskAi context={{ kind: "assignment", id: assignment.id }} />
       {readOnly ? (
         <Banner variant="secondary" icon={<InfoIcon weight="fill" />} title="This class has finished" description="Your work is read-only now. You can keep a copy in My space." />
       ) : null}

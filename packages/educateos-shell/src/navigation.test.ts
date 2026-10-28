@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeItemId, navigationFor, safeExternalUrl, shellRoleOf, type NavGroup, type ShellRole } from "./navigation.ts";
+import { activeItemId, askAiHref, navigationFor, safeExternalUrl, shellRoleOf, type NavGroup, type ShellRole } from "./navigation.ts";
 
 const labels = (groups: NavGroup[]) => groups.map((group) => [group.label ?? "", group.items.map((item) => item.label)]);
 const ids = (groups: NavGroup[]) => groups.flatMap((group) => group.items.map((item) => item.id));
@@ -113,5 +113,12 @@ describe("safeExternalUrl", () => {
     expect(safeExternalUrl("data:text/html,hi")).toBeUndefined();
     expect(safeExternalUrl("/admin")).toBeUndefined();
     expect(safeExternalUrl(undefined)).toBeUndefined();
+  });
+});
+
+describe("askAiHref", () => {
+  it("opens the AI workspace with what the page is about, its id encoded", () => {
+    expect(askAiHref({ kind: "assignment", id: "asg_essay" })).toBe("/ai/?context=assignment:asg_essay");
+    expect(askAiHref({ kind: "submission", id: "sub_a&b c" })).toBe("/ai/?context=submission:sub_a%26b%20c");
   });
 });

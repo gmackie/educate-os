@@ -1,5 +1,7 @@
 @source "../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
 @source "../../ui/src/**/*.{js,jsx,ts,tsx}";
+/* The district shell (SCHO-260) is source-only: its classes are compiled here. */
+@source "../../educateos-shell/src/**/*.{ts,tsx}";
 @import "@cloudflare/kumo/styles";
 @import "tailwindcss";
 @custom-variant dark (&:where([data-mode="dark"], [data-mode="dark"] *));

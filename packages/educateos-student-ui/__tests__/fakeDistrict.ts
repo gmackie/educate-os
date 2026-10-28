@@ -258,7 +258,30 @@ export function fakeDistrict(options: {
     offering(ART_SPRING, "crs_nf-art", "Art", "arts", SPRING, "Period 2"),
   ];
 
+  // Your devices (SCHO-260): an iPhone and an iPad signed in, and an old Android phone signed out.
+  const device = (id: string, label: string, platform: "ios" | "android", model: string, status: "active" | "revoked") => ({
+    id, label, platform, model, appVersion: "2.0.0", createdAt: "2026-09-01T15:00:00.000Z", lastSeenAt: "2026-10-27T15:00:00.000Z", lastCountry: "US", push: true, status,
+    revokedAt: status === "revoked" ? "2026-10-01T15:00:00.000Z" : null, revokedReason: status === "revoked" ? "signed-out" : null,
+  });
+  const devices = [
+    device("dev_amara-iphone-0000001", "Amara's iPhone", "ios", "iPhone17,3", "active"),
+    device("dev_amara-ipad-000000002", "Amara's iPad", "ios", "iPad14,1", "active"),
+    device("dev_amara-android-000003", "Old Pixel", "android", "Pixel 6", "revoked"),
+  ];
+  const revoke = (entry: (typeof devices)[number], reason: string) => Object.assign(entry, { status: "revoked", revokedAt: NOW, revokedReason: reason });
+
   const handlers: Handlers = {
+    "me.devices": () => ({ devices }),
+    "me.revokeDevice": ({ params }) => {
+      const found = devices.find((d) => d.id === params.deviceId);
+      if (found === undefined) throw notFound("device");
+      return revoke(found, "signed-out");
+    },
+    "me.revokeAllDevices": () => {
+      const active = devices.filter((d) => d.status === "active");
+      for (const entry of active) revoke(entry, "signed-out-everywhere");
+      return { revoked: active.length };
+    },
     "student.listOfferings": () => OFFERINGS,
     "student.assignmentFeedback": ({ params }) =>
       submissions.filter((s) => s.assignmentId === params.assignmentId).flatMap((s) => (feedback.has(s.id) ? [feedback.get(s.id)] : [])),
