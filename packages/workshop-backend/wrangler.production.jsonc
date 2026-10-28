@@ -114,6 +114,11 @@
       "binding": "AI_CALL_GUARD",
       "service": "educateos-ai-guard",
       "entrypoint": "EducateOsAiCallGuard"
+    },
+    {
+      "binding": "PRINCIPAL_MIGRATION",
+      "service": "schoolos-district-worker",
+      "entrypoint": "DistrictPrincipalResolver"
     }
   ],
   "vars": {

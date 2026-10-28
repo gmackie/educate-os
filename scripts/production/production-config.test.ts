@@ -86,6 +86,7 @@ test("the backend binds the gatekeepers' vendor entrypoint, the guard, Workers A
     { binding: "GATEKEEPER_SCHEDULER", service: "gatekeeper-scheduler", entrypoint: "GatekeeperVendor" },
     { binding: "GATEKEEPER_WEBSEARCH", service: "gatekeeper-websearch", entrypoint: "GatekeeperVendor" },
     { binding: "AI_CALL_GUARD", service: AI_GUARD_PACKAGE, entrypoint: "EducateOsAiCallGuard" },
+    { binding: "PRINCIPAL_MIGRATION", service: "schoolos-district-worker", entrypoint: "DistrictPrincipalResolver" },
   ]);
   assert.deepEqual(backend.ai, { binding: "WORKERS_AI" });
   assert.deepEqual(backend.kv_namespaces, [
@@ -153,12 +154,14 @@ test("the district Worker has its own custom domains, serves the UIs as assets a
   assert.deepEqual(district.vars, { LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io" });
   assert.deepEqual(district.triggers, { crons: ["7 * * * *", "0 14 * * SUN"] });
   assert.deepEqual(district.send_email, [{ name: "SEND_EMAIL" }]);
-  // Only the EducateOS connector binds it (SCHO-218); the guard keeps its configured directory
-  // (SCHO-147), and the backend's EDUCATEOS_DISTRICT_API is left out, since nothing routes to it.
+  // Only the EducateOS connector binds it (SCHO-218), and the backend for its principal bindings
+  // (SCHO-259); the guard keeps its configured directory (SCHO-147), and the backend's
+  // EDUCATEOS_DISTRICT_API is left out, since nothing routes to it.
   for (const [pkgName, config] of build()) {
-    const binds = config.services?.some(({ service }) =>
-      service === DISTRICT_PACKAGE || service === district.name) ?? false;
-    assert.equal(binds, pkgName === EDUCATEOS_GATEKEEPER_PACKAGE, pkgName);
+    const bindings = config.services?.filter(({ service }) =>
+      service === DISTRICT_PACKAGE || service === district.name).map(({ binding }) => binding) ?? [];
+    assert.deepEqual(bindings, pkgName === EDUCATEOS_GATEKEEPER_PACKAGE ? ["EDUCATEOS_DISTRICT"]
+        : pkgName === "workshop-backend" ? ["PRINCIPAL_MIGRATION"] : [], pkgName);
   }
 });
 
@@ -244,7 +247,7 @@ test("fails closed on a pin for an undeployed package, a name clash, or a bindin
 });
 
 test("an instance without a district deploys no district Worker, and cannot install the EducateOS connector", () => {
-  const { district: _district, workerNames: _workerNames, ...withoutDistrict } = SCHOOLOS_GMAC_IO;
+  const { district: _district, workerNames: _workerNames, principalBinding: _binding, ...withoutDistrict } = SCHOOLOS_GMAC_IO;
   assert.throws(() => build(withoutDistrict), /gatekeeper-educateos needs the instance's district Worker/);
   const withoutConnector = {
     ...withoutDistrict,
@@ -412,10 +415,11 @@ test("one origin: the district Worker gives up its hostnames, keeps its name, LT
     LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
     SCHOOL_MANIFEST: JSON.stringify({ origin: NORTHFIELD, features: { ai: true } }),
   });
-  // Still reached only through its bindings: the router's DISTRICT and the connector's school tools.
+  // Still reached only through its bindings: the router's DISTRICT, the connector's school tools
+  // and the backend's principal bindings.
   for (const [pkgName, config] of build(ONE_ORIGIN)) {
     const binds = config.services?.some(({ service }) => service === "schoolos-district-worker") ?? false;
-    assert.equal(binds, pkgName === "router" || pkgName === EDUCATEOS_GATEKEEPER_PACKAGE, pkgName);
+    assert.equal(binds, ["router", EDUCATEOS_GATEKEEPER_PACKAGE, "workshop-backend"].includes(pkgName), pkgName);
   }
 });
 
@@ -463,8 +467,12 @@ test("the principal bindings reach the district's resolver by its pinned name, o
   const services = (principalBinding?: "migration" | "resolver") =>
     configFor(build({ ...SCHOOLOS_GMAC_IO, ...principalBinding ? { principalBinding } : {} }), "workshop-backend").services
         ?.filter(({ binding }) => binding.startsWith("PRINCIPAL_"));
-  assert.equal(SCHOOLOS_GMAC_IO.principalBinding, undefined);
-  assert.deepEqual(services(), []);
+  // Production is at cutover step 3: the migration's binding, not yet the resolver's.
+  assert.equal(SCHOOLOS_GMAC_IO.principalBinding, "migration");
+  assert.deepEqual(services(), [{ binding: "PRINCIPAL_MIGRATION", service: "schoolos-district-worker", entrypoint: "DistrictPrincipalResolver" }]);
+  const { principalBinding: _binding, ...unbound } = SCHOOLOS_GMAC_IO;
+  assert.deepEqual(configFor(build(unbound), "workshop-backend").services
+      ?.filter(({ binding }) => binding.startsWith("PRINCIPAL_")), []);
   const migration = { binding: "PRINCIPAL_MIGRATION", service: "schoolos-district-worker", entrypoint: "DistrictPrincipalResolver" };
   assert.deepEqual(services("migration"), [migration]);
   assert.deepEqual(services("resolver"), [migration, { ...migration, binding: "PRINCIPAL_RESOLVER" }]);
