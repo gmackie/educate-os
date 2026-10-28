@@ -1,0 +1,43 @@
+// Local development of the EducateOS admin (SCHO-263): `pnpm --filter @educateos/admin dev:worker`
+// after `pnpm exec vp run -F @educateos/admin build` has built the SPA into dist/.
+//
+// Deliberately not named wrangler.jsonc: release discovery (`readDeployablePackages` in
+// scripts/release/manifest-lib.ts), the staging, preview and production config generators, the dev
+// server and `pnpm configs:check` all key on that name, and this Worker is not part of a district
+// release or of any deployment yet. The hosted admin's deployment and the installer's OSS admin come
+// in later phase 5 PRs. Nothing here names a real Cloudflare resource: the D1 database is local.
+//
+// Local setup:
+//   wrangler d1 migrations apply DB --local -c wrangler.local.jsonc
+//   echo "ADMIN_KEY_ENCRYPTION_KEY=<32 random bytes, base64url>" > .dev.vars
+// Every /api route verifies a Cloudflare Access assertion (cf-access-jwt-assertion), so the API
+// answers 401 locally unless a request carries one signed by the configured team.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "educateos-admin-local",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-09-04",
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/healthz"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "educateos-admin-local",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "EDITION": "oss",
+    "OSS_WORKSPACE_ORIGINS": "https://northfield.example.org",
+    "ACCESS_ISSUER": "https://example.cloudflareaccess.com",
+    "ACCESS_AUD": "local-development",
+    "ADMINS": ""
+  }
+}
