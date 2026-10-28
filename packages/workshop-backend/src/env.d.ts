@@ -108,6 +108,12 @@ declare global {
       // Must match the frontend's VITE_WORKSHOP_BASE_PATH.
       PUBLIC_BASE_PATH?: string;
 
+      // The district Worker's `/api` surface (DistrictApi), which the release binds when the
+      // instance installs a district (scripts/release/manifest-lib.ts SERVICE_PACKAGES). It grants
+      // nothing by itself: each request carries the person's own Access assertion. Unbound, "Ask AI
+      // about this" links are ignored (school-context.ts).
+      EDUCATEOS_DISTRICT_API?: Fetcher;
+
       // What the service that installed this deployment wrote on its last upload of this Worker: a
       // JSON binding of the release, its version tag and its update links. Typed `unknown` because
       // deployServiceInstall() (deployment-updates.ts) is its only reader, and shape-checks it.

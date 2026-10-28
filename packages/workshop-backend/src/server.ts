@@ -31,6 +31,8 @@ import { verifyCfAccessJwt } from "./access.js";
 import { resolveUiFeatureFlags } from "./feature-flags";
 import { serveSiteLogo, SITE_LOGO_PATH } from "./site-logo.js";
 import { publicBasePath, workshopRequestPath } from "./public-path.js";
+import { resolveSchoolContext } from "./school-context.js";
+import type { SchoolContextResolution } from "@gadgets/workshop-shared/school-context";
 import { createWorkshopLogger } from "./observability";
 import { deployServiceInstall, routerVersionTag } from "./deployment-updates.js";
 import { retryOnDoReset, wrapDoStubForTelemetry } from "./do-retry";
@@ -150,6 +152,11 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     const result = await this.#user.stageDeviceSessionHandoff(
         publicKey, state, this.accessSession?.jwt);
     return result;
+  }
+  // "Ask AI about this" (SCHO-260): the district decides, as the signed-in person, whether the
+  // reference is theirs to read. See school-context.ts.
+  resolveSchoolContext(ref: string): Promise<SchoolContextResolution> {
+    return resolveSchoolContext(this.env.EDUCATEOS_DISTRICT_API, this.accessSession?.jwt, ref);
   }
   setOwnDisplayName(name: string): Promise<void> {
     return this.#user.setOwnDisplayName(name);

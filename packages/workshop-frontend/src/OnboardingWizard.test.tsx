@@ -13,7 +13,7 @@ vi.mock('@cloudflare/kumo', async (importOriginal) => {
   const toasts = { add: addToast }
   return { ...actual, useKumoToastManager: () => toasts }
 })
-vi.mock('./ThemeContext', () => ({ useTheme: () => ({ resolvedThemeMode: 'light' }) }))
+vi.mock('@gadgets/ui/theme', () => ({ useTheme: () => ({ resolvedThemeMode: 'light' }) }))
 const auth = vi.hoisted(() => {
   const value: { authenticatedApi: Record<string, unknown>, currentUser: { id: string, name: string } } =
     { authenticatedApi: {}, currentUser: { id: 'alice', name: 'Alice' } }

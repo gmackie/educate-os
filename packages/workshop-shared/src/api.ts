@@ -28,6 +28,7 @@ import { AccountDescription, ActionKind, ActionDescription, AgentCatalog, Avatar
 import type { CodeChange } from "./code-change.js";
 import type { GitOid } from "./gatekeeper.js";
 import type { UiFeatureFlags } from "./feature-flags.js";
+import type { SchoolContextResolution } from "./school-context.js";
 
 export const SERVICE_SALT = new Uint8Array([
   0xd9, 0x4e, 0x54, 0x1d, 0x29, 0xc1, 0x03, 0x74, 0x73, 0x7e, 0xb3, 0xe3, 0x34, 0x6d, 0x8f, 0x21
@@ -482,6 +483,14 @@ export interface AuthenticatedApi extends RpcTarget {
    */
   beginDeviceSessionHandoff(publicKey: string, state: string)
     : Promise<DeviceSessionHandoffStart>;
+
+  /**
+   * Checks an "Ask AI about this" reference (`assignment:<id>` or `submission:<id>`, see
+   * `school-context.ts`) with the district: whether the signed-in person may read it, and its
+   * title. A reference the district refuses or doesn't know is `refused`, with nothing about which;
+   * a deployment with no district to ask answers `unsupported`.
+   */
+  resolveSchoolContext(ref: string): Promise<SchoolContextResolution>;
 
   /** Set the user's own display name, seen in chats, etc. */
   setOwnDisplayName(name: string): Promise<void>;

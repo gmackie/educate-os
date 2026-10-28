@@ -135,6 +135,13 @@ export interface SchoolShellProps {
   onAnnounce: (message: string) => void;
   /** A slot above the content: search (⌘K) or page actions. */
   headerActions?: ReactNode;
+  /**
+   * How the content sits in the frame. `page` (the default) is a centred, padded column in a page
+   * that scrolls. `fill` gives the content all the space beside the sidebar, at the height of its
+   * container, for an SPA with panes and scrolling of its own (the AI workspace): the frame then
+   * leaves the `<main>` landmark to the content.
+   */
+  layout?: "page" | "fill";
   children: ReactNode;
 }
 
@@ -320,8 +327,10 @@ export const SchoolShell = ({
   renderLink = PlainLink,
   onAnnounce,
   headerActions,
+  layout = "page",
   children,
 }: SchoolShellProps) => {
+  const fill = layout === "fill";
   useBrandAccent(school.brand.accent);
   const narrow = useIsNarrow();
   const windowLocation = useWindowLocation();
@@ -381,12 +390,16 @@ export const SchoolShell = ({
   );
 
   return (
-    <div data-layout={narrow ? "narrow" : "wide"} className="flex min-h-dvh bg-kumo-base text-kumo-default">
+    <div
+      data-layout={narrow ? "narrow" : "wide"}
+      data-content={layout}
+      className={`flex bg-kumo-base text-kumo-default ${fill ? "h-full min-h-0 overflow-hidden" : "min-h-dvh"}`}
+    >
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-kumo-elevated focus:p-2">
         Skip to content
       </a>
       {narrow ? null : (
-        <header className="sticky top-0 flex h-dvh w-64 shrink-0 flex-col border-r border-kumo-hairline bg-kumo-elevated">
+        <header className={`flex w-64 shrink-0 flex-col border-r border-kumo-hairline bg-kumo-elevated ${fill ? "h-full" : "sticky top-0 h-dvh"}`}>
           <div className="px-3 pt-3">
             <Brand school={school} href={homeHref} />
           </div>
@@ -419,7 +432,7 @@ export const SchoolShell = ({
           </div>
         </>
       ) : null}
-      <div className="flex min-w-0 flex-1 flex-col" {...(narrow && drawerOpen ? { inert: true, "aria-hidden": true } : {})}>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col" {...(narrow && drawerOpen ? { inert: true, "aria-hidden": true } : {})}>
         {narrow ? (
           <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-kumo-hairline bg-kumo-elevated px-2 py-2">
             <button
@@ -439,9 +452,15 @@ export const SchoolShell = ({
         ) : headerActions === undefined ? null : (
           <div className="flex items-center justify-end gap-2 border-b border-kumo-hairline px-6 py-2">{headerActions}</div>
         )}
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 outline-none md:px-8">
-          {children}
-        </main>
+        {fill ? (
+          <div id="main" tabIndex={-1} className="flex min-h-0 w-full flex-1 flex-col outline-none">
+            {children}
+          </div>
+        ) : (
+          <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 outline-none md:px-8">
+            {children}
+          </main>
+        )}
       </div>
     </div>
   );

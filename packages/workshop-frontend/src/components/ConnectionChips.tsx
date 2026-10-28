@@ -4,7 +4,7 @@ import { useAuthenticatedApi } from '../AuthContext'
 import { useState, useEffect } from 'react'
 import { logoComponents } from './ConnectionLogos'
 import { getVendorIconBackground } from './vendorColors'
-import { useTheme } from '../ThemeContext'
+import { useTheme } from '@gadgets/ui/theme'
 import { AccountsSubscriberAdapter } from '../accountsSubscriber'
 
 interface ConnectedAccount {
