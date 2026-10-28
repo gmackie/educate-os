@@ -235,9 +235,14 @@ export const ACCESS_SESSION_DURATION = "12h";
  * serves. Each route under them checks its own credential: the liveness probe and the school
  * manifest carry nothing private, the LTI Tool verifies the platform's signed launch, `/api/m/*`
  * a device token, `/api/pair/*` a room secret and `/api/ops/*` an Ed25519 request signature.
+ *
+ * `/api/pair/rooms/*` is listed besides `/api/pair/*` because Access treats a path destination as
+ * covering its subpaths: the main application's `/api/pair/rooms` (see
+ * {@link ACCESS_PAIRING_BROWSER_PATHS}) would otherwise be the most specific match for the phone's
+ * claim and poll under it, and send them to the Access login (seen live on 2026-10-28, SCHO-259).
  */
 export const ACCESS_BYPASS_PATHS: readonly string[] = [
-  "/healthz", "/.well-known/educateos.json", "/lti/*", "/api/m/*", "/api/pair/*", "/api/ops/*",
+  "/healthz", "/.well-known/educateos.json", "/lti/*", "/api/m/*", "/api/pair/*", "/api/pair/rooms/*", "/api/ops/*",
 ];
 
 /**
