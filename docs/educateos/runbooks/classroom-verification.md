@@ -158,3 +158,51 @@ Remaining customer gates: real Workshop approval/rejection and committed readbac
 EducateOS sign-in and grade visibility, district sync/identity linkage, collaborator isolation,
 Plus grading-period writes/add-ons/rubric editing, and final production health. The live read-only
 example is usable; full Classroom delivery is not complete.
+
+## Workshop writes and visual acceptance, 2026-10-28
+
+The persisted gadget initially had no stylesheet (zero CSSStyleSheets, Times computed body font).
+Its `client.js` now installs a sandbox-local stylesheet with 46 rules, and changes were accepted.
+After reload the computed font is sans-serif, dashboard padding is 16px, roster uses grid, and
+coursework cards have 1px borders. At 390px width the header/roster become single-column and the
+page's scrollWidth remains 390px; all four original tables have overflow wrappers. Live refresh
+advanced 01:56:59 to 01:58:32 UTC and still showed An's returned 8.5. Styling is persisted gadget
+content, not a Workshop frontend deployment.
+
+PR #171 is active in production at `4ca51756b1376547f48e8dbd4368b4f2e4f01e32`: backend deployment
+`148e5e37-8ccf-410f-961c-abe682d0519e`, router `328853ca-4c5a-4315-94a5-01b6022adb68`.
+
+A separate conversation in the same workspace authorized `CLASSROOM_TEACHER` explicitly as
+`cv-teacher-whitaker@gedu.demo.educateos.io`. It exercised real `executeCode` and Workshop actions:
+
+1. Queued **SCHO-255 approval rejection check 2026-10-28**, DRAFT, 10 points. Workshop showed a
+   provisional `pending:create:1`; Google readback before approval still showed only four existing
+   published assignments. Denied in Workshop; Google readback at 02:12:44 UTC still showed only
+   those four. The connector subsequently asserted no rejected title or pending assignment.
+2. Queued **SCHO-255 approved teacher demo 2026-10-28**, DRAFT, 10 points, and approved it in
+   Workshop. Google readback at 02:13:30 UTC showed exactly one new work, `896248644916`, matching
+   title/state/points. The connector independently verified it was committed and not pending.
+3. Queued and approved a rubric for that work. Google readback at 02:14:21 UTC returned
+   `896250232565`, criterion **Evidence-based explanation**, levels Supported/Developing/Needs
+   evidence at 10/5/0. The gadget's refresh displayed the new draft and the same rubric.
+4. Attempted to grade Rowan's CREATED submission at 7. The connector refused before queuing:
+   “This submission has not been turned in. Ask the student to turn it in before grading and
+   returning it.” Connector readback confirmed Rowan remained CREATED with no pending grade.
+5. Queued An's already-returned submission at its existing 8.5, approved it in Workshop, and read
+   Google again at 02:16:42 UTC: An RETURNED with assignedGrade/draftGrade 8.5; Rowan CREATED with
+   neither grade. This validates approval of regrading without changing the demonstrated grade;
+   it is not evidence of interactive student sign-in or a new turn-in.
+
+Final code-mode comparison passed 11 assertions across direct connector and gadget data, including
+single committed assignment, rejected title absence, exact rubric, and both learner grades/states.
+It exposed one fetch failure: Google returns HTTP 400 when the gadget lists submissions on the
+new committed DRAFT. The connector fix returns an observed empty submission list for an owned
+draft, without calling that unsupported endpoint. Ownership is checked first; errors on published
+work still propagate. Regression reproduces the unnecessary request before the fix. Production
+replay is required after deployment.
+
+Harbor sign-in as `gmackie@gedu.demo.educateos.io` currently reaches “You're signed in, but you
+haven't been added to this school yet.” Access subject is
+`ca2e0a56-0adf-5403-bd68-d526c0ee0d93`. No principal was created or linked to bypass this boundary.
+An existing Harbor administrator is needed for roster setup and verified teacher/student links.
+Full Plus management and add-on acceptance remain outstanding.

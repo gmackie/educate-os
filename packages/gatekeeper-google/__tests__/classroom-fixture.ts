@@ -106,6 +106,7 @@ export class FakeClassroom {
       return this.#page(this.rubrics.filter(r => r.courseWorkId === work.id), query, "rubrics");
     }
     if (parts.length === 5) {
+      if (work.state === "DRAFT") return googleError(400, "INVALID_ARGUMENT");
       let userId = query.get("userId");
       return this.#page(this.submissions.filter(sub => sub.courseWorkId === work.id &&
         (userId === null || sub.userId === userId)), query, "studentSubmissions");

@@ -92,7 +92,14 @@ describe("Google Classroom course session", () => {
     expect((await session.listCourseWork()).map(({ id }) => id)).toEqual(["201", "203", "500"]);
   });
 
+  it("returns no submissions for a committed draft without asking Google's submissions endpoint", async () => {
+    expect(await session.listSubmissions("203")).toEqual([]);
+    expect(classroom.requests.some(r => r.path.endsWith("/studentSubmissions"))).toBe(false);
+    expect(queue.observations).toHaveLength(1);
+  });
+
   it("refuses coursework another project created, without asking Google to change it", async () => {
+    classroom.courseWork.find(work => work.id === "202")!.state = "DRAFT";
     await expect(session.getCourseWork("202")).rejects.toThrow(/only the coursework it created/);
     await expect(session.listSubmissions("202")).rejects.toThrow(/only the coursework it created/);
     await expect(session.setGrade("202", "Cg4Isub9", 90)).rejects.toThrow(/only the coursework it created/);

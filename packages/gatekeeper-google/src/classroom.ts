@@ -253,7 +253,10 @@ export class GoogleClassroomCourseSessionImpl extends RpcTarget implements Googl
 
   /** The submissions, refused unless this connection created the coursework, with queued grades. */
   async #ownedSubmissions(courseWorkId: string, userId?: string): Promise<ClassroomSubmission[]> {
-    await this.#api.getOwnedCourseWork(this.#courseId, courseWorkId);
+    const courseWork = await this.#api.getOwnedCourseWork(this.#courseId, courseWorkId);
+    // Google does not create student submissions until the assignment is published, and refuses
+    // the submissions endpoint for a draft. Ownership is still checked before returning no rows.
+    if (courseWork.state === "DRAFT") return [];
     let submissions = await this.#api.listSubmissions(this.#courseId, courseWorkId, userId);
     let grades = new Map<string, number>();
     for (let { action } of this.#changes.pending()) {
