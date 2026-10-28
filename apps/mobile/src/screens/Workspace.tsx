@@ -6,7 +6,7 @@ import type { WebViewMessageEvent } from 'react-native-webview';
 import type { Session } from '../types';
 import { CALLBACK_ORIGIN } from '../district';
 import { appLink, trustedUrl } from '../security';
-import { palette } from '../theme';
+import { colorMode, palette } from '../theme';
 import { Button, Loading, Placeholder } from '../ui/Primitives';
 
 type BridgeMessage =
@@ -16,6 +16,12 @@ type BridgeMessage =
 function bridgeScript(workshopToken: string | null): string {
   // Injected into the main frame only, at the configured school origin.
   // Never put an Access JWT into page JavaScript.
+  // Pin the web theme to the native one before the page reads its stored preference.
+  const themeSetup =
+    'try{["gadgets:theme-mode","educateos:theme-mode"].forEach(function(k){localStorage.setItem(k,' +
+      JSON.stringify(colorMode) + ');});}catch(e){}' +
+    'document.documentElement.setAttribute("data-mode",' + JSON.stringify(colorMode) + ');' +
+    'document.documentElement.style.colorScheme=' + JSON.stringify(colorMode) + ';';
   const credentialSetup = workshopToken ?
     'var wanted=' + JSON.stringify(workshopToken) + ';' +
     'if(localStorage.getItem("authToken")!==wanted){' +
@@ -33,7 +39,7 @@ function bridgeScript(workshopToken: string | null): string {
       'returnToInstalls:function(){send({kind:"return"});},' +
       'authentication:{open:function(id,url){send({kind:"open-auth",id:id,url:url});},' +
         'close:function(id){send({kind:"close-auth",id:id});}}};' +
-    credentialSetup +
+    themeSetup + credentialSetup +
     '})();true;';
 }
 function popupResult(link: string, id: string): { id: string; ticket: string } | null {

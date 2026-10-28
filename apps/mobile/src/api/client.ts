@@ -14,6 +14,10 @@ export class DistrictApiError extends Error {
     this.name = 'DistrictApiError';
   }
 }
+const NEEDS_SIGN_IN_MESSAGE =
+  'Your school needs a fresh sign-in before classes can load on this phone. Your AI workspace still works.';
+const UNREACHABLE_MESSAGE = "We couldn't reach your school. Check your internet connection and try again.";
+
 export class DistrictClient {
   constructor(private readonly base: string, private readonly credential: Credential) {}
 
@@ -24,17 +28,29 @@ export class DistrictClient {
     const url = new URL(path, this.base);
     if (!url.pathname.startsWith('/api/') || url.origin !== this.base) throw new Error('Invalid district API path.');
     for (const [key, value] of Object.entries(query || {})) url.searchParams.set(key, value);
-    const response = await fetch(url.toString(), {
-      method, redirect: 'error',
-      headers: {
-        accept: 'application/json',
-        'cf-access-jwt-assertion': this.credential.token,
-        // Access's edge checks the cookie before the district Worker validates the assertion.
-        cookie: 'CF_Authorization=' + this.credential.token,
-        ...(method === 'POST' ? { 'content-type': 'application/json' } : {}),
-      },
-      ...(method === 'POST' ? { body: JSON.stringify(body ?? {}) } : {}),
-    });
+    let response: Response;
+    try {
+      response = await fetch(url.toString(), {
+        method,
+        // Never follow: a redirect here is Access sending the request to its login page. 'manual'
+        // hands the 3xx back so it can be reported as a sign-in problem, not a network failure.
+        redirect: 'manual',
+        headers: {
+          accept: 'application/json',
+          'cf-access-jwt-assertion': this.credential.token,
+          // Access's edge checks the cookie before the district Worker validates the assertion.
+          cookie: 'CF_Authorization=' + this.credential.token,
+          ...(method === 'POST' ? { 'content-type': 'application/json' } : {}),
+        },
+        ...(method === 'POST' ? { body: JSON.stringify(body ?? {}) } : {}),
+      });
+    } catch {
+      // Native fetch errors are not user-readable.
+      throw new DistrictApiError(0, 'unreachable', UNREACHABLE_MESSAGE);
+    }
+    if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+      throw new DistrictApiError(401, 'needs-sign-in', NEEDS_SIGN_IN_MESSAGE);
+    }
     const value: unknown = await response.json().catch(() => null);
     if (!response.ok) {
       const error = value as { code?: string; message?: string } | null;

@@ -7,7 +7,7 @@ const config: ExpoConfig = {
   version: '0.1.0',
   scheme: 'educateos',
   orientation: 'default',
-  userInterfaceStyle: 'automatic',
+  userInterfaceStyle: 'light', // matches theme.ts colorMode; dark mode arrives with SCHO-262
   backgroundColor: '#F6F8FC',
   ios: {
     bundleIdentifier: 'io.educateos.mobile',
