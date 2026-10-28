@@ -4,7 +4,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Clock } from 'lucide-react-nat
 import type { DistrictClient } from '../api/client';
 import type { CalendarEvent, Detail } from '../types';
 import { useLoad } from '../hooks/useLoad';
-import { palette } from '../theme';
+import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Item, Page, QueryState, Section, Title } from '../ui/Primitives';
 
 function beginningOfWeek(date: Date): Date {
@@ -26,6 +26,7 @@ function groupByDay(events: CalendarEvent[]): [string, CalendarEvent[]][] {
   return [...groups].toSorted(([a], [b]) => a.localeCompare(b));
 }
 export function CalendarScreen({ client, navigate }: { client: DistrictClient; navigate: (detail: Detail) => void }) {
+  const palette = usePalette();
   const [start, setStart] = useState(() => beginningOfWeek(new Date()));
   const end = addDays(start, 28);
   const [cal, reload] = useLoad('calendar:' + start.toISOString(), () => client.calendar(start, end));

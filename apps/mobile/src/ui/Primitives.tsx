@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 import { ArrowRight, ChevronRight, RotateCw } from 'lucide-react-native';
-import { font, palette, radius, spacing } from '../theme';
+import { font, radius, spacing, type Palette } from '../theme';
+import { usePalette } from './theme-context';
 import type { LoadState } from '../hooks/useLoad';
 
 export function Page({ children, refresh, busy, scroll = true }: {
   children: React.ReactNode; refresh?: () => void; busy?: boolean; scroll?: boolean;
 }) {
+  const palette = usePalette();
+  const styles = useStyles();
   const content = <View style={styles.page}>{children}</View>;
   if (!scroll) return <View style={{ flex: 1 }}>{content}</View>;
   return <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
@@ -19,27 +22,33 @@ export function Page({ children, refresh, busy, scroll = true }: {
   </ScrollView>;
 }
 export function Eyebrow({ children }: { children: React.ReactNode }) {
+  const styles = useStyles();
   return <Text style={styles.eyebrow}>{children}</Text>;
 }
 export function Title({ children, subtitle }: { children: React.ReactNode; subtitle?: string }) {
+  const styles = useStyles();
   return <View style={{ gap: 7, marginBottom: spacing.xl }}>
     <Text accessibilityRole="header" style={styles.title}>{children}</Text>
     {subtitle && <Text style={styles.muted}>{subtitle}</Text>}
   </View>;
 }
 export function Section({ title, children, trailing }: { title: string; children: React.ReactNode; trailing?: React.ReactNode }) {
+  const styles = useStyles();
   return <View style={{ marginBottom: 25 }}>
     <View style={styles.sectionTitle}><Text accessibilityRole="header" style={styles.sectionHeading}>{title}</Text>{trailing}</View>
     {children}
   </View>;
 }
 export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+  const styles = useStyles();
   return <View style={[styles.card, style]}>{children}</View>;
 }
 export function TextBody({ children, muted = false }: { children: React.ReactNode; muted?: boolean }) {
+  const styles = useStyles();
   return <Text style={muted ? styles.muted : styles.body}>{children}</Text>;
 }
 export function Chip({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green' | 'amber' | 'neutral' | 'red' }) {
+  const palette = usePalette();
   const colors = tone === 'green' ? [palette.tealSoft, palette.teal] :
     tone === 'amber' ? [palette.amberSoft, palette.amber] :
     tone === 'red' ? [palette.redSoft, palette.red] :
@@ -52,15 +61,17 @@ export function Button({ label, onPress, variant = 'primary', disabled = false, 
   label: string; onPress: () => void; variant?: 'primary' | 'outline' | 'quiet' | 'danger';
   disabled?: boolean; icon?: React.ReactNode;
 }) {
-  const fg = variant === 'primary' ? palette.white : variant === 'danger' ? palette.red : palette.primary;
+  const palette = usePalette();
+  const styles = useStyles();
+  const fg = variant === 'primary' ? palette.onPrimary : variant === 'danger' ? palette.red : palette.primary;
   return <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label}
     accessibilityState={{ disabled }} style={({ pressed }) => [
       styles.button, { backgroundColor: variant === 'primary' ? palette.primary : variant === 'danger' ? palette.redSoft :
-        variant === 'outline' ? palette.white : 'transparent',
+        variant === 'outline' ? palette.raised : 'transparent',
       borderWidth: variant === 'outline' ? 1 : 0, borderColor: palette.line, opacity: disabled ? 0.45 : pressed ? 0.75 : 1 },
     ]}>
     {icon}<Text style={{ fontSize: font.body, fontWeight: '700', color: fg }}>{label}</Text>
-    {variant === 'primary' && <ArrowRight size={16} color={palette.white}/>}
+    {variant === 'primary' && <ArrowRight size={16} color={palette.onPrimary}/>}
   </Pressable>;
 }
 export function Field({ label, value, onChangeText, placeholder, multiline = false,
@@ -68,6 +79,8 @@ export function Field({ label, value, onChangeText, placeholder, multiline = fal
   label: string; value: string; onChangeText: (s: string) => void; placeholder?: string; multiline?: boolean;
   keyboardType?: 'default' | 'url' | 'numeric' | 'email-address'; secureTextEntry?: boolean;
 }) {
+  const palette = usePalette();
+  const styles = useStyles();
   return <View style={{ gap: 7 }}>
     <Text style={styles.fieldLabel}>{label}</Text>
     <TextInput value={value} onChangeText={onChangeText} placeholder={placeholder}
@@ -80,6 +93,8 @@ export function Field({ label, value, onChangeText, placeholder, multiline = fal
 export function Item({ title, detail, onPress, leading, trailing }: {
   title: string; detail?: string; onPress?: () => void; leading?: React.ReactNode; trailing?: React.ReactNode;
 }) {
+  const palette = usePalette();
+  const styles = useStyles();
   return <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : 'text'}
     accessibilityLabel={title + (detail ? '. ' + detail : '')} style={({ pressed }) => [styles.item, { opacity: pressed && onPress ? 0.6 : 1 }]}>
     {leading && <View style={styles.leading}>{leading}</View>}
@@ -89,12 +104,15 @@ export function Item({ title, detail, onPress, leading, trailing }: {
   </Pressable>;
 }
 export function Placeholder({ title, message }: { title: string; message: string }) {
+  const styles = useStyles();
   return <Card style={{ paddingVertical: 28, alignItems: 'center', gap: 8 }}>
     <Text style={styles.itemTitle}>{title}</Text>
     <Text style={[styles.muted, { textAlign: 'center' }]}>{message}</Text>
   </Card>;
 }
 export function Loading({ label = 'Loading school information…' }: { label?: string }) {
+  const palette = usePalette();
+  const styles = useStyles();
   return <View style={{ paddingVertical: 32, alignItems: 'center', gap: 12 }}>
     <ActivityIndicator color={palette.primary}/><Text style={styles.muted}>{label}</Text>
   </View>;
@@ -119,7 +137,8 @@ export function dateLabel(value: string, long = false): string {
 export function shortName(value: string): string {
   return value.split(/\s+/)[0] || value;
 }
-export const styles = StyleSheet.create({
+function makeStyles(palette: Palette) {
+  return StyleSheet.create({
   page: { paddingHorizontal: 20, paddingTop: 24, gap: 0 },
   refresh: { flexDirection: 'row', gap: 7, alignSelf: 'flex-end', paddingRight: 20, paddingTop: 16, alignItems: 'center' },
   smallBlue: { color: palette.primary, fontSize: 12, fontWeight: '600' },
@@ -131,7 +150,7 @@ export const styles = StyleSheet.create({
   sectionHeading: { fontSize: font.subtitle, fontWeight: '800', color: palette.ink, letterSpacing: -0.3 },
   card: { backgroundColor: palette.surface, padding: 16, borderRadius: radius.lg, borderWidth: 1, borderColor: palette.line },
   field: { borderWidth: 1, borderColor: palette.line, borderRadius: radius.md, paddingHorizontal: 16,
-    paddingVertical: 14, fontSize: font.body, color: palette.ink, backgroundColor: palette.white },
+    paddingVertical: 14, fontSize: font.body, color: palette.ink, backgroundColor: palette.raised },
   fieldLabel: { fontSize: 13, color: palette.ink, fontWeight: '700' },
   button: { borderRadius: radius.md, paddingHorizontal: 18, paddingVertical: 15,
     alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10, minHeight: 48 },
@@ -141,4 +160,11 @@ export const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center' },
   itemTitle: { color: palette.ink, fontSize: 15, fontWeight: '700', lineHeight: 21 },
   itemDetail: { color: palette.muted, fontSize: 12, lineHeight: 18 },
-});
+  });
+}
+
+/** The shared styles for the current theme. */
+export function useStyles() {
+  const palette = usePalette();
+  return useMemo(() => makeStyles(palette), [palette]);
+}

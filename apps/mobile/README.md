@@ -7,10 +7,16 @@ Dependencies are locked with pnpm. Verified app links, signing and physical-devi
 
 ## Implemented mobile UI
 
-- District chooser and self-hosted deployment enrollment with HTTPS origin validation
-- CloudflareOS per-installation encrypted native authentication flow
-- Secure platform storage and account switching
-- Today, Classes, Calendar, Inbox, AI Workspace and Account navigation
+- expo-router navigation (`app/`) with deep links: `educateos://class/<id>`, `/assignment/<id>`,
+  `/review/<id>`, and the `https://mobile.educateos.io/j#…` pairing QR (SCHO-262)
+- Onboarding: scan a school code (in-app scanner), find my school (off by default), or one web address
+  checked against `/.well-known/educateos.json`; code-comparison pairing; optional notifications and Face ID
+- Device credentials (`src/api/device.ts`): a P-256 key in SecureStore, ES256 request proofs,
+  single-flight refresh, and a "signed out by your school" screen when the district revokes the phone
+- Role-aware tabs: student Today · Classes · AI · Inbox · Me; teacher Today · Classes · Review · AI · Me;
+  family Family · Calendar · Inbox · Me. AI is hidden when the school's manifest says it has none
+- Light and dark themes (system or user choice), passed to the AI workspace WebView; school accent from the manifest
+- Legacy two-address schools and the SCHO-256 Workshop pairing still work, and saved schools migrate to one origin
 - Student class/grade summary, activity details, submission receipts and written response creation
 - Teacher roster, assignments, submission feedback, recorded grading and release controls
 - Guardian-linked children, classes, released grade summaries and announcements
@@ -138,7 +144,15 @@ association file. This host is required independently of QR enrollment. A fresh 
 needed after publishing because iOS caches domain associations. Android still needs its own
 assetlinks.json using the actual signing certificate; this directory does not claim Android verification.
 
-## Connect from a signed-in computer
+## Connect a phone to a one-origin school
+
+On a computer signed in to the school, choose **Connect phone**. The page shows a QR for
+`https://mobile.educateos.io/j#o=<school origin>&r=<room>&s=<secret>`. Scan it in the app (or with the
+Camera app), check the school and origin, choose **Connect this phone**, compare the 8-character code
+on both screens and approve on the computer. The district seals the device credential to the phone's
+key. The relay contract is documented at the top of `src/api/pairing.ts`.
+
+## Connect from a signed-in computer (legacy Workshop pairing)
 
 On the computer, open https://mobile.educateos.io/pair, confirm the school and workspace addresses,
 and create a pairing QR. On the phone, scan it with Camera and open EducateOS. Review the school,

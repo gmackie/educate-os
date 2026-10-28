@@ -4,18 +4,20 @@ import { FileText, MessageSquareText } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Detail } from '../types';
 import { useLoad } from '../hooks/useLoad';
-import { palette } from '../theme';
+import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Field, Item, Page, Placeholder, QueryState, Section, Title } from '../ui/Primitives';
 
 export function TeacherAssignment({ client, assignmentId, offeringId, navigate }: {
   client: DistrictClient; assignmentId: string; offeringId: string; navigate: (d: Detail) => void;
 }) {
+  const palette = usePalette();
   const [data, reload] = useLoad('teacher-assignment:' + assignmentId, async () => {
-    const [assignment, submissions, students] = await Promise.all([
+    const [assignment, submissions] = await Promise.all([
       client.teacherAssignment(assignmentId),
       client.teacherSubmissions(assignmentId),
-      client.teacherRoster(offeringId).catch(() => []),
     ]);
+    // A deep link may not name the class; the assignment does.
+    const students = await client.teacherRoster(offeringId || assignment.assignment.offeringId).catch(() => []);
     const names = new Map(students.map((s) => [s.enrollment.principalId, s.displayName]));
     return { assignment, submissions, names };
   });
@@ -61,6 +63,7 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
   client: DistrictClient; submissionId: string; studentName: string;
   artifacts: { artifactId: string; type: string }[];
 }) {
+  const palette = usePalette();
   const [comment, setComment] = useState('');
   const [points, setPoints] = useState('');
   const [maxPoints, setMaxPoints] = useState('100');
@@ -141,7 +144,7 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
           <Field label="Your comment" value={comment} onChangeText={setComment}
             placeholder="Give clear, specific feedback…" multiline/>
           <Button label={busy ? 'Saving…' : 'Save comment'} disabled={busy || !comment.trim()}
-            icon={<MessageSquareText color={palette.white} size={17}/>}
+            icon={<MessageSquareText color={palette.onPrimary} size={17}/>}
             onPress={() => void save('comment')}/>
         </Card>
       </Section>
@@ -173,5 +176,37 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
           ])}/>
       </Section>
     </>}</QueryState>
+  </Page>;
+}
+
+/** The Review tab: recent assignments across a teacher's classes, with work waiting to be seen. */
+export function ReviewQueue({ client, navigate }: { client: DistrictClient; navigate: (d: Detail) => void }) {
+  const palette = usePalette();
+  const [state, reload] = useLoad('review-queue', async () => {
+    const classes = await client.teacherClasses();
+    const perClass = await Promise.all(classes.slice(0, 12).map(async (course) => {
+      const assignments = await client.teacherAssignments(course.offering.id).catch(() => []);
+      return assignments.map((assignment) => ({ assignment, course }));
+    }));
+    const recent = perClass.flat()
+      .toSorted((a, b) => Date.parse(b.assignment.dueAt) - Date.parse(a.assignment.dueAt))
+      .slice(0, 15);
+    return Promise.all(recent.map(async (entry) => ({
+      ...entry,
+      submitted: (await client.teacherSubmissions(entry.assignment.id).catch(() => []))
+        .filter((s) => !s.withdrawnAt).length,
+    })));
+  });
+  return <Page refresh={reload}>
+    <Title subtitle="Recent assignments and the work your students have turned in.">Review</Title>
+    <QueryState state={state} retry={reload} empty={(v) => v.length === 0}
+      emptyText="Assignments you publish will appear here for review.">
+      {(items) => <Card>{items.map(({ assignment, course, submitted }) => <Item key={assignment.id}
+        title={assignment.title}
+        detail={course.course.title + ' · due ' + dateLabel(assignment.dueAt)}
+        leading={<FileText color={palette.primary} size={20}/>}
+        trailing={<Chip label={submitted + ' submitted'} tone={submitted > 0 ? 'blue' : 'neutral'}/>}
+        onPress={() => navigate({ type: 'teacher-assignment', id: assignment.id, offeringId: assignment.offeringId })}/>)}</Card>}
+    </QueryState>
   </Page>;
 }

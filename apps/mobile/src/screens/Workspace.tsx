@@ -6,22 +6,20 @@ import type { WebViewMessageEvent } from 'react-native-webview';
 import type { Session } from '../types';
 import { CALLBACK_ORIGIN } from '../district';
 import { appLink, trustedUrl } from '../security';
-import { colorMode, palette } from '../theme';
+import { workspaceOrigin } from '../schools';
+import { themeScript, type ColorMode } from '../theme';
+import { useTheme } from '../ui/theme-context';
 import { Button, Loading, Placeholder } from '../ui/Primitives';
 
 type BridgeMessage =
   | { kind: 'login-ready' } | { kind: 'return' }
   | { kind: 'open-auth'; id: string; url: string } | { kind: 'close-auth'; id: string };
 
-function bridgeScript(workshopToken: string | null): string {
+function bridgeScript(workshopToken: string | null, mode: ColorMode, accent?: string | null): string {
   // Injected into the main frame only, at the configured school origin.
   // Never put an Access JWT into page JavaScript.
   // Pin the web theme to the native one before the page reads its stored preference.
-  const themeSetup =
-    'try{["gadgets:theme-mode","educateos:theme-mode"].forEach(function(k){localStorage.setItem(k,' +
-      JSON.stringify(colorMode) + ');});}catch(e){}' +
-    'document.documentElement.setAttribute("data-mode",' + JSON.stringify(colorMode) + ');' +
-    'document.documentElement.style.colorScheme=' + JSON.stringify(colorMode) + ';';
+  const themeSetup = themeScript(mode, accent);
   const credentialSetup = workshopToken ?
     'var wanted=' + JSON.stringify(workshopToken) + ';' +
     'if(localStorage.getItem("authToken")!==wanted){' +
@@ -60,9 +58,17 @@ export function Workspace({ session, onReturn }: { session: Session; onReturn: (
   const [loading, setLoading] = useState(true);
   const activePopup = useRef<string | null>(null);
   const mounted = useRef(true);
-  const origin = session.district.workshop;
-  const script = useMemo(() => bridgeScript(session.credential.kind === 'workshop' ? session.credential.token : null),
-    [session.credential.kind, session.credential.token]);
+  const { mode, palette } = useTheme();
+  const origin = workspaceOrigin(session.district);
+  const accent = session.district.brand?.accent;
+  // The Workshop's handoff page, under its base path (`/ai/connect/handoff` on one-origin schools).
+  const handoffPath = new URL('connect/handoff', session.district.workshop).pathname;
+  const workshopToken = session.credential.kind === 'workshop' ? session.credential.token : null;
+  const script = useMemo(() => bridgeScript(workshopToken, mode, accent), [workshopToken, mode, accent]);
+  // Follow theme changes live, without reloading the workspace.
+  useEffect(() => {
+    view.current?.injectJavaScript('(function(){if(window.top!==window)return;' + themeScript(mode, accent) + '})();true;');
+  }, [mode, accent]);
   useEffect(() => () => { mounted.current = false; }, []);
   const returnPopup = useCallback((id: string, ticket?: string) => {
     if (!mounted.current) return;
@@ -73,7 +79,7 @@ export function Workspace({ session, onReturn }: { session: Session; onReturn: (
   }, []);
   const handleOpen = useCallback(async (id: string, url: string) => {
     if (!/^[a-f0-9]{64}$/.test(id) || activePopup.current ||
-        !trustedUrl(url, origin) || new URL(url).pathname !== '/connect/handoff') return;
+        !trustedUrl(url, origin) || new URL(url).pathname !== handoffPath) return;
     activePopup.current = id;
     const listener = Linking.addEventListener('url', (event) => {
       const match = popupResult(event.url, id);
@@ -92,7 +98,7 @@ export function Workspace({ session, onReturn }: { session: Session; onReturn: (
       listener.remove();
       activePopup.current = null;
     }
-  }, [origin, returnPopup]);
+  }, [origin, handoffPath, returnPopup]);
   const onMessage = (event: WebViewMessageEvent) => {
     if (!trustedUrl(event.nativeEvent.url, origin) || event.nativeEvent.data.length > 2048) return;
     let message: BridgeMessage;
@@ -109,13 +115,13 @@ export function Workspace({ session, onReturn }: { session: Session; onReturn: (
       activePopup.current = null;
     }
   };
-  return <View style={{ flex: 1, backgroundColor: palette.white }}>
+  return <View style={{ flex: 1, backgroundColor: palette.background }}>
     {failed ? <View style={{ padding: 20 }}>
       <Placeholder title="Workspace unavailable" message="Check your school's address and your internet connection."/>
       <Button label="Try again" variant="outline" onPress={() => { setFailed(false); view.current?.reload(); }}/>
     </View> : null}
     <WebView<object> ref={view} key={session.district.id + ':' + session.confirmedAt}
-      source={{ uri: origin + '/' }} style={{ flex: 1, opacity: failed ? 0 : 1 }}
+      source={{ uri: session.district.workshop }} style={{ flex: 1, opacity: failed ? 0 : 1 }}
       javaScriptEnabled domStorageEnabled sharedCookiesEnabled
       thirdPartyCookiesEnabled={false} mixedContentMode="never"
       allowFileAccess={false} allowUniversalAccessFromFileURLs={false}

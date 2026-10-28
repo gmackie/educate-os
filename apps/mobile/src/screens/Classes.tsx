@@ -4,12 +4,13 @@ import { BookOpen, ClipboardCheck, ClipboardList, FileText, GraduationCap, Users
 import type { DistrictClient } from '../api/client';
 import type { Assignment, ClassItem, Detail, GuardianChild, Principal } from '../types';
 import { useLoad } from '../hooks/useLoad';
-import { palette } from '../theme';
+import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Item, Page, Placeholder, QueryState, Section, Title } from '../ui/Primitives';
 
 export function Classes({ client, me, navigate }: {
   client: DistrictClient; me: Principal; navigate: (d: Detail) => void;
 }) {
+  const palette = usePalette();
   const [state, reload] = useLoad('courses:' + me.principalId, async () => me.kind === 'guardian'
     ? await client.guardianChildren()
     : await (me.kind === 'student' ? client.studentClasses() : client.teacherClasses()));
@@ -44,6 +45,7 @@ export function Classes({ client, me, navigate }: {
 export function StudentClass({ client, offeringId, navigate }: {
   client: DistrictClient; offeringId: string; navigate: (d: Detail) => void;
 }) {
+  const palette = usePalette();
   const [state, reload] = useLoad('student-class:' + offeringId, async () => {
     const [courses, activities, grades] = await Promise.all([
       client.studentClasses(), client.studentActivities(offeringId),
@@ -81,6 +83,7 @@ export function StudentClass({ client, offeringId, navigate }: {
 export function TeacherClass({ client, offeringId, navigate }: {
   client: DistrictClient; offeringId: string; navigate: (d: Detail) => void;
 }) {
+  const palette = usePalette();
   const [screen, setScreen] = useState<'assignments' | 'roster'>('assignments');
   const [state, reload] = useLoad('teacher-class:' + offeringId + ':' + screen, async () => {
     const [offerings, records] = await Promise.all([
@@ -126,6 +129,7 @@ export function TeacherClass({ client, offeringId, navigate }: {
 export function FamilyChild({ client, studentId, navigate }: {
   client: DistrictClient; studentId: string; navigate: (d: Detail) => void;
 }) {
+  const palette = usePalette();
   const [result, reload] = useLoad('family:' + studentId, () => client.guardianClasses(studentId));
   return <Page refresh={reload}>
     <Title subtitle="Only classes and information your school has approved for your guardian relationship.">Family learning</Title>
@@ -142,6 +146,7 @@ export function FamilyChild({ client, studentId, navigate }: {
 export function FamilyClass({ client, studentId, offeringId }: {
   client: DistrictClient; studentId: string; offeringId: string;
 }) {
+  const palette = usePalette();
   const [result, reload] = useLoad('family-class:' + studentId + ':' + offeringId,
     () => client.guardianClass(studentId, offeringId));
   return <Page refresh={reload}>
