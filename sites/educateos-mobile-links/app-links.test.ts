@@ -12,6 +12,8 @@ test('assetlinks.json is a valid Digital Asset Links statement for the app packa
   assert.equal(statement.target.namespace, 'android_app');
   assert.equal(statement.target.package_name, 'io.educateos.mobile');
   assert.deepEqual(statement.target.sha256_cert_fingerprints, [...ANDROID_CERT_SHA256]);
+  assert.ok(ANDROID_CERT_SHA256.length > 0, 'publish at least the EAS signing certificate');
+  assert.equal(new Set(ANDROID_CERT_SHA256).size, ANDROID_CERT_SHA256.length);
   const fingerprint = Array.from({ length: 32 }, (_, i) => i.toString(16).padStart(2, '0').toUpperCase()).join(':');
   assert.deepEqual(assetLinks([fingerprint])[0].target.sha256_cert_fingerprints, [fingerprint]);
   for (const bad of ['AB:CD', fingerprint.toLowerCase(), fingerprint.replaceAll(':', '')]) assert.throws(() => assetLinks([bad]));
