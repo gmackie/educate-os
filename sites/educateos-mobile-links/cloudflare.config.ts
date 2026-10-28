@@ -8,7 +8,7 @@ export default {
   previewUrls: false,
   entrypoint: 'worker.ts',
   domains: ['mobile.educateos.io'],
-  assets: { notFoundHandling: '404-page', runWorkerFirst: ['/healthz', '/oauthredirect', '/authpopup', '/pairings', '/pairings/*'] },
+  assets: { notFoundHandling: '404-page', runWorkerFirst: ['/healthz', '/.well-known/assetlinks.json', '/oauthredirect', '/authpopup', '/pairings', '/pairings/*'] },
   env: { ASSETS: bindings.assets(), PAIRINGS: bindings.durableObject({ worker: 'educateos-mobile-links', exportName: 'PhonePairing' }) },
   observability: { enabled: false },
   }),

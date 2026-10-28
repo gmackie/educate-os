@@ -1,6 +1,11 @@
+import { assetLinks } from './app-links';
 import { relayRequest, type RelayEnv } from './relay';
 export { PhonePairing } from './relay';
-/** Public app-link metadata and a fallback that never reflects callback credentials. */
+/**
+ * Public app-link metadata and a fallback that never reflects callback credentials. `/pairings*`
+ * and the `pair-v1.` callback are the deprecated SCHO-256 relay (README); pairing v2 is the
+ * district's own `/api/pair`.
+ */
 export default {
   async fetch(request: Request, env: RelayEnv): Promise<Response> {
     const url = new URL(request.url);
@@ -14,6 +19,9 @@ export default {
     }
     const headers = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'Content-Type': 'text/plain; charset=utf-8' };
     if (path === '/healthz') return new Response('ok', { headers });
+    if (path === '/.well-known/assetlinks.json') {
+      return Response.json(assetLinks(), { headers: { 'Cache-Control': 'public, max-age=300', 'X-Content-Type-Options': 'nosniff' } });
+    }
     if (path === '/oauthredirect' || path === '/authpopup') {
       return new Response('Return to EducateOS and start sign-in again. If this page keeps appearing, ask your school to check mobile sign-in setup.', { headers });
     }

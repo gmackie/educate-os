@@ -56,4 +56,14 @@ for (const [key, value] of Object.entries(sealed)) assert.equal(received.searchP
 assert.ok(!delivered.callback.includes(credential.token));
 secret.fill(0);
 await api(path, room.phoneToken, undefined, 410);
-console.log('PASS: origin isolation, role separation, key claim, browser consent, encrypted backend envelope delivery, replay rejection, single-use retrieval');
+// The App Link metadata: Android's statement (from the worker) and Apple's (a static asset).
+const assetlinks = await transport(origin + '/.well-known/assetlinks.json');
+assert.equal(assetlinks.status, 200);
+const [statement] = await assetlinks.json();
+assert.equal(statement.target.package_name, 'io.educateos.mobile');
+assert.ok(Array.isArray(statement.target.sha256_cert_fingerprints));
+const aasa = await transport(origin + '/.well-known/apple-app-site-association');
+assert.equal(aasa.status, 200);
+assert.ok((await aasa.json()).applinks.details[0].components.some(c => c['/'] === '/j'));
+for (const page of ['/', '/j', '/enroll', '/pair-phone']) assert.equal((await transport(origin + page)).status, 200, page);
+console.log('PASS: origin isolation, role separation, key claim, browser consent, encrypted backend envelope delivery, replay rejection, single-use retrieval, app-link metadata and landing pages');

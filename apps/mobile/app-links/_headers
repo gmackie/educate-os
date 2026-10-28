@@ -2,6 +2,10 @@
   Content-Type: application/json
   Cache-Control: public, max-age=300
 
+/.well-known/assetlinks.json
+  Content-Type: application/json
+  Cache-Control: public, max-age=300
+
 /*
   Referrer-Policy: no-referrer
   X-Content-Type-Options: nosniff
