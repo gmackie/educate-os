@@ -24,5 +24,15 @@ declare namespace Cloudflare {
     CLEVER_DISTRICT_TOKEN?: string;
     /** JSON key for the district-authorized Classroom DWD service account. */
     GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY?: string;
+    /**
+     * The public school manifest's settings as JSON (`SchoolManifestSettings` in school-manifest.ts,
+     * ADR-0014): origin, brand, sign-in methods, features. Unset, the manifest uses its defaults.
+     */
+    SCHOOL_MANIFEST?: string;
+    /**
+     * This Worker's version, when the service that deployed it injects one. Typed structurally, as
+     * the router types it, since its shape is not ours to guarantee.
+     */
+    CF_VERSION_METADATA?: { tag?: unknown };
   }
 }
