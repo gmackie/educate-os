@@ -159,6 +159,11 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   deployment's secret sync. With it, `DISTRICT_CONFIG.authority` should be `"clever"` (the Clever
   roster owns every record type, as `external:clever`) and `DISTRICT_CONFIG.rosterServicePrincipalId`
   names the `service` principal, granted district administration, that the sync acts as.
+- `DEVICE_TOKEN_SECRET` (optional secret, SCHO-261): at least 32 random characters, the key device
+  access tokens are MACed with. Without it device sign-in is off and `/api/m/*` answers 503
+  `device-auth-unavailable`. It is not yet a deploy input; production sets it at the one-origin
+  cutover. The device credential protocol is in
+  [docs/educateos/mobile.md](../../docs/educateos/mobile.md#device-credentials-scho-261).
 - `LTI_TOOL_ORIGIN` (optional): the LTI Tool's public origin (see [LTI 1.3 Tool](#lti-13-tool-scho-177)).
   It is not yet a deploy input, so the installer does not offer it; the schoolos.gmac.io production
   config sets it from the district hostname.

@@ -40,6 +40,8 @@ import { InMemoryGuardianInvitationStore, InMemoryIdentityLinkStore, type Guardi
 import type { FundingAllocationRevision } from "./routes.ts";
 // Communication (SCHO-189)
 import { inMemoryCommunicationStores, type CommunicationStores } from "./communication/stores.ts";
+// Devices (SCHO-261)
+import { InMemoryDeviceStore, type DeviceStore } from "./devices.ts";
 
 /**
  * A district's configuration revisions, oldest first. Only applied revisions are kept: a draft or
@@ -281,6 +283,9 @@ export interface DistrictAppStores {
   // Quizzes (SCHO-191)
   /** Each offering's quizzes, attempts and score releases. */
   quizzes: QuizStorage;
+  // Devices (SCHO-261)
+  /** Registered phones, their refresh tokens and recently seen proof IDs. */
+  devices: DeviceStore;
 }
 
 /** In-memory stores for one district, seeded with its directory. */
@@ -317,5 +322,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     discussions: new InMemoryDiscussionStorage(),
     // Quizzes (SCHO-191)
     quizzes: new InMemoryQuizStorage(),
+    // Devices (SCHO-261)
+    devices: new InMemoryDeviceStore(),
   };
 }

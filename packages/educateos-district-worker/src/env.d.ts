@@ -34,5 +34,10 @@ declare namespace Cloudflare {
      * the router types it, since its shape is not ours to guarantee.
      */
     CF_VERSION_METADATA?: { tag?: unknown };
+    /**
+     * The key device access tokens are MACed with (SCHO-261), a Worker secret of at least 32
+     * characters. Unset, device sign-in is off and `/api/m/*` answers 503.
+     */
+    DEVICE_TOKEN_SECRET?: string;
   }
 }

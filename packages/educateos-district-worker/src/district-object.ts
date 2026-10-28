@@ -21,8 +21,8 @@
 import { DurableObject } from "cloudflare:workers";
 import type { JWTVerifyGetKey } from "jose";
 import { createLogger } from "@gadgets/observability/logger";
-import type { DistrictDirectorySnapshot, VerifiedPrincipal } from "@educateos/contracts";
-import type { DistrictApp } from "@educateos/district-app";
+import type { DistrictDirectorySnapshot, PrincipalId, VerifiedPrincipal } from "@educateos/contracts";
+import type { DeviceId, DeviceRegistration, DeviceRevocation, DeviceTokens, DistrictApp } from "@educateos/district-app";
 import type { AdmittedSubjectRequest, GuardSubject, GuardSubjectRequest } from "@educateos/district-app/guard-directory";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
 import { startDistrict, type District } from "./district.ts";
@@ -157,6 +157,27 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return (await this.#boot()).tools.serveAs(principal, request);
   }
 
+  // Devices (SCHO-261)
+
+  /**
+   * Registers a phone for `principalId` and issues its first tokens. The caller has already
+   * established who the person is: the pairing relay, once the person approves on a signed-in
+   * computer, or the browser sign-in path. Refused unless the principal is active here.
+   */
+  async registerDevice(principalId: PrincipalId, registration: DeviceRegistration): Promise<DeviceTokens> {
+    return (await this.#boot()).app.devices.registerDevice(principalId, registration);
+  }
+
+  /** Revokes one device, for administrators and operators (`/api/ops`, later). Returns whether it was active. */
+  async revokeDevice(deviceId: DeviceId, revocation: DeviceRevocation): Promise<boolean> {
+    return (await this.#boot()).app.devices.revoke(deviceId, revocation);
+  }
+
+  /** Revokes every active device of a principal, for administrators and operators. Returns how many. */
+  async revokePrincipalDevices(principalId: PrincipalId, revocation: DeviceRevocation): Promise<number> {
+    return (await this.#boot()).app.devices.revokePrincipal(principalId, revocation);
+  }
+
   /**
    * Runs the job a Cron Trigger names (SCHO-189): the hourly notification sweep, then whichever
    * roster sync is due (SCHO-203); or the weekly family digest. An expression the district does not
@@ -228,6 +249,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         ltiToolOrigin: this.env.LTI_TOOL_ORIGIN,
         cleverDistrictToken: this.env.CLEVER_DISTRICT_TOKEN,
         classroomServiceAccountKey: this.env.GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY,
+        deviceTokenSecret: this.env.DEVICE_TOKEN_SECRET,
       },
       {
         importFetch: (url, init) => this.importFetch(url, init),
