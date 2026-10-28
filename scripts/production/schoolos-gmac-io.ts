@@ -63,6 +63,11 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
     // plain custom domain; both district Access applications list it as a second destination.
     aliases: ["northfield.educateos.io"],
   },
+  // One origin per district (ADR-0014, SCHO-259): off until the cutover
+  // (docs/educateos/runbooks/one-origin-cutover.md). On, the router serves northfield.educateos.io,
+  // with the district at the root and the Workshop under /ai, and schoolos.gmac.io and
+  // district.schoolos.gmac.io redirect there.
+  oneOrigin: { enabled: false, hostname: "northfield.educateos.io" },
   // Deployed before the EducateOS rename (SCHO-200), and pinned so it is never deployed under its
   // package's new name (SCHO-231). Its Durable Object holds the demo district's data, a Worker's
   // Durable Object namespace belongs to its name, and district.schoolos.gmac.io is attached to it:

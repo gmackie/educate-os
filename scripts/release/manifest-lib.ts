@@ -244,7 +244,16 @@ export interface DeployInput {
   setupSteps?: string[];
   /** Redirect URI to show the user, with `$PUBLIC_BASE_URL` still unresolved. */
   redirectUriTemplate?: string;
+  /**
+   * Secrets only: a random key nobody needs to know, which the deploy service generates when the
+   * worker does not have one yet ({@link GENERATED_SECRET_BYTES} random bytes, base64url) and never
+   * rotates. The wizard does not ask for it. Such as the district's `DEVICE_TOKEN_SECRET` (SCHO-261).
+   */
+  generated?: true;
 }
+
+/** The size of a {@link DeployInput.generated} secret: 32 random bytes, base64url-encoded. */
+export const GENERATED_SECRET_BYTES = 32;
 
 /** A rendered binding in a worker's manifest entry; account-specific values are placeholders. */
 export type ManifestBinding = { type: string; name: string } & Record<string, unknown>;
@@ -296,12 +305,17 @@ export interface WorkerEntry {
     entrypoint?: string;
     propsByPackage: Record<string, Record<string, unknown>>;
   };
-  /** Static-asset serving config, with one manifest per asset variant. */
+  /**
+   * Static-asset serving config, with one manifest per asset variant and the build env each variant
+   * was built with (see {@link ASSET_VARIANTS}).
+   */
   assetsConfig?: {
     not_found_handling: string | undefined;
     run_worker_first: string[] | undefined;
-    variants: Record<string, { manifest: Record<string, AssetManifestEntry> }>;
+    variants: Record<string, { manifest: Record<string, AssetManifestEntry>; buildEnv: Record<string, string> }>;
   };
+  /** Router only: how the router serves a district's one origin (ADR-0014). See {@link DISTRICT_ORIGIN}. */
+  districtOrigin?: DistrictOriginWiring;
   /** Values the deploy wizard collects before installing. Absent for core workers. */
   inputs?: DeployInput[];
   /**
@@ -457,6 +471,48 @@ const SERVICE_PACKAGES: Record<string, BackendServiceBinding> = {
   // DistrictSchoolTools), which a backend binding must never reach: each is for its one consumer.
   // The backend is bound only to the `/api` surface, which every request must authenticate to.
   "educateos-district-worker": { name: "EDUCATEOS_DISTRICT_API", entrypoint: "DistrictApi" },
+};
+
+/**
+ * The Workshop frontend's asset variants every release carries, by name, with the build-time env
+ * each is built with. `access` is the Workshop at the origin's root, as every deployment served it
+ * before ADR-0014; `access-ai` is the same Access-mode build mounted under `/ai`, for a district's
+ * one origin, where the router serves the LMS at the root (`VITE_WORKSHOP_BASE_PATH`,
+ * workshop-frontend/vite.config.ts). build-release.ts builds each in turn; the manifest records each
+ * one's env beside its asset manifest.
+ */
+export const ASSET_VARIANTS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  access: { VITE_CF_ACCESS_MODE: "true" },
+  "access-ai": { VITE_CF_ACCESS_MODE: "true", VITE_WORKSHOP_BASE_PATH: "/ai/" },
+};
+
+/** The district Worker's package: the optional service a district's one origin routes to. */
+export const DISTRICT_SERVICE_PACKAGE = "educateos-district-worker";
+
+/**
+ * How a deployment serves a district's one origin (ADR-0014), carried on the router's manifest
+ * entry. An installer that installs the district service as well:
+ *  - adds `binding` to the router (a service binding to the district Worker, `DISTRICT`), whose
+ *    path table then sends everything but `/ai`, `/gatekeeper/*` and `/healthz` to the district;
+ *  - serves the asset variant `assetVariant`, built for `basePath`, and runs the router first for
+ *    every path (`run_worker_first: true`), since the Workshop's assets would otherwise answer `/`;
+ *  - sets the backend's `PUBLIC_BASE_PATH` to `basePath`.
+ * Without the district service the router stays as it was, and none of this applies.
+ */
+export interface DistrictOriginWiring {
+  /** The router's service binding to the district Worker. */
+  binding: ManifestBinding;
+  /** The asset variant built for the Workshop under {@link DistrictOriginWiring.basePath}. */
+  assetVariant: string;
+  /** Where the Workshop is mounted on the district origin, the backend's `PUBLIC_BASE_PATH`. */
+  basePath: string;
+}
+
+/** The router's {@link DistrictOriginWiring}. */
+export const DISTRICT_ORIGIN: DistrictOriginWiring = {
+  binding: { type: "service", name: "DISTRICT", service: `$WORKER_NAME(${DISTRICT_SERVICE_PACKAGE})` },
+  assetVariant: "access-ai",
+  basePath: "/ai",
 };
 
 /** True when a deployable package is an optional backend service (see `SERVICE_PACKAGES`). */
@@ -720,6 +776,10 @@ export function buildWorkerEntry(
     // The router routes /gatekeeper/<short>/* by scanning its own GATEKEEPER_* bindings
     // (default entrypoint — it forwards whole HTTP requests, not vendor RPC).
     gatekeeperBindingExpansion = { propsByPackage: {} };
+    if (config.services?.some((svc) => svc.binding === DISTRICT_ORIGIN.binding.name)) {
+      throw new Error(`${pkgName}/wrangler.jsonc binds ${DISTRICT_ORIGIN.binding.name}; a district's one ` +
+          `origin is wired by the deploy service from districtOrigin, never by the release`);
+    }
   } else if (kind === "service") {
     inputs = deployInputs ?? [];
   } else {
@@ -739,6 +799,9 @@ export function buildWorkerEntry(
 
   // Every declared secret input becomes a pass-through secret_text binding.
   for (const input of inputs ?? []) {
+    if (input.generated !== undefined && (input.generated !== true || input.kind !== "secret")) {
+      throw new Error(`${pkgName}: deploy input ${input.name} is marked generated, which only a secret can be`);
+    }
     if (input.kind === "secret") {
       bindings.push({ type: "secret_text", name: input.name, text: `$SECRET(${input.name})` });
     }
@@ -766,6 +829,7 @@ export function buildWorkerEntry(
     ...(crons.length > 0 ? { crons: [...crons] } : {}),
     ...(gatekeeperBindingExpansion ? { gatekeeperBindingExpansion } : {}),
     ...(assetsConfig ? { assetsConfig } : {}),
+    ...(kind === "router" ? { districtOrigin: structuredClone(DISTRICT_ORIGIN) } : {}),
     ...(inputs ? { inputs } : {}),
     ...(databases.length > 0
       ? { d1Migrations: d1MigrationEntries(pkgName, databases, d1Migrations ?? []) }
@@ -790,7 +854,9 @@ export function assetR2Key(cfHash: string): string {
  * Assembles the full manifest.
  *  - workers: [{ pkgName, config, mainModule, modules, deployInputs, d1Migrations }]
  *  - assetVariants: { [variantName]: { manifest, blobs } } from collectAssets() — attached to
- *    every worker entry that has an assetsConfig (today: just the router).
+ *    every worker entry that has an assetsConfig (today: just the router), with the variant's
+ *    build env from ASSET_VARIANTS. Every variant in ASSET_VARIANTS that the router's
+ *    districtOrigin names must be present.
  */
 export function generateManifest({
   releaseId, commit, createdAt, wranglerVersion, workers, assetVariants,
@@ -825,14 +891,21 @@ export function generateManifest({
 
   const assets: ReleaseManifest["assets"] = {};
   for (const [variant, { manifest, blobs }] of Object.entries(assetVariants ?? {})) {
+    const buildEnv = ASSET_VARIANTS[variant];
+    if (!buildEnv) throw new Error(`unknown asset variant ${variant}; declare its build env in ASSET_VARIANTS`);
     for (const [hash, blob] of blobs) {
       assets[hash] = { size: blob.size, r2Key: assetR2Key(hash) };
     }
     for (const entry of Object.values(workerEntries)) {
       if (entry.assetsConfig) {
-        entry.assetsConfig.variants[variant] = { manifest };
+        entry.assetsConfig.variants[variant] = { manifest, buildEnv: { ...buildEnv } };
       }
     }
+  }
+  const router = Object.values(workerEntries).find((entry) => entry.kind === "router");
+  if (router?.districtOrigin && assetVariants && !Object.hasOwn(assetVariants, router.districtOrigin.assetVariant)) {
+    throw new Error(`the release has no ${router.districtOrigin.assetVariant} asset variant, which a district's ` +
+        `one origin serves`);
   }
 
   return {

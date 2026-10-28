@@ -57,6 +57,10 @@ describe('the district origin path table (DISTRICT bound)', () => {
     ['/ai/api', 'backend /ai/api'],
     ['/ai/api/router-tag', 'backend /ai/api/router-tag'],
     ['/ai/api/device-session/callback?state=s', 'backend /ai/api/device-session/callback?state=s'],
+    // Its screenshots, which a Workshop built for /ai asks for under its base.
+    ['/ai/blueprint-screenshot', 'backend /ai/blueprint-screenshot'],
+    ['/ai/blueprint-screenshot/abc?v=1', 'backend /ai/blueprint-screenshot/abc?v=1'],
+    ['/ai/blueprint-screenshots', 'assets /blueprint-screenshots'],
     // Its SPA from the Workshop's assets with /ai stripped.
     ['/ai', 'assets /'],
     ['/ai/', 'assets /'],

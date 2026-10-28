@@ -5,6 +5,8 @@
 //   /gatekeeper/<name>[/...]         the bound gatekeepers (index.ts)
 //   /ai/api, /ai/api/*               the Workshop backend, URL unchanged (it accepts both /api... and
 //                                    /ai/api...)
+//   /ai/blueprint-screenshot[/*]     the Workshop backend too, URL unchanged: the Workshop built for
+//                                    /ai asks for its screenshots there (workshopPath)
 //   /ai, /ai/*                       the Workshop SPA from ASSETS, with `/ai` stripped and the SPA's
 //                                    index.html as the fallback
 //   LEGACY_WORKSHOP_PATHS            the Workshop backend, for one release, so older Workshop builds and
@@ -21,6 +23,14 @@
 
 /** The prefix the Workshop is served under on a district origin. */
 export const AI_PREFIX = "/ai";
+
+/**
+ * The Workshop backend's own paths under {@link AI_PREFIX}, matched as `<prefix>` exactly or
+ * `<prefix>/...`: its RPC and HTTP API, and its blueprint screenshots (BLUEPRINT_SCREENSHOT_PATH_PREFIX
+ * in workshop-shared, which the frontend puts under its base). The backend strips `/ai` itself
+ * (workshop-backend/src/public-path.ts).
+ */
+export const AI_BACKEND_PREFIXES: readonly string[] = [AI_PREFIX + "/api", AI_PREFIX + "/blueprint-screenshot"];
 
 /**
  * The Workshop backend's HTTP endpoints at the root, from packages/workshop-backend/src/server.ts,
@@ -60,7 +70,7 @@ function underPrefix(pathname: string, prefix: string): boolean {
 export function districtOriginTarget(pathname: string, aiEnabled: boolean): DistrictOriginTarget {
   if (underPrefix(pathname, AI_PREFIX)) {
     if (!aiEnabled) return "ai-disabled";
-    return underPrefix(pathname, AI_PREFIX + "/api") ? "workshop-backend" : "workshop-assets";
+    return AI_BACKEND_PREFIXES.some((prefix) => underPrefix(pathname, prefix)) ? "workshop-backend" : "workshop-assets";
   }
   if (aiEnabled && (LEGACY_WORKSHOP_EXACT_PATHS.includes(pathname) ||
       LEGACY_WORKSHOP_PREFIXES.some((prefix) => underPrefix(pathname, prefix)))) {

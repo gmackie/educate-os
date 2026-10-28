@@ -106,6 +106,19 @@ export const DistrictInstallConfig = z.strictObject({
   /** Creates an AI Gateway named after the instance and points the backend at it. */
   aiGateway: z.boolean().default(false),
   /**
+   * The AI workspace at `/ai` on a one-origin install (ADR-0014): one that installs the district
+   * service, whose router then serves the district at the root of the public hostname. Off, the
+   * router answers `/ai` with an "AI isn't enabled at your school" page linking to `demoUrl`, and
+   * the school manifest says `features.ai: false`; the Workshop's Workers stay installed, since the
+   * district's services are bound through them, and are simply not routed. It can be turned off only
+   * on a one-origin install.
+   */
+  ai: z.strictObject({
+    enabled: z.boolean(),
+    /** An AI-enabled district the "AI isn't enabled" page links to, such as a demo district. */
+    demoUrl: z.url({ protocol: /^https$/ }).max(2048).optional(),
+  }).default({ enabled: true }),
+  /**
    * The managed default hostname, `<slug>.educateos.io` (ADR-0013 addendum A1). It is an alias of
    * the public hostname, which stays the instance's identity, so removing it moves no data: an
    * apply without it releases any managed hostname that routes to this instance.

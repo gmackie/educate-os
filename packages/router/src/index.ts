@@ -12,6 +12,7 @@
 // The same worker doubles as the dev router (`pnpm dev-server` at the repo root): dev has no
 // `ASSETS` binding, so frontend requests fall through to the backend instead.
 
+import { legacyRedirect, parseLegacyHosts } from "./legacy-hosts";
 import {
   aiDisabledResponse, districtOriginTarget, fetchWorkshopAsset, stripAiPrefix,
 } from "./one-origin";
@@ -43,6 +44,11 @@ export interface Env {
   AI_ENABLED?: string;
   /** With AI disabled: an AI-enabled demo district the page links to. */
   AI_DEMO_URL?: string;
+  /**
+   * A district's old hostnames, still attached to this Worker, as JSON: hostname → the https URL
+   * prefix it now redirects to (ADR-0014 §7). See legacy-hosts.ts. Unset, nothing redirects.
+   */
+  LEGACY_HOSTS?: string;
   /**
    * This Worker's version, injected by the service that installed the deployment (no config here
    * declares it). Typed structurally because its shape is not ours to guarantee.
@@ -101,6 +107,18 @@ export default {
     // one path from sign-in so the probe can reach it.
     if (url.pathname === "/healthz") {
       return new Response("ok", { headers: { "content-type": "text/plain", "cache-control": "no-store" } });
+    }
+
+    // A district's old hostnames answer with redirects only, before anything is routed.
+    if (env.LEGACY_HOSTS !== undefined) {
+      let redirect: Response | undefined;
+      try {
+        redirect = legacyRedirect(req, parseLegacyHosts(env.LEGACY_HOSTS));
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : "LEGACY_HOSTS is invalid");
+        return new Response("This deployment's legacy hostnames are misconfigured.", { status: 500 });
+      }
+      if (redirect) return redirect;
     }
 
     for (const key of Object.keys(env)) {

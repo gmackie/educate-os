@@ -6,6 +6,7 @@
 // them, which is also a dependency edge. A `$` token outside the vocabulary fails compilation,
 // as the deploy-side renderer must.
 import { EducateOsError } from "@educateos/contracts";
+import { toBase64Url } from "@educateos/fleet";
 import type { AccessPolicySpec } from "./cloudflare-api.ts";
 import {
   type DistrictInstallConfig,
@@ -70,18 +71,28 @@ export interface DesiredAiGateway extends ResourceBase {
   gatewayId: string;
 }
 
-/** The Access policy admitting the district's email domains. */
+/**
+ * An Access policy: the one admitting the district's email domains, or, on a one-origin install,
+ * the bypass for the paths that check their own credential.
+ */
 export interface DesiredAccessPolicy extends ResourceBase {
   kind: "access_policy";
   spec: AccessPolicySpec;
 }
 
-/** The Access application in front of the public hostname, and the managed hostname if any. */
+/**
+ * An Access application. The district's own is in front of the public hostname and the managed
+ * hostname if any. On a one-origin install a second one, with a bypass policy, covers
+ * {@link ACCESS_BYPASS_PATHS} on both (ADR-0014).
+ */
 export interface DesiredAccessApplication extends ResourceBase {
   kind: "access_application";
   name: string;
   domain: string;
-  /** `domain`, then the managed hostname. One application, so one audience for both. */
+  /**
+   * `domain`, then the managed hostname, then any paths on them. One application, so one audience
+   * for all.
+   */
   destinations: string[];
   sessionDuration: string;
   policyKey: ResourceKey;
@@ -113,6 +124,12 @@ export interface DesiredWorkerSecret extends ResourceBase {
   pkgName: string;
   scriptName: string;
   secretName: string;
+  /**
+   * A key nobody supplies (the release marks the input `generated`): when the Worker does not have
+   * it and the secret source has none, applying generates {@link generateSecretValue}'s value.
+   * Never rotated once set.
+   */
+  generated: boolean;
 }
 
 /**
@@ -173,7 +190,7 @@ export type DesiredResource =
  */
 export type DesiredInput =
   | { pkgName: string; name: string; label: string; kind: "var"; supplied: boolean }
-  | { pkgName: string; name: string; label: string; kind: "secret" };
+  | { pkgName: string; name: string; label: string; kind: "secret"; generated: boolean };
 
 /** The compiled desired state of one instance at one release. */
 export interface DesiredState {
@@ -203,15 +220,47 @@ export const ASSET_VARIANT = "access";
 /** The Access session length the application is created with. */
 export const ACCESS_SESSION_DURATION = "12h";
 
+/**
+ * The paths a one-origin install exempts from Access (ADR-0014 decision 4), on every hostname it
+ * serves. Each route under them checks its own credential: the liveness probe and the school
+ * manifest carry nothing private, the LTI Tool verifies the platform's signed launch, `/api/m/*`
+ * a device token, `/api/pair/*` a room secret and `/api/ops/*` an Ed25519 request signature.
+ */
+export const ACCESS_BYPASS_PATHS: readonly string[] = [
+  "/healthz", "/.well-known/educateos.json", "/lti/*", "/api/m/*", "/api/pair/*", "/api/ops/*",
+];
+
+/**
+ * The pairing relay's browser endpoints (SCHO-261 pairing contract), which sit under the
+ * `/api/pair/*` bypass but belong to a signed-in web session: creating a room, and its status,
+ * approve and deny. They are listed as path destinations of the district's own application, so the
+ * more specific path puts them back behind Access, with the same audience as the rest of the
+ * origin, and Access adds the assertion the district verifies. If Access ever matched the bypass
+ * instead, the district would see no assertion and refuse them, so this fails closed. The phone's
+ * endpoints (`/api/pair/self-rooms`, `/api/pair/rooms/<room>/claim` and the poll
+ * `GET /api/pair/rooms/<room>`) stay bypassed and are authenticated by the room secret.
+ */
+export const ACCESS_PAIRING_BROWSER_PATHS: readonly string[] = [
+  "/api/pair/rooms", "/api/pair/rooms/*/status", "/api/pair/rooms/*/approve", "/api/pair/rooms/*/deny",
+];
+
 /** Keys of the singleton resources. */
 export const RESOURCE_KEYS = {
   accessPolicy: "access:policy",
   accessApplication: "access:application",
+  accessBypassPolicy: "access:policy:bypass",
+  accessBypassApplication: "access:application:bypass",
   aiGateway: "ai-gateway",
   customDomain: "domain:public",
   managedHostnameRelease: "domain:managed:release",
   managedHostname: "domain:managed",
 } as const;
+
+/**
+ * The district's deploy inputs a one-origin install sets itself (ADR-0014): one Access application
+ * fronts the whole origin, so the district accepts exactly its issuer and audience.
+ */
+export const DISTRICT_INSTALLER_VARS: readonly string[] = ["CF_ACCESS_ISS", "CF_ACCESS_AUD"];
 
 /** The resource key of a release package's Worker. */
 export function workerKey(pkgName: string): ResourceKey {
@@ -226,6 +275,14 @@ export function retiredWorkerKey(pkgName: string): ResourceKey {
 /** Whether a value is an {@link OutputRef}. */
 export function isOutputRef(value: unknown): value is OutputRef {
   return typeof value === "object" && value !== null && "ref" in value && "output" in value;
+}
+
+/** The size of a generated secret, in random bytes (manifest-lib's `GENERATED_SECRET_BYTES`). */
+export const GENERATED_SECRET_BYTES = 32;
+
+/** A fresh value for a {@link DesiredWorkerSecret.generated} secret: 32 random bytes, base64url. */
+export function generateSecretValue(): string {
+  return toBase64Url(crypto.getRandomValues(new Uint8Array(GENERATED_SECRET_BYTES)));
 }
 
 /** Fails compilation: the release and the config do not fit together. */
@@ -302,6 +359,17 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   }
   const installed = [...gatekeepers].toSorted();
 
+  // One origin per district (ADR-0014): with the district service installed, the router serves it
+  // at the root of the public hostname and the Workshop under the release's base path.
+  const wiring = manifest.workers[routerPkg]!.districtOrigin;
+  const districtPkg = wiring ? /^\$WORKER_NAME\(([a-z0-9-]+)\)$/.exec(wiring.binding.service)![1]! : undefined;
+  const oneOrigin = wiring !== undefined && districtPkg !== undefined && config.services[districtPkg]?.enabled === true;
+  if (!oneOrigin && !config.ai.enabled) {
+    invalid("AI can be turned off only on a one-origin install: enable the district service, with a release that wires it (ADR-0014)");
+  }
+  // Inputs of the district that a one-origin install sets itself, from the one Access application.
+  const installerSet = new Set(oneOrigin ? DISTRICT_INSTALLER_VARS : []);
+
   const services: string[] = [];
   const retired: DesiredRetiredWorker[] = [];
   const inputs: DesiredInput[] = [];
@@ -316,13 +384,16 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     if (!entry.installable) invalid(`${name} is not installable on district instances`);
     if (!entry.backendBinding) invalid(`service ${name} has no backendBinding`);
     const declared = new Map((entry.inputs ?? []).map((input) => [input.name, input]));
+    const setHere = name === districtPkg ? installerSet : new Set<string>();
     for (const input of declared.values()) {
       if (input.kind === "workerName") invalid(`${name} needs a workerName input, which the installer does not collect yet`);
+      if (setHere.has(input.name)) continue;
       inputs.push(input.kind === "var"
         ? { pkgName: name, name: input.name, label: input.label, kind: "var", supplied: Object.hasOwn(wanted.vars, input.name) }
-        : { pkgName: name, name: input.name, label: input.label, kind: "secret" });
+        : { pkgName: name, name: input.name, label: input.label, kind: "secret", generated: input.generated === true });
     }
     for (const varName of Object.keys(wanted.vars)) {
+      if (setHere.has(varName)) invalid(`${name}: the installer sets ${varName} on a one-origin install; remove it from the config`);
       if (declared.get(varName)?.kind !== "var") invalid(`${name} has no var input ${varName}`);
     }
     services.push(name);
@@ -343,6 +414,8 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       include: config.access.allowedEmailDomains.map((domain) => ({ email_domain: { domain } })),
     },
   };
+  const hosts = alias ? [hostname, alias] : [hostname];
+  const onHosts = (paths: readonly string[]) => paths.flatMap((path) => hosts.map((host) => `${host}${path}`));
   const accessApplication: DesiredAccessApplication = {
     kind: "access_application",
     key: RESOURCE_KEYS.accessApplication,
@@ -350,10 +423,26 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     dependsOn: [accessPolicy.key, RESOURCE_KEYS.managedHostnameRelease],
     name: prefix,
     domain: hostname,
-    destinations: alias ? [hostname, alias] : [hostname],
+    destinations: [...hosts, ...oneOrigin ? onHosts(ACCESS_PAIRING_BROWSER_PATHS) : []],
     sessionDuration: ACCESS_SESSION_DURATION,
     policyKey: accessPolicy.key,
   };
+  // ADR-0014 decision 4: the paths that check their own credential are exempt from Access.
+  const bypassPolicy: DesiredAccessPolicy | undefined = oneOrigin
+    ? { kind: "access_policy", key: RESOURCE_KEYS.accessBypassPolicy, dependsOn: [], spec: { name: `${prefix}-bypass`, decision: "bypass", include: [{ everyone: {} }] } }
+    : undefined;
+  const bypassApplication: DesiredAccessApplication | undefined = bypassPolicy
+    ? {
+      kind: "access_application",
+      key: RESOURCE_KEYS.accessBypassApplication,
+      dependsOn: [bypassPolicy.key, RESOURCE_KEYS.managedHostnameRelease],
+      name: `${prefix}-bypass`,
+      domain: `${hostname}${ACCESS_BYPASS_PATHS[0]}`,
+      destinations: onHosts(ACCESS_BYPASS_PATHS),
+      sessionDuration: ACCESS_SESSION_DURATION,
+      policyKey: bypassPolicy.key,
+    }
+    : undefined;
   const aiGateway: DesiredAiGateway | undefined = config.aiGateway
     ? { kind: "ai_gateway", key: RESOURCE_KEYS.aiGateway, dependsOn: [], gatewayId: prefix }
     : undefined;
@@ -420,6 +509,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
           pkgName,
           scriptName: scriptNames.get(pkgName)!,
           secretName: binding.name,
+          generated: entry.inputs?.some((input) => input.name === binding.name && input.generated === true) ?? false,
         });
         continue;
       }
@@ -472,6 +562,23 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
         vars.CF_AI_GATEWAY_ACCOUNT_ID = config.accountId;
         dependsOn.add(aiGateway.key);
       }
+      // The Workshop under /ai: the URLs the backend hands browsers carry the base path.
+      if (oneOrigin) vars.PUBLIC_BASE_PATH = wiring!.basePath;
+    }
+    if (entry.kind === "router" && oneOrigin) {
+      // The router owns the district's origin: the district at the root, the Workshop under /ai.
+      if (bindings.some((b) => b.name === wiring!.binding.name)) invalid(`${pkgName} already binds ${wiring!.binding.name}`);
+      bindings.push(resolveDeep(wiring!.binding) as DesiredBinding);
+      if (!config.ai.enabled) {
+        vars.AI_ENABLED = "false";
+        if (config.ai.demoUrl) vars.AI_DEMO_URL = config.ai.demoUrl;
+      }
+    }
+    if (pkgName === districtPkg && oneOrigin) {
+      // One Access application in front of the whole origin, so one issuer and one audience.
+      vars.CF_ACCESS_ISS = `https://${config.access.teamName}.cloudflareaccess.com`;
+      vars.SCHOOL_MANIFEST = JSON.stringify({ origin: publicBaseUrl, features: { ai: config.ai.enabled } });
+      dependsOn.add(accessApplication.key);
     }
     for (const [name, value] of Object.entries(vars).toSorted(([a], [b]) => a.localeCompare(b))) {
       const resolved = resolveDeep(value);
@@ -481,7 +588,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       if (Object.hasOwn(vars, name)) invalid(`${pkgName}: input ${name} would replace a var the release or installer sets`);
       bindings.push({ type: "plain_text", name, text });
     }
-    if (entry.kind === "backend") {
+    if (entry.kind === "backend" || (pkgName === districtPkg && oneOrigin)) {
       bindings.push({ type: "plain_text", name: "CF_ACCESS_AUD", text: { ref: accessApplication.key, output: "aud" } });
     }
     if (entry.kind === "service") {
@@ -500,13 +607,18 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
 
     let assets: DesiredWorker["assets"];
     if (entry.assetsConfig) {
-      const variant = entry.assetsConfig.variants[ASSET_VARIANT];
-      if (!variant) invalid(`${pkgName} has no "${ASSET_VARIANT}" asset variant`);
+      // The router of a one-origin install serves the Workshop built for /ai, and runs first for
+      // every path: the Workshop's assets would otherwise answer `/` and shadow the district's.
+      const routerOfOrigin = entry.kind === "router" && oneOrigin;
+      const variantName = routerOfOrigin ? wiring!.assetVariant : ASSET_VARIANT;
+      const variant = entry.assetsConfig.variants[variantName];
+      if (!variant) invalid(`${pkgName} has no "${variantName}" asset variant`);
+      const runWorkerFirst = routerOfOrigin ? true : entry.assetsConfig.run_worker_first;
       assets = {
         manifest: variant.manifest,
         config: {
           ...(entry.assetsConfig.not_found_handling ? { not_found_handling: entry.assetsConfig.not_found_handling } : {}),
-          ...(entry.assetsConfig.run_worker_first ? { run_worker_first: entry.assetsConfig.run_worker_first } : {}),
+          ...(runWorkerFirst ? { run_worker_first: runWorkerFirst } : {}),
         },
       };
     }
@@ -540,7 +652,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   const customDomain: DesiredCustomDomain = {
     kind: "custom_domain",
     key: RESOURCE_KEYS.customDomain,
-    dependsOn: [workerKey(routerPkg)],
+    // On a one-origin install the bypass is in place before the hostname serves, so the paths that
+    // check their own credential are never behind the sign-in page they cannot pass.
+    dependsOn: [workerKey(routerPkg), ...bypassApplication ? [bypassApplication.key] : []],
     hostname,
     zoneName: config.baseDomain,
     scriptName: scriptNames.get(routerPkg)!,
@@ -550,7 +664,12 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   const releaseManaged: DesiredManagedHostname = { ...managed, key: RESOURCE_KEYS.managedHostnameRelease, dependsOn: [], phase: "release" };
   // Attaching waits for the router and for the application that protects the alias.
   const attachManaged: DesiredManagedHostname | undefined = alias
-    ? { ...managed, key: RESOURCE_KEYS.managedHostname, dependsOn: [workerKey(routerPkg), accessApplication.key], phase: "attach" }
+    ? {
+      ...managed,
+      key: RESOURCE_KEYS.managedHostname,
+      dependsOn: [workerKey(routerPkg), accessApplication.key, ...bypassApplication ? [bypassApplication.key] : []],
+      phase: "attach",
+    }
     : undefined;
 
   const resources = topologicalOrder([
@@ -558,6 +677,8 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     ...(aiGateway ? [aiGateway] : []),
     accessPolicy,
     accessApplication,
+    ...bypassPolicy ? [bypassPolicy] : [],
+    ...bypassApplication ? [bypassApplication] : [],
     ...workers,
     ...secrets,
     ...retired,

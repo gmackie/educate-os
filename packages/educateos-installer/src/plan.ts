@@ -3,7 +3,8 @@
 // running again, and a second machine (the district's own CI after the root's OAuth grant is
 // revoked) reconciles exactly as the first would.
 import { EducateOsError } from "@educateos/contracts";
-import type { CloudflareApi, KvNamespace, ObservedBinding } from "./cloudflare-api.ts";
+import type { AccessRule, CloudflareApi, KvNamespace, ObservedBinding } from "./cloudflare-api.ts";
+import { stableStringify } from "./digest.ts";
 import type { SecretSource } from "./config.ts";
 import {
   type DesiredResource,
@@ -144,9 +145,8 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
           break;
         }
         outputs.set(resource.key, { id: found.id });
-        const same = found.decision === resource.spec.decision &&
-          sameDomains(found.include.map((r) => r.email_domain.domain), resource.spec.include.map((r) => r.email_domain.domain));
-        step(same ? "noop" : "update", same ? "policy matches" : "admitted email domains differ");
+        const same = found.decision === resource.spec.decision && sameRules(found.include, resource.spec.include);
+        step(same ? "noop" : "update", same ? "policy matches" : resource.spec.decision === "allow" ? "admitted email domains differ" : "policy differs");
         break;
       }
       case "access_application": {
@@ -194,6 +194,7 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
           : [];
         if (existing.includes(resource.secretName)) step("noop", "secret set (values are never read back)");
         else if (hasValue) step("create", "secret not set");
+        else if (resource.generated) step("create", "secret not set; the installer generates it");
         else step("needs-input", `supply ${resource.secretName} for ${resource.pkgName}`);
         break;
       }
@@ -306,8 +307,14 @@ function workerKeyOf(secret: { dependsOn: ResourceKey[] }): ResourceKey {
   return secret.dependsOn[0]!;
 }
 
-function sameDomains(a: string[], b: string[]): boolean {
-  return a.length === b.length && a.toSorted().join() === b.toSorted().join();
+/** A policy's include rules as one order-independent string. */
+function rulesKey(rules: readonly AccessRule[]): string {
+  return rules.map((rule) => stableStringify(rule)).toSorted().join("\n");
+}
+
+/** Whether two policies' include rules are the same set, in any order. */
+function sameRules(a: readonly AccessRule[], b: readonly AccessRule[]): boolean {
+  return a.length === b.length && rulesKey(a) === rulesKey(b);
 }
 
 function costSummary(desired: DesiredState, steps: PlanStep[]): CostLine[] {

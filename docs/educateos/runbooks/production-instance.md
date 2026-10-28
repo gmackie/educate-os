@@ -13,7 +13,8 @@ This layout is changing. [ADR-0014](../adr/0014-one-origin-per-district.md) move
 origin: the router serves `northfield.educateos.io`, with the LMS at `/` and the Workshop at `/ai`,
 behind one Access application, and the two hostnames below answer with 301s. Until the Northfield
 cutover lands, the production configs don't bind the router's `DISTRICT`, and this runbook
-describes what is deployed.
+describes what is deployed. The cutover is prepared behind switches that are off; its steps are in
+[the one-origin cutover runbook](one-origin-cutover.md).
 
 The instance is synthetic. Its AI call guard serves a demo district with a single staff principal,
 and legal review (SCHO-118) must pass before any real student uses it.
