@@ -3,9 +3,10 @@
 //
 // Deliberately not named wrangler.jsonc: release discovery (`readDeployablePackages` in
 // scripts/release/manifest-lib.ts), the staging, preview and production config generators, the dev
-// server and `pnpm configs:check` all key on that name, and this Worker is not part of a district
-// release or of any deployment yet. The hosted admin's deployment and the installer's OSS admin come
-// in later phase 5 PRs. Nothing here names a real Cloudflare resource: the D1 database is local.
+// server and `pnpm configs:check` all key on that name. The hosted admin deploys from
+// wrangler.production.jsonc, and district releases carry the OSS admin from wrangler.release.jsonc
+// (manifest-lib's RELEASE_COMPONENTS), which the installer installs. Nothing here names a real
+// Cloudflare resource: the D1 database is local.
 //
 // Local setup:
 //   wrangler d1 migrations apply DB --local -c wrangler.local.jsonc

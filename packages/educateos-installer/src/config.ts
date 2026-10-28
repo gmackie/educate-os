@@ -119,6 +119,25 @@ export const DistrictInstallConfig = z.strictObject({
     demoUrl: z.url({ protocol: /^https$/ }).max(2048).optional(),
   }).default({ enabled: true }),
   /**
+   * The open-source EducateOS admin (SCHO-263, docs/educateos/admin.md), in the district's own
+   * account: its Worker (`EDITION=oss`, managing only this install's origin), a D1 database with its
+   * migrations, a generated `ADMIN_KEY_ENCRYPTION_KEY`, an Access application on `hostname` behind
+   * the install's members policy (with `/healthz` bypassed), and the custom domain. `ADMINS` are the
+   * install's {@link DistrictInstallConfig.admins}. It needs a one-origin install, since it manages
+   * the district through its `/api/ops/*`.
+   *
+   * Off (the default), the installer neither installs nor removes it: turning it off after an
+   * install leaves the admin in place (see the docs for removing it by hand).
+   */
+  admin: z.strictObject({
+    enabled: z.boolean(),
+    /**
+     * The admin's hostname, under {@link DistrictInstallConfig.baseDomain} (the zone it is attached
+     * in). Defaults to `admin.<baseDomain>`, beside the public hostname.
+     */
+    hostname: DomainName.optional(),
+  }).default({ enabled: false }),
+  /**
    * The managed default hostname, `<slug>.educateos.io` (ADR-0013 addendum A1). It is an alias of
    * the public hostname, which stays the instance's identity, so removing it moves no data: an
    * apply without it releases any managed hostname that routes to this instance.
@@ -155,6 +174,14 @@ export function resourcePrefix(config: Pick<DistrictInstallConfig, "instanceId">
 /** The hostname EducateOS is served on. */
 export function publicHostname(config: Pick<DistrictInstallConfig, "subdomain" | "baseDomain">): string {
   return `${config.subdomain}.${config.baseDomain}`;
+}
+
+/**
+ * The OSS admin's hostname: the configured one, or `admin.` and the public hostname's parent (the
+ * base domain).
+ */
+export function adminHostname(config: Pick<DistrictInstallConfig, "admin" | "baseDomain">): string {
+  return config.admin.hostname ?? `admin.${config.baseDomain}`;
 }
 
 /** The Cloudflare Worker name of one release package for this instance. */

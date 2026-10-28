@@ -2,8 +2,9 @@
 
 // Builds an immutable release: every deployable worker bundled exactly as `wrangler deploy`
 // would upload it (dry-run + outdir, with the repo's pinned wrangler), plus the workshop-frontend
-// asset builds (Access mode, at the root and under /ai), plus the release manifest that describes
-// it all.
+// asset builds (Access mode, at the root and under /ai), plus each release component
+// (manifest-lib's RELEASE_COMPONENTS: the OSS admin) bundled from its config template with its own
+// SPA build, plus the release manifest that describes it all.
 //
 // Output layout (mirrored to R2 by upload-release.ts):
 //   <out>/manifest.json                    the release manifest (upload LAST — its presence
@@ -46,7 +47,7 @@ import {
 } from "./release-signing.ts";
 import {
   ASSET_VARIANTS, generateManifest, readD1Migrations, readDeployablePackages, readDeployInputs,
-  type DeployablePackage, type WorkerBuild,
+  readReleaseComponents, type DeployablePackage, type WorkerBuild,
 } from "./manifest-lib.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -257,12 +258,20 @@ async function buildFrontend(signal: AbortSignal): Promise<Record<string, Collec
 
 // Bundles one package the way `wrangler deploy` would, without uploading. Run from the package dir
 // so custom build commands (capnweb-validate) resolve their bins, and into a directory of its own,
-// which is what makes these safe to overlap.
+// which is what makes these safe to overlap. A release component is bundled from its config
+// template, after its own SPA is built (wrangler needs the assets directory to exist), and returns
+// that SPA's assets beside its modules.
 async function bundleWorker(pkg: DeployablePackage, bundleDir: string, signal: AbortSignal) {
   const outDir = join(bundleDir, pkg.name);
-  await run(pkg.name, "pnpm", ["exec", "wrangler", "deploy", "--dry-run", "--outdir", outDir],
-      { cwd: pkg.dir, signal });
-  return collectModules(outDir);
+  let ownAssets: CollectedAssets | undefined;
+  if (pkg.component) {
+    await run(`${pkg.name} (assets)`, "pnpm",
+        ["exec", "vp", "run", "-F", pkg.component.assetsBuildFilter, "build"], { env: vpRunEnv(), signal });
+    ownAssets = collectAssets(join(pkg.dir, pkg.config.assets?.directory ?? "dist"));
+  }
+  await run(pkg.name, "pnpm", ["exec", "wrangler", "deploy", "--dry-run", "--outdir", outDir,
+    ...(pkg.component ? ["-c", pkg.component.configFile] : [])], { cwd: pkg.dir, signal });
+  return { ...collectModules(outDir), ownAssets };
 }
 
 // Runs the frontend build and every worker bundle, and owns the scratch directory they bundle into
@@ -286,7 +295,7 @@ async function bundleWorker(pkg: DeployablePackage, bundleDir: string, signal: A
 // rejects with the abort reason, i.e. the root cause itself, which is what lets the failure summary
 // below dedupe down to the real failures by identity.
 async function buildAll(packages: DeployablePackage[], concurrency: number): Promise<{
-  bundles: ReturnType<typeof collectModules>[];
+  bundles: Awaited<ReturnType<typeof bundleWorker>>[];
   assets: Record<string, CollectedAssets>;
 }> {
   const controller = new AbortController();
@@ -341,7 +350,8 @@ async function buildAll(packages: DeployablePackage[], concurrency: number): Pro
     const frontend = failFast(buildFrontend(controller.signal));
     const [bundlesResult, frontendResult] = await Promise.allSettled([
       mapConcurrent(packages, concurrency, async (pkg) => {
-        if (pkg.config.assets) await frontend;
+        // A release component serves its own assets, which its bundle builds first.
+        if (pkg.config.assets && !pkg.component) await frontend;
         return failFast(bundleWorker(pkg, bundleDir, controller.signal));
       }, controller.signal),
       frontend,
@@ -386,7 +396,8 @@ async function main() {
   mkdirSync(join(args.out, "modules"), { recursive: true });
   mkdirSync(join(args.out, "assets"), { recursive: true });
 
-  const packages = readDeployablePackages(PACKAGES_DIR);
+  const packages = [...readDeployablePackages(PACKAGES_DIR), ...readReleaseComponents(PACKAGES_DIR)]
+      .toSorted((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
   // 1. Every bundle, overlapping.
   const { bundles, assets } = await buildAll(packages, args.concurrency);
@@ -401,7 +412,10 @@ async function main() {
   }
 
   const workers: WorkerBuild[] = packages.map((pkg, i) => {
-    const { mainModule, modules } = bundles[i];
+    const { mainModule, modules, ownAssets } = bundles[i];
+    for (const [hash, blob] of ownAssets?.blobs ?? []) {
+      writeFileSync(join(args.out, "assets", hash), blob.bytes);
+    }
     const d1Migrations = readD1Migrations(pkg);
     for (const blob of [...modules, ...d1Migrations]) {
       writeFileSync(join(args.out, "modules", blob.sha256), blob.bytes);
@@ -413,6 +427,7 @@ async function main() {
       modules,
       deployInputs: readDeployInputs(pkg.dir),
       d1Migrations,
+      ...(ownAssets ? { ownAssets } : {}),
     };
   });
 

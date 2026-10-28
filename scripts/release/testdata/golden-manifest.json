@@ -4,6 +4,10 @@
       "r2Key": "blobs/assets/03a936d819bd1a6df9f9d9f16f1df3a5",
       "size": 41
     },
+    "490f32db0b32a3f0b175f04fe7ef431a": {
+      "r2Key": "blobs/assets/490f32db0b32a3f0b175f04fe7ef431a",
+      "size": 88
+    },
     "8d2e76555a7166d0e6b7da22cabfa055": {
       "r2Key": "blobs/assets/8d2e76555a7166d0e6b7da22cabfa055",
       "size": 28
@@ -18,6 +22,93 @@
   "manifestVersion": 1,
   "releaseId": "r000000-fixture",
   "workers": {
+    "educateos-admin": {
+      "assetsConfig": {
+        "not_found_handling": "single-page-application",
+        "run_worker_first": [
+          "/api/*",
+          "/healthz"
+        ],
+        "variants": {
+          "spa": {
+            "buildEnv": {},
+            "manifest": {
+              "/index.html": {
+                "hash": "490f32db0b32a3f0b175f04fe7ef431a",
+                "size": 88
+              }
+            }
+          }
+        }
+      },
+      "bindings": [
+        {
+          "id": "$D1_DB_ID",
+          "name": "DB",
+          "type": "d1"
+        },
+        {
+          "name": "ASSETS",
+          "type": "assets"
+        },
+        {
+          "name": "ADMIN_KEY_ENCRYPTION_KEY",
+          "text": "$SECRET(ADMIN_KEY_ENCRYPTION_KEY)",
+          "type": "secret_text"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [],
+      "d1Migrations": [
+        {
+          "binding": "DB",
+          "id": "0001_initial",
+          "r2Key": "blobs/modules/555c6c0f7a52fcc6c9785d608f675ae195cff38006a1340e496f7376963c3f2c",
+          "sha256": "555c6c0f7a52fcc6c9785d608f675ae195cff38006a1340e496f7376963c3f2c",
+          "size": 3118
+        },
+        {
+          "binding": "DB",
+          "id": "0002_control_plane",
+          "r2Key": "blobs/modules/e353f649c070ebb00866bc8687f66b37143384c64cb1bc63b959bf95cdd56571",
+          "sha256": "e353f649c070ebb00866bc8687f66b37143384c64cb1bc63b959bf95cdd56571",
+          "size": 2894
+        }
+      ],
+      "inputs": [
+        {
+          "generated": true,
+          "help": "32 random bytes, base64url. Seals each workspace's ops private key in the admin's D1 database. The installer generates it and never rotates it.",
+          "kind": "secret",
+          "label": "Key encryption key for the admin's ops keys",
+          "name": "ADMIN_KEY_ENCRYPTION_KEY"
+        }
+      ],
+      "installable": true,
+      "kind": "admin",
+      "mainModule": "index.js",
+      "migrations": [],
+      "modules": [
+        {
+          "name": "index.js",
+          "r2Key": "blobs/modules/3609663fc13deacc0c72c67e265efaeddcea105da77f4f7d956355759a85edeb",
+          "sha256": "3609663fc13deacc0c72c67e265efaeddcea105da77f4f7d956355759a85edeb",
+          "size": 57,
+          "type": "esm"
+        }
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "singleton": true,
+      "vars": {
+        "EDITION": "oss"
+      }
+    },
     "educateos-ai-guard": {
       "backendBinding": {
         "entrypoint": "EducateOsAiCallGuard",

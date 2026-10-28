@@ -60,6 +60,11 @@ guess.
 | `listAiGateways`, `createAiGateway` (optional) | `/accounts/{id}/ai-gateway/gateways` | AI Gateway: Edit | `ai:write` | unverified |
 | (refresh tokens) | `https://dash.cloudflare.com/oauth2/token` | n/a | `offline_access` | wrangler-requested |
 
+The OSS admin (`admin.enabled`, SCHO-263) needs no permission beyond these: its Worker, secret and
+custom domain use the Workers Scripts rows, its database and migrations the D1 row, and its two
+Access applications the Access row. Its hostname must be in the base domain's zone, the one zone the
+token already covers.
+
 Two OAuth gaps may block OAuth mode outright, pending Cloudflare's answer. [installer-oauth.md](installer-oauth.md)
 (SCHO-67, 2026-10-21) has since found that third parties can register public OAuth clients, and
 that Access and AI Gateway scope names exist; whether a public client may request them is still
@@ -96,7 +101,7 @@ install still has no known scope for the origin record.
 | `access.team-mismatch` | The configured team is the account's | Fix `access.teamName`. |
 | `access.idp-missing` | A district IdP besides one-time PIN | Add the district's SAML or OIDC provider. |
 | `dns.zone-missing`, `dns.zone-pending` | The base domain is an active zone in the account | Add the zone and delegate its nameservers. |
-| `dns.record-conflict` | The EducateOS hostname has no existing DNS records | Remove them or pick another subdomain. |
+| `dns.record-conflict` | The EducateOS hostname, and the OSS admin's when `admin.enabled`, has no existing DNS records | Remove them, or pick another subdomain or `admin.hostname`. |
 | `quota.*` | Room under documented per-account limits (Workers 500, KV 1,000, D1 50,000, R2 1,000,000; **unverified** per account) | Free up resources or request a raise. |
 | `service.input-missing` | Every `var` input of an enabled service is in the config | Set `services["<pkg>"].vars.<NAME>`. |
 | `service.secret-missing` | Every secret input of an enabled service is supplied, or already set on its Worker | Supply it through the secret source (`EDUCATEOS_SECRET_<PKG>__<NAME>` for the CLI). |

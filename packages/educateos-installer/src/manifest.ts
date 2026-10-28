@@ -118,7 +118,11 @@ const ObservabilityConfig = z.looseObject({ enabled: z.boolean() });
 
 /** Everything the manifest says about one worker (manifest-lib's `WorkerEntry`). */
 export const WorkerEntry = z.strictObject({
-  kind: z.enum(["backend", "router", "gatekeeper", "service"]),
+  /**
+   * `admin` is the open-source EducateOS admin (SCHO-263): a standalone Worker with its own D1
+   * database, SPA and hostname, installed only when the config enables it (`admin`); nothing binds it.
+   */
+  kind: z.enum(["backend", "router", "gatekeeper", "service", "admin"]),
   shortName: z.string().regex(/^[a-z][a-z0-9]{0,19}$/).optional(),
   /**
    * Services only: the service binding the backend gains once the service is installed. The

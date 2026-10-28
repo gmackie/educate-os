@@ -9,6 +9,7 @@ import { EducateOsError } from "@educateos/contracts";
 import { toBase64Url } from "@educateos/fleet";
 import type { AccessPolicySpec } from "./cloudflare-api.ts";
 import {
+  adminHostname,
   type DistrictInstallConfig,
   publicHostname,
   resourcePrefix,
@@ -142,7 +143,10 @@ export interface DesiredRetiredWorker extends ResourceBase {
   scriptName: string;
 }
 
-/** The public hostname, attached to the router as a Workers custom domain. */
+/**
+ * A Workers custom domain: the public hostname on the router, or the OSS admin's hostname on the
+ * admin. Both are in the base domain's zone.
+ */
 export interface DesiredCustomDomain extends ResourceBase {
   kind: "custom_domain";
   hostname: string;
@@ -217,6 +221,12 @@ export const MARKER_VARS = {
 /** The asset variant the router serves. EducateOS always sits behind Access. */
 export const ASSET_VARIANT = "access";
 
+/** The OSS admin's one asset variant, its own SPA (manifest-lib's `COMPONENT_ASSET_VARIANT`). */
+export const ADMIN_ASSET_VARIANT = "spa";
+
+/** The OSS admin's Access bypass: only its liveness probe, which carries nothing private. */
+export const ADMIN_ACCESS_BYPASS_PATHS: readonly string[] = ["/healthz"];
+
 /** The Access session length the application is created with. */
 export const ACCESS_SESSION_DURATION = "12h";
 
@@ -254,6 +264,9 @@ export const RESOURCE_KEYS = {
   customDomain: "domain:public",
   managedHostnameRelease: "domain:managed:release",
   managedHostname: "domain:managed",
+  adminAccessApplication: "access:application:admin",
+  adminAccessBypassApplication: "access:application:admin:bypass",
+  adminDomain: "domain:admin",
 } as const;
 
 /**
@@ -370,6 +383,31 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   // Inputs of the district that a one-origin install sets itself, from the one Access application.
   const installerSet = new Set(oneOrigin ? DISTRICT_INSTALLER_VARS : []);
 
+  // The OSS admin (SCHO-263), only when the config asks for it: off, nothing below changes.
+  let adminPkg: string | undefined;
+  let adminHost: string | undefined;
+  const adminInputs: DesiredInput[] = [];
+  if (config.admin.enabled) {
+    const admins = entries.filter(([, w]) => w.kind === "admin");
+    if (admins.length !== 1) invalid("admin.enabled needs a release that carries the OSS admin");
+    if (!oneOrigin) {
+      invalid("the OSS admin manages the district through its /api/ops: it needs a one-origin install (enable the district service, with a release that wires it)");
+    }
+    const [name, entry] = admins[0]!;
+    if (!entry.installable) invalid(`${name} is not installable on district instances`);
+    adminPkg = name;
+    adminHost = adminHostname(config);
+    if (!adminHost.endsWith(`.${config.baseDomain}`)) {
+      invalid(`admin.hostname must be under ${config.baseDomain}, the zone the installer attaches it in`);
+    }
+    if (adminHost === hostname || adminHost === alias) invalid(`the OSS admin needs a hostname of its own, not ${adminHost}; set admin.hostname`);
+    for (const input of entry.inputs ?? []) {
+      // The installer sets every var the admin reads, so it can take only keys it generates.
+      if (input.kind !== "secret" || input.generated !== true) invalid(`${name} asks for ${input.name}, which the installer cannot supply`);
+      adminInputs.push({ pkgName: name, name: input.name, label: input.label, kind: "secret", generated: true });
+    }
+  }
+
   const services: string[] = [];
   const retired: DesiredRetiredWorker[] = [];
   const inputs: DesiredInput[] = [];
@@ -398,7 +436,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     }
     services.push(name);
   }
-  const scriptNames = new Map([backendPkg, routerPkg, ...installed, ...services].map((pkg) => [pkg, workerScriptName(config, pkg)]));
+  inputs.push(...adminInputs);
+  const scriptNames = new Map([backendPkg, routerPkg, ...installed, ...services, ...adminPkg ? [adminPkg] : []]
+    .map((pkg) => [pkg, workerScriptName(config, pkg)]));
 
   const storage = new Map<ResourceKey, DesiredResource>();
   const workers: DesiredResource[] = [];
@@ -443,13 +483,44 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       policyKey: bypassPolicy.key,
     }
     : undefined;
+  // The OSS admin's own Access applications: the install's members policy on its hostname, and the
+  // one-origin bypass policy on its liveness probe. Access admits the district's people; the admin's
+  // ADMINS decides which of them may use it.
+  const adminAccess: { application: DesiredAccessApplication; bypass: DesiredAccessApplication } | undefined = adminHost && bypassPolicy
+    ? {
+      application: {
+        kind: "access_application",
+        key: RESOURCE_KEYS.adminAccessApplication,
+        dependsOn: [accessPolicy.key],
+        name: `${prefix}-admin`,
+        domain: adminHost,
+        destinations: [adminHost],
+        sessionDuration: ACCESS_SESSION_DURATION,
+        policyKey: accessPolicy.key,
+      },
+      bypass: {
+        kind: "access_application",
+        key: RESOURCE_KEYS.adminAccessBypassApplication,
+        dependsOn: [bypassPolicy.key],
+        name: `${prefix}-admin-bypass`,
+        domain: `${adminHost}${ADMIN_ACCESS_BYPASS_PATHS[0]}`,
+        destinations: ADMIN_ACCESS_BYPASS_PATHS.map((path) => `${adminHost}${path}`),
+        sessionDuration: ACCESS_SESSION_DURATION,
+        policyKey: bypassPolicy.key,
+      },
+    }
+    : undefined;
   const aiGateway: DesiredAiGateway | undefined = config.aiGateway
     ? { kind: "ai_gateway", key: RESOURCE_KEYS.aiGateway, dependsOn: [], gatewayId: prefix }
     : undefined;
 
-  for (const pkgName of [...installed, ...services, backendPkg, routerPkg]) {
+  for (const pkgName of [...installed, ...services, backendPkg, routerPkg, ...adminPkg ? [adminPkg] : []]) {
     const entry = manifest.workers[pkgName]!;
     const dependsOn = new Set<ResourceKey>();
+    // The admin's storage is its own: its `DB` is never another Worker's database of that binding.
+    const isAdmin = pkgName === adminPkg;
+    const storageKey = (kind: string, binding: string) => (isAdmin ? `${kind}:${pkgName}:${binding}` : `${kind}:${binding}`);
+    const storageName = (binding: string) => `${prefix}-${isAdmin ? "admin-" : ""}${nameSuffix(binding)}`;
     const resolve = (value: string): TemplateValue => {
       let ref: OutputRef | undefined;
       const literal = value.replace(PLACEHOLDER, (token) => {
@@ -460,8 +531,8 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
         if (token === "$ACCOUNT_ID") return config.accountId;
         if (token === "$PUBLIC_BASE_URL") return publicBaseUrl;
         if (r2) {
-          const key = `r2:${r2[1]}`;
-          const name = `${prefix}-${nameSuffix(r2[1]!)}`;
+          const key = storageKey("r2", r2[1]!);
+          const name = storageName(r2[1]!);
           storage.set(key, { kind: "r2_bucket", key, dependsOn: [], name });
           dependsOn.add(key);
           return name;
@@ -475,10 +546,10 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
         if (kv || d1) {
           if (token !== value) invalid(`${pkgName}: ${token} must be a whole value`);
           const binding = (kv ?? d1)![1]!;
-          const key = kv ? `kv:${binding}` : `d1:${binding}`;
-          if (kv) storage.set(key, { kind: "kv_namespace", key, dependsOn: [], title: `${prefix}-${nameSuffix(binding)}` });
+          const key = storageKey(kv ? "kv" : "d1", binding);
+          if (kv) storage.set(key, { kind: "kv_namespace", key, dependsOn: [], title: storageName(binding) });
           else if (!storage.has(key)) {
-            storage.set(key, { kind: "d1_database", key, dependsOn: [], name: `${prefix}-${nameSuffix(binding)}`, migrations: [] });
+            storage.set(key, { kind: "d1_database", key, dependsOn: [], name: storageName(binding), migrations: [] });
           }
           dependsOn.add(key);
           ref = { ref: key, output: "id" };
@@ -546,7 +617,10 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     }
 
     // Operator values are literal: they are never placeholder-resolved, so no `$` in them is read.
-    const inputVars = entry.kind === "gatekeeper" ? gatekeeperInputVars(pkgName, entry, config) : {};
+    // The admin's ADMINS is its comma-separated list (packages/educateos-admin/src/worker/config.ts).
+    const inputVars = entry.kind === "gatekeeper"
+      ? gatekeeperInputVars(pkgName, entry, config)
+      : isAdmin ? { ADMINS: config.admins.join(",") } : {};
     const vars: Record<string, unknown> = {
       ...entry.vars,
       [MARKER_VARS.instance]: config.instanceId,
@@ -580,6 +654,13 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       vars.SCHOOL_MANIFEST = JSON.stringify({ origin: publicBaseUrl, features: { ai: config.ai.enabled } });
       dependsOn.add(accessApplication.key);
     }
+    if (isAdmin) {
+      // EDITION=oss, managing only this install's origin, behind its own Access application.
+      vars.EDITION = "oss";
+      vars.OSS_WORKSPACE_ORIGINS = publicBaseUrl;
+      vars.ACCESS_ISSUER = `https://${config.access.teamName}.cloudflareaccess.com`;
+      dependsOn.add(adminAccess!.application.key);
+    }
     for (const [name, value] of Object.entries(vars).toSorted(([a], [b]) => a.localeCompare(b))) {
       const resolved = resolveDeep(value);
       bindings.push(typeof resolved === "string" ? { type: "plain_text", name, text: resolved } : { type: "json", name, json: resolved });
@@ -591,6 +672,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     if (entry.kind === "backend" || (pkgName === districtPkg && oneOrigin)) {
       bindings.push({ type: "plain_text", name: "CF_ACCESS_AUD", text: { ref: accessApplication.key, output: "aud" } });
     }
+    if (isAdmin) bindings.push({ type: "plain_text", name: "ACCESS_AUD", text: { ref: adminAccess!.application.key, output: "aud" } });
     if (entry.kind === "service") {
       // Operator-supplied values are literal: a `$` in them is not a placeholder.
       for (const [name, text] of Object.entries(config.services[pkgName]!.vars).toSorted(([x], [y]) => x.localeCompare(y))) {
@@ -600,7 +682,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     }
 
     for (const migration of entry.d1Migrations ?? []) {
-      const db = storage.get(`d1:${migration.binding}`);
+      const db = storage.get(storageKey("d1", migration.binding));
       if (db?.kind !== "d1_database") invalid(`${pkgName}: D1 migration ${migration.id} names unbound ${migration.binding}`);
       db.migrations.push(migration);
     }
@@ -609,8 +691,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     if (entry.assetsConfig) {
       // The router of a one-origin install serves the Workshop built for /ai, and runs first for
       // every path: the Workshop's assets would otherwise answer `/` and shadow the district's.
+      // The admin serves its own SPA.
       const routerOfOrigin = entry.kind === "router" && oneOrigin;
-      const variantName = routerOfOrigin ? wiring!.assetVariant : ASSET_VARIANT;
+      const variantName = routerOfOrigin ? wiring!.assetVariant : isAdmin ? ADMIN_ASSET_VARIANT : ASSET_VARIANT;
       const variant = entry.assetsConfig.variants[variantName];
       if (!variant) invalid(`${pkgName} has no "${variantName}" asset variant`);
       const runWorkerFirst = routerOfOrigin ? true : entry.assetsConfig.run_worker_first;
@@ -660,6 +743,18 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     scriptName: scriptNames.get(routerPkg)!,
   };
 
+  // The admin's hostname serves only once both its applications are in front of it.
+  const adminDomain: DesiredCustomDomain | undefined = adminPkg && adminHost && adminAccess
+    ? {
+      kind: "custom_domain",
+      key: RESOURCE_KEYS.adminDomain,
+      dependsOn: [workerKey(adminPkg), adminAccess.application.key, adminAccess.bypass.key],
+      hostname: adminHost,
+      zoneName: config.baseDomain,
+      scriptName: scriptNames.get(adminPkg)!,
+    }
+    : undefined;
+
   const managed = { kind: "managed_hostname" as const, hostname: alias, scriptName: scriptNames.get(routerPkg)!, zoneName: config.baseDomain };
   const releaseManaged: DesiredManagedHostname = { ...managed, key: RESOURCE_KEYS.managedHostnameRelease, dependsOn: [], phase: "release" };
   // Attaching waits for the router and for the application that protects the alias.
@@ -679,10 +774,12 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     accessApplication,
     ...bypassPolicy ? [bypassPolicy] : [],
     ...bypassApplication ? [bypassApplication] : [],
+    ...adminAccess ? [adminAccess.application, adminAccess.bypass] : [],
     ...workers,
     ...secrets,
     ...retired,
     customDomain,
+    ...adminDomain ? [adminDomain] : [],
     releaseManaged,
     ...(attachManaged ? [attachManaged] : []),
   ]);
