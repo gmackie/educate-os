@@ -83,7 +83,7 @@ Rich quizzes, complex content authoring, and advanced district administration ar
 through the authenticated Workshop/School apps instead of duplicated native editors. Student
 work is never cached offline without an approved encryption, retention and revocation plan.
 
-## EAS Build
+## Local standalone builds
 
 EAS project: https://expo.dev/accounts/gmacko/projects/educateos-mobile
 (project ID `4bb5e5bd-0dbb-453e-843b-1c96c4307851`).
@@ -101,9 +101,18 @@ Build profiles:
 - `preview`: standalone internal distribution; Android APK and iOS ad hoc signing.
 - `production`: store distribution, Android AAB, and remote build-number/version-code increments.
 
-    eas build --platform ios --profile development-simulator
-    eas build --platform android --profile development
-    eas build --platform ios --profile development
+Build locally by default; these commands do not use EAS cloud build workers or build credits.
+Run from `apps/mobile`:
+
+    pnpm build:ios:local --output /tmp/educateos-preview.ipa
+    pnpm build:android:local --output /tmp/educateos-preview.apk
+
+Both use the `preview` profile and embed the JavaScript bundle, so the installed app needs no
+Metro server. iOS requires macOS, Xcode 26+, CocoaPods and Fastlane. Android requires the Android
+SDK and a compatible JDK. The linked Mac mini has the iOS tools installed. EAS CLI must be installed
+and signed in; local builds still contact Expo for project metadata, remote versioning and signing
+credentials. Registered iOS devices remain necessary for ad hoc installation. Keep the generated IPA
+or APK outside the repository. Cloud builds require an explicit decision; omit `--local` only then.
 
 Profiles pin Node 24.14.0 and pnpm 11.17.0. Both platforms use EAS's latest image; SDK 58
 requires Xcode 26 or newer. Channels are omitted until `expo-updates` and a runtime-version
