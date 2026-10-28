@@ -70,6 +70,7 @@ const ShellContext = createContext<DistrictShell | undefined>(undefined);
 const SCREEN_ICONS: Record<ScreenPath, NavIcon> = {
   dashboard: "dashboard", roster: "roster", classes: "classes", "classes-people": "roster", guardians: "guardians", modules: "studio",
   "learning-standards": "grades", policies: "policies", "ai-usage": "usage", "ai-budgets": "budgets", "term-rollover": "rollover",
+  operations: "policies",
 };
 
 /**

@@ -17,7 +17,7 @@ const REGISTRATION = {
 describe("the Operations page", () => {
   it("is in the console's navigation", async () => {
     renderConsole(fakeDistrict().client, "operations");
-    const nav = await screen.findByRole("navigation", { name: "Admin sections" });
+    const nav = await screen.findByRole("list", { name: "Admin" });
     expect(within(nav).getByRole("link", { name: "Operations" }).getAttribute("aria-current")).toBe("page");
   });
 
