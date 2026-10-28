@@ -35,7 +35,8 @@ import { createWorkshopLogger } from "./observability";
 import { deployServiceInstall, routerVersionTag } from "./deployment-updates.js";
 import { retryOnDoReset, wrapDoStubForTelemetry } from "./do-retry";
 import { deviceSessionCallback } from "./auth/device-session-callback.js";
-import { resolvePrincipalUser } from "./auth/principal-sign-in.js";
+import { isAdminUserName } from "./auth/admins.js";
+import { accessUserName, handlePrincipalMigrationRequest, PRINCIPAL_MIGRATION_PATH } from "./auth/principal-aliases.js";
 
 const logger = createWorkshopLogger("workshop.server");
 
@@ -134,22 +135,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
   }
 
   #isAdmin(): boolean {
-    let name = this.#userId.name;
-    let admins = this.env.ADMINS;
-
-    if (!name || !admins) return false;
-
-    if (typeof admins === "string") {
-      // Admins should be a JSON binding of array type, but `.env` doesn't actually let you
-      // specify JSON bindings, so we also support a string that parses as JSON array.
-      admins = JSON.parse(admins);
-    }
-
-    if (!Array.isArray(admins)) {
-      throw new TypeError("ADMINS must be configured as an array of usernames.");
-    }
-
-    return admins.includes(name);
+    return isAdminUserName(this.env, this.#userId.name);
   }
 
   whoami(): Promise<AiChatAuthorInfo> {
@@ -830,10 +816,9 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
       throw createAuthError(AUTH_ERROR_CODES.notAuthenticatedWithAccess);
     }
 
-    let email = this.accessSession.payload.email as string;
-    let user = this.env.PRINCIPAL_RESOLVER
-        ? await resolvePrincipalUser(this.env.PRINCIPAL_RESOLVER, this.accessSession.payload)
-        : { name: email, displayName: undefined };
+    // The email without a principal resolver; with one, the principal's name, or the existing
+    // email-keyed user the principal migration aliased it to (auth/principal-aliases.ts).
+    let user = await accessUserName(this.env, this.ctx.exports, this.accessSession.payload);
     let userId = this.users.idFromName(user.name);
     let signupsEnabled = (await readAdminConfig(this.env)).signupsEnabled;
     let accountCreated = await this.users.get(userId)
@@ -985,9 +970,9 @@ export default {
       let expectedUserDoId: string | undefined;
       if (env.CF_ACCESS_AUD) {
         const payload = await verifyCfAccessJwt(req, env);
-        const name = payload && env.PRINCIPAL_RESOLVER
-          ? await resolvePrincipalUser(env.PRINCIPAL_RESOLVER, payload).then(u => u.name, () => null)
-          : payload?.email;
+        const name = payload
+          ? await accessUserName(env, ctx.exports, payload).then(u => u.name, () => null)
+          : undefined;
         if (typeof name !== "string" || name.length === 0) {
           return new Response("Invalid CF access JWT.", {
             status: 403,
@@ -1005,6 +990,12 @@ export default {
         }
         return await ctx.exports.UserDurableObject.get(id).consumeDeviceSessionHandoff(state, ticket);
       }, expectedUserDoId);
+    }
+
+    if (pathname === PRINCIPAL_MIGRATION_PATH) {
+      // The one-time migration of email-keyed users to principals. Not Found unless a district
+      // directory is bound for it (PRINCIPAL_MIGRATION or PRINCIPAL_RESOLVER).
+      return handlePrincipalMigrationRequest(req, env, ctx.exports);
     }
 
     if (pathname === "/api") {

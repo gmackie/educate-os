@@ -89,6 +89,54 @@ The budget is $5 a month for personal workspaces and $1 a month for the safety p
 models use a deliberately high demo rate ($1 in and $4 out per million tokens). The Clef decision
 models use the shared Cloudflare price book.
 
+## Principal identity cutover (SCHO-259)
+
+Today no principal resolver is bound, so Workshop users are keyed by Access email (above). On a
+district origin the Workshop resolves the same principal as the district: the backend's
+`PRINCIPAL_RESOLVER` service binding names the district Worker's `DistrictPrincipalResolver`
+entrypoint, and an Access sign-in names its user Durable Object `principal:<id>` (ADR-0003, ADR-0014).
+A subject the district has not linked is refused ("Your school hasn't set up your account here
+yet"). If the district cannot be reached, every sign-in is refused with a retryable message until
+it is back. Binding the resolver also turns off session-token, password and gatekeeper sign-in.
+
+Existing email-keyed users keep their data through an alias, not a copy: see
+[ADR-0003](../adr/0003-principal-identity.md#migrating-email-keyed-workshop-users-scho-259). Run
+the migration before binding the resolver. A principal that signs in first gets its own empty
+account, and the migration then refuses to alias over it.
+
+1. **Bind the migration directory.** Add a service binding to the backend's config,
+   `{ "binding": "PRINCIPAL_MIGRATION", "service": "schoolos-district-worker", "entrypoint":
+   "DistrictPrincipalResolver" }`, and deploy. Sign-in does not change. The district Worker must be
+   on a release that exports the entrypoint. Until something is bound,
+   `/api/admin/principal-migration` is Not Found.
+2. **Dry run.** As a Workshop administrator (your Access email is in `ADMINS`):
+
+   ```sh
+   cloudflared access login https://<host>/ai
+   CF_ACCESS_TOKEN=$(cloudflared access token --app https://<host>/ai) \
+     node scripts/principal-migration.ts --workshop https://<host>/ai --dry-run
+   ```
+
+   This writes nothing. It lists every email-keyed user in the Workshop's user directory, with its
+   thread (workspace) count and outcome. `alias` means exactly one district person has the email.
+   `ambiguous`, `cross-district` and `unmatched` users are not aliased, and after the cutover they
+   start a new account. `conflict` names a reason. Check the mapping and the counts. A user who has
+   not signed in since the user directory was added is not listed: have them sign in once first.
+   Save the output (`--json`) as the before-count.
+3. **Apply.** Run the same command with `--apply`. Each entry then also shows
+   `threadsViaPrincipal`, its threads counted again through the alias. A second `--apply` reports
+   `already-aliased` and writes nothing new. Old Durable Objects are not touched.
+4. **Bind the resolver.** Add the same entrypoint as `PRINCIPAL_RESOLVER` (keep or drop
+   `PRINCIPAL_MIGRATION`) and deploy. Aliased users keep their email as their user ID, so `ADMINS`
+   and the guard's `AI_GUARD_CONFIG` bindings for them stay valid. A new user is
+   `principal:<id>`, and `ADMINS` or the guard config must name it that way.
+5. **Verify.** Run `--apply` again (still `already-aliased` only, and `threadsViaPrincipal` equals
+   `threads` for every aliased user; the script warns otherwise). Then sign in as one migrated
+   user and check that their threads are there.
+
+To roll back, unbind `PRINCIPAL_RESOLVER`. Sign-in returns to email keys, and the aliases are
+ignored while it is unbound.
+
 ## Build and deploy
 
 ForgeGraph runs `buildCommand` and then `deployCommand`, both in the config's directory. Run

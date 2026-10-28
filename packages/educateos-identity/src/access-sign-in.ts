@@ -3,7 +3,7 @@ import { EducateOsError, type DistrictDirectorySnapshot, type PrincipalId, type 
 import { identityFromAccessPayload, type CloudflareAccessConfig } from "./cloudflare-access.ts";
 import { createDirectoryPrincipalResolver } from "./directory-resolver.ts";
 import { requestIdentityLink, type PendingIdentityLink } from "./identity-linker.ts";
-import type { MigrationPlan, PendingWorkshopUserAdoption } from "./migration-plan.ts";
+import { planEmailKeyedMigration, type MigrationPlan, type PendingWorkshopUserAdoption } from "./migration-plan.ts";
 
 /**
  * One Access sign-in as the Workshop's principal resolver seam passes it: the shape of
@@ -123,4 +123,27 @@ export function createAccessSignInResolver(options: AccessSignInResolverOptions)
       return { outcome: "adoption-pending" };
     },
   };
+}
+
+/**
+ * What the directory says about one email-keyed Workshop user, as the kernel's principal migration
+ * asks (`EmailKeyedUserMatch` in `@gadgets/workshop-shared/principal-resolver`, kept in step by
+ * hand). Only `exact-single` names a principal.
+ */
+export type EmailKeyedUserMatch =
+  | { email: string; outcome: "exact-single"; principalId: PrincipalId }
+  | { email: string; outcome: "ambiguous" | "cross-district" | "unmatched" };
+
+/**
+ * Matches the Workshop's existing email-keyed users to `directory`'s people, by
+ * {@link planEmailKeyedMigration} with no other districts in view. Proposes, links nothing: the
+ * kernel's migration aliases an `exact-single` user only when an administrator applies it.
+ *
+ * Throws `EducateOsError("validation-failed")` for a malformed or repeated user.
+ */
+export function matchEmailKeyedUsers(directory: DistrictDirectorySnapshot, users: unknown): EmailKeyedUserMatch[] {
+  const plan = planEmailKeyedMigration({ directory, otherDirectories: [], users: Array.isArray(users) ? users : [users] });
+  return plan.entries.map((entry): EmailKeyedUserMatch => entry.outcome === "exact-single"
+    ? { email: entry.email, outcome: "exact-single", principalId: entry.pendingAdoption.principalId }
+    : { email: entry.email, outcome: entry.outcome });
 }

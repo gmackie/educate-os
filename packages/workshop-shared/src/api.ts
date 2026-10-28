@@ -429,7 +429,10 @@ export type AuthErrorCode = typeof AUTH_ERROR_CODES[keyof typeof AUTH_ERROR_CODE
 export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   [AUTH_ERROR_CODES.invalidSessionToken]: "invalid session token",
   [AUTH_ERROR_CODES.notAuthenticatedWithAccess]: "Not authenticated with Access.",
-  [AUTH_ERROR_CODES.principalUnresolved]: "This sign-in is not linked to an account here.",
+  // A district resolver refuses a sign-in it has no person for (ADR-0003), so the message tells
+  // the user who can fix it.
+  [AUTH_ERROR_CODES.principalUnresolved]:
+      "Your school hasn't set up your account here yet. Ask your school's administrator to add you.",
   [AUTH_ERROR_CODES.principalAdoptionPending]:
       "This sign-in is waiting for an administrator to confirm your existing account.",
 };

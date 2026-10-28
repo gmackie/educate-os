@@ -49,6 +49,7 @@ export default defineConfig({
         serviceBindings: {
           GUARD: { name: kCurrentWorker, entrypoint: "DistrictGuardDirectory" },
           TOOLS: { name: kCurrentWorker, entrypoint: "DistrictSchoolTools" },
+          PRINCIPALS: { name: kCurrentWorker, entrypoint: "DistrictPrincipalResolver" },
         },
       },
     }),

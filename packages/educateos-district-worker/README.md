@@ -111,6 +111,7 @@ instead (see ADR-0013).
 | `DistrictGuardDirectory` | the AI call guard's `EDUCATEOS_DISTRICT` | `GuardDirectoryPort` (`guardSubject`, `admittedSubject`, `ledgerDirectory`) over `DistrictApp.guardDirectory` |
 | `DistrictSchoolTools` | the EducateOS gatekeeper's `EDUCATEOS_DISTRICT` | `SchoolToolService` over the directory's operations; every agent call waits for a person in the object's approval queue. Its `serveAs` serves the `/api` surface for a principal the gatekeeper verified, for its school pages (SCHO-218) |
 | `DistrictApi` | the release's backend binding, `EDUCATEOS_DISTRICT_API` | the same `/api` surface; holding it grants nothing |
+| `DistrictPrincipalResolver` | the Workshop backend's `PRINCIPAL_RESOLVER` and `PRINCIPAL_MIGRATION` (SCHO-259), unbound until a cutover | the kernel's `PrincipalResolver` (`resolveAccessSignIn`: a verified Access `iss` and `sub` to the linked principal, else `unauthenticated`) and `PrincipalMigrationDirectory` (`matchEmailKeyedUsers`, over `planEmailKeyedMigration`). It trusts the caller's verification, so only the Workshop backend may hold it. A Clever district resolves no sign-in through it, since the seam carries no Clever claims |
 
 ## LTI 1.3 Tool (SCHO-177)
 

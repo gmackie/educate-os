@@ -79,6 +79,13 @@ declare global {
         import("@gadgets/workshop-shared/principal-resolver").PrincipalResolver
       >;
 
+      // The district the one-time migration of email-keyed users to principals matches against
+      // (see auth/principal-aliases.ts). Binding it changes no sign-in, so the migration can run
+      // before PRINCIPAL_RESOLVER is bound; with neither, the migration's route is Not Found.
+      PRINCIPAL_MIGRATION?: Service<
+        import("@gadgets/workshop-shared/principal-resolver").PrincipalMigrationDirectory
+      >;
+
       // Comma-separated allowlist of gatekeeper vendor ids permitted to drive sign-in (e.g.
       // "google,github,cloudflare"). A listed gatekeeper must also advertise providesAuth. Empty =
       // no gatekeeper sign-in (password / CF Access only).
