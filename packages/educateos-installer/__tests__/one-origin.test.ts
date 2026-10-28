@@ -131,9 +131,9 @@ describe("one-origin desired state", () => {
     const bypass = app("access:application:bypass")!;
     expect(bypass).toMatchObject({ name: "educateos-northfield-bypass", domain: `${HOST}/healthz`, policyKey: "access:policy:bypass" });
     expect(bypass.destinations.toSorted()).toEqual(hosts.flatMap((host) => [
-      "/healthz", "/.well-known/educateos.json", "/lti/*", "/api/m/*", "/api/pair/*", "/api/ops/*",
+      "/healthz", "/.well-known/educateos.json", "/lti/*", "/api/m/*", "/api/pair/*", "/api/pair/rooms/*", "/api/ops/*",
     ].map((path) => host + path)).toSorted());
-    expect(ACCESS_BYPASS_PATHS).toHaveLength(6);
+    expect(ACCESS_BYPASS_PATHS).toHaveLength(7);
     expect(policy("access:policy:bypass")?.spec).toEqual({ name: "educateos-northfield-bypass", decision: "bypass", include: [{ everyone: {} }] });
     // The members policy is unchanged.
     expect(policy("access:policy")?.spec).toMatchObject({ decision: "allow", include: [{ email_domain: { domain: "northfield.example" } }] });

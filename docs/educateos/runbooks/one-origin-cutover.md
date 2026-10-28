@@ -48,7 +48,7 @@ most specific matching path.
 | Application | Destinations | Policy |
 |---|---|---|
 | The instance's application (its audience is `workshop-backend`'s `CF_ACCESS_AUD`) | `northfield.educateos.io`; `northfield.educateos.io/api/pair/rooms`, `/api/pair/rooms/*/status`, `/api/pair/rooms/*/approve`, `/api/pair/rooms/*/deny` | its current allow policies |
-| `EducateOS Northfield (bypass)` (new) | `northfield.educateos.io` + `/healthz`, `/.well-known/educateos.json`, `/lti/*`, `/api/m/*`, `/api/pair/*`, `/api/ops/*` | bypass, everyone |
+| `EducateOS Northfield (bypass)` (new) | `northfield.educateos.io` + `/healthz`, `/.well-known/educateos.json`, `/lti/*`, `/api/m/*`, `/api/pair/*`, `/api/pair/rooms/*`, `/api/ops/*` | bypass, everyone |
 | `EducateOS legacy hostnames (bypass)` (new, in step 6) | `schoolos.gmac.io`, `district.schoolos.gmac.io` | bypass, everyone |
 
 Why `/api/pair/*` is bypassed while four paths under it are listed on the main application: the
@@ -62,6 +62,13 @@ the district and it would answer 401. This fails closed. Access can't tell the p
 `/status` by method, which is why the bypass is the prefix and the exceptions are listed paths. The
 installer models the same split (`ACCESS_BYPASS_PATHS` and `ACCESS_PAIRING_BROWSER_PATHS` in
 `packages/educateos-installer/src/desired.ts`).
+
+A path destination also covers its subpaths, so the main application's `/api/pair/rooms` would be
+the most specific match for the phone's claim and poll under it, and Access would answer them with
+its login redirect. The bypass therefore lists `/api/pair/rooms/*` as well. With it, a signed-out
+`GET /api/pair/rooms/x` and `POST /api/pair/rooms/x/claim` reach the Worker (404 for an unknown
+room), while `/api/pair/rooms/x/status`, `/approve`, `/deny` and `POST /api/pair/rooms` answer 302
+(checked live on 2026-10-28).
 
 Every route under a bypass path checks its own credential: the probe and the manifest carry nothing
 private, LTI verifies the platform's signed launch, `/api/m/*` checks a device token, `/api/pair/*`
@@ -140,13 +147,21 @@ seconds between edits expose only the static UI.
 
 1. Create a reusable policy `EducateOS one origin (bypass)`: decision `bypass`, include `everyone`.
 2. Remove `northfield.educateos.io/healthz` from the district's `/healthz` bypass application, then
-   create the application `EducateOS Northfield (bypass)`, self-hosted, with the six bypass paths
-   on `northfield.educateos.io` and that policy.
+   create the application `EducateOS Northfield (bypass)`, self-hosted, with the seven bypass paths
+   on `northfield.educateos.io` and that policy. Also remove the `northfield.educateos.io/lti/*`
+   paths from `SchoolOS district LTI 1.3 Tool (bypass)`.
 3. Remove `northfield.educateos.io` from `EducateOS district (demo co-op)`, which keeps
    `district.schoolos.gmac.io`.
 4. Add `northfield.educateos.io` and the four pairing browser paths to the instance's application,
    keeping `schoolos.gmac.io` as its `domain`. Its audience doesn't change: it is already the
-   backend's `CF_ACCESS_AUD` and the second entry of the district's.
+   backend's `CF_ACCESS_AUD` and the second entry of the district's. Also give it any policy and
+   login method the district's application admits that it lacks, so nobody loses the LMS. In
+   production that was `EducateOS demo Clever accounts` (allow, requiring the Clever login method)
+   and the Clever identity provider.
+
+   Make 3 and 4 in one go: between them the host is under no application, and the static UI is
+   open (the district's API still refuses requests without an assertion). The API can fail
+   transiently (code 10500), so retry the PUT at once rather than leave that gap.
 
 Check:
 
@@ -156,6 +171,7 @@ curl -s https://northfield.educateos.io/.well-known/educateos.json | jq .name   
 curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://northfield.educateos.io/             # 302 …cloudflareaccess.com
 curl -s -o /dev/null -w '%{http_code}\n' -X POST https://northfield.educateos.io/api/pair/rooms       # 302 (Access)
 curl -s -o /dev/null -w '%{http_code}\n' https://northfield.educateos.io/api/m/me                     # 401 (the Worker, not Access)
+curl -s -o /dev/null -w '%{http_code}\n' https://northfield.educateos.io/api/pair/rooms/x             # 404 (the Worker: no such room)
 ```
 
 ### 5. The flip PR
@@ -240,9 +256,10 @@ results.
 
 After Northfield is verified, because their page links to it:
 
-1. Access, for each of the five: add `/.well-known/educateos.json`, `/api/m/*`, `/api/pair/*` and
-   `/api/ops/*` on `<slug>.educateos.io` to `EducateOS demo districts health (bypass)`, or create
-   one bypass application with all six paths in place of the health and LTI bypasses. Add the four
+1. Access, for each of the five: add `/.well-known/educateos.json`, `/api/m/*`, `/api/pair/*`,
+   `/api/pair/rooms/*` and `/api/ops/*` on `<slug>.educateos.io` to
+   `EducateOS demo districts health (bypass)`, or create one bypass application with all seven
+   paths in place of the health and LTI bypasses. Add the four
    pairing browser paths to each district's own application. `/ai` stays behind the district's
    application.
 2. Give each district a `DEVICE_TOKEN_SECRET` (step 1, with `FG_APP=educateos-<slug>`).

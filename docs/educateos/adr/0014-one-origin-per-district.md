@@ -59,8 +59,9 @@ about the Workshop, because no demo district had one.
    `packages/router/src/one-origin.ts`, and its unit tests cover it with and without `DISTRICT`.
 
 4. **One Access application per host.** It covers the whole hostname, with bypass paths for
-   `/healthz`, `/.well-known/educateos.json`, `/lti/*`, `/api/m/*`, `/api/pair/*` and `/api/ops/*`.
-   Every route under a bypass path must check its own credential before its handler runs, and a
+   `/healthz`, `/.well-known/educateos.json`, `/lti/*`, `/api/m/*`, `/api/pair/*` and `/api/ops/*`
+   (plus `/api/pair/rooms/*`, which keeps the phone's pairing calls bypassed beside the browser's
+   pairing paths on the main application; see the cutover runbook). Every route under a bypass path must check its own credential before its handler runs, and a
    generated test calls each one with no credential and expects a 401. Both Workers verify the
    same assertion against the same audience, so the district's dual-audience allowance
    (`CF_ACCESS_AUD` listing the Workshop's application) is dropped once every host is on one
