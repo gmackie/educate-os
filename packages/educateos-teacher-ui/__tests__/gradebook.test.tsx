@@ -13,7 +13,8 @@ describe("the gradebook", () => {
   it("is a class section showing each student's official grades and totals in a labelled grid", async () => {
     const district = fakeDistrict();
     const user = await renderApp(district.client, `#/classes/${IDS.offering}/roster`);
-    await user.click(await screen.findByRole("link", { name: "Gradebook" }));
+    // The class's own section, not the shell's Gradebook entry (SCHO-260).
+    await user.click(within(await screen.findByRole("navigation", { name: "Class sections" })).getByRole("link", { name: "Gradebook" }));
     await onScreen("Gradebook · English 9 · Period 3");
     await waitFor(() => grid());
 

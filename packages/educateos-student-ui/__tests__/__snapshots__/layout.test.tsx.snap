@@ -1,6 +1,30 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`layout > puts the navigation along the bottom on a phone 1`] = `
+exports[`layout on the district origin > folds the navigation into a drawer on a phone 1`] = `
+[
+  "layout=narrow",
+  "  link "Skip to content" → #main",
+  "  banner",
+  "    button "Open menu"",
+  "    link "Northfield" → /",
+  "    link "Notifications, 1 unread" → /notifications",
+  "    link "Settings" → /settings",
+  "  main",
+  "    heading 1 "Hi, Amara Okafor"",
+  "    heading 2 "My courses"",
+  "    heading 3 "English 9 · Period 3"",
+  "      link "English 9 · Period 3" → /courses/off_nf-eng9-fall-p3",
+  "    heading 3 "Biology · Period 1"",
+  "      link "Biology · Period 1" → /courses/off_nf-bio-fall-p1",
+  "    heading 2 "My space"",
+  "    link "Open my space" → /my-space",
+  "    heading 2 "Past courses (read-only)"",
+  "    heading 3 "Art · Period 2"",
+  "      link "Art · Period 2" → /courses/off_nf-art-spring-p2",
+]
+`;
+
+exports[`layout, embedded in a host > puts the navigation along the bottom on a phone 1`] = `
 [
   "layout=phone",
   "  link "Skip to content" → #main",

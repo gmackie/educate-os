@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { screen, within } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import { ENGLISH, ESSAY, fakeDistrict } from "./fakeDistrict.ts";
 import { renderApp } from "./render.tsx";
 import { setViewport } from "./viewport.ts";
@@ -30,10 +31,13 @@ function outline(root: Element): string[] {
   return lines;
 }
 
-describe("layout", () => {
+// Unframed, as a host that embeds the app (the Workshop's School app, the public demo) mounts it: the
+// Learning Home's own header, with its navigation along the bottom on a phone. On the district origin
+// the shared shell frames it instead (below, SCHO-260).
+describe("layout, embedded in a host", () => {
   it("puts the navigation along the bottom on a phone", async () => {
     setViewport("phone");
-    const { container } = await renderApp(fakeDistrict());
+    const { container } = await renderApp(fakeDistrict(), "/", undefined, undefined, { school: false });
     await screen.findByRole("link", { name: "Art · Period 2" });
     const layout = container.querySelector("[data-layout]")!;
     expect(layout.getAttribute("data-layout")).toBe("phone");
@@ -44,10 +48,45 @@ describe("layout", () => {
   });
 
   it("keeps the navigation in the header on a desktop", async () => {
-    const { container } = await renderApp(fakeDistrict());
+    const { container } = await renderApp(fakeDistrict(), "/", undefined, undefined, { school: false });
     await screen.findByRole("heading", { level: 1 });
     expect(container.querySelector("[data-layout]")!.getAttribute("data-layout")).toBe("desktop");
     expect(within(screen.getByRole("banner")).getByRole("navigation", { name: "Main" })).toBeTruthy();
+  });
+
+});
+
+// The phone bottom bar gives way to the shell's drawer (SCHO-260): one navigation, the role's, in the
+// same place on every app on the district origin.
+describe("layout on the district origin", () => {
+  it("draws the school's shell, with the sidebar beside the content on a desktop", async () => {
+    const { container } = await renderApp(fakeDistrict());
+    await screen.findByRole("heading", { level: 1 });
+    expect(container.querySelector("[data-layout]")!.getAttribute("data-layout")).toBe("wide");
+    const banner = screen.getByRole("banner");
+    expect(within(banner).getByRole("link", { name: "Northfield" }).getAttribute("href")).toBe("/");
+    expect(within(banner).getByRole("navigation", { name: "Main" })).toBeTruthy();
+    // The header's own controls stay: notifications and settings.
+    expect(screen.getByRole("link", { name: "Notifications, 1 unread" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Settings" }).getAttribute("href")).toBe("/settings");
+  });
+
+  it("folds the navigation into a drawer on a phone", async () => {
+    setViewport("phone");
+    const user = userEvent.setup();
+    const { container } = await renderApp(fakeDistrict());
+    await screen.findByRole("link", { name: "Art · Period 2" });
+    const layout = container.querySelector("[data-layout]")!;
+    expect(layout.getAttribute("data-layout")).toBe("narrow");
+    // Nothing but the content and the top bar until the menu opens.
+    expect(screen.queryByRole("navigation", { name: "Main" })).toBeNull();
+    expect(outline(layout)).toMatchSnapshot();
+
+    await user.click(within(screen.getByRole("banner")).getByRole("button", { name: "Open menu" }));
+    const drawer = screen.getByRole("dialog", { name: "Menu" });
+    await user.click(within(within(drawer).getByRole("navigation", { name: "Main" })).getByRole("link", { name: "Grades" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "My grades" })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("offers a skip link to the main content", async () => {

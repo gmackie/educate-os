@@ -312,6 +312,9 @@ importers:
       '@educateos/contracts':
         specifier: workspace:*
         version: link:../educateos-contracts
+      '@educateos/shell':
+        specifier: workspace:*
+        version: link:../educateos-shell
       '@gadgets/ui':
         specifier: workspace:*
         version: link:../ui
@@ -2021,6 +2024,9 @@ importers:
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
+      uqr:
+        specifier: ^0.1.3
+        version: 0.1.3
     devDependencies:
       '@gadgets/scripts':
         specifier: workspace:*
@@ -2064,6 +2070,9 @@ importers:
       '@educateos/api-client':
         specifier: workspace:*
         version: link:../educateos-api-client
+      '@educateos/shell':
+        specifier: workspace:*
+        version: link:../educateos-shell
       '@gadgets/ui':
         specifier: workspace:*
         version: link:../ui
@@ -7705,6 +7714,9 @@ packages:
     peerDependencies:
       browserslist: '>= 4.21.0'
 
+  uqr@0.1.3:
+    resolution: {integrity: sha512-0rjE8iEJe4YmT9TOhwsZtqCMRLc5DXZUI2UEYUUg63ikBkqqE5EYWaI0etFe/5KUcmcYwLih2RND1kq+hrUJXA==}
+
   use-sync-external-store@1.7.0:
     resolution: {integrity: sha512-6L+EeigHMQhdaIPNIFUKwfWJSwWFQ8gJbJ2DLOs5sDIegTwR9fRxvnM3uciHKjIZhFz+KAv2emhWMRvDmMcY8A==}
     peerDependencies:
@@ -12227,6 +12239,8 @@ snapshots:
       browserslist: 4.28.7
       escalade: 3.2.0
       picocolors: 1.1.1
+
+  uqr@0.1.3: {}
 
   use-sync-external-store@1.7.0(react@19.2.8):
     dependencies:

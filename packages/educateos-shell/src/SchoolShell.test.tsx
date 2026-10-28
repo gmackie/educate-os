@@ -88,7 +88,7 @@ describe("SchoolShell on a wide screen", () => {
 
   it("waits for the role before offering any place", () => {
     render({ role: undefined, user: undefined });
-    expect(within(nav()).queryAllByRole("link")).toEqual([]);
+    expect(screen.queryByRole("navigation")).toBeNull();
   });
 
   it("puts the school's accent in force and takes it away again", () => {
@@ -123,6 +123,21 @@ describe("SchoolShell on a wide screen", () => {
     const { user } = render({ school: { ...NORTHFIELD, features: { ...NORTHFIELD.features, mobile: false } } });
     await user.click(screen.getByRole("button", { name: /Ava Chen/ }));
     expect(within(screen.getByRole("list", { name: "Account" })).getAllByRole("link").map((link) => link.textContent)).toEqual(["Sign out"]);
+  });
+
+  it("offers no sign-out where the host signs people out itself", async () => {
+    const { user } = render({ account: { signOut: null } });
+    await user.click(screen.getByRole("button", { name: /Ava Chen/ }));
+    expect(within(screen.getByRole("list", { name: "Account" })).getAllByRole("link").map((link) => link.textContent)).toEqual(["Connect phone", "Your devices"]);
+  });
+
+  it("skips to the content without touching the hash, which a hash-routed SPA's screen lives in", async () => {
+    window.location.hash = "#/classes/bio-9/gradebook";
+    const { user } = render();
+    await user.click(screen.getByRole("link", { name: "Skip to content" }));
+    expect(window.location.hash).toBe("#/classes/bio-9/gradebook");
+    expect(document.activeElement).toBe(screen.getByRole("main"));
+    window.location.hash = "";
   });
 
   it("switches the one shared theme, remembering it under the EducateOS key", async () => {

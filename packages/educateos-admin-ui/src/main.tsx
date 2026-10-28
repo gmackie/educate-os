@@ -1,7 +1,8 @@
-import { StrictMode } from "react";
+import { StrictMode, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import { createDistrictApiClient } from "@educateos/api-client";
-import { ThemeProvider, storedThemeMode } from "@gadgets/ui/theme";
+import { ThemeProvider } from "@gadgets/ui/theme";
+import { educateosThemeMode, useSchoolManifest } from "@educateos/shell";
 import { AdminApp } from "./App.tsx";
 import "./styles.css";
 
@@ -20,12 +21,23 @@ const token = sessionStorage.getItem(TOKEN_KEY) ?? undefined;
 
 const client = createDistrictApiClient({ baseUrl: window.location.origin, ...(token === undefined ? {} : { token }) });
 
-// The theme starts from, and remembers, this browser's choice. A host that sets the theme itself
-// (the Workshop, once the app is embedded there) would hand the provider its own source instead.
+/**
+ * The console on its district's own origin (/admin/): framed in the shared SchoolShell and branded
+ * from the school's manifest, which arrives after the first paint (SCHO-260).
+ */
+const OnTheDistrictOrigin = () => {
+  const { manifest } = useSchoolManifest();
+  const shell = useMemo(() => ({ school: manifest }), [manifest]);
+  return <AdminApp client={client} shell={shell} />;
+};
+
+// The theme starts from, and remembers, this browser's choice, under the one key every surface on
+// the district origin shares (@educateos/shell). A host that sets the theme itself (the Workshop,
+// once the app is embedded there) would hand the provider its own source instead.
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider source={storedThemeMode("educateos:theme-mode")}>
-      <AdminApp client={client} />
+    <ThemeProvider source={educateosThemeMode()}>
+      <OnTheDistrictOrigin />
     </ThemeProvider>
   </StrictMode>,
 );

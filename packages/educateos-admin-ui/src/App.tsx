@@ -1,6 +1,7 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { createContext, use, useEffect, useRef, type ReactNode } from "react";
 import { Loader, Text } from "@cloudflare/kumo";
 import { DistrictApiError, unlinkedSignInOf, type DistrictApiClient } from "@educateos/api-client";
+import { SchoolShell, navigationFor, shellRoleOf, type NavGroup, type NavIcon, type SchoolManifest, type ShellFeatures } from "@educateos/shell";
 import { AdminClientProvider } from "./app/AdminClientContext.tsx";
 import { ThemeModeButton } from "@gadgets/ui/theme";
 import { AnnouncerProvider, useAnnounce } from "./app/Announcer.tsx";
@@ -8,6 +9,7 @@ import { NotAddedYet } from "./app/NotAddedYet.tsx";
 import { NotAnAdministrator } from "./app/NotAnAdministrator.tsx";
 import { SCREENS, useHashRoute, useSchoolRoute, type ScreenPath } from "./app/useHashRoute.ts";
 import { useDistrictConfig, type DistrictConfigState } from "./app/useDistrictConfig.ts";
+import { useLoad } from "./app/useLoad.ts";
 import { AiBudgetsPage } from "./budgets/AiBudgetsPage.tsx";
 import { ClassesAndPeoplePage } from "./classes/ClassesAndPeoplePage.tsx";
 import { ClassesPage } from "./classes/ClassesPage.tsx";
@@ -55,7 +57,47 @@ const accessGate = ({ config }: DistrictConfigState): ReactNode | undefined => {
   return undefined;
 };
 
+/** The district origin around the console (SCHO-260). */
+export interface DistrictShell {
+  /** The school's manifest (`useSchoolManifest().manifest`). */
+  school: SchoolManifest;
+}
+
+const ShellContext = createContext<DistrictShell | undefined>(undefined);
+
+const SCREEN_ICONS: Record<ScreenPath, NavIcon> = {
+  dashboard: "dashboard", roster: "roster", classes: "classes", "classes-people": "roster", guardians: "guardians", modules: "studio",
+  "learning-standards": "grades", policies: "policies", "ai-usage": "usage", "ai-budgets": "budgets", "term-rollover": "rollover",
+};
+
+/**
+ * The sidebar on the district origin: the signed-in person's own places across the origin (a
+ * district administrator is staff, so Teacher Studio's), then, once their access is confirmed, every
+ * screen of this console as the Admin group. The console routes by hash, so its own entries are hash
+ * links that keep the page.
+ */
+export const consoleNavigation = (base: NavGroup[], admin: boolean): NavGroup[] => [
+  ...base.filter((group) => group.id !== "admin"),
+  ...(admin
+    ? [{
+      id: "admin",
+      label: "Admin",
+      items: SCREENS.map((screen) => ({
+        id: `admin-${screen.path}`,
+        label: screen.label,
+        href: `#/${screen.path}`,
+        icon: SCREEN_ICONS[screen.path],
+        active: ({ hash }: { hash: string }) => {
+          const at = hash.replace(/^#\/?/, "");
+          return at === screen.path || (screen.path === "dashboard" && at === "");
+        },
+      })),
+    }]
+    : []),
+];
+
 const Console = () => {
+  const shell = use(ShellContext);
   const path = useHashRoute();
   const schoolId = useSchoolRoute();
   const config = useDistrictConfig();
@@ -71,8 +113,10 @@ const Console = () => {
       first.current = false;
       return;
     }
-    main.current?.focus();
+    (main.current ?? document.getElementById("main"))?.focus();
   }, [path, schoolId]);
+
+  if (shell !== undefined) return <ShellConsole shell={shell} gate={gate} path={path} schoolId={schoolId} config={config} />;
 
   return (
     <div className="min-h-screen bg-kumo-base text-kumo-default">
@@ -114,11 +158,46 @@ const Console = () => {
   );
 };
 
+/** The console framed by the district's shell (SCHO-260): its sections are the sidebar's Admin group. */
+const ShellConsole = ({ shell, gate, path, schoolId, config }: { shell: DistrictShell; gate: ReactNode | undefined; path: ScreenPath; schoolId: string | undefined; config: DistrictConfigState }) => {
+  const announce = useAnnounce();
+  const me = useLoad("me", (client) => client.call("me.get"));
+  const role = me.status === "ready" ? shellRoleOf(me.data) : undefined;
+  const features: ShellFeatures = { ai: shell.school.features.ai };
+  // Signed in as staff, a district administrator gets Teacher Studio's places as well as these.
+  const base = role === undefined ? [] : navigationFor(role === "school-admin" ? "teacher" : role, features);
+  const navigation = consoleNavigation(base, gate === undefined);
+  return (
+    <SchoolShell
+      school={shell.school}
+      role={role}
+      user={me.status === "ready" ? { name: me.data.displayName } : undefined}
+      features={features}
+      navigation={navigation}
+      onAnnounce={announce}
+    >
+      <div className="flex flex-col gap-4">
+        <Text as="h1" variant="heading" size="lg">EducateOS district admin</Text>
+        {gate ?? (schoolId === undefined ? <Screen path={path} config={config} /> : <SchoolPage key={schoolId} schoolId={schoolId} />)}
+      </div>
+    </SchoolShell>
+  );
+};
+
 /** The district admin console, reading from `client`. */
-export const AdminApp = ({ client }: { client: DistrictApiClient }) => (
+export const AdminApp = ({ client, shell }: {
+  client: DistrictApiClient;
+  /**
+   * The district origin around the console (SCHO-260): frames it in the shared SchoolShell. A host
+   * that embeds it omits this and keeps its own frame.
+   */
+  shell?: DistrictShell;
+}) => (
   <AdminClientProvider client={client}>
-    <AnnouncerProvider>
-      <Console />
-    </AnnouncerProvider>
+    <ShellContext value={shell}>
+      <AnnouncerProvider>
+        <Console />
+      </AnnouncerProvider>
+    </ShellContext>
   </AdminClientProvider>
 );

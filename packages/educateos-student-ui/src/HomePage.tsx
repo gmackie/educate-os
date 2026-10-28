@@ -9,6 +9,7 @@ import { LoadingSkeleton } from "./LoadingSkeleton.tsx";
 import type { StudentOffering } from "./model.ts";
 import { PrivacyNote } from "./PrivacyNote.tsx";
 import { RecentAnnouncements } from "./communication/RecentAnnouncements.tsx";
+import { PhoneBanner } from "./devices/PhoneBanner.tsx";
 
 const CourseList = ({ courses, offerings, past }: { courses: CourseEntry[]; offerings: readonly StudentOffering[]; past: boolean }) => (
   <ul className="grid gap-3 sm:grid-cols-2">
@@ -36,6 +37,8 @@ export const HomePage = () => {
       <Text variant="heading" size="lg" as="h1">
         Hi, {me.displayName}
       </Text>
+
+      <PhoneBanner />
 
       <RecentAnnouncements />
 
