@@ -161,6 +161,8 @@ export interface DeviceStore {
    * device already used it, which makes the proof a replay.
    */
   claimProofId(deviceId: DeviceId, jti: string, expiresAtMs: number, nowMs: number): Promise<boolean>;
+  /** Sets (or, with null, clears) the device's push token. */
+  setPushToken(id: DeviceId, token: string | null): Promise<void>;
 }
 
 /** A {@link DeviceStore} in memory, for tests and the harness. */
@@ -228,6 +230,11 @@ export class InMemoryDeviceStore implements DeviceStore {
     if (this.#proofs.has(key)) return false;
     this.#proofs.set(key, expiresAtMs);
     return true;
+  }
+
+  async setPushToken(id: DeviceId, token: string | null): Promise<void> {
+    const device = this.#devices.get(id);
+    if (device !== undefined) device.pushToken = token;
   }
 }
 
@@ -635,6 +642,35 @@ export function webApiPath(pathname: string): string {
 
 const RefreshBody = z.strictObject({ refreshToken: z.string().min(1).max(512) });
 
+/** The device API's own endpoint a phone registers its push token at. */
+export const DEVICE_PUSH_TOKEN_PATH = "/api/m/me/devices/push-token";
+/** The longest push token accepted. */
+export const MAX_PUSH_TOKEN_LENGTH = 256;
+/** An Expo push token: `ExponentPushToken[…]` (or the newer `ExpoPushToken[…]`). */
+const EXPO_PUSH_TOKEN = /^Expo(?:nent)?PushToken\[[A-Za-z0-9_-]{1,200}\]$/;
+const PushTokenBody = z.object({
+  token: z.string().max(MAX_PUSH_TOKEN_LENGTH).regex(EXPO_PUSH_TOKEN),
+  provider: z.literal("expo"),
+  platform: DevicePlatform.optional(),
+});
+
+/** `POST` (register) or `DELETE` (clear) the authenticated device's own push token. */
+async function servePushToken(request: Request, device: DeviceRecord, store: DeviceStore): Promise<Response> {
+  if (request.method === "DELETE") {
+    await store.setPushToken(device.id, null);
+    return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
+  }
+  if (request.method !== "POST") {
+    return deviceJson({ code: "not-found", message: "No such route." }, 404);
+  }
+  const body = PushTokenBody.safeParse(await request.json().catch(() => undefined));
+  if (!body.success) {
+    return deviceJson({ code: "validation-failed", message: "Send an Expo push token: {\"token\": \"ExponentPushToken[…]\", \"provider\": \"expo\"}." }, 400);
+  }
+  await store.setPushToken(device.id, body.data.token);
+  return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
+}
+
 function deviceJson(body: unknown, status: number, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -669,7 +705,9 @@ export async function serveDeviceApi(request: Request, options: DeviceApiOptions
       if (!body.success) return refused("missing-credentials");
       return deviceJson(await credentials.refresh(request, body.data.refreshToken), 200);
     }
-    const { principal } = await credentials.authenticate(request);
+    const { device, principal } = await credentials.authenticate(request);
+    // The phone's push token belongs to the device, not the principal, so it is served here.
+    if (url.pathname === DEVICE_PUSH_TOKEN_PATH) return await servePushToken(request, device, credentials.store);
     const forwarded = new Headers(request.headers);
     forwarded.delete("authorization");
     forwarded.delete(DEVICE_PROOF_HEADER);

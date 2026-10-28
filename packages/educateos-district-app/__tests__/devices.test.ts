@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { NORTHFIELD } from "@educateos/fixtures";
 import {
   ACCESS_TOKEN_TTL_MS,
+  DEVICE_PUSH_TOKEN_PATH,
   DEVICE_REFRESH_PATH,
   REFRESH_TOKEN_TTL_MS,
   ROUTES,
@@ -15,6 +16,7 @@ import {
 } from "../src/index.ts";
 import { bootDistrict, expectError, NF, type TestDistrict } from "./support.ts";
 import { read, TestPhone } from "./device-support.ts";
+import { claimRequest, pollRequest, webRequest } from "./pair-support.ts";
 
 const SECRET = "test-device-token-secret-0123456789-abcdef";
 const START = Date.parse("2026-10-28T12:00:00.000Z");
@@ -44,12 +46,13 @@ async function pairedPhone(district: { app: DistrictApp; clock: { now: number } 
 // Generated enforcement: every route under an Access bypass path refuses every bad credential.
 //
 // Each surface lists every route reachable under its prefix and the requests that must each be
-// refused with 401 before any handler runs. /api/pair (the pairing relay) and /api/ops (the signed
-// operations API) join this table when they land.
+// refused with 401 before any handler runs. The pairing relay's routes (/api/pair) have their own
+// table below, since its phone endpoints answer a bad room secret with 403 or 404 rather than 401.
+// /api/ops (the signed operations API) joins this table when it lands.
 // ---------------------------------------------------------------------------------------------
 
 interface BypassRoute {
-  method: "GET" | "POST";
+  method: "GET" | "POST" | "DELETE";
   path: string;
 }
 
@@ -77,7 +80,9 @@ function deviceApiRoutes(): BypassRoute[] {
   // Paths no route serves are refused just the same: the credential is checked before matching.
   const unmatched: BypassRoute[] = ["/api/m", "/api/m/", "/api/m/nope", "/api/m/lti/registrations", "/api/m/calendar/x.ics"]
     .map((path) => ({ method: "GET", path }));
-  return [...mapped, ...unmatched, { method: "GET", path: DEVICE_REFRESH_PATH }];
+  // The device's own endpoints, which no web API route mirrors.
+  const own: BypassRoute[] = [{ method: "POST", path: DEVICE_PUSH_TOKEN_PATH }, { method: "DELETE", path: DEVICE_PUSH_TOKEN_PATH }];
+  return [...mapped, ...unmatched, ...own, { method: "GET", path: DEVICE_REFRESH_PATH }];
 }
 
 const plainRequest = (route: BypassRoute, headers: Record<string, string> = {}) => new Request(`https://district.example${route.path}`, {
@@ -145,7 +150,7 @@ describe("every route under a bypass path", () => {
   it("covers every web API route and the device endpoints", () => {
     const paths = new Set(deviceApiRoutes().map((r) => `${r.method} ${r.path}`));
     expect(paths.size).toBeGreaterThanOrEqual(Object.keys(ROUTES).length);
-    for (const route of ["GET /api/m/me", "GET /api/m/me/devices", "POST /api/m/me/devices/x/revoke", "POST /api/m/admin/principals/x/status"]) {
+    for (const route of ["GET /api/m/me", "GET /api/m/me/devices", "POST /api/m/me/devices/x/revoke", "POST /api/m/admin/principals/x/status", `POST ${DEVICE_PUSH_TOKEN_PATH}`, `DELETE ${DEVICE_PUSH_TOKEN_PATH}`]) {
       expect(paths).toContain(route);
     }
   });
@@ -165,6 +170,111 @@ describe("every route under a bypass path", () => {
         });
       }
     });
+  }
+});
+
+// ---------------------------------------------------------------------------------------------
+// Generated enforcement for the pairing relay (/api/pair, SCHO-261), also under an Access bypass.
+//
+// The phone's endpoints are authenticated by the room secret alone: every bad secret is a 403 (or a
+// 404 for a room that does not exist) and its body carries no room state, code or sealed tokens.
+// The browser's endpoints need the district's web sign-in (401 without it, whatever else is sent)
+// and answer only the room's creator (404 for anyone else).
+// ---------------------------------------------------------------------------------------------
+
+interface PairRouteCase {
+  name: string;
+  request(room: string, secret: string | undefined, phone: TestPhone): Request;
+}
+
+const PAIR_PHONE_ROUTES: PairRouteCase[] = [
+  { name: "POST /api/pair/rooms/:room/claim", request: (room, secret, phone) => claimRequest(room, secret, phone) },
+  { name: "GET /api/pair/rooms/:room", request: (room, secret) => pollRequest(room, secret) },
+];
+
+const PAIR_BROWSER_ROUTES: { name: string; request(token: string | undefined, room: string, headers?: Record<string, string>): Request }[] = [
+  { name: "POST /api/pair/rooms", request: (token, _room, headers) => webRequest(token, "POST", "/api/pair/rooms", {}, headers) },
+  { name: "GET /api/pair/rooms/:room/status", request: (token, room, headers) => webRequest(token, "GET", `/api/pair/rooms/${room}/status`, undefined, headers) },
+  { name: "POST /api/pair/rooms/:room/approve", request: (token, room, headers) => webRequest(token, "POST", `/api/pair/rooms/${room}/approve`, {}, headers) },
+  { name: "POST /api/pair/rooms/:room/deny", request: (token, room, headers) => webRequest(token, "POST", `/api/pair/rooms/${room}/deny`, {}, headers) },
+];
+
+/** No refusal may say anything about a room: its `code` is an error code, never a pairing code. */
+function expectNoRoomData(body: Record<string, unknown>): void {
+  for (const key of ["state", "sealed", "device", "room", "secret", "deviceId", "qr"]) expect(body).not.toHaveProperty(key);
+  expect(body.code).toMatch(/^[a-z]+(-[a-z]+)*$/);
+}
+
+describe("every route of the pairing relay", () => {
+  let district: Awaited<ReturnType<typeof deviceDistrict>>;
+  let phone: TestPhone;
+  /** A room opened by Amara, its secret, and a phone already claimed into a second one. */
+  const openRoom = async () => {
+    const created = await read(await district.app.fetch(webRequest(district.tokenFor(NF.amara), "POST", "/api/pair/rooms")));
+    expect(created.status).toBe(201);
+    return { room: created.body.room as string, secret: created.body.secret as string };
+  };
+  beforeAll(async () => {
+    district = await deviceDistrict();
+    phone = await TestPhone.create(() => district.clock.now);
+  });
+
+  const refusals: Record<string, { expected: number[]; secret(own: string, other: string): string | undefined }> = {
+    "no secret": { expected: [403], secret: () => undefined },
+    "a wrong secret": { expected: [403], secret: () => "A".repeat(43) },
+    "another room's secret": { expected: [403], secret: (_own, other) => other },
+    "a malformed secret": { expected: [403], secret: () => "short" },
+  };
+
+  for (const route of PAIR_PHONE_ROUTES) {
+    for (const [scenario, refusal] of Object.entries(refusals)) {
+      it(`${route.name} answers ${refusal.expected.join(" or ")} to ${scenario}, with no room data`, async () => {
+        const own = await openRoom();
+        // A second person's room, so the room above stays Amara's open one.
+        const other = await read(await district.app.fetch(webRequest(district.tokenFor(NF.elena), "POST", "/api/pair/rooms")));
+        const { status, body } = await read(await district.app.fetch(route.request(own.room, refusal.secret(own.secret, other.body.secret as string), phone)));
+        expect(refusal.expected).toContain(status);
+        expectNoRoomData(body);
+      });
+    }
+    it(`${route.name} answers 404 for a room that does not exist, whatever the secret`, async () => {
+      const own = await openRoom();
+      for (const room of ["unknownroom1", "x", "../status", `${own.room}X`]) {
+        const { status, body } = await read(await district.app.fetch(route.request(encodeURIComponent(room), own.secret, phone)));
+        expect(status).toBe(404);
+        expectNoRoomData(body);
+      }
+    });
+  }
+
+  for (const route of PAIR_BROWSER_ROUTES) {
+    it(`${route.name} answers 401 without the web sign-in, even with a device credential or the room secret`, async () => {
+      const own = await openRoom();
+      const paired = await pairedPhone(district, NF.amara);
+      const deviceHeaders = { authorization: `Device ${paired.tokens!.accessToken}`, "device-proof": await paired.proof("POST", "/api/pair/rooms", paired.tokens!.accessToken) };
+      for (const request of [
+        route.request(undefined, own.room),
+        route.request(undefined, own.room, { authorization: "Bearer not-a-token" }),
+        route.request(undefined, own.room, deviceHeaders),
+      ]) {
+        const { status, body } = await read(await district.app.fetch(request));
+        expect({ status, code: body.code }).toStrictEqual({ status: 401, code: "unauthenticated" });
+        expectNoRoomData(body);
+      }
+    });
+    if (route.name !== "POST /api/pair/rooms") {
+      it(`${route.name} answers 404 to anyone but the room's creator`, async () => {
+        const own = await openRoom();
+        await read(await district.app.fetch(claimRequest(own.room, own.secret, await TestPhone.create())));
+        for (const someone of [NF.elena, NF.admin]) {
+          const { status, body } = await read(await district.app.fetch(route.request(district.tokenFor(someone), own.room)));
+          expect(status).toBe(404);
+          expectNoRoomData(body);
+        }
+        // Still Amara's to decide.
+        expect((await read(await district.app.fetch(webRequest(district.tokenFor(NF.amara), "GET", `/api/pair/rooms/${own.room}/status`)))).body.state).toBe("claimed");
+      });
+    }
   }
 });
 

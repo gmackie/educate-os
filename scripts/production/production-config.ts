@@ -80,10 +80,11 @@ export const DISTRICT_PACKAGE = "educateos-district-worker";
 export const DISTRICT_UI_DIR = "./dist/ui";
 
 /**
- * The district Worker's own routes, which run before its assets: the API, the liveness probe, the
- * LTI Tool's endpoints (SCHO-177) and the public school manifest (ADR-0014).
+ * The district Worker's own routes, which run before its assets: the API (the pairing relay's
+ * `/api/pair/*` among it), the liveness probe, the LTI Tool's endpoints (SCHO-177), the public school
+ * manifest (ADR-0014) and the pairing relay's `/connect-phone` page (SCHO-261).
  */
-export const DISTRICT_WORKER_ROUTES = ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json"];
+export const DISTRICT_WORKER_ROUTES = ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone"];
 
 /** The EducateOS connector's package: the one gatekeeper bound to the district Worker (SCHO-218). */
 export const EDUCATEOS_GATEKEEPER_PACKAGE = "gatekeeper-educateos";

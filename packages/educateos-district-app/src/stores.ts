@@ -42,6 +42,8 @@ import type { FundingAllocationRevision } from "./routes.ts";
 import { inMemoryCommunicationStores, type CommunicationStores } from "./communication/stores.ts";
 // Devices (SCHO-261)
 import { InMemoryDeviceStore, type DeviceStore } from "./devices.ts";
+// Pairing (SCHO-261)
+import { InMemoryPairRoomStore, type PairRoomStore } from "./pairing.ts";
 
 /**
  * A district's configuration revisions, oldest first. Only applied revisions are kept: a draft or
@@ -286,6 +288,9 @@ export interface DistrictAppStores {
   // Devices (SCHO-261)
   /** Registered phones, their refresh tokens and recently seen proof IDs. */
   devices: DeviceStore;
+  // Pairing (SCHO-261)
+  /** Phone pairing rooms, open and recently finished. */
+  pairRooms: PairRoomStore;
 }
 
 /** In-memory stores for one district, seeded with its directory. */
@@ -324,5 +329,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     quizzes: new InMemoryQuizStorage(),
     // Devices (SCHO-261)
     devices: new InMemoryDeviceStore(),
+    // Pairing (SCHO-261)
+    pairRooms: new InMemoryPairRoomStore(),
   };
 }

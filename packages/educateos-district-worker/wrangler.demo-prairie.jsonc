@@ -50,7 +50,8 @@
       "/api/*",
       "/healthz",
       "/lti/*",
-      "/.well-known/educateos.json"
+      "/.well-known/educateos.json",
+      "/connect-phone"
     ]
   },
   "vars": {

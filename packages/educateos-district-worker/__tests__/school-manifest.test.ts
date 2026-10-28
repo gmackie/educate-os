@@ -31,7 +31,7 @@ describe("the school manifest", () => {
       brand: { logo: null, accent: null },
       signIn: [],
       features: { ai: false, mobile: true, family: true },
-      mobileApi: { min: 1, max: 1 },
+      mobileApi: { min: 1, max: 2 },
       release: null,
     });
   });
@@ -74,7 +74,7 @@ describe("the school manifest", () => {
       brand: { logo: `${ORIGIN}/brand/logo.svg`, accent: "#2458ac" },
       signIn: [{ id: "google", label: "Google" }, { id: "clever", label: "Clever" }],
       features: { ai: true, mobile: true, family: false },
-      mobileApi: { min: 1, max: 1 },
+      mobileApi: { min: 1, max: 2 },
       release: "r000042-ade9299",
     });
   });
@@ -121,7 +121,7 @@ describe("the school manifest", () => {
       brand: { logo: `${ORIGIN}/brand/logo.svg`, accent: "#2458ac" },
       signIn: [{ id: "google", label: "Google" }, { id: "clever", label: "Clever" }],
       features: { ai: true, mobile: true, family: true },
-      mobileApi: { min: 1, max: 1 },
+      mobileApi: { min: 1, max: 2 },
       release: "r000042-ade9299",
     })).toBeTruthy();
     expect(SchoolManifest.safeParse({ v: 2 }).success).toBe(false);
