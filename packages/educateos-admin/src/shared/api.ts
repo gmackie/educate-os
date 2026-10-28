@@ -19,6 +19,8 @@ export interface Me {
   edition: Edition;
   /** In the OSS edition, the only origins workspaces may be enrolled from. */
   allowedOrigins?: string[];
+  /** In the hosted edition, educateos.io's guided install, which makes a new workspace. */
+  installUrl?: string;
 }
 
 /** Where a workspace's enrollment stands. */
@@ -99,6 +101,67 @@ export interface AuditEntry {
 export interface AuditPage {
   entries: AuditEntry[];
   nextCursor?: string;
+}
+
+/** An installation made through educateos.io's guided install (hosted edition, SCHO-263). */
+export interface InstallationRecord {
+  instanceId: string;
+  /** The workspace it maps onto. Absent when another workspace already had its slug or origin. */
+  workspaceId?: string;
+  slug: string;
+  /** The managed hostname it serves at, `<slug>.educateos.io`. */
+  hostname: string;
+  /** Who installed it: their email, when they are a known operator. */
+  installedBy?: string;
+  cloudflareAccountId: string;
+  releaseVersion: string;
+  installedAt: string;
+  importedAt: string;
+}
+
+/** A slug the guided install holds, as last imported from educateos.io. */
+export interface SlugReservationRecord {
+  slug: string;
+  instanceId: string;
+  reservedBy?: string;
+  cloudflareAccountId: string;
+  /** Set while an install run holds it. */
+  leaseUntil?: string;
+}
+
+/** `GET /api/installations`. */
+export interface InstallationsResponse {
+  installations: InstallationRecord[];
+  reservations: SlugReservationRecord[];
+}
+
+/** `POST /api/import/control-plane`. */
+export const ImportRequest = z.strictObject({
+  /** Report what the import would do, and write nothing. */
+  dryRun: z.boolean().optional(),
+});
+/** An import request. */
+export type ImportRequest = z.infer<typeof ImportRequest>;
+
+/** How many rows an import created, changed or left alone. */
+export interface ImportCounts {
+  created: number;
+  updated: number;
+  unchanged: number;
+}
+
+/** What an import of educateos.io's operators, installations and reservations did, or would do. */
+export interface ImportReport {
+  dryRun: boolean;
+  /** When educateos.io took the snapshot. */
+  exportedAt: string;
+  operators: ImportCounts;
+  /** Workspaces made for installations, and installations matched to a workspace already here. */
+  workspaces: { created: number; matched: number };
+  installations: ImportCounts;
+  reservations: ImportCounts & { removed: number };
+  /** Installations that couldn't map onto a workspace, and why. */
+  skipped: { instanceId: string; slug: string; reason: "slug-taken" | "origin-taken" }[];
 }
 
 /** The error body every admin route answers with. */

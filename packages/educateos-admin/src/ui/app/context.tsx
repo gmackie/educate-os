@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { AdminClient } from "./client.ts";
+import { AdminApiError, type AdminClient } from "./client.ts";
 
 const ClientContext = createContext<AdminClient | undefined>(undefined);
 
@@ -18,7 +18,7 @@ export const useClient = (): AdminClient => {
 /** Where a load stands. */
 export type Loaded<T> =
   | { status: "loading" }
-  | { status: "error"; message: string }
+  | { status: "error"; message: string; code?: string }
   | { status: "ready"; data: T };
 
 /**
@@ -33,7 +33,11 @@ export const useLoad = <T,>(key: string, load: (client: AdminClient) => Promise<
     let live = true;
     load(client).then(
       (data) => { if (live) setState({ key, loaded: { status: "ready", data } }); },
-      (error: unknown) => { if (live) setState({ key, loaded: { status: "error", message: error instanceof Error ? error.message : "Something went wrong." } }); },
+      (error: unknown) => {
+        if (!live) return;
+        const message = error instanceof Error ? error.message : "Something went wrong.";
+        setState({ key, loaded: { status: "error", message, ...(error instanceof AdminApiError ? { code: error.code } : {}) } });
+      },
     );
     return () => { live = false; };
     // `load` is keyed by `key` and `generation` rather than listed: callers pass a fresh closure.

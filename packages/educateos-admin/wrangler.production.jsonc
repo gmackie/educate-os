@@ -1,0 +1,58 @@
+// The hosted EducateOS admin at admin.educateos.io (SCHO-263), in the EducateOS account. Hand-written,
+// not generated: scripts/production/production-config.ts writes a wrangler.production.jsonc only
+// beside a wrangler.jsonc, and this package deliberately has none (see wrangler.local.jsonc). So
+// release discovery, the staging, preview and production generators and the dev server never pick
+// this Worker up, and only the ForgeGraph app `educateos-admin` deploys it
+// (scripts/educateos-admin-config.test.ts holds all of that true).
+//
+// Before the first deploy, follow docs/educateos/runbooks/admin-hosted.md: create the D1 database
+// and put its ID in place of REPLACE_AT_PROVISION, create the Access application and put its
+// audience in place of REPLACE_AT_PROVISION_ACCESS_AUD, and set the secrets ADMIN_KEY_ENCRYPTION_KEY
+// and ADMINS. Until then a deploy fails: Cloudflare refuses the placeholder database ID.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "educateos-admin",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-09-04",
+  // As the production Workers: traces sampled in full, without per-invocation request logs.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "invocation_logs": false
+    }
+  },
+  // Only the custom domain: a workers.dev or preview URL would serve the admin without Access in front.
+  "routes": [{ "pattern": "admin.educateos.io", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/healthz"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "educateos-admin",
+      // REPLACE_AT_PROVISION: the ID `wrangler d1 create educateos-admin` prints.
+      "database_id": "REPLACE_AT_PROVISION",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // educateos.io's control plane, read-only, for the import of operators, installations and slug
+  // reservations (POST /api/import/control-plane). An RPC entrypoint of the educateos-site Worker,
+  // which has no URL; the site Worker must be deployed with the export before this one.
+  "services": [{ "binding": "CONTROL_PLANE", "service": "educateos-site", "entrypoint": "ControlPlaneExporter" }],
+  // Secrets, set with `wrangler secret put` or ForgeGraph's syncSecrets, never here:
+  // ADMIN_KEY_ENCRYPTION_KEY (32 random bytes, base64url) and ADMINS (operator emails or Access
+  // subjects, comma-separated, `:viewer` for read-only).
+  "vars": {
+    "EDITION": "hosted",
+    // The Access team, and the audience tag of the Access application "EducateOS admin"
+    // (admin.educateos.io). Every /api request's assertion is verified against both.
+    "ACCESS_ISSUER": "https://gmacko.cloudflareaccess.com",
+    "ACCESS_AUD": "REPLACE_AT_PROVISION_ACCESS_AUD"
+  }
+}

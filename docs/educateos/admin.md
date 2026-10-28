@@ -1,8 +1,10 @@
 # The EducateOS admin (hosted and open source)
 
 - Status: the ops protocol and the admin package (Worker, D1 schema, API, SPA), tested against a
-  fake district. Not deployed. The district side of `/api/ops/*`, the analytics proxy, the hosted
-  deployment at admin.educateos.io and the installer's OSS admin come in later phase 5 PRs.
+  fake district. The hosted edition's production config, the import of educateos.io's operators and
+  installations, and the redirect of educateos.io/app are in place but not provisioned or deployed
+  ([runbook](runbooks/admin-hosted.md)). The district side of `/api/ops/*`, the analytics proxy and
+  the installer's OSS admin come in later phase 5 PRs.
 - Issue: SCHO-263 (phase 5 of SCHO-257). Plan: `docs/plans/2026-10-28-educateos-one-domain-design.html`,
   section 6.
 - Code: `packages/educateos-admin` (Worker + D1 + SPA), and the protocol in
@@ -34,6 +36,10 @@ Both editions are the same code, and both talk to districts only through the sig
 | `EDITION` | var | `hosted` or `oss`. |
 | `OSS_WORKSPACE_ORIGINS` | var | OSS only: the `https://` origins the admin may manage. Anything else is refused at enrollment and hidden if already in D1. |
 | `ADMIN_KEY_ENCRYPTION_KEY` | secret | 32 random bytes, base64url. Seals each workspace's ops private key in D1 (AES-256-GCM, bound to the workspace and key ID). |
+| `CONTROL_PLANE` | service binding | Hosted only: the `educateos-site` Worker's `ControlPlaneExporter` entrypoint, the read-only export the import reads. Unbound, the import answers 503. |
+
+The hosted edition sets `ADMINS` as a secret rather than a var, so the operators' addresses stay out
+of the public repository.
 
 ## What D1 holds, and what it never holds
 
@@ -49,6 +55,16 @@ Both editions are the same code, and both talk to districts only through the sig
   stale) only if the district can't be reached.
 - `audit_log`: operator, workspace, action, target (an opaque ID: `prn_…`, a device ID, a version),
   result, time.
+
+`migrations/0002_control_plane.sql` (hosted edition, SCHO-263) adds educateos.io's records:
+
+- `operators` gains `account_id` (the control-plane account, `acct_…`) and the role `installer`:
+  someone who installed through educateos.io whom `ADMINS` doesn't list. Signing in here replaces it
+  with the role `ADMINS` gives.
+- `installations`: instance ID, the workspace it maps onto, the installing operator's subject, slug,
+  managed hostname, Cloudflare account ID, release, install and import times.
+- `slug_reservations`: a mirror of the guided install's reservations. educateos.io stays
+  authoritative for them.
 
 User lists and device details pass through from the district to the operator's browser and are
 never written down. `__tests__/schema.test.ts` fails if a column named like personal data appears
@@ -100,6 +116,35 @@ figures from Cloudflare's adaptive datasets as estimates.
 The admin never follows a redirect from a district: a 3xx on `/api/ops/*` means the path isn't an
 Access bypass there, and following it would send a signed request elsewhere.
 
+## educateos.io's installations (hosted edition)
+
+The hosted admin is the system of record for the operators, workspaces and installations that
+educateos.io's control plane used to keep in its Durable Object. They move by an import:
+`POST /api/import/control-plane` (admin role; `{"dryRun": true}` reports without writing, its audit
+entry included), run from the Workspaces page or with `node scripts/educateos-admin-import.ts
+[--dry-run]`. The admin reads the control plane's export over its `CONTROL_PLANE` service binding;
+the export is an RPC entrypoint with no URL, and it only reads. The import compares and writes only
+what differs, in one D1 batch, so running it again changes nothing unless educateos.io has something
+new. Each installation maps onto a workspace with origin `https://<hostname>`: a workspace with the
+same slug and origin is matched, a new one is made pending with its own ops key (as an enrollment
+would), and one whose slug or origin another workspace holds is reported as skipped.
+`GET /api/installations` lists them.
+
+The guided install stays on educateos.io (`/app/install`), because it runs inside the site Worker
+beside the release bucket and the reservations Clever launches and the registry depend on. The
+Workspaces page links to it ("Install a new workspace"), and a later import brings the new
+installation in. See [control-plane.md](control-plane.md#moving-to-the-admin-scho-263).
+
+## Districts without the ops API
+
+Until a district serves `/api/ops/*` (a later phase 5 PR), every call to it is answered
+`424 {"code":"ops-not-enabled"}`, and the SPA shows "Operations not enabled for this workspace" as a
+notice in place of the panel, with no error banner or retry. The admin reads a district's answer that
+way when Access redirects the call, when a route with no identifier in its path is a 404, and when a
+401, 403 or 404 doesn't carry the protocol's error body. A 404 with the protocol's body on a route
+that names something (a person, a device) is still "not found", and a 401 or 403 with it is still a
+refusal. At most 4 KiB of an error body is read.
+
 ## Enrollment
 
 1. An operator enrolls a district in the admin (Workspaces → Enroll) with its name, slug and origin.
@@ -127,9 +172,11 @@ the dev server ignore it.
 
 Deployment isn't wired yet:
 
-- Hosted: a later PR adds admin.educateos.io (its D1, Access application and ForgeGraph app), moves
-  the control plane's operators and installations from the ControlPlane Durable Object into D1, and
-  redirects educateos.io/app there.
+- Hosted: `wrangler.production.jsonc` is admin.educateos.io, deployed only by its own ForgeGraph app
+  `educateos-admin`. It is hand-written, and the package has no `wrangler.jsonc`, so nothing else
+  picks it up (`scripts/educateos-admin-config.test.ts`). Its D1 ID and Access audience are
+  placeholders until [the runbook](runbooks/admin-hosted.md) provisions them, then the import runs
+  and `ADMIN_URL` on the site Worker redirects educateos.io/app here.
 - OSS: the installer (`packages/educateos-installer/src/desired.ts`) will add the admin Worker, its
   D1 database, the migrations, an Access application and `ADMIN_KEY_ENCRYPTION_KEY` to the district's
   account, with `EDITION=oss` and `OSS_WORKSPACE_ORIGINS` set to the district's origin, and register

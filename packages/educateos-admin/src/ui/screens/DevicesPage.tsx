@@ -8,6 +8,7 @@ import { ConfirmDialog } from "../app/ConfirmDialog.tsx";
 import { useClient, useLoad } from "../app/context.tsx";
 import { formatTime } from "../app/format.ts";
 import { LoadState } from "../app/LoadState.tsx";
+import { isOpsNotEnabled } from "../app/OpsNotEnabled.tsx";
 import { WorkspacePicker } from "../app/WorkspacePicker.tsx";
 
 const PLATFORM = { ios: "iOS", android: "Android" } as const;
@@ -44,7 +45,8 @@ const DeviceTable = ({ workspaceId, me }: { workspaceId: string; me: Me }) => {
       announce(text);
       page.reload();
     } catch (error) {
-      setOutcome({ variant: "error", text: error instanceof AdminApiError ? error.message : "That didn't work." });
+      // A district that has since turned the ops API off is a notice, not a failure.
+      setOutcome({ variant: isOpsNotEnabled(error) ? "default" : "error", text: error instanceof AdminApiError ? error.message : "That didn't work." });
     }
   };
 

@@ -43,7 +43,9 @@ describe("operator sign-in", () => {
 
   it("admits ADMINS entries by email (any case) or by Access subject, and records the operator", async () => {
     const byEmail = await get("/api/me", { sub: "sub-email", email: "OPS@educateos.io" });
-    expect(await byEmail.json<Me>()).toEqual({ operator: { email: "ops@educateos.io", role: "admin" }, edition: "hosted" });
+    expect(await byEmail.json<Me>()).toEqual({
+      operator: { email: "ops@educateos.io", role: "admin" }, edition: "hosted", installUrl: "https://educateos.io/app/install",
+    });
     const bySub = await get("/api/me", { sub: "sub-listed-by-id", email: "someone-else@example.org" });
     expect(bySub.status).toBe(200);
     await bySub.body?.cancel();

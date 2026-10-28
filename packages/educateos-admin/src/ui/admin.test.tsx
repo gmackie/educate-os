@@ -135,6 +135,67 @@ describe("devices", () => {
   });
 });
 
+describe("educateos.io installations (hosted)", () => {
+  it("links to educateos.io's guided install, and lists what was installed there", async () => {
+    renderAdmin(fakeAdminApi());
+    const link = await screen.findByRole("link", { name: /Install a new workspace/ });
+    expect(link.getAttribute("href")).toBe("https://educateos.io/app/install");
+    expect(await screen.findByText("northfield.educateos.io", { selector: "a" })).toBeTruthy();
+    expect(screen.getByText("installer@example.org")).toBeTruthy();
+  });
+
+  it("checks with a dry run first, and imports only when asked", async () => {
+    const api = fakeAdminApi();
+    const { user } = renderAdmin(api);
+    await user.click(await screen.findByRole("button", { name: "Check educateos.io for new installations" }));
+    const summary = "Would import 1 new installation, 0 changed installations, 1 new workspace, 1 new operator.";
+    await waitFor(() => expect(screen.getByTestId("announcer").textContent).toBe(summary));
+    expect(screen.getAllByText(summary).length).toBe(2);
+    expect(screen.getByText(/riverbend \(another workspace has its slug\)/)).toBeTruthy();
+    expect(api.posts()).toEqual([{ method: "POST", path: "/api/import/control-plane", body: { dryRun: true } }]);
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    await waitFor(() => expect(screen.getByTestId("announcer").textContent).toMatch(/^Imported 1 new installation/));
+    expect(api.posts().at(-1)).toEqual({ method: "POST", path: "/api/import/control-plane", body: { dryRun: false } });
+  });
+
+  it("is absent from the open-source edition", async () => {
+    renderAdmin(fakeAdminApi({ me: { edition: "oss", allowedOrigins: ["https://northfield.educateos.io"] } }));
+    await screen.findByRole("link", { name: "Northfield" });
+    expect(screen.queryByRole("link", { name: /Install a new workspace/ })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Installed through educateos.io" })).toBeNull();
+  });
+});
+
+describe("a workspace without the ops API", () => {
+  it("shows a notice, not an error, wherever the district would be asked", async () => {
+    const { user } = renderAdmin(fakeAdminApi({ opsNotEnabled: true }));
+    const row = (await screen.findByRole("link", { name: "Northfield" })).closest("tr")!;
+    await waitFor(() => expect(within(row).getByText("Operations not enabled")).toBeTruthy());
+    expect(within(row).queryByText("Unreachable")).toBeNull();
+
+    await user.click(screen.getByRole("link", { name: "Northfield" }));
+    expect(await screen.findByText("Operations not enabled for this workspace")).toBeTruthy();
+    expect(screen.queryByText(/^Could not load/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+
+    const tabs = screen.getByRole("navigation", { name: "Northfield sections" });
+    for (const tab of ["Traffic", "Releases"]) {
+      await user.click(within(tabs).getByRole("link", { name: tab }));
+      expect(await screen.findByText("Operations not enabled for this workspace")).toBeTruthy();
+      expect(screen.queryByText(/^Could not load/)).toBeNull();
+    }
+    await user.click(within(tabs).getByRole("link", { name: "Settings" }));
+    await user.click(await screen.findByRole("button", { name: "Verify connection" }));
+    expect(await screen.findByText("Operations not enabled for this workspace")).toBeTruthy();
+  });
+
+  it("shows the same notice on the people and devices screens", async () => {
+    renderAdmin(fakeAdminApi({ opsNotEnabled: true }), "#/users");
+    expect(await screen.findByText("Operations not enabled for this workspace")).toBeTruthy();
+    expect(screen.queryByText(/^Could not load/)).toBeNull();
+  });
+});
+
 describe("theme", () => {
   it("switches between light and dark and remembers it under the shared EducateOS key", async () => {
     const { user } = renderAdmin(fakeAdminApi());
