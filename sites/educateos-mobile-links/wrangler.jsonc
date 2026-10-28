@@ -1,0 +1,49 @@
+// Generated from cloudflare.config.ts by scripts/generate-worker-configs.ts -- do not edit.
+// Change cloudflare.config.ts and run `pnpm configs:generate`.
+{
+  "name": "educateos-mobile-links",
+  "main": "worker.ts",
+  "compatibility_date": "2026-09-04",
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": false
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PAIRINGS",
+        "class_name": "PhonePairing",
+        "script_name": "educateos-mobile-links"
+      }
+    ]
+  },
+  "assets": {
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": [
+      "/healthz",
+      "/.well-known/assetlinks.json",
+      "/oauthredirect",
+      "/authpopup",
+      "/pairings",
+      "/pairings/*"
+    ],
+    "directory": "../../apps/mobile/app-links"
+  },
+  "routes": [
+    {
+      "pattern": "mobile.educateos.io",
+      "custom_domain": true
+    }
+  ],
+  "account_id": "c07a7e704db1808e1fff91bed2b1cd49",
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "PhonePairing"
+      ]
+    }
+  ]
+}

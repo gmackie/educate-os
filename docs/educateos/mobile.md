@@ -1,5 +1,48 @@
 # EducateOS Mobile
 
+## The app (SCHO-254, SCHO-262)
+
+The first-party EducateOS app (`apps/mobile`, Expo) is a native interface to each school's own
+district. It is not a central service that stores student records: every request goes to the
+district's origin, under `/api/m/*` with the device credential below.
+
+| Capability | Native app | District |
+| --- | --- | --- |
+| School setup | Checks the school's manifest and saves its HTTPS origin | Publishes the manifest |
+| Sign-in | Its own P-256 device key; tokens in SecureStore | Pairing (`/api/pair/*`), device tokens, revocation |
+| Learning, review, family | Native screens over `/api/m/*` | Access checks, work, grades, guardian scope |
+| AI workspace | Sandboxed WebView | The Workshop at `/ai` |
+
+Credentials live in the device keychain or keystore. AsyncStorage keeps only the chosen schools'
+origins, never profiles, student work or grades; cached data is in memory only.
+
+`https://mobile.educateos.io` (`sites/educateos-mobile-links`, deployed by hand) is the app's App
+Link host: the Apple and Android association files, the `/j` pairing link, the sign-in callbacks
+and a "get the app" page. It also runs the deprecated SCHO-256 pairing relay for one more release;
+its README has the removal plan. The callback URLs carry encrypted transfers, so nothing may log
+their query strings.
+
+### Checks
+
+The app has its own pnpm workspace and lockfile, outside the root workspace. In `apps/mobile`:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm test
+pnpm exec expo install --check
+pnpm exec expo export --platform all --output-dir /tmp/mobile-export   # both Hermes bundles
+```
+
+ForgeGraph CI runs these in the `mobile` job of `.forgejo/workflows/ci.yml`, with the mobile-links
+tests (`pnpm exec vp run -F @educateos/mobile-links test`). The GitHub mirror runs
+`.github/workflows/educateos-mobile.yml`.
+
+SDK 58's ExpoModulesJSI needs Swift 6.2 or newer, so native iOS builds need Xcode 26 or newer.
+Simulator builds need no signing identity. Source checks and simulator screenshots do not prove a
+school rollout: signing, the association files with real certificate fingerprints, store review and
+on-device tests of revoked, switched and multi-district users all come before a release.
+
 ## Device credentials (SCHO-261)
 
 A phone signs in to its district with a credential the district issues and binds to a key only the

@@ -107,6 +107,39 @@ jobs:
               \"workflowName\": \"CI\"
             }" || echo "::warning::Failed to report CI result to ForgeGraph"
 
+  # The native app (apps/mobile, SCHO-262). It has its own pnpm workspace and lockfile, outside the
+  # root one, so it installs on its own. The mobile.educateos.io site's tests
+  # (@educateos/mobile-links, including its local workerd relay run) are already in the gate above
+  # through the `@educateos/*` filter. After the gate, like workshop-tests, so the Hermes bundling
+  # does not compete with the gate's workerd fleets; it does not feed the ForgeGraph report.
+  mobile:
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/mobile
+    env:
+      # Expo's CLI is non-interactive and skips its telemetry prompt under CI.
+      CI: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # pnpm's version comes from `packageManager` in apps/mobile/package.json.
+      - run: corepack enable
+      - name: Install the app's isolated dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm test
+      - name: Check Expo SDK dependency versions
+        run: pnpm exec expo install --check
+      - name: Bundle iOS and Android
+        run: pnpm exec expo export --platform all --output-dir /tmp/mobile-export --max-workers 2
+
   # Not part of the reported gate: upstream's own suites, which EducateOS changes should not break.
   workshop-tests:
     # After the gate rather than beside it: both jobs start workerd test fleets, and running them at

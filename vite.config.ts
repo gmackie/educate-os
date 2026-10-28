@@ -97,6 +97,10 @@ export default defineConfig({
       '**/node_modules/**',
       '**/.wrangler/**',
       '**/worker-configuration.d.ts',
+      // The Expo app is its own pnpm workspace with its own toolchain and checks (typecheck, tests,
+      // Expo dependency and bundle checks: the `mobile` CI job). Its React Native sources do not
+      // follow the Workers ruleset, and their imports resolve only in that separate install.
+      'apps/mobile/**',
     ],
     overrides: [
       {
