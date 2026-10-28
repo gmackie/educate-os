@@ -337,3 +337,15 @@ auto-provisioned and takes no OAuth client.
      `--ref` at the change's commit.
   4. Only after that, deploy `workshop-backend` and `router` with their new `GATEKEEPER_EDUCATEOS`
      binding. A deploy of either before the Worker exists is rejected.
+
+## Native EducateOS sign-in
+
+The native session handoff returns to `https://mobile.educateos.io/oauthredirect`, an app-owned
+HTTPS endpoint. The phone must have both the `applinks:mobile.educateos.io` and
+`webcredentials:mobile.educateos.io` associated-domain entitlements. The callback host publishes
+both associations for `P4SWQXAB5H.io.educateos.mobile` without Cloudflare Access protection.
+
+After changing this callback, deploy both `workshop-backend` (the encrypted session redirect) and
+`router` (the confirmation UI and frontend auth callback). Building a new phone app alone does not
+update the school server. Verify CI for the exact deployment revision and preserve the ancestry of
+the serving production revision; a green PR check does not establish CI for its merge commit.
