@@ -39,7 +39,10 @@ export async function fakeClever(input: string, init: RequestInit): Promise<Resp
     return Response.json({ type: "user", data, links: [{ rel: "self", uri: "/me" }, { rel: "canonical", uri: `/v3.0/users/${CLEVER_USER}` }] });
   }
   if (input === `${CLEVER_USERS_URL}/${CLEVER_USER}` && init.method === "GET") {
-    return Response.json({ data: { id: CLEVER_USER, district: match![2], roles: { teacher: {} } } });
+    return Response.json({
+      data: { id: CLEVER_USER, email: "teacher@example.org", name: {}, roles: { teacher: { district: match![2] } } },
+      links: [{ rel: "self", uri: `/v3.0/users/${CLEVER_USER}` }],
+    });
   }
   return new Response("not found", { status: 404 });
 }
