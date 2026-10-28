@@ -32,6 +32,8 @@ export class FakeClassroom {
     courseWork("202", "Teacher-made quiz", false),
     courseWork("203", "Essay", true, { state: "DRAFT" }),
   ];
+  rubrics: Item[] = [];
+  gradingPeriodSettings: Item = {};
   submissions: Item[] = [
     submission("Cg4Isub1", "201", "2001"),
     submission("Cg4Isub2", "201", "2002"),
@@ -76,6 +78,7 @@ export class FakeClassroom {
     if (parts[2] === "teachers" || parts[2] === "students") {
       return this.#page(parts[2] === "teachers" ? this.teachers : this.students, query, parts[2]);
     }
+    if (parts[2] === "gradingPeriodSettings") return Response.json(this.gradingPeriodSettings);
     if (parts[2] !== "courseWork") return googleError(404, "NOT_FOUND");
 
     if (parts.length === 3 && method === "POST") {
@@ -93,6 +96,15 @@ export class FakeClassroom {
     if (!work) return googleError(404, "NOT_FOUND");
     if (parts.length === 4) return Response.json(work);
 
+    if (parts[4] === "rubrics") {
+      if (work.associatedWithDeveloper !== true) return googleError(403, "PERMISSION_DENIED", "ProjectPermissionDenied");
+      if (method === "POST") {
+        const created = { ...body, id: String(this.#nextId++), courseWorkId: work.id };
+        this.rubrics.push(created);
+        return Response.json(created);
+      }
+      return this.#page(this.rubrics.filter(r => r.courseWorkId === work.id), query, "rubrics");
+    }
     if (parts.length === 5) {
       let userId = query.get("userId");
       return this.#page(this.submissions.filter(sub => sub.courseWorkId === work.id &&

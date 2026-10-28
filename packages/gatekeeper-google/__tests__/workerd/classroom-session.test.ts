@@ -131,3 +131,24 @@ describe("Google Classroom course session", () => {
     }]);
   });
 });
+
+describe("Classroom Plus session", () => {
+  it("audits reads and queues rubric creation before any write", async () => {
+    expect(await session.getGradingPeriodSettings()).toEqual({ gradingPeriods: [] });
+    expect(await session.listRubrics("201")).toEqual([]);
+    expect(queue.observations.map(o => o.title)).toEqual(["Read Classroom grading periods", "Read Classroom rubrics"]);
+    await session.createRubric("201", { criteria: [{ title: "Evidence", levels: [{ title: "Supported", points: 10 }] }] });
+    expect(writes()).toEqual([]);
+    expect(queue.submitted.at(-1)?.title).toBe("Create Google Classroom rubric");
+    await actions.apply(journal.listPending()[0].id);
+    expect(await session.listRubrics("201")).toHaveLength(1);
+  });
+
+  it("refuses foreign-project rubrics and invalid IDs before submission", async () => {
+    const draft = { criteria: [{ title: "Evidence", levels: [{ title: "Supported", points: 10 }] }] };
+    await expect(session.createRubric("202", draft)).rejects.toThrow(/not created/);
+    await expect(session.listRubrics("../201")).rejects.toThrow(/Invalid/);
+    expect(queue.submitted).toEqual([]);
+    expect(writes()).toEqual([]);
+  });
+});

@@ -89,6 +89,7 @@ describe("Classroom grade passback", () => {
     await actions.apply(id);
 
     expect(classroom.requests.map(({ method, path }) => `${method} ${path}`)).toEqual([
+      "GET /courses/101/courseWork/201/studentSubmissions/Cg4Isub1",
       "PATCH /courses/101/courseWork/201/studentSubmissions/Cg4Isub1",
       "POST /courses/101/courseWork/201/studentSubmissions/Cg4Isub1:return",
     ]);
@@ -121,5 +122,25 @@ describe("Classroom grade passback", () => {
     classroom.intercept = undefined;
     await actions.apply(id);
     expect(classroom.submissions[0]).toMatchObject({ assignedGrade: 92.5, state: "RETURNED" });
+  });
+});
+
+
+describe("Classroom rubric approval", () => {
+  const draft = { criteria: [{ title: "Evidence", levels: [{ title: "Supported", points: 10 }] }] };
+  it("writes only after approval, and never repeats an uncertain creation", async () => {
+    const id = await actions.submit(queue, "createRubric", { courseWorkId: "201", draft });
+    expect(classroom.requests).toEqual([]);
+    expect(submitted[0].title).toBe("Create Google Classroom rubric");
+    classroom.intercept = request => request.method === "POST" ? googleError(503, "UNAVAILABLE") : undefined;
+    await expect(actions.apply(id)).rejects.toThrow(APPLY_OUTCOME_UNKNOWN_MESSAGE);
+    await expect(actions.apply(id)).rejects.toThrow();
+    expect(classroom.requests.filter(r => r.method === "POST")).toHaveLength(1);
+  });
+  it("creates an approved rubric on the bound course", async () => {
+    const id = await actions.submit(queue, "createRubric", { courseWorkId: "201", draft });
+    await actions.apply(id);
+    expect(classroom.rubrics).toHaveLength(1);
+    expect(classroom.requests.filter(r => r.method === "POST").map(r => r.path)).toEqual(["/courses/101/courseWork/201/rubrics"]);
   });
 });

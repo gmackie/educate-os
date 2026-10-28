@@ -11,8 +11,8 @@ import {
   type TaggedAction,
 } from "@gadgets/gatekeeper-kit/actions";
 import { buildDescription, codeSpan, sanitizeTitle } from "@gadgets/gatekeeper-kit/action-description";
-import { ClassroomNotOwnedError, type ClassroomApi } from "./classroom-api";
-import type { ClassroomCourseWorkDraft } from "./classroom-types";
+import { ClassroomNotOwnedError, ClassroomSubmissionNotReadyError, type ClassroomApi } from "./classroom-api";
+import type { ClassroomCourseWorkDraft, ClassroomRubricDraft } from "./classroom-types";
 import { GoogleApiError } from "./google-response";
 import { obsContext } from "./observability";
 
@@ -35,6 +35,7 @@ export type ClassroomGrade = {
 export type ClassroomActions = {
   createCourseWork: { draft: ClassroomCourseWorkDraft };
   setGrade: ClassroomGrade;
+  createRubric: { courseWorkId: string; draft: ClassroomRubricDraft };
 };
 
 /** A queued Classroom action. */
@@ -57,7 +58,7 @@ function googleError(error: unknown): GoogleApiError | undefined {
  * would be refused again; a 429 or transient failure is left to be retried.
  */
 function refusedOrRetryable(error: unknown): never {
-  if (error instanceof ClassroomNotOwnedError) throw new ActionApplyError(error.message);
+  if (error instanceof ClassroomNotOwnedError || error instanceof ClassroomSubmissionNotReadyError) throw new ActionApplyError(error.message);
   let status = googleError(error)?.providerStatus;
   if (status !== undefined && REFUSED_STATUSES.has(status)) {
     throw new ActionApplyError((error as Error).message);
@@ -90,6 +91,29 @@ export const CLASSROOM_ACTIONS = defineActions<ClassroomHost, ClassroomActions>(
         // A refusal or a 429 created nothing; anything else may have.
         let status = googleError(error)?.providerStatus;
         if (status === undefined || !(REFUSED_STATUSES.has(status) || status === "RESOURCE_EXHAUSTED")) {
+          throw new ActionOutcomeUnknownError(APPLY_OUTCOME_UNKNOWN_MESSAGE);
+        }
+        refusedOrRetryable(error);
+      }
+    },
+  },
+
+  createRubric: {
+    delivery: "await-decision",
+    claimBeforeApply: true,
+    describe: ({ courseWorkId, draft }, { courseId }) => ({
+      title: "Create Google Classroom rubric",
+      ...buildDescription("Create a rubric on this project's coursework. Requires an eligible teacher license. Rubric-level grades cannot be published through the API.")
+        .inline("Course ID", courseId).inline("Coursework ID", courseWorkId).json("Rubric", draft).finish(),
+      implementsRevert: false,
+    }),
+    apply: async ({ courseWorkId, draft }, { api, courseId }) => {
+      try {
+        await api.createRubric(courseId, courseWorkId, draft);
+      } catch (error) {
+        const status = googleError(error)?.providerStatus;
+        if (!(error instanceof ClassroomNotOwnedError) &&
+            (status === undefined || !(REFUSED_STATUSES.has(status) || status === "RESOURCE_EXHAUSTED"))) {
           throw new ActionOutcomeUnknownError(APPLY_OUTCOME_UNKNOWN_MESSAGE);
         }
         refusedOrRetryable(error);

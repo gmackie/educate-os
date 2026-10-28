@@ -93,10 +93,11 @@ describe("ClassroomApi grading", () => {
 
     expect(classroom.requests.map(({ method, path, query }) => [method, path, query.get("updateMask")]))
       .toEqual([
+        ["GET", "/courses/101/courseWork/201/studentSubmissions/Cg4Isub1", null],
         ["PATCH", "/courses/101/courseWork/201/studentSubmissions/Cg4Isub1", "assignedGrade"],
         ["POST", "/courses/101/courseWork/201/studentSubmissions/Cg4Isub1:return", null],
       ]);
-    expect(classroom.requests[0].body).toEqual({ assignedGrade: 87.5 });
+    expect(classroom.requests[1].body).toEqual({ assignedGrade: 87.5 });
     expect(classroom.submissions[0]).toMatchObject({ assignedGrade: 87.5, state: "RETURNED" });
   });
 
@@ -140,7 +141,7 @@ describe("ClassroomApi errors", () => {
     classroom.failures.push(exhausted());
 
     await api.gradeAndReturn("101", "201", "Cg4Isub1", 90);
-    expect(classroom.requests.map(({ method }) => method)).toEqual(["PATCH", "PATCH", "POST"]);
+    expect(classroom.requests.map(({ method }) => method)).toEqual(["GET", "GET", "PATCH", "POST"]);
   });
 
   it("does not resend a creation, and explains an exhausted quota", async () => {
@@ -160,4 +161,50 @@ describe("ClassroomApi errors", () => {
     });
     expect(created).toMatchObject({ id: "500", title: "Lab 2", state: "DRAFT", maxPoints: 20 });
   });
+});
+
+
+const rubricDraft = { criteria: [{ title: "Evidence", levels: [{ title: "Supported", points: 10 }, { title: "Missing", points: 0 }] }] };
+
+describe("Classroom Plus", () => {
+  it("creates and reads only app-owned rubrics and strips undeclared provider data", async () => {
+    const created = await api.createRubric("101", "201", rubricDraft);
+    expect(created.criteria).toEqual(rubricDraft.criteria);
+    expect(created).not.toHaveProperty("courseWorkId");
+    expect(await api.listRubrics("101", "201")).toEqual([created]);
+    const before = classroom.requests.length;
+    await expect(api.createRubric("101", "202", rubricDraft)).rejects.toBeInstanceOf(ClassroomNotOwnedError);
+    expect(classroom.requests.slice(before).map(r => r.method)).toEqual(["GET"]);
+  });
+
+  it("rejects malformed points before making requests", async () => {
+    await expect(api.createRubric("101", "201", { criteria: [{ title: "Evidence", levels: [{ title: "Bad", points: NaN }] }] })).rejects.toThrow(/points/);
+    expect(classroom.requests).toEqual([]);
+  });
+
+  it("propagates an ineligible teacher refusal without creating a rubric", async () => {
+    classroom.intercept = r => r.path.endsWith("/rubrics") ? googleError(403, "PERMISSION_DENIED", "UserIneligibleToUpdateGradingPeriodSettings") : undefined;
+    await expect(api.createRubric("101", "201", rubricDraft)).rejects.toThrow();
+    expect(classroom.rubrics).toEqual([]);
+    expect(classroom.requests.filter(r => r.method === "POST")).toHaveLength(1);
+  });
+
+  it("reads empty and configured grading periods without leaking other fields", async () => {
+    expect(await api.getGradingPeriodSettings("101")).toEqual({ gradingPeriods: [] });
+    classroom.gradingPeriodSettings = { gradingPeriods: [{ id: "p1", title: "Fall", startDate: { year: 2026, month: 9, day: 1 }, endDate: { year: 2026, month: 12, day: 31 }, extra: "private" }], extra: "private" };
+    expect(await api.getGradingPeriodSettings("101")).toEqual({ gradingPeriods: [{ id: "p1", title: "Fall", startDate: { year: 2026, month: 9, day: 1 }, endDate: { year: 2026, month: 12, day: 31 } }] });
+    classroom.gradingPeriodSettings = { gradingPeriods: [{ id: "p1", title: "Bad", startDate: { year: 2026, month: 2, day: 30 }, endDate: { year: 2026, month: 12, day: 31 } }] };
+    await expect(api.getGradingPeriodSettings("101")).rejects.toThrow(/date/);
+  });
+});
+
+
+it("refuses to mutate a grade before student turn-in, and regrades returned work without returning twice", async () => {
+  classroom.submissions[0].state = "CREATED";
+  await expect(api.gradeAndReturn("101", "201", "Cg4Isub1", 8.5)).rejects.toThrow(/not been turned in/);
+  expect(classroom.requests.map(r => r.method)).toEqual(["GET"]);
+  expect(classroom.submissions[0]).not.toHaveProperty("assignedGrade");
+  classroom.submissions[0].state = "RETURNED";
+  await api.gradeAndReturn("101", "201", "Cg4Isub1", 8.5);
+  expect(classroom.requests.map(r => r.method)).toEqual(["GET", "GET", "PATCH"]);
 });

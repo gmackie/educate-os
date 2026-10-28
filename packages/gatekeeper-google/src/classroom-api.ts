@@ -8,10 +8,13 @@
 
 import { AccessTokenProvider, fetchWithAuthRetry } from "./auth-retry";
 import type {
+  ClassroomRubric, ClassroomRubricDraft, ClassroomGradingPeriodSettings,
   ClassroomCourse, ClassroomCourseWork, ClassroomCourseWorkDraft, ClassroomRoster,
   ClassroomRosterMember, ClassroomSubmission,
 } from "./classroom-types";
 import { GoogleApiError, readGoogleJson } from "./google-response";
+
+import { classroomRubricDraft, classroomRubricFromRaw, classroomGradingPeriodsFromRaw } from "./classroom-plus";
 
 const CLASSROOM_API_BASE = "https://classroom.googleapis.com/v1";
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
@@ -75,6 +78,18 @@ export class ClassroomNotOwnedError extends Error {
       "was not created through this Google connection. Create the coursework with " +
       "createCourseWork() to grade it here.");
   }
+}
+
+/** The student must turn work in before the teacher can return its grade. */
+export class ClassroomSubmissionNotReadyError extends Error {
+  constructor() {
+    super("This submission has not been turned in. Ask the student to turn it in before grading and returning it.");
+  }
+}
+
+/** Refuse return-ineligible work before changing a grade. Returned work may be regraded. */
+export function assertClassroomSubmissionReady(submission: ClassroomSubmission): void {
+  if (submission.state !== "TURNED_IN" && submission.state !== "RETURNED") throw new ClassroomSubmissionNotReadyError();
 }
 
 const API_DISABLED_MESSAGE =
@@ -296,6 +311,27 @@ export class ClassroomApi {
     return { teachers, students };
   }
 
+  /** Grading periods of the bound course, without inventing missing settings. */
+  async getGradingPeriodSettings(courseId: string): Promise<ClassroomGradingPeriodSettings> {
+    return classroomGradingPeriodsFromRaw(await this.#request(`${this.#course(courseId)}/gradingPeriodSettings`, "read grading periods"));
+  }
+
+  /** Rubrics are visible only through coursework this project owns. */
+  async listRubrics(courseId: string, courseWorkId: string): Promise<ClassroomRubric[]> {
+    await this.getOwnedCourseWork(courseId, courseWorkId);
+    return (await this.#listAll(`${this.#courseWork(courseId, courseWorkId)}/rubrics`, new URLSearchParams(), "rubrics", "list rubrics"))
+      .map(classroomRubricFromRaw);
+  }
+
+  /** Create once; the action journal handles an unknown outcome rather than retrying a POST. */
+  async createRubric(courseId: string, courseWorkId: string, draft: ClassroomRubricDraft): Promise<ClassroomRubric> {
+    const body = classroomRubricDraft(draft);
+    await this.getOwnedCourseWork(courseId, courseWorkId);
+    return classroomRubricFromRaw(await this.#request(`${this.#courseWork(courseId, courseWorkId)}/rubrics`, "create rubric", {
+      method: "POST", body: JSON.stringify(body),
+    }));
+  }
+
   /** The course's published and draft coursework that this connection's project created. */
   async listOwnedCourseWork(courseId: string): Promise<ClassroomCourseWork[]> {
     let params = new URLSearchParams([
@@ -354,11 +390,16 @@ export class ClassroomApi {
   async gradeAndReturn(
     courseId: string, courseWorkId: string, submissionId: string, assignedGrade: number,
   ): Promise<void> {
+    validateClassroomGrade(assignedGrade);
+    const submission = await this.getSubmission(courseId, courseWorkId, submissionId);
+    assertClassroomSubmissionReady(submission);
     let path = this.#submission(courseId, courseWorkId, submissionId);
     await this.#request(
       `${path}?updateMask=assignedGrade`, "patch submission",
       { method: "PATCH", body: JSON.stringify({ assignedGrade: validateClassroomGrade(assignedGrade) }) },
       true);
-    await this.#request(`${path}:return`, "return submission", { method: "POST", body: "{}" }, true);
+    if (submission.state !== "RETURNED") {
+      await this.#request(`${path}:return`, "return submission", { method: "POST", body: "{}" }, true);
+    }
   }
 }

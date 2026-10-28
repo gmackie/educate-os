@@ -657,3 +657,17 @@ This is normal for apps in Testing mode. Click "Advanced" and then "Go to [app n
 ### "This app is blocked" or quota errors
 
 You may have hit rate limits or your project may have issues. Check the [Google Cloud Console](https://console.cloud.google.com/) for any alerts or quota warnings on your project.
+
+
+### Classroom Plus validation (SCHO-255)
+
+Course bindings expose audited `listRubrics` and `getGradingPeriodSettings` reads, and an
+approval-backed `createRubric`. Rubric creation is restricted to coursework the same Cloud project
+owns and waits for approval; Google enforces the teacher's license. A creation whose outcome is
+unknown is not resent. Rubric-level grade publishing is not supported by Google's API; publish the
+teacher-approved total with `setGrade` after the student turns the submission in. Work already
+returned can be regraded without returning it again.
+
+Grading-period writes, rubric editing/deletion, capability discovery and Classroom add-ons remain
+open in SCHO-255. See `docs/educateos/runbooks/classroom-verification.md` for live evidence and the
+remaining customer demo gates. No fully validated demo is claimed by this implementation slice.

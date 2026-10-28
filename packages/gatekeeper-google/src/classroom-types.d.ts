@@ -83,6 +83,27 @@ export type ClassroomSubmission = {
   pending?: true;
 };
 
+/** A Classroom rubric level. API rubric scores are read-only; publish the approved total separately. */
+export type ClassroomRubricLevel = { id?: string; title: string; description?: string; points?: number };
+
+/** One rubric criterion and its ordered levels. */
+export type ClassroomRubricCriterion = { id?: string; title: string; description?: string; levels: ClassroomRubricLevel[] };
+
+/** A rubric attached to app-owned coursework. Requires an eligible teacher license. */
+export type ClassroomRubric = { id: string; criteria: ClassroomRubricCriterion[] };
+
+/** The rubric to create. IDs are assigned by Google. */
+export type ClassroomRubricDraft = { criteria: { title: string; description?: string; levels: { title: string; description?: string; points?: number }[] }[] };
+
+/** Calendar date in the course's grading-period configuration. */
+export type ClassroomDate = { year: number; month: number; day: number };
+
+/** A course grading period. */
+export type ClassroomGradingPeriod = { id: string; title: string; startDate: ClassroomDate; endDate: ClassroomDate };
+
+/** The bound course's grading periods. Empty when none are configured. */
+export type ClassroomGradingPeriodSettings = { gradingPeriods: ClassroomGradingPeriod[]; applyToExistingCoursework?: boolean };
+
 /**
  * Session interface for one Google Classroom course.
  *
@@ -91,6 +112,19 @@ export type ClassroomSubmission = {
  * the Classroom UI or by other apps are never listed, read, or graded.
  */
 export interface GoogleClassroomCourseSession {
+  /** Read the bound course's grading periods. No cross-course lookup is accepted. */
+  getGradingPeriodSettings(): Promise<ClassroomGradingPeriodSettings>;
+
+  /** List rubrics of app-owned coursework. Google enforces the teacher's license eligibility. */
+  listRubrics(courseWorkId: string): Promise<ClassroomRubric[]>;
+
+  /**
+   * Create a rubric for app-owned coursework after approval. Requires an eligible teacher license;
+   * Google refuses unavailable capabilities. Waits for the decision; no provisional rubric is shown.
+   * The API cannot publish rubric-level grades. Use setGrade for the teacher-approved total.
+   */
+  createRubric(courseWorkId: string, draft: ClassroomRubricDraft): Promise<void>;
+
   /** Return the course's details. */
   getCourse(): Promise<ClassroomCourse>;
 
@@ -120,7 +154,8 @@ export interface GoogleClassroomCourseSession {
   listSubmissions(courseWorkId: string, options?: { userId?: string }): Promise<ClassroomSubmission[]>;
 
   /**
-   * Submit a grade for approval. Once approved, it is set as the submission's `assignedGrade` and
+   * Submit a grade for approval after the student has turned in the work. Already returned work
+   * can be regraded. Once approved, it is set as the submission's `assignedGrade` and
    * the submission is returned to the student, who then sees the grade.
    *
    * `assignedGrade` must be non-negative with at most two decimal places: a grade Classroom would
