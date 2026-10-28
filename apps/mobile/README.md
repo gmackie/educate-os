@@ -109,3 +109,22 @@ Profiles pin Node 24.14.0 and pnpm 11.17.0. Both platforms use EAS's latest imag
 requires Xcode 26 or newer. Channels are omitted until `expo-updates` and a runtime-version
 policy are configured. Store builds do not submit themselves; `eas submit` is a separate step.
 EAS manages signing credentials remotely; never commit downloaded credentials or private keys.
+
+## School setup QR codes
+
+Encode an enrollment link as a QR code. Scan it using the phone's Camera app and open EducateOS.
+The app fills the enrollment form for review; it does not sign in or save the school automatically.
+Only public school addresses belong in the code, never credentials, student details or session tokens.
+
+Example for the Google demo:
+
+```text
+educateos://enroll?name=Harbor+Charter&portal=https%3A%2F%2Fharbor.educateos.io&workshop=https%3A%2F%2Fschoolos.gmac.io
+```
+
+The iOS association file in `app-links/.well-known/apple-app-site-association` uses the verified
+Apple team ID P4SWQXAB5H and bundle ID io.educateos.mobile. Publish `app-links` as static assets
+at mobile.educateos.io, with the `_headers` rules, no Access login and no redirects on the
+association file. This host is required independently of QR enrollment. A fresh install may be
+needed after publishing because iOS caches domain associations. Android still needs its own
+assetlinks.json using the actual signing certificate; this directory does not claim Android verification.

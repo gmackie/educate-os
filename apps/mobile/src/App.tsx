@@ -10,6 +10,7 @@ import { consumeIncomingUrl, signIn } from './auth/auth';
 import { clearSession, prepareWebView, restoreSession } from './auth/session';
 import { getDistricts, removeDistrict, saveDistrict } from './district';
 import { palette } from './theme';
+import { parseEnrollmentLink } from './security';
 import { Button, Loading, Page } from './ui/Primitives';
 import { Onboarding } from './screens/Onboarding';
 import { Today } from './screens/Today';
@@ -128,6 +129,7 @@ function WorkspaceOnly({ message, onWorkspace, onRetry }: {
 }
 
 function InnerApp() {
+  const [enrollment, setEnrollment] = useState<ReturnType<typeof parseEnrollmentLink> | null>(null);
   const [booting, setBooting] = useState(true);
   const [districts, setDistricts] = useState<District[]>([]);
   const [session, setSession] = useState<Session | null>(null);
@@ -148,8 +150,17 @@ function InnerApp() {
   const selectTab = useCallback((selected: Tab) => { setTab(selected); setDetailStack([]); }, []);
 
   useEffect(() => {
-    const subscription = Linking.addEventListener('url', (event) => consumeIncomingUrl(event.url));
-    void Linking.getInitialURL().then((url) => { if (url) consumeIncomingUrl(url); });
+    const receiveUrl = (url: string) => {
+      if (url.startsWith('educateos://enroll')) {
+        try {
+          setEnrollment(parseEnrollmentLink(url));
+          setChoosing(true);
+          setError(null);
+        } catch { setError('The school setup link is invalid. Ask your school for a new QR code.'); }
+      } else consumeIncomingUrl(url);
+    };
+    const subscription = Linking.addEventListener('url', (event) => receiveUrl(event.url));
+    void Linking.getInitialURL().then((url) => { if (url) receiveUrl(url); });
     let alive = true;
     void (async () => {
       const all = await getDistricts();
@@ -245,7 +256,7 @@ function InnerApp() {
   if (booting) return <View style={{ flex: 1, backgroundColor: palette.background, justifyContent: 'center' }}>
     <Loading label="Preparing EducateOS…"/></View>;
   if (!session || choosing) return <View style={{ flex: 1, backgroundColor: palette.background }}>
-    <Onboarding districts={districts} busy={working} error={error} onAdd={add} onConnect={connect}
+    <Onboarding key={enrollment ? JSON.stringify(enrollment) : "manual"} enrollment={enrollment} districts={districts} busy={working} error={error} onAdd={add} onConnect={connect}
       onRemove={(district) => { void remove(district); }}/>
     {session && <View style={{ paddingHorizontal: 20, paddingVertical: 10 }}>
       <Button label="Back to current school" onPress={() => setChoosing(false)} variant="outline"/>

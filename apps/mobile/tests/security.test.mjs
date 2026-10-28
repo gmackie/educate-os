@@ -31,3 +31,12 @@ test('callback parameters must not have duplicates', () => {
   assert.throws(() => uniqueParam(new URLSearchParams('state=a&state=b'), 'state'));
   assert.throws(() => uniqueParam(new URLSearchParams(), 'state'));
 });
+
+test('QR enrollment accepts public HTTPS school details and rejects ambiguous or credential-bearing links', async () => {
+  const { parseEnrollmentLink } = await import('../src/security.ts');
+  const valid = 'educateos://enroll?name=Harbor&portal=https%3A%2F%2Fharbor.educateos.io&workshop=https%3A%2F%2Fschoolos.gmac.io';
+  assert.deepEqual(parseEnrollmentLink(valid), { name: 'Harbor', portal: 'https://harbor.educateos.io', workshop: 'https://schoolos.gmac.io' });
+  for (const value of [valid + '&name=Other', valid + '&token=secret', valid + '#secret',
+    valid.replace('educateos:', 'https:'), valid.replace('enroll?', 'enroll/other?'),
+    valid.replace('https%3A%2F%2Fharbor', 'http%3A%2F%2Fharbor')]) assert.throws(() => parseEnrollmentLink(value));
+});

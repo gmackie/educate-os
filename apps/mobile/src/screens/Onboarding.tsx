@@ -6,16 +6,17 @@ import { makeDistrict } from '../district';
 import { palette } from '../theme';
 import { Button, Card, Eyebrow, Field, Item, Page, Title } from '../ui/Primitives';
 
-export function Onboarding({ districts, busy, error, onAdd, onConnect, onRemove }: {
+export function Onboarding({ enrollment, districts, busy, error, onAdd, onConnect, onRemove }: {
+  enrollment?: { name: string; portal: string; workshop: string } | null;
   districts: District[]; busy: boolean; error?: string | null;
   onAdd: (district: District) => Promise<void>;
   onConnect: (district: District) => Promise<void>;
   onRemove: (district: District) => void;
 }) {
-  const [name, setName] = useState('');
-  const [portal, setPortal] = useState('');
-  const [workshop, setWorkshop] = useState('');
-  const [adding, setAdding] = useState(districts.length === 0);
+  const [name, setName] = useState(enrollment?.name || '');
+  const [portal, setPortal] = useState(enrollment?.portal || '');
+  const [workshop, setWorkshop] = useState(enrollment?.workshop || '');
+  const [adding, setAdding] = useState(Boolean(enrollment) || districts.length === 0);
   const [formError, setFormError] = useState<string | null>(null);
   const save = async () => {
     setFormError(null);
@@ -54,6 +55,7 @@ export function Onboarding({ districts, busy, error, onAdd, onConnect, onRemove 
     </View>}
     {adding ? <Card style={{ gap: 15, marginBottom: 20 }}>
       <Text style={{ color: palette.ink, fontSize: 17, fontWeight: '800' }}>Add your school</Text>
+      <Text style={{ color: palette.muted, lineHeight: 21 }}>Scan your school’s setup QR code with your phone’s Camera app to fill these details. Check the school addresses before saving.</Text>
       <Field label="School or district name" value={name} onChangeText={setName} placeholder="Example: Northfield Schools"/>
       <Field label="School portal URL" value={portal} onChangeText={setPortal} keyboardType="url" placeholder="https://learn.school.example"/>
       <Field label="AI workspace URL" value={workshop} onChangeText={setWorkshop} keyboardType="url"

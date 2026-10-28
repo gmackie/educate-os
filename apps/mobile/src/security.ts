@@ -38,3 +38,18 @@ export function uniqueParam(params: URLSearchParams, key: string): string {
   if (values.length !== 1 || !values[0]) throw new Error('The sign-in response was incomplete.');
   return values[0];
 }
+
+/** Enrollment links carry public school addresses only, never credentials or sign-in tokens. */
+export function parseEnrollmentLink(value: string): { name: string; portal: string; workshop: string } {
+  const url = new URL(value);
+  if (url.protocol !== 'educateos:' || url.hostname !== 'enroll' ||
+      (url.pathname !== '' && url.pathname !== '/') || url.username || url.password || url.port || url.hash ||
+      [...url.searchParams.keys()].some(key => !['name', 'portal', 'workshop'].includes(key))) {
+    throw new Error('Use a school setup link provided by your school.');
+  }
+  const name = uniqueParam(url.searchParams, 'name').trim();
+  if (name.length < 2 || name.length > 90) throw new Error('The school setup link needs a school name.');
+  const portal = strictOrigin(uniqueParam(url.searchParams, 'portal'));
+  const workshop = strictOrigin(uniqueParam(url.searchParams, 'workshop'));
+  return { name, portal, workshop };
+}

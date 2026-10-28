@@ -6,6 +6,7 @@ import type { District, Session } from '../types';
 import { CALLBACK_ORIGIN } from '../district';
 import { parseSessionLink, unseal, type Attempt } from './crypto';
 import { storeSession } from './session';
+import { authResponseUrl } from './response';
 
 const ORDER = BigInt('0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551');
 
@@ -53,16 +54,7 @@ export async function signIn(district: District): Promise<Session> {
     // iOS 17.4+: preferUniversalLinks requires a signed, associated domain.
     // Android: Chrome Custom Tabs will return through a verified App Link.
     const result = await WebBrowser.openAuthSessionAsync(landing.href, callback, { preferUniversalLinks: true });
-    if (result.type === 'cancel' || result.type === 'dismiss') throw new Error('Sign-in was cancelled.');
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    let url: string;
-    try {
-      url = result.type === 'success' ? result.url : await Promise.race([
-        viaLink,
-        new Promise<string>((_, reject) => { timeout = setTimeout(() =>
-          reject(new Error("The school's app-link sign-in timed out.")), 120_000); }),
-      ]);
-    } finally { if (timeout) clearTimeout(timeout); }
+    const url = await authResponseUrl(result, viaLink);
     const credential = unseal(parseSessionLink(url, attempt), attempt);
     return await storeSession(district, credential);
   } finally {

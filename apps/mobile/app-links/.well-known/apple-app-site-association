@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "details": [{
+      "appIDs": ["P4SWQXAB5H.io.educateos.mobile"],
+      "components": [
+        { "/": "/oauthredirect" },
+        { "/": "/authpopup" }
+      ]
+    }]
+  }
+}
