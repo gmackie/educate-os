@@ -4,11 +4,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { CheckCircle2, GraduationCap, Laptop, QrCode } from 'lucide-react-native';
 import type { District } from '../src/types';
-import { onPendingLink, takePendingLink, classifyIncomingUrl, type Enrollment, type JoinLink, type PendingLink } from '../src/links';
+import { isOwnRoomReturn, onPendingLink, rememberOwnRoom, takePendingLink, type Enrollment, type JoinLink, type PendingLink } from '../src/links';
 import { fetchSchoolManifest, speaksMobileApi, supportsPhoneSignIn, type SchoolManifest } from '../src/manifest';
 import { districtFromManifest, legacyDistrict } from '../src/schools';
 import { CALLBACK_ORIGIN, strictOrigin } from '../src/security';
-import { formatCode, pairPhone, PairingError } from '../src/api/pairing';
+import { connectPhoneUrl, createSelfRoom, formatCode, pairPhone, PairingError, waitForApproval, type PairCredential } from '../src/api/pairing';
 import { describeDevice, newDeviceKey, storePairedDevice } from '../src/api/deviceVault';
 import { useAppState } from '../src/state/app-state';
 import { param } from '../src/params';
@@ -44,6 +44,21 @@ function SchoolCard({ manifest }: { manifest: SchoolManifest }) {
   </Card>;
 }
 
+function CodeCard({ code, waiting }: { code: string; waiting: string }) {
+  const palette = usePalette();
+  return <Card style={{ gap: 14, alignItems: 'center', paddingVertical: 24 }}>
+    <Text style={{ color: palette.muted }}>Check this matches your computer:</Text>
+    <Text accessibilityLabel={'Code ' + code.split('').join(' ')} selectable
+      style={{ color: palette.ink, fontSize: 34, fontWeight: '800', letterSpacing: 3, fontVariant: ['tabular-nums'] }}>
+      {formatCode(code)}
+    </Text>
+    <Loading label={waiting}/>
+    <Text style={{ color: palette.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 }}>
+      Only approve a connection you started. If the codes don't match, cancel.
+    </Text>
+  </Card>;
+}
+
 /**
  * Storyboard 3: the school (name and origin from its manifest), then the 8-character code that must
  * match the computer, then waiting for approval. Without a QR room, it explains how to get one.
@@ -60,10 +75,14 @@ export default function Connect() {
   const [pairing, setPairing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
+  // The self-room this phone is waiting on ("sign in on this phone"), whose /j link must not restart it.
+  const selfRoom = useRef<string | null>(null);
 
   // A new code scanned (or opened from the Camera app) while this screen is open replaces the old one.
   useEffect(() => onPendingLink((link) => {
     if (link.kind === 'legacy-pair') return;
+    // The connect page returns to /j for a room this phone is already polling: keep polling.
+    if (isOwnRoomReturn(link)) { takePendingLink(); return; }
     abort.current?.abort();
     setTarget(targetOf(takePendingLink(), ''));
     setManifest(null); setManifestError(null); setCode(null); setError(null);
@@ -81,46 +100,57 @@ export default function Connect() {
     return () => controller.abort();
   }, [targetOrigin]);
 
-  const connect = useCallback(async () => {
-    if (!manifest || !target || !('join' in target) || !target.join || pairing) return;
+  /** Runs one pairing attempt with a fresh device key, then stores the device and moves on. */
+  const run = useCallback(async (attempt: (key: ReturnType<typeof newDeviceKey>, signal: AbortSignal) => Promise<PairCredential>,
+    failure: string) => {
+    if (!manifest || pairing) return;
     const controller = new AbortController();
     abort.current = controller;
     setPairing(true); setError(null); setCode(null);
     const key = newDeviceKey();
     try {
-      const credential = await pairPhone({
-        link: target.join, privateKey: key.privateKey, publicJwk: key.publicJwk, device: describeDevice(),
-        onCode: setCode, signal: controller.signal,
-      });
+      const credential = await attempt(key, controller.signal);
       const district: District = districtFromManifest(manifest);
       await storePairedDevice(district.origin, key.privateKey, credential);
       await activate(district, { kind: 'device', deviceId: credential.deviceId, principalId: credential.principalId });
       router.replace('/permissions');
     } catch (e) {
-      if (!(e instanceof PairingError && e.code === 'cancelled')) {
-        setError(e instanceof PairingError ? e.message : 'This phone could not be connected. Make a new code and try again.');
-      }
+      if (!(e instanceof PairingError && e.code === 'cancelled')) setError(e instanceof PairingError ? e.message : failure);
       setCode(null);
     } finally {
       key.privateKey.fill(0);
       abort.current = null;
+      selfRoom.current = null;
       setPairing(false);
     }
-  }, [manifest, target, pairing, activate, router]);
+  }, [manifest, pairing, activate, router]);
 
-  const signInHere = useCallback(async (method: string) => {
+  const connect = useCallback(() => {
+    if (!target || !('join' in target) || !target.join) return;
+    const link = target.join;
+    void run((key, signal) => pairPhone({
+      link, privateKey: key.privateKey, publicJwk: key.publicJwk, device: describeDevice(), onCode: setCode, signal,
+    }), 'This phone could not be connected. Make a new code and try again.');
+  }, [target, run]);
+
+  const signInHere = useCallback((method: string) => {
     if (!manifest) return;
-    // Capability-gated (manifest.ts supportsPhoneSignIn): the school's own page signs the person in
-    // and hands back a pairing room for this phone as a /j link, which continues as above.
-    const start = new URL('/connect-phone', manifest.origin);
-    start.searchParams.set('method', method);
-    start.searchParams.set('return', 'app');
-    const result = await WebBrowser.openAuthSessionAsync(start.href, CALLBACK_ORIGIN + '/j', { preferUniversalLinks: true });
-    if (result.type !== 'success') return;
-    const incoming = classifyIncomingUrl(result.url);
-    if (incoming.kind === 'join' && incoming.join.origin === manifest.origin) setTarget({ origin: manifest.origin, join: incoming.join });
-    else setError('Sign-in did not finish. Try again, or connect from a computer.');
-  }, [manifest]);
+    // Capability-gated (manifest.ts supportsPhoneSignIn). The phone opens a room already claimed by
+    // its key, then the school's own /connect-phone page signs the person in and approves it there;
+    // the phone polls the room meanwhile, so it finishes however the browser comes back.
+    void run(async (key, signal) => {
+      const startedAt = Date.now();
+      const room = await createSelfRoom(fetch.bind(globalThis), manifest.origin, key.publicJwk, describeDevice(), signal);
+      selfRoom.current = room.link.room;
+      rememberOwnRoom(room.link.room);
+      setCode(room.code);
+      const approval = waitForApproval({ link: room.link, privateKey: key.privateKey, signal, startedAt });
+      approval.catch(() => {});
+      void WebBrowser.openAuthSessionAsync(connectPhoneUrl(room, method), CALLBACK_ORIGIN + '/j', { preferUniversalLinks: true })
+        .catch(() => {});
+      try { return await approval; } finally { WebBrowser.dismissAuthSession(); }
+    }, 'Sign-in did not finish. Try again, or connect from a computer.');
+  }, [manifest, run]);
 
   const legacySignIn = useCallback(async (enrollment: Enrollment) => {
     setError(null);
@@ -168,17 +198,8 @@ export default function Connect() {
     return <Page>
       <Title subtitle="Connect this phone to your school.">Is this your school?</Title>
       <SchoolCard manifest={manifest}/>
-      {code ? <Card style={{ gap: 14, alignItems: 'center', paddingVertical: 24 }}>
-        <Text style={{ color: palette.muted }}>Check this matches your computer:</Text>
-        <Text accessibilityLabel={'Code ' + code.split('').join(' ')} selectable
-          style={{ color: palette.ink, fontSize: 34, fontWeight: '800', letterSpacing: 3, fontVariant: ['tabular-nums'] }}>
-          {formatCode(code)}
-        </Text>
-        <Loading label="Waiting for approval on the computer…"/>
-        <Text style={{ color: palette.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 }}>
-          Only approve a connection you started. If the codes don't match, cancel.
-        </Text>
-      </Card> : <Button label={pairing ? 'Connecting…' : 'Connect this phone'} disabled={pairing} onPress={() => { void connect(); }}/>}
+      {code ? <CodeCard code={code} waiting="Waiting for approval on the computer…"/>
+        : <Button label={pairing ? 'Connecting…' : 'Connect this phone'} disabled={pairing} onPress={connect}/>}
       {error && <Text accessibilityRole="alert" style={{ color: palette.red, marginTop: 14, lineHeight: 20 }}>{error}</Text>}
       {(pairing || error) && <View style={{ marginTop: 12, gap: 10 }}>
         {pairing && <Button label="Cancel" variant="quiet" onPress={() => abort.current?.abort()}/>}
@@ -188,6 +209,14 @@ export default function Connect() {
   }
 
   const phoneSignIn = supportsPhoneSignIn(manifest);
+  if (pairing && selfRoom.current) {
+    return <Page>
+      <Title subtitle="Finish signing in in the browser.">Approve this phone</Title>
+      <SchoolCard manifest={manifest}/>
+      {code ? <CodeCard code={code} waiting="Waiting for you to approve in the browser…"/> : <Loading label="Starting sign-in…"/>}
+      <View style={{ marginTop: 12 }}><Button label="Cancel" variant="quiet" onPress={() => abort.current?.abort()}/></View>
+    </Page>;
+  }
   return <Page>
     <Title subtitle="Use a computer where you're signed in to your school.">Connect this phone</Title>
     <SchoolCard manifest={manifest}/>
@@ -205,7 +234,7 @@ export default function Connect() {
       <Text style={{ color: palette.ink, fontWeight: '800', fontSize: 16 }}>No computer?</Text>
       {phoneSignIn
         ? manifest.signIn.map((method) => <Button key={method.id} variant="outline" label={'Sign in with ' + method.label}
-          onPress={() => { void signInHere(method.id); }}/>)
+          disabled={pairing} onPress={() => signInHere(method.id)}/>)
         : <Text style={{ color: palette.muted, lineHeight: 21 }}>
           Signing in on this phone is coming soon for {manifest.name}. For now, connect from a computer.
         </Text>}
