@@ -1,0 +1,1127 @@
+{
+  "revision": "86c947c129cdb4aa94abb6c7f86719c75a96fb9b",
+  "description": "Static declared API inventory, not live verification. Inherited methods are referenced through extends; signatures retain their declared types.",
+  "resources": [
+    {
+      "constant": "GMAIL_RESOURCE",
+      "urlPattern": "https://mail.google.com/*",
+      "title": "Gmail Mailbox",
+      "source": "packages/gatekeeper-google/src/resources.ts",
+      "line": 33
+    },
+    {
+      "constant": "GOOGLE_DOC_RESOURCE",
+      "urlPattern": "https://docs.google.com/document/d/:docId/*",
+      "title": "Google Doc",
+      "source": "packages/gatekeeper-google/src/resources.ts",
+      "line": 41
+    },
+    {
+      "constant": "GOOGLE_SHEETS_RESOURCE",
+      "urlPattern": "https://docs.google.com/spreadsheets/d/:spreadsheetId/*",
+      "title": "Google Spreadsheet",
+      "source": "packages/gatekeeper-google/src/resources.ts",
+      "line": 53
+    },
+    {
+      "constant": "GOOGLE_SLIDES_RESOURCE",
+      "urlPattern": "https://docs.google.com/presentation/d/:presentationId/*",
+      "title": "Google Slides Presentation",
+      "source": "packages/gatekeeper-google/src/resources.ts",
+      "line": 64
+    },
+    {
+      "constant": "GOOGLE_CALENDAR_RESOURCE",
+      "urlPattern": "https://calendar.google.com/calendar/:calendarId/*",
+      "title": "Google Calendar",
+      "source": "packages/gatekeeper-google/src/resources.ts",
+      "line": 76
+    },
+    {
+      "constant": "GOOGLE_CHAT_RESOURCE",
+      "urlPattern": "https://chat.google.com/",
+      "title": "Google Chat Account",
+      "source": "packages/gatekeeper-google/src/resources.ts",
+      "line": 94
+    },
+    {
+      "constant": "GOOGLE_CHAT_SPACE_RESOURCE",
+      "urlPattern": "https://chat.google.com/:kind(room|dm)/:spaceId",
+      "title": "Google Chat Conversation",
+      "source": "packages/gatekeeper-google/src/resources.ts",
+      "line": 109
+    },
+    {
+      "constant": "GOOGLE_CHAT_THREAD_RESOURCE",
+      "urlPattern": "https://chat.google.com/:kind(room|dm)/:spaceId/:threadId{/:messageId}?",
+      "title": "Google Chat Thread",
+      "source": "packages/gatekeeper-google/src/resources.ts",
+      "line": 122
+    },
+    {
+      "constant": "GOOGLE_CLASSROOM_COURSE_RESOURCE",
+      "urlPattern": "`https://${CLASSROOM_HOST}/courses/:courseId`",
+      "title": "Google Classroom Course",
+      "source": "packages/gatekeeper-google/src/resources.ts",
+      "line": 134
+    },
+    {
+      "constant": "BIGQUERY_RESOURCE",
+      "urlPattern": "`https://${BIGQUERY_HOST}/:projectId/*`",
+      "title": "BigQuery",
+      "source": "packages/gatekeeper-google/src/resources.ts",
+      "line": 145
+    },
+    {
+      "constant": "GOOGLE_DRIVE_RESOURCE",
+      "urlPattern": "https://drive.google.com/drive/my-drive",
+      "title": "Google Drive Account",
+      "source": "packages/gatekeeper-google/src/resources.ts",
+      "line": 160
+    },
+    {
+      "constant": "GOOGLE_DRIVE_FOLDER_RESOURCE",
+      "urlPattern": "https://drive.google.com/drive/folders/:folderId",
+      "title": "Google Drive Folder",
+      "source": "packages/gatekeeper-google/src/resources.ts",
+      "line": 172
+    },
+    {
+      "constant": "GOOGLE_DRIVE_FILE_RESOURCE",
+      "urlPattern": "https://drive.google.com/file/d/:fileId/view",
+      "title": "Google Drive File",
+      "source": "packages/gatekeeper-google/src/resources.ts",
+      "line": 182
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "Cursor",
+      "source": "packages/gatekeeper-google/src/types.d.ts",
+      "line": 5,
+      "extends": [],
+      "methods": [
+        {
+          "name": "next",
+          "signature": "next(): Promise<T[] | null>;",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "name": "GmailMessageHook",
+      "source": "packages/gatekeeper-google/src/types.d.ts",
+      "line": 259,
+      "extends": [],
+      "methods": [
+        {
+          "name": "receiveMessage",
+          "signature": "receiveMessage(entry: GmailMessageEntry): Promise<void>;",
+          "line": 267
+        }
+      ]
+    },
+    {
+      "name": "GmailScopedSession",
+      "source": "packages/gatekeeper-google/src/types.d.ts",
+      "line": 295,
+      "extends": [],
+      "methods": [
+        {
+          "name": "getMailboxAddress",
+          "signature": "getMailboxAddress(): Promise<EmailAddress>;",
+          "line": 297
+        },
+        {
+          "name": "listThreads",
+          "signature": "listThreads(): Promise<Cursor<GmailThreadEntry>>;",
+          "line": 304
+        },
+        {
+          "name": "searchThreads",
+          "signature": "searchThreads(query: string): Promise<Cursor<GmailThreadEntry>>;",
+          "line": 315
+        },
+        {
+          "name": "search",
+          "signature": "search(query: string): Promise<Cursor<GmailThreadEntry>>;",
+          "line": 318
+        },
+        {
+          "name": "listMessages",
+          "signature": "listMessages(): Promise<Cursor<GmailMessageEntry>>;",
+          "line": 325
+        },
+        {
+          "name": "searchMessages",
+          "signature": "searchMessages(query: string): Promise<Cursor<GmailMessageEntry>>;",
+          "line": 337
+        },
+        {
+          "name": "getMessage",
+          "signature": "getMessage(id: string): Promise<GmailMessage>;",
+          "line": 345
+        },
+        {
+          "name": "getThread",
+          "signature": "getThread(id: string): Promise<GmailThread>;",
+          "line": 352
+        },
+        {
+          "name": "listDrafts",
+          "signature": "listDrafts(): Promise<Cursor<GmailDraftEntry>>;",
+          "line": 359
+        },
+        {
+          "name": "getDraft",
+          "signature": "getDraft(id: string): Promise<GmailDraft>;",
+          "line": 365
+        },
+        {
+          "name": "subscribeNewMessages",
+          "signature": "subscribeNewMessages(hook: RpcStub<GmailMessageHook>): Promise<void>;",
+          "line": 401
+        }
+      ]
+    },
+    {
+      "name": "GmailSession",
+      "source": "packages/gatekeeper-google/src/types.d.ts",
+      "line": 405,
+      "extends": [
+        "extends GmailScopedSession"
+      ],
+      "methods": [
+        {
+          "name": "send",
+          "signature": "send(\n    to: EmailRecipient[],\n    subject: string,\n    body: string,\n    options?: GmailComposeOptions,\n  ): Promise<GmailMessageId>;",
+          "line": 412
+        },
+        {
+          "name": "createDraft",
+          "signature": "createDraft(draft: GmailDraftInput): Promise<GmailDraft>;",
+          "line": 423
+        },
+        {
+          "name": "listLabels",
+          "signature": "listLabels(): Promise<GmailLabel[]>;",
+          "line": 426
+        },
+        {
+          "name": "createLabel",
+          "signature": "createLabel(name: string): Promise<GmailCustomLabel>;",
+          "line": 429
+        },
+        {
+          "name": "renameLabel",
+          "signature": "renameLabel(label: GmailCustomLabel, name: string): Promise<GmailCustomLabel>;",
+          "line": 432
+        },
+        {
+          "name": "deleteLabel",
+          "signature": "deleteLabel(label: GmailCustomLabel): Promise<void>;",
+          "line": 438
+        }
+      ]
+    },
+    {
+      "name": "GmailThread",
+      "source": "packages/gatekeeper-google/src/types.d.ts",
+      "line": 450,
+      "extends": [],
+      "methods": [
+        {
+          "name": "getMetadata",
+          "signature": "getMetadata(): Promise<GmailThreadInfo>;",
+          "line": 455
+        },
+        {
+          "name": "messages",
+          "signature": "messages(): Promise<GmailMessage[]>;",
+          "line": 462
+        },
+        {
+          "name": "messagesVisibleTo",
+          "signature": "messagesVisibleTo(address: string): Promise<GmailMessage[]>;",
+          "line": 476
+        },
+        {
+          "name": "archive",
+          "signature": "archive(lastMessageId?: string): Promise<void>;",
+          "line": 479
+        },
+        {
+          "name": "trash",
+          "signature": "trash(lastMessageId?: string): Promise<void>;",
+          "line": 482
+        },
+        {
+          "name": "markRead",
+          "signature": "markRead(lastMessageId?: string): Promise<void>;",
+          "line": 485
+        },
+        {
+          "name": "markUnread",
+          "signature": "markUnread(lastMessageId?: string): Promise<void>;",
+          "line": 488
+        },
+        {
+          "name": "star",
+          "signature": "star(lastMessageId?: string): Promise<void>;",
+          "line": 491
+        },
+        {
+          "name": "unstar",
+          "signature": "unstar(lastMessageId?: string): Promise<void>;",
+          "line": 494
+        },
+        {
+          "name": "applyLabel",
+          "signature": "applyLabel(label: GmailMutableLabel, lastMessageId?: string): Promise<void>;",
+          "line": 501
+        },
+        {
+          "name": "removeLabel",
+          "signature": "removeLabel(label: GmailMutableLabel, lastMessageId?: string): Promise<void>;",
+          "line": 508
+        },
+        {
+          "name": "subscribeNewMessages",
+          "signature": "subscribeNewMessages(hook: RpcStub<GmailMessageHook>): Promise<void>;",
+          "line": 515
+        }
+      ]
+    },
+    {
+      "name": "GmailMessage",
+      "source": "packages/gatekeeper-google/src/types.d.ts",
+      "line": 519,
+      "extends": [],
+      "methods": [
+        {
+          "name": "getMetadata",
+          "signature": "getMetadata(): Promise<GmailMessageInfo>;",
+          "line": 521
+        },
+        {
+          "name": "getHeaders",
+          "signature": "getHeaders(): Promise<GmailHeader[]>;",
+          "line": 527
+        },
+        {
+          "name": "thread",
+          "signature": "thread(): Promise<GmailThread>;",
+          "line": 530
+        },
+        {
+          "name": "getContent",
+          "signature": "getContent(): Promise<EmailContent>;",
+          "line": 533
+        },
+        {
+          "name": "attachments",
+          "signature": "attachments(): Promise<GmailAttachmentEntry[]>;",
+          "line": 536
+        },
+        {
+          "name": "reply",
+          "signature": "reply(body: string, options?: GmailReplyOptions): Promise<GmailMessageId>;",
+          "line": 548
+        },
+        {
+          "name": "replyAll",
+          "signature": "replyAll(body: string, options?: GmailReplyOptions): Promise<GmailMessageId>;",
+          "line": 556
+        },
+        {
+          "name": "forward",
+          "signature": "forward(\n    to: EmailRecipient[],\n    body?: string,\n    options?: GmailComposeOptions,\n  ): Promise<GmailMessageId>;",
+          "line": 566
+        },
+        {
+          "name": "createReplyDraft",
+          "signature": "createReplyDraft(body: string, options?: GmailReplyOptions): Promise<GmailDraft>;",
+          "line": 573
+        },
+        {
+          "name": "createReplyAllDraft",
+          "signature": "createReplyAllDraft(body: string, options?: GmailReplyOptions): Promise<GmailDraft>;",
+          "line": 576
+        },
+        {
+          "name": "createForwardDraft",
+          "signature": "createForwardDraft(\n    to: EmailRecipient[],\n    body?: string,\n    options?: GmailComposeOptions,\n  ): Promise<GmailDraft>;",
+          "line": 584
+        },
+        {
+          "name": "archive",
+          "signature": "archive(): Promise<void>;",
+          "line": 591
+        },
+        {
+          "name": "trash",
+          "signature": "trash(): Promise<void>;",
+          "line": 594
+        },
+        {
+          "name": "markRead",
+          "signature": "markRead(): Promise<void>;",
+          "line": 597
+        },
+        {
+          "name": "markUnread",
+          "signature": "markUnread(): Promise<void>;",
+          "line": 600
+        },
+        {
+          "name": "star",
+          "signature": "star(): Promise<void>;",
+          "line": 603
+        },
+        {
+          "name": "unstar",
+          "signature": "unstar(): Promise<void>;",
+          "line": 606
+        },
+        {
+          "name": "applyLabel",
+          "signature": "applyLabel(label: GmailMutableLabel): Promise<void>;",
+          "line": 613
+        },
+        {
+          "name": "removeLabel",
+          "signature": "removeLabel(label: GmailMutableLabel): Promise<void>;",
+          "line": 620
+        }
+      ]
+    },
+    {
+      "name": "GmailDraft",
+      "source": "packages/gatekeeper-google/src/types.d.ts",
+      "line": 624,
+      "extends": [],
+      "methods": [
+        {
+          "name": "getMetadata",
+          "signature": "getMetadata(): Promise<GmailDraftInfo>;",
+          "line": 626
+        },
+        {
+          "name": "getContent",
+          "signature": "getContent(): Promise<EmailContent>;",
+          "line": 629
+        },
+        {
+          "name": "attachments",
+          "signature": "attachments(): Promise<GmailDraftAttachmentEntry[]>;",
+          "line": 632
+        },
+        {
+          "name": "addAttachment",
+          "signature": "addAttachment(input: GmailAttachmentInput): Promise<GmailDraftAttachment>;",
+          "line": 635
+        },
+        {
+          "name": "update",
+          "signature": "update(patch: GmailDraftPatch): Promise<void>;",
+          "line": 643
+        },
+        {
+          "name": "delete",
+          "signature": "delete(): Promise<void>;",
+          "line": 646
+        },
+        {
+          "name": "send",
+          "signature": "send(): Promise<GmailMessageId>;",
+          "line": 654
+        }
+      ]
+    },
+    {
+      "name": "GmailDraftAttachment",
+      "source": "packages/gatekeeper-google/src/types.d.ts",
+      "line": 658,
+      "extends": [
+        "extends GmailAttachment"
+      ],
+      "methods": [
+        {
+          "name": "remove",
+          "signature": "remove(): Promise<void>;",
+          "line": 663
+        }
+      ]
+    },
+    {
+      "name": "GmailAttachment",
+      "source": "packages/gatekeeper-google/src/types.d.ts",
+      "line": 667,
+      "extends": [],
+      "methods": [
+        {
+          "name": "getMetadata",
+          "signature": "getMetadata(): Promise<GmailAttachmentInfo>;",
+          "line": 669
+        },
+        {
+          "name": "getContent",
+          "signature": "getContent(): Promise<ArrayBuffer>;",
+          "line": 676
+        }
+      ]
+    },
+    {
+      "name": "Cursor",
+      "source": "packages/gatekeeper-google/src/drive-types.d.ts",
+      "line": 11,
+      "extends": [],
+      "methods": [
+        {
+          "name": "next",
+          "signature": "next(): Promise<T[] | null>;",
+          "line": 13
+        }
+      ]
+    },
+    {
+      "name": "GoogleDriveReadSession",
+      "source": "packages/gatekeeper-google/src/drive-types.d.ts",
+      "line": 130,
+      "extends": [],
+      "methods": [
+        {
+          "name": "getScope",
+          "signature": "getScope(): Promise<DriveScope>;",
+          "line": 132
+        },
+        {
+          "name": "list",
+          "signature": "list(options?: DriveListOptions): Promise<Cursor<DriveEntry>>;",
+          "line": 139
+        },
+        {
+          "name": "search",
+          "signature": "search(query: DriveSearchQuery): Promise<Cursor<DriveEntry>>;",
+          "line": 147
+        },
+        {
+          "name": "getEntry",
+          "signature": "getEntry(fileId: string): Promise<DriveEntry>;",
+          "line": 153
+        },
+        {
+          "name": "openGoogleDoc",
+          "signature": "openGoogleDoc(fileId: string): Promise<GoogleDocReadSession>;",
+          "line": 156
+        },
+        {
+          "name": "openGoogleSheet",
+          "signature": "openGoogleSheet(fileId: string): Promise<GoogleSpreadsheetReadSession>;",
+          "line": 159
+        },
+        {
+          "name": "openGoogleSlides",
+          "signature": "openGoogleSlides(fileId: string): Promise<GooglePresentationReadSession>;",
+          "line": 165
+        }
+      ]
+    },
+    {
+      "name": "GoogleDriveFolderSession",
+      "source": "packages/gatekeeper-google/src/drive-types.d.ts",
+      "line": 169,
+      "extends": [
+        "extends Pick<GoogleDriveReadSession, \"getScope\">"
+      ],
+      "methods": [
+        {
+          "name": "list",
+          "signature": "list(options?: DriveFolderListOptions): Promise<Cursor<DriveEntry>>;",
+          "line": 171
+        },
+        {
+          "name": "search",
+          "signature": "search(query: DriveFolderSearchQuery): Promise<Cursor<DriveEntry>>;",
+          "line": 179
+        },
+        {
+          "name": "getEntry",
+          "signature": "getEntry(fileId: string): Promise<DriveEntry>;",
+          "line": 182
+        },
+        {
+          "name": "openGoogleDoc",
+          "signature": "openGoogleDoc(fileId: string): Promise<GoogleDocReadSession>;",
+          "line": 185
+        },
+        {
+          "name": "openGoogleSheet",
+          "signature": "openGoogleSheet(fileId: string): Promise<GoogleSpreadsheetReadSession>;",
+          "line": 188
+        },
+        {
+          "name": "openGoogleSlides",
+          "signature": "openGoogleSlides(fileId: string): Promise<GooglePresentationReadSession>;",
+          "line": 194
+        },
+        {
+          "name": "openFolder",
+          "signature": "openFolder(folderId: string): Promise<GoogleDriveFolderSession>;",
+          "line": 197
+        }
+      ]
+    },
+    {
+      "name": "GoogleDocSession",
+      "source": "packages/gatekeeper-google/src/docs-types.d.ts",
+      "line": 10,
+      "extends": [
+        "extends GoogleDocReadSession"
+      ],
+      "methods": [
+        {
+          "name": "replaceText",
+          "signature": "replaceText(oldMarkdown: string, newMarkdown: string, tabId?: string): Promise<void>;",
+          "line": 46
+        },
+        {
+          "name": "appendText",
+          "signature": "appendText(markdown: string, tabId?: string): Promise<void>;",
+          "line": 53
+        }
+      ]
+    },
+    {
+      "name": "GoogleDocReadSession",
+      "source": "packages/gatekeeper-google/src/docs-read-types.d.ts",
+      "line": 39,
+      "extends": [],
+      "methods": [
+        {
+          "name": "getMetadata",
+          "signature": "getMetadata(): Promise<DocMetadata>;",
+          "line": 41
+        },
+        {
+          "name": "listTabs",
+          "signature": "listTabs(): Promise<GoogleDocTab[]>;",
+          "line": 44
+        },
+        {
+          "name": "getContent",
+          "signature": "getContent(tabId?: string): Promise<string>;",
+          "line": 54
+        }
+      ]
+    },
+    {
+      "name": "GoogleSpreadsheetSession",
+      "source": "packages/gatekeeper-google/src/sheets-types.d.ts",
+      "line": 183,
+      "extends": [
+        "extends GoogleSpreadsheetReadSession"
+      ],
+      "methods": [
+        {
+          "name": "updateSpreadsheet",
+          "signature": "updateSpreadsheet(changes: SheetChange[]): Promise<void>;",
+          "line": 230
+        }
+      ]
+    },
+    {
+      "name": "GoogleSpreadsheetReadSession",
+      "source": "packages/gatekeeper-google/src/sheets-read-types.d.ts",
+      "line": 137,
+      "extends": [],
+      "methods": [
+        {
+          "name": "getSpreadsheet",
+          "signature": "getSpreadsheet(): Promise<SpreadsheetInfo>;",
+          "line": 139
+        },
+        {
+          "name": "readRange",
+          "signature": "readRange(\n    range: string,\n    options?: { valueMode?: SpreadsheetValueMode },\n  ): Promise<SpreadsheetRange>;",
+          "line": 146
+        },
+        {
+          "name": "readRanges",
+          "signature": "readRanges(\n    ranges: string[],\n    options?: { valueMode?: SpreadsheetValueMode },\n  ): Promise<SpreadsheetRange[]>;",
+          "line": 155
+        },
+        {
+          "name": "readFormats",
+          "signature": "readFormats(range: string): Promise<SpreadsheetFormats>;",
+          "line": 165
+        }
+      ]
+    },
+    {
+      "name": "GooglePresentationSession",
+      "source": "packages/gatekeeper-google/src/slides-types.d.ts",
+      "line": 255,
+      "extends": [
+        "extends GooglePresentationReadSession"
+      ],
+      "methods": [
+        {
+          "name": "updateSlides",
+          "signature": "updateSlides(changes: SlideChange[]): Promise<Record<string, string>>;",
+          "line": 282
+        },
+        {
+          "name": "duplicateSlide",
+          "signature": "duplicateSlide(slideId: string): Promise<string>;",
+          "line": 288
+        },
+        {
+          "name": "deleteSlide",
+          "signature": "deleteSlide(slideId: string): Promise<void>;",
+          "line": 294
+        },
+        {
+          "name": "moveSlides",
+          "signature": "moveSlides(slideIds: string[], after: string | null): Promise<void>;",
+          "line": 300
+        },
+        {
+          "name": "createSlide",
+          "signature": "createSlide(layoutId: string, after?: string | null): Promise<string>;",
+          "line": 311
+        },
+        {
+          "name": "setSlidesSkipped",
+          "signature": "setSlidesSkipped(slideIds: string[], skipped: boolean): Promise<void>;",
+          "line": 317
+        }
+      ]
+    },
+    {
+      "name": "GooglePresentationReadSession",
+      "source": "packages/gatekeeper-google/src/slides-read-types.d.ts",
+      "line": 407,
+      "extends": [],
+      "methods": [
+        {
+          "name": "getPresentation",
+          "signature": "getPresentation(): Promise<PresentationInfo>;",
+          "line": 409
+        },
+        {
+          "name": "getSlides",
+          "signature": "getSlides(slideIds: string[]): Promise<Slide[]>;",
+          "line": 417
+        },
+        {
+          "name": "getSlideThumbnail",
+          "signature": "getSlideThumbnail(slideId: string, size?: SlideThumbnailSize): Promise<SlideThumbnail>;",
+          "line": 427
+        }
+      ]
+    },
+    {
+      "name": "GoogleCalendarSession",
+      "source": "packages/gatekeeper-google/src/calendar-types.d.ts",
+      "line": 152,
+      "extends": [],
+      "methods": [
+        {
+          "name": "getCapabilities",
+          "signature": "getCapabilities(): Promise<GoogleCalendarCapabilities>;",
+          "line": 154
+        },
+        {
+          "name": "getCalendar",
+          "signature": "getCalendar(): Promise<GoogleCalendarInfo>;",
+          "line": 157
+        },
+        {
+          "name": "listEvents",
+          "signature": "listEvents(opts: CalendarListEventsOptions): Promise<CalendarEvent[]>;",
+          "line": 167
+        },
+        {
+          "name": "checkAvailability",
+          "signature": "checkAvailability(opts: {\n    people: string[];\n    timeMin: Date;\n    timeMax: Date;\n    timeZone?: string;\n  }): Promise<PersonAvailability[]>;",
+          "line": 180
+        },
+        {
+          "name": "createEvent",
+          "signature": "createEvent(event: CalendarEventDraft, opts?: { sendUpdates?: CalendarSendUpdates }): Promise<void>;",
+          "line": 194
+        },
+        {
+          "name": "updateEvent",
+          "signature": "updateEvent(\n    eventId: string,\n    patch: CalendarEventPatch,\n    opts?: { sendUpdates?: CalendarSendUpdates },\n  ): Promise<void>;",
+          "line": 207
+        }
+      ]
+    },
+    {
+      "name": "Cursor",
+      "source": "packages/gatekeeper-google/src/chat-types.d.ts",
+      "line": 9,
+      "extends": [
+        "extends RpcTarget"
+      ],
+      "methods": [
+        {
+          "name": "next",
+          "signature": "next(): Promise<T[] | null>;",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "name": "ChatSession",
+      "source": "packages/gatekeeper-google/src/chat-types.d.ts",
+      "line": 323,
+      "extends": [
+        "extends RpcTarget"
+      ],
+      "methods": [
+        {
+          "name": "getCurrentUser",
+          "signature": "getCurrentUser(): Promise<ChatUser>;",
+          "line": 325
+        },
+        {
+          "name": "listSpaces",
+          "signature": "listSpaces(options?: ChatListSpacesOptions): Promise<Cursor<ChatSpaceEntry>>;",
+          "line": 331
+        },
+        {
+          "name": "searchSpaces",
+          "signature": "searchSpaces(name: string): Promise<Cursor<ChatSpaceEntry>>;",
+          "line": 341
+        },
+        {
+          "name": "findDirectMessage",
+          "signature": "findDirectMessage(user: string): Promise<ChatSpaceEntry | null>;",
+          "line": 348
+        },
+        {
+          "name": "getSpace",
+          "signature": "getSpace(idOrUrl: string): Promise<ChatSpaceEntry>;",
+          "line": 355
+        },
+        {
+          "name": "searchMessages",
+          "signature": "searchMessages(query: ChatMessageSearch): Promise<Cursor<ChatMessageEntry>>;",
+          "line": 362
+        },
+        {
+          "name": "searchPeople",
+          "signature": "searchPeople(query: string): Promise<Cursor<ChatPerson>>;",
+          "line": 369
+        },
+        {
+          "name": "sendDirectMessage",
+          "signature": "sendDirectMessage(people: string[], text: string): Promise<ChatMessageEntry>;",
+          "line": 387
+        }
+      ]
+    },
+    {
+      "name": "ChatSpace",
+      "source": "packages/gatekeeper-google/src/chat-types.d.ts",
+      "line": 394,
+      "extends": [
+        "extends RpcTarget"
+      ],
+      "methods": [
+        {
+          "name": "getMetadata",
+          "signature": "getMetadata(): Promise<ChatSpaceInfo>;",
+          "line": 399
+        },
+        {
+          "name": "getCurrentUser",
+          "signature": "getCurrentUser(): Promise<ChatUser>;",
+          "line": 402
+        },
+        {
+          "name": "listMessages",
+          "signature": "listMessages(options?: ChatListMessagesOptions): Promise<Cursor<ChatMessageEntry>>;",
+          "line": 410
+        },
+        {
+          "name": "searchMessages",
+          "signature": "searchMessages(query: ChatSpaceMessageSearch): Promise<Cursor<ChatMessageEntry>>;",
+          "line": 417
+        },
+        {
+          "name": "listThreads",
+          "signature": "listThreads(window?: ChatWindow): Promise<Cursor<ChatThreadEntry>>;",
+          "line": 427
+        },
+        {
+          "name": "getThread",
+          "signature": "getThread(id: string): Promise<ChatThreadEntry>;",
+          "line": 434
+        },
+        {
+          "name": "getMessage",
+          "signature": "getMessage(id: string): Promise<ChatMessageEntry>;",
+          "line": 440
+        },
+        {
+          "name": "listMembers",
+          "signature": "listMembers(): Promise<Cursor<ChatMembership>>;",
+          "line": 443
+        },
+        {
+          "name": "findMember",
+          "signature": "findMember(user: string): Promise<ChatMembership | null>;",
+          "line": 449
+        },
+        {
+          "name": "post",
+          "signature": "post(text: string): Promise<ChatMessageEntry>;",
+          "line": 464
+        },
+        {
+          "name": "subscribeNewMessages",
+          "signature": "subscribeNewMessages(hook: RpcStub<ChatMessageHook>): Promise<void>;",
+          "line": 522
+        }
+      ]
+    },
+    {
+      "name": "ChatThread",
+      "source": "packages/gatekeeper-google/src/chat-types.d.ts",
+      "line": 529,
+      "extends": [
+        "extends RpcTarget"
+      ],
+      "methods": [
+        {
+          "name": "getMetadata",
+          "signature": "getMetadata(): Promise<ChatThreadInfo>;",
+          "line": 534
+        },
+        {
+          "name": "getCurrentUser",
+          "signature": "getCurrentUser(): Promise<ChatUser>;",
+          "line": 537
+        },
+        {
+          "name": "getRootMessage",
+          "signature": "getRootMessage(): Promise<ChatMessageEntry | null>;",
+          "line": 540
+        },
+        {
+          "name": "listMessages",
+          "signature": "listMessages(options?: ChatListMessagesOptions): Promise<Cursor<ChatMessageEntry>>;",
+          "line": 543
+        },
+        {
+          "name": "post",
+          "signature": "post(text: string): Promise<ChatMessageEntry>;",
+          "line": 549
+        },
+        {
+          "name": "subscribeNewMessages",
+          "signature": "subscribeNewMessages(hook: RpcStub<ChatMessageHook>): Promise<void>;",
+          "line": 555
+        }
+      ]
+    },
+    {
+      "name": "ChatMessage",
+      "source": "packages/gatekeeper-google/src/chat-types.d.ts",
+      "line": 562,
+      "extends": [
+        "extends RpcTarget"
+      ],
+      "methods": [
+        {
+          "name": "getMetadata",
+          "signature": "getMetadata(): Promise<ChatMessageInfo>;",
+          "line": 567
+        },
+        {
+          "name": "getThread",
+          "signature": "getThread(): Promise<ChatThreadEntry>;",
+          "line": 573
+        },
+        {
+          "name": "reply",
+          "signature": "reply(text: string): Promise<ChatMessageEntry>;",
+          "line": 580
+        },
+        {
+          "name": "edit",
+          "signature": "edit(text: string): Promise<void>;",
+          "line": 588
+        },
+        {
+          "name": "listReactions",
+          "signature": "listReactions(): Promise<Cursor<ChatReaction>>;",
+          "line": 591
+        },
+        {
+          "name": "addReaction",
+          "signature": "addReaction(emoji: string): Promise<void>;",
+          "line": 597
+        },
+        {
+          "name": "removeReaction",
+          "signature": "removeReaction(emoji: string): Promise<void>;",
+          "line": 600
+        },
+        {
+          "name": "getAttachment",
+          "signature": "getAttachment(id: string): Promise<ChatAttachment>;",
+          "line": 606
+        }
+      ]
+    },
+    {
+      "name": "ChatAttachment",
+      "source": "packages/gatekeeper-google/src/chat-types.d.ts",
+      "line": 610,
+      "extends": [
+        "extends RpcTarget"
+      ],
+      "methods": [
+        {
+          "name": "getMetadata",
+          "signature": "getMetadata(): Promise<ChatAttachmentInfo>;",
+          "line": 612
+        },
+        {
+          "name": "getContent",
+          "signature": "getContent(): Promise<ArrayBuffer>;",
+          "line": 621
+        }
+      ]
+    },
+    {
+      "name": "ChatMessageHook",
+      "source": "packages/gatekeeper-google/src/chat-types.d.ts",
+      "line": 635,
+      "extends": [],
+      "methods": [
+        {
+          "name": "receiveMessage",
+          "signature": "receiveMessage(entry: ChatNewMessageEntry): Promise<void>;",
+          "line": 643
+        }
+      ]
+    },
+    {
+      "name": "BigQuerySession",
+      "source": "packages/gatekeeper-google/src/bigquery-types.d.ts",
+      "line": 132,
+      "extends": [],
+      "methods": [
+        {
+          "name": "query",
+          "signature": "query(sql: string, opts?: BigQueryQueryOptions): Promise<BigQueryQueryResult>;",
+          "line": 151
+        },
+        {
+          "name": "dryRun",
+          "signature": "dryRun(sql: string, opts?: Pick<BigQueryQueryOptions, \"defaultDataset\" | \"params\">):\n      Promise<BigQueryDryRunResult>;",
+          "line": 161
+        },
+        {
+          "name": "getProject",
+          "signature": "getProject(): Promise<BigQueryProject>;",
+          "line": 165
+        },
+        {
+          "name": "listDatasets",
+          "signature": "listDatasets(projectId?: string): Promise<BigQueryDataset[]>;",
+          "line": 173
+        },
+        {
+          "name": "listTables",
+          "signature": "listTables(datasetId?: string, projectId?: string): Promise<BigQueryTable[]>;",
+          "line": 182
+        },
+        {
+          "name": "describeTable",
+          "signature": "describeTable(tableId?: string, datasetId?: string, projectId?: string):\n      Promise<{ table: BigQueryTable; schema: BigQueryField[] }>;",
+          "line": 190
+        }
+      ]
+    },
+    {
+      "name": "GoogleClassroomCourseSession",
+      "source": "packages/gatekeeper-google/src/classroom-types.d.ts",
+      "line": 120,
+      "extends": [],
+      "methods": [
+        {
+          "name": "getGradingPeriodSettings",
+          "signature": "getGradingPeriodSettings(): Promise<ClassroomGradingPeriodSettings>;",
+          "line": 122
+        },
+        {
+          "name": "listRubrics",
+          "signature": "listRubrics(courseWorkId: string): Promise<ClassroomRubric[]>;",
+          "line": 125
+        },
+        {
+          "name": "createRubric",
+          "signature": "createRubric(courseWorkId: string, draft: ClassroomRubricDraft): Promise<void>;",
+          "line": 132
+        },
+        {
+          "name": "updateRubric",
+          "signature": "updateRubric(courseWorkId: string, rubricId: string, update: ClassroomRubricUpdate): Promise<void>;",
+          "line": 135
+        },
+        {
+          "name": "deleteRubric",
+          "signature": "deleteRubric(courseWorkId: string, rubricId: string): Promise<void>;",
+          "line": 138
+        },
+        {
+          "name": "updateGradingPeriodSettings",
+          "signature": "updateGradingPeriodSettings(settings: ClassroomGradingPeriodUpdate): Promise<void>;",
+          "line": 141
+        },
+        {
+          "name": "getCourse",
+          "signature": "getCourse(): Promise<ClassroomCourse>;",
+          "line": 144
+        },
+        {
+          "name": "getRoster",
+          "signature": "getRoster(): Promise<ClassroomRoster>;",
+          "line": 147
+        },
+        {
+          "name": "listCourseWork",
+          "signature": "listCourseWork(): Promise<ClassroomCourseWork[]>;",
+          "line": 153
+        },
+        {
+          "name": "getCourseWork",
+          "signature": "getCourseWork(courseWorkId: string): Promise<ClassroomCourseWork>;",
+          "line": 156
+        },
+        {
+          "name": "createCourseWork",
+          "signature": "createCourseWork(draft: ClassroomCourseWorkDraft): Promise<void>;",
+          "line": 162
+        },
+        {
+          "name": "listSubmissions",
+          "signature": "listSubmissions(courseWorkId: string, options?: { userId?: string }): Promise<ClassroomSubmission[]>;",
+          "line": 169
+        },
+        {
+          "name": "setGrade",
+          "signature": "setGrade(courseWorkId: string, submissionId: string, assignedGrade: number): Promise<void>;",
+          "line": 179
+        }
+      ]
+    }
+  ]
+}
