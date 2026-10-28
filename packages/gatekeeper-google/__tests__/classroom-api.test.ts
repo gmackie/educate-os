@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  ClassroomApi, ClassroomNotOwnedError, validateClassroomGrade,
+  ClassroomApi, ClassroomNotOwnedError, classroomMySubmissionFromRaw, validateClassroomGrade,
 } from "../src/classroom-api";
 import { FakeClassroom, googleError } from "./classroom-fixture";
 
@@ -84,6 +84,66 @@ describe("ClassroomApi reads", () => {
     expect(await api.isTeacher("101")).toBe(true);
     classroom.teachers = [];
     expect(await api.isTeacher("101")).toBe(false);
+  });
+});
+
+describe("ClassroomApi student access", () => {
+  it("lists only active courses in which the signed-in account is a student", async () => {
+    expect(await api.listStudentCourses()).toEqual([{
+      id: "101", name: "Biology", section: "Period 2", courseState: "ACTIVE",
+      alternateLink: "https://classroom.google.com/c/MTAx",
+    }]);
+    expect(classroom.requests[0].query.get("studentId")).toBe("me");
+    expect(classroom.requests[0].query.get("courseStates")).toBe("ACTIVE");
+    expect(await api.isStudent("101")).toBe(true);
+    expect(await api.isStudent("999")).toBe(false);
+  });
+
+  it("returns only published coursework and its shared learning materials", async () => {
+    classroom.courseWork[0].materials = [
+      { driveFile: { driveFile: { title: "Lab Guide", alternateLink: "https://drive.google.com/file/d/guide/view", mimeType: "application/pdf" } } },
+      { link: { title: "Simulation", url: "https://example.test/sim" } },
+    ];
+    let work = await api.listStudentCourseWork("101");
+    expect(work.map(({ id }) => id)).toEqual(["201", "202"]);
+    expect(work[0].materials).toEqual([
+      { kind: "driveFile", title: "Lab Guide", url: "https://drive.google.com/file/d/guide/view", mimeType: "application/pdf" },
+      { kind: "link", title: "Simulation", url: "https://example.test/sim" },
+    ]);
+    expect(classroom.requests[0].query.getAll("courseWorkStates")).toEqual(["PUBLISHED"]);
+  });
+
+  it("asks Google for the signed-in student's own submission and drops identity and draft grades", async () => {
+    const submission = await api.getMySubmission("101", "201");
+    expect(submission).toEqual({
+      courseWorkId: "201", state: "TURNED_IN",
+      answer: "My own response", attachments: [{ title: "My source", url: "https://example.test/source" }],
+    });
+    expect(JSON.stringify(submission)).not.toMatch(/userId|assignedGrade|draftGrade|Classmate response/);
+    expect(classroom.requests[0].query.get("userId")).toBe("me");
+  });
+
+  it("turns in only the existing submission Google returns for userId=me", async () => {
+    classroom.submissions[0].state = "CREATED";
+    await api.turnInMySubmission("101", "201");
+    expect(classroom.requests.slice(-2).map(({ method, path, query }) => [method, path, query.get("userId")]))
+      .toEqual([
+        ["GET", "/courses/101/courseWork/201/studentSubmissions", "me"],
+        ["POST", "/courses/101/courseWork/201/studentSubmissions/Cg4Isub1:turnIn", null],
+      ]);
+    expect(classroom.submissions[0].state).toBe("TURNED_IN");
+  });
+
+  it("maps only safe own-submission fields, even if Google adds teacher-only values", () => {
+    let submission = classroomMySubmissionFromRaw({
+      id: "private", courseWorkId: "201", userId: "2001", state: "CREATED",
+      draftGrade: 99, teacherPrivateComments: "not for a student capability",
+      assignmentSubmission: { attachments: [{ driveFile: { title: "My file", alternateLink: "https://drive.google.com/file/d/a" } }] },
+    });
+    expect(submission).toEqual({
+      courseWorkId: "201", state: "CREATED", attachments: [{ title: "My file", url: "https://drive.google.com/file/d/a" }],
+    });
+    expect(JSON.stringify(submission)).not.toMatch(/userId|draftGrade|teacherPrivateComments/);
   });
 });
 

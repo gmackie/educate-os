@@ -11,7 +11,10 @@ import {
   type TaggedAction,
 } from "@gadgets/gatekeeper-kit/actions";
 import { buildDescription, codeSpan, sanitizeTitle } from "@gadgets/gatekeeper-kit/action-description";
-import { ClassroomNotOwnedError, ClassroomSubmissionNotReadyError, type ClassroomApi } from "./classroom-api";
+import {
+  ClassroomNotOwnedError, ClassroomSubmissionNotReadyError, ClassroomStudentSubmissionNotReadyError,
+  type ClassroomApi,
+} from "./classroom-api";
 import type { ClassroomRubricUpdate, ClassroomGradingPeriodUpdate, ClassroomCourseWorkDraft, ClassroomRubricDraft } from "./classroom-types";
 import { GoogleApiError } from "./google-response";
 import { obsContext } from "./observability";
@@ -44,6 +47,41 @@ export type ClassroomActions = {
 /** A queued Classroom action. */
 export type ClassroomAction = TaggedAction<ClassroomActions>;
 
+/** The only external write available through the student course capability. */
+export type ClassroomStudentActions = {
+  turnIn: { courseWorkId: string; courseWorkTitle: string };
+};
+
+/** A student coursework action awaiting approval. */
+export type ClassroomStudentAction = TaggedAction<ClassroomStudentActions>;
+
+/** Approval-backed student writes, isolated from the teacher action set. */
+export const CLASSROOM_STUDENT_ACTIONS = defineActions<{
+  api: ClassroomApi; courseId: string;
+}, ClassroomStudentActions>({
+  turnIn: {
+    delivery: "await-decision",
+    claimBeforeApply: true,
+    describe: ({ courseWorkId, courseWorkTitle }, { courseId }) => ({
+      title: sanitizeTitle(`Turn in Classroom work: ${courseWorkTitle}`),
+      ...buildDescription("Turn in the signed-in student's own work in Google Classroom.")
+        .inline("Course ID", courseId).inline("Coursework ID", courseWorkId).finish(),
+      implementsRevert: false,
+    }),
+    apply: async ({ courseWorkId }, { api, courseId }) => {
+      try {
+        await api.turnInMySubmission(courseId, courseWorkId);
+      } catch (error) {
+        const status = googleError(error)?.providerStatus;
+        if (status === undefined || !(REFUSED_STATUSES.has(status) || status === "RESOURCE_EXHAUSTED")) {
+          throw new ActionOutcomeUnknownError(APPLY_OUTCOME_UNKNOWN_MESSAGE);
+        }
+        refusedOrRetryable(error);
+      }
+    },
+  },
+}, { fence: "none", vendorId: "google" });
+
 // The statuses Google answers a request with when it refused it, so nothing was written.
 const REFUSED_STATUSES = new Set([
   "INVALID_ARGUMENT", "FAILED_PRECONDITION", "OUT_OF_RANGE", "UNAUTHENTICATED",
@@ -61,7 +99,8 @@ function googleError(error: unknown): GoogleApiError | undefined {
  * would be refused again; a 429 or transient failure is left to be retried.
  */
 function refusedOrRetryable(error: unknown): never {
-  if (error instanceof ClassroomNotOwnedError || error instanceof ClassroomSubmissionNotReadyError) throw new ActionApplyError(error.message);
+  if (error instanceof ClassroomNotOwnedError || error instanceof ClassroomSubmissionNotReadyError ||
+      error instanceof ClassroomStudentSubmissionNotReadyError) throw new ActionApplyError(error.message);
   let status = googleError(error)?.providerStatus;
   if (status !== undefined && REFUSED_STATUSES.has(status)) {
     throw new ActionApplyError((error as Error).message);

@@ -91,6 +91,12 @@
       "new_sqlite_classes": [
         "GoogleClassroomGatekeeperImpl"
       ]
+    },
+    {
+      "tag": "v10",
+      "new_sqlite_classes": [
+        "GoogleClassroomStudentGatekeeperImpl"
+      ]
     }
   ],
   "account_id": "c07a7e704db1808e1fff91bed2b1cd49",
