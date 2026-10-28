@@ -4,6 +4,7 @@
 // Durable Object shell around it.
 import type { JWTVerifyGetKey } from "jose";
 import { AcademicDirectory } from "@educateos/academics";
+import { checkDirectoryIntegrity, DistrictDirectorySnapshot } from "@educateos/contracts";
 import type { ImportFetch } from "@educateos/content-studio";
 import { createDirectoryPrincipalResolver } from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
@@ -106,6 +107,17 @@ export function workerRosterSource(
 export async function startDistrict(storage: DistrictSqlStorage, settings: DistrictSettings, seams: DistrictSeams): Promise<District> {
   const config = readDistrictWorkerConfig(settings.config);
   const stores = durableDistrictStores(storage, config.directory);
+  if (config.additionalTrustedIssuers !== undefined) {
+    const { snapshot, version } = await stores.directory.load();
+    const trustedIssuers = [...new Set([...snapshot.district.trustedIssuers, ...config.additionalTrustedIssuers])];
+    if (JSON.stringify(snapshot.district.trustedIssuers) !== JSON.stringify(trustedIssuers)) {
+      const next = DistrictDirectorySnapshot.parse({ ...snapshot, district: { ...snapshot.district, trustedIssuers } });
+      if (checkDirectoryIntegrity(next).length > 0) {
+        throw new Error("Deployment issuer trust would invalidate existing district identity links.");
+      }
+      await stores.directory.commit(next, version);
+    }
+  }
   const verifyRequest = accessRequestVerifier({
     issuer: settings.accessIssuer ?? "",
     audiences: accessAudiences(settings.accessAudiences),

@@ -135,6 +135,13 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   `authority`, `fundingPools`, `aiMonthlyDistrictCapUsdNano`, `cloudflareAccount`, `modelCatalog`,
   `approvedExternalHosts` and `retention`. Workers vars are limited in size, so the seed should be
   small. The roster arrives through `admin.applyRoster`.
+- `additionalTrustedIssuers` adds explicitly configured HTTPS issuers to the stored directory at
+  startup, including after initial seeding. Use this when enabling a new roster provider such as
+  Classroom (`https://accounts.google.com`). It preserves all existing trust, people, roles and
+  records, including trust added through LTI registration. Repeated starts are idempotent. Removing
+  the setting does not revoke persisted trust. It creates no identity links and does not change
+  Access JWT issuer, signature or audience verification. Only the deployment operator can set it;
+  it is absent from district configuration revisions and browser inputs.
 - `authority` names who owns the directory: `"oneroster"` (the default), `"clever"` or `"local"`, or a full
   `AuthorityMap` for a mixed district. A district with no roster, such as a homeschool co-op, sets
   `"local"`: its administrators then create schools, terms, courses, sections and students and enroll

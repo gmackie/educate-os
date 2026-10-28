@@ -19,6 +19,12 @@ export const DistrictWorkerConfig = z.strictObject({
    */
   directory: DistrictDirectorySnapshot,
   /**
+   * Deployment-controlled issuers to add to an existing directory at startup. Existing trust
+   * and identity links are preserved; removing this setting does not revoke persisted trust.
+   * This does not change Access JWT verification or create identity links.
+   */
+  additionalTrustedIssuers: z.array(z.url({ protocol: /^https$/ })).min(1).max(100).optional(),
+  /**
    * Which system owns each directory record type: `"oneroster"` (the default: the roster owns
    * every type), `"local"` (EducateOS owns every type, for a district with no roster, such as a
    * homeschool co-op, whose administrators build classes through the admin API), or a full

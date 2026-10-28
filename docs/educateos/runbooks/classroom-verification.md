@@ -360,3 +360,20 @@ Implementation validation is separate from live acceptance. Use the rehearsal se
 [classroom-customer-demo.md](classroom-customer-demo.md) after deployment. Do not edit/delete the
 graded weathering exemplar. Harbor still shows the current Google admin as an unlinked identity;
 the existing operator administrator must sign in before supported roster/identity setup proceeds.
+
+
+### Harbor setup continuation, 2026-10-28
+
+Owner email PIN sign-in restored the existing `prn_hb-school-admin` (Marisol Vega) at
+`/admin/`; `/api/me` confirms district-admin for `dst_harbor`. No recovery elevation or reseed
+was used. The initial dashboard has one staff member, no courses and no configuration revision.
+The supported config preview found `untrusted-roster-issuer`: Harbor's stored directory trusts
+Access but not Google's issuer. A startup `additionalTrustedIssuers` deployment setting now adds
+explicit issuer trust without changing existing identities, roles or LTI trust. This requires
+its own deployment before the Classroom revision can apply.
+
+Google connector deployment `6824917a-5019-4522-a5f2-5d32ff7dd2ae` is active at
+`47d5d25189f8e5e117ddd7e14721f64f0a4b2043` (PR179). Live rubric/period mutations are still
+pending. Harbor's DWD credential was stored in ForgeGraph; prepared course selection contains only
+the four Harbor courses, never Cedar Valley's courses. Configuration and roster apply have not
+occurred yet. Scheduled sync still requires an authorized service principal.
