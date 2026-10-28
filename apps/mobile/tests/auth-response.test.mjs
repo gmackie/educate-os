@@ -14,3 +14,8 @@ test('closing browser without a callback ends sign-in', async () => {
 test('successful browser callback is preserved', async () => {
   assert.equal(await authResponseUrl({ type: 'success', url: 'browser-callback' }, new Promise(() => {})), 'browser-callback');
 });
+
+test('native HTTPS association failure is not misreported as user cancellation', async () => {
+  await assert.rejects(authResponseUrl({ type: 'cancel', error: 'Using HTTPS callbacks requires Associated Domains using the webcredentials service type.' }, new Promise(() => {}), 1), /missing the iOS sign-in domain association/);
+  assert.equal(await authResponseUrl({ type: 'cancel', error: 'webcredentials association failed' }, Promise.resolve('validated-callback')), 'validated-callback');
+});

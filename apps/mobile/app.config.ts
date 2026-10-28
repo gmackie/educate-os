@@ -12,7 +12,7 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: 'io.educateos.mobile',
     supportsTablet: true,
-    associatedDomains: ['applinks:mobile.educateos.io'],
+    associatedDomains: ['applinks:mobile.educateos.io', 'webcredentials:mobile.educateos.io'],
     infoPlist: {
       NSFaceIDUsageDescription: 'Confirm access to your EducateOS school account.',
       NSCameraUsageDescription: 'Attach photos of your own schoolwork when you choose to.',
