@@ -1,8 +1,9 @@
 // A stand-in for Clever's token and identity endpoints, as the launch handler calls them. A code
 // `launch-<district>` signs in a user of that Clever district; `launch-teacher-<district>` signs one
 // in through a teacher's authorization, whose /me names no district, so it is read from /users; and
-// `launch-demo-<district>` is a sandbox demo login, whose user record names no district either, so it
-// is read from the user's district record. Any
+// `launch-demo-<district>` is a sandbox demo login: a teacher who authorized the app themselves, for
+// whom Clever has no district at all (the user record's roles carry only a legacy ID, and the
+// district record is a 404), whatever the code names. Any
 // other code is refused, as an expired or reused one would be. The token it issues names the code,
 // so a suite can look for it.
 import { CLEVER_LAUNCH_REDIRECT_URI, CLEVER_ME_URL, CLEVER_TOKEN_URL, CLEVER_USERS_URL } from "../src/clever-launch.ts";
@@ -43,12 +44,9 @@ export async function fakeClever(input: string, init: RequestInit): Promise<Resp
   if (input === `${CLEVER_USERS_URL}/${CLEVER_USER}` && init.method === "GET") {
     const [, kind, district] = match!;
     return Response.json({
-      data: { id: CLEVER_USER, email: "teacher@example.org", name: {}, roles: { teacher: kind === "demo-" ? {} : { district } } },
+      data: { id: CLEVER_USER, email: "teacher@example.org", name: {}, roles: { teacher: kind === "demo-" ? { legacy_id: CLEVER_USER } : { district } } },
       links: [{ rel: "self", uri: `/v3.0/users/${CLEVER_USER}` }],
     });
-  }
-  if (input === `${CLEVER_USERS_URL}/${CLEVER_USER}/district` && init.method === "GET" && match![1] === "demo-") {
-    return Response.json({ data: { id: match![2], name: "Sandbox District" } });
   }
   return new Response("not found", { status: 404 });
 }

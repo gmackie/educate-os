@@ -7,7 +7,7 @@ import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { DistrictAgent, InMemorySequenceCounter, SigningIdentity } from "@educateos/fleet";
 import { importJWK, SignJWT, type JWK } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CLEVER_LAUNCH_PATH, cleverLaunch, configuredLaunchDistricts, type CleverLaunchDeps } from "../src/clever-launch.ts";
+import { CLEVER_LAUNCH_PATH, cleverLaunch, configuredLaunchDistricts, configuredUnaffiliatedHostname, type CleverLaunchDeps } from "../src/clever-launch.ts";
 import { TABLES } from "../src/store.ts";
 import { CONTROL_PLANE_OBJECT } from "../src/worker.ts";
 import { CLEVER_CLIENT, CLEVER_USER, fakeClever, tokenFor } from "./clever-fake.ts";
@@ -84,25 +84,46 @@ describe("the launch handler", () => {
     ]);
   });
 
-  it("reads a demo login's district from its district record when its user record names none", async () => {
+  it("reads the district from the user's district record when the user record names none", async () => {
+    const fetch: CleverLaunchDeps["fetch"] = async (input, init) =>
+      input.endsWith(`/users/${CLEVER_USER}/district`) ? Response.json({ data: { id: SANDBOX_DISTRICT } }) : fakeClever(input, init);
     const consoleSpies = spyOnConsole();
-    const code = `launch-demo-${SANDBOX_DISTRICT}`;
-    const response = await cleverLaunch(launch(code), deps());
+    const response = await cleverLaunch(launch(`launch-demo-${SANDBOX_DISTRICT}`), deps({ fetch }));
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe("https://cedarvalley.educateos.io/");
-    const logs = logged(consoleSpies);
-    expect(logs).toContain("clever.launch.user-record");
-    for (const secret of [code, tokenFor(code), SANDBOX_DISTRICT]) expect(logs).not.toContain(secret);
+    expect(logged(consoleSpies)).toContain("clever.launch.user-record");
   });
 
-  it("refuses a user record whose roles name two districts", async () => {
+  it("sends a user Clever places in no district to the configured unaffiliated site", async () => {
+    const consoleSpies = spyOnConsole();
+    const code = `launch-demo-${SANDBOX_DISTRICT}`;
+    const response = await cleverLaunch(launch(code), deps({ unaffiliatedHostname: "northfield.educateos.io" }));
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("https://northfield.educateos.io/");
+    const logs = logged(consoleSpies);
+    expect(logs).toContain("\"unaffiliated\":true");
+    for (const secret of [code, tokenFor(code), CLEVER_USER]) expect(logs).not.toContain(secret);
+  });
+
+  it("tells a user Clever places in no district so when no unaffiliated site is configured", async () => {
+    const consoleSpies = spyOnConsole();
+    const response = await cleverLaunch(launch(`launch-demo-${SANDBOX_DISTRICT}`), deps());
+    expect(response.status).toBe(404);
+    expect(await response.text()).toContain("linked to a district");
+    expect(consoleSpies[2]!.mock.calls).toEqual([
+      ["clever launch refused", { event: "clever.launch.refused", reason: "no-district" }],
+    ]);
+  });
+
+  it("does not route by a user record whose roles name two districts", async () => {
     const fetch: CleverLaunchDeps["fetch"] = async (input, init) =>
       input.endsWith(`/users/${CLEVER_USER}`)
         ? Response.json({ data: { id: CLEVER_USER, roles: { teacher: { district: SANDBOX_DISTRICT }, staff: { district: OTHER_DISTRICT } } } })
         : fakeClever(input, init);
     const response = await cleverLaunch(launch(`launch-teacher-${SANDBOX_DISTRICT}`), deps({ fetch }));
-    expect(response.status).toBe(502);
-    await response.body?.cancel();
+    // Neither district is trusted; with no district record either, the user is in no district.
+    expect(response.status).toBe(404);
+    expect(await response.text()).toContain("linked to a district");
   });
 
   it("tells a user whose district registered no installation so, without naming the district", async () => {
@@ -279,6 +300,9 @@ describe("/clever/launch on the site Worker", () => {
     await foreign.body?.cancel();
     expect(configuredLaunchDistricts("not json").size).toBe(0);
     expect(configuredLaunchDistricts(undefined).size).toBe(0);
+    expect(configuredUnaffiliatedHostname(" northfield.educateos.io ")).toBe("northfield.educateos.io");
+    expect(configuredUnaffiliatedHostname("evil.example.com")).toBeUndefined();
+    expect(configuredUnaffiliatedHostname(undefined)).toBeUndefined();
   });
 
   it("refuses a POST", async () => {

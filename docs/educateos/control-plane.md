@@ -161,6 +161,13 @@ match. It is a demo bridge until the guided install writes installation rows; to
 the guided install offers the link, it needs a proof that the operator speaks for that Clever
 district.
 
+**Users in no district.** Clever places a teacher who authorized the app themselves in no district:
+`/me` names none, the user record's roles carry only a legacy ID, and the user's district record is
+a 404. Every sandbox demo login is one. Such a launch goes to the site Worker's
+`CLEVER_LAUNCH_UNAFFILIATED` hostname (today `northfield.educateos.io`) and is otherwise refused
+with `no-district`. The redirect grants nothing: the district's own sign-in still decides who gets
+in.
+
 **Setup.**
 
 - The Clever app's first redirect URI is `https://educateos.io/clever/launch`. Each district's own

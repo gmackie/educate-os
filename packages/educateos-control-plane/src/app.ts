@@ -87,6 +87,8 @@ export interface ControlPlaneDeps {
    * installations (`CLEVER_LAUNCH_DISTRICTS`). Consulted only when the registry has no match.
    */
   cleverLaunchDistricts?: ReadonlyMap<string, string>;
+  /** Where a Clever user in no district is sent (`CLEVER_LAUNCH_UNAFFILIATED`). Unset refuses them. */
+  cleverLaunchUnaffiliated?: string;
   /** The guided install's release source and pinned trust. Without them, installing is unavailable. */
   releases?: { bucket: ReleaseBucket; trust: unknown };
   /** Keeps a streamed install running if the browser goes away mid-run. */
@@ -138,6 +140,7 @@ async function route(request: Request, deps: ControlPlaneDeps): Promise<Response
       credentials: deps.clever,
       hostnameFor: async (cleverDistrictId) =>
         (await deps.store().cleverLaunchHostname(cleverDistrictId)) ?? deps.cleverLaunchDistricts?.get(cleverDistrictId),
+      ...(deps.cleverLaunchUnaffiliated === undefined ? {} : { unaffiliatedHostname: deps.cleverLaunchUnaffiliated }),
       fetch: deps.cleverFetch ?? ((input, init) => fetch(input, init)),
     });
   }
