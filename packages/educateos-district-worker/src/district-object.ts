@@ -23,6 +23,7 @@ import type { JWTVerifyGetKey } from "jose";
 import { createLogger } from "@gadgets/observability/logger";
 import type { DistrictDirectorySnapshot, PrincipalId, VerifiedPrincipal } from "@educateos/contracts";
 import type { DeviceId, DeviceRegistration, DeviceRevocation, DeviceTokens, DistrictApp } from "@educateos/district-app";
+import type { AccessSignInResolution, EmailKeyedUserMatch } from "@educateos/identity";
 import type { AdmittedSubjectRequest, GuardSubject, GuardSubjectRequest } from "@educateos/district-app/guard-directory";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
 import { startDistrict, type District } from "./district.ts";
@@ -176,6 +177,16 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
   /** Revokes every active device of a principal, for administrators and operators. Returns how many. */
   async revokePrincipalDevices(principalId: PrincipalId, revocation: DeviceRevocation): Promise<number> {
     return (await this.#boot()).app.devices.revokePrincipal(principalId, revocation);
+  }
+
+  /** Who a verified Access sign-in is, for the Workshop's principal resolver (SCHO-259). */
+  async resolveAccessSignIn(signIn: unknown): Promise<AccessSignInResolution> {
+    return (await this.#boot()).principals.resolveAccessSignIn(signIn);
+  }
+
+  /** Matches the Workshop's email-keyed users to the district's people (SCHO-259). */
+  async matchEmailKeyedUsers(users: unknown): Promise<EmailKeyedUserMatch[]> {
+    return (await this.#boot()).principals.matchEmailKeyedUsers(users);
   }
 
   /**

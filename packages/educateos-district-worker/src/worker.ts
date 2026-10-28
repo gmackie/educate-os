@@ -6,6 +6,9 @@
 //   `@educateos/ai-guard`, SCHO-132/SCHO-147). Given to the guard alone, never on `/api`.
 // - `DistrictSchoolTools`, the EducateOS gatekeeper's `SchoolToolService` (SCHO-57).
 //
+// `DistrictPrincipalResolver`, the Workshop backend's `PRINCIPAL_RESOLVER` (SCHO-259), which says
+// who a sign-in the backend has already verified is;
+//
 // and `DistrictApi`, the `/api` surface as a service, which is what the release binds to the
 // backend (`EDUCATEOS_DISTRICT_API`). It carries no authority of its own: every request must bring
 // an Access assertion the district verifies itself.
@@ -89,6 +92,50 @@ export class DistrictSchoolTools extends WorkerEntrypoint<Cloudflare.Env> implem
   @skipRpcValidation()
   async serveAs(principal: VerifiedPrincipal, request: Request): Promise<Response> {
     return districtObject(this.env, this.ctx.exports).serveAs(principal, request);
+  }
+}
+
+/** A verified Access sign-in, as the Workshop's principal resolver seam passes it. */
+interface WorkshopAccessSignIn {
+  issuer: string;
+  subject: string;
+  email?: string;
+}
+
+/** One existing email-keyed Workshop user. */
+interface WorkshopEmailKeyedUser {
+  email: string;
+  workshopUserId: string;
+}
+
+/** What the seam answers, in plain types (the district's own carry brands). */
+type WorkshopPrincipalResolution =
+  | { outcome: "resolved"; principalId: string; displayName: string }
+  | { outcome: "unauthenticated" }
+  | { outcome: "adoption-pending" };
+
+/** What the district says about one email-keyed Workshop user. */
+type WorkshopEmailKeyedUserMatch =
+  | { email: string; outcome: "exact-single"; principalId: string }
+  | { email: string; outcome: "ambiguous" | "cross-district" | "unmatched" };
+
+/**
+ * The Workshop backend's `PRINCIPAL_RESOLVER` and `PRINCIPAL_MIGRATION` (SCHO-259, ADR-0014): the
+ * kernel's `PrincipalResolver` and `PrincipalMigrationDirectory` (`@gadgets/workshop-shared/
+ * principal-resolver`, matched by hand: ADR-0002). It trusts its caller to have verified the
+ * Access token, so it is bound to the Workshop backend alone; unlike `DistrictApi`, holding it
+ * says who people are. Nothing binds it until a deployment's cutover.
+ */
+@validateRpc()
+export class DistrictPrincipalResolver extends WorkerEntrypoint<Cloudflare.Env> {
+  /** The principal a verified Access sign-in is linked to, or `unauthenticated`. */
+  async resolveAccessSignIn(signIn: WorkshopAccessSignIn): Promise<WorkshopPrincipalResolution> {
+    return districtObject(this.env, this.ctx.exports).resolveAccessSignIn(signIn);
+  }
+
+  /** Matches existing email-keyed Workshop users to the district's people. Links nothing. */
+  async matchEmailKeyedUsers(users: WorkshopEmailKeyedUser[]): Promise<WorkshopEmailKeyedUserMatch[]> {
+    return districtObject(this.env, this.ctx.exports).matchEmailKeyedUsers(users);
   }
 }
 

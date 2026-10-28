@@ -7,6 +7,7 @@ import type {
   AccessSignIn, PrincipalResolution,
 } from "@gadgets/workshop-shared/principal-resolver";
 import { getAuthGatekeeperAllowlist, isPasswordAuthEnabled } from "../src/auth/config";
+import { PRINCIPAL_RESOLVER_UNAVAILABLE_MESSAGE } from "../src/auth/principal-sign-in";
 import server from "../src/server";
 
 // Stand in for Access's signature check: a test "JWT" is its base64url-encoded payload. What is
@@ -143,11 +144,19 @@ describe("Access sign-in with a principal resolver", () => {
     expect(await authErrorCode(signInAs(jwt({ sub: "sub-malformed" })))).toBe("PRINCIPAL_UNRESOLVED");
   });
 
-  it("refuses the sign-in when the resolver fails", async () => {
+  it("refuses the sign-in, saying the district is unavailable, when the resolver fails", async () => {
     const resolver = resolverFor(LINKS);
     resolver.resolveAccessSignIn.mockRejectedValue(new Error("directory unavailable"));
     routeApiTo(accessEnv(resolver));
-    await expect(signInAs(jwt({ sub: "sub-alice" }))).rejects.toThrow("directory unavailable");
+    const refusal = signInAs(jwt({ sub: "sub-alice", email: "alice@district.example" }));
+    await expect(refusal).rejects.toThrow(PRINCIPAL_RESOLVER_UNAVAILABLE_MESSAGE);
+    // Not an auth error, so the browser does not treat the session as signed out for good.
+    expect(await refusal.catch(getAuthErrorCode)).toBeUndefined();
+  });
+
+  it("tells a sign-in the school has not set up who can fix it", async () => {
+    routeApiTo(accessEnv(resolverFor(LINKS)));
+    await expect(signInAs(jwt({ sub: "sub-unknown" }))).rejects.toThrow("Your school hasn't set up your account");
   });
 
   it("refuses session tokens, passwords and gatekeeper sign-in", async () => {

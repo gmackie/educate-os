@@ -6,7 +6,13 @@ import type { JWTVerifyGetKey } from "jose";
 import { AcademicDirectory } from "@educateos/academics";
 import { checkDirectoryIntegrity, DistrictDirectorySnapshot } from "@educateos/contracts";
 import type { ImportFetch } from "@educateos/content-studio";
-import { createDirectoryPrincipalResolver } from "@educateos/identity";
+import {
+  createAccessSignInResolver,
+  createDirectoryPrincipalResolver,
+  matchEmailKeyedUsers,
+  type AccessSignInResolution,
+  type EmailKeyedUserMatch,
+} from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
 import { authorityFor, createDistrictApp, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
 import { clever, googleclassroom } from "@educateos/integrations";
@@ -27,6 +33,24 @@ export interface District {
   tools: SchoolToolService;
   /** The district's LTI 1.3 Tool, when the deployment names its origin (SCHO-177). */
   lti: DistrictLti | undefined;
+  /** Who a Workshop sign-in is, for the Workshop's `PRINCIPAL_RESOLVER` (SCHO-259). */
+  principals: DistrictPrincipals;
+}
+
+/**
+ * The Workshop's principal resolver seam over the district directory as it stands (SCHO-259), so
+ * the Workshop on the district's origin names each person exactly as the district does: by their
+ * Access identity's link, never by email.
+ */
+export interface DistrictPrincipals {
+  /**
+   * The principal a verified Access sign-in (`issuer`, `subject`, and `email`, which is ignored) is
+   * linked to, or `unauthenticated`: the school has not set this person up. Rejects only when the
+   * directory cannot answer (it fails its integrity checks).
+   */
+  resolveAccessSignIn(signIn: unknown): Promise<AccessSignInResolution>;
+  /** Matches the Workshop's email-keyed users to the district's people, for its one-time migration. */
+  matchEmailKeyedUsers(users: unknown): Promise<EmailKeyedUserMatch[]>;
 }
 
 /** The Worker's settings a district starts from: its vars, as text. */
@@ -184,5 +208,17 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       toolOrigin: settings.ltiToolOrigin,
       platformFetch: seams.platformFetch ?? ((input, init) => fetch(input, init)),
     });
-  return { app, tools, lti };
+  // The same issuer and Clever setting the district's own sign-in reads, so the two agree. The
+  // seam carries no Clever claims, so a Clever district resolves no Workshop sign-in this way.
+  const access = { issuer: settings.accessIssuer ?? "", ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }) };
+  const principals: DistrictPrincipals = {
+    async resolveAccessSignIn(signIn) {
+      const directory = (await stores.directory.load()).snapshot;
+      return createAccessSignInResolver({ directory, access }).resolveAccessSignIn(signIn);
+    },
+    async matchEmailKeyedUsers(users) {
+      return matchEmailKeyedUsers((await stores.directory.load()).snapshot, users);
+    },
+  };
+  return { app, tools, lti, principals };
 }
