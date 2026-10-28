@@ -1,0 +1,23 @@
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+  Cache-Control: public, max-age=300
+
+/*
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+
+/pair
+  Cache-Control: no-store
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
+
+/pair-phone
+  Cache-Control: no-store
+  Content-Security-Policy: default-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'
+
+/enroll
+  Cache-Control: no-store
+  Content-Security-Policy: default-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'
+
+/j
+  Cache-Control: no-store
+  Content-Security-Policy: default-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'
