@@ -41,7 +41,10 @@ export function uniqueParam(params: URLSearchParams, key: string): string {
 
 /** Enrollment links carry public school addresses only, never credentials or sign-in tokens. */
 export function parseEnrollmentLink(value: string): { name: string; portal: string; workshop: string } {
-  const url = new URL(value);
+  let url = new URL(value);
+  if (url.origin === CALLBACK_ORIGIN && url.pathname === '/enroll' && !url.search && !url.username && !url.password) {
+    url = new URL('educateos://enroll?' + url.hash.slice(1));
+  }
   if (url.protocol !== 'educateos:' || url.hostname !== 'enroll' ||
       (url.pathname !== '' && url.pathname !== '/') || url.username || url.password || url.port || url.hash ||
       [...url.searchParams.keys()].some(key => !['name', 'portal', 'workshop'].includes(key))) {
@@ -52,4 +55,22 @@ export function parseEnrollmentLink(value: string): { name: string; portal: stri
   const portal = strictOrigin(uniqueParam(url.searchParams, 'portal'));
   const workshop = strictOrigin(uniqueParam(url.searchParams, 'workshop'));
   return { name, portal, workshop };
+}
+
+/** A QR grants only an expiring pairing attempt; both devices must still confirm the transfer. */
+export function parsePairingLink(value: string): { name: string; portal: string; workshop: string; id: string; secret: string } {
+  let url = new URL(value);
+  if (url.origin === CALLBACK_ORIGIN && url.pathname === '/pair-phone' && !url.search && !url.username && !url.password) {
+    url = new URL('educateos://pair?' + url.hash.slice(1));
+  }
+  if (url.protocol !== 'educateos:' || url.hostname !== 'pair' || url.username || url.password || url.port ||
+      url.hash || (url.pathname !== '' && url.pathname !== '/') ||
+      [...url.searchParams.keys()].some(key => !['name', 'portal', 'workshop', 'id', 'secret'].includes(key))) {
+    throw new Error('Invalid phone pairing code.');
+  }
+  const id = uniqueParam(url.searchParams, 'id'), secret = uniqueParam(url.searchParams, 'secret');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id) || !/^[0-9a-f]{64}$/.test(secret)) throw new Error('Invalid phone pairing code.');
+  const details = new URLSearchParams();
+  for (const key of ['name', 'portal', 'workshop']) details.set(key, uniqueParam(url.searchParams, key));
+  return { ...parseEnrollmentLink('educateos://enroll?' + details), id, secret };
 }

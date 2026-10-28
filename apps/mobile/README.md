@@ -128,3 +128,17 @@ at mobile.educateos.io, with the `_headers` rules, no Access login and no redire
 association file. This host is required independently of QR enrollment. A fresh install may be
 needed after publishing because iOS caches domain associations. Android still needs its own
 assetlinks.json using the actual signing certificate; this directory does not claim Android verification.
+
+## Connect from a signed-in computer
+
+On the computer, open https://mobile.educateos.io/pair, confirm the school and workspace addresses,
+and create a pairing QR. On the phone, scan it with Camera and open EducateOS. Review the school,
+choose **Connect this phone**, compare the code on both screens, then approve on the computer and
+confirm the signed-in identity in Workshop. Pairing expires in two minutes and needs a new QR after
+cancellation, expiry or use. The phone retains the encryption private key; the relay gets ciphertext
+only. Do not scan unsolicited pairing codes or approve a code that does not match.
+
+The callback host is now published, including its verified Apple association. If iOS cached an
+older/missing association, reinstall the newest standalone app. School enrollment also accepts
+`https://mobile.educateos.io/enroll#` followed by the same URL-encoded public school parameters.
+HTTPS links have a browser fallback with an **Open EducateOS** button.

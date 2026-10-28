@@ -17,3 +17,5 @@
 **/*.p12
 **/*.p8
 **/*.mobileprovision
+
+/apps/mobile/app-links

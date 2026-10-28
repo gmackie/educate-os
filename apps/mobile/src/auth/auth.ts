@@ -64,3 +64,44 @@ export async function signIn(district: District): Promise<Session> {
     // Do not save provider or installation credentials in history or AsyncStorage.
   }
 }
+
+/** Pair through the public ciphertext relay; the Workshop still owns credential creation and consent. */
+export async function signInFromComputer(district: District, pairing: { id: string; secret: string }, onCode: (code: string) => void, signal: AbortSignal): Promise<Session> {
+  if (activeAttempt) throw new Error('Finish or cancel the current sign-in first.');
+  const attempt = await newAttempt();
+  attempt.state = `pair-v1.${pairing.id}.${attempt.state}`;
+  activeAttempt = attempt;
+  const endpoint = CALLBACK_ORIGIN + '/pairings/' + pairing.id;
+  const request = async (path: string, body?: unknown) => {
+    const response = await fetch(endpoint + path, { method: body ? 'POST' : 'GET', signal,
+      headers: { Authorization: 'Bearer ' + pairing.secret, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined });
+    if (!response.ok) throw new Error('This computer pairing expired or was already used. Create a new code.');
+    return response.json();
+  };
+  try {
+    const room = await request('');
+    if (!room.school || room.school.portal !== district.portal || room.school.workshop !== district.workshop || room.school.name !== district.name) {
+      throw new Error('The computer and phone school details do not match.');
+    }
+    const code = (await ExpoCrypto.digestStringAsync(ExpoCrypto.CryptoDigestAlgorithm.SHA256, attempt.state + '.' + attempt.publicKey)).slice(0, 8).toUpperCase();
+    await request('/claim', { state: attempt.state, publicKey: attempt.publicKey });
+    onCode(code);
+    while (Date.now() - attempt.startedAt < 120_000 && Date.now() < room.expiresAt) {
+      const result = await request('');
+      if (result.callback) {
+        signal.throwIfAborted();
+        return await storeSession(district, unseal(parseSessionLink(result.callback, attempt), attempt));
+      }
+      await new Promise<void>((resolve, reject) => {
+        const abort = () => { clearTimeout(timer); reject(new Error('Computer pairing cancelled.')); };
+        const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); }, 1500);
+        if (signal.aborted) abort(); else signal.addEventListener('abort', abort, { once: true });
+      });
+    }
+    throw new Error('Computer pairing expired. Create a new code on the computer.');
+  } finally {
+    attempt.privateKey.fill(0);
+    activeAttempt = null;
+  }
+}

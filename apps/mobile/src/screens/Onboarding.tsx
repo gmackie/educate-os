@@ -6,7 +6,8 @@ import { makeDistrict } from '../district';
 import { palette } from '../theme';
 import { Button, Card, Eyebrow, Field, Item, Page, Title } from '../ui/Primitives';
 
-export function Onboarding({ enrollment, districts, busy, error, onAdd, onConnect, onRemove }: {
+export function Onboarding({ computerPairing, enrollment, districts, busy, error, onAdd, onConnect, onRemove }: {
+  computerPairing?: { school: { name: string; portal: string; workshop: string }; code: string | null; onConnect: () => void; onCancel: () => void };
   enrollment?: { name: string; portal: string; workshop: string } | null;
   districts: District[]; busy: boolean; error?: string | null;
   onAdd: (district: District) => Promise<void>;
@@ -37,7 +38,18 @@ export function Onboarding({ enrollment, districts, busy, error, onAdd, onConnec
       Your school. Your space.
     </Title>
     {error && <Text accessibilityRole="alert" style={{ color: palette.red, marginBottom: 14 }}>{error}</Text>}
-    {districts.length > 0 && <View style={{ gap: 8, marginBottom: 20 }}>
+    {computerPairing && <Card style={{ gap: 12, marginBottom: 20 }}>
+      <Text style={{ color: palette.ink, fontSize: 20, fontWeight: '800' }}>Connect from your computer</Text>
+      <Text style={{ color: palette.ink }}>{computerPairing.school.name}</Text>
+      <Text style={{ color: palette.muted }}>School: {computerPairing.school.portal}</Text>
+      <Text style={{ color: palette.muted }}>Workspace: {computerPairing.school.workshop}</Text>
+      {computerPairing.code ? <>
+        <Text style={{ color: palette.ink, fontSize: 30, fontWeight: '800', textAlign: 'center' }}>{computerPairing.code}</Text>
+        <Text style={{ color: palette.muted }}>Check that this code matches your computer, then approve in the signed-in Workshop. Only continue if you started this connection.</Text>
+      </> : <Button label="Connect this phone" disabled={busy} onPress={computerPairing.onConnect}/>}
+      <Button label="Cancel computer pairing" variant="quiet" onPress={computerPairing.onCancel}/>
+    </Card>}
+    {!computerPairing && districts.length > 0 && <View style={{ gap: 8, marginBottom: 20 }}>
       <Text style={{ color: palette.ink, fontWeight: '800', fontSize: 17, marginBottom: 6 }}>Your schools</Text>
       {districts.map((district) => <Card key={district.id}>
         <Item title={district.name} detail={district.portal} leading={<School size={22} color={palette.primary}/>}
@@ -53,7 +65,7 @@ export function Onboarding({ enrollment, districts, busy, error, onAdd, onConnec
         </View>
       </Card>)}
     </View>}
-    {adding ? <Card style={{ gap: 15, marginBottom: 20 }}>
+    {!computerPairing && (adding ? <Card style={{ gap: 15, marginBottom: 20 }}>
       <Text style={{ color: palette.ink, fontSize: 17, fontWeight: '800' }}>Add your school</Text>
       <Text style={{ color: palette.muted, lineHeight: 21 }}>Scan your school’s setup QR code with your phone’s Camera app to fill these details. Check the school addresses before saving.</Text>
       <Field label="School or district name" value={name} onChangeText={setName} placeholder="Example: Northfield Schools"/>
@@ -64,8 +76,8 @@ export function Onboarding({ enrollment, districts, busy, error, onAdd, onConnec
       <Button label="Save school" disabled={busy} onPress={() => { void save(); }}/>
       {districts.length > 0 && <Button label="Cancel" variant="quiet" onPress={() => setAdding(false)}/>}
     </Card> : <Button label="Add another school" variant="outline" onPress={() => setAdding(true)}
-      icon={<Plus size={18} color={palette.primary}/>}/>}
-    {busy && <Text style={{ color: palette.muted, textAlign: 'center', padding: 10 }}>Opening your school's secure sign-in…</Text>}
+      icon={<Plus size={18} color={palette.primary}/>}/>)}
+    {busy && !computerPairing && <Text style={{ color: palette.muted, textAlign: 'center', padding: 10 }}>Opening your school's secure sign-in…</Text>}
     <View style={{ paddingTop: 30, gap: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <LockKeyhole size={17} color={palette.teal}/>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Pressable, StatusBar, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { CalendarDays, ChevronLeft, GraduationCap, Home, Library, MessageCircle, Settings2, Sparkles } from 'lucide-react-native';
@@ -6,11 +6,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 import type { Detail, District, Principal, Session, Tab } from './types';
 import { DistrictClient } from './api/client';
-import { consumeIncomingUrl, signIn } from './auth/auth';
+import { consumeIncomingUrl, signIn, signInFromComputer } from './auth/auth';
 import { clearSession, prepareWebView, restoreSession } from './auth/session';
 import { getDistricts, removeDistrict, saveDistrict } from './district';
 import { palette } from './theme';
-import { parseEnrollmentLink } from './security';
+import { parseEnrollmentLink, parsePairingLink } from './security';
 import { Button, Loading, Page } from './ui/Primitives';
 import { Onboarding } from './screens/Onboarding';
 import { Today } from './screens/Today';
@@ -129,6 +129,9 @@ function WorkspaceOnly({ message, onWorkspace, onRetry }: {
 }
 
 function InnerApp() {
+  const pairingAbort = useRef<AbortController | null>(null);
+  const [pairing, setPairing] = useState<ReturnType<typeof parsePairingLink> | null>(null);
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [enrollment, setEnrollment] = useState<ReturnType<typeof parseEnrollmentLink> | null>(null);
   const [booting, setBooting] = useState(true);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -151,7 +154,12 @@ function InnerApp() {
 
   useEffect(() => {
     const receiveUrl = (url: string) => {
-      if (url.startsWith('educateos://enroll')) {
+      if (url.startsWith('educateos://pair') || url.startsWith('https://mobile.educateos.io/pair-phone')) {
+        try {
+          pairingAbort.current?.abort();
+          setPairing(parsePairingLink(url)); setPairingCode(null); setChoosing(true); setError(null);
+        } catch { setError('This computer pairing QR code is invalid. Create a new one on the computer.'); }
+      } else if (url.startsWith('educateos://enroll') || url.startsWith('https://mobile.educateos.io/enroll')) {
         try {
           setEnrollment(parseEnrollmentLink(url));
           setChoosing(true);
@@ -176,7 +184,7 @@ function InnerApp() {
       }
       if (alive) { setDistricts(all); setSession(restored); setBooting(false); }
     })();
-    return () => { alive = false; subscription.remove(); };
+    return () => { alive = false; subscription.remove(); pairingAbort.current?.abort(); };
   }, []);
 
   useEffect(() => {
@@ -232,6 +240,22 @@ function InnerApp() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Sign-in could not be completed.'); }
     finally { setWorking(false); }
   };
+  const connectComputer = async () => {
+    if (!pairing || working) return;
+    setWorking(true); setError(null);
+    const controller = new AbortController();
+    pairingAbort.current = controller;
+    const district = { id: pairing.workshop + '|' + pairing.portal, name: pairing.name, portal: pairing.portal, workshop: pairing.workshop };
+    try {
+      const connected = await signInFromComputer(district, pairing, setPairingCode, controller.signal);
+      await prepareWebView(connected);
+      setDistricts(await saveDistrict(district));
+      await AsyncStorage.setItem(ACTIVE_KEY, district.id);
+      setSession(connected); setChoosing(false); setTab('today'); setDetailStack([]); setWorkspaceOpened(false);
+      setPairing(null); setPairingCode(null);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Computer pairing failed.'); }
+    finally { pairingAbort.current = null; setWorking(false); }
+  };
   const add = async (district: District) => { setDistricts(await saveDistrict(district)); };
   const remove = async (district: District) => {
     if (session?.district.id === district.id) await signOut();
@@ -256,7 +280,7 @@ function InnerApp() {
   if (booting) return <View style={{ flex: 1, backgroundColor: palette.background, justifyContent: 'center' }}>
     <Loading label="Preparing EducateOS…"/></View>;
   if (!session || choosing) return <View style={{ flex: 1, backgroundColor: palette.background }}>
-    <Onboarding key={enrollment ? JSON.stringify(enrollment) : "manual"} enrollment={enrollment} districts={districts} busy={working} error={error} onAdd={add} onConnect={connect}
+    <Onboarding key={enrollment ? JSON.stringify(enrollment) : "manual"} enrollment={enrollment} computerPairing={pairing ? { school: pairing, code: pairingCode, onConnect: () => { void connectComputer(); }, onCancel: () => { pairingAbort.current?.abort(); setPairing(null); setPairingCode(null); } } : undefined} districts={districts} busy={working} error={error} onAdd={add} onConnect={connect}
       onRemove={(district) => { void remove(district); }}/>
     {session && <View style={{ paddingHorizontal: 20, paddingVertical: 10 }}>
       <Button label="Back to current school" onPress={() => setChoosing(false)} variant="outline"/>

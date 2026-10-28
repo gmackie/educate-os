@@ -40,3 +40,23 @@ test('QR enrollment accepts public HTTPS school details and rejects ambiguous or
     valid.replace('educateos:', 'https:'), valid.replace('enroll?', 'enroll/other?'),
     valid.replace('https%3A%2F%2Fharbor', 'http%3A%2F%2Fharbor')]) assert.throws(() => parseEnrollmentLink(value));
 });
+
+test('computer pairing QR is bounded to one school and a strong relay capability', async () => {
+  const { parsePairingLink } = await import('../src/security.ts');
+  const value = 'educateos://pair?' + new URLSearchParams({ name: 'Harbor', portal: 'https://harbor.educateos.io', workshop: 'https://schoolos.gmac.io', id: 'b5cd3cd4-e8c5-4c44-a7c0-a24d8554278b', secret: 'a'.repeat(64) });
+  assert.equal(parsePairingLink(value).name, 'Harbor');
+  for (const bad of [value + '&secret=' + 'b'.repeat(64), value + '&token=credential', value.replace('educateos:', 'https:'), value + '#secret', value.replace('a'.repeat(64), 'short')]) assert.throws(() => parsePairingLink(bad));
+});
+
+test('HTTPS QR fragments open enrollment and pairing without accepting foreign hosts', async () => {
+  const { parseEnrollmentLink, parsePairingLink } = await import('../src/security.ts');
+  const details = new URLSearchParams({ name: 'Harbor', portal: 'https://harbor.educateos.io', workshop: 'https://schoolos.gmac.io' });
+  const enroll = 'https://mobile.educateos.io/enroll#' + details;
+  assert.equal(parseEnrollmentLink(enroll).name, 'Harbor');
+  details.set('id', 'b5cd3cd4-e8c5-4c44-a7c0-a24d8554278b'); details.set('secret', 'a'.repeat(64));
+  const pair = 'https://mobile.educateos.io/pair-phone#' + details;
+  assert.equal(parsePairingLink(pair).secret, 'a'.repeat(64));
+  assert.throws(() => parseEnrollmentLink(enroll.replace('mobile.educateos.io', 'evil.example')));
+  assert.throws(() => parsePairingLink(pair.replace('mobile.educateos.io', 'evil.example')));
+  assert.throws(() => parsePairingLink(pair.replace('/pair-phone#', '/pair-phone?secret=other#')));
+});

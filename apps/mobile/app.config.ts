@@ -24,7 +24,9 @@ const config: ExpoConfig = {
     intentFilters: [{
       action: 'VIEW',
       data: [{ scheme: 'https', host: 'mobile.educateos.io', pathPrefix: '/oauthredirect' },
-        { scheme: 'https', host: 'mobile.educateos.io', pathPrefix: '/authpopup' }],
+        { scheme: 'https', host: 'mobile.educateos.io', pathPrefix: '/authpopup' },
+        { scheme: 'https', host: 'mobile.educateos.io', pathPrefix: '/enroll' },
+        { scheme: 'https', host: 'mobile.educateos.io', pathPrefix: '/pair-phone' }],
       category: ['BROWSABLE', 'DEFAULT'],
       autoVerify: true,
     }],

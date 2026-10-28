@@ -1,0 +1,17 @@
+{
+  "name": "@educateos/mobile-links",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:site": "node build.mjs",
+    "test:run": "node --experimental-strip-types --test pairing.test.ts"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0",
+    "@cloudflare/workers-types": "catalog:",
+    "@types/qrcode": "^1.5.6"
+  }
+}
