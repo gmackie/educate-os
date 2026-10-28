@@ -148,7 +148,7 @@ test("the district Worker has its own custom domains, serves the UIs as assets a
   assert.deepEqual(district.assets, {
     directory: "./dist/ui",
     not_found_handling: "single-page-application",
-    run_worker_first: ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json"],
+    run_worker_first: ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone"],
   });
   assert.deepEqual(district.vars, { LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io" });
   assert.deepEqual(district.triggers, { crons: ["7 * * * *", "0 14 * * SUN"] });

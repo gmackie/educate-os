@@ -25,6 +25,9 @@ import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "
 import { configuredDistrictId } from "./district.ts";
 import { SCHOOL_MANIFEST_PATH, serveSchoolManifest } from "./school-manifest.ts";
 
+/** The pairing relay's page for a phone with no computer nearby (SCHO-261), behind Access like the LMS. */
+const CONNECT_PHONE_PATH = "/connect-phone";
+
 export { DistrictObject } from "./district-object.ts";
 
 /** The district's object. */
@@ -162,7 +165,7 @@ export default {
    * The district's `/api` surface; `/healthz`, a liveness probe that reads nothing and needs no
    * sign-in (a deployment exempts it from Access); and the LTI Tool's `/lti/*` endpoints (SCHO-177),
    * which platform users reach from their LMS, so a deployment exempts exactly those paths from
-   * Access too. Nothing else is served; a deployment that serves the district's UIs does so as
+   * Access too; and the pairing relay's `/connect-phone` page (SCHO-261). Nothing else is served; a deployment that serves the district's UIs does so as
    * static assets in front of this handler.
    */
   async fetch(request, env, ctx): Promise<Response> {
@@ -173,6 +176,8 @@ export default {
       return serveSchoolManifest(request, { districtConfig: env.DISTRICT_CONFIG, settings: env.SCHOOL_MANIFEST, versionTag: env.CF_VERSION_METADATA?.tag });
     }
     if (pathname.startsWith("/lti/")) return districtObject(env, ctx.exports).fetch(request);
+    // The pairing relay's connect page (SCHO-261). Its API, `/api/pair/*`, is under `/api/` below.
+    if (pathname === CONNECT_PHONE_PATH) return districtObject(env, ctx.exports).fetch(request);
     return serveApi(request, env, ctx.exports);
   },
   /** The district's Cron Triggers (SCHO-189): notifications hourly, the family digest weekly. See schedule.ts. */

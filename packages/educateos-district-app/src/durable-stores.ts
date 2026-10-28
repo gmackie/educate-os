@@ -121,6 +121,8 @@ import {
   type RefreshTokenRecord,
   type RotationOutcome,
 } from "./devices.ts";
+// Pairing (SCHO-261)
+import { PairRoom, type PairRoomStore } from "./pairing.ts";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, RosterSyncStore, WorkshopUserLinkStore } from "./stores.ts";
 // Communication (SCHO-189)
 import {
@@ -201,6 +203,8 @@ export const DISTRICT_TABLES = {
   devices: "educateos_devices",
   deviceRefreshTokens: "educateos_device_refresh_tokens",
   deviceProofs: "educateos_device_proofs",
+  // Pairing (SCHO-261)
+  pairRooms: "educateos_pair_rooms",
 } as const;
 
 /** Thrown when a stored row cannot be read. Nothing is decided on state that cannot be read. */
@@ -1169,6 +1173,8 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     quizzes: new DurableObjectQuizStorage(storage),
     // Devices (SCHO-261)
     devices: new DurableObjectDeviceStore(storage),
+    // Pairing (SCHO-261)
+    pairRooms: new DurableObjectPairRoomStore(storage),
   };
 }
 
@@ -1888,6 +1894,10 @@ export class DurableObjectDeviceStore implements DeviceStore {
     });
   }
 
+  async setPushToken(id: DeviceId, token: string | null): Promise<void> {
+    this.#tables.transaction((sql) => sql.exec(`UPDATE ${DISTRICT_TABLES.devices} SET push_token = ? WHERE id = ?`, token, id));
+  }
+
   #insertRefresh(sql: DistrictSqlStorage["sql"], record: RefreshTokenRecord): void {
     sql.exec(
       `INSERT INTO ${DISTRICT_TABLES.deviceRefreshTokens} (token_hash, device_id, family, issued_at, used_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -1910,4 +1920,86 @@ function refreshFromRow(row: Record<string, unknown>): RefreshTokenRecord {
   if (!parsed.success) throw new DistrictStoreCorruptionError("a refresh token does not match its schema");
   const r = parsed.data;
   return { tokenHash: r.token_hash, deviceId: r.device_id, family: r.family, issuedAt: r.issued_at, usedAt: r.used_at, expiresAt: r.expires_at };
+}
+
+// Pairing (SCHO-261)
+
+/**
+ * A {@link PairRoomStore} in a Durable Object's SQLite: one row per room, its JSON beside the columns
+ * the store queries by. A room is changed only where its version still matches, so concurrent
+ * claims, approvals and polls cannot both win. A new table, so it has no legacy twin.
+ */
+export class DurableObjectPairRoomStore implements PairRoomStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    const t = DISTRICT_TABLES;
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${t.pairRooms} (
+        id TEXT PRIMARY KEY, version INTEGER NOT NULL, kind TEXT NOT NULL, creator_principal_id TEXT, state TEXT NOT NULL,
+        expires_at INTEGER NOT NULL, room_json TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${t.pairRooms}_creator ON ${t.pairRooms} (creator_principal_id)`,
+      `CREATE INDEX IF NOT EXISTS ${t.pairRooms}_expires ON ${t.pairRooms} (expires_at)`,
+    ], []);
+  }
+
+  async get(id: string): Promise<PairRoom | undefined> {
+    const [row] = this.#tables.transaction((sql) => sql.exec(`SELECT room_json FROM ${DISTRICT_TABLES.pairRooms} WHERE id = ?`, id).toArray());
+    return row === undefined ? undefined : parseStored(PairRoom, row.room_json, "a pairing room");
+  }
+
+  async insert(room: PairRoom): Promise<void> {
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      const [existing] = sql.exec(`SELECT id FROM ${t.pairRooms} WHERE id = ?`, room.id).toArray();
+      if (existing !== undefined) throw new EducateOsError("conflict", "That pairing room already exists.");
+      sql.exec(
+        `INSERT INTO ${t.pairRooms} (id, version, kind, creator_principal_id, state, expires_at, room_json) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        room.id, room.version, room.kind, room.creatorPrincipalId, room.state, room.expiresAt, JSON.stringify(room),
+      );
+    });
+  }
+
+  async replace(next: PairRoom): Promise<boolean> {
+    const t = DISTRICT_TABLES;
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT version FROM ${t.pairRooms} WHERE id = ?`, next.id).toArray();
+      if (row === undefined || row.version !== next.version - 1) return false;
+      sql.exec(
+        `UPDATE ${t.pairRooms} SET version = ?, creator_principal_id = ?, state = ?, expires_at = ?, room_json = ? WHERE id = ?`,
+        next.version, next.creatorPrincipalId, next.state, next.expiresAt, JSON.stringify(next), next.id,
+      );
+      return true;
+    });
+  }
+
+  async expireOpen(creatorPrincipalId: string, nowMs: number): Promise<void> {
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      const rows = sql.exec(
+        `SELECT room_json FROM ${t.pairRooms} WHERE creator_principal_id = ? AND state IN ('waiting', 'claimed') AND expires_at > ?`,
+        creatorPrincipalId, nowMs,
+      ).toArray();
+      for (const row of rows) {
+        const room = parseStored(PairRoom, row.room_json, "a pairing room");
+        const next: PairRoom = { ...room, version: room.version + 1, state: "expired", expiresAt: nowMs };
+        sql.exec(
+          `UPDATE ${t.pairRooms} SET version = ?, state = ?, expires_at = ?, room_json = ? WHERE id = ?`,
+          next.version, next.state, next.expiresAt, JSON.stringify(next), next.id,
+        );
+      }
+    });
+  }
+
+  async countOpenSelfRooms(nowMs: number): Promise<number> {
+    const [row] = this.#tables.transaction((sql) =>
+      sql.exec(`SELECT COUNT(*) AS open FROM ${DISTRICT_TABLES.pairRooms} WHERE kind = 'self' AND state = 'claimed' AND expires_at > ?`, nowMs).toArray()
+    );
+    return Number(row?.open ?? 0);
+  }
+
+  async purge(beforeMs: number): Promise<void> {
+    this.#tables.transaction((sql) => sql.exec(`DELETE FROM ${DISTRICT_TABLES.pairRooms} WHERE expires_at < ?`, beforeMs));
+  }
 }

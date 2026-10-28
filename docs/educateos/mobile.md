@@ -24,7 +24,7 @@ production `/api/m` stays behind Access as well.
 
 ### Registration
 
-The pairing relay (`/api/pair/*`, which comes later) and the browser sign-in path register a device
+The pairing relay (`/api/pair/*`, see [Pairing v2](#pairing-v2-scho-261)) and the browser sign-in path register a device
 for the person who approved it. Both call `registerDevice(principalId, registration)`, which is
 `DistrictObject.registerDevice` in the district Worker. The registration is:
 
@@ -137,8 +137,110 @@ operators revoke through `DistrictObject.revokeDevice` and `revokePrincipalDevic
 `last_seen_at` and the last country (from Cloudflare's `CF-IPCountry`) are recorded at most once a
 minute per device.
 
+### Push token
+
+`POST /api/m/me/devices/push-token` with `{"token": "ExponentPushToken[…]", "provider": "expo",
+"platform": "ios"}` stores the device's Expo push token and answers 204. `DELETE` on the same path
+clears it (204). The token must look like `ExponentPushToken[…]` (or `ExpoPushToken[…]`), at most
+256 characters, with only letters, digits, `-` and `_` inside the brackets; anything else is a 400
+`validation-failed`. The token belongs to the device, not the person, so there is no web-session
+route for it. Your devices shows only whether push is on.
+
 ### Configuration
 
 `DEVICE_TOKEN_SECRET` is a district Worker secret of at least 32 random characters. The district
 uses it to MAC access tokens. Rotating it invalidates every access token, which phones recover from
 with a refresh; refresh tokens stay valid. Without the secret, device sign-in is off.
+
+## Pairing v2 (SCHO-261)
+
+A phone gets its device credential by pairing with a signed-in browser on the district's own
+origin. The relay is `packages/educateos-district-app/src/pairing.ts`; the app's side is
+`apps/mobile/src/api/pairing.ts`. Rooms are kept in the district's Durable Object
+(`educateos_pair_rooms`), so a pairing survives the object restarting. Without
+`DEVICE_TOKEN_SECRET` every `/api/pair/*` route answers 503 with `reason: "device-auth-unavailable"`,
+as `/api/m/*` does.
+
+### Rooms
+
+- A room ID is 16 random bytes and its secret 32, both base64url. The district stores only the
+  secret's SHA-256.
+- A room waits 2 minutes for a phone, then 2 minutes from the claim for the person's approval, then
+  2 minutes from approval for the phone to collect its tokens. It holds one phone and is used once.
+- Opening a new room expires the person's earlier open room.
+- The phone's endpoints compare the secret in constant time. The fifth wrong secret expires the
+  room, and drops any sealed tokens it held.
+- Finished rooms are kept for an hour, so a late poll learns what happened, then purged.
+
+### The QR code
+
+```
+https://mobile.educateos.io/j#o=<district origin, URL-encoded>&r=<room>&s=<secret>
+```
+
+### Browser endpoints
+
+These use the district's web sign-in, resolved exactly as `/api/me` is, and answer only the room's
+creator: anyone else gets 404. Without a sign-in they answer 401. A POST whose `Origin` is another
+site (or whose `Sec-Fetch-Site` is `cross-site`) is 403. `/api/pair/*` is an Access bypass path
+after the one-origin cutover, so Access adds no assertion header there; the district reads the
+same assertion from the browser's `CF_Authorization` cookie on these paths only.
+
+| Request | Answer |
+|---|---|
+| `POST /api/pair/rooms` | 201 `{ room, secret, qr, expiresAt }` |
+| `GET /api/pair/rooms/:room/status` | `{ state: "waiting" \| "claimed" \| "approved" \| "denied" \| "expired", code?, device? }`; `code` and `device` once claimed |
+| `POST /api/pair/rooms/:room/approve` | 200 `{ deviceId }`; 409 unless a phone has claimed it, 410 once expired or used |
+| `POST /api/pair/rooms/:room/deny` | 200 `{ state: "denied" }` |
+
+Approval calls `registerDevice(principalId, { publicJwk, label, platform, model, appVersion })` for
+the signed-in person, seals the tokens to the phone's key and keeps the sealed blob in the room. If
+the registration fails (for example, the person is no longer active), the room goes back to
+`claimed` and the error is returned.
+
+### Phone endpoints
+
+Authenticated only by the room secret. A wrong or missing secret is 403, an unknown room is 404,
+and neither says anything about the room.
+
+| Request | Answer |
+|---|---|
+| `POST /api/pair/rooms/:room/claim` `{ secret, publicJwk, device: { label, platform, model, appVersion } }` | 200 `{ code }`; 409 if a phone already claimed it, 410 once expired, 400 for a key that is not a P-256 point or an invalid device |
+| `GET /api/pair/rooms/:room?secret=<secret>` | `{ state: "waiting" \| "approved" \| "denied" \| "expired", sealed? }`; `sealed` once, then 410 |
+| `POST /api/pair/self-rooms` `{ publicJwk, device }` | 201 `{ room, secret, code, expiresAt }`; 429 `too-many-rooms` while 100 self-rooms are open |
+
+Poll about every 1.5 seconds.
+
+### The code
+
+Both screens show the same 8 characters: take SHA-256 over the UTF-8 bytes of the room ID followed
+by the key's RFC 7638 thumbprint (base64url), and map each of its first 8 bytes, modulo 36, into
+`ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789`. The district returns it from the claim and the status.
+
+### Sealing
+
+- The district makes an ephemeral P-256 key `epk` for each approval. The ECDH shared secret with
+  the phone's `publicJwk` is the X coordinate (32 bytes, what WebCrypto's `deriveBits` returns).
+- HKDF-SHA-256 with that as the input key, the UTF-8 bytes of the room ID as the salt and
+  `educateos-pair-v2` as the info gives a 32-byte AES-256-GCM key.
+- A random 12-byte IV and no additional data. `sealed` is `{ epk: { kty, crv, x, y }, iv, ct }`,
+  with `iv` and `ct` (which includes the tag) in base64url.
+- The plaintext is JSON: `{ deviceId, accessToken, refreshToken, principalId,
+  accessTokenExpiresAt, refreshTokenExpiresAt }`, with the expiries repeated as `accessExpiresAt`
+  and `refreshExpiresAt`.
+
+### Signing in without a computer
+
+The school manifest's `mobileApi.max` is 2 when the district serves this.
+
+1. The phone makes a self-room with `POST /api/pair/self-rooms`. The room is already claimed by its
+   key.
+2. It opens `<origin>/connect-phone?method=<signIn id>&r=<room>&s=<secret>&k=<key thumbprint>` in
+   the system browser. The page is behind Access, so the person signs in there.
+3. The page checks the room, the secret and that `k` is the claiming key's thumbprint, then asks
+   "Approve this phone?" with the code and the device's label. It is a small server-rendered page
+   with a nonce-based CSP, `Referrer-Policy: no-referrer` and no caching.
+4. Approve or Deny posts `{ secret }` to the room's approve or deny endpoint. Holding the secret is
+   what lets the signed-in person decide a self-room; they become its creator. The page then sends
+   the browser to `https://mobile.educateos.io/j#o=<origin>&r=<room>&s=<secret>`.
+5. The phone polls the room as above.

@@ -2,7 +2,7 @@
 // Workshop's. district.test.ts checks the deployed Worker against such a list end to end.
 import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair } from "jose";
 import { describe, expect, it } from "vitest";
-import { ACCESS_ASSERTION_HEADER, accessAudiences, accessRequestVerifier } from "../src/access.ts";
+import { ACCESS_ASSERTION_HEADER, ACCESS_COOKIE, accessAudiences, accessRequestVerifier } from "../src/access.ts";
 
 describe("the Access audiences a district accepts", () => {
   it("reads a comma-separated list, trimming entries and ignoring empty ones", () => {
@@ -48,5 +48,33 @@ describe("Clever sign-ins through Access", () => {
     const { keys, request } = await signed({ custom: { user_type: "student", district_id: district, user_id: student } });
     const verify = accessRequestVerifier({ issuer, audiences: ["district-aud"], keys });
     expect(await verify(request)).toStrictEqual({ issuer, subject: "access-uuid-family", credential: "person" });
+  });
+});
+
+// SCHO-261: /api/pair/* is an Access bypass path, so Access adds no assertion header there; the
+// pairing relay's browser endpoints read the signed-in browser's Access cookie instead.
+describe("the Access cookie on the pairing relay's paths", () => {
+  const issuer = "https://team.cloudflareaccess.example";
+
+  async function setup() {
+    const { publicKey, privateKey } = await generateKeyPair("RS256");
+    const jwk = { ...(await exportJWK(publicKey)), kid: "k1", alg: "RS256" };
+    const token = await new SignJWT({}).setProtectedHeader({ alg: "RS256", kid: "k1" }).setIssuer(issuer).setAudience("district-aud")
+      .setSubject("access-uuid-ava").setIssuedAt().setExpirationTime("5m").sign(privateKey);
+    return { token, verify: accessRequestVerifier({ issuer, audiences: ["district-aud"], keys: createLocalJWKSet({ keys: [jwk] }) }) };
+  }
+
+  it("verifies the cookie under /api/pair/ when the header is absent", async () => {
+    const { token, verify } = await setup();
+    const request = new Request("https://district.example/api/pair/rooms", { headers: { cookie: `other=1; ${ACCESS_COOKIE}=${token}; more=2` } });
+    expect(await verify(request)).toStrictEqual({ issuer, subject: "access-uuid-ava", credential: "person" });
+  });
+
+  it("ignores the cookie everywhere else, and an invalid cookie anywhere", async () => {
+    const { token, verify } = await setup();
+    for (const path of ["/api/me", "/api/m/me", "/api/pairing", "/connect-phone"]) {
+      expect(await verify(new Request(`https://district.example${path}`, { headers: { cookie: `${ACCESS_COOKIE}=${token}` } }))).toBeUndefined();
+    }
+    expect(await verify(new Request("https://district.example/api/pair/rooms", { headers: { cookie: `${ACCESS_COOKIE}=${token}x` } }))).toBeUndefined();
   });
 });

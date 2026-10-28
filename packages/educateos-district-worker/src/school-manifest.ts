@@ -12,8 +12,11 @@ import { readDistrictWorkerConfig, type DistrictWorkerConfig } from "./config.ts
 /** The manifest's path. */
 export const SCHOOL_MANIFEST_PATH = "/.well-known/educateos.json";
 
-/** The device API versions (`/api/m/*`) this district speaks. */
-export const MOBILE_API_VERSIONS = { min: 1, max: 1 } as const;
+/**
+ * The device API versions (`/api/m/*`) this district speaks. Version 2 adds the pairing relay's
+ * self-rooms and the `/connect-phone` page, so a phone can sign in without a computer (SCHO-261).
+ */
+export const MOBILE_API_VERSIONS = { min: 1, max: 2 } as const;
 
 /** How long clients and caches may keep the manifest, in seconds. */
 export const SCHOOL_MANIFEST_MAX_AGE = 300;

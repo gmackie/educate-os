@@ -54,6 +54,8 @@ import { quizGrading } from "./quizzes.ts";
 // Devices (SCHO-261)
 import { DeviceCredentials, isDeviceApiPath, serveDeviceApi, type DeviceRecord } from "./devices.ts";
 import type { DeviceBody } from "./routes.ts";
+// Pairing (SCHO-261)
+import { CONNECT_PHONE_PATH, isPairApiPath, PairingRelay, type WebPrincipal } from "./pairing.ts";
 
 /**
  * Verifies a request's credential (a bearer token, a Cloudflare Access assertion) and returns the
@@ -194,7 +196,10 @@ export interface CommunicationJobs {
 export interface DistrictApp {
   /** The district. */
   readonly districtId: DistrictId;
-  /** Handles one HTTP request. Paths outside `/api/` answer `not-found`. */
+  /**
+   * Handles one HTTP request. Paths outside `/api/` answer `not-found`, except the pairing relay's
+   * `/connect-phone` page (SCHO-261).
+   */
   fetch(request: Request): Promise<Response>;
   /**
    * Handles one `/api` request as `principal`, whom the caller has already verified, instead of as
@@ -1360,6 +1365,23 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     },
   };
 
+  // Pairing (SCHO-261): the browser side resolves its caller exactly as `handle` does for `/api/me`.
+  const pairing = new PairingRelay({
+    store: stores.pairRooms,
+    devices,
+    now,
+    async resolveWeb(request): Promise<WebPrincipal | undefined> {
+      const identity = await options.verifyRequest(request);
+      if (identity === undefined) return undefined;
+      const { snapshot } = await stores.directory.load();
+      const resolved = await resolverFor(snapshot).resolve(identity).catch(async (error: unknown) => {
+        throw await withLinkRequest(error);
+      });
+      const displayName = snapshot.principals.find((p) => p.id === resolved.principalId)?.displayName ?? "";
+      return { principalId: resolved.principalId, kind: resolved.kind, displayName };
+    },
+  });
+
   // Guardians (ADR-0012, SCHO-188)
   const guardianRoutes = guardianHandlers<RequestContext>({ stores, invitationPage: options.guardianInvitationPage, now });
 
@@ -1483,9 +1505,13 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     devices,
     fetch(request) {
       // Devices (SCHO-261): the device API answers only device credentials, never the request's own sign-in.
-      if (isDeviceApiPath(new URL(request.url).pathname)) {
+      const { pathname } = new URL(request.url);
+      if (isDeviceApiPath(pathname)) {
         return respond(request, () => serveDeviceApi(request, { credentials: devices, serveAs }));
       }
+      // Pairing (SCHO-261): the relay checks its own credentials, the room secret or the web sign-in.
+      if (isPairApiPath(pathname)) return respond(request, () => pairing.serve(request));
+      if (pathname === CONNECT_PHONE_PATH) return pairing.connectPhone(request);
       return respond(request, async (correlationId) => await serveCalendarFeed(request, correlationId) ?? await handle(request, correlationId));
     },
     serveAs,
