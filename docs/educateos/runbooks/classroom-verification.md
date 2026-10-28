@@ -206,3 +206,89 @@ haven't been added to this school yet.” Access subject is
 `ca2e0a56-0adf-5403-bd68-d526c0ee0d93`. No principal was created or linked to bypass this boundary.
 An existing Harbor administrator is needed for roster setup and verified teacher/student links.
 Full Plus management and add-on acceptance remain outstanding.
+
+## Complete assignment and presentation examples, 2026-10-28
+
+The reusable workspace now contains three teacher-authorized gadgets:
+
+| Gadget | Classroom | Presentation |
+| --- | --- | --- |
+| `ES_SCHO_255_BRIEFING` | Earth Science 8, Period 1 (`895811762849`) | Live teacher dashboard |
+| `SCIENCE_LESSON_STUDIO` | Earth Science 8, Period 1 (`895811762849`) | Investigation lesson slides and private teacher review |
+| `ALGEBRA_LESSON_STUDIO` | Algebra I, Period 3 (`896141390025`) | Worked example, independent practice, answer checks and teacher overview |
+
+Each has its own persistent `CLASSROOM` resource binding authorized as Dana Whitaker. Projector
+mode is a display choice inside a teacher-authorized gadget, **not** a student authorization
+boundary. Do not share the workspace or gadget with students on the strength of the mode switch.
+Projector RPCs omit roster/submission reads and their responses contain no learner names/grades.
+Student-capability bindings remain a separate implementation/acceptance requirement.
+
+### Real published assignment round trip
+
+1. Workshop's teacher approval conversation used `executeCode` to check for duplicates, then queued
+   **Earth Science field investigation — Weathering evidence (SCHO-255)**. Approval created exactly
+   one app-owned assignment, `896258346598`, **PUBLISHED**, 20 points, at 03:52:38 UTC.
+   The prompt includes a learning goal, a 200–300 word claim/evidence/reasoning task, observations,
+   alternative explanations, a labelled sketch option, and peer discussion.
+2. Workshop approved rubric `896259887221` at 03:53:34 UTC: Accurate science (8/4/0), Evidence and
+   reasoning (8/4/0), Clear communication (4/2/0). Google readback and the real student's browser
+   showed the same 20-point rubric. Criterion-level grade publication is unsupported by Google's API.
+3. Signed into Google Classroom interactively as **An Nguyen**,
+   `cv-student-an@gedu.demo.educateos.io`, Google user `109086804245677102525`, using a synthetic
+   browser credential retained only in Keychain. An saw the assignment and rubric under the
+   correct enrolled course. This is Google student sign-in, not EducateOS district principal linking.
+4. Used Classroom's normal file picker to attach a 200–300 word synthetic response,
+   `scho255-weathering-an.txt` (Drive file `1odfC33humWychfxB9-BsTvndvlY97KWC`). The response explicitly
+   labels its observations as invented and includes no personal location data. Confirmed **Turn in**
+   in the student browser. Google history records `TURNED_IN` at 04:02:21.846 UTC by An's own user ID.
+5. Teacher code mode read submissions and asserted the exact learner, state and submission
+   `Cg4I8ZmlsYoaEOacpOmKGg`, then queued **18/20** for approval. Google history records the teacher's
+   approved total at 04:03:28.710 UTC and `RETURNED` at 04:03:29.302 UTC. Reloaded An's actual browser:
+   assignment displays **18 points out of possible 20**, **Graded**, the attachment, and **Resubmit**.
+6. Science gadget teacher refresh independently displayed An **RETURNED / 18 / not pending**;
+   Bao and Rowan remained **CREATED / ungraded / not pending**. Names join by `userId`.
+
+A second real assignment was created through the Algebra teacher binding and approved:
+**Algebra I — Explain and solve two-step equations (SCHO-255)**, `896261051224`, **PUBLISHED**,
+10 points. Google readback at 04:18:04 UTC found exactly one item. It includes a worked example,
+three practice equations, substitution checks and a 6+4 point success criterion.
+
+### Visual and persistence checks
+
+The Science and Algebra gadgets retain sandbox-local CSS after accepting changes and reloading.
+Computed font is sans-serif; at 1019px their scroll width matches the viewport. Science at 390px
+also has scroll width 390px. Algebra's Next button opens the worked example; ArrowRight opens
+independent practice; Teacher shows the live one-teacher/two-student roster and honest empty state
+before the new assignment was published. Science Teacher refresh shows the returned 18/20.
+
+Browser acceptance exposed a lesson parsing defect: the Learning Goal slide initially repeated the
+entire one-paragraph assignment description. Corrected and observed the exact goal alone after
+acceptance; numbered instructions and success criteria are parsed separately. Final accepted edits
+were reloaded and verified: Science shows exactly four task instructions and the goal alone; Algebra
+shows the live published assignment title/10 points and a separate Assignment Details slide, followed
+by the worked-example/practice slides. Teacher notices explain that the whole gadget remains
+teacher-authorized. Six checks against the exact downloaded server sources (both gadgets × published,
+draft, pending) passed: hidden work has no returned assignment/rubrics, and projector execution never
+calls roster or submissions. These are source-level boundary checks, alongside live browser acceptance,
+not proof of a separately authorized student or collaborator.
+
+The earlier unstyled shared preview was a stale loaded gadget frame: full workspace reload loaded
+the saved stylesheet and fresh data. Merely inspecting the separate validation Chrome missed that
+window-specific symptom. No repository CSS change was needed to recover it.
+
+### Production and remaining gates
+
+PR #172 is active on Google connector deployment `9633e7f9-bccb-4598-9168-562cf92e3fc4`, commit
+`2259d9a76fe2391c5474222e8181380dbad4ad8d`. Refreshing the accepted briefing gadget now reads the
+committed draft's empty submissions without its previous HTTP 400 fetch error.
+
+These demonstrations prove teacher connector reads/writes, real student Classroom submission and
+grade visibility, and multiple persistent live gadget presentation styles. They do **not** complete:
+
+- Harbor administrator authentication, deployed roster preview/apply/scheduled sync and identity links.
+- Teacher/student EducateOS principal sign-in and a student-scoped connector/gadget submission flow.
+- Separately authorized collaborator/course isolation and removal/revocation/recovery acceptance.
+- Plus rubric editing/deletion, grading-period management, add-on launch/attachment and eligibility discovery.
+- Portable gadget/slide exports: the current custom gadgets expose no verified export workflow.
+
+Keep SCHO-255 open. Do not describe this evidence as full Classroom/Plus surface-area acceptance.
