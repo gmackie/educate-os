@@ -5,10 +5,9 @@
 // this Worker up, and only the ForgeGraph app `educateos-admin` deploys it
 // (scripts/educateos-admin-config.test.ts holds all of that true).
 //
-// Before the first deploy, follow docs/educateos/runbooks/admin-hosted.md: create the D1 database
-// and put its ID in place of REPLACE_AT_PROVISION, create the Access application and put its
-// audience in place of REPLACE_AT_PROVISION_ACCESS_AUD, and set the secrets ADMIN_KEY_ENCRYPTION_KEY
-// and ADMINS. Until then a deploy fails: Cloudflare refuses the placeholder database ID.
+// Provisioned on 2026-10-28 by docs/educateos/runbooks/admin-hosted.md: the D1 database, the Access
+// application "EducateOS admin" (with a /healthz bypass), and the secrets ADMIN_KEY_ENCRYPTION_KEY
+// and ADMINS in the ForgeGraph app educateos-admin.
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "educateos-admin",
@@ -36,8 +35,8 @@
     {
       "binding": "DB",
       "database_name": "educateos-admin",
-      // REPLACE_AT_PROVISION: the ID `wrangler d1 create educateos-admin` prints.
-      "database_id": "REPLACE_AT_PROVISION",
+      // Created with `wrangler d1 create educateos-admin` (SCHO-263).
+      "database_id": "e8ac9cb8-e344-45b1-b21b-11163be80f2e",
       "migrations_dir": "migrations"
     }
   ],
@@ -53,6 +52,6 @@
     // The Access team, and the audience tag of the Access application "EducateOS admin"
     // (admin.educateos.io). Every /api request's assertion is verified against both.
     "ACCESS_ISSUER": "https://gmacko.cloudflareaccess.com",
-    "ACCESS_AUD": "REPLACE_AT_PROVISION_ACCESS_AUD"
+    "ACCESS_AUD": "ee3048dad70afb0f7df8ba6647bfeb24de48386bcf0a9941c1c6d8e802d89b0b"
   }
 }
