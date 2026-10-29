@@ -2,6 +2,7 @@
 // The server validates requests with these schemas and the typed client (`@educateos/api-client`)
 // is written against the same table, so the two cannot drift.
 import { z } from "zod";
+import { WorkshopUserKey, WorkshopUserLink } from "@educateos/identity";
 // Devices (SCHO-261)
 import { DeviceId, DevicePlatform, DeviceRevocationReason, DeviceStatus } from "./devices.ts";
 // Operations (SCHO-263)
@@ -1309,6 +1310,13 @@ export const ROUTES = {
     params: params({ offeringId: OfferingId }), response: CartridgeExportBody,
   }),
   "admin.authoring": route({ method: "GET", path: "/api/admin/authoring", surface: "admin", response: AuthoringDirectoryBody }),
+  "admin.listWorkshopUserLinks": route({
+    method: "GET", path: "/api/admin/workshop-user-links", surface: "admin", response: z.array(WorkshopUserLink),
+  }),
+  "admin.confirmWorkshopUserLink": route({
+    method: "POST", path: "/api/admin/workshop-user-links", surface: "admin", status: 201,
+    body: z.strictObject({ workshopUser: WorkshopUserKey, principalId: PrincipalId }), response: WorkshopUserLink,
+  }),
   "admin.createSchool": route({ method: "POST", path: "/api/admin/schools", surface: "admin", status: 201, body: NewSchool, response: School }),
   "admin.updateSchool": route({
     method: "POST", path: "/api/admin/schools/:schoolId", surface: "admin", params: params({ schoolId: SchoolId }), body: SchoolPatch, response: School,

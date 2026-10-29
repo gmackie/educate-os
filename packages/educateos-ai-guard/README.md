@@ -214,9 +214,10 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
 
 - Passing an answer key with output checks, for Hall Monitor's answer-leakage evaluator. The
   Workshop knows no answer keys yet.
-- Deploying the district app as a Worker with a guard-only entrypoint for `EDUCATEOS_DISTRICT`,
-  and an admin route that confirms Workshop user links into its `workshopUserLinks` store. Until
-  then the directory, links and workspaces are configured, and the var size limit remains.
+- Activating district-backed resolution in existing operator-only installations. The district
+  Worker exposes `DistrictGuardDirectory`, and its admin API confirms Workshop links. Follow
+  [Workshop guard linking](../../docs/educateos/runbooks/workshop-guard-linking.md) to deploy the
+  binding and matching policy configuration together; configured snapshots remain supported.
 - Importing the provider's and Cloudflare's bills on a schedule, and reading the nightly
   allocation snapshot from the admin console.
 - Teaching the deploy service to set a worker's `crons`. Until then, the guard's Cron Trigger must

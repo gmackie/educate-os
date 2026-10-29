@@ -15,7 +15,7 @@ import {
   type VerifiedIdentity,
   type VerifiedPrincipal,
 } from "@educateos/contracts";
-import { createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@educateos/identity";
+import { confirmWorkshopUserLink, createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@educateos/identity";
 import { AcademicDirectory, assertSyncWritable, DIRECTORY_ENTITY_KINDS, isDistrictAdmin } from "@educateos/academics";
 import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule } from "@educateos/policy";
 import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@educateos/workspaces";
@@ -1214,6 +1214,21 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         .filter((p) => p.kind === "student" || p.kind === "staff")
         .map((p) => authoringPrincipal(ctx.snapshot, p, now()));
       return { authority, trustedIssuers: ctx.snapshot.district.trustedIssuers, schools, terms, courses, offerings, principals };
+    },
+    "admin.listWorkshopUserLinks": async (ctx) => {
+      await ctx.requireDistrict("list", "principal");
+      return stores.workshopUserLinks.list();
+    },
+    "admin.confirmWorkshopUserLink": async (ctx, { body }) => {
+      await ctx.requireDistrict("update", "principal");
+      if (body.workshopUser.startsWith("principal:") && body.workshopUser !== `principal:${body.principalId}`) {
+        throw new EducateOsError("validation-failed", "The Workshop principal key must name the linked principal.");
+      }
+      const link = confirmWorkshopUserLink(ctx.snapshot, await stores.workshopUserLinks.list(), {
+        ...body, confirmedBy: ctx.subject.principalId, confirmedAt: now().toISOString(),
+      });
+      await stores.workshopUserLinks.add(link);
+      return link;
     },
     "admin.createSchool": (ctx, { body }) => ctx.academics().createSchool(ctx.caller, body),
     "admin.updateSchool": (ctx, { params, body }) => ctx.academics().updateSchool(ctx.caller, params.schoolId, body),

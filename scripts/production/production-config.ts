@@ -135,6 +135,8 @@ export interface ProductionInstance {
   aiGuard: {
     /** The Worker the guard binds as `HALL_MONITOR`. */
     hallMonitorService: string;
+    /** Read current principals and confirmed Workshop links from this instance's district. */
+    districtDirectory?: boolean;
   };
   /**
    * The district Worker, when the instance runs one. Its `DISTRICT_CONFIG` and Access pair are
@@ -498,6 +500,10 @@ export function buildProductionConfigs({
       const hallMonitor: ServiceBinding =
           { binding: "HALL_MONITOR", service: instance.aiGuard.hallMonitorService };
       config.services = [...config.services ?? [], hallMonitor];
+      if (instance.aiGuard.districtDirectory) {
+        if (!instance.district) throw new Error("the AI guard's district directory requires a district Worker");
+        config.services.push({ binding: "EDUCATEOS_DISTRICT", service: DISTRICT_PACKAGE, entrypoint: "DistrictGuardDirectory" });
+      }
       withVars(pkgName, config, vars);
     } else if (pkgName === DISTRICT_PACKAGE && instance.district) {
       const hostnames = [instance.district.hostname, ...instance.district.aliases ?? []];

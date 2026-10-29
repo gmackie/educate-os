@@ -35,6 +35,7 @@ const TWO_HOSTS: ProductionInstance = {
   ...SCHOOLOS_GMAC_IO,
   oneOrigin: { enabled: false, hostname: "northfield.educateos.io" },
   principalBinding: "migration",
+  aiGuard: { ...SCHOOLOS_GMAC_IO.aiGuard, districtDirectory: false },
 };
 
 function configFor(configs: Map<string, ProductionConfig>, pkgName: string): ProductionConfig {
@@ -147,6 +148,19 @@ test("the guard runs its production entrypoint and cron, reaching Hall Monitor b
   assert.equal(guard.vars?.HALL_MONITOR_ISSUER, "educateos");
   // A secret: it names the admin's Workshop user, and this repository is public.
   assert.equal(guard.vars?.AI_GUARD_CONFIG, undefined);
+});
+
+test("the guard's district directory is opt-in and requires this instance's district", () => {
+  const bound = { ...SCHOOLOS_GMAC_IO, aiGuard: { ...SCHOOLOS_GMAC_IO.aiGuard, districtDirectory: true } };
+  assert.deepEqual(configFor(build(bound), AI_GUARD_PACKAGE).services, [
+    { binding: "HALL_MONITOR", service: "hall-monitor" },
+    { binding: "EDUCATEOS_DISTRICT", service: "schoolos-district-worker", entrypoint: "DistrictGuardDirectory" },
+  ]);
+  assert.deepEqual(configFor(build(TWO_HOSTS), AI_GUARD_PACKAGE).services,
+    [{ binding: "HALL_MONITOR", service: "hall-monitor" }]);
+  assert.throws(() => build({ ...bound, district: undefined, workerNames: undefined, oneOrigin: undefined, principalBinding: undefined,
+    gatekeepers: bound.gatekeepers.filter((name) => name !== EDUCATEOS_GATEKEEPER_PACKAGE) }),
+    /district directory requires a district Worker/);
 });
 
 test("the district Worker has its own custom domains, serves the UIs as assets and keeps its crons", () => {
