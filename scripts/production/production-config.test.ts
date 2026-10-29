@@ -333,7 +333,8 @@ test("deploys five demo districts beside northfield, each its own Worker at its 
     });
     // The district's assets, with /ai run through the Worker for its "AI isn't enabled" page.
     assert.deepEqual(config.assets, { ...district.assets, run_worker_first: [
-      ...(district.assets?.run_worker_first as string[]).filter((path) => path !== "/ai" && path !== "/ai/*"), "/ai", "/ai/*",
+      ...(district.assets?.run_worker_first as string[] | undefined ?? []).filter((path) => path !== "/ai" && path !== "/ai/*"),
+      "/ai", "/ai/*",
     ] });
     assert.deepEqual(config.triggers, district.triggers);
     assert.deepEqual(config.migrations, district.migrations);
