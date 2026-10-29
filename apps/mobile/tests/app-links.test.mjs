@@ -27,6 +27,8 @@ test('each build variant has its own identifiers, and only production carries th
   assert.throws(() => appVariant('staging'), /APP_VARIANT/);
   const eas = JSON.parse(readFileSync(new URL('../eas.json', import.meta.url), 'utf8'));
   for (const variant of Object.keys(VARIANTS)) assert.equal(eas.build[variant].env.APP_VARIANT, variant);
+  assert.equal(eas.submit.production.ios.ascAppId, '6828552856', 'the App Store Connect app for io.educateos.mobile');
+  assert.equal(appConfig('production').ios.infoPlist.ITSAppUsesNonExemptEncryption, false);
 });
 
 test('the /j pairing QR opens the app on iOS and Android', () => {
