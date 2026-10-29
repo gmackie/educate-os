@@ -51,10 +51,14 @@
       "/healthz",
       "/lti/*",
       "/.well-known/educateos.json",
-      "/connect-phone"
+      "/connect-phone",
+      "/ai",
+      "/ai/*"
     ]
   },
   "vars": {
-    "LTI_TOOL_ORIGIN": "https://cedarvalley.educateos.io"
+    "LTI_TOOL_ORIGIN": "https://cedarvalley.educateos.io",
+    "AI_DEMO_URL": "https://northfield.educateos.io/ai/",
+    "SCHOOL_MANIFEST": "{\"origin\":\"https://cedarvalley.educateos.io\",\"features\":{\"ai\":false}}"
   }
 }

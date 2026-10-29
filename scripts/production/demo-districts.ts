@@ -17,11 +17,12 @@ import type { DemoDistrictDeployment } from "./production-config.ts";
 const OWNER_ACCOUNT = "c07a7e704db1808e1fff91bed2b1cd49";
 
 /**
- * One origin per district (ADR-0014 D7, SCHO-259): off until the cutover
- * (docs/educateos/runbooks/one-origin-cutover.md). On, each demo district answers `/ai` itself with
- * an "AI isn't enabled at your school" page linking to Northfield, the one AI-enabled demo district.
+ * One origin per district (ADR-0014 D7, SCHO-259), on since the cutover
+ * (docs/educateos/runbooks/one-origin-cutover.md, step 8): each demo district answers `/ai` itself
+ * with an "AI isn't enabled at your school" page linking to Northfield, the one AI-enabled demo
+ * district, and publishes its school manifest.
  */
-export const DEMO_DISTRICTS_ONE_ORIGIN = false;
+export const DEMO_DISTRICTS_ONE_ORIGIN = true;
 
 /** Northfield's Workshop, on its one origin: where the other demo districts' `/ai` page points. */
 export const AI_DEMO_URL = "https://northfield.educateos.io/ai/";

@@ -325,8 +325,16 @@ test("deploys five demo districts beside northfield, each its own Worker at its 
     // Only its own hostname: Wrangler detaches any custom domain a deploy does not list, so a demo
     // must never list northfield's (or another demo's).
     assert.deepEqual(config.routes, [{ pattern: `${slug}.educateos.io`, custom_domain: true }]);
-    assert.deepEqual(config.vars, { LTI_TOOL_ORIGIN: `https://${slug}.educateos.io` });
-    assert.deepEqual(config.assets, district.assets);
+    // On one origin (DEMO_DISTRICTS_ONE_ORIGIN): its manifest, without AI, and Northfield's /ai to link to.
+    assert.deepEqual(config.vars, {
+      LTI_TOOL_ORIGIN: `https://${slug}.educateos.io`,
+      AI_DEMO_URL: AI_DEMO_URL,
+      SCHOOL_MANIFEST: JSON.stringify({ origin: `https://${slug}.educateos.io`, features: { ai: false } }),
+    });
+    // The district's assets, with /ai run through the Worker for its "AI isn't enabled" page.
+    assert.deepEqual(config.assets, { ...district.assets, run_worker_first: [
+      ...(district.assets?.run_worker_first as string[]).filter((path) => path !== "/ai" && path !== "/ai/*"), "/ai", "/ai/*",
+    ] });
     assert.deepEqual(config.triggers, district.triggers);
     assert.deepEqual(config.migrations, district.migrations);
     assert.equal(config.services, undefined, slug);
@@ -378,14 +386,17 @@ test("production is on one origin, built for /ai, and the flags off change no ge
   const forgegraph = readFileSync(join(PACKAGES_DIR, "..", ".forgegraph.yaml"), "utf8");
   const routerBuild = forgegraph.split("- name: router")[1]?.match(/buildCommand: (.*)/)?.[1] ?? "";
   assert.match(routerBuild, / VITE_WORKSHOP_BASE_PATH=\/ai\/ /);
-  assert.equal(DEMO_DISTRICTS_ONE_ORIGIN, false);
-  for (const district of DEMO_DISTRICT_DEPLOYMENTS) assert.equal(district.oneOrigin?.enabled, false, district.slug);
+  assert.equal(DEMO_DISTRICTS_ONE_ORIGIN, true);
+  for (const district of DEMO_DISTRICT_DEPLOYMENTS) assert.equal(district.oneOrigin?.enabled, true, district.slug);
   assert.deepEqual(productionBuildEnv(TWO_HOSTS), {});
 
   const { instance, districts } = withoutFlags();
   const render = (configs: Map<string, ProductionConfig>) => [...configs].map(([name, config]) => [name, renderProductionConfig(config)]);
   assert.deepEqual(render(build(TWO_HOSTS)), render(build(instance)));
-  assert.deepEqual(render(DEMOS), render(buildDemoDistrictConfigs({ districts, packages: PACKAGES, instance })));
+  const demosOff = DEMO_DISTRICT_DEPLOYMENTS.map((district) =>
+    ({ ...district, ...district.oneOrigin ? { oneOrigin: { ...district.oneOrigin, enabled: false } } : {} }));
+  assert.deepEqual(render(buildDemoDistrictConfigs({ districts: demosOff, packages: PACKAGES, instance: SCHOOLOS_GMAC_IO })),
+      render(buildDemoDistrictConfigs({ districts, packages: PACKAGES, instance })));
   // And what they render is what is committed (also the first test's check, restated for the flags).
   assert.deepEqual(generateProductionConfigs({ check: true }), []);
 });
