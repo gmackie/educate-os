@@ -9,3 +9,4 @@ export * from "./navigation.ts";
 export * from "./manifest.ts";
 export * from "./theme.ts";
 export * from "./SchoolShell.tsx";
+export * from "./SchoolNavigation.tsx";
