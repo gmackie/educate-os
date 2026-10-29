@@ -32,6 +32,8 @@ export const appConfig = (variant: AppVariant): ExpoConfig => ({
   // Light and dark palettes (src/theme.ts); the person can override the system under Me.
   userInterfaceStyle: 'automatic',
   backgroundColor: '#F6F8FC',
+  // The EducateOS mark on its brand blue #0035D3 (SCHO-268). iOS masks the full-bleed square itself.
+  icon: './assets/icon.png',
   ios: {
     bundleIdentifier: VARIANTS[variant].id,
     supportsTablet: true,
@@ -44,6 +46,11 @@ export const appConfig = (variant: AppVariant): ExpoConfig => ({
   },
   android: {
     package: VARIANTS[variant].id,
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
+      monochromeImage: './assets/monochrome-icon.png',
+      backgroundColor: '#0035D3',
+    },
     intentFilters: [{
       action: 'VIEW',
       data: [{ scheme: 'https', host: 'mobile.educateos.io', pathPrefix: '/oauthredirect' },
@@ -64,7 +71,7 @@ export const appConfig = (variant: AppVariant): ExpoConfig => ({
       microphonePermission: false, recordAudioAndroid: false,
     }],
     ['expo-local-authentication', { faceIDPermission: 'Confirm access to your EducateOS school account.' }],
-    'expo-notifications',
+    ['expo-notifications', { icon: './assets/notification-icon.png', color: '#0035D3' }],
   ],
   experiments: { tsconfigPaths: true },
   extra: {
