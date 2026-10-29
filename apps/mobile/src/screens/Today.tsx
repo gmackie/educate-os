@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { Bell, BookOpen, CalendarDays, ChevronRight, ClipboardList, Clock, GraduationCap, Megaphone, Users } from 'lucide-react-native';
+import { Bell, BookOpen, CalendarDays, ChevronRight, ClipboardList, Clock, Megaphone, Sparkles, Users } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Activity, Announcement, CalendarEvent, ClassItem, Detail, GuardianChild, Notifications, Principal, Tab } from '../types';
 import { useLoad } from '../hooks/useLoad';
@@ -138,7 +138,7 @@ export function Today({ client, me, navigate, changeTab, showAi = true }: {
         <Pressable onPress={() => changeTab('ai')} accessibilityRole="button"
           style={{ borderRadius: 22, padding: 20, backgroundColor: palette.navy,
             flexDirection: 'row', alignItems: 'center', gap: 15 }}>
-          <GraduationCap size={28} color="#FFFFFF"/>
+          <Sparkles size={28} color="#FFFFFF"/>
           <View style={{ flex: 1, gap: 6 }}>
             <Text style={{ fontSize: 17, color: '#FFFFFF', fontWeight: '800' }}>Study, create, explore</Text>
             <Text style={{ fontSize: 12, color: '#C5D3F4', lineHeight: 19 }}>Your school's AI agents and interactive learning tools.</Text>

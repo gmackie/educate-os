@@ -1,3 +1,4 @@
+import '../src/polyfills';
 import { useMemo } from 'react';
 import { Stack } from 'expo-router/stack';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationTheme } from 'expo-router';

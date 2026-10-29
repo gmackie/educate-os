@@ -70,6 +70,19 @@ export interface DemoDistrict {
    * answer, which is how the demo notices a visitor finishing a step of a journey.
    */
   clientFor(subject: string, onResponse?: (request: Request, response: Response) => void): DistrictApiClient;
+  /** The district application itself, for serving it over HTTP (the mobile dev district). */
+  fetch(request: Request): Promise<Response>;
+}
+
+/** How {@link bootDemoDistrict} serves people other than the demo's own pages. */
+export interface DemoDistrictOptions {
+  /** Turns on the device API and phone pairing (`/api/m`, `/api/pair`, `/connect-phone`). */
+  deviceTokenSecret?: string;
+  /**
+   * The persona subject a request is from when it carries no bearer, such as the mobile dev
+   * district's sign-in cookie on its `/connect-phone` page.
+   */
+  subjectOf?: (request: Request) => string | undefined;
 }
 
 /** The base URL the UIs' clients address. It is never fetched: requests go to the in-page app. */
@@ -97,21 +110,23 @@ function seedRelease(key: string): Promise<CatalogRelease> {
  * Resolving it to a principal is still the district's own resolver's job, so a guardian who has not
  * yet been approved is refused exactly as they would be anywhere.
  */
-const personaVerifier = (directory: DistrictDirectorySnapshot) => async (request: Request): Promise<VerifiedIdentity | undefined> => {
+const personaVerifier = (directory: DistrictDirectorySnapshot, subjectOf?: (request: Request) => string | undefined) => async (request: Request): Promise<VerifiedIdentity | undefined> => {
   const header = request.headers.get("authorization") ?? "";
-  if (!header.startsWith("Bearer ")) return undefined;
-  return { issuer: directory.district.trustedIssuers[0]!, subject: header.slice("Bearer ".length), credential: "person" };
+  const subject = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : subjectOf?.(request);
+  if (!subject) return undefined;
+  return { issuer: directory.district.trustedIssuers[0]!, subject, credential: "person" };
 };
 
 /**
  * Boots the district application for `directory` and seeds it, without funding pools, a model
  * catalog or a content reviewer: AI is off, and every AI surface reports that it is not set up.
  */
-export async function bootDemoDistrict(): Promise<DemoDistrict> {
+export async function bootDemoDistrict(options: DemoDistrictOptions = {}): Promise<DemoDistrict> {
   const directory = NORTHFIELD;
   const app = await createDistrictApp({
     stores: inMemoryDistrictStores(directory),
-    verifyRequest: personaVerifier(directory),
+    verifyRequest: personaVerifier(directory, options.subjectOf),
+    ...(options.deviceTokenSecret === undefined ? {} : { deviceTokenSecret: options.deviceTokenSecret }),
     importFetch: demoWeb,
     verifyCatalogRelease: async (release) => {
       const seed = await seedRelease(release.frameworkKey);
@@ -145,7 +160,7 @@ export async function bootDemoDistrict(): Promise<DemoDistrict> {
       throw new Error(`the demo seed's ${persona.id} is not ${persona.name}`);
     }
   }
-  return { clientFor };
+  return { clientFor, fetch: (request) => app.fetch(request) };
 }
 
 /**

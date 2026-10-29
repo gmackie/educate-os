@@ -65,8 +65,10 @@ const EXPECTED: Record<string, ExpectedArea> = {
   "packages/configurator-ui": {
     injected: ["NODE_ENV"],
   },
+  // EDUCATEOS_MOBILE_DISTRICT_PORT is read by the mobile dev district (`pnpm educateos:mobile-district`), never by a task.
   "packages/educateos-demo": {
     injected: ["NODE_ENV"],
+    external: ["EDUCATEOS_MOBILE_DISTRICT_PORT"],
   },
   // `src/worker-inputs.ts` resolves BUNDLED_BLUEPRINTS_DIR only to name a directory for the watcher
   // and `forceRerunTriggers`. The `test` task is cached and strips it; `vitest run` never reads
