@@ -26,6 +26,17 @@ function build(instance: ProductionInstance = SCHOOLOS_GMAC_IO, packages = PACKA
   return buildProductionConfigs({ instance, packages });
 }
 
+/**
+ * Production as it was before the one-origin cutover (SCHO-259): the Workshop at schoolos.gmac.io,
+ * the district on its own hosts, and the backend bound only for the principal migration. The tests
+ * of that layout run against it; the one-origin tests below cover production as it is.
+ */
+const TWO_HOSTS: ProductionInstance = {
+  ...SCHOOLOS_GMAC_IO,
+  oneOrigin: { enabled: false, hostname: "northfield.educateos.io" },
+  principalBinding: "migration",
+};
+
 function configFor(configs: Map<string, ProductionConfig>, pkgName: string): ProductionConfig {
   const config = configs.get(pkgName);
   assert.ok(config, `no production config for ${pkgName}`);
@@ -63,7 +74,7 @@ test("every worker is named for its package unless pinned, on the instance accou
 });
 
 test("the router is the origin, on its custom domain, bound to the backend and the gatekeepers", () => {
-  const router = configFor(build(), "router");
+  const router = configFor(build(TWO_HOSTS), "router");
   assert.deepEqual(router.routes, [{ pattern: "schoolos.gmac.io", custom_domain: true }]);
   assert.deepEqual(router.services, [
     { binding: "WORKSHOP_BACKEND", service: "workshop-backend" },
@@ -77,7 +88,7 @@ test("the router is the origin, on its custom domain, bound to the backend and t
 });
 
 test("the backend binds the gatekeepers' vendor entrypoint, the guard, Workers AI and real resources", () => {
-  const backend = configFor(build(), "workshop-backend");
+  const backend = configFor(build(TWO_HOSTS), "workshop-backend");
   assert.deepEqual(backend.services, [
     { binding: "GATEKEEPER_CONTEXT", service: "gatekeeper-context", entrypoint: "GatekeeperVendor",
       props: { sharingDomain: BASE_URL } },
@@ -104,7 +115,7 @@ test("the backend binds the gatekeepers' vendor entrypoint, the guard, Workers A
 });
 
 test("each gatekeeper is mounted under the origin", () => {
-  const configs = build();
+  const configs = build(TWO_HOSTS);
   for (const name of SCHOOLOS_GMAC_IO.gatekeepers) {
     const short = name.slice("gatekeeper-".length);
     assert.equal(configFor(configs, name).vars?.BASE_URL, `${BASE_URL}/gatekeeper/${short}`);
@@ -115,7 +126,7 @@ test("each gatekeeper is mounted under the origin", () => {
 });
 
 test("the Google connector gets only its origin; its OAuth client stays a secret", () => {
-  const google = configFor(build(), "gatekeeper-google");
+  const google = configFor(build(TWO_HOSTS), "gatekeeper-google");
   // Its redirect URI, https://schoolos.gmac.io/gatekeeper/google/oauth, derives from BASE_URL.
   assert.deepEqual(google.vars, { BASE_URL: `${BASE_URL}/gatekeeper/google` });
   assert.equal(google.services, undefined);
@@ -139,7 +150,7 @@ test("the guard runs its production entrypoint and cron, reaching Hall Monitor b
 });
 
 test("the district Worker has its own custom domains, serves the UIs as assets and keeps its crons", () => {
-  const district = configFor(build(), DISTRICT_PACKAGE);
+  const district = configFor(build(TWO_HOSTS), DISTRICT_PACKAGE);
   // Wrangler replaces the Worker's custom domains with this list, so the original stays first and
   // the managed default hostname (SCHO-207) is only added beside it.
   assert.deepEqual(district.routes, [
@@ -157,7 +168,7 @@ test("the district Worker has its own custom domains, serves the UIs as assets a
   // Only the EducateOS connector binds it (SCHO-218), and the backend for its principal bindings
   // (SCHO-259); the guard keeps its configured directory (SCHO-147), and the backend's
   // EDUCATEOS_DISTRICT_API is left out, since nothing routes to it.
-  for (const [pkgName, config] of build()) {
+  for (const [pkgName, config] of build(TWO_HOSTS)) {
     const bindings = config.services?.filter(({ service }) =>
       service === DISTRICT_PACKAGE || service === district.name).map(({ binding }) => binding) ?? [];
     assert.deepEqual(bindings, pkgName === EDUCATEOS_GATEKEEPER_PACKAGE ? ["EDUCATEOS_DISTRICT"]
@@ -166,7 +177,7 @@ test("the district Worker has its own custom domains, serves the UIs as assets a
 });
 
 test("the EducateOS connector reaches the district's school tools by its pinned name, and needs nothing secret", () => {
-  const educateos = configFor(build(), EDUCATEOS_GATEKEEPER_PACKAGE);
+  const educateos = configFor(build(TWO_HOSTS), EDUCATEOS_GATEKEEPER_PACKAGE);
   assert.deepEqual(educateos.services,
       [{ binding: "EDUCATEOS_DISTRICT", service: "schoolos-district-worker", entrypoint: "DistrictSchoolTools" }]);
   // Its connect page is served at BASE_URL, on the router's hostname behind the instance's Access;
@@ -247,7 +258,7 @@ test("fails closed on a pin for an undeployed package, a name clash, or a bindin
 });
 
 test("an instance without a district deploys no district Worker, and cannot install the EducateOS connector", () => {
-  const { district: _district, workerNames: _workerNames, principalBinding: _binding, ...withoutDistrict } = SCHOOLOS_GMAC_IO;
+  const { district: _district, workerNames: _workerNames, principalBinding: _binding, oneOrigin: _origin, ...withoutDistrict } = SCHOOLOS_GMAC_IO;
   assert.throws(() => build(withoutDistrict), /gatekeeper-educateos needs the instance's district Worker/);
   const withoutConnector = {
     ...withoutDistrict,
@@ -346,28 +357,34 @@ test("no demo district config carries a secret", () => {
 });
 
 
-// One origin per district (ADR-0014, SCHO-259), prepared behind flags that are off on main.
+// One origin per district (ADR-0014, SCHO-259): on for the instance since the cutover, still off
+// for the demo districts.
 
 /** The configs as they would be with no one-origin flag at all, before the flags existed. */
 function withoutFlags() {
-  const { oneOrigin: _oneOrigin, ...instance } = SCHOOLOS_GMAC_IO;
+  const { oneOrigin: _oneOrigin, ...instance } = TWO_HOSTS;
   const districts = DEMO_DISTRICT_DEPLOYMENTS.map(({ oneOrigin: _flag, ...district }) => district);
   return { instance, districts };
 }
 
-const ONE_ORIGIN: ProductionInstance = { ...SCHOOLOS_GMAC_IO, oneOrigin: { enabled: true, hostname: "northfield.educateos.io" } };
+const ONE_ORIGIN: ProductionInstance = { ...TWO_HOSTS, oneOrigin: { enabled: true, hostname: "northfield.educateos.io" } };
 const NORTHFIELD = "https://northfield.educateos.io";
 
-test("the one-origin flags are off on main, and off they change no generated byte", () => {
-  assert.equal(SCHOOLOS_GMAC_IO.oneOrigin?.enabled, false);
-  assert.equal(SCHOOLOS_GMAC_IO.oneOrigin?.hostname, "northfield.educateos.io");
+test("production is on one origin, built for /ai, and the flags off change no generated byte", () => {
+  assert.deepEqual(SCHOOLOS_GMAC_IO.oneOrigin, { enabled: true, hostname: "northfield.educateos.io" });
+  assert.equal(SCHOOLOS_GMAC_IO.principalBinding, "resolver");
+  assert.deepEqual(productionBuildEnv(SCHOOLOS_GMAC_IO), { router: { VITE_WORKSHOP_BASE_PATH: "/ai/" } });
+  // Build env is not in a Wrangler config: the router target's buildCommand must carry it.
+  const forgegraph = readFileSync(join(PACKAGES_DIR, "..", ".forgegraph.yaml"), "utf8");
+  const routerBuild = forgegraph.split("- name: router")[1]?.match(/buildCommand: (.*)/)?.[1] ?? "";
+  assert.match(routerBuild, / VITE_WORKSHOP_BASE_PATH=\/ai\/ /);
   assert.equal(DEMO_DISTRICTS_ONE_ORIGIN, false);
   for (const district of DEMO_DISTRICT_DEPLOYMENTS) assert.equal(district.oneOrigin?.enabled, false, district.slug);
-  assert.deepEqual(productionBuildEnv(SCHOOLOS_GMAC_IO), {});
+  assert.deepEqual(productionBuildEnv(TWO_HOSTS), {});
 
   const { instance, districts } = withoutFlags();
   const render = (configs: Map<string, ProductionConfig>) => [...configs].map(([name, config]) => [name, renderProductionConfig(config)]);
-  assert.deepEqual(render(build()), render(build(instance)));
+  assert.deepEqual(render(build(TWO_HOSTS)), render(build(instance)));
   assert.deepEqual(render(DEMOS), render(buildDemoDistrictConfigs({ districts, packages: PACKAGES, instance })));
   // And what they render is what is committed (also the first test's check, restated for the flags).
   assert.deepEqual(generateProductionConfigs({ check: true }), []);
@@ -467,16 +484,19 @@ test("the principal bindings reach the district's resolver by its pinned name, o
   const services = (principalBinding?: "migration" | "resolver") =>
     configFor(build({ ...SCHOOLOS_GMAC_IO, ...principalBinding ? { principalBinding } : {} }), "workshop-backend").services
         ?.filter(({ binding }) => binding.startsWith("PRINCIPAL_"));
-  // Production is at cutover step 3: the migration's binding, not yet the resolver's.
-  assert.equal(SCHOOLOS_GMAC_IO.principalBinding, "migration");
-  assert.deepEqual(services(), [{ binding: "PRINCIPAL_MIGRATION", service: "schoolos-district-worker", entrypoint: "DistrictPrincipalResolver" }]);
+  // Production is past the cutover: both bindings.
+  assert.equal(SCHOOLOS_GMAC_IO.principalBinding, "resolver");
+  assert.deepEqual(services(), [
+    { binding: "PRINCIPAL_MIGRATION", service: "schoolos-district-worker", entrypoint: "DistrictPrincipalResolver" },
+    { binding: "PRINCIPAL_RESOLVER", service: "schoolos-district-worker", entrypoint: "DistrictPrincipalResolver" },
+  ]);
   const { principalBinding: _binding, ...unbound } = SCHOOLOS_GMAC_IO;
   assert.deepEqual(configFor(build(unbound), "workshop-backend").services
       ?.filter(({ binding }) => binding.startsWith("PRINCIPAL_")), []);
   const migration = { binding: "PRINCIPAL_MIGRATION", service: "schoolos-district-worker", entrypoint: "DistrictPrincipalResolver" };
   assert.deepEqual(services("migration"), [migration]);
   assert.deepEqual(services("resolver"), [migration, { ...migration, binding: "PRINCIPAL_RESOLVER" }]);
-  const { district: _district, workerNames: _names, ...withoutDistrict } = SCHOOLOS_GMAC_IO;
+  const { district: _district, workerNames: _names, ...withoutDistrict } = TWO_HOSTS;
   assert.throws(() => build({
     ...withoutDistrict, principalBinding: "migration",
     gatekeepers: withoutDistrict.gatekeepers.filter((name) => name !== EDUCATEOS_GATEKEEPER_PACKAGE),

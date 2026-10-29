@@ -35,19 +35,16 @@
     {
       "binding": "GATEKEEPER_WEBSEARCH",
       "service": "gatekeeper-websearch"
+    },
+    {
+      "binding": "DISTRICT",
+      "service": "schoolos-district-worker"
     }
   ],
   "assets": {
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": [
-      "/api",
-      "/api/*",
-      "/blueprint-screenshot",
-      "/blueprint-screenshot/*",
-      "/gatekeeper/*",
-      "/healthz"
-    ],
+    "run_worker_first": true,
     "directory": "../workshop-frontend/dist"
   },
   "account_id": "c07a7e704db1808e1fff91bed2b1cd49",
@@ -55,9 +52,19 @@
   "preview_urls": false,
   "routes": [
     {
+      "pattern": "northfield.educateos.io",
+      "custom_domain": true
+    },
+    {
       "pattern": "schoolos.gmac.io",
+      "custom_domain": true
+    },
+    {
+      "pattern": "district.schoolos.gmac.io",
       "custom_domain": true
     }
   ],
-  "vars": {}
+  "vars": {
+    "LEGACY_HOSTS": "{\"schoolos.gmac.io\":\"https://northfield.educateos.io/ai\",\"district.schoolos.gmac.io\":\"https://northfield.educateos.io\"}"
+  }
 }

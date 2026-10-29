@@ -34,7 +34,7 @@ server: https://forgegraf.com
 
 stages:
   - name: production
-    url: https://schoolos.gmac.io
+    url: https://northfield.educateos.io
     sortOrder: 20
     targets:
       - name: gatekeeper-context
@@ -86,9 +86,9 @@ stages:
           workerName: router
           appDir: packages/router
           configPath: packages/router/wrangler.production.jsonc
-          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && VITE_CF_ACCESS_MODE=true pnpm exec vp run --no-cache -F @gadgets/workshop-frontend build
+          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && VITE_CF_ACCESS_MODE=true VITE_WORKSHOP_BASE_PATH=/ai/ pnpm exec vp run --no-cache -F @gadgets/workshop-frontend build
           deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
-          healthCheckUrl: https://schoolos.gmac.io/healthz
+          healthCheckUrl: https://northfield.educateos.io/healthz
 
 health:
   # The router's liveness route, exempt from Cloudflare Access ("EducateOS health (bypass)").

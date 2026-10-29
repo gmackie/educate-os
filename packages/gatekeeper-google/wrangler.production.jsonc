@@ -103,6 +103,6 @@
   "workers_dev": false,
   "preview_urls": false,
   "vars": {
-    "BASE_URL": "https://schoolos.gmac.io/gatekeeper/google"
+    "BASE_URL": "https://northfield.educateos.io/gatekeeper/google"
   }
 }

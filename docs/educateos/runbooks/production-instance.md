@@ -2,19 +2,26 @@
 
 - Issues: SCHO-192 (the instance), SCHO-193 (the LMS-lite district), SCHO-214 (the Google
   connector), SCHO-218 (the EducateOS connector).
-- Instance: <https://schoolos.gmac.io>, one long-lived EducateOS deployment on the gmacko Cloudflare
+- Instance: <https://northfield.educateos.io> (Workshop at `/ai`; formerly <https://schoolos.gmac.io>), one long-lived EducateOS deployment on the gmacko Cloudflare
   account (`c07a7e704db1808e1fff91bed2b1cd49`), deployed by ForgeGraph.
 - Configs: `packages/<worker>/wrangler.production.jsonc`, generated and committed.
 - Generator: `scripts/production/production-config.ts`. The instance's values are in
   `scripts/production/schoolos-gmac-io.ts`. The guard's configuration is the `AI_GUARD_CONFIG`
   secret, whose public example is `deploy/schoolos-gmac-io/ai-guard-config.example.json`.
 
-This layout is changing. [ADR-0014](../adr/0014-one-origin-per-district.md) moves each district to one
-origin: the router serves `northfield.educateos.io`, with the LMS at `/` and the Workshop at `/ai`,
-behind one Access application, and the two hostnames below answer with 301s. Until the Northfield
-cutover lands, the production configs don't bind the router's `DISTRICT`, and this runbook
-describes what is deployed. The cutover is prepared behind switches that are off; its steps are in
-[the one-origin cutover runbook](one-origin-cutover.md).
+**One origin (since the SCHO-259 cutover).** [ADR-0014](../adr/0014-one-origin-per-district.md)
+moved the instance to one origin: the router serves `https://northfield.educateos.io`, with the
+LMS at `/` (the district Worker, through the router's `DISTRICT` binding) and the Workshop at `/ai`
+(its RPC at `/ai/api`, its frontend built with `VITE_WORKSHOP_BASE_PATH=/ai/`). One Access
+application ("SchoolOS (demo district)", the backend's `CF_ACCESS_AUD`) covers the host, and
+"EducateOS Northfield (bypass)" covers the paths that check their own credential. The router also
+holds `schoolos.gmac.io` and `district.schoolos.gmac.io` and answers there only with `/healthz`
+and redirects (`LEGACY_HOSTS`: 301 for GET and HEAD, 308 otherwise). Workshop sign-in resolves the
+Access subject to a district principal (`PRINCIPAL_RESOLVER`); users from before the cutover keep
+their email-keyed accounts through the migration's aliases. The sections below still describe the
+Workers and their bindings; where they name `schoolos.gmac.io` or `district.schoolos.gmac.io` as
+the place a Worker is served, read `northfield.educateos.io` (and `/ai` for the Workshop). The
+cutover, its verification and its rollback are in [the one-origin cutover runbook](one-origin-cutover.md).
 
 The instance is synthetic. Its AI call guard serves a demo district with a single staff principal,
 and legal review (SCHO-118) must pass before any real student uses it.
