@@ -36,11 +36,17 @@ for (const name of (await readdir(join(source,"assets"))).filter((name) => name.
   standalone = standalone.replaceAll(`__IMAGE_${name}__`, `data:image/jpeg;base64,${(await readFile(join(source,"assets",name))).toString("base64")}`);
 }
 await writeFile(join(output,"index.html"),standalone);
+await cp(join(source,"google-clever-bridge.html"),join(output,"google-clever-bridge.html"));
+await cp(join(source,"full-system-demo.md"),join(output,"full-system-demo.md"));
+const districtBuild=spawnSync(process.execPath,[join(source,"build-district-demo.mjs"),join(output,"district-demo.html")],{cwd:repository,encoding:"utf8"});
+if(districtBuild.status!==0)throw Error(`District demo build failed: ${districtBuild.stderr}`);
+const districtCheck=spawnSync(process.execPath,[join(source,"district-demo-check.mjs"),join(output,"district-demo.html")],{cwd:repository,encoding:"utf8"});
+if(districtCheck.status!==0)throw Error(`District demo execution failed: ${districtCheck.stderr}`);
 await mkdir(join(output,"assets"));
 for (const name of (await readdir(join(source,"assets"))).filter((name) => /\.(pdf|pptx)$/.test(name))) {
   await cp(join(source,"assets",name),join(output,"assets",name));
 }
-await writeFile(join(output,"README.txt"), "EducateOS x Clever meeting kit\n\nOpen index.html locally; no server or internet is needed for the presentation.\nSee docs/educateos/clever-partner-demo/README.md for the evidence, prompts and rehearsal steps.\nAssets are historical synthetic snapshots from 2026-10-28, not new live results.\nPersonal student companion source is included; live EducateOS learner OAuth/turn-in remains open.\nSource files require Workshop install/review and each user's own bindings, not direct .gadget import.\nFull Google validation remains in progress (SCHO-255).\n");
+await writeFile(join(output,"README.txt"), "EducateOS x Clever full-system meeting kit\n\nOpen index.html locally; no server or internet is needed.\nOpen district-demo.html to try the actual EducateOS student/teacher/guardian/admin applications over a synthetic district; no real SSO/provider/AI. Switch persona in the same tab to keep work. Reset/reload discards district state.\nOpen google-clever-bridge.html for the detailed provider responsibility comparison.\nSee full-system-demo.md for the 30-minute product and connected-Google demonstration script.\nSee docs/educateos/clever-partner-demo/README.md for evidence, prompts and rehearsal steps.\nGoogle assets are historical synthetic-account snapshots from 2026-10-28, not new live results.\nPersonal student companion source is included; live EducateOS learner OAuth/turn-in remains open.\nSource files require Workshop install/review and each user's own bindings, not direct .gadget import.\nFull Google validation remains in progress (SCHO-255).\n");
 const builtTeacher = join(output,"gadgets/classroom-formats-lab");
 const build = spawnSync(process.execPath,[resolve(repository,"docs/educateos/examples/classroom-formats-lab/build.mjs"),builtTeacher],{cwd:repository,encoding:"utf8"});
 if (build.status!==0) throw Error(`Teacher gadget build failed: ${build.stderr}`);

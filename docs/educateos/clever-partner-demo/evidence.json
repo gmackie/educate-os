@@ -197,5 +197,60 @@
     "data": "Synthetic demonstration accounts and coursework",
     "images": "Cropped historical UI screenshots; no browser session executed by building the kit",
     "downloads": "Original live-generated PDFs/PPTX retained with embedded source timestamps"
+  },
+  "meeting": {
+    "time": "15:00",
+    "timezoneAssumption": "America/Detroit",
+    "date": null,
+    "attendeeMix": "unconfirmed; prepare for partner staff and engineers",
+    "source": "User confirmed 3pm; timezone and calendar date not explicitly supplied."
+  },
+  "nativeDistrictDemo": {
+    "evidenceCategory": "Current automated synthetic execution; not real provider or production acceptance",
+    "source": "packages/educateos-demo",
+    "applications": [
+      "district administrator",
+      "teacher",
+      "student",
+      "guardian"
+    ],
+    "service": "Actual district application over in-memory stores; persona identity verifier",
+    "compiledUiCheck": "Controlled DOM at a virtual HTTPS origin; inline assets; saved reflection; receipt; teacher comment, official 4/5 approval and feedback release; learner/guardian readback; guardian artifact isolation; reset; zero network fetches",
+    "nativeSuite": {
+      "tests": 8,
+      "includes": "new artifact/submission, hidden draft feedback, official grade, release, guardian result, student teacher-route denial and unrelated-child denial"
+    },
+    "limits": [
+      "No real SSO",
+      "No Google or Clever calls",
+      "AI off",
+      "State discarded on reset/reload",
+      "Separate Northfield fixtures from connected Google Science/Algebra accounts"
+    ],
+    "realBrowserCheck": {
+      "browser": "Playwright Chromium, headless",
+      "origin": "file:// local standalone HTML",
+      "result": "passed",
+      "scope": "All three Plan/Draft/Revise saved; receipt; teacher comment, official 4/5 confirmation/release; learner and guardian readback; guardian artifact isolation; reset; 390px picker",
+      "httpRequests": 0,
+      "pageErrors": 0,
+      "screenshots": "Locally generated under /tmp/scho255-native-ui-proof; reproducible with browser-check.mjs"
+    }
+  },
+  "meetingDeliverables": {
+    "presentationSections": 16,
+    "providerResponsibilityTopics": 12,
+    "primaryPathMinutes": 30,
+    "shortGooglePathMinutes": 20,
+    "portableArtifacts": [
+      "index.html",
+      "district-demo.html",
+      "google-clever-bridge.html",
+      "full-system-demo.md",
+      "six PDF/PPTX exports",
+      "reviewed gadget source",
+      "evidence ledger",
+      "SHA256SUMS"
+    ]
   }
 }

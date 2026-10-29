@@ -27,6 +27,10 @@ interfaces and method signatures; counts are source inventory, not successful AP
 | Blueprint publication | Instructors share code/required binding shape; learners create personal copies | **Implemented** platform feature. Formats Lab source and personal companion included. **Open:** fresh two-student teaching-blueprint install/update acceptance. No credentials, storage or history included. | SSO onboarding and authorized roster context reduce setup; learner rebind still required. |
 | District sync / identity | Preview, quarantine, apply, scheduled sync and held-removal approval | **Harness-tested** Clever complete/events and Google adapter paths. **Open:** full deployed real district/identity acceptance. Service principal and Google subject links must be verified. | Enable matching API version, full roster product/fields, consented district token, SSO fixtures and events or agreed complete-refresh fallback. |
 
+See the [12-topic responsibility explorer](google-clever-bridge.html) for the full district view,
+including native applications, guardians, governance and blueprint distribution. The
+[full-system script](full-system-demo.md) demonstrates those roles before the connected Google segment.
+
 ## Clever access matrix for the call
 
 | Required domain | Current recorded access | Request and validation |

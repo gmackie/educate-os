@@ -2,11 +2,16 @@
 
 ## Meeting outcome
 
-Show one credible teaching workflow, then leave with a named Clever technical owner, the supported
+Meeting time: **3pm**. Assume Eastern (America/Detroit) for preparation; the calendar date and
+attendee mix are not confirmed. Use the [30-minute full product script](full-system-demo.md) as the primary path.
+The 20-minute Google-focused path below is the shorter option; keep the technical appendix ready.
+
+Show the full district product and the Google-backed teaching workflow, then leave with a named Clever technical owner, the supported
 API version, a sandbox entitlement plan and a date for a joint test. Opening statement:
 
 > EducateOS turns authorized school data into instructor-built applications and agent workflows.
-> Google lets us show an assignment, controlled external actions and several teaching formats.
+> Our real district apps show administrator, instructor, learner and family workflows using synthetic data.
+> Google lets us show separately authorized assignments, controlled actions and several teaching formats.
 > We want Clever to provide the identity, enrollment and launch foundation for the same experience
 > across schools, with learning content and submissions supplied by the appropriate LMS connector.
 
@@ -34,30 +39,33 @@ deployment secrets, tokens or credential configuration on the projected screen.
 
 ## Rehearsal checklist
 
-1. Open the saved teacher workspace; refresh Science and Algebra and verify fetch times advance.
+1. Rehearse the native district cycle in `district-demo.html` using [full-system-demo.md](full-system-demo.md).
+   Use the same tab for all personas. Submit Reading reflection as Amara, review as Sam, approve
+   4/5, share feedback, and read the result as Amara and Grace. Reset only when finished.
+2. Open the saved teacher workspace; refresh Science and Algebra and verify fetch times advance.
    Compare the actual title, work ID, publication state and points with the connector response.
-2. Check every format: worksheet; slide advance/back and arrow keys; quiz wrong/correct/reset;
+3. Check every format: worksheet; slide advance/back and arrow keys; quiz wrong/correct/reset;
    discussion start/pause/reset and teacher notes. Repeat class switch and narrow-screen layout.
    Quiz answers are local practice, not persisted assessment or grade passback.
-3. Open all six bundled exports locally. Inspect source reference/time; Science has nine slides,
+4. Open all six bundled exports locally. Inspect source reference/time; Science has nine slides,
    Algebra seven. Use these snapshots if Google/Workshop is unavailable.
-4. Open An's own Google Classroom session and verify the retained 18/20 result. Do not resubmit,
+5. Open An's own Google Classroom session and verify the retained 18/20 result. Do not resubmit,
    overwrite the grade or delete its rubric. Show the historical screenshot if the session expires.
-5. Before choosing a new live mutation, create a **separate synthetic rehearsal assignment** through
+6. Before choosing a new live mutation, create a **separate synthetic rehearsal assignment** through
    the existing teacher approval flow. Record its ID. Reject one draft request and verify absence;
    approve one draft request and verify exactly one committed record. Do not repeat a request when
    a timeout leaves the outcome uncertain: refresh/read Google first.
-6. If student OAuth/authoring is available, install the personal companion in the student's own
+7. If student OAuth/authoring is available, install the personal companion in the student's own
    EducateOS workspace as described in its README. Read published work and own state. Prepare an
    answer/attachment in Google Classroom; request and approve turn-in; read TURNED_IN from Google.
    Use a second learner, non-member, other-course ID and revoked user for denial checks. Record
    exact identities, resource URL, gadget revision, approval decision and timestamp. This entire
    EducateOS student rehearsal remains a gate until actually recorded.
-7. Blueprint rehearsal: publish committed personal companion source with only the student binding;
+8. Blueprint rehearsal: publish committed personal companion source with only the student binding;
    instantiate a fresh copy as a different student and require their own Google connection. Check
    code update preview/accept and that no binding credentials or personal response data travel.
    Students cannot collaborate on a personal student resource; use independent copies.
-8. Verify roster preview/apply/scheduled runs only after authorized district admin setup works.
+9. Verify roster preview/apply/scheduled runs only after authorized district admin setup works.
    Owner email PIN restored the existing Harbor administrator on 2026-10-28; that run then found
    a roster-issuer trust/configuration dependency. Renew the authorized admin session and verify
    the supported preview/apply state. A Google admin is not automatically a Harbor admin.
