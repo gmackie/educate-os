@@ -39,10 +39,10 @@ test("the console verifies Access assertions for its own application", () => {
   assert.equal(config.preview_urls, false, "so would a preview URL");
 });
 
-test("the console stays here until ADMIN_URL is set, and the admin's export entrypoint is exported", () => {
-  // Setting ADMIN_URL moves the console to the hosted admin (SCHO-263). That is a deliberate,
-  // separate change, made after the admin is live and the import has run.
-  assert.equal(config.vars.ADMIN_URL, undefined);
+test("the console has moved to the hosted admin, and the admin's export entrypoint is exported", () => {
+  // ADMIN_URL moves the console to the hosted admin (SCHO-263), set once the admin was live and the
+  // import had run.
+  assert.equal(config.vars.ADMIN_URL, "https://admin.educateos.io/");
   // The admin binds this entrypoint by name; without the export its service binding is refused.
   const worker = readFileSync(new URL("worker.ts", import.meta.url), "utf8");
   assert.match(worker, /export \{ ControlPlaneExporter \} from "\.\.\/\.\.\/packages\/educateos-control-plane\/src\/worker\.ts";/);
