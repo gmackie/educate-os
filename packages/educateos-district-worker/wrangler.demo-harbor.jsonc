@@ -51,10 +51,14 @@
       "/healthz",
       "/lti/*",
       "/.well-known/educateos.json",
-      "/connect-phone"
+      "/connect-phone",
+      "/ai",
+      "/ai/*"
     ]
   },
   "vars": {
-    "LTI_TOOL_ORIGIN": "https://harbor.educateos.io"
+    "LTI_TOOL_ORIGIN": "https://harbor.educateos.io",
+    "AI_DEMO_URL": "https://northfield.educateos.io/ai/",
+    "SCHOOL_MANIFEST": "{\"origin\":\"https://harbor.educateos.io\",\"features\":{\"ai\":false}}"
   }
 }
