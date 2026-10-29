@@ -1,0 +1,113 @@
+{
+  "description": "Detailed responsibility map; Clever entries are questions/expectations pending provider confirmation.",
+  "items": [
+    {
+      "id": "identity",
+      "layer": "foundation",
+      "title": "Account identity and role",
+      "educateos": "EducateOS resolves a principal by district, trusted issuer and stable subject. Class roles come from enrollment, not an email match.",
+      "google": "Google OAuth supplies an account identity. Classroom membership supplies teacher/student course roles. Teacher connector OAuth is demonstrated; full district sign-in/roster linking is still open.",
+      "clever": "Confirm verified Clever subject (multi_role_user_id/sub), district claims and multi-role behavior; provide admin, teacher, student and non-member logins.",
+      "boundary": "A Clever identity and a Google identity require verified linking to the same district principal. SSO alone grants no Google content access."
+    },
+    {
+      "id": "structure",
+      "layer": "foundation",
+      "title": "District, school, term and class structure",
+      "educateos": "The local directory models districts, schools, terms, catalog courses and taught offerings.",
+      "google": "Classroom courses represent taught classes. EducateOS configuration supplies schools, grade bands and terms for this roster path. A selected-course list separates districts sharing a Workspace domain.",
+      "clever": "Enable and confirm districts, schools, terms, courses and sections with district-approved fields. Clever sections should map to taught offerings; catalog courses stay distinct.",
+      "boundary": "Google Classroom course and Clever catalog course are different model objects. Do not map them by name alone."
+    },
+    {
+      "id": "membership",
+      "layer": "foundation",
+      "title": "Who belongs to which class",
+      "educateos": "EducateOS uses active student/staff enrollments to authorize class views and operations.",
+      "google": "Classroom teacher/student lists supply course membership. Real single-course reads exist; complete deployed district sync and stable identity acceptance remain open.",
+      "clever": "Provide users and section teacher/student membership, secondary teacher/staff/multi-role fixtures and a second isolated district.",
+      "boundary": "Enrollment is authorization context. It does not grant a file ACL, mailbox, another learner\u2019s work or teacher grading authority."
+    },
+    {
+      "id": "sync",
+      "layer": "foundation",
+      "title": "Roster preview, apply and removal",
+      "educateos": "Both adapters use the shared import pipeline: validation, quarantine, preview, apply and a large-removal hold. Failed runs preserve prior successful state.",
+      "google": "The Google roster path performs complete polling. Its source and district wiring exist; full live preview/apply/scheduled acceptance is pending.",
+      "clever": "Confirm API version plus roster entitlement. Enable events with documented retention/cursor/removal semantics, or agree complete-refresh cadence.",
+      "boundary": "Clever event changes describe roster data, not Classroom submissions or grading. Harness tests are not a real-provider sync result."
+    },
+    {
+      "id": "launch",
+      "layer": "foundation",
+      "title": "Role-aware launch",
+      "educateos": "EducateOS routes the signed-in principal to the district and the appropriate app context.",
+      "google": "Google-connected Workshop sessions and separate Google Classroom pages have real evidence. This does not prove a whole-district Google launch or identity setup.",
+      "clever": "Confirm shared portal launch/redirect registration, district claims, stable user ID and role choice. Test each role and wrong-district denial.",
+      "boundary": "Portal implementation exists, but current live Clever launch acceptance is open. A persona selector in the offline demo is synthetic authentication."
+    },
+    {
+      "id": "teaching",
+      "layer": "learning",
+      "title": "Instructor creation, agents and gadgets",
+      "educateos": "Teacher Studio supplies activities, resources, feedback and class tools. Workshop supplies code-mode agents, resource capabilities, gadgets and reusable blueprints.",
+      "google": "The connector reads the real task/rubric and supports app-owned coursework actions. Science and Algebra gadgets render worksheet, slides, local quiz and discussion, with PDF/PPTX exports.",
+      "clever": "Roster and launch context can put an instructor in the right district/class. Ask whether any separate Clever product adds content context.",
+      "boundary": "EducateOS creates the experience. Clever roster access is not a native Google Doc/Slides/Sheets or authoring API. The offline district demo has AI off."
+    },
+    {
+      "id": "student",
+      "layer": "learning",
+      "title": "Individual learner work",
+      "educateos": "Learning Home supplies versioned learner artifacts/submissions. The separate personal Classroom capability supplies only published work and own submission state.",
+      "google": "Real work/turn-in and 18/20 visibility were demonstrated in Google Classroom. EducateOS student API is deployed; its new personal gadget still needs live OAuth/approval/turn-in acceptance.",
+      "clever": "Provide verified learner identity and section membership. Keep individual Google OAuth and the one-course capability separate from the district roster token.",
+      "boundary": "A teacher presentation filter cannot protect students. Each learner creates their own blueprint instance; upload/answer authoring and grade display are absent from the student connector API."
+    },
+    {
+      "id": "assessment",
+      "layer": "learning",
+      "title": "Teacher review and grade return",
+      "educateos": "EducateOS owns assessment decisions, official grades and feedback-release policy for its native activities. External grade publication uses a supported LMS route.",
+      "google": "The teacher-approved Science 18/20 and return were read back from Google and seen by the learner. Google restricts writes to the app\u2019s project-owned coursework. Rubric criterion grades cannot be published through its API.",
+      "clever": "Confirm whether any additional Clever product covers learning/grade context; otherwise retain Google or an LMS/LTI connector for those operations.",
+      "boundary": "Do not promise Clever submission or grade-write APIs. Native EducateOS grading in the synthetic demo is different evidence from a Google grade-return transaction."
+    },
+    {
+      "id": "resources",
+      "layer": "learning",
+      "title": "Documents, data, calendars and communication",
+      "educateos": "Exact resource bindings support reading guides, lab data, native presentations, scoped libraries, agenda and private communication assistants.",
+      "google": "Fourteen resource kinds are declared. Beyond the demonstrated Classroom/gadget story, native Workspace teaching recipes remain unrehearsed. Drive supports metadata/native reads, not general upload/share/delete.",
+      "clever": "Use district identity/membership to inform intended audiences. Ask which separately approved app/content integrations Clever recommends.",
+      "boundary": "Clever consent does not grant Google OAuth scopes or file/calendar/Chat membership. Gmail and whole-account Chat belong outside learner templates."
+    },
+    {
+      "id": "guardian",
+      "layer": "operations",
+      "title": "Guardian access",
+      "educateos": "EducateOS invitations, identity approval and a confirmed relationship scope expose a child\u2019s classes and released results, not submissions or unrelated children.",
+      "google": "Guardian relationships are not supplied by the demonstrated Google connector. The synthetic product demo seeds an EducateOS-approved guardian relationship.",
+      "clever": "Confirm any supported family/relationship product separately, its consent/field contract and role limitations. The current Clever adapter does not import contacts as guardians.",
+      "boundary": "Never infer a guardian relationship from a shared email, basic identity scope, contact record or roster membership."
+    },
+    {
+      "id": "governance",
+      "layer": "operations",
+      "title": "District control, cost and recovery",
+      "educateos": "District policies, approved resources/actions, release signatures, feedback visibility and AI-governance mechanisms belong to EducateOS. Educational records stay with the district or its approved provider.",
+      "google": "Real Google approvals demonstrate write control and readback. Full revoke/reconnect/outage and broader Plus acceptance remain open. The offline product demo has no funded AI or provider traffic.",
+      "clever": "Confirm consent/sharing revocation, token rotation, quotas, event recovery and support ownership; supply negative fixtures to validate our handling.",
+      "boundary": "School/district membership is only one policy input. It does not authorize model access, budgets, publication or unrestricted provider data."
+    },
+    {
+      "id": "reuse",
+      "layer": "operations",
+      "title": "Blueprints and safe distribution",
+      "educateos": "A blueprint carries reviewed source and required resource shapes. A new instance gets its own storage, history and authorized bindings.",
+      "google": "Teacher formats are demonstrated and source is included. Personal student companion source is implemented; fresh two-student install/update acceptance remains open.",
+      "clever": "Use supported Clever sign-in/launch to simplify onboarding and select the intended class; confirm any distribution program or review requirement.",
+      "boundary": "Do not distribute a live teacher workspace or its credentials. Copying code does not transfer Google file permissions or provider consent."
+    }
+  ]
+}

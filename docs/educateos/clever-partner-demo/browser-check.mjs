@@ -1,0 +1,88 @@
+// Optional real-browser rehearsal. Requires the repository's Playwright Chromium installation.
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import { resolve, join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { mkdir } from "node:fs/promises";
+const require=createRequire(new URL("../../../packages/educateos-teacher-ui/package.json",import.meta.url));
+const { chromium }=require("playwright");
+const browser=await chromium.launch({headless:true});
+const errors=[],requests=[];
+const output=process.argv[3];
+if(output)await mkdir(output,{recursive:true});
+const page=await browser.newPage({viewport:{width:1280,height:900}});
+page.setDefaultTimeout(30000);
+page.on("pageerror",error=>errors.push(error.message));
+await page.route(/^https?:/,route=>{requests.push(route.request().url());return route.abort();});
+const screenshot=async(name)=>{if(output)await page.screenshot({path:join(output,`${name}.png`),fullPage:true});};
+const choose=async(role)=>{
+  await page.getByRole("button",{name:"Switch persona",exact:true}).click();
+  await page.getByRole("button",{name:new RegExp(`^${role}`)}).click();
+};
+try {
+  await page.goto(pathToFileURL(resolve(process.argv[2])).href);
+  await page.getByText("Offline EducateOS product demo.",{exact:true}).waitFor();
+  await page.getByRole("button",{name:/^Grade 9 student/}).click();
+  await page.getByRole("heading",{name:"Hi, Amara Okafor"}).waitFor();
+  await screenshot("student-home");
+  await page.getByRole("link",{name:"English 9 · Period 3",exact:true}).click();
+  await page.getByRole("link",{name:/Reading reflection/}).click();
+  const activityHash=new URL(page.url()).hash;
+  const reflection="Our school garden connects careful observation to a science investigation. I would record plant growth each week and compare the evidence.";
+  for(const [step,text] of [["Plan","Connect the garden article to observations and evidence."],["Draft",reflection],["Revise",`${reflection} I would also record rainfall to explain differences.`]]) {
+    const work=page.getByRole("heading",{name:step,exact:true}).locator("..");
+    await work.getByRole("textbox",{name:`Your work for ${step}`,exact:true}).fill(text);
+    await work.getByRole("button",{name:"Save",exact:true}).click();
+    await work.getByText(/^Saved /).waitFor();
+  }
+  await page.getByRole("button",{name:"Submit",exact:true}).click();
+  await page.getByRole("dialog").getByRole("button",{name:"Submit",exact:true}).click();
+  await page.getByText("Receipt code",{exact:true}).waitFor();
+  await screenshot("student-receipt");
+  await page.getByRole("button",{name:"Done",exact:true}).click();
+  await choose("English 9 teacher");
+  await page.getByRole("link",{name:/English 9 · Period 3/}).click();
+  await page.getByRole("link",{name:"Submissions",exact:true}).click();
+  await page.getByRole("link",{name:/Reading reflection/}).click();
+  await page.getByRole("link",{name:/Review Amara Okafor/}).click();
+  await page.getByText(reflection,{exact:true}).waitFor();
+  const comment="Clear reflection. Include one quotation to support the connection.";
+  await page.getByRole("textbox",{name:"Comment",exact:true}).first().fill(comment);
+  await page.getByRole("button",{name:"Add comment",exact:true}).first().click();
+  await page.locator('[aria-labelledby="feedback-heading"]').getByText(comment,{exact:true}).waitFor();
+  await page.getByLabel("Points",{exact:true}).fill("4");
+  await page.getByLabel("Out of",{exact:true}).fill("5");
+  await page.getByRole("button",{name:"Approve official grade",exact:true}).click();
+  await page.getByRole("button",{name:"Yes, approve official grade",exact:true}).click();
+  await page.getByText("4 out of 5",{exact:true}).waitFor();
+  await page.getByRole("button",{name:"Share feedback with student",exact:true}).click();
+  await page.getByText("Shared with the student",{exact:true}).waitFor();
+  await screenshot("teacher-review");
+  await choose("Grade 9 student");
+  await page.evaluate(hash=>{window.location.hash=hash;},activityHash);
+  await page.getByText(comment,{exact:true}).waitFor();
+  await page.getByText("Official grade: 4 out of 5",{exact:true}).waitFor();
+  await screenshot("student-feedback");
+  await choose("Amara's guardian");
+  await page.getByRole("link",{name:"English 9 · Period 3",exact:true}).click();
+  await page.getByText(comment,{exact:true}).waitFor();
+  await page.getByText("Official grade: 4 of 5 points",{exact:true}).waitFor();
+  assert.equal(await page.getByText(reflection,{exact:true}).count(),0);
+  await screenshot("guardian-result");
+  await choose("District administrator");
+  await page.getByRole("heading",{name:"Dashboard",exact:true}).waitFor();
+  await screenshot("administrator");
+  await page.getByRole("button",{name:"Reset demo",exact:true}).click();
+  await page.getByRole("button",{name:/^Grade 9 student/}).waitFor();
+  assert.equal(new URL(page.url()).hash,"");
+  await page.setViewportSize({width:390,height:844});
+  await screenshot("mobile-picker");
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),"Mobile horizontal overflow");
+  assert.deepEqual(errors,[]);
+  assert.deepEqual(requests,[]);
+  console.log("Chromium file-browser rehearsal passed: four roles; new saved/submitted reflection and receipt; teacher comment, official 4/5 approval and release; learner/guardian readback; guardian artifact isolation; reset; mobile width; zero HTTP requests or page errors.");
+} catch(error) {
+  await screenshot("failure");
+  console.error(`Rehearsal stopped at ${page.url()}: ${(await page.locator("body").innerText()).slice(-2200)}`);
+  throw error;
+} finally {await browser.close();}

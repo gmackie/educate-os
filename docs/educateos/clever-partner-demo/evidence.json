@@ -1,0 +1,256 @@
+{
+  "preparedAt": "2026-10-29",
+  "issue": "SCHO-255",
+  "cleverAccessIssue": "SCHO-211",
+  "description": "Meeting evidence ledger. Historical user acceptance, static implementation, deployment health and fresh provider preflight are distinct categories.",
+  "production": {
+    "commit": "a5f9a104417498af796f3f37709d8b54b4d07038",
+    "includesStudentApiPR": 203,
+    "verifiedAt": "2026-10-29",
+    "deployments": [
+      {
+        "worker": "gatekeeper-google",
+        "app": "educateos-google",
+        "deploymentId": "b01921bd-5955-4c06-a280-091ca6dae0db",
+        "versionId": "74ab689b-ca79-44a4-94df-93f92d4f4d3e",
+        "status": "active",
+        "completedAt": "2026-10-28T23:08:29.642Z"
+      },
+      {
+        "worker": "workshop-backend",
+        "app": "educate-os",
+        "deploymentId": "f555e3f6-259d-473a-b50d-202542f196c1",
+        "versionId": "53a63c8a-6165-4fc8-b7be-ed208202f912",
+        "status": "active"
+      },
+      {
+        "worker": "router",
+        "app": "educate-os",
+        "deploymentId": "4d678e20-974b-48d5-9e0c-006eba731bb0",
+        "versionId": "737ef613-d2d4-4a62-95c0-91a712c9802c",
+        "status": "active"
+      }
+    ],
+    "health": [
+      {
+        "url": "https://schoolos.gmac.io/healthz",
+        "body": "ok"
+      },
+      {
+        "url": "https://harbor.educateos.io/healthz",
+        "body": "ok"
+      },
+      {
+        "url": "https://cedarvalley.educateos.io/healthz",
+        "body": "ok"
+      }
+    ],
+    "limits": "Health is liveness only; not proof of OAuth, district admin access, roster acceptance or every connector method."
+  },
+  "historicalGoogleAcceptance": {
+    "date": "2026-10-28",
+    "reference": "../runbooks/classroom-verification.md",
+    "science": {
+      "courseId": "895811762849",
+      "courseWorkId": "896258346598",
+      "maxPoints": 20,
+      "rubricId": "896259887221",
+      "returnedTotal": 18,
+      "submissionId": "Cg4I8ZmlsYoaEOacpOmKGg",
+      "attachmentName": "scho255-weathering-an.txt",
+      "attachmentDriveId": "1odfC33humWychfxB9-BsTvndvlY97KWC"
+    },
+    "algebra": {
+      "courseId": "896141390025",
+      "courseWorkId": "896261051224",
+      "maxPoints": 10
+    },
+    "passed": [
+      "Teacher OAuth/code-mode reads and direct gadget source readback",
+      "Rejected draft unchanged; approved draft created once",
+      "Published Science task and rubric",
+      "Real learner attachment/turn-in in Google Classroom browser",
+      "EducateOS teacher-approved total grade and return; real learner 18/20 visible in Google UI",
+      "Science/Algebra worksheet, slide, local practice quiz and discussion interactions",
+      "Six PDF/PPTX outputs; persisted styling and responsive presentation"
+    ],
+    "limits": [
+      "Student browser evidence is Google UI, not EducateOS student OAuth/turn-in",
+      "Practice quiz has no persisted responses or grade passback",
+      "Gadget slides/PPTX do not establish native Google Slides editing",
+      "Teacher workspace cannot be shared as a student capability"
+    ]
+  },
+  "googleTenantPreflight": {
+    "generatedAt": "2026-10-29T04:41:04.298Z",
+    "scope": "Direct provider preflight using existing delegated service account; not Workshop OAuth evidence",
+    "processExitCode": 2,
+    "results": [
+      {
+        "check": "rubric-eligibility",
+        "httpStatus": 404,
+        "meaning": "Preview endpoint unavailable; eligibility remains unconfirmed"
+      },
+      {
+        "check": "grading-period-eligibility",
+        "httpStatus": 404,
+        "meaning": "Preview endpoint unavailable; eligibility remains unconfirmed"
+      },
+      {
+        "check": "add-on-eligibility",
+        "httpStatus": 404,
+        "meaning": "Preview endpoint unavailable; eligibility remains unconfirmed"
+      },
+      {
+        "check": "grading-period-settings",
+        "httpStatus": 200
+      },
+      {
+        "check": "rubric-list",
+        "httpStatus": 200,
+        "count": 1
+      },
+      {
+        "check": "delegation:classroom.coursework.me",
+        "status": "passed",
+        "meaning": "Token minting only, not feature or user OAuth acceptance"
+      },
+      {
+        "check": "delegation:classroom.addons.teacher",
+        "status": "passed",
+        "meaning": "Token minting only, not feature or user OAuth acceptance"
+      },
+      {
+        "check": "delegation:classroom.addons.student",
+        "status": "passed",
+        "meaning": "Token minting only, not feature or user OAuth acceptance"
+      }
+    ]
+  },
+  "cleverRecordedProbe": {
+    "date": "2026-10-27",
+    "source": "SCHO-211 issue comment",
+    "app": "educateos-dev",
+    "districtIdPrefix": "6ade4156",
+    "freshlyRetried": false,
+    "adapterVersion": "v3.1",
+    "observedAppVersion": "v3.0",
+    "results": [
+      {
+        "version": "v3.1 (also v2.1)",
+        "collections": "Data API collections",
+        "httpStatus": 403,
+        "error": "version not supported"
+      },
+      {
+        "version": "v3.0",
+        "collections": [
+          "districts"
+        ],
+        "httpStatus": 200
+      },
+      {
+        "version": "v3.0",
+        "collections": [
+          "schools",
+          "users",
+          "sections",
+          "terms"
+        ],
+        "httpStatus": 401,
+        "error": "Resource is not available for token"
+      },
+      {
+        "version": "v3.0",
+        "collections": [
+          "events"
+        ],
+        "httpStatus": 401
+      }
+    ],
+    "currentScopes": [
+      "read:district_admins_basic",
+      "read:school_admins_basic",
+      "read:students_basic",
+      "read:teachers_basic",
+      "read:user_id"
+    ],
+    "notEstablished": [
+      "Courses collection access",
+      "Full roster product entitlement",
+      "Live role SSO and portal acceptance",
+      "Clever content, coursework or grade-write APIs"
+    ],
+    "officialDocsPreparation": "Public official developer pages returned HTTP 403; current program requirements not independently revalidated."
+  },
+  "openAcceptance": [
+    "Live EducateOS student sign-in/OAuth, personal gadget and approval-backed turn-in",
+    "Fresh second-learner blueprint install/update; non-member/other-course/district/collaborator denials",
+    "Renewed district admin session, configured roster preview/apply/schedule and stable identity links",
+    "Revocation/reconnect, provider outage and approval retry recovery end to end",
+    "Plus rubric replacement/deletion, grading-period replacement/restore and licensed/unlicensed cases",
+    "Classroom add-on implementation, Marketplace/project setup and real teacher/student launch",
+    "Broader Google teaching recipes exercised live across every declared resource/method"
+  ],
+  "assetProvenance": {
+    "captured": "2026-10-28",
+    "data": "Synthetic demonstration accounts and coursework",
+    "images": "Cropped historical UI screenshots; no browser session executed by building the kit",
+    "downloads": "Original live-generated PDFs/PPTX retained with embedded source timestamps"
+  },
+  "meeting": {
+    "time": "15:00",
+    "timezoneAssumption": "America/Detroit",
+    "date": null,
+    "attendeeMix": "unconfirmed; prepare for partner staff and engineers",
+    "source": "User confirmed 3pm; timezone and calendar date not explicitly supplied."
+  },
+  "nativeDistrictDemo": {
+    "evidenceCategory": "Current automated synthetic execution; not real provider or production acceptance",
+    "source": "packages/educateos-demo",
+    "applications": [
+      "district administrator",
+      "teacher",
+      "student",
+      "guardian"
+    ],
+    "service": "Actual district application over in-memory stores; persona identity verifier",
+    "compiledUiCheck": "Controlled DOM at a virtual HTTPS origin; inline assets; saved reflection; receipt; teacher comment, official 4/5 approval and feedback release; learner/guardian readback; guardian artifact isolation; reset; zero network fetches",
+    "nativeSuite": {
+      "tests": 8,
+      "includes": "new artifact/submission, hidden draft feedback, official grade, release, guardian result, student teacher-route denial and unrelated-child denial"
+    },
+    "limits": [
+      "No real SSO",
+      "No Google or Clever calls",
+      "AI off",
+      "State discarded on reset/reload",
+      "Separate Northfield fixtures from connected Google Science/Algebra accounts"
+    ],
+    "realBrowserCheck": {
+      "browser": "Playwright Chromium, headless",
+      "origin": "file:// local standalone HTML",
+      "result": "passed",
+      "scope": "All three Plan/Draft/Revise saved; receipt; teacher comment, official 4/5 confirmation/release; learner and guardian readback; guardian artifact isolation; reset; 390px picker",
+      "httpRequests": 0,
+      "pageErrors": 0,
+      "screenshots": "Locally generated under /tmp/scho255-native-ui-proof; reproducible with browser-check.mjs"
+    }
+  },
+  "meetingDeliverables": {
+    "presentationSections": 16,
+    "providerResponsibilityTopics": 12,
+    "primaryPathMinutes": 30,
+    "shortGooglePathMinutes": 20,
+    "portableArtifacts": [
+      "index.html",
+      "district-demo.html",
+      "google-clever-bridge.html",
+      "full-system-demo.md",
+      "six PDF/PPTX exports",
+      "reviewed gadget source",
+      "evidence ledger",
+      "SHA256SUMS"
+    ]
+  }
+}
