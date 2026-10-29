@@ -781,6 +781,12 @@
             "GoogleClassroomGatekeeperImpl"
           ],
           "tag": "v9"
+        },
+        {
+          "new_sqlite_classes": [
+            "GoogleClassroomStudentGatekeeperImpl"
+          ],
+          "tag": "v10"
         }
       ],
       "modules": [
