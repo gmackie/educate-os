@@ -405,7 +405,9 @@ auto-provisioned and takes no OAuth client.
 The native session handoff returns to `https://mobile.educateos.io/oauthredirect`, an app-owned
 HTTPS endpoint. The phone must have both the `applinks:mobile.educateos.io` and
 `webcredentials:mobile.educateos.io` associated-domain entitlements. The callback host publishes
-both associations for `P4SWQXAB5H.io.educateos.mobile` without Cloudflare Access protection.
+both associations for `P4SWQXAB5H.io.educateos.mobile` and the preview and dev builds
+(`P4SWQXAB5H.com.gmacko.educateos.preview`, `P4SWQXAB5H.com.gmacko.educateos.dev`) without
+Cloudflare Access protection.
 
 After changing this callback, deploy both `workshop-backend` (the encrypted session redirect) and
 `router` (the confirmation UI and frontend auth callback). Building a new phone app alone does not

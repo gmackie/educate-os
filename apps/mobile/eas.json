@@ -1,7 +1,8 @@
 {
   "cli": {
     "version": ">= 24.8.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "remote",
+    "promptToConfigurePushNotifications": false
   },
   "build": {
     "base": {
@@ -19,6 +20,9 @@
       "developmentClient": true,
       "distribution": "internal",
       "environment": "development",
+      "env": {
+        "APP_VARIANT": "development"
+      },
       "android": {
         "buildType": "apk"
       }
@@ -33,6 +37,9 @@
       "extends": "base",
       "distribution": "internal",
       "environment": "preview",
+      "env": {
+        "APP_VARIANT": "preview"
+      },
       "android": {
         "buildType": "apk"
       }
@@ -41,6 +48,9 @@
       "extends": "base",
       "distribution": "store",
       "environment": "production",
+      "env": {
+        "APP_VARIANT": "production"
+      },
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"

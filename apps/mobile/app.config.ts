@@ -1,7 +1,27 @@
 import type { ExpoConfig } from 'expo/config';
 
-const config: ExpoConfig = {
-  name: 'EducateOS',
+/**
+ * Build variants (SCHO-265). eas.json sets APP_VARIANT per build profile; local `expo start` and
+ * `expo run:*` default to development, so only an EAS production build carries the store identity.
+ * Dev and preview builds have their own iOS bundle ID and Android package, so they install beside
+ * the store app and are signed with their own credentials. mobile.educateos.io lists every
+ * identifier in its apple-app-site-association and assetlinks.json (sites/educateos-mobile-links).
+ */
+export const VARIANTS = {
+  development: { id: 'com.gmacko.educateos.dev', name: 'EducateOS Dev' },
+  preview: { id: 'com.gmacko.educateos.preview', name: 'EducateOS Preview' },
+  production: { id: 'io.educateos.mobile', name: 'EducateOS' },
+} as const;
+export type AppVariant = keyof typeof VARIANTS;
+
+export function appVariant(value = process.env.APP_VARIANT): AppVariant {
+  const variant = value || 'development';
+  if (!Object.hasOwn(VARIANTS, variant)) throw new Error(`APP_VARIANT must be one of ${Object.keys(VARIANTS).join(', ')}.`);
+  return variant as AppVariant;
+}
+
+export const appConfig = (variant: AppVariant): ExpoConfig => ({
+  name: VARIANTS[variant].name,
   slug: 'educateos-mobile',
   owner: 'gmacko',
   version: '0.1.0',
@@ -13,7 +33,7 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'automatic',
   backgroundColor: '#F6F8FC',
   ios: {
-    bundleIdentifier: 'io.educateos.mobile',
+    bundleIdentifier: VARIANTS[variant].id,
     supportsTablet: true,
     associatedDomains: ['applinks:mobile.educateos.io', 'webcredentials:mobile.educateos.io'],
     infoPlist: {
@@ -23,7 +43,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    package: 'io.educateos.mobile',
+    package: VARIANTS[variant].id,
     intentFilters: [{
       action: 'VIEW',
       data: [{ scheme: 'https', host: 'mobile.educateos.io', pathPrefix: '/oauthredirect' },
@@ -53,5 +73,6 @@ const config: ExpoConfig = {
     schoolDirectory: { enabled: false, url: 'https://educateos.io/api/schools/search' },
     eas: { projectId: '4bb5e5bd-0dbb-453e-843b-1c96c4307851' },
   },
-};
-export default config;
+});
+
+export default appConfig(appVariant());
