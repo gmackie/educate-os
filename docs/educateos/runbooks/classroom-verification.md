@@ -398,8 +398,9 @@ Clever meeting kit and the earlier delegated Google API tests.
 - Real teacher code mode queued and approved the isolated published Science rehearsal assignment
   `896643443799`, five points, titled `SCHO-255 personal student companion rehearsal 2026-10-29`.
   Rehearsal rubric `896642384903` was created and edited through approval. Exact edit readback
-  preserved the criterion/level IDs and 5/3/0 points. Delete reached approval; final provider
-  deletion readback remains pending. Existing chat binding type text omitted shipped rubric
+  preserved the criterion/level IDs and 5/3/0 points. Approved deletion was read back through
+  teacher code mode at 18:46Z: `rubrics: []`, `rubricCount: 0`. This completes the live
+  approval-backed create/edit/delete rehearsal. Existing chat binding type text omitted shipped rubric
   update/delete methods, so method discovery still needs a fresh-binding check.
 - An's own Google and Access identities were verified. The existing Northfield administrator
   created local synthetic student principal `prn_86d15813-3189-40e9-bf10-12b5830b6bcf` and its
@@ -407,7 +408,10 @@ Clever meeting kit and the earlier delegated Google API tests.
   Northfield, not Cedar Valley district roster acceptance. Student authoring was refused with
   `unknown_principal`: the guard still uses the original operator-only static configuration.
   [Workshop guard linking](workshop-guard-linking.md) describes the supported rollout being added.
-  No live student OAuth, gadget installation or Workshop turn-in pass is claimed yet.
+  An then connected Google through the Workshop's normal OAuth flow. Readback identified
+  `cv-student-an@gedu.demo.educateos.io`, with only Classroom Student Course enabled; all 13 other
+  resource kinds, including the teacher course, were disabled. Student gadget installation,
+  code-mode reads and Workshop turn-in remain unverified until guard admission is configured.
 
 The Google worker's refreshed production receipt is deployment
 `6c4bdde1-5ac9-428b-acb5-0e011fba1d7a`, version `58600987-8219-4477-bc41-a8cc7e922b20`,
