@@ -46,6 +46,7 @@ export default defineConfig({
         },
         serviceBindings: {
           WORKSHOP_POLICY: { name: kCurrentWorker, entrypoint: "DistrictWorkshopCapabilityPolicy" },
+          PRINCIPALS: { name: kCurrentWorker, entrypoint: "DistrictPrincipalResolver" },
           GUARD: { name: kCurrentWorker, entrypoint: "DistrictGuardDirectory" },
           TOOLS: { name: kCurrentWorker, entrypoint: "DistrictSchoolTools" },
         },

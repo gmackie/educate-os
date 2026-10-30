@@ -276,3 +276,19 @@ it("rejects HTTP activation when the backend requires an absent school policy", 
   expect(response.status).toBe(503);
   expect(response.headers.get("Cache-Control")).toBe("no-store");
 });
+
+describe("required school principal mode without a binding", () => {
+  it("disables password and gatekeeper fallback", () => {
+    const school = { ...accessEnv(), REQUIRE_PRINCIPAL_RESOLVER: "true", AUTH_GATEKEEPERS: "google" };
+    expect(isPasswordAuthEnabled(school)).toBe(false);
+    expect(getAuthGatekeeperAllowlist(school)).toEqual([]);
+  });
+  it("refuses API and device callbacks before any email or session login", async () => {
+    const school = { ...accessEnv(), REQUIRE_PRINCIPAL_RESOLVER: "true" };
+    for (const path of ["/api", "/api/device-session/callback"]) {
+      const response = await server.fetch(new Request(ORIGIN + path), school, executionContext());
+      expect(response.status).toBe(503);
+      expect(response.headers.get("Cache-Control")).toBe("no-store");
+    }
+  });
+});

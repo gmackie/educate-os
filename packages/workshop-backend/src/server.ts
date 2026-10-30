@@ -949,6 +949,9 @@ export default {
       });
     }
     let url = new URL(req.url);
+    if (env.REQUIRE_PRINCIPAL_RESOLVER === "true" && (!env.PRINCIPAL_RESOLVER || !env.CF_ACCESS_AUD || !env.CF_ACCESS_ISS)) {
+      return new Response("Principal authentication is unavailable.", { status: 503, headers: { "Cache-Control": "no-store" } });
+    }
 
     // Read on every request, off the critical path: a failure only means the next request reports
     // it again. Only the update status of a deployment the deploy flow installed reads the tag, so

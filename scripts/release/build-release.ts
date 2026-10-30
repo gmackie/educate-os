@@ -103,7 +103,9 @@ function parseArgs(argv: string[]): {
   releaseId: string | undefined;
   concurrency: number;
   signing: Partial<ReleaseSigningOptions>;
+  profile: "generic" | "school";
 } {
+  let profile: "generic" | "school" = "generic";
   let out: string | undefined;
   let releaseId: string | undefined;
   const signing: Partial<ReleaseSigningOptions> = {};
@@ -114,6 +116,11 @@ function parseArgs(argv: string[]): {
     const signingArg = parseSigningArg(argv, i, signing);
     if (signingArg !== undefined) i = signingArg;
     else if (argv[i] === "--out") out = resolve(argv[++i]);
+    else if (argv[i] === "--profile") {
+      const value = argv[++i];
+      if (value !== "generic" && value !== "school") throw new Error("--profile must be generic or school");
+      profile = value;
+    }
     else if (argv[i] === "--release-id") releaseId = argv[++i];
     else if (argv[i] === "--concurrency") {
       concurrency = Number(argv[++i]);
@@ -123,7 +130,7 @@ function parseArgs(argv: string[]): {
     } else throw new Error(`unknown argument: ${argv[i]}`);
   }
   if (!out) throw new Error("--out <dir> is required");
-  return { out, releaseId, concurrency, signing };
+  return { out, releaseId, concurrency, signing, profile };
 }
 
 // Runs a command to completion and prints its output as one block once it finishes.
@@ -413,6 +420,7 @@ async function main() {
   // 3. The manifest ties it together. Written last locally too, mirroring the R2 upload order
   //    (manifest presence == release complete).
   const manifest = generateManifest({
+    profile: args.profile,
     releaseId,
     commit,
     createdAt: new Date().toISOString(),

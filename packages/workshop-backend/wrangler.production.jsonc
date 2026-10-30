@@ -117,12 +117,18 @@
       "binding": "AI_CALL_GUARD",
       "service": "educateos-ai-guard",
       "entrypoint": "EducateOsAiCallGuard"
+    },
+    {
+      "binding": "PRINCIPAL_RESOLVER",
+      "service": "schoolos-district-worker",
+      "entrypoint": "DistrictPrincipalResolver"
     }
   ],
   "vars": {
     "PUBLIC_BASE_URL": "https://schoolos.gmac.io",
     "CF_AI_GATEWAY": "default",
     "CF_AI_GATEWAY_ACCOUNT_ID": "c07a7e704db1808e1fff91bed2b1cd49",
-    "CF_AI_GATEWAY_PROVIDERS": "cloudflare"
+    "CF_AI_GATEWAY_PROVIDERS": "cloudflare",
+    "REQUIRE_PRINCIPAL_RESOLVER": "true"
   }
 }

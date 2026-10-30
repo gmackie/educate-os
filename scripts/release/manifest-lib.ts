@@ -802,7 +802,7 @@ export function assetR2Key(cfHash: string): string {
  *    every worker entry that has an assetsConfig (today: just the router).
  */
 export function generateManifest({
-  releaseId, commit, createdAt, wranglerVersion, workers, assetVariants,
+  releaseId, commit, createdAt, wranglerVersion, workers, assetVariants, profile = "generic",
 }: {
   releaseId: string;
   commit: string;
@@ -810,6 +810,8 @@ export function generateManifest({
   wranglerVersion: string;
   workers: WorkerBuild[];
   assetVariants?: Record<string, CollectedAssets>;
+  /** School releases require district principal sign-in; generic releases retain upstream auth. */
+  profile?: "generic" | "school";
 }): ReleaseManifest {
   const workerEntries: Record<string, WorkerEntry> = {};
   // releaseShortName() folds the package name into the install-slug charset, and that fold is
@@ -830,6 +832,16 @@ export function generateManifest({
       shortNameOwner.set(entry.shortName, w.pkgName);
     }
     workerEntries[w.pkgName] = entry;
+  }
+
+  if (profile === "school") {
+    const backend = workerEntries["workshop-backend"];
+    if (!backend || !workerEntries["educateos-district-worker"]) {
+      throw new Error("School releases require the backend and district Worker.");
+    }
+    backend.vars.REQUIRE_PRINCIPAL_RESOLVER = "true";
+    backend.bindings.push({ type: "service", name: "PRINCIPAL_RESOLVER",
+      service: "$WORKER_NAME(educateos-district-worker)", entrypoint: "DistrictPrincipalResolver" });
   }
 
   const assets: ReleaseManifest["assets"] = {};

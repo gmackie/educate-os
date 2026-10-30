@@ -396,7 +396,11 @@ export function buildProductionConfigs({
       }
       config.ai = { binding: "WORKERS_AI" };
       config.services = [...backendGatekeeperServices(gatekeepers, baseUrl), backendAiGuardBinding()];
-      withVars(pkgName, config, { PUBLIC_BASE_URL: baseUrl, ...vars });
+      if (instance.district) {
+        config.services.push({ binding: "PRINCIPAL_RESOLVER", service: DISTRICT_PACKAGE, entrypoint: "DistrictPrincipalResolver" });
+      }
+      withVars(pkgName, config, { PUBLIC_BASE_URL: baseUrl, ...vars,
+        ...(instance.district ? { REQUIRE_PRINCIPAL_RESOLVER: "true" } : {}) });
     } else if (pkgName === "router") {
       config.services = routerServices(gatekeepers);
       config.routes = [{ pattern: instance.hostname, custom_domain: true }];
