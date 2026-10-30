@@ -56,6 +56,11 @@ declare global {
       >;
       FRONTEND_ERROR_RATE_LIMITER?: RateLimit;
 
+      // Optional authority policy. A configured policy must explicitly allow every checked mint.
+      WORKSHOP_CAPABILITY_POLICY?: Service<
+        import("@gadgets/workshop-shared/capability-policy").WorkshopCapabilityPolicy
+      >;
+
       // Optional AI call guard, consulted around every model call (see ai-call-guard.ts). The
       // deployment binds it; when it is absent, model calls run unguarded.
       AI_CALL_GUARD?: Service<import("@gadgets/workshop-shared/ai-call-guard").AiCallGuard>;
