@@ -17,7 +17,7 @@ A run against a fake is not evidence of interoperating with the vendor. See
 | Fake | Module | Serves |
 | --- | --- | --- |
 | `OidcFake` with presets `clever`, `classlink`, `google` | `src/oidc` | Discovery, authorize (code flow with optional PKCE S256), token (`client_secret_basic` or `client_secret_post`), JWKS and userinfo. Preset claims include Clever's `user_type`, `district` and `user_id`, ClassLink's `SourcedId` and tenant, and Google's `hd` and `email_verified`. |
-| `CleverDataFake` | `src/clever` | Clever Data API v3.1 at `https://api.clever.com/v3.1`: districts, schools, sections, terms, courses, and users with the `role` filter (student, teacher, staff, district_admin, contact). Also `/events` with `starting_after`/`ending_before`. Bearer district tokens, `links`-based paging, and Clever's 429 rate-limit headers. |
+| `CleverDataFake` | `src/clever` | Clever Data API v3.1 at `https://api.clever.com/v3.1`: districts, schools, sections, terms, courses, and users with the `role` filter (student, teacher, staff, district_admin, contact). Also `/events` with `starting_after`/`ending_before`. Bearer district tokens, `links`-based paging, and Clever's 429 rate-limit headers. Records follow Clever's v3.1 OpenAPI spec (a course is `id`, `name`, `number`, `district`); a field the seed has nothing for is left out, or with `nulls: true` the spec's nullable fields, and each role a user does not hold, are `null`, as some districts' data has them. |
 | `OneRosterFake` | `src/oneroster` | OneRoster 1.2 Rostering REST with OAuth2 client credentials (the ClassLink profile): orgs, academicSessions, courses, classes, users and enrollments. Supports `limit`/`offset`, `X-Total-Count` and `Link`, `sort`/`orderBy`, the 1.2 `filter` grammar and `fields`. A delta is a `dateLastModified` filter, with deletions served as `tobedeleted`. |
 | `GoogleClassroomFake` | `src/google-classroom` | Classroom API v1: courses (with their aliases and free-text sections), teachers, students, courseWork and studentSubmissions, including patching `assignedGrade`/`draftGrade` and `:return`. Paging by `pageToken`, a per-method OAuth scope check, and Google's error bodies (`@ProjectPermissionDenied` for coursework another project created). |
 | `LtiPlatformFake` with `canvasFlavour` and `schoologyFlavour` | `src/lti` | An LTI 1.3 platform: OIDC login initiation, signed id_tokens, JWKS, the Advantage token endpoint (the client assertion is checked against the tool's JWKS and jti replay is refused), the Deep Linking response, AGS line items, scores and results, NRPS memberships, and Dynamic Registration (Canvas only). |
@@ -134,7 +134,7 @@ Each file's header comment cites the documentation it follows.
   - All presets: signing keys never rotate.
 - **Clever Data API**
   - Error bodies are undocumented, so `{"error": "…"}` is assumed. `Retry-After` on an injected 429 comes from the fault engine; Clever documents only `X-RateLimit-*`.
-  - The course record shape is a guess. The documented paging quirks are not reproduced. Events never expire (Clever keeps them 30 days).
+  - The documented paging quirks are not reproduced. Events never expire (Clever keeps them 30 days).
   - Not served: the `school` filter on events, `/me`, `/resources` and LMS Connect.
 - **OneRoster**
   - The ClassLink token path (`/token`) comes from district setup guides.

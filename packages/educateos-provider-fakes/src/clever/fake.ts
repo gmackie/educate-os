@@ -39,6 +39,12 @@ export interface CleverDataFakeOptions extends FakeOptions {
   readonly districtTokens?: readonly string[];
   /** Extra Clever roles for multi-role teachers, staff and administrators, by person ID. */
   readonly extraRoles?: CleverExtraRoles;
+  /**
+   * Renders the fields Clever's v3.1 spec marks nullable as `null` when the seed has nothing for
+   * them, and each role a user does not hold as `null`, as some real districts' data does. Defaults
+   * to leaving them out.
+   */
+  readonly nulls?: boolean;
   /** Requests per token per minute before a real 429. Defaults to {@link CLEVER_RATE_LIMIT_PER_MINUTE}. */
   readonly rateLimitPerMinute?: number;
   /**
@@ -98,6 +104,7 @@ export class CleverDataFake extends Fake {
   readonly events: CleverEvent[] = [];
   readonly #tokens: Set<string>;
   readonly #extraRoles: CleverExtraRoles;
+  readonly #nulls: boolean;
   readonly #limit: number;
   readonly #usage = new Map<string, { window: number; count: number }>();
   readonly #clientKey: ((request: Request) => string) | undefined;
@@ -117,12 +124,13 @@ export class CleverDataFake extends Fake {
     this.districtToken = tokenId("clever:district-token", this.#seed.id, 40);
     this.#tokens = new Set(options.districtTokens ?? [this.districtToken]);
     this.#extraRoles = options.extraRoles ?? {};
+    this.#nulls = options.nulls ?? false;
     this.#limit = options.rateLimitPerMinute ?? CLEVER_RATE_LIMIT_PER_MINUTE;
     this.#clientKey = options.clientKey;
     const base = new URL(options.baseUrl ?? CLEVER_API_ORIGIN);
     this.#origin = base.origin;
     this.#prefix = base.pathname.replace(/\/+$/, "");
-    this.#records = projectClever(this.#seed, this.#extraRoles);
+    this.#records = projectClever(this.#seed, this.#extraRoles, this.#nulls);
   }
 
   /** The seed as it stands after every mutation. */
@@ -154,7 +162,7 @@ export class CleverDataFake extends Fake {
    */
   mutate(change: (seed: DistrictSeed) => DistrictSeed): CleverEvent[] {
     const next = validateSeed(change(this.#seed));
-    const projected = projectClever(next, this.#extraRoles);
+    const projected = projectClever(next, this.#extraRoles, this.#nulls);
     const stamp = new Date(this.now()).toISOString();
     const created: CleverEvent[] = [];
     const updated: CleverEvent[] = [];
@@ -323,7 +331,7 @@ export class CleverDataFake extends Fake {
     };
     const sectionsOf = (userId: string) => all("sections").filter((s) => (s["students"] as string[]).includes(userId) || (s["teachers"] as string[]).includes(userId));
     const schoolsOfUser = (user: CleverRecord) =>
-      new Set(Object.values(user["roles"] as Record<string, Record<string, unknown>>).flatMap((r) => (r["schools"] as string[] | undefined) ?? []));
+      new Set(Object.values(user["roles"] as Record<string, Record<string, unknown> | null>).flatMap((r) => (r?.["schools"] as string[] | undefined) ?? []));
     if (nested === "district") return one("districts", collection === "districts" ? record.id : record["district"]);
     switch (`${collection}/${nested}`) {
       case "districts/schools":
@@ -372,9 +380,9 @@ export class CleverDataFake extends Fake {
         return list("schools", all("schools").filter((s) => ids.has(s.id)));
       }
       case "users/mystudents": {
-        const roles = record["roles"] as Record<string, Record<string, unknown>>;
+        const roles = record["roles"] as Record<string, Record<string, unknown> | null>;
         const ids = new Set<string>();
-        if (roles["teacher"] !== undefined) for (const s of all("sections")) if ((s["teachers"] as string[]).includes(record.id)) for (const st of s["students"] as string[]) ids.add(st);
+        if (roles["teacher"] != null) for (const s of all("sections")) if ((s["teachers"] as string[]).includes(record.id)) for (const st of s["students"] as string[]) ids.add(st);
         for (const rel of (roles["contact"]?.["student_relationships"] as { student: string }[] | undefined) ?? []) ids.add(rel.student);
         return list("users", usersById(ids));
       }
@@ -387,7 +395,7 @@ export class CleverDataFake extends Fake {
         return list(
           "users",
           all("users").filter((u) => {
-            const contact = (u["roles"] as Record<string, Record<string, unknown>>)["contact"];
+            const contact = (u["roles"] as Record<string, Record<string, unknown> | null>)["contact"];
             return ((contact?.["student_relationships"] as { student: string }[] | undefined) ?? []).some((r) => r.student === record.id);
           }),
         );
@@ -415,7 +423,7 @@ export class CleverDataFake extends Fake {
     if (collection === "users" && roleFilter && role !== null) {
       const roles: readonly CleverRole[] = ["student", "teacher", "staff", "district_admin", "contact"];
       if (!roles.includes(role as CleverRole)) return json({ error: `invalid role: ${role}` }, 400);
-      rows = rows.filter((u) => (u["roles"] as Record<string, unknown>)[role] !== undefined);
+      rows = rows.filter((u) => (u["roles"] as Record<string, unknown>)[role] != null);
     }
     const after = url.searchParams.get("starting_after");
     const before = url.searchParams.get("ending_before");
