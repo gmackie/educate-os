@@ -35,6 +35,24 @@ test('native decrypts the real backend WebCrypto envelope and wipes its private 
   assert.ok(request.privateKey.every(b => b === 0));
 });
 
+test('a sign-in the person takes a while to finish still decrypts', async () => {
+  // The district seals the transfer when the browser sign-in finishes, with its own two-minute
+  // deadline; a real sign-in takes longer than a few seconds after the app opened the browser.
+  for (const elapsed of [6_000, 60_000, 5 * 60_000]) {
+    const request = attempt();
+    request.startedAt -= elapsed;
+    const expected = credential();
+    const sealed = await sealDeviceSessionHandoff(request.publicKey, request.state, expected);
+    assert.deepEqual(unseal(parseSessionLink(link(sealed, request.state), request), request), expected, elapsed + ' ms');
+  }
+});
+
+test('a transfer claiming to outlive the two-minute handoff is refused', async () => {
+  const request = attempt();
+  const sealed = await sealDeviceSessionHandoff(request.publicKey, request.state, credential(), Date.now() + 10 * 60_000);
+  assert.throws(() => unseal(sealed, request), /could not be verified/);
+});
+
 test('state substitution, tampering and expired transfers cannot authenticate', async () => {
   for (const mode of ['state', 'ciphertext', 'expired']) {
     const request = attempt();
@@ -55,6 +73,6 @@ test('callback rejects another attempt, duplicate state, and expired attempt', a
   const sealed = await sealDeviceSessionHandoff(request.publicKey, request.state, credential());
   assert.throws(() => parseSessionLink(link(sealed, 'other-state-0123456789'), request));
   assert.throws(() => parseSessionLink(link(sealed, request.state) + '&state=' + request.state, request));
-  request.startedAt -= 120_001;
+  request.startedAt -= 15 * 60_000 + 1;
   assert.throws(() => parseSessionLink(link(sealed, request.state), request));
 });
