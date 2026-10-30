@@ -1,6 +1,6 @@
 # SCHO-300 PR batch integration
 
-Integration of GitHub PRs #5–#23, preserving every original head commit in merge history.
+Integration of GitHub PRs #5–#26, preserving every original head commit in merge history.
 GitHub delivery only; no ForgeGraph credential changes or manual deployments.
 Production acceptance and mobile physical-device verification remain separate from code landing.
 
@@ -36,18 +36,30 @@ Fingerprints updated only for these reviewed kernel paths:
 - `packages/workshop-backend/__tests__/principal-sign-in.test.ts`
 - `packages/workshop-backend/src/auth/device-session-callback.ts`
 - `packages/workshop-backend/src/auth/principal-sign-in.ts`
+- `packages/workshop-backend/src/auth/config.ts`
 - `packages/workshop-backend/src/blueprint-archive.ts`
 - `packages/workshop-backend/src/capability-policy.ts`
 - `packages/workshop-backend/src/overseer.ts`
 - `packages/workshop-backend/src/env.d.ts`
 - `packages/workshop-backend/src/server.ts`
 - `packages/workshop-backend/src/user.ts`
+- `packages/router/src/index.ts`
+- `packages/workshop-backend/wrangler.production.jsonc`
 - `packages/workshop-shared/package.json`
 - `packages/workshop-shared/src/api.ts`
 - `packages/workshop-shared/src/capability-policy.ts`
 
+The final three PRs add explicit required-policy enforcement at HTTP and retained RPC boundaries,
+a concrete district-owned principal resolver, and read-only authoring discovery. Missing required
+resolver/Access/policy configuration refuses access. Both principal and policy entrypoints/tests
+are retained through merge conflict resolution. Password/gatekeeper fallbacks remain disabled in
+required principal mode. Router MCP paths are exact and conditional on an explicit service binding.
+The generated district production config adds the principal binding; it has not been deployed.
+
 ## Integration repairs
 
+- School CLI/environment selectors now resolve once, reject contradictory settings, and consistently select school assets, principal authentication and capability-policy wiring. School dev also binds the principal resolver.
+- Added the external MCP fixture bundle and reviewed the corresponding golden release-manifest entry after PR #24 made it deployable.
 - Non-mutating sorting and exported declaration documentation satisfy the repository lint rules.
 - The school presentation flag is explicitly accounted for as a VITE_* build-cache input.
 - Revoked principals now fail authentication (401), while an active unenrolled principal still receives 404; the district test distinguishes both.
@@ -75,6 +87,10 @@ Fingerprints updated only for these reviewed kernel paths:
 - [PR #22](https://github.com/gmackie/educate-os/pull/22): `bf6febdda61ab4f1c32a6e136ba2c841322f1c0e`
 - [PR #23](https://github.com/gmackie/educate-os/pull/23): `e5e9aac6fcd88be594e706824eee7dcc87a5aceb`
 
+- [PR #24](https://github.com/gmackie/educate-os/pull/24): `b69ad039cd1be37b911b57432b56abe00dd747ed`
+- [PR #25](https://github.com/gmackie/educate-os/pull/25): `b74fb32145cbd444e9c450a3e4fac662ee0cbaca`
+- [PR #26](https://github.com/gmackie/educate-os/pull/26): `8a9b6d04d4fb5ed991f7a9b24d73f40f277b66e3`
+
 ## Validation and delivery
 
 The initial 12-PR integration passed frozen dependency installation, full repository lint/build
@@ -83,7 +99,7 @@ typecheck and 20 mobile security tests. The real local relay security test passe
 Workspace attempts stopped on a 60-second relay startup timeout under load, then on the historical
 upgrade fixture build's 60-second idle watchdog; neither attempt is claimed green.
 
-After adding the seven newly opened PRs, the full 19-PR integration passed frozen installation,
+After adding the next seven PRs, the 19-PR integration passed frozen installation,
 `pnpm lint` (172/172 build tasks), 71 focused offline/loopback tests and the kernel inventory gate
 with zero unreviewed deltas. The final PR records combined-head CI results; GitHub main is updated only after code
 checks pass. The Launch Factory's original CI includes 82-scene smoke capture and a full V01 draft.
@@ -97,3 +113,11 @@ and approval requirements. Code landing does not assert production readiness or 
 
 Public website intake and opt-out collection remain disabled by default. The persistent catalog and
 MCP resource Worker require their documented trusted-host/installer wiring; no live route is enabled.
+
+The final 22-PR integration additionally validates the unified release selector, combined manifest,
+production configuration and both concrete district principal/policy entrypoints. Final PR CI is the
+combined-revision merge gate; prior feature CI is supporting evidence only.
+
+Final local checks passed: full `pnpm lint` (172 tasks), 45 release/profile/manifest/production-config
+tests and all 99 district Worker tests, including both merged authority service entrypoints.
+Focused backend real workerd regressions passed all 52 tests across five merged boundary suites.

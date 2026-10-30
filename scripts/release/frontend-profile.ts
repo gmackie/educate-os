@@ -17,3 +17,14 @@ export function frontendProfile(env: NodeJS.ProcessEnv): {
     env: { ...env, VITE_CF_ACCESS_MODE: "true", VITE_EDUCATEOS_SCHOOL_MODE: String(school) },
   };
 }
+
+/** Resolve CLI/environment selection once so frontend assets and backend authority cannot diverge. */
+export function releaseProfile(env: NodeJS.ProcessEnv, requested?: "generic" | "school") {
+  const inherited = frontendProfile(env);
+  const selected = requested ?? (inherited.variant === "access-school" ? "school" : "generic");
+  if (requested !== undefined && env[SCHOOL_BUILD_ENV] !== undefined &&
+      (requested === "school") !== (inherited.variant === "access-school")) {
+    throw new Error("--profile conflicts with EDUCATEOS_SCHOOL_BUILD");
+  }
+  return { profile: selected, ...frontendProfile({ ...env, [SCHOOL_BUILD_ENV]: String(selected === "school") }) };
+}

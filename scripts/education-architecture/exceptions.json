@@ -35,9 +35,9 @@
     },
     {
       "path": "packages/router/src/index.ts",
-      "fingerprint": "5ab395a32d182c7e407943d6c0093df3fceaa73a29c78394c6bdee88e736bef6",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "5707fb3697404055c7b340168f1a6ae1affffccb0cf903914040cb1dba78f389",
+      "rationale": "SCHO-301 / PR #24: optional MCP binding forwards only exact MCP/token/discovery paths; generic router behavior is unchanged.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/router/wrangler.jsonc",
@@ -125,14 +125,14 @@
     },
     {
       "path": "packages/workshop-backend/__tests__/capability-boundaries.test.ts",
-      "fingerprint": "346ebb6569a7ab38ca94f459c03191e008b410d9632eca4a636d49ba61e1bad9",
-      "rationale": "SCHO-292 / PR #20: retained RPC clients recheck caller policy before side effects; explicit denial and revocation regressions.",
+      "fingerprint": "397d2e126d0133adb2361b06d0d7d9bde48aef57fa5aeae5fd6ddcf2a0c9eeb8",
+      "rationale": "SCHO-292/SCHO-301 / PR #20/#24: real retained RPC boundaries fail closed for denied/revoked principals and missing required authority.",
       "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-backend/__tests__/capability-policy.test.ts",
-      "fingerprint": "9db18f57dcfd0cb2afea68edcb204b5e59e6144a651dc4fcb1d6f54600301c44",
-      "rationale": "SCHO-292 / PR #14/#20: persisted identity at authority mints and import; advisory creation query cannot bypass independent mutation checks.",
+      "fingerprint": "8f59bedb4ba2cd5215970d3907c0b3245581ef4e3c5c4c2ebd1f4af02a10a431",
+      "rationale": "SCHO-292/SCHO-301 / PR #14/#20/#24/#26: preserve required-policy tests and add read-only discovery tests; persisted identity and independent mutation authorization.",
       "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
@@ -167,8 +167,8 @@
     },
     {
       "path": "packages/workshop-backend/__tests__/principal-sign-in.test.ts",
-      "fingerprint": "408ce1863e6b0c21eaa43ece8912b819517ed7aa9631a8d3560f9739e151f311",
-      "rationale": "SCHO-291 / PR #11: require finite unexpired principal assertions and fail closed during callback authentication; regression tests retain issuer/subject identity and reject missing Access configuration.",
+      "fingerprint": "55b69783466531a88e934c7f02f665bcef498a16379e8cdec996b743cbf3b390",
+      "rationale": "SCHO-291/SCHO-304 / PR #11/#24/#25: finite assertions, missing required principal/policy bindings and disabled auth fallbacks; both merged test groups retained.",
       "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
@@ -245,9 +245,9 @@
     },
     {
       "path": "packages/workshop-backend/src/auth/config.ts",
-      "fingerprint": "30f5efb3c77b6bac855d698419750755f209a593c1c3c8f47beb8cbaf9685de4",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "de9631cc42b843cbe5d69831bdefd877225620a8cdcac213f0415a0312d64da4",
+      "rationale": "SCHO-304 / PR #25: required principal mode disables password and gatekeeper fallbacks even when the resolver binding is absent.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-backend/src/auth/device-session-callback.ts",
@@ -269,14 +269,14 @@
     },
     {
       "path": "packages/workshop-backend/src/capability-policy.ts",
-      "fingerprint": "e753e1f183dbf5150eed05fcf3d9fa006eb11f51199d7450e615df1932620255",
-      "rationale": "SCHO-292 / PR #14: optional explicit-deny capability policy at existing authority mints; persisted identity only, unchanged disabled-binding behavior, no ambient grants or deployment configuration.",
+      "fingerprint": "791a85eec976b1a9073dffa64da6cba744a23bf7840cc9f5e3bd4d9ddc4554df",
+      "rationale": "SCHO-301 / PR #24: explicit mandatory-policy setting validates configuration and refuses missing authority; generic defaults retained.",
       "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-backend/src/env.d.ts",
-      "fingerprint": "db0d456f9f95b0effcddb9766c67c04f84be6dc0c13ba992f9cccfa68187ce76",
-      "rationale": "SCHO-300: combined PR #5/#11/#14 integration of optional capability binding, canonical native callback and fail-closed principal authentication; no deployment or trust-policy enablement.",
+      "fingerprint": "ed2f11951e2b3786285ea23e4104dfdbd9f3aa34573c59dc819bf98020b98daf",
+      "rationale": "SCHO-300: combined principal resolver and capability-policy requirement flags, optional typed bindings and canonical native callback; source configuration only, no deployment.",
       "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
@@ -293,14 +293,14 @@
     },
     {
       "path": "packages/workshop-backend/src/overseer.ts",
-      "fingerprint": "faf5e9f0c49954942be4b17c8570ca1c2e0096632ba52165aa975be056c04dd5",
-      "rationale": "SCHO-292 / PR #20: optional current-principal policy checks before publishing, sharing, Gadget execution and agent entrypoints; retained raw stubs and running turns remain documented rollout blockers.",
+      "fingerprint": "0ff2fe5d705c4d2049c3996567066fee2ece4dd6129ff6265d68ea701fe07bce",
+      "rationale": "SCHO-292/SCHO-301 / PR #20/#24: protected retained RPC boundaries require authority when configured mandatory; raw stubs/running turns remain documented blockers.",
       "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-backend/src/server.ts",
-      "fingerprint": "78fb643d380e5123c155b3c2a0a3edce80b171b77f7d19d458c7c73ca34d3ca8",
-      "rationale": "SCHO-300: combine PR #5/#11/#14/#18/#20 canonical native callback, principal authentication, optional authority checks and exact public release reads; no deployment or binding enablement.",
+      "fingerprint": "ab07815600b0bfa85edea273424d1c2f899cdbca4e614b2d78a9cffce9df286c",
+      "rationale": "SCHO-300: preserve native callback, exact public release reads, optional capability checks and both mandatory-authority HTTP guards; read-only authoring discovery grants no mutation authority.",
       "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
@@ -317,15 +317,15 @@
     },
     {
       "path": "packages/workshop-backend/src/user.ts",
-      "fingerprint": "10262c51890189c0a7afbda26eec55159bf0ecc1fb008ae7d5732db8bd9c1f96",
-      "rationale": "SCHO-292 / PR #14/#20: current persisted principal authorizes protected mints/import, creation query is advisory and failure denies.",
+      "fingerprint": "94b7f978bea79844785c432cde5763fb8cca242672b56c9f4c6bd05cc1398e64",
+      "rationale": "SCHO-292/SCHO-301 / PR #14/#20/#24/#26: current persisted principal authorizes protected operations; advisory discovery defaults closed and projects only operation/Blueprint.",
       "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-backend/wrangler.production.jsonc",
-      "fingerprint": "74569d67ad15758b75e3b56562e7b16cc91c4c63a58eef1751e57185511986f2",
-      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "9f63b4fc55cbb425682b7e7b080a0472051af46a04c9892be96ec18c42fc2e59",
+      "rationale": "SCHO-304 / PR #25: regenerated production source config binds district principal resolver and requires it for district instances; no deployment executed.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-shared/package.json",
@@ -341,14 +341,14 @@
     },
     {
       "path": "packages/workshop-shared/src/api.ts",
-      "fingerprint": "01a7fef0164d33f420adfe7fef27c845d6bf5b327c63ebe774bdbe5d6a4864b6",
-      "rationale": "SCHO-288/SCHO-292 / PR #18/#20: documented exact public release source contract and advisory creation query; no private state or credential fields.",
+      "fingerprint": "54b999d7f7e38d7e59e940a8c62d27606ad191fd7fd75ed0f147a025c648174f",
+      "rationale": "SCHO-288/SCHO-292 / PR #18/#20/#26: documented exact public release source and read-only authoring discovery; no runtime state, roles or credential fields.",
       "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-shared/src/capability-policy.ts",
-      "fingerprint": "2b17b996ee8610e0239fd39ea40876bf7844058297336912bef7d5760705e2d9",
-      "rationale": "SCHO-292 / PR #14/#20: explicit protected-operation scopes, no caller-supplied roles; raw capabilities and running operations are not transitively revoked.",
+      "fingerprint": "de70a5162d63e917bca26eee9cb776ea8c5821004ba4a28613cc2751bd7ce8f8",
+      "rationale": "SCHO-292 / PR #14/#20/#26: documented typed operation/Blueprint discovery, advisory allowed flag, no client principal or role, independent mutation checks.",
       "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {

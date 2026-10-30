@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { frontendProfile } from "./frontend-profile.ts";
+import { frontendProfile, releaseProfile } from "./frontend-profile.ts";
 import { collectAssets } from "./hash-lib.ts";
 import { generateManifest, readDeployablePackages } from "./manifest-lib.ts";
 import { join } from "node:path";
@@ -59,4 +59,22 @@ require('node:fs').writeFileSync(process.env.PROFILE_TEST_OUTPUT, JSON.stringify
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("release CLI and environment select the same school assets and authority profile", () => {
+  for (const [env, requested] of [
+    [{}, "school"], [{ EDUCATEOS_SCHOOL_BUILD: "true" }, undefined],
+    [{ EDUCATEOS_SCHOOL_BUILD: "true" }, "school"],
+  ] as const) {
+    const result = releaseProfile(env, requested);
+    assert.equal(result.profile, "school");
+    assert.equal(result.variant, "access-school");
+    assert.equal(result.env.VITE_EDUCATEOS_SCHOOL_MODE, "true");
+    assert.equal(result.env.EDUCATEOS_SCHOOL_BUILD, "true");
+  }
+  assert.equal(releaseProfile({}).profile, "generic");
+  assert.equal(releaseProfile({}, "generic").variant, "access");
+  assert.throws(() => releaseProfile({ EDUCATEOS_SCHOOL_BUILD: "false" }, "school"), /conflicts/);
+  assert.throws(() => releaseProfile({ EDUCATEOS_SCHOOL_BUILD: "true" }, "generic"), /conflicts/);
+  assert.throws(() => releaseProfile({ EDUCATEOS_SCHOOL_BUILD: "typo" }, "school"), /must be true or false/);
 });

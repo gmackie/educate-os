@@ -44,7 +44,7 @@ service at PUT time, never manifest-templated.
 
 ## District school shell builds
 
-School mode is explicit and defaults off. Build a district release with
+School mode is explicit and defaults off. `--profile school` selects both school assets and principal/policy authority; the environment selector below is equivalent. Contradictory explicit selectors fail before builds. Build a district release with
 `EDUCATEOS_SCHOOL_BUILD=true node scripts/release/build-release.ts --out release-out` (plus the normal release/signing flags). The selector accepts only `true` or `false`; generic builds force `VITE_EDUCATEOS_SCHOOL_MODE=false` even if a conflicting UI flag was inherited. School builds set it to `true` and retain `VITE_CF_ACCESS_MODE=true`. The frontend task forwards and fingerprints `VITE_*`.
 
 School releases publish only the `access-school` asset variant, with the built files' content hashes covered by the normal signed manifest digest. Generic releases retain only `access`. The district installer supports either and refuses manifests containing both. Older installers that only know `access` refuse school releases rather than silently installing a different frontend. The normal manifest version and signing path are unchanged.
