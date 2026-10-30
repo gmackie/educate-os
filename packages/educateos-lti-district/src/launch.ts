@@ -16,8 +16,23 @@ import type { ActivityCatalog } from "./targets.ts";
  * against the directory as it is now (a fresh resolver per launch, so a roster change or an
  * approved identity link takes effect at once); any other district is not served here.
  */
-export function districtPrincipalResolver(districtId: DistrictId, store: AcademicStore): LtiBrokerOptions["principalResolver"] {
-  return async (requested) => (requested === districtId ? createDirectoryPrincipalResolver((await store.load()).snapshot) : undefined);
+export function districtPrincipalResolver(districtId: DistrictId, store: AcademicStore, reservedIssuers: readonly string[] = []): LtiBrokerOptions["principalResolver"] {
+  return async (requested) => {
+    if (requested !== districtId) return undefined;
+    const resolver = createDirectoryPrincipalResolver((await store.load()).snapshot);
+    if (reservedIssuers.length === 0) return resolver;
+    // A launch never resolves through a sign-in issuer, even under a registration approved before
+    // such issuers were refused (SCHO-306): its platform could sign as anyone linked to it.
+    return {
+      districtId: resolver.districtId,
+      resolve: async (identity) => {
+        if (reservedIssuers.includes(identity.issuer)) {
+          throw new EducateOsError("unauthenticated", "This platform cannot sign anyone in to the district.");
+        }
+        return resolver.resolve(identity);
+      },
+    };
+  };
 }
 
 /**
