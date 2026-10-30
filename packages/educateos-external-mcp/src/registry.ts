@@ -25,6 +25,8 @@ export function externalSchoolTools(store: AcademicStore, directory: AcademicDir
   return academicSchoolTools(store, directory).filter((tool) => Object.hasOwn(REGISTRY, tool.name)).map((tool) => ({
     ...tool,
     action: externalOperationAction(tool.name),
+    // External calls use this registry's read/list actions, never an inherited district bypass.
+    readOnly: false,
     async resource(input, context): Promise<ToolTarget | undefined> {
       const action = externalOperationAction(tool.name);
       if (action === "invoke-tool") return tool.resource(input, context);

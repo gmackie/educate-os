@@ -26,7 +26,9 @@ not implemented; use opaque exchange grants if per-token revocation is required.
 retention should purge expired grants and assertion tombstones only after their expiry.
 
 All tool calls set `confirmWrites: true`. An absent approval queue fails closed. `readOnlyHint`
-is display metadata, never authorization. MCP cannot approve or decline anything: a person
+is display metadata, never authorization. External definitions clear the internal district
+`readOnly` confirmation bypass: only this registry's explicit `read`/`list` actions run immediately;
+unclassified actions require confirmation. MCP cannot approve or decline anything: a person
 uses the existing HTTP approval surface, which re-authorizes the queued call. Catalogs contain
 only tool definitions (never records); hosts must curate them to exclude sensitive operations.
 No tool output, access token or private record is logged by this package.

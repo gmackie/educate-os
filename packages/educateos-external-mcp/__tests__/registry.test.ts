@@ -38,7 +38,9 @@ it("queues a true write despite readOnlyHint and rejects body metadata elevation
   const input = { courseId: course.id, title: "Synthetic proposed title" };
   expect(await w.runner.invoke(w.session(admin), "update_course", input, { confirmWrites: true })).toMatchObject({ status: "approval-required" });
   expect((await w.store.load()).snapshot.courses[0]).toEqual(course);
-  expect(await w.runner.invoke(w.session(admin), "update_course", { ...input, readOnlyHint: true, action: "read", role: "teacher" }, { confirmWrites: true })).toMatchObject({ status: "error", error: { code: "validation-failed" } });
+  for (const metadata of [{ readOnlyHint: true }, { readOnly: true }, { action: "read" }, { role: "teacher" }]) {
+    expect(await w.runner.invoke(w.session(admin), "update_course", { ...input, ...metadata }, { confirmWrites: true })).toMatchObject({ status: "error", error: { code: "validation-failed" } });
+  }
   expect(externalOperationAction("unknown_safe_read")).toBe("invoke-tool");
   expect(externalOperationAction("toString")).toBe("invoke-tool");
 });

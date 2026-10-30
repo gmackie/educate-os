@@ -234,3 +234,15 @@ fallback failures), 166 policy tests, 64 academics tests, 81 release/config/envi
 This refresh does not authorize landing ahead of the remaining
 nine preceding Forgejo PRs; merge latest main again after they are merged or explicitly deferred,
 then require completed green CI on that exact revision. Neither main was updated by this branch.
+
+Canonical run 831 on `94e4fa45` passed the video workflow (82-scene smoke/full V01 Linux render)
+but exposed an external MCP classification interaction with SCHO-285: a cloned unclassified tool
+inherited the internal academic `readOnly` confirmation bypass. The external registry now clears
+that flag and uses only its explicit read/list action mapping; unknown actions still wait. The
+existing adversarial regression reproduced before this fix; caller-supplied `readOnly`, hints,
+actions and roles are individually rejected. Internal district read-only behavior is unchanged.
+The run's mobile/Workshop jobs were skipped and do not qualify as completed green gates.
+
+MCP repair validation passes: 21 Node tests, three real-workerd tests, fresh external MCP
+typecheck, 166 shared policy tests, final four-test registry rerun, and root lint/build (181 tasks).
+Await all completed canonical checks on the new revision; no main merge or deployment occurred.
