@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { OfferingId } from "@educateos/contracts";
 import { ADMIN, AMARA, ASSIGNMENT, BIO, BIO_SPRING, CHIDI, code, DMITRI, ELENA, ENG9, fakeHallMonitor, KAI, message, MORGAN, RIVERA, setup } from "./helpers.ts";
-import { SCREENING_MESSAGES, hallMonitorGradeBand, type DiscussionPost } from "../src/index.ts";
+import { SCREENING_MESSAGES, UNSCREENED_REASON, hallMonitorGradeBand, type DiscussionPost } from "../src/index.ts";
 
 async function topicIn(service: ReturnType<typeof setup>["service"], extra: Record<string, unknown> = {}) {
   return service.createTopic(MORGAN, BIO, { title: "Is a virus alive?", prompt: "Argue **one** side.", ...extra });
@@ -289,6 +289,21 @@ describe("screening student posts with Hall Monitor (SCHO-190)", () => {
     expect(queue.flagged.map((p) => p.id)).toStrictEqual([coached.id, held.id]);
     // Approving the held post is the teacher's review of it, so its flag goes with it.
     expect((await service.moderate(MORGAN, BIO, held.id, { decision: "approve" })).flags).toStrictEqual([]);
+  });
+
+  it("holds every student post for a teacher when no screening is configured, unless told to publish", async () => {
+    const { service } = setup({ unscreened: "default" });
+    const topic = await topicIn(service);
+    const held = await service.createPost(AMARA, BIO, topic.id, { body: "Unchecked" });
+    expect(held).toMatchObject({ status: "pending", flags: [{ kind: "screening", decision: "hold", reasonCodes: [UNSCREENED_REASON] }] });
+    expect((await service.thread(ELENA, BIO, topic.id)).posts).toStrictEqual([]);
+    expect((await service.moderationQueue(MORGAN, BIO)).pending.map((p) => p.id)).toStrictEqual([held.id]);
+    // A teacher's own post is never screened, so it is never held.
+    expect(await service.createPost(MORGAN, BIO, topic.id, { body: "Welcome" })).toMatchObject({ status: "visible", flags: [] });
+
+    const demo = setup({ unscreened: "publish" }).service;
+    const demoTopic = await topicIn(demo);
+    expect(await demo.createPost(AMARA, BIO, demoTopic.id, { body: "Unchecked" })).toMatchObject({ status: "visible", flags: [] });
   });
 
   it("screens a student's edit, and refuses it when Hall Monitor does, keeping the post as it was", async () => {

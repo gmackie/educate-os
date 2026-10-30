@@ -164,10 +164,14 @@ export interface DistrictAppOptions {
   // Discussions (SCHO-190).
   /**
    * Hall Monitor screening for students' discussion posts: the district's Hall Monitor client and
-   * the policy profile posts are evaluated under. Without it, student posts are published
-   * unscreened, and teachers moderate them after (or approve each first, under pre-moderation).
+   * the policy profile posts are evaluated under. Without it, `unscreenedStudentPosts` decides.
    */
   discussionScreening?: DiscussionScreening;
+  /**
+   * What happens to a student post when there is no `discussionScreening`: `"hold"` (the default)
+   * keeps each for a teacher's approval; `"publish"` publishes it unscreened, for synthetic demos.
+   */
+  unscreenedStudentPosts?: "hold" | "publish";
 
   // Devices (SCHO-261)
   /**
@@ -640,6 +644,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         courseContent: stores.courseContent,
         assignmentsIn: async (offeringId) => (await stores.assessment.load()).state.assignments.filter((a) => a.offeringId === offeringId).map((a) => a.id),
         ...(options.discussionScreening === undefined ? {} : { screening: options.discussionScreening }),
+        ...(options.unscreenedStudentPosts === undefined ? {} : { unscreenedStudentPosts: options.unscreenedStudentPosts }),
         now: () => now().toISOString(),
       });
     }

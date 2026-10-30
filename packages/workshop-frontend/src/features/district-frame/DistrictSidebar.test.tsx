@@ -121,7 +121,8 @@ describe('the district AI sidebar', () => {
     expect(schoolLinks(sidebar).find((link) => link.getAttribute('href') === '/#my-courses')?.textContent).toContain('Classes')
     expect(button('Expand sidebar')).toBeDefined()
     act(() => button('Expand sidebar').click())
-    expect(schoolLinks(sidebar).find((link) => link.getAttribute('aria-current') === 'page')?.textContent).toBe('AI workspace')
+    expect(sidebar.querySelector('nav[aria-label="AI workspace"] a[aria-current="page"]')?.textContent).toBe('AI home')
+    expect(sidebar.querySelectorAll('a[href="/ai/"]')).toHaveLength(1)
   })
 
   it('uses one mobile drawer for school and AI navigation and closes it on navigation and Escape', async () => {
@@ -161,7 +162,7 @@ describe('the district AI sidebar', () => {
     await render(async () => undefined, { ...SCHOOL, features: { ...SCHOOL.features, mobile: false } })
     const sidebar = container.querySelector('aside[aria-label="Primary"]')!
     expect(schoolLinks(sidebar).map((link) => link.getAttribute('href'))).toEqual([
-      '/', '/#my-courses', '/calendar', '/notifications', '/ai/',
+      '/', '/#my-courses', '/calendar', '/notifications',
     ])
     await act(async () => button('Open profile menu').click())
     expect(document.querySelector('[role="menu"]')?.textContent).toContain('Workshop Name')
