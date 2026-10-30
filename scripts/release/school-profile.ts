@@ -9,6 +9,11 @@ export function applySchoolProfile(manifest: ReleaseManifest): void {
       !manifest.workers["educateos-external-mcp"]) {
     throw new Error("School release requires district authority and external MCP Workers");
   }
+  backend.vars.REQUIRE_PRINCIPAL_RESOLVER = "true";
+  if (!backend.bindings.some(binding => binding.name === "PRINCIPAL_RESOLVER")) {
+    backend.bindings.push({ type: "service", name: "PRINCIPAL_RESOLVER",
+      service: "$WORKER_NAME(educateos-district-worker)", entrypoint: "DistrictPrincipalResolver" });
+  }
   backend.vars.REQUIRE_WORKSHOP_CAPABILITY_POLICY = "true";
   backend.bindings.push({ type: "service", name: "WORKSHOP_CAPABILITY_POLICY",
     service: "$WORKER_NAME(educateos-district-worker)", entrypoint: "DistrictWorkshopCapabilityPolicy" });

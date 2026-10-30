@@ -11,7 +11,7 @@ import type { SendEmailBinding } from "../src/mail.ts";
 import { LMS_ISSUER } from "./fixtures.ts";
 
 // Named rather than `export *`: the pool finds entrypoints from the module's named exports.
-export { DistrictWorkshopCapabilityPolicy, DistrictApi, DistrictGuardDirectory, DistrictSchoolTools } from "../src/worker.ts";
+export { DistrictWorkshopCapabilityPolicy, DistrictPrincipalResolver, DistrictApi, DistrictGuardDirectory, DistrictSchoolTools } from "../src/worker.ts";
 export { default } from "../src/worker.ts";
 
 /** The synthetic pages teachers import, by URL. Every other URL is a 404. */

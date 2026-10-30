@@ -649,6 +649,9 @@ for (const gk of gatekeepers) {
   if (withAiGuard) config.services.push(backendAiGuardBinding());
   if (schoolBuild) {
     config.vars.REQUIRE_WORKSHOP_CAPABILITY_POLICY = "true";
+    config.vars.REQUIRE_PRINCIPAL_RESOLVER = "true";
+    config.services.push({ binding: "PRINCIPAL_RESOLVER", service: "educateos-district-worker",
+      entrypoint: "DistrictPrincipalResolver" });
     config.services.push({ binding: "WORKSHOP_CAPABILITY_POLICY", service: "educateos-district-worker",
       entrypoint: "DistrictWorkshopCapabilityPolicy" });
   }
