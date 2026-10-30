@@ -52,8 +52,10 @@ export default function SidebarItem({
     <Link
       {...linkProps}
       title={collapsed ? label : undefined}
+      aria-label={collapsed ? label : undefined}
+      aria-current={isActive ? 'page' : undefined}
       className={[
-        'group relative flex h-11 items-center gap-2.5 rounded-lg px-2.5 text-[14px] leading-5 transition-colors md:h-8 md:text-[13px] md:leading-[18px]',
+        'group relative flex h-11 items-center gap-2.5 rounded-lg px-2.5 text-sm leading-5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-kumo-focus md:h-9',
         isActive
           ? 'bg-kumo-fill font-medium text-kumo-strong'
           : 'font-normal text-kumo-default hover:bg-kumo-tint',
