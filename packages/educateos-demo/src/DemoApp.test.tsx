@@ -53,6 +53,7 @@ describe("the demo", () => {
     await choose("English 9 teacher");
     expect(await findByRole(container, "heading", { name: "My classes" }, BOOT)).toBeDefined();
     expect(await findByText(container, "English 9 · Period 3")).toBeDefined();
+    expect(queryByRole(container, "button", { name: /^Where grades land/ })).toBeNull();
 
     await switchPersona();
     await choose("Amara's guardian");
@@ -112,6 +113,8 @@ describe("the demo's districts", () => {
     await openEducateOS();
     expect(await findByRole(container, "heading", { name: "My classes" }, BOOT)).toBeDefined();
     expect(await findByText(container, "Earth Science 8 · Earth Science 8 - Whitaker", {}, BOOT)).toBeDefined();
+    // Cedar Valley passes approved grades back to a gradebook, and shows the teacher where they landed.
+    expect(getByRole(container, "button", { name: /^Where grades land/ })).toBeDefined();
 
     await switchPersona();
     await choose("Grade 8 student");
