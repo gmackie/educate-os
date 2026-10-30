@@ -154,7 +154,9 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
 - **Safety pool exhausted.** The call is denied (`safety_budget_exhausted`) with the "AI isn't
   available, keep working without it" message. Moderation is never skipped to save money.
 - **Hall Monitor unavailable.** A student audience fails closed, whatever its profile says. An
-  educator follows the profile's `failureMode`, either `fail-closed` or `proceed`. A failed check
+  educator follows the profile's `failureMode`, either `fail-closed` or `proceed`, only for an
+  unavailable/rate-limited service (or an unconfigured client). Authentication, policy, schema
+  and idempotency faults always fail closed, including for educators. A failed check
   may already have been billed, so it is settled as an `unknown` attempt: a liability at the hold,
   never $0.
 - **Hall Monitor receipts** reach the ledger unchanged, since both use `UsdNano` strings.
@@ -167,7 +169,11 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   `provider_reported` at that cost. Otherwise usage is priced from the merged rate table
   (`estimated`, with the rate's or the shared book's `priceBookId`). The Workshop's token counts
   are used either way, since only they split out the prompt cache. A log lookup that fails or
-  times out (3 s) falls back to the estimate. With no usage, or no rate, the attempt is `unknown`. A failed or aborted call that reported no tokens is voided. Settlement
+  times out (3 s) falls back to the estimate. With no usage, or no rate, the attempt is `unknown`.
+  A failed or aborted call is voided only when it reports valid, explicit zero usage and no gateway
+  log. Missing or invalid usage remains an unknown liability, including on failures and aborts.
+  A zero-token failure with a gateway log uses its reported bill when available; otherwise it
+  retains an unknown liability until reconciliation. Settlement
   happens exactly once per `callId`: a repeated outcome finds the call already settled, and
   concurrent repeats replay in the ledger.
 - **Coaching.** A `coach` decision on a language-model call's input, or, under a profile whose
@@ -235,3 +241,30 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
 
 [ADR-0007]: ../../docs/educateos/adr/0007-hall-monitor-and-ai-call-guard.md
 [Hall Monitor]: https://github.com/gmackie/hall-monitor
+
+## Integration and threat boundaries (SCHO-296)
+
+The backend must bind this service as `AI_CALL_GUARD`, await `beforeModelCall` before
+invoking a provider, and refuse spending on a denial or guard error. When admission returns
+`screenOutput`, buffer the response and await `screenModelOutput` before releasing text;
+a screening error or `withhold` must prevent release. Always call `afterModelCall` for an
+admitted provider attempt, including failed and aborted streams. Settlement is independent of
+whether a response was released or the principal was subsequently revoked.
+
+Use a fresh `callId` for each provider attempt and retry delivery with that same ID only for
+the same attempt. Ledger idempotency prevents duplicate holds/charges; it does not authorize
+invoking a provider twice. Admission retries recheck current policy, enrollment and model
+routing before reusing a held reservation. A revoked hold remains accounted for, because an
+already dispatched attempt may still bill; settlement can record that bill after revocation.
+Hall Monitor checks use stable per-message/per-output IDs, so the Hall Monitor service must
+honor its idempotency contract and reject a changed payload under an existing key.
+
+The threat is an interrupted or retried stream being mistaken for free work, allowing students
+to exhaust provider funds while bypassing principal/class limits. Missing counters are never
+proof of zero cost. Unknown costs consume the reservation in both limits until reconciliation;
+no gateway log means the liability cannot be cleared automatically. Explicit zero counters
+without a gateway log are trusted only from the authenticated backend, never from a student.
+A reservation is a conservative estimate, not a provider-enforced spending ceiling: actual
+bills may exceed it and still count against subsequent admissions. This package's tests use a
+real SQLite ledger and service-bound fake Hall Monitor; they do not validate a live classifier
+or prove every backend provider path invokes the guard.
