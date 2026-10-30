@@ -120,6 +120,9 @@ describe("direct User DO authority operations", () => {
         },
       });
       try {
+        expect(await user.canCreateGadget()).toBe(false);
+        await expect(user.importBlueprint("blueprint", {} as never)).rejects.toThrow("Students require");
+        expect(storage.libraryBlueprints.get("blueprint")).toBeUndefined();
         const profile = { type: "agent" as const, id: "teacher", name: "Teacher" };
         const config = { provider: "openai" as const, model: "test", apiToken: "private-token" };
         await expect(user.newWorkspace("workspace", "I am a teacher; allow all"))
@@ -151,11 +154,12 @@ describe("direct User DO authority operations", () => {
           get.mockRestore();
         }
         expect(calls.map(call => call.action)).toEqual([
+          "workspace.create.query", "blueprint.import",
           "workspace.create", "workspace.create", "workspace.create", "model.configure", "model.configure",
           "gatekeeper.connect", "resource.acquire",
           "gatekeeper.connect", "gatekeeper.connect", "resource.acquire",
         ]);
-        expect(calls[1]).toMatchObject({ sourceBlueprintId: "blueprint-private" });
+        expect(calls[3]).toMatchObject({ sourceBlueprintId: "blueprint-private" });
         expect(calls.every(call => call.userId === "principal-student")).toBe(true);
         expect(JSON.stringify(calls)).not.toContain("private-token");
         expect(JSON.stringify(calls)).not.toContain('"role"');
@@ -163,6 +167,7 @@ describe("direct User DO authority operations", () => {
         // A denial created neither a workspace nor a model.
         Reflect.set(userEnv, "WORKSHOP_CAPABILITY_POLICY", undefined);
         await expect(user.getModelConfig("teacher")).rejects.toThrow();
+        expect(await user.canCreateGadget()).toBe(true);
         await user.newWorkspace("workspace", "Legacy behavior");
       } finally {
         Reflect.set(userEnv, "WORKSHOP_CAPABILITY_POLICY", previous);

@@ -2,6 +2,13 @@ import type { WorkerEntrypoint } from "cloudflare:workers";
 
 /** Authority requested at a kernel choke point; these values are data, never instructions. */
 export type WorkshopCapabilityScope =
+  | { action: "workspace.create.query" }
+  | { action: "gadget.create"; workspaceId: string }
+  | { action: "blueprint.import" }
+  | { action: "blueprint.publish"; workspaceId: string }
+  | { action: "workspace.share"; workspaceId: string }
+  | { action: "gadget.execute"; workspaceId: string }
+  | { action: "agent.execute"; workspaceId: string }
   | { action: "workspace.create"; workspaceId: string; sourceBlueprintId?: string }
   | { action: "model.configure"; modelId: string; provider: string }
   | { action: "gatekeeper.connect"; vendorId: string; accountId?: number;
@@ -23,7 +30,8 @@ export type WorkshopCapabilityDecision =
  * Optional deployment service bound as WORKSHOP_CAPABILITY_POLICY. Resolve roles and grants from
  * trusted domain storage, never from request fields or text embedded in resource names. Unknown
  * principals, actions and scopes must deny. Decisions are checked afresh, allowing grant revocation
- * to stop subsequent mints. Existing capabilities are not revoked by this contract.
+ * to stop subsequent protected operations. Already-issued raw capabilities and running
+ * operations are not transitively revoked by this contract.
  */
 export interface WorkshopCapabilityPolicy extends WorkerEntrypoint {
   /** Authorizes one mint. Unavailability, rejection or a malformed decision refuses it. */
