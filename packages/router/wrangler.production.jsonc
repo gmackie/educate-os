@@ -17,6 +17,10 @@
       "service": "workshop-backend"
     },
     {
+      "binding": "GATEKEEPER_CLEVER",
+      "service": "gatekeeper-clever"
+    },
+    {
       "binding": "GATEKEEPER_CONTEXT",
       "service": "gatekeeper-context"
     },

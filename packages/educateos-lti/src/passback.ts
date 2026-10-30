@@ -39,16 +39,39 @@ export const ClassroomGradeRoute = z.strictObject({
 /** A Google Classroom grade route. */
 export type ClassroomGradeRoute = z.infer<typeof ClassroomGradeRoute>;
 
+const CleverObjectId = z.string().regex(/^[0-9a-f]{24}$/);
+
+/**
+ * An offering whose gradebook is the district LMS behind one Clever section, reached through Clever
+ * LMS Connect (API v3.1). Built to Clever's published spec and not tested against Clever.
+ */
+export const CleverLmsConnectGradeRoute = z.strictObject({
+  offeringId: OfferingId,
+  authority: LmsAuthority,
+  via: z.literal("clever-lms-connect"),
+  /** The Clever district whose district-app token reaches the section. */
+  districtId: CleverObjectId,
+  /** The Clever section the offering is. */
+  sectionId: CleverObjectId,
+  /**
+   * The Clever assignment each gradebook column publishes to, by column. A column not listed is
+   * itself the ID of an assignment in the section.
+   */
+  assignments: z.record(z.string().min(1).max(2048), z.string().min(1).max(255)).optional(),
+});
+/** A Clever LMS Connect grade route. */
+export type CleverLmsConnectGradeRoute = z.infer<typeof CleverLmsConnectGradeRoute>;
+
 /**
  * Where an offering's official grades live, and how EducateOS reaches them. Administrators set this
  * per offering; there is no default, so an offering with no route sends nothing anywhere.
  */
-export const GradeRoute = z.union([LocalGradeRoute, LtiGradeRoute, ClassroomGradeRoute]);
+export const GradeRoute = z.union([LocalGradeRoute, LtiGradeRoute, ClassroomGradeRoute, CleverLmsConnectGradeRoute]);
 /** A grade route. */
 export type GradeRoute = z.infer<typeof GradeRoute>;
 
 /** A route to an LMS gradebook. */
-export type LmsGradeRoute = LtiGradeRoute | ClassroomGradeRoute;
+export type LmsGradeRoute = LtiGradeRoute | ClassroomGradeRoute | CleverLmsConnectGradeRoute;
 
 /** Where the passback gate reads grade routes. */
 export interface GradeRouteStore {
@@ -92,7 +115,7 @@ const GradeVersion = z.number().int().positive();
 export const TeacherGradeApproval = z.strictObject({
   offeringId: OfferingId,
   studentId: PrincipalId,
-  /** The gradebook column: an AGS line item URL or a Classroom coursework ID. */
+  /** The gradebook column: an AGS line item URL, a Classroom coursework ID or a Clever LMS Connect column. */
   column: Column,
   gradeVersion: GradeVersion,
   scoreGiven: Score,
@@ -422,9 +445,17 @@ export class GradePassback {
 
 /** The ledger key: one gradebook column for one student, in one LMS course. */
 function ledgerKey(route: LmsGradeRoute, column: string, studentId: PrincipalId): string {
-  const course =
-    route.via === "lti-ags"
-      ? [route.services.registration.issuer, route.services.registration.clientId, route.services.contextId]
-      : [route.courseId];
+  const course = courseOf(route);
   return JSON.stringify([route.via, ...course, column, studentId]);
+}
+
+function courseOf(route: LmsGradeRoute): string[] {
+  switch (route.via) {
+    case "lti-ags":
+      return [route.services.registration.issuer, route.services.registration.clientId, route.services.contextId];
+    case "google-classroom":
+      return [route.courseId];
+    case "clever-lms-connect":
+      return [route.districtId, route.sectionId];
+  }
 }
