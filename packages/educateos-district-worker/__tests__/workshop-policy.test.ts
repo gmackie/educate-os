@@ -136,3 +136,53 @@ describe("district policy domain adapter", () => {
     expect(WorkshopPolicySettings.safeParse({}).success).toBe(false);
   });
 });
+
+// SCHO-309: execution and other in-workspace actions are granted by active principal kind only.
+describe("district workspace action grants", () => {
+  const execute = { action: "gadget.execute", workspaceId: "workspace" } as const;
+  const agent = { action: "agent.execute", workspaceId: "workspace" } as const;
+  const staffGrant = { kind: "staff" as const, actions: ["gadget.execute" as const, "agent.execute" as const, "workspace.create.query" as const] };
+
+  it("admits only granted kinds and actions, and denies them all without a grant", async () => {
+    await runInDurableObject(env.DISTRICT.getByName("policy-workspace-actions"), async (instance) => {
+      const app = await instance.districtApp();
+      const settings = { ...TEST_CONFIG.workshopPolicy!, workspaceActions: [staffGrant] };
+      const check = async (policy: WorkshopPolicySettings, request: WorkshopCapabilityDescriptor) =>
+        (await authorizeWorkshopCapability(app, policy, request)).outcome;
+      for (const userId of [teacher, admin]) {
+        expect(await check(settings, { ...execute, userId })).toBe("allow");
+        expect(await check(settings, { ...agent, userId })).toBe("allow");
+        expect(await check(settings, { action: "workspace.create.query", userId })).toBe("allow");
+        expect(await check(settings, { action: "workspace.share", workspaceId: "workspace", userId })).toBe("deny");
+      }
+      expect(await check(settings, { ...execute, userId: student })).toBe("deny");
+      expect(await check(TEST_CONFIG.workshopPolicy!, { ...execute, userId: teacher })).toBe("deny");
+      expect(await check({ ...settings, workspaceActions: [] }, { ...agent, userId: teacher })).toBe("deny");
+      expect(await check({ ...settings, workspaceActions: [{ kind: "student", actions: ["agent.execute"] }] }, { ...agent, userId: student })).toBe("allow");
+      // The grant names no workspace, and the request cannot carry a role or kind.
+      expect(await check(settings, { ...execute, userId: student, kind: "staff" } as never)).toBe("deny");
+      expect(await check(settings, { ...execute, userId: teacher, workspaceId: "" })).toBe("deny");
+    });
+  });
+
+  it("denies a deactivated principal's execution from live state", async () => {
+    await runInDurableObject(env.DISTRICT.getByName("policy-workspace-lifecycle"), async (instance) => {
+      const app = await instance.districtApp();
+      const settings = { ...TEST_CONFIG.workshopPolicy!, workspaceActions: [staffGrant] };
+      expect((await authorizeWorkshopCapability(app, settings, { ...execute, userId: teacher })).outcome).toBe("allow");
+      const { snapshot, version } = await app.stores.directory.load();
+      await app.stores.directory.commit({ ...snapshot,
+        principals: snapshot.principals.map((p) => p.id === "prn_nf-teacher-rivera" ? { ...p, status: "inactive" as const } : p),
+      }, version);
+      expect((await authorizeWorkshopCapability(app, settings, { ...execute, userId: teacher })).outcome).toBe("deny");
+    });
+  });
+
+  it("validates grants strictly", () => {
+    const base = TEST_CONFIG.workshopPolicy!;
+    expect(WorkshopPolicySettings.safeParse({ ...base, workspaceActions: [staffGrant] }).success).toBe(true);
+    expect(WorkshopPolicySettings.safeParse({ ...base, workspaceActions: [{ kind: "guardian", actions: ["agent.execute"] }] }).success).toBe(false);
+    expect(WorkshopPolicySettings.safeParse({ ...base, workspaceActions: [{ kind: "staff", actions: ["model.configure"] }] }).success).toBe(false);
+    expect(WorkshopPolicySettings.safeParse({ ...base, workspaceActions: [{ ...staffGrant, workspaceId: "w" }] }).success).toBe(false);
+  });
+});

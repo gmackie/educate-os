@@ -20,9 +20,13 @@ could impersonate any active principal; Workers service binding isolation is par
 Each call loads the live district directory, checks the principal's district, kind and active status,
 and invokes the existing audited ABAC engine. That engine resolves current roles, dated assignments,
 active enrollments and scope existence from district stores. No decisions are cached. Revocation
-stops subsequent checked mints, including after object restart; it does not retract existing stubs,
-stored capabilities or an operation already admitted. Deployment grant changes require updating
-DISTRICT_CONFIG and deploying/restarting the district Worker. Role/status revocation needs no deploy.
+stops subsequent checked mints, including after object restart. With the Workshop's SCHO-309
+revocation, a principal who stops being active, or whom this adapter stops allowing `gadget.execute`
+or `agent.execute`, also loses what they already hold: the Workshop rechecks every 60 s and restarts
+the objects hosting it ([live capability revocation](live-capability-revocation.md)).
+`DistrictPrincipalResolver.principalStanding` answers that recheck from the live directory.
+Deployment grant changes require updating DISTRICT_CONFIG and deploying/restarting the district
+Worker. Role/status revocation needs no deploy.
 
 ## Explicit grant configuration
 
@@ -37,9 +41,22 @@ DISTRICT_CONFIG and deploying/restarting the district Worker. Role/status revoca
   "connectors": [{
     "vendorId": "educateos", "accountId": 7,
     "resourceUrlPatterns": ["school://approved"], "resources": ["SchoolTools"]
+  }],
+  "workspaceActions": [{
+    "kind": "staff",
+    "actions": ["workspace.create.query", "workshop.authoring.query", "gadget.create",
+                "gadget.execute", "agent.execute", "workspace.share", "blueprint.publish",
+                "blueprint.import"]
   }]
 }
 ```
+
+- Workspace actions (SCHO-309): `gadget.execute`, `agent.execute`, `gadget.create`, `workspace.share`,
+  `blueprint.publish`, `blueprint.import` and the two advisory queries are granted by active principal
+  kind only, since the district has no record of Workshop workspaces; ownership and collaborator
+  roles remain the Workshop's to check. Absent or empty `workspaceActions` denies all of them, so
+  every Gadget, agent turn, share and publication is refused. Granting `student` lets active
+  students run Gadgets and agents in workspaces shared with them; do so only with that intent.
 
 - Personal creation: active students/staff create their own personal workspace through
   `personal.owner` ABAC. Source blueprints must match `personalBlueprints` exactly; bare creation
@@ -65,13 +82,14 @@ failures reject the call and the Workshop kernel fails closed. Denials contain n
 
 ## Integration captain: manifest wiring
 
-This change intentionally leaves `scripts/release` and deployment configs untouched. Add a backend
-service binding with `binding: WORKSHOP_CAPABILITY_POLICY`, target district Worker service name,
-and `entrypoint: DistrictWorkshopCapabilityPolicy`. For environment-specific Workers use the actual
-district service name, never another district's. Extend the release manifest's district-service
-entrypoint mapping and its goldens in the captain's integration change; regenerate committed configs
-through their generators, then validate release manifests and production drift. Deploy the district
-entrypoint before the backend binding. Keep the adapter inaccessible to frontend/auth/public routes.
+The release school profile (`scripts/release/school-profile.ts`) binds `WORKSHOP_CAPABILITY_POLICY`
+to `$WORKER_NAME(educateos-district-worker)`'s `DistrictWorkshopCapabilityPolicy`. The hosted
+production instance binds it through `capabilityPolicyBinding: true` in
+`scripts/production/schoolos-gmac-io.ts` (SCHO-309), which also sets
+`REQUIRE_WORKSHOP_CAPABILITY_POLICY` and requires `principalBinding: "resolver"`; regenerate
+`wrangler.production.jsonc` with `pnpm production:configs`. Deploy the district entrypoint (with
+`principalStanding`) and its `workshopPolicy` before the backend binding. Keep the adapter
+inaccessible to frontend/auth/public routes.
 
 This PR supplies an adapter only; it does not complete the Workshop sandbox security perimeter.
 All remaining choke points in [the kernel policy slice](workshop-capability-policy.md) still apply:

@@ -165,6 +165,15 @@ export class DistrictPrincipalResolver extends WorkerEntrypoint<Cloudflare.Env> 
     }
   }
 
+  /**
+   * Whether a principal this resolver returned is still an active person of the district, from the
+   * live directory (SCHO-309). Unlike a sign-in, an unavailable directory rejects: the Workshop
+   * treats no answer as lost standing and tears the principal's live capabilities down.
+   */
+  async principalStanding(principalId: string): Promise<{ outcome: "active" | "inactive" }> {
+    return districtObject(this.env, this.ctx.exports).principalStanding(principalId);
+  }
+
   /** Matches existing email-keyed Workshop users to the district's people. Links nothing. */
   async matchEmailKeyedUsers(users: WorkshopEmailKeyedUser[]): Promise<WorkshopEmailKeyedUserMatch[]> {
     return districtObject(this.env, this.ctx.exports).matchEmailKeyedUsers(users);

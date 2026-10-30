@@ -3,6 +3,15 @@ import { PrincipalId, OfferingId, type ResourceRef } from "@educateos/contracts"
 import type { DistrictApp } from "@educateos/district-app";
 
 const identifier = z.string().min(1).max(256);
+/**
+ * Workshop actions inside workspaces the Workshop's own sharing graph already admits the caller to
+ * (SCHO-309). The district knows nothing about those workspaces, so it grants these by principal
+ * kind alone; ownership and collaborator roles are still the Workshop's to check.
+ */
+const WorkspaceAction = z.enum([
+  "workspace.create.query", "workshop.authoring.query", "gadget.create", "gadget.execute",
+  "agent.execute", "workspace.share", "blueprint.publish", "blueprint.import",
+]);
 /** Deployment-owned grants, never supplied by a Workshop caller. Absent means deny all. */
 export const WorkshopPolicySettings = z.strictObject({
   personalCreation: z.boolean(),
@@ -19,6 +28,15 @@ export const WorkshopPolicySettings = z.strictObject({
     resourceUrlPatterns: z.array(z.string().min(1).max(2048)),
     resources: z.array(z.string().min(1).max(2048)),
   })),
+  /**
+   * Which active kinds may perform which workspace actions. Absent or empty denies them all, so
+   * every Gadget, agent turn and share is refused (SCHO-309). Executing grants are only safe because
+   * the Workshop restarts whatever a principal holds once they leave this list or lose standing.
+   */
+  workspaceActions: z.array(z.strictObject({
+    kind: z.enum(["staff", "student"]),
+    actions: z.array(WorkspaceAction),
+  })).optional(),
 });
 /** Validated deployment policy. */
 export type WorkshopPolicySettings = z.infer<typeof WorkshopPolicySettings>;
@@ -26,7 +44,14 @@ export type WorkshopPolicySettings = z.infer<typeof WorkshopPolicySettings>;
 // This is the domain parser for untrusted RPC data, including direct Worker/DO calls. The
 // entrypoint's generated validator also enforces the shared wire contract, not these domain limits.
 const base = { userId: z.string().startsWith("principal:").max(300) };
+const workspaceScoped = (action: "gadget.create" | "gadget.execute" | "agent.execute" | "workspace.share" | "blueprint.publish") =>
+  z.strictObject({ ...base, action: z.literal(action), workspaceId: identifier });
 const requestSchema = z.discriminatedUnion("action", [
+  z.strictObject({ ...base, action: z.literal("workspace.create.query") }),
+  z.strictObject({ ...base, action: z.literal("workshop.authoring.query"), operation: z.enum(["create", "adapt"]), sourceBlueprintId: identifier.optional() }),
+  z.strictObject({ ...base, action: z.literal("blueprint.import") }),
+  workspaceScoped("gadget.create"), workspaceScoped("gadget.execute"), workspaceScoped("agent.execute"),
+  workspaceScoped("workspace.share"), workspaceScoped("blueprint.publish"),
   z.strictObject({ ...base, action: z.literal("workspace.create"), workspaceId: identifier, sourceBlueprintId: identifier.optional() }),
   z.strictObject({ ...base, action: z.literal("model.configure"), provider: identifier, modelId: identifier }),
   z.strictObject({ ...base, action: z.literal("gatekeeper.connect"), vendorId: identifier, accountId: z.number().int().nonnegative().optional(), resourceUrlPatterns: z.array(z.string().min(1).max(2048)).max(100).optional() }),
@@ -54,6 +79,12 @@ export async function authorizeWorkshopCapability(
   if (principal === undefined || principal.districtId !== app.districtId || principal.status !== "active" ||
     (principal.kind !== "student" && principal.kind !== "staff")) return denied;
 
+  if (request.action !== "workspace.create" && request.action !== "model.configure" &&
+    request.action !== "gatekeeper.connect" && request.action !== "resource.acquire") {
+    const action = request.action;
+    const granted = (settings.workspaceActions ?? []).some((g) => g.kind === principal.kind && g.actions.includes(action));
+    return granted ? { outcome: "allow" as const } : denied;
+  }
   const subject = { principalId: principal.id, districtId: app.districtId };
   const districtScope = { level: "district", districtId: app.districtId } as const;
   let action: "create" | "update";

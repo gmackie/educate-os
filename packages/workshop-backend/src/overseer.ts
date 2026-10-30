@@ -1,4 +1,6 @@
-import { assertRevocableExecution, hasCapabilityPolicy } from "./capability-policy.js";
+import {
+  hasCapabilityPolicy, STANDING_RECHECK_MS, STANDING_REVOKED_MESSAGE, type ExecutionAction,
+} from "./capability-policy.js";
 import { RpcCompatible, RpcStub, RpcTarget } from "capnweb";
 import { validateRpc } from "capnweb-validate";
 import { Overseer, WorkspaceMetadata, UiBundle, WorkpieceId, WorkpieceSummary, WorkpiecesSubscriber, GadgetClient, GadgetBindingInfo, GatekeeperClient, ActionLogEntry, ActionsSubscriber, ActionHistoryFilter, ActionHistoryPage, ChatGadgetPinRecord, MainlineMergeGadget, ChatCodeBase, ChatGadgetPinState, CodeChangeSubmission, CommitInfo, FileAtCommit, MAX_READ_FILES_PER_CALL, TreeNode, MergeChangesResult, AiChatMetadata, AiChatMessage, AiChatHistoryPage, AiChatSubscriber, AiChatAuthorInfo, AiModelConfig, AiToolCall, AiChatMessageBody, AgentSpawnerConfig, AGENT_SPAWNER_CONNECTION_ID, ConsoleLogSubscriber, ConsoleLogEvent, CapsuleSpecifier, CollaboratorInfo, CollaboratorRole, AffectedCollaborator, ShareLinkInfo, GatekeeperCreationSpec, ObserverConfigCallback, ObserverBindingNeed, ObserverBindingFailure, BlueprintBindingAnnotation, BlueprintBinding, BlueprintMetadata, BlueprintOutput, BlueprintMerge, ApplyBlueprintResult, GadgetUpstream, MessageFormatRef, isOutputIcon, SpawnerEnvTarget, BlueprintGadgetSummary, AiChatStreamEvent, BlueprintScreenshotUpload, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ChatAttachmentHandle, ChatAttachmentRef, BoundHookInfo, PreApprovableAction, PresenceParticipant, PresenceSubscriber, SlashCommandChoice, SlashCommandRequest, validateBindingName, createOpenWorkspaceError, OPEN_WORKSPACE_ERROR_CODES, resolveSiteName, modelKind } from '@gadgets/workshop-shared/api'
@@ -492,6 +494,10 @@ const AGENT_RESPONSE_DELIVERED_RETENTION_MS = 24 * 60 * 60 * 1000;
 // recorded) the keep-alive alarm fires. See #agentKeepAliveTime.
 const AGENT_KEEPALIVE_ALARM_MS = 60_000;
 
+// Why a workspace with principals admitted under capability policy restarts once nothing is live
+// (see OverseerImpl.recheckStanding).
+const STANDING_IDLE_REASON = "it fell idle";
+
 // The platform retries a failed alarm six times. Other durable work must remain scheduled after
 // that budget is exhausted; model-lookup retries have their own per-execution budget below.
 const ALARM_MAX_RETRIES = 6;
@@ -783,6 +789,20 @@ class OverseerImpl implements AgentHooks {
   // Drains of pending agent calls currently in flight, by chat (see drainPendingAgentCalls).
   #pendingCallDrains = new Map<number, Promise<void>>();
 
+  // Live-capability revocation (SCHO-309). With a capability policy bound, every principal this
+  // instance lets hold anything -- a client session (open()), gadget use, an agent turn, a hook
+  // firing, an approval, a spawn -- is admitted first by a fresh check through their user object
+  // (admitPrincipal), and stays here, with the execution actions they were admitted for, until the
+  // instance ends: in memory, so that it covers exactly what this incarnation hosts. Every
+  // STANDING_RECHECK_MS the alarm rechecks them all, and if any is refused or the check fails, the
+  // whole instance restarts (scheduleAccessRestart), disposing every session, facet, dynamic
+  // worker, callback, gatekeeper session and turn it hosts -- revocation by restart, never by a
+  // membrane. Clients reconnect, and open() admits them again or refuses them. An instance that
+  // falls idle with principals admitted restarts too, rather than rechecking forever.
+  #standing = new Map<string, Set<ExecutionAction>>();
+  #standingRecheckAt: number | undefined;
+  #revokingStanding = false;
+
   addChatSubscriber(subscriber: RpcStub<AiChatSubscriber>) {
     this.#chatSubscribers.add(subscriber);
   }
@@ -1002,6 +1022,9 @@ class OverseerImpl implements AgentHooks {
       times.push(this.#agentKeepAliveTime);
     }
 
+    // Live-capability revocation: the next recheck of the principals admitted (see #standing).
+    if (this.#standingRecheckAt !== undefined) times.push(this.#standingRecheckAt);
+
     // External-message responses: a ready one is delivered as soon as possible, and delivered
     // records are swept once they age out.
     this.#sweepDeliveredExternalMessageResponses();
@@ -1037,6 +1060,7 @@ class OverseerImpl implements AgentHooks {
     this.#inAlarmHandler = true;
     this.#scheduledAlarm = undefined; // A success recomputes the next alarm from settled state.
     let failed = false;
+    let stopStandingRechecks = this.#recheckStandingWhileAlarmRuns();
     try {
       do {
         this.#resumeInterruptedAgents();
@@ -1054,6 +1078,7 @@ class OverseerImpl implements AgentHooks {
       failed = true;
       throw error;
     } finally {
+      await stopStandingRechecks();
       this.#inAlarmHandler = false;
       this.#agentKeepAliveTime = undefined;
       if (!failed || retryCount >= ALARM_MAX_RETRIES) {
@@ -1246,8 +1271,15 @@ class OverseerImpl implements AgentHooks {
 
     this.#autoApprovalDrainer = new AutoApprovalDrainer(
         this.storage,
-        (record, resolvedBy, autoApproved) =>
-            this.applyPendingAction(record, resolvedBy, autoApproved));
+        async (record, resolvedBy, autoApproved) => {
+          // An auto-approval applies under the authority of whoever enabled the rule, so under a
+          // capability policy it is admitted as them, now (SCHO-309), never as the owner.
+          if (hasCapabilityPolicy(this.env)) {
+            if (resolvedBy.type !== "user") throw new Error("An auto-approval rule needs a user to run as.");
+            await this.admitPrincipal(this.users.idFromName(resolvedBy.id).toString(), "gadget.execute");
+          }
+          return this.applyPendingAction(record, resolvedBy, autoApproved);
+        });
     this.cacheWarmer = new ChatCacheWarmer(ctx.id.toString(), (chatId, resent) =>
         this.#addRequestCost(
             chatId, resent.usage, resent.aiGatewayLogId, resent.aiGatewayLogRoute, false));
@@ -1876,7 +1908,7 @@ class OverseerImpl implements AgentHooks {
   // does. Disabling or deleting a hook only shrinks scope, which never under-verifies anyone, so
   // those paths need no counterpart -- capabilities issued to firings already in flight are
   // revoked by their own per-call revalidation instead (see requireLiveHook).
-  enableHookRecord(record: BoundHookRecord): void {
+  enableHookRecord(record: BoundHookRecord, enabledByUserId: string): void {
     let current = this.storage.boundHooks.get(record.id);
     if (!current || !this.storage.gatekeepers.get(current.gatekeeperId)) {
       this.ctx.waitUntil(record.controller.disable().catch(error => {
@@ -1890,6 +1922,7 @@ class OverseerImpl implements AgentHooks {
 
     let useScopeBefore = this.#accountRequiringUseScope();
     current.enabled = true;
+    current.enabledByUserId = enabledByUserId;
     this.storage.boundHooks.put(current);
     stampBindHookAction(this.storage, current.actionId, true);
     this.#restartIfUseScopeWidened(
@@ -4526,7 +4559,7 @@ class OverseerImpl implements AgentHooks {
   // proposed changes. (The caller is presumed to have verified the chat exists and has proposed
   // changes.)
   loadGadgetWorker(gadgetId: WorkpieceId, chatId?: number): WorkerStub {
-    assertRevocableExecution(this.env);
+    this.assertExecutionRevocable();
     let codeVersion = `${this.storage.codeVersion.get()}`;
     let sequence: number | undefined;
     // Snapshotted in the same synchronous step as the cache key's sequence: the loader callback
@@ -4605,7 +4638,7 @@ class OverseerImpl implements AgentHooks {
   // is what ctx.restore() invokes, touches the raw facet (see #getGadgetFacetRaw).
   async getGadgetFacetFetcher(gadgetId: WorkpieceId, chatId?: number)
       : Promise<Fetcher<DurableObject>> {
-    assertRevocableExecution(this.env);
+    this.assertExecutionRevocable();
     let params: OverseerRestoreParams = {type: "gadget", gadgetId};
     chatId = this.#resolveGadgetChatId(gadgetId, chatId);
     if (chatId !== undefined) params.chatId = chatId;
@@ -4650,7 +4683,7 @@ class OverseerImpl implements AgentHooks {
     //
     // If/when we support hiberation of the overseer, we'll need to do something more
     // sophisticated.
-    assertRevocableExecution(this.env);
+    this.assertExecutionRevocable();
     let facetName = this.gadgetFacetName(gadgetId);
     let oldChat = this.#runningChatIds.get(gadgetId);
     let newChat = chatId ?? null;
@@ -4722,9 +4755,9 @@ class OverseerImpl implements AgentHooks {
         //   possibly a runtime bug which needs investigation.
         // TODO: Fix exception reporting it tail workers so we can remove this hack.
         return async (...args: any[]) => {
-          // Recheck even on root handles issued before policy was configured. Returned
-          // descendants remain irrevocable; this is a restriction, not a membrane.
-          assertRevocableExecution(self.env);
+          // Recheck on each call (SCHO-309). This is a backstop, not a membrane: descendants
+          // the root returns are revoked by restarting the instance (see #standing).
+          self.assertExecutionRevocable();
           let result: Promise<any> = Reflect.apply(method, target, args);
           return result.catch((err: any) => {
             let msg = err;
@@ -4855,7 +4888,11 @@ class OverseerImpl implements AgentHooks {
   //   for testing. But when real-life hooks are delivered they obviously need to go to the
   //   mainline code.
   getGadgetHookEntrypoint(id: number): RpcTarget {
-    assertRevocableExecution(this.env);
+    // A legacy hook records no one who enabled it, so under a capability policy it has no
+    // principal to admit and never runs (SCHO-309): owner rights are never borrowed for it.
+    if (hasCapabilityPolicy(this.env)) {
+      throw new Error("Legacy gatekeeper hooks are disabled under capability policy.");
+    }
     let gk = this.storage.gatekeepers.get(id);
     if (gk && gk.hook) {
       // GatekeeperRecord.hook predates multi-gadget support (it is set only by the obsolete
@@ -4955,7 +4992,7 @@ class OverseerImpl implements AgentHooks {
                            resolvedBy: AiChatAuthorInfo, autoApproved: boolean,
                            creation?: {creator: Fetcher<GatekeeperUserVerifier>,
                                        configuration: string | null}): Promise<void> {
-    assertRevocableExecution(this.env);
+    this.assertExecutionRevocable();
     let id = record.gatekeeperId;
     // A created resource exists only once its creation applies, and that stays pending until then.
     if (record.action !== "create" && this.#creationPending(id)) {
@@ -5185,7 +5222,7 @@ class OverseerImpl implements AgentHooks {
 
   // Open the session behind a binding loopback.
   startGatekeeperSession(target: BindingLoopbackTarget, caller: GatekeeperCaller): Promise<any> {
-    assertRevocableExecution(this.env);
+    this.assertExecutionRevocable();
     switch (target.type) {
       case "gadget": {
         if (caller.from === "agent") {
@@ -5314,7 +5351,7 @@ class OverseerImpl implements AgentHooks {
 
   async authorizeObservation(gatekeeperId: number, description: ObservationDescription,
                              caller: GatekeeperCaller): Promise<void> {
-    assertRevocableExecution(this.env);
+    this.assertExecutionRevocable();
     // Forward exclusion: the gatekeeper may name observers who must not see this observation. Since
     // v1 has no per-thread hiding, the only way to let such an observation proceed is if no named
     // observer could reach it -- either they have lost access in the sharing graph, or this
@@ -5892,7 +5929,7 @@ class OverseerImpl implements AgentHooks {
   async submitAction(gatekeeperId: number, action: number | "create",
                      description: ActionDescription, caller: GatekeeperCaller)
       : Promise<void> {
-    assertRevocableExecution(this.env);
+    this.assertExecutionRevocable();
     // An in-flight facet RPC can outlive removeGatekeeper, and a pending action on a removed
     // connection could never be approved or rejected (both dereference the facet).
     let gatekeeper = this.storage.gatekeepers.get(gatekeeperId);
@@ -5974,7 +6011,7 @@ class OverseerImpl implements AgentHooks {
         gatekeeperId: number, controller: Fetcher<HookController<Hook>>,
         callback: NativeRpcStub<Hook>, description: HookDescription, caller: GatekeeperCaller)
         : Promise<void> {
-    assertRevocableExecution(this.env);
+    this.assertExecutionRevocable();
     let hookId = this.storage.nextHookId.get();
     this.storage.nextHookId.put(hookId + 1);
 
@@ -6277,6 +6314,129 @@ class OverseerImpl implements AgentHooks {
     this.ctx.abort(reason);
   }
 
+  // Admit `userId` (a user DO's hex ID) to this instance for `action`, or only to hold a session
+  // when it is absent (SCHO-309; see #standing). Throws if the principal is refused now. Refusing a
+  // principal something this instance already admitted them for means they lost it, so that
+  // restarts the instance too. Without a capability policy, a no-op, as before.
+  async admitPrincipal(userId: string, action?: ExecutionAction): Promise<void> {
+    if (!hasCapabilityPolicy(this.env)) return;
+    this.#assertNotRevokingStanding();
+    let held = this.#standing.get(userId);
+    try {
+      await this.users.get(this.users.idFromString(userId))
+          .assertWorkshopStanding(this.ctx.id.toString(), action ? [action] : []);
+    } catch (error) {
+      if (held && (action === undefined || held.has(action))) {
+        this.#revokeStanding("a principal's Workshop access changed");
+      }
+      throw error;
+    }
+    this.#assertNotRevokingStanding();
+    if (!held) {
+      held = new Set();
+      this.#standing.set(userId, held);
+    }
+    if (action) held.add(action);
+    if (this.#standingRecheckAt === undefined) {
+      this.#standingRecheckAt = Date.now() + STANDING_RECHECK_MS;
+      this.#updateAlarm();
+    }
+  }
+
+  // The backstop beneath every execution entry point (SCHO-309): under a capability policy, refuse
+  // to load, restore or call into gadget code, open gatekeeper sessions, run code or apply actions
+  // unless this instance has admitted someone to execute and is not restarting to revoke anyone.
+  // Who may execute is checked where execution enters (admitPrincipal at client calls, agent
+  // turns, hook firings, spawns and approvals); this guarantees nothing runs here that the
+  // standing recheck does not cover. A no-op without a policy.
+  assertExecutionRevocable(): void {
+    if (!hasCapabilityPolicy(this.env)) return;
+    this.#assertNotRevokingStanding();
+    for (let actions of this.#standing.values()) {
+      if (actions.size > 0) return;
+    }
+    throw new Error("Workshop execution under capability policy needs an admitted principal.");
+  }
+
+  #assertNotRevokingStanding(): void {
+    if (this.#revokingStanding) throw new Error(STANDING_REVOKED_MESSAGE);
+  }
+
+  // Restart to revoke everything this instance hosts (see #standing). Once per instance; every
+  // gate refuses meanwhile, until the abort lands.
+  #revokeStanding(reason: string): void {
+    if (this.#revokingStanding) return;
+    this.#revokingStanding = true;
+    this.logger.warn("restarting workspace to end its live capabilities", {
+      event: reason === STANDING_IDLE_REASON ? "workspace.standing.idle" : "workspace.standing.revoke",
+    });
+    this.scheduleAccessRestart(`Gadget restarted because ${reason}.`);
+  }
+
+  // Recheck every principal admitted here (see #standing), now. Any refusal, or a check that
+  // cannot be made, restarts the instance: no answer is never standing. With no live session, no
+  // agent work and nobody executing for the last recheck period, restart anyway, ending whatever
+  // capabilities might linger unaccounted rather than rechecking them forever.
+  async recheckStanding(): Promise<void> {
+    if (!hasCapabilityPolicy(this.env) || this.#standing.size === 0 || this.#revokingStanding) {
+      this.#standingRecheckAt = undefined;
+      return;
+    }
+    this.#standingRecheckAt = Date.now() + STANDING_RECHECK_MS;
+    let workspaceId = this.ctx.id.toString();
+    let refused = false;
+    try {
+      let results = await Promise.allSettled(Array.from(this.#standing, ([userId, actions]) =>
+          this.users.get(this.users.idFromString(userId))
+              .assertWorkshopStanding(workspaceId, [...actions])));
+      refused = results.some(result => result.status === "rejected");
+    } catch {
+      refused = true;
+    }
+    if (refused) {
+      this.#revokeStanding("a principal's Workshop access changed");
+    } else if (Object.values(this.#liveSessions).every(n => n === 0) &&
+        this.#runningAgents.size === 0 && this.#pendingCallDrains.size === 0 &&
+        Array.from(this.storage.pendingAgentCalls.list({ limit: 1 })).length === 0) {
+      this.#revokeStanding(STANDING_IDLE_REASON);
+    }
+  }
+
+  // While runAlarmTasks holds the DO open for agent work, #updateAlarm can schedule nothing, so the
+  // handler runs the standing rechecks itself, on the same schedule. Returns the stopper.
+  #recheckStandingWhileAlarmRuns(): () => Promise<void> {
+    let state = { stopped: false };
+    let wake: (() => void) | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let loop = (async () => {
+      while (!state.stopped) {
+        if (this.#standingRecheckAt !== undefined && this.#standingRecheckAt <= Date.now()) {
+          await this.recheckStanding();
+        }
+        if (state.stopped) break;
+        let delay = (this.#standingRecheckAt ?? Date.now() + STANDING_RECHECK_MS) - Date.now();
+        await new Promise<void>(resolve => {
+          wake = resolve;
+          timer = setTimeout(resolve, Math.max(0, delay));
+        });
+      }
+    })();
+    return async () => {
+      state.stopped = true;
+      clearTimeout(timer);
+      wake?.();
+      await loop;
+    };
+  }
+
+  // A user object whose principal lost standing asks every workspace it is in to restart
+  // (UserDurableObject.#revokePrincipal). Only an instance that admitted them has anything of theirs.
+  revokePrincipal(userId: string): void {
+    if (hasCapabilityPolicy(this.env) && this.#standing.has(userId)) {
+      this.#revokeStanding("a principal's Workshop access changed");
+    }
+  }
+
   // Whether restartIfLoopLimited has scheduled a restart of this instance.
   #loopLimitRestartScheduled = false;
 
@@ -6347,7 +6507,7 @@ class OverseerImpl implements AgentHooks {
   openGatekeeperSession<Session extends RpcCompatible<Session>>(
       id: number, facet: Fetcher<Gatekeeper<Session>>, caller: GatekeeperCaller)
       : Promise<RpcStub<Session>> {
-    assertRevocableExecution(this.env);
+    this.assertExecutionRevocable();
     this.assertGatekeeperUsable(id);
     let queue = this.storage.gatekeepers.get(id)?.creationSpec?.type === "agentSpawner"
         ? new AgentSpawnerQueueImpl(this, id, caller) : new ApprovalQueueImpl(this, id, caller);
@@ -7324,7 +7484,8 @@ class OverseerImpl implements AgentHooks {
     });
 
     try {
-      assertRevocableExecution(this.env);
+      // Every turn, resumed ones included, runs only as its initiator admitted now (SCHO-309).
+      await this.admitPrincipal(initiatorUserId, "agent.execute");
       // The trace span covers the turn's setup and run, not the teardown below, which can start the
       // chat's next turn.
       await traceAgentTurn(this.getChatAgentContext(chatId), liveChat.cancelController.signal,
@@ -7506,10 +7667,7 @@ class OverseerImpl implements AgentHooks {
       initiatorUserId: string, initiatorModelId: string | null): Promise<void> {
     if (!this.ownerId) throw new Error("Workspace has been deleted.");
 
-    if (hasCapabilityPolicy(this.env)) {
-      let user = this.users.get(this.users.idFromString(initiatorUserId));
-      await user.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.ctx.id.toString() });
-    }
+    await this.admitPrincipal(initiatorUserId, "agent.execute");
 
     let meta = this.storage.chatMeta.get(chatId);
     if (!meta) throw new Error("No such chatId: " + chatId);
@@ -8988,8 +9146,16 @@ class OverseerImpl implements AgentHooks {
     }
   }
 
-  assertAgentExecution(): void {
-    assertRevocableExecution(this.env);
+  // Before each agent pass, model request and tool call (SCHO-309): readmit the turn's initiator
+  // now, so a revoked principal's turn stops at its next step rather than at the next recheck.
+  // Returns nothing without a policy, so a generic turn takes no extra step.
+  assertAgentExecution(chatId: number): Promise<void> | undefined {
+    if (!hasCapabilityPolicy(this.env)) return undefined;
+    let initiatorUserId = this.storage.activeAgents.get(chatId)?.initiatorUserId;
+    if (initiatorUserId === undefined) {
+      return Promise.reject(new Error("This agent turn has no initiator to run as."));
+    }
+    return this.admitPrincipal(initiatorUserId, "agent.execute");
   }
 
   getChatModelData(chatId: number, sequence: number): StoredAssistantMessage | undefined {
@@ -9061,7 +9227,7 @@ class OverseerImpl implements AgentHooks {
                         onOutputText?: (delta: string) => void,
                         worktreeTurn?: WorktreeTurnAccess)
       : Promise<string> {
-    assertRevocableExecution(this.env);
+    this.assertExecutionRevocable();
     let bytes = new Uint8Array(16);
     crypto.getRandomValues(bytes);
     let executionId: string = bytes.toBase64();
@@ -10540,6 +10706,12 @@ export class OverseerDurableObject extends DurableObject<Cloudflare.Env> {
       })();
     }
 
+    // Under a capability policy, only a principal in standing holds a session here, and only for
+    // as long as they stay in it (SCHO-309; see OverseerImpl.#standing).
+    if (hasCapabilityPolicy(this.impl.env)) {
+      await this.impl.admitPrincipal(userId);
+    }
+
     this.impl.recordGadgetAnalytics({
       event_name: "gadget_opened",
       user_id: userId,
@@ -10586,7 +10758,7 @@ export class OverseerDurableObject extends DurableObject<Cloudflare.Env> {
     }
 
     if (hasCapabilityPolicy(this.impl.env)) {
-      await caller.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.ctx.id.toString() });
+      await this.impl.admitPrincipal(callerId, "agent.execute");
       if (!this.impl.ownerId) {
         await caller.assertWorkshopCapability({ action: "workspace.create", workspaceId: this.ctx.id.toString() });
       }
@@ -10834,6 +11006,15 @@ export class OverseerDurableObject extends DurableObject<Cloudflare.Env> {
       throw new Error("Gatekeeper is disabled.");
     }
 
+    // Under a capability policy a firing runs as whoever enabled the hook, admitted now (SCHO-309).
+    // A hook enabled before that was recorded has nobody to run as, so it never fires.
+    if (hasCapabilityPolicy(this.env)) {
+      if (record.enabledByUserId === undefined) {
+        throw new Error("This hook records no one who enabled it, so it cannot fire under capability policy.");
+      }
+      await this.impl.admitPrincipal(record.enabledByUserId, "gadget.execute");
+    }
+
     // Re-read after the await: the KV read leaves the input gate open, so a disable/delete may
     // have landed while it was in flight, and issuing from the captured record would hand out a
     // firing on a dead hook (the enableHookRecord/disableHook idiom).
@@ -10867,6 +11048,14 @@ export class OverseerDurableObject extends DurableObject<Cloudflare.Env> {
       initiatorUserId: string, initiatorModelId: string | null): Promise<void> {
     return this.impl.deliverAgentCallback(
         chatId, methodName, args, initiatorUserId, initiatorModelId);
+  }
+
+  /**
+   * Called by a user DO whose principal lost standing (SCHO-309): restarts this workspace if it
+   * admitted that user, disposing everything they hold here. Restarts and grants nothing otherwise.
+   */
+  revokePrincipal(userId: string): void {
+    this.impl.revokePrincipal(userId);
   }
 
   [restore](params: OverseerRestoreParams): any {
@@ -11643,7 +11832,9 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
   }
 
   async approveAction(id: number, creation?: CreationApproval): Promise<void> {
-    assertRevocableExecution(this.impl.env);
+    if (hasCapabilityPolicy(this.impl.env)) {
+      await this.impl.admitPrincipal(this.clientUserId, "gadget.execute");
+    }
     let action = this.impl.storage.actions.get(id);
     if (!action) {
       throw new Error(`No such action: ${id}`);
@@ -11727,7 +11918,9 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
   }
 
   async enableHook(id: number): Promise<void> {
-    assertRevocableExecution(this.impl.env);
+    if (hasCapabilityPolicy(this.impl.env)) {
+      await this.impl.admitPrincipal(this.clientUserId, "gadget.execute");
+    }
     let record = this.impl.storage.boundHooks.get(id);
     if (!record) throw new Error("Invalid hook ID.");
 
@@ -11750,8 +11943,9 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
             ...(record.gadgetId !== undefined ? {gadgetId: record.gadgetId} : {}),
           });
 
-      // Flip the record and handle the "use"-scope widening an enabled hook can cause.
-      this.impl.enableHookRecord(record);
+      // Flip the record and handle the "use"-scope widening an enabled hook can cause. Firings
+      // run as whoever enabled it (SCHO-309; see startHook).
+      this.impl.enableHookRecord(record, this.clientUserId);
     }
   }
 
@@ -12236,7 +12430,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
                 capsules?: CapsuleSpecifier[], attachments?: ChatAttachmentHandle[],
                 formats?: MessageFormatRef[]): Promise<number> {
     if (hasCapabilityPolicy(this.impl.env)) {
-      await this.#clientUser.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.impl.ctx.id.toString() });
+      await this.impl.admitPrincipal(this.clientUserId, "agent.execute");
     }
     let userMeta = await retryOnDoReset(
         () => this.#clientUser.getChatContext(chosenModelId), this.impl.logger);
@@ -12249,7 +12443,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
       capsules?: CapsuleSpecifier[], attachments?: ChatAttachmentHandle[],
       formats?: MessageFormatRef[]): Promise<void> {
     if (hasCapabilityPolicy(this.impl.env)) {
-      await this.#clientUser.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.impl.ctx.id.toString() });
+      await this.impl.admitPrincipal(this.clientUserId, "agent.execute");
     }
     // A steer runs on the running turn's model, so it is queued before the sender's model is
     // looked up: a collaborator need not have that model.
@@ -12374,7 +12568,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
 
   async retryAgent(chatId: number, modelId: string): Promise<void> {
     if (hasCapabilityPolicy(this.impl.env)) {
-      await this.#clientUser.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.impl.ctx.id.toString() });
+      await this.impl.admitPrincipal(this.clientUserId, "agent.execute");
     }
     let userMeta = await retryOnDoReset(
         () => this.#clientUser.getChatContext(modelId), this.impl.logger);
@@ -13029,14 +13223,14 @@ class GadgetClientImpl extends RpcTarget implements GadgetClient {
 
   async getUiBundle(chatId?: number): Promise<UiBundle | null> {
     if (hasCapabilityPolicy(this.impl.env)) {
-      await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
+      await this.impl.admitPrincipal(this.clientUserId, "gadget.execute");
     }
     return this.impl.getGadgetUiBundle(this.id, chatId);
   }
 
   async connectToGadget(chatId?: number): Promise<RpcStub<any>> {
     if (hasCapabilityPolicy(this.impl.env)) {
-      await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
+      await this.impl.admitPrincipal(this.clientUserId, "gadget.execute");
     }
     this.impl.recordGadgetAnalytics({
       event_name: "gadget_interaction",
@@ -13051,14 +13245,14 @@ class GadgetClientImpl extends RpcTarget implements GadgetClient {
 
   async getExportFormats(chatId?: number): Promise<GadgetExportFormat[]> {
     if (hasCapabilityPolicy(this.impl.env)) {
-      await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
+      await this.impl.admitPrincipal(this.clientUserId, "gadget.execute");
     }
     return this.impl.getGadgetExportFormats(this.id, chatId);
   }
 
   async export(formatId: string, chatId?: number): Promise<ReadableStream<Uint8Array>> {
     if (hasCapabilityPolicy(this.impl.env)) {
-      await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
+      await this.impl.admitPrincipal(this.clientUserId, "gadget.execute");
     }
     return this.impl.exportGadget(this.id, formatId, chatId);
   }
@@ -13268,7 +13462,7 @@ class GadgetClientImpl extends RpcTarget implements GadgetClient {
                        options: {modelId: string | null, allowUnrelated?: boolean})
       : Promise<ApplyBlueprintResult> {
     if (hasCapabilityPolicy(this.impl.env)) {
-      await this.#clientUser.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.impl.ctx.id.toString() });
+      await this.impl.admitPrincipal(this.clientUserId, "agent.execute");
     }
     let userMeta = await retryOnDoReset(
         () => this.#clientUser.getChatContext(options.modelId), this.impl.logger);
@@ -13320,7 +13514,7 @@ class UseGadgetClientInterface extends RpcTarget implements GadgetClient {
 
   async getUiBundle(chatId?: number): Promise<UiBundle | null> {
     if (hasCapabilityPolicy(this.impl.env)) {
-      await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
+      await this.impl.admitPrincipal(this.clientUserId, "gadget.execute");
     }
     if (chatId !== undefined) {
       this.#deny();
@@ -13330,7 +13524,7 @@ class UseGadgetClientInterface extends RpcTarget implements GadgetClient {
 
   async connectToGadget(chatId?: number): Promise<RpcStub<any>> {
     if (hasCapabilityPolicy(this.impl.env)) {
-      await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
+      await this.impl.admitPrincipal(this.clientUserId, "gadget.execute");
     }
     if (chatId !== undefined) {
       this.#deny();
@@ -13348,7 +13542,7 @@ class UseGadgetClientInterface extends RpcTarget implements GadgetClient {
 
   async getExportFormats(chatId?: number): Promise<GadgetExportFormat[]> {
     if (hasCapabilityPolicy(this.impl.env)) {
-      await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
+      await this.impl.admitPrincipal(this.clientUserId, "gadget.execute");
     }
     if (chatId !== undefined) this.#deny();
     return this.impl.getGadgetExportFormats(this.id);
@@ -13356,7 +13550,7 @@ class UseGadgetClientInterface extends RpcTarget implements GadgetClient {
 
   async export(id: string, chatId?: number): Promise<ReadableStream<Uint8Array>> {
     if (hasCapabilityPolicy(this.impl.env)) {
-      await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
+      await this.impl.admitPrincipal(this.clientUserId, "gadget.execute");
     }
     if (chatId !== undefined) this.#deny();
     return this.impl.exportGadget(this.id, id);
@@ -13447,6 +13641,10 @@ class GatekeeperClientImpl<Session extends RpcCompatible<Session>>
   }
 
   async openSession(): Promise<RpcStub<Session>> {
+    // The client holding this capability opens the session as itself (SCHO-309).
+    if (hasCapabilityPolicy(this.impl.env)) {
+      await this.impl.admitPrincipal(this.actorUserId, "gadget.execute");
+    }
     return this.impl.openGatekeeperSession(this.id, this.facet, {from: "user"});
   }
 
@@ -13473,7 +13671,7 @@ class SlashCommandAuthorizerImpl extends NativeRpcTarget implements ObservationA
   }
 
   async getGitCache(): Promise<GitCache> {
-    assertRevocableExecution(this.impl.env);
+    if (hasCapabilityPolicy(this.impl.env)) this.impl.assertExecutionRevocable();
     return new GitCacheImpl(this.impl.gitCache, this.gatekeeperId);
   }
 }
@@ -13487,7 +13685,7 @@ class SlashCommandAuthorizerImpl extends NativeRpcTarget implements ObservationA
 // the widening that scheduled a restart, and a shrink-then-rewiden leaves stale firings pointing
 // at a connection pending re-verification (see #gatekeepersPendingRestart).
 function requireLiveHook(impl: OverseerImpl, hookId: number): BoundHookRecord {
-  assertRevocableExecution(impl.env);
+  if (hasCapabilityPolicy(impl.env)) impl.assertExecutionRevocable();
   let record = impl.storage.boundHooks.get(hookId);
   if (!record?.enabled) throw new Error("Hook has been deleted or disabled.");
   impl.assertGatekeeperUsable(record.gatekeeperId);
@@ -13555,7 +13753,7 @@ class ApprovalQueueImpl extends RpcTarget implements ApprovalQueue {
   }
 
   async getGitCache(): Promise<GitCache> {
-    assertRevocableExecution(this.impl.env);
+    if (hasCapabilityPolicy(this.impl.env)) this.impl.assertExecutionRevocable();
     return new GitCacheImpl(this.impl.gitCache, this.gatekeeperId);
   }
 
@@ -13653,8 +13851,12 @@ class AgentSpawnerQueueImpl extends ApprovalQueueImpl implements AgentSpawnerQue
   // Writes no messages; the caller decides how the chat starts.
   async #createSpawnedChat(
       title: string, creatorUserId: string | undefined, spawnerTypes?: SpawnCallableOptions) {
-    assertRevocableExecution(this.impl.env);
     if (!this.impl.ownerId) throw new Error("Workspace has been deleted.");
+    // Under a capability policy a spawn runs only as its recorded creator, never as the owner
+    // (SCHO-309): a spawner from before creator attribution cannot spawn at all.
+    if (hasCapabilityPolicy(this.impl.env) && creatorUserId === undefined) {
+      throw new Error("This agent spawner records no creator, so it cannot spawn under capability policy.");
+    }
 
     // Resolve the model from the creating user's account (falls back to owner for
     // bindings created before collaborator support).
@@ -13662,7 +13864,7 @@ class AgentSpawnerQueueImpl extends ApprovalQueueImpl implements AgentSpawnerQue
     let initiatorUserId = this.impl.users.idFromString(resolveUserId).toString();
     let user = this.impl.users.get(this.impl.users.idFromString(resolveUserId));
     if (hasCapabilityPolicy(this.impl.env)) {
-      await user.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.impl.ctx.id.toString() });
+      await this.impl.admitPrincipal(initiatorUserId, "agent.execute");
     }
     let userMeta = await user.getChatContext(this.#spawner().config.modelId);
 

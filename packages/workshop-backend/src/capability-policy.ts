@@ -2,13 +2,24 @@ import type {
   WorkshopCapabilityDescriptor, WorkshopCapabilityPolicy,
 } from "@gadgets/workshop-shared/capability-policy";
 
-/** Refuse execution until descendant capabilities support transitive policy revocation. */
-export function assertRevocableExecution(
-    env: Pick<Cloudflare.Env, "WORKSHOP_CAPABILITY_POLICY" | "REQUIRE_WORKSHOP_CAPABILITY_POLICY"> | undefined): void {
-  if (hasCapabilityPolicy(env)) {
-    throw new Error("Workshop execution is disabled with capability policy: transitive revocation is unavailable.");
-  }
-}
+/**
+ * The policy actions that admit execution in a workspace (SCHO-309). A principal admitted for one
+ * is rechecked for it, together with their district standing, for as long as the workspace
+ * instance that admitted them lives; see OverseerImpl.admitPrincipal().
+ */
+export type ExecutionAction = "gadget.execute" | "agent.execute";
+
+export const EXECUTION_ACTIONS: readonly ExecutionAction[] = ["gadget.execute", "agent.execute"];
+
+/**
+ * The bound on how long a principal's live capabilities outlast their loss of standing: how often
+ * a workspace rechecks the principals it has admitted, and a user object its watched sessions.
+ */
+export const STANDING_RECHECK_MS = 60_000;
+
+/** Why execution was refused while (or because) a workspace is restarting to revoke someone. */
+export const STANDING_REVOKED_MESSAGE =
+    "Workshop access changed for someone in this workspace; it is restarting. Please reconnect.";
 
 /** Check immediately before a protected operation; never cache an authorization decision. */
 export async function assertCapability(

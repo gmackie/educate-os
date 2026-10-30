@@ -497,6 +497,12 @@ export type BoundHookRecord = {
   callback: NativeRpcStub<RpcTarget>;
   description: HookDescription;
   enabled: boolean;
+
+  /**
+   * Hex user DO ID of whoever last enabled the hook (SCHO-309). Under a capability policy each
+   * firing is admitted as them; a hook enabled before this was recorded cannot fire there.
+   */
+  enabledByUserId?: string;
 };
 
 /** A user opt-in to auto-approve actions carrying a given `actionKind` on a given gatekeeper */

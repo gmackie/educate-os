@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { runInDurableObject } from "cloudflare:test";
 import type { WorkshopCapabilityDescriptor } from "@gadgets/workshop-shared/capability-policy";
 import type { UserDurableObject } from "../src/user.js";
-import { assertCapability, assertRevocableExecution, hasCapabilityPolicy } from "../src/capability-policy.js";
+import { assertCapability, hasCapabilityPolicy } from "../src/capability-policy.js";
 
 declare module "cloudflare:workers" {
   interface ProvidedEnv {
@@ -246,12 +246,3 @@ describe("read-only authenticated authoring discovery", () => {
   });
 });
 
-
-describe("execution restriction and mandatory authority", () => {
-  it("refuses missing or invalid required policy on retained execution paths", () => {
-    expect(() => assertRevocableExecution({ REQUIRE_WORKSHOP_CAPABILITY_POLICY: "true" })).toThrow("Required Workshop");
-    expect(() => assertRevocableExecution({ REQUIRE_WORKSHOP_CAPABILITY_POLICY: "invalid" })).toThrow("Invalid REQUIRE");
-    expect(() => assertRevocableExecution(undefined)).not.toThrow();
-    expect(() => assertRevocableExecution({ REQUIRE_WORKSHOP_CAPABILITY_POLICY: "false" })).not.toThrow();
-  });
-});

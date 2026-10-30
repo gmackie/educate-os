@@ -181,6 +181,15 @@ export interface ProductionInstance {
    */
   principalBinding?: "migration" | "resolver";
   /**
+   * When true, the Workshop backend binds `WORKSHOP_CAPABILITY_POLICY` to the district's
+   * `DistrictWorkshopCapabilityPolicy` and sets `REQUIRE_WORKSHOP_CAPABILITY_POLICY` (SCHO-299,
+   * SCHO-309): every mint and every execution is the district's to allow, and a principal who loses
+   * standing loses what they hold. Needs `principalBinding: "resolver"`, whose `principalStanding`
+   * the revocation rechecks, and a `DISTRICT_CONFIG.workshopPolicy`, without which the district
+   * denies everything. Deploy the district before the backend. Absent, nothing is bound.
+   */
+  capabilityPolicyBinding?: boolean;
+  /**
    * Deployed Worker names that differ from their package's, by package. A deployed Worker's name
    * is production identity, like a hostname or a ForgeGraph app slug: a Durable Object namespace
    * belongs to its Worker's name, so deploying a stateful Worker under a new name starts it with
@@ -488,10 +497,12 @@ export function buildProductionConfigs({
             "manifest-lib.ts does); declaring it too would bind it twice");
       }
       config.ai = { binding: "WORKERS_AI" };
-      config.services = [...backendGatekeeperServices(gatekeepers, baseUrl), backendAiGuardBinding(), ...principalServices(instance)];
+      config.services = [...backendGatekeeperServices(gatekeepers, baseUrl), backendAiGuardBinding(),
+        ...principalServices(instance), ...capabilityPolicyServices(instance)];
       // Every instance binds the guard, so losing the binding must deny model calls rather than
-      // run them unguarded (SCHO-307).
-      withVars(pkgName, config, { PUBLIC_BASE_URL: baseUrl, ...oneOrigin ? { PUBLIC_BASE_PATH: ONE_ORIGIN_BASE_PATH } : {}, REQUIRE_AI_CALL_GUARD: "true", ...vars });
+      // run them unguarded (SCHO-307). Likewise a bound capability policy is required.
+      withVars(pkgName, config, { PUBLIC_BASE_URL: baseUrl, ...oneOrigin ? { PUBLIC_BASE_PATH: ONE_ORIGIN_BASE_PATH } : {}, REQUIRE_AI_CALL_GUARD: "true",
+        ...instance.capabilityPolicyBinding ? { REQUIRE_WORKSHOP_CAPABILITY_POLICY: "true" } : {}, ...vars });
     } else if (pkgName === "router") {
       config.services = routerServices(gatekeepers);
       config.routes = [{ pattern: instance.hostname, custom_domain: true }];
@@ -564,6 +575,20 @@ function principalServices(instance: ProductionInstance): ServiceBinding[] {
   return instance.principalBinding === "resolver"
     ? [principalBindingTo("PRINCIPAL_MIGRATION"), principalBindingTo("PRINCIPAL_RESOLVER")]
     : [principalBindingTo("PRINCIPAL_MIGRATION")];
+}
+
+/** The district capability policy's entrypoint, which only the Workshop backend may bind. */
+export const CAPABILITY_POLICY_ENTRYPOINT = "DistrictWorkshopCapabilityPolicy";
+
+/** The backend's capability policy binding for {@link ProductionInstance.capabilityPolicyBinding}. */
+function capabilityPolicyServices(instance: ProductionInstance): ServiceBinding[] {
+  if (!instance.capabilityPolicyBinding) return [];
+  if (!instance.district) throw new Error("the capability policy binding needs the instance's district Worker");
+  // Revocation rechecks standing through the principal resolver; without it, it can't (SCHO-309).
+  if (instance.principalBinding !== "resolver") {
+    throw new Error("the capability policy binding needs principalBinding: \"resolver\"");
+  }
+  return [{ binding: "WORKSHOP_CAPABILITY_POLICY", service: DISTRICT_PACKAGE, entrypoint: CAPABILITY_POLICY_ENTRYPOINT }];
 }
 
 /**

@@ -106,7 +106,9 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
   constructor(private ctx: ExecutionContext, private env: Env,
       userId: DurableObjectId,
       private abortSession: (reason: Error) => void,
-      private accessSession?: { jwt: string; expiresAt: number }) {
+      private accessSession?: { jwt: string; expiresAt: number },
+      // Held while the user DO watches this session's standing (see watchSessionStanding below).
+      private standingLease?: Disposable) {
     super();
 
     this.#userId = userId;
@@ -133,6 +135,10 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
       if (this.#userSearchPolicyCache === next) this.#userSearchPolicyCache = undefined;
     });
     return promise;
+  }
+
+  [Symbol.dispose]() {
+    this.standingLease?.[Symbol.dispose]();
   }
 
   // Get a stub pointing at the user DO. We create a new stub for every request so that we don't
@@ -754,6 +760,24 @@ class LoginAttemptImpl extends RpcTarget implements LoginAttempt {
   }
 }
 
+// Has the user DO watch a session's standing (SCHO-309), by the same hack as
+// AuthenticatedApiImpl.#openWorkspaceInternal: the DO holds `notifyClosed` until the returned lease
+// is disposed, so if the DO drops it uncalled -- the principal lost standing, or the DO restarted and
+// no longer rechecks -- the session aborts, and the client's reconnect signs in through the principal
+// resolver again.
+async function watchSessionStanding(
+    user: DurableObjectStub<UserDurableObject>, abortSession: (reason: Error) => void)
+    : Promise<Disposable> {
+  let closed = false;
+  let notifyClosed = () => {
+    closed = true;
+  };
+  (notifyClosed as any)[Symbol.dispose] = () => {
+    if (!closed) abortSession(new Error("lost the user DO's watch on the session's standing"));
+  };
+  return await user.watchSessionStanding(notifyClosed) as unknown as Disposable;
+}
+
 @validateRpc()
 class PublicApiImpl extends RpcTarget implements PublicApi {
   users: DurableObjectNamespace<UserDurableObject>;
@@ -843,7 +867,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     let userId = this.users.idFromName(user.name);
     let signupsEnabled = (await readAdminConfig(this.env)).signupsEnabled;
     let accountCreated = await this.users.get(userId)
-        .authenticateFromCfAccess(user.name, signupsEnabled, user.displayName);
+        .authenticateFromCfAccess(user.name, signupsEnabled, user.displayName, user.principal);
     if (accountCreated) {
       recordAnalytics(this.ctx, this.env, {
         event_name: "account_created",
@@ -856,8 +880,14 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
       user_id: userId.toString(),
       source: "cf_access",
     });
+    // SCHO-309: under a capability policy, a principal's session lasts only while they stay in
+    // standing; see UserDurableObject.watchSessionStanding().
+    let standingLease = this.env.PRINCIPAL_RESOLVER && hasCapabilityPolicy(this.env)
+        ? await watchSessionStanding(this.users.get(userId), this.abortSession)
+        : undefined;
     return new AuthenticatedApiImpl(this.ctx, this.env, userId, this.abortSession,
-        { jwt: this.accessSession.jwt, expiresAt: (this.accessSession.payload.exp ?? 0) * 1000 });
+        { jwt: this.accessSession.jwt, expiresAt: (this.accessSession.payload.exp ?? 0) * 1000 },
+        standingLease);
   }
 
   async login(username: string, passwordHash: Uint8Array): Promise<string | null> {

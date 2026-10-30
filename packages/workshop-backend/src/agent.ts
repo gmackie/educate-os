@@ -15,7 +15,7 @@ import type {
   ToolResultMessage, Usage,
 } from "@earendil-works/pi-ai";
 import {
-  runAgentLoopContinue, type AgentContext, type AgentEvent, type AgentTool,
+  runAgentLoopContinue, type AgentContext, type AgentEvent, type AgentTool, type StreamFn,
 } from "@earendil-works/pi-agent-core";
 import { RpcStub as NativeRpcStub } from "cloudflare:workers";
 import { createTwoFilesPatch, FILE_HEADERS_ONLY } from "diff";
@@ -312,8 +312,11 @@ export function makeStoredAssistantMessage(message: AssistantMessage): StoredAss
  *   overseer.ts?
  */
 export interface AgentHooks {
-  /** Fail closed before runtime work when transitive capability revocation is unavailable. */
-  assertAgentExecution?(): void;
+  /**
+   * Readmits the turn's initiator before each pass, model request and tool call (SCHO-309),
+   * rejecting if they may no longer execute. Returns undefined when there is nothing to check.
+   */
+  assertAgentExecution?(chatId: number): Promise<void> | undefined;
 
   getChatAgentContext(chatId: number): AiChatAgentContext;
 
@@ -1528,7 +1531,8 @@ export async function runAgent(
   };
   let retries = 0;
   while (true) {
-    hooks.assertAgentExecution?.();
+    let admitted = hooks.assertAgentExecution?.(chatId);
+    if (admitted) await admitted;
     let history = hooks.loadChatHistory(chatId);
     let outcome = await runAgentPass(
         hooks, handle, chatId, author, history, abortSignal, initiator, modelConfig, progress);
@@ -3992,8 +3996,8 @@ async function runAgentPass(
   let toolList = Object.values(tools).map(tool => traceTool({
     ...tool,
     execute: (...args) => {
-      hooks.assertAgentExecution?.();
-      return tool.execute(...args);
+      let admitted = hooks.assertAgentExecution?.(chatId);
+      return admitted ? admitted.then(() => tool.execute(...args)) : tool.execute(...args);
     },
   }, executedToolCalls));
 
@@ -4225,10 +4229,12 @@ async function runAgentPass(
         handle.stream, checkpoint.anthropicCompactionBlock, priorConversation)
     : handle.stream;
 
+  // Every model request of the turn first readmits its initiator (SCHO-309). Compaction's request,
+  // which needs the stream synchronously, checks before it instead.
   let uncheckedStream = stream;
-  stream = (...args) => {
-    hooks.assertAgentExecution?.();
-    return uncheckedStream(...args);
+  let checkedStream: StreamFn = (...args) => {
+    let admitted = hooks.assertAgentExecution?.(chatId);
+    return admitted ? admitted.then(() => uncheckedStream(...args)) : uncheckedStream(...args);
   };
 
   // Compaction runs once the tools exist, because Anthropic summarizes the request a turn would
@@ -4240,6 +4246,8 @@ async function runAgentPass(
         checkpoint?.compactedTo, findProtectedFromSequence(chatMessages));
     if (compactedTo !== undefined) {
       emitStreamEvent({type: "compacting"});
+      let admitted = hooks.assertAgentExecution?.(chatId);
+      if (admitted) await admitted;
       try {
         let written: Pick<CompactionCheckpoint, "summary" | "anthropicCompactionBlock">;
         if (supportsAnthropicCompaction(handle.model)) {
@@ -4389,7 +4397,7 @@ async function runAgentPass(
         return {action: "end"};
       }
     },
-  }, emit, abortSignal, stream);
+  }, emit, abortSignal, checkedStream);
 
   // (No end-of-turn flush: every completed step's effects were barrier-committed with its
   // message, and an abort simply drops the in-flight step's buffer -- nothing durable exists

@@ -29,6 +29,12 @@ export type PrincipalResolution =
   | { outcome: "adoption-pending" };
 
 /**
+ * What a {@link PrincipalResolver} says about a principal now (SCHO-309): `active` only while the
+ * district's live directory still has them as an active person of this district.
+ */
+export type PrincipalStanding = { outcome: "active" } | { outcome: "inactive" };
+
+/**
  * An optional deployment-provided service, bound to the backend as `PRINCIPAL_RESOLVER`, that maps
  * a verified Cloudflare Access sign-in to a principal. When it is bound, the user Durable Object
  * is named for the principal rather than the email, and every other sign-in (session tokens,
@@ -38,6 +44,13 @@ export type PrincipalResolution =
 export interface PrincipalResolver extends WorkerEntrypoint {
   /** Resolves one sign-in. A rejection refuses it: a configured resolver is mandatory. */
   resolveAccessSignIn(signIn: AccessSignIn): Promise<PrincipalResolution>;
+  /**
+   * Whether `principalId` (a principal this resolver returned) is still in standing, read from the
+   * live directory and never cached. With a capability policy also bound, the kernel asks this
+   * while the principal holds live sessions or execution, and tears those down unless it answers
+   * `active`; a rejection counts as no answer, which tears them down too.
+   */
+  principalStanding(principalId: string): Promise<PrincipalStanding>;
 }
 
 /** One existing email-keyed Workshop user, as the one-time principal migration describes it. */
