@@ -1,5 +1,5 @@
 import { assertCapability } from "./capability-policy.js";
-import type { WorkshopCapabilityScope } from "@gadgets/workshop-shared/capability-policy";
+import type { WorkshopCapabilityScope, WorkshopAuthoringTarget, WorkshopAuthoringCapability } from "@gadgets/workshop-shared/capability-policy";
 import { RpcStub } from "capnweb";
 import { WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, AiModelConfig, RedactedAiModelConfig, ModelKind, modelKind, CollaboratorRole, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, WorkspaceMetadata, BlueprintMetadata, BlueprintLibrarySummary, BlueprintSource, BlueprintUserSummary, BLUEPRINT_SCREENSHOT_R2_PREFIX, GatekeeperVendorInfo, OutputSummary, ListOutputsResult, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, validateCommitEmail, NotificationSubscriber, NotificationMute, UserNotification, type DeviceSessionHandoffStart, type WebPushSubscription, type ExternalWorkspaceRequest } from '@gadgets/workshop-shared/api';
 import { ActionDescription, Gatekeeper, GatekeeperUser, GatekeeperUserVerifier, GatekeeperVendor, AccountDescription, VendorDescription, GatekeeperConnectCallback, ConnectHandoff, SupportedResource, ResourceConfiguratorFrame, AppUiContext, GatekeeperAppNavEntry, GatekeeperUiFrame, GatekeeperUserSelection, GatekeeperUserSelectionExchange, RedeemedGatekeeperUserSelection, sanitizeGatekeeperAppNav } from "@gadgets/workshop-shared/gatekeeper";
@@ -231,6 +231,20 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   /** Internal kernel entrypoint: derives the principal exclusively from persisted storage. */
   async assertWorkshopCapability(scope: WorkshopCapabilityScope): Promise<void> {
     await this.#assertCapability(scope);
+  }
+
+  /** Read-only, uncached discovery, using only the persisted authenticated principal. */
+  async getWorkshopAuthoringCapability(target: WorkshopAuthoringTarget): Promise<WorkshopAuthoringCapability> {
+    if (this.env.WORKSHOP_CAPABILITY_POLICY === undefined) return { allowed: false };
+    // Explicit projection prevents extra client fields from overriding action or principal.
+    if (target.operation === "adapt" && !target.sourceBlueprintId) return { allowed: false };
+    try {
+      await this.#assertCapability({ action: "workshop.authoring.query",
+        operation: target.operation, sourceBlueprintId: target.sourceBlueprintId });
+      return { allowed: true };
+    } catch {
+      return { allowed: false };
+    }
   }
 
   /** Advisory only; creation still authorizes its concrete scope at the mutation. */

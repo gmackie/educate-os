@@ -175,3 +175,60 @@ describe("direct User DO authority operations", () => {
     });
   });
 });
+
+
+describe("read-only authenticated authoring discovery", () => {
+  it("defaults closed without policy and for an uninitialized principal", async () => {
+    const stub = env.TEST_USER.getByName(`discovery-${crypto.randomUUID()}`);
+    await runInDurableObject(stub, async user => {
+      expect(await user.getWorkshopAuthoringCapability({ operation: "create" })).toEqual({ allowed: false });
+    });
+  });
+
+  it("checks teacher and narrow student grants afresh without trusting client claims or mutating", async () => {
+    const stub = env.TEST_USER.getByName(`discovery-grants-${crypto.randomUUID()}`);
+    await runInDurableObject(stub, async user => {
+      const userEnv: Cloudflare.Env = Reflect.get(user, "env");
+      const previous = userEnv.WORKSHOP_CAPABILITY_POLICY;
+      const storage = Reflect.get(user, "storage");
+      storage.created.put(true);
+      let active = true;
+      let studentGrant = false;
+      const calls: WorkshopCapabilityDescriptor[] = [];
+      Reflect.set(userEnv, "WORKSHOP_CAPABILITY_POLICY", {
+        authorizeCapability: async (call: WorkshopCapabilityDescriptor) => {
+          calls.push(call);
+          return active && call.action === "workshop.authoring.query" &&
+            (call.userId === "teacher" || (studentGrant && call.userId === "student" &&
+              call.operation === "adapt" && call.sourceBlueprintId === "approved"))
+            ? { outcome: "allow" } : { outcome: "deny", message: "No grant" };
+        },
+      });
+      try {
+        storage.profile.put({ type: "user", id: "teacher", name: "Teacher" });
+        expect(await user.getWorkshopAuthoringCapability({ operation: "create" })).toEqual({ allowed: true });
+        storage.profile.put({ type: "user", id: "student", name: "Student" });
+        expect(await user.getWorkshopAuthoringCapability({ operation: "create" })).toEqual({ allowed: false });
+        studentGrant = true;
+        const target = { operation: "adapt" as const, sourceBlueprintId: "approved",
+          userId: "teacher", action: "workspace.create", role: "admin" };
+        expect(await user.getWorkshopAuthoringCapability(target)).toEqual({ allowed: true });
+        expect(calls.at(-1)).toEqual({ userId: "student", action: "workshop.authoring.query",
+          operation: "adapt", sourceBlueprintId: "approved" });
+        expect(await user.getWorkshopAuthoringCapability({ operation: "adapt", sourceBlueprintId: "other" })).toEqual({ allowed: false });
+        expect(await user.getWorkshopAuthoringCapability({ operation: "adapt" })).toEqual({ allowed: false });
+        // Discovery is never a mutation authorization; the same adapter refuses direct creation.
+        await expect(user.newWorkspace("not-created", "Title", undefined, "approved")).rejects.toThrow("No grant");
+        expect(storage.gadgets.get("not-created")).toBeUndefined();
+        active = false;
+        expect(await user.getWorkshopAuthoringCapability(target)).toEqual({ allowed: false });
+        Reflect.set(userEnv, "WORKSHOP_CAPABILITY_POLICY", { authorizeCapability: async () => {
+          throw new Error("private policy record");
+        } });
+        expect(await user.getWorkshopAuthoringCapability(target)).toEqual({ allowed: false });
+      } finally {
+        Reflect.set(userEnv, "WORKSHOP_CAPABILITY_POLICY", previous);
+      }
+    });
+  });
+});
