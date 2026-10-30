@@ -5,9 +5,9 @@
 // that claims it. Types only come from the Clever and grade modules, so this loads with the page.
 import type { PendingChange } from "../clever/cleverSide.ts";
 import type { InstantLoginHop } from "../clever/instantLogin.ts";
-import type { PersonaId, RosterSyncResult } from "../districts/index.ts";
+import { ROSTER_SYNC_ROUTE, type PersonaId, type RosterSyncResult } from "../districts/index.ts";
 import type { GradeEvent, GradeRouteKind } from "../grades/types.ts";
-import { journeyStep, requestDoes } from "../journeys.ts";
+import { requestDoes } from "../journeys.ts";
 
 /** The tour's steps, in order. */
 export type TourStepId = "portal" | "sign-in" | "first-sync" | "clever-change" | "delta-sync" | "teacher-grade" | "grade-out";
@@ -86,7 +86,7 @@ export const CLEVER_TOUR_STEPS: readonly TourStep[] = [
   },
   {
     id: "teacher-grade",
-    title: "Switch to Dana Whitaker through the portal, grade An Nguyen's “Where does the rain go?” and release it",
+    title: "Switch to Dana Whitaker through the portal, grade An Nguyen's “Where does the rain go?” and approve the official grade",
     explain: () => "Dana's grade becomes an official grade of the class. EducateOS passes back only grades a teacher has approved.",
     showMe: "Open Dana Whitaker's Earth Science 8",
   },
@@ -109,7 +109,12 @@ export interface TourSnapshot {
   current: TourStep | undefined;
 }
 
-const TEACHER_GRADE = journeyStep("teacher", "teacher.grade").done;
+/**
+ * The requests that make an official grade: recording one, or approving a co-teacher's proposal.
+ * Sharing feedback or saving a rubric score is part of grading but sends nothing to a gradebook,
+ * so neither finishes the step.
+ */
+const OFFICIAL_GRADE = { method: "POST", paths: ["/api/teacher/submissions/:x/grade", "/api/teacher/grade-proposals/:x/approve"] } as const;
 
 /**
  * The tour's progress through one booted Cedar Valley, fed by the demo's hooks into the portal,
@@ -168,7 +173,7 @@ export class CleverTourStore {
 
   /** `persona`'s app made `request`, which the district answered with `status`. */
   responded(persona: PersonaId, request: Pick<Request, "method" | "url">, status: number): void {
-    if (persona === "teacher" && requestDoes(TEACHER_GRADE, request, status)) this.#update(["teacher-grade"]);
+    if (persona === "teacher" && requestDoes(OFFICIAL_GRADE, request, status)) this.#update(["teacher-grade"]);
   }
 
   /** The passback gate sent or refused a grade. Only a grade it sent finishes the tour. */
@@ -185,13 +190,14 @@ export class CleverTourStore {
 
 /** The places the tour can take the visitor, and the setup a jump can run first. */
 export interface TourActions {
+  /** Opens the portal signed in as `persona`, leaving the EducateOS tile for the visitor to click. */
+  openPortalAs(persona: PersonaId): void;
   /**
-   * Opens the portal signed in as `persona`. With `launch`, it then opens EducateOS from the tile,
-   * running the same Instant Login a click does, and their app opens at `route` if given.
+   * Opens `persona`'s app at `route`: straight there if they are signed in to the district, else
+   * through the portal, running the same Instant Login a click on the EducateOS tile does. With
+   * `grades`, the teacher's "Where grades land" panel opens too.
    */
-  openPortalAs(persona: PersonaId, options?: { launch?: boolean; route?: string }): void;
-  /** Opens the admin console's Roster sync screen as Elaine Park, through the portal if she isn't signed in. */
-  openRosterSync(options?: { launch?: boolean }): void;
+  openApp(persona: PersonaId, options?: { route?: string; grades?: boolean }): void;
   /** Opens the Clever side panel. */
   openCleverSide(): void;
   /** The teacher's Earth Science 8 submissions, as a Teacher Studio hash route, once the roster has it. */
@@ -200,21 +206,25 @@ export interface TourActions {
   ensureFirstSync(): Promise<void>;
 }
 
-/** Takes the visitor to where `step` is done, changing nothing in the district. */
-export async function showMe(step: TourStepId, actions: TourActions, launch = false): Promise<void> {
+/**
+ * Takes the visitor to where `step` is done, changing nothing in the district's records. The
+ * portal steps stop at the portal, since signing in is the step; the later ones open the app,
+ * signing in through the portal first when needed.
+ */
+export async function showMe(step: TourStepId, actions: TourActions): Promise<void> {
   switch (step) {
     case "portal":
     case "sign-in":
       return actions.openPortalAs("admin");
     case "first-sync":
     case "delta-sync":
-      return actions.openRosterSync({ launch });
+      return actions.openApp("admin", { route: ROSTER_SYNC_ROUTE });
     case "clever-change":
       return actions.openCleverSide();
     case "teacher-grade":
     case "grade-out": {
       const route = await actions.teacherClassRoute();
-      return actions.openPortalAs("teacher", { launch, ...(route === undefined ? {} : { route }) });
+      return actions.openApp("teacher", { ...(route === undefined ? {} : { route }), ...(step === "grade-out" ? { grades: true } : {}) });
     }
   }
 }
@@ -227,5 +237,5 @@ export async function showMe(step: TourStepId, actions: TourActions, launch = fa
 export async function jumpTo(step: TourStepId, actions: TourActions): Promise<void> {
   const index = CLEVER_TOUR_STEPS.findIndex((s) => s.id === step);
   if (index > CLEVER_TOUR_STEPS.findIndex((s) => s.id === "first-sync")) await actions.ensureFirstSync();
-  await showMe(step, actions, index > 1);
+  await showMe(step, actions);
 }

@@ -79,6 +79,8 @@ export const DemoApp = () => {
   const [tourOpen, setTourOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [sideOpen, setSideOpen] = useState(false);
+  // Counts the tour's requests to open the teacher's "Where grades land" panel.
+  const [gradesRequest, setGradesRequest] = useState(0);
   const info = districtInfo(districtKey);
   const tourOn = hasCleverTour(districtKey);
 
@@ -155,15 +157,21 @@ export const DemoApp = () => {
   const cleverSide = district.status === "ready" ? cleverSideOf(district.district) : undefined;
   const admin = info.personas.find((p) => p.id === "admin")!;
   // As the administrator: straight there if the visitor is them, else through the portal's sign-in.
-  const openRosterSync = ({ launch = false }: { launch?: boolean } = {}) => {
-    if (personaId === "admin") window.location.hash = ROSTER_SYNC_ROUTE;
-    else if (launch) visitPortal("admin", { route: ROSTER_SYNC_ROUTE, launch });
-    else choose("admin", ROSTER_SYNC_ROUTE);
+  // Opens a persona's app at `route`, signing them in through the portal first if they have no
+  // session yet, as a click on the portal's EducateOS tile would.
+  const openApp = (id: PersonaId, { route, grades = false }: { route?: string; grades?: boolean } = {}) => {
+    if (grades) setGradesRequest((n) => n + 1);
+    if (id === personaId) {
+      if (route !== undefined) window.location.hash = route;
+      return;
+    }
+    if (signsInThroughPortal(districtKey) && signIns[id] === undefined) return visitPortal(id, { ...(route === undefined ? {} : { route }), launch: true });
+    choose(id, route);
   };
 
   const tourActions: TourActions = {
-    openPortalAs: visitPortal,
-    openRosterSync,
+    openPortalAs: (id) => visitPortal(id),
+    openApp,
     openCleverSide: () => setSideOpen(true),
     teacherClassRoute: async () => {
       if (district.status !== "ready") return undefined;
@@ -242,6 +250,7 @@ export const DemoApp = () => {
                   persona={persona}
                   {...(signIns[persona.id] === undefined ? {} : { bearer: signIns[persona.id]!.session })}
                   onStepsDone={markDone}
+                  gradesRequest={gradesRequest}
                   {...(tourOn ? { onResponse: (request: Request, status: number) => tour.responded(persona.id, request, status) } : {})}
                   onChoose={choose}
                 />
@@ -252,7 +261,7 @@ export const DemoApp = () => {
             <CleverSide
               side={cleverSide}
               admin={{ name: admin.name, current: personaId === "admin" }}
-              onOpenRosterSync={() => openRosterSync()}
+              onOpenRosterSync={() => openApp("admin", { route: ROSTER_SYNC_ROUTE })}
               expansion={{ open: sideOpen, onOpenChange: setSideOpen }}
             />
           )}
