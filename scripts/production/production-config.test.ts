@@ -446,7 +446,8 @@ test("one origin: the district Worker gives up its hostnames, keeps its name, LT
   assert.deepEqual(district.assets, configFor(build(), DISTRICT_PACKAGE).assets);
   assert.deepEqual(district.vars, {
     LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
-    SCHOOL_MANIFEST: JSON.stringify({ origin: NORTHFIELD, features: { ai: true } }),
+    // Phones sign in at the district's /connect-phone with Google (SCHO-283).
+    SCHOOL_MANIFEST: JSON.stringify({ origin: NORTHFIELD, signIn: [{ id: "google", label: "Google" }], features: { ai: true } }),
   });
   // Still reached only through its bindings: the router's DISTRICT, the connector's school tools,
   // the backend's principal bindings and the guard's directory (SCHO-283).

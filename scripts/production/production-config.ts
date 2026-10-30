@@ -306,9 +306,16 @@ function asDistrict(
   withVars(DISTRICT_PACKAGE, config, { LTI_TOOL_ORIGIN: `https://${hostnames[0]}`, ...vars });
 }
 
+/**
+ * How a phone signs in to a one-origin instance's district without a computer (SCHO-283): the
+ * district's own `/connect-phone`, behind the instance's Access with its Google login. A person's
+ * Access identity is the same whichever login they pick, so this names the one they will use.
+ */
+const ONE_ORIGIN_PHONE_SIGN_IN = [{ id: "google", label: "Google" }];
+
 /** The public school manifest's settings (`SCHOOL_MANIFEST`, ADR-0014) of a district at `origin`. */
-function schoolManifestVar(origin: string, ai: boolean): string {
-  return JSON.stringify({ origin, features: { ai } });
+function schoolManifestVar(origin: string, ai: boolean, signIn?: { id: string; label: string }[]): string {
+  return JSON.stringify({ origin, ...signIn ? { signIn } : {}, features: { ai } });
 }
 
 /**
@@ -513,7 +520,7 @@ export function buildProductionConfigs({
       if (oneOrigin) {
         // Behind the router, at no hostname of its own. Its LTI Tool keeps the origin platforms
         // registered, which the router redirects to the one origin with method and body kept.
-        asDistrict(config, hostnames, { SCHOOL_MANIFEST: schoolManifestVar(baseUrl, true), ...vars }, { routed: false });
+        asDistrict(config, hostnames, { SCHOOL_MANIFEST: schoolManifestVar(baseUrl, true, ONE_ORIGIN_PHONE_SIGN_IN), ...vars }, { routed: false });
       } else {
         asDistrict(config, hostnames, vars);
       }
