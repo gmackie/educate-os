@@ -35,9 +35,9 @@
     },
     {
       "path": "packages/router/__tests__/router.test.ts",
-      "fingerprint": "f904394eb869f75b7d5463f38d0fc4ca21cbb0139d7a46b462b281a3b67e7a5d",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "5e51d0e8d787212bb9110be12454ca665ec87cca129bd66378fede2e145542cf",
+      "rationale": "SCHO-301: test-only. Exact school MCP and protected-resource discovery routes reach the external MCP Worker only with its explicit binding; prefix lookalikes and unbound deployments serve assets.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/router/cloudflare.config.ts",
