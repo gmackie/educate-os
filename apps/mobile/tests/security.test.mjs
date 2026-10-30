@@ -99,3 +99,9 @@ test('the one-origin pairing QR (/j) accepts one exact HTTPS school origin and n
     'not a url',
   ]) assert.throws(() => parseJoinLink(bad), bad);
 });
+test('Array.prototype.toSorted exists after the polyfill, and leaves the array alone', async () => {
+  await import('../src/polyfills.ts');
+  const list = [3, 1, 2];
+  assert.deepEqual(list.toSorted((a, b) => a - b), [1, 2, 3]);
+  assert.deepEqual(list, [3, 1, 2]);
+});
