@@ -117,6 +117,15 @@ export const EDUCATEOS_GATEKEEPER_PACKAGE = "gatekeeper-educateos";
 export const EDUCATEOS_DISTRICT_BINDING: ServiceBinding =
     { binding: "EDUCATEOS_DISTRICT", service: DISTRICT_PACKAGE, entrypoint: "DistrictSchoolTools" };
 
+/**
+ * The AI call guard's `EDUCATEOS_DISTRICT`: the district Worker's `DistrictGuardDirectory`, so the
+ * guard learns who a Workshop user is from the district's records (`contextSource: "district"`)
+ * rather than a list in its config (SCHO-283). Principal-keyed Workshop users need no link; the
+ * email-keyed users the principal migration aliased need one an administrator confirms.
+ */
+export const GUARD_DISTRICT_BINDING: ServiceBinding =
+    { binding: "EDUCATEOS_DISTRICT", service: DISTRICT_PACKAGE, entrypoint: "DistrictGuardDirectory" };
+
 /** One long-lived instance: where it runs and the account resources its Workers bind. */
 export interface ProductionInstance {
   /** The public hostname: the router's custom domain. Every other URL derives from it. */
@@ -497,7 +506,7 @@ export function buildProductionConfigs({
       // Preferred by the guard over HALL_MONITOR_URL (src/hall-monitor.ts), so that var is not set.
       const hallMonitor: ServiceBinding =
           { binding: "HALL_MONITOR", service: instance.aiGuard.hallMonitorService };
-      config.services = [...config.services ?? [], hallMonitor];
+      config.services = [...config.services ?? [], hallMonitor, ...instance.district ? [GUARD_DISTRICT_BINDING] : []];
       withVars(pkgName, config, vars);
     } else if (pkgName === DISTRICT_PACKAGE && instance.district) {
       const hostnames = [instance.district.hostname, ...instance.district.aliases ?? []];

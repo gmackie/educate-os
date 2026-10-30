@@ -35,6 +35,11 @@
     {
       "binding": "HALL_MONITOR",
       "service": "hall-monitor"
+    },
+    {
+      "binding": "EDUCATEOS_DISTRICT",
+      "service": "schoolos-district-worker",
+      "entrypoint": "DistrictGuardDirectory"
     }
   ],
   "vars": {

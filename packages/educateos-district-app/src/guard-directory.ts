@@ -88,7 +88,8 @@ const unique = <T extends string>(values: readonly T[]): T[] => [...new Set(valu
 
 /**
  * Derives the {@link GuardSubject} of `request` from the district's records, or `null`. The
- * Workshop user reaches a principal only through a confirmed link (`@educateos/identity`); the
+ * Workshop user reaches a principal through a confirmed link (`@educateos/identity`), or, when the
+ * Workshop names them by principal (`principal:<id>`), as that principal; the
  * principal's kind, roles and grade bands come from the directory, and a gadget's workspace from
  * the workspace whose Workshop storage handle names it. A gadget with no workspace record is the
  * owner's personal workspace; one whose workspace belongs to another principal is refused. A
@@ -99,13 +100,14 @@ export function guardSubjectFrom(source: GuardDirectorySource, input: GuardSubje
   if (!parsed.success) return null;
   const request = parsed.data;
   const { directory } = source;
-  let resolved: WorkshopUserPrincipal;
+  let resolved: WorkshopUserPrincipal | undefined;
   try {
     resolved = createWorkshopUserResolver(directory, source.workshopUserLinks).resolve(request.workshopUser);
   } catch (error) {
-    if (error instanceof EducateOsError && error.code === "unauthenticated") return null;
-    throw error;
+    if (!(error instanceof EducateOsError && error.code === "unauthenticated")) throw error;
+    resolved = principalKeyed(directory, request.workshopUser);
   }
+  if (resolved === undefined) return null;
   // Only students and staff draw on district AI funding; a guardian or service has no subject.
   const { kind } = resolved;
   if (kind !== "student" && kind !== "staff") return null;
@@ -117,6 +119,24 @@ export function guardSubjectFrom(source: GuardDirectorySource, input: GuardSubje
   if (workspaceRecord !== undefined && workspaceRecord.ownerPrincipalId !== resolved.principalId) return null;
   const workspace: AiWorkspaceContext = workspaceRecord?.kind === "course" ? { kind: "course", offeringId: workspaceRecord.offeringId } : { kind: "personal" };
   return subjectOf(directory, resolved.principalId, kind, workspace);
+}
+
+/** The Workshop's name for a user it signed in through the district's principal resolver. */
+export const PRINCIPAL_WORKSHOP_USER_PREFIX = "principal:";
+
+/**
+ * The principal a principal-keyed Workshop user is (SCHO-283). With `PRINCIPAL_RESOLVER` bound, the
+ * Workshop names a user `principal:<id>` only after this district resolved their verified Access
+ * sign-in to that principal (`resolveAccessSignIn`), so the key is the district's own answer, not a
+ * claim: no administrator link is needed. Email-keyed users the principal migration aliased keep
+ * their email key and still need a confirmed {@link WorkshopUserLink}.
+ */
+function principalKeyed(directory: DistrictDirectorySnapshot, workshopUser: string): WorkshopUserPrincipal | undefined {
+  if (!workshopUser.startsWith(PRINCIPAL_WORKSHOP_USER_PREFIX)) return undefined;
+  const principalId = workshopUser.slice(PRINCIPAL_WORKSHOP_USER_PREFIX.length);
+  const principal = directory.principals.find((p) => p.id === principalId);
+  if (principal === undefined || principal.kind === "service") return undefined;
+  return { districtId: directory.district.id, principalId: principal.id, kind: principal.kind };
 }
 
 /**
