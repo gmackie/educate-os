@@ -3,6 +3,7 @@
 import { createDistrictApiClient, type DistrictApiClient, type RouteResponse } from "@educateos/api-client";
 import { catalogSeedRelease, type CatalogRelease } from "@educateos/catalog";
 import type { DistrictDirectorySnapshot, VerifiedIdentity } from "@educateos/contracts";
+import type { DemoGradebooks } from "../grades/types.ts";
 
 /** The districts a visitor can open, as `?district=` names them. */
 export type DistrictKey = "northfield" | "cedarvalley";
@@ -61,6 +62,8 @@ export interface DemoDistrict {
   clientFor(bearer: string, onResponse?: ResponseListener): DistrictApiClient;
   /** The district's roster sync, when its people arrive through one the visitor runs. */
   roster?: DemoRoster;
+  /** Where its teachers' approved grades go, when the demo passes them back to an LMS gradebook. */
+  grades?: DemoGradebooks;
 }
 
 /** The base URL the UIs' clients address. It is never fetched: requests go to the in-page app. */

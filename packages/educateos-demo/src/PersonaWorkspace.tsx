@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Button, Empty, Loader, Text } from "@cloudflare/kumo";
 import { createHashHistory } from "@tanstack/react-router";
 import type { DistrictApiClient } from "@educateos/api-client";
@@ -8,6 +8,9 @@ import { App as TeacherApp } from "@educateos/teacher-ui/src/App.tsx";
 import { DistrictApiProvider } from "@educateos/teacher-ui/src/DistrictApi.tsx";
 import type { DistrictState } from "./DemoApp.tsx";
 import { ROSTER_SYNC_ROUTE, type DemoDistrict, type DistrictInfo, type Persona, type PersonaId } from "./districts/index.ts";
+
+// Only a district that passes grades back has the panel, so it comes in its own chunk.
+const WhereItLanded = lazy(async () => ({ default: (await import("./grades/WhereItLanded.tsx")).WhereItLanded }));
 import { stepsDoneBy } from "./journeys.ts";
 
 interface PersonaWorkspaceProps {
@@ -78,6 +81,7 @@ const PersonaApp = ({ district, persona, bearer, onStepsDone }: { district: Demo
     case "teacher":
       return (
         <DistrictApiProvider client={client}>
+          {district.grades !== undefined && <Suspense><WhereItLanded grades={district.grades} /></Suspense>}
           <TeacherApp />
         </DistrictApiProvider>
       );

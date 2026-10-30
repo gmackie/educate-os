@@ -976,6 +976,12 @@ importers:
       '@educateos/integrations':
         specifier: workspace:*
         version: link:../educateos-integrations
+      '@educateos/lti':
+        specifier: workspace:*
+        version: link:../educateos-lti
+      '@educateos/lti-district':
+        specifier: workspace:*
+        version: link:../educateos-lti-district
       '@educateos/provider-fakes':
         specifier: workspace:*
         version: link:../educateos-provider-fakes
