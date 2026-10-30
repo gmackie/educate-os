@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { runInDurableObject } from "cloudflare:test";
 import type { WorkshopCapabilityDescriptor } from "@gadgets/workshop-shared/capability-policy";
 import type { UserDurableObject } from "../src/user.js";
-import { assertCapability } from "../src/capability-policy.js";
+import { assertCapability, hasCapabilityPolicy } from "../src/capability-policy.js";
 
 declare module "cloudflare:workers" {
   interface ProvidedEnv {
@@ -173,5 +173,19 @@ describe("direct User DO authority operations", () => {
         Reflect.set(userEnv, "WORKSHOP_CAPABILITY_POLICY", previous);
       }
     });
+  });
+});
+
+
+describe("mandatory backend Workshop policy", () => {
+  it("keeps the generic deployment optional and rejects missing school authority", () => {
+    expect(hasCapabilityPolicy({})).toBe(false);
+    expect(hasCapabilityPolicy({ REQUIRE_WORKSHOP_CAPABILITY_POLICY: "false" })).toBe(false);
+    expect(() => hasCapabilityPolicy({ REQUIRE_WORKSHOP_CAPABILITY_POLICY: "true" }))
+      .toThrow("Required Workshop capability policy");
+    expect(() => hasCapabilityPolicy({ REQUIRE_WORKSHOP_CAPABILITY_POLICY: "typo" }))
+      .toThrow("Invalid REQUIRE");
+    expect(hasCapabilityPolicy({ REQUIRE_WORKSHOP_CAPABILITY_POLICY: "true",
+      WORKSHOP_CAPABILITY_POLICY: { authorizeCapability: vi.fn() } })).toBe(true);
   });
 });

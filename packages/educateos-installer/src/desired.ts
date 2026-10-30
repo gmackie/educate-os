@@ -327,6 +327,24 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     }
     services.push(name);
   }
+  // The signed asset variant selects a school deployment, but enforcement is backend-owned.
+  const variants = router[0]![1].assetsConfig?.variants;
+  const schoolBuild = Boolean(variants?.["access-school"]);
+  if (schoolBuild && variants?.access) invalid("ambiguous Access asset variants");
+  if (schoolBuild) {
+    const policy = backend[0]![1].bindings.find(binding => binding.type === "service" &&
+      binding.name === "WORKSHOP_CAPABILITY_POLICY");
+    if (!policy || policy.type !== "service" ||
+        policy.service !== "$WORKER_NAME(educateos-district-worker)" ||
+        policy.entrypoint !== "DistrictWorkshopCapabilityPolicy") {
+      invalid("school release requires a district WORKSHOP_CAPABILITY_POLICY binding");
+    }
+  }
+  if (schoolBuild) {
+    for (const name of ["educateos-district-worker", "educateos-external-mcp"]) {
+      if (!services.includes(name)) invalid(`school release requires enabled service ${name}`);
+    }
+  }
   const scriptNames = new Map([backendPkg, routerPkg, ...installed, ...services].map((pkg) => [pkg, workerScriptName(config, pkg)]));
 
   const storage = new Map<ResourceKey, DesiredResource>();
@@ -464,6 +482,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     };
     if (entry.kind === "backend") {
       // The instance-state vars the hosted deploy service would inject (see manifest-lib).
+      if (schoolBuild) vars.REQUIRE_WORKSHOP_CAPABILITY_POLICY = "true";
       vars.ADMINS = config.admins;
       vars.CF_ACCESS_ISS = `https://${config.access.teamName}.cloudflareaccess.com`;
       dependsOn.add(accessApplication.key);

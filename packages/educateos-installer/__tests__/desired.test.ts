@@ -10,13 +10,25 @@ describe("release manifest", () => {
       variants["access-school"] = variants.access!;
       delete variants.access;
     });
+    expect(() => compileDesiredState(school.manifest, configFor(NORTHFIELD, school)))
+      .toThrow("school release requires a district WORKSHOP_CAPABILITY_POLICY binding");
+    // A binding to an uninstalled authority must fail placeholder resolution as well.
+    school.manifest.workers["workshop-backend"]!.bindings.push({ type: "service",
+      name: "WORKSHOP_CAPABILITY_POLICY", service: "$WORKER_NAME(educateos-district-worker)",
+      entrypoint: "DistrictWorkshopCapabilityPolicy" });
+    expect(() => compileDesiredState(school.manifest, configFor(NORTHFIELD, school)))
+      .toThrow("school release requires enabled service");
+    school.manifest.workers["workshop-backend"]!.bindings.pop();
+    // Validate assets independently of activation, which is intentionally blocked above.
+    delete school.manifest.workers.router!.assetsConfig!.variants["access-school"];
+    school.manifest.workers.router!.assetsConfig!.variants.access = base.manifest.workers.router!.assetsConfig!.variants.access!;
     const desired = compileDesiredState(school.manifest, configFor(NORTHFIELD, school));
     const router = desired.resources.find((resource) => resource.kind === "worker_script" && resource.pkgName === "router");
     expect(router && router.kind === "worker_script" && router.assets?.manifest)
-      .toEqual(school.manifest.workers.router!.assetsConfig!.variants["access-school"]!.manifest);
+      .toEqual(base.manifest.workers.router!.assetsConfig!.variants.access!.manifest);
     const ambiguous = await deriveRelease(school, "r000004-ambiguous", (manifest) => {
       const variants = manifest.workers.router!.assetsConfig!.variants;
-      variants.access = variants["access-school"]!;
+      variants["access-school"] = variants.access!;
     });
     expect(() => compileDesiredState(ambiguous.manifest, configFor(NORTHFIELD, ambiguous)))
       .toThrow("ambiguous Access asset variants");

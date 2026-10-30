@@ -1,3 +1,4 @@
+import { hasCapabilityPolicy } from "./capability-policy.js";
 import { RpcCompatible, RpcStub, RpcTarget } from "capnweb";
 import { validateRpc } from "capnweb-validate";
 import { Overseer, WorkspaceMetadata, UiBundle, WorkpieceId, WorkpieceSummary, WorkpiecesSubscriber, GadgetClient, GadgetBindingInfo, GatekeeperClient, ActionLogEntry, ActionsSubscriber, ActionHistoryFilter, ActionHistoryPage, ChatGadgetPinRecord, MainlineMergeGadget, ChatCodeBase, ChatGadgetPinState, CodeChangeSubmission, CommitInfo, FileAtCommit, MAX_READ_FILES_PER_CALL, TreeNode, MergeChangesResult, AiChatMetadata, AiChatMessage, AiChatHistoryPage, AiChatSubscriber, AiChatAuthorInfo, AiModelConfig, AiToolCall, AiChatMessageBody, AgentSpawnerConfig, AGENT_SPAWNER_CONNECTION_ID, ConsoleLogSubscriber, ConsoleLogEvent, CapsuleSpecifier, CollaboratorInfo, CollaboratorRole, AffectedCollaborator, ShareLinkInfo, GatekeeperCreationSpec, ObserverConfigCallback, ObserverBindingNeed, ObserverBindingFailure, BlueprintBindingAnnotation, BlueprintBinding, BlueprintMetadata, BlueprintOutput, BlueprintMerge, ApplyBlueprintResult, GadgetUpstream, MessageFormatRef, isOutputIcon, SpawnerEnvTarget, BlueprintGadgetSummary, AiChatStreamEvent, BlueprintScreenshotUpload, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ChatAttachmentHandle, ChatAttachmentRef, BoundHookInfo, PreApprovableAction, PresenceParticipant, PresenceSubscriber, SlashCommandChoice, SlashCommandRequest, validateBindingName, createOpenWorkspaceError, OPEN_WORKSPACE_ERROR_CODES, resolveSiteName, modelKind } from '@gadgets/workshop-shared/api'
@@ -7490,7 +7491,7 @@ class OverseerImpl implements AgentHooks {
       initiatorUserId: string, initiatorModelId: string | null): Promise<void> {
     if (!this.ownerId) throw new Error("Workspace has been deleted.");
 
-    if (this.env.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.env)) {
       let user = this.users.get(this.users.idFromString(initiatorUserId));
       await user.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.ctx.id.toString() });
     }
@@ -10564,7 +10565,7 @@ export class OverseerDurableObject extends DurableObject<Cloudflare.Env> {
       };
     }
 
-    if (this.impl.env.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await caller.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.ctx.id.toString() });
       if (!this.impl.ownerId) {
         await caller.assertWorkshopCapability({ action: "workspace.create", workspaceId: this.ctx.id.toString() });
@@ -11332,7 +11333,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
 
   async createGadget(title: string, chatId?: number, bindingName?: string)
       : Promise<RpcStub<GadgetClient>> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "gadget.create", workspaceId: this.impl.ctx.id.toString() });
     }
     // When creating within a chat, names already claimed in that chat's scope (its seed
@@ -12212,7 +12213,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
   async newChat(initialMessage: string | SlashCommandRequest, chosenModelId: string | null,
                 capsules?: CapsuleSpecifier[], attachments?: ChatAttachmentHandle[],
                 formats?: MessageFormatRef[]): Promise<number> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.impl.ctx.id.toString() });
     }
     let userMeta = await retryOnDoReset(
@@ -12225,7 +12226,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
       chatId: number, message: string | SlashCommandRequest, chosenModelId: string | null,
       capsules?: CapsuleSpecifier[], attachments?: ChatAttachmentHandle[],
       formats?: MessageFormatRef[]): Promise<void> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.impl.ctx.id.toString() });
     }
     // A steer runs on the running turn's model, so it is queued before the sender's model is
@@ -12350,7 +12351,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
   }
 
   async retryAgent(chatId: number, modelId: string): Promise<void> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.impl.ctx.id.toString() });
     }
     let userMeta = await retryOnDoReset(
@@ -12450,7 +12451,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
     updateBindings?: boolean;
     screenshot?: BlueprintScreenshotUpload | null;
   }): Promise<void> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "blueprint.publish", workspaceId: this.impl.ctx.id.toString() });
     }
     let record = this.impl.storage.blueprints.get(blueprintId);
@@ -12504,7 +12505,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
   }
 
   async retryBlueprintPublish(blueprintId: string): Promise<void> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "blueprint.publish", workspaceId: this.impl.ctx.id.toString() });
     }
     let record = this.impl.storage.blueprints.get(blueprintId);
@@ -12539,7 +12540,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
 
   async addCollaborator(username: string, role: CollaboratorRole, note?: string)
       : Promise<CollaboratorInfo | null> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "workspace.share", workspaceId: this.impl.ctx.id.toString() });
     }
     // Look up the user DO to check if the account exists.
@@ -12607,7 +12608,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
 
   async createShareLink(role: CollaboratorRole, note?: string)
       : Promise<{ key: string; linkId: string }> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "workspace.share", workspaceId: this.impl.ctx.id.toString() });
     }
     return (await this.impl.getSharingManager())
@@ -12615,7 +12616,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
   }
 
   async newShareLinkKey(linkId: string): Promise<{ key: string }> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "workspace.share", workspaceId: this.impl.ctx.id.toString() });
     }
     return (await this.impl.getSharingManager())
@@ -13005,14 +13006,14 @@ class GadgetClientImpl extends RpcTarget implements GadgetClient {
   }
 
   async getUiBundle(chatId?: number): Promise<UiBundle | null> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
     }
     return this.impl.getGadgetUiBundle(this.id, chatId);
   }
 
   async connectToGadget(chatId?: number): Promise<RpcStub<any>> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
     }
     this.impl.recordGadgetAnalytics({
@@ -13027,14 +13028,14 @@ class GadgetClientImpl extends RpcTarget implements GadgetClient {
   }
 
   async getExportFormats(chatId?: number): Promise<GadgetExportFormat[]> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
     }
     return this.impl.getGadgetExportFormats(this.id, chatId);
   }
 
   async export(formatId: string, chatId?: number): Promise<ReadableStream<Uint8Array>> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
     }
     return this.impl.exportGadget(this.id, formatId, chatId);
@@ -13156,7 +13157,7 @@ class GadgetClientImpl extends RpcTarget implements GadgetClient {
   async createBlueprint(title?: string, description?: string,
                         screenshotUpload?: BlueprintScreenshotUpload)
       : Promise<BlueprintGadgetSummary> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "blueprint.publish", workspaceId: this.impl.ctx.id.toString() });
     }
     if (!this.impl.ownerId) throw new Error("Workspace not initialized.");
@@ -13244,7 +13245,7 @@ class GadgetClientImpl extends RpcTarget implements GadgetClient {
   async applyBlueprint(blueprintId: string,
                        options: {modelId: string | null, allowUnrelated?: boolean})
       : Promise<ApplyBlueprintResult> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.impl.ctx.id.toString() });
     }
     let userMeta = await retryOnDoReset(
@@ -13296,7 +13297,7 @@ class UseGadgetClientInterface extends RpcTarget implements GadgetClient {
   }
 
   async getUiBundle(chatId?: number): Promise<UiBundle | null> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
     }
     if (chatId !== undefined) {
@@ -13306,7 +13307,7 @@ class UseGadgetClientInterface extends RpcTarget implements GadgetClient {
   }
 
   async connectToGadget(chatId?: number): Promise<RpcStub<any>> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
     }
     if (chatId !== undefined) {
@@ -13324,7 +13325,7 @@ class UseGadgetClientInterface extends RpcTarget implements GadgetClient {
   }
 
   async getExportFormats(chatId?: number): Promise<GadgetExportFormat[]> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
     }
     if (chatId !== undefined) this.#deny();
@@ -13332,7 +13333,7 @@ class UseGadgetClientInterface extends RpcTarget implements GadgetClient {
   }
 
   async export(id: string, chatId?: number): Promise<ReadableStream<Uint8Array>> {
-    if (this.impl.env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await this.#clientUser.assertWorkshopCapability({ action: "gadget.execute", workspaceId: this.impl.ctx.id.toString() });
     }
     if (chatId !== undefined) this.#deny();
@@ -13634,7 +13635,7 @@ class AgentSpawnerQueueImpl extends ApprovalQueueImpl implements AgentSpawnerQue
     let resolveUserId = creatorUserId ?? this.impl.ownerId;
     let initiatorUserId = this.impl.users.idFromString(resolveUserId).toString();
     let user = this.impl.users.get(this.impl.users.idFromString(resolveUserId));
-    if (this.impl.env.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    if (hasCapabilityPolicy(this.impl.env)) {
       await user.assertWorkshopCapability({ action: "agent.execute", workspaceId: this.impl.ctx.id.toString() });
     }
     let userMeta = await user.getChatContext(this.#spawner().config.modelId);

@@ -20,3 +20,18 @@ export async function assertCapability(
   }
   throw new Error(`Workshop policy did not allow ${request.action}.`);
 }
+
+/** Refuse a misconfigured mandatory-policy deployment before any protected work. */
+export function hasCapabilityPolicy(env: {
+  REQUIRE_WORKSHOP_CAPABILITY_POLICY?: string;
+  WORKSHOP_CAPABILITY_POLICY?: unknown;
+} | undefined): boolean {
+  const required = env?.REQUIRE_WORKSHOP_CAPABILITY_POLICY;
+  if (required !== undefined && required !== "true" && required !== "false") {
+    throw new Error("Invalid REQUIRE_WORKSHOP_CAPABILITY_POLICY setting.");
+  }
+  if (required === "true" && env?.WORKSHOP_CAPABILITY_POLICY === undefined) {
+    throw new Error("Required Workshop capability policy is unavailable.");
+  }
+  return env?.WORKSHOP_CAPABILITY_POLICY !== undefined;
+}

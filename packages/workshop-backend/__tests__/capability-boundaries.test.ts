@@ -80,3 +80,20 @@ describe("policy checks at retained Workshop RPC boundaries", () => {
     api[Symbol.dispose]();
   });
 });
+
+
+it("refuses direct retained RPC when required school policy binding is missing", async () => {
+  const sideEffect = vi.fn();
+  const api = await openFakeOverseer({}, { role: "build", impl: {
+    env: { REQUIRE_WORKSHOP_CAPABILITY_POLICY: "true" },
+    getSharingManager: sideEffect,
+  } });
+  try {
+    await expect(api.createGadget("student")).rejects.toThrow("Required Workshop capability policy");
+    await expect(api.createShareLink("build")).rejects.toThrow("Required Workshop capability policy");
+    await expect(api.newChat("prompt", null)).rejects.toThrow("Required Workshop capability policy");
+    expect(sideEffect).not.toHaveBeenCalled();
+  } finally {
+    api[Symbol.dispose]();
+  }
+});
