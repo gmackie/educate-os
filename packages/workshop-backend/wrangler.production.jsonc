@@ -83,6 +83,11 @@
   },
   "services": [
     {
+      "binding": "GATEKEEPER_CLEVER",
+      "service": "gatekeeper-clever",
+      "entrypoint": "GatekeeperVendor"
+    },
+    {
       "binding": "GATEKEEPER_CONTEXT",
       "service": "gatekeeper-context",
       "entrypoint": "GatekeeperVendor",

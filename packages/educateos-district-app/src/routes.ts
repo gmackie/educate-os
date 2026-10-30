@@ -137,6 +137,7 @@ import type { IntegrationHealth, oneroster } from "@educateos/integrations";
 import { GuardianRelationship, GuardianRelationshipId, OpaqueCode, PrincipalStatus } from "@educateos/contracts";
 import { GuardianRelationshipAuditEvent, GuardianRelationshipScope } from "@educateos/policy";
 import { GuardianInvitationId, GuardianInvitationRedemption, IdentityRequestId, NewGuardianInvitation } from "@educateos/identity-links";
+import { WorkshopUserKey, WorkshopUserLink } from "@educateos/identity";
 // Communication (SCHO-189). Imported from the model alone, which this browser-safe module can carry.
 import {
   Announcement,
@@ -1161,6 +1162,14 @@ export const ROUTES = {
   "admin.health": route({ method: "GET", path: "/api/admin/health", surface: "admin", response: DistrictHealthBody }),
   "admin.listOfferings": route({ method: "GET", path: "/api/admin/offerings", surface: "admin", response: z.array(AdminOfferingBody) }),
   "admin.directoryNames": route({ method: "GET", path: "/api/admin/directory-names", surface: "admin", response: DirectoryNamesBody }),
+  // Workshop user links (SCHO-283): which Workshop accounts are which people, for the AI call guard.
+  "admin.workshopUserLinks": route({
+    method: "GET", path: "/api/admin/workshop-user-links", surface: "admin", response: z.array(WorkshopUserLink),
+  }),
+  "admin.linkWorkshopUser": route({
+    method: "POST", path: "/api/admin/workshop-user-links", surface: "admin", status: 201,
+    body: z.strictObject({ workshopUser: WorkshopUserKey, principalId: PrincipalId }), response: WorkshopUserLink,
+  }),
   // Learning standards (SCHO-220)
   "admin.listStandards": route({ method: "GET", path: "/api/admin/standards", surface: "admin", response: z.array(StandardsReleaseBody) }),
   "admin.approveStandards": route({

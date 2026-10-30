@@ -225,6 +225,41 @@ export function rosterPreview(): RouteResponse<"admin.previewRoster"> {
   } as unknown as RouteResponse<"admin.previewRoster">;
 }
 
+type SyncRun = RouteResponse<"admin.rosterSyncStatus">["runs"][number];
+type SyncCounts = SyncRun["counts"];
+
+const NO_CHANGE = { added: 0, updated: 0, deactivated: 0 };
+
+/** Sync counts: no change except where `changed` says. */
+const syncCounts = (changed: Partial<SyncCounts> = {}): SyncCounts => ({
+  schools: NO_CHANGE, terms: NO_CHANGE, courses: NO_CHANGE, offerings: NO_CHANGE, principals: NO_CHANGE, enrollments: NO_CHANGE,
+  roleAssignments: { added: 0, removed: 0 },
+  ...changed,
+});
+
+/** The fake roster's sync history: the first complete sync, then a delta that changed one student. */
+function initialSyncRuns(): SyncRun[] {
+  return [
+    {
+      id: "sched-1", mode: "complete", startedAt: "2026-10-28T06:00:00.000Z", finishedAt: "2026-10-28T06:00:42.000Z", outcome: "succeeded", quarantined: 0,
+      counts: syncCounts({
+        schools: { added: 2, updated: 0, deactivated: 0 }, terms: { added: 1, updated: 0, deactivated: 0 }, courses: { added: 4, updated: 0, deactivated: 0 },
+        offerings: { added: 4, updated: 0, deactivated: 0 }, principals: { added: 96, updated: 0, deactivated: 0 }, enrollments: { added: 96, updated: 0, deactivated: 0 },
+        roleAssignments: { added: 5, removed: 0 },
+      }),
+    },
+    {
+      id: "sched-2", mode: "delta", startedAt: "2026-10-28T06:15:00.000Z", finishedAt: "2026-10-28T06:15:03.000Z", outcome: "succeeded", quarantined: 0,
+      counts: syncCounts({ principals: { added: 0, updated: 1, deactivated: 0 } }),
+    },
+  ];
+}
+
+/** What a sync of the fake roster reads: one student moved class, one left, one is held for review. */
+function syncPreview(issues: { severity: "error" | "warning"; file?: string; row?: number; column?: string; sourcedId?: string; message: string }[]) {
+  return { ...rosterPreview(), canApply: !issues.some((issue) => issue.severity === "error"), issues };
+}
+
 const totals = (requests: number, cents: number) => ({
   requests, inputTokens: requests * 200, outputTokens: requests * 100, cacheReadTokens: 0, cacheWriteTokens: 0, attempts: requests, unknownCostRequests: 0,
   usageUsdNano: String(cents * 10_000_000), adjustmentUsdNano: "0", totalUsdNano: String(cents * 10_000_000),
@@ -291,6 +326,12 @@ export interface FakeDistrictOptions {
    * refuses with the sign-in to give an administrator.
    */
   caller?: "administrator" | "not-administrator" | "unlinked";
+  /**
+   * The roster sync: a Clever sync that runs (the default), one whose next run the feed rejects or
+   * whose next run is held for a large removal, a OneRoster connection this deployment cannot run,
+   * or a status the district cannot read.
+   */
+  rosterSync?: "runnable" | "feed-rejected" | "removal-held" | "not-runnable" | "unreadable";
 }
 
 /** The sign-in an `unlinked` caller signed in with. */
@@ -485,6 +526,9 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
     { id: "opa_1", keyId: "ed25519-earlier", operator: "ops@educateos.io", route: "health", result: "ok", at: "2026-10-28T11:00:00.000Z" },
     { id: "opa_2", keyId: "ed25519-earlier", operator: "ops@educateos.io", route: "directory.action", target: "prn_fk-student-301/suspend", result: "applied", at: "2026-10-28T11:05:00.000Z" },
   ];
+  const syncRuns = options.rosterSync === "not-runnable" ? [] : initialSyncRuns();
+  let approvedRemoval: string | undefined;
+  const HELD_FINGERPRINT = "a".repeat(64);
   const handlers: { [N in RouteName]?: (input: Record<string, unknown>) => RouteResponse<N> } = {
     // Loosely typed, like the other handlers' `as never` answers.
     ...(fakeAuthoring(options.authority ?? "oneroster") as object),
@@ -581,6 +625,78 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
     },
     "admin.previewRoster": () => rosterPreview(),
     "admin.applyRoster": () => ({ applied: true, preview: rosterPreview(), grantsRevoked: 1 }) as never,
+    // Roster sync (SCHO-277): a Clever roster that syncs on a schedule, unless the options say otherwise.
+    "admin.rosterSyncStatus": () => {
+      if (options.rosterSync === "unreadable") throw new DistrictApiError(503, { code: "unavailable", message: "The roster sync record could not be read.", correlationId: "req-sync" });
+      if (options.rosterSync === "not-runnable") {
+        return { provider: "oneroster-api", runnable: false, reason: "this deployment has no roster source for oneroster-api", runs: [] } as never;
+      }
+      const latest = syncRuns.at(-1);
+      const lastSuccess = syncRuns.findLast((run) => run.outcome === "succeeded");
+      const failures = syncRuns.length - 1 - syncRuns.findLastIndex((run) => run.outcome === "succeeded");
+      return {
+        provider: "clever",
+        runnable: true,
+        runs: syncRuns,
+        health: {
+          status: failures > 0 ? "degraded" : "healthy",
+          ...(lastSuccess === undefined ? {} : { lastSuccessAt: lastSuccess.finishedAt, stalenessMinutes: 20 }),
+          consecutiveFailures: failures,
+          ...(latest?.errorCode === undefined ? {} : { lastErrorCode: latest.errorCode }),
+          quarantineBacklog: lastSuccess?.quarantined ?? 0,
+        },
+        ...(approvedRemoval === undefined ? {} : { approvedRemoval }),
+      } as never;
+    },
+    "admin.runRosterSync": (input) => {
+      if (options.rosterSync === "not-runnable") {
+        throw new DistrictApiError(503, { code: "unavailable", message: "The roster cannot sync: this deployment has no roster source for oneroster-api.", correlationId: "req-sync" });
+      }
+      const mode = (input.body as { mode?: "complete" | "delta" }).mode ?? "complete";
+      const at = new Date(Date.parse("2026-10-29T09:00:00.000Z") + syncRuns.length * 60_000).toISOString();
+      const base = { id: `admin-req-${syncRuns.length + 1}`, mode, startedAt: at, finishedAt: at };
+      if (options.rosterSync === "feed-rejected") {
+        const run = { ...base, counts: syncCounts(), quarantined: 0, outcome: "failed", errorCode: "feed-rejected" } as SyncRun;
+        syncRuns.push(run);
+        return {
+          ran: true, run, grantsRevoked: 0,
+          preview: syncPreview([
+            { severity: "error", file: "enrollments.csv", row: 14, column: "classSourcedId", sourcedId: "enr-14", message: "The enrollment names a class the feed does not list." },
+            { severity: "warning", file: "demographics.csv", message: "demographics.csv is not read; it was skipped." },
+          ]),
+        } as never;
+      }
+      if (options.rosterSync === "removal-held" && approvedRemoval !== HELD_FINGERPRINT) {
+        const run = {
+          ...base, counts: syncCounts(), quarantined: 0, outcome: "failed", errorCode: "removal-held",
+          held: { principals: { deactivated: 60, active: 96 }, enrollments: { deactivated: 60, active: 96 }, fingerprint: HELD_FINGERPRINT },
+        } as SyncRun;
+        syncRuns.push(run);
+        return { ran: true, run, grantsRevoked: 0 } as never;
+      }
+      approvedRemoval = undefined;
+      const run = {
+        ...base, quarantined: 1, outcome: "succeeded",
+        counts: syncCounts({
+          principals: { added: 1, updated: 2, deactivated: 1 },
+          enrollments: { added: 2, updated: 0, deactivated: 3 },
+          ...(mode === "complete" ? { offerings: { added: 0, updated: 1, deactivated: 0 } } : {}),
+        }),
+      } as SyncRun;
+      syncRuns.push(run);
+      return {
+        ran: true, run, grantsRevoked: 1,
+        preview: syncPreview([{ severity: "warning", file: "users.csv", row: 12, column: "grades", sourcedId: "u-312", message: "The grade \"13\" is not a grade level; it was left out." }]),
+      } as never;
+    },
+    "admin.approveRosterRemoval": (input) => {
+      const { fingerprint } = input.body as { fingerprint: string };
+      if (syncRuns.at(-1)?.held?.fingerprint !== fingerprint) {
+        throw new DistrictApiError(409, { code: "conflict", message: "That is not the removal the latest roster sync held; review the latest sync again." });
+      }
+      approvedRemoval = fingerprint;
+      return { approvedRemoval: fingerprint } as never;
+    },
     "admin.termRollover": (input) => ({
       termId: (input.params as { termId: string }).termId,
       termState: "completed",
