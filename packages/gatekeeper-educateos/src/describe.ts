@@ -5,12 +5,17 @@ import type { ActionPresentation } from "@gadgets/gatekeeper-kit/actions";
 import type { ObservationDescription } from "@gadgets/workshop-shared/gatekeeper";
 import type { SchoolChange, SchoolRead } from "./session.ts";
 
-/** The activity-log entry for a read the agent is about to receive. */
+/**
+ * The activity-log entry for a read the agent is about to receive. Every school read is student
+ * or staff records, so it marks the workspace as holding restricted data: from then on the
+ * Workshop refuses public web fetches and git pushes, and holds every action for a person, so a
+ * prompt injection cannot carry the records out.
+ */
 export function describeRead(read: SchoolRead): ObservationDescription {
   const { description, fields } = withCall(buildDescription(
     "Reads school records with your access, through the district's school tools.",
   ), read).finish();
-  return { title: `Read school records (${read.tool})`, description, fields };
+  return { title: `Read school records (${read.tool})`, description, fields, containsRestrictedData: true };
 }
 
 /** What a person reviews before deciding a queued change. */

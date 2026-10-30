@@ -31,6 +31,7 @@ import type { AccessSignInResolution, EmailKeyedUserMatch } from "@educateos/ide
 import type { AdmittedSubjectRequest, GuardSubject, GuardSubjectRequest } from "@educateos/district-app/guard-directory";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
 import { startDistrict, type District } from "./district.ts";
+import { discussionHallMonitor } from "./hall-monitor.ts";
 import type { SendEmailBinding } from "./mail.ts";
 import { jobForCron } from "./schedule.ts";
 import { onLegacyTableMigrated, type LegacyTableReport } from "@educateos/contracts/legacy-tables";
@@ -95,6 +96,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
 
   /** The fetch roster syncs reach their provider (Clever's Data API) with (SCHO-203). Tests replace it with a fake. */
   protected rosterFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    return fetch(input, init);
+  }
+
+  /** The fetch discussion screening reaches Hall Monitor with (SCHO-305). Tests replace it with a fake. */
+  protected hallMonitorFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     return fetch(input, init);
   }
 
@@ -317,6 +323,13 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         }),
         platformFetch: (input, init) => this.platformFetch(input, init),
         rosterFetch: (input, init) => this.rosterFetch(input, init),
+        discussionHallMonitor: (screening) => discussionHallMonitor({
+          url: this.env.HALL_MONITOR_URL,
+          signingKey: this.env.HALL_MONITOR_SIGNING_KEY,
+          issuer: this.env.HALL_MONITOR_ISSUER,
+          audience: this.env.HALL_MONITOR_AUDIENCE,
+          fetch: (input, init) => this.hallMonitorFetch(input, init),
+        }, screening),
         analyticsFetch: (request) => this.analyticsFetch(request),
         ...(keys === undefined ? {} : { accessKeys: keys }),
         ...(sendEmail === undefined ? {} : { sendEmail }),

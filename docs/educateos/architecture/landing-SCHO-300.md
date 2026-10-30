@@ -274,3 +274,23 @@ district role resolution, prompt draft preservation and school library empty sta
 frontend build/typechecks pass (4 tasks). Root lint/config/workspace build also passes (181 tasks).
 Seven preceding train PRs remain open: 167, 183, 210, 217, 218, 223 and 224. The batch still lands
 last, after a further latest-main merge if needed and completed exact-head canonical CI gates.
+
+## Canonical school-data safeguards refresh after PR 235
+
+Merged canonical main `c5c3932e`, retaining SCHO-305's restricted-data classification on school
+reads, default hold for unscreened student discussion posts, and fail-closed Hall Monitor
+transport. Preserve the batch's assessment and Workshop capability-policy dependencies alongside
+the new discussion screening dependencies; the only textual conflict was the district Worker's
+lockfile importer. No dependency versions, kernel code, deployment configuration or source video
+assets were changed by the resolution.
+
+Validation: frozen installation and supply-chain checks pass; all 460 affected tests pass
+(24 discussion, 250 district application, 139 district real-workerd, 36 school gatekeeper
+Node/DOM and 11 school gatekeeper real-workerd), including restricted school observations and
+student discussion holds/blocks/unavailable screening. All 81 release/config/environment tests
+and root lint/config/workspace build (181 tasks) pass.
+
+The aggregate on prior head `f4ca3b14` passed main CI, video and operations, but the mobile and
+Workshop jobs were still pending at audit; that aggregate never qualified as all required gates
+complete. Require completed exact-head CI again after this merge. Seven preceding train PRs
+remain open (167, 183, 210, 217, 218, 223, 224); this batch stays last.
