@@ -6,9 +6,8 @@ import { AdminApp } from "@educateos/admin-ui/src/App.tsx";
 import { StudentApp } from "@educateos/student-ui/src/App.tsx";
 import { App as TeacherApp } from "@educateos/teacher-ui/src/App.tsx";
 import { DistrictApiProvider } from "@educateos/teacher-ui/src/DistrictApi.tsx";
-import { CleverSyncPanel } from "./CleverSyncPanel.tsx";
 import type { DistrictState } from "./DemoApp.tsx";
-import type { DemoDistrict, DistrictInfo, Persona, PersonaId } from "./districts/index.ts";
+import { ROSTER_SYNC_ROUTE, type DemoDistrict, type DistrictInfo, type Persona, type PersonaId } from "./districts/index.ts";
 import { stepsDoneBy } from "./journeys.ts";
 
 interface PersonaWorkspaceProps {
@@ -19,8 +18,8 @@ interface PersonaWorkspaceProps {
   bearer?: string;
   /** Called with the journey steps the persona's last request completed. */
   onStepsDone: (ids: readonly string[]) => void;
-  /** Switches to another persona of the same district. */
-  onChoose: (persona: PersonaId) => void;
+  /** Switches to another persona of the same district, opening their app at `route` if given. */
+  onChoose: (persona: PersonaId, route?: string) => void;
 }
 
 /** The persona's own app, once the district is up, and its roster has brought the persona in. */
@@ -47,9 +46,9 @@ export const PersonaWorkspace = ({ info, district, persona, bearer, onStepsDone,
       <div className="mx-auto flex max-w-xl flex-col items-center gap-4 p-8 text-center">
         <Empty
           title={`${info.name} hasn't synced from Clever yet`}
-          description={`${persona.name} comes from the district's Clever roster, which hasn't been brought in. Sign in as the administrator, ${admin.name}, and run the Clever sync.`}
+          description={`${persona.name} comes from the district's Clever roster, which hasn't been brought in. Sign in as the administrator, ${admin.name}, and run the first sync from Roster sync.`}
         />
-        <Button variant="primary" onClick={() => onChoose("admin")}>{`Sign in as ${admin.name}`}</Button>
+        <Button variant="primary" onClick={() => onChoose("admin", ROSTER_SYNC_ROUTE)}>{`Sign in as ${admin.name}`}</Button>
       </div>
     );
   }
@@ -98,15 +97,13 @@ const LearningHome = ({ client }: { client: DistrictApiClient }) => {
 };
 
 /**
- * The admin console, under the demo's Clever sync panel when the district's people come from one.
- * A sync changes the whole directory, so the console starts over to read it again.
+ * The admin console. In a district whose roster the visitor has yet to sync, it opens at its Roster
+ * sync screen, where the first sync is run, unless it was sent somewhere else.
  */
 const AdminConsole = ({ district, client }: { district: DemoDistrict; client: DistrictApiClient }) => {
-  const [syncs, setSyncs] = useState(0);
-  return (
-    <>
-      {district.roster !== undefined && <CleverSyncPanel roster={district.roster} onSynced={() => setSyncs((n) => n + 1)} />}
-      <AdminApp key={syncs} client={client} />
-    </>
-  );
+  // Before the console's first render, which reads the route from the hash.
+  useState(() => {
+    if (district.roster?.synced() === false && window.location.hash === "") window.history.replaceState(null, "", ROSTER_SYNC_ROUTE);
+  });
+  return <AdminApp client={client} />;
 };

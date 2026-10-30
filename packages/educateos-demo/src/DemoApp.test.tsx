@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { findByRole, findByText, getByRole, queryByRole, waitFor } from "@testing-library/dom";
+import { findByRole, findByText, getByRole, queryByRole, waitFor, within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DemoApp } from "./DemoApp.tsx";
@@ -100,9 +100,12 @@ describe("the demo's districts", () => {
     await userEvent.click(getByRole(container, "button", { name: "Sign in as Elaine Park" }));
     expect(getByRole(container, "button", { name: "Sign out of the portal" })).toBeDefined();
     await openEducateOS();
-    expect(await findByRole(container, "heading", { name: "Dashboard" }, BOOT)).toBeDefined();
-    await userEvent.click(getByRole(container, "button", { name: "Run Clever sync" }));
-    expect(await findByText(container, "Synced from Clever: 8 people and 4 classes added, 0 updated, 0 removed.", {}, BOOT)).toBeDefined();
+    // The administrator lands on the console's own Roster sync screen, where the first sync is run.
+    expect(await findByRole(container, "heading", { name: "Roster sync" }, BOOT)).toBeDefined();
+    expect(window.location.hash).toBe("#/roster-sync");
+    await userEvent.click(await findByRole(container, "button", { name: "Run complete sync" }, BOOT));
+    const result = await findByRole(container, "region", { name: "Complete sync just now" }, BOOT);
+    expect(within(result).getByText("The roster is up to date")).toBeDefined();
 
     await switchPersona();
     await choose("Earth Science and Algebra teacher");
@@ -131,13 +134,54 @@ describe("the demo's districts", () => {
     expect(banner().textContent).toContain(CLEVER_NOTICE);
     await choose("District administrator");
     await openEducateOS();
-    await userEvent.click(await findByRole(container, "button", { name: "Run Clever sync" }, BOOT));
-    await findByText(container, /^Synced from Clever/, {}, BOOT);
+    await userEvent.click(await findByRole(container, "button", { name: "Run complete sync" }, BOOT));
+    await findByRole(container, "region", { name: "Complete sync just now" }, BOOT);
 
     await userEvent.click(getByRole(banner(), "button", { name: "Reset demo" }));
     expect(window.location.search).toBe("?district=cedarvalley");
     await choose("Earth Science and Algebra teacher");
     await openEducateOS();
     expect(await findByRole(container, "heading", { name: "Cedar Valley USD hasn't synced from Clever yet" }, BOOT)).toBeDefined();
+  });
+
+  it("changes Cedar Valley in Clever from its Clever side, and a delta sync in Roster sync brings the changes in", async () => {
+    act(() => root.unmount());
+    container.remove();
+    await mount("/demo/?district=cedarvalley");
+    await choose("Earth Science and Algebra teacher");
+    await openEducateOS();
+    const side = await findByRole(container, "complementary", { name: "Clever side" }, BOOT);
+    await userEvent.click(getByRole(side, "button", { name: "Clever side" }));
+    // Nothing can change in Clever before the first sync; the panel sends the visitor to it, as the
+    // administrator, whom the portal signs in.
+    await userEvent.click(getByRole(side, "button", { name: "Open Roster sync as Elaine Park" }));
+    expect(await findByText(container, "Signed in to the portal as Elaine Park")).toBeDefined();
+    await openEducateOS();
+    expect(await findByRole(container, "heading", { name: "Roster sync" }, BOOT)).toBeDefined();
+    await userEvent.click(await findByRole(container, "button", { name: "Run complete sync" }, BOOT));
+    await findByRole(container, "region", { name: "Complete sync just now" }, BOOT);
+
+    const earthScience = await findByRole(side, "region", { name: "Earth Science 8 - Whitaker" }, BOOT);
+    await userEvent.click(getByRole(earthScience, "button", { name: "Change Bao Nguyen in Earth Science 8 - Whitaker" }));
+    await userEvent.click(await findByRole(document.body, "menuitem", { name: "Withdraw from the district" }));
+    await userEvent.click(getByRole(side, "button", { name: "Add a new student to Algebra I - Whitaker" }));
+    const pending = getByRole(side, "region", { name: "Pending in Clever" });
+    expect(within(pending).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      "Withdrew Bao Nguyen from the district",
+      "Added Maya Chen to Algebra I - Whitaker",
+    ]);
+    expect(within(pending).getByText("Run a delta sync in Roster sync to bring these in.")).toBeDefined();
+
+    await userEvent.click(getByRole(container, "button", { name: "Run delta sync" }));
+    const result = await findByRole(container, "region", { name: "Delta sync just now" }, BOOT);
+    // People added, updated, deactivated: Maya Chen in, Bao Nguyen out, and no one else.
+    expect(within(result).getByRole("row", { name: /^People 1 0 1$/ })).toBeDefined();
+    expect(await findByText(pending, "Nothing waiting: Cedar Valley has every change Clever has.", {}, BOOT)).toBeDefined();
+
+    // The teacher's classes show it on their next load.
+    await switchPersona();
+    await choose("Earth Science and Algebra teacher");
+    await openEducateOS();
+    expect(await findByRole(container, "heading", { name: "My classes" }, BOOT)).toBeDefined();
   });
 });

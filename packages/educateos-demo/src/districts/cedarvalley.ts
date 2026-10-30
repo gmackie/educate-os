@@ -113,15 +113,17 @@ export async function bootCedarValley(): Promise<CedarValleyDistrict> {
 
   let synced = false;
   let seeding: Promise<void> | undefined;
+  const syncListeners = new Set<(result: RosterSyncResult) => void>();
   const fetch = async (request: Request): Promise<Response> => {
     const response = await app.fetch(request);
-    if (!synced && response.ok && request.method === "POST" && new URL(request.url).pathname === ROSTER_SYNC_PATH) {
+    if (response.ok && request.method === "POST" && new URL(request.url).pathname === ROSTER_SYNC_PATH) {
       const result = await response.clone().json() as RosterSyncResult;
-      if (result.run?.outcome === "succeeded") {
+      if (!synced && result.run?.outcome === "succeeded") {
         seeding ??= seedCoursework(signedIn(subjectOf("teacher")), signedIn(CLASSMATE_SUBJECT));
         await seeding;
         synced = true;
       }
+      for (const listener of syncListeners) listener(result);
     }
     return response;
   };
@@ -142,6 +144,10 @@ export async function bootCedarValley(): Promise<CedarValleyDistrict> {
       provider: "clever",
       synced: () => synced,
       sync: () => admin.call("admin.runRosterSync", { body: {} }),
+      onSync: (listener) => {
+        syncListeners.add(listener);
+        return () => syncListeners.delete(listener);
+      },
     },
   };
 }
