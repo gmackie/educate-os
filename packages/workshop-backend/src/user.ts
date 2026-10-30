@@ -228,6 +228,21 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     });
   }
 
+  /** Internal kernel entrypoint: derives the principal exclusively from persisted storage. */
+  async assertWorkshopCapability(scope: WorkshopCapabilityScope): Promise<void> {
+    await this.#assertCapability(scope);
+  }
+
+  /** Advisory only; creation still authorizes its concrete scope at the mutation. */
+  async canCreateGadget(): Promise<boolean> {
+    try {
+      await this.#assertCapability({ action: "workspace.create.query" });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // Mirrors the profile into the deployment-wide user directory. Best-effort
   // and does not block the caller. The `syncUser` call opens this DO's input
   // gate, so a rename can start a second sync while one is in flight, and the
@@ -1121,6 +1136,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   }
 
   async importBlueprint(id: string, metadata: BlueprintMetadata): Promise<void> {
+    await this.#assertCapability({ action: "blueprint.import" });
     this.storage.libraryBlueprints.put({
       id,
       metadata,

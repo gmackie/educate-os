@@ -350,6 +350,10 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     return this.#openWorkspaceInternal(id, shareKey, configureObservers);
   }
 
+  canCreateGadget(): Promise<boolean> {
+    return this.#user.canCreateGadget();
+  }
+
   async newWorkspace(): Promise<RpcStub<Overseer>> {
     let id = this.overseers.newUniqueId().toString();
     await this.#user.newWorkspace(id, "Untitled Workspace");
@@ -487,6 +491,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
   }
 
   async importBlueprint(archive: ReadableStream<Uint8Array>): Promise<string> {
+    await this.#user.assertWorkshopCapability({ action: "blueprint.import" });
     let { metadata, contentLength, content } = await parseBlueprintArchive(archive);
     delete metadata.screenshot;
     let blueprintId = randomBlueprintId();

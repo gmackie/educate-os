@@ -690,6 +690,9 @@ export interface AuthenticatedApi extends RpcTarget {
   openWorkspace(id: string, shareKey?: string,
       configureObservers?: RpcStub<ObserverConfigCallback>): Promise<RpcStub<Overseer>>;
 
+  /** Advisory creation visibility; server mutations independently enforce concrete scope. */
+  canCreateGadget(): Promise<boolean>;
+
   /**
    * Create a new workspace. It will start out titled "Untitled Workspace".
    *
