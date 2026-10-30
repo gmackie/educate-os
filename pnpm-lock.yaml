@@ -1060,6 +1060,9 @@ importers:
       '@educateos/assessment-ci':
         specifier: workspace:*
         version: link:../educateos-assessment-ci
+      '@educateos/assessment-sdk':
+        specifier: workspace:*
+        version: link:../educateos-assessment-sdk
       '@educateos/cartridge':
         specifier: workspace:*
         version: link:../educateos-cartridge
@@ -1188,6 +1191,9 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 'catalog:'
         version: 1.4.3(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)(vitest@5.0.5)
+      '@educateos/assessment-sdk':
+        specifier: workspace:*
+        version: link:../educateos-assessment-sdk
       '@educateos/catalog':
         specifier: workspace:*
         version: link:../educateos-catalog
@@ -1992,6 +1998,9 @@ importers:
       '@educateos/api-client':
         specifier: workspace:*
         version: link:../educateos-api-client
+      '@educateos/assessment-sdk':
+        specifier: workspace:*
+        version: link:../educateos-assessment-sdk
       '@gadgets/ui':
         specifier: workspace:*
         version: link:../ui

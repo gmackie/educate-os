@@ -39,7 +39,8 @@ import {
   decisionResult, SchoolToolsSessionCore, type SchoolChange, type SchoolToolCallResult, type SchoolToolInfo,
 } from "./session.ts";
 import type { DistrictResponse, SchoolAppApi } from "./school-app-api.ts";
-import type { SchoolToolsSession } from "./types.js";
+import { AssessmentSessionCore, requireAssessmentResponse, type AssessmentChange } from "./assessment-session.ts";
+import type { SchoolAssessmentSession, SchoolToolsSession } from "./types.js";
 import TYPES_CODE from "./types.txt";
 import APP_HTML from "./generated/app.txt";
 
@@ -202,7 +203,21 @@ interface ChangeHost {
 const CHANGE_KIND: ActionKind = { tag: "school-change", label: "Change school records" };
 
 // Never auto-approvable: a person decides every school change (SCHO-57).
-const changes = defineActions<ChangeHost, { change: SchoolChange }>({
+const changes = defineActions<ChangeHost, { change: SchoolChange; assessment: AssessmentChange }>({
+  assessment: {
+    kind: { tag: "assessment-submission", label: "Submit assessment evidence" },
+    delivery: "await-decision",
+    describe: (change) => ({ title: "Submit assessment evidence", description: `Assignment ${change.assignmentId}\n${change.revisions.map((revision) => `${revision.artifactId} @ ${revision.revisionId}`).join("\n")}`, implementsRevert: false }),
+    apply: async (change, host) => {
+      const district = host.district();
+      if (!district.gadgetAssessmentSubmit) throw new ActionApplyError("Assessment capability unavailable.");
+      const { assignmentId, ...request } = change;
+      const response = await district.gadgetAssessmentSubmit(await host.decider(), assignmentId, request);
+      if (response.status >= 400 && response.status < 500) throw new ActionApplyError("Assessment submission is no longer permitted.");
+      requireAssessmentResponse(response);
+    },
+    reject: async () => {},
+  },
   change: {
     kind: CHANGE_KIND,
     delivery: "await-decision",
@@ -227,11 +242,18 @@ type FacetProps = { accountObjectId: string };
 class SchoolToolsSessionImpl extends RpcTarget implements SchoolToolsSession {
   readonly #core: SchoolToolsSessionCore;
   readonly #queue: RpcStub<ApprovalQueue>;
+  readonly #assessment: (assignmentId: string) => SchoolAssessmentSession;
 
-  constructor(core: SchoolToolsSessionCore, queue: RpcStub<ApprovalQueue>) {
+  constructor(core: SchoolToolsSessionCore, queue: RpcStub<ApprovalQueue>, assessment: (assignmentId: string) => SchoolAssessmentSession) {
     super();
     this.#core = core;
     this.#queue = queue;
+    this.#assessment = assessment;
+  }
+
+  /** Opens a capability whose methods cannot change their assignment scope. */
+  async assessment(assignmentId: string): Promise<SchoolAssessmentSession> {
+    return this.#assessment(assignmentId);
   }
 
   /** Lists the district's tools. */
@@ -250,8 +272,28 @@ class SchoolToolsSessionImpl extends RpcTarget implements SchoolToolsSession {
 }
 
 @validateRpc()
+class SchoolAssessmentSessionImpl extends RpcTarget implements SchoolAssessmentSession {
+  readonly #core: AssessmentSessionCore;
+  readonly #queue: RpcStub<ApprovalQueue>;
+
+  constructor(core: AssessmentSessionCore, queue: RpcStub<ApprovalQueue>) {
+    super();
+    this.#core = core;
+    this.#queue = queue;
+  }
+
+  async read(): Promise<string> { return this.#core.read(); }
+
+  async submit(revisions: { artifactId: string; revisionId: string }[]): Promise<void> {
+    await this.#core.submit(revisions);
+  }
+
+  [Symbol.dispose](): void { this.#queue[Symbol.dispose](); }
+}
+
+@validateRpc()
 export class EducateOsGatekeeper extends DurableObject<Cloudflare.Env, FacetProps> implements Gatekeeper<SchoolToolsSession> {
-  readonly #journal = new ActionJournal<TaggedAction<{ change: SchoolChange }>>(this.ctx.storage.kv, { namespace: "school" });
+  readonly #journal = new ActionJournal<TaggedAction<{ change: SchoolChange; assessment: AssessmentChange }>>(this.ctx.storage.kv, { namespace: "school" });
   readonly #host: ChangeHost = {
     decider: () => this.#account().principal(),
     district: () => districtOf(this.env),
@@ -294,7 +336,21 @@ export class EducateOsGatekeeper extends DurableObject<Cloudflare.Env, FacetProp
       observe: (read) => queue.authorizeObservation(describeRead(read)),
       submit: async (change) => void await this.#changes.submit(queue, "change", change),
     });
-    return new SchoolToolsSessionImpl(core, queue);
+    return new SchoolToolsSessionImpl(core, queue, (assignmentId) => {
+      const assessmentQueue = queue.dup();
+      try {
+        const assessment = new AssessmentSessionCore(assignmentId, {
+          district: districtOf(this.env),
+          account: () => this.#account().principal(),
+          observe: () => assessmentQueue.authorizeObservation({ title: "Read assessment evidence", description: "Read your configured assignment and submission snapshots." }),
+          submit: async (change) => void await this.#changes.submit(assessmentQueue, "assessment", change),
+        });
+        return new SchoolAssessmentSessionImpl(assessment, assessmentQueue);
+      } catch (error) {
+        assessmentQueue[Symbol.dispose]();
+        throw error;
+      }
+    });
   }
 
   /** Returns no catalog: the binding's types describe how to discover the tools. */

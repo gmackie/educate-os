@@ -136,6 +136,8 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       }
     },
     serveAs: (principal, request) => app.serveAs(principal, request),
+    gadgetAssessmentRead: (principal, assignmentId) => app.gadgetAssessmentRead(principal, assignmentId),
+    gadgetAssessmentSubmit: (principal, assignmentId, request) => app.gadgetAssessmentSubmit(principal, assignmentId, request),
   });
   const lti = settings.ltiToolOrigin === undefined || settings.ltiToolOrigin === ""
     ? undefined

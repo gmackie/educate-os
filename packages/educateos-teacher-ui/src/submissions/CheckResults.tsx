@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Badge, Banner, Button, Text } from "@cloudflare/kumo";
-import { CheckCircle, Play, XCircle } from "@phosphor-icons/react";
+import { CheckCircle, Info, Play, XCircle } from "@phosphor-icons/react";
 import { useAnnounce } from "../Announcer.tsx";
 import { useDistrictApi } from "../DistrictApi.tsx";
 import { Problem } from "../Problem.tsx";
+import type { RouteResponse } from "@educateos/api-client";
+import { CheckEvidence } from "./CheckEvidence.tsx";
 import type { CheckRun } from "../types.ts";
 
 /**
@@ -11,11 +13,12 @@ import type { CheckRun } from "../types.ts";
  * and rubric give the same result, so running again returns the same report rather than a new
  * opinion. Their scores are suggestions the teacher may adopt.
  */
-export const CheckResults = ({ submissionId, rubric, run, onRun }: {
+export const CheckResults = ({ submissionId, rubric, run, work, onRun }: {
   submissionId: string;
   /** The submission's rubric: none, one whose checks the page couldn't read, or one with this many checks. */
   rubric: { kind: "none" } | { kind: "unknown" } | { kind: "known"; checks: number };
   run: CheckRun | undefined;
+  work: readonly { submitted: RouteResponse<"teacher.submittedContent">; label: string }[];
   onRun: (run: CheckRun) => void;
 }) => {
   const client = useDistrictApi();
@@ -57,6 +60,18 @@ export const CheckResults = ({ submissionId, rubric, run, onRun }: {
       {report !== undefined && (
         <>
           <Text>{report.summary.text}</Text>
+          <Text variant="secondary">These findings are suggestions. Review the submitted evidence and save your own scores before approving an official grade.</Text>
+          <details className="rounded border border-kumo-line p-3">
+            <summary className="cursor-pointer">Assessment record</summary>
+            <dl className="mt-2 grid gap-1 break-all text-sm">
+              <dt>Run</dt><dd>{report.runId}</dd>
+              <dt>Pinned rubric</dt><dd>{`${report.key.rubricRelease.rubricId} · version ${report.key.rubricRelease.version}`}</dd>
+              <dt>Rubric fingerprint</dt><dd>{report.rubricDigest}</dd>
+              <dt>Submitted evidence fingerprint</dt><dd>{report.key.submissionDigest}</dd>
+              <dt>Evaluator versions</dt><dd>{report.evaluatorReleases.map((release) => `${release.id}@${release.release}`).join(", ")}</dd>
+            </dl>
+            <Text variant="secondary" size="sm">These checks used deterministic evaluators. No AI model was called by this run.</Text>
+          </details>
           <ul className="flex flex-col gap-3">
             {report.criteria.map((criterion) => (
               <li key={criterion.criterionId} className="flex flex-col gap-2">
@@ -64,16 +79,18 @@ export const CheckResults = ({ submissionId, rubric, run, onRun }: {
                 <ul className="flex flex-col gap-2">
                   {criterion.checks.flatMap((check) => check.evidence.map((evidence, index) => (
                     <li key={`${check.checkId}-${index}`} className="flex items-start gap-2 rounded border border-kumo-line p-2">
-                      {evidence.passed === false ? <XCircle aria-hidden className="mt-1 shrink-0" /> : <CheckCircle aria-hidden className="mt-1 shrink-0" />}
-                      <span className="flex flex-col gap-1">
+                      {evidence.passed === undefined ? <Info aria-hidden className="mt-1 shrink-0" /> : evidence.passed ? <CheckCircle aria-hidden className="mt-1 shrink-0" /> : <XCircle aria-hidden className="mt-1 shrink-0" />}
+                      <div className="flex flex-col gap-1">
                         <span className="flex flex-wrap items-center gap-2">
                           <Badge variant="teal">Automatic check</Badge>
                           {evidence.passed !== undefined && <Badge variant={evidence.passed ? "success" : "warning"}>{evidence.passed ? "Met" : "Not met"}</Badge>}
                           {check.visibility === "teacher-only" && <Badge variant="neutral">Only you see this check</Badge>}
                         </span>
+                        <Text variant="secondary" size="sm" as="span">{`${check.evaluator.id}@${check.evaluator.release}`}</Text>
                         <Text as="span">{evidence.observation}</Text>
                         <Text variant="secondary" size="sm" as="span">{evidence.explanation}</Text>
-                      </span>
+                        <CheckEvidence excerpts={evidence.excerpts} work={work} />
+                      </div>
                     </li>
                   )))}
                 </ul>

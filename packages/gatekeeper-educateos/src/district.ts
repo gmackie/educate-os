@@ -1,6 +1,7 @@
 // The district side of the gatekeeper: what the gatekeeper asks of the district's own services, and
 // that service composed in process over a `SchoolToolRunner`. A district deployment exposes the same
 // object from its own Worker and injects it as the gatekeeper's `EDUCATEOS_DISTRICT` service binding.
+import type { DistrictResponse } from "./school-app-api.ts";
 import type { DistrictId, VerifiedPrincipal } from "@educateos/contracts";
 import type { SchoolToolListing, SchoolToolOutcome, SchoolToolRunner, ToolDecisionOutcome } from "@educateos/policy";
 
@@ -38,6 +39,11 @@ export interface SchoolToolService {
    * longer active is `unauthenticated`; the onboarding route is refused.
    */
   serveAs(principal: VerifiedPrincipal, request: Request): Promise<Response>;
+  /** Reads a configured assignment as the verified student; absent implementations fail closed. */
+  gadgetAssessmentRead?(principal: VerifiedPrincipal, assignmentId: string): Promise<DistrictResponse>;
+  /** Submits owned pinned revisions after the Workshop user approves the action. */
+  gadgetAssessmentSubmit?(principal: VerifiedPrincipal, assignmentId: string, request: unknown): Promise<DistrictResponse>;
+
 }
 
 /** What {@link createSchoolToolService} composes. */
@@ -50,6 +56,11 @@ export interface SchoolToolServiceOptions {
   authenticate(request: Request): Promise<VerifiedPrincipal | null>;
   /** The district application's `/api` surface for an already-verified principal (`DistrictApp.serveAs`). */
   serveAs(principal: VerifiedPrincipal, request: Request): Promise<Response>;
+  /** Reads a configured assignment as the verified student; absent implementations fail closed. */
+  gadgetAssessmentRead?(principal: VerifiedPrincipal, assignmentId: string): Promise<DistrictResponse>;
+  /** Submits owned pinned revisions after the Workshop user approves the action. */
+  gadgetAssessmentSubmit?(principal: VerifiedPrincipal, assignmentId: string, request: unknown): Promise<DistrictResponse>;
+
 }
 
 /**
@@ -63,6 +74,14 @@ export function createSchoolToolService(options: SchoolToolServiceOptions): Scho
   const outsider = (subject: VerifiedPrincipal) => subject.districtId !== districtId;
   const refused = { status: "error", error: { code: "unauthenticated", message: "This account belongs to another district." } } as const;
   return {
+    async gadgetAssessmentRead(principal, assignmentId) {
+      if (outsider(principal) || !options.gadgetAssessmentRead) return { status: 403, body: '{"message":"Assessment capability unavailable."}', correlationId: null };
+      return options.gadgetAssessmentRead(principal, assignmentId);
+    },
+    async gadgetAssessmentSubmit(principal, assignmentId, request) {
+      if (outsider(principal) || !options.gadgetAssessmentSubmit) return { status: 403, body: '{"message":"Assessment capability unavailable."}', correlationId: null };
+      return options.gadgetAssessmentSubmit(principal, assignmentId, request);
+    },
     async authenticate(request) {
       const principal = await options.authenticate(request);
       return principal === null || outsider(principal) ? null : principal;

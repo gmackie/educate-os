@@ -1,3 +1,4 @@
+import type { GadgetAssessmentResponse } from "@educateos/district-app";
 // The EducateOS district Worker (SCHO-171): the district application (`@educateos/district-app`)
 // deployed over Durable Object storage. It serves the district's `/api` surface, and two service
 // entrypoints for the Workers that take a `EDUCATEOS_DISTRICT` binding:
@@ -58,6 +59,16 @@ export class DistrictSchoolTools extends WorkerEntrypoint<Cloudflare.Env> implem
   @skipRpcValidation()
   async authenticate(request: Request): Promise<VerifiedPrincipal | null> {
     return districtObject(this.env, this.ctx.exports).authenticate(request);
+  }
+
+  /** Reads only the connected student's configured assessment and own submissions. */
+  async gadgetAssessmentRead(principal: VerifiedPrincipal, assignmentId: string): Promise<GadgetAssessmentResponse> {
+    return districtObject(this.env, this.ctx.exports).gadgetAssessmentRead(principal, assignmentId);
+  }
+
+  /** Applies a queued evidence submission after rechecking current ownership and policy. */
+  async gadgetAssessmentSubmit(principal: VerifiedPrincipal, assignmentId: string, request: unknown): Promise<GadgetAssessmentResponse> {
+    return districtObject(this.env, this.ctx.exports).gadgetAssessmentSubmit(principal, assignmentId, request);
   }
 
   /** The district's school tools. */

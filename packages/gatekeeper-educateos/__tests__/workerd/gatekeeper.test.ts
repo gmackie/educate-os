@@ -3,7 +3,7 @@
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { BIO, P } from "../district.ts";
-import { completions, district } from "./worker.ts";
+import { assessmentWrites, completions, district } from "./worker.ts";
 
 const hooks = () => env.TEST_HOOKS.getByName("hooks");
 
@@ -101,6 +101,29 @@ describe("the EducateOS gatekeeper Worker", () => {
     const { accountObjectId } = await connect(P.amara.principalId);
     await hooks().revoke(accountObjectId);
     expect((await hooks().schoolAppRequest(accountObjectId, "GET", "/api/me", null)).refused).toContain("not connected");
+  });
+
+  it("returns an assignment-scoped Gadget RPC capability and writes only after approval", async () => {
+    const { accountObjectId } = await connect(P.amara.principalId);
+    const before = assessmentWrites.length;
+    const result = await hooks().submitAssessment(accountObjectId, "asg_lab");
+    expect(result.observations).toBe(1);
+    expect(JSON.parse(result.view).assignmentId).toBe("asg_lab");
+    expect(assessmentWrites).toHaveLength(before);
+    expect(await hooks().apply(accountObjectId, result.actionId)).toBeNull();
+    expect(await hooks().apply(accountObjectId, result.actionId)).toBeNull();
+    expect(assessmentWrites).toHaveLength(before + 1);
+    expect(assessmentWrites.at(-1)).toMatchObject({ principal: P.amara, assignmentId: "asg_lab", request: { revisions: [{ artifactId: "art_lab", revisionId: "rev_one" }] } });
+    expect(await hooks().submitAssessmentFailure(accountObjectId, "asg_other")).toContain("403");
+  });
+
+  it("rechecks account revocation before applying a queued assessment submission", async () => {
+    const { accountObjectId } = await connect(P.amara.principalId);
+    const result = await hooks().submitAssessment(accountObjectId, "asg_lab");
+    const before = assessmentWrites.length;
+    await hooks().revoke(accountObjectId);
+    expect(await hooks().apply(accountObjectId, result.actionId)).toContain("not connected");
+    expect(assessmentWrites).toHaveLength(before);
   });
 
   it("admits no collaborator to a workspace that reads school records", async () => {
