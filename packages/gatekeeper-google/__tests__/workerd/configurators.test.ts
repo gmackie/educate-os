@@ -9,7 +9,8 @@ import {
   calendarPickerRank, hasCalendarPrivateAccessRole, hasCalendarWriteRole,
 } from "../../src/calendar-api";
 import {
-  BigQueryConfiguratorUI, CalendarConfiguratorUI, ClassroomCourseConfiguratorUI, DriveConfiguratorUI,
+  BigQueryConfiguratorUI, CalendarConfiguratorUI, ClassroomCourseConfiguratorUI,
+  ClassroomStudentCourseConfiguratorUI, DriveConfiguratorUI,
   GoogleDocConfiguratorUI,
   GoogleSheetsConfiguratorUI, GoogleSlidesConfiguratorUI,
 } from "../../src/google-configurators";
@@ -44,7 +45,10 @@ describe("Google resource configurators", () => {
       .resolves.toBe("person@example.com");
   });
 
-  it("keeps the Classroom course picker and disambiguates duplicate course names", async () => {
+  it.each([
+    { Picker: ClassroomCourseConfiguratorUI, role: "teacherId", otherRole: "studentId" },
+    { Picker: ClassroomStudentCourseConfiguratorUI, role: "studentId", otherRole: "teacherId" },
+  ])("keeps the Classroom $role picker and disambiguates duplicate course names", async ({ Picker, role, otherRole }) => {
     const requests: URL[] = [];
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
       requests.push(new URL(input instanceof Request ? input.url : input.toString()));
@@ -54,7 +58,7 @@ describe("Google resource configurators", () => {
         { id: "303", name: "Chemistry" },
       ] });
     }));
-    const picker = new ClassroomCourseConfiguratorUI(async () => token("access-token"));
+    const picker = new Picker(async () => token("access-token"));
 
     await expect(picker.listCourses("")).resolves.toEqual([
       { value: "12345678901", title: "Biology", subtitle: "Period 1", meta: "…45678901" },
@@ -65,7 +69,8 @@ describe("Google resource configurators", () => {
       { value: "12345678902", title: "Biology", subtitle: "Period 2" },
     ]);
     expect(requests.every(url => url.hostname === "classroom.googleapis.com" &&
-      url.pathname === "/v1/courses" && url.searchParams.get("teacherId") === "me" &&
+      url.pathname === "/v1/courses" && url.searchParams.get(role) === "me" &&
+      !url.searchParams.has(otherRole) &&
       url.searchParams.get("courseStates") === "ACTIVE")).toBe(true);
   });
 

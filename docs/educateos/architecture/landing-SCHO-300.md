@@ -189,3 +189,21 @@ Local validation after merging `c7810e4f`:
 These local results do not substitute for the three exact-head canonical CI jobs, latest-main
 refresh after the other PR train, or verified production deployment. No GitHub main update,
 production merge, live Google operation, paid model call or outreach send has occurred here.
+
+Canonical CI run 815 exposed a student Classroom picker merge error: the Drive duplicate-name
+helper was called with course options. A new workerd regression reproduced the crash, then passed
+with the existing Classroom helper; both student and teacher role filters remain isolated. The
+earlier local cached build did not detect this error; fresh package typechecks and an uncached
+workspace build are required for this repair. The run's mobile and Workshop jobs were skipped,
+despite their success-shaped commit statuses, so they do not count as completed gates.
+
+Launch Factory run 816 stopped before tests because Ubuntu returned a mismatched optional Mesa
+archive. Its isolated Forgejo workflow now omits recommended GPU packages for CPU-only rendering
+and retries downloads, retaining apt signature/hash verification. Host CI must verify the Linux
+installation and full V01 render. GitHub CLA storage and Bonk service errors remain non-canonical.
+
+Repair validation: fresh Google source/test typechecks, all 79 configurator workerd tests, ten
+video safety/unit tests, root `pnpm lint`, and workspace `vp run --no-cache` build (181/181 tasks)
+pass. All 24 feature heads and both original main heads remain ancestors; source asset bytes are
+unchanged. The earlier successful video E2E is supporting local evidence, not proof that the new
+Linux dependency installation passed. Await the current-head Forgejo run before landing.

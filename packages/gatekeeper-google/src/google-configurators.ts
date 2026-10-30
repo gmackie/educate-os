@@ -682,7 +682,7 @@ export class ClassroomStudentCourseConfiguratorUI extends RpcTarget implements C
 
   async listCourses(query: string): Promise<ConfiguratorOption[]> {
     const courses = await new ClassroomApi(googleTokenProvider(this)).listStudentCourses();
-    return tellApartSameNamed(courses
+    return tellApartSameNamedCourses(courses
       .map(course => ({
         value: course.id, title: course.name, ...course.section ? { subtitle: course.section } : {},
       }))
