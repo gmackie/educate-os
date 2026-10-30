@@ -54,9 +54,9 @@ test("the committed production configs are up to date", () => {
   }
 });
 
-test("deploys the router, backend, AI call guard, five gatekeepers and the district", () => {
+test("deploys the router, backend, AI call guard, six gatekeepers and the district", () => {
   assert.deepEqual([...build().keys()], [
-    "educateos-ai-guard", DISTRICT_PACKAGE, "gatekeeper-context", "gatekeeper-educateos",
+    "educateos-ai-guard", DISTRICT_PACKAGE, "gatekeeper-clever", "gatekeeper-context", "gatekeeper-educateos",
     "gatekeeper-google", "gatekeeper-scheduler", "gatekeeper-websearch", "router", "workshop-backend",
   ]);
   assert.deepEqual(productionPackageNames(SCHOOLOS_GMAC_IO), [...build().keys()]);
@@ -78,6 +78,7 @@ test("the router is the origin, on its custom domain, bound to the backend and t
   assert.deepEqual(router.routes, [{ pattern: "schoolos.gmac.io", custom_domain: true }]);
   assert.deepEqual(router.services, [
     { binding: "WORKSHOP_BACKEND", service: "workshop-backend" },
+    { binding: "GATEKEEPER_CLEVER", service: "gatekeeper-clever" },
     { binding: "GATEKEEPER_CONTEXT", service: "gatekeeper-context" },
     { binding: "GATEKEEPER_EDUCATEOS", service: "gatekeeper-educateos" },
     { binding: "GATEKEEPER_GOOGLE", service: "gatekeeper-google" },
@@ -90,6 +91,7 @@ test("the router is the origin, on its custom domain, bound to the backend and t
 test("the backend binds the gatekeepers' vendor entrypoint, the guard, Workers AI and real resources", () => {
   const backend = configFor(build(TWO_HOSTS), "workshop-backend");
   assert.deepEqual(backend.services, [
+    { binding: "GATEKEEPER_CLEVER", service: "gatekeeper-clever", entrypoint: "GatekeeperVendor" },
     { binding: "GATEKEEPER_CONTEXT", service: "gatekeeper-context", entrypoint: "GatekeeperVendor",
       props: { sharingDomain: BASE_URL } },
     { binding: "GATEKEEPER_EDUCATEOS", service: "gatekeeper-educateos", entrypoint: "GatekeeperVendor" },
@@ -135,6 +137,23 @@ test("the Google connector gets only its origin; its OAuth client stays a secret
   const leaky = structuredClone(SCHOOLOS_GMAC_IO);
   leaky.vars["gatekeeper-google"] = { CLIENT_SECRET: "x" };
   assert.throws(() => build(leaky), /CLIENT_SECRET as a plain-text var/);
+});
+
+test("the Clever connector reaches the demo's Clever fake; its client and district tokens stay secrets", () => {
+  const clever = configFor(build(TWO_HOSTS), "gatekeeper-clever");
+  // Its redirect URI, <origin>/gatekeeper/clever/oauth, derives from BASE_URL, and is listed in the
+  // fakes Worker's OIDC_REDIRECT_URIS (sites/educateos-demo-fakes/wrangler.jsonc).
+  assert.deepEqual(clever.vars, {
+    BASE_URL: `${BASE_URL}/gatekeeper/clever`,
+    CLEVER_API_BASE: "https://fakes.demo.educateos.io/cedarvalley/clever",
+    CLEVER_OAUTH_BASE: "https://fakes.demo.educateos.io/cedarvalley/clever",
+    CLEVER_LOGIN_HINT_FORM: "true",
+  });
+  assert.equal(clever.services, undefined);
+
+  const leaky = structuredClone(SCHOOLOS_GMAC_IO);
+  leaky.vars["gatekeeper-clever"] = { CLEVER_DISTRICT_TOKENS: "{}" };
+  assert.throws(() => build(leaky), /CLEVER_DISTRICT_TOKENS as a plain-text var/);
 });
 
 test("the guard runs its production entrypoint and cron, reaching Hall Monitor by service binding", () => {
@@ -196,6 +215,8 @@ const DEPLOYED_STATEFUL_WORKERS: Record<string, string> = {
   [DISTRICT_PACKAGE]: "schoolos-district-worker",
   // Redeployed under its new name, with a fresh ledger, on 2026-10-25 (SCHO-231).
   [AI_GUARD_PACKAGE]: "educateos-ai-guard",
+  // First deployed with SCHO-282.
+  "gatekeeper-clever": "gatekeeper-clever",
   "gatekeeper-context": "gatekeeper-context",
   // First deployed with SCHO-218; its one earlier deploy attempt failed before creating the Worker.
   "gatekeeper-educateos": "gatekeeper-educateos",
