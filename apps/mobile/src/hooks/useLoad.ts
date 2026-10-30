@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 
 export type LoadState<T> =
   | { status: 'loading' }
@@ -22,4 +23,13 @@ export function useLoad<T>(key: string, get: () => Promise<T>): [LoadState<T>, (
   // get closure intentionally keyed by caller-supplied 'key'; refreshKey forces retry.
   }, [key, refreshKey]);
   return state?.key === key + '/' + refreshKey ? [state.result, reload] : [{ status: 'loading' }, reload];
+}
+
+/** Reloads when the screen comes back into view (after a detail screen changed something), not on first show. */
+export function useReloadOnFocus(reload: () => void): void {
+  const first = useRef(true);
+  useFocusEffect(useCallback(() => {
+    if (first.current) { first.current = false; return; }
+    reload();
+  }, [reload]));
 }

@@ -30,6 +30,7 @@
     "expo-crypto": "~58.0.7",
     "expo-dev-client": "58.0.15",
     "expo-device": "~58.0.5",
+    "expo-image-picker": "~58.0.10",
     "expo-linking": "~58.0.15",
     "expo-local-authentication": "~58.0.2",
     "expo-notifications": "~58.1.6",

@@ -87,7 +87,7 @@ import {
 } from "@educateos/policy";
 import { DurableObjectPolicyAuditSink } from "@educateos/policy/durable-object-audit-sink";
 import { oneroster } from "@educateos/integrations";
-import { WorkshopUserLink } from "@educateos/identity";
+import { assertWorkshopUserLinkAvailable, WorkshopUserLink } from "@educateos/identity";
 import {
   GuardianInvitation,
   GuardianInvitationRedemption,
@@ -420,7 +420,12 @@ export class DurableObjectWorkshopUserLinkStore implements WorkshopUserLinkStore
 
   async add(link: WorkshopUserLink): Promise<void> {
     const json = JSON.stringify(WorkshopUserLink.parse(link));
-    this.#tables.transaction((sql) => sql.exec(`INSERT INTO ${DISTRICT_TABLES.workshopUserLinks} (link_json) VALUES (?)`, json));
+    this.#tables.transaction((sql) => {
+      const existing = sql.exec(`SELECT link_json FROM ${DISTRICT_TABLES.workshopUserLinks} ORDER BY seq`).toArray()
+        .map((row) => parseStored(WorkshopUserLink, row.link_json, "a Workshop user link"));
+      assertWorkshopUserLinkAvailable(existing, link);
+      sql.exec(`INSERT INTO ${DISTRICT_TABLES.workshopUserLinks} (link_json) VALUES (?)`, json);
+    });
   }
 }
 

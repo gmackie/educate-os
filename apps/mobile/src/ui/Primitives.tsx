@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
 import { ArrowRight, ChevronRight, RotateCw } from 'lucide-react-native';
 import { font, radius, spacing, type Palette } from '../theme';
 import { usePalette } from './theme-context';
@@ -12,7 +12,9 @@ export function Page({ children, refresh, busy, scroll = true }: {
   const styles = useStyles();
   const content = <View style={styles.page}>{children}</View>;
   if (!scroll) return <View style={{ flex: 1 }}>{content}</View>;
+  // Forms (quizzes, posts, responses) stay reachable above the keyboard, which a drag puts away.
   return <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+    automaticallyAdjustKeyboardInsets keyboardDismissMode="interactive"
     contentContainerStyle={{ paddingBottom: 48 }} accessibilityLabel="Page content">
     {refresh && <Pressable accessibilityRole="button" accessibilityLabel="Refresh page"
       disabled={busy} onPress={refresh} style={styles.refresh}>
@@ -20,6 +22,13 @@ export function Page({ children, refresh, busy, scroll = true }: {
     </Pressable>}
     {content}
   </ScrollView>;
+}
+const MARK = require('../../assets/mark.png') as number;
+
+/** The EducateOS mark (the app icon's glyph), tinted to `color`. */
+export function Mark({ size, color }: { size: number; color: string }) {
+  return <Image source={MARK} accessibilityIgnoresInvertColors
+    style={{ width: size, height: size, tintColor: color }} resizeMode="contain"/>;
 }
 export function Eyebrow({ children }: { children: React.ReactNode }) {
   const styles = useStyles();

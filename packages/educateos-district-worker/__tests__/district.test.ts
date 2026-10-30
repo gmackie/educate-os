@@ -291,6 +291,21 @@ describe("the district Worker", () => {
     expect(await env.GUARD.guardSubject({ workshopUser: "workshop-user-1" })).toBeNull();
   });
 
+  it("persists an admin-confirmed student Workshop link and exposes it only through the guard", async () => {
+    // An email-keyed account the principal migration aliased; a `principal:` key needs no link.
+    const workshopUser = "amara-migrated@example.com";
+    const student = await signIn(NF.amara);
+    expect(await env.GUARD.guardSubject({ workshopUser })).toBeNull();
+    expect((await fetchWorker(request(student, "admin.workshopUserLinks"))).status).toBe(403);
+    const admin = await signIn(NF.admin);
+    const link = await ok(admin, "admin.linkWorkshopUser", { body: { workshopUser, principalId: NF.amara } });
+    expect(link.confirmedBy).toBe(NF.admin);
+    expect((await fetchWorker(request(admin, "admin.linkWorkshopUser", { body: { workshopUser, principalId: NF.amara } }))).status).toBe(409);
+    await evictDurableObject(env.DISTRICT.getByName(NORTHFIELD.district.id));
+    expect(await ok(admin, "admin.workshopUserLinks")).toContainEqual(link);
+    expect(await env.GUARD.guardSubject({ workshopUser })).toMatchObject({ kind: "student", roles: [], principal: { principalId: NF.amara } });
+  });
+
   it("queues a school tool's write for a person, and decides it after a restart", async () => {
     const tools = await env.TOOLS.listTools();
     expect(tools.map((t) => t.name)).toContain("create_term");

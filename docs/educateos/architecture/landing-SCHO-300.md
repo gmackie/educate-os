@@ -328,3 +328,29 @@ kernel deltas.
 
 Five original preceding train PRs remain open: 210, 217, 218, 223 and 224. The batch remains last;
 require all three completed canonical CI jobs on the final latest-main integration revision.
+
+## Canonical student-policy links and mobile refresh
+
+Merged canonical main `a60ce6ca`, including PR210's admin-confirmed student Workshop links and
+PR217/218's native student/family screens, synthetic development district and media support.
+Preserve atomic duplicate-account/principal refusal in both link stores, current-directory
+guard resolution and the batch's staged principal migration and capability boundaries.
+
+The only textual conflict was the isolated mobile package manifest: keep validated
+`expo-linking ~58.0.15` and React Native 0.88.1 while adding `expo-image-picker ~58.0.10`.
+The auto-merged lockfile initially contained two image-picker/loader references to a missing
+Expo peer snapshot; reproduced by frozen install. Use pnpm's resolved peer snapshot to repair
+only those references, retaining original lock metadata and existing dependency versions.
+Root and isolated mobile frozen installation/supply-chain checks then pass.
+
+Validation: 66 mobile tests, mobile typecheck and real iOS/Android Hermes bundle export pass;
+618 identity/district/guard tests pass (95 identity, 262 district app, 120 guard real-workerd,
+141 district real-workerd), including persistent migrated account links and duplicate refusal.
+All 81 release/config/environment checks and root lint/config/workspace build (181 tasks) pass.
+No kernel or video code changed in this refresh. Mobile bundles are local verification artifacts,
+not signed apps or publication evidence.
+
+All three real canonical CI jobs, video and operations completed successfully on the superseded
+head `c6a0f72f`; the source-audit repair is therefore verified on the host too. Require fresh
+exact-head checks for this merge. Only preceding PRs223/224 remain open at audit; batch stays
+last, followed by production verification before GitHub fast-forward/PR reconciliation.

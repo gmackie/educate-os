@@ -40,6 +40,23 @@ The committed pnpm-lock.yaml pins the isolated mobile dependency tree.
 Expo patch versions are pinned below today's releases to respect the 24-hour dependency-age policy;
 `expo.install.exclude` records these three deliberate pins.
 
+## Try it in the Simulator with real data
+
+`pnpm educateos:mobile-district` (from the repository root, after `pnpm install`) serves a seeded
+Northfield on http://localhost:4810. It is the browser demo's district (`@educateos/demo`) with
+phone pairing turned on: a student (Amara Okafor), a teacher (Sam Rivera), a guardian (Grace
+Okafor) and an administrator, with classes, assignments, submissions, feedback and announcements.
+
+    pnpm educateos:mobile-district                     # terminal 1, repository root
+    cd apps/mobile && pnpm exec expo run:ios           # terminal 2: builds EducateOS Dev into the Simulator
+
+In the app choose **I have a web address**, enter `http://localhost:4810` (with `http://`), then
+**Sign in with a demo person** and pick who to be. The page approves the phone through the real
+pairing relay, so the app holds a real device credential. Development builds accept loopback school
+addresses (`DEV_LOOPBACK` in `src/security.ts`); release builds never do. The district keeps
+everything in memory: restarting it signs the phone out, so remove the school from the welcome
+screen and pair again. On an Android emulator, run `adb reverse tcp:4810 tcp:4810` first.
+
 ## Authentication
 
 For each sign-in the app generates an ephemeral P-256 keypair and opaque state. The app passes
