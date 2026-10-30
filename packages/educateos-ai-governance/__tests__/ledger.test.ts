@@ -50,6 +50,28 @@ describe("reserve, settle and void", () => {
 });
 
 describe("idempotent retry", () => {
+  it("denies a held retry after model or enrollment revocation", async () => {
+    for (const revoke of ["model", "enrollment"] as const) {
+      const { ledger, source } = harness();
+      await ledger.reserve("req-revoked", AMARA, BIO_FALL, SONNET, c(100));
+      if (revoke === "model") source.catalog = source.catalog.map((model) => ({ ...model, mode: "disabled" }));
+      else source.snapshot = { ...source.snapshot, enrollments: source.snapshot.enrollments.filter((enrollment) => enrollment.principalId !== AMARA.principalId) };
+      expect(await ledger.reserve("req-revoked", AMARA, BIO_FALL, SONNET, c(100))).toMatchObject({ outcome: "denied" });
+      expect((await ledger.poolBalances("2026-10"))["fpl_nf-bio-fall"]!.chargedUsdNano).toBe(c(100));
+    }
+  });
+
+  it("denies a held retry after school policy revokes spending, retaining its liability for settlement", async () => {
+    const { ledger, source } = harness();
+    await ledger.reserve("req-revoked", AMARA, BIO_FALL, SONNET, c(100));
+    source.floor = { ...source.floor, aiSpending: "disabled" };
+    expect(await ledger.reserve("req-revoked", AMARA, BIO_FALL, SONNET, c(100))).toEqual({ outcome: "denied", reason: "ai-spending-disabled" });
+    expect((await ledger.poolBalances("2026-10"))["fpl_nf-bio-fall"]!.chargedUsdNano).toBe(c(100));
+    await ledger.settle("req-revoked", paid(tokens(500, 200), c(60)));
+    expect((await ledger.report()).district.usageUsdNano).toBe(c(60));
+    expect(await ledger.reserve("req-revoked", AMARA, BIO_FALL, SONNET, c(100))).toMatchObject({ replayed: true, status: "settled" });
+  });
+
   it("bills a duplicate retry once", async () => {
     const { ledger } = harness();
     const first = await ledger.reserve("req-retry", AMARA, BIO_FALL, SONNET, c(100));

@@ -55,6 +55,42 @@ async function admitted(guard: AiCallGuardService, overrides: Partial<AiCallDesc
 }
 
 describe("settlement pricing", () => {
+  it.each(["failed", "aborted"] as const)("retains a %s call's missing usage liability until its gateway bill can be reconciled", async (status) => {
+    const gateway = new FakeGatewayLogs();
+    const { guard, ledger } = setup(gateway);
+    const call = await admitted(guard);
+    const held = (await ledger.request(call.callId))!.reservation.heldUsdNano;
+    await guard.afterModelCall({ callId: call.callId, status, aiGatewayLogId: "log-late" });
+    expect(gateway.lookups).toEqual(["log-late"]);
+    expect((await ledger.request(call.callId))?.settlement).toMatchObject({
+      hasUnknownCost: true, chargedUsdNano: held, attempts: [{ state: "unknown", gatewayLogId: "log-late" }],
+    });
+    gateway.logs.set("log-late", { cost: "0.0042" });
+    const scheduledTime = new Date(Date.now() + DAY_MS);
+    expect(await runReconciliation({ ledger, gatewayLogs: gateway, scheduledTime })).toMatchObject({ billed: 1, adjustments: 1 });
+    expect(await runReconciliation({ ledger, gatewayLogs: gateway, scheduledTime })).toMatchObject({ billed: 0, adjustments: 0 });
+    expect(await ledger.outstandingUnknownCosts(10)).toEqual([]);
+  });
+
+  it("uses the provider bill even when a failed call reports zero tokens", async () => {
+    const gateway = new FakeGatewayLogs();
+    gateway.logs.set("log-billed", { cost: "0.0123" });
+    const { guard, ledger } = setup(gateway);
+    const call = await admitted(guard);
+    await guard.afterModelCall({ callId: call.callId, status: "failed", usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, aiGatewayLogId: "log-billed" });
+    expect((await ledger.request(call.callId))?.settlement).toMatchObject({ chargedUsdNano: "12300000", hasUnknownCost: false, attempts: [{ state: "provider_reported" }] });
+  });
+
+  it("keeps zero-token failures with a pending gateway log unknown instead of estimating zero", async () => {
+    const gateway = new FakeGatewayLogs();
+    gateway.logs.set("log-pending", { cost: null });
+    const { guard, ledger } = setup(gateway);
+    const call = await admitted(guard);
+    await guard.afterModelCall({ callId: call.callId, status: "aborted", usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, aiGatewayLogId: "log-pending" });
+    const record = (await ledger.request(call.callId))!;
+    expect(record.settlement).toMatchObject({ chargedUsdNano: record.reservation.heldUsdNano, hasUnknownCost: true });
+  });
+
   it("settles at the AI Gateway log's cost when the gateway reports one", async () => {
     const gateway = new FakeGatewayLogs();
     gateway.logs.set("log-1", { cost: 0.0123, tokens_in: 1000, tokens_out: 200 });
