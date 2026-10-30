@@ -255,7 +255,8 @@ export class AiCallGuardService {
 
   /**
    * Settles an admitted call's generative hold, exactly once per `callId`. A call that ended
-   * without billing anything (failed or aborted with no reported tokens) is released instead.
+   * with explicit zero usage and no gateway log (failed or aborted) is released instead.
+   * Missing or invalid counters retain a liability; a gateway log may still report a bill.
    * The Workshop reports tokens but no cost, so the cost is the AI Gateway log's when the guard can
    * read one (`provider_reported`), else priced from the rate table merged with the shared price
    * book (`estimated`; see `priceSettlement`). Usage that is missing, or a model nothing prices, is
@@ -276,7 +277,9 @@ export class AiCallGuardService {
 
     const usage = outcome.usage === undefined ? undefined : tokenUsageOf(outcome.usage);
     const billed = usage !== undefined && usage.inputTokens + usage.outputTokens + usage.cacheReadTokens + usage.cacheWriteTokens > 0;
-    if (outcome.status !== "completed" && !billed) {
+    // Missing/invalid usage is not evidence of a free failure. Even explicit zero counters
+    // may be placeholders when a gateway log exists; consult its bill before releasing funds.
+    if (outcome.status !== "completed" && usage !== undefined && !billed && outcome.aiGatewayLogId === undefined) {
       const result = await this.#ledger.void(outcome.callId);
       log.info("AI call released", { event: "ai_guard.voided", outcome: result.outcome });
       return;
@@ -291,8 +294,11 @@ export class AiCallGuardService {
       at: record.reservation.reservedAt,
       ...gatewayLogId,
     });
-    const { attempt } = priced;
-    const result = await this.#ledger.settle(outcome.callId, { attempts: [attempt], ...(priced.priceBookId === undefined ? {} : { priceBookId: priced.priceBookId }) });
+    // A failed stream's zero counters must not turn a pending/unreachable bill into a $0
+    // estimate. Keep the log ID so reconciliation can replace the liability later.
+    const unknownFailure = outcome.status !== "completed" && !billed && priced.attempt.state !== "provider_reported";
+    const attempt = unknownFailure ? { attemptIndex: 0, state: "unknown" as const, ...gatewayLogId } : priced.attempt;
+    const result = await this.#ledger.settle(outcome.callId, { attempts: [attempt], ...(unknownFailure || priced.priceBookId === undefined ? {} : { priceBookId: priced.priceBookId }) });
     const log2 = log.with({ outcome: result.outcome });
     if (result.outcome === "settled" || result.outcome === "already-voided") {
       log2.info("AI call settled", { event: "ai_guard.settled", reason: attempt.state, gatewayLookup: priced.gateway });
@@ -401,7 +407,10 @@ export class AiCallGuardService {
     const fields = error instanceof HallMonitorError
       ? { hallMonitorCode: error.code, ...(error.status === undefined ? {} : { hallMonitorStatus: error.status }) }
       : {};
-    if (!output && context.audience === "educator" && context.profile.failureMode === "proceed") {
+    // Only service outages may use the educator fallback. Authentication, policy and wire
+    // faults cannot be treated as permission to bypass the configured moderation policy.
+    const outage = error === undefined || (error instanceof HallMonitorError && (error.code === "unavailable" || error.code === "rate_limited"));
+    if (!output && outage && context.audience === "educator" && context.profile.failureMode === "proceed") {
       log.warn("Hall Monitor unavailable; educator profile proceeds unmoderated", { event: "ai_guard.moderation.unavailable", reason: "moderation_unavailable_proceed", ...fields });
       return { kind: "proceed", coach: false };
     }
