@@ -20,6 +20,7 @@ import { GradeBand, MachineCode, OpaqueId } from "@gmacko/hall-monitor-contracts
 import { MAX_AI_CALL_INSTRUCTIONS_LENGTH } from "@gadgets/workshop-shared/ai-call-guard";
 import { WorkshopUserLink } from "@educateos/identity";
 import { Workspace } from "@educateos/workspaces";
+import { SourceGovernance } from "./source-governance.ts";
 
 const LISTED_PRICE_FIELDS = ["priceBookId", "inputUsdNanoPerMTok", "outputUsdNanoPerMTok", "cacheReadUsdNanoPerMTok", "cacheWriteUsdNanoPerMTok"] as const;
 
@@ -143,6 +144,8 @@ export const GuardMessages = z.strictObject({
   notAllowed: z.string().min(1).max(1000),
   /** The Workshop user is no principal of this district: their account has not been linked yet. */
   unknownPrincipal: z.string().min(1).max(1000),
+  /** A student's input carries an image, which Hall Monitor cannot screen yet. */
+  imageUnscreened: z.string().min(1).max(1000),
 });
 /** The guard's user-facing messages. */
 export type GuardMessages = z.infer<typeof GuardMessages>;
@@ -160,6 +163,7 @@ export const DEFAULT_GUARD_MESSAGES: GuardMessages = {
   unknownPrincipal:
     "Your account isn't linked to your school's records yet, so the AI assistant is off. " +
     "Ask your school's administrator to link it.",
+  imageUnscreened: "Pictures can't be checked yet, so they can't be sent to the AI assistant. Describe it in words instead, or ask your teacher.",
 };
 
 /**
@@ -212,6 +216,8 @@ export const GuardConfig = z.strictObject({
     surface: MachineCode.default("educateos.workshop"),
     /** Deadline for one evaluation, retries included. */
     timeoutMs: z.int().min(100).max(14_000).default(8_000),
+    /** Explicit source eligibility and request-bound governance; absent until a pilot opts in. */
+    governance: SourceGovernance.optional(),
   }),
   /**
    * Where a call's {@link GuardContext} comes from. `district` (the default) derives it from the
@@ -233,14 +239,31 @@ export const GuardConfig = z.strictObject({
   /** Plain-text instructions for coached calls, in place of {@link DEFAULT_COACHING_INSTRUCTIONS}. */
   coachingInstructions: z.string().trim().min(1).max(MAX_AI_CALL_INSTRUCTIONS_LENGTH).default(DEFAULT_COACHING_INSTRUCTIONS),
 }).superRefine((config, ctx) => {
+  if (config.moderation.governance !== undefined && config.contextSource !== "district") {
+    ctx.addIssue({ code: "custom", message: "governed moderation requires the district context resolver", path: ["contextSource"] });
+  }
   if (config.contextSource === "district") {
     for (const key of AUDIENCE_PROFILE_KEYS) {
       if (config.profiles[key] === undefined) ctx.addIssue({ code: "custom", message: `missing audience profile ${key}`, path: ["profiles", key] });
     }
   }
+  // A student's input and the model's replies to them are always screened (SCHO-307): a profile
+  // that students are moderated under may neither skip input moderation nor stream unscreened.
+  const unsafeForStudents = (profile: GuardProfile) => !profile.moderateInput || profile.outputModeration !== "required";
+  if (config.contextSource === "district") {
+    for (const key of AUDIENCE_PROFILE_KEYS) {
+      const profile = config.profiles[key];
+      if (key !== "educator" && profile !== undefined && unsafeForStudents(profile)) {
+        ctx.addIssue({ code: "custom", message: `student profile ${key} must moderate input and require output moderation`, path: ["profiles", key] });
+      }
+    }
+  }
   for (const [index, binding] of config.principals.entries()) {
-    if (config.profiles[binding.profile] === undefined) {
+    const profile = config.profiles[binding.profile];
+    if (profile === undefined) {
       ctx.addIssue({ code: "custom", message: `unknown profile ${binding.profile}`, path: ["principals", index, "profile"] });
+    } else if (binding.audience === "student" && unsafeForStudents(profile)) {
+      ctx.addIssue({ code: "custom", message: `a student's profile must moderate input and require output moderation`, path: ["principals", index, "profile"] });
     }
   }
   const users = new Set<string>();

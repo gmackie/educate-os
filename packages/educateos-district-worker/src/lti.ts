@@ -61,6 +61,11 @@ export interface DistrictLtiOptions {
   toolOrigin: string;
   /** The fetch platform calls go through: JWKS, tokens, AGS, NRPS and registration. */
   platformFetch: typeof fetch;
+  /**
+   * The issuers the district signs people in with: its Access team domain and Clever. No platform
+   * may register, be trusted or launch under one (SCHO-306).
+   */
+  reservedIssuers: readonly string[];
 }
 
 /** The district's LTI Tool and its administrators' surface. */
@@ -82,7 +87,7 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
   const directory = async () => (await stores.directory.load()).snapshot;
   const activities = curriculumActivityCatalog(stores.curriculum);
   const lti = createLtiDistrictStores(new DurableObjectRecordTable(options.storage), {
-    targets: directoryRegistrationTargets({ districtId, directory, activities }),
+    targets: directoryRegistrationTargets({ districtId, directory, activities, reservedIssuers: options.reservedIssuers }),
   });
 
   // The broker and the service client read keys synchronously; each request first loads the
@@ -105,7 +110,7 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
     deepLinkSessions: lti.deepLinkSessions,
     platformKeys: new PlatformJwksCache({ fetch }),
     toolKeys: currentKeys,
-    principalResolver: districtPrincipalResolver(districtId, stores.directory),
+    principalResolver: districtPrincipalResolver(districtId, stores.directory, options.reservedIssuers),
   });
   const dynamicRegistration = new DynamicRegistration({
     toolOrigin,
@@ -129,6 +134,7 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
   });
   const advantage = new LtiAdvantageService({
     districtId,
+    reservedIssuers: options.reservedIssuers,
     authorizer: app.engine,
     directory: stores.directory,
     registrations: lti.registrations,

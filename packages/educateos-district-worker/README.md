@@ -178,6 +178,14 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
 - `email` (optional, in `DISTRICT_CONFIG`): `from`, an address on a domain the district has
   onboarded to Cloudflare Email Service in this account, an optional `fromName`, and an optional
   `appUrl` linked from every email. Without it, or without the binding, nothing is emailed.
+- `discussionScreening` (optional, in `DISTRICT_CONFIG`, SCHO-305): the Hall Monitor `tenantId`,
+  pinned `profileId` and `revision`, and `costCenterId` students' discussion posts are screened
+  under, at `HALL_MONITOR_URL` with service tokens signed by `HALL_MONITOR_SIGNING_KEY` (a secret:
+  a private Ed25519 or P-256 JWK) for `HALL_MONITOR_ISSUER` (and `HALL_MONITOR_AUDIENCE`, default
+  `hall-monitor`). Configured but unreachable, every student post is refused as unavailable.
+  Without it, each student post waits for a teacher's approval, flagged `screening_not_configured`,
+  unless `unscreenedStudentPosts` is `"publish"`, which only synthetic demo districts should set.
+  None of these is a deploy input yet, so the installer does not offer them.
 
 ## Email and scheduled jobs (SCHO-189)
 

@@ -343,6 +343,29 @@ describe("the district Worker", () => {
     expect(seen.posts.map((p) => p.status)).toStrictEqual(["withdrawn", "visible"]);
     expect((await ok(teacher, "teacher.moderationQueue", { params: { offeringId: NF.eng9 } })).recent.map((e) => e.action)).toStrictEqual(["hide"]);
   });
+
+  // Discussion screening (SCHO-305).
+  it("screens student posts with the district's Hall Monitor, refusing what it blocks and failing closed when it is down", async () => {
+    const teacher = await signIn(NF.rivera);
+    const student = await signIn(NF.amara);
+    const topic = await ok(teacher, "teacher.createTopic", { params: { offeringId: NF.eng9 }, body: { title: "Uniforms?", prompt: "Say why." } });
+    const at = { params: { offeringId: NF.eng9, topicId: topic.id } };
+    const refused = async (text: string) => {
+      const response = await fetchWorker(request(student, "student.createPost", { ...at, body: { body: text } }));
+      return { status: response.status, body: await response.json() };
+    };
+    expect(await refused("Mean words [[block]]")).toMatchObject({ status: 403, body: { code: "policy-violation" } });
+    expect(await refused("Hello [[down]]")).toMatchObject({ status: 503, body: { code: "unavailable" } });
+    expect((await ok(student, "student.createPost", { ...at, body: { body: "Worrying [[hold]]" } })).status).toBe("pending");
+    expect((await ok(student, "student.createPost", { ...at, body: { body: "Comfort matters." } })).status).toBe("visible");
+    const seen = await ok(student, "student.discussionThread", at);
+    expect(seen.posts.map((p) => p.body)).toStrictEqual(["Worrying [[hold]]", "Comfort matters."]);
+    // Every call carried a signed service token of its own.
+    const authorizations = await district().hallMonitorAuthorizations();
+    expect(authorizations.length).toBeGreaterThanOrEqual(4);
+    expect(authorizations.every((value) => value !== null && /^Bearer [\w-]+\.[\w-]+\.[\w-]+$/.test(value))).toBe(true);
+    expect(new Set(authorizations).size).toBe(authorizations.length);
+  });
 });
 
 // Guardians (ADR-0012, SCHO-188)

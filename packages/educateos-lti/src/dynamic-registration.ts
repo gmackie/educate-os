@@ -170,6 +170,41 @@ const PlatformOpenIdConfiguration = z.object({
     .optional(),
 });
 
+/**
+ * Issuers whose platform is served from hosts other than the issuer's own, with the hosts it is
+ * served from. Canvas Cloud's issuer is `https://canvas.instructure.com` for every institution,
+ * whose configuration and endpoints live on the institution's `*.instructure.com` host or on
+ * `sso.canvaslms.com`. Every other issuer must serve its configuration, keys and endpoints itself.
+ */
+export const MULTI_HOST_PLATFORMS: Readonly<Record<string, readonly string[]>> = {
+  "https://canvas.instructure.com": ["canvas.instructure.com", "*.instructure.com", "sso.canvaslms.com", "*.canvaslms.com"],
+};
+
+const hostMatches = (host: string, pattern: string) =>
+  pattern.startsWith("*.") ? host.endsWith(pattern.slice(1)) && host.length > pattern.length - 1 : host === pattern;
+
+/**
+ * Refuses a platform configuration that names an issuer it is not served by (LTI Dynamic
+ * Registration §3.5.1: the issuer must match the configuration's origin). Otherwise anyone holding
+ * an invitation could register as a trusted issuer, Canvas Cloud or the district's own sign-in,
+ * with keys of their own, and sign launches as anyone linked under that issuer.
+ */
+export function assertPlatformServedByIssuer(
+  configurationUrl: string,
+  platform: { issuer: string; jwks_uri: string; authorization_endpoint: string; token_endpoint: string; registration_endpoint: string },
+  multiHostPlatforms: Readonly<Record<string, readonly string[]>> = MULTI_HOST_PLATFORMS,
+): void {
+  const issuer = new URL(platform.issuer);
+  const allowed = multiHostPlatforms[issuer.origin] ?? [issuer.host];
+  const urls = [configurationUrl, platform.jwks_uri, platform.authorization_endpoint, platform.token_endpoint, platform.registration_endpoint];
+  for (const raw of urls) {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || url.port !== issuer.port || !allowed.some((pattern) => hostMatches(url.host, pattern))) {
+      throw new EducateOsError("validation-failed", "The platform's configuration names an issuer it is not served from.");
+    }
+  }
+}
+
 /** The platform's answer to the tool's registration request (§3.6). Stripping, as above. */
 /**
  * The platform's registration answer (§3.6.2): the client ID it assigned, and a deployment ID if it
@@ -204,6 +239,11 @@ export interface DynamicRegistrationOptions {
   readonly pending: PendingRegistrationStore;
   /** Used for the platform's OpenID configuration and registration endpoint, and nothing else. */
   readonly fetch: typeof globalThis.fetch;
+  /**
+   * More platforms served from hosts other than their issuer's, by issuer origin, added to
+   * {@link MULTI_HOST_PLATFORMS}: a self-hosted LMS split across hosts, say.
+   */
+  readonly multiHostPlatforms?: Readonly<Record<string, readonly string[]>>;
   readonly now?: Clock;
 }
 
@@ -259,6 +299,7 @@ export class DynamicRegistration {
     );
     if (!config.success) throw new EducateOsError("validation-failed", "The platform's configuration is not usable.");
     const platform = config.data;
+    assertPlatformServedByIssuer(query.data.openid_configuration, platform, { ...MULTI_HOST_PLATFORMS, ...this.#options.multiHostPlatforms });
 
     const headers: Record<string, string> = { "content-type": "application/json", accept: "application/json" };
     if (query.data.registration_token !== undefined) headers.authorization = `Bearer ${query.data.registration_token}`;
