@@ -2,6 +2,14 @@ import type {
   WorkshopCapabilityDescriptor, WorkshopCapabilityPolicy,
 } from "@gadgets/workshop-shared/capability-policy";
 
+/** Refuse execution until descendant capabilities support transitive policy revocation. */
+export function assertRevocableExecution(
+    env: Pick<Cloudflare.Env, "WORKSHOP_CAPABILITY_POLICY" | "REQUIRE_WORKSHOP_CAPABILITY_POLICY"> | undefined): void {
+  if (hasCapabilityPolicy(env)) {
+    throw new Error("Workshop execution is disabled with capability policy: transitive revocation is unavailable.");
+  }
+}
+
 /** Check immediately before a protected operation; never cache an authorization decision. */
 export async function assertCapability(
     policy: Pick<WorkshopCapabilityPolicy, "authorizeCapability"> | undefined,

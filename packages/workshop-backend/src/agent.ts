@@ -312,6 +312,9 @@ export function makeStoredAssistantMessage(message: AssistantMessage): StoredAss
  *   overseer.ts?
  */
 export interface AgentHooks {
+  /** Fail closed before runtime work when transitive capability revocation is unavailable. */
+  assertAgentExecution?(): void;
+
   getChatAgentContext(chatId: number): AiChatAgentContext;
 
   /** Records the chat's AiChatAgentContext.workspacePrompt. */
@@ -1525,6 +1528,7 @@ export async function runAgent(
   };
   let retries = 0;
   while (true) {
+    hooks.assertAgentExecution?.();
     let history = hooks.loadChatHistory(chatId);
     let outcome = await runAgentPass(
         hooks, handle, chatId, author, history, abortSignal, initiator, modelConfig, progress);
@@ -3985,7 +3989,13 @@ async function runAgentPass(
 
   // Calls that reached a tool's execute(), so tool_execution_end can tell the ones pi rejected.
   let executedToolCalls = new Set<string>();
-  let toolList = Object.values(tools).map(tool => traceTool(tool, executedToolCalls));
+  let toolList = Object.values(tools).map(tool => traceTool({
+    ...tool,
+    execute: (...args) => {
+      hooks.assertAgentExecution?.();
+      return tool.execute(...args);
+    },
+  }, executedToolCalls));
 
   // Records a turn that ended with a provider error, so it can be retried or rethrown for the
   // overseer's error triage after the loop settles. (pi never throws for provider failures; the
@@ -4214,6 +4224,12 @@ async function runAgentPass(
     ? withAnthropicCompactionBlock(
         handle.stream, checkpoint.anthropicCompactionBlock, priorConversation)
     : handle.stream;
+
+  let uncheckedStream = stream;
+  stream = (...args) => {
+    hooks.assertAgentExecution?.();
+    return uncheckedStream(...args);
+  };
 
   // Compaction runs once the tools exist, because Anthropic summarizes the request a turn would
   // send. Defining the tools has no effects, so nothing has acted when a `/compact` turn returns.
