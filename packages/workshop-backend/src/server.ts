@@ -532,7 +532,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
 
     // 2. Create new Overseer DO (same as newWorkspace()).
     let id = this.overseers.newUniqueId().toString();
-    await this.#user.newWorkspace(id, kvRecord.metadata.title);
+    await this.#user.newWorkspace(id, kvRecord.metadata.title, undefined, blueprintId);
     let overseerResult = await this.#openWorkspaceInternal(id);
 
     // 3. Initialize from the blueprint's code. The Overseer reads it for itself, as the version
