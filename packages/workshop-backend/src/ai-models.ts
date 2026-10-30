@@ -37,7 +37,7 @@ import {
   AiGatewayConfig, getAiGatewayConfig, getGatewayModels, type AiGatewayLogRoute,
 } from "./ai-gateway.js";
 import { completeText } from "./ai-invoke.js";
-import { guardDecisionModel, guardModelHandle, type AiCallScope, type DecisionModel }
+import { aiCallGuardFor, guardDecisionModel, guardModelHandle, type AiCallScope, type DecisionModel }
   from "./ai-call-guard.js";
 import { bridgePdfAttachments } from "./chat-attachment-pdf.js";
 import { hasGpt56PromptCaching, splitSystemPrompt } from "./system-prompt-blocks.js";
@@ -632,7 +632,7 @@ export function getModel(env: Cloudflare.Env, config: AiModelConfig,
                          options: ModelRoutingOptions = {}): ModelHandle {
   let callSite = options.callSite ??
       (options.metadata ? CALL_SITES[options.metadata.source] : "unattributed");
-  return guardModelHandle(env.AI_CALL_GUARD, routeModel(env, config, initiator, options),
+  return guardModelHandle(aiCallGuardFor(env), routeModel(env, config, initiator, options),
       guardScope(config, initiator, callSite, options.metadata));
 }
 
@@ -954,7 +954,7 @@ function workersAiAccountUrl(config: AiModelConfig): string {
 export function getDecisionModel(env: Cloudflare.Env, config: AiModelConfig,
                                  initiator: AiChatAuthorInfo,
                                  metadataContext?: GatewayMetadataContext): DecisionModel {
-  return guardDecisionModel(env.AI_CALL_GUARD,
+  return guardDecisionModel(aiCallGuardFor(env),
       routeDecisionModel(env, config, initiator, metadataContext),
       guardScope(config, initiator, "gadget.decision", metadataContext));
 }

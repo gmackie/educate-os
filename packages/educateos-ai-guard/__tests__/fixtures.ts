@@ -16,7 +16,7 @@ export const USERS = {
   educatorProceeds: "morgan@northfield.example",
   /** An educator whose profile fails closed. */
   educatorFailsClosed: "elena@northfield.example",
-  /** A student whose profile does not moderate input. */
+  /** An educator whose profile does not moderate input: a student's never may (SCHO-307). */
   unmoderated: "chidi@northfield.example",
   /** A teacher, known to the district only through a confirmed Workshop user link. */
   teacher: "morgan.lee@teachers.example",
@@ -147,7 +147,7 @@ export const TEST_CONFIG = {
     { workshopUserId: USERS.studentMisconfigured, principalId: "prn_nf-student-dmitri", audience: "student", gradeBand: "9-12", profile: "student-misconfigured", workspace: PERSONAL },
     { workshopUserId: USERS.educatorProceeds, principalId: "prn_nf-morgan-lee", audience: "educator", profile: "educator-proceeds", workspace: PERSONAL },
     { workshopUserId: USERS.educatorFailsClosed, principalId: "prn_nf-student-elena", audience: "educator", profile: "educator-fails-closed", workspace: PERSONAL },
-    { workshopUserId: USERS.unmoderated, principalId: "prn_nf-student-chidi", audience: "student", profile: "unmoderated", workspace: PERSONAL },
+    { workshopUserId: USERS.unmoderated, principalId: "prn_nf-student-chidi", audience: "educator", profile: "unmoderated", workspace: PERSONAL },
   ],
   messages: { support: "You're not in trouble. Please talk to Ms. Rivera or another adult you trust; they can help." },
 } satisfies z.input<typeof GuardConfig>;

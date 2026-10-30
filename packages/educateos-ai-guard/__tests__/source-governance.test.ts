@@ -169,12 +169,9 @@ describe("opt-in EducateOS source governance", () => {
     expect(await service.screenModelOutput(call.callId, { parts: [{ type: "text", text: "synthetic response" }] })).toMatchObject({ action: "withhold", reason: "moderation_unavailable" });
   });
 
-  it("does not bypass governed checks when the legacy profile skips input moderation", async () => {
+  it("refuses a configuration whose student profile skips input moderation (SCHO-307)", async () => {
     const profiles = { ...TEST_CONFIG.profiles, "student-9-12": { ...TEST_CONFIG.profiles["student-9-12"], moderateInput: false } };
-    const config = configuration({}, { profiles }), signed = await signedEnvironment();
-    const { service } = guard(config, signed.bindingEnv);
-    expect(await service.beforeModelCall(descriptor())).toMatchObject({ action: "proceed" });
-    expect(signed.tokens).toHaveLength(1);
+    expect(() => configuration({}, { profiles })).toThrow(/profiles\.student-9-12/);
   });
 
   it("rechecks original eligibility on retry, mints a new jti, and keeps concurrent request claims separate", async () => {
