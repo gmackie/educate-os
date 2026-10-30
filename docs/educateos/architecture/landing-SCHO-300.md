@@ -219,3 +219,18 @@ test” job failed only because the package test job failed.
 Graduation repair validation: full pilot-gate suite passes (142 tests, 23 existing TODOs), fresh
 pilot source/test typecheck passes, and root lint/build passes all 181 tasks. No production
 identity/policy code changed; these results still require new exact-head canonical CI.
+
+## Canonical main refresh after PRs 233 and 208
+
+Merged canonical main `14da393d` into the integration with both histories retained. The only
+conflict was the educator Hall Monitor fallback: preserve both the batch's service-outage-only
+restriction and SCHO-264's requirement that governed transfers always fail closed. Authentication,
+policy and wire errors never use fallback; governed input/output never use it either. Retain
+SCHO-285's immediate read-only school tools, with policy decisions and write confirmations intact.
+
+Validation: 116 AI guard real-workerd tests (including governed eligibility/transport and legacy
+fallback failures), 166 policy tests, 64 academics tests, 81 release/config/environment tests,
+132 district real-workerd tests, a fresh guard typecheck, and root lint/build (181 tasks) pass.
+This refresh does not authorize landing ahead of the remaining
+nine preceding Forgejo PRs; merge latest main again after they are merged or explicitly deferred,
+then require completed green CI on that exact revision. Neither main was updated by this branch.

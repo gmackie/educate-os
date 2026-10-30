@@ -15,7 +15,7 @@ import type {
   AiCallOutputDecision,
 } from "@gadgets/workshop-shared/ai-call-guard";
 import { createLogger, type Logger } from "@gadgets/observability/logger";
-import { HallMonitorError, type HallMonitorClient } from "@gmacko/hall-monitor-client";
+import { HallMonitorError } from "@gmacko/hall-monitor-client";
 import {
   MAX_TEXT_LENGTH,
   SCHEMA_VERSION,
@@ -28,7 +28,8 @@ import {
 import { denialErrorCode, type AiDenialReason, type ModelRef } from "@educateos/ai-governance";
 import { guardMessages, type GuardConfig, type GuardMessages } from "./config.ts";
 import type { GuardContext, GuardContextResolver } from "./context.ts";
-import { receiptAttempts } from "./hall-monitor.ts";
+import { receiptAttempts, type GuardHallMonitorClient } from "./hall-monitor.ts";
+import { sourceEligibility } from "./source-governance.ts";
 import type { DistrictAiLedger } from "./ledger-object.ts";
 import type { GatewayLogSource } from "./gateway-logs.ts";
 import { estimateMaxUsdNano, priceSettlement, rateFor, tokenUsageOf } from "./pricing.ts";
@@ -61,7 +62,7 @@ export interface GuardDependencies {
   /** Maps a call's initiator to a principal and their moderation profile. */
   resolver: GuardContextResolver;
   /** Hall Monitor, or `null` when none is configured (moderation is then unavailable). */
-  hallMonitor: HallMonitorClient | null;
+  hallMonitor: GuardHallMonitorClient | null;
   /** The AI Gateway's logs, when the deployment can read them; settlements then use their costs. */
   gatewayLogs?: GatewayLogSource | null;
 }
@@ -112,7 +113,7 @@ export class AiCallGuardService {
   readonly #config: GuardConfig;
   readonly #ledger: DurableObjectStub<DistrictAiLedger>;
   readonly #resolver: GuardContextResolver;
-  readonly #hallMonitor: HallMonitorClient | null;
+  readonly #hallMonitor: GuardHallMonitorClient | null;
   readonly #gatewayLogs: GatewayLogSource | null;
   readonly #messages: GuardMessages;
 
@@ -160,6 +161,12 @@ export class AiCallGuardService {
     if (context === null) {
       log.info("AI call refused: initiator is no principal of this deployment", { event: "ai_guard.denied", reason: "unknown_principal" });
       return deny("unknown_principal", this.#messages.unknownPrincipal);
+    }
+    try {
+      sourceEligibility(this.#config, context, Math.floor(Date.now() / 1000));
+    } catch {
+      log.info("AI call refused: source eligibility is unavailable", { event: "ai_guard.denied", reason: "source_eligibility_unavailable" });
+      return deny("source_eligibility_unavailable", this.#messages.aiUnavailable);
     }
     const model: ModelRef = { provider: call.model.provider, modelId: call.model.id };
     const rate = rateFor(this.#config, model);
@@ -308,7 +315,7 @@ export class AiCallGuardService {
   }
 
   async #moderate(call: AiCallDescriptor, context: GuardContext, log: Logger<GuardLogFields>): Promise<Moderation> {
-    if (!context.profile.moderateInput) return { kind: "proceed", coach: false };
+    if (!context.profile.moderateInput && this.#config.moderation.governance === undefined) return { kind: "proceed", coach: false };
     const checks = call.newMessages.flatMap((message, m) => textChunks(message.parts).map((text, c) => ({ checkId: `${call.callId}.m${m}.c${c}`, text })));
     return this.#evaluate(call.callId, context, checks, "interaction.input", log);
   }
@@ -330,6 +337,12 @@ export class AiCallGuardService {
     let coached = false;
     for (const { checkId, text } of checks) {
       const checkLog = log.with({ checkId });
+      try {
+        sourceEligibility(this.#config, context, Math.floor(Date.now() / 1000));
+      } catch {
+        checkLog.info("moderation refused: source eligibility is unavailable", { event: "ai_guard.denied", reason: "source_eligibility_unavailable" });
+        return { kind: "deny", reason: "source_eligibility_unavailable", message: this.#messages.aiUnavailable };
+      }
       const held = await this.#ledger.reserve({
         requestId: checkId,
         principal: context.principal,
@@ -347,7 +360,7 @@ export class AiCallGuardService {
 
       let result: EvaluationResult;
       try {
-        result = await this.#hallMonitor.evaluate(this.#evaluationRequest(callId, context, checkId, text, kind));
+        result = await this.#hallMonitor.evaluate(this.#evaluationRequest(callId, context, checkId, text, kind), { sourceContext: context });
       } catch (error) {
         // The call may have reached Hall Monitor and been billed, so its cost is unknown, not $0.
         await this.#ledger.settle(checkId, { attempts: [{ attemptIndex: 0, state: "unknown" }] });
@@ -370,6 +383,10 @@ export class AiCallGuardService {
         return result.decision === "support"
           ? { kind: "deny", reason: "moderation_support", message: this.#messages.support }
           : { kind: "deny", reason: `moderation_${result.decision}`, message: output ? this.#messages.outputWithheld : this.#messages.blocked };
+      }
+      if (this.#config.moderation.governance !== undefined && result.degraded !== undefined) {
+        checkLog.info("moderation refused a degraded governed result", { event: "ai_guard.denied", reason: "moderation_unavailable", ...fields });
+        return { kind: "deny", reason: "moderation_unavailable", message: output ? this.#messages.outputWithheld : this.#messages.aiUnavailable };
       }
       const integrity = context.profile.answerAssistance !== "direct" && result.reasonCodes.some((code) => code.startsWith("academic_integrity."));
       if (result.decision === "coach" || integrity) {
@@ -408,9 +425,9 @@ export class AiCallGuardService {
       ? { hallMonitorCode: error.code, ...(error.status === undefined ? {} : { hallMonitorStatus: error.status }) }
       : {};
     // Only service outages may use the educator fallback. Authentication, policy and wire
-    // faults cannot be treated as permission to bypass the configured moderation policy.
+    // faults cannot bypass moderation; governed transfers always fail closed.
     const outage = error === undefined || (error instanceof HallMonitorError && (error.code === "unavailable" || error.code === "rate_limited"));
-    if (!output && outage && context.audience === "educator" && context.profile.failureMode === "proceed") {
+    if (this.#config.moderation.governance === undefined && !output && outage && context.audience === "educator" && context.profile.failureMode === "proceed") {
       log.warn("Hall Monitor unavailable; educator profile proceeds unmoderated", { event: "ai_guard.moderation.unavailable", reason: "moderation_unavailable_proceed", ...fields });
       return { kind: "proceed", coach: false };
     }
