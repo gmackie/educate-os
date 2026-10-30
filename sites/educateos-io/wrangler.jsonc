@@ -20,18 +20,23 @@
     "directory": "./public",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page",
-    // Must equal DYNAMIC_PATHS in packages/educateos-control-plane/src/app.ts (site-config.test.mjs).
-    "run_worker_first": ["/healthz", "/app", "/app/*", "/registry/*", "/clever/launch"]
+    // Includes the isolated intake paths in addition to DYNAMIC_PATHS in packages/educateos-control-plane/src/app.ts (site-config.test.mjs).
+    "run_worker_first": ["/healthz", "/app", "/app/*", "/registry/*", "/clever/launch", "/api/interest", "/api/interest/*"]
   },
   // The control plane's operators and installations. This Worker owns the data, so it must never
   // be renamed, nor the class (SCHO-231): a new name starts an empty namespace.
   "durable_objects": {
-    "bindings": [{ "name": "CONTROL_PLANE", "class_name": "ControlPlane" }]
+    "bindings": [{ "name": "CONTROL_PLANE", "class_name": "ControlPlane" },
+      { "name": "INTEREST", "class_name": "InterestIntake" }]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ControlPlane"] }],
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ControlPlane"] },
+    { "tag": "interest-v1", "new_sqlite_classes": ["InterestIntake"] }],
   // Secrets, set with `wrangler secret put` (never in this file): CLEVER_CLIENT_ID and
   // CLEVER_CLIENT_SECRET, the educateos.io Clever app's OAuth client, for /clever/launch (SCHO-249).
   "vars": {
+    // Closed by default. See intake/README.md. No site key, secrets or review attestation shipped.
+    "INTEREST_ENABLED": "false",
+    "INTEREST_OPTOUT_ENABLED": "false",
     // The Access application "EducateOS operator console" (9074c7b7) guards educateos.io/app: anyone
     // with a verified email (one-time PIN or GitHub). The Worker verifies each assertion with these.
     "ACCESS_ISSUER": "https://gmacko.cloudflareaccess.com",
