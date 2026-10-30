@@ -1,0 +1,313 @@
+{
+  "schemaVersion": 1,
+  "baselineHead": "b4157a242e6580211280a6ab66972eac82483e9f",
+  "baselineUpstream": "0483e888f828cf65675fa827e5be367fb276dffc",
+  "exceptions": [
+    {
+      "path": "packages/integration-tests/__tests__/ai-gateway-cost.test.ts",
+      "fingerprint": "2193cfe4c4d0efe2d7d960b880c6f41fe5ee365873dbff75ac4fd78596a881e6",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/integration-tests/__tests__/workshop-agent-actions.test.ts",
+      "fingerprint": "5a0def88f8bbfa1e67c062e8b92b5b200565685aeadc2b21e90f7d42759b5e09",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/integration-tests/fixtures/gatekeeper-test/src/test-gatekeeper.ts",
+      "fingerprint": "86ac85aa6b3f94f2bb79a98c4b4c14a73a6e78ef02966f9a2a42326447e7126f",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/router/__tests__/router.test.ts",
+      "fingerprint": "f904394eb869f75b7d5463f38d0fc4ca21cbb0139d7a46b462b281a3b67e7a5d",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/router/cloudflare.config.ts",
+      "fingerprint": "3425a8277897e7fd08fa4acf47c3f5346c3ba929e1156eccc20d8b19e9bb514d",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/router/src/index.ts",
+      "fingerprint": "5ab395a32d182c7e407943d6c0093df3fceaa73a29c78394c6bdee88e736bef6",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/router/wrangler.jsonc",
+      "fingerprint": "d57710caa698314c79d8c15b428189adc27285e238b71f8e9a2782527f267f2a",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/router/wrangler.production.jsonc",
+      "fingerprint": "1f0c4e458432973378d2a198f083457900b75bae0eb9e0ca29964b4f04003517",
+      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/typed-storage/__tests__/index.test.ts",
+      "fingerprint": "721e24972343561efa6da821d8832d483128d43af183421417a69f37d87e0f78",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/typed-storage/src/index.ts",
+      "fingerprint": "281b975423709bf6239c3cd5738f8ee0e44df3db6089d95563fc878e55123e61",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__integration__/external-workspace-rpc.test.ts",
+      "fingerprint": "5c39b40b1e19706ac8fb85e0aa5ee2193384d85343e2432c7312abb728faaf48",
+      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/admin-config.test.ts",
+      "fingerprint": "240f2a149481b1c3cb0b3814586ee35e965f8b54f4a26de3619d77d22b43e851",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/admin-settings-models.test.ts",
+      "fingerprint": "348bc2d1432437866eed259f8391b6f50c6365e904493205b090fe9de57f3825",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/ai-call-guard.test.ts",
+      "fingerprint": "da2fc160c753c4ed7adcc2f22820fedf988e9335a6581311f3e60e36b0d05b5e",
+      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/ai-call-ingress.test.ts",
+      "fingerprint": "25df8a18c702ff0222b5d3f12e39114d828ac50778cc6f297aed91ca256b116b",
+      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/ai-call-sites.test.ts",
+      "fingerprint": "50b05dec8ba91c1c9692cfc9b06bea1039ca2aa3fb981437f621565b43091cde",
+      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/ai-gateway.test.ts",
+      "fingerprint": "6ca9fefc37b087cb5c80df30753c9ad1a39e0962d2085db97319419d50d37d54",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/ai-models.test.ts",
+      "fingerprint": "73c8edfdcecc389f2cba01f4c96e35ba4ee973d0dad6ae02fb01e7bcbfb62eca",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/durable-decision-resume.test.ts",
+      "fingerprint": "ab61dcb83df2925f4ca2e186c46165c19be4384c6d2468823dbfa10bb18225bf",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/gatekeeper-app-nav.test.ts",
+      "fingerprint": "77d6d09fc95d49db5fbe87098b5e1cd3b156efa17d7f55a0522180e22e7ab388",
+      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/notifications.test.ts",
+      "fingerprint": "c442c515400b66832b2abff2256b4ac0dac29240933b1d9164cd6036bf0f1754",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/principal-sign-in.test.ts",
+      "fingerprint": "8a41448c48a534b6cdc28a2ab48d8a6e3b30a73795a7be5ef62ab8867ffc1a7e",
+      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/test-worker.ts",
+      "fingerprint": "b3a952d62f45c65b28e4d4ca2b633fdbcdbf45879633be42bb690a5de89f4b66",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/user-models.test.ts",
+      "fingerprint": "fb04156272a6ba05cb9ed53c392e78ce3d7e8d6606e8c59cb794641f3770fff4",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/AGENTS.md",
+      "fingerprint": "44c85b3d6ff4a372dfa9cd4649cd97655ff77df73ea4a7662fb4ea262ab48485",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/package.json",
+      "fingerprint": "8883898e00a1e446493f3e5ae6e4d96726b6ced32ac41eab7a6af3dd26f75ece",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/admin-config.ts",
+      "fingerprint": "ec8d851fc229bf4b640d6b7c966775f1df2233b2f60ee8032f73bbb905376b99",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/admin-settings.ts",
+      "fingerprint": "0c07596b6dcbd52fc2b4be77602839831d3f4da10498e28fb85588059e181c3f",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/agent-tracing.ts",
+      "fingerprint": "21488f2bb730abdbca6ce12e7d76bc08e2d104bfd80c57cf1731ef0015d03d10",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/agent.ts",
+      "fingerprint": "4f4592a27bfdfbd3a875ac24a84e53334a6748045ed630e5d329356f01eedacb",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/ai-call-guard.ts",
+      "fingerprint": "7ef9634202615f018b0cb2f6eb5d3697a49e03eeb5baddfda455bec87e0a5a8e",
+      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/ai-gateway.ts",
+      "fingerprint": "1e0f3e7aa2149340e3b256a11dc5a0f1d6be1ced6461b6fd7134fcb7ffbb72ef",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/ai-invoke.ts",
+      "fingerprint": "7aacccfcc588ff403e77e786e3ade1e33e3f16b5925076fe771d3946b6815aba",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/ai-models.ts",
+      "fingerprint": "cc881edc355f2e13fb29fe46ec11515ccd1836734521f59eb6d8ab1ac6457ec8",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/anthropic-compaction.ts",
+      "fingerprint": "7f6d3977b636e501f51401722bb6058cf2fbd742d20c8d384c3203b02d4e1c1b",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/auth/config.ts",
+      "fingerprint": "30f5efb3c77b6bac855d698419750755f209a593c1c3c8f47beb8cbaf9685de4",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/auth/principal-sign-in.ts",
+      "fingerprint": "0a6ac202806061be482687f1a408b6765d1fa592bd60269605e450545f4e2e8e",
+      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/env.d.ts",
+      "fingerprint": "886ab7261e2d1d99fd1ffc6f780f64b508b3f9c51273217956e3403406cf94f7",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/notification-service.ts",
+      "fingerprint": "b4ddc000f020b0e6dc0006d526c5f5ea5ab3153ec437e76c1cfd7ad165c99bbb",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/observability.ts",
+      "fingerprint": "7a1c18acabad93def85acf60f217b94cb4b2077e572ea2e7fb98988d6e3b757e",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/overseer.ts",
+      "fingerprint": "c81e91131b7126ccd6d3a556464af1774a1b1d41b5e211eb56e3967185fcb773",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/server.ts",
+      "fingerprint": "567eb617ee51885ffb0780fd80d105daef3d3bca78d238c9aabea0ab658828d1",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/storage-schema/overseer-storage.ts",
+      "fingerprint": "9bf5f6edac98a75d1240e49c8daacc6a8138be660521821b163bcd13fe8a004e",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/storage-schema/user-storage.ts",
+      "fingerprint": "863bf15e19669682a30c6b98ec031050b21600501c483830ab4ce22b70adf882",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/src/user.ts",
+      "fingerprint": "b6ea8ad61ae78c42fc3695c64ec12d04e45ef440a3b981f7e529d9c3b05cde2c",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/wrangler.production.jsonc",
+      "fingerprint": "74569d67ad15758b75e3b56562e7b16cc91c4c63a58eef1751e57185511986f2",
+      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-shared/package.json",
+      "fingerprint": "4544c6b3aeeade3aa9e4649f7748a17a9e1305a4871018218e1d7a825acb36e5",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-shared/src/ai-call-guard.ts",
+      "fingerprint": "4f70ebd5b54878095551f4a0467abdf611031fc9118b89e09c9374bdfab03a19",
+      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-shared/src/api.ts",
+      "fingerprint": "235a3ccb75863f0a7b5bbd439cfdbc594e2b3acc20a7a7f88b9f6dcc99da3eac",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-shared/src/gatekeeper.ts",
+      "fingerprint": "94b2493196c24efed36b191485796761b4d5819abad1d6a6e5085868a83eba6d",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-shared/src/principal-resolver.ts",
+      "fingerprint": "f51ecc382644041e17cba6842162a4c94ee80f13750b33480afc5d42fd0f212a",
+      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    }
+  ]
+}

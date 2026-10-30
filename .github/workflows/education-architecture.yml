@@ -1,0 +1,32 @@
+name: Education architecture
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  upstream-delta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - name: Fetch upstream (failure is fatal)
+        run: git fetch --no-tags https://github.com/cloudflare/cloudflare-os.git +refs/heads/main:refs/remotes/upstream/main
+      - name: Fixture tests
+        run: node --test scripts/education-architecture/inventory.test.mjs
+      - name: Inventory and kernel gate
+        run: node scripts/education-architecture/inventory.mjs --out /tmp/educateos-delta
+      - name: Inventory summary
+        if: always()
+        run: |
+          if [ -f /tmp/educateos-delta/inventory.md ]; then
+            cat /tmp/educateos-delta/inventory.md >> "$GITHUB_STEP_SUMMARY"
+          fi
