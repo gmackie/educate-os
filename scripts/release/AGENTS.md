@@ -41,3 +41,15 @@ service at PUT time, never manifest-templated.
 - EducateOS signing: with `EDUCATEOS_RELEASE_SIGNING_KEY` set (the root release key, an Ed25519 private JWK held as a CI secret), `build-release.ts` and `promote-release.ts` write the root's `SignedReleaseManifest` beside the manifest as `manifest.signed.json` (`scripts/release/release-signing.ts`); they then also need `--version <semver> --channel <canary|stable|lts>`. Set the key on the promote job only, so only e2e-verified releases are ever signed. Without it the build is an unsigned development release, which `@educateos/installer` accepts only under its `insecure-pin` mode. See `docs/educateos/release-signing.md`.
 
 - A deployable package that is neither core nor `gatekeeper-*` must be listed in `SERVICE_PACKAGES` in `manifest-lib.ts` (or the release build throws). Such a package is an optional backend service, kind `service`: the backend binds it under a fixed name (`backendBinding`, e.g. `AI_CALL_GUARD` for `educateos-ai-guard`), it is installable once, its wizard inputs come only from its `deploy-inputs.json`, and previews leave it out.
+
+## District school shell builds
+
+School mode is explicit and defaults off. Build a district release with
+`EDUCATEOS_SCHOOL_BUILD=true node scripts/release/build-release.ts --out release-out` (plus the normal release/signing flags). The selector accepts only `true` or `false`; generic builds force `VITE_EDUCATEOS_SCHOOL_MODE=false` even if a conflicting UI flag was inherited. School builds set it to `true` and retain `VITE_CF_ACCESS_MODE=true`. The frontend task forwards and fingerprints `VITE_*`.
+
+School releases publish only the `access-school` asset variant, with the built files' content hashes covered by the normal signed manifest digest. Generic releases retain only `access`. The district installer supports either and refuses manifests containing both. Older installers that only know `access` refuse school releases rather than silently installing a different frontend. The normal manifest version and signing path are unchanged.
+
+For a frontend-only ForgeGraph build, use
+`EDUCATEOS_SCHOOL_BUILD=true node ../../scripts/release/build-frontend.ts` from a package directory (or `node scripts/release/build-frontend.ts` from the repository root). This builds assets without deploying. Existing production job configuration is unchanged and does not opt in automatically. A frontend-only build produces no signed manifest; use `build-release.ts` for signed district releases.
+
+The actual shell implementation depends on UI PR #9 being present in the source revision being built. Selecting the school variant records build intent and asset identity; it does not prove live Access sign-in or end-to-end deployment readiness. No credentials or deployment commands are changed by this opt-in.

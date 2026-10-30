@@ -10,7 +10,9 @@
   "scripts": {
     "start": "node src/report.ts",
     "write-doc": "node src/report.ts --write-doc",
-    "district-report": "node src/validate.ts"
+    "district-report": "node src/validate.ts",
+    "smoke": "node ../../scripts/with-timeout.ts --idle 120 --max 600 -- pnpm run smoke:checks",
+    "smoke:checks": "pnpm --filter @educateos/installer exec vitest run __tests__/signed-release.test.ts __tests__/services.test.ts __tests__/rollback.test.ts && pnpm exec vitest run __tests__/security-matrix.test.ts __tests__/districts.northfield.test.ts __tests__/districts.riverbend.test.ts"
   },
   "dependencies": {
     "zod": "catalog:"
