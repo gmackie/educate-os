@@ -44,7 +44,7 @@ Every other Worker is reached only through the router.
 | `gatekeeper-educateos` | `packages/gatekeeper-educateos/wrangler.production.jsonc` | `EDUCATEOS_DISTRICT` → `educateos-district-worker#DistrictSchoolTools`. See [The EducateOS connector](#the-educateos-connector). |
 | `gatekeeper-websearch` | `packages/gatekeeper-websearch/wrangler.production.jsonc` | `AI`, with `CF_AI_GATEWAY=default` |
 | `educateos-ai-guard` | `packages/educateos-ai-guard/wrangler.production.jsonc` | `HALL_MONITOR` → `hall-monitor` (already in the account). It runs its production entrypoint `src/worker.ts` with the nightly `17 3 * * *` reconciliation cron. |
-| `schoolos-district-worker` (package `educateos-district-worker`; name pinned, see [The district](#the-district-lms-lite)) | `packages/educateos-district-worker/wrangler.production.jsonc` | `SEND_EMAIL` (Email Service), the district's UIs as static assets, and its two Cron Triggers. Its Durable Object needs no binding. |
+| `schoolos-district-worker` (package `educateos-district-worker`; name pinned, see [The district](#the-district-lms-lite)) | `packages/educateos-district-worker/wrangler.production.jsonc` | `SEND_EMAIL` (Email Service), the district's UIs as static assets, its two Cron Triggers, and `HALL_MONITOR` → `hall-monitor`, which screens students' discussion posts (SCHO-308) with the guard's issuer and audience vars. Its Durable Object needs no binding. |
 
 The backend's vars are `PUBLIC_BASE_URL`, plus `CF_AI_GATEWAY=default`, `CF_AI_GATEWAY_ACCOUNT_ID`
 and `CF_AI_GATEWAY_PROVIDERS=cloudflare`. With these, Workers AI is server-managed through the
@@ -61,13 +61,18 @@ stricter 6-8 one). The guard's optional AI Gateway log reader (`AI_GATEWAY_ACCOU
 `AI_GATEWAY_ID`, `AI_GATEWAY_LOGS_TOKEN`) is left unset, so settlements are estimated, and the nightly
 reconciliation only records snapshots.
 
+The district screens students' discussion posts with the same Hall Monitor (SCHO-308): its
+`DISTRICT_CONFIG.discussionScreening` is tenant `educateos-gmacko-demo`, profile `student-6-8` at
+`builtin-1` (the stricter student profile, since one profile covers every grade band in a
+discussion), cost center `cc-gmacko-demo`. Without it every student post waits for a teacher.
+
 ## Secrets (delivered by ForgeGraph, never in a config)
 
 | Worker | Secret | ForgeGraph app |
 |---|---|---|
 | `workshop-backend` | `ADMINS` (a JSON array of Access emails), `CF_ACCESS_AUD`, `CF_ACCESS_ISS` | `educate-os` |
 | `educateos-ai-guard` | `HALL_MONITOR_SIGNING_KEY` (private Ed25519 or P-256 JWK, with a `kid`), `AI_GUARD_CONFIG` (the example config with the admin's Access email in place of `admin@example.com`, minified) | `educateos-ai-guard` |
-| `schoolos-district-worker` | `DISTRICT_CONFIG` (the demo district's seed, minified), `CF_ACCESS_AUD` (comma-separated: the district Access application's audience, then the instance's; see [The EducateOS connector](#the-educateos-connector)), `CF_ACCESS_ISS` | `educateos-district` |
+| `schoolos-district-worker` | `DISTRICT_CONFIG` (the demo district's seed, minified), `CF_ACCESS_AUD` (comma-separated: the district Access application's audience, then the instance's; see [The EducateOS connector](#the-educateos-connector)), `CF_ACCESS_ISS`, `DEVICE_TOKEN_SECRET`, `HALL_MONITOR_SIGNING_KEY` (the guard's key, which Hall Monitor trusts for `iss=educateos`; SCHO-308) | `educateos-district` |
 | `gatekeeper-google` | `CLIENT_ID` and `CLIENT_SECRET` (the educateos-classroom-demo OAuth web client) | `educateos-google` |
 | `gatekeeper-clever` | `CLIENT_ID` and `CLIENT_SECRET` (Cedar Valley's Clever SSO client in the fakes Worker), `CLEVER_DISTRICT_TOKENS` | `educateos-clever` |
 
@@ -189,7 +194,7 @@ that the backend rejects. The release build sets it the same way (`build-release
 
 A service binding needs its target to exist, so deploy in tiers:
 
-1. `educateos-district-worker`, which binds no other Worker. `hall-monitor` must already exist.
+1. `educateos-district-worker`, which binds only `hall-monitor`, which must already exist.
 2. `gatekeeper-clever`, `gatekeeper-context`, `gatekeeper-google`, `gatekeeper-scheduler`, `gatekeeper-educateos`,
    `gatekeeper-websearch` and `educateos-ai-guard`. They can go in parallel. `gatekeeper-educateos`
    binds the district Worker, so it needs step 1.

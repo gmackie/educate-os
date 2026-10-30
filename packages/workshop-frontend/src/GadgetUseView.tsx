@@ -153,6 +153,7 @@ export default function GadgetUseView({
             gadget={gadget}
             height="100%"
             isVisible={true}
+            restricted={metadata.containsRestrictedData === true}
           />
         ) : (
           <div className="flex h-full items-center justify-center px-6 text-center">

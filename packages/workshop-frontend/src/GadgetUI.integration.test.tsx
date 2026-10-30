@@ -188,6 +188,20 @@ describe('GadgetUI RPC recovery', () => {
     )
   })
 
+  it('drops popups from the sandbox once the workspace holds restricted data', async () => {
+    const gadget = fakeGadget('links', 'document.body.textContent = "links"')
+    await act(async () => {
+      root.render(<GadgetUI gadget={gadget.stub} height="100px" />)
+    })
+    await vi.waitFor(() => expect(container.querySelector('iframe')).not.toBeNull())
+    expect(container.querySelector('iframe')!.getAttribute('sandbox')).toBe('allow-scripts allow-popups allow-popups-to-escape-sandbox')
+
+    await act(async () => {
+      root.render(<GadgetUI gadget={gadget.stub} height="100px" restricted />)
+    })
+    await vi.waitFor(() => expect(container.querySelector('iframe')!.getAttribute('sandbox')).toBe('allow-scripts'))
+  })
+
   it('keeps the iframe while redirecting calls to the replacement gadget client', async () => {
     const first = fakeGadget('first', 'document.body.textContent = "first"')
     await act(async () => {
