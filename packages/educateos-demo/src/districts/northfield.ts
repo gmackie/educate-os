@@ -56,6 +56,8 @@ export async function bootNorthfield(): Promise<DemoDistrict> {
   const app = await createDistrictApp({
     stores: inMemoryDistrictStores(directory),
     verifyRequest: personaVerifier(directory),
+    // Synthetic personas only: publish their discussion posts without Hall Monitor.
+    unscreenedStudentPosts: "publish",
     importFetch: demoWeb,
     verifyCatalogRelease: verifySeedRelease,
   });
