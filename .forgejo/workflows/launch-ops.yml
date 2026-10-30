@@ -11,10 +11,12 @@ on:
       - 'tools/launch-ops/**'
       - '.forgejo/workflows/launch-ops.yml'
       - '.github/workflows/launch-ops.yml'
+permissions:
+  contents: read
 jobs:
   local-tool:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     strategy:
       matrix:
         node: ['22', '24']
@@ -23,6 +25,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.17.0'
+          run_install: false
+      - name: Lint isolated local tool
+        run: pnpm --config.store-dir=/tmp/launch-ops-pnpm --config.cache-dir=/tmp/launch-ops-cache dlx oxlint@1.90.0 --deny-warnings tools/launch-ops/src tools/launch-ops/web/app.js tools/launch-ops/test
       - name: Check JavaScript syntax
         run: |
           for file in tools/launch-ops/src/*.mjs tools/launch-ops/web/app.js tools/launch-ops/test/*.mjs; do

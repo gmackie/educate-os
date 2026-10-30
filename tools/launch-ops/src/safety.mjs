@@ -55,7 +55,7 @@ export function csvCell(value) {
 export function toCsv(rows) {
   return rows.map(r => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
-export function parseCsv(raw) {
+export function parseCsv(raw, required = ['name', 'email', 'organization', 'role', 'sourceUrl', 'tags']) {
   check(typeof raw === 'string' && Buffer.byteLength(raw) <= 200_000, 'CSV exceeds 200 KB');
   const rows = []; let row = []; let cell = ''; let quoted = false; let closed = false;
   raw = raw.replace(/^\uFEFF/, '').replaceAll('\r\n', '\n');
@@ -76,8 +76,7 @@ export function parseCsv(raw) {
   check(rows.length >= 2 && rows.length <= 501, 'CSV needs a header and 1–500 contacts');
   const headers = rows.shift();
   check(new Set(headers).size === headers.length, 'Duplicate CSV headers');
-  const required = ['name', 'email', 'organization', 'role', 'sourceUrl', 'tags'];
-  check(headers.length === required.length && required.every(h => headers.includes(h)), 'CSV headers: name,email,organization,role,sourceUrl,tags');
+  check(headers.length === required.length && required.every(h => headers.includes(h)), `CSV headers: ${required.join(',')}`);
   return rows.map(r => {
     check(r.length === headers.length, 'CSV row width mismatch');
     return Object.fromEntries(headers.map((h, i) => [h, h === 'tags' ? r[i].split('|').filter(Boolean) : r[i]]));

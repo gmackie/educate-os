@@ -1,11 +1,12 @@
-import { constants, chmodSync, closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { constants, chmodSync, closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, parse, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { check, id, now } from './safety.mjs';
 
 export const PRIVATE_ROOT = fileURLToPath(new URL('../.private/', import.meta.url));
+export const FUNNEL_COLLECTIONS = ['organizations', 'sourceImports', 'candidates', 'domainApprovals', 'campaigns', 'outreach', 'responses', 'staffFeedback', 'triage', 'suppressions', 'runs', 'operatorConfigs', 'privacyKeys', 'handoffs', 'importReceipts', 'crawlUsage', 'deliveries'];
 export function emptyState() {
-  return { version: 1, contacts: [], invitations: [], memberships: [], meetings: [], feedback: [], pilots: [], evidence: [], tickets: [], audit: [] };
+  return { version: 1, contacts: [], invitations: [], memberships: [], meetings: [], feedback: [], pilots: [], evidence: [], tickets: [], audit: [], ...Object.fromEntries(FUNNEL_COLLECTIONS.map(k => [k, []])) };
 }
 function noSymlinks(path) {
   const full = resolve(path); let cursor = parse(full).root;
@@ -41,6 +42,8 @@ export class Store {
     catch (error) { if (error.code === 'ENOENT') return emptyState(); throw error; }
     const state = JSON.parse(readPrivate(this.statePath));
     check(state.version === 1, 'Unsupported state version');
+    // Additive migration: PR #7 stores retain their records and approval semantics.
+    for (const key of FUNNEL_COLLECTIONS) state[key] ??= [];
     for (const key of Object.keys(emptyState()).filter(k => k !== 'version')) check(Array.isArray(state[key]), 'Invalid private state');
     return state;
   }
@@ -63,8 +66,15 @@ export class Store {
       closeSync(lock); unlinkSync(this.lockPath);
     }
   }
+  purgeExports() {
+    privateDirectory(this.exportsPath);
+    for (const name of readdirSync(this.exportsPath)) {
+      check(/^[a-f0-9-]{36}\.(?:json|csv|eml)$/.test(name), 'Unexpected export file; inspect manually');
+      const path = join(this.exportsPath, name); check(!lstatSync(path).isSymbolicLink(), 'Export symlink refused'); unlinkSync(path);
+    }
+  }
   exportFile(content, extension) {
-    check(['csv', 'json'].includes(extension), 'Invalid export type');
+    check(['csv', 'json', 'eml'].includes(extension), 'Invalid export type');
     privateDirectory(this.exportsPath);
     const name = `${id()}.${extension}`;
     const path = join(this.exportsPath, name);

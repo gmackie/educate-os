@@ -1,4 +1,5 @@
 import { audit } from './store.mjs';
+import { isSuppressed, suppress } from './suppression.mjs';
 import { check, digest, email, hash, human, id, noSensitive, now, oneOf, parseCsv, redact, sourceUrl, text, toCsv } from './safety.mjs';
 
 export const COUNCILS = Object.freeze({
@@ -32,6 +33,7 @@ export function importContacts(state, input) {
   }));
   let added = 0; let duplicates = 0;
   for (const c of contacts) {
+    if (isSuppressed(state, c.email, c.organization)) { duplicates++; continue; }
     const duplicate = state.contacts.find(x => x.email === c.email ||
       (x.name.normalize('NFKC').toLowerCase() === c.name.normalize('NFKC').toLowerCase() && x.organization.normalize('NFKC').toLowerCase() === c.organization.normalize('NFKC').toLowerCase()));
     if (duplicate) { duplicates++; continue; }
@@ -65,6 +67,7 @@ export function invitationContent(state, invitation) {
 export const invitationHash = (state, invitation) => hash(invitationContent(state, invitation));
 export function draftInvitation(state, input) {
   const c = find(state, 'contacts', input.contactId); const name = council(input.council);
+  check(!state.candidates.some(x => x.contactId === c.id), 'Use the campaign pipeline for sourced or opt-in staff; campaign and frequency gates apply');
   check(!c.suppressed, 'Contact is suppressed');
   const sender = safe(input.sender, 'sender name', 120);
   const invitation = {
@@ -106,7 +109,8 @@ export function exportInvitations(state, input) {
     toCsv([['invitationId', 'name', 'email', 'organization', 'council', 'subject', 'body', 'sourceUrl', 'approvedHash', 'reviewer', 'approvedAt'], ...records.map(r => [r.invitationId, r.contact.name, r.contact.email, r.contact.organization, r.council, r.subject, r.body, r.contact.sourceUrl, r.approval.hash, r.approval.reviewer, r.approval.at])]);
 }
 export function suppressContact(state, input) {
-  const c = find(state, 'contacts', input.id); c.suppressed = true;
+  const c = find(state, 'contacts', input.id);
+  suppress(state, { address: c.email, reason: 'operator-hold', operator: input.operator }); c.suppressed = true;
   for (const i of state.invitations.filter(i => i.contactId === c.id)) i.approval = null;
   audit(state, 'contact.suppressed', c.id, safe(input.operator, 'operator', 120)); return { suppressed: true };
 }

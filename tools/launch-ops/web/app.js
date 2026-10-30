@@ -2,7 +2,7 @@
 // Untrusted contact, evidence, and model text is rendered only as text, never HTML.
 const token = location.hash.slice(1);
 history.replaceState(null, '', location.pathname);
-let state; let active = 'councils';
+let state; let active = 'pipeline';
 const workspace = document.querySelector('#workspace');
 const review = document.querySelector('#review');
 const output = document.querySelector('#output');
@@ -42,7 +42,7 @@ function form(title, fields, submit, parent = workspace, submitLabel = 'Save loc
     if (spec.type === 'select') for (const [value, title] of spec.choices) { const o = node('option', title); o.value = value; control.append(o); }
     if (spec.type === 'checkbox') { control.checked = spec.value === true; label.append(control, document.createTextNode(spec.label)); }
     else { control.value = spec.value; label.append(document.createTextNode(spec.label), control); }
-    control.required = true; if (spec.type === 'file') control.accept = '.csv,text/csv';
+    control.required = spec.required !== false; if (spec.type === 'file') control.accept = '.csv,.json,text/csv,application/json';
     controls[spec.name] = control; el.append(label);
   }
   const save = node('button', submitLabel); save.type = 'submit'; el.append(save);
@@ -158,8 +158,121 @@ function renderSupport() {
 function render() {
   workspace.replaceChildren();
   document.querySelectorAll('[data-tab]').forEach(b => { if (b.dataset.tab === active) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-  ({ councils: renderCouncils, invitations: renderInvitations, meetings: renderMeetings, pilots: renderPilots, support: renderSupport, audit: () => { const el = node('pre', JSON.stringify(state.audit, null, 2)); workspace.append(el); } })[active]();
+  ({ pipeline: renderPipeline, sourcing: renderSourcing, campaigns: renderCampaigns, inbound: renderInbound, metrics: renderMetrics, councils: renderCouncils, invitations: renderInvitations, meetings: renderMeetings, pilots: renderPilots, support: renderSupport, audit: () => { const el = node('pre', JSON.stringify(state.audit, null, 2)); workspace.append(el); } })[active]();
 }
 document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => { active = b.dataset.tab; review.replaceChildren(); output.textContent = ''; render(); }));
 if (!/^[a-f0-9]{64}$/.test(token)) error(new Error('Open the full local URL printed by the CLI, including its session fragment. Restart the CLI if needed.'));
 else refresh().catch(error);
+
+function jsonImport(title, action, fieldName = null) {
+  form(title, [f('file', 'Private JSON file (see tools/launch-ops/examples)', 'file'), operatorField()], data => {
+    const value = JSON.parse(data.file);
+    return mutate(action, fieldName ? { [fieldName]: value, operator: data.operator } : { ...value, operator: data.operator });
+  });
+}
+function renderPipeline() {
+  workspace.append(node('h2', 'Daily local workflow'), node('p', 'Public role fit is not interest. Interest is not technical readiness. All decisions below are explicit human actions; this dashboard cannot send messages.'));
+  form('Build daily review queues', [operatorField(), f('approvedLocalSources', 'I have approved the locally imported sources for this workflow', 'checkbox')], data => mutate('daily.run', data), workspace, 'Build queues (safe to repeat)');
+  jsonImport('Optional approved daily import bundle', 'daily.run');
+  const latest = state.runs.at(-1);
+  if (latest) card(`Review queues · ${latest.day}`, JSON.stringify(latest.queues, null, 2));
+  card('Stage flow', 'discovered → verified → selected → draft → approval → exported (unsent) → response → interview / council / pilot, or declined');
+  for (const c of state.candidates) {
+    const org = state.organizations.find(o => o.id === c.organizationId);
+    card(`${c.name} · ${c.stage}`, `${org?.name} · public role segment: ${c.persona} · ${c.sourceKind === 'staff-optin' ? 'explicit staff request (scope shown in record)' : 'no expressed interest inferred'}`);
+  }
+}
+function renderSourcing() {
+  workspace.append(node('h2', 'Approved sources and quarantined discoveries'), node('p', state.sourceCatalog.policy));
+  button('Read source catalog and attribution', () => show(state.sourceCatalog), workspace);
+  jsonImport('Import organization registry with provenance', 'registry.import');
+  jsonImport('Quarantine institutional candidate fixtures', 'candidates.import');
+  for (const o of state.organizations) {
+    const el = card(o.name, `${o.state} · ${o.kind} · ${o.ncesId || 'no NCES identifier'} · ${o.website}`);
+    const imports = state.sourceImports.filter(x => o.importIds.includes(x.id));
+    el.append(node('p', imports.map(x => `${x.sourceId} · observed ${x.observedAt} · ${x.attribution}`).join('\n')));
+    button('Review exact official domain approval', async () => {
+      const input = { organizationId: o.id, origin: new URL(o.website).origin };
+      const preview = await api('domains.approve', { ...input, preview: true }); show(preview);
+      form('Approve institutional source domain', [...humanFields(), f('officialDomainConfirmed', 'I verified this is the official institution domain', 'checkbox'), f('noMemberLists', 'No login, student, social or association member-list scraping', 'checkbox')], data => mutate('domains.approve', { ...input, ...data, reviewedHash: preview.hash }), review);
+    }, el);
+  }
+  for (const c of state.candidates) {
+    const el = card(`${c.name} · ${c.stage}`, `${c.role} · ${c.email} · ${c.persona} (public role fit only)`);
+    button('Read evidence and exact verification hash', () => {
+      show(c);
+      if (c.stage === 'discovered') form('Human verification', [...humanFields(), f('publicProfessionalConfirmed', 'I checked the explicitly published institutional identity, title and exact address', 'checkbox'), f('accurateEvidenceConfirmed', 'The provenance and evidence accurately match the official source', 'checkbox'), f('noStudentData', 'Staff only; no student information', 'checkbox')], data => mutate('candidates.verify', { id: c.id, reviewedHash: c.hash, ...data }), review);
+    }, el);
+    if (c.stage === 'verified') form('Select initial organization contact', [operatorField()], data => mutate('candidates.select', { id: c.id, ...data }), el, 'Select (one per organization)');
+    form('Suppress further outreach', [f('reason', 'Reason', 'select', 'operator-hold', ['operator-hold', 'optout', 'declined', 'bounce'].map(x => [x, x])), { ...f('organizationWide', 'Also suppress entire organization', 'checkbox'), required: false }, operatorField()], data => mutate('candidates.suppress', { id: c.id, ...data }), el);
+    button('Review personal-data erasure', async () => {
+      const preview = await api('privacy.erase', { address: c.email, preview: true }); show(preview);
+      form('Verified erasure (retains suppression; purges all local exports)', [...humanFields(), f('deletionAuthorityConfirmed', 'I verified deletion authority and will handle copies and backups', 'checkbox')], data => mutate('privacy.erase', { address: c.email, reviewedHash: preview.hash, ...data }), review, 'Erase and retain suppression');
+    }, el);
+  }
+}
+function renderCampaigns() {
+  workspace.append(node('h2', 'Campaign drafts and human approvals'), node('p', 'We are exploring a foundation model with an open source and district-owned design. No incorporation, tax exemption, signed Clever agreement, certifications, participating districts or partner endorsement is established here.'));
+  jsonImport('Configure compliant sender and caps', 'sender.configure');
+  if (state.operatorConfigs[0]) card('Current sender / caps', JSON.stringify(state.operatorConfigs[0], null, 2));
+  form('Create campaign', [f('kind', 'Purpose (regional referral is a primary channel)', 'select', 'regional-referral', Object.entries(state.campaignKinds).map(([key, value]) => [key, value.title])), f('context', 'Truthful context grounded in verified evidence', 'textarea'), operatorField()], data => mutate('campaigns.create', data));
+  const selected = state.candidates.filter(c => c.stage === 'selected');
+  if (selected.length && state.campaigns.some(c => c.active)) form('Prepare selected staff draft', [f('candidateId', 'Selected initial contact', 'select', selected[0].id, options(selected, x => `${x.name} · ${x.persona}`)), f('campaignId', 'Campaign', 'select', state.campaigns[0].id, options(state.campaigns.filter(c => c.active), x => state.campaignKinds[x.kind].title)), operatorField()], data => mutate('outreach.draft', data));
+  for (const c of state.campaigns) {
+    const el = card(state.campaignKinds[c.kind].title, `${c.active ? 'Active' : 'Paused'} · revision ${c.revision} · ${c.context}`);
+    form('Revise campaign (invalidates approvals)', [f('context', 'Campaign context', 'textarea', c.context), { ...f('active', 'Active campaign', 'checkbox', c.active), required: false }, operatorField()], data => mutate('campaigns.revise', { id: c.id, ...data }), el);
+  }
+  for (const o of state.outreach) {
+    const c = state.candidates.find(c => c.id === o.candidateId);
+    const el = card(o.subject, `${c?.email} · ${o.exportedAt ? 'EXPORTED / sending unknown' : o.approved ? 'APPROVED' : 'NEEDS HUMAN REVIEW'}`);
+    button('Read exact recipient, evidence, text and hash', () => {
+      show({ draft: o, candidate: c, campaign: state.campaigns.find(x => x.id === o.campaignId), sender: state.operatorConfigs[0] });
+      if (!o.exportedAt) {
+        form('Revise draft (invalidates approval)', [f('subject', 'Subject', 'text', o.subject), f('body', 'Body with sender, postal address and opt-out', 'textarea', o.body), operatorField()], data => mutate('outreach.revise', { id: o.id, ...data }), review);
+        form('Approve exact draft', [...humanFields(), f('truthfulClaimsConfirmed', 'Claims are truthful; no inferred relationship or readiness', 'checkbox'), f('sourceAndRecipientConfirmed', 'Exact recipient and source evidence verified', 'checkbox'), f('complianceConfirmed', 'Correct sender, valid physical address, monitored free opt-out and B2B compliance reviewed', 'checkbox')], data => mutate('outreach.approve', { items: [{ id: o.id, reviewedHash: o.hash }], ...data }), review, 'Record explicit human approval');
+      }
+    }, el);
+    if (o.approved) form('Local approved draft handoff', [f('format', 'Format', 'select', 'eml', ['eml', 'csv', 'json'].map(x => [x, x]))], data => mutate('outreach.export', { ids: [o.id], ...data }), el, 'Export unsent draft');
+    if (o.exportedAt && !o.followUpOf) form('Prepare sole follow-up (waiting interval enforced)', [operatorField()], data => mutate('outreach.draft', { candidateId: o.candidateId, campaignId: o.campaignId, followUpOf: o.id, ...data }), el);
+  }
+  jsonImport('Explicit batch approval (IDs + reviewed hashes; never automatic)', 'outreach.approve');
+}
+function renderInbound() {
+  workspace.append(node('h2', 'Staff interest and reply review'), node('p', state.privacyNotice));
+  jsonImport('Import manually exported website-interest v1', 'interest.import', 'envelope');
+  jsonImport('Import simulated CSV/JSON replies', 'responses.import');
+  const optionalCheckbox = (name, label) => ({ ...f(name, label, 'checkbox'), required: false });
+  form('Synthetic staff opt-in form (.invalid only)', [f('externalId', 'Unique fictional event ID'), f('name', 'Fictional staff name'), f('workEmail', 'Fictional work address (.invalid)'), f('org', 'Registry organization name'), f('state', 'State', 'select', 'MI', [['MI', 'MI'], ['TX', 'TX'], ['other', 'other']]), f('role', 'Professional role'), f('interestType', 'Explicit requested scope', 'select', 'demo', ['demo', 'council', 'technical-review', 'pilot', 'feedback', 'webinar'].map(x => [x, x])), f('limitedFeedback', 'Staff-only feedback (no students, secrets, contacts or URLs)', 'textarea'), f('staffConfirmed', 'I am staff and this is synthetic test information', 'checkbox'), f('privacyAcknowledged', 'I read and accept the local privacy notice above', 'checkbox'), f('responseConsent', 'I permit a one-time response about this specific request', 'checkbox'), optionalCheckbox('marketingOptIn', 'Optional: I separately opt in to future updates'), operatorField()], data => {
+    const { operator, ...record } = data;
+    Object.assign(record, { receivedAt: new Date().toISOString(), verificationStatus: 'unverified', consentVersion: 'staff-local-v1', referralSource: 'local-test' });
+    return mutate('staff.submit', { record, operator, syntheticLocalTest: true, noticeVersion: 'staff-local-v1' });
+  });
+  for (const feedback of state.staffFeedback) {
+    const el = card(`${feedback.record.name} · ${feedback.record.interestType}`, `${feedback.status} · response permission ${feedback.record.responseConsent} · marketing opt-in ${feedback.record.marketingOptIn} · ${feedback.record.limitedFeedback}`);
+    button('Review staff identity and immutable consent', () => {
+      show(feedback);
+      if (!feedback.review && state.organizations.length) form('Verify staff request against registry', [...humanFields(), f('organizationId', 'Verified organization', 'select', state.organizations[0].id, options(state.organizations, x => x.name)), f('identityAndOrganizationConfirmed', 'I independently verified work email ownership and organization', 'checkbox'), f('staffOnlyConfirmed', 'Verified staff only; no student data', 'checkbox')], data => mutate('interest.review', { id: feedback.id, reviewedHash: feedback.hash, ...data }), review);
+    }, el);
+  }
+  for (const r of state.responses) {
+    const el = card(`Reply · ${r.state}`, r.text);
+    button('Human classification review', () => {
+      show(r);
+      form('Classify exact reply (no inferred consent)', [...humanFields(), f('state', 'Confirmed response state', 'select', 'ambiguous', ['ambiguous', 'interested', 'needs-info', 'declined', 'unsubscribed'].map(x => [x, x])), f('requestedScope', 'Expressly requested scope', 'select', 'none', ['none', 'interview', 'demo', 'council', 'pilot', 'technical-review', 'feedback', 'webinar'].map(x => [x, x])), f('note', 'Evidence for classification (staff only)', 'textarea')], data => mutate('responses.review', { id: r.id, reviewedHash: r.hash, ...data }), review);
+    }, el);
+  }
+  const verified = state.candidates.filter(c => c.verification);
+  if (verified.length) form('Review exact requested triage route', [f('candidateId', 'Verified contact', 'select', verified[0].id, options(verified, x => x.name)), f('kind', 'Explicit requested route', 'select', 'demo', ['interview', 'demo', 'technical-review', 'feedback', 'council', 'pilot'].map(x => [x, x]))], async input => {
+    const preview = await api('interest.triage', { ...input, preview: true }); show(preview);
+    const extra = input.kind === 'pilot' ? [f('scope', 'Synthetic evaluation scope', 'textarea'), f('owner', 'Accountable planning owner')] : input.kind === 'council' ? [councilField(), f('seat', 'Seat number', 'number'), f('acceptedByContact', 'Actual acceptance of this council seat confirmed (interest alone is insufficient)', 'checkbox')] : [];
+    form('Record human triage decision', [...humanFields(), f('note', 'Staff-only rationale / acceptance evidence', 'textarea'), ...extra], data => mutate('interest.triage', { ...input, ...data, reviewedHash: preview.hash }), review);
+  }, workspace, 'Read request evidence and route hash');
+}
+function renderMetrics() {
+  workspace.append(node('h2', 'Truthful local metrics'), node('p', state.metrics.scope));
+  const grid = node('div', undefined, 'grid'); workspace.append(grid);
+  for (const [label, value] of [['Distinct organizations', state.metrics.organizations], ['Distinct contacts', state.metrics.distinctContacts], ['Verified contacts', state.metrics.verifiedContacts], ['Explicit interest contacts', state.metrics.expressedInterestContacts], ['Approved drafts', state.metrics.approvedDrafts], ['Exported drafts (unsent)', state.metrics.exportedDrafts], ['Confirmed sent invitations', state.metrics.confirmedSentInvitations], ['Delivery unknown exports', state.metrics.deliveryUnknownExports], ['Response rate', state.metrics.responseRate.value === null ? 'Unknown — no confirmed sends' : `${state.metrics.responseRate.numerator}/${state.metrics.responseRate.denominator} confirmed invitations`], ['Pilot planning records', state.metrics.pilotPlanning], ['Pilot gates ready', state.metrics.pilotsGateReady]]) card(label, String(value), grid);
+  card('Independent signals and source attribution', JSON.stringify({ publicRoleFit: state.metrics.roleFit, expressedInterest: state.metrics.interestTypes, pilotReadiness: state.metrics.pilotsAuthorized, meetingDecisions: state.metrics.meetingFeedback, sources: state.metrics.source }, null, 2));
+  workspace.append(node('p', state.metrics.note));
+  jsonImport('Optional actual external delivery evidence (human verified)', 'delivery.record');
+}
