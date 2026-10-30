@@ -35,7 +35,10 @@ export type Activity = { assignment: Assignment; activity?: { content?: Activity
 export type ActivityContent = { title: string; overview: string; steps: { id: string; title: string; prompt: string }[]; };
 export type Submission = { id: string; assignmentId: string; studentPrincipalId: string; items: { artifactId: string; revisionId: string; artifactType: string }[]; submittedAt: string; attempt: number; withdrawnAt?: string };
 export type GradeSummary = {
-  row?: { totals?: { final: number | null; letter: string | null } };
+  row?: {
+    totals?: { final: number | null; letter: string | null };
+    cells?: { assignmentId: string; score?: { points: number; maxPoints: number }; percent: number | null; dropped?: boolean }[];
+  };
   columns?: { assignmentId: string; title: string; dueAt: string }[];
 };
 export type Announcement = {
@@ -54,7 +57,8 @@ export type CalendarEvent = {
 export type GuardianChild = { studentPrincipalId: string; displayName: string };
 export type GuardianCourse = ClassItem & {
   assignments: { assignment: { id: string; title: string; dueAt: string; kind: string }; grades: { score: { points: number; maxPoints: number } }[] }[];
-  announcements?: Announcement[];
+  /** Bare announcements here, unlike the student routes' `{ announcement, courseLabel }`. */
+  announcements?: Announcement['announcement'][];
 };
 export type DeviceSummary = {
   id: string; label: string; platform: 'ios' | 'android' | 'web' | 'other'; model: string; appVersion: string;

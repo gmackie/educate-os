@@ -22,10 +22,14 @@ function LookUp({ client, submissionId, assignmentId }: { client: DistrictClient
     if (!assignmentId) throw new Error('Open this submission from its assignment.');
     const submission = (await client.teacherSubmissions(assignmentId)).find((s) => s.id === submissionId);
     if (!submission) throw new Error('This submission is no longer available.');
-    return submission.items.map((item) => ({ artifactId: item.artifactId, type: item.artifactType }));
+    // The name comes from the class roster; a failed lookup still opens the work.
+    const { assignment } = await client.teacherAssignment(assignmentId);
+    const roster = await client.teacherRoster(assignment.offeringId).catch(() => []);
+    const name = roster.find((r) => r.enrollment.principalId === submission.studentPrincipalId)?.displayName ?? 'Student';
+    return { name, artifacts: submission.items.map((item) => ({ artifactId: item.artifactId, type: item.artifactType })) };
   });
   return state.status === 'ready'
-    ? <TeacherReview client={client} submissionId={submissionId} studentName="Student" artifacts={state.value}/>
+    ? <TeacherReview client={client} submissionId={submissionId} studentName={state.value.name} artifacts={state.value.artifacts}/>
     : <Page><QueryState state={state} retry={retry}>{() => null}</QueryState></Page>;
 }
 

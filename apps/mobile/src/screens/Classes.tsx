@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
-import { BookOpen, ClipboardCheck, ClipboardList, FileText, GraduationCap, Users } from 'lucide-react-native';
+import { BookOpen, ClipboardCheck, ClipboardList, FileText, GraduationCap, Megaphone, Users } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Assignment, ClassItem, Detail, GuardianChild, Principal } from '../types';
 import { useLoad, useReloadOnFocus } from '../hooks/useLoad';
 import { CourseSections, loadStudentExtras } from './Course';
+import { Markdown } from '../ui/Markdown';
 import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Item, Page, Placeholder, QueryState, Section, Title } from '../ui/Primitives';
 
@@ -67,6 +68,7 @@ export function StudentClass({ client, offeringId, navigate }: {
         <Card style={{ flex: 1, alignItems: 'center', gap: 6 }}>
           <Text style={{ fontSize: 24, fontWeight: '800', color: palette.ink }}>
             {typeof data.grades?.row?.totals?.final === 'number' ? data.grades.row.totals.final.toFixed(1) + '%' : '—'}
+            {data.grades?.row?.totals?.letter ? ' ' + data.grades.row.totals.letter : ''}
           </Text>
           <Text style={{ fontSize: 12, color: palette.muted }}>Official grade</Text>
         </Card>
@@ -74,10 +76,14 @@ export function StudentClass({ client, offeringId, navigate }: {
       <CourseSections offeringId={offeringId} extras={data.extras} activities={data.activities} navigate={navigate}/>
       <Section title="Assignments">
         {data.activities.length === 0 ? <Placeholder title="No assignments" message="Your teacher hasn't published any activities yet."/> :
-          <Card>{data.activities.map(({ assignment }) => <Item key={assignment.id} title={assignment.title}
+          <Card>{data.activities.map(({ assignment }) => {
+            const cell = data.grades?.row?.cells?.find((c) => c.assignmentId === assignment.id);
+            return <Item key={assignment.id} title={assignment.title}
             detail={'Due ' + dateLabel(assignment.dueAt, true)}
+            trailing={cell?.score ? <Chip label={cell.score.points + '/' + cell.score.maxPoints} tone={cell.dropped ? 'neutral' : 'green'}/> : undefined}
             leading={<ClipboardList size={20} color={palette.primary}/>}
-            onPress={() => navigate({ type: 'assignment', id: assignment.id, offeringId })}/>)}</Card>}
+            onPress={() => navigate({ type: 'assignment', id: assignment.id, offeringId })}/>;
+          })}</Card>}
       </Section>
       <Button label="See all my grades" variant="outline" onPress={() => navigate({ type: 'grades' })}/>
     </>}</QueryState>
@@ -168,9 +174,14 @@ export function FamilyClass({ client, studentId, offeringId }: {
           })}</Card>}
       </Section>
       {data.announcements && data.announcements.length > 0 && <Section title="Announcements">
-        <Card>{data.announcements.map(({ announcement }) => <Item key={announcement.id}
-          title={announcement.title} detail={announcement.body}
-          leading={<GraduationCap size={19} color={palette.primary}/>}/>)}</Card>
+        <View style={{ gap: 12 }}>{data.announcements.map((announcement) => <Card key={announcement.id} style={{ gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+            <Megaphone size={18} color={palette.teal}/>
+            <Text style={{ color: palette.ink, fontWeight: '800', fontSize: 16, flex: 1 }}>{announcement.title}</Text>
+          </View>
+          <Text style={{ color: palette.subtle, fontSize: 12 }}>{dateLabel(announcement.publishAt, true)}</Text>
+          <Markdown source={announcement.body}/>
+        </Card>)}</View>
       </Section>}
       <Text style={{ color: palette.muted, fontSize: 12, lineHeight: 19 }}>
         Guardian access does not include student drafts, private submissions, or classroom discussions.

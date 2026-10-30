@@ -115,6 +115,21 @@ export class DistrictClient {
       content: { kind: 'text', text }, aiAssistance: { level: 'none' },
     });
   }
+  /** An uploaded photo or PDF (`bytes` content; the district checks the type and the 5 MiB limit). */
+  createUpload(workspaceId: string, title: string, type: 'image' | 'evidence', mediaType: 'image/jpeg' | 'image/png' | 'application/pdf',
+    base64: string): Promise<{ artifact: { id: string }; head: { id: string } }> {
+    return this.call('POST', '/api/student/artifacts', {
+      workspaceId, title, type, content: { kind: 'bytes', mediaType, base64 }, aiAssistance: { level: 'none' },
+    });
+  }
+  withdrawSubmission(submissionId: string): Promise<unknown> {
+    return this.call('POST', '/api/student/submissions/' + this.id(submissionId) + '/withdraw');
+  }
+  starterMaterial(assignmentId: string, materialId: string): Promise<{
+    material: { id: string; title: string }; content: { kind: 'text'; text: string } | { kind: 'bytes'; base64: string } | { kind: 'external'; url: string };
+  }> {
+    return this.call('GET', '/api/student/assignments/' + this.id(assignmentId) + '/starter-materials/' + this.id(materialId));
+  }
   submitDocument(assignmentId: string, revision: { artifactId: string; revisionId: string }): Promise<{ submissionId: string }> {
     return this.call('POST', '/api/student/assignments/' + this.id(assignmentId) + '/submissions',
       { revisions: [revision] });

@@ -236,7 +236,7 @@ export default function Connect() {
         ? manifest.signIn.map((method) => <Button key={method.id} variant="outline" label={'Sign in with ' + method.label}
           disabled={pairing} onPress={() => signInHere(method.id)}/>)
         : <Text style={{ color: palette.muted, lineHeight: 21 }}>
-          Signing in on this phone is coming soon for {manifest.name}. For now, connect from a computer.
+          {manifest.name} hasn't turned on signing in on the phone. Connect from a computer instead.
         </Text>}
     </Card>
     {error && <Text accessibilityRole="alert" style={{ color: palette.red, marginTop: 14 }}>{error}</Text>}

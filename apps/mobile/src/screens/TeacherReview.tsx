@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, Image, Text, View } from 'react-native';
 import { FileText, MessageSquareText } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Detail } from '../types';
+import { Markdown } from '../ui/Markdown';
+import { imageType } from '../media.ts';
 import { useLoad } from '../hooks/useLoad';
 import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Field, Item, Page, Placeholder, QueryState, Section, Title } from '../ui/Primitives';
@@ -74,12 +76,12 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
       client.teacherFeedback(submissionId),
       Promise.all(artifacts.map((a) => client.teacherSubmittedContent(submissionId, a.artifactId)
         .then((item) => ({ ...item, type: a.type }))
-        .catch(() => ({ title: a.type, type: a.type, content: { kind: 'unavailable' } as { kind: string; text?: string } })))),
+        .catch(() => ({ title: a.type, type: a.type, content: { kind: 'unavailable' } as { kind: string; text?: string; base64?: string } })))),
     ]);
     return { feedback, content };
   });
 
-  const save = async (job: 'comment' | 'grade' | 'release') => {
+  const save = async (job: 'comment' | 'grade' | 'release' | 'final') => {
     if (busy) return;
     if (job === 'comment' && comment.trim().length < 1) return;
     if (job === 'grade') {
@@ -100,8 +102,8 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
         setMessage(result.status === 'pending-approval' ? 'Grade proposed. It is awaiting approval.' :
           'Official grade recorded.');
       } else {
-        await client.teacherReleaseFeedback(submissionId, 'shared-with-student');
-        setMessage('Feedback released to the student.');
+        await client.teacherReleaseFeedback(submissionId, job === 'final' ? 'final' : 'shared-with-student');
+        setMessage(job === 'final' ? 'Feedback marked final and shared with the student.' : 'Feedback released to the student.');
       }
       reload();
     } catch (e) {
@@ -125,8 +127,12 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
               </Text>
               {item.content.kind === 'text' && typeof item.content.text === 'string' ?
                 <Text selectable style={{ fontSize: 15, color: palette.ink, lineHeight: 24 }}>{item.content.text}</Text> :
+                item.content.kind === 'bytes' && item.content.base64 && imageType(item.content.base64) ?
+                  <Image accessibilityLabel={'Submitted ' + item.type} resizeMode="contain"
+                    source={{ uri: 'data:' + imageType(item.content.base64) + ';base64,' + item.content.base64 }}
+                    style={{ width: '100%', height: 320, borderRadius: 12, backgroundColor: palette.background }}/> :
                 <Text style={{ color: palette.muted, lineHeight: 20 }}>
-                  This file type needs the full Teacher Studio document viewer.
+                  Open this file on a computer to see it.
                 </Text>}
             </View>)}
         </Card>
@@ -135,8 +141,7 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
         tone={feedback.state === 'final' ? 'green' : 'amber'}/></View>
       <Section title="Existing comments">
         <Card>{feedback.comments.length === 0 ? <Text style={{ color: palette.muted }}>No comments yet.</Text> :
-          feedback.comments.map((item, index) => <Text key={index}
-            style={{ color: palette.ink, marginBottom: 10, lineHeight: 22 }}>{item.body}</Text>)}
+          feedback.comments.map((item, index) => <View key={index} style={{ marginBottom: 10 }}><Markdown source={item.body}/></View>)}
         </Card>
       </Section>
       <Section title="Add feedback">
@@ -170,10 +175,16 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
         </Card>
       </Section>
       <Section title="Share feedback">
-        <Button label="Release comments to student" disabled={busy || feedback.state === 'final'}
-          onPress={() => Alert.alert('Release feedback?', 'Your comments will become visible to this student, subject to district policy.', [
-            { text: 'Cancel', style: 'cancel' }, { text: 'Release', onPress: () => { void save('release'); } },
-          ])}/>
+        <View style={{ gap: 10 }}>
+          <Button label="Release comments to student" disabled={busy || feedback.state === 'final' || feedback.state === 'shared-with-student'}
+            onPress={() => Alert.alert('Release feedback?', 'Your comments will become visible to this student, subject to district policy.', [
+              { text: 'Cancel', style: 'cancel' }, { text: 'Release', onPress: () => { void save('release'); } },
+            ])}/>
+          <Button label="Mark feedback final" variant="outline" disabled={busy || feedback.state === 'final'}
+            onPress={() => Alert.alert('Mark feedback final?', 'The student sees it, and it can no longer be changed.', [
+              { text: 'Cancel', style: 'cancel' }, { text: 'Mark final', onPress: () => { void save('final'); } },
+            ])}/>
+        </View>
       </Section>
     </>}</QueryState>
   </Page>;
