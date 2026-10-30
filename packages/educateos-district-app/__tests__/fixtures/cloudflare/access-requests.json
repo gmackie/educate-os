@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": [
+    { "action": "login", "allowed": true, "app_domain": "northfield.educateos.io", "app_uid": "df7e2w5f-02b7-4d9d-af26-8d1988fca630", "connection": "google", "created_at": "2026-10-28T11:42:10Z", "ip_address": "198.51.100.1", "ray_id": "187d944c61940c77", "user_email": "student@northfield.example" },
+    { "action": "login", "allowed": true, "app_domain": "northfield.educateos.io", "app_uid": "df7e2w5f-02b7-4d9d-af26-8d1988fca630", "connection": "google", "created_at": "2026-10-28T11:30:02Z", "ip_address": "198.51.100.2", "ray_id": "187d944c61940c78", "user_email": "teacher@northfield.example" },
+    { "action": "login", "allowed": true, "app_domain": "northfield.educateos.io", "app_uid": "df7e2w5f-02b7-4d9d-af26-8d1988fca630", "connection": "onetimepin", "created_at": "2026-10-28T10:12:44Z", "ip_address": "198.51.100.3", "ray_id": "187d944c61940c79", "user_email": "parent@example.com" },
+    { "action": "login", "allowed": true, "app_domain": "northfield.educateos.io", "app_uid": "df7e2w5f-02b7-4d9d-af26-8d1988fca630", "connection": "clever-oidc", "created_at": "2026-10-28T09:05:11Z", "ip_address": "198.51.100.4", "ray_id": "187d944c61940c80", "user_email": "student2@northfield.example" },
+    { "action": "login", "allowed": false, "app_domain": "northfield.educateos.io", "app_uid": "df7e2w5f-02b7-4d9d-af26-8d1988fca630", "connection": "google", "created_at": "2026-10-28T08:55:00Z", "ip_address": "203.0.113.9", "ray_id": "187d944c61940c81", "user_email": "stranger@example.com" },
+    { "action": "login", "allowed": true, "app_domain": "northfield.educateos.io", "app_uid": "df7e2w5f-02b7-4d9d-af26-8d1988fca630", "connection": "saml", "created_at": "2026-10-28T08:01:30Z", "ip_address": "198.51.100.5", "ray_id": "187d944c61940c82", "user_email": "staff@northfield.example" }
+  ],
+  "result_info": { "count": 6, "page": 1, "per_page": 1000, "total_count": 6 }
+}

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BIGQUERY_RESOURCE, GMAIL_RESOURCE, GOOGLE_CALENDAR_RESOURCE, GOOGLE_CHAT_RESOURCE,
   GOOGLE_CHAT_SPACE_RESOURCE, GOOGLE_CHAT_THREAD_RESOURCE, GOOGLE_CLASSROOM_COURSE_RESOURCE,
+  GOOGLE_CLASSROOM_STUDENT_RESOURCE,
   GOOGLE_DOC_RESOURCE,
   GOOGLE_DRIVE_FILE_RESOURCE, GOOGLE_DRIVE_FOLDER_RESOURCE, GOOGLE_DRIVE_RESOURCE,
   GOOGLE_SHEETS_RESOURCE, GOOGLE_SLIDES_RESOURCE, IDENTITY_SCOPES,
@@ -41,6 +42,7 @@ describe("resource declarations", () => {
       "https://chat.google.com/:kind(room|dm)/:spaceId/:threadId{/:messageId}?",
       "https://bigquery.googleapis.com/:projectId/*",
       "https://classroom.googleapis.com/courses/:courseId",
+      "https://classroom.googleapis.com/student-courses/:courseId",
     ]);
   });
 
@@ -196,7 +198,10 @@ describe("resourceUrlPatternsToOAuthScopes", () => {
     let others = SUPPORTED_RESOURCES.filter(resource => resource !== GOOGLE_CLASSROOM_COURSE_RESOURCE)
       .map(resource => resource.urlPattern);
     expect(resourceUrlPatternsToOAuthScopes(others).filter(scope => scope.includes("classroom")))
-      .toEqual([]);
+      .toEqual([
+        "https://www.googleapis.com/auth/classroom.courses.readonly",
+        "https://www.googleapis.com/auth/classroom.coursework.me",
+      ]);
     // The bound course requires the write scope for grading-period changes.
     expect(resourcesCoveredByScopes([GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern], [
       "https://www.googleapis.com/auth/classroom.courses",
@@ -687,6 +692,14 @@ describe("parseResourceUrl", () => {
         .toEqual({ kind: "classroomCourse", courseId: "123456789" });
       expect(new URLPattern(GOOGLE_CLASSROOM_COURSE_RESOURCE.urlPattern)
         .test("https://classroom.googleapis.com/courses/123456789")).toBe(true);
+    });
+
+    it("scopes a student course separately from the teacher course", () => {
+      expect(parseResourceUrl("https://classroom.googleapis.com/student-courses/123456789"))
+        .toEqual({ kind: "classroomStudentCourse", courseId: "123456789" });
+      expect(GOOGLE_CLASSROOM_STUDENT_RESOURCE.description).toContain("cannot be shared with collaborators");
+      expect(() => parseResourceUrl("https://classroom.googleapis.com/student-courses/123?x=1"))
+        .toThrow(/Google Classroom/);
     });
 
     // Classroom's own web links carry an encoded ID, and an alias (`d:` or `p:`) can be repointed

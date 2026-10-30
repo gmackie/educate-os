@@ -144,4 +144,26 @@ describe("UserDirectoryDurableObject", () => {
       Array.from({ length: 10 }, (_, index) => `user${(index + 2).toString().padStart(2, "0")}@example.com`),
     );
   });
+
+  // SCHO-259: the principal migration's aliases (auth/principal-aliases.ts).
+  it("lists every user id, sorted", async () => {
+    const stub = directory("ids");
+    await stub.syncUser(user("zed@example.com", "Zed"), 0);
+    await stub.syncUser(user("ada@example.com", "Ada"), 0);
+    await expect(stub.listUserIds()).resolves.toEqual(["ada@example.com", "zed@example.com"]);
+  });
+
+  it("adds each alias once, and refuses to alias either side twice", async () => {
+    const stub = directory("aliases");
+    await expect(stub.principalAlias("principal:prn_ada")).resolves.toBeNull();
+    await expect(stub.addPrincipalAlias("principal:prn_ada", "ada@example.com")).resolves.toBe("added");
+    await expect(stub.addPrincipalAlias("principal:prn_ada", "ada@example.com")).resolves.toBe("already-aliased");
+    // Neither the principal nor the user can be aliased to anyone else.
+    await expect(stub.addPrincipalAlias("principal:prn_ada", "grace@example.com")).resolves.toBe("conflict");
+    await expect(stub.addPrincipalAlias("principal:prn_grace", "ada@example.com")).resolves.toBe("conflict");
+    await expect(stub.principalAlias("principal:prn_ada")).resolves.toBe("ada@example.com");
+    await expect(stub.listPrincipalAliases()).resolves.toEqual([
+      { principal: "principal:prn_ada", user: "ada@example.com" },
+    ]);
+  });
 });

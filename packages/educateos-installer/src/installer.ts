@@ -3,7 +3,7 @@
 import { type ApplyResult, applyPlan } from "./apply.ts";
 import type { ReleaseArtifacts } from "./artifacts.ts";
 import type { CloudflareApi } from "./cloudflare-api.ts";
-import type { DistrictInstallConfig, SecretSource } from "./config.ts";
+import { adminHostname, type DistrictInstallConfig, publicHostname, type SecretSource } from "./config.ts";
 import { compileDesiredState } from "./desired.ts";
 import { type RegistrationOutcome, type RegistryEndpoint, registerWithFleet } from "./fleet-registration.ts";
 import type { ReleaseManifest } from "./manifest.ts";
@@ -36,6 +36,26 @@ export interface InstallReport {
   plan?: InstallPlan;
   applied?: ApplyResult;
   registration?: RegistrationOutcome;
+  /** What only a person can do after this install, in order. Absent when there is nothing. */
+  nextSteps?: string[];
+}
+
+/**
+ * The steps that finish an OSS admin install (SCHO-263), or none without one. The installer can't
+ * enroll the admin with the district itself: the admin makes its ops key pair at enrollment and
+ * keeps the private half sealed under a key the installer generated and does not keep, and the
+ * district records which of its administrators enrolled each key. So a person copies the
+ * registration across, as for any admin (docs/educateos/admin.md, "Install the OSS admin").
+ */
+export function adminNextSteps(config: DistrictInstallConfig): string[] {
+  if (!config.admin.enabled) return [];
+  const admin = `https://${adminHostname(config)}`;
+  const district = `https://${publicHostname(config)}`;
+  return [
+    `Open the OSS admin at ${admin} as one of the install's admins, and enroll this district under Workspaces → Enroll (origin ${district}).`,
+    `Copy the registration it shows, open ${district}/admin → Operations, paste it under Enroll an admin, and grant the scopes it asks for.`,
+    `Back in the admin, choose Verify connection: the workspace becomes active.`,
+  ];
 }
 
 /**
@@ -50,7 +70,9 @@ export async function install(options: InstallOptions): Promise<InstallReport> {
 
   const plan = await planInstall(api, desired, options.secrets);
   if (plan.blocked.length > 0) return { status: "plan-blocked", preflight: report, plan };
-  if (options.dryRun) return { status: "planned", preflight: report, plan };
+  const nextSteps = adminNextSteps(config);
+  const steps = nextSteps.length > 0 ? { nextSteps } : {};
+  if (options.dryRun) return { status: "planned", preflight: report, plan, ...steps };
 
   const applied = await applyPlan(plan, {
     api,
@@ -74,7 +96,7 @@ export async function install(options: InstallOptions): Promise<InstallReport> {
       });
     }
   }
-  return { status: "applied", preflight: report, plan, applied, ...(registration ? { registration } : {}) };
+  return { status: "applied", preflight: report, plan, applied, ...(registration ? { registration } : {}), ...steps };
 }
 
 /** What a rollback needs: the release now installed and the one to return to. */
@@ -93,9 +115,12 @@ export async function rollback(options: RollbackOptions): Promise<{ plan: Rollba
   // then returns the backend to a version without its binding and leaves the service running.
   const previousServices = Object.fromEntries(Object.entries(options.config.services)
     .filter(([name, wanted]) => !wanted.enabled || options.previous.workers[name]?.kind === "service"));
+  // Likewise an OSS admin the previous release does not ship: it stays running, on its version.
+  const previousHasAdmin = Object.values(options.previous.workers).some((w) => w.kind === "admin");
   const previous = compileDesiredState(options.previous, {
     ...options.config,
     services: previousServices,
+    admin: previousHasAdmin ? options.config.admin : { enabled: false },
     release: { ...options.config.release, releaseId: options.previous.releaseId },
   });
   const plan = await planRollback(options.api, current, previous);

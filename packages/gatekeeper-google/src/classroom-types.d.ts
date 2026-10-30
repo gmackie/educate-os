@@ -30,7 +30,11 @@ export type ClassroomRoster = {
   students: ClassroomRosterMember[];
 };
 
-/** A coursework item (an assignment) created through this Google connection. */
+/** A resource attached to Google Classroom coursework. The original Google ACL still applies. */
+export type ClassroomCourseWorkMaterial =
+  | { kind: "driveFile" | "link" | "youtubeVideo" | "form"; title: string; url?: string; mimeType?: string };
+
+/** Coursework fields exposed by the teacher and student Classroom capabilities. */
 export type ClassroomCourseWork = {
   /**
    * Classroom's coursework ID. Coursework whose creation is still awaiting approval has a
@@ -44,6 +48,8 @@ export type ClassroomCourseWork = {
   maxPoints?: number;
   /** Link to the coursework in Classroom. */
   alternateLink?: string;
+  /** Published resources attached to the coursework. Opening each Google file still checks its ACL. */
+  materials?: ClassroomCourseWorkMaterial[];
   /** When Classroom last changed it. */
   updateTime?: Date;
   /** True if this is a submitted creation that has not yet been approved and committed. */
@@ -81,6 +87,16 @@ export type ClassroomSubmission = {
   alternateLink?: string;
   /** True if a submitted grade for it has not yet been approved and committed. */
   pending?: true;
+};
+
+/** The signed-in student's own submission, without an identity or teacher-only draft grade. */
+export type ClassroomMySubmission = {
+  courseWorkId: string;
+  state: "NEW" | "CREATED" | "TURNED_IN" | "RETURNED" | "RECLAIMED_BY_STUDENT" | "SUBMISSION_STATE_UNSPECIFIED";
+  late?: boolean;
+  alternateLink?: string;
+  answer?: string;
+  attachments?: { title: string; url?: string; mimeType?: string }[];
 };
 
 /** A Classroom rubric level. API rubric scores are read-only; publish the approved total separately. */

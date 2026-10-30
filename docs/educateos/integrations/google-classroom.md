@@ -6,8 +6,9 @@
   research below was read from Google's public documentation on 2026-10-21, and every claim cites it.
 - Issue: SCHO-77 (follow-up of SCHO-27, roadmap I02).
 - Code: `packages/educateos-integrations/src/google-classroom` (the `googleclassroom` namespace),
-  behind `ClassroomProvider` in `packages/educateos-lti/src/classroom.ts`. The teacher-scoped
-  Workshop connector (`packages/gatekeeper-google`, SCHO-213) is separate and unchanged.
+  behind `ClassroomProvider` in `packages/educateos-lti/src/classroom.ts`. The Workshop connector
+  (`packages/gatekeeper-google`, SCHO-213/SCHO-255) has separate teacher and student course
+  capabilities; student connections are bound to the connecting account and one enrolled course.
 
 ## Where EducateOS stands
 
@@ -71,8 +72,9 @@ interface ClassroomProvider {
   The docs don't say which tier Classroom falls in, so plan for the district marking the EducateOS
   client **Trusted**.
 
-EducateOS needs no student token for the planned scope, because every call is a teacher's. Even so,
-the client must be configured for the domain.
+District sync and grade passback use delegated teacher/admin tokens. The Workshop student capability
+uses the signed-in student's OAuth token and is bound to that account and one active enrolled course;
+it does not use domain-wide delegation.
 
 ## OAuth scopes
 
@@ -84,7 +86,8 @@ The provider needs only these, all under `https://www.googleapis.com/auth/`
 | --- | --- | --- |
 | `classroom.rosters.readonly` | `courses.teachers.list` and `courses.students.list` | `listRoster` |
 | `classroom.coursework.students` | Create the coursework EducateOS grades. List it. Patch `assignedGrade`. Return submissions. | `listCourseWork`, `setAssignedGrade`, and a new `createCourseWork` |
-| `classroom.courses.readonly` | Let the teacher pick a course when connecting an offering | the connect flow, not the provider |
+| `classroom.courses.readonly` | Let teachers or students pick an eligible course | the connect flow |
+| `classroom.coursework.me` | Read the signed-in student's published work and own submission; turn in that work | student `listCourseWork`, `getMySubmission`, and approval-backed `turnIn` |
 | `openid` | Link a teacher's Google identity, using the OIDC `sub` | the identity-linking flow |
 
 **Not requested:**
@@ -93,6 +96,12 @@ The provider needs only these, all under `https://www.googleapis.com/auth/`
   needs only user IDs.
 - `classroom.profile.photos`, guardian, announcement and topic scopes.
 - The add-on scopes.
+
+The Workshop teacher course asks for the teacher course, roster and coursework scopes. A student
+course asks only for `classroom.courses.readonly` and `classroom.coursework.me`. Its separate
+capability exposes no roster, classmate submissions, teacher grades, or teacher configuration, and
+cannot be shared with collaborators. `turnIn` resolves the submission for `userId=me` inside the
+gatekeeper and queues that submission for approval; callers cannot supply a student or submission ID.
 
 **Sensitivity.** Google's pages label only the add-on scopes as sensitive
 (<https://developers.google.com/workspace/classroom/add-ons/developer-guides/review-process-overview>).

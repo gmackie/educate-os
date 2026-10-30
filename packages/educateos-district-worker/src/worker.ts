@@ -6,6 +6,9 @@
 //   `@educateos/ai-guard`, SCHO-132/SCHO-147). Given to the guard alone, never on `/api`.
 // - `DistrictSchoolTools`, the EducateOS gatekeeper's `SchoolToolService` (SCHO-57).
 //
+// `DistrictPrincipalResolver`, the Workshop backend's `PRINCIPAL_RESOLVER` (SCHO-259), which says
+// who a sign-in the backend has already verified is;
+//
 // and `DistrictApi`, the `/api` surface as a service, which is what the release binds to the
 // backend (`EDUCATEOS_DISTRICT_API`). It carries no authority of its own: every request must bring
 // an Access assertion the district verifies itself.
@@ -20,6 +23,11 @@ import type { AdmittedSubjectRequest, GuardDirectory, GuardSubject, GuardSubject
 import type { SchoolToolService } from "@educateos/gatekeeper";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
 import { configuredDistrictId } from "./district.ts";
+import { SCHOOL_MANIFEST_PATH, serveSchoolManifest } from "./school-manifest.ts";
+import { aiDisabledResponse, isAiPath } from "./ai-disabled.ts";
+
+/** The pairing relay's page for a phone with no computer nearby (SCHO-261), behind Access like the LMS. */
+const CONNECT_PHONE_PATH = "/connect-phone";
 
 export { DistrictObject } from "./district-object.ts";
 
@@ -91,6 +99,50 @@ export class DistrictSchoolTools extends WorkerEntrypoint<Cloudflare.Env> implem
   }
 }
 
+/** A verified Access sign-in, as the Workshop's principal resolver seam passes it. */
+interface WorkshopAccessSignIn {
+  issuer: string;
+  subject: string;
+  email?: string;
+}
+
+/** One existing email-keyed Workshop user. */
+interface WorkshopEmailKeyedUser {
+  email: string;
+  workshopUserId: string;
+}
+
+/** What the seam answers, in plain types (the district's own carry brands). */
+type WorkshopPrincipalResolution =
+  | { outcome: "resolved"; principalId: string; displayName: string }
+  | { outcome: "unauthenticated" }
+  | { outcome: "adoption-pending" };
+
+/** What the district says about one email-keyed Workshop user. */
+type WorkshopEmailKeyedUserMatch =
+  | { email: string; outcome: "exact-single"; principalId: string }
+  | { email: string; outcome: "ambiguous" | "cross-district" | "unmatched" };
+
+/**
+ * The Workshop backend's `PRINCIPAL_RESOLVER` and `PRINCIPAL_MIGRATION` (SCHO-259, ADR-0014): the
+ * kernel's `PrincipalResolver` and `PrincipalMigrationDirectory` (`@gadgets/workshop-shared/
+ * principal-resolver`, matched by hand: ADR-0002). It trusts its caller to have verified the
+ * Access token, so it is bound to the Workshop backend alone; unlike `DistrictApi`, holding it
+ * says who people are. Nothing binds it until a deployment's cutover.
+ */
+@validateRpc()
+export class DistrictPrincipalResolver extends WorkerEntrypoint<Cloudflare.Env> {
+  /** The principal a verified Access sign-in is linked to, or `unauthenticated`. */
+  async resolveAccessSignIn(signIn: WorkshopAccessSignIn): Promise<WorkshopPrincipalResolution> {
+    return districtObject(this.env, this.ctx.exports).resolveAccessSignIn(signIn);
+  }
+
+  /** Matches existing email-keyed Workshop users to the district's people. Links nothing. */
+  async matchEmailKeyedUsers(users: WorkshopEmailKeyedUser[]): Promise<WorkshopEmailKeyedUserMatch[]> {
+    return districtObject(this.env, this.ctx.exports).matchEmailKeyedUsers(users);
+  }
+}
+
 /**
  * The `/api` surface as a service binding target: the release's backend binding
  * (`EDUCATEOS_DISTRICT_API`, see `SERVICE_PACKAGES` in scripts/release/manifest-lib.ts). Nothing in
@@ -114,13 +166,20 @@ export default {
    * The district's `/api` surface; `/healthz`, a liveness probe that reads nothing and needs no
    * sign-in (a deployment exempts it from Access); and the LTI Tool's `/lti/*` endpoints (SCHO-177),
    * which platform users reach from their LMS, so a deployment exempts exactly those paths from
-   * Access too. Nothing else is served; a deployment that serves the district's UIs does so as
+   * Access too; and the pairing relay's `/connect-phone` page (SCHO-261). Nothing else is served; a deployment that serves the district's UIs does so as
    * static assets in front of this handler.
    */
   async fetch(request, env, ctx): Promise<Response> {
     const { pathname } = new URL(request.url);
     if (pathname === "/healthz") return new Response("ok", { headers: { "content-type": "text/plain" } });
+    // The public school manifest (ADR-0014): no sign-in, so a deployment exempts it from Access too.
+    if (pathname === SCHOOL_MANIFEST_PATH) {
+      return serveSchoolManifest(request, { districtConfig: env.DISTRICT_CONFIG, settings: env.SCHOOL_MANIFEST, versionTag: env.CF_VERSION_METADATA?.tag });
+    }
     if (pathname.startsWith("/lti/")) return districtObject(env, ctx.exports).fetch(request);
+    // The pairing relay's connect page (SCHO-261). Its API, `/api/pair/*`, is under `/api/` below.
+    if (pathname === CONNECT_PHONE_PATH) return districtObject(env, ctx.exports).fetch(request);
+    if (isAiPath(pathname)) return aiDisabledResponse(request, env.AI_DEMO_URL);
     return serveApi(request, env, ctx.exports);
   },
   /** The district's Cron Triggers (SCHO-189): notifications hourly, the family digest weekly. See schedule.ts. */

@@ -76,7 +76,8 @@ describe("the roster", () => {
     expect(within(table).queryByText("Sam Rivera")).toBeNull();
     await waitFor(() => expect(district.calls.length).toBeGreaterThan(0));
     expect(district.calls.map((c) => c.name).filter((name) => /Workspace|Artifact/.test(name))).toStrictEqual([]);
-    expect(document.body.textContent).not.toMatch(/personal|workspace|private/i);
+    // The screen's own words: the shell's navigation names the teacher's own "Workspace" group (SCHO-260).
+    expect(screen.getByRole("main").textContent).not.toMatch(/personal|workspace|private/i);
   });
 });
 

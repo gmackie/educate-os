@@ -2,12 +2,15 @@ import { RpcStub, RpcTarget } from "cloudflare:workers";
 import { ActionJournal } from "@gadgets/gatekeeper-kit/actions";
 import type {
   ActionDescription, ApprovalQueue, GitCache, HookController, HookDescription,
-  ObservationDescription,
+  GatekeeperUserVerifier, ObservationDescription,
 } from "@gadgets/workshop-shared/gatekeeper";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CLASSROOM_ACTIONS, type ClassroomAction } from "../../src/classroom-actions";
+import {
+  CLASSROOM_ACTIONS, CLASSROOM_STUDENT_ACTIONS, type ClassroomAction, type ClassroomStudentAction,
+} from "../../src/classroom-actions";
 import { ClassroomApi } from "../../src/classroom-api";
 import { GoogleClassroomCourseSessionImpl } from "../../src/classroom";
+import { GoogleClassroomStudentGatekeeperImpl, GoogleClassroomStudentSessionImpl } from "../../src/classroom-student";
 import { FakeClassroom } from "../classroom-fixture";
 import { FakeKv } from "../fake-kv";
 
@@ -136,6 +139,59 @@ describe("Google Classroom course session", () => {
       id: "Cg4Isub2", courseWorkId: "201", userId: "2002", state: "RETURNED", draftGrade: 80,
       assignedGrade: 88.75,
     }]);
+  });
+});
+
+describe("Google Classroom student session", () => {
+  it("lists published coursework and returns only the connected student's result", async () => {
+    let studentJournal = new ActionJournal<ClassroomStudentAction>(new FakeKv(), { namespace: "classroom-student" });
+    let studentActions = CLASSROOM_STUDENT_ACTIONS.bind(studentJournal, { api: new ClassroomApi(async () => "token"), courseId: "101" });
+    let studentQueue = new TestApprovalQueue();
+    let studentApi = new ClassroomApi(async () => "token");
+    let session = new GoogleClassroomStudentSessionImpl(
+      studentApi, "101", new RpcStub<ApprovalQueue>(studentQueue), studentActions);
+
+    expect((await session.listCourseWork()).map(({ id, state }) => ({ id, state })))
+      .toEqual([{ id: "201", state: "PUBLISHED" }, { id: "202", state: "PUBLISHED" }]);
+    classroom.submissions[0].assignedGrade = 85;
+    let own = await session.getMySubmission("201");
+    expect(own).toMatchObject({ courseWorkId: "201", state: "TURNED_IN" });
+    expect(JSON.stringify(own)).not.toMatch(/userId|assignedGrade|draftGrade|Classmate response/);
+    expect(studentQueue.observations).toHaveLength(2);
+  });
+
+  it("submits an approval-backed turn-in only for a created own submission", async () => {
+    classroom.submissions[0].state = "CREATED";
+    let studentApi = new ClassroomApi(async () => "token");
+    let studentJournal = new ActionJournal<ClassroomStudentAction>(new FakeKv(), { namespace: "classroom-student" });
+    let studentQueue = new TestApprovalQueue();
+    let queueStub = new RpcStub<ApprovalQueue>(studentQueue);
+    let studentActions = CLASSROOM_STUDENT_ACTIONS.bind(studentJournal, { api: studentApi, courseId: "101" });
+    let session = new GoogleClassroomStudentSessionImpl(studentApi, "101", queueStub, studentActions);
+
+    await session.turnIn("201");
+    expect(studentQueue.submitted).toHaveLength(1);
+    expect(classroom.requests.some(request => request.method === "POST")).toBe(false);
+    await studentActions.apply(1);
+    expect(classroom.submissions[0].state).toBe("TURNED_IN");
+    expect(classroom.requests.at(-1)).toMatchObject({
+      method: "POST", path: "/courses/101/courseWork/201/studentSubmissions/Cg4Isub1:turnIn",
+    });
+  });
+
+  it("does not let a teacher use the student capability or share a student's private session", async () => {
+    classroom.authenticatedStudentId = "1001";
+    let studentApi = new ClassroomApi(async () => "token");
+    let studentJournal = new ActionJournal<ClassroomStudentAction>(new FakeKv(), { namespace: "classroom-student" });
+    let studentQueue = new TestApprovalQueue();
+    let queueStub = new RpcStub<ApprovalQueue>(studentQueue);
+    let studentActions = CLASSROOM_STUDENT_ACTIONS.bind(studentJournal, { api: studentApi, courseId: "101" });
+    let session = new GoogleClassroomStudentSessionImpl(studentApi, "101", queueStub, studentActions);
+    await expect(session.listCourseWork()).rejects.toThrow(/not a student/);
+    await expect(GoogleClassroomStudentGatekeeperImpl.prototype.addObserver(
+      "collaborator", new RpcStub(new TestApprovalQueue()) as unknown as Fetcher<GatekeeperUserVerifier>))
+      .rejects.toThrow(/cannot be shared/);
+    expect(classroom.requests.some(request => request.path.endsWith("/courseWork"))).toBe(false);
   });
 });
 

@@ -6,11 +6,15 @@ import {
   fetchTransport,
   serviceBindingTransport,
   type HallMonitorClient,
+  type CallOptions,
   type TokenSource,
+  type Transport,
 } from "@gmacko/hall-monitor-client";
-import type { CostReceipt, UsageAttempt } from "@gmacko/hall-monitor-contracts";
+import type { CostReceipt, EvaluationRequest, EvaluationResult, UsageAttempt } from "@gmacko/hall-monitor-contracts";
 import { normalizeTokenUsage, type AiAttempt, type TokenUsage } from "@educateos/ai-governance";
 import type { GuardConfig } from "./config.ts";
+import type { GuardContext } from "./context.ts";
+import { SourceGovernanceError, sourceGovernanceContext, type SourceGovernanceContext } from "./source-governance.ts";
 
 /**
  * Lifetime of a minted service token, in seconds: one call and its retries' clock skew (Hall Monitor
@@ -27,9 +31,10 @@ const encoder = new TextEncoder();
 const base64Url = (bytes: Uint8Array) => bytes.toBase64({ alphabet: "base64url", omitPadding: true });
 const encodeJson = (value: unknown) => base64Url(encoder.encode(JSON.stringify(value)));
 
-// Token sources by everything that shapes a token, so an isolate parses and imports the key once
-// rather than on every call.
-const tokenSources = new Map<string, TokenSource>();
+// Cache only key signers. Request claims stay in the per-evaluation closure, so parallel checks
+// cannot share eligibility and the cache does not retain principal/request context.
+type TokenSigner = (governance?: (now: number, expiresAt: number) => SourceGovernanceContext) => Promise<string>;
+const tokenSigners = new Map<string, TokenSigner>();
 
 /**
  * Mints Hall Monitor service tokens: compact JWS, signed with `HALL_MONITOR_SIGNING_KEY`, carrying
@@ -38,14 +43,15 @@ const tokenSources = new Map<string, TokenSource>();
  * with 401, and transports ask for a token on every attempt, retries included. Returns `undefined`
  * when no signing key is configured.
  */
-export function serviceTokenSource(env: Cloudflare.Env, config: GuardConfig): TokenSource | undefined {
+export function serviceTokenSource(env: Cloudflare.Env, config: GuardConfig, governance?: (now: number, expiresAt: number) => SourceGovernanceContext): TokenSource | undefined {
   if (!env.HALL_MONITOR_SIGNING_KEY) return undefined;
   const issuer = env.HALL_MONITOR_ISSUER;
   if (!issuer) throw new Error("HALL_MONITOR_ISSUER must be set with HALL_MONITOR_SIGNING_KEY");
   const audience = env.HALL_MONITOR_AUDIENCE || "hall-monitor";
-  const cacheKey = JSON.stringify([env.HALL_MONITOR_SIGNING_KEY, issuer, audience, config.moderation.tenantId]);
-  const known = tokenSources.get(cacheKey);
-  if (known !== undefined) return known;
+  const tenantId = config.moderation.tenantId;
+  const cacheKey = JSON.stringify([env.HALL_MONITOR_SIGNING_KEY, issuer, audience, tenantId]);
+  const known = tokenSigners.get(cacheKey);
+  if (known !== undefined) return () => known(governance);
   let jwk: SigningJwk;
   try {
     jwk = JSON.parse(env.HALL_MONITOR_SIGNING_KEY) as SigningJwk;
@@ -57,24 +63,32 @@ export function serviceTokenSource(env: Cloudflare.Env, config: GuardConfig): To
   const { kid, ...material } = jwk;
   const key = crypto.subtle.importKey("jwk", material, alg === "EdDSA" ? { name: "Ed25519" } : { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
   const params = alg === "EdDSA" ? { name: "Ed25519" } : { name: "ECDSA", hash: "SHA-256" };
-  const source: TokenSource = async () => {
+  const sign: TokenSigner = async (context) => {
     const now = Math.floor(Date.now() / 1000);
+    const expiresAt = now + TOKEN_LIFETIME_SECONDS;
     const header = { alg, typ: "JWT", ...(kid === undefined ? {} : { kid }) };
     const claims = {
       iss: issuer,
       aud: audience,
       iat: now,
-      exp: now + TOKEN_LIFETIME_SECONDS,
+      exp: expiresAt,
       jti: crypto.randomUUID(),
-      tenant: config.moderation.tenantId,
+      tenant: tenantId,
       scope: "evaluate",
+      ...(context === undefined ? {} : { hm_governance: context(now, expiresAt) }),
     };
     const signingInput = `${encodeJson(header)}.${encodeJson(claims)}`;
     const signature = new Uint8Array(await crypto.subtle.sign(params, await key, encoder.encode(signingInput)));
     return `${signingInput}.${base64Url(signature)}`;
   };
-  tokenSources.set(cacheKey, source);
-  return source;
+  tokenSigners.set(cacheKey, sign);
+  return () => sign(governance);
+}
+
+/** The existing client with trusted source context available only to its evaluation adapter. */
+export interface GuardHallMonitorClient extends HallMonitorClient {
+  /** Source context is resolved by the guard; it is never accepted on the public RPC seam. */
+  evaluate(request: EvaluationRequest, options?: CallOptions & { sourceContext?: GuardContext }): Promise<EvaluationResult>;
 }
 
 /**
@@ -83,16 +97,48 @@ export function serviceTokenSource(env: Cloudflare.Env, config: GuardConfig): To
  * is called over HTTPS, which needs a signing key, since the public endpoint authenticates every
  * call. A service-binding call carries a token too when a key is configured.
  */
-export function hallMonitorClient(env: Cloudflare.Env, config: GuardConfig): HallMonitorClient | null {
+export function hallMonitorClient(env: Cloudflare.Env, config: GuardConfig): GuardHallMonitorClient | null {
   const getToken = serviceTokenSource(env, config);
+  if (config.moderation.governance !== undefined && getToken === undefined) return null;
   const timeoutMs = config.moderation.timeoutMs;
+  const client = (token: TokenSource | undefined, governed = false) => clientWithToken(env, timeoutMs, token, governed);
+  const legacy = client(getToken);
+  if (legacy === null || config.moderation.governance === undefined) return legacy;
+  return {
+    ...legacy,
+    async evaluate(request, options) {
+      const { sourceContext: context, ...callOptions } = options ?? {};
+      if (context === undefined) throw new SourceGovernanceError();
+      // Validate before creating a request, then recheck time/eligibility for every transport retry.
+      const governance = (now: number, expiresAt: number) => sourceGovernanceContext(config, context, request, now, expiresAt);
+      const now = Math.floor(Date.now() / 1000);
+      governance(now, now + TOKEN_LIFETIME_SECONDS);
+      return client(serviceTokenSource(env, config, governance), true)!.evaluate(request, callOptions);
+    },
+    async evaluateBatch() {
+      // One request-bound JWT cannot authorize a batch of independent checks.
+      throw new SourceGovernanceError();
+    },
+  };
+}
+
+function clientWithToken(env: Cloudflare.Env, timeoutMs: number, getToken: TokenSource | undefined, governed = false): HallMonitorClient | null {
+  let transport: Transport;
   if (env.HALL_MONITOR !== undefined) {
-    return createHallMonitorClient({ transport: serviceBindingTransport(env.HALL_MONITOR, getToken === undefined ? {} : { getToken }), timeoutMs });
+    transport = serviceBindingTransport(env.HALL_MONITOR, getToken === undefined ? {} : { getToken });
+  } else if (env.HALL_MONITOR_URL && getToken !== undefined) {
+    transport = fetchTransport({ baseUrl: env.HALL_MONITOR_URL, getToken });
+  } else {
+    return null;
   }
-  if (env.HALL_MONITOR_URL && getToken !== undefined) {
-    return createHallMonitorClient({ transport: fetchTransport({ baseUrl: env.HALL_MONITOR_URL, getToken }), timeoutMs });
-  }
-  return null;
+  // Keep the pinned SDK and DTOs. Older receivers return 404 on the required route instead of
+  // silently ignoring a JWT extension. There is deliberately no fallback to the legacy path.
+  return createHallMonitorClient({ transport: governed ? {
+    send(request) {
+      return transport.send(request.method === "POST" && request.path === "/v1/evaluations"
+        ? { ...request, path: "/v1/evaluations:governed" } : request);
+    },
+  } : transport, timeoutMs });
 }
 
 function attemptUsage(attempt: UsageAttempt): TokenUsage | undefined {

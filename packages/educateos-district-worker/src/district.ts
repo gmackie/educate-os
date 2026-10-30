@@ -6,9 +6,15 @@ import type { JWTVerifyGetKey } from "jose";
 import { AcademicDirectory } from "@educateos/academics";
 import { checkDirectoryIntegrity, DistrictDirectorySnapshot } from "@educateos/contracts";
 import type { ImportFetch } from "@educateos/content-studio";
-import { createDirectoryPrincipalResolver } from "@educateos/identity";
+import {
+  createAccessSignInResolver,
+  createDirectoryPrincipalResolver,
+  matchEmailKeyedUsers,
+  type AccessSignInResolution,
+  type EmailKeyedUserMatch,
+} from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
-import { authorityFor, createDistrictApp, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
+import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
 import { clever, googleclassroom } from "@educateos/integrations";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
@@ -27,6 +33,24 @@ export interface District {
   tools: SchoolToolService;
   /** The district's LTI 1.3 Tool, when the deployment names its origin (SCHO-177). */
   lti: DistrictLti | undefined;
+  /** Who a Workshop sign-in is, for the Workshop's `PRINCIPAL_RESOLVER` (SCHO-259). */
+  principals: DistrictPrincipals;
+}
+
+/**
+ * The Workshop's principal resolver seam over the district directory as it stands (SCHO-259), so
+ * the Workshop on the district's origin names each person exactly as the district does: by their
+ * Access identity's link, never by email.
+ */
+export interface DistrictPrincipals {
+  /**
+   * The principal a verified Access sign-in (`issuer`, `subject`, and `email`, which is ignored) is
+   * linked to, or `unauthenticated`: the school has not set this person up. Rejects only when the
+   * directory cannot answer (it fails its integrity checks).
+   */
+  resolveAccessSignIn(signIn: unknown): Promise<AccessSignInResolution>;
+  /** Matches the Workshop's email-keyed users to the district's people, for its one-time migration. */
+  matchEmailKeyedUsers(users: unknown): Promise<EmailKeyedUserMatch[]>;
 }
 
 /** The Worker's settings a district starts from: its vars, as text. */
@@ -43,6 +67,19 @@ export interface DistrictSettings {
   cleverDistrictToken?: string | undefined;
   /** `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY`, a JSON service-account key with district-authorized DWD. */
   classroomServiceAccountKey?: string | undefined;
+  /** `DEVICE_TOKEN_SECRET`, the key device access tokens are MACed with (SCHO-261). Without it no device signs in. */
+  deviceTokenSecret?: string | undefined;
+  // Operations (SCHO-263)
+  /** `CF_ANALYTICS_TOKEN`, the read-only Cloudflare token `/api/ops/analytics` reads with. Without it analytics is 501. */
+  analyticsToken?: string | undefined;
+  /** `CF_ACCOUNT_ID`, the account the analytics token reads. */
+  analyticsAccountId?: string | undefined;
+  /** `ANALYTICS_SCRIPTS`, the district's Worker names, comma-separated. */
+  analyticsScripts?: string | undefined;
+  /** `ANALYTICS_ZONE_TAG`, the district's zone. Optional. */
+  analyticsZoneTag?: string | undefined;
+  /** The release the district runs: `SCHOOL_MANIFEST`'s `release`, else the Worker's version tag. */
+  releaseVersion?: string | undefined;
 }
 
 /** What a district reaches outside its storage. */
@@ -59,6 +96,8 @@ export interface DistrictSeams {
   platformFetch?: typeof fetch;
   /** The fetch roster syncs reach their provider with (SCHO-203). Defaults to the global fetch. */
   rosterFetch?: typeof fetch;
+  /** The fetch the analytics proxy reaches Cloudflare's API with (SCHO-263). Defaults to the global fetch. */
+  analyticsFetch?: (request: Request) => Promise<Response>;
 }
 
 /** The district ID `DISTRICT_CONFIG` names, which its Durable Object is named by. */
@@ -125,6 +164,12 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }),
   });
   const authority = authorityFor(config.authority);
+  const analytics = analyticsSettings({
+    CF_ANALYTICS_TOKEN: settings.analyticsToken,
+    CF_ACCOUNT_ID: settings.analyticsAccountId,
+    ANALYTICS_SCRIPTS: settings.analyticsScripts,
+    ANALYTICS_ZONE_TAG: settings.analyticsZoneTag,
+  });
   const app = await createDistrictApp({
     stores,
     verifyRequest,
@@ -147,6 +192,13 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       ? {}
       : { mail: cloudflareEmailSender(seams.sendEmail, { from: config.email.from, fromName: config.email.fromName }) }),
     ...(config.email?.appUrl === undefined ? {} : { appUrl: config.email.appUrl }),
+    // Devices (SCHO-261)
+    ...(settings.deviceTokenSecret === undefined ? {} : { deviceTokenSecret: settings.deviceTokenSecret }),
+    // Operations (SCHO-263): analytics only with a token. The global fetch is bound, as workerd requires.
+    release: { version: settings.releaseVersion },
+    ...(analytics === undefined ? {} : {
+      opsAnalytics: cloudflareAnalytics(analytics, { fetch: seams.analyticsFetch ?? fetch.bind(globalThis), now: () => new Date() }),
+    }),
   });
 
   const directory = new AcademicDirectory({ store: stores.directory, authority, authorizer: app.engine });
@@ -180,5 +232,17 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       toolOrigin: settings.ltiToolOrigin,
       platformFetch: seams.platformFetch ?? ((input, init) => fetch(input, init)),
     });
-  return { app, tools, lti };
+  // The same issuer and Clever setting the district's own sign-in reads, so the two agree. The
+  // seam carries no Clever claims, so a Clever district resolves no Workshop sign-in this way.
+  const access = { issuer: settings.accessIssuer ?? "", ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }) };
+  const principals: DistrictPrincipals = {
+    async resolveAccessSignIn(signIn) {
+      const directory = (await stores.directory.load()).snapshot;
+      return createAccessSignInResolver({ directory, access }).resolveAccessSignIn(signIn);
+    },
+    async matchEmailKeyedUsers(users) {
+      return matchEmailKeyedUsers((await stores.directory.load()).snapshot, users);
+    },
+  };
+  return { app, tools, lti, principals };
 }

@@ -47,7 +47,7 @@
     }
   ],
   "vars": {
-    "BASE_URL": "https://schoolos.gmac.io/gatekeeper/educateos",
-    "DISTRICT_URL": "https://district.schoolos.gmac.io"
+    "BASE_URL": "https://northfield.educateos.io/gatekeeper/educateos",
+    "DISTRICT_URL": "https://northfield.educateos.io"
   }
 }

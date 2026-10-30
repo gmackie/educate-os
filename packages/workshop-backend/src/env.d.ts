@@ -79,6 +79,13 @@ declare global {
         import("@gadgets/workshop-shared/principal-resolver").PrincipalResolver
       >;
 
+      // The district the one-time migration of email-keyed users to principals matches against
+      // (see auth/principal-aliases.ts). Binding it changes no sign-in, so the migration can run
+      // before PRINCIPAL_RESOLVER is bound; with neither, the migration's route is Not Found.
+      PRINCIPAL_MIGRATION?: Service<
+        import("@gadgets/workshop-shared/principal-resolver").PrincipalMigrationDirectory
+      >;
+
       // Comma-separated allowlist of gatekeeper vendor ids permitted to drive sign-in (e.g.
       // "google,github,cloudflare"). A listed gatekeeper must also advertise providesAuth. Empty =
       // no gatekeeper sign-in (password / CF Access only).
@@ -94,6 +101,18 @@ declare global {
 
       // Public base URL of the deployment.
       PUBLIC_BASE_URL?: string;
+
+      // Where the Workshop is mounted on that origin: unset (the root) on today's deployments, "/ai"
+      // on a district origin whose router serves the LMS at "/" (SCHO-259). Prefixes the URLs the
+      // backend hands to browsers (site logo, blueprint screenshots, the connect handoff page).
+      // Must match the frontend's VITE_WORKSHOP_BASE_PATH.
+      PUBLIC_BASE_PATH?: string;
+
+      // The district Worker's `/api` surface (DistrictApi), which the release binds when the
+      // instance installs a district (scripts/release/manifest-lib.ts SERVICE_PACKAGES). It grants
+      // nothing by itself: each request carries the person's own Access assertion. Unbound, "Ask AI
+      // about this" links are ignored (school-context.ts).
+      EDUCATEOS_DISTRICT_API?: Fetcher;
 
       // What the service that installed this deployment wrote on its last upload of this Worker: a
       // JSON binding of the release, its version tag and its update links. Typed `unknown` because

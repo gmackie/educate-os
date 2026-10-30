@@ -19,7 +19,7 @@ import { deleteBlueprintContent } from "./blueprint-archive.js";
 import { isReservedBlueprintKey, readBlueprintKvRecord } from "./storage-schema/blueprints-kv.js";
 import { filterEnabledResources, isResourceDisabled, readAdminConfig } from "./admin-config.js";
 import { buildGatekeeperVendorMap } from "./auth/auth-vendors.js";
-import { CONNECT_FLOW_LIFETIME_MS, handoffTargetOrigin, hashPresentedSecret, hashSecret, newSecretToken, PENDING_HANDOFF_LIFETIME_MS } from "./connect-handoff.js";
+import { CONNECT_FLOW_LIFETIME_MS, handoffTarget, hashPresentedSecret, hashSecret, newSecretToken, PENDING_HANDOFF_LIFETIME_MS } from "./connect-handoff.js";
 import { deliver, registerDevice } from "./notification-service.js";
 import {
   DEVICE_HANDOFF_LIFETIME_MS, isDeviceHandoffState, sealDeviceSessionHandoff,
@@ -2021,12 +2021,12 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   // it up in the caller's own DO).
   async #stagePendingHandoff(
       record: Omit<PendingHandoffRecord, "ticketHash" | "expiresAt">): Promise<ConnectHandoff> {
-    let targetOrigin = handoffTargetOrigin(this.env);
+    let target = handoffTarget(this.env);
     let { secret, hash: ticketHash } = await newSecretToken();
     let expiresAt = new Date(Date.now() + PENDING_HANDOFF_LIFETIME_MS);
     this.storage.pendingHandoffs.put({ ...record, ticketHash, expiresAt });
     await this.#armExpirySweep();
-    return { targetOrigin, ticket: secret.toHex() };
+    return { ...target, ticket: secret.toHex() };
   }
 
   /** A gatekeeper finished a connect flow for a reserved account id; stage it until confirmed. */

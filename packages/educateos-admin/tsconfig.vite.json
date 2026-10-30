@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "allowImportingTsExtensions": true,
+    // Standalone, so explicit: an emitted config would shadow the TypeScript one.
+    "noEmit": true
+  },
+  "include": ["vite.config.ts", "vitest.config.ts", "vitest.ui.config.ts"]
+}

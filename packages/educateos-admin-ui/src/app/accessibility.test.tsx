@@ -24,11 +24,12 @@ describe("structure and labels", () => {
   it.each(SCREENS.map((s) => [s.path, s.label]))("%s has its landmarks, headings and a name on every control", async (path, label) => {
     renderConsole(fakeDistrict().client, path);
     expect(screen.getByRole("banner")).toBeTruthy();
-    expect(await screen.findByRole("navigation", { name: "Admin sections" })).toBeTruthy();
+    // The console's sections are the shell's Admin group (SCHO-260).
+    expect(await screen.findByRole("list", { name: "Admin" })).toBeTruthy();
     expect(screen.getByRole("main")).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "EducateOS district admin" })).toBeTruthy();
     expect(await screen.findByRole("heading", { level: 2, name: label === "Term rollover" ? "Term rollover preview" : label })).toBeTruthy();
-    expect(within(screen.getByRole("navigation")).getByRole("link", { name: label }).getAttribute("aria-current")).toBe("page");
+    expect(within(screen.getByRole("list", { name: "Admin" })).getByRole("link", { name: label }).getAttribute("aria-current")).toBe("page");
     // Let the screen's loads settle before checking its controls.
     await waitFor(() => expect(screen.queryByText(/^Loading /)).toBeNull());
     for (const role of CONTROL_ROLES) {

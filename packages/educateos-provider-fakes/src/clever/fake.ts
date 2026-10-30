@@ -2,12 +2,15 @@
 // docs: paging (https://dev.clever.com/docs/paging-and-limits), events
 // (https://dev.clever.com/docs/events-api), errors and rate limits
 // (https://dev.clever.com/docs/error-messages), and the record schemas of /districts, /schools,
-// /terms, /sections and /users. District-app bearer tokens authorise every request.
+// /terms, /sections and /users. District-app bearer tokens authorise every request. v3.1 also
+// serves LMS Connect's assignments and submissions (`lms-connect.ts`), built to Clever's published
+// spec and not tested against Clever.
 import { Fake, bearer, type FakeOptions } from "../fake.ts";
 import { tokenId } from "../ids.ts";
 import { studentsToRemove, validateSeed, withoutPeople } from "../seed.ts";
 import type { DistrictSeed, PersonSeed, SectionSeed } from "../types.ts";
 import { cleverDistrictId, cleverId, cleverUserId, type CleverCollection, type CleverRole } from "./ids.ts";
+import { LmsConnectGradebook, type CleverAssignment, type CleverSubmission } from "./lms-connect.ts";
 import { projectClever, type CleverExtraRoles, type CleverRecord, type CleverRecords } from "./model.ts";
 
 /** The Data API's origin. */
@@ -39,6 +42,12 @@ export interface CleverDataFakeOptions extends FakeOptions {
   readonly districtTokens?: readonly string[];
   /** Extra Clever roles for multi-role teachers, staff and administrators, by person ID. */
   readonly extraRoles?: CleverExtraRoles;
+  /**
+   * Renders the fields Clever's v3.1 spec marks nullable as `null` when the seed has nothing for
+   * them, and each role a user does not hold as `null`, as some real districts' data does. Defaults
+   * to leaving them out.
+   */
+  readonly nulls?: boolean;
   /** Requests per token per minute before a real 429. Defaults to {@link CLEVER_RATE_LIMIT_PER_MINUTE}. */
   readonly rateLimitPerMinute?: number;
   /**
@@ -87,7 +96,7 @@ function json(body: unknown, status = 200): Response {
 /**
  * A Clever Data API v3.1 fake over a seed. Tests and demos change the roster through
  * {@link mutate} (or {@link addPerson}, {@link updatePerson}, {@link removePerson},
- * {@link updateSection} …), and `/events` reports each change as Clever would.
+ * {@link updateSection}, {@link moveStudent} …), and `/events` reports each change as Clever would.
  */
 export class CleverDataFake extends Fake {
   /** The default district-app token, derived from the seed. */
@@ -98,6 +107,7 @@ export class CleverDataFake extends Fake {
   readonly events: CleverEvent[] = [];
   readonly #tokens: Set<string>;
   readonly #extraRoles: CleverExtraRoles;
+  readonly #nulls: boolean;
   readonly #limit: number;
   readonly #usage = new Map<string, { window: number; count: number }>();
   readonly #clientKey: ((request: Request) => string) | undefined;
@@ -106,6 +116,7 @@ export class CleverDataFake extends Fake {
   readonly #origin: string;
   /** Each event's position in {@link events}, so a cursor is found without a scan. */
   readonly #eventIndex = new Map<string, number>();
+  readonly #gradebook: LmsConnectGradebook;
   #seed: DistrictSeed;
   #records: CleverRecords;
   #eventCount = 0;
@@ -117,12 +128,14 @@ export class CleverDataFake extends Fake {
     this.districtToken = tokenId("clever:district-token", this.#seed.id, 40);
     this.#tokens = new Set(options.districtTokens ?? [this.districtToken]);
     this.#extraRoles = options.extraRoles ?? {};
+    this.#nulls = options.nulls ?? false;
     this.#limit = options.rateLimitPerMinute ?? CLEVER_RATE_LIMIT_PER_MINUTE;
     this.#clientKey = options.clientKey;
     const base = new URL(options.baseUrl ?? CLEVER_API_ORIGIN);
     this.#origin = base.origin;
     this.#prefix = base.pathname.replace(/\/+$/, "");
-    this.#records = projectClever(this.#seed, this.#extraRoles);
+    this.#records = projectClever(this.#seed, this.#extraRoles, this.#nulls);
+    this.#gradebook = new LmsConnectGradebook(this.#seed.id, () => this.now(), (id) => this.#records.sections.get(id));
   }
 
   /** The seed as it stands after every mutation. */
@@ -145,6 +158,19 @@ export class CleverDataFake extends Fake {
     return this.#records[collection].get(id);
   }
 
+  /** A section's LMS Connect assignments, oldest first, by the section's Clever ID. */
+  assignmentsFor(sectionId: string): CleverAssignment[] {
+    return this.#gradebook.assignmentsFor(sectionId);
+  }
+
+  /**
+   * A student's LMS Connect submission, as the API would serve it now, or undefined if the
+   * assignment is not in the section or the student is not one of its assignees. Clever IDs.
+   */
+  submissionFor(sectionId: string, assignmentId: string, userId: string): CleverSubmission | undefined {
+    return this.#gradebook.submissionFor(sectionId, assignmentId, userId);
+  }
+
   // ── Mutations ───────────────────────────────────────────────────
 
   /**
@@ -154,7 +180,7 @@ export class CleverDataFake extends Fake {
    */
   mutate(change: (seed: DistrictSeed) => DistrictSeed): CleverEvent[] {
     const next = validateSeed(change(this.#seed));
-    const projected = projectClever(next, this.#extraRoles);
+    const projected = projectClever(next, this.#extraRoles, this.#nulls);
     const stamp = new Date(this.now()).toISOString();
     const created: CleverEvent[] = [];
     const updated: CleverEvent[] = [];
@@ -236,6 +262,26 @@ export class CleverDataFake extends Fake {
     return this.mutate((seed) => ({ ...seed, sections: seed.sections.map((s) => (s.id === sectionId ? { ...s, ...patch } : s)) }));
   }
 
+  /**
+   * Moves a student from one section's roster to another's, as a schedule change in the SIS does
+   * (`sections.updated` for each). The student's own record is untouched.
+   */
+  moveStudent(studentId: string, fromSectionId: string, toSectionId: string): CleverEvent[] {
+    const from = this.#seed.sections.find((s) => s.id === fromSectionId);
+    const to = this.#seed.sections.find((s) => s.id === toSectionId);
+    if (from === undefined || to === undefined) throw new RangeError("a move is between two sections the district has");
+    if (!from.studentIds.includes(studentId)) throw new RangeError(`${studentId} is not in ${fromSectionId}`);
+    if (to.studentIds.includes(studentId)) throw new RangeError(`${studentId} is already in ${toSectionId}`);
+    return this.mutate((seed) => ({
+      ...seed,
+      sections: seed.sections.map((s) => {
+        if (s.id === fromSectionId) return { ...s, studentIds: s.studentIds.filter((id) => id !== studentId) };
+        if (s.id === toSectionId) return { ...s, studentIds: [...s.studentIds, studentId] };
+        return s;
+      }),
+    }));
+  }
+
   /** Removes a section (`sections.deleted`). */
   removeSection(sectionId: string): CleverEvent[] {
     return this.mutate((seed) => ({
@@ -269,7 +315,7 @@ export class CleverDataFake extends Fake {
     return json({ error: status === 503 ? "Service Unavailable" : "Internal Server Error" }, status);
   }
 
-  protected async serve(request: Request): Promise<Response> {
+  protected async serve(request: Request, body: string): Promise<Response> {
     const url = new URL(request.url);
     const token = bearer(request);
     if (url.origin !== this.#origin || (this.#prefix !== "" && !url.pathname.startsWith(`${this.#prefix}/`))) return json({ error: "Resource not found" }, 404);
@@ -285,13 +331,21 @@ export class CleverDataFake extends Fake {
     this.#usage.set(budget, { window, count });
     const headers = this.#rateHeaders(token, this.#limit - count);
     if (count > this.#limit) return new Response(null, { status: 429, headers });
-    const response = this.#route(request, url);
+    const response = this.#route(request, url, body);
     for (const [key, value] of headers) response.headers.set(key, value);
     return response;
   }
 
-  #route(request: Request, url: URL): Response {
-    const match = /^\/(v3\.[01])\/([a-z_]+)(?:\/([0-9a-f]{24}|[^/]+))?(?:\/([a-z_]+))?\/?$/.exec(url.pathname.slice(this.#prefix.length));
+  #route(request: Request, url: URL, body: string): Response {
+    const path = url.pathname.slice(this.#prefix.length);
+    const lms = /^\/(v3\.[01])\/sections\/([^/]+)\/assignments(?:\/([^/]+)(?:\/(submissions)(?:\/([^/]+))?)?)?\/?$/.exec(path);
+    if (lms !== null) {
+      const [, version, sectionId, assignmentId, submissions, userId] = lms as unknown as [string, string, string, string | undefined, string | undefined, string | undefined];
+      // LMS Connect is v3.1 only (clever-lms-connect): v3.0 has no such resource.
+      if (version !== "v3.1") return json({ error: "Resource not found" }, 404);
+      return this.#gradebook.serve(request.method, { sectionId, assignmentId, submissions: submissions !== undefined, userId }, body, url, `${this.#prefix}/${version}`);
+    }
+    const match = /^\/(v3\.[01])\/([a-z_]+)(?:\/([0-9a-f]{24}|[^/]+))?(?:\/([a-z_]+))?\/?$/.exec(path);
     if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
     if (match === null) return json({ error: "Resource not found" }, 404);
     const [, version, resource, id, nested] = match as unknown as [string, string, string, string | undefined, string | undefined];
@@ -323,7 +377,7 @@ export class CleverDataFake extends Fake {
     };
     const sectionsOf = (userId: string) => all("sections").filter((s) => (s["students"] as string[]).includes(userId) || (s["teachers"] as string[]).includes(userId));
     const schoolsOfUser = (user: CleverRecord) =>
-      new Set(Object.values(user["roles"] as Record<string, Record<string, unknown>>).flatMap((r) => (r["schools"] as string[] | undefined) ?? []));
+      new Set(Object.values(user["roles"] as Record<string, Record<string, unknown> | null>).flatMap((r) => (r?.["schools"] as string[] | undefined) ?? []));
     if (nested === "district") return one("districts", collection === "districts" ? record.id : record["district"]);
     switch (`${collection}/${nested}`) {
       case "districts/schools":
@@ -372,9 +426,9 @@ export class CleverDataFake extends Fake {
         return list("schools", all("schools").filter((s) => ids.has(s.id)));
       }
       case "users/mystudents": {
-        const roles = record["roles"] as Record<string, Record<string, unknown>>;
+        const roles = record["roles"] as Record<string, Record<string, unknown> | null>;
         const ids = new Set<string>();
-        if (roles["teacher"] !== undefined) for (const s of all("sections")) if ((s["teachers"] as string[]).includes(record.id)) for (const st of s["students"] as string[]) ids.add(st);
+        if (roles["teacher"] != null) for (const s of all("sections")) if ((s["teachers"] as string[]).includes(record.id)) for (const st of s["students"] as string[]) ids.add(st);
         for (const rel of (roles["contact"]?.["student_relationships"] as { student: string }[] | undefined) ?? []) ids.add(rel.student);
         return list("users", usersById(ids));
       }
@@ -387,7 +441,7 @@ export class CleverDataFake extends Fake {
         return list(
           "users",
           all("users").filter((u) => {
-            const contact = (u["roles"] as Record<string, Record<string, unknown>>)["contact"];
+            const contact = (u["roles"] as Record<string, Record<string, unknown> | null>)["contact"];
             return ((contact?.["student_relationships"] as { student: string }[] | undefined) ?? []).some((r) => r.student === record.id);
           }),
         );
@@ -415,7 +469,7 @@ export class CleverDataFake extends Fake {
     if (collection === "users" && roleFilter && role !== null) {
       const roles: readonly CleverRole[] = ["student", "teacher", "staff", "district_admin", "contact"];
       if (!roles.includes(role as CleverRole)) return json({ error: `invalid role: ${role}` }, 400);
-      rows = rows.filter((u) => (u["roles"] as Record<string, unknown>)[role] !== undefined);
+      rows = rows.filter((u) => (u["roles"] as Record<string, unknown>)[role] != null);
     }
     const after = url.searchParams.get("starting_after");
     const before = url.searchParams.get("ending_before");

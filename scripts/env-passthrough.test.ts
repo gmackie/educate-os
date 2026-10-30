@@ -85,6 +85,8 @@ const EXPECTED: Record<string, ExpectedArea> = {
       "VITE_DEV_PASSWORD",
       "VITE_DEV_USERNAME",
       "VITE_FRONTEND_ERROR_REPORTING",
+      // The Workshop's mount (`/` by default, `/ai/` on a district origin; SCHO-259).
+      "VITE_WORKSHOP_BASE_PATH",
     ],
     injected: ["NODE_ENV"],
   },
@@ -96,6 +98,10 @@ const EXPECTED: Record<string, ExpectedArea> = {
   // target: `pnpm dev` is a script with the ambient environment, and a build never uses the proxy.
   "packages/educateos-admin-ui": {
     forwarded: ["EDUCATEOS_ADMIN_API", "EDUCATEOS_UI_BASE"],
+    injected: ["NODE_ENV"],
+  },
+  // The operations admin (SCHO-263): its SPA build sets NODE_ENV before importing Vite, as above.
+  "packages/educateos-admin": {
     injected: ["NODE_ENV"],
   },
   "packages/educateos-student-ui": {
@@ -126,7 +132,8 @@ const EXPECTED: Record<string, ExpectedArea> = {
       "VITE_FRONTEND_ERROR_REPORTING",
     ],
     external: [
-      "CF_ACCESS_AUD", "CF_ACCESS_ISS", "CF_AI_GATEWAY", "CF_AI_GATEWAY_ACCOUNT_ID",
+      // CF_ACCESS_TOKEN is read by `principal-migration.ts` (SCHO-259), which is run directly.
+      "CF_ACCESS_AUD", "CF_ACCESS_ISS", "CF_ACCESS_TOKEN", "CF_AI_GATEWAY", "CF_AI_GATEWAY_ACCOUNT_ID",
       "CF_AI_GATEWAY_API_TOKEN", "CF_AI_GATEWAY_PROVIDERS", "CF_AI_GATEWAY_USE_BINDING",
       "CI_COMMIT_SHA", "CI_PIPELINE_IID", "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN",
       "CLOUDFLARE_OS_DEPLOYMENT", "GITHUB_REPOSITORY", "GITHUB_TOKEN", "PREVIEW_ADMINS", "PREVIEW_AI_GUARD",

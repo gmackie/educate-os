@@ -64,6 +64,7 @@ interface Script {
   activeVersionId: string;
   migrationTag?: string;
   secrets: Map<string, string>;
+  assetsConfig?: Record<string, unknown>;
 }
 
 const MUTATIONS = new Set([
@@ -204,7 +205,14 @@ export class FakeCloudflare {
       migrationTag: script.migrationTag,
       versions: script.versions.length,
       bindings: active.bindings,
+      /** The static-assets config of the last upload that carried assets. */
+      assetsConfig: script.assetsConfig,
     };
+  }
+
+  /** A Worker secret's value, for assertions about generated secrets. Cloudflare never returns one. */
+  secretValue(name: string, secret: string): string | undefined {
+    return this.#scripts.get(name)?.secrets.get(secret);
   }
 
   /** Statements a D1 database has run, in order. */
@@ -542,12 +550,16 @@ export class FakeCloudflare {
     const migrationTag = migrations?.new_tag ?? existing?.migrationTag;
     const bindings = metadata.bindings.map((b) => ({ ...b }) as ObservedBinding);
     if (!existing) {
-      const script: Script = { versions: [], activeVersionId: "", secrets: new Map(), ...(migrationTag ? { migrationTag } : {}) };
+      const script: Script = {
+        versions: [], activeVersionId: "", secrets: new Map(), ...(migrationTag ? { migrationTag } : {}),
+        ...(metadata.assets ? { assetsConfig: structuredClone(metadata.assets.config) } : {}),
+      };
       this.#addVersion(script, bindings, migrationTag);
       this.#scripts.set(name, script);
       return;
     }
     if (migrationTag) existing.migrationTag = migrationTag;
+    if (metadata.assets) existing.assetsConfig = structuredClone(metadata.assets.config);
     this.#addVersion(existing, bindings, migrationTag);
   }
 

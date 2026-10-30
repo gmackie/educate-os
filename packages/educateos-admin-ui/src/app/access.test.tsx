@@ -20,7 +20,7 @@ describe("someone the school has not added yet", () => {
     expect(id.textContent).toContain("Signed in through fake.cloudflareaccess.com");
     expect(section.textContent).toContain("Send this ID to your school's administrator. They add you, then reload this page.");
     expect(within(section).getByRole("link", { name: "Sign out" }).getAttribute("href")).toBe("/cdn-cgi/access/logout");
-    expect(screen.queryByRole("navigation", { name: "Admin sections" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Admin" })).toBeNull();
     expect(document.body.textContent).not.toContain("not linked to a principal");
   });
 
@@ -41,15 +41,19 @@ describe("a person who is not a district administrator", () => {
     const apps = within(heading.closest("section")!).getByRole("navigation", { name: "Other EducateOS apps" });
     expect(within(apps).getByRole("link", { name: "Learning Home" }).getAttribute("href")).toBe("/");
     expect(within(apps).getByRole("link", { name: "Teacher Studio" }).getAttribute("href")).toBe("/teach/");
-    expect(screen.queryByRole("navigation", { name: "Admin sections" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Admin" })).toBeNull();
     expect(document.body.textContent).not.toMatch(/Could not load|reference req-fake/);
-    // Both links are reachable from the keyboard, after the skip link and the header's theme control.
+    // Both links are reachable from the keyboard, after the skip link and the shell's sidebar, which
+    // offers their own places and the theme control (SCHO-260).
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole("link", { name: "Skip to content" }));
-    await user.tab();
-    expect(document.activeElement).toBe(within(screen.getByRole("banner")).getByRole("button", { name: /^Theme:/ }));
-    await user.tab();
-    expect(document.activeElement).toBe(within(apps).getByRole("link", { name: "Learning Home" }));
+    const learningHome = within(apps).getByRole("link", { name: "Learning Home" });
+    const sidebar = screen.getByRole("banner");
+    for (let presses = 0; presses < 30 && document.activeElement !== learningHome; presses++) {
+      await user.tab();
+      if (document.activeElement !== learningHome) expect(sidebar.contains(document.activeElement)).toBe(true);
+    }
+    expect(document.activeElement).toBe(learningHome);
     await user.tab();
     expect(document.activeElement).toBe(within(apps).getByRole("link", { name: "Teacher Studio" }));
   });
@@ -59,8 +63,8 @@ describe("a district administrator", () => {
   it("waits for their access to be checked, then gets the console with a distinct name for every section", async () => {
     renderConsole(fakeDistrict().client);
     expect(screen.getByText("Checking your access...")).toBeTruthy();
-    expect(screen.queryByRole("navigation", { name: "Admin sections" })).toBeNull();
-    const nav = await screen.findByRole("navigation", { name: "Admin sections" });
+    expect(screen.queryByRole("list", { name: "Admin" })).toBeNull();
+    const nav = await screen.findByRole("list", { name: "Admin" });
     const labels = within(nav).getAllByRole("link").map((link) => link.textContent);
     expect(labels).toStrictEqual(SCREENS.map((s) => s.label));
     expect(new Set(labels).size).toBe(labels.length);
@@ -77,7 +81,7 @@ describe("a district administrator", () => {
         : (client.call as (...a: unknown[]) => Promise<unknown>)(name, ...args)) as DistrictApiClient["call"],
     };
     renderConsole(failing, "modules");
-    expect(await screen.findByRole("navigation", { name: "Admin sections" })).toBeTruthy();
+    expect(await screen.findByRole("list", { name: "Admin" })).toBeTruthy();
     expect(await screen.findByText(/Could not load/)).toBeTruthy();
   });
 });

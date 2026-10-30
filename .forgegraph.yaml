@@ -15,11 +15,13 @@
 # SCHO-214) is the separate app `educateos-google`, whose one target syncs only its OAuth client,
 # CLIENT_ID and CLIENT_SECRET; its target spec is in the runbook. The EducateOS connector
 # (gatekeeper-educateos, SCHO-218) is likewise the separate app `educateos-gatekeeper`, whose one
-# target syncs no secrets; its target spec is in the runbook too.
+# target syncs no secrets; its target spec is in the runbook too. The Clever connector
+# (gatekeeper-clever, SCHO-282) is the separate app `educateos-clever`, whose one target syncs only
+# its OAuth client and CLEVER_DISTRICT_TOKENS; its target spec is in the runbook.
 #
 # Cold bring-up must go tier by tier (`forge deploy create production --target <name>`): the
 # district Worker (app `educateos-district`), then the gatekeepers (gatekeeper-google and
-# gatekeeper-educateos included; gatekeeper-educateos binds the district Worker) and the guard, then
+# gatekeeper-clever and gatekeeper-educateos included; gatekeeper-educateos binds the district Worker) and the guard, then
 # the backend, then the router, since a service binding to a Worker that does not exist yet is
 # rejected. Afterwards every target deploys in place.
 
@@ -34,7 +36,7 @@ server: https://forgegraf.com
 
 stages:
   - name: production
-    url: https://schoolos.gmac.io
+    url: https://northfield.educateos.io
     sortOrder: 20
     targets:
       - name: gatekeeper-context
@@ -86,9 +88,9 @@ stages:
           workerName: router
           appDir: packages/router
           configPath: packages/router/wrangler.production.jsonc
-          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && VITE_CF_ACCESS_MODE=true pnpm exec vp run --no-cache -F @gadgets/workshop-frontend build
+          buildCommand: node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && VITE_CF_ACCESS_MODE=true VITE_WORKSHOP_BASE_PATH=/ai/ pnpm exec vp run --no-cache -F @gadgets/workshop-frontend build
           deployCommand: pnpm exec wrangler deploy -c wrangler.production.jsonc
-          healthCheckUrl: https://schoolos.gmac.io/healthz
+          healthCheckUrl: https://northfield.educateos.io/healthz
 
 health:
   # The router's liveness route, exempt from Cloudflare Access ("EducateOS health (bypass)").

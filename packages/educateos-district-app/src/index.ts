@@ -11,3 +11,10 @@ export * from "./guard-directory.ts";
 export * from "./guardians.ts";
 // Communication (SCHO-189)
 export * from "./communication/index.ts";
+// Devices (SCHO-261)
+export * from "./devices.ts";
+// Pairing (SCHO-261)
+export * from "./pairing.ts";
+// Operations (SCHO-263)
+export * from "./ops.ts";
+export * from "./ops-analytics.ts";

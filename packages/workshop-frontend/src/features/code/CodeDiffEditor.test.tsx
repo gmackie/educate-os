@@ -8,7 +8,7 @@ import { EditorView } from '@codemirror/view'
 import type { FileChange } from '@gadgets/workshop-shared/code-change'
 import CodeDiffEditor from './CodeDiffEditor'
 import type { EditSession } from './CodeEditor'
-import { ThemeProvider } from '../../ThemeContext'
+import { ThemeProvider, storedThemeMode } from '@gadgets/ui/theme'
 
 // Mounts the diff editor with a fake EditSession to cover the component wiring: the
 // rAF-coalesced diff recompute, the -N +N pill, the deletion zones, and remote changes flowing
@@ -101,7 +101,7 @@ describe('CodeDiffEditor', () => {
     await act(async () => {
       root.render(
         <StrictMode>
-          <ThemeProvider>
+          <ThemeProvider source={storedThemeMode('gadgets:theme-mode')}>
             <CodeDiffEditor
               filename="notes.txt"
               original={original}
@@ -184,7 +184,7 @@ describe('CodeDiffEditor', () => {
   it('renders the select-a-file placeholder without a filename', async () => {
     await act(async () => {
       root.render(
-        <ThemeProvider>
+        <ThemeProvider source={storedThemeMode('gadgets:theme-mode')}>
           <CodeDiffEditor filename={null} original={null} />
         </ThemeProvider>,
       )

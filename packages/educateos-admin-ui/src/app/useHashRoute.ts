@@ -5,6 +5,7 @@ import { readHash, subscribeToHash } from "@gadgets/ui/hash-location";
 export const SCREENS = [
   { path: "dashboard", label: "Dashboard" },
   { path: "roster", label: "Roster" },
+  { path: "roster-sync", label: "Roster sync" },
   { path: "classes", label: "All classes" },
   { path: "classes-people", label: "Manage classes and people" },
   { path: "guardians", label: "Guardians" },
@@ -14,6 +15,7 @@ export const SCREENS = [
   { path: "ai-usage", label: "AI usage" },
   { path: "ai-budgets", label: "AI budgets" },
   { path: "term-rollover", label: "Term rollover" },
+  { path: "operations", label: "Operations" },
 ] as const;
 
 /** A screen's path. */

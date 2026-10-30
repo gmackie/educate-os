@@ -40,6 +40,6 @@
     }
   ],
   "vars": {
-    "BASE_URL": "https://schoolos.gmac.io/gatekeeper/context"
+    "BASE_URL": "https://northfield.educateos.io/gatekeeper/context"
   }
 }

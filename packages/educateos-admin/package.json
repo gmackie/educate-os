@@ -1,0 +1,41 @@
+{
+  "name": "@educateos/admin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS operations admin (SCHO-263): one package for admin.educateos.io (hosted) and the open-source admin a district deploys into its own account. A Worker with D1 (operators, workspace registry, ops keys, cached analytics aggregates, audit log; never student records), Access sign-in, a Kumo SPA, and signed calls to each district's /api/ops/*. Its development config is wrangler.local.jsonc, not wrangler.jsonc, so release discovery and the deploy config generators never pick it up.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:worker": "wrangler dev -c wrangler.local.jsonc"
+  },
+  "dependencies": {
+    "@cloudflare/kumo": "^2.14.0",
+    "@educateos/contracts": "workspace:*",
+    "@educateos/control-plane": "workspace:*",
+    "@educateos/fleet": "workspace:*",
+    "@gadgets/ui": "workspace:*",
+    "@phosphor-icons/react": "^2.1.10",
+    "@tailwindcss/vite": "^4.3.3",
+    "jose": "^6.2.12",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwindcss": "^4.3.3",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
+    "@gadgets/scripts": "workspace:*",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/user-event": "14.6.7",
+    "@types/node": "26.1.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^5.2.0",
+    "jsdom": "^26.1.0",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

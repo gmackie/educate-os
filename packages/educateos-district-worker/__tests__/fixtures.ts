@@ -13,6 +13,8 @@ export const ACCESS_AUDIENCES = ` ${ACCESS_AUDIENCE},, ,${WORKSHOP_ACCESS_AUDIEN
 
 /** The LTI Tool's origin, as the tests deploy it (SCHO-177): the host their requests name. */
 export const LTI_TOOL_ORIGIN = "https://district.example";
+/** The key device access tokens are MACed with in the tests (SCHO-261). */
+export const DEVICE_TOKEN_SECRET = "test-device-token-secret-0123456789-abcdef";
 /** The synthetic LMS the LTI tests register (SCHO-177). Not one of Northfield's trusted issuers. */
 export const LMS_ISSUER = "https://lms.northfield.example";
 

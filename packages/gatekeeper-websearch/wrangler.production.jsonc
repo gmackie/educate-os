@@ -42,7 +42,7 @@
   "workers_dev": false,
   "preview_urls": false,
   "vars": {
-    "BASE_URL": "https://schoolos.gmac.io/gatekeeper/websearch",
+    "BASE_URL": "https://northfield.educateos.io/gatekeeper/websearch",
     "CF_AI_GATEWAY": "default"
   }
 }

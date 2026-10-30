@@ -59,7 +59,7 @@ vi.mock("@cloudflare/kumo", async (importOriginal) => {
   return { ...actual, Dialog: Object.assign(DialogPart, { Root: DialogPart, Title: DialogPart }) };
 });
 
-vi.mock("./ThemeContext", () => ({
+vi.mock("@gadgets/ui/theme", () => ({
   useTheme: () => ({ resolvedThemeMode: "light" }),
 }));
 

@@ -9,12 +9,19 @@
     "name": "CF_ACCESS_ISS",
     "kind": "var",
     "label": "Cloudflare Access team domain",
-    "help": "https://<team>.cloudflareaccess.com, no trailing slash: the issuer of the Access assertions the district accepts. The district must list it in its trustedIssuers."
+    "help": "https://<team>.cloudflareaccess.com, no trailing slash: the issuer of the Access assertions the district accepts. The district must list it in its trustedIssuers. On a one-origin install (ADR-0014) the installer sets it from the install config."
   },
   {
     "name": "CF_ACCESS_AUD",
     "kind": "var",
     "label": "Cloudflare Access audiences",
-    "help": "Comma-separated audience tags of the Access applications whose sign-ins the district accepts: the application in front of the district's own hostname and /api and, when the instance runs the EducateOS connector, the instance's Workshop application, whose hostname the connector's connect page is served on. Both must be on the CF_ACCESS_ISS team."
+    "help": "Comma-separated audience tags of the Access applications whose sign-ins the district accepts: the application in front of the district's own hostname and /api and, when the instance runs the EducateOS connector, the instance's Workshop application, whose hostname the connector's connect page is served on. Both must be on the CF_ACCESS_ISS team. On a one-origin install (ADR-0014) the installer sets it to the one Access application in front of the district's origin."
+  },
+  {
+    "name": "DEVICE_TOKEN_SECRET",
+    "kind": "secret",
+    "label": "Device token key",
+    "help": "The key the district MACs the EducateOS app's device tokens with (SCHO-261): at least 32 characters, known to nobody. Generated when the district Worker has none; replacing it signs every phone out.",
+    "generated": true
   }
 ]

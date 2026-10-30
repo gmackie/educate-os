@@ -1,5 +1,10 @@
 # Classroom investor and customer walkthrough
 
+For the Clever partner discussion, use the [meeting kit](../clever-partner-demo/README.md),
+which adds source-grounded prompts, an offline presentation, exact access requests and pilot
+acceptance criteria. The [personal student companion](../examples/classroom-student-companion/README.md)
+is separate from teacher presentation authority; live EducateOS student acceptance remains open.
+
 Use synthetic accounts and the saved [Classroom workspace](https://schoolos.gmac.io/workspace/6803f77edf00585d77d65d58c46267e3f09fb0905131571eaf6658e299532c74?w=13).
 This is the demonstrated presentation path. The broader district/student/Plus acceptance gates in
 [classroom-verification.md](classroom-verification.md) must pass before describing the entire

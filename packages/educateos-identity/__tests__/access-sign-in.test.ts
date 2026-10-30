@@ -5,6 +5,7 @@ import {
   accessServiceTokenSubject,
   approveIdentityLink,
   createAccessSignInResolver,
+  matchEmailKeyedUsers,
   planEmailKeyedMigration,
   type PendingIdentityLink,
 } from "../src/index.ts";
@@ -105,5 +106,25 @@ describe("createAccessSignInResolver", () => {
     const { migration } = migrationFor();
     const plan = planEmailKeyedMigration({ directory: RIVERBEND, otherDirectories: [NORTHFIELD], users: [] });
     expect(() => resolverFor({ migration: { ...migration, plan } })).toThrow(EducateOsError);
+  });
+});
+
+// SCHO-259: what the kernel's one-time principal migration asks the district.
+describe("matchEmailKeyedUsers", () => {
+  it("names a principal only for an email exactly one person has", () => {
+    const matches = matchEmailKeyedUsers(NORTHFIELD, [
+      ...USERS,
+      { email: "nobody@northfield.example", workshopUserId: id("7") },
+    ]);
+    expect(matches).toStrictEqual([
+      { email: "family.okafor@northfield.example", outcome: "ambiguous" },
+      { email: "  Sam.Rivera@Northfield.example ", outcome: "exact-single", principalId: "prn_nf-teacher-rivera" },
+      { email: "nobody@northfield.example", outcome: "unmatched" },
+    ]);
+  });
+
+  it("refuses malformed and repeated users", () => {
+    expect(() => matchEmailKeyedUsers(NORTHFIELD, [{ email: "a@b.example", workshopUserId: "not-hex" }])).toThrow(EducateOsError);
+    expect(() => matchEmailKeyedUsers(NORTHFIELD, [USERS[0], USERS[0]])).toThrow(EducateOsError);
   });
 });

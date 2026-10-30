@@ -6,7 +6,7 @@ import { EducateOsError } from "@educateos/contracts";
 import { type ReleaseArtifacts, verifiedAsset, verifiedBlob } from "./artifacts.ts";
 import type { CloudflareApi } from "./cloudflare-api.ts";
 import type { SecretSource } from "./config.ts";
-import type { DesiredD1Database, DesiredWorker } from "./desired.ts";
+import { type DesiredD1Database, type DesiredWorker, generateSecretValue } from "./desired.ts";
 import { CloudflareApiError } from "./errors.ts";
 import { applyManagedHostname } from "./managed-hostname.ts";
 import { D1_LEDGER_TABLE, guarded, type InstallPlan, type PlanStep } from "./plan.ts";
@@ -99,7 +99,9 @@ export async function applyPlan(plan: InstallPlan, context: ApplyContext): Promi
         await uploadWorker(context, account, resource, step.observedMigrationTag, outputs);
         break;
       case "worker_secret": {
-        const value = context.secrets.get(resource.pkgName, resource.secretName);
+        // A generated secret is made here, sent once, and kept nowhere: the Worker alone holds it.
+        const value = context.secrets.get(resource.pkgName, resource.secretName) ??
+          (resource.generated ? generateSecretValue() : undefined);
         if (value === undefined) throw new EducateOsError("validation-failed", `${resource.secretName} for ${resource.pkgName} is not supplied`);
         await guarded(() => api.putWorkerSecret(account, resource.scriptName, resource.secretName, value));
         break;

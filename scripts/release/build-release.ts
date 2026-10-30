@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
 // Builds an immutable release: every deployable worker bundled exactly as `wrangler deploy`
-// would upload it (dry-run + outdir, with the repo's pinned wrangler), plus the Access-mode
-// workshop-frontend asset build, plus the release manifest that describes it all.
+// would upload it (dry-run + outdir, with the repo's pinned wrangler), plus the workshop-frontend
+// asset builds (Access mode, at the root and under /ai), plus each release component
+// (manifest-lib's RELEASE_COMPONENTS: the OSS admin) bundled from its config template with its own
+// SPA build, plus the release manifest that describes it all.
 //
 // Output layout (mirrored to R2 by upload-release.ts):
 //   <out>/manifest.json                    the release manifest (upload LAST — its presence
@@ -44,8 +46,8 @@ import {
   SIGNED_MANIFEST_FILE, signReleaseManifest, type ReleaseSigningOptions,
 } from "./release-signing.ts";
 import {
-  generateManifest, readD1Migrations, readDeployablePackages, readDeployInputs,
-  type DeployablePackage, type WorkerBuild,
+  ASSET_VARIANTS, generateManifest, readD1Migrations, readDeployablePackages, readDeployInputs,
+  readReleaseComponents, type DeployablePackage, type WorkerBuild,
 } from "./manifest-lib.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -232,28 +234,44 @@ function pinnedWranglerVersion(): string {
   return pkg.version;
 }
 
-// Builds the Access-mode frontend (VITE_CF_ACCESS_MODE is a build-time flag,
-// workshop-frontend/src/useAuth.ts) — the one asset variant every release carries.
+// Builds every asset variant of the frontend (ASSET_VARIANTS in manifest-lib.ts): the Access-mode
+// Workshop at the root (VITE_CF_ACCESS_MODE is a build-time flag, workshop-frontend/src/useAuth.ts)
+// and the same build under /ai for a district's one origin (ADR-0014). One at a time, since each
+// build replaces workshop-frontend/dist, and each is collected (bytes and all) before the next
+// starts. The root variant goes last, so dist/ ends up holding what it always held.
 //
 // Through vp rather than a package script: `build` is a task, so there is no script to run, and the
 // task declares VITE_* as fingerprinted env — a release built at a different flag value is a cache
 // miss rather than a stale replay. Based on `vpRunEnv()` so the run gets the machine-aware
 // concurrency limit (vp/concurrency.ts); the limit is not a task input, so it never affects the hash.
-async function buildFrontend(signal: AbortSignal): Promise<CollectedAssets> {
-  const env = { ...vpRunEnv(), VITE_CF_ACCESS_MODE: "true" };
-  await run("frontend (access mode)", "pnpm",
-      ["exec", "vp", "run", "-F", "@gadgets/workshop-frontend", "build"], { env, signal });
-  return collectAssets(join(FRONTEND_DIR, "dist"));
+async function buildFrontend(signal: AbortSignal): Promise<Record<string, CollectedAssets>> {
+  const variants: Record<string, CollectedAssets> = {};
+  for (const name of Object.keys(ASSET_VARIANTS).toSorted((a, b) => Number(a === "access") - Number(b === "access"))) {
+    const env = { ...vpRunEnv(), ...ASSET_VARIANTS[name] };
+    await run(`frontend (${name})`, "pnpm",
+        ["exec", "vp", "run", "-F", "@gadgets/workshop-frontend", "build"], { env, signal });
+    variants[name] = collectAssets(join(FRONTEND_DIR, "dist"));
+  }
+  // Written back in ASSET_VARIANTS order, so the manifest does not depend on the build order.
+  return Object.fromEntries(Object.keys(ASSET_VARIANTS).map((name) => [name, variants[name]!]));
 }
 
 // Bundles one package the way `wrangler deploy` would, without uploading. Run from the package dir
 // so custom build commands (capnweb-validate) resolve their bins, and into a directory of its own,
-// which is what makes these safe to overlap.
+// which is what makes these safe to overlap. A release component is bundled from its config
+// template, after its own SPA is built (wrangler needs the assets directory to exist), and returns
+// that SPA's assets beside its modules.
 async function bundleWorker(pkg: DeployablePackage, bundleDir: string, signal: AbortSignal) {
   const outDir = join(bundleDir, pkg.name);
-  await run(pkg.name, "pnpm", ["exec", "wrangler", "deploy", "--dry-run", "--outdir", outDir],
-      { cwd: pkg.dir, signal });
-  return collectModules(outDir);
+  let ownAssets: CollectedAssets | undefined;
+  if (pkg.component) {
+    await run(`${pkg.name} (assets)`, "pnpm",
+        ["exec", "vp", "run", "-F", pkg.component.assetsBuildFilter, "build"], { env: vpRunEnv(), signal });
+    ownAssets = collectAssets(join(pkg.dir, pkg.config.assets?.directory ?? "dist"));
+  }
+  await run(pkg.name, "pnpm", ["exec", "wrangler", "deploy", "--dry-run", "--outdir", outDir,
+    ...(pkg.component ? ["-c", pkg.component.configFile] : [])], { cwd: pkg.dir, signal });
+  return { ...collectModules(outDir), ownAssets };
 }
 
 // Runs the frontend build and every worker bundle, and owns the scratch directory they bundle into
@@ -277,8 +295,8 @@ async function bundleWorker(pkg: DeployablePackage, bundleDir: string, signal: A
 // rejects with the abort reason, i.e. the root cause itself, which is what lets the failure summary
 // below dedupe down to the real failures by identity.
 async function buildAll(packages: DeployablePackage[], concurrency: number): Promise<{
-  bundles: ReturnType<typeof collectModules>[];
-  assets: CollectedAssets;
+  bundles: Awaited<ReturnType<typeof bundleWorker>>[];
+  assets: Record<string, CollectedAssets>;
 }> {
   const controller = new AbortController();
   // One abort listener per running command (`run`), removed as each finishes. The default cap of 10
@@ -332,7 +350,8 @@ async function buildAll(packages: DeployablePackage[], concurrency: number): Pro
     const frontend = failFast(buildFrontend(controller.signal));
     const [bundlesResult, frontendResult] = await Promise.allSettled([
       mapConcurrent(packages, concurrency, async (pkg) => {
-        if (pkg.config.assets) await frontend;
+        // A release component serves its own assets, which its bundle builds first.
+        if (pkg.config.assets && !pkg.component) await frontend;
         return failFast(bundleWorker(pkg, bundleDir, controller.signal));
       }, controller.signal),
       frontend,
@@ -377,14 +396,15 @@ async function main() {
   mkdirSync(join(args.out, "modules"), { recursive: true });
   mkdirSync(join(args.out, "assets"), { recursive: true });
 
-  const packages = readDeployablePackages(PACKAGES_DIR);
+  const packages = [...readDeployablePackages(PACKAGES_DIR), ...readReleaseComponents(PACKAGES_DIR)]
+      .toSorted((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
   // 1. Every bundle, overlapping.
   const { bundles, assets } = await buildAll(packages, args.concurrency);
 
   // 2. Everything below is ordered by package, so the release bytes do not depend on which build
   //    finished first.
-  const assetVariants = { access: assets };
+  const assetVariants = assets;
   for (const { blobs } of Object.values(assetVariants)) {
     for (const [hash, blob] of blobs) {
       writeFileSync(join(args.out, "assets", hash), blob.bytes);
@@ -392,7 +412,10 @@ async function main() {
   }
 
   const workers: WorkerBuild[] = packages.map((pkg, i) => {
-    const { mainModule, modules } = bundles[i];
+    const { mainModule, modules, ownAssets } = bundles[i];
+    for (const [hash, blob] of ownAssets?.blobs ?? []) {
+      writeFileSync(join(args.out, "assets", hash), blob.bytes);
+    }
     const d1Migrations = readD1Migrations(pkg);
     for (const blob of [...modules, ...d1Migrations]) {
       writeFileSync(join(args.out, "modules", blob.sha256), blob.bytes);
@@ -404,6 +427,7 @@ async function main() {
       modules,
       deployInputs: readDeployInputs(pkg.dir),
       d1Migrations,
+      ...(ownAssets ? { ownAssets } : {}),
     };
   });
 

@@ -1,64 +1,105 @@
-// Runtime color theming.
+// The Workshop's theme: light, dark or system, through @gadgets/ui/theme (its ThemeProvider and
+// ThemeModeButton), the one theme system every EducateOS surface uses (SCHO-260). The Workshop keeps
+// only two things of its own:
 //
-// The base light/dark palettes are defined statically in styles.css via Tailwind `@theme` CSS
-// variables and `[data-mode="dark"]` overrides. Theme mode is applied on <html> so Kumo's semantic
-// tokens and native controls resolve consistently. We also let a deployment override the *accent*
-// family at runtime by setting those CSS variables on :root from an admin-chosen seed color.
-// Hover/lighter/selection shades are derived from the seed with CSS relative-color syntax
-// (`oklch(from <seed> ...)`), so the admin only picks one color.
+// - its palettes, as Kumo token overrides in styles.css (the near-neutral light one, and the
+//   violet-tinted dark one under `[data-mode="dark"]`), and
+// - the accent override: a deployment may set the accent family at runtime from an admin-chosen
+//   seed colour. Hover, lighter and selection shades are derived from the seed with CSS
+//   relative-colour syntax (`oklch(from <seed> ...)`), so the admin picks one colour. The shared
+//   applicator validates the seed before interpolating it into CSS values.
 //
-// Only the accent-related variables are overridden at runtime; backgrounds, lines, and neutral text
-// follow the light/dark palettes selected by `data-mode` in styles.css. The shared applicator
-// validates the seed before interpolating it into CSS values.
+// Where the choice is kept depends on the origin. On a district origin, where the Workshop is the
+// AI workspace under `/ai/` beside the LMS, it shares the LMS's key, so one choice applies
+// everywhere at once. At the root of its own origin it keeps the key it always had.
 
+import type { ThemeMode, ThemeModeSource } from '@gadgets/ui/theme'
 import { applyAccentColor as applyAccentColorToStyle } from '@gadgets/workshop-shared/theme'
+import { isDistrictOrigin } from './workshopBase'
 
-export type ThemeMode = 'light' | 'dark' | 'system'
-export type ResolvedThemeMode = 'light' | 'dark'
+/** The key the Workshop has always kept its choice under, and still does at an origin's root. */
+export const LEGACY_THEME_STORAGE_KEY = 'gadgets:theme-mode'
 
-const THEME_MODE_STORAGE_KEY = 'gadgets:theme-mode'
+/** The key every surface on a district origin shares (`EDUCATEOS_THEME_STORAGE_KEY` in @educateos/shell). */
+export const DISTRICT_THEME_STORAGE_KEY = 'educateos:theme-mode'
 
-function isThemeMode(value: string | null): value is ThemeMode {
-  return value === 'light' || value === 'dark' || value === 'system'
+const isThemeMode = (value: string | null): value is ThemeMode =>
+  value === 'light' || value === 'dark' || value === 'system'
+
+/** Where the choice is kept for a Workshop mounted at `base`: `/` keeps the legacy key. */
+export function themeStorageKey(base: string): string {
+  return isDistrictOrigin(base) ? DISTRICT_THEME_STORAGE_KEY : LEGACY_THEME_STORAGE_KEY
 }
 
-export function getSystemThemeMode(): ResolvedThemeMode {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
-export function readThemeMode(): ThemeMode {
+const readKey = (storage: Storage, key: string): string | null => {
   try {
-    const stored = window.localStorage.getItem(THEME_MODE_STORAGE_KEY)
-    return isThemeMode(stored) ? stored : 'system'
+    return storage.getItem(key)
   } catch {
-    return 'system'
+    return null
   }
 }
 
-export function writeThemeMode(mode: ThemeMode): void {
+/**
+ * Carries a choice made under the legacy key over to the district key, once: only when the
+ * district key holds no choice yet, and the legacy one is removed so it is never read again.
+ * Storage that is unavailable leaves things as they are.
+ */
+export function migrateLegacyThemeMode(storage: Storage): void {
+  if (isThemeMode(readKey(storage, DISTRICT_THEME_STORAGE_KEY))) return
+  const legacy = readKey(storage, LEGACY_THEME_STORAGE_KEY)
+  if (legacy === null) return
   try {
-    window.localStorage.setItem(THEME_MODE_STORAGE_KEY, mode)
+    if (isThemeMode(legacy)) storage.setItem(DISTRICT_THEME_STORAGE_KEY, legacy)
+    storage.removeItem(LEGACY_THEME_STORAGE_KEY)
   } catch {
-    // Ignore storage failures; the selected mode still applies for this session.
+    // Read again on the next load.
   }
 }
 
-export function resolveThemeMode(mode: ThemeMode): ResolvedThemeMode {
-  return mode === 'system' ? getSystemThemeMode() : mode
+/**
+ * The mode a host put on <html> before the app started (the phone app's WebView sets `data-mode`
+ * to match the phone), if any. Read before anything else touches the attribute.
+ */
+export function injectedThemeMode(root: HTMLElement): 'light' | 'dark' | undefined {
+  const mode = root.getAttribute('data-mode')
+  return mode === 'light' || mode === 'dark' ? mode : undefined
 }
 
-export function applyThemeMode(mode: ThemeMode): ResolvedThemeMode {
-  const resolved = resolveThemeMode(mode)
-  const root = document.documentElement
-
-  root.setAttribute('data-mode', resolved)
-  root.style.colorScheme = resolved
-
-  return resolved
+/**
+ * The Workshop's theme source, made once as the app starts. Its choice is kept under
+ * `themeStorageKey(base)`, migrating the legacy key on a district origin. Where nothing has been
+ * chosen yet, a mode the host injected is adopted (not stored, so the host's mode keeps applying
+ * until the person picks one), and otherwise it is "system".
+ */
+export function workshopThemeSource(
+  base: string,
+  root: HTMLElement = document.documentElement,
+  storage: Storage | undefined = safeLocalStorage(),
+): ThemeModeSource {
+  const injected = injectedThemeMode(root)
+  const key = themeStorageKey(base)
+  if (storage !== undefined && key !== LEGACY_THEME_STORAGE_KEY) migrateLegacyThemeMode(storage)
+  return {
+    read: () => {
+      const stored = storage === undefined ? null : readKey(storage, key)
+      return isThemeMode(stored) ? stored : injected ?? 'system'
+    },
+    write: (mode) => {
+      try {
+        storage?.setItem(key, mode)
+      } catch {
+        // The mode still applies until the page is left.
+      }
+    },
+  }
 }
 
-export function applyStoredThemeMode(): ResolvedThemeMode {
-  return applyThemeMode(readThemeMode())
+function safeLocalStorage(): Storage | undefined {
+  try {
+    return window.localStorage
+  } catch {
+    return undefined
+  }
 }
 
 /** Apply the accent color to the document root. Pass "" / invalid to clear back to the base theme. */

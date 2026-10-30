@@ -291,6 +291,23 @@ describe("Clever Data API v3.1 fake: events", () => {
     expect(ids).toEqual(ids.toSorted());
   });
 
+  it("moves a student between sections as one sections.updated for each, leaving the student's record alone", async () => {
+    const { fake, page } = setup();
+    const events = fake.moveStudent("mw-s-01", "mw-bio-p2", "mw-bio-p4");
+    expect(events.map((e) => [e.type, e.data.object["id"]])).toEqual([
+      ["sections.updated", fake.idOf("sections", "mw-bio-p2")],
+      ["sections.updated", fake.idOf("sections", "mw-bio-p4")],
+    ]);
+    expect(events[0]!.data.previous_attributes).toMatchObject({ students: expect.arrayContaining([fake.userId("mw-s-01")]) });
+    expect(fake.record("sections", fake.idOf("sections", "mw-bio-p2"))!["students"]).not.toContain(fake.userId("mw-s-01"));
+    expect(fake.record("sections", fake.idOf("sections", "mw-bio-p4"))!["students"]).toContain(fake.userId("mw-s-01"));
+    expect((await page("/events?record_type=users")).data).toEqual([]);
+    expect(() => fake.moveStudent("mw-s-01", "mw-bio-p2", "mw-bio-p4")).toThrow(RangeError);
+    expect(() => fake.moveStudent("mw-s-07", "mw-bio-p4", "mw-alg-p3")).toThrow(RangeError);
+    expect(() => fake.moveStudent("mw-s-01", "mw-bio-p4", "mw-nope")).toThrow(RangeError);
+    expect(fake.events).toHaveLength(2);
+  });
+
   it("pages events with starting_after and ending_before=last cursors, and filters by record_type", async () => {
     const { fake, page, get } = setup();
     for (const [i, id] of ["mw-s-01", "mw-s-02", "mw-s-03", "mw-s-04"].entries()) fake.updatePerson(id, { localId: `X${i}` });
