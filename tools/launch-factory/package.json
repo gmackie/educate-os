@@ -1,0 +1,17 @@
+{
+  "name": "@educateos/launch-factory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lf": "node src/cli.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:e2e": "node --test test/e2e.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.64.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
