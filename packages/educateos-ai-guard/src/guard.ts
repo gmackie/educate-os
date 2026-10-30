@@ -158,6 +158,7 @@ export class AiCallGuardService {
       log.error("AI call refused: the district directory could not say who the call is for", { event: "ai_guard.failed", reason: "context_unavailable", error: error instanceof Error ? error.name : "unknown" });
       return deny("context_unavailable", this.#messages.aiUnavailable);
     }
+    if (context !== null && call.initiator.type === "gadget") context = this.#gadgetContext(context);
     if (context === null) {
       log.info("AI call refused: initiator is no principal of this deployment", { event: "ai_guard.denied", reason: "unknown_principal" });
       return deny("unknown_principal", this.#messages.unknownPrincipal);
@@ -239,7 +240,8 @@ export class AiCallGuardService {
       log.warn("AI response withheld: its call is not one awaiting release", { event: "ai_guard.output.withheld", reason: "unknown_call" });
       return withhold("unknown_call", this.#messages.notAllowed);
     }
-    const context = await this.#resolver.resolveAdmitted({ principalId: reservation.principalId, districtId: reservation.districtId }, reservation.workspace);
+    let context = await this.#resolver.resolveAdmitted({ principalId: reservation.principalId, districtId: reservation.districtId }, reservation.workspace);
+    if (context !== null && output.initiator?.type === "gadget") context = this.#gadgetContext(context);
     if (context === null) {
       log.warn("AI response withheld: its principal is no longer served", { event: "ai_guard.output.withheld", reason: "unknown_principal" });
       return withhold("unknown_principal", this.#messages.notAllowed);
@@ -314,7 +316,24 @@ export class AiCallGuardService {
     }
   }
 
+  /**
+   * The context a gadget's own model call is moderated under (SCHO-307). Its initiator is the
+   * gadget's owner, who pays for it, but whoever the gadget is shown to may be typing: a student
+   * using a teacher's shared gadget, say. The Workshop cannot tell, so the call is moderated as for
+   * the youngest students (`student-k5`, grades K-2). A configuration with no such profile keeps a
+   * student owner's own profile, and refuses anyone else's call.
+   */
+  #gadgetContext(context: GuardContext): GuardContext | null {
+    const profile = this.#config.profiles["student-k5"] ?? (context.audience === "student" ? context.profile : undefined);
+    if (profile === undefined) return null;
+    return { ...context, audience: "student", gradeBand: "K-2", profile };
+  }
+
   async #moderate(call: AiCallDescriptor, context: GuardContext, log: Logger<GuardLogFields>): Promise<Moderation> {
+    // Hall Monitor screens text only, so an image a student sends would reach the model unread.
+    if (context.audience === "student" && call.newMessages.some((message) => message.parts.some((part) => part.type === "image"))) {
+      return { kind: "deny", reason: "image_unscreened", message: this.#messages.imageUnscreened };
+    }
     if (!context.profile.moderateInput && this.#config.moderation.governance === undefined) return { kind: "proceed", coach: false };
     const checks = call.newMessages.flatMap((message, m) => textChunks(message.parts).map((text, c) => ({ checkId: `${call.callId}.m${m}.c${c}`, text })));
     return this.#evaluate(call.callId, context, checks, "interaction.input", log);

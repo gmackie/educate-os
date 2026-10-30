@@ -246,7 +246,9 @@ describe("@educateos/lti Dynamic Registration against the Canvas platform fake",
       fetch: (async (input: string | URL | Request, init?: RequestInit) => (await toolHandler(new Request(input, init))) ?? new Response(null, { status: 404 })) as typeof fetch,
       ...options,
     });
-    const dynamicRegistration = new DynamicRegistration({ toolOrigin: TOOL, toolName: "EducateOS", invitations, pending, fetch: fake.fetch, now: clock.now });
+    // The fake Canvas is split across hosts as Canvas Cloud is, under synthetic names.
+    const multiHostPlatforms = { [fake.issuer]: fake.flavour.origins.map((origin) => new URL(origin).host) };
+    const dynamicRegistration = new DynamicRegistration({ toolOrigin: TOOL, toolName: "EducateOS", invitations, pending, fetch: fake.fetch, multiHostPlatforms, now: clock.now });
     const broker = new LtiBroker({
       toolOrigin: TOOL,
       registrations: new InMemoryPlatformRegistrationStore([]),

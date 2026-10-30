@@ -110,6 +110,8 @@ test("the backend binds the gatekeepers' vendor entrypoint, the guard, Workers A
       [{ binding: "BLUEPRINT_CONTENT", bucket_name: "schoolos-prod-blueprint-content" }]);
   assert.deepEqual(backend.vars, {
     PUBLIC_BASE_URL: BASE_URL,
+    // A lost guard binding denies model calls instead of running them unguarded (SCHO-307).
+    REQUIRE_AI_CALL_GUARD: "true",
     CF_AI_GATEWAY: "default",
     CF_AI_GATEWAY_ACCOUNT_ID: SCHOOLOS_GMAC_IO.accountId,
     CF_AI_GATEWAY_PROVIDERS: "cloudflare",

@@ -212,15 +212,46 @@ describe("beforeModelCall", () => {
     });
   });
 
-  it("skips moderation for a profile that does not moderate input, and for calls with no new text", async () => {
+  it("skips moderation for an educator profile that does not moderate input, and for calls with no new text", async () => {
     const { guard, ledger } = setup(null);
     const unmoderated = call(USERS.unmoderated, ["anything"]);
     expect(await guard.beforeModelCall(unmoderated)).toEqual({ action: "proceed" });
     expect(await ledger.request(`${unmoderated.callId}.m0.c0`)).toBeNull();
-    const imageOnly = call(USERS.student, [], {
-      newMessages: [{ id: "img", role: "user", parts: [{ type: "image", mimeType: "image/png", digest: "a".repeat(64) }] }],
-    });
-    expect(await guard.beforeModelCall(imageOnly)).toEqual(SCREENED);
+    expect(await guard.beforeModelCall(call(USERS.student, []))).toEqual(SCREENED);
+  });
+
+  it("refuses a student's image, which Hall Monitor cannot screen, but not an educator's (SCHO-307)", async () => {
+    const { guard, ledger } = setup();
+    const image = { id: "img", role: "user" as const, parts: [{ type: "image" as const, mimeType: "image/png", digest: "a".repeat(64) }] };
+    for (const newMessages of [[image], [{ ...image, parts: [{ type: "text" as const, text: "What is this?" }, ...image.parts] }]]) {
+      const student = call(USERS.student, [], { newMessages });
+      expect(await guard.beforeModelCall(student)).toEqual({ action: "deny", reason: "image_unscreened", message: DEFAULT_GUARD_MESSAGES.imageUnscreened });
+      // The hold is released: a refused call costs the student nothing.
+      expect((await ledger.request(student.callId))?.voided).toBeDefined();
+    }
+    expect(await guard.beforeModelCall(call(USERS.educatorProceeds, [], { newMessages: [image] }))).toEqual({ action: "proceed" });
+  });
+
+  it("moderates a gadget's own model calls for the youngest students, whoever owns the gadget (SCHO-307)", async () => {
+    const hallMonitor = hallMonitorClient(env, config)!;
+    const evaluate = vi.spyOn(hallMonitor, "evaluate");
+    const { guard } = setup(hallMonitor);
+    // A teacher's own chat call is moderated as theirs, and is not screened.
+    expect(await guard.beforeModelCall(call(USERS.educatorProceeds, ["Plan a lesson"]))).toEqual({ action: "proceed" });
+    expect(evaluate.mock.calls.at(-1)![0]).toMatchObject({ policy: { profileId: "educator" }, context: { audience: "educator" } });
+    // Their gadget's call might be typed by a student it was shared with.
+    const gadget = call(USERS.educatorProceeds, ["Tell me a secret"], { initiator: { type: "gadget", id: USERS.educatorProceeds } });
+    expect(await guard.beforeModelCall(gadget)).toEqual(SCREENED);
+    expect(evaluate.mock.calls.at(-1)![0]).toMatchObject({ policy: { profileId: "k12-elementary" }, context: { audience: "student", gradeBand: "K-2" } });
+    // Its reply is screened the same way, when the Workshop says whose call it was.
+    expect(await guard.screenModelOutput(gadget.callId, { parts: [{ type: "text", text: "A reply" }], initiator: gadget.initiator })).toEqual({ action: "release" });
+    expect(evaluate.mock.calls.at(-1)![0]).toMatchObject({ evaluationKind: "interaction.output", policy: { profileId: "k12-elementary" }, context: { audience: "student" } });
+  });
+
+  it("fails closed for a gadget's call when Hall Monitor is down, even for an educator whose profile proceeds (SCHO-307)", async () => {
+    const { guard } = setup(null);
+    const gadget = call(USERS.educatorProceeds, ["hello"], { initiator: { type: "gadget", id: USERS.educatorProceeds } });
+    expect(await guard.beforeModelCall(gadget)).toMatchObject({ action: "deny", reason: "moderation_unavailable" });
   });
 
   it("refuses unknown initiators, agent initiators and unpriced models before holding anything", async () => {

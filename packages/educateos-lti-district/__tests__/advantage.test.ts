@@ -32,7 +32,7 @@ const SERVICES: LtiContextServices = {
 const CONTEXT = { offeringId: BIO, issuer: NF_CANVAS, clientId: CLIENT, contextId: BIO_CONTEXT };
 const COLUMN = `${NF_CANVAS}/api/lti/courses/1/line_items/7`;
 
-async function setup() {
+async function setup(options: { reservedIssuers?: readonly string[] } = {}) {
   const district = createDistrict();
   await district.stores.registrations.save(canvasRegistration());
   await district.stores.contextServices.record({ offeringId: BIO, services: SERVICES, observedAt: "2026-10-21T09:00:00.000Z" });
@@ -43,6 +43,7 @@ async function setup() {
   const links: PendingIdentityLink[] = [];
   const advantage = new LtiAdvantageService({
     districtId: NF,
+    ...options,
     authorizer: district.engine,
     directory: district.academics,
     registrations: district.stores.registrations,
@@ -84,6 +85,26 @@ async function setup() {
 }
 
 describe("LtiAdvantageService", () => {
+  it("never trusts a platform under an issuer the district signs people in with (SCHO-306)", async () => {
+    const access = "https://northfield.cloudflareaccess.com";
+    const { district, advantage } = await setup({ reservedIssuers: [access, "https://clever.com"] });
+    await district.stores.pendingRegistrations.put({
+      id: "lpr_impersonatedAccess000001" as never,
+      districtId: NF,
+      issuer: access,
+      clientId: "20000000000003",
+      authLoginUrl: `${access}/authorize`,
+      authTokenUrl: `${access}/token`,
+      jwksUrl: "https://attacker.example/jwks",
+      invitedBy: ADMIN,
+      receivedAt: "2026-10-21T09:00:00.000Z",
+    });
+    const before = (await district.academics.load()).version;
+    expect(await rejection(advantage.trustPlatformIssuer(as(ADMIN), access))).toBe("forbidden");
+    expect(await rejection(advantage.trustPlatformIssuer(as(ADMIN), "https://clever.com"))).toBe("forbidden");
+    expect((await district.academics.load()).version).toBe(before);
+  });
+
   it("trusts a pending or registered platform's issuer once, for a district admin only", async () => {
     const { district, advantage } = await setup();
     const other = "https://canvas.other.example";

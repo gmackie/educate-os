@@ -1,8 +1,8 @@
 /**
  * The educateos.io site Worker. Requests that match a file in public/ are served before this script
  * runs. The script handles the paths `run_worker_first` names (the operator console under /app,
- * the registry and the /healthz check, SCHO-206, and Clever portal launches, SCHO-249) and hands
- * everything else back to the assets binding, which applies
+ * the registry and the /healthz check, SCHO-206, Clever portal launches, SCHO-249, and Stripe's
+ * billing webhook, SCHO-208) and hands everything else back to the assets binding, which applies
  * the 404 page. The control plane itself is `@educateos/control-plane`; this file gives it the
  * site's header and footer. It is imported by path because sites/ is outside the pnpm workspace,
  * which keeps release discovery and config generation from ever seeing this Worker (ADR-0013).

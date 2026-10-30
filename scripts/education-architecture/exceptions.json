@@ -119,9 +119,9 @@
     },
     {
       "path": "packages/workshop-backend/__tests__/ai-call-guard.test.ts",
-      "fingerprint": "1ac62e5a8780d733becec288762900ed01c547dba237d4dcae8475843357957d",
-      "rationale": "SCHO-300 canonical integration: Canonical input-screening deadline and feature cached provider payload bypass regressions.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+      "fingerprint": "93b88a925f2cc895f195ed331271c3b170ba6109a64050394996b8b774fff876",
+      "rationale": "SCHO-300 canonical refresh: SCHO-307 missing-required-guard refusal and text/reasoning/tool-argument output screening tests use fake providers; preserves cached resend and bounded admission regressions.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-ai-lti-clever-and-billing-refresh"
     },
     {
       "path": "packages/workshop-backend/__tests__/ai-call-ingress.test.ts",
@@ -131,9 +131,9 @@
     },
     {
       "path": "packages/workshop-backend/__tests__/ai-call-sites.test.ts",
-      "fingerprint": "50b05dec8ba91c1c9692cfc9b06bea1039ca2aa3fb981437f621565b43091cde",
-      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "e55f3ea5cec93481c1b4cfa945285f0b0e815ffc5dfb93d64637612d3e805227",
+      "rationale": "SCHO-300 canonical refresh: Existing source manifest still audits all kernel model calls; added authored-source decorator assertion detects accidental transformation. Reproduced prior CI transform failure before fixing test plugin.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-ai-lti-clever-and-billing-refresh"
     },
     {
       "path": "packages/workshop-backend/__tests__/ai-gateway.test.ts",
@@ -281,9 +281,9 @@
     },
     {
       "path": "packages/workshop-backend/src/ai-call-guard.ts",
-      "fingerprint": "d2d729ab071270cb941f5e8bd2d11f0617f6722b44f0f62c58f8555364e8b080",
-      "rationale": "SCHO-300 canonical integration: Canonical longer bounded input-screening deadline retained alongside PR #16 cached-resend suppression; denial still prevents provider use. Fake-provider guard tests cover both.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+      "fingerprint": "39001b0fb1fec863f92f646148007a28683269348c73f4bacf97a20390ceb848",
+      "rationale": "SCHO-300 canonical refresh: SCHO-307 central required-guard resolver refuses missing mandatory binding; existing bounded admission/cached resend remain. Output screens tool arguments and passes original initiator; held events are released only after screening.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-ai-lti-clever-and-billing-refresh"
     },
     {
       "path": "packages/workshop-backend/src/ai-gateway.ts",
@@ -299,9 +299,9 @@
     },
     {
       "path": "packages/workshop-backend/src/ai-models.ts",
-      "fingerprint": "cc881edc355f2e13fb29fe46ec11515ccd1836734521f59eb6d8ab1ac6457ec8",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "742150c2d7904467c0023701c00d2363fec07f117cea0c3389cb6a5bf83f438d",
+      "rationale": "SCHO-300 canonical refresh: Both model and decision routing reuse aiCallGuardFor so missing mandatory guard denies. No new provider path, ambient capability or production credentials.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-ai-lti-clever-and-billing-refresh"
     },
     {
       "path": "packages/workshop-backend/src/anthropic-compaction.ts",
@@ -371,9 +371,9 @@
     },
     {
       "path": "packages/workshop-backend/src/env.d.ts",
-      "fingerprint": "7d8be4a258c09e3e906c7df656b85e1c6faa4913264ce1feee068f4b6cf4ae42",
-      "rationale": "SCHO-300 canonical integration: Retain canonical migration/public-path bindings and feature required resolver/policy settings, typed against the shared contracts. Config is backend-owned.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+      "fingerprint": "7f6ca4ae8a17a52562e9a7b20f2ea0a2ea6c96355c92050f37f27eca3b330145",
+      "rationale": "SCHO-300 canonical refresh: SCHO-307 documents optional REQUIRE_AI_CALL_GUARD deployment setting alongside existing binding; retains canonical principal migration and batch policy/resolver settings.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-ai-lti-clever-and-billing-refresh"
     },
     {
       "path": "packages/workshop-backend/src/notification-service.ts",
@@ -442,10 +442,16 @@
       "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
+      "path": "packages/workshop-backend/vitest.config.ts",
+      "fingerprint": "5c03bcff0f489be3c061b127d6c8cf168bcbff8ea3eab3d9296aef4fd856d23f",
+      "rationale": "SCHO-300 canonical refresh: Narrow test-only wrapper skips raw text imports which capnweb-validate 0.3 corrupts; all executable modules retain original validation transform and workerd setup. No runtime or production build bypass.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-ai-lti-clever-and-billing-refresh"
+    },
+    {
       "path": "packages/workshop-backend/wrangler.production.jsonc",
-      "fingerprint": "e6804beb24bb62642707141c321a76dc14f6938656d58a0f81ec50241959ce06",
-      "rationale": "SCHO-300 canonical integration: Generated canonical staged PRINCIPAL_MIGRATION binding retained; do not enable principal cutover or policy execution on existing production accounts.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+      "fingerprint": "3ebecd710038fc05704d867b05b95dc7f268ef2758b029a995053c82944a2b09",
+      "rationale": "SCHO-300 canonical refresh: Generated SCHO-307 REQUIRE_AI_CALL_GUARD=true from canonical production-config.ts retained alongside staged principal migration. Production drift tests pass; no manual generated edit.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-ai-lti-clever-and-billing-refresh"
     },
     {
       "path": "packages/workshop-shared/package.json",
@@ -455,9 +461,9 @@
     },
     {
       "path": "packages/workshop-shared/src/ai-call-guard.ts",
-      "fingerprint": "4f70ebd5b54878095551f4a0467abdf611031fc9118b89e09c9374bdfab03a19",
-      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "a8bf5db2488993d7487cacdb1680ddabcad3bda995a133661767dc60fb28a616",
+      "rationale": "SCHO-300 canonical refresh: Documented optional output initiator carries original admitted reader for gadget safety; legacy clients may omit it. Tool arguments become text parts; existing RPC and validation mechanisms retained.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-ai-lti-clever-and-billing-refresh"
     },
     {
       "path": "packages/workshop-shared/src/api.ts",

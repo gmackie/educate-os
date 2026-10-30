@@ -3,6 +3,7 @@ import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import { COMPATIBILITY_DATE } from "@gadgets/scripts/worker-config";
 import { defineConfig } from "vitest/config";
 import { CLEVER_CLIENT } from "./__tests__/clever-fake.ts";
+import { fakeStripe, STRIPE_FIXTURE } from "./__tests__/stripe-fake.ts";
 import { ACCESS_AUD, ACCESS_ISSUER } from "./__tests__/fixtures.ts";
 
 // A Cloudflare Access signing key made for this run only: the tests sign assertions with its
@@ -11,6 +12,8 @@ import { ACCESS_AUD, ACCESS_ISSUER } from "./__tests__/fixtures.ts";
 const access = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const stranger = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const KID = "test-access-key";
+// The root's entitlement signing key, for this run only. Billing needs one to start (SCHO-208).
+const commerceKey = generateKeyPairSync("ed25519").privateKey.export({ format: "jwk" });
 const jwk = (key: { export(options: { format: "jwk" }): object }) => JSON.stringify({ ...key.export({ format: "jwk" }), kid: KID, alg: "RS256" });
 
 /**
@@ -38,6 +41,10 @@ export default defineConfig({
           // The bucket starts empty, so a guided install here stops at "no signed release"; the
           // install itself is driven against the installer's fake in the Node suite.
           RELEASE_TRUST: {},
+          // Billing (SCHO-208), against the fake Stripe below.
+          STRIPE_SECRET_KEY: STRIPE_FIXTURE.secretKey,
+          STRIPE_WEBHOOK_SECRET: STRIPE_FIXTURE.webhookSecret,
+          COMMERCE_SIGNING_KEY: JSON.stringify({ kty: commerceKey.kty, crv: commerceKey.crv, x: commerceKey.x, d: commerceKey.d }),
         },
         r2Buckets: ["RELEASES"],
         durableObjects: {
@@ -47,9 +54,11 @@ export default defineConfig({
           ASSETS: (request: Request) => new Response(`static ${new URL(request.url).pathname}`, { status: 200 }),
         },
         // Every outbound request from the test Worker: a stand-in for api.cloudflare.com, so the
-        // installer's real client is driven through workerd's own fetch (cloudflare-api.test.ts).
+        // installer's real client is driven through workerd's own fetch (cloudflare-api.test.ts),
+        // and one for api.stripe.com, so billing's real Stripe adapter is too (billing.test.ts).
         outboundService: (request: Request) => {
           const url = new URL(request.url);
+          if (url.hostname === "api.stripe.com") return fakeStripe(request);
           const account = /^\/client\/v4\/accounts\/([0-9a-f]{32})$/.exec(url.pathname);
           if (url.hostname !== "api.cloudflare.com" || request.method !== "GET" || account === null) {
             return new Response(JSON.stringify({ success: false, errors: [{ code: 7003 }], result: null }), { status: 404 });

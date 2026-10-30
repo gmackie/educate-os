@@ -294,3 +294,37 @@ The aggregate on prior head `f4ca3b14` passed main CI, video and operations, but
 Workshop jobs were still pending at audit; that aggregate never qualified as all required gates
 complete. Require completed exact-head CI again after this merge. Seven preceding train PRs
 remain open (167, 183, 210, 217, 218, 223, 224); this batch stays last.
+
+## Canonical AI, LTI, Clever and billing refresh
+
+Merged canonical main `789b04ad`, including PRs 236/237 (LTI origin and student AI safeguards),
+183 (Clever diagnostics) and 167 (test-mode billing). Resolve the site config by retaining both
+Stripe's webhook and the production-disabled interest intake routes; preserve Durable Object
+names and migrations. Tests assert the combined dynamic path list.
+
+Reviewed all eight changed kernel blobs under the root/backend AGENTS.md and REVIEW.md: the
+central required-guard resolver is used by both model paths, missing mandatory guard refuses,
+output screening includes tool arguments and original initiator, and student images/gadget calls
+retain canonical safeguards. Keep the batch's cached-resend guard, outage-only educator fallback,
+governed fail-closed transfer, current principal policy and staged migration. Generated production
+config retains the upstream required-guard setting. No provider calls or billing charges were
+performed locally; billing verification uses the fake Stripe transport.
+
+Canonical Workshop run 857 actually failed despite aggregate pass: capnweb-validate 0.3 strips
+`?raw` from source-audit imports and rewrites Vite's string export using source offsets. Reproduced
+the exact server.ts raw transform error locally. A test-config wrapper now skips only raw text;
+executable modules still use the original validation transform. The existing five-test ingress
+manifest now also verifies authored RPC decorators survive in source. Together with all 33 model
+guard tests it passes after failing before the fix.
+
+Frozen installation/supply-chain checks pass; all 937 affected package tests pass (including
+AI guard, commerce, control plane, LTI, district application and district real-workerd), all 114
+site/release/config/environment tests pass, and root lint/config/workspace build passes 181 tasks.
+The complete backend unit/workerd suite passes all 2,141 tests in 94 files; no skipped or failed
+suites. All 479 repository script tests pass on the host; an earlier sandboxed run could not
+inspect/terminate its synthetic process trees and failed the watchdog tests, so it is not counted
+as passing. Four architecture-inventory tests pass, and the reviewed snapshot has zero unreviewed
+kernel deltas.
+
+Five original preceding train PRs remain open: 210, 217, 218, 223 and 224. The batch remains last;
+require all three completed canonical CI jobs on the final latest-main integration revision.

@@ -1542,6 +1542,13 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     let principal: RequestPrincipal;
     let snapshot: DistrictDirectorySnapshot;
     if (servedAs === undefined) {
+      // A browser's sign-in rides along on any request a page makes, so a change must come from the
+      // district's own pages: otherwise another site could post a bodiless form as an administrator
+      // (SCHO-306). A request with neither header is no browser's, and carries no ambient sign-in.
+      if (!SAFE_METHODS.has(request.method) && isCrossSite(request)) {
+        await request.body?.cancel();
+        throw new EducateOsError("forbidden", "Changes must come from this district's own pages.");
+      }
       const identity = await options.verifyRequest(request);
       if (identity === undefined) throw new EducateOsError("unauthenticated", "Sign in with this district's identity provider.");
       // Onboarding answers a verified sign-in that is nobody's principal yet. Its one route only
@@ -1688,6 +1695,19 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     gadgetAssessmentSubmit: (principal, assignmentId, request) => gadgetAssessment(principal, assignmentId, request),
     serveAs,
   };
+}
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/**
+ * Whether a browser sent `request` from a page outside the district's origin: an `Origin` that is
+ * not the district's own (an opaque `null` included), or `Sec-Fetch-Site` saying another site.
+ */
+function isCrossSite(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (origin !== null && origin !== new URL(request.url).origin) return true;
+  const site = request.headers.get("sec-fetch-site");
+  return site !== null && site !== "same-origin" && site !== "none";
 }
 
 /** An assignment and its starter material, without where the material's content is stored. */

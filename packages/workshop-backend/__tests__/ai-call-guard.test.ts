@@ -15,7 +15,7 @@ import type {
   AiCallDecision, AiCallDescriptor, AiCallModelOutput, AiCallOutcome, AiCallOutputDecision,
 } from "@gadgets/workshop-shared/ai-call-guard";
 import { runAgent, type AgentHooks } from "../src/agent";
-import { guardDecisionModel, guardModelHandle, type AiCallScope } from "../src/ai-call-guard.js";
+import { aiCallGuardFor, guardDecisionModel, guardModelHandle, type AiCallScope } from "../src/ai-call-guard.js";
 import { AiCallDeniedError, completeText } from "../src/ai-invoke.js";
 import { getModel, type ModelHandle } from "../src/ai-models.js";
 import type { OverseerDurableObject } from "../src/overseer.js";
@@ -76,6 +76,20 @@ function texts(call: AiCallDescriptor): string[] {
   return call.newMessages.flatMap(message =>
       message.parts.flatMap(part => part.type === "text" ? [part.text] : []));
 }
+
+describe("aiCallGuardFor (SCHO-307)", () => {
+  it("is the bound guard, or none when the deployment does not require one", () => {
+    let { guard } = fakeGuard();
+    expect(aiCallGuardFor({ AI_CALL_GUARD: guard, REQUIRE_AI_CALL_GUARD: "true" })).toBe(guard);
+    for (let required of [undefined, "", "false"]) expect(aiCallGuardFor({ REQUIRE_AI_CALL_GUARD: required })).toBeUndefined();
+  });
+
+  it.each(["true", "1", "yes"])("denies every call when REQUIRE_AI_CALL_GUARD=%s and no guard is bound", async (required) => {
+    let { handle } = fauxHandle([fauxAssistantMessage(fauxText("Unguarded answer."))]);
+    guardModelHandle(aiCallGuardFor({ REQUIRE_AI_CALL_GUARD: required }), handle, scope());
+    await expect(completeText(handle, { prompt: "Hi" })).rejects.toMatchObject({ name: "AiCallDeniedError", reason: "guard_unavailable" });
+  });
+});
 
 describe("guardModelHandle", () => {
   it("leaves a handle untouched when no guard is bound", () => {
@@ -368,9 +382,9 @@ describe("output screening", () => {
     expect(events.map(event => event.type)).toEqual(["start", "done"]);
   });
 
-  it("replays exactly the events the provider streamed, and screens text and reasoning", async () => {
+  it("replays exactly the events the provider streamed, and screens text, reasoning and tool calls", async () => {
     let answer = fauxAssistantMessage(
-        [fauxThinking("Mitosis first."), fauxText("Cells divide."), fauxToolCall("noSuchTool", {})]);
+        [fauxThinking("Mitosis first."), fauxText("Cells divide."), fauxToolCall("noSuchTool", { note: "hi" })]);
     let { handle, sent } = recordingHandle(answer);
     let { calls, outcomes, guard, screened } = screeningGuard(async () => ({ action: "release" }));
     guardModelHandle(guard, handle, scope());
@@ -379,9 +393,14 @@ describe("output screening", () => {
 
     expect(sent.length).toBeGreaterThan(5);
     expect(events).toEqual(sent);
-    expect(screened).toEqual([{ callId: calls[0].callId, output: { parts: [
-      { type: "text", text: "Mitosis first." }, { type: "text", text: "Cells divide." },
-    ] } }]);
+    expect(screened).toEqual([{ callId: calls[0].callId, output: {
+      parts: [
+        { type: "text", text: "Mitosis first." }, { type: "text", text: "Cells divide." },
+        { type: "text", text: 'noSuchTool({"note":"hi"})' },
+      ],
+      // The output is screened for the reader the call was admitted for.
+      initiator: { type: "user", id: OWNER.id },
+    } }]);
     await vi.waitFor(() => expect(outcomes).toMatchObject([{ status: "completed" }]));
   });
 
@@ -407,13 +426,24 @@ describe("output screening", () => {
         { name: "AiCallDeniedError", message: "That reply was held back.", reason: "moderation_block" });
   });
 
-  it("releases a response with no text without asking", async () => {
-    let { handle } = fauxHandle([fauxAssistantMessage(fauxToolCall("noSuchTool", {}))]);
+  it("screens a response that is only a tool call, whose arguments a page or file may show (SCHO-307)", async () => {
+    let { handle } = fauxHandle([fauxAssistantMessage(fauxToolCall("writeFile", { text: "Something unsafe." }))]);
     let { guard, screened } = screeningGuard(async () => WITHHOLD);
     guardModelHandle(guard, handle, scope());
 
-    expect(await handle.stream(handle.model, { messages: [user("Hi")] }).result())
-        .toMatchObject({ content: [{ type: "toolCall" }] });
+    let { events, done } = await collectFrom(handle);
+    await done;
+    expect(screened).toMatchObject([{ output: { parts: [{ type: "text", text: 'writeFile({"text":"Something unsafe."})' }] } }]);
+    expect(events).toMatchObject([{ type: "error" }]);
+    expect(JSON.stringify(events)).not.toContain("unsafe");
+  });
+
+  it("releases a response with nothing to show without asking", async () => {
+    let { handle } = fauxHandle([fauxAssistantMessage([])]);
+    let { guard, screened } = screeningGuard(async () => WITHHOLD);
+    guardModelHandle(guard, handle, scope());
+
+    expect(await handle.stream(handle.model, { messages: [user("Hi")] }).result()).toMatchObject({ content: [] });
     expect(screened).toEqual([]);
   });
 

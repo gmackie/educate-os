@@ -162,9 +162,10 @@ describe("Stripe REST calls", () => {
   it("charges the default payment method off-session, keyed by the caller's idempotency key", async () => {
     const { processor, requests } = processorAt(T, {
       "GET /v1/customers/cus_nf": () => ({ body: { id: "cus_nf", invoice_settings: { default_payment_method: "pm_card" } } }),
-      "POST /v1/payment_intents": () => ({ body: { id: "pi_nf", status: "processing" } }),
+      "POST /v1/payment_intents": () => ({ body: { id: "pi_nf", status: "processing", amount: 250_000, amount_received: 0, currency: "usd" } }),
     });
-    expect(await processor.charge({ customerRef: "cus_nf", amountCents: 250_000, idempotencyKey: "inv_1:0:0" })).toBe("pi_nf");
+    expect(await processor.charge({ customerRef: "cus_nf", amountCents: 250_000, idempotencyKey: "inv_1:0", invoiceRef: "inv_1" }))
+      .toEqual({ chargeRef: "pi_nf", status: "pending", amountCents: 250_000 });
     const charge = requests[1]!;
     expect(Object.fromEntries(charge.body!)).toEqual({
       amount: "250000",
@@ -173,21 +174,72 @@ describe("Stripe REST calls", () => {
       payment_method: "pm_card",
       confirm: "true",
       off_session: "true",
+      "metadata[educateos_invoice]": "inv_1",
     });
-    expect(charge.headers["Idempotency-Key"]).toBe("educateos:charge:inv_1:0:0");
+    expect(charge.headers["Idempotency-Key"]).toBe("educateos:charge:inv_1:0");
   });
 
   it("returns a declined charge's PaymentIntent, whose webhook reports the failure", async () => {
     const { processor } = processorAt(T, {
       "GET /v1/customers/cus_nf": () => ({ body: { id: "cus_nf", invoice_settings: { default_payment_method: "pm_card" } } }),
-      "POST /v1/payment_intents": () => ({ status: 402, body: { error: { type: "card_error", code: "card_declined", payment_intent: { id: "pi_declined" } } } }),
+      "POST /v1/payment_intents": () => ({ status: 402, body: { error: { type: "card_error", code: "card_declined",
+        payment_intent: { id: "pi_declined", status: "requires_payment_method", amount: 1, amount_received: 0, currency: "usd" } } } }),
     });
-    expect(await processor.charge({ customerRef: "cus_nf", amountCents: 1, idempotencyKey: "k" })).toBe("pi_declined");
+    expect(await processor.charge({ customerRef: "cus_nf", amountCents: 1, idempotencyKey: "k", invoiceRef: "inv_1" }))
+      .toEqual({ chargeRef: "pi_declined", status: "failed", amountCents: 1 });
+  });
+
+  it("reports a replayed PaymentIntent's outcome as Stripe answers it", async () => {
+    const { processor } = processorAt(T, {
+      "GET /v1/customers/cus_nf": () => ({ body: { id: "cus_nf", invoice_settings: { default_payment_method: "pm_card" } } }),
+      "POST /v1/payment_intents": () => ({ body: { id: "pi_nf", status: "succeeded", amount: 500, amount_received: 500, currency: "usd" } }),
+    });
+    expect(await processor.charge({ customerRef: "cus_nf", amountCents: 500, idempotencyKey: "inv_1:0", invoiceRef: "inv_1" }))
+      .toEqual({ chargeRef: "pi_nf", status: "succeeded", amountCents: 500 });
+  });
+
+  it("finds the customer's PaymentIntents for an invoice by their metadata, page by page from its issue", async () => {
+    const intent = (id: string, status: string, invoice: string) => ({ id, status, amount: 500, amount_received: status === "succeeded" ? 500 : 0, currency: "usd", metadata: { educateos_invoice: invoice } });
+    let pages = 0;
+    const { processor, requests } = processorAt(T, {
+      "GET /v1/payment_intents": () => (pages++ === 0
+        ? { body: { has_more: true, data: [intent("pi_a", "succeeded", "inv_1"), intent("pi_b", "requires_payment_method", "inv_1"), intent("pi_c", "succeeded", "inv_2")] } }
+        : { body: { has_more: false, data: [intent("pi_d", "processing", "inv_1")] } }),
+    });
+    expect(await processor.chargesFor("cus_nf", "inv_1", "2026-10-20T12:00:00.000Z")).toEqual([
+      { chargeRef: "pi_a", status: "succeeded", amountCents: 500 },
+      { chargeRef: "pi_b", status: "failed", amountCents: 500 },
+      { chargeRef: "pi_d", status: "pending", amountCents: 500 },
+    ]);
+    const since = String(T - 3600); // The invoice's issue, less an hour.
+    expect(requests.map((r) => r.url)).toEqual([
+      `https://api.stripe.com/v1/payment_intents?customer=cus_nf&limit=100&created%5Bgte%5D=${since}`,
+      `https://api.stripe.com/v1/payment_intents?customer=cus_nf&limit=100&created%5Bgte%5D=${since}&starting_after=pi_c`,
+    ]);
+  });
+
+  it("reads the invoice a PaymentIntent names, and none for one that names none or doesn't exist", async () => {
+    const { processor } = processorAt(T, {
+      "GET /v1/payment_intents/pi_ours": () => ({ body: { id: "pi_ours", status: "succeeded", amount: 1, amount_received: 1, currency: "usd", metadata: { educateos_invoice: "inv_1" } } }),
+      "GET /v1/payment_intents/pi_link": () => ({ body: { id: "pi_link", status: "succeeded", amount: 1, amount_received: 1, currency: "usd", metadata: {} } }),
+    });
+    await expect(processor.chargeInvoiceRef("pi_ours")).resolves.toBe("inv_1");
+    await expect(processor.chargeInvoiceRef("pi_link")).resolves.toBeUndefined();
+    await expect(processor.chargeInvoiceRef("pi_gone")).resolves.toBeUndefined(); // The fake answers 404.
+  });
+
+  it("cancels a declined PaymentIntent, and reports one that succeeded first", async () => {
+    const cancelled = processorAt(T, { "POST /v1/payment_intents/pi_b/cancel": () => ({ body: { id: "pi_b", status: "canceled", amount: 500, amount_received: 0, currency: "usd" } }) });
+    expect(await cancelled.processor.cancelCharge("pi_b")).toBe("failed");
+    expect(cancelled.requests[0]!.headers["Idempotency-Key"]).toBe("educateos:cancel-charge:pi_b");
+    const succeeded = processorAt(T, { "POST /v1/payment_intents/pi_a/cancel": () => ({ status: 400, body: { error: { code: "payment_intent_unexpected_state",
+      payment_intent: { id: "pi_a", status: "succeeded", amount: 500, amount_received: 500, currency: "usd" } } } }) });
+    expect(await succeeded.processor.cancelCharge("pi_a")).toBe("succeeded");
   });
 
   it("refuses to charge without a default payment method, and reports Stripe errors by status only", async () => {
     const noMethod = processorAt(T, { "GET /v1/customers/cus_nf": () => ({ body: { id: "cus_nf", invoice_settings: { default_payment_method: null } } }) });
-    await expect(noMethod.processor.charge({ customerRef: "cus_nf", amountCents: 1, idempotencyKey: "k" })).rejects.toMatchObject({ code: "policy-violation" });
+    await expect(noMethod.processor.charge({ customerRef: "cus_nf", amountCents: 1, idempotencyKey: "k", invoiceRef: "inv_1" })).rejects.toMatchObject({ code: "policy-violation" });
     expect(noMethod.requests).toHaveLength(1);
 
     const failing = processorAt(T, { "POST /v1/refunds": () => ({ status: 400, body: { error: { message: "No such payment_intent: 'pi_secret_detail'" } } }) });
@@ -201,6 +253,91 @@ describe("Stripe REST calls", () => {
   });
 });
 
+describe("Stripe card setup (SCHO-208)", () => {
+  const session = (overrides: Record<string, unknown> = {}) => ({
+    id: "cs_test_nf",
+    object: "checkout.session",
+    mode: "setup",
+    status: "complete",
+    customer: "cus_nf",
+    metadata: { educateos_reference: "sbn_1" },
+    setup_intent: { id: "seti_nf", object: "setup_intent", status: "succeeded", payment_method: "pm_saved" },
+    ...overrides,
+  });
+
+  it("opens Checkout in setup mode for cards, naming the session in the return URL, idempotently", async () => {
+    const { processor, requests } = processorAt(T, {
+      "POST /v1/checkout/sessions": () => ({ body: { id: "cs_test_nf", object: "checkout.session", url: "https://checkout.stripe.com/c/pay/cs_test_nf" } }),
+    });
+    await expect(processor.startCardSetup({
+      customerRef: "cus_nf",
+      returnUrl: "https://educateos.io/app/billing/return?subscription=sbn_1&setup={SETUP_REF}",
+      cancelUrl: "https://educateos.io/app/billing",
+      idempotencyKey: "sbn_1:0",
+      reference: "sbn_1",
+    })).resolves.toEqual({ setupRef: "cs_test_nf", url: "https://checkout.stripe.com/c/pay/cs_test_nf" });
+    const [request] = requests;
+    expect(Object.fromEntries(request!.body!)).toEqual({
+      "mode": "setup",
+      "customer": "cus_nf",
+      "payment_method_types[0]": "card",
+      "success_url": "https://educateos.io/app/billing/return?subscription=sbn_1&setup={CHECKOUT_SESSION_ID}",
+      "cancel_url": "https://educateos.io/app/billing",
+      "metadata[educateos_reference]": "sbn_1",
+    });
+    expect(request!.headers["Idempotency-Key"]).toBe("educateos:card-setup:sbn_1:0");
+  });
+
+  it("makes the saved card the customer's default once the session is complete", async () => {
+    const { processor, requests } = processorAt(T, {
+      "GET /v1/checkout/sessions/cs_test_nf": () => ({ body: session() }),
+      "POST /v1/customers/cus_nf": () => ({ body: { id: "cus_nf", object: "customer" } }),
+    });
+    await expect(processor.completeCardSetup("cus_nf", "cs_test_nf", "sbn_1")).resolves.toBe(true);
+    expect(requests.map((r) => `${r.method} ${r.url}`)).toEqual([
+      "GET https://api.stripe.com/v1/checkout/sessions/cs_test_nf?expand%5B%5D=setup_intent",
+      "POST https://api.stripe.com/v1/customers/cus_nf",
+    ]);
+    expect(Object.fromEntries(requests[1]!.body!)).toEqual({ "invoice_settings[default_payment_method]": "pm_saved" });
+    expect(requests[1]!.headers["Idempotency-Key"]).toBe("educateos:default-payment-method:cs_test_nf");
+  });
+
+  for (const [what, overrides] of [
+    ["an open session", { status: "open", setup_intent: { status: "requires_payment_method", payment_method: null } }],
+    ["a session whose SetupIntent hasn't succeeded", { setup_intent: { status: "requires_action", payment_method: "pm_saved" } }],
+  ] as const) {
+    it(`saves nothing for ${what}`, async () => {
+      const { processor, requests } = processorAt(T, { "GET /v1/checkout/sessions/cs_test_nf": () => ({ body: session(overrides) }) });
+      await expect(processor.completeCardSetup("cus_nf", "cs_test_nf", "sbn_1")).resolves.toBe(false);
+      expect(requests).toHaveLength(1);
+    });
+  }
+
+  for (const [what, overrides] of [
+    ["another customer's session", { customer: "cus_other" }],
+    ["a payment-mode session", { mode: "payment" }],
+    ["a session made for another subscription", { metadata: { educateos_reference: "sbn_earlier" } }],
+    ["a session with no reference", { metadata: {} }],
+  ] as const) {
+    it(`refuses ${what} as not found`, async () => {
+      const { processor, requests } = processorAt(T, { "GET /v1/checkout/sessions/cs_test_nf": () => ({ body: session(overrides) }) });
+      await expect(processor.completeCardSetup("cus_nf", "cs_test_nf", "sbn_1")).rejects.toMatchObject({ code: "not-found" });
+      expect(requests).toHaveLength(1);
+    });
+  }
+
+  it("opens the Customer Portal for the customer, with the configured portal configuration", async () => {
+    const stripe = fakeStripe({ "POST /v1/billing_portal/sessions": () => ({ body: { id: "bps_1", url: "https://billing.stripe.com/p/session/test_1" } }) });
+    const processor = new StripePaymentProcessor({ apiKey: "rk_test_fixture", webhookSecret: SECRET, portalConfiguration: "bpc_educateos", fetch: stripe.fetch });
+    await expect(processor.openPaymentMethodPortal("cus_nf", "https://educateos.io/app/billing")).resolves.toBe("https://billing.stripe.com/p/session/test_1");
+    expect(Object.fromEntries(stripe.requests[0]!.body!)).toEqual({
+      customer: "cus_nf",
+      return_url: "https://educateos.io/app/billing",
+      configuration: "bpc_educateos",
+    });
+  });
+});
+
 describe("Stripe through the commerce service", () => {
   it("pays an invoice from a signed webhook, and counts a refund Stripe reports twice only once", async () => {
     const clock = manualClock(new Date(T * 1000).toISOString());
@@ -208,7 +345,8 @@ describe("Stripe through the commerce service", () => {
     const { fetch } = fakeStripe({
       "POST /v1/customers": () => ({ body: { id: "cus_nf" } }),
       "GET /v1/customers/cus_nf": () => ({ body: { id: "cus_nf", invoice_settings: { default_payment_method: "pm_card" } } }),
-      "POST /v1/payment_intents": () => ({ body: { id: "pi_nf" } }),
+      "GET /v1/payment_intents": () => ({ body: { data: [], has_more: false } }),
+      "POST /v1/payment_intents": () => ({ body: { id: "pi_nf", status: "processing", amount: 40_000, amount_received: 0, currency: "usd" } }),
       "POST /v1/refunds": () => ({ body: { id: "re_nf" } }),
     });
     const processor = new StripePaymentProcessor({ apiKey: "rk", webhookSecret: SECRET, fetch, now: clock.now });

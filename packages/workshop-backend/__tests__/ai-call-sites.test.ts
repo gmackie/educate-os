@@ -64,6 +64,9 @@ describe("AI call-site manifest", () => {
     expect(sources.map(source => source.file)).toEqual(
         expect.arrayContaining(["ai-models.ts", "overseer.ts", "agent.ts"]));
     expect(declaredSites()).toContain("chat.message");
+    // The audit must inspect authored source, including RPC classes, rather than transformed code.
+    expect(sources.find(source => source.file === "server.ts")!.lines.join("\n"))
+        .toContain("@validateRpc()");
   });
 
   it("marks every call that obtains a model, or names its own call site", () => {
