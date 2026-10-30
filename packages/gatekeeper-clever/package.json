@@ -1,0 +1,31 @@
+{
+  "name": "@educateos/gatekeeper-clever",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Clever gatekeeper (SCHO-282): a Workshop gatekeeper Worker. A user signs in with Clever, which only proves who they are; every read and LMS Connect write uses the district's own district-app token, scoped to the sections that user teaches, is enrolled in, or, for a district administrator, the whole district (audited). Rosters carry names and grade levels only; every change waits for approval.",
+  "type": "module",
+  "main": "./src/clever.ts",
+  "scripts": {
+    "dev": "echo \"run 'pnpm dev-server' in the root directory instead\" >&2 && exit 1",
+    "deploy": "vp run --no-cache build:configurator && wrangler deploy",
+    "clean": "rm -rf dist src/generated",
+    "test:run": "vp run -F @educateos/gatekeeper-clever build:configurator && vitest run && vitest run -c vitest.worker.config.ts"
+  },
+  "dependencies": {
+    "@gadgets/configurator-ui": "workspace:*",
+    "@gadgets/gatekeeper-kit": "workspace:*",
+    "@gadgets/observability": "workspace:*",
+    "@gadgets/workshop-shared": "workspace:*",
+    "capnweb": "catalog:",
+    "capnweb-validate": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
+    "@educateos/provider-fakes": "workspace:*",
+    "@gadgets/scripts": "workspace:*",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

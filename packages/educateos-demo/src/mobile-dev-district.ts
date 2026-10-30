@@ -15,7 +15,7 @@
 // EDUCATEOS_MOBILE_DISTRICT_PORT changes the port. This is development tooling, never deployed.
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { DistrictApiClient } from "@educateos/api-client";
-import { bootDemoDistrict, PERSONAS } from "./demoDistrict.ts";
+import { bootNorthfield, NORTHFIELD_PERSONAS as PERSONAS } from "./districts/northfield.ts";
 
 const PORT = Number(process.env.EDUCATEOS_MOBILE_DISTRICT_PORT ?? 4810);
 const ORIGIN = `http://localhost:${PORT}`;
@@ -158,7 +158,7 @@ async function writeResponse(res: ServerResponse, response: Response): Promise<v
 
 async function main(): Promise<void> {
   console.log("Seeding Northfield (dev)…");
-  const district = await bootDemoDistrict({
+  const district = await bootNorthfield({
     deviceTokenSecret: crypto.randomUUID() + crypto.randomUUID(),
     subjectOf: cookieSubject,
   });

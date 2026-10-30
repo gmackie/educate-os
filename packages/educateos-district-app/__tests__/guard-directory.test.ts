@@ -5,6 +5,7 @@ import { DistrictDirectorySnapshot, type PrincipalId } from "@educateos/contract
 import { NORTHFIELD, RIVERBEND } from "@educateos/fixtures";
 import { confirmWorkshopUserLink, type WorkshopUserLink } from "@educateos/identity";
 import type { Workspace } from "@educateos/workspaces";
+import { bootDistrict, expectError, NF } from "./support.ts";
 import { admittedSubjectFrom, createDistrictApp, guardSubjectFrom, ledgerDirectory, inMemoryDistrictStores, type GuardDirectorySource } from "../src/index.ts";
 
 const AT = "2026-10-20T15:00:00Z";
@@ -91,6 +92,33 @@ describe("guardSubjectFrom", () => {
   it("refuses a gadget whose workspace belongs to someone else", () => {
     expect(guardSubjectFrom(SOURCE, { workshopUser: "chidi@northfield.example", gadgetId: "gadget-amara-bio" })).toBeNull();
   });
+
+  // SCHO-283: the Workshop names a user `principal:<id>` only after this district resolved their
+  // verified Access sign-in, so the key needs no administrator link.
+  it("knows a principal-keyed Workshop user as that principal, with no link", () => {
+    const unlinked: GuardDirectorySource = { ...SOURCE, workshopUserLinks: [] };
+    expect(guardSubjectFrom(unlinked, { workshopUser: "principal:prn_nf-student-amara", gadgetId: "gadget-amara-bio" })).toEqual({
+      principal: { principalId: "prn_nf-student-amara", districtId: "dst_northfield" },
+      kind: "student",
+      roles: [],
+      workspace: { kind: "course", offeringId: "off_nf-bio-fall-p2" },
+      gradeBands: ["9-10"],
+    });
+    expect(guardSubjectFrom(unlinked, { workshopUser: "principal:prn_nf-district-admin" })).toMatchObject({ kind: "staff", workspace: { kind: "personal" } });
+  });
+
+  it("refuses a principal key for no one, someone inactive, another district's principal, or another's workspace", () => {
+    const unlinked: GuardDirectorySource = { ...SOURCE, workshopUserLinks: [] };
+    expect(guardSubjectFrom(unlinked, { workshopUser: "principal:prn_nobody" })).toBeNull();
+    expect(guardSubjectFrom(unlinked, { workshopUser: "principal:prn_rb-student-kai" })).toBeNull();
+    expect(guardSubjectFrom(unlinked, { workshopUser: "principal:" })).toBeNull();
+    expect(guardSubjectFrom(unlinked, { workshopUser: "principal:prn_nf-student-chidi", gadgetId: "gadget-amara-bio" })).toBeNull();
+    const directory = { ...NORTHFIELD, principals: NORTHFIELD.principals.map((p) => (p.id === "prn_nf-student-amara" ? { ...p, status: "inactive" as const } : p)) };
+    expect(guardSubjectFrom({ ...unlinked, directory }, { workshopUser: "principal:prn_nf-student-amara" })).toBeNull();
+    // An email that merely matches a principal's directory email still reaches no one.
+    const amara = NORTHFIELD.principals.find((p) => p.id === "prn_nf-student-amara")!;
+    if (amara.email) expect(guardSubjectFrom(unlinked, { workshopUser: amara.email })).toBeNull();
+  });
 });
 
 describe("admittedSubjectFrom", () => {
@@ -119,6 +147,27 @@ describe("ledgerDirectory", () => {
     expect(redacted.principals.map((p) => [p.id, p.kind, p.status])).toEqual(NORTHFIELD.principals.map((p) => [p.id, p.kind, p.status]));
     expect(DistrictDirectorySnapshot.safeParse(redacted).success).toBe(true);
     expect(JSON.stringify(redacted)).not.toMatch(/@|Okafor|Morgan Lee/);
+  });
+});
+
+describe("admin Workshop user links (SCHO-283)", () => {
+  it("lets a district administrator link a Workshop account, which the guard then knows", async () => {
+    const district = await bootDistrict();
+    const admin = district.tokenFor(NF.admin);
+    expect(await district.ok(admin, "admin.workshopUserLinks")).toEqual([]);
+    const link = await district.ok(admin, "admin.linkWorkshopUser", { body: { workshopUser: "amara@workshop.example", principalId: NF.amara } });
+    expect(link).toMatchObject({ workshopUser: "amara@workshop.example", principalId: NF.amara, confirmedBy: NF.admin, districtId: "dst_northfield" });
+    expect(await district.ok(admin, "admin.workshopUserLinks")).toHaveLength(1);
+    expect(await district.app.guardDirectory.guardSubject({ workshopUser: "amara@workshop.example" })).toMatchObject({ principal: { principalId: NF.amara }, kind: "student" });
+    // One Workshop account is one person, and a person has one Workshop account.
+    expectError(await district.call(admin, "admin.linkWorkshopUser", { body: { workshopUser: "amara@workshop.example", principalId: NF.elena } }), 409, "conflict");
+    expectError(await district.call(admin, "admin.linkWorkshopUser", { body: { workshopUser: "other@workshop.example", principalId: NF.amara } }), 409, "conflict");
+  });
+
+  it("refuses anyone but a district administrator", async () => {
+    const district = await bootDistrict();
+    const result = await district.call(district.tokenFor(NF.rivera), "admin.linkWorkshopUser", { body: { workshopUser: "x@workshop.example", principalId: NF.amara } });
+    expect([403]).toContain(result.status);
   });
 });
 
