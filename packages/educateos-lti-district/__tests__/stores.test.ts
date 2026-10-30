@@ -4,8 +4,8 @@
 import { describe, expect, it } from "vitest";
 import { OfferingId } from "@educateos/contracts";
 import { LoginState } from "@educateos/lti";
-import { InMemoryRecordTable, LTI_COLLECTIONS, LtiStoredRecordError, TableSingleUseStore } from "../src/index.ts";
-import { BIO, BIO_CONTEXT, canvasRegistration, CELL_LAB, createDistrict, ENG9, ESSAY, MATH7, NF_CANVAS, rejection } from "./setup.ts";
+import { directoryRegistrationTargets, InMemoryRecordTable, LTI_COLLECTIONS, LtiStoredRecordError, TableSingleUseStore } from "../src/index.ts";
+import { BIO, BIO_CONTEXT, canvasRegistration, CELL_LAB, createDistrict, ENG9, ESSAY, MATH7, NF, NF_CANVAS, rejection } from "./setup.ts";
 
 const login: LoginState = { issuer: NF_CANVAS, clientId: "10000000000001", nonce: "n-1", targetLinkUri: "https://educateos.example/lti/launch" };
 
@@ -75,6 +75,12 @@ describe("TableRegistrationStore", () => {
     expect(await stores.registrations.get(registration)).toEqual(registration);
     expect(await stores.registrations.listByIssuer(NF_CANVAS)).toEqual([registration]);
     expect(await rejection(stores.registrations.save(registration))).toBe("conflict");
+  });
+
+  it("refuses a registration under an issuer the district signs people in with (SCHO-306)", async () => {
+    const { loadDirectory, activities } = createDistrict();
+    const targets = directoryRegistrationTargets({ districtId: NF, directory: loadDirectory, activities, reservedIssuers: [NF_CANVAS] });
+    expect(await rejection(targets.assertRegistration(canvasRegistration()))).toBe("forbidden");
   });
 
   it("refuses an unknown offering, an unknown activity, or an activity from another offering", async () => {

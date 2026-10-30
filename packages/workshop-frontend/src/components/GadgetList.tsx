@@ -13,6 +13,7 @@ import { MENU_CONTENT, MENU_ITEM, MENU_ITEM_DANGER } from './menuStyles'
 import { BlueprintPreviewImage } from './BlueprintPreviewImage'
 import DeleteConfirmationDialog from './DeleteConfirmationDialog'
 import { isImeComposing } from '../keyboardEvent'
+import { NoWorkspacesYet } from './NoWorkspacesYet'
 
 // Neutral monogram for a workspace — matches the sidebar treatment (no per-item color noise).
 function initials(title: string | undefined): string {
@@ -578,7 +579,7 @@ function FeaturedBlueprintsGallery() {
   }
 
   if (blueprints.length === 0) {
-    return null
+    return <NoWorkspacesYet />
   }
 
   const shown = blueprints.slice(0, MAX_FEATURED_SHOWN)

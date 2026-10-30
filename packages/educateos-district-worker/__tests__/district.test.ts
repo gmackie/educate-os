@@ -267,7 +267,14 @@ describe("the district Worker", () => {
     expect(admin).toEqual({ principalId: NF.admin, districtId: NORTHFIELD.district.id });
     expect(await env.TOOLS.authenticate(new Request("https://district.example/"))).toBeNull();
 
-    // On the agent channel every directory operation (`invoke-tool`) waits for a person.
+    // On the agent channel a read answers at once (SCHO-285): it changes nothing to confirm.
+    const teacher = await env.TOOLS.authenticate(new Request("https://district.example/", { headers: { "cf-access-jwt-assertion": await signIn(NF.rivera) } }));
+    const mine = await env.TOOLS.callTool(teacher!, "my_enrollments", {});
+    expect(mine).toMatchObject({ status: "ok" });
+    expect(JSON.stringify((mine as { value: unknown }).value)).toContain(NF.eng9);
+    expect(await env.TOOLS.callTool(admin!, "list_terms", {})).toMatchObject({ status: "ok" });
+
+    // Every directory change waits for a person.
     const queued = await env.TOOLS.callTool(admin!, "create_term", { name: "Spring 2027", startsOn: "2027-01-25", endsOn: "2027-06-11" });
     expect(queued).toMatchObject({ status: "approval-required" });
     const approvalId = (queued as { approvalId: string }).approvalId;
@@ -320,6 +327,29 @@ describe("the district Worker", () => {
     const seen = await ok(student, "student.discussionThread", { params: { offeringId: NF.eng9, topicId: topic.id } });
     expect(seen.posts.map((p) => p.status)).toStrictEqual(["withdrawn", "visible"]);
     expect((await ok(teacher, "teacher.moderationQueue", { params: { offeringId: NF.eng9 } })).recent.map((e) => e.action)).toStrictEqual(["hide"]);
+  });
+
+  // Discussion screening (SCHO-305).
+  it("screens student posts with the district's Hall Monitor, refusing what it blocks and failing closed when it is down", async () => {
+    const teacher = await signIn(NF.rivera);
+    const student = await signIn(NF.amara);
+    const topic = await ok(teacher, "teacher.createTopic", { params: { offeringId: NF.eng9 }, body: { title: "Uniforms?", prompt: "Say why." } });
+    const at = { params: { offeringId: NF.eng9, topicId: topic.id } };
+    const refused = async (text: string) => {
+      const response = await fetchWorker(request(student, "student.createPost", { ...at, body: { body: text } }));
+      return { status: response.status, body: await response.json() };
+    };
+    expect(await refused("Mean words [[block]]")).toMatchObject({ status: 403, body: { code: "policy-violation" } });
+    expect(await refused("Hello [[down]]")).toMatchObject({ status: 503, body: { code: "unavailable" } });
+    expect((await ok(student, "student.createPost", { ...at, body: { body: "Worrying [[hold]]" } })).status).toBe("pending");
+    expect((await ok(student, "student.createPost", { ...at, body: { body: "Comfort matters." } })).status).toBe("visible");
+    const seen = await ok(student, "student.discussionThread", at);
+    expect(seen.posts.map((p) => p.body)).toStrictEqual(["Worrying [[hold]]", "Comfort matters."]);
+    // Every call carried a signed service token of its own.
+    const authorizations = await district().hallMonitorAuthorizations();
+    expect(authorizations.length).toBeGreaterThanOrEqual(4);
+    expect(authorizations.every((value) => value !== null && /^Bearer [\w-]+\.[\w-]+\.[\w-]+$/.test(value))).toBe(true);
+    expect(new Set(authorizations).size).toBe(authorizations.length);
   });
 });
 

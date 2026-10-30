@@ -86,7 +86,7 @@ export const DEV_GUARD_CONFIG = {
   // context from the static bindings below (`DevGuardContextResolver`).
   contextSource: "static",
   profiles: {
-    student: { hallMonitorProfileId: "k12-student", revision: "dev", moderateInput: true, failureMode: "fail-closed" },
+    student: { hallMonitorProfileId: "k12-student", revision: "dev", moderateInput: true, failureMode: "fail-closed", outputModeration: "required" },
   },
   principals: [
     // Every dev user is a moderated student, the audience the guard is strictest for.

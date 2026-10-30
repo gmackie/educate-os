@@ -153,6 +153,21 @@ describe("DistrictGuardContextResolver", () => {
     expect(GuardConfig.safeParse({ ...TEST_CONFIG, profiles }).success).toBe(false);
     expect(GuardConfig.safeParse({ ...TEST_CONFIG, profiles, contextSource: "static" }).success).toBe(true);
   });
+
+  it("refuses a student profile that skips input moderation or streams replies unscreened (SCHO-307)", () => {
+    for (const unsafe of [{ moderateInput: false }, { outputModeration: "optional" }, { outputModeration: "off" }]) {
+      for (const key of ["student-k5", "student-6-8", "student-9-12"] as const) {
+        const profiles = { ...TEST_CONFIG.profiles, [key]: { ...TEST_CONFIG.profiles[key], ...unsafe } };
+        expect(GuardConfig.safeParse({ ...TEST_CONFIG, profiles }).success).toBe(false);
+      }
+      // A static binding of a student to such a profile is refused too; an educator's is not.
+      const profiles = { ...TEST_CONFIG.profiles, lax: { ...TEST_CONFIG.profiles.student, ...unsafe } };
+      const binding = { ...TEST_CONFIG.principals[0]!, profile: "lax" };
+      expect(GuardConfig.safeParse({ ...TEST_CONFIG, profiles, principals: [binding] }).success).toBe(false);
+      expect(GuardConfig.safeParse({ ...TEST_CONFIG, profiles, principals: [{ ...binding, audience: "educator" }] }).success).toBe(true);
+    }
+    expect(GuardConfig.safeParse({ ...TEST_CONFIG, profiles: { ...TEST_CONFIG.profiles, educator: { ...TEST_CONFIG.profiles.educator, moderateInput: false } } }).success).toBe(true);
+  });
 });
 
 describe("the guard over the district's records", () => {

@@ -30,6 +30,22 @@ describe("policySelectActivities", () => {
 });
 
 describe("districtPrincipalResolver", () => {
+  it("refuses a launch under a sign-in issuer, even for a linked subject (SCHO-306)", async () => {
+    const { academics } = createDistrict();
+    const { snapshot, version } = await academics.load();
+    await academics.commit({
+      ...snapshot,
+      principals: snapshot.principals.map((p) =>
+        p.id === "prn_nf-student-felix" ? { ...p, externalIdentities: [...p.externalIdentities, { districtId: NF, issuer: NF_CANVAS, subject: "lti-felix" }] } : p,
+      ),
+    }, version);
+    const identity = { issuer: NF_CANVAS, subject: "lti-felix", credential: "person" as const };
+    expect(await (await districtPrincipalResolver(NF, academics)(NF))!.resolve(identity)).toMatchObject({ principalId: "prn_nf-student-felix" });
+    const reserved = (await districtPrincipalResolver(NF, academics, [NF_CANVAS])(NF))!;
+    expect(reserved.districtId).toBe(NF);
+    expect(await rejection(reserved.resolve(identity))).toBe("unauthenticated");
+  });
+
   it("resolves against the directory as it is at each launch, and serves only its own district", async () => {
     const { academics } = createDistrict();
     const resolver = districtPrincipalResolver(NF, academics);

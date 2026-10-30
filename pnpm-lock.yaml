@@ -1192,6 +1192,9 @@ importers:
       '@educateos/contracts':
         specifier: workspace:*
         version: link:../educateos-contracts
+      '@educateos/discussions':
+        specifier: workspace:*
+        version: link:../educateos-discussions
       '@educateos/district-app':
         specifier: workspace:*
         version: link:../educateos-district-app
@@ -1222,6 +1225,12 @@ importers:
       '@gadgets/observability':
         specifier: workspace:*
         version: link:../observability
+      '@gmacko/hall-monitor-client':
+        specifier: file:../../vendor/hall-monitor/gmacko-hall-monitor-client-0.3.0.tgz
+        version: file:vendor/hall-monitor/gmacko-hall-monitor-client-0.3.0.tgz
+      '@gmacko/hall-monitor-contracts':
+        specifier: file:../../vendor/hall-monitor/gmacko-hall-monitor-contracts-0.3.0.tgz
+        version: file:vendor/hall-monitor/gmacko-hall-monitor-contracts-0.3.0.tgz
       capnweb:
         specifier: 'catalog:'
         version: 0.12.0
@@ -1238,6 +1247,9 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 'catalog:'
         version: 1.4.3(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)(vitest@5.0.5)
+      '@educateos/ai-guard':
+        specifier: workspace:*
+        version: link:../educateos-ai-guard
       '@educateos/catalog':
         specifier: workspace:*
         version: link:../educateos-catalog

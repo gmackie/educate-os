@@ -7,7 +7,7 @@ import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { DistrictAgent, InMemorySequenceCounter, SigningIdentity } from "@educateos/fleet";
 import { importJWK, SignJWT, type JWK } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CLEVER_LAUNCH_PATH, cleverLaunch, configuredLaunchDistricts, configuredUnaffiliatedHostname, type CleverLaunchDeps } from "../src/clever-launch.ts";
+import { CLEVER_LAUNCH_PATH, CLEVER_TOKEN_URL, CLEVER_USERINFO_URL, cleverLaunch, configuredLaunchDistricts, configuredUnaffiliatedHostname, type CleverLaunchDeps } from "../src/clever-launch.ts";
 import { TABLES } from "../src/store.ts";
 import { CONTROL_PLANE_OBJECT } from "../src/worker.ts";
 import { CLEVER_CLIENT, CLEVER_USER, fakeClever, tokenFor } from "./clever-fake.ts";
@@ -113,6 +113,24 @@ describe("the launch handler", () => {
     expect(consoleSpies[2]!.mock.calls).toEqual([
       ["clever launch refused", { event: "clever.launch.refused", reason: "no-district" }],
     ]);
+  });
+
+  it("logs the ID token's claims and Clever's userinfo reply by shape alone", async () => {
+    const claims = btoa(JSON.stringify({ sub: CLEVER_USER, email: "teacher@example.org" })).replace(/=+$/, "");
+    const fetch: CleverLaunchDeps["fetch"] = async (input, init) => {
+      if (input === CLEVER_USERINFO_URL) return Response.json({ sub: CLEVER_USER, email: "teacher@example.org" });
+      const reply = await fakeClever(input, init);
+      if (input !== CLEVER_TOKEN_URL) return reply;
+      return Response.json({ ...(await reply.json() as object), id_token: `e30.${claims}.c2ln` });
+    };
+    const consoleSpies = spyOnConsole();
+    const response = await cleverLaunch(launch(`launch-${SANDBOX_DISTRICT}`), deps({ fetch }));
+    expect(response.status).toBe(303);
+    expect(consoleSpies[1]!.mock.calls).toContainEqual(["clever launch oidc view", {
+      event: "clever.launch.oidc-view", idTokenClaims: "{sub:string(24),email:string(19)}",
+      cleverStatus: 200, cleverShape: "{sub:string(24),email:string(19)}",
+    }]);
+    expect(logged(consoleSpies)).not.toContain("teacher@example.org");
   });
 
   it("does not route by a user record whose roles name two districts", async () => {
