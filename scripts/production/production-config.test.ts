@@ -188,7 +188,12 @@ test("the district Worker has its own custom domains, serves the UIs as assets a
     not_found_handling: "single-page-application",
     run_worker_first: ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone"],
   });
-  assert.deepEqual(district.vars, { LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io" });
+  // Discussion screening reaches the guard's Hall Monitor by the same binding, signing as it does
+  // (SCHO-308).
+  assert.deepEqual(district.vars, {
+    HALL_MONITOR_ISSUER: "educateos", HALL_MONITOR_AUDIENCE: "hall-monitor", LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
+  });
+  assert.deepEqual(district.services, [{ binding: "HALL_MONITOR", service: "hall-monitor" }]);
   assert.deepEqual(district.triggers, { crons: ["7 * * * *", "0 14 * * SUN"] });
   assert.deepEqual(district.send_email, [{ name: "SEND_EMAIL" }]);
   // The EducateOS connector binds it (SCHO-218), the backend for its principal bindings (SCHO-259)
@@ -470,6 +475,8 @@ test("one origin: the district Worker gives up its hostnames, keeps its name, LT
   assert.equal(district.workers_dev, false);
   assert.deepEqual(district.assets, configFor(build(), DISTRICT_PACKAGE).assets);
   assert.deepEqual(district.vars, {
+    HALL_MONITOR_ISSUER: "educateos",
+    HALL_MONITOR_AUDIENCE: "hall-monitor",
     LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
     // Phones sign in at the district's /connect-phone with Google (SCHO-283).
     SCHOOL_MANIFEST: JSON.stringify({ origin: NORTHFIELD, signIn: [{ id: "google", label: "Google" }], features: { ai: true } }),

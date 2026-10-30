@@ -180,7 +180,8 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   `appUrl` linked from every email. Without it, or without the binding, nothing is emailed.
 - `discussionScreening` (optional, in `DISTRICT_CONFIG`, SCHO-305): the Hall Monitor `tenantId`,
   pinned `profileId` and `revision`, and `costCenterId` students' discussion posts are screened
-  under, at `HALL_MONITOR_URL` with service tokens signed by `HALL_MONITOR_SIGNING_KEY` (a secret:
+  under, through a `HALL_MONITOR` service binding to Hall Monitor in the same account (SCHO-308),
+  or else at `HALL_MONITOR_URL`, either way with service tokens signed by `HALL_MONITOR_SIGNING_KEY` (a secret:
   a private Ed25519 or P-256 JWK) for `HALL_MONITOR_ISSUER` (and `HALL_MONITOR_AUDIENCE`, default
   `hall-monitor`). Configured but unreachable, every student post is refused as unavailable.
   Without it, each student post waits for a teacher's approval, flagged `screening_not_configured`,

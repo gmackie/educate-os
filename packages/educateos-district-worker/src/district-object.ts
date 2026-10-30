@@ -99,9 +99,14 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return fetch(input, init);
   }
 
-  /** The fetch discussion screening reaches Hall Monitor with (SCHO-305). Tests replace it with a fake. */
+  /**
+   * The fetch discussion screening reaches Hall Monitor with (SCHO-305): through the `HALL_MONITOR`
+   * service binding when there is one (SCHO-308), otherwise the global fetch. Tests replace it
+   * with a fake.
+   */
   protected hallMonitorFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-    return fetch(input, init);
+    const binding = this.env.HALL_MONITOR;
+    return binding === undefined ? fetch(input, init) : binding.fetch(new Request(input, init));
   }
 
   /**
@@ -329,6 +334,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         platformFetch: (input, init) => this.platformFetch(input, init),
         rosterFetch: (input, init) => this.rosterFetch(input, init),
         discussionHallMonitor: (screening) => discussionHallMonitor({
+          ...(this.env.HALL_MONITOR === undefined ? {} : { binding: { fetch: (request: Request) => this.hallMonitorFetch(request) } }),
           url: this.env.HALL_MONITOR_URL,
           signingKey: this.env.HALL_MONITOR_SIGNING_KEY,
           issuer: this.env.HALL_MONITOR_ISSUER,

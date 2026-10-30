@@ -128,6 +128,11 @@ interface GadgetUIProps {
   // Reports whether the "No gadget UI yet" placeholder is showing: true only once a load has
   // confirmed the gadget has no UI, so a spinner or a not-yet-loaded view never counts.
   onNoUiChange?: (showsNoUi: boolean) => void
+  // True once the workspace has read restricted data (WorkspaceMetadata.containsRestrictedData).
+  // The iframe then gets no popups: its CSP stops it sending anything itself, but a link the
+  // person clicks (or one the gadget clicks for them during that gesture) could otherwise carry
+  // the records out in its URL.
+  restricted?: boolean
 }
 
 // How long to wait for a UI bundle before offering a retry instead of a spinner. Not a latency
@@ -139,7 +144,7 @@ export default function GadgetUI(props: GadgetUIProps) {
   return <GadgetUISession key={props.chatId} {...props} />
 }
 
-function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chatId, onConsoleLog, onIframeEscape, onNoUiChange }: GadgetUIProps) {
+function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chatId, onConsoleLog, onIframeEscape, onNoUiChange, restricted = false }: GadgetUIProps) {
   const [sandboxedHtml, setSandboxedHtml] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -505,7 +510,8 @@ function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chat
   return (
     <div style={{ height, width: '100%' }}>
       <iframe
-        key={`${reloadTrigger}:${iframeGeneration}`}
+        // A sandbox change takes effect only on the next navigation, so remount when it changes.
+        key={`${reloadTrigger}:${iframeGeneration}:${restricted}`}
         ref={iframeRef}
         srcDoc={sandboxedHtml}
         style={{
@@ -514,7 +520,7 @@ function GadgetUISession({ gadget, height, reloadTrigger, isVisible = true, chat
           height: '100%',
           border: 'none'
         }}
-        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+        sandbox={restricted ? 'allow-scripts' : 'allow-scripts allow-popups allow-popups-to-escape-sandbox'}
         title="Gadget UI"
       />
     </div>

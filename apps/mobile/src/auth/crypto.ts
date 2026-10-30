@@ -10,6 +10,14 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const CONTEXT = encoder.encode('cloudflare-os-device-session-v1');
 const STATE = /^[A-Za-z0-9._~-]{16,512}$/;
+/**
+ * How long a person has to finish signing in in the browser. The state is single-use and the key
+ * never leaves the phone, so this only bounds a forgotten attempt; the district's own two-minute
+ * handoff deadline starts when the sign-in finishes, not when the app opened the browser.
+ */
+export const SIGN_IN_WINDOW_MS = 15 * 60_000;
+/** The district's handoff lifetime (DEVICE_HANDOFF_LIFETIME_MS), plus a little clock skew. */
+const HANDOFF_MAX_MS = 125_000;
 
 export type Attempt = {
   state: string; publicKey: string; privateKey: Uint8Array; startedAt: number;
@@ -19,7 +27,7 @@ export type Handoff = { publicKey: string; salt: string; iv: string; ciphertext:
 /** Accept an app-owned universal link only, never arbitrary redirect URLs or duplicate fields. */
 export function parseSessionLink(link: string, attempt: Attempt): Handoff {
   const url = appLink(link, CALLBACK_ORIGIN, '/oauthredirect');
-  if (!url || Date.now() - attempt.startedAt > 120_000) {
+  if (!url || Date.now() - attempt.startedAt > SIGN_IN_WINDOW_MS) {
     throw new Error('This sign-in has expired or came from an unrecognized app link.');
   }
   const params = url.searchParams;
@@ -37,7 +45,16 @@ export function parseSessionLink(link: string, attempt: Attempt): Handoff {
 }
 
 /** WebCrypto's P-256 deriveBits returns the X coordinate; noble returns prefix+X. */
+/** Why a transfer was refused, for a message that says what to do. Never includes secrets. */
+type UnsealStage = 'decrypt' | 'expired' | 'unsupported';
+const UNSEAL_MESSAGES: Record<UnsealStage, string> = {
+  decrypt: 'The encrypted school sign-in could not be verified. Please try again.',
+  expired: "This sign-in expired before it reached the app. Try again, and check that your phone's date and time are set automatically.",
+  unsupported: "Your school sent a sign-in this version of EducateOS can't use. Update the app, or connect with your school's code.",
+};
+
 export function unseal(envelope: Handoff, attempt: Attempt): Credential {
+  let stage: UnsealStage = 'decrypt';
   try {
     const point = base64urlnopad.decode(envelope.publicKey);
     if (point[0] !== 4) throw new Error('Expected an uncompressed P-256 point.');
@@ -49,11 +66,17 @@ export function unseal(envelope: Handoff, attempt: Attempt): Credential {
     key.fill(0);
     shared.fill(0);
     if (!transfer || typeof transfer !== 'object') throw new Error('Invalid transfer.');
+    stage = 'expired';
     const value = transfer as { expiresAt?: unknown; credential?: { kind?: unknown; token?: unknown; expiresAt?: unknown } };
-    if (typeof value.expiresAt !== 'number' || value.expiresAt < Date.now() ||
-        value.expiresAt > attempt.startedAt + 125_000 || typeof value.credential?.token !== 'string') {
+    // Measured from now, when the callback arrived: the transfer was sealed when the browser
+    // sign-in finished, which can be minutes after the attempt started.
+    const now = Date.now();
+    if (typeof value.expiresAt !== 'number' || value.expiresAt < now ||
+        value.expiresAt > now + HANDOFF_MAX_MS) {
       throw new Error('This sign-in envelope is no longer valid.');
     }
+    stage = 'unsupported';
+    if (typeof value.credential?.token !== 'string') throw new Error('Unsupported session credential.');
     if (value.credential.kind === 'workshop' && typeof value.credential.expiresAt === 'number' &&
         value.credential.expiresAt > Date.now() && value.credential.expiresAt < Date.now() + 32 * 86_400_000) {
       return { kind: 'workshop', token: value.credential.token, expiresAt: value.credential.expiresAt };
@@ -65,7 +88,7 @@ export function unseal(envelope: Handoff, attempt: Attempt): Credential {
     }
     throw new Error('Unsupported session credential.');
   } catch {
-    throw new Error('The encrypted school sign-in could not be verified. Please try again.');
+    throw new Error(UNSEAL_MESSAGES[stage]);
   } finally {
     attempt.privateKey.fill(0);
   }
