@@ -164,8 +164,10 @@ function validate<C extends CleverCollection>(
   if (!result.success) {
     // A contact is never imported (EducateOS v1 has no roster guardians), so a malformed one is
     // only reported: it must not block the roster.
+    // A null role is one the user does not hold.
     const roles = (item as { roles?: unknown } | null)?.roles;
-    const contactOnly = collection === "users" && typeof roles === "object" && roles !== null && Object.keys(roles).join() === "contact";
+    const held = typeof roles === "object" && roles !== null ? Object.entries(roles).flatMap(([role, body]) => (body == null ? [] : [role])) : [];
+    const contactOnly = collection === "users" && held.join() === "contact";
     for (const issue of result.error.issues.slice(0, 10)) {
       issues.push({ severity: contactOnly ? "warning" : "error", ...at, column: issue.path.join("."), message: issue.message });
     }

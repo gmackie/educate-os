@@ -19,6 +19,7 @@ import { ModulesPage } from "./modules/ModulesPage.tsx";
 import { PoliciesPage } from "./policies/PoliciesPage.tsx";
 import { TermRolloverPage } from "./rollover/TermRolloverPage.tsx";
 import { RosterPage } from "./roster/RosterPage.tsx";
+import { RosterSyncPage } from "./roster/RosterSyncPage.tsx";
 import { LearningStandardsPage } from "./standards/LearningStandardsPage.tsx";
 import { SchoolPage } from "./schools/SchoolPage.tsx";
 import { AiUsagePage } from "./usage/AiUsagePage.tsx";
@@ -28,6 +29,7 @@ const Screen = ({ path, config }: { path: ScreenPath; config: DistrictConfigStat
   switch (path) {
     case "dashboard": return <Dashboard state={config} />;
     case "roster": return <RosterPage />;
+    case "roster-sync": return <RosterSyncPage />;
     case "classes": return <ClassesPage />;
     case "classes-people": return <ClassesAndPeoplePage />;
     case "guardians": return <GuardiansPage />;
@@ -68,7 +70,7 @@ export interface DistrictShell {
 const ShellContext = createContext<DistrictShell | undefined>(undefined);
 
 const SCREEN_ICONS: Record<ScreenPath, NavIcon> = {
-  dashboard: "dashboard", roster: "roster", classes: "classes", "classes-people": "roster", guardians: "guardians", modules: "studio",
+  dashboard: "dashboard", roster: "roster", "roster-sync": "roster", classes: "classes", "classes-people": "roster", guardians: "guardians", modules: "studio",
   "learning-standards": "grades", policies: "policies", "ai-usage": "usage", "ai-budgets": "budgets", "term-rollover": "rollover",
   operations: "policies",
 };

@@ -140,6 +140,11 @@ or APK outside the repository. Cloud builds require an explicit decision; omit `
 Profiles pin Node 24.14.0 and pnpm 11.17.0. Both platforms use EAS's latest image; SDK 58
 requires Xcode 26 or newer. Channels are omitted until `expo-updates` and a runtime-version
 policy are configured. Store builds do not submit themselves; `eas submit` is a separate step.
+`eas.json` names the App Store Connect app ("EducateOS", `io.educateos.mobile`, app ID 6828552856,
+team P4SWQXAB5H). Upload a production IPA with the App Store Connect API key environment variables
+above set:
+
+    eas submit -p ios --profile production --path /tmp/educateos.ipa
 EAS manages signing credentials remotely; never commit downloaded credentials or private keys.
 
 ## School setup QR codes

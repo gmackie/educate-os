@@ -42,6 +42,8 @@ export const appConfig = (variant: AppVariant): ExpoConfig => ({
       NSFaceIDUsageDescription: 'Confirm access to your EducateOS school account.',
       NSCameraUsageDescription: "Scan your school's QR code to connect this phone, and attach photos of your own schoolwork when you choose to.",
       NSPhotoLibraryUsageDescription: 'Choose photos to attach to your work.',
+      // Only standard, exempt encryption (HTTPS, platform crypto), so uploads skip the export question.
+      ITSAppUsesNonExemptEncryption: false,
     },
   },
   android: {
