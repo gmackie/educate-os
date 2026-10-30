@@ -67,9 +67,6 @@ export function requestDoes(done: JourneyStep["done"], request: Pick<Request, "m
   return done.paths.some((pattern) => matches(pattern, path));
 }
 
-/** The journey step called `id`. */
-export const journeyStep = (persona: PersonaId, id: string): JourneyStep => JOURNEYS[persona].find((step) => step.id === id)!;
-
 /**
  * The steps of `persona`'s journey that `request`, answered with `status`, completes, made from the
  * app screen whose hash route is `screen`.

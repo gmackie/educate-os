@@ -101,7 +101,7 @@ describe("the Clever tour, step by step, against a booted Cedar Valley", () => {
 });
 
 describe("the tour's steps", () => {
-  it("count only what they say: Elaine's tile, a teacher's grade request, a sent grade", () => {
+  it("count only what they say: Elaine's tile, an official grade, a sent grade", () => {
     const tour = new CleverTourStore();
     tour.tileClicked("teacher");
     expect(tour.getSnapshot().done.has("portal")).toBe(false);
@@ -109,7 +109,11 @@ describe("the tour's steps", () => {
     tour.responded("student", grade, 200);
     tour.responded("teacher", grade, 403);
     expect(tour.getSnapshot().done.has("teacher-grade")).toBe(false);
+    // Sharing feedback or saving a rubric score sends no grade anywhere, so neither counts.
     tour.responded("teacher", { method: "POST", url: "https://district.demo.educateos.invalid/api/teacher/submissions/sub_1/feedback/release" }, 200);
+    tour.responded("teacher", { method: "POST", url: "https://district.demo.educateos.invalid/api/teacher/submissions/sub_1/scores" }, 200);
+    expect(tour.getSnapshot().done.has("teacher-grade")).toBe(false);
+    tour.responded("teacher", grade, 200);
     expect(tour.getSnapshot().done.has("teacher-grade")).toBe(true);
   });
 
@@ -125,8 +129,8 @@ describe("the tour's steps", () => {
 const actions = () => {
   const calls: string[] = [];
   const a: TourActions = {
-    openPortalAs: vi.fn((persona, options) => void calls.push(`portal ${persona} ${JSON.stringify(options ?? {})}`)),
-    openRosterSync: vi.fn((options) => void calls.push(`roster-sync ${JSON.stringify(options ?? {})}`)),
+    openPortalAs: vi.fn((persona) => void calls.push(`portal ${persona}`)),
+    openApp: vi.fn((persona, options) => void calls.push(`app ${persona} ${JSON.stringify(options ?? {})}`)),
     openCleverSide: vi.fn(() => void calls.push("clever-side")),
     teacherClassRoute: vi.fn(async () => "#/classes/off_1/submissions"),
     ensureFirstSync: vi.fn(async () => void calls.push("first-sync")),
@@ -136,17 +140,17 @@ const actions = () => {
 
 describe("Show me and presenter mode's jump", () => {
 
-  it("Show me only goes there: the portal, Roster sync, the Clever side, the teacher's class", async () => {
+  it("Show me stops at the portal for the sign-in steps and opens the app for the rest", async () => {
     const { a, calls } = actions();
     for (const s of CLEVER_TOUR_STEPS) await showMe(s.id, a);
     expect(calls).toEqual([
-      "portal admin {}",
-      "portal admin {}",
-      'roster-sync {"launch":false}',
+      "portal admin",
+      "portal admin",
+      'app admin {"route":"#/roster-sync"}',
       "clever-side",
-      'roster-sync {"launch":false}',
-      'portal teacher {"launch":false,"route":"#/classes/off_1/submissions"}',
-      'portal teacher {"launch":false,"route":"#/classes/off_1/submissions"}',
+      'app admin {"route":"#/roster-sync"}',
+      'app teacher {"route":"#/classes/off_1/submissions"}',
+      'app teacher {"route":"#/classes/off_1/submissions","grades":true}',
     ]);
     expect(a.ensureFirstSync).not.toHaveBeenCalled();
   });
@@ -154,13 +158,13 @@ describe("Show me and presenter mode's jump", () => {
   it("a jump past the first sync runs it first, then signs in through the portal", async () => {
     const { a, calls } = actions();
     await jumpTo("teacher-grade", a);
-    expect(calls).toEqual(["first-sync", 'portal teacher {"launch":true,"route":"#/classes/off_1/submissions"}']);
+    expect(calls).toEqual(["first-sync", 'app teacher {"route":"#/classes/off_1/submissions"}']);
   });
 
   it("a jump to the portal or the first sync leaves them for the presenter to do", async () => {
     const { a, calls } = actions();
     await jumpTo("portal", a);
     await jumpTo("first-sync", a);
-    expect(calls).toEqual(["portal admin {}", 'roster-sync {"launch":true}']);
+    expect(calls).toEqual(["portal admin", 'app admin {"route":"#/roster-sync"}']);
   });
 });
