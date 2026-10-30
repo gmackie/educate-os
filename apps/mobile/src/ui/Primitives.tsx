@@ -12,7 +12,9 @@ export function Page({ children, refresh, busy, scroll = true }: {
   const styles = useStyles();
   const content = <View style={styles.page}>{children}</View>;
   if (!scroll) return <View style={{ flex: 1 }}>{content}</View>;
+  // Forms (quizzes, posts, responses) stay reachable above the keyboard, which a drag puts away.
   return <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+    automaticallyAdjustKeyboardInsets keyboardDismissMode="interactive"
     contentContainerStyle={{ paddingBottom: 48 }} accessibilityLabel="Page content">
     {refresh && <Pressable accessibilityRole="button" accessibilityLabel="Refresh page"
       disabled={busy} onPress={refresh} style={styles.refresh}>

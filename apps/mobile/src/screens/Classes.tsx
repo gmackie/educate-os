@@ -3,7 +3,8 @@ import { Text, View } from 'react-native';
 import { BookOpen, ClipboardCheck, ClipboardList, FileText, GraduationCap, Users } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Assignment, ClassItem, Detail, GuardianChild, Principal } from '../types';
-import { useLoad } from '../hooks/useLoad';
+import { useLoad, useReloadOnFocus } from '../hooks/useLoad';
+import { CourseSections, loadStudentExtras } from './Course';
 import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Item, Page, Placeholder, QueryState, Section, Title } from '../ui/Primitives';
 
@@ -47,12 +48,14 @@ export function StudentClass({ client, offeringId, navigate }: {
 }) {
   const palette = usePalette();
   const [state, reload] = useLoad('student-class:' + offeringId, async () => {
-    const [courses, activities, grades] = await Promise.all([
+    const [courses, activities, grades, extras] = await Promise.all([
       client.studentClasses(), client.studentActivities(offeringId),
       client.studentGradeSummary(offeringId).catch(() => null),
+      loadStudentExtras(client, offeringId),
     ]);
-    return { course: courses.find((c) => c.offering.id === offeringId), activities, grades };
+    return { course: courses.find((c) => c.offering.id === offeringId), activities, grades, extras };
   });
+  useReloadOnFocus(reload);
   return <Page refresh={reload}>
     <QueryState state={state} retry={reload}>{(data) => <>
       <Title subtitle={data.course?.offering.sectionName}> {data.course?.course.title || 'Class'} </Title>
@@ -68,6 +71,7 @@ export function StudentClass({ client, offeringId, navigate }: {
           <Text style={{ fontSize: 12, color: palette.muted }}>Official grade</Text>
         </Card>
       </View>
+      <CourseSections offeringId={offeringId} extras={data.extras} activities={data.activities} navigate={navigate}/>
       <Section title="Assignments">
         {data.activities.length === 0 ? <Placeholder title="No assignments" message="Your teacher hasn't published any activities yet."/> :
           <Card>{data.activities.map(({ assignment }) => <Item key={assignment.id} title={assignment.title}
