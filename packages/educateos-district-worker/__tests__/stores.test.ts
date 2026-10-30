@@ -131,6 +131,28 @@ describe("DurableObjectFundingAllocationStore", () => {
 });
 
 describe("DurableObjectWorkshopUserLinkStore", () => {
+  it("atomically refuses duplicate accounts and principals, and keeps links across restart", async () => {
+    const object = fresh();
+    const link = {
+      districtId: NORTHFIELD.district.id, workshopUser: "amara@example.com", principalId: "prn_nf-student-amara",
+      confirmedBy: "prn_nf-district-admin", confirmedAt: "2026-10-29T12:00:00.000Z",
+    } as never;
+    await runInDurableObject(object, async (_instance, state) => {
+      const first = new DurableObjectWorkshopUserLinkStore(state.storage);
+      const second = new DurableObjectWorkshopUserLinkStore(state.storage);
+      const results = await Promise.allSettled([first.add(link), second.add(link)]);
+      expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      expect(results.find((result) => result.status === "rejected")).toMatchObject({ reason: { code: "conflict" } });
+      await expect(second.add({ ...link as object, workshopUser: "another@example.com" } as never)).rejects.toMatchObject({ code: "conflict" });
+      await expect(second.add({ ...link as object, principalId: "prn_nf-morgan-lee" } as never)).rejects.toMatchObject({ code: "conflict" });
+      expect(await first.list()).toEqual([link]);
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      expect(await new DurableObjectWorkshopUserLinkStore(state.storage).list()).toEqual([link]);
+    });
+  });
+
   it("refuses a link that does not match its schema, and stores nothing of it", async () => {
     await runInDurableObject(fresh(), async (_instance, state) => {
       const store = new DurableObjectWorkshopUserLinkStore(state.storage);

@@ -1018,6 +1018,9 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     // match). `confirmWorkshopUserLink` refuses anyone but a district administrator.
     "admin.linkWorkshopUser": async (ctx, { body }) => {
       await ctx.requireDistrict("read", "district");
+      if (body.workshopUser.startsWith("principal:") && body.workshopUser !== `principal:${body.principalId}`) {
+        throw new EducateOsError("validation-failed", "The Workshop principal key must name the linked principal.");
+      }
       const link = confirmWorkshopUserLink(ctx.snapshot, await stores.workshopUserLinks.list(), {
         workshopUser: body.workshopUser, principalId: body.principalId,
         confirmedBy: ctx.principal.principalId, confirmedAt: now().toISOString(),
