@@ -1175,6 +1175,9 @@ importers:
       '@gadgets/observability':
         specifier: workspace:*
         version: link:../observability
+      '@gadgets/workshop-shared':
+        specifier: workspace:*
+        version: link:../workshop-shared
       capnweb:
         specifier: 'catalog:'
         version: 0.12.0

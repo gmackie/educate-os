@@ -4,6 +4,7 @@
 // stores. Everything administrators change later (configuration, funding allocations, the roster)
 // is stored in the district's Durable Object, not here.
 import { z } from "zod";
+import { WorkshopPolicySettings } from "./workshop-policy.ts";
 import { DistrictDirectorySnapshot, PrincipalId } from "@educateos/contracts";
 import { AuthoritySetting } from "@educateos/district-app";
 import { CloudflareAccountFacts, FundingPoolSet, GovernedModel, UsdNano } from "@educateos/ai-governance";
@@ -17,6 +18,8 @@ export const DistrictWorkerConfig = z.strictObject({
    * directory this is ignored, apart from the district's ID, which must still match it.
    */
   directory: DistrictDirectorySnapshot,
+  /** Explicit Workshop mint grants. Absent denies every capability request. */
+  workshopPolicy: WorkshopPolicySettings.optional(),
   /**
    * Which system owns each directory record type: `"oneroster"` (the default: the roster owns
    * every type), `"local"` (EducateOS owns every type, for a district with no roster, such as a

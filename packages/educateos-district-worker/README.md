@@ -237,3 +237,12 @@ storage included, is the deployed code.
   and launches as her across a restart, and refuses a replayed launch, a launch signed by another
   key, one without the state cookie and one with the wrong nonce. It also keeps the tool keys and a
   rotation across restarts. The test object's `platformFetch` is the synthetic LMS.
+
+## Workshop capability policy
+
+`DistrictWorkshopCapabilityPolicy` is the backend-only `WORKSHOP_CAPABILITY_POLICY` service target
+(SCHO-299, stacked on SCHO-292). It resolves current principal status and scoped roles from district
+stores and applies ABAC to exact deployment grants. Without `DISTRICT_CONFIG.workshopPolicy` it
+denies every request. No binding is enabled by this change. See
+[security boundaries and integration wiring](../../docs/educateos/security/district-workshop-capability-policy.md)
+before binding it; a binding holder is trusted to assert the Workshop user ID.
