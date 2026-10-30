@@ -4,6 +4,15 @@ Integration of GitHub PRs #5–#26, preserving every original head commit in mer
 GitHub delivery only; no ForgeGraph credential changes or manual deployments.
 Production acceptance and mobile physical-device verification remain separate from code landing.
 
+## Landing hold
+
+The user paused all EducateOS merges while selecting the landing destination. GitHub and Forgejo
+main have diverged; the user's reported Forgejo head is `c7810e4f`, while GitHub remains
+`b4157a24`. `.forgegraph.yaml` declares Forgejo as the PR/CI host and its main merge deploys
+production. This integration was prepared against GitHub main and must not be treated as validated
+against Forgejo main. Passing CI does not lift the hold. No merge, deployment, mirror sync or
+credential refresh is authorized pending the user's next instruction.
+
 ## Kernel review
 
 The integrated kernel diff was inspected against the root and backend AGENTS.md and REVIEW.md.
@@ -121,3 +130,12 @@ combined-revision merge gate; prior feature CI is supporting evidence only.
 Final local checks passed: full `pnpm lint` (172 tasks), 45 release/profile/manifest/production-config
 tests and all 99 district Worker tests, including both merged authority service entrypoints.
 Focused backend real workerd regressions passed all 52 tests across five merged boundary suites.
+
+CI repair: account for directly invoked school-dev `DISTRICT_CONFIG` as an external environment
+input. Mobile dependency compatibility is checked with Expo; no new exclusions or disabled checks.
+
+CI follow-up validation: Expo compatibility passed after updating only `expo-linking` to 58.0.15
+and React Native to 0.88.1 with the isolated lockfile regenerated. Mobile frozen install, typecheck,
+20 security tests, public config validation and both iOS/Android source exports passed. The four
+environment-contract checks passed. CLA Assistant still lacks its signatures branch; Bonk setup
+aborts before review. Neither failure is represented as passing or disabled. Merge hold remains.
