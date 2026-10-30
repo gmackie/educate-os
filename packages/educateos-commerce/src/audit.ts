@@ -6,11 +6,12 @@ import { SignedCents } from "./money.ts";
 
 /**
  * Who made a finance change: a staff member (by opaque code; the person is in the private staff
- * directory), the payment processor (through a webhook), or the system clock (a timed grace
- * transition).
+ * directory), the customer themselves (by their account's opaque code, from the operator console:
+ * never a staff power), the payment processor (through a webhook), or the system clock (a timed
+ * grace transition).
  */
 export const FinanceActor = z.strictObject({
-  kind: z.enum(["staff", "processor", "system"]),
+  kind: z.enum(["staff", "customer", "processor", "system"]),
   ref: OpaqueCode,
 });
 /** A finance actor. */
@@ -25,6 +26,7 @@ export const FinanceAction = z.enum([
   "account.instance-linked",
   "account.ai-usage-sharing-changed",
   "account.processor-customer-created",
+  "account.payment-method-saved",
   "subscription.started",
   "subscription.activated",
   "subscription.past-due",

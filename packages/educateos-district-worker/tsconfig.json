@@ -13,7 +13,8 @@
   },
   "include": ["src", "__tests__/fixtures.ts"],
   // The Workers-only shells and the workerd suite import `cloudflare:workers`, whose typings reject
-  // those libraries' web-standard sources. They are checked by running them (`vitest run`), as the
+  // those libraries' web-standard sources, and hall-monitor.ts imports the vendored Hall Monitor
+  // client, whose sources are not erasable-only. They are checked by running them (`vitest run`), as the
   // other EducateOS workerd suites are.
-  "exclude": ["node_modules", ".wrangler", "src/worker.ts", "src/district-object.ts", "src/env.d.ts"]
+  "exclude": ["node_modules", ".wrangler", "src/worker.ts", "src/district-object.ts", "src/hall-monitor.ts", "src/env.d.ts"]
 }

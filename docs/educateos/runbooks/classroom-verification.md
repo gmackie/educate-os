@@ -8,7 +8,7 @@ course/work IDs, actor role and outcome; keep credentials and tokens out of evid
 | --- | --- | --- |
 | Tenant readiness | Classroom enabled, API access allowed, under-18 OAuth app configured, licenses read back | Verified during SCHO-202 |
 | Fixtures | 18 users, six OUs, eight active courses, exact owners and memberships | Seed and verify passed, SCHO-202 |
-| District roster | Deployed admin preview/apply, scheduled complete sync, selected courses only, identity quarantine | Library live Harbor sync passed; deployed verification pending |
+| District roster | Deployed admin preview/apply, scheduled complete sync, selected courses only, identity quarantine | Deployed Harbor complete apply and zero-change second sync passed 2026-10-29; schedule/identity/recovery remain open |
 | Identity | Teacher and student authenticated identities resolve to their intended roster principals; no email identity keys | Pending |
 | Coursework | Teacher creates app-owned work through EducateOS; project ownership read back | One provider smoke passed; deployed flow pending |
 | Project boundary | Teacher-created or foreign-project work cannot be graded through EducateOS | Fake tests only; live pending |
@@ -377,3 +377,46 @@ Google connector deployment `6824917a-5019-4522-a5f2-5d32ff7dd2ae` is active at
 pending. Harbor's DWD credential was stored in ForgeGraph; prepared course selection contains only
 the four Harbor courses, never Cedar Valley's courses. Configuration and roster apply have not
 occurred yet. Scheduled sync still requires an authorized service principal.
+
+## Resumed production validation, 2026-10-29
+
+Full acceptance remains open. These are new live results, separate from the portable offline
+Clever meeting kit and the earlier delegated Google API tests.
+
+- The saved teacher Formats Lab on `northfield.educateos.io/ai` fetched the live Algebra assignment
+  `896261051224` in course `896141390025`, with its expected 10-point maximum. Provider fetch time
+  was `2026-10-29T16:50:24.454Z`; gadget CSS was loaded.
+- The existing Harbor owner authenticated as its existing district administrator; no recovery
+  elevation or reseed was used. Supported configuration revision
+  `cfg_88d32b14d3c2bfcee5a79098e6e87557` selected the Google Classroom provider and subject mapping.
+  Complete sync `admin-522b218a-9eec-4b35-bd75-e1429ff8b19e` succeeded at
+  `2026-10-29T16:57:35.571Z`: two schools, one term, four selected course offerings, two teachers,
+  six students and 14 enrollments, with no quarantine or integrity errors. The existing
+  administrator remained. A second complete sync, `admin-6988316e-bbfe-4de1-b665-13d3e852a7bd`,
+  succeeded at `16:58:57.926Z` with zero changes. Scheduled sync, Access links and removal/recovery
+  still require separate evidence.
+- Real teacher code mode queued and approved the isolated published Science rehearsal assignment
+  `896643443799`, five points, titled `SCHO-255 personal student companion rehearsal 2026-10-29`.
+  Rehearsal rubric `896642384903` was created and edited through approval. Exact edit readback
+  preserved the criterion/level IDs and 5/3/0 points. Approved deletion was read back through
+  teacher code mode at 18:46Z: `rubrics: []`, `rubricCount: 0`. This completes the live
+  approval-backed create/edit/delete rehearsal. Existing chat binding type text omitted shipped rubric
+  update/delete methods, so method discovery still needs a fresh-binding check.
+- An's own Google and Access identities were verified. The existing Northfield administrator
+  created local synthetic student principal `prn_86d15813-3189-40e9-bf10-12b5830b6bcf` and its
+  authenticated district `/api/me` returned 200. This is a personal connector rehearsal in
+  Northfield, not Cedar Valley district roster acceptance. Student authoring was refused with
+  `unknown_principal`: the guard still uses the original operator-only static configuration.
+  [Workshop guard linking](workshop-guard-linking.md) describes the supported rollout being added.
+  An then connected Google through the Workshop's normal OAuth flow. Readback identified
+  `cv-student-an@gedu.demo.educateos.io`, with only Classroom Student Course enabled; all 13 other
+  resource kinds, including the teacher course, were disabled. Student gadget installation,
+  code-mode reads and Workshop turn-in remain unverified until guard admission is configured.
+
+The Google worker's refreshed production receipt is deployment
+`6c4bdde1-5ac9-428b-acb5-0e011fba1d7a`, version `58600987-8219-4477-bc41-a8cc7e922b20`,
+commit `0de77205a2a96ee0463c9db1205688698b4ba104`. This identifies the runtime used for the Google
+checks; it does not establish the deployment revision of the independent Harbor worker.
+
+Preserve the returned 18/20 weathering exemplar `896258346598`, rubric `896259887221`, and
+submission `Cg4I8ZmlsYoaEOacpOmKGg`. Use the new five-point rehearsal for student turn-in tests.

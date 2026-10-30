@@ -7,6 +7,7 @@ import { AcademicDirectory } from "@educateos/academics";
 import { checkDirectoryIntegrity, DistrictDirectorySnapshot } from "@educateos/contracts";
 import type { ImportFetch } from "@educateos/content-studio";
 import {
+  CLEVER_ISSUER,
   createAccessSignInResolver,
   createDirectoryPrincipalResolver,
   matchEmailKeyedUsers,
@@ -22,6 +23,7 @@ import { accessAudiences, accessRequestVerifier } from "./access.ts";
 import { readDistrictWorkerConfig, type DistrictWorkerConfig } from "./config.ts";
 // Communication (SCHO-189)
 import { cloudflareEmailSender, type SendEmailBinding } from "./mail.ts";
+import type { DiscussionScreening, DiscussionScreeningSettings } from "@educateos/discussions";
 // LTI 1.3 Tool (SCHO-177)
 import { startDistrictLti, type DistrictLti } from "./lti.ts";
 
@@ -98,7 +100,20 @@ export interface DistrictSeams {
   rosterFetch?: typeof fetch;
   /** The fetch the analytics proxy reaches Cloudflare's API with (SCHO-263). Defaults to the global fetch. */
   analyticsFetch?: (request: Request) => Promise<Response>;
+  /**
+   * The Hall Monitor client students' discussion posts are screened with under the configured
+   * settings (SCHO-305), built by the Worker from its `HALL_MONITOR_*` inputs. Without it, a
+   * district that configures screening refuses every student post as screening-unavailable.
+   */
+  discussionHallMonitor?: (settings: DiscussionScreeningSettings) => DiscussionScreening["hallMonitor"];
 }
+
+/** The Hall Monitor of a district that configures screening but cannot reach it: it refuses every post. */
+const UNREACHABLE_HALL_MONITOR: DiscussionScreening["hallMonitor"] = {
+  evaluate: async () => {
+    throw new Error("Hall Monitor is not configured for discussion screening");
+  },
+};
 
 /** The district ID `DISTRICT_CONFIG` names, which its Durable Object is named by. */
 export function configuredDistrictId(config: string | undefined): string {
@@ -194,6 +209,15 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(config.email?.appUrl === undefined ? {} : { appUrl: config.email.appUrl }),
     // Devices (SCHO-261)
     ...(settings.deviceTokenSecret === undefined ? {} : { deviceTokenSecret: settings.deviceTokenSecret }),
+    // Discussions (SCHO-305): configured screening always screens, failing closed when Hall Monitor
+    // cannot be reached; without it each student post waits for a teacher unless told otherwise.
+    ...(config.discussionScreening === undefined ? {} : {
+      discussionScreening: {
+        hallMonitor: seams.discussionHallMonitor?.(config.discussionScreening) ?? UNREACHABLE_HALL_MONITOR,
+        settings: config.discussionScreening,
+      },
+    }),
+    ...(config.unscreenedStudentPosts === undefined ? {} : { unscreenedStudentPosts: config.unscreenedStudentPosts }),
     // Operations (SCHO-263): analytics only with a token. The global fetch is bound, as workerd requires.
     release: { version: settings.releaseVersion },
     ...(analytics === undefined ? {} : {
@@ -231,6 +255,8 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       verifyRequest,
       toolOrigin: settings.ltiToolOrigin,
       platformFetch: seams.platformFetch ?? ((input, init) => fetch(input, init)),
+      // The issuers people sign in with are never an LMS's (SCHO-306).
+      reservedIssuers: [...(settings.accessIssuer ? [settings.accessIssuer] : []), CLEVER_ISSUER],
     });
   // The same issuer and Clever setting the district's own sign-in reads, so the two agree. The
   // seam carries no Clever claims, so a Clever district resolves no Workshop sign-in this way.

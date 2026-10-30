@@ -5,14 +5,22 @@
 // Worker name (`educateos-site`) and this class name: a renamed Worker or class starts with an
 // empty namespace (SCHO-231). `sites/educateos-io/site-config.test.mjs` fails if either changes.
 import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
+import { StripePaymentProcessor } from "@educateos/commerce";
+import { DurableObjectCommerceStore } from "@educateos/commerce/durable-object-store";
+import { Ed25519PrivateJwk, SigningIdentity } from "@educateos/fleet";
 import type { JWTVerifyGetKey } from "jose";
 import { operatorVerifier, type OperatorIdentity, type OperatorVerifier } from "./access.ts";
 import { handleRequest, type ControlPlaneApi, type ControlPlaneDeps } from "./app.ts";
+import {
+  type BillingOverview, type BillingReply, type CardSetupOutcome, ControlPlaneBilling, keepUnlessRejected, UNCONFIGURED_BILLING_REPLY,
+  type WebhookOutcome,
+} from "./billing.ts";
 import { configuredLaunchDistricts, configuredUnaffiliatedHostname } from "./clever-launch.ts";
 import type { SiteShell } from "./pages.ts";
 import type { ProbeResult } from "./probe.ts";
 import { ControlPlaneRegistry, type DashboardEntry, type RegistryMessage, type RegistryReply } from "./registry.ts";
 import { ControlPlaneStore, type ControlPlaneExport, type Installation, type Operator, type Reservation } from "./store.ts";
+import type { InvoiceChargeState, Subscription } from "@educateos/commerce";
 
 /** The site Worker's bindings and vars. */
 export interface ControlPlaneEnv {
@@ -42,6 +50,17 @@ export interface ControlPlaneEnv {
   /** The release keys the guided install verifies releases against: a `ReleaseTrust`. */
   RELEASE_TRUST?: unknown;
   /**
+   * Billing (SCHO-208), all secrets: the Stripe secret key, the signing secret of the webhook
+   * endpoint at /stripe/webhook (`whsec_…`), and the root's entitlement signing key as an Ed25519
+   * private JWK (commerce requires one; billing issues no entitlements yet). Without all three,
+   * /app/billing says billing is unavailable and the webhook answers 503.
+   */
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  COMMERCE_SIGNING_KEY?: string;
+  /** The Customer Portal configuration (`bpc_…`) to open, a var. Defaults to the account's default. */
+  STRIPE_PORTAL_CONFIGURATION?: string;
+  /**
    * Where the operator console moved (SCHO-263), such as `https://admin.educateos.io/`. When set,
    * /app and /app/* answer a 302 there, except the guided install. Unset keeps the console here.
    */
@@ -55,11 +74,16 @@ export const CONTROL_PLANE_OBJECT = "educateos.io";
 export class ControlPlane extends DurableObject<ControlPlaneEnv> implements ControlPlaneApi {
   readonly #store: ControlPlaneStore;
   readonly #registry: ControlPlaneRegistry;
+  readonly #billing: () => Promise<ControlPlaneBilling | undefined>;
 
   constructor(ctx: DurableObjectState, env: ControlPlaneEnv) {
     super(ctx, env);
     this.#store = new ControlPlaneStore(ctx.storage);
     this.#registry = new ControlPlaneRegistry(ctx.storage, this.#store);
+    // Built on first use. Commerce's tables live in this same object, beside the operators: one
+    // writer, so an operator's account and their billing never disagree. A build that failed is
+    // forgotten, so the next request tries again rather than the object failing until it restarts.
+    this.#billing = keepUnlessRejected(() => configuredBilling(ctx.storage, env));
   }
 
   signIn(identity: OperatorIdentity): Operator {
@@ -107,6 +131,72 @@ export class ControlPlane extends DurableObject<ControlPlaneEnv> implements Cont
   ping(): true {
     return this.#store.ping();
   }
+
+  async billingOverview(operator: Operator): Promise<BillingReply<BillingOverview>> {
+    return (await this.#billingConfigured())?.overview(operator) ?? UNCONFIGURED_BILLING_REPLY;
+  }
+
+  async subscribe(operator: Operator, planId: string, organization: string, origin: string): Promise<BillingReply<{ url: string }>> {
+    return (await this.#billingConfigured())?.subscribe(operator, planId, organization, origin) ?? UNCONFIGURED_BILLING_REPLY;
+  }
+
+  async resumeCardSetup(operator: Operator, origin: string): Promise<BillingReply<{ url: string }>> {
+    return (await this.#billingConfigured())?.resumeCardSetup(operator, origin) ?? UNCONFIGURED_BILLING_REPLY;
+  }
+
+  async completeCardSetup(operator: Operator, subscriptionId: string, setupRef: string): Promise<BillingReply<CardSetupOutcome>> {
+    return (await this.#billingConfigured())?.completeCardSetup(operator, subscriptionId, setupRef) ?? UNCONFIGURED_BILLING_REPLY;
+  }
+
+  async payInvoice(operator: Operator): Promise<BillingReply<InvoiceChargeState>> {
+    return (await this.#billingConfigured())?.payInvoice(operator) ?? UNCONFIGURED_BILLING_REPLY;
+  }
+
+  async paymentMethodPortal(operator: Operator, origin: string): Promise<BillingReply<{ url: string }>> {
+    return (await this.#billingConfigured())?.paymentMethodPortal(operator, origin) ?? UNCONFIGURED_BILLING_REPLY;
+  }
+
+  async cancelSubscription(operator: Operator): Promise<BillingReply<Subscription>> {
+    return (await this.#billingConfigured())?.cancelSubscription(operator) ?? UNCONFIGURED_BILLING_REPLY;
+  }
+
+  async receiveStripeWebhook(payload: string, signature: string): Promise<BillingReply<WebhookOutcome>> {
+    return (await this.#billingConfigured())?.receiveStripeWebhook(payload, signature) ?? UNCONFIGURED_BILLING_REPLY;
+  }
+
+  #billingConfigured(): Promise<ControlPlaneBilling | undefined> {
+    return this.#billing();
+  }
+}
+
+/**
+ * Billing from the Worker's secrets, or undefined if any is missing, the signing key doesn't parse,
+ * or the Stripe key is not a test-mode key: billing runs in Stripe test mode only until pricing is
+ * decided (SCHO-208), so a live key leaves billing unavailable rather than charging anyone.
+ */
+export async function configuredBilling(storage: DurableObjectStorage, env: ControlPlaneEnv): Promise<ControlPlaneBilling | undefined> {
+  const { STRIPE_SECRET_KEY: apiKey, STRIPE_WEBHOOK_SECRET: webhookSecret, COMMERCE_SIGNING_KEY: signingKey } = env;
+  if (!apiKey || !webhookSecret || !signingKey) return undefined;
+  if (!/^(sk|rk)_test_/.test(apiKey)) {
+    console.error("billing refuses a Stripe key that is not a test-mode key");
+    return undefined;
+  }
+  let signer: SigningIdentity;
+  try {
+    signer = await SigningIdentity.fromJwk(Ed25519PrivateJwk.parse(JSON.parse(signingKey)));
+  } catch (error) {
+    console.error("billing signing key unusable", { error: error instanceof Error ? error.name : typeof error });
+    return undefined;
+  }
+  return new ControlPlaneBilling({
+    store: new DurableObjectCommerceStore(storage),
+    processor: new StripePaymentProcessor({
+      apiKey,
+      webhookSecret,
+      ...(env.STRIPE_PORTAL_CONFIGURATION ? { portalConfiguration: env.STRIPE_PORTAL_CONFIGURATION } : {}),
+    }),
+    signer,
+  });
 }
 
 /**

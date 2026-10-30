@@ -51,6 +51,12 @@ export interface SchoolToolDefinition<S extends z.ZodObject, R> {
   /** The action every call is authorized as. */
   action: Action;
   /**
+   * True for a tool that only reads, whatever action it is authorized as. A read-only tool is never
+   * queued for the requester to confirm (`confirmWrites`): it changes nothing to confirm. It is
+   * still decided by the engine like any other, and an approval the engine requires still applies.
+   */
+  readOnly?: boolean;
+  /**
    * Resolves the target from validated input and the trusted context, by looking up stored
    * records. Returns `undefined` when there is no such resource, which the caller sees exactly as
    * a denied read.
@@ -75,6 +81,8 @@ export interface SchoolTool {
   readonly inputSchema: z.ZodObject;
   /** The action every call is authorized as. */
   readonly action: Action;
+  /** Only reads: never queued for confirmation (see {@link SchoolToolDefinition.readOnly}). */
+  readonly readOnly: boolean;
   /** Resolves the target. */
   resource(input: unknown, context: SchoolToolContext): Promise<ToolTarget | undefined>;
   /** Does the work. */
@@ -100,6 +108,7 @@ export function defineSchoolTool<S extends z.ZodObject, R>(definition: SchoolToo
     description,
     inputSchema,
     action,
+    readOnly: definition.readOnly === true,
     ...(annotations === undefined ? {} : { annotations }),
     // The runner passes only what `inputSchema` produced.
     resource: (input, context) => definition.resource(input as z.output<S>, context),
@@ -245,7 +254,7 @@ export class SchoolToolRunner {
         return await this.#enqueue(context, tool, parsed.data, "approval");
       }
       if (decision.effect === "deny") return await this.#refusal(context, tool.action, target);
-      if (options.confirmWrites === true && !READ_LIKE.has(tool.action)) {
+      if (options.confirmWrites === true && !READ_LIKE.has(tool.action) && !tool.readOnly) {
         return await this.#enqueue(context, tool, parsed.data, "confirmation");
       }
       return { status: "ok", value: await tool.handler(parsed.data, context), correlationId };

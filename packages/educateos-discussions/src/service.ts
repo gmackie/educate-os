@@ -65,8 +65,14 @@ export interface DiscussionServiceOptions {
   courseContent: Pick<CourseContentStorage, "load">;
   /** The assignments of an offering, so a graded topic names only one of its own. */
   assignmentsIn: (offeringId: OfferingId) => Promise<readonly string[]>;
-  /** Hall Monitor screening for student posts. Without it, student posts are not screened. */
+  /** Hall Monitor screening for student posts. */
   screening?: DiscussionScreening;
+  /**
+   * What happens to a student post when no `screening` is configured. `"hold"` (the default)
+   * keeps it back for a teacher's approval, flagged `screening_not_configured`, so no minor's post
+   * reaches the class unchecked. `"publish"` publishes it unscreened, for synthetic demo districts.
+   */
+  unscreenedStudentPosts?: "hold" | "publish";
   /** The current time as an ISO 8601 timestamp. */
   now?: () => string;
 }
@@ -90,6 +96,8 @@ function parseInput<S extends z.ZodType>(schema: S, input: unknown): z.output<S>
 }
 
 const NOT_FOUND = () => new EducateOsError("not-found", "no such discussion");
+/** The reason code a student post held for want of screening carries. */
+export const UNSCREENED_REASON = "screening_not_configured";
 const newId = <P extends string>(prefix: P) => `${prefix}_${randomIdBody()}` as const;
 
 /** A post's classification: what its moderation status lets people read. */
@@ -447,7 +455,11 @@ export class DiscussionService {
 
   async #screen(scope: OfferingScope, checkId: string, text: string): Promise<ScreeningVerdict> {
     const { screening, directory } = this.#options;
-    if (screening === undefined) return { outcome: "allow" };
+    if (screening === undefined) {
+      return this.#options.unscreenedStudentPosts === "publish"
+        ? { outcome: "allow" }
+        : { outcome: "hold", decision: "hold", reasonCodes: [UNSCREENED_REASON] };
+    }
     const offering = directory.offerings.find((o) => o.id === scope.offeringId);
     const gradeBand = directory.courses.find((c) => c.id === offering?.courseId)?.gradeBand;
     return screenPost(screening, { checkId, text, ...(gradeBand === undefined ? {} : { gradeBand }) });

@@ -13,7 +13,7 @@
   // ForgeGraph's FG_COMMIT_HASH would be dropped and its source-order guard would refuse every
   // later deploy (SCHO-233). Requests that match a file never reach the script, except on the paths
   // run_worker_first names: the operator console, the opt-in registry and the health check
-  // (SCHO-206), and Clever portal launches (SCHO-249).
+  // (SCHO-206), Clever portal launches (SCHO-249), and Stripe's billing webhook (SCHO-208).
   "main": "worker.ts",
   "assets": {
     "binding": "ASSETS",
@@ -21,7 +21,7 @@
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page",
     // Must equal DYNAMIC_PATHS in packages/educateos-control-plane/src/app.ts (site-config.test.mjs).
-    "run_worker_first": ["/healthz", "/app", "/app/*", "/registry/*", "/clever/launch"]
+    "run_worker_first": ["/healthz", "/app", "/app/*", "/registry/*", "/clever/launch", "/stripe/webhook"]
   },
   // The control plane's operators and installations. This Worker owns the data, so it must never
   // be renamed, nor the class (SCHO-231): a new name starts an empty namespace.
@@ -30,7 +30,10 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ControlPlane"] }],
   // Secrets, set with `wrangler secret put` (never in this file): CLEVER_CLIENT_ID and
-  // CLEVER_CLIENT_SECRET, the educateos.io Clever app's OAuth client, for /clever/launch (SCHO-249).
+  // CLEVER_CLIENT_SECRET, the educateos.io Clever app's OAuth client, for /clever/launch (SCHO-249);
+  // STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and COMMERCE_SIGNING_KEY for billing at /app/billing
+  // (SCHO-208, docs/educateos/control-plane.md "Billing"). Without all three, billing says it is
+  // unavailable and the rest of the site is unaffected.
   "vars": {
     // The Access application "EducateOS operator console" (9074c7b7) guards educateos.io/app: anyone
     // with a verified email (one-time PIN or GitHub). The Worker verifies each assertion with these.
@@ -40,6 +43,9 @@
     // registered installations: Clever district ID to managed hostname. A demo bridge until the
     // guided install writes installation rows; the registry is consulted first. Only
     // <slug>.educateos.io hosts are accepted. 6ade4156… is the educateos-dev app's sandbox district.
+    // The Stripe Customer Portal configuration billing opens (SCHO-208): the EducateOS sandbox's,
+    // payment methods only. Stripe test mode until pricing is decided.
+    "STRIPE_PORTAL_CONFIGURATION": "bpc_1UV3R5L1y99jAIetN8fGRXZK",
     "CLEVER_LAUNCH_DISTRICTS": "{\"6ade41569b8cebb96d733c48\":\"northfield.educateos.io\"}",
     // Where a Clever user in no district goes: a teacher who authorized the app themselves, as
     // every sandbox demo login is. Clever names no district for them to route by.
