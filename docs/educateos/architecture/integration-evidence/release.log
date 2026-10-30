@@ -1,0 +1,175 @@
+TAP version 13
+# fatal: Needed a single revision
+# Subtest: NUL records preserve names, renames and removals
+ok 1 - NUL records preserve names, renames and removals
+  ---
+  duration_ms: 1.563083
+  type: 'test'
+  ...
+# Subtest: categories fail conservatively for unknown packages
+ok 2 - categories fail conservatively for unknown packages
+  ---
+  duration_ms: 0.253125
+  type: 'test'
+  ...
+# Subtest: real Git fixture binds review to changes including rename out of kernel and deletion
+ok 3 - real Git fixture binds review to changes including rename out of kernel and deletion
+  ---
+  duration_ms: 1111.647125
+  type: 'test'
+  ...
+# Subtest: Markdown escapes table delimiters and embedded newlines
+ok 4 - Markdown escapes table delimiters and embedded newlines
+  ---
+  duration_ms: 0.139625
+  type: 'test'
+  ...
+# vp run: concurrency 12 (12 cpus, 64.0 GiB) -- set VP_RUN_CONCURRENCY_LIMIT in the environment or the repo-root .env to override
+# vp run: concurrency 12 (12 cpus, 64.0 GiB) -- set VP_RUN_CONCURRENCY_LIMIT in the environment or the repo-root .env to override
+# Subtest: generic releases default off, including inherited UI flags
+ok 5 - generic releases default off, including inherited UI flags
+  ---
+  duration_ms: 0.672583
+  type: 'test'
+  ...
+# Subtest: school builds opt in explicitly and reject misspelled selectors
+ok 6 - school builds opt in explicitly and reject misspelled selectors
+  ---
+  duration_ms: 0.187291
+  type: 'test'
+  ...
+# Subtest: the release manifest records the selected variant and its content hashes
+ok 7 - the release manifest records the selected variant and its content hashes
+  ---
+  duration_ms: 12.653584
+  type: 'test'
+  ...
+# Subtest: ForgeGraph frontend entrypoint forwards explicit profile flags to the build task
+ok 8 - ForgeGraph frontend entrypoint forwards explicit profile flags to the build task
+  ---
+  duration_ms: 1055.377917
+  type: 'test'
+  ...
+# Subtest: manifest generated from real configs matches the golden file
+ok 9 - manifest generated from real configs matches the golden file
+  ---
+  duration_ms: 25.981833
+  type: 'test'
+  ...
+# Subtest: every $-token in binding templates and vars uses known placeholder syntax
+ok 10 - every $-token in binding templates and vars uses known placeholder syntax
+  ---
+  duration_ms: 14.099084
+  type: 'test'
+  ...
+# Subtest: worker entries carry the deploy contract
+ok 11 - worker entries carry the deploy contract
+  ---
+  duration_ms: 4.357583
+  type: 'test'
+  ...
+# Subtest: every gatekeeper shortName is a legal deploy slug
+ok 12 - every gatekeeper shortName is a legal deploy slug
+  ---
+  duration_ms: 4.0975
+  type: 'test'
+  ...
+# Subtest: installable gatekeepers that take no inputs are install-once
+ok 13 - installable gatekeepers that take no inputs are install-once
+  ---
+  duration_ms: 3.598709
+  type: 'test'
+  ...
+# Subtest: releaseShortName folds package names into the slug charset
+ok 14 - releaseShortName folds package names into the slug charset
+  ---
+  duration_ms: 0.059
+  type: 'test'
+  ...
+# Subtest: releaseShortName rejects names that don't fold to a legal slug
+ok 15 - releaseShortName rejects names that don't fold to a legal slug
+  ---
+  duration_ms: 0.265833
+  type: 'test'
+  ...
+# Subtest: every gatekeeper shortName is unique
+ok 16 - every gatekeeper shortName is unique
+  ---
+  duration_ms: 3.175125
+  type: 'test'
+  ...
+# Subtest: generateManifest rejects gatekeepers whose folded shortNames collide
+ok 17 - generateManifest rejects gatekeepers whose folded shortNames collide
+  ---
+  duration_ms: 3.235791
+  type: 'test'
+  ...
+# Subtest: per-package deploy-inputs.json files are well-formed when present
+ok 18 - per-package deploy-inputs.json files are well-formed when present
+  ---
+  duration_ms: 1.865166
+  type: 'test'
+  ...
+# Subtest: a gatekeeper-prefixed library is not a deployable worker
+ok 19 - a gatekeeper-prefixed library is not a deployable worker
+  ---
+  duration_ms: 7.749375
+  type: 'test'
+  ...
+# Subtest: a service package carries its backend binding and only its own inputs
+ok 20 - a service package carries its backend binding and only its own inputs
+  ---
+  duration_ms: 9.44775
+  type: 'test'
+  ...
+# Subtest: the district service declares no D1 or R2, sends email through Email Service, and binds the backend to its /api surface only
+ok 21 - the district service declares no D1 or R2, sends email through Email Service, and binds the backend to its /api surface only
+  ---
+  duration_ms: 3.234625
+  type: 'test'
+  ...
+# Subtest: a D1 database becomes a $D1_<B>_ID binding and its migrations content-addressed blobs
+ok 22 - a D1 database becomes a $D1_<B>_ID binding and its migrations content-addressed blobs
+  ---
+  duration_ms: 13.22775
+  type: 'test'
+  ...
+# Subtest: workers without D1 carry no d1Migrations field, so existing manifests are unchanged
+ok 23 - workers without D1 carry no d1Migrations field, so existing manifests are unchanged
+  ---
+  duration_ms: 3.175292
+  type: 'test'
+  ...
+# Subtest: D1 migrations the installer would refuse fail the release build
+ok 24 - D1 migrations the installer would refuse fail the release build
+  ---
+  duration_ms: 1.421333
+  type: 'test'
+  ...
+# Subtest: a worker's Cron Triggers reach its manifest entry, and no other trigger is accepted
+ok 25 - a worker's Cron Triggers reach its manifest entry, and no other trigger is accepted
+  ---
+  duration_ms: 21.928542
+  type: 'test'
+  ...
+# Subtest: school release requires district principal resolution while generic stays unchanged
+ok 26 - school release requires district principal resolution while generic stays unchanged
+  ---
+  duration_ms: 46.267875
+  type: 'test'
+  ...
+# Subtest: school manifest binds district authority and MCP before signing; generic is untouched
+ok 27 - school manifest binds district authority and MCP before signing; generic is untouched
+  ---
+  duration_ms: 34.477292
+  type: 'test'
+  ...
+1..27
+# tests 27
+# suites 0
+# pass 27
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1408.847042

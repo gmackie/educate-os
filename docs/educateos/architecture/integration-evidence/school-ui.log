@@ -1,0 +1,10 @@
+$ vitest run src/features/school/SchoolShell.test.tsx src/features/school/schoolMode.test.ts
+
+ RUN  v5.0.5 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-frontend
+
+
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+   Start at  07:10:46
+   Duration  6.57s (import 69%, environment 16%, transform 8%, tests 6%, worker 1%)
+

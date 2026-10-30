@@ -1,0 +1,18 @@
+
+ RUN  v5.0.5 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/educateos-registry
+
+
+ Test Files  6 passed (6)
+      Tests  71 passed (71)
+   Start at  07:08:38
+   Duration  2.45s (transform 84%, import 12%, tests 4%)
+
+
+ RUN  v5.0.5 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/educateos-registry
+
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  07:08:44
+   Duration  7.13s (transform 85%, tests 10%, import 4%, worker 1%)
+

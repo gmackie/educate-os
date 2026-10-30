@@ -1,0 +1,24 @@
+
+ RUN  v5.0.5 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-backend
+
+Sourcemap for "/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/standardwebhooks@1.1.1/node_modules/standardwebhooks/dist/index.js" points to missing source files
+Sourcemap for "/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/@google+genai@2.21.0_supports-color@10.2.2/node_modules/@google/genai/dist/web/index.mjs" points to missing source files
+uncaught exception; source = Uncaught (in promise); stack = Error: Workshop execution is disabled with capability policy: transitive revocation is unavailable.
+    at assertRevocableExecution (/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-backend/src/capability-policy.ts:9:11)
+    at AgentSpawnerQueueImpl.#createSpawnedChat (/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-backend/src/overseer.ts:13994:5)
+    at AgentSpawnerQueueImpl.spawnAgent (/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-backend/src/overseer.ts:13939:20)
+    at AgentSpawnerQueueImpl.spawnAgent (/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/capnweb-validate@0.3.0_capnweb@0.12.0_esbuild@0.28.2_rollup@4.62.3_vite@7.3.6_@types+no_0987dcadb26e61766a9bd87618152178/node_modules/capnweb-validate/src/internal/core.ts:1421:28)
+uncaught exception; source = Uncaught (in promise); stack = Error: Workshop execution is disabled with capability policy: transitive revocation is unavailable.
+    at AgentSpawnerBindingImpl.spawn (/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-backend/src/overseer.ts:14116:5)
+uncaught exception; source = Uncaught (in promise); stack = Error: Workshop execution is disabled with capability policy: transitive revocation is unavailable.
+    at assertRevocableExecution (/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-backend/src/capability-policy.ts:9:11)
+    at Proxy.<anonymous> (/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-backend/src/overseer.ts:5065:11)
+uncaught exception; source = Uncaught (in promise); stack = Error: Workshop execution is disabled with capability policy: transitive revocation is unavailable.
+    at assertRevocableExecution (/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-backend/src/capability-policy.ts:9:11)
+    at Proxy.<anonymous> (/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-backend/src/overseer.ts:5065:11)
+
+ Test Files  6 passed (6)
+      Tests  55 passed (55)
+   Start at  07:12:47
+   Duration  149.25s (transform 85%, import 13%, tests 2%)
+

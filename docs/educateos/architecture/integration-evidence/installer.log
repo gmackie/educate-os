@@ -1,0 +1,12 @@
+
+ RUN  v5.0.5 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/educateos-installer
+
+
+ Test Files  3 passed (3)
+      Tests  34 passed (34)
+   Start at  07:13:22
+   Duration  5.91s (tests 60%, transform 24%, import 16%)
+
+    Isolate  3 workers spawned · ~191ms startup each (spawn + environment, per file)
+             at least ~382ms faster with isolate: false — reuses workers across files instead of one per file
+

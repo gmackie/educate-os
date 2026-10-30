@@ -1,0 +1,9 @@
+
+ RUN  v5.0.5 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/educateos-ai-guard
+
+
+ Test Files  5 passed (5)
+      Tests  89 passed (89)
+   Start at  07:11:02
+   Duration  26.58s (transform 86%, tests 10%, import 2%, worker 1%)
+

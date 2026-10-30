@@ -1,0 +1,9 @@
+
+ RUN  v5.0.5 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/educateos-identity
+
+
+ Test Files  8 passed (8)
+      Tests  93 passed (93)
+   Start at  07:10:55
+   Duration  2.99s (transform 82%, import 12%, tests 5%, worker 1%)
+

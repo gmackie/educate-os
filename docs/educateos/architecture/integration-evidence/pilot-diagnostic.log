@@ -1,0 +1,151 @@
+
+ RUN  v5.0.5 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/educateos-pilot-gate
+
+ × __tests__/security-matrix.test.ts > §14: District B request to district A resource > a Northfield token is refused at Riverbend, and Riverbend's principals find no Northfield record by ID 30029ms
+   → Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ✓ __tests__/security-matrix.test.ts > §14: District B request to district A resource > Northfield's policy engine denies a Riverbend subject on a Northfield resource before any rule runs 22913ms
+ ✓ __tests__/security-matrix.test.ts > §14: Student A attempts B's artifact and private chat > a classmate cannot read, list, revise, keep or submit another student's artifact, whatever IDs, query or extra fields the request carries 11942ms
+ ✓ __tests__/security-matrix.test.ts > §14: Student A attempts B's artifact and private chat > the district's policy engine denies a classmate reading a student's personal conversation 8560ms
+ □ __tests__/security-matrix.test.ts > §14: Student A attempts B's artifact and private chat > a classmate cannot read another student's private AI chat over the API [todo: blocked by SCHO-107]
+ ✓ __tests__/security-matrix.test.ts > §14: Teacher requests unrelated personal AI conversation > a teacher sees submitted work and course workspace records, never a personal workspace or its contents 9498ms
+ ✓ __tests__/security-matrix.test.ts > §14: Teacher requests unrelated personal AI conversation > the district's policy engine denies a teacher reading a student's personal conversation 8529ms
+ □ __tests__/security-matrix.test.ts > §14: Teacher requests unrelated personal AI conversation > a teacher cannot open a student's personal AI conversation over the API [todo: blocked by SCHO-107]
+ ✓ __tests__/security-matrix.test.ts > §14: MCP tool claims other student identity or untrusted `readOnlyHint` > an API request naming another principal or role is refused, and the caller is always the token's verified principal 7943ms
+ ✓ __tests__/security-matrix.test.ts > §14: MCP tool claims other student identity or untrusted `readOnlyHint` > a school tool call naming another student is denied, and one with an untrusted readOnlyHint is authorized as its real action 8637ms
+ ✓ __tests__/security-matrix.test.ts > §14: MCP tool claims other student identity or untrusted `readOnlyHint` > through the agent-facing gatekeeper, the subject is the connected account's principal, readOnlyHint is ignored, every write waits for a person, and another district's account reaches nothing 7884ms
+ ✓ __tests__/security-matrix.test.ts > §14: OneRoster removes enrolled student temporarily > a roster import that drops a student keeps their workspace and work, revokes their class access on the next request, and a later import restores it 3748ms
+ ✓ __tests__/security-matrix.test.ts > §14: Imported Thin CC references unregistered LTI tool > a Thin CC LTI link is kept as a never-launchable tool reference while its web links reach the class review queue 5196ms
+ ✓ __tests__/security-matrix.test.ts > §14: External page embeds prompt injection > an imported page with instruction-like text is flagged for review, never auto-released, and changes no policy, configuration or rights 5108ms
+ ✓ __tests__/security-matrix.test.ts > §14: Blueprint Git baseline contains answer key in old commit > forking a baseline whose history holds an answer key is blocked, and recreating it yields a parentless commit without the key 6797ms
+ ✓ __tests__/security-matrix.test.ts > §14: Stale course AI budget, underfunded student or retry duplication > a closed term's course budget and an exhausted student cap deny new inference, and a retried request is billed once 6056ms
+ ✓ __tests__/security-matrix.test.ts > §14: AI grader suggests a score, teacher has not reviewed > evaluator suggestions stay suggestions, a co-teacher's grade waits for the teacher, and the student sees no grade until one is official 5156ms
+ ✓ __tests__/security-matrix.test.ts > §14: AI grader suggests a score, teacher has not reviewed > a grade written on an agent's behalf is held for teacher approval 5175ms
+ □ __tests__/security-matrix.test.ts > §14: AI grader suggests a score, teacher has not reviewed > an AI feedback run's suggested score cannot become official over the API [todo: blocked by SCHO-107]
+ ✓ __tests__/security-matrix.test.ts > §14: Source content deleted/updated > after its source changes or disappears, the approved release and the activity built on it are unchanged, and a failed re-import says the source is unavailable 7074ms
+ ✓ __tests__/security-matrix.test.ts > §14: Semester end / graduation > closing a term revokes class grants and course AI funding, and keeps the students' work readable and keepable 5857ms
+ × __tests__/security-matrix.test.ts > §14: Semester end / graduation > a graduating student's grants end while their eligible work is kept 4043ms
+   → expected [ [ 403, 'forbidden' ], …(1) ] to deep equally contain [ 401, 'unauthenticated' ]
+ □ __tests__/security-matrix.test.ts > §14: Semester end / graduation > the student is offered an export of eligible work [todo: blocked by SCHO-90]
+ ✓ __tests__/security-matrix.test.ts > §14: Root `educateos.io` unavailable > with the root unreachable, the entitlement cache holds and sign-in, work, grading and AI budgets continue 11456ms
+ ✓ __tests__/security-matrix.test.ts > §14: Installer OAuth revoked > a revoked installer credential halts the upgrade with no further change to the account, and the district app keeps serving its data 18606ms
+ ✓ __tests__/security-matrix.test.ts > §14: Public registry catalog compromised > a release signed by an unpinned key and a tampered framework release are rejected, and the district's pinned release and approved catalog are unchanged 22510ms
+ ✓ __tests__/security-matrix.test.ts > §14: Import from another district > a student's archive from the district app's own records carries no peer work, teacher-only material or credentials 13820ms
+ □ __tests__/security-matrix.test.ts > §14: Import from another district > a transfer between the two district apps imports only the authorized work [todo: blocked by SCHO-90]
+ ✓ __tests__/exit-criteria.test.ts > §3.4: Two synthetic districts, at least two schools per district, three subject scenarios, multiple student principals > both harness districts serve the full app in isolation, each with two schools, three subjects of installed activities and submissions from several students 14304ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: Unauthorized student A cannot read B's work or teacher-only materials; a teacher cannot read a student's personal workspace > student A cannot read student B's work or feedback 18367ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: Unauthorized student A cannot read B's work or teacher-only materials; a teacher cannot read a student's personal workspace > a student sees an activity without its teacher-only material, and cannot reach teacher routes 11750ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: Unauthorized student A cannot read B's work or teacher-only materials; a teacher cannot read a student's personal workspace > a teacher cannot list or read a student's personal workspace 6738ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: One content source imported via a generic URL, one via Thin CC, and one native Blueprint; all normalize into the same resource model > a generic URL becomes an approved resource release over the API 6949ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: One content source imported via a generic URL, one via Thin CC, and one native Blueprint; all normalize into the same resource model > a Thin CC web link becomes an approved release of the same resource descriptor 5741ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: One content source imported via a generic URL, one via Thin CC, and one native Blueprint; all normalize into the same resource model > a native Blueprint becomes an approved release of the same resource descriptor 6109ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: One assignment produces a persistent submission snapshot and deterministic CI report; no unreviewed official grade writeback > a submission pins its revision digests through later edits, its CI report is reproducible, and no grade is official until the teacher records it 7213ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: Admin can enable/disable a capability for a subset of classes, predict impacted users, and roll back configuration > planning a capability for two classes predicts each class's students and staff without changing anything 7952ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: Admin can enable/disable a capability for a subset of classes, predict impacted users, and roll back configuration > narrowing to a subset and then rolling back records each step as a revision and restores the earlier desired state 8065ms
+ □ __tests__/exit-criteria.test.ts > §3.4: Admin can enable/disable a capability for a subset of classes, predict impacted users, and roll back configuration > a class outside the rollout is refused the capability on its next request [todo: blocked by SCHO-120]
+ ✓ __tests__/exit-criteria.test.ts > §3.4: Artificial root outage does not interrupt existing district student/teacher activity > while every root call fails, students save and submit and teachers review and grade, and the entitlement leaves the classroom unaffected 7477ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: End-of-term transition retains eligible artifacts without retaining expired course grants > after the term closes, its artifacts and submissions remain and can be kept, while its course grants and new class work are refused 3604ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: Full district-local metering reports accurate per-principal and per-funding-pool AI use; no root content transmission > the usage report's per-principal, per-class and per-pool totals equal what was settled 6632ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: Full district-local metering reports accurate per-principal and per-funding-pool AI use; no root content transmission > the district's heartbeat to the root carries no names, IDs or content 5915ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: IdP/roster import errors do not silently remap principals or delete workspaces > a roster import with errors or a conflicting identity applies nothing, and no workspace is deleted 3726ms
+ ✓ __tests__/exit-criteria.test.ts > §3.4: IdP/roster import errors do not silently remap principals or delete workspaces > an expired, foreign-issuer or unknown-subject token resolves to no principal, and extra claims change nothing 6649ms
+ ✓ __tests__/load.test.ts > H01: Concurrent students (smoke-level load) > concurrent saves by many students lose no write 22188ms
+
+   ❯ __tests__/load.test.ts:54:17 notice
+     ↳ 24 students open a workspace and start an essay: 173 ms
+     ↳ 120 concurrent saves: 15730 ms (2319 conflict retries)
+
+ ✓ __tests__/load.test.ts > H01: Concurrent students (smoke-level load) > concurrent repeated submits produce one submission per student 7597ms
+
+   ❯ __tests__/load.test.ts:54:17 notice
+     ↳ 72 concurrent submits (three per student): 4355 ms (268 conflict retries)
+
+ ✓ __tests__/load.test.ts > H01: Concurrent students (smoke-level load) > concurrent AI requests, retries included, leave the ledger totals exact 3684ms
+
+   ❯ __tests__/load.test.ts:54:17 notice
+     ↳ 192 concurrent AI requests (each sent twice): 127 ms
+
+ ✓ __tests__/restore.test.ts > H01: Restore rehearsal > a district snapshotted, destroyed and restored into a new app serves equivalent directory, artifacts, submissions, ledger and configuration 11474ms
+ □ __tests__/restore.test.ts > H01: Restore rehearsal > the same rehearsal against D1 and R2 backups [todo: blocked by SCHO-108]
+ ✓ __tests__/district-report.test.ts > the scenario registry > cites a SCHO issue and a reason for every blocked cell, and covers every district 20ms
+ ✓ __tests__/district-report.test.ts > the scenario registry > runs the same scenarios in every district with the same profile, whatever the district is called 2ms
+ ✓ __tests__/district-report.test.ts > the in-process report > is MET only for cells that ran and passed, and fails on any NOT MET 1ms
+ ✓ __tests__/district-report.test.ts > the in-process report > never reports a blocked cell as MET, whatever the run says 0ms
+ ✓ __tests__/district-report.test.ts > the in-process report > renders a district × scenario table with each blocked cell's issues 1ms
+ ✓ __tests__/district-report.test.ts > the live target > reports a relative redirect as NOT MET rather than failing 35ms
+ ✓ __tests__/district-report.test.ts > the live target > probes with GETs only, follows no redirect, and reports Access and the LTI JWKS 1ms
+ ✓ __tests__/district-report.test.ts > the live target > sends a service token as Access's headers, and refuses a target that is not a demo district 17ms
+ ✓ __tests__/revocation.test.ts > H01: Policy revocation mid-session > a student dropped by a roster import is refused their class and its AI funding on the next request, with the same token 9784ms
+ ✓ __tests__/revocation.test.ts > H01: Policy revocation mid-session > a teacher removed from a class loses its roster, submissions and grading on the next request 4270ms
+ ✓ __tests__/revocation.test.ts > H01: Policy revocation mid-session > an applied configuration that disables AI spending denies the next AI request 6624ms
+ □ __tests__/revocation.test.ts > H01: Policy revocation mid-session > a capability disabled mid-session is refused on the next request [todo: blocked by SCHO-120]
+ ✓ __tests__/traceability.test.ts > the criteria registry > covers every §14 row and every §3.4 exit criterion once, with unique check IDs 2ms
+ ✓ __tests__/traceability.test.ts > the criteria registry > is registered by exactly the test file each criterion names 3ms
+ ✓ __tests__/traceability.test.ts > the criteria registry > keeps docs/educateos/pilot-gate.md's generated tables in step (pnpm --filter @educateos/pilot-gate write-doc) 4ms
+ ✓ __tests__/traceability.test.ts > the criteria registry > keeps accessibility NOT MET until the UI packages land 0ms
+ ✓ __tests__/traceability.test.ts > the gate report > meets a gate only when every criterion it requires passed in the run 4ms
+ ✓ __tests__/traceability.test.ts > the gate report > reports a failed or missing check as NOT MET and says the run is broken 1ms
+ □ __tests__/accessibility.test.ts > §14: Accessibility audit > an audit of the student, teacher and admin critical paths passes [todo: blocked by SCHO-22, SCHO-23, SCHO-24]
+ □ __tests__/accessibility.test.ts > §3.4: Accessible keyboard and screen-reader flows for student, teacher and administration > the student, teacher and admin flows complete by keyboard and screen reader [todo: blocked by SCHO-22, SCHO-23, SCHO-24]
+ □ __tests__/accessibility.test.ts > H01: Accessibility of the pilot UIs > Student Learning Home critical paths meet WCAG 2.2 AA [todo: blocked by SCHO-22]
+ □ __tests__/accessibility.test.ts > H01: Accessibility of the pilot UIs > Teacher Studio critical paths meet WCAG 2.2 AA [todo: blocked by SCHO-23]
+ □ __tests__/accessibility.test.ts > H01: Accessibility of the pilot UIs > District admin console critical paths meet WCAG 2.2 AA [todo: blocked by SCHO-24]
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > sso-roles: each role (student, teacher, administrator, and a guardian where the district has a confirmed one) signs in through the district's trusted issuer and resolves to its own principal; an expired, foreign or unknown credential resolves to no one 5979ms
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > vendor-sso: the vendor's OIDC sign-in (Clever, ClassLink, Google) resolves to the directory principal through (district, issuer, subject) 133ms
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > tenant-isolation: the district refuses every other demo district's tokens, a subject two districts share resolves to each district's own principal, and no other district's record is reachable by ID 7063ms
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > roster-first-sync: a first sync from the roster source builds the district's directory: every person by (issuer, subject) and every class's active roster 15ms
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > roster-delta: a later sync applies only what changed at the source 22ms
+ □ __tests__/districts.cedarvalley.test.ts > district cedarvalley > drop: a student dropped at the source loses the class on the next request, and keeps their workspace and work [not yet applicable: SCHO-242]
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > large-removal-hold: a sync that would remove most of the students is held for an administrator's review, and nothing is deactivated 31ms
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > roster-outage: a roster provider outage fails the sync visibly, leaves the directory unchanged, and the next sync after recovery succeeds 42ms
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > lms-outage: while the LMS is down, grade passback fails without being recorded as posted, and posts once after recovery 26ms
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > classroom-coursework: Google Classroom coursework is created and its teacher-approved grades are synced back 15ms
+ □ __tests__/districts.cedarvalley.test.ts > district cedarvalley > term-rollover: a term the source of record ends can be closed, which revokes its class grants and course AI funding and keeps the students' work [not yet applicable: SCHO-242]
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > export-restore: a student's archive carries only their own work, and the district restored from a backup serves the same views 6924ms
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > root-offline: with educateos.io unreachable, the entitlement holds and students and teachers keep working 2634ms
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > rfc-wrong-course: RFC 0002 §10 wrong course: a teacher cannot read or grade a class they do not teach 2629ms
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > rfc-expired-role: RFC 0002 §10 expired role: an inactive enrollment grants nothing, nor (where the district has one) a completed term's class 2591ms
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > rfc-guardian-other-family: RFC 0002 §10 guardian from another family: a guardian reads only the children their confirmed relationships open, never another family's, and a pending relationship opens none 2145ms
+ ✓ __tests__/districts.cedarvalley.test.ts > district cedarvalley > rfc-duplicate-write: RFC 0002 §10 duplicate write: a repeated submit records one submission 2877ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > sso-roles: each role (student, teacher, administrator, and a guardian where the district has a confirmed one) signs in through the district's trusted issuer and resolves to its own principal; an expired, foreign or unknown credential resolves to no one 6571ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > tenant-isolation: the district refuses every other demo district's tokens, a subject two districts share resolves to each district's own principal, and no other district's record is reachable by ID 7603ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > roster-first-sync: a first sync from the roster source builds the district's directory: every person by (issuer, subject) and every class's active roster 4537ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > roster-delta: a later sync applies only what changed at the source 4128ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > drop: a student dropped at the source loses the class on the next request, and keeps their workspace and work 2971ms
+ □ __tests__/districts.northfield.test.ts > district northfield > large-removal-hold: a sync that would remove most of the students is held for an administrator's review, and nothing is deactivated [not yet applicable: SCHO-180]
+ ✓ __tests__/districts.northfield.test.ts > district northfield > lti-launch: an LTI 1.3 launch from the district's LMS signs the student in to their own principal and class 192ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > lti-deep-link: a teacher places an activity through Deep Linking, the platform verifies the response, and the placed link launches that activity 210ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > lti-ags: a teacher-approved grade passes back to the LMS gradebook through AGS, and an unapproved one does not 129ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > lms-outage: while the LMS is down, grade passback fails without being recorded as posted, and posts once after recovery 199ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > term-rollover: a term the source of record ends can be closed, which revokes its class grants and course AI funding and keeps the students' work 3175ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > export-restore: a student's archive carries only their own work, and the district restored from a backup serves the same views 9488ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > root-offline: with educateos.io unreachable, the entitlement holds and students and teachers keep working 3842ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > rfc-wrong-course: RFC 0002 §10 wrong course: a teacher cannot read or grade a class they do not teach 3418ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > rfc-expired-role: RFC 0002 §10 expired role: an inactive enrollment grants nothing, nor (where the district has one) a completed term's class 3688ms
+ ✓ __tests__/districts.northfield.test.ts > district northfield > rfc-duplicate-write: RFC 0002 §10 duplicate write: a repeated submit records one submission 3181ms
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > sso-roles: each role (student, teacher, administrator, and a guardian where the district has a confirmed one) signs in through the district's trusted issuer and resolves to its own principal; an expired, foreign or unknown credential resolves to no one 4071ms
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > vendor-sso: the vendor's OIDC sign-in (Clever, ClassLink, Google) resolves to the directory principal through (district, issuer, subject) 184ms
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > tenant-isolation: the district refuses every other demo district's tokens, a subject two districts share resolves to each district's own principal, and no other district's record is reachable by ID 4434ms
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > roster-first-sync: a first sync from the roster source builds the district's directory: every person by (issuer, subject) and every class's active roster 15ms
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > roster-delta: a later sync applies only what changed at the source 27ms
+ □ __tests__/districts.lakeshore.test.ts > district lakeshore > drop: a student dropped at the source loses the class on the next request, and keeps their workspace and work [not yet applicable: SCHO-242]
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > large-removal-hold: a sync that would remove most of the students is held for an administrator's review, and nothing is deactivated 21ms
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > roster-outage: a roster provider outage fails the sync visibly, leaves the directory unchanged, and the next sync after recovery succeeds 23ms
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > lti-launch: an LTI 1.3 launch from the district's LMS signs the student in to their own principal and class 96ms
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > lti-deep-link: a teacher places an activity through Deep Linking, the platform verifies the response, and the placed link launches that activity 79ms
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > lti-ags: a teacher-approved grade passes back to the LMS gradebook through AGS, and an unapproved one does not 150ms
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > lms-outage: while the LMS is down, grade passback fails without being recorded as posted, and posts once after recovery 49ms
+ □ __tests__/districts.lakeshore.test.ts > district lakeshore > term-rollover: a term the source of record ends can be closed, which revokes its class grants and course AI funding and keeps the students' work [not yet applicable: SCHO-242]
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > export-restore: a student's archive carries only their own work, and the district restored from a backup serves the same views 5867ms
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > root-offline: with educateos.io unreachable, the entitlement holds and students and teachers keep working 4565ms
+ ✓ __tests__/districts.lakeshore.test.ts > district lakeshore > rfc-wrong-course: RFC 0002 §10 wrong course: a teacher cannot read or grade a class they do not teach 4466ms
+
+with-timeout: still running for 600s -- killing the process tree
+  command: pnpm --filter @educateos/pilot-gate exec vitest run --maxWorkers 1 --reporter verbose
+  cwd: /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458
+  elapsed: 600.2s
+  surviving processes (4):
+20519 node /opt/homebrew/bin/pnpm --filter @educateos/pilot-gate exec vitest run --maxWorkers 1 --reporter verbose
+21236 node ./node_modules/.bin/../../../../node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.9.1_@types+node@26.1.0_@vitest+browser-playwright@5.0_f699f1d74699f3f4cf69fa210d152782/node_modules/vitest/vitest.mjs run --maxWorkers 1 --reporter verbose
+21624 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/@esbuild+darwin-arm64@0.28.2/node_modules/@esbuild/darwin-arm64/bin/esbuild --service=0.28.2 --ping
+89715 /opt/homebrew/Cellar/node@22/22.22.0/bin/node --experimental-import-meta-resolve --require /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.9.1_@types+node@26.1.0_@vitest+browser-playwright@5.0_f699f1d74699f3f4cf69fa210d152782/node_modules/vitest/suppress-warnings.cjs --conditions node --conditions development /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/vitest@5.0.5_@opentelemetry+api@1.9.1_@types+node@26.1.0_@vitest+browser-playwright@5.0_f699f1d74699f3f4cf69fa210d152782/node_modules/vitest/dist/workers/forks.js

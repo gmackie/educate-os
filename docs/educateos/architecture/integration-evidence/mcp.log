@@ -1,0 +1,19 @@
+$ vitest run && vitest run --config vitest.worker.config.ts
+
+ RUN  v5.0.5 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/educateos-external-mcp
+
+
+ Test Files  4 passed (4)
+      Tests  21 passed (21)
+   Start at  07:01:42
+   Duration  66.49s (transform 84%, tests 8%, import 7%, worker 1%)
+
+
+ RUN  v5.0.5 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/educateos-external-mcp
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  07:04:39
+   Duration  22.95s (transform 95%, import 4%)
+

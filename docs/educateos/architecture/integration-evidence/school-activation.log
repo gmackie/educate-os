@@ -1,0 +1,9 @@
+
+ RUN  v5.0.5 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/educateos-installer
+
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  07:13:48
+   Duration  1.24s (transform 51%, tests 34%, import 14%)
+

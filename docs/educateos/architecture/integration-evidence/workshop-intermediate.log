@@ -1,0 +1,49 @@
+
+ RUN  v5.0.5 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-backend
+
+Sourcemap for "/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/standardwebhooks@1.1.1/node_modules/standardwebhooks/dist/index.js" points to missing source files
+Sourcemap for "/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/@google+genai@2.21.0_supports-color@10.2.2/node_modules/@google/genai/dist/web/index.mjs" points to missing source files
+ ❯ __tests__/capability-policy.test.ts (16 tests | 2 failed) 56ms
+   ❯ read-only authenticated authoring discovery (2)
+     × defaults closed without policy and for an uninitialized principal 9ms
+     × checks teacher and narrow student grants afresh without trusting client claims or mutating 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  __tests__/capability-policy.test.ts > read-only authenticated authoring discovery > defaults closed without policy and for an uninitialized principal
+TypeError: user.getWorkshopAuthoringCapability is not a function
+ ❯ __tests__/capability-policy.test.ts:197:25
+    195|     const stub = env.TEST_USER.getByName(`discovery-${crypto.randomUUI…
+    196|     await runInDurableObject(stub, async user => {
+    197|       expect(await user.getWorkshopAuthoringCapability({ operation: "c…
+       |                         ^
+    198|     });
+    199|   });
+ ❯ maybeHandleRunRequest Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/@cloudflare+vitest-plugin@1.4.3_@cloudflare+workers-types@5.20261005.1_@types+node@26.1.0_vitest@5.0.5/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:24
+ ❯ DurableObject.Wrapper.fetch Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/@cloudflare+vitest-plugin@1.4.3_@cloudflare+workers-types@5.20261005.1_@types+node@26.1.0_vitest@5.0.5/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  __tests__/capability-policy.test.ts > read-only authenticated authoring discovery > checks teacher and narrow student grants afresh without trusting client claims or mutating
+TypeError: user.getWorkshopAuthoringCapability is not a function
+ ❯ __tests__/capability-policy.test.ts:222:27
+    220|       try {
+    221|         storage.profile.put({ type: "user", id: "teacher", name: "Teac…
+    222|         expect(await user.getWorkshopAuthoringCapability({ operation: …
+       |                           ^
+    223|         storage.profile.put({ type: "user", id: "student", name: "Stud…
+    224|         expect(await user.getWorkshopAuthoringCapability({ operation: …
+ ❯ maybeHandleRunRequest Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/@cloudflare+vitest-plugin@1.4.3_@cloudflare+workers-types@5.20261005.1_@types+node@26.1.0_vitest@5.0.5/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:24
+ ❯ DurableObject.Wrapper.fetch Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/@cloudflare+vitest-plugin@1.4.3_@cloudflare+workers-types@5.20261005.1_@types+node@26.1.0_vitest@5.0.5/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  2 failed | 38 passed (40)
+   Start at  07:08:56
+   Duration  145.17s (transform 87%, import 12%)
+
+undefined
+/Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-backend:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run __tests__/capability-policy.test.ts __tests__/capability-boundaries.test.ts __tests__/principal-sign-in.test.ts __tests__/gadget-restore.test.ts --maxWorkers 1

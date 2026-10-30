@@ -1,0 +1,1093 @@
+$ pnpm run lint:check && pnpm run types:scripts && pnpm run configs:check && pnpm run production:check && pnpm run types:check
+$ vp lint
+packages/workshop-frontend/src/features/gatekeeper-sharing/GatekeeperUserPickerDialog.test.tsx:31:9: warning unicorn(consistent-function-scoping): Function `Part` does not capture any variables from its parent scope help: Move `Part` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/gatekeeper-sharing/GatekeeperUserPickerDialog.test.tsx:123:18: warning unicorn(consistent-function-scoping): Function `searchFor` does not capture any variables from its parent scope help: Move `searchFor` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/gatekeeper-sharing/GatekeeperUserPickerDialog.test.tsx:188:11: warning unicorn(consistent-function-scoping): Function `shown` does not capture any variables from its parent scope help: Move `shown` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/pptx.server.test.ts:183:11: warning unicorn(consistent-function-scoping): Function `size` does not capture any variables from its parent scope help: Move `size` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/code/WorkpieceCodeInterface.tsx:1095:46: warning eslint(no-shadow): 'changes' is already declared in the upper scope. help: Consider renaming 'changes' to avoid shadowing the variable from the outer scope.
+packages/workshop-frontend/src/ChatInterface.tsx:6402:29: warning eslint(no-shadow): 'lastMessage' is already declared in the upper scope. help: Consider renaming 'lastMessage' to avoid shadowing the variable from the outer scope.
+packages/workshop-frontend/src/GatekeeperModal.tsx:431:51: warning eslint(no-shadow): 'vendors' is already declared in the upper scope. help: Consider renaming 'vendors' to avoid shadowing the variable from the outer scope.
+packages/workshop-frontend/src/SandboxedResourceConfigurator.tsx:253:15: warning eslint(no-shadow): 'layoutHeight' is already declared in the upper scope. help: Consider renaming 'layoutHeight' to avoid shadowing the variable from the outer scope.
+packages/workshop-frontend/src/SandboxedResourceConfigurator.tsx:310:13: warning eslint(no-shadow): 'deltaX' is already declared in the upper scope. help: Consider renaming 'deltaX' to avoid shadowing the variable from the outer scope.
+packages/workshop-frontend/src/SandboxedResourceConfigurator.tsx:311:13: warning eslint(no-shadow): 'deltaY' is already declared in the upper scope. help: Consider renaming 'deltaY' to avoid shadowing the variable from the outer scope.
+packages/educateos-fixtures/src/vendors/oneroster.ts:137:55: warning eslint(no-shadow): 'r' is already declared in the upper scope. help: Consider renaming 'r' to avoid shadowing the variable from the outer scope.
+packages/educateos-fixtures/src/vendors/oneroster.ts:122:17: warning unicorn(consistent-function-scoping): Function `base` does not capture any variables from its parent scope help: Move `base` to the outer scope to avoid recreating it on every call.
+packages/educateos-provider-fakes/src/clever/model.ts:131:17: warning unicorn(consistent-function-scoping): Function `active` does not capture any variables from its parent scope help: Move `active` to the outer scope to avoid recreating it on every call.
+packages/educateos-provider-fakes/src/lti/platform.ts:275:17: warning unicorn(consistent-function-scoping): Function `attribute` does not capture any variables from its parent scope help: Move `attribute` to the outer scope to avoid recreating it on every call.
+packages/educateos-provider-fakes/src/lti/platform.ts:975:11: warning unicorn(consistent-function-scoping): Function `add` does not capture any variables from its parent scope help: Move `add` to the outer scope to avoid recreating it on every call.
+packages/educateos-provider-fakes/src/lti/platform.ts:1399:11: warning unicorn(consistent-function-scoping): Function `strings` does not capture any variables from its parent scope help: Move `strings` to the outer scope to avoid recreating it on every call.
+packages/educateos-provider-fakes/src/clever/fake.ts:173:15: warning unicorn(consistent-function-scoping): Function `strip` does not capture any variables from its parent scope help: Move `strip` to the outer scope to avoid recreating it on every call.
+packages/educateos-provider-fakes/src/clever/fake.ts:325:11: warning unicorn(consistent-function-scoping): Function `schoolsOfUser` does not capture any variables from its parent scope help: Move `schoolsOfUser` to the outer scope to avoid recreating it on every call.
+packages/educateos-fixtures/src/vendors/clever.ts:123:17: warning unicorn(consistent-function-scoping): Function `id` does not capture any variables from its parent scope help: Move `id` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/server.test.ts:235:9: warning unicorn(consistent-function-scoping): Function `shape` does not capture any variables from its parent scope help: Move `shape` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/server.test.ts:381:11: warning unicorn(consistent-function-scoping): Function `block` does not capture any variables from its parent scope help: Move `block` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/server.test.ts:437:9: warning unicorn(consistent-function-scoping): Function `big` does not capture any variables from its parent scope help: Move `big` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/server.test.ts:439:9: warning unicorn(consistent-function-scoping): Function `sweep` does not capture any variables from its parent scope help: Move `sweep` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/server.test.ts:443:9: warning unicorn(consistent-function-scoping): Function `lastSrc` does not capture any variables from its parent scope help: Move `lastSrc` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/server.test.ts:617:45: warning eslint(no-shadow): 'b' is already declared in the upper scope. help: Consider renaming 'b' to avoid shadowing the variable from the outer scope.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/client.test.ts:164:9: warning unicorn(consistent-function-scoping): Function `key` does not capture any variables from its parent scope help: Move `key` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/client.test.ts:262:11: warning unicorn(consistent-function-scoping): Function `advanced` does not capture any variables from its parent scope help: Move `advanced` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/client.test.ts:377:9: warning unicorn(consistent-function-scoping): Function `press` does not capture any variables from its parent scope help: Move `press` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/client.test.ts:378:9: warning unicorn(consistent-function-scoping): Function `nudgeSaved` does not capture any variables from its parent scope help: Move `nudgeSaved` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/client.test.ts:433:11: warning unicorn(consistent-function-scoping): Function `advanced` does not capture any variables from its parent scope help: Move `advanced` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/client.test.ts:453:11: warning unicorn(consistent-function-scoping): Function `rows` does not capture any variables from its parent scope help: Move `rows` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/client.test.ts:463:11: warning unicorn(consistent-function-scoping): Function `undo` does not capture any variables from its parent scope help: Move `undo` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/client.test.ts:476:11: warning unicorn(consistent-function-scoping): Function `rasterPass` does not capture any variables from its parent scope help: Move `rasterPass` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/client.test.ts:291:33: warning eslint(no-shadow): 'type' is already declared in the upper scope. help: Consider renaming 'type' to avoid shadowing the variable from the outer scope.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/client.test.ts:314:33: warning eslint(no-shadow): 'type' is already declared in the upper scope. help: Consider renaming 'type' to avoid shadowing the variable from the outer scope.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/client.test.ts:39:16: warning typescript(no-extraneous-class): Unexpected empty class. help: Delete this class
+packages/typed-storage/src/index.ts:60:33: warning eslint(no-shadow): 'Key' is already declared in the upper scope. help: Consider renaming 'Key' to avoid shadowing the variable from the outer scope.
+packages/typed-storage/src/index.ts:75:36: warning eslint(no-shadow): 'Key' is already declared in the upper scope. help: Consider renaming 'Key' to avoid shadowing the variable from the outer scope.
+packages/typed-storage/src/index.ts:415:7: warning eslint(no-shadow): 'collection' is already declared in the upper scope. help: Consider renaming 'collection' to avoid shadowing the variable from the outer scope.
+packages/typed-storage/src/index.ts:786:13: warning eslint(no-shadow): 'result' is already declared in the upper scope. help: Consider renaming 'result' to avoid shadowing the variable from the outer scope.
+packages/workshop-frontend/src/features/user-directory/UserSearchCombobox.test.tsx:97:18: warning unicorn(consistent-function-scoping): Function `typeInto` does not capture any variables from its parent scope help: Move `typeInto` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/user-directory/UserSearchCombobox.test.tsx:106:18: warning unicorn(consistent-function-scoping): Function `pressKey` does not capture any variables from its parent scope help: Move `pressKey` to the outer scope to avoid recreating it on every call.
+packages/integration-tests/src/mock-model.ts:106:42: warning eslint(no-shadow): 'index' is already declared in the upper scope. help: Consider renaming 'index' to avoid shadowing the variable from the outer scope.
+packages/integration-tests/src/harness.ts:251:22: warning eslint(no-shadow): 'resolve' is already declared in the upper scope. help: Consider renaming 'resolve' to avoid shadowing the variable from the outer scope.
+packages/workshop-frontend/src/features/chat/composer/ChatComposer.test.tsx:205:11: warning unicorn(consistent-function-scoping): Function `mountRoot` does not capture any variables from its parent scope help: Move `mountRoot` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/chat/composer/ChatComposer.test.tsx:224:11: warning unicorn(consistent-function-scoping): Function `textarea` does not capture any variables from its parent scope help: Move `textarea` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/chat/composer/ChatComposer.test.tsx:225:11: warning unicorn(consistent-function-scoping): Function `button` does not capture any variables from its parent scope help: Move `button` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/blueprints/workspace-slides/__tests__/svg.test.ts:88:9: warning unicorn(consistent-function-scoping): Function `bare` does not capture any variables from its parent scope help: Move `bare` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/chat/composer/ComposerAddMenu.test.tsx:138:11: warning unicorn(consistent-function-scoping): Function `getOverseer` does not capture any variables from its parent scope help: Move `getOverseer` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/chat/composer/ComposerAddMenu.test.tsx:156:11: warning unicorn(consistent-function-scoping): Function `getOverseer` does not capture any variables from its parent scope help: Move `getOverseer` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/chat/composer/ComposerAddMenu.test.tsx:178:11: warning unicorn(consistent-function-scoping): Function `firstSource` does not capture any variables from its parent scope help: Move `firstSource` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/chat/composer/ComposerAddMenu.test.tsx:277:11: warning unicorn(consistent-function-scoping): Function `getOverseer` does not capture any variables from its parent scope help: Move `getOverseer` to the outer scope to avoid recreating it on every call.
+packages/educateos-cartridge/src/course.ts:197:11: warning eslint(no-shadow): 'title' is already declared in the upper scope. help: Consider renaming 'title' to avoid shadowing the variable from the outer scope.
+packages/educateos-cartridge/src/course.ts:104:10: warning unicorn(consistent-function-scoping): Function `walk` does not capture any variables from its parent scope help: Move `walk` to the outer scope to avoid recreating it on every call.
+packages/educateos-cartridge/src/course.ts:165:17: warning unicorn(consistent-function-scoping): Function `moduleOf` does not capture any variables from its parent scope help: Move `moduleOf` to the outer scope to avoid recreating it on every call.
+packages/educateos-lti/src/dynamic-registration.ts:310:11: warning unicorn(consistent-function-scoping): Function `placementsOf` does not capture any variables from its parent scope help: Move `placementsOf` to the outer scope to avoid recreating it on every call.
+packages/educateos-ai-governance/__tests__/workerd/durable-object-store.test.ts:98:11: warning unicorn(consistent-function-scoping): Function `schema` does not capture any variables from its parent scope help: Move `schema` to the outer scope to avoid recreating it on every call.
+packages/educateos-ai-governance/__tests__/workerd/durable-object-store.test.ts:101:11: warning unicorn(consistent-function-scoping): Function `rows` does not capture any variables from its parent scope help: Move `rows` to the outer scope to avoid recreating it on every call.
+packages/educateos-ai-governance/__tests__/workerd/durable-object-store.test.ts:102:11: warning unicorn(consistent-function-scoping): Function `insert` does not capture any variables from its parent scope help: Move `insert` to the outer scope to avoid recreating it on every call.
+packages/educateos-integrations/src/google-classroom/links.ts:346:10: warning unicorn(consistent-function-scoping): Function `norm` does not capture any variables from its parent scope help: Move `norm` to the outer scope to avoid recreating it on every call.
+scripts/release/testdata/fixture-bundles/educateos-external-mcp/worker.js:2:8: warning typescript(no-extraneous-class): Unexpected empty class. help: Delete this class
+packages/workshop-backend/src/git-cache.ts:1208:53: warning typescript(no-this-alias): Unexpected aliasing of 'this' to local variable. help: Assigning a variable to this instead of properly using arrow lambdas may be a symptom of pre-ES2015 practices or not managing scope well.
+packages/workshop-backend/src/overseer.ts:1135:9: warning unicorn(consistent-function-scoping): Function `leaveSession` does not capture any variables from its parent scope help: Move `leaveSession` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/src/overseer.ts:10628:9: warning unicorn(consistent-function-scoping): Function `leaveSession` does not capture any variables from its parent scope help: Move `leaveSession` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/src/overseer.ts:2336:13: warning eslint(no-shadow): 'key' is already declared in the upper scope. help: Consider renaming 'key' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/src/overseer.ts:5554:45: warning eslint(no-shadow): 'ref' is already declared in the upper scope. help: Consider renaming 'ref' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/src/overseer.ts:6990:11: warning eslint(no-shadow): 'meta' is already declared in the upper scope. help: Consider renaming 'meta' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/src/overseer.ts:9147:32: warning eslint(no-shadow): 'log' is already declared in the upper scope. help: Consider renaming 'log' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/src/overseer.ts:11046:13: warning eslint(no-shadow): 'event' is already declared in the upper scope. help: Consider renaming 'event' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/src/overseer.ts:11055:19: warning eslint(no-shadow): 'event' is already declared in the upper scope. help: Consider renaming 'event' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/src/overseer.ts:4691:9: warning typescript(no-this-alias): Unexpected aliasing of 'this' to local variable. help: Assigning a variable to this instead of properly using arrow lambdas may be a symptom of pre-ES2015 practices or not managing scope well.
+packages/workshop-backend/src/overseer.ts:9684:9: warning typescript(no-this-alias): Unexpected aliasing of 'this' to local variable. help: Assigning a variable to this instead of properly using arrow lambdas may be a symptom of pre-ES2015 practices or not managing scope well.
+packages/workshop-backend/src/overseer.ts:12144:9: warning typescript(no-this-alias): Unexpected aliasing of 'this' to local variable. help: Assigning a variable to this instead of properly using arrow lambdas may be a symptom of pre-ES2015 practices or not managing scope well.
+packages/workshop-backend/src/agent.ts:1549:16: warning unicorn(consistent-function-scoping): Function `toolErrorText` does not capture any variables from its parent scope help: Move `toolErrorText` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/src/agent.ts:1549:16: warning unicorn(consistent-function-scoping): Function `toolResult` does not capture any variables from its parent scope help: Move `toolResult` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/src/agent.ts:4363:44: warning eslint(no-shadow): 'message' is already declared in the upper scope. help: Consider renaming 'message' to avoid shadowing the variable from the outer scope.
+packages/educateos-district-app/src/app.ts:284:23: warning unicorn(consistent-function-scoping): Function `respond` does not capture any variables from its parent scope help: Move `respond` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-app/src/course-authoring.ts:66:13: warning eslint(no-shadow): 'items' is already declared in the upper scope. help: Consider renaming 'items' to avoid shadowing the variable from the outer scope.
+packages/educateos-district-app/src/standards.ts:101:17: warning unicorn(consistent-function-scoping): Function `grade` does not capture any variables from its parent scope help: Move `grade` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/ai-models/AdminModelsPanel.test.tsx:2487:11: warning unicorn(consistent-function-scoping): Function `modelId` does not capture any variables from its parent scope help: Move `modelId` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.compactionRevert.test.tsx:29:9: warning unicorn(consistent-function-scoping): Function `Pass` does not capture any variables from its parent scope help: Move `Pass` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.compactionRevert.test.tsx:30:9: warning unicorn(consistent-function-scoping): Function `Null` does not capture any variables from its parent scope help: Move `Null` to the outer scope to avoid recreating it on every call.
+packages/configurator-ui/src/runtime/ConfiguratorRoot.browser.test.tsx:484:9: warning unicorn(consistent-function-scoping): Function `button` does not capture any variables from its parent scope help: Move `button` to the outer scope to avoid recreating it on every call.
+packages/configurator-ui/src/runtime/ConfiguratorRoot.browser.test.tsx:543:11: warning unicorn(consistent-function-scoping): Function `option` does not capture any variables from its parent scope help: Move `option` to the outer scope to avoid recreating it on every call.
+packages/configurator-ui/src/runtime/ConfiguratorRoot.browser.test.tsx:558:9: warning unicorn(consistent-function-scoping): Function `prefilledPicker` does not capture any variables from its parent scope help: Move `prefilledPicker` to the outer scope to avoid recreating it on every call.
+packages/configurator-ui/src/runtime/HierarchyPicker.tsx:459:11: warning eslint(no-shadow): 'rows' is already declared in the upper scope. help: Consider renaming 'rows' to avoid shadowing the variable from the outer scope.
+packages/educateos-commerce/__tests__/atomicity-and-audit-chain.test.ts:112:11: warning unicorn(consistent-function-scoping): Function `sha256` does not capture any variables from its parent scope help: Move `sha256` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/google-doc-actions.test.ts:959:7: warning unicorn(consistent-function-scoping): Function `paragraphs` does not capture any variables from its parent scope help: Move `paragraphs` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/google-doc-actions.test.ts:961:7: warning unicorn(consistent-function-scoping): Function `bullets` does not capture any variables from its parent scope help: Move `bullets` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/google-doc-actions.test.ts:984:7: warning unicorn(consistent-function-scoping): Function `styled` does not capture any variables from its parent scope help: Move `styled` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/src/actions.ts:487:13: warning unicorn(consistent-function-scoping): Function `requireGeneration` does not capture any variables from its parent scope help: Move `requireGeneration` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/src/action-journal.ts:467:11: warning unicorn(consistent-function-scoping): Function `byId` does not capture any variables from its parent scope help: Move `byId` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/src/slides.ts:410:13: warning eslint(no-shadow): 'thumbnail' is already declared in the upper scope. help: Consider renaming 'thumbnail' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/src/slides.ts:414:10: warning eslint(no-shadow): 'title' is already declared in the upper scope. help: Consider renaming 'title' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/src/slides.ts:505:20: warning eslint(no-shadow): 'slideIds' is already declared in the upper scope. help: Consider renaming 'slideIds' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/src/slides.ts:583:26: warning eslint(no-shadow): 'slideIds' is already declared in the upper scope. help: Consider renaming 'slideIds' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/src/slides.ts:641:13: warning eslint(no-shadow): 'slideIds' is already declared in the upper scope. help: Consider renaming 'slideIds' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/src/slides-simulation.ts:199:17: warning unicorn(consistent-function-scoping): Function `key` does not capture any variables from its parent scope help: Move `key` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/src/slides-text.ts:72:11: warning eslint(no-shadow): 'width' is already declared in the upper scope. help: Consider renaming 'width' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/src/sheets.ts:224:19: warning eslint(no-shadow): 'read' is already declared in the upper scope. help: Consider renaming 'read' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/src/google-api.ts:305:9: warning eslint(no-shadow): 'body' is already declared in the upper scope. help: Consider renaming 'body' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/src/google-api.ts:2308:42: warning eslint(no-shadow): 'getAccessToken' is already declared in the upper scope. help: Consider renaming 'getAccessToken' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/src/markdown-converter.ts:1604:10: warning unicorn(consistent-function-scoping): Function `uniqueIndices` does not capture any variables from its parent scope help: Move `uniqueIndices` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/src/markdown-converter.ts:2333:10: warning unicorn(consistent-function-scoping): Function `breaks` does not capture any variables from its parent scope help: Move `breaks` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/src/markdown-converter.ts:178:9: warning eslint(no-shadow): 'continuesList' is already declared in the upper scope. help: Consider renaming 'continuesList' to avoid shadowing the variable from the outer scope.
+packages/workshop-frontend/src/ChatInterface.blueprintProposal.test.tsx:26:9: warning unicorn(consistent-function-scoping): Function `Pass` does not capture any variables from its parent scope help: Move `Pass` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.blueprintProposal.test.tsx:27:9: warning unicorn(consistent-function-scoping): Function `Null` does not capture any variables from its parent scope help: Move `Null` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.blueprintProposal.test.tsx:323:9: warning unicorn(consistent-function-scoping): Function `contentOf` does not capture any variables from its parent scope help: Move `contentOf` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.blueprintProposal.test.tsx:326:9: warning unicorn(consistent-function-scoping): Function `pinnedAt` does not capture any variables from its parent scope help: Move `pinnedAt` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.blueprintProposal.test.tsx:334:9: warning unicorn(consistent-function-scoping): Function `conflictedAt` does not capture any variables from its parent scope help: Move `conflictedAt` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.blueprintProposal.test.tsx:494:9: warning unicorn(consistent-function-scoping): Function `update` does not capture any variables from its parent scope help: Move `update` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.blueprintProposal.test.tsx:507:9: warning unicorn(consistent-function-scoping): Function `discardButton` does not capture any variables from its parent scope help: Move `discardButton` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/libraries/pptx/__tests__/pptx.server.test.ts:568:11: warning unicorn(consistent-function-scoping): Function `runs` does not capture any variables from its parent scope help: Move `runs` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/libraries/pptx/__tests__/pptx.server.test.ts:1212:11: warning unicorn(consistent-function-scoping): Function `entries` does not capture any variables from its parent scope help: Move `entries` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/libraries/pptx/__tests__/pptx.server.test.ts:1213:11: warning unicorn(consistent-function-scoping): Function `title` does not capture any variables from its parent scope help: Move `title` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/libraries/pptx/__tests__/pptx.server.test.ts:1221:11: warning unicorn(consistent-function-scoping): Function `terms` does not capture any variables from its parent scope help: Move `terms` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/libraries/pptx/__tests__/pptx.server.test.ts:1310:11: warning eslint(no-shadow): 'svg' is already declared in the upper scope. help: Consider renaming 'svg' to avoid shadowing the variable from the outer scope.
+packages/educateos-admin-ui/src/testing/fakeDistrict.ts:306:10: warning unicorn(consistent-function-scoping): Function `find` does not capture any variables from its parent scope help: Move `find` to the outer scope to avoid recreating it on every call.
+packages/educateos-admin-ui/src/testing/fakeDistrict.ts:306:10: warning unicorn(consistent-function-scoping): Function `params` does not capture any variables from its parent scope help: Move `params` to the outer scope to avoid recreating it on every call.
+packages/educateos-admin-ui/src/testing/fakeDistrict.ts:306:10: warning unicorn(consistent-function-scoping): Function `body` does not capture any variables from its parent scope help: Move `body` to the outer scope to avoid recreating it on every call.
+packages/educateos-integrations/__tests__/fixtures/classroom-district.ts:52:13: warning unicorn(consistent-function-scoping): Function `fixtureIdOf` does not capture any variables from its parent scope help: Move `fixtureIdOf` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/src/server.ts:591:15: warning eslint(no-shadow): 'id' is already declared in the upper scope. help: Consider renaming 'id' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/src/server.ts:621:15: warning eslint(no-shadow): 'id' is already declared in the upper scope. help: Consider renaming 'id' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-cloudflare/__tests__/configurator-fields.test.ts:11:9: warning unicorn(consistent-function-scoping): Function `runtimeComponent` does not capture any variables from its parent scope help: Move `runtimeComponent` to the outer scope to avoid recreating it on every call.
+packages/integration-tests/__tests__/observer-scope-promotion.test.ts:248:11: warning eslint(no-shadow): 'sourceId' is already declared in the upper scope. help: Consider renaming 'sourceId' to avoid shadowing the variable from the outer scope.
+packages/educateos-integrations/__tests__/lakeshore-classlink.test.ts:124:11: warning unicorn(consistent-function-scoping): Function `people` does not capture any variables from its parent scope help: Move `people` to the outer scope to avoid recreating it on every call.
+packages/educateos-pilot-gate/__tests__/district-scenarios.ts:702:9: warning eslint(no-shadow): 'snapshot' is already declared in the upper scope. help: Consider renaming 'snapshot' to avoid shadowing the variable from the outer scope.
+packages/educateos-pilot-gate/__tests__/district-support.ts:175:17: warning unicorn(consistent-function-scoping): Function `live` does not capture any variables from its parent scope help: Move `live` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/components/AppShell/CommandPalette.tsx:303:11: warning eslint(no-shadow): 'groups' is already declared in the upper scope. help: Consider renaming 'groups' to avoid shadowing the variable from the outer scope.
+packages/workshop-frontend/src/components/AppShell/CommandPalette.tsx:304:11: warning eslint(no-shadow): 'flat' is already declared in the upper scope. help: Consider renaming 'flat' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-github/src/github.ts:3358:11: warning unicorn(consistent-function-scoping): Function `compare` does not capture any variables from its parent scope help: Move `compare` to the outer scope to avoid recreating it on every call.
+packages/educateos-admin-ui/src/classes/ClassesAndPeoplePage.test.tsx:81:11: warning unicorn(consistent-function-scoping): Function `roster` does not capture any variables from its parent scope help: Move `roster` to the outer scope to avoid recreating it on every call.
+scripts/release/manifest-lib.test.ts:77:9: warning unicorn(consistent-function-scoping): Function `check` does not capture any variables from its parent scope help: Move `check` to the outer scope to avoid recreating it on every call.
+packages/educateos-installer/src/managed-hostname.ts:155:16: warning unicorn(consistent-function-scoping): Function `refuse` does not capture any variables from its parent scope help: Move `refuse` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/ai-models/modelsDev.test.ts:265:13: warning unicorn(consistent-function-scoping): Function `providersOf` does not capture any variables from its parent scope help: Move `providersOf` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/ai-models/modelsDev.test.ts:347:11: warning unicorn(consistent-function-scoping): Function `withLimit` does not capture any variables from its parent scope help: Move `withLimit` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/workerd/conformance/gatekeeper.ts:565:11: warning unicorn(consistent-function-scoping): Function `staged` does not capture any variables from its parent scope help: Move `staged` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/sheets-actions.test.ts:1400:9: warning unicorn(consistent-function-scoping): Function `sum` does not capture any variables from its parent scope help: Move `sum` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/GadgetEditor.blueprintUpdate.test.tsx:208:9: warning unicorn(consistent-function-scoping): Function `offers` does not capture any variables from its parent scope help: Move `offers` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/GadgetEditor.blueprintUpdate.test.tsx:294:11: warning unicorn(consistent-function-scoping): Function `fullScreen` does not capture any variables from its parent scope help: Move `fullScreen` to the outer scope to avoid recreating it on every call.
+packages/integration-tests/__tests__/workshop-gadget-removal.test.ts:113:61: warning eslint(no-shadow): 'summary' is already declared in the upper scope. help: Consider renaming 'summary' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-github/__tests__/workerd/pull-simulation.test.ts:734:12: warning unicorn(consistent-function-scoping): Function `topicScenario` does not capture any variables from its parent scope help: Move `topicScenario` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-fixture.ts:30:17: warning unicorn(consistent-function-scoping): Function `at` does not capture any variables from its parent scope help: Move `at` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/native-sessions.test.ts:137:47: warning eslint(no-shadow): 'text' is already declared in the upper scope. help: Consider renaming 'text' to avoid shadowing the variable from the outer scope.
+packages/mcp-shared/src/account.ts:493:11: warning unicorn(consistent-function-scoping): Function `matchesIssuer` does not capture any variables from its parent scope help: Move `matchesIssuer` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/src/district.ts:156:13: warning eslint(no-shadow): 'directory' is already declared in the upper scope. help: Consider renaming 'directory' to avoid shadowing the variable from the outer scope.
+packages/educateos-district-app/src/durable-stores.ts:402:10: warning unicorn(consistent-function-scoping): Function `read` does not capture any variables from its parent scope help: Move `read` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-app/src/durable-stores.ts:415:10: warning unicorn(consistent-function-scoping): Function `read` does not capture any variables from its parent scope help: Move `read` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-gitlab/src/gitlab-gatekeeper.ts:954:11: warning unicorn(consistent-function-scoping): Function `compare` does not capture any variables from its parent scope help: Move `compare` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/legacy-tables.test.ts:226:11: warning unicorn(consistent-function-scoping): Function `read` does not capture any variables from its parent scope help: Move `read` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/legacy-tables.test.ts:316:11: warning unicorn(consistent-function-scoping): Function `assignment` does not capture any variables from its parent scope help: Move `assignment` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/legacy-tables.test.ts:320:11: warning unicorn(consistent-function-scoping): Function `personal` does not capture any variables from its parent scope help: Move `personal` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/legacy-tables.test.ts:321:11: warning unicorn(consistent-function-scoping): Function `records` does not capture any variables from its parent scope help: Move `records` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/legacy-tables.test.ts:326:11: warning unicorn(consistent-function-scoping): Function `seed` does not capture any variables from its parent scope help: Move `seed` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/legacy-tables.test.ts:362:11: warning unicorn(consistent-function-scoping): Function `personal` does not capture any variables from its parent scope help: Move `personal` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/legacy-tables.test.ts:363:11: warning unicorn(consistent-function-scoping): Function `course` does not capture any variables from its parent scope help: Move `course` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/legacy-tables.test.ts:367:11: warning unicorn(consistent-function-scoping): Function `grant` does not capture any variables from its parent scope help: Move `grant` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/legacy-tables.test.ts:370:11: warning unicorn(consistent-function-scoping): Function `artifact` does not capture any variables from its parent scope help: Move `artifact` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/legacy-tables.test.ts:401:11: warning unicorn(consistent-function-scoping): Function `requested` does not capture any variables from its parent scope help: Move `requested` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/legacy-tables.test.ts:252:37: warning eslint(no-shadow): 'r' is already declared in the upper scope. help: Consider renaming 'r' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/__tests__/workerd/configurators.test.ts:73:11: warning unicorn(consistent-function-scoping): Function `picker` does not capture any variables from its parent scope help: Move `picker` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/configurators.test.ts:94:11: warning unicorn(consistent-function-scoping): Function `batchResponse` does not capture any variables from its parent scope help: Move `batchResponse` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/configurators.test.ts:174:13: warning unicorn(consistent-function-scoping): Function `shortcut` does not capture any variables from its parent scope help: Move `shortcut` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/configurators.test.ts:393:11: warning unicorn(consistent-function-scoping): Function `calendar` does not capture any variables from its parent scope help: Move `calendar` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/configurators.test.ts:343:50: warning eslint(no-shadow): '_' is already declared in the upper scope. help: Consider renaming '_' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/observer-exclude-scope.test.ts:185:12: warning unicorn(consistent-function-scoping): Function `armHook` does not capture any variables from its parent scope help: Move `armHook` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/observer-exclude-scope.test.ts:224:12: warning unicorn(consistent-function-scoping): Function `bindSpawnerIntoGadget` does not capture any variables from its parent scope help: Move `bindSpawnerIntoGadget` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/observer-scope-restart.test.ts:463:12: warning unicorn(consistent-function-scoping): Function `seedLegacyGatekeeper` does not capture any variables from its parent scope help: Move `seedLegacyGatekeeper` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/observer-scope-restart.test.ts:521:12: warning unicorn(consistent-function-scoping): Function `seedHook` does not capture any variables from its parent scope help: Move `seedHook` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/observer-scope-restart.test.ts:539:12: warning unicorn(consistent-function-scoping): Function `seedPendingGadget` does not capture any variables from its parent scope help: Move `seedPendingGadget` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/observer-scope-restart.test.ts:742:12: warning unicorn(consistent-function-scoping): Function `seedSpawner` does not capture any variables from its parent scope help: Move `seedSpawner` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/observer-scope-restart.test.ts:1021:12: warning unicorn(consistent-function-scoping): Function `slashProvider` does not capture any variables from its parent scope help: Move `slashProvider` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/observer-scope-restart.test.ts:742:47: warning eslint(no-shadow): 'env' is already declared in the upper scope. help: Consider renaming 'env' to avoid shadowing the variable from the outer scope.
+packages/educateos-integrations/__tests__/google-classroom.test.ts:140:10: warning unicorn(consistent-function-scoping): Function `decode` does not capture any variables from its parent scope help: Move `decode` to the outer scope to avoid recreating it on every call.
+packages/educateos-integrations/__tests__/google-classroom.test.ts:240:11: warning unicorn(consistent-function-scoping): Function `people` does not capture any variables from its parent scope help: Move `people` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/gmail-actions.test.ts:1476:11: warning unicorn(consistent-function-scoping): Function `inline` does not capture any variables from its parent scope help: Move `inline` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/gmail-actions.test.ts:4419:9: warning unicorn(consistent-function-scoping): Function `mutationTargets` does not capture any variables from its parent scope help: Move `mutationTargets` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/gmail-actions.test.ts:4630:9: warning unicorn(consistent-function-scoping): Function `attachmentBytes` does not capture any variables from its parent scope help: Move `attachmentBytes` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/gmail-actions.test.ts:4638:9: warning unicorn(consistent-function-scoping): Function `snapshotKeys` does not capture any variables from its parent scope help: Move `snapshotKeys` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/gmail-actions.test.ts:5611:11: warning unicorn(consistent-function-scoping): Function `part` does not capture any variables from its parent scope help: Move `part` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/gmail-actions.test.ts:4590:48: warning eslint(no-shadow): 'id' is already declared in the upper scope. help: Consider renaming 'id' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-educateos/src/app-nav.ts:62:23: warning unicorn(consistent-function-scoping): Function `orEmpty` does not capture any variables from its parent scope help: Move `orEmpty` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-educateos/src/app-nav.ts:62:23: warning unicorn(consistent-function-scoping): Function `current` does not capture any variables from its parent scope help: Move `current` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/slides-actions.test.ts:729:9: warning unicorn(consistent-function-scoping): Function `outcome` does not capture any variables from its parent scope help: Move `outcome` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/slides-actions.test.ts:1027:9: warning unicorn(consistent-function-scoping): Function `format` does not capture any variables from its parent scope help: Move `format` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/slides-actions.test.ts:1243:9: warning unicorn(consistent-function-scoping): Function `update` does not capture any variables from its parent scope help: Move `update` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/slides-actions.test.ts:129:22: warning eslint(no-shadow): 'deck' is already declared in the upper scope. help: Consider renaming 'deck' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/__tests__/workerd/slides-actions.test.ts:191:10: warning eslint(no-shadow): 'deck' is already declared in the upper scope. help: Consider renaming 'deck' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/__tests__/workerd/slides-actions.test.ts:294:86: warning eslint(no-shadow): 'shape' is already declared in the upper scope. help: Consider renaming 'shape' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/__tests__/workerd/slides-actions.test.ts:360:5: warning eslint(no-shadow): 'deck' is already declared in the upper scope. help: Consider renaming 'deck' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/__tests__/workerd/slides-actions.test.ts:423:20: warning eslint(no-shadow): 'slide' is already declared in the upper scope. help: Consider renaming 'slide' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/__tests__/workerd/slides-actions.test.ts:878:23: warning eslint(no-shadow): 'slide' is already declared in the upper scope. help: Consider renaming 'slide' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/agent-step-validation.test.ts:35:11: warning unicorn(consistent-function-scoping): Function `tool` does not capture any variables from its parent scope help: Move `tool` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/code/FileBrowser.test.tsx:78:12: warning unicorn(consistent-function-scoping): Function `rowLabels` does not capture any variables from its parent scope help: Move `rowLabels` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/chat-actions.test.ts:345:10: warning unicorn(consistent-function-scoping): Function `tick` does not capture any variables from its parent scope help: Move `tick` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/chat-actions.test.ts:439:9: warning unicorn(consistent-function-scoping): Function `directMessage` does not capture any variables from its parent scope help: Move `directMessage` to the outer scope to avoid recreating it on every call.
+packages/educateos-assessment/__tests__/gradebook-service.test.ts:100:9: warning unicorn(consistent-function-scoping): Function `groups` does not capture any variables from its parent scope help: Move `groups` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/message-format-refs.test.ts:99:9: warning unicorn(consistent-function-scoping): Function `request` does not capture any variables from its parent scope help: Move `request` to the outer scope to avoid recreating it on every call.
+scripts/oxlint-plugin.ts:111:14: warning unicorn(consistent-function-scoping): Function `isPrivateMember` does not capture any variables from its parent scope help: Move `isPrivateMember` to the outer scope to avoid recreating it on every call.
+packages/educateos-assessment-ci/__tests__/xlsx-fixture.ts:77:23: warning unicorn(consistent-function-scoping): Function `escape` does not capture any variables from its parent scope help: Move `escape` to the outer scope to avoid recreating it on every call.
+packages/educateos-installer/__tests__/managed-hostname.test.ts:101:9: warning unicorn(consistent-function-scoping): Function `sameAccount` does not capture any variables from its parent scope help: Move `sameAccount` to the outer scope to avoid recreating it on every call.
+packages/educateos-installer/__tests__/managed-hostname.test.ts:176:9: warning unicorn(consistent-function-scoping): Function `district` does not capture any variables from its parent scope help: Move `district` to the outer scope to avoid recreating it on every call.
+packages/educateos-installer/__tests__/managed-hostname.test.ts:179:18: warning unicorn(consistent-function-scoping): Function `attach` does not capture any variables from its parent scope help: Move `attach` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-cloudflare/__tests__/cloudflare-api.test.ts:11:15: warning eslint(no-shadow): 'names' is already declared in the upper scope. help: Consider renaming 'names' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-github/__tests__/workerd/session-git.test.ts:290:12: warning unicorn(consistent-function-scoping): Function `pushFakes` does not capture any variables from its parent scope help: Move `pushFakes` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/workerd/gmail-hooks.test.ts:479:9: warning eslint(no-shadow): 'later' is already declared in the upper scope. help: Consider renaming 'later' to avoid shadowing the variable from the outer scope.
+packages/educateos-control-plane/__tests__/clever-launch.test.ts:97:11: warning unicorn(consistent-function-scoping): Function `fetch` does not capture any variables from its parent scope help: Move `fetch` to the outer scope to avoid recreating it on every call.
+packages/educateos-integrations/__tests__/demo-districts.test.ts:61:11: warning unicorn(consistent-function-scoping): Function `people` does not capture any variables from its parent scope help: Move `people` to the outer scope to avoid recreating it on every call.
+packages/educateos-student-ui/__tests__/fakeDistrict.ts:151:9: warning unicorn(consistent-function-scoping): Function `latest` does not capture any variables from its parent scope help: Move `latest` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/attachment-worktrees.test.ts:597:13: warning unicorn(consistent-function-scoping): Function `imageParts` does not capture any variables from its parent scope help: Move `imageParts` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/attachment-worktrees.test.ts:74:59: warning eslint(no-shadow): 'message' is already declared in the upper scope. help: Consider renaming 'message' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/attachment-worktrees.test.ts:132:59: warning eslint(no-shadow): 'message' is already declared in the upper scope. help: Consider renaming 'message' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/attachment-worktrees.test.ts:173:57: warning eslint(no-shadow): 'message' is already declared in the upper scope. help: Consider renaming 'message' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/attachment-worktrees.test.ts:332:61: warning eslint(no-shadow): 'message' is already declared in the upper scope. help: Consider renaming 'message' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/attachment-worktrees.test.ts:350:48: warning eslint(no-shadow): 'message' is already declared in the upper scope. help: Consider renaming 'message' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/attachment-worktrees.test.ts:363:22: warning eslint(no-shadow): 'name' is already declared in the upper scope. help: Consider renaming 'name' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/attachment-worktrees.test.ts:418:61: warning eslint(no-shadow): 'message' is already declared in the upper scope. help: Consider renaming 'message' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/attachment-worktrees.test.ts:438:49: warning eslint(no-shadow): 'mimeType' is already declared in the upper scope. help: Consider renaming 'mimeType' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/attachment-worktrees.test.ts:438:67: warning eslint(no-shadow): 'name' is already declared in the upper scope. help: Consider renaming 'name' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/attachment-worktrees.test.ts:460:63: warning eslint(no-shadow): 'message' is already declared in the upper scope. help: Consider renaming 'message' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/attachment-worktrees.test.ts:499:59: warning eslint(no-shadow): 'message' is already declared in the upper scope. help: Consider renaming 'message' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/attachment-worktrees.test.ts:573:57: warning eslint(no-shadow): 'message' is already declared in the upper scope. help: Consider renaming 'message' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/__tests__/slides-simulation.test.ts:106:9: warning unicorn(consistent-function-scoping): Function `copyOf` does not capture any variables from its parent scope help: Move `copyOf` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-simulation.test.ts:117:9: warning unicorn(consistent-function-scoping): Function `batch` does not capture any variables from its parent scope help: Move `batch` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-simulation.test.ts:214:9: warning unicorn(consistent-function-scoping): Function `numbered` does not capture any variables from its parent scope help: Move `numbered` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-simulation.test.ts:219:9: warning unicorn(consistent-function-scoping): Function `pages` does not capture any variables from its parent scope help: Move `pages` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-simulation.test.ts:237:9: warning unicorn(consistent-function-scoping): Function `skip` does not capture any variables from its parent scope help: Move `skip` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-simulation.test.ts:266:11: warning unicorn(consistent-function-scoping): Function `numbered` does not capture any variables from its parent scope help: Move `numbered` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-simulation.test.ts:273:11: warning unicorn(consistent-function-scoping): Function `numbers` does not capture any variables from its parent scope help: Move `numbers` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-simulation.test.ts:328:11: warning unicorn(consistent-function-scoping): Function `drop` does not capture any variables from its parent scope help: Move `drop` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/sheets-simulation.test.ts:881:9: warning eslint(no-shadow): 'g' is already declared in the upper scope. help: Consider renaming 'g' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/deployment-updates.test.ts:1017:9: warning unicorn(consistent-function-scoping): Function `storedRouterTag` does not capture any variables from its parent scope help: Move `storedRouterTag` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/deployment-updates.test.ts:1021:9: warning unicorn(consistent-function-scoping): Function `request` does not capture any variables from its parent scope help: Move `request` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/deployment-updates.test.ts:1091:9: warning unicorn(consistent-function-scoping): Function `withHeldRecording` does not capture any variables from its parent scope help: Move `withHeldRecording` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/deployment-updates.test.ts:1106:9: warning unicorn(consistent-function-scoping): Function `settle` does not capture any variables from its parent scope help: Move `settle` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/agent-tool-results.test.ts:21:9: warning unicorn(consistent-function-scoping): Function `parse` does not capture any variables from its parent scope help: Move `parse` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/agent-tool-results.test.ts:49:9: warning unicorn(consistent-function-scoping): Function `unreached` does not capture any variables from its parent scope help: Move `unreached` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/agent-tool-results.test.ts:69:7: warning unicorn(consistent-function-scoping): Function `windowNote` does not capture any variables from its parent scope help: Move `windowNote` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-confluence/src/confluence-markdown.ts:128:10: warning unicorn(consistent-function-scoping): Function `cells` does not capture any variables from its parent scope help: Move `cells` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-github/__tests__/workerd/redirects.test.ts:16:9: warning unicorn(consistent-function-scoping): Function `hooks` does not capture any variables from its parent scope help: Move `hooks` to the outer scope to avoid recreating it on every call.
+packages/educateos-provider-fakes/__tests__/foundation.test.ts:88:11: warning unicorn(consistent-function-scoping): Function `withIds` does not capture any variables from its parent scope help: Move `withIds` to the outer scope to avoid recreating it on every call.
+packages/integration-tests/__tests__/workshop-worktrees.test.ts:120:11: warning eslint(no-shadow): 'summary' is already declared in the upper scope. help: Consider renaming 'summary' to avoid shadowing the variable from the outer scope.
+packages/integration-tests/__tests__/workshop-worktrees.test.ts:134:11: warning eslint(no-shadow): 'summary' is already declared in the upper scope. help: Consider renaming 'summary' to avoid shadowing the variable from the outer scope.
+packages/integration-tests/__tests__/workshop-worktrees.test.ts:143:11: warning eslint(no-shadow): 'summary' is already declared in the upper scope. help: Consider renaming 'summary' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/spawned-agent-tools.test.ts:66:38: warning eslint(no-shadow): 'env' is already declared in the upper scope. help: Consider renaming 'env' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/spawned-agent-tools.test.ts:144:35: warning eslint(no-shadow): 'call' is already declared in the upper scope. help: Consider renaming 'call' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/__tests__/markdown-converter.test.ts:457:12: warning unicorn(consistent-function-scoping): Function `splitEdit` does not capture any variables from its parent scope help: Move `splitEdit` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.compaction.test.ts:224:9: warning unicorn(consistent-function-scoping): Function `compact` does not capture any variables from its parent scope help: Move `compact` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.compaction.test.ts:226:9: warning unicorn(consistent-function-scoping): Function `boundary` does not capture any variables from its parent scope help: Move `boundary` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.compaction.test.ts:226:9: warning eslint(no-shadow): 'boundary' is already declared in the upper scope. help: Consider renaming 'boundary' to avoid shadowing the variable from the outer scope.
+packages/educateos-pilot-gate/__tests__/district-report.test.ts:66:9: warning unicorn(consistent-function-scoping): Function `responses` does not capture any variables from its parent scope help: Move `responses` to the outer scope to avoid recreating it on every call.
+packages/educateos-pilot-gate/__tests__/district-report.test.ts:75:9: warning unicorn(consistent-function-scoping): Function `toAccess` does not capture any variables from its parent scope help: Move `toAccess` to the outer scope to avoid recreating it on every call.
+packages/educateos-academics/__tests__/workerd/d1-store.test.ts:131:11: warning unicorn(consistent-function-scoping): Function `guard` does not capture any variables from its parent scope help: Move `guard` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.actions.test.tsx:22:9: warning unicorn(consistent-function-scoping): Function `Pass` does not capture any variables from its parent scope help: Move `Pass` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.actions.test.tsx:23:9: warning unicorn(consistent-function-scoping): Function `Null` does not capture any variables from its parent scope help: Move `Null` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ChatInterface.actions.test.tsx:372:18: warning unicorn(consistent-function-scoping): Function `retryAfterError` does not capture any variables from its parent scope help: Move `retryAfterError` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ActivityNotifications.test.tsx:9:9: warning unicorn(consistent-function-scoping): Function `Pass` does not capture any variables from its parent scope help: Move `Pass` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/code/otClient.test.ts:303:9: warning unicorn(consistent-function-scoping): Function `releaseSubmit` does not capture any variables from its parent scope help: Move `releaseSubmit` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/code/otClient.test.ts:543:9: warning unicorn(consistent-function-scoping): Function `resolveDone` does not capture any variables from its parent scope help: Move `resolveDone` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/code/otClient.test.ts:808:9: warning unicorn(consistent-function-scoping): Function `releaseFetch` does not capture any variables from its parent scope help: Move `releaseFetch` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/features/code/otClient.test.ts:836:9: warning unicorn(consistent-function-scoping): Function `releaseFetch` does not capture any variables from its parent scope help: Move `releaseFetch` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/district.test.ts:282:11: warning unicorn(consistent-function-scoping): Function `as` does not capture any variables from its parent scope help: Move `as` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/configurator-url.test.ts:224:9: warning unicorn(consistent-function-scoping): Function `chatValues` does not capture any variables from its parent scope help: Move `chatValues` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/configurator-url.test.ts:269:9: warning unicorn(consistent-function-scoping): Function `threadReady` does not capture any variables from its parent scope help: Move `threadReady` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/configurator-url.test.ts:332:9: warning unicorn(consistent-function-scoping): Function `driveValues` does not capture any variables from its parent scope help: Move `driveValues` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/configurator-url.test.ts:365:9: warning unicorn(consistent-function-scoping): Function `ready` does not capture any variables from its parent scope help: Move `ready` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/SandboxedGatekeeperApp.test.tsx:216:18: warning unicorn(consistent-function-scoping): Function `settled` does not capture any variables from its parent scope help: Move `settled` to the outer scope to avoid recreating it on every call.
+packages/educateos-student-ui/__tests__/discussions.test.tsx:21:10: warning unicorn(consistent-function-scoping): Function `refuse` does not capture any variables from its parent scope help: Move `refuse` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-gitlab/__tests__/workerd/account.test.ts:245:12: warning unicorn(consistent-function-scoping): Function `readUser` does not capture any variables from its parent scope help: Move `readUser` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-gitlab/__tests__/workerd/account.test.ts:436:12: warning unicorn(consistent-function-scoping): Function `overtakenRefresh` does not capture any variables from its parent scope help: Move `overtakenRefresh` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-gitlab/__tests__/workerd/actions.test.ts:206:9: warning unicorn(consistent-function-scoping): Function `labelNames` does not capture any variables from its parent scope help: Move `labelNames` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-geometry.test.ts:47:9: warning unicorn(consistent-function-scoping): Function `near` does not capture any variables from its parent scope help: Move `near` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/agent-compaction.test.ts:70:21: warning eslint(no-shadow): 'message' is already declared in the upper scope. help: Consider renaming 'message' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-gitlab/__tests__/gitlab-normalize.test.ts:202:11: warning unicorn(consistent-function-scoping): Function `labelled` does not capture any variables from its parent scope help: Move `labelled` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-gitlab/__tests__/gitlab-normalize.test.ts:214:9: warning unicorn(consistent-function-scoping): Function `row` does not capture any variables from its parent scope help: Move `row` to the outer scope to avoid recreating it on every call.
+packages/integration-tests/__tests__/workshop-changes.test.ts:745:9: warning unicorn(consistent-function-scoping): Function `write` does not capture any variables from its parent scope help: Move `write` to the outer scope to avoid recreating it on every call.
+packages/integration-tests/__tests__/workshop-changes.test.ts:749:9: warning unicorn(consistent-function-scoping): Function `run` does not capture any variables from its parent scope help: Move `run` to the outer scope to avoid recreating it on every call.
+packages/integration-tests/__tests__/workshop-changes.test.ts:411:47: warning eslint(no-shadow): 'chat' is already declared in the upper scope. help: Consider renaming 'chat' to avoid shadowing the variable from the outer scope.
+packages/integration-tests/__tests__/workshop-changes.test.ts:695:83: warning eslint(no-shadow): 'username' is already declared in the upper scope. help: Consider renaming 'username' to avoid shadowing the variable from the outer scope.
+packages/integration-tests/__tests__/workshop-changes.test.ts:697:13: warning eslint(no-shadow): 'gadgetId' is already declared in the upper scope. help: Consider renaming 'gadgetId' to avoid shadowing the variable from the outer scope.
+packages/integration-tests/__tests__/workshop-changes.test.ts:723:11: warning eslint(no-shadow): 'generation' is already declared in the upper scope. help: Consider renaming 'generation' to avoid shadowing the variable from the outer scope.
+packages/educateos-contracts/__tests__/legacy-tables.test.ts:138:11: warning unicorn(consistent-function-scoping): Function `one` does not capture any variables from its parent scope help: Move `one` to the outer scope to avoid recreating it on every call.
+packages/educateos-contracts/__tests__/legacy-tables.test.ts:193:11: warning unicorn(consistent-function-scoping): Function `doc` does not capture any variables from its parent scope help: Move `doc` to the outer scope to avoid recreating it on every call.
+packages/educateos-contracts/__tests__/legacy-tables.test.ts:213:11: warning unicorn(consistent-function-scoping): Function `ddl` does not capture any variables from its parent scope help: Move `ddl` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-migration-do.test.ts:235:12: warning unicorn(consistent-function-scoping): Function `putGadget` does not capture any variables from its parent scope help: Move `putGadget` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-migration-do.test.ts:242:12: warning unicorn(consistent-function-scoping): Function `putChat` does not capture any variables from its parent scope help: Move `putChat` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-migration-do.test.ts:268:12: warning unicorn(consistent-function-scoping): Function `putCreated` does not capture any variables from its parent scope help: Move `putCreated` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-migration-do.test.ts:279:12: warning unicorn(consistent-function-scoping): Function `putText` does not capture any variables from its parent scope help: Move `putText` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-migration-do.test.ts:76:65: warning eslint(no-shadow): 'ws' is already declared in the upper scope. help: Consider renaming 'ws' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/git-migration-do.test.ts:132:64: warning eslint(no-shadow): 'ws' is already declared in the upper scope. help: Consider renaming 'ws' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/git-migration-do.test.ts:415:11: warning eslint(no-shadow): 'env' is already declared in the upper scope. help: Consider renaming 'env' to avoid shadowing the variable from the outer scope.
+packages/workshop-frontend/src/BlueprintLandingPage.test.tsx:380:18: warning unicorn(consistent-function-scoping): Function `saveCalendarConnection` does not capture any variables from its parent scope help: Move `saveCalendarConnection` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/classroom-api.test.ts:114:78: warning eslint(no-shadow): 'error' is already declared in the upper scope. help: Consider renaming 'error' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/__tests__/slides-design.test.ts:182:9: warning unicorn(consistent-function-scoping): Function `joined` does not capture any variables from its parent scope help: Move `joined` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-design.test.ts:204:9: warning unicorn(consistent-function-scoping): Function `formats` does not capture any variables from its parent scope help: Move `formats` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-design.test.ts:246:9: warning unicorn(consistent-function-scoping): Function `page` does not capture any variables from its parent scope help: Move `page` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-design.test.ts:281:9: warning unicorn(consistent-function-scoping): Function `children` does not capture any variables from its parent scope help: Move `children` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-design.test.ts:361:9: warning unicorn(consistent-function-scoping): Function `page` does not capture any variables from its parent scope help: Move `page` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-design.test.ts:375:9: warning unicorn(consistent-function-scoping): Function `page` does not capture any variables from its parent scope help: Move `page` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-design.test.ts:410:9: warning unicorn(consistent-function-scoping): Function `edit` does not capture any variables from its parent scope help: Move `edit` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-design.test.ts:452:9: warning unicorn(consistent-function-scoping): Function `video` does not capture any variables from its parent scope help: Move `video` to the outer scope to avoid recreating it on every call.
+packages/educateos-external-mcp/__tests__/registry.test.ts:9:10: warning unicorn(consistent-function-scoping): Function `session` does not capture any variables from its parent scope help: Move `session` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/overseer-hooks.test.ts:125:18: warning unicorn(consistent-function-scoping): Function `expectRejection` does not capture any variables from its parent scope help: Move `expectRejection` to the outer scope to avoid recreating it on every call.
+packages/ui/src/HierarchicalList/HierarchicalList.test.tsx:52:9: warning unicorn(consistent-function-scoping): Function `dataTransfer` does not capture any variables from its parent scope help: Move `dataTransfer` to the outer scope to avoid recreating it on every call.
+packages/ui/src/HierarchicalList/HierarchicalList.test.tsx:69:9: warning unicorn(consistent-function-scoping): Function `setRect` does not capture any variables from its parent scope help: Move `setRect` to the outer scope to avoid recreating it on every call.
+packages/ui/src/HierarchicalList/HierarchicalList.test.tsx:81:9: warning unicorn(consistent-function-scoping): Function `dispatchTouchPointer` does not capture any variables from its parent scope help: Move `dispatchTouchPointer` to the outer scope to avoid recreating it on every call.
+packages/ui/src/HierarchicalList/HierarchicalList.test.tsx:341:11: warning unicorn(consistent-function-scoping): Function `renderList` does not capture any variables from its parent scope help: Move `renderList` to the outer scope to avoid recreating it on every call.
+packages/ui/src/HierarchicalList/HierarchicalList.test.tsx:475:11: warning unicorn(consistent-function-scoping): Function `Harness` does not capture any variables from its parent scope help: Move `Harness` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ConnectHandoffPage.test.tsx:72:12: warning unicorn(consistent-function-scoping): Function `arrive` does not capture any variables from its parent scope help: Move `arrive` to the outer scope to avoid recreating it on every call.
+packages/educateos-ai-governance/__tests__/budgets.test.ts:38:11: warning unicorn(consistent-function-scoping): Function `at` does not capture any variables from its parent scope help: Move `at` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/stores.test.ts:162:9: warning unicorn(consistent-function-scoping): Function `outline` does not capture any variables from its parent scope help: Move `outline` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/stores.test.ts:299:9: warning unicorn(consistent-function-scoping): Function `settings` does not capture any variables from its parent scope help: Move `settings` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/stores.test.ts:307:9: warning unicorn(consistent-function-scoping): Function `marker` does not capture any variables from its parent scope help: Move `marker` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/stores.test.ts:355:9: warning unicorn(consistent-function-scoping): Function `write` does not capture any variables from its parent scope help: Move `write` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/stores.test.ts:419:9: warning unicorn(consistent-function-scoping): Function `write` does not capture any variables from its parent scope help: Move `write` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-worker/__tests__/stores.test.ts:162:20: warning eslint(no-shadow): 'revision' is already declared in the upper scope. help: Consider renaming 'revision' to avoid shadowing the variable from the outer scope.
+packages/educateos-district-worker/__tests__/stores.test.ts:354:9: warning eslint(no-shadow): 'event' is already declared in the upper scope. help: Consider renaming 'event' to avoid shadowing the variable from the outer scope.
+packages/educateos-district-worker/__tests__/stores.test.ts:354:30: warning eslint(no-shadow): 'action' is already declared in the upper scope. help: Consider renaming 'action' to avoid shadowing the variable from the outer scope.
+packages/educateos-district-worker/__tests__/stores.test.ts:355:18: warning eslint(no-shadow): 'revision' is already declared in the upper scope. help: Consider renaming 'revision' to avoid shadowing the variable from the outer scope.
+packages/educateos-district-worker/__tests__/stores.test.ts:419:18: warning eslint(no-shadow): 'revision' is already declared in the upper scope. help: Consider renaming 'revision' to avoid shadowing the variable from the outer scope.
+packages/educateos-district-worker/__tests__/access.test.ts:17:11: warning unicorn(consistent-function-scoping): Function `keys` does not capture any variables from its parent scope help: Move `keys` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/pending-login.test.ts:246:12: warning unicorn(consistent-function-scoping): Function `callbackFor` does not capture any variables from its parent scope help: Move `callbackFor` to the outer scope to avoid recreating it on every call.
+packages/educateos-fixtures/__tests__/google-demo.test.ts:41:11: warning unicorn(consistent-function-scoping): Function `roster` does not capture any variables from its parent scope help: Move `roster` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-model.test.ts:119:9: warning unicorn(consistent-function-scoping): Function `size` does not capture any variables from its parent scope help: Move `size` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-model.test.ts:207:9: warning unicorn(consistent-function-scoping): Function `linked` does not capture any variables from its parent scope help: Move `linked` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-model.test.ts:252:9: warning unicorn(consistent-function-scoping): Function `pt` does not capture any variables from its parent scope help: Move `pt` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-model.test.ts:288:9: warning unicorn(consistent-function-scoping): Function `pt` does not capture any variables from its parent scope help: Move `pt` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-model.test.ts:294:9: warning unicorn(consistent-function-scoping): Function `grid` does not capture any variables from its parent scope help: Move `grid` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/slides-model.test.ts:220:9: warning eslint(no-shadow): 'solid' is already declared in the upper scope. help: Consider renaming 'solid' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-google/__tests__/slides-model.test.ts:295:100: warning eslint(no-shadow): '_' is already declared in the upper scope. help: Consider renaming '_' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/ai-call-guard.test.ts:251:12: warning unicorn(consistent-function-scoping): Function `manualHandle` does not capture any variables from its parent scope help: Move `manualHandle` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/ai-call-guard.test.ts:258:12: warning unicorn(consistent-function-scoping): Function `recordingHandle` does not capture any variables from its parent scope help: Move `recordingHandle` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/ai-call-guard.test.ts:292:18: warning unicorn(consistent-function-scoping): Function `collectFrom` does not capture any variables from its parent scope help: Move `collectFrom` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/ai-call-guard.test.ts:423:12: warning unicorn(consistent-function-scoping): Function `seeingHandle` does not capture any variables from its parent scope help: Move `seeingHandle` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/ai-call-guard.test.ts:501:9: warning unicorn(consistent-function-scoping): Function `decisionScope` does not capture any variables from its parent scope help: Move `decisionScope` to the outer scope to avoid recreating it on every call.
+packages/educateos-district-app/__tests__/quizzes.test.ts:137:11: warning unicorn(consistent-function-scoping): Function `text` does not capture any variables from its parent scope help: Move `text` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/workerd/cursors.test.ts:683:9: warning unicorn(consistent-function-scoping): Function `issue` does not capture any variables from its parent scope help: Move `issue` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/workerd/cursors.test.ts:684:9: warning unicorn(consistent-function-scoping): Function `byId` does not capture any variables from its parent scope help: Move `byId` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/drive-session.test.ts:604:12: warning unicorn(consistent-function-scoping): Function `positioned` does not capture any variables from its parent scope help: Move `positioned` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/gmail-overlay.test.ts:376:9: warning unicorn(consistent-function-scoping): Function `ids` does not capture any variables from its parent scope help: Move `ids` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-supabase/src/supabase-api.ts:289:15: warning unicorn(consistent-function-scoping): Function `mb` does not capture any variables from its parent scope help: Move `mb` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/chat-changes.test.ts:516:18: warning unicorn(consistent-function-scoping): Function `setupMergedChat` does not capture any variables from its parent scope help: Move `setupMergedChat` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/chat-changes.test.ts:833:12: warning unicorn(consistent-function-scoping): Function `seedConvertedChat` does not capture any variables from its parent scope help: Move `seedConvertedChat` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/chat-changes.test.ts:1233:11: warning unicorn(consistent-function-scoping): Function `lines` does not capture any variables from its parent scope help: Move `lines` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/chat-changes.test.ts:1299:12: warning unicorn(consistent-function-scoping): Function `stepMsgs` does not capture any variables from its parent scope help: Move `stepMsgs` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/chat-changes.test.ts:1358:9: warning unicorn(consistent-function-scoping): Function `change` does not capture any variables from its parent scope help: Move `change` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/chat-changes.test.ts:1637:9: warning unicorn(consistent-function-scoping): Function `replace` does not capture any variables from its parent scope help: Move `replace` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/chat-changes.test.ts:1698:12: warning unicorn(consistent-function-scoping): Function `derived` does not capture any variables from its parent scope help: Move `derived` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-context/__tests__/agent-skill.test.ts:352:7: warning unicorn(consistent-function-scoping): Function `collection` does not capture any variables from its parent scope help: Move `collection` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/stubs/cloudflare-workers.ts:11:8: warning typescript(no-extraneous-class): Unexpected empty class. help: Delete this class
+packages/gatekeeper-x/__tests__/workerd/resources.test.ts:104:11: warning unicorn(consistent-function-scoping): Function `tags` does not capture any variables from its parent scope help: Move `tags` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-x/src/x-actions.ts:248:29: warning eslint(no-shadow): 'handle' is already declared in the upper scope. help: Consider renaming 'handle' to avoid shadowing the variable from the outer scope.
+packages/educateos-assessment/__tests__/hardening.test.ts:101:18: warning unicorn(consistent-function-scoping): Function `signedSetup` does not capture any variables from its parent scope help: Move `signedSetup` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/client-errors.test.ts:166:11: warning unicorn(consistent-function-scoping): Function `accessRequest` does not capture any variables from its parent scope help: Move `accessRequest` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-gitlab/__tests__/workerd/push.test.ts:528:12: warning unicorn(consistent-function-scoping): Function `parseRefUpdate` does not capture any variables from its parent scope help: Move `parseRefUpdate` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/agent-tracing.test.ts:356:9: warning unicorn(consistent-function-scoping): Function `reply` does not capture any variables from its parent scope help: Move `reply` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/agent-tracing.test.ts:448:7: warning unicorn(consistent-function-scoping): Function `reply` does not capture any variables from its parent scope help: Move `reply` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/agent-tracing.test.ts:450:7: warning unicorn(consistent-function-scoping): Function `notification` does not capture any variables from its parent scope help: Move `notification` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-migration.test.ts:384:9: warning unicorn(consistent-function-scoping): Function `build` does not capture any variables from its parent scope help: Move `build` to the outer scope to avoid recreating it on every call.
+packages/educateos-provider-fakes/__tests__/lti.test.ts:446:20: warning unicorn(consistent-function-scoping): Function `respond` does not capture any variables from its parent scope help: Move `respond` to the outer scope to avoid recreating it on every call.
+packages/educateos-provider-fakes/__tests__/lti.test.ts:490:27: warning eslint(no-shadow): 'token' is already declared in the upper scope. help: Consider renaming 'token' to avoid shadowing the variable from the outer scope.
+packages/educateos-provider-fakes/__tests__/lti.test.ts:582:38: warning eslint(no-shadow): 'token' is already declared in the upper scope. help: Consider renaming 'token' to avoid shadowing the variable from the outer scope.
+packages/educateos-student-ui/__tests__/sign-in.test.tsx:81:9: warning unicorn(consistent-function-scoping): Function `ended` does not capture any variables from its parent scope help: Move `ended` to the outer scope to avoid recreating it on every call.
+packages/educateos-integrations/__tests__/clever.test.ts:106:11: warning unicorn(consistent-function-scoping): Function `fetchStub` does not capture any variables from its parent scope help: Move `fetchStub` to the outer scope to avoid recreating it on every call.
+packages/educateos-integrations/__tests__/clever.test.ts:378:12: warning unicorn(consistent-function-scoping): Function `expected` does not capture any variables from its parent scope help: Move `expected` to the outer scope to avoid recreating it on every call.
+packages/educateos-integrations/__tests__/clever.test.ts:387:9: warning unicorn(consistent-function-scoping): Function `people` does not capture any variables from its parent scope help: Move `people` to the outer scope to avoid recreating it on every call.
+packages/educateos-integrations/__tests__/clever.test.ts:389:12: warning unicorn(consistent-function-scoping): Function `enrollmentKeys` does not capture any variables from its parent scope help: Move `enrollmentKeys` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/sheets-plan.test.ts:766:9: warning unicorn(consistent-function-scoping): Function `inserts` does not capture any variables from its parent scope help: Move `inserts` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/sheets-plan.test.ts:783:9: warning unicorn(consistent-function-scoping): Function `framed` does not capture any variables from its parent scope help: Move `framed` to the outer scope to avoid recreating it on every call.
+packages/educateos-academics/__tests__/directory.test.ts:469:9: warning unicorn(consistent-function-scoping): Function `admins` does not capture any variables from its parent scope help: Move `admins` to the outer scope to avoid recreating it on every call.
+packages/educateos-lti/__tests__/provider-fakes.test.ts:235:18: warning unicorn(consistent-function-scoping): Function `register` does not capture any variables from its parent scope help: Move `register` to the outer scope to avoid recreating it on every call.
+packages/educateos-lti/__tests__/provider-fakes.test.ts:235:18: warning unicorn(consistent-function-scoping): Function `toolHandler` does not capture any variables from its parent scope help: Move `toolHandler` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-homeassistant/src/homeassistant.ts:1306:11: warning typescript(no-this-alias): Unexpected aliasing of 'this' to local variable. help: Assigning a variable to this instead of properly using arrow lambdas may be a symptom of pre-ES2015 practices or not managing scope well.
+packages/gatekeeper-homeassistant/src/approvals.ts:232:11: warning unicorn(consistent-function-scoping): Function `named` does not capture any variables from its parent scope help: Move `named` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/GatekeeperModal.test.tsx:244:9: warning unicorn(consistent-function-scoping): Function `buttons` does not capture any variables from its parent scope help: Move `buttons` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/connect-pages.test.ts:51:12: warning unicorn(consistent-function-scoping): Function `scriptLiterals` does not capture any variables from its parent scope help: Move `scriptLiterals` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/git-transport.test.ts:440:12: warning unicorn(consistent-function-scoping): Function `report` does not capture any variables from its parent scope help: Move `report` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/git-transport.test.ts:475:12: warning unicorn(consistent-function-scoping): Function `okReport` does not capture any variables from its parent scope help: Move `okReport` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/git-transport.test.ts:479:12: warning unicorn(consistent-function-scoping): Function `captureFetch` does not capture any variables from its parent scope help: Move `captureFetch` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/chat-state.test.ts:125:9: warning unicorn(consistent-function-scoping): Function `emojis` does not capture any variables from its parent scope help: Move `emojis` to the outer scope to avoid recreating it on every call.
+packages/educateos-policy/__tests__/discussions.test.ts:128:11: warning unicorn(consistent-function-scoping): Function `now` does not capture any variables from its parent scope help: Move `now` to the outer scope to avoid recreating it on every call.
+packages/educateos-policy/__tests__/discussions.test.ts:136:16: warning eslint(no-shadow): 'target' is already declared in the upper scope. help: Consider renaming 'target' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-github/__tests__/github-api.test.ts:226:12: warning unicorn(consistent-function-scoping): Function `redirectOnce` does not capture any variables from its parent scope help: Move `redirectOnce` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-github/__tests__/github-api.test.ts:238:18: warning unicorn(consistent-function-scoping): Function `rejection` does not capture any variables from its parent scope help: Move `rejection` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/agent-retry.test.ts:122:18: warning unicorn(consistent-function-scoping): Function `runTurn` does not capture any variables from its parent scope help: Move `runTurn` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/client-pagination.test.ts:581:12: warning unicorn(consistent-function-scoping): Function `stubError` does not capture any variables from its parent scope help: Move `stubError` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/gmail-api.test.ts:602:11: warning unicorn(consistent-function-scoping): Function `encodedDraft` does not capture any variables from its parent scope help: Move `encodedDraft` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/gmail-api.test.ts:954:11: warning unicorn(consistent-function-scoping): Function `image` does not capture any variables from its parent scope help: Move `image` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/gmail-api.test.ts:1421:11: warning unicorn(consistent-function-scoping): Function `cidPart` does not capture any variables from its parent scope help: Move `cidPart` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/gmail-api.test.ts:1580:9: warning unicorn(consistent-function-scoping): Function `draftWithHeader` does not capture any variables from its parent scope help: Move `draftWithHeader` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/SignupPage.tsx:22:25: warning unicorn(consistent-function-scoping): Function `handleSignupSuccess` does not capture any variables from its parent scope help: Move `handleSignupSuccess` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/AdminPage.tsx:40:25: warning unicorn(consistent-function-scoping): Function `resourceKey` does not capture any variables from its parent scope help: Move `resourceKey` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/observers.test.ts:257:9: warning unicorn(consistent-function-scoping): Function `fill` does not capture any variables from its parent scope help: Move `fill` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/observers.test.ts:309:12: warning unicorn(consistent-function-scoping): Function `makeBulkTracker` does not capture any variables from its parent scope help: Move `makeBulkTracker` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/observers.test.ts:607:12: warning unicorn(consistent-function-scoping): Function `tracking` does not capture any variables from its parent scope help: Move `tracking` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/observers.test.ts:653:9: warning unicorn(consistent-function-scoping): Function `withholdKeys` does not capture any variables from its parent scope help: Move `withholdKeys` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/account-endpoint.test.ts:894:11: warning unicorn(consistent-function-scoping): Function `portal` does not capture any variables from its parent scope help: Move `portal` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/account-endpoint.test.ts:1004:9: warning unicorn(consistent-function-scoping): Function `deployment` does not capture any variables from its parent scope help: Move `deployment` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/account-endpoint.test.ts:555:9: warning eslint(no-shadow): 'server' is already declared in the upper scope. help: Consider renaming 'server' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/ai-gateway.test.ts:162:9: warning unicorn(consistent-function-scoping): Function `gatewayEnv` does not capture any variables from its parent scope help: Move `gatewayEnv` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/user-models.test.ts:171:12: warning unicorn(consistent-function-scoping): Function `inGatewayUser` does not capture any variables from its parent scope help: Move `inGatewayUser` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/user-models.test.ts:197:12: warning unicorn(consistent-function-scoping): Function `storeModel` does not capture any variables from its parent scope help: Move `storeModel` to the outer scope to avoid recreating it on every call.
+packages/configurator-ui/src/runtime/workers-types.d.ts:6:10: warning typescript(no-extraneous-class): Unexpected empty class. help: Delete this class
+packages/configurator-ui/src/runtime/workers-types.d.ts:7:10: warning typescript(no-extraneous-class): Unexpected empty class. help: Delete this class
+packages/configurator-ui/src/runtime/workers-types.d.ts:8:10: warning typescript(no-extraneous-class): Unexpected empty class. help: Delete this class
+packages/workshop-backend/__tests__/agent-calls.test.ts:122:43: warning eslint(no-shadow): 'env' is already declared in the upper scope. help: Consider renaming 'env' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/code-change.test.ts:389:12: warning unicorn(consistent-function-scoping): Function `applySpan` does not capture any variables from its parent scope help: Move `applySpan` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/code-change.test.ts:558:9: warning unicorn(consistent-function-scoping): Function `bad` does not capture any variables from its parent scope help: Move `bad` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/code-change.test.ts:568:9: warning unicorn(consistent-function-scoping): Function `bad` does not capture any variables from its parent scope help: Move `bad` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/code-change.test.ts:576:9: warning unicorn(consistent-function-scoping): Function `bad` does not capture any variables from its parent scope help: Move `bad` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/code-change.test.ts:608:9: warning unicorn(consistent-function-scoping): Function `atCap` does not capture any variables from its parent scope help: Move `atCap` to the outer scope to avoid recreating it on every call.
+packages/educateos-fixtures/__tests__/districts.test.ts:54:16: warning eslint(no-shadow): 'principal' is already declared in the upper scope. help: Consider renaming 'principal' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/web-fetch.test.ts:80:12: warning unicorn(consistent-function-scoping): Function `mockResponse` does not capture any variables from its parent scope help: Move `mockResponse` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/http-errors.test.ts:36:11: warning unicorn(consistent-function-scoping): Function `unreleasable` does not capture any variables from its parent scope help: Move `unreleasable` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/git-objects.test.ts:128:12: warning unicorn(consistent-function-scoping): Function `payload` does not capture any variables from its parent scope help: Move `payload` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-codec.test.ts:508:9: warning eslint(no-shadow): 'entry' is already declared in the upper scope. help: Consider renaming 'entry' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:787:13: warning unicorn(consistent-function-scoping): Function `refresh` does not capture any variables from its parent scope help: Move `refresh` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:1050:9: warning unicorn(consistent-function-scoping): Function `callbackFor` does not capture any variables from its parent scope help: Move `callbackFor` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:1145:12: warning unicorn(consistent-function-scoping): Function `overCapnweb` does not capture any variables from its parent scope help: Move `overCapnweb` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:2097:12: warning unicorn(consistent-function-scoping): Function `harness` does not capture any variables from its parent scope help: Move `harness` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:2117:12: warning unicorn(consistent-function-scoping): Function `providerAccepting` does not capture any variables from its parent scope help: Move `providerAccepting` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:2071:11: warning eslint(no-shadow): 'stale' is already declared in the upper scope. help: Consider renaming 'stale' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:2127:13: warning eslint(no-shadow): 'coordinator' is already declared in the upper scope. help: Consider renaming 'coordinator' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:2142:13: warning eslint(no-shadow): 'coordinator' is already declared in the upper scope. help: Consider renaming 'coordinator' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:2162:13: warning eslint(no-shadow): 'coordinator' is already declared in the upper scope. help: Consider renaming 'coordinator' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:2188:13: warning eslint(no-shadow): 'coordinator' is already declared in the upper scope. help: Consider renaming 'coordinator' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:2203:13: warning eslint(no-shadow): 'coordinator' is already declared in the upper scope. help: Consider renaming 'coordinator' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:2218:13: warning eslint(no-shadow): 'coordinator' is already declared in the upper scope. help: Consider renaming 'coordinator' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:2235:13: warning eslint(no-shadow): 'coordinator' is already declared in the upper scope. help: Consider renaming 'coordinator' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-kit/__tests__/credentials.test.ts:2267:13: warning eslint(no-shadow): 'coordinator' is already declared in the upper scope. help: Consider renaming 'coordinator' to avoid shadowing the variable from the outer scope.
+packages/workshop-backend/__tests__/worktrees.test.ts:1112:12: warning unicorn(consistent-function-scoping): Function `makeLegacy` does not capture any variables from its parent scope help: Move `makeLegacy` to the outer scope to avoid recreating it on every call.
+packages/educateos-config/__tests__/rostering.test.ts:86:11: warning unicorn(consistent-function-scoping): Function `paths` does not capture any variables from its parent scope help: Move `paths` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/oauth-client.test.ts:405:9: warning unicorn(consistent-function-scoping): Function `failing` does not capture any variables from its parent scope help: Move `failing` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/oauth-client.test.ts:611:12: warning unicorn(consistent-function-scoping): Function `coordinated` does not capture any variables from its parent scope help: Move `coordinated` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/drive-api.test.ts:609:9: warning unicorn(consistent-function-scoping): Function `node` does not capture any variables from its parent scope help: Move `node` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/hydrated-tools.test.ts:71:11: warning unicorn(consistent-function-scoping): Function `large` does not capture any variables from its parent scope help: Move `large` to the outer scope to avoid recreating it on every call.
+packages/educateos-quizzes/__tests__/quizzes.test.ts:277:18: warning unicorn(consistent-function-scoping): Function `submittedBy` does not capture any variables from its parent scope help: Move `submittedBy` to the outer scope to avoid recreating it on every call.
+packages/educateos-quizzes/__tests__/scoring.test.ts:23:11: warning unicorn(consistent-function-scoping): Function `choose` does not capture any variables from its parent scope help: Move `choose` to the outer scope to avoid recreating it on every call.
+packages/educateos-ai-guard/__tests__/context.test.ts:68:11: warning unicorn(consistent-function-scoping): Function `subject` does not capture any variables from its parent scope help: Move `subject` to the outer scope to avoid recreating it on every call.
+packages/educateos-ai-guard/__tests__/context.test.ts:75:11: warning unicorn(consistent-function-scoping): Function `answering` does not capture any variables from its parent scope help: Move `answering` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-x/__tests__/workerd/reads.test.ts:213:18: warning unicorn(consistent-function-scoping): Function `observed` does not capture any variables from its parent scope help: Move `observed` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-x/__tests__/workerd/reads.test.ts:220:18: warning unicorn(consistent-function-scoping): Function `exclusions` does not capture any variables from its parent scope help: Move `exclusions` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/ai-models.test.ts:1416:12: warning unicorn(consistent-function-scoping): Function `startSession` does not capture any variables from its parent scope help: Move `startSession` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/ai-models.test.ts:1450:11: warning unicorn(consistent-function-scoping): Function `sent` does not capture any variables from its parent scope help: Move `sent` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/ai-models.test.ts:1741:12: warning unicorn(consistent-function-scoping): Function `openAiHandle` does not capture any variables from its parent scope help: Move `openAiHandle` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/ai-models.test.ts:1771:9: warning unicorn(consistent-function-scoping): Function `chatHandle` does not capture any variables from its parent scope help: Move `chatHandle` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/ai-models.test.ts:1797:9: warning unicorn(consistent-function-scoping): Function `events` does not capture any variables from its parent scope help: Move `events` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/ai-models.test.ts:1862:9: warning unicorn(consistent-function-scoping): Function `sharedHeaders` does not capture any variables from its parent scope help: Move `sharedHeaders` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-store.test.ts:288:12: warning unicorn(consistent-function-scoping): Function `makeFixtureStore` does not capture any variables from its parent scope help: Move `makeFixtureStore` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-store.test.ts:300:12: warning unicorn(consistent-function-scoping): Function `entriesOf` does not capture any variables from its parent scope help: Move `entriesOf` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-store.test.ts:311:12: warning unicorn(consistent-function-scoping): Function `changedPaths` does not capture any variables from its parent scope help: Move `changedPaths` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-store.test.ts:441:9: warning unicorn(consistent-function-scoping): Function `files` does not capture any variables from its parent scope help: Move `files` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-store.test.ts:446:9: warning unicorn(consistent-function-scoping): Function `lines` does not capture any variables from its parent scope help: Move `lines` to the outer scope to avoid recreating it on every call.
+packages/educateos-cartridge/__tests__/course.test.ts:57:11: warning unicorn(consistent-function-scoping): Function `link` does not capture any variables from its parent scope help: Move `link` to the outer scope to avoid recreating it on every call.
+packages/workshop-evals/evals/change-calendar.eval.ts:344:15: warning unicorn(consistent-function-scoping): Function `code` does not capture any variables from its parent scope help: Move `code` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/chat-api.test.ts:261:11: warning unicorn(consistent-function-scoping): Function `mention` does not capture any variables from its parent scope help: Move `mention` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-google/__tests__/chat-api.test.ts:319:12: warning unicorn(consistent-function-scoping): Function `stubResponse` does not capture any variables from its parent scope help: Move `stubResponse` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-cache.test.ts:697:18: warning unicorn(consistent-function-scoping): Function `storeChain` does not capture any variables from its parent scope help: Move `storeChain` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-cache.test.ts:1208:9: warning unicorn(consistent-function-scoping): Function `varint` does not capture any variables from its parent scope help: Move `varint` to the outer scope to avoid recreating it on every call.
+packages/workshop-backend/__tests__/git-cache.test.ts:1481:18: warning unicorn(consistent-function-scoping): Function `fixtureWithRemoteBlobs` does not capture any variables from its parent scope help: Move `fixtureWithRemoteBlobs` to the outer scope to avoid recreating it on every call.
+packages/educateos-policy/__tests__/quizzes.test.ts:121:11: warning unicorn(consistent-function-scoping): Function `now` does not capture any variables from its parent scope help: Move `now` to the outer scope to avoid recreating it on every call.
+packages/educateos-policy/__tests__/quizzes.test.ts:129:16: warning eslint(no-shadow): 'target' is already declared in the upper scope. help: Consider renaming 'target' to avoid shadowing the variable from the outer scope.
+sites/educateos-demo-fakes/src/config.ts:40:10: warning unicorn(consistent-function-scoping): Function `part` does not capture any variables from its parent scope help: Move `part` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/__tests__/files.test.ts:279:9: warning unicorn(consistent-function-scoping): Function `message` does not capture any variables from its parent scope help: Move `message` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/__tests__/files.test.ts:447:9: warning unicorn(consistent-function-scoping): Function `message` does not capture any variables from its parent scope help: Move `message` to the outer scope to avoid recreating it on every call.
+packages/bundled-blueprints/__tests__/files.test.ts:626:9: warning unicorn(consistent-function-scoping): Function `message` does not capture any variables from its parent scope help: Move `message` to the outer scope to avoid recreating it on every call.
+packages/educateos-ai-guard/__tests__/guard.test.ts:293:9: warning unicorn(consistent-function-scoping): Function `reply` does not capture any variables from its parent scope help: Move `reply` to the outer scope to avoid recreating it on every call.
+packages/educateos-ai-guard/__tests__/guard.test.ts:296:18: warning unicorn(consistent-function-scoping): Function `admittedFor` does not capture any variables from its parent scope help: Move `admittedFor` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-x/__tests__/x-simulation.test.ts:59:11: warning unicorn(consistent-function-scoping): Function `resolve` does not capture any variables from its parent scope help: Move `resolve` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-x/__tests__/x-simulation.test.ts:114:9: warning unicorn(consistent-function-scoping): Function `follow` does not capture any variables from its parent scope help: Move `follow` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-x/__tests__/x-simulation.test.ts:154:11: warning unicorn(consistent-function-scoping): Function `follow` does not capture any variables from its parent scope help: Move `follow` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-x/__tests__/x-simulation.test.ts:162:11: warning unicorn(consistent-function-scoping): Function `mute` does not capture any variables from its parent scope help: Move `mute` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/observers.test.ts:651:11: warning unicorn(consistent-function-scoping): Function `hasAccess` does not capture any variables from its parent scope help: Move `hasAccess` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/actions.test.ts:300:11: warning unicorn(consistent-function-scoping): Function `legacy` does not capture any variables from its parent scope help: Move `legacy` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/actions.test.ts:1998:11: warning unicorn(consistent-function-scoping): Function `provides` does not capture any variables from its parent scope help: Move `provides` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/actions.test.ts:2000:11: warning unicorn(consistent-function-scoping): Function `dependsOn` does not capture any variables from its parent scope help: Move `dependsOn` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/actions.test.ts:2002:11: warning unicorn(consistent-function-scoping): Function `ok` does not capture any variables from its parent scope help: Move `ok` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/actions.test.ts:643:41: warning eslint(no-shadow): 'result' is already declared in the upper scope. help: Consider renaming 'result' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-kit/__tests__/actions.test.ts:846:16: warning eslint(no-shadow): 'describe' is already declared in the upper scope. help: Consider renaming 'describe' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-kit/__tests__/actions.test.ts:884:16: warning eslint(no-shadow): 'describe' is already declared in the upper scope. help: Consider renaming 'describe' to avoid shadowing the variable from the outer scope.
+sites/educateos-demo-fakes/__tests__/admin.test.ts:67:18: warning unicorn(consistent-function-scoping): Function `rosterClient` does not capture any variables from its parent scope help: Move `rosterClient` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-kit/__tests__/git-diff.test.ts:461:11: warning unicorn(consistent-function-scoping): Function `lines` does not capture any variables from its parent scope help: Move `lines` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/action-store.test.ts:92:11: warning unicorn(consistent-function-scoping): Function `declined` does not capture any variables from its parent scope help: Move `declined` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/action-store.test.ts:138:11: warning unicorn(consistent-function-scoping): Function `dropped` does not capture any variables from its parent scope help: Move `dropped` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/action-store.test.ts:176:11: warning unicorn(consistent-function-scoping): Function `boom` does not capture any variables from its parent scope help: Move `boom` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/action-store.test.ts:188:11: warning unicorn(consistent-function-scoping): Function `declined` does not capture any variables from its parent scope help: Move `declined` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/action-store.test.ts:207:11: warning unicorn(consistent-function-scoping): Function `declined` does not capture any variables from its parent scope help: Move `declined` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/action-store.test.ts:385:11: warning unicorn(consistent-function-scoping): Function `big` does not capture any variables from its parent scope help: Move `big` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/schema-to-ts.test.ts:494:9: warning unicorn(consistent-function-scoping): Function `schema` does not capture any variables from its parent scope help: Move `schema` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/schema-to-ts.test.ts:520:9: warning unicorn(consistent-function-scoping): Function `names` does not capture any variables from its parent scope help: Move `names` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/ShareModal.test.tsx:635:11: warning eslint(no-shadow): 'invite' is already declared in the upper scope. help: Consider renaming 'invite' to avoid shadowing the variable from the outer scope.
+packages/gatekeeper-x/__tests__/x-actions.test.ts:136:12: warning unicorn(consistent-function-scoping): Function `rejectingHost` does not capture any variables from its parent scope help: Move `rejectingHost` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-x/__tests__/x-actions.test.ts:204:9: warning unicorn(consistent-function-scoping): Function `valid` does not capture any variables from its parent scope help: Move `valid` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/useAuth.test.tsx:50:9: warning unicorn(consistent-function-scoping): Function `release` does not capture any variables from its parent scope help: Move `release` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/useAuth.test.tsx:199:11: warning unicorn(consistent-function-scoping): Function `connection` does not capture any variables from its parent scope help: Move `connection` to the outer scope to avoid recreating it on every call.
+packages/workshop-evals/src/comparison.test.ts:172:9: warning unicorn(consistent-function-scoping): Function `passes` does not capture any variables from its parent scope help: Move `passes` to the outer scope to avoid recreating it on every call.
+packages/workshop-evals/src/comparison.test.ts:222:9: warning unicorn(consistent-function-scoping): Function `step` does not capture any variables from its parent scope help: Move `step` to the outer scope to avoid recreating it on every call.
+packages/workshop-evals/src/comparison.test.ts:245:9: warning unicorn(consistent-function-scoping): Function `side` does not capture any variables from its parent scope help: Move `side` to the outer scope to avoid recreating it on every call.
+packages/workshop-evals/src/comparison.test.ts:266:9: warning unicorn(consistent-function-scoping): Function `side` does not capture any variables from its parent scope help: Move `side` to the outer scope to avoid recreating it on every call.
+packages/workshop-evals/src/comparison.test.ts:362:9: warning unicorn(consistent-function-scoping): Function `both` does not capture any variables from its parent scope help: Move `both` to the outer scope to avoid recreating it on every call.
+packages/workshop-evals/src/comparison.ts:343:19: warning eslint(no-shadow): 'stats' is already declared in the upper scope. help: Consider renaming 'stats' to avoid shadowing the variable from the outer scope.
+packages/workshop-evals/src/comparison.ts:455:9: warning eslint(no-shadow): 'trials' is already declared in the upper scope. help: Consider renaming 'trials' to avoid shadowing the variable from the outer scope.
+packages/workshop-evals/src/comparison.ts:133:10: warning unicorn(consistent-function-scoping): Function `tokens` does not capture any variables from its parent scope help: Move `tokens` to the outer scope to avoid recreating it on every call.
+packages/workshop-frontend/src/vite-env.d.ts:23:10: warning typescript(no-extraneous-class): Unexpected empty class. help: Delete this class
+packages/workshop-frontend/src/vite-env.d.ts:24:10: warning typescript(no-extraneous-class): Unexpected empty class. help: Delete this class
+packages/workshop-frontend/src/vite-env.d.ts:25:10: warning typescript(no-extraneous-class): Unexpected empty class. help: Delete this class
+packages/gatekeeper-x/__tests__/x-env.test.ts:66:9: warning unicorn(consistent-function-scoping): Function `env` does not capture any variables from its parent scope help: Move `env` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/tools.test.ts:132:9: warning unicorn(consistent-function-scoping): Function `call` does not capture any variables from its parent scope help: Move `call` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/tools.test.ts:166:9: warning unicorn(consistent-function-scoping): Function `call` does not capture any variables from its parent scope help: Move `call` to the outer scope to avoid recreating it on every call.
+packages/mcp-shared/__tests__/tools.test.ts:276:9: warning unicorn(consistent-function-scoping): Function `named` does not capture any variables from its parent scope help: Move `named` to the outer scope to avoid recreating it on every call.
+packages/gatekeeper-supabase/src/supabase.ts:331:13: warning unicorn(consistent-function-scoping): Function `badRequest` does not capture any variables from its parent scope help: Move `badRequest` to the outer scope to avoid recreating it on every call.
+$ tsc -p scripts/tsconfig.json
+$ node scripts/generate-worker-configs.ts --check
+$ node scripts/production/production-config.ts --check
+$ pnpm run build
+$ node scripts/vp/run.ts --filter=!cloudflare-os --cache build
+vp run: concurrency 12 (12 cpus, 64.0 GiB) -- set VP_RUN_CONCURRENCY_LIMIT in the environment or the repo-root .env to override
+7:14:27 AM [vite+] warning: `esbuild` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `oxc` instead.
+7:14:27 AM [vite+] warning: `optimizeDeps.esbuildOptions` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `optimizeDeps.rolldownOptions` instead.
+You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+7:14:28 AM [vite+] warning: `esbuild` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `oxc` instead.
+7:14:28 AM [vite+] warning: `optimizeDeps.esbuildOptions` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `optimizeDeps.rolldownOptions` instead.
+You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+7:14:29 AM [vite+] warning: `esbuild` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `oxc` instead.
+7:14:29 AM [vite+] warning: `optimizeDeps.esbuildOptions` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `optimizeDeps.rolldownOptions` instead.
+You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+7:14:29 AM [vite+] warning: `esbuild` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `oxc` instead.
+7:14:29 AM [vite+] warning: `optimizeDeps.esbuildOptions` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `optimizeDeps.rolldownOptions` instead.
+You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+7:14:31 AM [vite+] warning: `esbuild` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `oxc` instead.
+7:14:31 AM [vite+] warning: `optimizeDeps.esbuildOptions` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `optimizeDeps.rolldownOptions` instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+~/packages/bundled-blueprints$ tsc --project tsconfig.client.json ◉ cache hit, replaying
+
+~/packages/bundled-blueprints$ tsc --project tsconfig.server.json ◉ cache hit, replaying
+
+~/packages/bundled-blueprints$ tsc --project tsconfig.tests.json ◉ cache hit, replaying
+
+~/packages/bundled-blueprints$ tsc --project tsconfig.server-tests.json ◉ cache hit, replaying
+
+~/packages/bundled-blueprints$ tsc --project tsconfig.node.json ◉ cache hit, replaying
+
+~/packages/gatekeeper-cloudflare$ gadgets-clean-error-reporting . ⊘ cache disabled
+~/packages/educateos-contracts$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-confluence$ gadgets-clean-error-reporting . ⊘ cache disabled
+~/packages/workshop-shared$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-google$ gadgets-clean-error-reporting . ⊘ cache disabled
+~/packages/workshop-backend$ node scripts/build-bundled-blueprints.ts ⊘ cache disabled
+~/packages/gatekeeper-educateos$ node build-app.ts ◉ cache hit, replaying
+building School app single-file bundle…
+vite v7.3.6 building client environment for production...
+transforming...
+../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 5521 modules transformed.
+rendering chunks...
+[plugin vite:singlefile] 
+
+[plugin vite:singlefile] Inlining: gatekeeper-educateos.js
+[plugin vite:singlefile] Inlining: style-Cjanj_HS.css
+computing gzip size...
+dist-app/app/index.html  1,724.94 kB │ gzip: 464.11 kB
+✓ built in 1m 12s
+wrote /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-educateos/src/generated/app.txt (1684 KiB)
+
+~/packages/gatekeeper-linear$ gadgets-clean-error-reporting . ⊘ cache disabled
+~/packages/workshop-backend$ gadgets-with-timeout --idle 60 --max 600 -- node scripts/build-browser-runtime.ts ⊘ cache disabled
+~/packages/gatekeeper-mcp$ gadgets-clean-error-reporting . ⊘ cache disabled
+~/packages/typed-storage$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-mcp-portal$ gadgets-clean-error-reporting . ⊘ cache disabled
+~/packages/ui$ tsc ◉ cache hit, replaying
+
+~/packages/router$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-gitlab$ gadgets-clean-error-reporting . ⊘ cache disabled
+~/packages/workshop-frontend$ node --input-type=module -e "import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true })" ⊘ cache disabled
+~/packages/gatekeeper-notion$ gadgets-clean-error-reporting . ⊘ cache disabled
+~/packages/error-reporting$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-supabase$ gadgets-clean-error-reporting . ⊘ cache disabled
+
+~/packages/gatekeeper-homeassistant$ gadgets-clean-error-reporting . ⊘ cache disabled
+
+~/packages/gatekeeper-x$ gadgets-clean-error-reporting . ⊘ cache disabled
+
+
+~/packages/gatekeeper-zoominfo$ gadgets-clean-error-reporting . ⊘ cache disabled
+~/packages/educateos-provider-fakes$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-provider-fakes$ tsc -p __tests__ ◉ cache hit, replaying
+
+
+~/packages/gatekeeper-slack$ gadgets-clean-error-reporting . ⊘ cache disabled
+~/packages/gatekeeper-github$ gadgets-clean-error-reporting . ⊘ cache disabled
+
+~/packages/gatekeeper-email$ gadgets-clean-error-reporting . ⊘ cache disabled
+
+~/packages/gatekeeper-spotify$ gadgets-clean-error-reporting . ⊘ cache disabled
+
+~/packages/educateos-zip$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-zip$ tsc -p __tests__ ◉ cache hit, replaying
+
+
+
+~/packages/educateos-registry$ tsc ◉ cache hit, replaying
+
+~/packages/configurator-ui$ tsc ◉ cache hit, replaying
+
+~/packages/observability$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-cloudflare$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (2 modules): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-cloudflare
+
+~/packages/gatekeeper-mcp$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (1 module): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-mcp
+
+~/packages/workshop-frontend$ tsc ◉ cache hit, replaying
+
+~/packages/workshop-frontend$ tsc -p tsconfig.vite.json ◉ cache hit, replaying
+
+~/packages/workshop-frontend$ node --input-type=module -e "process.env.NODE_ENV='production'; await (await import('vite')).build()" ◉ cache hit, replaying
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 5831 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-frontend/src/passwordHash.ts is dynamically imported by /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-frontend/src/main.tsx but also statically imported by /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-frontend/src/LoginPage.tsx, /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-frontend/src/SettingsPage.tsx, /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-frontend/src/SignupPage.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                                             0.87 kB │ gzip:   0.50 kB
+dist/assets/ChatComposer-JRWl0Hxm.css                       0.29 kB │ gzip:   0.23 kB
+dist/assets/workspace-Br6JJwtp.css                          8.64 kB │ gzip:   2.09 kB
+dist/assets/index-DO5QUBqo.css                            233.97 kB │ gzip:  36.20 kB
+dist/assets/gadget._id-DtqBFgK5.js                          0.04 kB │ gzip:   0.06 kB
+dist/assets/probeRouterTag-GtNr0XzJ.js                      0.24 kB │ gzip:   0.22 kB
+dist/assets/EmptyState-CwOomwAh.js                          1.05 kB │ gzip:   0.55 kB
+dist/assets/rateLimitedCapability-CyWEDayj.js               1.07 kB │ gzip:   0.62 kB
+dist/assets/DotsThreeVertical.es-Dx9yqNGN.js                1.66 kB │ gzip:   0.53 kB
+dist/assets/Clock.es-014fpfRW.js                            1.79 kB │ gzip:   0.62 kB
+dist/assets/User.es-aIalAPZ3.js                             2.10 kB │ gzip:   0.85 kB
+dist/assets/connect.handoff-CEYNlauC.js                     2.21 kB │ gzip:   1.05 kB
+dist/assets/ArrowSquareOut.es-BdbitKQj.js                   2.33 kB │ gzip:   0.82 kB
+dist/assets/Lightning.es-Cpen1DsR.js                        2.36 kB │ gzip:   0.90 kB
+dist/assets/ViewToggle-DnBeCnXN.js                          2.65 kB │ gzip:   1.06 kB
+dist/assets/Cube.es-BlG1HI7t.js                             2.68 kB │ gzip:   0.92 kB
+dist/assets/ResetCountdown-DGVT9BvJ.js                      2.88 kB │ gzip:   1.16 kB
+dist/assets/context-ruKJVx46.js                             3.25 kB │ gzip:   1.24 kB
+dist/assets/ArrowsClockwise.es-BYGXr7ri.js                  3.27 kB │ gzip:   1.16 kB
+dist/assets/Robot.es-D21H6Kji.js                            3.37 kB │ gzip:   1.05 kB
+dist/assets/BlueprintPreviewImage-DaR3SguP.js               3.38 kB │ gzip:   1.44 kB
+dist/assets/formatTimestamp-DtJhFCUb.js                     3.42 kB │ gzip:   1.23 kB
+dist/assets/signup-ucbIs-lp.js                              4.26 kB │ gzip:   1.76 kB
+dist/assets/fileTransfers-CUXFWEhU.js                       5.23 kB │ gzip:   1.76 kB
+dist/assets/explore-N3tu-hwa.js                             7.34 kB │ gzip:   2.40 kB
+dist/assets/providers-YQ3N3eYp.js                           8.93 kB │ gzip:   3.23 kB
+dist/assets/blueprints-C-sQuYxT.js                         10.08 kB │ gzip:   3.50 kB
+dist/assets/index-CkpW75Sn.js                              11.11 kB │ gzip:   4.91 kB
+dist/assets/workspaces-DkNXHZQ6.js                         13.58 kB │ gzip:   4.67 kB
+dist/assets/outputs-DunAc320.js                            15.38 kB │ gzip:   5.05 kB
+dist/assets/gatekeepers_._appId-DWo2Npue.js                16.00 kB │ gzip:   6.14 kB
+dist/assets/useDialogSelectPortalContainer-oSI7aMsk.js     16.59 kB │ gzip:   6.16 kB
+dist/assets/profile-Bj7S3_UK.js                            21.21 kB │ gzip:   6.69 kB
+dist/assets/gatekeepers-wg81F1_E.js                        25.51 kB │ gzip:   7.45 kB
+dist/assets/index.esm-CgNExnv6.js                          28.16 kB │ gzip:  11.20 kB
+dist/assets/blueprint._id-BBqhkI_z.js                      32.88 kB │ gzip:   9.79 kB
+dist/assets/ChatComposer-CvT7s86y.js                      106.26 kB │ gzip:  32.68 kB
+dist/assets/admin-BLe5g5BF.js                             124.30 kB │ gzip:  38.83 kB
+dist/assets/server.browser-CdDQ9h_I.js                    189.09 kB │ gzip:  57.94 kB
+dist/assets/index-BL6qTxVI.js                           1,372.75 kB │ gzip: 416.46 kB
+dist/assets/workspace._id-gwJsblBU.js                   1,431.64 kB │ gzip: 459.42 kB
+✓ built in 13.20s
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+
+
+
+
+
+
+
+~/packages/gatekeeper-google$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (11 modules): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-google
+
+~/packages/educateos-fixtures$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-confluence$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (3 modules): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-confluence
+
+~/packages/gatekeeper-linear$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (3 modules): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-linear
+
+~/packages/gatekeeper-github$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (3 modules): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-github
+
+~/packages/gatekeeper-supabase$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (2 modules): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-supabase
+
+~/packages/gatekeeper-zoominfo$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (1 module): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-zoominfo
+
+~/packages/gatekeeper-gitlab$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (3 modules): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-gitlab
+
+~/packages/gatekeeper-email$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (1 module): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-email
+
+~/packages/gatekeeper-mcp-portal$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (1 module): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-mcp-portal
+
+bundled blueprints up-to-date (3): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/workshop-backend/src/generated/bundled-blueprints.ts
+~/packages/gatekeeper-x$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (4 modules): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-x
+
+~/packages/gatekeeper-homeassistant$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (5 modules): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-homeassistant
+
+~/packages/gatekeeper-spotify$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (2 modules): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-spotify
+
+~/packages/gatekeeper-kit$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-notion$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (2 modules): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-notion
+
+~/packages/gatekeeper-scheduler$ pnpm run typecheck:app ◉ cache hit, replaying
+$ tsc -p tsconfig.app.json && tsc -p tsconfig.vite.json
+
+~/packages/gatekeeper-scheduler$ gadgets-clean-error-reporting . ⊘ cache disabled
+~/packages/gatekeeper-slack$ gadgets-build-configurator . ◉ cache hit, replaying
+configurator UI up-to-date (3 modules): /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/gatekeeper-slack
+
+
+
+~/packages/educateos-fleet$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-fleet$ tsc -p tsconfig.workerd.json ◉ cache hit, replaying
+
+~/packages/educateos-config$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-academics$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-academics$ tsc -p tsconfig.workerd.json ◉ cache hit, replaying
+
+~/packages/educateos-identity$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-identity$ tsc -p scripts ◉ cache hit, replaying
+
+~/packages/gatekeeper-email$ tsc ◉ cache hit, replaying
+
+~/packages/integration-tests$ tsc --noEmit ◉ cache hit, replaying
+
+~/packages/workshop-evals$ tsc --noEmit ◉ cache hit, replaying
+
+~/packages/educateos-lti$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-lti$ tsc -p __tests__ ◉ cache hit, replaying
+
+~/packages/educateos-policy$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-policy$ tsc -p tsconfig.workerd.json ◉ cache hit, replaying
+
+~/packages/educateos-releases$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-releases$ tsc -p tsconfig.workerd.json ◉ cache hit, replaying
+
+~/packages/educateos-commerce$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-commerce$ tsc -p tsconfig.workerd.json ◉ cache hit, replaying
+
+~/packages/workshop-backend$ tsc ⊘ cache disabled
+~/packages/gatekeeper-slack$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-notion$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-google$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-google$ tsc -p tsconfig.test.json ◉ cache hit, replaying
+
+~/packages/gatekeeper-linear$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-x$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-websearch$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-cloudflare$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-supabase$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-gitlab$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-zoominfo$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-spotify$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-confluence$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-context$ pnpm run typecheck:app ◉ cache hit, replaying
+$ tsc -p tsconfig.app.json && tsc -p tsconfig.vite.json
+
+~/packages/gatekeeper-context$ gadgets-clean-error-reporting . ⊘ cache disabled
+~/packages/gatekeeper-homeassistant$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-github$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-github$ tsc -p tsconfig.contract.json ◉ cache hit, replaying
+
+~/packages/mcp-shared$ tsc ◉ cache hit, replaying
+
+~/packages/mcp-shared$ tsc -p tsconfig.test.json ◉ cache hit, replaying
+
+
+~/packages/gatekeeper-scheduler$ node build-app.ts ◉ cache hit, replaying
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 4579 modules transformed.
+rendering chunks...
+[plugin vite:singlefile] 
+
+[plugin vite:singlefile] Inlining: gatekeeper-scheduler.js
+[plugin vite:singlefile] Inlining: style-BP8TgRiP.css
+computing gzip size...
+dist-app/app/index.html  420.38 kB │ gzip: 105.95 kB
+✓ built in 8.21s
+
+~/packages/gatekeeper-scheduler$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-workspaces$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-workspaces$ tsc -p tsconfig.workerd.json ◉ cache hit, replaying
+
+~/packages/educateos-ai-governance$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-ai-governance$ tsc -p tsconfig.workerd.json ◉ cache hit, replaying
+
+~/packages/educateos-identity-links$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-identity-links$ tsc -p tsconfig.workerd.json ◉ cache hit, replaying
+
+~/packages/educateos-catalog$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-catalog$ tsc -p scripts ◉ cache hit, replaying
+
+~/packages/educateos-catalog$ tsc -p tsconfig.workerd.json ◉ cache hit, replaying
+
+~/packages/educateos-installer$ tsc ◉ cache hit, replaying
+
+
+~/packages/gatekeeper-context$ node build-app.ts ◉ cache hit, replaying
+building context library app single-file bundle…
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 5571 modules transformed.
+rendering chunks...
+[plugin vite:singlefile] 
+
+[plugin vite:singlefile] Inlining: gatekeeper-context.js
+[plugin vite:singlefile] Inlining: style-BV8yfeB4.css
+computing gzip size...
+dist-app/app/index.html  2,393.23 kB │ gzip: 672.06 kB
+✓ built in 24.93s
+app.txt unchanged (2320 KiB), skipping write
+
+~/packages/gatekeeper-context$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-mcp$ tsc ◉ cache hit, replaying
+
+~/packages/gatekeeper-mcp-portal$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-learning-artifacts$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-assessment$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-artifacts-git$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-artifacts-git$ tsc -p __tests__ ◉ cache hit, replaying
+
+~/packages/educateos-artifacts-git$ tsc -p tsconfig.transport.json ◉ cache hit, replaying
+
+~/packages/educateos-control-plane$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-control-plane$ tsc -p tsconfig.workerd.json ◉ cache hit, replaying
+
+~/packages/educateos-control-plane$ tsc -p tsconfig.node.json ◉ cache hit, replaying
+
+~/packages/educateos-content-studio$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-content-studio$ tsc -p tsconfig.workerd.json ◉ cache hit, replaying
+
+~/packages/educateos-curriculum$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-cartridge$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-cartridge$ tsc -p __tests__ ◉ cache hit, replaying
+
+~/packages/educateos-portability$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-portability$ tsc -p __tests__ ◉ cache hit, replaying
+
+~/packages/educateos-quizzes$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-lti-district$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-lti-district$ tsc -p __tests__ ◉ cache hit, replaying
+
+~/packages/educateos-lti-district$ tsc -p tsconfig.workerd.json ◉ cache hit, replaying
+
+~/packages/educateos-discussions$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-assessment-ci$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-doc-extract$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-ocs$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-ocs$ tsc -p tsconfig.workerd.json ◉ cache hit, replaying
+
+~/packages/educateos-integrations$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-integrations$ tsc -p __tests__ ◉ cache hit, replaying
+
+~/packages/educateos-assessment-ai$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-district-app$ tsc ◉ cache hit, replaying
+
+~/sites/educateos-demo-fakes$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-sandbox-runner$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-api-client$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-external-mcp$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-ai-guard$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-teacher-ui$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-teacher-ui$ vite build ◉ cache hit, replaying
+vite v7.3.6 building client environment for production...
+transforming...
+../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 5299 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.51 kB │ gzip:   0.32 kB
+dist/assets/index-CZfctG11.css    155.79 kB │ gzip:  24.82 kB
+dist/assets/index-DUv57w4f.js   1,106.67 kB │ gzip: 321.69 kB
+✓ built in 14.89s
+
+(!) Some chunks are larger than 1024 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+~/packages/educateos-harness$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-student-ui$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-student-ui$ tsc -p tsconfig.vite.json ◉ cache hit, replaying
+
+~/packages/educateos-student-ui$ node --input-type=module -e "process.env.NODE_ENV='production'; await (await import('vite')).build()" ◉ cache hit, replaying
+vite v7.3.6 building client environment for production...
+transforming...
+../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 5377 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.51 kB │ gzip:   0.32 kB
+dist/assets/index-DXp8tJWR.css    154.26 kB │ gzip:  24.64 kB
+dist/assets/index-DepGcs7l.js   1,096.37 kB │ gzip: 324.87 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 14.91s
+
+~/packages/educateos-admin-ui$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-admin-ui$ tsc -p tsconfig.vite.json ◉ cache hit, replaying
+
+~/packages/educateos-admin-ui$ node --input-type=module -e "process.env.NODE_ENV='production'; await (await import('vite')).build()" ◉ cache hit, replaying
+vite v7.3.6 building client environment for production...
+transforming...
+../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 5276 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.50 kB │ gzip:   0.32 kB
+dist/assets/index-B6C2dGlQ.css  154.24 kB │ gzip:  24.63 kB
+dist/assets/index-CZ-sYfSw.js   981.01 kB │ gzip: 293.07 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 12.36s
+
+~/packages/gatekeeper-educateos$ tsc -p tsconfig.app.json ◉ cache hit, replaying
+
+~/packages/gatekeeper-educateos$ tsc -p tsconfig.vite.json ◉ cache hit, replaying
+
+~/packages/gatekeeper-educateos$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-demo$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-demo$ tsc -p tsconfig.vite.json ◉ cache hit, replaying
+
+~/packages/educateos-demo$ node --input-type=module -e "process.env.NODE_ENV='production'; await (await import('vite')).build()" ◉ cache hit, replaying
+vite v7.3.6 building client environment for production...
+transforming...
+../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 5650 modules transformed.
+rendering chunks...
+computing gzip size...
+../../sites/educateos-io/public/demo/index.html                     0.94 kB │ gzip:   0.56 kB
+../../sites/educateos-io/public/demo/assets/index-n5OeAAB_.css    158.60 kB │ gzip:  25.30 kB
+../../sites/educateos-io/public/demo/assets/index-BryVftNZ.js   2,833.06 kB │ gzip: 697.16 kB
+✓ built in 12.23s
+
+~/packages/educateos-district-worker$ tsc ◉ cache hit, replaying
+
+~/packages/educateos-pilot-gate$ tsc ◉ cache hit, replaying
+
+
+~/packages/workshop-backend$ tsc --project tsconfig.browser.json ⊘ cache disabled
+
+---
+vp run: 144/144 cache hit (100%), 167/167 successful, 1037.14s saved. (Run `vp run --last-details` for full details)

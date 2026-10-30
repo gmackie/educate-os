@@ -147,7 +147,17 @@ it("intentionally disables new authoring actions until district provenance and A
       ...(["gadget.create", "blueprint.publish", "workspace.share", "gadget.execute", "agent.execute"] as const)
         .map(action => ({ action, userId, workspaceId: "approved-looking-workspace" })),
     ] as WorkshopCapabilityDescriptor[]) {
-      expect(await outcome(request)).toBe("deny");
+      // The RPC validator may reject a not-yet-supported discovery union before the domain
+      // adapter. Both paths must refuse authority; no other exception counts as this check.
+      try {
+        expect(await outcome(request)).toBe("deny");
+      } catch (error) {
+        expect(error).toBeInstanceOf(TypeError);
+        expect(String(error)).toContain("capnweb-validate");
+      }
+      await runInDurableObject(env.DISTRICT.getByName("disabled-authoring"), async instance => {
+        expect((await authorizeWorkshopCapability(await instance.districtApp(), TEST_CONFIG.workshopPolicy, request)).outcome).toBe("deny");
+      });
     }
   }
 });
