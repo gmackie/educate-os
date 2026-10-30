@@ -39,7 +39,7 @@ import {
   decisionResult, SchoolToolsSessionCore, type SchoolChange, type SchoolToolCallResult, type SchoolToolInfo,
 } from "./session.ts";
 import type { DistrictResponse, SchoolAppApi } from "./school-app-api.ts";
-import { AssessmentSessionCore, requireAssessmentResponse, type AssessmentChange } from "./assessment-session.ts";
+import { AssessmentSessionCore, requireAssessmentResponse, type AssessmentChange, type AssessmentCheckpointChange } from "./assessment-session.ts";
 import type { SchoolAssessmentSession, SchoolToolsSession } from "./types.js";
 import TYPES_CODE from "./types.txt";
 import APP_HTML from "./generated/app.txt";
@@ -203,7 +203,34 @@ interface ChangeHost {
 const CHANGE_KIND: ActionKind = { tag: "school-change", label: "Change school records" };
 
 // Never auto-approvable: a person decides every school change (SCHO-57).
-const changes = defineActions<ChangeHost, { change: SchoolChange; assessment: AssessmentChange }>({
+const changes = defineActions<ChangeHost, { change: SchoolChange; assessment: AssessmentChange; checkpoint: AssessmentCheckpointChange }>({
+  checkpoint: {
+    kind: { tag: "assessment-checkpoint", label: "Submit current Gadget" },
+    delivery: "await-decision",
+    describe: (change) => ({
+      title: "Submit current Gadget",
+      description: "Send the saved Gadget source shown in your preview to your school's assessment records. "
+        + "Review that source before approving. This summary does not reproduce the source. "
+        + "Code provenance does not establish independent human authorship. Explanations and AI assistance are separate evidence.",
+      fields: [
+        { label: "Assignment", kind: "inline", value: change.assignmentId },
+        { label: "Source commit", kind: "inline", value: change.checkpoint.commitId },
+        { label: "Source digest", kind: "inline", value: change.checkpoint.sourceDigest },
+        { label: "Source files", kind: "list", items: change.checkpoint.files.map(([path]) => path) },
+      ],
+      descriptionIsComplete: false,
+      implementsRevert: false,
+    }),
+    apply: async (change, host) => {
+      const district = host.district();
+      if (!district.gadgetAssessmentSubmitCheckpoint) throw new ActionApplyError("Current Gadget submission is unavailable.");
+      const { assignmentId, ...request } = change;
+      const response = await district.gadgetAssessmentSubmitCheckpoint(await host.decider(), assignmentId, request);
+      if (response.status >= 400 && response.status < 500) throw new ActionApplyError("Gadget submission is no longer permitted.");
+      requireAssessmentResponse(response);
+    },
+    reject: async () => {},
+  },
   assessment: {
     kind: { tag: "assessment-submission", label: "Submit assessment evidence" },
     delivery: "await-decision",
@@ -288,12 +315,16 @@ class SchoolAssessmentSessionImpl extends RpcTarget implements SchoolAssessmentS
     await this.#core.submit(revisions);
   }
 
+  async previewCurrentGadget(): Promise<string> { return this.#core.previewCurrentGadget(); }
+
+  async submitCurrentGadget(previewId: string): Promise<void> { await this.#core.submitCurrentGadget(previewId); }
+
   [Symbol.dispose](): void { this.#queue[Symbol.dispose](); }
 }
 
 @validateRpc()
 export class EducateOsGatekeeper extends DurableObject<Cloudflare.Env, FacetProps> implements Gatekeeper<SchoolToolsSession> {
-  readonly #journal = new ActionJournal<TaggedAction<{ change: SchoolChange; assessment: AssessmentChange }>>(this.ctx.storage.kv, { namespace: "school" });
+  readonly #journal = new ActionJournal<TaggedAction<{ change: SchoolChange; assessment: AssessmentChange; checkpoint: AssessmentCheckpointChange }>>(this.ctx.storage.kv, { namespace: "school" });
   readonly #host: ChangeHost = {
     decider: () => this.#account().principal(),
     district: () => districtOf(this.env),
@@ -344,6 +375,19 @@ export class EducateOsGatekeeper extends DurableObject<Cloudflare.Env, FacetProp
           account: () => this.#account().principal(),
           observe: () => assessmentQueue.authorizeObservation({ title: "Read assessment evidence", description: "Read your configured assignment and submission snapshots." }),
           submit: async (change) => void await this.#changes.submit(assessmentQueue, "assessment", change),
+          checkpoint: async () => {
+            if (typeof assessmentQueue.getCurrentGadgetCheckpoint !== "function") throw new Error("Current Gadget source is unavailable.");
+            const checkpoint = await assessmentQueue.getCurrentGadgetCheckpoint();
+            // Workers RPC widens tuple arrays; retain the source pairs without asserting a stub type.
+            return {
+              ...checkpoint,
+              files: checkpoint.files.map((file): [string, string] => {
+                if (file.length !== 2 || file[0] === undefined || file[1] === undefined) throw new Error("Invalid Gadget source checkpoint.");
+                return [file[0], file[1]];
+              }),
+            };
+          },
+          submitCheckpoint: async (change) => void await this.#changes.submit(assessmentQueue, "checkpoint", change),
         });
         return new SchoolAssessmentSessionImpl(assessment, assessmentQueue);
       } catch (error) {

@@ -91,6 +91,8 @@ export type ContentRef = z.infer<typeof ContentRef>;
 
 /** Whether, and how, AI helped produce a revision. The author declares it; it is recorded verbatim. */
 export const AiAssistance = z.discriminatedUnion("level", [
+  // Source exports attest bytes, not who authored them. Never invent a no-AI declaration.
+  z.strictObject({ level: z.literal("undisclosed") }),
   z.strictObject({ level: z.literal("none") }),
   z.strictObject({ level: z.literal("assisted"), modelId: z.string().regex(/^[A-Za-z0-9_.:/@-]{1,200}$/) }),
   z.strictObject({ level: z.literal("generated"), modelId: z.string().regex(/^[A-Za-z0-9_.:/@-]{1,200}$/) }),
@@ -98,17 +100,29 @@ export const AiAssistance = z.discriminatedUnion("level", [
 /** AI-assistance metadata. */
 export type AiAssistance = z.infer<typeof AiAssistance>;
 
+/** Server-owned evidence of the Workshop source capability; never accepted from student content. */
+export const SourceCheckpointProvenance = z.strictObject({
+  policy: z.literal("educateos-source-v1"),
+  commitId: z.string().regex(/^[a-f0-9]{40}$/),
+  sourceDigest: ContentDigest,
+  blueprint: z.strictObject({ id: z.string().min(1).max(256), commitId: z.string().regex(/^[a-f0-9]{40}$/) }),
+});
+/** Trusted checkpoint metadata recorded separately from the editable content envelope. */
+export type SourceCheckpointProvenance = z.infer<typeof SourceCheckpointProvenance>;
+
 /**
  * How a revision came to exist, recorded by the service from the request it handled, never taken
  * from the caller: `authored` text, `uploaded` bytes, an `external-reference`, a sanitized
  * `baseline` copy, `imported` from another district's archive (see
  * `LearningArtifacts.importArtifacts`), a `promoted` copy of work kept from a closed class, or
- * `registered` content a registered backend holds.
+ * `registered` content a registered backend holds, or a host-verified `workshop-checkpoint`.
  */
 export const ProvenanceRecord = z.strictObject({
-  origin: z.enum(["authored", "uploaded", "external-reference", "baseline", "imported", "promoted", "registered"]),
+  origin: z.enum(["workshop-checkpoint", "authored", "uploaded", "external-reference", "baseline", "imported", "promoted", "registered"]),
   /** The surface the revision was saved through. */
   channel: RequestChannel,
+  /** Set only by the trusted checkpoint host, never inferred from a MIME type or JSON. */
+  sourceCheckpoint: SourceCheckpointProvenance.optional(),
   /** For a `promoted` copy, the revision it was copied from and where that lived. */
   source: z.strictObject({ workspaceId: WorkspaceId, artifactId: ArtifactId, revisionId: RevisionId }).optional(),
 });

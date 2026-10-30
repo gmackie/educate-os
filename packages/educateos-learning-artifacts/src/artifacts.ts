@@ -22,6 +22,7 @@ import { chooseBackend, heldKey, isTextMediaType, type ArtifactStore } from "./c
 import { canonicalTextBytes, sha256Digest } from "./digest.ts";
 import {
   AiAssistance,
+  SourceCheckpointProvenance,
   ContentProviderName,
   EXTERNAL_REFERENCE_MEDIA_TYPE,
   MediaType,
@@ -249,10 +250,14 @@ export class LearningArtifacts {
   /**
    * Creates an artifact in one of the caller's own workspaces, with its first revision. It is
    * `personal-private` in a personal workspace and `course` in a course workspace.
+   * A host idempotency key atomically reuses the first revision; changed content is refused.
    */
-  async createArtifact(caller: Caller, rawInput: NewArtifact): Promise<ArtifactView> {
+  async createArtifact(caller: Caller, rawInput: NewArtifact, host?: { idempotencyKey: string; sourceCheckpoint?: SourceCheckpointProvenance }): Promise<ArtifactView> {
     const input = parse(NewArtifact, rawInput);
     const prepared = await this.#prepare(input.type, input.content);
+    const idempotencyKey = host?.idempotencyKey;
+    const sourceCheckpoint = host?.sourceCheckpoint === undefined ? undefined : SourceCheckpointProvenance.parse(host.sourceCheckpoint);
+    const replayId = idempotencyKey === undefined ? undefined : `art_${(await sha256Digest(new TextEncoder().encode(JSON.stringify([caller.principal, z.string().min(1).max(512).parse(idempotencyKey)])))).slice(7, 55)}` as ArtifactId;
     const decisions = this.#decisions(caller);
     return this.#mutate(async ({ state, workspaces, snapshot }) => {
       const workspace = workspaces.workspaces.find((w) => w.id === input.workspaceId);
@@ -263,7 +268,22 @@ export class LearningArtifacts {
       if (!(await decisions.allows("create", creationOf(artifactTarget(artifact, termStateOf(workspace, snapshot)))))) {
         throw new EducateOsError("forbidden", "You may not add work to this workspace.");
       }
+      if (replayId !== undefined) {
+        artifact.id = replayId;
+        const existing = state.artifacts.find((a) => a.id === replayId);
+        if (existing !== undefined) {
+          const first = state.revisions.find((r) => r.artifactId === replayId && r.number === 1);
+          if (existing.deletedAt !== undefined || existing.workspaceId !== input.workspaceId || existing.type !== input.type
+            || existing.title !== input.title || first?.content.digest !== prepared.digest || first.mediaType !== prepared.mediaType
+            || JSON.stringify(first.aiAssistance) !== JSON.stringify(input.aiAssistance)
+            || JSON.stringify(first.provenance.sourceCheckpoint) !== JSON.stringify(sourceCheckpoint)) {
+            throw new EducateOsError("conflict", "Artifact request already used for different content.");
+          }
+          return { result: { artifact: existing, head: first } };
+        }
+      }
       const revision = await this.#revision(caller, artifact, prepared, input.aiAssistance, undefined, state.sweeping);
+      if (sourceCheckpoint !== undefined) revision.provenance = { origin: "workshop-checkpoint", channel: caller.channel, sourceCheckpoint };
       const next = { ...state, artifacts: [...state.artifacts, artifact], revisions: [...state.revisions, revision] };
       return { next, result: { artifact, head: revision } };
     });

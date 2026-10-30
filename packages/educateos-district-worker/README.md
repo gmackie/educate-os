@@ -6,6 +6,59 @@ serves the district's `/api` surface, and the `EDUCATEOS_DISTRICT` entrypoints t
 and the EducateOS gatekeeper take. Maturity: workerd-tested, not deployed
 ([maturity.md](../../docs/educateos/maturity.md)).
 
+## Optional Workshop assessment release binding
+
+Assessment pinning, reading and submission require `WORKSHOP_ASSESSMENT_RELEASES`, an
+installer-created service binding to the trusted Workshop's named `WorkshopAssessmentReleases`
+entrypoint. There is no hostname/URL supplied by a teacher, student or Blueprint. Cloudflare's
+binding capability authenticates this district's access; the entrypoint has no HTTP route and
+no write, principal, tenant-switch or callback method. Grant this binding only to district Workers
+that should read that Workshop's published releases. The district sends only the Blueprint ID and
+exact Git commit, never its rubric, credentials, artifacts or student records.
+
+The deployed source of truth stays `cloudflare.config.ts`. After bootstrap, add this entry to its
+`env` map (using the actual trusted backend Worker name):
+
+```ts
+WORKSHOP_ASSESSMENT_RELEASES: bindings.worker({
+  worker: "schoolos-workshop-backend",
+  exportName: "WorkshopAssessmentReleases",
+}),
+```
+
+Run `pnpm configs:generate` and regenerate any instance-specific production configuration through
+its generator; never edit the committed generated Wrangler files by hand. The hosted installer
+does not automatically add this optional binding yet. Deploy/install configuration must explicitly
+preserve it on future district updates. Do not point it at a publisher-controlled proxy.
+
+For a fresh account, first deploy the district without this binding, then the EducateOS gatekeeper,
+Workshop backend and router in their usual order. Finally add the reverse binding and redeploy the
+district. This avoids the initial circular service-name dependency; throughout bootstrap assessment
+operations fail closed. On an existing installation, deploy the backend entrypoint first and then
+the district with the binding. No deployment is part of this change.
+
+The entrypoint reuses Workshop's verified R2 Git pack reader and checks that the Blueprint still
+has a published KV record. The district independently recomputes the returned source SHA-256 and
+strict public assessment definition digest and compares them with its immutable reviewed pin;
+local signed-rubric authority remains separate. Verification runs again on use, including applying
+an approved submission. Missing binding, removed publication, missing/corrupted pack, wrong commit,
+digest mismatch or unavailable upstream refuses the operation. There is no cached-success fallback.
+
+Workshop currently treats every published Blueprint ID as public read authority, including
+unlisted/opaque IDs. This entrypoint follows that existing rule; it does not export private Gadget
+state or invent private Blueprint permission semantics. A district that needs private releases
+must leave this integration disabled until Workshop provides an appropriate ACL capability.
+Verification establishes the source from the configured Workshop, not a cryptographic identity
+of the human publisher or independent human authorship of student code. Publication approval and
+the teacher's review remain necessary.
+
+To offboard, remove the district's binding and redeploy: new verification/submission attempts fail
+closed while existing immutable district evidence remains available under district policy. Revoke
+connected school accounts and memberships through their existing controls; removing a Blueprint
+publication also disables its verification. Changing the trusted Workshop is a security-sensitive
+installer operation: existing pins can work only if exact IDs, commits and bytes match there;
+review new releases on new assignments rather than silently retargeting an assignment.
+
 ## Layout
 
 - `src/district.ts` composes one district over its Durable Object's storage: the stores, the

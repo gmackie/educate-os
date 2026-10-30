@@ -191,6 +191,7 @@ describe("the district Worker", () => {
       body: {
         activity: {
           template: "writing-task",
+          additionalArtifactTypes: ["interactive"],
           title: "Should the school day start later?",
           subject: "english-language-arts",
           gradeBand: "9",
@@ -215,11 +216,16 @@ describe("the district Worker", () => {
     const files: [string, string][] = [["educateos.assessment.json", JSON.stringify({
       format: "educateos.assessment.v1", id: "essay", version: "1.0.0", title: "Essay", intent: "Support a claim.",
       outcomes: [{ id: "argument", description: "Support a claim" }],
-      tasks: [{ id: "essay", kind: "writing", prompt: "Write an essay", evidence: [{ id: "essay", description: "Your essay", mediaTypes: ["text/markdown"], maxBytes: 10000 }], aiAssistance: { allowedUses: [], disclosureRequired: true } }],
+      tasks: [
+        { id: "essay", kind: "writing", prompt: "Write an essay", evidence: [{ id: "essay", description: "Your essay", mediaTypes: ["text/markdown"], maxBytes: 10000 }], aiAssistance: { allowedUses: [], disclosureRequired: true } },
+        { id: "gadget", kind: "gadget", prompt: "Build an argument viewer", evidence: [{ id: "source", description: "Your source checkpoint", mediaTypes: ["text/vnd.educateos.gadget-source+json"], maxBytes: 262144 }], aiAssistance: { allowedUses: [], disclosureRequired: true } },
+      ],
       rubric: { id: rubric.rubricId, version: `${rubric.version}.0.0`, digest: rubric.signature.digest },
       evaluator: { id: "writing.structure", version: "1.0.0", digest: "sha256:" + "b".repeat(64) },
     })]];
-    gadgetBlueprint = await pinWorkshopAssessmentBlueprint("essay-blueprint", { commitId: "1".repeat(40), files, sourceDigest: await digestJson(files) });
+    const workshopRelease = { commitId: "1".repeat(40), files, sourceDigest: await digestJson(files) };
+    await env.TEST_WORKSHOP_RELEASES.put("essay-blueprint", workshopRelease.commitId, workshopRelease);
+    gadgetBlueprint = await pinWorkshopAssessmentBlueprint("essay-blueprint", workshopRelease);
     await ok(teacher, "teacher.bindGadgetAssessment", { params: { assignmentId }, body: { blueprint: gadgetBlueprint } });
 
 
@@ -253,6 +259,12 @@ describe("the district Worker", () => {
     expect(restored.status).toBe(200);
     expect(JSON.parse(restored.body).blueprint).toEqual(gadgetBlueprint);
     expect(JSON.parse(restored.body).submissions[0].id).toBe(submissionId);
+    const source = await env.TEST_WORKSHOP_RELEASES.getBlueprintRelease("essay-blueprint", gadgetBlueprint.blueprint.commitId);
+    await env.TEST_WORKSHOP_RELEASES.put("essay-blueprint", gadgetBlueprint.blueprint.commitId, null);
+    expect((await env.TOOLS.gadgetAssessmentRead(subject, assignmentId)).status).toBeGreaterThanOrEqual(400);
+    expect((await env.TOOLS.gadgetAssessmentSubmit(subject, assignmentId, input)).status).toBeGreaterThanOrEqual(400);
+    await env.TEST_WORKSHOP_RELEASES.put("essay-blueprint", gadgetBlueprint.blueprint.commitId, source);
+    expect((await env.TOOLS.gadgetAssessmentRead(subject, assignmentId)).status).toBe(200);
   });
 
   it("reads all of it back after the district's object restarts", async () => {
@@ -282,6 +294,45 @@ describe("the district Worker", () => {
       expect(count("academic_principals")).toBeGreaterThan(NORTHFIELD.principals.length);
       expect(count("academic_enrollments")).toBeGreaterThan(NORTHFIELD.enrollments.length);
     });
+  });
+
+  it("keeps an approved source checkpoint immutable and idempotent across a district restart", async () => {
+    const files: [string, string][] = [
+      ["educateos.assessment.json", JSON.stringify(gadgetBlueprint.definition)],
+      ["main.ts", "export default { title: 'My argument viewer' }"],
+    ];
+    const checkpoint = {
+      format: "workshop.gadget-source.v1", workspaceId: "owner-scoped-workspace", gadgetId: 1,
+      commitId: "a".repeat(40), sourceDigest: await digestJson(files), files,
+      blueprint: { id: gadgetBlueprint.blueprint.id, commitId: gadgetBlueprint.blueprint.commitId },
+      policy: "educateos-source-v1",
+    };
+    const input = { requestId: crypto.randomUUID(), blueprint: gadgetBlueprint.blueprint, checkpoint };
+    const subject = { districtId: NORTHFIELD.district.id, principalId: PrincipalId.parse(NF.amara) };
+    const response = await env.TOOLS.gadgetAssessmentSubmitCheckpoint(subject, assignmentId, input);
+    expect(response.status, response.body).toBe(200);
+    const receipt = JSON.parse(response.body);
+    const student = await signIn(NF.amara);
+    const original = await ok(student, "student.getArtifact", { params: { artifactId: receipt.items[0].artifactId } });
+    expect(original.artifact.ownerPrincipalId).toBe(NF.amara);
+    expect(original.revision.aiAssistance.level).toBe("undisclosed");
+    expect(original.revision.mediaType).toBe("text/vnd.educateos.gadget-source+json");
+    expect(original.content).toMatchObject({ kind: "text" });
+    if (original.content.kind !== "text") throw new Error("Expected checkpoint text.");
+    expect(JSON.parse(original.content.text)).toEqual(checkpoint);
+    await evictDurableObject(district());
+    const replayed = await env.TOOLS.gadgetAssessmentSubmitCheckpoint(subject, assignmentId, input);
+    expect(replayed.status).toBe(200);
+    expect(JSON.parse(replayed.body)).toEqual(receipt);
+    expect(await ok(student, "student.getArtifact", { params: { artifactId: receipt.items[0].artifactId } })).toEqual(original);
+    const teacher = await signIn(NF.rivera);
+    const submissions = await ok(teacher, "teacher.listSubmissions", { params: { assignmentId } });
+    expect(submissions.filter((s) => s.id === receipt.submissionId)).toHaveLength(1);
+    expect(submissions.find((s) => s.id === receipt.submissionId)?.items[0]?.aiAssistance.level).toBe("undisclosed");
+    const corrupt = { ...input, checkpoint: { ...checkpoint, sourceDigest: "sha256:" + "0".repeat(64) } };
+    expect((await env.TOOLS.gadgetAssessmentSubmitCheckpoint(subject, assignmentId, corrupt)).status).toBe(400);
+    expect((await env.TOOLS.gadgetAssessmentSubmitCheckpoint({ ...subject, principalId: PrincipalId.parse(NF.rivera) }, assignmentId, input)).status).toBe(403);
+    expect((await env.TOOLS.gadgetAssessmentSubmitCheckpoint({ ...subject, districtId: "dst_foreign" as typeof subject.districtId }, assignmentId, input)).status).toBe(401);
   });
 
   it("answers the AI call guard through its entrypoint", async () => {

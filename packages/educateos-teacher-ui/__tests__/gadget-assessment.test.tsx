@@ -47,6 +47,7 @@ describe("assignment Gadget assessment", () => {
     await user.click(screen.getByRole("button", { name: "Pin reviewed release to assignment" }));
     expect(await screen.findByText("argument-blueprint")).toBeTruthy();
     expect(screen.getByText("rbr_gadget · version 1")).toBeTruthy();
+    expect(screen.getByText("Release verified with the configured Workshop.")).toBeTruthy();
     expect(district.callsTo("teacher.bindGadgetAssessment").map((call) => call.input)).toEqual([{ params: { assignmentId }, body: { blueprint } }]);
     expect(screen.queryByLabelText("Workshop assessment export (.json)")).toBeNull();
   });
@@ -59,6 +60,14 @@ describe("assignment Gadget assessment", () => {
     expect(await screen.findByText(/Choose a valid Workshop assessment export/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Pin reviewed release to assignment" })).toBeNull();
     expect(district.callsTo("teacher.bindGadgetAssessment")).toHaveLength(0);
+  });
+
+  it("withholds verification when the district cannot reach the configured Workshop", async () => {
+    const { district, hash } = setup();
+    district.fail("teacher.getGadgetAssessment", { status: 503, body: { code: "unavailable", message: "Release unavailable" } });
+    await renderApp(district.client, hash);
+    expect(await screen.findByRole("button", { name: /retry|try again/i })).toBeTruthy();
+    expect(screen.queryByText("Release verified with the configured Workshop.")).toBeNull();
   });
 
   it("does not offer a pin form when the district denies access", async () => {

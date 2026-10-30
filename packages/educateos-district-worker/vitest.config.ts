@@ -61,6 +61,8 @@ export default defineConfig({
           GUARD: { name: kCurrentWorker, entrypoint: "DistrictGuardDirectory" },
           TOOLS: { name: kCurrentWorker, entrypoint: "DistrictSchoolTools" },
           PRINCIPALS: { name: kCurrentWorker, entrypoint: "DistrictPrincipalResolver" },
+          WORKSHOP_ASSESSMENT_RELEASES: { name: kCurrentWorker, entrypoint: "TestWorkshopReleases" },
+          TEST_WORKSHOP_RELEASES: { name: kCurrentWorker, entrypoint: "TestWorkshopReleases" },
         },
       },
     }),

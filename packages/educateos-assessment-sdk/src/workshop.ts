@@ -22,6 +22,39 @@ export const WorkshopAssessmentBlueprint = z.strictObject({
 /** Public instructions attached to one exact Workshop release. */
 export type WorkshopAssessmentBlueprint = z.infer<typeof WorkshopAssessmentBlueprint>;
 
+/** Installer-provided authority for one Workshop; never construct this port from client URLs. */
+export interface WorkshopAssessmentReleaseSource {
+  /** Fetch the exact published Git release from the configured Workshop. */
+  getBlueprintRelease(id: string, commitId: string): Promise<unknown>;
+}
+
+/**
+ * Independently verify a proposed/local pin against the configured Workshop's authenticated
+ * release capability. The Workshop verifies Git objects; this side recomputes the SHA-256 and
+ * public assessment. No publisher identity, latest-release fallback or student data is sent.
+ */
+export async function verifyWorkshopAssessmentBlueprint(
+  rawPin: unknown,
+  releases: WorkshopAssessmentReleaseSource | undefined,
+): Promise<WorkshopAssessmentBlueprint> {
+  const pin = await importWorkshopAssessmentBlueprint(rawPin);
+  if (!releases) throw new Error("Workshop release verification unavailable.");
+  let verified: WorkshopAssessmentBlueprint;
+  try {
+    verified = await pinWorkshopAssessmentBlueprint(pin.blueprint.id,
+      await releases.getBlueprintRelease(pin.blueprint.id, pin.blueprint.commitId));
+  } catch {
+    // The upstream failure may contain response content; never forward it to a student or log it.
+    throw new Error("Workshop release verification failed.");
+  }
+  if (verified.blueprint.commitId !== pin.blueprint.commitId
+      || verified.blueprint.sourceDigest !== pin.blueprint.sourceDigest
+      || verified.assessmentDigest !== pin.assessmentDigest) {
+    throw new Error("Workshop release does not match the reviewed pin.");
+  }
+  return pin;
+}
+
 /**
  * Import a public pin and verify its definition. This is NOT publisher authentication: an admin
  * must obtain the source from their configured Workshop, or explicitly review an imported archive.

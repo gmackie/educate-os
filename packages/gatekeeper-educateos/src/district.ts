@@ -43,6 +43,8 @@ export interface SchoolToolService {
   gadgetAssessmentRead?(principal: VerifiedPrincipal, assignmentId: string): Promise<DistrictResponse>;
   /** Submits owned pinned revisions after the Workshop user approves the action. */
   gadgetAssessmentSubmit?(principal: VerifiedPrincipal, assignmentId: string, request: unknown): Promise<DistrictResponse>;
+  /** Stores the trusted Workshop source checkpoint and submits it only after the user's decision. */
+  gadgetAssessmentSubmitCheckpoint?(principal: VerifiedPrincipal, assignmentId: string, request: unknown): Promise<DistrictResponse>;
 
 }
 

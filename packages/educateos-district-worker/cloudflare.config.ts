@@ -13,6 +13,9 @@ export default defineGadgetsWorker({
   name: "educateos-district-worker",
   entrypoint: ".wrangler/validate/src/worker.ts",
   observability: OBSERVABILITY,
+  // WORKSHOP_ASSESSMENT_RELEASES is an optional installer-provided service binding to the
+  // configured Workshop's WorkshopAssessmentReleases entrypoint. Bootstrap the district without
+  // it, deploy Workshop, then bind it: assessments fail closed until this final step.
   env: {
     // Communication (SCHO-189): notification and family digest email through Cloudflare Email
     // Service in the district's own account. Unrestricted: recipients are the district's own

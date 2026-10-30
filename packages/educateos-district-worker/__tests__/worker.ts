@@ -10,6 +10,21 @@ import { DistrictObject as DeployedDistrictObject } from "../src/district-object
 import type { SendEmailBinding } from "../src/mail.ts";
 import { fakeHallMonitor } from "@educateos/ai-guard/src/fake-hall-monitor.ts";
 import { LMS_ISSUER } from "./fixtures.ts";
+import { WorkerEntrypoint } from "cloudflare:workers";
+
+/** Synthetic upstream release service. Its fixtures persist across district object restarts. */
+const releaseFixtures = new Map<string, unknown>();
+export class TestWorkshopReleases extends WorkerEntrypoint {
+  async put(id: string, commitId: string, release: unknown): Promise<void> {
+    releaseFixtures.set(`${id}/${commitId}`, structuredClone(release));
+  }
+
+  async getBlueprintRelease(id: string, commitId: string): Promise<unknown> {
+    const release = releaseFixtures.get(`${id}/${commitId}`);
+    if (!release) throw new Error("Synthetic release unavailable.");
+    return structuredClone(release);
+  }
+}
 
 // Named rather than `export *`: the pool finds entrypoints from the module's named exports.
 export { DistrictPrincipalResolver, DistrictWorkshopCapabilityPolicy, DistrictApi, DistrictGuardDirectory, DistrictSchoolTools } from "../src/worker.ts";

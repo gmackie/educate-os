@@ -53,11 +53,12 @@ export const GadgetAssessmentPanel = ({ assignment }: { assignment: Assignment }
   return (
     <section aria-labelledby={`${inputId}-heading`} className="flex flex-col gap-3 rounded border border-kumo-line p-4">
       <h2 id={`${inputId}-heading`}><Text variant="heading" as="span">Gadget assessment</Text></h2>
-      {binding.status === "loading" && <Loading label="Loading the Gadget assessment…" />}
+      {binding.status === "loading" && <Loading label="Verifying the pinned Gadget assessment…" />}
       {binding.status === "error" && <Problem error={binding.error} onRetry={binding.reload} />}
       {binding.status === "ready" && binding.data !== null && (
         <>
           <Text bold>{binding.data.blueprint.definition.title}</Text>
+          <Text variant="success">Release verified with the configured Workshop.</Text>
           <Text variant="secondary">{`Pinned ${formatDateTime(binding.data.boundAt)}. This assignment keeps its release when the shared Blueprint changes.`}</Text>
           <dl className="grid gap-1 break-all text-sm">
             <dt>Blueprint</dt><dd>{binding.data.blueprint.blueprint.id}</dd>
@@ -73,7 +74,7 @@ export const GadgetAssessmentPanel = ({ assignment }: { assignment: Assignment }
           <Text variant="secondary">No Gadget assessment is attached to this assignment.</Text>
           {assignment.rubric === undefined ? <Text>Add a signed rubric before attaching a Gadget assessment.</Text> : (
             <>
-              <Text variant="secondary" size="sm">Choose a public assessment export obtained from your school's Workshop. Review its source before pinning it. The export's fingerprints identify content; they do not authenticate its publisher. Pin before any student submits work.</Text>
+              <Text variant="secondary" size="sm">Choose a public assessment export obtained from your school's Workshop. Review its source before pinning it. The district will fetch the exact release from its configured Workshop and compare source and assessment fingerprints before saving this pin. Pin before any student submits work.</Text>
               <label htmlFor={inputId} className="text-sm font-medium">Workshop assessment export (.json)</label>
               <input id={inputId} type="file" accept=".json,application/json" className={FILE_INPUT_CLASS} disabled={saving || upload.status === "reading"} onChange={(event) => {
                 const file = event.target.files?.[0];

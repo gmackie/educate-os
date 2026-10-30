@@ -59,8 +59,15 @@ assignments and the existing AssessmentService/AssessmentCi workflow. The Teache
 use the real district API for pinning, evidence, provenance and review. Local Node and workerd
 harnesses cover the separate Blueprint, Gatekeeper and district boundaries; this is **Harness-tested**,
 not deployed or externally certified. See [workflow and limitations](assessment-gadget-workflow.md).
-There is no automatic Workshop checkpoint-to-district-artifact export, reverse source verification
-binding, or production untrusted-code executor. Imported source pins are explicitly teacher reviewed.
+Owner-private committed Gadgets can stage source through the configured school Gatekeeper and,
+after explicit Workshop approval, persist immutable district artifacts and SubmissionSnapshots.
+A named Workshop release service verifies actual Git packs; the district independently verifies
+source SHA-256, exact release commit, public assessment and its local signed rubric. The reverse
+binding is installer opt-in and missing/unavailable verification blocks pinning and submission.
+The separate real workerd boundaries and synthetic district workflow are tested; one deployed
+browser-to-Gadget-to-Gatekeeper-to-district roundtrip is not. Arbitrary source cannot be proven free
+of embedded secrets: conservative export refusal plus exact source review is required. No
+production untrusted-code executor, independent-human-authorship claim or automatic grade is added.
 
 ## Provider fakes
 
