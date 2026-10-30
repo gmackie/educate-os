@@ -21,6 +21,8 @@
     "@educateos/harness": "workspace:*",
     "@educateos/identity": "workspace:*",
     "@educateos/integrations": "workspace:*",
+    "@educateos/lti": "workspace:*",
+    "@educateos/lti-district": "workspace:*",
     "@educateos/provider-fakes": "workspace:*",
     "@educateos/student-ui": "workspace:*",
     "@educateos/teacher-ui": "workspace:*",

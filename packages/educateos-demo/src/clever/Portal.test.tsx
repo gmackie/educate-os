@@ -67,6 +67,26 @@ describe("the Cedar Valley portal", () => {
     expect(await district.clientFor(session).call("me.get")).toMatchObject({ displayName: "Elaine Park" });
   });
 
+  it("opens EducateOS by itself with launchOnOpen, once, as presenter mode's keys have it", async () => {
+    const onTileClick = vi.fn();
+    let signedIn: PersonaId | undefined;
+    await mount({ initialPersonaId: "teacher", launchOnOpen: true, onTileClick, onSignedIn: (id) => (signedIn = id) });
+    await vi.waitFor(() => expect(signedIn).toBe("teacher"), BOOT);
+    expect(onTileClick).toHaveBeenCalledOnce();
+  });
+
+  it("signs no one in from a portal the visitor left while its launch ran", async () => {
+    const onSignedIn = vi.fn();
+    let hops = 0;
+    await mount({ initialPersonaId: "admin", onSignedIn, onHop: () => (hops += 1) });
+    await userEvent.click(getByRole(container, "button", { name: "EducateOS" }));
+    act(() => root.unmount());
+    await vi.waitFor(() => expect(hops).toBeGreaterThanOrEqual(11), BOOT);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(onSignedIn).not.toHaveBeenCalled();
+    root = createRoot(container);
+  });
+
   it("says why when the launch is refused, with its steps open", async () => {
     // A district whose Clever district the launch registry doesn't know.
     const unregistered = { ...district, cleverSso: { ...district.cleverSso, districtId: "0".repeat(24) } };

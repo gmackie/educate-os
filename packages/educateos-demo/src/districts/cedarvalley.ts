@@ -10,6 +10,7 @@ import { CEDARVALLEY, demoDistrict, districtSeed } from "@educateos/fixtures";
 import { demoWeb } from "@educateos/harness";
 import { clever } from "@educateos/integrations";
 import { CleverDataFake } from "@educateos/provider-fakes";
+import { createDemoGradebooks, type DemoGradebooksHandle } from "../grades/gradebooks.ts";
 import { CEDARVALLEY_PERSONAS, CEDARVALLEY_PRINCIPALS } from "./cedarvalleyPersonas.ts";
 import { clientsOver, demoSessions, verifySeedRelease, type DemoDistrict, type DemoRoster, type DemoSessions, type RosterSyncResult } from "./shared.ts";
 
@@ -33,6 +34,8 @@ export interface CedarValleyDistrict extends DemoDistrict {
    * sign-in, as a district's Cloudflare Access application does.
    */
   sessions: DemoSessions;
+  /** Where the teachers' approved grades go: Google Classroom directly, or through Clever LMS Connect. */
+  grades: DemoGradebooksHandle;
 }
 
 const subjectOf = (id: keyof typeof CEDARVALLEY_PRINCIPALS) => CEDARVALLEY_PERSONAS.find((p) => p.id === id)!.subject;
@@ -101,8 +104,9 @@ export async function bootCedarValley(): Promise<CedarValleyDistrict> {
     return { source: clever.cleverRosterSource(client) };
   };
   const sessions = demoSessions();
+  const stores = inMemoryDistrictStores(BEFORE_ROSTER);
   const app = await createDistrictApp({
-    stores: inMemoryDistrictStores(BEFORE_ROSTER),
+    stores,
     verifyRequest: sessions.verifyRequest,
     importFetch: demoWeb,
     verifyCatalogRelease: verifySeedRelease,
@@ -111,17 +115,24 @@ export async function bootCedarValley(): Promise<CedarValleyDistrict> {
     rosterServicePrincipalId: SERVICE,
   });
 
+  const fixture = demoDistrict("cedarvalley");
+  const grades = createDemoGradebooks({ fixture, stores, clever: fake, cleverIssuer: IDP, authority: `lms:${fixture.slug}-classroom` });
+
   let synced = false;
   let seeding: Promise<void> | undefined;
+  const syncListeners = new Set<(result: RosterSyncResult) => void>();
   const fetch = async (request: Request): Promise<Response> => {
     const response = await app.fetch(request);
-    if (!synced && response.ok && request.method === "POST" && new URL(request.url).pathname === ROSTER_SYNC_PATH) {
+    // A teacher's approved grade goes to passback once the request that approved it has returned.
+    if (response.ok && request.method !== "GET") await grades.deliverNewGrades();
+    if (response.ok && request.method === "POST" && new URL(request.url).pathname === ROSTER_SYNC_PATH) {
       const result = await response.clone().json() as RosterSyncResult;
-      if (result.run?.outcome === "succeeded") {
+      if (!synced && result.run?.outcome === "succeeded") {
         seeding ??= seedCoursework(signedIn(subjectOf("teacher")), signedIn(CLASSMATE_SUBJECT));
         await seeding;
         synced = true;
       }
+      for (const listener of syncListeners) listener(result);
     }
     return response;
   };
@@ -138,10 +149,15 @@ export async function bootCedarValley(): Promise<CedarValleyDistrict> {
     clever: fake,
     cleverSso: { districtId: fake.districtId, issuer: IDP },
     sessions,
+    grades,
     roster: {
       provider: "clever",
       synced: () => synced,
       sync: () => admin.call("admin.runRosterSync", { body: {} }),
+      onSync: (listener) => {
+        syncListeners.add(listener);
+        return () => syncListeners.delete(listener);
+      },
     },
   };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Button, Empty, Loader, Text } from "@cloudflare/kumo";
 import { createHashHistory } from "@tanstack/react-router";
 import type { DistrictApiClient } from "@educateos/api-client";
@@ -6,10 +6,12 @@ import { AdminApp } from "@educateos/admin-ui/src/App.tsx";
 import { StudentApp } from "@educateos/student-ui/src/App.tsx";
 import { App as TeacherApp } from "@educateos/teacher-ui/src/App.tsx";
 import { DistrictApiProvider } from "@educateos/teacher-ui/src/DistrictApi.tsx";
-import { CleverSyncPanel } from "./CleverSyncPanel.tsx";
 import type { DistrictState } from "./DemoApp.tsx";
-import type { DemoDistrict, DistrictInfo, Persona, PersonaId } from "./districts/index.ts";
+import { ROSTER_SYNC_ROUTE, type DemoDistrict, type DistrictInfo, type Persona, type PersonaId } from "./districts/index.ts";
 import { stepsDoneBy } from "./journeys.ts";
+
+// Only a district that passes grades back has the panel, so it comes in its own chunk.
+const WhereItLanded = lazy(async () => ({ default: (await import("./grades/WhereItLanded.tsx")).WhereItLanded }));
 
 interface PersonaWorkspaceProps {
   info: DistrictInfo;
@@ -19,12 +21,14 @@ interface PersonaWorkspaceProps {
   bearer?: string;
   /** Called with the journey steps the persona's last request completed. */
   onStepsDone: (ids: readonly string[]) => void;
-  /** Switches to another persona of the same district. */
-  onChoose: (persona: PersonaId) => void;
+  /** Sees each request the persona's app makes and the district's answer, for the Clever tour. */
+  onResponse?: (request: Request, status: number) => void;
+  /** Switches to another persona of the same district, opening their app at `route` if given. */
+  onChoose: (persona: PersonaId, route?: string) => void;
 }
 
 /** The persona's own app, once the district is up, and its roster has brought the persona in. */
-export const PersonaWorkspace = ({ info, district, persona, bearer, onStepsDone, onChoose }: PersonaWorkspaceProps) => {
+export const PersonaWorkspace = ({ info, district, persona, bearer, onStepsDone, onResponse, onChoose }: PersonaWorkspaceProps) => {
   if (district.status === "booting") {
     return (
       <div role="status" className="flex flex-col items-center gap-3 px-4 py-16 text-center">
@@ -47,18 +51,27 @@ export const PersonaWorkspace = ({ info, district, persona, bearer, onStepsDone,
       <div className="mx-auto flex max-w-xl flex-col items-center gap-4 p-8 text-center">
         <Empty
           title={`${info.name} hasn't synced from Clever yet`}
-          description={`${persona.name} comes from the district's Clever roster, which hasn't been brought in. Sign in as the administrator, ${admin.name}, and run the Clever sync.`}
+          description={`${persona.name} comes from the district's Clever roster, which hasn't been brought in. Sign in as the administrator, ${admin.name}, and run the first sync from Roster sync.`}
         />
-        <Button variant="primary" onClick={() => onChoose("admin")}>{`Sign in as ${admin.name}`}</Button>
+        <Button variant="primary" onClick={() => onChoose("admin", ROSTER_SYNC_ROUTE)}>{`Sign in as ${admin.name}`}</Button>
       </div>
     );
   }
-  return <PersonaApp district={district.district} persona={persona} bearer={bearer ?? persona.subject} onStepsDone={onStepsDone} />;
+  return <PersonaApp district={district.district} persona={persona} bearer={bearer ?? persona.subject} onStepsDone={onStepsDone} {...(onResponse === undefined ? {} : { onResponse })} />;
 };
 
-const PersonaApp = ({ district, persona, bearer, onStepsDone }: { district: DemoDistrict; persona: Persona; bearer: string; onStepsDone: (ids: readonly string[]) => void }) => {
+interface PersonaAppProps {
+  district: DemoDistrict;
+  persona: Persona;
+  bearer: string;
+  onStepsDone: (ids: readonly string[]) => void;
+  onResponse?: (request: Request, status: number) => void;
+}
+
+const PersonaApp = ({ district, persona, bearer, onStepsDone, onResponse }: PersonaAppProps) => {
   // One client for the app's lifetime, as each app's own entry point makes one.
   const [client] = useState(() => district.clientFor(bearer, (request, response) => {
+    onResponse?.(request, response.status);
     const ids = stepsDoneBy(persona.id, request, response.status, window.location.hash);
     if (ids.length > 0) onStepsDone(ids);
   }));
@@ -79,6 +92,7 @@ const PersonaApp = ({ district, persona, bearer, onStepsDone }: { district: Demo
     case "teacher":
       return (
         <DistrictApiProvider client={client}>
+          {district.grades !== undefined && <Suspense><WhereItLanded grades={district.grades} /></Suspense>}
           <TeacherApp />
         </DistrictApiProvider>
       );
@@ -98,15 +112,13 @@ const LearningHome = ({ client }: { client: DistrictApiClient }) => {
 };
 
 /**
- * The admin console, under the demo's Clever sync panel when the district's people come from one.
- * A sync changes the whole directory, so the console starts over to read it again.
+ * The admin console. In a district whose roster the visitor has yet to sync, it opens at its Roster
+ * sync screen, where the first sync is run, unless it was sent somewhere else.
  */
 const AdminConsole = ({ district, client }: { district: DemoDistrict; client: DistrictApiClient }) => {
-  const [syncs, setSyncs] = useState(0);
-  return (
-    <>
-      {district.roster !== undefined && <CleverSyncPanel roster={district.roster} onSynced={() => setSyncs((n) => n + 1)} />}
-      <AdminApp key={syncs} client={client} />
-    </>
-  );
+  // Before the console's first render, which reads the route from the hash.
+  useState(() => {
+    if (district.roster?.synced() === false && window.location.hash === "") window.history.replaceState(null, "", ROSTER_SYNC_ROUTE);
+  });
+  return <AdminApp client={client} />;
 };

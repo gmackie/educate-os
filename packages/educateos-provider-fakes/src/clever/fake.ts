@@ -96,7 +96,7 @@ function json(body: unknown, status = 200): Response {
 /**
  * A Clever Data API v3.1 fake over a seed. Tests and demos change the roster through
  * {@link mutate} (or {@link addPerson}, {@link updatePerson}, {@link removePerson},
- * {@link updateSection} …), and `/events` reports each change as Clever would.
+ * {@link updateSection}, {@link moveStudent} …), and `/events` reports each change as Clever would.
  */
 export class CleverDataFake extends Fake {
   /** The default district-app token, derived from the seed. */
@@ -260,6 +260,26 @@ export class CleverDataFake extends Fake {
   /** Changes a section, its roster included (`sections.updated`). */
   updateSection(sectionId: string, patch: Partial<Omit<SectionSeed, "id">>): CleverEvent[] {
     return this.mutate((seed) => ({ ...seed, sections: seed.sections.map((s) => (s.id === sectionId ? { ...s, ...patch } : s)) }));
+  }
+
+  /**
+   * Moves a student from one section's roster to another's, as a schedule change in the SIS does
+   * (`sections.updated` for each). The student's own record is untouched.
+   */
+  moveStudent(studentId: string, fromSectionId: string, toSectionId: string): CleverEvent[] {
+    const from = this.#seed.sections.find((s) => s.id === fromSectionId);
+    const to = this.#seed.sections.find((s) => s.id === toSectionId);
+    if (from === undefined || to === undefined) throw new RangeError("a move is between two sections the district has");
+    if (!from.studentIds.includes(studentId)) throw new RangeError(`${studentId} is not in ${fromSectionId}`);
+    if (to.studentIds.includes(studentId)) throw new RangeError(`${studentId} is already in ${toSectionId}`);
+    return this.mutate((seed) => ({
+      ...seed,
+      sections: seed.sections.map((s) => {
+        if (s.id === fromSectionId) return { ...s, studentIds: s.studentIds.filter((id) => id !== studentId) };
+        if (s.id === toSectionId) return { ...s, studentIds: [...s.studentIds, studentId] };
+        return s;
+      }),
+    }));
   }
 
   /** Removes a section (`sections.deleted`). */

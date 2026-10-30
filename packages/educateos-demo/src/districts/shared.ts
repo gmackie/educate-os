@@ -3,6 +3,7 @@
 import { createDistrictApiClient, type DistrictApiClient, type RouteResponse } from "@educateos/api-client";
 import { catalogSeedRelease, type CatalogRelease } from "@educateos/catalog";
 import type { DistrictDirectorySnapshot, VerifiedIdentity } from "@educateos/contracts";
+import type { DemoGradebooks } from "../grades/types.ts";
 
 /** The districts a visitor can open, as `?district=` names them. */
 export type DistrictKey = "northfield" | "cedarvalley";
@@ -31,6 +32,9 @@ export type ResponseListener = (request: Request, response: Response) => void;
 /** What running a roster sync did, as the district answers `admin.runRosterSync`. */
 export type RosterSyncResult = RouteResponse<"admin.runRosterSync">;
 
+/** The admin console's Roster sync screen, as a hash route: where the visitor runs a district's syncs. */
+export const ROSTER_SYNC_ROUTE = "#/roster-sync";
+
 /** A district's roster sync, for a district whose people arrive through one the visitor runs. */
 export interface DemoRoster {
   /** The roster's provider, as the district's configuration names it. */
@@ -39,6 +43,11 @@ export interface DemoRoster {
   synced(): boolean;
   /** Runs a sync now as the district's administrator, as the admin console's "sync now" would. */
   sync(): Promise<RosterSyncResult>;
+  /**
+   * Calls `listener` with what each sync did, however it was run (the admin console's Roster sync
+   * screen or {@link sync}), once the district has applied it. Returns the unsubscribe.
+   */
+  onSync(listener: (result: RosterSyncResult) => void): () => void;
 }
 
 /** A booted, seeded demo district. */
@@ -53,6 +62,8 @@ export interface DemoDistrict {
   clientFor(bearer: string, onResponse?: ResponseListener): DistrictApiClient;
   /** The district's roster sync, when its people arrive through one the visitor runs. */
   roster?: DemoRoster;
+  /** Where its teachers' approved grades go, when the demo passes them back to an LMS gradebook. */
+  grades?: DemoGradebooks;
 }
 
 /** The base URL the UIs' clients address. It is never fetched: requests go to the in-page app. */
