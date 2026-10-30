@@ -1,8 +1,23 @@
 import type { WorkerEntrypoint } from "cloudflare:workers";
 
+/** Read-only authoring discovery target; no principal, role or authorization claim is accepted. */
+export type WorkshopAuthoringTarget = {
+  /** Creating a new Gadget or adapting a specific approved Blueprint. */
+  operation: "create" | "adapt";
+  /** Blueprint being adapted, or the approved starting Blueprint for creation. */
+  sourceBlueprintId?: string;
+};
+
+/** Advisory visibility only; never a grant, and never reusable to authorize a mutation. */
+export type WorkshopAuthoringCapability = {
+  /** True only when a configured deployment policy explicitly allows this target now. */
+  allowed: boolean;
+};
+
 /** Authority requested at a kernel choke point; these values are data, never instructions. */
 export type WorkshopCapabilityScope =
   | { action: "workspace.create.query" }
+  | ({ action: "workshop.authoring.query" } & WorkshopAuthoringTarget)
   | { action: "gadget.create"; workspaceId: string }
   | { action: "blueprint.import" }
   | { action: "blueprint.publish"; workspaceId: string }
