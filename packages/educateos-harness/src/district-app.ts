@@ -46,6 +46,8 @@ export async function bootDistrictApp(entry: HarnessDistrict, importFetch: Impor
     stores: inMemoryDistrictStores(directory),
     // The app resolves the identity with `createDirectoryPrincipalResolver` against its own store.
     verifyRequest: (request) => identityFromBearer(request, entry.identity),
+    // Synthetic personas only: publish their discussion posts without Hall Monitor.
+    unscreenedStudentPosts: "publish",
     importFetch,
     fundingPools: [{
       id: "fpl_demo-courses" as never,

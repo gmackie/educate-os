@@ -95,7 +95,7 @@ export async function bootDistrict(
     // Communication (SCHO-189)
     | "mail" | "appUrl"
     // Discussions (SCHO-190)
-    | "discussionScreening"
+    | "discussionScreening" | "unscreenedStudentPosts"
     // Devices (SCHO-261)
     | "deviceTokenSecret"
     // Operations (SCHO-263)
@@ -117,6 +117,8 @@ export async function bootDistrict(
       allowedModels: [{ provider: "cloudflare", modelId: "synthetic-model" }],
     }],
     modelCatalog: [{ provider: "cloudflare", modelId: "synthetic-model", mode: "enabled" }],
+    // Synthetic districts publish unscreened posts unless a test asks for the production default.
+    unscreenedStudentPosts: "publish",
     ...options,
   });
   const admin = directory.roleAssignments.find((r) => r.role === "district-admin")!.principalId;

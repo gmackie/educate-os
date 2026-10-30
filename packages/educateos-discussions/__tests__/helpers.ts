@@ -54,8 +54,11 @@ export function fakeHallMonitor() {
   return { screening, requests };
 }
 
-/** A discussion service over Northfield, with Biology's course content and one assignment. */
-export function setup(options: { screening?: DiscussionScreening; outline?: CourseOutline } = {}) {
+/**
+ * A discussion service over Northfield, with Biology's course content and one assignment. Unless
+ * `unscreened` says otherwise, a student post without screening is published, as most tests need.
+ */
+export function setup(options: { screening?: DiscussionScreening; outline?: CourseOutline; unscreened?: "hold" | "publish" | "default" } = {}) {
   const audit = new InMemoryPolicyAuditSink();
   const engine = new PolicyEngine({ information: directoryPolicyInformation(InMemoryAcademicStore.seeded(NORTHFIELD), { effectivePolicy: async () => FLOOR }), audit });
   const storage = new InMemoryDiscussionStorage();
@@ -69,6 +72,7 @@ export function setup(options: { screening?: DiscussionScreening; outline?: Cour
     courseContent,
     assignmentsIn: async (offeringId) => (offeringId === BIO ? [ASSIGNMENT] : []),
     ...(options.screening === undefined ? {} : { screening: options.screening }),
+    ...(options.unscreened === "default" ? {} : { unscreenedStudentPosts: options.unscreened ?? "publish" }),
     now: () => new Date(Date.parse("2026-10-23T12:00:00.000Z") + clock++ * 1000).toISOString(),
   });
   return { service, storage, courseContent, audit };

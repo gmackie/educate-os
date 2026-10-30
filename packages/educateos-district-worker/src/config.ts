@@ -9,6 +9,7 @@ import { DistrictDirectorySnapshot, PrincipalId } from "@educateos/contracts";
 import { AuthoritySetting } from "@educateos/district-app";
 import { CloudflareAccountFacts, FundingPoolSet, GovernedModel, UsdNano } from "@educateos/ai-governance";
 import { RetentionPolicy } from "@educateos/workspaces";
+import { DiscussionScreeningSettings } from "@educateos/discussions";
 
 /** The district Worker's configuration. */
 export const DistrictWorkerConfig = z.strictObject({
@@ -84,6 +85,18 @@ export const DistrictWorkerConfig = z.strictObject({
     /** The district's EducateOS address, linked from every email. */
     appUrl: z.url({ protocol: /^https$/ }).max(2048).optional(),
   }).optional(),
+  /**
+   * Discussions (SCHO-305): the Hall Monitor tenant, pinned policy profile and cost center student
+   * posts are screened under. Hall Monitor is reached at `HALL_MONITOR_URL` with service tokens
+   * signed by `HALL_MONITOR_SIGNING_KEY`; if either is missing, every student post is refused as
+   * screening-unavailable rather than published unscreened.
+   */
+  discussionScreening: DiscussionScreeningSettings.optional(),
+  /**
+   * What happens to a student post when `discussionScreening` is absent: `"hold"` (the default)
+   * keeps each for a teacher's approval; `"publish"` is for synthetic demo districts only.
+   */
+  unscreenedStudentPosts: z.enum(["hold", "publish"]).optional(),
 });
 /** The district Worker's configuration. */
 export type DistrictWorkerConfig = z.infer<typeof DistrictWorkerConfig>;
