@@ -136,6 +136,11 @@ export function DiscussionScreen({ client, offeringId, topicId, role }: {
     ]);
   };
 
+  const moderate = (target: DiscussionPost, decision: ModerationDecision) => {
+    client.moderatePost(offeringId, target.id, decision).then(() => reload(),
+      (e: unknown) => setMessage(e instanceof Error ? e.message : 'That did not save.'));
+  };
+
   return <Page refresh={reload}><QueryState state={state} retry={reload}>{(thread) => {
     const names = new Map(thread.authors.map((a) => [a.principalId, a.displayName]));
     const roots = thread.posts.filter((p) => !p.parentId);
@@ -160,10 +165,11 @@ export function DiscussionScreen({ client, offeringId, topicId, role }: {
         {roots.length === 0 ? <Placeholder title="No posts yet" message="Be the first to respond."/> :
           <View style={{ gap: 12 }}>{roots.map((root) => <Card key={root.id}>
             <PostView post={root} names={names} onReply={!closed && thread.topic.settings.allowReplies ? setReplyTo : undefined}
-              onReport={role === 'student' ? report : undefined}/>
+              onReport={role === 'student' ? report : undefined} onModerate={role === 'teacher' ? moderate : undefined}/>
             {replies(root.id).map((reply) => <View key={reply.id} style={{ marginLeft: 16, marginTop: 12, paddingLeft: 12,
               borderLeftWidth: 2, borderColor: palette.line }}>
-              <PostView post={reply} names={names} onReport={role === 'student' ? report : undefined}/>
+              <PostView post={reply} names={names} onReport={role === 'student' ? report : undefined}
+                onModerate={role === 'teacher' ? moderate : undefined}/>
             </View>)}
           </Card>)}</View>}
       </Section>
@@ -176,22 +182,45 @@ function postAuthor(post: DiscussionPost, names: Map<string, string>): string {
   return post.mine ? 'You' : names.get(post.authorId) ?? (post.authorRole === 'staff' ? 'Teacher' : 'Classmate');
 }
 
-function PostView({ post, names, onReply, onReport }: {
+type ModerationDecision = 'approve' | 'hide' | 'unhide' | 'remove' | 'dismiss-flags';
+
+/** What a teacher can do to a post in its state. */
+function moderationActions(post: DiscussionPost): { decision: ModerationDecision; label: string }[] {
+  if (post.status === 'withdrawn' || post.status === 'removed' || post.status === 'deleted') return [];
+  const actions: { decision: ModerationDecision; label: string }[] = [];
+  if (post.status === 'pending') actions.push({ decision: 'approve', label: 'Approve' });
+  if (post.status === 'visible') actions.push({ decision: 'hide', label: 'Hide' });
+  if (post.status === 'hidden') actions.push({ decision: 'unhide', label: 'Unhide' });
+  if ((post.flags?.length ?? 0) > 0) actions.push({ decision: 'dismiss-flags', label: 'Dismiss reports' });
+  actions.push({ decision: 'remove', label: 'Remove' });
+  return actions;
+}
+
+function PostView({ post, names, onReply, onReport, onModerate }: {
   post: DiscussionPost; names: Map<string, string>; onReply?: (p: DiscussionPost) => void; onReport?: (p: DiscussionPost) => void;
+  onModerate?: (p: DiscussionPost, decision: ModerationDecision) => void;
 }) {
   const palette = usePalette();
   if (post.status === 'withdrawn') return <Text style={{ color: palette.subtle, fontStyle: 'italic' }}>This post was removed.</Text>;
+  if (post.status === 'removed' || post.status === 'deleted') {
+    return <Text style={{ color: palette.subtle, fontStyle: 'italic' }}>{postAuthor(post, names)}'s post was {post.status}.</Text>;
+  }
   return <View style={{ gap: 8 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       <Text style={{ color: palette.ink, fontWeight: '800', flex: 1 }}>{postAuthor(post, names)}</Text>
       {post.authorRole === 'staff' && <Chip label="Teacher"/>}
       {post.status === 'pending' && <Chip label="Waiting for teacher" tone="amber"/>}
+      {post.status === 'hidden' && <Chip label="Hidden" tone="neutral"/>}
+      {(post.flags?.length ?? 0) > 0 && <Chip label={post.flags!.length + ' reported'} tone="red"/>}
       <Text style={{ color: palette.subtle, fontSize: 12 }}>{dateLabel(post.createdAt)}</Text>
     </View>
     <Markdown source={post.body}/>
-    <View style={{ flexDirection: 'row', gap: 18 }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 18, rowGap: 8 }}>
       {onReply && <Pressable accessibilityRole="button" accessibilityLabel={'Reply to ' + postAuthor(post, names)} onPress={() => onReply(post)}>
         <Text style={{ color: palette.primary, fontWeight: '700' }}>Reply</Text></Pressable>}
+      {onModerate && moderationActions(post).map(({ decision, label }) => <Pressable key={decision} accessibilityRole="button"
+        accessibilityLabel={label + ' post'} onPress={() => onModerate(post, decision)}>
+        <Text style={{ color: decision === 'remove' ? palette.red : palette.primary, fontWeight: '700' }}>{label}</Text></Pressable>)}
       {onReport && !post.mine && <Pressable accessibilityRole="button" accessibilityLabel="Report post" onPress={() => onReport(post)}
         style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
         <Flag size={13} color={palette.subtle}/><Text style={{ color: palette.subtle }}>Report</Text></Pressable>}

@@ -1,6 +1,6 @@
 import type {
   Activity, Announcement, Assignment, CalendarEvent, ClassItem, Credential, DeviceSummary, GradeSummary,
-  CourseOutline, DiscussionPost, DiscussionThread, GuardianChild, GuardianCourse, Notifications, Principal,
+  CourseOutline, DiscussionPost, Gradebook, GradeProposal, ModerationQueue, QuizResults, StaffAttempt, StaffQuizSummary, DiscussionThread, GuardianChild, GuardianCourse, Notifications, Principal,
   QuizAnswer, QuizAttempt, QuizResult, QuizSummary, Submission, TopicListing,
 } from '../types';
 import type { DeviceSession } from './device.ts';
@@ -202,6 +202,56 @@ export class DistrictClient {
   }
   quizResult(offeringId: string, attemptId: string): Promise<QuizResult> {
     return this.call('GET', '/api/student/offerings/' + this.id(offeringId) + '/quiz-attempts/' + this.id(attemptId) + '/result');
+  }
+  // Teaching (SCHO-272): what Teacher Studio does day to day, from the phone.
+  teacherGradebook(offeringId: string): Promise<Gradebook> {
+    return this.call('GET', '/api/teacher/offerings/' + this.id(offeringId) + '/gradebook');
+  }
+  teacherAnnouncements(offeringId: string): Promise<Announcement[]> {
+    return this.call('GET', '/api/teacher/offerings/' + this.id(offeringId) + '/announcements');
+  }
+  createAnnouncement(offeringId: string, title: string, body: string): Promise<Announcement> {
+    return this.call('POST', '/api/teacher/offerings/' + this.id(offeringId) + '/announcements', { title, body });
+  }
+  weeklyNote(offeringId: string): Promise<{ week: string; note: { text: string } | null }> {
+    return this.call('GET', '/api/teacher/offerings/' + this.id(offeringId) + '/weekly-note');
+  }
+  setWeeklyNote(offeringId: string, text: string): Promise<{ week: string; note: { text: string } | null }> {
+    return this.call('POST', '/api/teacher/offerings/' + this.id(offeringId) + '/weekly-note', { text });
+  }
+  teacherQuizzes(offeringId: string): Promise<{ quizzes: StaffQuizSummary[] }> {
+    return this.call('GET', '/api/teacher/offerings/' + this.id(offeringId) + '/quizzes');
+  }
+  quizResults(offeringId: string, quizId: string): Promise<QuizResults> {
+    return this.call('GET', '/api/teacher/offerings/' + this.id(offeringId) + '/quizzes/' + this.id(quizId) + '/results');
+  }
+  staffQuizAttempt(offeringId: string, attemptId: string): Promise<StaffAttempt> {
+    return this.call('GET', '/api/teacher/offerings/' + this.id(offeringId) + '/quiz-attempts/' + this.id(attemptId));
+  }
+  gradeQuizItem(offeringId: string, attemptId: string, itemId: string, points: number, comment?: string): Promise<StaffAttempt> {
+    return this.call('POST', '/api/teacher/offerings/' + this.id(offeringId) + '/quiz-attempts/' + this.id(attemptId) + '/items/' +
+      this.id(itemId) + '/grade', comment ? { points, comment } : { points });
+  }
+  releaseQuizScores(offeringId: string, quizId: string): Promise<{ official: number }> {
+    return this.call('POST', '/api/teacher/offerings/' + this.id(offeringId) + '/quizzes/' + this.id(quizId) + '/release');
+  }
+  moderationQueue(offeringId: string): Promise<ModerationQueue> {
+    return this.call('GET', '/api/teacher/offerings/' + this.id(offeringId) + '/discussion-moderation');
+  }
+  moderatePost(offeringId: string, postId: string, decision: 'approve' | 'hide' | 'unhide' | 'remove' | 'dismiss-flags'): Promise<DiscussionPost> {
+    return this.call('POST', '/api/teacher/offerings/' + this.id(offeringId) + '/posts/' + this.id(postId) + '/moderation', { decision });
+  }
+  updateAssignment(assignmentId: string, patch: { dueAt?: string; attemptsAllowed?: number }): Promise<Assignment> {
+    return this.call('POST', '/api/teacher/assignments/' + this.id(assignmentId), patch);
+  }
+  gradeProposals(assignmentId: string): Promise<GradeProposal[]> {
+    return this.call('GET', '/api/teacher/assignments/' + this.id(assignmentId) + '/grade-proposals');
+  }
+  approveGrade(proposalId: string): Promise<unknown> {
+    return this.call('POST', '/api/teacher/grade-proposals/' + this.id(proposalId) + '/approve');
+  }
+  declineGrade(proposalId: string, reason: string): Promise<unknown> {
+    return this.call('POST', '/api/teacher/grade-proposals/' + this.id(proposalId) + '/decline', { reason });
   }
   guardianChildren(): Promise<GuardianChild[]> { return this.call('GET', '/api/guardian/children'); }
   guardianClasses(studentId: string): Promise<ClassItem[]> {
