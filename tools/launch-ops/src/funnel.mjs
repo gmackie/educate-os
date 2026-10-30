@@ -1,3 +1,4 @@
+import { googleMutations } from './google-bridge.mjs';
 import { check } from './safety.mjs';
 import { SOURCE_CATALOG, importRegistry, approveDomain } from './registry.mjs';
 import { candidateHash, ingestCandidates, verifyCandidate, PERSONAS } from './discovery.mjs';
@@ -6,6 +7,7 @@ import { importInterest, reviewInterest, submitStaffFeedback, importResponses, r
 import { dailyWorkflow, metrics, erasePersonalData, recordDelivery } from './operations.mjs';
 
 export const funnelMutations = Object.freeze({
+  ...googleMutations,
   'registry.import': importRegistry, 'domains.approve': approveDomain, 'candidates.import': ingestCandidates, 'candidates.verify': verifyCandidate,
   'candidates.select': selectCandidate, 'sender.configure': configureOperator, 'campaigns.create': createCampaign, 'campaigns.revise': reviseCampaign,
   'outreach.draft': draftOutreach, 'outreach.revise': reviseOutreach, 'outreach.approve': approveBatch, 'candidates.suppress': suppressCandidate,

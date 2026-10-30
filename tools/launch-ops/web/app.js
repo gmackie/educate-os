@@ -158,7 +158,7 @@ function renderSupport() {
 function render() {
   workspace.replaceChildren();
   document.querySelectorAll('[data-tab]').forEach(b => { if (b.dataset.tab === active) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-  ({ pipeline: renderPipeline, sourcing: renderSourcing, campaigns: renderCampaigns, inbound: renderInbound, metrics: renderMetrics, councils: renderCouncils, invitations: renderInvitations, meetings: renderMeetings, pilots: renderPilots, support: renderSupport, audit: () => { const el = node('pre', JSON.stringify(state.audit, null, 2)); workspace.append(el); } })[active]();
+  ({ pipeline: renderPipeline, sourcing: renderSourcing, campaigns: renderCampaigns, inbound: renderInbound, metrics: renderMetrics, google: renderGoogle, councils: renderCouncils, invitations: renderInvitations, meetings: renderMeetings, pilots: renderPilots, support: renderSupport, audit: () => { const el = node('pre', JSON.stringify(state.audit, null, 2)); workspace.append(el); } })[active]();
 }
 document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => { active = b.dataset.tab; review.replaceChildren(); output.textContent = ''; render(); }));
 if (!/^[a-f0-9]{64}$/.test(token)) error(new Error('Open the full local URL printed by the CLI, including its session fragment. Restart the CLI if needed.'));
@@ -275,4 +275,28 @@ function renderMetrics() {
   card('Independent signals and source attribution', JSON.stringify({ publicRoleFit: state.metrics.roleFit, expressedInterest: state.metrics.interestTypes, pilotReadiness: state.metrics.pilotsAuthorized, meetingDecisions: state.metrics.meetingFeedback, sources: state.metrics.source }, null, 2));
   workspace.append(node('p', state.metrics.note));
   jsonImport('Optional actual external delivery evidence (human verified)', 'delivery.record');
+}
+
+function renderGoogle() {
+  workspace.append(node('h2', 'Google drafts and internal holds'), node('p', 'Review previews here. Network actions run only from the CLI with explicit flags; this dashboard never reads Gmail, sends mail or creates external invitations. A draft is not a send. See tools/launch-ops/GOOGLE.md.'));
+  for (const h of state.handoffs) {
+    const d = state.googleDrafts.find(d => d.handoffId === h.id);
+    const el = card(`Handoff ${h.id}`, d ? `Gmail: ${d.status} · draft ${d.draftId || 'unknown'} · thread ${d.threadId || 'unknown'} · SENT ${d.sentReview || 'unverified'}` : 'Local export only; no Gmail draft');
+    if (!d) button('Read exact Gmail preview', async () => {
+      const preview = await api('google.preview', { handoffId: h.id }); show(preview);
+      form('Approve exact draft creation', [...humanFields(), f('messageIdDomainControlled', 'I control the configured sender domain for the stable Message-ID', 'checkbox')], data => mutate('google.approve', { handoffId: h.id, reviewedHash: preview.hash, ...data }), review);
+    }, el);
+    if (d) button('Read durable intent and CLI execution hash', () => show(d), el);
+  }
+  jsonImport('Preview or accept a verified explicit meeting request (private JSON; see GOOGLE.md)', 'meeting-request.accept');
+  jsonImport('Propose an internal hold for an accepted meeting request', 'calendar.propose');
+  for (const h of state.calendarHolds) {
+    const el = card(`${h.council} internal hold · ${h.status}`, `${h.slot.start} – ${h.slot.end} · ${h.slot.timeZone} · ${h.agenda.join('; ')}`);
+    button('Read exact internal hold preview', async () => {
+      const preview = await api('calendar.preview', { id: h.id }); show(preview);
+      if (h.status === 'proposed') form('Approve internal hold', [...humanFields(), f('internalNoAttendeesConfirmed', 'Internal private hold only; no attendees or invitations', 'checkbox')], data => mutate('calendar.approve', { id: h.id, reviewedHash: preview.hash, ...data }), review);
+    }, el);
+  }
+  for (const r of state.googleQuarantine) card('Gmail message quarantined; no body retained', `${r.messageId} · ${r.reason} · hash ${r.contentHash}`);
+  workspace.append(node('p', 'Reply excerpts awaiting classification appear in Staff interest & replies. Matching From headers do not authenticate an identity: independently verify the respondent before accepting a meeting.'));
 }
