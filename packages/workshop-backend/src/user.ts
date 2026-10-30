@@ -1,4 +1,4 @@
-import { assertCapability } from "./capability-policy.js";
+import { assertCapability, hasCapabilityPolicy } from "./capability-policy.js";
 import type { WorkshopCapabilityScope } from "@gadgets/workshop-shared/capability-policy";
 import { RpcStub } from "capnweb";
 import { WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, AiModelConfig, RedactedAiModelConfig, ModelKind, modelKind, CollaboratorRole, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, WorkspaceMetadata, BlueprintMetadata, BlueprintLibrarySummary, BlueprintSource, BlueprintUserSummary, BLUEPRINT_SCREENSHOT_R2_PREFIX, GatekeeperVendorInfo, OutputSummary, ListOutputsResult, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, validateCommitEmail, NotificationSubscriber, NotificationMute, UserNotification, type DeviceSessionHandoffStart, type WebPushSubscription, type ExternalWorkspaceRequest } from '@gadgets/workshop-shared/api';
@@ -220,7 +220,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   // Only the persisted identity is authoritative. Neither model profiles nor caller-supplied
   // role labels participate in authorization. Do not cache decisions across operations.
   async #assertCapability(scope: WorkshopCapabilityScope): Promise<void> {
-    if (this.env.WORKSHOP_CAPABILITY_POLICY === undefined) return;
+    if (!hasCapabilityPolicy(this.env)) return;
     if (!this.storage.created.get()) throw new Error("Workshop policy requires an initialized user.");
     await assertCapability(this.env.WORKSHOP_CAPABILITY_POLICY, {
       userId: this.storage.profile.get().id,

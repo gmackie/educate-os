@@ -1,3 +1,4 @@
+import { hasCapabilityPolicy } from "./capability-policy.js";
 import { RpcStub, RpcTarget, newHttpBatchRpcResponse, newWebSocketRpcSession, RpcSessionOptions } from "capnweb";
 import { validateRpc } from "capnweb-validate";
 import type { JWTPayload } from "jose";
@@ -932,6 +933,13 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
 
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext) {
+    try {
+      hasCapabilityPolicy(env);
+    } catch {
+      return new Response("Required Workshop capability policy is unavailable.", {
+        status: 503, headers: { "Cache-Control": "no-store" },
+      });
+    }
     let url = new URL(req.url);
 
     // Read on every request, off the critical path: a failure only means the next request reports

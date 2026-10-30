@@ -327,6 +327,13 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     }
     services.push(name);
   }
+  // The signed asset variant selects a school deployment, but enforcement is backend-owned.
+  const schoolBuild = Boolean(router[0]![1].assetsConfig?.variants["access-school"]);
+  if (schoolBuild) {
+    const policy = backend[0]![1].bindings.find(binding => binding.type === "service" &&
+      binding.name === "WORKSHOP_CAPABILITY_POLICY");
+    if (!policy) invalid("school release requires a district WORKSHOP_CAPABILITY_POLICY binding");
+  }
   const scriptNames = new Map([backendPkg, routerPkg, ...installed, ...services].map((pkg) => [pkg, workerScriptName(config, pkg)]));
 
   const storage = new Map<ResourceKey, DesiredResource>();
@@ -424,6 +431,17 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
         continue;
       }
       bindings.push(resolveDeep(binding) as DesiredBinding);
+    }
+
+    if (schoolBuild && pkgName === backendPkg) {
+      const requirement = bindings.find(binding => binding.name === "REQUIRE_WORKSHOP_CAPABILITY_POLICY");
+      if (requirement) {
+        if (requirement.type !== "plain_text" || requirement.text !== "true") {
+          invalid("school release must require Workshop capability policy");
+        }
+      } else {
+        bindings.push({ type: "plain_text", name: "REQUIRE_WORKSHOP_CAPABILITY_POLICY", text: "true" });
+      }
     }
 
     // Gatekeepers are reached through GATEKEEPER_<SLUG> service bindings on the backend and router.

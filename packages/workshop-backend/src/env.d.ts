@@ -56,6 +56,9 @@ declare global {
       >;
       FRONTEND_ERROR_RATE_LIMITER?: RateLimit;
 
+      // Explicit backend enforcement; school deployments must set this to "true".
+      REQUIRE_WORKSHOP_CAPABILITY_POLICY?: string;
+
       // Optional authority policy. A configured policy must explicitly allow every checked mint.
       WORKSHOP_CAPABILITY_POLICY?: Service<
         import("@gadgets/workshop-shared/capability-policy").WorkshopCapabilityPolicy
