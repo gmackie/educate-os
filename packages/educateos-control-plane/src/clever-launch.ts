@@ -31,6 +31,8 @@ export const CLEVER_USERS_URL = "https://api.clever.com/v3.0/users";
 
 /** How long each call to Clever may take. A launch is a person waiting on a redirect. */
 export const CLEVER_REQUEST_TIMEOUT_MS = 10_000;
+/** Clever's OpenID Connect userinfo endpoint, which an OIDC sign-in (Cloudflare Access) reads. */
+export const CLEVER_USERINFO_URL = "https://api.clever.com/userinfo";
 
 /** The educateos.io Clever app's OAuth client, from the site Worker's secrets. */
 export interface CleverAppCredentials {
@@ -88,7 +90,7 @@ export interface CleverLaunchDeps {
 const CleverId = z.string().regex(/^[0-9a-f]{24}$/);
 // Clever's codes are opaque; this only keeps an absurd one from being sent on.
 const Code = z.string().regex(/^[\x21-\x7e]{1,512}$/);
-const TokenResponse = z.object({ access_token: z.string().min(1) });
+const TokenResponse = z.object({ access_token: z.string().min(1), id_token: z.string().optional() });
 // A teacher-authorized sign-in's /me carries no district: only the user's ID, read from /users next.
 const MeResponse = z.object({ data: z.object({ id: CleverId, district: CleverId.optional() }) });
 // A v3.0 user record names its district under each of its roles (`roles.teacher.district`), not at
@@ -211,7 +213,9 @@ async function readJson<T>(response: Response, schema: z.ZodType<T>): Promise<Cl
 }
 
 // Exchanges the code for an access token (HTTP Basic with the app's client, as Clever documents).
-async function exchange(code: string, deps: CleverLaunchDeps, credentials: CleverAppCredentials): Promise<CleverResult<string>> {
+async function exchange(
+  code: string, deps: CleverLaunchDeps, credentials: CleverAppCredentials,
+): Promise<CleverResult<{ accessToken: string; idToken?: string }>> {
   try {
     const response = await deps.fetch(CLEVER_TOKEN_URL, {
       method: "POST",
@@ -226,7 +230,7 @@ async function exchange(code: string, deps: CleverLaunchDeps, credentials: Cleve
       signal: AbortSignal.timeout(CLEVER_REQUEST_TIMEOUT_MS),
     });
     const read = await readJson(response, TokenResponse);
-    return read.ok ? { ok: true, value: read.value.access_token } : read;
+    return read.ok ? { ok: true, value: { accessToken: read.value.access_token, idToken: read.value.id_token } } : read;
   } catch {
     return { ok: false, reply: {} };
   }
@@ -265,6 +269,23 @@ async function districtOf(token: string, deps: CleverLaunchDeps): Promise<Clever
   return district.reply.cleverStatus === 404 ? { ok: true, value: undefined } : district;
 }
 
+// Diagnostics for SCHO-249, to remove once Access's Clever sign-in works for sandbox demo logins:
+// Access fails them with "Failed to fetch user/group information", so log what an OIDC sign-in
+// would see for the same user, by shape alone: the ID token's claims and Clever's userinfo reply.
+async function logOidcView(accessToken: string, idToken: string | undefined, deps: CleverLaunchDeps): Promise<void> {
+  let idTokenClaims = "absent";
+  if (idToken !== undefined) {
+    try {
+      const payload = idToken.split(".")[1]!.replace(/-/g, "+").replace(/_/g, "/");
+      idTokenClaims = shapeOf(JSON.parse(atob(payload))).slice(0, 1000);
+    } catch {
+      idTokenClaims = "unreadable";
+    }
+  }
+  const userinfo = await readClever(CLEVER_USERINFO_URL, accessToken, deps, z.never());
+  console.info("clever launch oidc view", { event: "clever.launch.oidc-view", idTokenClaims, ...(userinfo.ok ? {} : userinfo.reply) });
+}
+
 /**
  * Answers a Clever portal launch: a 303 to the root of the installation registered for the user's
  * Clever district, or a plain page saying why not. GET only does this; HEAD is answered without
@@ -281,7 +302,8 @@ export async function cleverLaunch(request: Request, deps: CleverLaunchDeps): Pr
 
   const token = await exchange(code.data, deps, deps.credentials);
   if (!token.ok) return refuse(deps.shell, "exchange-failed", token.reply);
-  const district = await districtOf(token.value, deps);
+  const district = await districtOf(token.value.accessToken, deps);
+  await logOidcView(token.value.accessToken, token.value.idToken, deps);
   if (!district.ok) return refuse(deps.shell, "identity-failed", district.reply);
 
   if (district.value === undefined) {
