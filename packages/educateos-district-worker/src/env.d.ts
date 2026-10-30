@@ -56,5 +56,16 @@ declare namespace Cloudflare {
     ANALYTICS_SCRIPTS?: string;
     /** The district's zone tag, for HTTP traffic by status (SCHO-263). Optional. */
     ANALYTICS_ZONE_TAG?: string;
+    /**
+     * Hall Monitor's https origin, which students' discussion posts are screened at when
+     * `DISTRICT_CONFIG.discussionScreening` is set (SCHO-305).
+     */
+    HALL_MONITOR_URL?: string;
+    /** The private Ed25519 or P-256 JWK Hall Monitor service tokens are signed with, a Worker secret. */
+    HALL_MONITOR_SIGNING_KEY?: string;
+    /** The issuer Hall Monitor trusts those tokens from. */
+    HALL_MONITOR_ISSUER?: string;
+    /** Their audience. Defaults to `hall-monitor`. */
+    HALL_MONITOR_AUDIENCE?: string;
   }
 }
