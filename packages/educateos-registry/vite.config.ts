@@ -8,4 +8,4 @@ export default withVitestTask({
       build: { command: "tsc" },
     },
   },
-}, "vitest run");
+}, ["vitest run", "vitest run -c vitest.worker.config.ts"]);
