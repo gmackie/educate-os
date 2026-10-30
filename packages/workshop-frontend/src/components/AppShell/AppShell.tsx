@@ -108,6 +108,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-kumo-base">
+      <a
+        href="#workshop-main"
+        onClick={(event) => {
+          event.preventDefault()
+          document.getElementById('workshop-main')?.focus()
+        }}
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-kumo-elevated focus:p-2"
+      >
+        Skip to content
+      </a>
       {/* Desktop sidebar — hidden on mobile in favor of the drawer. */}
       <div className="hidden h-full md:flex">
         <Sidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
@@ -164,7 +174,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Routed content. Flat enterprise canvas — no texture. */}
-        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+        <main id="workshop-main" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto outline-none">{children}</main>
       </div>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />

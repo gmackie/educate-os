@@ -23,9 +23,14 @@ function emptyState(district: DistrictDirectorySnapshot["district"]): oneroster.
 
 const MAPLEWOOD = District.parse({ id: "dst_maplewood", name: "Maplewood Unified (synthetic)", timeZone: "America/Chicago", trustedIssuers: [ISSUER] });
 
-function setup(seed: DistrictSeed = SAMPLE_DISTRICT, options: { pageSize?: number; token?: string; districtId?: string; rateLimitPerMinute?: number } = {}) {
+function setup(seed: DistrictSeed = SAMPLE_DISTRICT, options: { pageSize?: number; token?: string; districtId?: string; rateLimitPerMinute?: number; nulls?: boolean } = {}) {
   const clock = { ms: START };
-  const fake = new CleverDataFake({ seed, now: () => clock.ms, ...(options.rateLimitPerMinute === undefined ? {} : { rateLimitPerMinute: options.rateLimitPerMinute }) });
+  const fake = new CleverDataFake({
+    seed,
+    now: () => clock.ms,
+    ...(options.rateLimitPerMinute === undefined ? {} : { rateLimitPerMinute: options.rateLimitPerMinute }),
+    ...(options.nulls === undefined ? {} : { nulls: options.nulls }),
+  });
   const sleeps: number[] = [];
   const client = new clever.CleverDataClient({
     connection: { districtId: options.districtId ?? fake.districtId, pageSize: options.pageSize ?? 4 },
@@ -367,6 +372,98 @@ describe("Clever roster sync against the Clever fake", () => {
     fake.removePerson("mw-s-03");
     fake.removePerson("mw-s-04");
     expect((await synced(state, source, "delta")).run.counts.principals.deactivated).toBe(2);
+  });
+});
+
+// SCHO-273: Clever's v3.1 spec marks these fields `x-nullable`. A `*` steps into each array entry.
+const NULLABLE_FIELDS = [
+  "schools.low_grade", "schools.high_grade",
+  "terms.name", "terms.start_date", "terms.end_date",
+  "courses.name", "courses.number",
+  "sections.course", "sections.term_id", "sections.subject", "sections.grade", "sections.teacher",
+  "users.email", "users.name.middle", "users.roles.student.grade", "users.roles.teacher.credentials",
+  "users.roles.contact.sis_id", "users.roles.contact.student_relationships.*.relationship",
+] as const;
+// Sections that list their grades, so a course's grades never rest on its schools' alone.
+const GRADED: DistrictSeed = { ...SAMPLE_DISTRICT, sections: SAMPLE_DISTRICT.sections.map((s) => ({ ...s, grades: ["09"] })) };
+// A term with no name or dates, or a section with no term, cannot be imported, null or absent.
+const NEEDED_FIELDS: readonly string[] = ["terms.name", "terms.start_date", "terms.end_date", "sections.term_id"];
+
+/** A source reading the fake's district, with `edit` applied to each record of `collection` it lists. */
+function editedSource(fake: CleverDataFake, collection: string, edit: (record: Record<string, unknown>) => void) {
+  const editing: typeof fetch = async (input, init) => {
+    const response = await fake.fetch(input, init);
+    if (!new URL(input instanceof Request ? input.url : String(input)).pathname.endsWith(`/${collection}`)) return response;
+    const body = (await response.json()) as { data: { data: Record<string, unknown> }[] };
+    for (const item of body.data) edit(item.data);
+    return Response.json(body);
+  };
+  return clever.cleverRosterSource(new clever.CleverDataClient({ connection: { districtId: fake.districtId, pageSize: 4 }, token: fake.districtToken, fetch: editing }));
+}
+
+/** Sets, or with `undefined` deletes, the field at `path` wherever the record has its parent. */
+function setPath(record: Record<string, unknown>, path: readonly string[], value: null | undefined): void {
+  const [key, ...rest] = path as [string, ...string[]];
+  if (key === "*") {
+    for (const entry of record as unknown as Record<string, unknown>[]) setPath(entry, rest, value);
+  } else if (rest.length > 0) {
+    const child = record[key];
+    if (typeof child === "object" && child !== null) setPath(child as Record<string, unknown>, rest, value);
+  } else if (value === undefined) {
+    delete record[key];
+  } else {
+    record[key] = value;
+  }
+}
+
+describe("Clever's nullable fields", () => {
+  it.each(NULLABLE_FIELDS)("reads a null %s as the field left out", async (field) => {
+    const [collection, ...path] = field.split(".") as [string, ...string[]];
+    const read = async (value: null | undefined) => {
+      const { fake } = setup(GRADED);
+      // One section only, as a course none of whose sections name it has no grades to offer.
+      const target = (record: Record<string, unknown>) => collection !== "sections" || record["id"] === fake.idOf("sections", "mw-bio-p2");
+      const result = await sync(emptyState(MAPLEWOOD), editedSource(fake, collection, (record) => target(record) && setPath(record, path, value)));
+      return { run: result.run, issues: result.preview?.issues, snapshot: result.state.roster.snapshot };
+    };
+    const nulled = await read(null);
+    expect(nulled).toEqual(await read(undefined));
+    expect(nulled.run.outcome).toBe(NEEDED_FIELDS.includes(field) ? "failed" : "succeeded");
+  });
+
+  it("imports a district whose records carry nulls exactly as one that leaves the fields out, and holds no null role", async () => {
+    const plain = await synced(emptyState(MAPLEWOOD), setup().source);
+    const { fake, source } = setup(SAMPLE_DISTRICT, { nulls: true });
+    const withNulls = await synced(emptyState(MAPLEWOOD), source);
+    // The fake did send nulls: every student's teacher role, for one.
+    expect((fake.record("users", fake.userId("mw-s-01"))!["roles"] as Record<string, unknown>)["teacher"]).toBeNull();
+    expect(withNulls.run.counts).toEqual(plain.run.counts);
+    expect(withNulls.preview!.issues).toEqual(plain.preview!.issues);
+    expect(withNulls.state.roster.snapshot).toEqual(plain.state.roster.snapshot);
+    expect(principalOf(withNulls.state, fake.userId("mw-g-brightwater"))).toBeUndefined();
+  });
+
+  it("still reads a contact whose other roles are null as only a contact", async () => {
+    const { fake } = setup(SAMPLE_DISTRICT, { nulls: true });
+    const contact = fake.userId("mw-g-garrow");
+    const source = editedSource(fake, "users", (record) => {
+      if (record["id"] === contact) (record["name"] as Record<string, unknown>)["last"] = null;
+    });
+    const { preview } = await synced(emptyState(MAPLEWOOD), source);
+    expect(preview!.issues).toContainEqual(expect.objectContaining({ severity: "warning", sourcedId: contact, column: "name.last" }));
+  });
+
+  it("reports a student with a null first name as that record's error, saying why", async () => {
+    const { fake } = setup();
+    const student = fake.userId("mw-s-01");
+    const source = editedSource(fake, "users", (record) => {
+      if (record["id"] === student) (record["name"] as Record<string, unknown>)["first"] = null;
+    });
+    const { run, preview } = await sync(emptyState(MAPLEWOOD), source);
+    expect(run).toMatchObject({ outcome: "failed", errorCode: "feed-rejected" });
+    expect(preview?.issues).toContainEqual(
+      expect.objectContaining({ severity: "error", sourcedId: student, column: "name.first", message: expect.stringMatching(/no name/) }),
+    );
   });
 });
 

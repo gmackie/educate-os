@@ -1,21 +1,21 @@
 // The district frame (SCHO-260, plan §4 "AI workspace at /ai"). On a district origin the Workshop is
-// the AI workspace beside the LMS, and draws the same school shell the LMS does (@educateos/shell):
-// the school's name, logo and accent, the role's navigation and the user menu, with the Workshop's
-// own sidebar (threads and tools) as the pane inside it. Moving between Learn and AI is then a link
-// on the same origin.
+// the AI workspace beside the LMS, and uses the LMS's school chrome (@educateos/shell):
+// the school's name, logo and accent, role navigation and account actions share the Workshop's
+// existing sidebar. Moving between Learn and AI is a link on the same origin.
 //
 // The frame is drawn only when both hold:
 // - the Workshop is mounted below the origin's root (`/ai/`), which only a district origin does, and
 // - the origin's public school manifest (`/.well-known/educateos.json`) loads and has `features.ai`.
 // Mounted at the root (schoolos.gmac.io today) nothing is fetched and the Workshop is unchanged.
 
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useRouterState } from '@tanstack/react-router'
 import {
   SCHOOL_MANIFEST_PATH,
-  SchoolShell,
   loadSchoolManifest,
+  navigationFor,
   shellRoleOf,
+  useBrandAccent,
   type NavGroup,
   type SchoolManifest,
   type SchoolManifestState,
@@ -26,7 +26,6 @@ import {
 import { WORKSHOP_BASE } from '../../workshopPath'
 import { isDistrictOrigin } from '../../workshopBase'
 import { useServerConfig } from '../../ServerConfigContext'
-import { useAuthenticatedApi } from '../../AuthContext'
 
 /** Whether the frame applies at all: off, still finding out, or on with the school's manifest. */
 export type DistrictFrameState =
@@ -175,11 +174,23 @@ function useFrameLocation(): ShellLocation {
   return { pathname: window.location.pathname, hash: window.location.hash }
 }
 
+interface DistrictSidebar {
+  school: SchoolManifest
+  principal: DistrictPrincipal | null | undefined
+  navigation: NavGroup[]
+  location: ShellLocation
+}
+
+const DistrictSidebarContext = createContext<DistrictSidebar | undefined>(undefined)
+
+/** School branding, role navigation and account capabilities for the existing AI sidebar. */
+export const useDistrictSidebar = (): DistrictSidebar | undefined => useContext(DistrictSidebarContext)
+
 /**
- * The school shell around the Workshop's own chrome, for a framed page. The role comes from the
- * district; until it answers the navigation waits, and if it can't, the minimal links stand in.
+ * Supplies the school's chrome to the existing Workshop sidebar. The role comes from the district;
+ * until it answers navigation waits, and if it can't, the minimal links stand in.
  */
-export function DistrictFrame({
+export const DistrictFrame = ({
   manifest,
   children,
   loadPrincipal = loadDistrictPrincipal,
@@ -190,11 +201,9 @@ export function DistrictFrame({
   loadPrincipal?: () => Promise<DistrictPrincipal | undefined>
   /** The Workshop's mount, which the minimal links name as the AI workspace. */
   base?: string
-}) {
+}) => {
   const [principal, setPrincipal] = useState<DistrictPrincipal | null | undefined>(undefined)
-  const [announcement, setAnnouncement] = useState('')
   const location = useFrameLocation()
-  const { currentUser } = useAuthenticatedApi()
   const workshopAccent = useServerConfig()?.accentColor
 
   useEffect(() => {
@@ -207,20 +216,13 @@ export function DistrictFrame({
 
   // The school's accent leads; a district that sets none keeps the Workshop's own.
   const accent = manifest.brand.accent ?? (workshopAccent || undefined)
-  const school: SchoolManifest = { ...manifest, brand: { ...manifest.brand, ...(accent === undefined ? {} : { accent }) } }
-  const name = principal?.name || currentUser?.name
+  useBrandAccent(accent)
+  const navigation = principal === undefined ? [] : principal === null
+    ? fallbackDistrictNavigation(manifest, base)
+    : navigationFor(principal.role, { ai: manifest.features.ai })
   return (
-    <SchoolShell
-      school={school}
-      role={principal?.role}
-      user={name ? { name } : undefined}
-      {...(principal === null ? { navigation: fallbackDistrictNavigation(manifest, base) } : {})}
-      location={location}
-      onAnnounce={setAnnouncement}
-      layout="fill"
-    >
-      <span role="status" aria-live="polite" className="sr-only">{announcement}</span>
+    <DistrictSidebarContext.Provider value={{ school: manifest, principal, navigation, location }}>
       {children}
-    </SchoolShell>
+    </DistrictSidebarContext.Provider>
   )
 }

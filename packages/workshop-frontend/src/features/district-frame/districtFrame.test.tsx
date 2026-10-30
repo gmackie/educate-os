@@ -4,11 +4,10 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { SchoolManifest } from '@educateos/shell'
+import { SchoolNavigation, type SchoolManifest } from '@educateos/shell'
 import { ThemeProvider, storedThemeMode } from '@gadgets/ui/theme'
 
 vi.mock('@tanstack/react-router', () => ({ useRouterState: () => '/ai/' }))
-vi.mock('../../AuthContext', () => ({ useAuthenticatedApi: () => ({ currentUser: { id: 'u', name: 'Workshop Name' } }) }))
 vi.mock('../../ServerConfigContext', () => ({ useServerConfig: () => ({ accentColor: '#ff4801' }) }))
 
 import {
@@ -19,6 +18,7 @@ import {
   resetDistrictFrame,
   startDistrictFrame,
   useDistrictFrame,
+  useDistrictSidebar,
   type DistrictPrincipal,
 } from './districtFrame'
 
@@ -127,10 +127,22 @@ describe('who the district says is signed in', () => {
   })
 })
 
+const SidebarContents = () => {
+  const district = useDistrictSidebar()!
+  return (
+    <>
+      <span>{district.school.name}</span>
+      <span>{district.principal?.name}</span>
+      <SchoolNavigation groups={district.navigation} location={district.location} />
+      <main>Workshop threads</main>
+    </>
+  )
+}
+
 const frame = (loadPrincipal: () => Promise<DistrictPrincipal | undefined>) => mount(
   <ThemeProvider source={storedThemeMode('educateos:theme-mode')}>
     <DistrictFrame manifest={NORTHFIELD} loadPrincipal={loadPrincipal} base="/ai/">
-      <main>Workshop threads</main>
+      <SidebarContents />
     </DistrictFrame>
   </ThemeProvider>,
 )
@@ -143,10 +155,9 @@ const navLinks = (container: HTMLElement) =>
   }))
 
 describe('DistrictFrame', () => {
-  it("draws the school's frame around the Workshop with the role's navigation, AI workspace current", async () => {
+  it("supplies the school and role's navigation to the AI sidebar, AI workspace current", async () => {
     const container = frame(async () => ({ role: 'student', name: 'Ava Chen' }))
     await act(async () => {})
-    expect(container.querySelector('[data-content="fill"]')).not.toBeNull()
     expect(container.textContent).toContain('Northfield')
     expect(container.textContent).toContain('Ava Chen')
     expect(container.textContent).toContain('Workshop threads')
@@ -162,7 +173,6 @@ describe('DistrictFrame', () => {
     const container = frame(async () => undefined)
     await act(async () => {})
     expect(container.textContent).toContain('Back to Northfield')
-    expect(container.textContent).toContain('Workshop Name')
     expect(navLinks(container)).toEqual([
       { label: 'Home', href: '/', current: null },
       { label: 'Classes', href: '/#my-courses', current: null },

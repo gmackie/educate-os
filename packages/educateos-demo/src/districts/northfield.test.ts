@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { bootDemoDistrict, PERSONAS } from "./demoDistrict.ts";
+import { bootNorthfield, NORTHFIELD_PERSONAS as PERSONAS } from "./northfield.ts";
 
 describe("the demo district", () => {
   it("signs each persona in as who the picker says they are, with work waiting for each", async () => {
-    const district = await bootDemoDistrict();
+    const district = await bootNorthfield();
     const as = (id: string) => district.clientFor(PERSONAS.find((p) => p.id === id)!.subject);
     for (const persona of PERSONAS) {
       expect(await district.clientFor(persona.subject).call("me.get")).toMatchObject({ displayName: persona.name });
@@ -24,12 +24,12 @@ describe("the demo district", () => {
   });
 
   it("answers someone the district does not know as signed in to no one", async () => {
-    const district = await bootDemoDistrict();
+    const district = await bootNorthfield();
     await expect(district.clientFor("nobody").call("me.get")).rejects.toMatchObject({ status: 401 });
   });
 
   it("carries a new student's submission through teacher review and released feedback without granting teacher access", async () => {
-    const district = await bootDemoDistrict();
+    const district = await bootNorthfield();
     const as = (id: string) => district.clientFor(PERSONAS.find((persona) => persona.id === id)!.subject);
     const student = as("student"), teacher = as("teacher"), guardian = as("guardian");
     const offeringId = "off_nf-eng9-fall-p3";

@@ -3,7 +3,9 @@
     "details": [
       {
         "appIDs": [
-          "P4SWQXAB5H.io.educateos.mobile"
+          "P4SWQXAB5H.io.educateos.mobile",
+          "P4SWQXAB5H.com.gmacko.educateos.preview",
+          "P4SWQXAB5H.com.gmacko.educateos.dev"
         ],
         "components": [
           {
@@ -28,7 +30,9 @@
   },
   "webcredentials": {
     "apps": [
-      "P4SWQXAB5H.io.educateos.mobile"
+      "P4SWQXAB5H.io.educateos.mobile",
+      "P4SWQXAB5H.com.gmacko.educateos.preview",
+      "P4SWQXAB5H.com.gmacko.educateos.dev"
     ]
   }
 }

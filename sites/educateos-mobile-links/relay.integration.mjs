@@ -60,7 +60,7 @@ await api(path, room.phoneToken, undefined, 410);
 const assetlinks = await transport(origin + '/.well-known/assetlinks.json');
 assert.equal(assetlinks.status, 200);
 const [statement] = await assetlinks.json();
-assert.equal(statement.target.package_name, 'io.educateos.mobile');
+assert.equal(statement.target.package_name, 'io.educateos.mobile', 'the store app is listed first');
 assert.ok(Array.isArray(statement.target.sha256_cert_fingerprints));
 const aasa = await transport(origin + '/.well-known/apple-app-site-association');
 assert.equal(aasa.status, 200);

@@ -13,10 +13,11 @@ async function call(district: Awaited<ReturnType<typeof bootDistrict>>, token: s
 }
 
 describe("administrator-confirmed Workshop links", () => {
-  it("links a student without elevating their role, and the guard reads the link immediately", async () => {
+  it("links a migrated student without elevating their role, and the guard reads the link immediately", async () => {
     const d = await bootDistrict();
     const admin = d.tokenFor(NF.admin);
-    const workshopUser = `principal:${NF.amara}`;
+    // An email-keyed account the principal migration aliased; a `principal:` key needs no link.
+    const workshopUser = "amara-migrated@example.com";
     expect(await d.app.guardDirectory.guardSubject({ workshopUser })).toBeNull();
     const result = await call(d, admin, { workshopUser, principalId: NF.amara });
     expect(result.status).toBe(201);

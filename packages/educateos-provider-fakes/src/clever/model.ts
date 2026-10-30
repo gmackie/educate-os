@@ -1,6 +1,7 @@
 // Projects a vendor-neutral seed into Clever Data API v3.x records, following the field tables of
 // https://dev.clever.com/docs/districts, /schools, /terms, /sections and /users. Fields Clever marks
-// "not guaranteed" are left out when the seed has nothing for them, as Clever leaves them out.
+// "not guaranteed" are left out when the seed has nothing for them, as Clever leaves them out, or,
+// on request, those Clever's v3.1 OpenAPI spec marks `x-nullable` are rendered as `null`.
 import { modifiedOf, usernameOf } from "../seed.ts";
 import type { DistrictSeed, PersonSeed, SectionSeed, SeedRecord } from "../types.ts";
 import { cleverDistrictId, cleverId, cleverLegacyId, cleverUserId, type CleverCollection, type CleverRole } from "./ids.ts";
@@ -78,6 +79,44 @@ function defined(entries: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(entries).filter(([, v]) => v !== undefined));
 }
 
+/** The fields of each collection Clever's v3.1 spec marks `x-nullable` that a seed may have nothing for. */
+const NULLABLE: Partial<Record<CleverCollection, readonly string[]>> = {
+  schools: ["low_grade", "high_grade"],
+  terms: ["name", "start_date", "end_date"],
+  courses: ["name", "number"],
+  sections: ["course", "term_id", "subject", "grade", "teacher"],
+  users: ["email"],
+};
+const ROLES: readonly CleverRole[] = ["student", "teacher", "staff", "district_admin", "contact"];
+
+/** `body` with each of `fields` it has nothing for (absent or empty) as `null`. */
+function nulled(body: Record<string, unknown>, fields: readonly string[]): Record<string, unknown> {
+  const out = { ...body };
+  for (const field of fields) if (out[field] === undefined || out[field] === "") out[field] = null;
+  return out;
+}
+
+/** A record as a district whose data carries nulls serves it: nullable fields and unheld roles as `null`. */
+function withNulls(collection: CleverCollection, record: CleverRecord): CleverRecord {
+  const out = nulled(record, NULLABLE[collection] ?? []) as CleverRecord;
+  if (collection !== "users") return out;
+  const roles = record["roles"] as Record<string, Record<string, unknown>>;
+  return {
+    ...out,
+    name: nulled(record["name"] as Record<string, unknown>, ["middle"]),
+    roles: Object.fromEntries(ROLES.map((role) => {
+      const body = roles[role];
+      if (body === undefined) return [role, null];
+      if (role === "student") return [role, nulled(body, ["grade"])];
+      if (role === "contact") {
+        const relationships = (body["student_relationships"] as Record<string, unknown>[]).map((r) => nulled(r, ["relationship"]));
+        return [role, { ...nulled(body, ["sis_id"]), student_relationships: relationships }];
+      }
+      return [role, body];
+    })),
+  };
+}
+
 function roleBody(seed: DistrictSeed, person: PersonSeed, role: CleverRole): Record<string, unknown> {
   const schools = person.schoolIds.map((id) => cleverId(seed, "schools", id));
   const credentials = { district_username: usernameOf(person) };
@@ -127,8 +166,9 @@ function sectionName(seed: DistrictSeed, section: SectionSeed): string {
 /**
  * Projects `seed` into Clever records. Seed records with status `tobedeleted` are not shared with
  * the app, so they do not appear. `created` and `last_modified` come from the seed's `modified`.
+ * With `nulls`, fields Clever may send as null are, where the seed has nothing for them.
  */
-export function projectClever(seed: DistrictSeed, extraRoles: CleverExtraRoles = {}): CleverRecords {
+export function projectClever(seed: DistrictSeed, extraRoles: CleverExtraRoles = {}, nulls = false): CleverRecords {
   const district = cleverDistrictId(seed);
   const active = <T extends { status?: string }>(records: readonly T[]) => records.filter((r) => (r.status ?? "active") === "active");
   const people = active(seed.people);
@@ -138,7 +178,7 @@ export function projectClever(seed: DistrictSeed, extraRoles: CleverExtraRoles =
     return { created: seed.modified <= at ? seed.modified : at, last_modified: at };
   };
   const out: CleverRecords = { districts: new Map(), schools: new Map(), terms: new Map(), courses: new Map(), sections: new Map(), users: new Map() };
-  const put = (collection: CleverCollection, record: CleverRecord) => out[collection].set(record.id, record);
+  const put = (collection: CleverCollection, record: CleverRecord) => out[collection].set(record.id, nulls ? withNulls(collection, record) : record);
 
   put("districts", {
     id: district,

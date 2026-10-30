@@ -17,11 +17,10 @@ Use the account's actual kernel ID, never a Google user ID or Access subject. Du
 principals return `409`, including concurrent confirmations. Read the existing link rather than
 retrying a successful POST. Teachers and students cannot read or create these links.
 
-The guard already supports the district worker's `DistrictGuardDirectory` entrypoint. The production
-generator enables this binding only when `ProductionInstance.aiGuard.districtDirectory` is true;
-it requires the instance to deploy a district. With a pinned district worker name, the generator
-resolves the binding to that name. The default remains the configured directory so existing
-operator-only installations can roll out the change in stages.
+The production generator binds the district worker's `DistrictGuardDirectory` as the guard's
+`EDUCATEOS_DISTRICT` whenever the instance deploys a district (SCHO-283). The guard reads it only
+once its `AI_GUARD_CONFIG` says `contextSource: "district"`; until then it keeps its configured
+directory, so an operator-only installation moves over by changing that configuration.
 
 Roll out through Forge in this order:
 
@@ -33,10 +32,10 @@ Roll out through Forge in this order:
    four audience profiles. Keep student input moderation enabled, output moderation required and
    failure mode `fail-closed`. Unknown grades use `student-k5`. Do not promote students to educator
    profiles. Keep credentials and the private configuration outside source/evidence.
-4. Enable `aiGuard.districtDirectory`, regenerate production configs and deploy the guard through
-   Forge with its matching configuration secret. Do not sync the new secret into the old
-   operator-only guard before its binding is ready. Changing district ID starts that district's
-   ledger; the previous synthetic ledger remains separate and is not migrated or erased.
+4. Set the guard's `AI_GUARD_CONFIG` secret to that configuration in Forge and redeploy the guard
+   through Forge. Do not switch it before the links in step 2 are read back, or the operator's own
+   assistant goes off. Changing district ID starts that district's ledger; the previous synthetic
+   ledger remains separate and is not migrated or erased.
 5. Verify teacher admission, student moderated input/output, unknown-account refusal and student
    refusal after deactivation. Read back the deployment ID, commit and actual provider version.
 
