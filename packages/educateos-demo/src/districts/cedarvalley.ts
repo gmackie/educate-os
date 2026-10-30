@@ -108,6 +108,8 @@ export async function bootCedarValley(): Promise<CedarValleyDistrict> {
   const app = await createDistrictApp({
     stores,
     verifyRequest: sessions.verifyRequest,
+    // Synthetic personas only: publish their discussion posts without Hall Monitor.
+    unscreenedStudentPosts: "publish",
     importFetch: demoWeb,
     verifyCatalogRelease: verifySeedRelease,
     authority: "clever",
