@@ -20,6 +20,7 @@ import { GradeBand, MachineCode, OpaqueId } from "@gmacko/hall-monitor-contracts
 import { MAX_AI_CALL_INSTRUCTIONS_LENGTH } from "@gadgets/workshop-shared/ai-call-guard";
 import { WorkshopUserLink } from "@educateos/identity";
 import { Workspace } from "@educateos/workspaces";
+import { SourceGovernance } from "./source-governance.ts";
 
 const LISTED_PRICE_FIELDS = ["priceBookId", "inputUsdNanoPerMTok", "outputUsdNanoPerMTok", "cacheReadUsdNanoPerMTok", "cacheWriteUsdNanoPerMTok"] as const;
 
@@ -212,6 +213,8 @@ export const GuardConfig = z.strictObject({
     surface: MachineCode.default("educateos.workshop"),
     /** Deadline for one evaluation, retries included. */
     timeoutMs: z.int().min(100).max(14_000).default(8_000),
+    /** Explicit source eligibility and request-bound governance; absent until a pilot opts in. */
+    governance: SourceGovernance.optional(),
   }),
   /**
    * Where a call's {@link GuardContext} comes from. `district` (the default) derives it from the
@@ -233,6 +236,9 @@ export const GuardConfig = z.strictObject({
   /** Plain-text instructions for coached calls, in place of {@link DEFAULT_COACHING_INSTRUCTIONS}. */
   coachingInstructions: z.string().trim().min(1).max(MAX_AI_CALL_INSTRUCTIONS_LENGTH).default(DEFAULT_COACHING_INSTRUCTIONS),
 }).superRefine((config, ctx) => {
+  if (config.moderation.governance !== undefined && config.contextSource !== "district") {
+    ctx.addIssue({ code: "custom", message: "governed moderation requires the district context resolver", path: ["contextSource"] });
+  }
   if (config.contextSource === "district") {
     for (const key of AUDIENCE_PROFILE_KEYS) {
       if (config.profiles[key] === undefined) ctx.addIssue({ code: "custom", message: `missing audience profile ${key}`, path: ["profiles", key] });
