@@ -2,12 +2,15 @@
 // docs: paging (https://dev.clever.com/docs/paging-and-limits), events
 // (https://dev.clever.com/docs/events-api), errors and rate limits
 // (https://dev.clever.com/docs/error-messages), and the record schemas of /districts, /schools,
-// /terms, /sections and /users. District-app bearer tokens authorise every request.
+// /terms, /sections and /users. District-app bearer tokens authorise every request. v3.1 also
+// serves LMS Connect's assignments and submissions (`lms-connect.ts`), built to Clever's published
+// spec and not tested against Clever.
 import { Fake, bearer, type FakeOptions } from "../fake.ts";
 import { tokenId } from "../ids.ts";
 import { studentsToRemove, validateSeed, withoutPeople } from "../seed.ts";
 import type { DistrictSeed, PersonSeed, SectionSeed } from "../types.ts";
 import { cleverDistrictId, cleverId, cleverUserId, type CleverCollection, type CleverRole } from "./ids.ts";
+import { LmsConnectGradebook, type CleverAssignment, type CleverSubmission } from "./lms-connect.ts";
 import { projectClever, type CleverExtraRoles, type CleverRecord, type CleverRecords } from "./model.ts";
 
 /** The Data API's origin. */
@@ -113,6 +116,7 @@ export class CleverDataFake extends Fake {
   readonly #origin: string;
   /** Each event's position in {@link events}, so a cursor is found without a scan. */
   readonly #eventIndex = new Map<string, number>();
+  readonly #gradebook: LmsConnectGradebook;
   #seed: DistrictSeed;
   #records: CleverRecords;
   #eventCount = 0;
@@ -131,6 +135,7 @@ export class CleverDataFake extends Fake {
     this.#origin = base.origin;
     this.#prefix = base.pathname.replace(/\/+$/, "");
     this.#records = projectClever(this.#seed, this.#extraRoles, this.#nulls);
+    this.#gradebook = new LmsConnectGradebook(this.#seed.id, () => this.now(), (id) => this.#records.sections.get(id));
   }
 
   /** The seed as it stands after every mutation. */
@@ -151,6 +156,19 @@ export class CleverDataFake extends Fake {
   /** The record the API currently serves, or undefined. */
   record(collection: CleverCollection, id: string): CleverRecord | undefined {
     return this.#records[collection].get(id);
+  }
+
+  /** A section's LMS Connect assignments, oldest first, by the section's Clever ID. */
+  assignmentsFor(sectionId: string): CleverAssignment[] {
+    return this.#gradebook.assignmentsFor(sectionId);
+  }
+
+  /**
+   * A student's LMS Connect submission, as the API would serve it now, or undefined if the
+   * assignment is not in the section or the student is not one of its assignees. Clever IDs.
+   */
+  submissionFor(sectionId: string, assignmentId: string, userId: string): CleverSubmission | undefined {
+    return this.#gradebook.submissionFor(sectionId, assignmentId, userId);
   }
 
   // ── Mutations ───────────────────────────────────────────────────
@@ -277,7 +295,7 @@ export class CleverDataFake extends Fake {
     return json({ error: status === 503 ? "Service Unavailable" : "Internal Server Error" }, status);
   }
 
-  protected async serve(request: Request): Promise<Response> {
+  protected async serve(request: Request, body: string): Promise<Response> {
     const url = new URL(request.url);
     const token = bearer(request);
     if (url.origin !== this.#origin || (this.#prefix !== "" && !url.pathname.startsWith(`${this.#prefix}/`))) return json({ error: "Resource not found" }, 404);
@@ -293,13 +311,21 @@ export class CleverDataFake extends Fake {
     this.#usage.set(budget, { window, count });
     const headers = this.#rateHeaders(token, this.#limit - count);
     if (count > this.#limit) return new Response(null, { status: 429, headers });
-    const response = this.#route(request, url);
+    const response = this.#route(request, url, body);
     for (const [key, value] of headers) response.headers.set(key, value);
     return response;
   }
 
-  #route(request: Request, url: URL): Response {
-    const match = /^\/(v3\.[01])\/([a-z_]+)(?:\/([0-9a-f]{24}|[^/]+))?(?:\/([a-z_]+))?\/?$/.exec(url.pathname.slice(this.#prefix.length));
+  #route(request: Request, url: URL, body: string): Response {
+    const path = url.pathname.slice(this.#prefix.length);
+    const lms = /^\/(v3\.[01])\/sections\/([^/]+)\/assignments(?:\/([^/]+)(?:\/(submissions)(?:\/([^/]+))?)?)?\/?$/.exec(path);
+    if (lms !== null) {
+      const [, version, sectionId, assignmentId, submissions, userId] = lms as unknown as [string, string, string, string | undefined, string | undefined, string | undefined];
+      // LMS Connect is v3.1 only (clever-lms-connect): v3.0 has no such resource.
+      if (version !== "v3.1") return json({ error: "Resource not found" }, 404);
+      return this.#gradebook.serve(request.method, { sectionId, assignmentId, submissions: submissions !== undefined, userId }, body, url, `${this.#prefix}/${version}`);
+    }
+    const match = /^\/(v3\.[01])\/([a-z_]+)(?:\/([0-9a-f]{24}|[^/]+))?(?:\/([a-z_]+))?\/?$/.exec(path);
     if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
     if (match === null) return json({ error: "Resource not found" }, 404);
     const [, version, resource, id, nested] = match as unknown as [string, string, string, string | undefined, string | undefined];
