@@ -25,10 +25,12 @@ interface PersonaWorkspaceProps {
   onResponse?: (request: Request, status: number) => void;
   /** Switches to another persona of the same district, opening their app at `route` if given. */
   onChoose: (persona: PersonaId, route?: string) => void;
+  /** Opens the teacher's "Where grades land" panel each time it changes. */
+  gradesRequest?: number;
 }
 
 /** The persona's own app, once the district is up, and its roster has brought the persona in. */
-export const PersonaWorkspace = ({ info, district, persona, bearer, onStepsDone, onResponse, onChoose }: PersonaWorkspaceProps) => {
+export const PersonaWorkspace = ({ info, district, persona, bearer, onStepsDone, onResponse, onChoose, gradesRequest }: PersonaWorkspaceProps) => {
   if (district.status === "booting") {
     return (
       <div role="status" className="flex flex-col items-center gap-3 px-4 py-16 text-center">
@@ -57,7 +59,7 @@ export const PersonaWorkspace = ({ info, district, persona, bearer, onStepsDone,
       </div>
     );
   }
-  return <PersonaApp district={district.district} persona={persona} bearer={bearer ?? persona.subject} onStepsDone={onStepsDone} {...(onResponse === undefined ? {} : { onResponse })} />;
+  return <PersonaApp district={district.district} persona={persona} bearer={bearer ?? persona.subject} onStepsDone={onStepsDone} {...(onResponse === undefined ? {} : { onResponse })} {...(gradesRequest === undefined ? {} : { gradesRequest })} />;
 };
 
 interface PersonaAppProps {
@@ -66,9 +68,10 @@ interface PersonaAppProps {
   bearer: string;
   onStepsDone: (ids: readonly string[]) => void;
   onResponse?: (request: Request, status: number) => void;
+  gradesRequest?: number;
 }
 
-const PersonaApp = ({ district, persona, bearer, onStepsDone, onResponse }: PersonaAppProps) => {
+const PersonaApp = ({ district, persona, bearer, onStepsDone, onResponse, gradesRequest }: PersonaAppProps) => {
   // One client for the app's lifetime, as each app's own entry point makes one.
   const [client] = useState(() => district.clientFor(bearer, (request, response) => {
     onResponse?.(request, response.status);
@@ -92,7 +95,7 @@ const PersonaApp = ({ district, persona, bearer, onStepsDone, onResponse }: Pers
     case "teacher":
       return (
         <DistrictApiProvider client={client}>
-          {district.grades !== undefined && <Suspense><WhereItLanded grades={district.grades} /></Suspense>}
+          {district.grades !== undefined && <Suspense><WhereItLanded grades={district.grades} {...(gradesRequest === undefined ? {} : { openRequest: gradesRequest })} /></Suspense>}
           <TeacherApp />
         </DistrictApiProvider>
       );

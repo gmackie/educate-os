@@ -444,6 +444,7 @@ describe("service tokens", () => {
     const [header, payload, signature] = token.split(".") as [string, string, string];
     expect(decodeSegment(header)).toEqual({ alg: "EdDSA", typ: "JWT", kid: "guard-1" });
     expect(decodeSegment(payload)).toMatchObject({ iss: "educateos-guard", aud: "hall-monitor", tenant: "tenant_educateos", scope: "evaluate" });
+    expect(decodeSegment(payload)).not.toHaveProperty("hm_governance");
     const claims = decodeSegment(payload) as { iat: number; exp: number };
     expect(claims.exp - claims.iat).toBe(60);
     const valid = await crypto.subtle.verify({ name: "Ed25519" }, pair.publicKey,

@@ -15,7 +15,7 @@ import {
   type VerifiedIdentity,
   type VerifiedPrincipal,
 } from "@educateos/contracts";
-import { createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@educateos/identity";
+import { confirmWorkshopUserLink, createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@educateos/identity";
 import { AcademicDirectory, assertSyncWritable, DIRECTORY_ENTITY_KINDS, isDistrictAdmin } from "@educateos/academics";
 import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule } from "@educateos/policy";
 import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@educateos/workspaces";
@@ -1005,6 +1005,21 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       };
     },
     // Learning standards (SCHO-220)
+    "admin.workshopUserLinks": async (ctx) => {
+      await ctx.requireDistrict("read", "district");
+      return stores.workshopUserLinks.list();
+    },
+    // An administrator confirms that a Workshop account is a person (ADR-0003: never by email
+    // match). `confirmWorkshopUserLink` refuses anyone but a district administrator.
+    "admin.linkWorkshopUser": async (ctx, { body }) => {
+      await ctx.requireDistrict("read", "district");
+      const link = confirmWorkshopUserLink(ctx.snapshot, await stores.workshopUserLinks.list(), {
+        workshopUser: body.workshopUser, principalId: body.principalId,
+        confirmedBy: ctx.principal.principalId, confirmedAt: now().toISOString(),
+      });
+      await stores.workshopUserLinks.add(link);
+      return link;
+    },
     "admin.listStandards": async (ctx) => {
       await ctx.requireDistrict("list", "standards-release");
       return listStandards(catalog);

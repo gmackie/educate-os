@@ -98,6 +98,63 @@ workspaces and links.
   before anything is held. Nothing in a call's content, or anything a browser sends, says what
   role or grade a user has.
 
+## First Hall Monitor pilot (SCHO-264)
+
+EducateOS is the first selected pilot integration (owner decision, 29 October 2026). The existing
+guard now supports an **opt-in** `moderation.governance` object in `AI_GUARD_CONFIG`. No shipped
+config enables it. The configured district resolver remains the identity authority; static
+principal bindings are refused in this mode. This slice does not enable discussion screening,
+enroll an institution, or add a safety-event/case store.
+
+The object contains `institutionId`, `policyRevision`, separate `purposes.input` and
+`purposes.output`, `maxEligibilityAgeSeconds` (1–3600, no default), and an `eligibility` array.
+Each entry names a district-local `principalId`, `dataClass`, explicit `ageEligibility`, an opaque
+`eligibilityRef`, original `issuedAt`, `expiresAt` (Unix seconds), and `revoked`. An entry must be
+unique per principal. These are bounded operator-installed source records for the pilot, not a
+consent UI or a live approval registry. Their provenance and update/revocation process must be
+approved before actual use; install a new configuration to withdraw a record. A running call
+uses its configuration snapshot, bounded by record expiry/freshness; this provides no immediate
+cross-isolate revocation guarantee. A future live registry must address that separately.
+
+The guard resolves the authenticated Workshop user through district links, then matches that
+principal's entry. It never infers age from grade or accepts eligibility from message content or
+RPC arguments. Unknown, ineligible, future, stale, expired, revoked, cross-district or
+audience-inconsistent records fail closed before transfer. Staff requires adult eligibility;
+student records must be explicit; synthetic data requires synthetic eligibility. A source
+record says nothing about provider age permission on its own: Hall Monitor independently checks
+its own enrolled policy, agreement, approvals and route evidence before each provider call.
+
+The adapter signs a request-bound `hm_governance` JWT extension, without principal identity or
+DOB, using the existing Ed25519/P-256 signer. It binds institution, request, product, surface,
+input/output purpose, class, eligibility reference and policy revision. Its expiry never exceeds
+the JWT or source record; its original eligibility check time is preserved on retries. Every
+attempt gets a fresh JWT/jti and a fresh eligibility check. One JWT cannot authorize a batch,
+so the governed adapter refuses `evaluateBatch`. Governance stays out of evaluation DTOs.
+
+Governed evaluations use `POST /v1/evaluations:governed` with the pinned 0.3.0 SDK's unchanged
+DTOs. A small transport adapter rewrites only single-evaluation requests. Older receivers return
+404 and the guard refuses the call; it never retries on the legacy route. The receiver requires
+signed context and tenant enrollment independently of the source configuration.
+
+This mode requires a signing key even on a service binding and screens input even if a legacy
+profile skips it. It disables the educator `proceed` fallback on moderation failures and refuses
+degraded allow/coach results while preserving deterministic support messages. Required
+output screening rechecks eligibility before releasing content. Missing signing, endpoint or
+eligibility cannot downgrade a governed call into a legacy ungoverned transfer. Legacy behavior
+remains when the governance object is absent. Existing output-profile requirements still apply.
+
+Tests use fictional Northfield principals, throwaway test keys, the real district resolver and
+ledger, and a fake Hall Monitor. They verify signatures, exact claim/body binding, concurrency,
+retry/expiry, local denials and required-output withholding. They do not prove a deployed receiver
+or a cloud privacy posture. Live activation requires compatible pinned Hall Monitor profiles,
+matching receiver enrollment/purposes/freshness, authenticated target acceptance, privacy and
+provider/age approval, calibration and staffed referral. No trust material is installed here.
+
+Hall Monitor's evaluated-volume denominator includes every unique committed evaluation across
+all four evaluation kinds, including degraded results. A chunk's input and output checks are
+separate evaluations; replays and failures before commit add no new unit. It is not a count of
+students, model calls or source submissions. Missing telemetry remains unavailable, never zero.
+
 ## Development and previews
 
 `src/dev-worker.ts` is the guard as `pnpm dev-server --with-ai-guard` (or `EDUCATEOS_DEV_AI_GUARD=1`)

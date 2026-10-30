@@ -26,10 +26,15 @@ const announcement = (event: GradeEvent): string => {
 
 /**
  * The teacher's view of grade passback in the demo: each class's route, chosen here, and every
- * grade the passback gate sent or refused, with what the gradebook it went to now holds.
+ * grade the passback gate sent or refused, with what the gradebook it went to now holds. It opens
+ * collapsed, and opens whenever a positive `openRequest` changes.
  */
-export const WhereItLanded = ({ grades }: { grades: DemoGradebooks }) => {
+export const WhereItLanded = ({ grades, openRequest = 0 }: { grades: DemoGradebooks; openRequest?: number }) => {
   const events = useSyncExternalStore(grades.subscribe, grades.events);
+  const [open, setOpen] = useState(openRequest > 0);
+  useEffect(() => {
+    if (openRequest > 0) setOpen(true);
+  }, [openRequest]);
   const [classes, setClasses] = useState<readonly GradeClass[]>();
   const [busy, setBusy] = useState<string>();
 
@@ -62,7 +67,7 @@ export const WhereItLanded = ({ grades }: { grades: DemoGradebooks }) => {
   return (
     <div className="px-4 pt-4">
       <LayerCard className="p-4">
-        <Collapsible.Root>
+        <Collapsible.Root open={open} onOpenChange={setOpen}>
           <Collapsible.DefaultTrigger>
             {`Where grades land${events.length === 0 ? "" : ` (${sent} sent, ${refused} refused)`}`}
           </Collapsible.DefaultTrigger>

@@ -79,9 +79,11 @@ rotates them all. They are:
 
 OIDC clients accept the redirect URIs in the `OIDC_REDIRECT_URIS` var (comma-separated, exact
 match, https, `{slug}` replaced by the district). It defaults to
-`https://{slug}.educateos.io/api/sso/callback`, a district-side callback. No SSO connector in the
-repository receives codes yet (SCHO-203/204), so that path is a neutral choice: change the var to
-the connector's real callback when it exists. A URI that is not https, or whose host is
+`https://{slug}.educateos.io/api/sso/callback`, a district-side callback. No district SSO
+connector receives codes yet (SCHO-203/204), so that path is a neutral choice: change the var to
+the connector's real callback when it exists. The deployed var also lists the demo Workshop's Clever
+connector, `https://northfield.educateos.io/gatekeeper/clever/oauth` (SCHO-282), which signs Cedar
+Valley's people in against the `clever` fake. A URI that is not https, or whose host is
 `cloudflareaccess.com` or below it, makes the Worker answer 503 to every fake and admin request
 until it is fixed.
 

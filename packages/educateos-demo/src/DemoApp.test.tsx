@@ -156,12 +156,11 @@ describe("the demo's districts", () => {
     expect(await findByRole(container, "heading", { name: "Cedar Valley USD hasn't synced from Clever yet" }, BOOT)).toBeDefined();
     const side = getByRole(container, "complementary", { name: "Clever side" });
     await userEvent.click(getByRole(side, "button", { name: "Clever side" }));
-    // Nothing can change in Clever before the first sync; the panel sends the visitor to it, as the
-    // administrator, whom the portal signs in.
+    // Nothing can change in Clever before the first sync; the panel takes the visitor to it as the
+    // administrator, signing her in through the portal's Instant Login on the way.
     await userEvent.click(getByRole(side, "button", { name: "Open Roster sync as Elaine Park" }));
-    expect(await findByText(container, "Signed in to the portal as Elaine Park")).toBeDefined();
-    await openEducateOS();
     expect(await findByRole(container, "heading", { name: "Roster sync" }, BOOT)).toBeDefined();
+    expect(banner().textContent).toContain("You're Elaine Park");
     await userEvent.click(await findByRole(container, "button", { name: "Run complete sync" }, BOOT));
     await findByRole(container, "region", { name: "Complete sync just now" }, BOOT);
 
@@ -235,6 +234,14 @@ describe("Cedar Valley's Clever tour", () => {
     expect(await progress(5)).toBeDefined();
     expect(stepItem(5).textContent).toContain("people 0 added, 0 updated, 1 deactivated");
     expect(stepItem(6).getAttribute("aria-current")).toBe("step");
+
+    // Show me for the teacher's steps opens her app, signing her in through the portal, rather
+    // than leaving the visitor at the portal (SCHO-284).
+    await userEvent.click(within(stepItem(6)).getByRole("button", { name: "Show me: Open Dana Whitaker's Earth Science 8" }));
+    expect(await findByRole(container, "heading", { name: /^Submissions · Earth Science 8/ }, BOOT)).toBeDefined();
+    expect(banner().textContent).toContain("You're Dana Whitaker");
+    await userEvent.click(within(stepItem(7)).getByRole("button", { name: "Show me: Open Where grades land as Dana Whitaker" }));
+    expect(await findByRole(container, "region", { name: "Each class's route" }, BOOT)).toBeDefined();
   });
 
   it("in presenter mode keeps only the titles, jumps to a step, switches persona by key and starts over", async () => {
