@@ -22,7 +22,7 @@ const ORIGIN = "https://workshop.example";
 const ISS = "https://team.cloudflareaccess.example";
 
 function jwt(claims: Record<string, unknown>): string {
-  return new TextEncoder().encode(JSON.stringify({ iss: ISS, aud: "audience", ...claims }))
+  return new TextEncoder().encode(JSON.stringify({ iss: ISS, aud: "audience", exp: Math.floor(Date.now() / 1000) + 3600, ...claims }))
       .toBase64({ alphabet: "base64url", omitPadding: true });
 }
 
@@ -138,6 +138,24 @@ describe("Access sign-in with a principal resolver", () => {
         .toBe("PRINCIPAL_ADOPTION_PENDING");
   });
 
+  it("refuses an expired or non-expiring principal assertion before resolving it", async () => {
+    const resolver = resolverFor(LINKS);
+    routeApiTo(accessEnv(resolver));
+    for (const exp of [undefined, 0, Math.floor(Date.now() / 1000) - 1]) {
+      expect(await authErrorCode(signInAs(jwt({ sub: "sub-alice", exp }))))
+          .toBe("PRINCIPAL_UNRESOLVED");
+    }
+    expect(resolver.resolveAccessSignIn).not.toHaveBeenCalled();
+  });
+
+  it("refuses password signup, password login and gatekeeper login without an Access audience", async () => {
+    routeApiTo({ ...accessEnv(resolverFor(LINKS)), CF_ACCESS_AUD: undefined, AUTH_GATEKEEPERS: "google" });
+    await expect(api().login("student", new Uint8Array(32))).rejects.toThrow("Password login is disabled");
+    await expect(api().createAccount("student", "Student", new Uint8Array(32)))
+        .rejects.toThrow("Password signup is disabled");
+    await expect(api().startGatekeeperLogin("google")).rejects.toThrow("is not enabled");
+  });
+
   it("refuses a principal ID that is not a plain name", async () => {
     routeApiTo(accessEnv(resolverFor(LINKS)));
     expect(await authErrorCode(signInAs(jwt({ sub: "sub-malformed" })))).toBe("PRINCIPAL_UNRESOLVED");
@@ -206,6 +224,23 @@ function callback(token: string, body: URLSearchParams): Request {
 }
 
 describe("device session callback with a principal resolver", () => {
+  it("fails closed without Access configuration before consuming a handoff", async () => {
+    const testEnv = { ...accessEnv(resolverFor(LINKS)), CF_ACCESS_AUD: undefined };
+    const consume = vi.fn();
+    const ctx = executionContext();
+    const response = await server.fetch(callback(jwt({ sub: "sub-alice" }), new URLSearchParams()),
+        testEnv, {
+          ...ctx,
+          exports: new Proxy(ctx.exports, {
+            get: (target, key) => key === "UserDurableObject"
+              ? { idFromString: consume } : Reflect.get(target, key),
+          }),
+        });
+    expect(response.status).toBe(403);
+    expect(await response.text()).toBe("Invalid CF access JWT.");
+    expect(consume).not.toHaveBeenCalled();
+  });
+
   it("delivers a handoff only to the principal that staged it", async () => {
     const state = crypto.randomUUID();
     const user = env.TEST_USER.getByName("principal:prn_alice");

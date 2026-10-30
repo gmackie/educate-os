@@ -981,7 +981,7 @@ export default {
 
     if (url.pathname === "/api/device-session/callback") {
       let expectedUserDoId: string | undefined;
-      if (env.CF_ACCESS_AUD) {
+      if (env.CF_ACCESS_AUD || env.PRINCIPAL_RESOLVER) {
         const payload = await verifyCfAccessJwt(req, env);
         const name = payload && env.PRINCIPAL_RESOLVER
           ? await resolvePrincipalUser(env.PRINCIPAL_RESOLVER, payload).then(u => u.name, () => null)
