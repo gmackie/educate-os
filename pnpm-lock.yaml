@@ -958,6 +958,9 @@ importers:
       '@educateos/contracts':
         specifier: workspace:*
         version: link:../educateos-contracts
+      '@educateos/control-plane':
+        specifier: workspace:*
+        version: link:../educateos-control-plane
       '@educateos/district-app':
         specifier: workspace:*
         version: link:../educateos-district-app
@@ -967,6 +970,9 @@ importers:
       '@educateos/harness':
         specifier: workspace:*
         version: link:../educateos-harness
+      '@educateos/identity':
+        specifier: workspace:*
+        version: link:../educateos-identity
       '@educateos/integrations':
         specifier: workspace:*
         version: link:../educateos-integrations
@@ -991,6 +997,9 @@ importers:
       '@tanstack/react-router':
         specifier: ^1.170.39
         version: 1.170.39(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
       react:
         specifier: ^19.2.8
         version: 19.2.8

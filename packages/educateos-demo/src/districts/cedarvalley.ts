@@ -4,14 +4,14 @@
 // sync is something the visitor does. The demo loads this module only when a visitor opens Cedar
 // Valley, so Northfield's visitors never download the fakes.
 import type { DistrictApiClient } from "@educateos/api-client";
-import { DistrictDirectorySnapshot, PrincipalId } from "@educateos/contracts";
+import { DistrictDirectorySnapshot, PrincipalId, type VerifiedIdentity } from "@educateos/contracts";
 import { createDistrictApp, inMemoryDistrictStores, type RosterSourceFactory } from "@educateos/district-app";
 import { CEDARVALLEY, demoDistrict, districtSeed } from "@educateos/fixtures";
 import { demoWeb } from "@educateos/harness";
 import { clever } from "@educateos/integrations";
 import { CleverDataFake } from "@educateos/provider-fakes";
 import { CEDARVALLEY_PERSONAS, CEDARVALLEY_PRINCIPALS } from "./cedarvalleyPersonas.ts";
-import { clientsOver, personaVerifier, verifySeedRelease, type DemoDistrict, type DemoRoster, type RosterSyncResult } from "./shared.ts";
+import { clientsOver, demoSessions, verifySeedRelease, type DemoDistrict, type DemoRoster, type DemoSessions, type RosterSyncResult } from "./shared.ts";
 
 /** The booted Cedar Valley, with the Clever district its roster comes from. */
 export interface CedarValleyDistrict extends DemoDistrict {
@@ -22,6 +22,17 @@ export interface CedarValleyDistrict extends DemoDistrict {
    * removed, a fault injected) the district sees on its next sync, as it would from Clever.
    */
   clever: CleverDataFake;
+  /**
+   * Who the district accepts a Clever sign-in from: its Clever district, and the issuer its
+   * people's identities are linked under (`identityFromCleverClaims`' config).
+   */
+  cleverSso: { districtId: string; issuer: string };
+  /**
+   * The district's sessions. Its requests carry one of these, never a bare subject: the demo's
+   * Clever Instant Login (`src/clever/instantLogin.ts`) starts one once it has verified a Clever
+   * sign-in, as a district's Cloudflare Access application does.
+   */
+  sessions: DemoSessions;
 }
 
 const subjectOf = (id: keyof typeof CEDARVALLEY_PRINCIPALS) => CEDARVALLEY_PERSONAS.find((p) => p.id === id)!.subject;
@@ -68,6 +79,9 @@ const config = (cleverDistrictId: string): Record<string, unknown> => ({
   rollout: { target: "all-active-offerings", requiresAdminActivation: false },
 });
 
+/** A Cedar Valley person's identity, by their Clever user ID. */
+const identityOf = (subject: string): VerifiedIdentity => ({ issuer: IDP, subject, credential: "person" });
+
 const ROSTER_SYNC_PATH = "/api/admin/roster/sync";
 /** A classmate of the demo student in Earth Science 8 (An Nguyen), by Clever user ID, whose work waits for grading. */
 const CLASSMATE_SUBJECT = "73368fa79029d87a733690a7";
@@ -86,9 +100,10 @@ export async function bootCedarValley(): Promise<CedarValleyDistrict> {
     const client = new clever.CleverDataClient({ connection: rostering.clever, token: fake.districtToken, fetch: fake.fetch, sleep: async () => {} });
     return { source: clever.cleverRosterSource(client) };
   };
+  const sessions = demoSessions();
   const app = await createDistrictApp({
     stores: inMemoryDistrictStores(BEFORE_ROSTER),
-    verifyRequest: personaVerifier(BEFORE_ROSTER),
+    verifyRequest: sessions.verifyRequest,
     importFetch: demoWeb,
     verifyCatalogRelease: verifySeedRelease,
     authority: "clever",
@@ -103,7 +118,7 @@ export async function bootCedarValley(): Promise<CedarValleyDistrict> {
     if (!synced && response.ok && request.method === "POST" && new URL(request.url).pathname === ROSTER_SYNC_PATH) {
       const result = await response.clone().json() as RosterSyncResult;
       if (result.run?.outcome === "succeeded") {
-        seeding ??= seedCoursework(clientFor(subjectOf("teacher")), clientFor(CLASSMATE_SUBJECT));
+        seeding ??= seedCoursework(signedIn(subjectOf("teacher")), signedIn(CLASSMATE_SUBJECT));
         await seeding;
         synced = true;
       }
@@ -111,13 +126,18 @@ export async function bootCedarValley(): Promise<CedarValleyDistrict> {
     return response;
   };
   const clientFor = clientsOver(fetch);
-  const admin = clientFor(subjectOf("admin"));
+  // The district's own work (its configuration, its sync and the seeded coursework) runs in
+  // sessions of the people doing it, started here rather than by a sign-in.
+  const signedIn = (subject: string) => clientFor(sessions.start(identityOf(subject)));
+  const admin = signedIn(subjectOf("admin"));
   await admin.call("admin.applyConfig", { body: { document: config(fake.districtId), acknowledgeApprovals: true } });
 
   return {
     key: "cedarvalley",
     clientFor,
     clever: fake,
+    cleverSso: { districtId: fake.districtId, issuer: IDP },
+    sessions,
     roster: {
       provider: "clever",
       synced: () => synced,

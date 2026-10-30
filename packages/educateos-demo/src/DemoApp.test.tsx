@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { findByRole, findByText, getByRole, queryByRole } from "@testing-library/dom";
+import { findByRole, findByText, getByRole, queryByRole, waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DemoApp } from "./DemoApp.tsx";
@@ -33,6 +33,13 @@ const choose = async (role: string) => {
 };
 
 const switchPersona = () => userEvent.click(getByRole(banner(), "button", { name: "Switch persona" }));
+
+/** Opens EducateOS from the Clever portal's tiles, once the district is up. */
+const openEducateOS = async () => {
+  const tile = await findByRole(container, "button", { name: "EducateOS" });
+  await waitFor(() => expect((tile as HTMLButtonElement).disabled).toBe(false), BOOT);
+  await userEvent.click(tile);
+};
 
 describe("the demo", () => {
   it("opens each persona's own app at its home, over one shared district", async () => {
@@ -82,20 +89,30 @@ describe("the demo's districts", () => {
     expect(window.location.search).toBe("?district=cedarvalley");
     expect(banner().textContent).toContain(CLEVER_NOTICE);
 
+    // Cedar Valley is entered through its portal: who you are in Clever, then the EducateOS tile.
+    expect(await findByRole(container, "heading", { name: "Cedar Valley USD portal (simulated Clever portal)" }, BOOT)).toBeDefined();
     await choose("Grade 8 student");
+    await openEducateOS();
     expect(await findByRole(container, "heading", { name: "Cedar Valley USD hasn't synced from Clever yet" }, BOOT)).toBeDefined();
+    // The sign-in itself worked, and its steps are there to look at.
+    await userEvent.click(await findByRole(container, "button", { name: /^Under the hood/ }));
+    expect(getByRole(container, "list", { name: "Clever sign-in steps" }).children).toHaveLength(11);
     await userEvent.click(getByRole(container, "button", { name: "Sign in as Elaine Park" }));
+    expect(getByRole(container, "button", { name: "Sign out of the portal" })).toBeDefined();
+    await openEducateOS();
     expect(await findByRole(container, "heading", { name: "Dashboard" }, BOOT)).toBeDefined();
     await userEvent.click(getByRole(container, "button", { name: "Run Clever sync" }));
     expect(await findByText(container, "Synced from Clever: 8 people and 4 classes added, 0 updated, 0 removed.", {}, BOOT)).toBeDefined();
 
     await switchPersona();
     await choose("Earth Science and Algebra teacher");
+    await openEducateOS();
     expect(await findByRole(container, "heading", { name: "My classes" }, BOOT)).toBeDefined();
     expect(await findByText(container, "Earth Science 8 · Earth Science 8 - Whitaker", {}, BOOT)).toBeDefined();
 
     await switchPersona();
     await choose("Grade 8 student");
+    await openEducateOS();
     expect(await findByRole(container, "heading", { name: "Hi, Rowan Ellis" }, BOOT)).toBeDefined();
     // The notice stays on every screen of the district.
     expect(banner().textContent).toContain(CLEVER_NOTICE);
@@ -113,12 +130,14 @@ describe("the demo's districts", () => {
     await mount("/demo/?district=cedarvalley");
     expect(banner().textContent).toContain(CLEVER_NOTICE);
     await choose("District administrator");
+    await openEducateOS();
     await userEvent.click(await findByRole(container, "button", { name: "Run Clever sync" }, BOOT));
     await findByText(container, /^Synced from Clever/, {}, BOOT);
 
     await userEvent.click(getByRole(banner(), "button", { name: "Reset demo" }));
     expect(window.location.search).toBe("?district=cedarvalley");
     await choose("Earth Science and Algebra teacher");
+    await openEducateOS();
     expect(await findByRole(container, "heading", { name: "Cedar Valley USD hasn't synced from Clever yet" }, BOOT)).toBeDefined();
   });
 });

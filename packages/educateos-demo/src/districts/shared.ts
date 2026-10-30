@@ -45,10 +45,12 @@ export interface DemoRoster {
 export interface DemoDistrict {
   key: DistrictKey;
   /**
-   * A client signed in as `subject`. `onResponse` sees each request it sends and the district's
-   * answer, which is how the demo notices a visitor finishing a step of a journey.
+   * A client that sends `bearer` with each request: the persona's IdP subject in a district with no
+   * sign-in, or a session its sign-in started (Cedar Valley's, see {@link DemoSessions}).
+   * `onResponse` sees each request it sends and the district's answer, which is how the demo
+   * notices a visitor finishing a step of a journey.
    */
-  clientFor(subject: string, onResponse?: ResponseListener): DistrictApiClient;
+  clientFor(bearer: string, onResponse?: ResponseListener): DistrictApiClient;
   /** The district's roster sync, when its people arrive through one the visitor runs. */
   roster?: DemoRoster;
 }
@@ -58,9 +60,9 @@ const DEMO_ORIGIN = "https://district.demo.educateos.invalid";
 
 /** {@link DemoDistrict.clientFor} over `fetch`, the in-page app's handler. */
 export const clientsOver = (fetch: (request: Request) => Promise<Response>) =>
-  (subject: string, onResponse?: ResponseListener): DistrictApiClient => createDistrictApiClient({
+  (bearer: string, onResponse?: ResponseListener): DistrictApiClient => createDistrictApiClient({
     baseUrl: DEMO_ORIGIN,
-    token: subject,
+    token: bearer,
     fetch: async (request) => {
       const response = await fetch(request);
       onResponse?.(request, response);
@@ -101,3 +103,29 @@ export const personaVerifier = (directory: DistrictDirectorySnapshot) => async (
   if (!header.startsWith("Bearer ")) return undefined;
   return { issuer: directory.district.trustedIssuers[0]!, subject: header.slice("Bearer ".length), credential: "person" };
 };
+
+/**
+ * The sessions a district's sign-in starts, for a district whose requests carry one rather than a
+ * bare subject. A session is an opaque bearer standing for the identity that signed in, and only
+ * {@link DemoSessions.start} makes one, so a request naming someone's subject is refused.
+ */
+export interface DemoSessions {
+  /** Starts a session for an identity the district's sign-in has verified, and returns its bearer. */
+  start(identity: VerifiedIdentity): string;
+}
+
+/** {@link DemoSessions}, and the `verifyRequest` that accepts their bearers and nothing else. */
+export function demoSessions(): DemoSessions & { verifyRequest: (request: Request) => Promise<VerifiedIdentity | undefined> } {
+  const live = new Map<string, VerifiedIdentity>();
+  return {
+    start: (identity) => {
+      const token = `ses_${crypto.randomUUID()}`;
+      live.set(token, identity);
+      return token;
+    },
+    verifyRequest: async (request) => {
+      const header = request.headers.get("authorization") ?? "";
+      return header.startsWith("Bearer ") ? live.get(header.slice("Bearer ".length)) : undefined;
+    },
+  };
+}

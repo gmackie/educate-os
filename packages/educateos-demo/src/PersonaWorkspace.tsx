@@ -15,6 +15,8 @@ interface PersonaWorkspaceProps {
   info: DistrictInfo;
   district: DistrictState;
   persona: Persona;
+  /** What the persona's requests carry, when the district signed them in to a session; else their subject. */
+  bearer?: string;
   /** Called with the journey steps the persona's last request completed. */
   onStepsDone: (ids: readonly string[]) => void;
   /** Switches to another persona of the same district. */
@@ -22,7 +24,7 @@ interface PersonaWorkspaceProps {
 }
 
 /** The persona's own app, once the district is up, and its roster has brought the persona in. */
-export const PersonaWorkspace = ({ info, district, persona, onStepsDone, onChoose }: PersonaWorkspaceProps) => {
+export const PersonaWorkspace = ({ info, district, persona, bearer, onStepsDone, onChoose }: PersonaWorkspaceProps) => {
   if (district.status === "booting") {
     return (
       <div role="status" className="flex flex-col items-center gap-3 px-4 py-16 text-center">
@@ -51,12 +53,12 @@ export const PersonaWorkspace = ({ info, district, persona, onStepsDone, onChoos
       </div>
     );
   }
-  return <PersonaApp district={district.district} persona={persona} onStepsDone={onStepsDone} />;
+  return <PersonaApp district={district.district} persona={persona} bearer={bearer ?? persona.subject} onStepsDone={onStepsDone} />;
 };
 
-const PersonaApp = ({ district, persona, onStepsDone }: { district: DemoDistrict; persona: Persona; onStepsDone: (ids: readonly string[]) => void }) => {
+const PersonaApp = ({ district, persona, bearer, onStepsDone }: { district: DemoDistrict; persona: Persona; bearer: string; onStepsDone: (ids: readonly string[]) => void }) => {
   // One client for the app's lifetime, as each app's own entry point makes one.
-  const [client] = useState(() => district.clientFor(persona.subject, (request, response) => {
+  const [client] = useState(() => district.clientFor(bearer, (request, response) => {
     const ids = stepsDoneBy(persona.id, request, response.status, window.location.hash);
     if (ids.length > 0) onStepsDone(ids);
   }));

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Loader, Tabs, Text } from "@cloudflare/kumo";
 import { BackpackIcon, BuildingsIcon, ChalkboardTeacherIcon, UsersThreeIcon, type Icon } from "@phosphor-icons/react";
 import type { DistrictState } from "./DemoApp.tsx";
@@ -18,13 +19,15 @@ interface PersonaPickerProps {
   done: ReadonlySet<string>;
   onChoose: (persona: PersonaId) => void;
   onSwitchDistrict: (district: DistrictKey) => void;
+  /** The district's own way in, such as Cedar Valley's Clever portal, in place of the personas. */
+  portal?: ReactNode;
 }
 
 /**
  * Where the demo starts: which district, and who to be. Picking someone works before the district
  * is up; they wait for it.
  */
-export const PersonaPicker = ({ info, district, done, onChoose, onSwitchDistrict }: PersonaPickerProps) => (
+export const PersonaPicker = ({ info, district, done, onChoose, onSwitchDistrict, portal }: PersonaPickerProps) => (
   <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 md:py-12">
     <div className="flex flex-col gap-2">
       <Text as="h1" variant="heading" size="lg">Try EducateOS</Text>
@@ -47,7 +50,7 @@ export const PersonaPicker = ({ info, district, done, onChoose, onSwitchDistrict
         </div>
       )}
     </div>
-    <ul className="grid gap-4 sm:grid-cols-2">
+    {portal ?? <ul className="grid gap-4 sm:grid-cols-2">
       {info.personas.map((persona) => {
         const PersonaIcon = ICON[persona.id];
         const steps = JOURNEYS[persona.id];
@@ -70,6 +73,6 @@ export const PersonaPicker = ({ info, district, done, onChoose, onSwitchDistrict
           </li>
         );
       })}
-    </ul>
+    </ul>}
   </main>
 );

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { bootCedarValley } from "./cedarvalley.ts";
+import { bootCedarValley, type CedarValleyDistrict } from "./cedarvalley.ts";
 import { CEDARVALLEY_PERSONAS, CEDARVALLEY_PRINCIPALS } from "./cedarvalleyPersonas.ts";
 
 const subjectOf = (id: string) => CEDARVALLEY_PERSONAS.find((p) => p.id === id)!.subject;
+/** A client in a session for `subject`, as the demo's Clever sign-in starts one (`src/clever/instantLogin.test.ts` runs the sign-in itself). */
+const signedIn = (district: CedarValleyDistrict, subject: string) =>
+  district.clientFor(district.sessions.start({ issuer: district.cleverSso.issuer, subject, credential: "person" }));
 
 describe("Cedar Valley", () => {
   it("signs its personas in by the Clever user IDs its Clever district gives them", async () => {
@@ -15,12 +18,12 @@ describe("Cedar Valley", () => {
   it("boots unrostered: only its administrator can sign in until the visitor runs the Clever sync", async () => {
     const district = await bootCedarValley();
     expect(district.roster.synced()).toBe(false);
-    const admin = district.clientFor(subjectOf("admin"));
+    const admin = signedIn(district, subjectOf("admin"));
     expect(await admin.call("me.get")).toMatchObject({ displayName: "Elaine Park" });
     expect(await admin.call("admin.listOfferings")).toEqual([]);
     expect(await admin.call("admin.rosterSyncStatus")).toMatchObject({ provider: "clever", runnable: true, runs: [] });
-    await expect(district.clientFor(subjectOf("teacher")).call("me.get")).rejects.toMatchObject({ status: 401 });
-    await expect(district.clientFor(subjectOf("student")).call("me.get")).rejects.toMatchObject({ status: 401 });
+    await expect(signedIn(district, subjectOf("teacher")).call("me.get")).rejects.toMatchObject({ status: 401 });
+    await expect(signedIn(district, subjectOf("student")).call("me.get")).rejects.toMatchObject({ status: 401 });
   });
 
   it("imports the whole Clever roster on the first sync, and its people sign in with work waiting", async () => {
@@ -33,7 +36,7 @@ describe("Cedar Valley", () => {
     });
     expect(district.roster.synced()).toBe(true);
 
-    const admin = district.clientFor(subjectOf("admin"));
+    const admin = signedIn(district, subjectOf("admin"));
     const classes = await admin.call("admin.listOfferings");
     expect(classes.map(({ course, teachers, students }) => [course.title, teachers, students]).toSorted()).toEqual([
       ["Algebra I", ["Dana Whitaker"], 2],
@@ -46,12 +49,12 @@ describe("Cedar Valley", () => {
     expect(students).toEqual(new Set(["An Nguyen", "Bao Nguyen", "Rowan Ellis", "Sofia Marquez", "Isaac Thornton", "Leila Farouk"]));
 
     for (const persona of CEDARVALLEY_PERSONAS) {
-      expect(await district.clientFor(persona.subject).call("me.get")).toMatchObject({ displayName: persona.name });
+      expect(await signedIn(district, persona.subject).call("me.get")).toMatchObject({ displayName: persona.name });
     }
     const earthScience = classes.find(({ course }) => course.title === "Earth Science 8")!.offering.id;
-    const student = district.clientFor(subjectOf("student"));
+    const student = signedIn(district, subjectOf("student"));
     expect((await student.call("student.listActivities", { params: { offeringId: earthScience } })).map((a) => a.assignment.title)).toEqual(["Where does the rain go?"]);
-    const teacher = district.clientFor(subjectOf("teacher"));
+    const teacher = signedIn(district, subjectOf("teacher"));
     const [assignment] = await teacher.call("teacher.listAssignments", { params: { offeringId: earthScience } });
     expect(await teacher.call("teacher.listSubmissions", { params: { assignmentId: assignment!.id } })).toHaveLength(1);
 
