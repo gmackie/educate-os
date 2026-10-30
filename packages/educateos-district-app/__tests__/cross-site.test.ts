@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { bootDistrict, expectError, NF } from "./support.ts";
 
-const CROSS_SITE = [
+const CROSS_SITE: Record<string, string>[] = [
   { origin: "https://evil.example" },
   { origin: "null" },
   { origin: "https://other-tenant.educateos.example" },
@@ -26,7 +26,8 @@ describe("cross-site requests (SCHO-306)", () => {
     const district = await bootDistrict();
     const rivera = district.tokenFor(NF.rivera);
     const topic = { params: { offeringId: NF.eng9 }, body: { title: "Debate", prompt: "Go." } };
-    for (const headers of [{ origin: "https://district.example", "sec-fetch-site": "same-origin" }, { "sec-fetch-site": "none" }, {}]) {
+    const allowed: Record<string, string>[] = [{ origin: "https://district.example", "sec-fetch-site": "same-origin" }, { "sec-fetch-site": "none" }, {}];
+    for (const headers of allowed) {
       expect((await district.call(rivera, "teacher.createTopic", topic, headers)).status).toBe(201);
     }
   });

@@ -80,7 +80,7 @@ export interface TestDistrict {
   /** Calls a route as `token` and expects success, returning the schema-checked body. */
   ok<N extends RouteName>(token: string, name: N, input?: RouteInput<N>): Promise<RouteResponse<N>>;
   /** Calls a route as `token` and returns whatever came back; error bodies are schema-checked too. */
-  call<N extends RouteName>(token: string | undefined, name: N, input?: RouteInput<N>): Promise<CallResult<unknown>>;
+  call<N extends RouteName>(token: string | undefined, name: N, input?: RouteInput<N>, extraHeaders?: Record<string, string>): Promise<CallResult<unknown>>;
 }
 
 /**
