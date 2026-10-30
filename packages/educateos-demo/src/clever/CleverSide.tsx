@@ -9,6 +9,8 @@ interface CleverSideProps {
   admin: { name: string; current: boolean };
   /** Takes the visitor to the admin console's Roster sync screen, as the administrator. */
   onOpenRosterSync: () => void;
+  /** Whether the panel is open, when its owner decides, as the Clever tour's "Show me" opens it. */
+  expansion?: { open: boolean; onOpenChange: (open: boolean) => void };
 }
 
 /**
@@ -17,8 +19,10 @@ interface CleverSideProps {
  * one between sections) and see what is still waiting for a sync. It sits beside the app, never
  * over it, and collapses to its toggle.
  */
-export const CleverSide = ({ side, admin, onOpenRosterSync }: CleverSideProps) => {
-  const [open, setOpen] = useState(false);
+export const CleverSide = ({ side, admin, onOpenRosterSync, expansion }: CleverSideProps) => {
+  const [openHere, setOpenHere] = useState(false);
+  const open = expansion?.open ?? openHere;
+  const setOpen = expansion?.onOpenChange ?? setOpenHere;
   const { sections, pending, ready } = useSyncExternalStore(side.subscribe, side.getSnapshot);
   const [announcement, setAnnouncement] = useState("");
   const panelId = useId();

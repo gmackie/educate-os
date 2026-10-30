@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Banner, Button, Loader, Text } from "@cloudflare/kumo";
 import { BookOpenTextIcon, CalculatorIcon, GraduationCapIcon, SignOutIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import type { DistrictState } from "../DemoApp.tsx";
@@ -18,6 +18,11 @@ interface CleverPortalProps {
   district: DistrictState;
   /** Who is signed in to the portal when it opens, as "Sign in as Elaine Park" opens hers. */
   initialPersonaId?: PersonaId;
+  /**
+   * Opens EducateOS as `initialPersonaId` as soon as the district is up, as if the tile were
+   * clicked: presenter mode's one-key sign-in, which runs the same Instant Login.
+   */
+  launchOnOpen?: boolean;
   /** Called once the EducateOS tile has signed the persona in to the district. */
   onSignedIn: (persona: PersonaId, signIn: PortalSignIn) => void;
   /** Called when the visitor signs in to the portal as someone, for the tour. */
@@ -45,10 +50,17 @@ const PLACEHOLDER_TILES = [
  * they are in Clever, then opens EducateOS from the portal's tiles, which runs Clever Instant Login
  * for real in the page (see `instantLogin.ts`). It deliberately looks like no particular portal.
  */
-export const CleverPortal = ({ info, district, initialPersonaId, onSignedIn, onPortalSignIn, onTileClick, onHop }: CleverPortalProps) => {
+export const CleverPortal = ({ info, district, initialPersonaId, launchOnOpen = false, onSignedIn, onPortalSignIn, onTileClick, onHop }: CleverPortalProps) => {
   const [personaId, setPersonaId] = useState(initialPersonaId);
   const [launch, setLaunch] = useState<LaunchState>({ status: "idle" });
   const persona = info.personas.find((p) => p.id === personaId);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const signInToPortal = (id: PersonaId | undefined) => {
     setPersonaId(id);
@@ -63,12 +75,22 @@ export const CleverPortal = ({ info, district, initialPersonaId, onSignedIn, onP
     const booted = district.district as CedarValleyDistrict;
     try {
       const result = await instantLogin(cleverFor(booted), persona.subject, booted, onHop === undefined ? {} : { onHop });
+      // A portal the visitor has left, for another sign-in, signs no one in when its launch ends.
+      if (!mounted.current) return;
       if (result.outcome === "signed-in") onSignedIn(persona.id, { session: result.session, hops: result.hops });
       else setLaunch({ status: "refused", result });
     } catch {
       setLaunch({ status: "failed" });
     }
   };
+
+  // Once per portal: a launch that was refused stays on screen to be read, not run again.
+  const launched = useRef(false);
+  useEffect(() => {
+    if (!launchOnOpen || launched.current || district.status !== "ready") return;
+    launched.current = true;
+    void open();
+  });
 
   return (
     <section aria-labelledby="clever-portal-heading" className="flex flex-col gap-4 rounded-lg border border-kumo-line bg-kumo-elevated p-4">
