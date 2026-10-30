@@ -1,0 +1,25 @@
+{
+  "name": "@educateos/external-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "@educateos/contracts": "workspace:*",
+    "@educateos/identity": "workspace:*",
+    "@educateos/policy": "workspace:*",
+    "jose": "^6.2.12",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@educateos/academics": "workspace:*",
+    "@educateos/fixtures": "workspace:*",
+    "@gadgets/scripts": "workspace:*",
+    "vitest": "catalog:"
+  }
+}
