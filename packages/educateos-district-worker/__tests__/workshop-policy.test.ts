@@ -136,3 +136,17 @@ describe("district policy domain adapter", () => {
     expect(WorkshopPolicySettings.safeParse({}).success).toBe(false);
   });
 });
+
+
+it("intentionally disables new authoring actions until district provenance and ABAC mappings exist", async () => {
+  for (const userId of [student, teacher, admin]) {
+    for (const request of [
+      { action: "workspace.create.query", userId },
+      { action: "blueprint.import", userId },
+      ...(["gadget.create", "blueprint.publish", "workspace.share", "gadget.execute", "agent.execute"] as const)
+        .map(action => ({ action, userId, workspaceId: "approved-looking-workspace" })),
+    ] as WorkshopCapabilityDescriptor[]) {
+      expect(await outcome(request)).toBe("deny");
+    }
+  }
+});

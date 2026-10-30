@@ -1,0 +1,20 @@
+Scope: all 83 workspace projects
+✓ Lockfile passes supply-chain policies (verified 3s ago)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 25s using pnpm v11.17.0
+
+ RUN  v5.0.5 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/packages/educateos-district-worker
+
+
+with-timeout: no output for 120s -- killing the process tree
+  command: pnpm --filter @educateos/district-worker exec vitest run __tests__/workshop-policy.test.ts __tests__/lti.test.ts
+  cwd: /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458
+  elapsed: 156.8s
+  surviving processes (5):
+63057 node /opt/homebrew/bin/pnpm --filter @educateos/district-worker exec vitest run __tests__/workshop-policy.test.ts __tests__/lti.test.ts
+67645 node ./node_modules/.bin/../vitest/vitest.mjs run __tests__/workshop-policy.test.ts __tests__/lti.test.ts
+68097 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/@esbuild+darwin-arm64@0.28.2/node_modules/@esbuild/darwin-arm64/bin/esbuild --service=0.28.2 --ping
+69406 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/@cloudflare+workerd-darwin-arm64@1.20261001.1/node_modules/@cloudflare/workerd-darwin-arm64/bin/workerd serve --binary --experimental --socket-addr=entry=127.0.0.1:0 --external-addr=loopback=127.0.0.1:65484 --control-fd=3 - --verbose
+69411 /Users/mackieg/.t3-gmacko/worktrees/school-os/feat-edu-architecture-i-6552a27b6d877458/node_modules/.pnpm/@cloudflare+workerd-darwin-arm64@1.20261001.1/node_modules/@cloudflare/workerd-darwin-arm64/bin/workerd serve --binary --experimental --socket-addr=entry=127.0.0.1:0 --external-addr=loopback=127.0.0.1:65483 --control-fd=3 - --verbose

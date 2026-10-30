@@ -35,9 +35,9 @@
     },
     {
       "path": "packages/router/src/index.ts",
-      "fingerprint": "5ab395a32d182c7e407943d6c0093df3fceaa73a29c78394c6bdee88e736bef6",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "5707fb3697404055c7b340168f1a6ae1affffccb0cf903914040cb1dba78f389",
+      "rationale": "School-only explicit service route for MCP and OAuth protected-resource metadata; generic routing unchanged. No district policy entrypoint is publicly routed.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/router/wrangler.jsonc",
@@ -112,10 +112,28 @@
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
     },
     {
+      "path": "packages/workshop-backend/__tests__/capability-boundaries.test.ts",
+      "fingerprint": "397d2e126d0133adb2361b06d0d7d9bde48aef57fa5aeae5fd6ddcf2a0c9eeb8",
+      "rationale": "Direct production RPC regressions deny students and revoked clients before sharing, publication or execution side effects; mandatory missing policy is also denied.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/capability-policy.test.ts",
+      "fingerprint": "3a75c1f8873d8db108aa7e35fc0f5868c8fa6cef4ae062e86ead9c5d35c1fceb",
+      "rationale": "Protect optional generic behavior and fail-closed mandatory school authority, service failures, invalid decisions and persisted-principal mints.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
+    },
+    {
       "path": "packages/workshop-backend/__tests__/durable-decision-resume.test.ts",
       "fingerprint": "ab61dcb83df2925f4ca2e186c46165c19be4384c6d2468823dbfa10bb18225bf",
       "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/gadget-restore.test.ts",
+      "fingerprint": "dc4b8f23dc7539d5722f3395df015e0fabd6baa139f6b3c2dd750002ed4867c6",
+      "rationale": "Real workerd regression asserts null-outbound Gadget fetch fails with explicit internet access denial; does not claim complete capability/browser exfiltration safety.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-backend/__tests__/gatekeeper-app-nav.test.ts",
@@ -131,9 +149,9 @@
     },
     {
       "path": "packages/workshop-backend/__tests__/principal-sign-in.test.ts",
-      "fingerprint": "8a41448c48a534b6cdc28a2ab48d8a6e3b30a73795a7be5ef62ab8867ffc1a7e",
-      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "e3f18a7509264bfc3aa41f107beb25e2efa8efa6e99a30a58a52237331593201",
+      "rationale": "Protect principal sign-in against expired/missing Access expiry and malformed identities; added HTTP 503 for missing mandatory policy.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-backend/__tests__/test-worker.ts",
@@ -221,15 +239,21 @@
     },
     {
       "path": "packages/workshop-backend/src/auth/principal-sign-in.ts",
-      "fingerprint": "0a6ac202806061be482687f1a408b6765d1fa592bd60269605e450545f4e2e8e",
-      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "0407437eca7b3b50f97c44aa65b3bb3dde8eb87944e056ebca566f0c8c925793",
+      "rationale": "Require finite unexpired verified Access JWT expiry before principal resolution; identity library alone does not supply a live resolver Worker.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
+    },
+    {
+      "path": "packages/workshop-backend/src/capability-policy.ts",
+      "fingerprint": "791a85eec976b1a9073dffa64da6cba744a23bf7840cc9f5e3bd4d9ddc4554df",
+      "rationale": "Small deployment-neutral authorization seam: explicit allow only, safe errors, mandatory backend flag validation. Generic missing-policy behavior is preserved.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-backend/src/env.d.ts",
-      "fingerprint": "886ab7261e2d1d99fd1ffc6f780f64b508b3f9c51273217956e3403406cf94f7",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "0e48479c5eb133daab7ab0305cdf5345abdd58290be0574e06e98efebfcece85",
+      "rationale": "Declare optional authority service and explicit REQUIRE_WORKSHOP_CAPABILITY_POLICY flag; school release sets backend enforcement independently of UI flags.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-backend/src/notification-service.ts",
@@ -245,15 +269,15 @@
     },
     {
       "path": "packages/workshop-backend/src/overseer.ts",
-      "fingerprint": "c81e91131b7126ccd6d3a556464af1774a1b1d41b5e211eb56e3967185fcb773",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "0ff2fe5d705c4d2049c3996567066fee2ece4dd6129ff6265d68ea701fe07bce",
+      "rationale": "Recheck policy at sharing/publication/Gadget/agent boundaries with persisted client identity and workspace scope; required absent binding throws. Raw issued stubs remain a documented blocker.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-backend/src/server.ts",
-      "fingerprint": "567eb617ee51885ffb0780fd80d105daef3d3bca78d238c9aabea0ab658828d1",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "8745596a2ab883a05eccd4e63f18b1772e3a66b465d3ce66f2907a12308a2c38",
+      "rationale": "Preserve source Blueprint context on workspace mint, expose advisory discovery and reject all HTTP activation with missing mandatory school authority. Access requires subject and expiry.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-backend/src/storage-schema/overseer-storage.ts",
@@ -269,9 +293,9 @@
     },
     {
       "path": "packages/workshop-backend/src/user.ts",
-      "fingerprint": "b6ea8ad61ae78c42fc3695c64ec12d04e45ef440a3b981f7e529d9c3b05cde2c",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "f0bcb56ff08dcb07e1ce2344b06d7a2fe0e8399cfc07d9ce862c6447a9a1d718",
+      "rationale": "Derive policy identity from stored user profile and check resource/model/connector/workspace/import mints before side effects; never trust caller role claims. Mandatory absent authority denies.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-backend/wrangler.production.jsonc",
@@ -281,9 +305,9 @@
     },
     {
       "path": "packages/workshop-shared/package.json",
-      "fingerprint": "4544c6b3aeeade3aa9e4649f7748a17a9e1305a4871018218e1d7a825acb36e5",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "d3d0a4c155a044c53eb091445e16978d6beb3c4f1e726a44c6373612b5241d8e",
+      "rationale": "Export the deployment-neutral capability-policy contract for Worker consumers without importing district implementation into the kernel.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-shared/src/ai-call-guard.ts",
@@ -293,9 +317,15 @@
     },
     {
       "path": "packages/workshop-shared/src/api.ts",
-      "fingerprint": "235a3ccb75863f0a7b5bbd439cfdbc594e2b3acc20a7a7f88b9f6dcc99da3eac",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "9277bfe93c390872c3b1c9e5ce52eea98212249f58bd5d2c6edcc2d659da2fc1",
+      "rationale": "Document advisory canCreateGadget RPC; server mutation enforcement remains mandatory and district adapter currently denies discovery for disabled authoring.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
+    },
+    {
+      "path": "packages/workshop-shared/src/capability-policy.ts",
+      "fingerprint": "2b17b996ee8610e0239fd39ea40876bf7844058297336912bef7d5760705e2d9",
+      "rationale": "Document minimal data-only authorization descriptors/decisions and limits of raw-capability revocation. Unknown actions deny in district authority; no domain policy embedded in kernel.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-shared/src/gatekeeper.ts",
