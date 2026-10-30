@@ -5,12 +5,13 @@ import { Button } from '@cloudflare/kumo'
 import { useAuthenticatedApi } from '../../AuthContext'
 import SidebarGatekeeperAppSection from '../../components/AppShell/SidebarGatekeeperAppSection'
 import AppShell from '../../components/AppShell/AppShell'
+import { SchoolAuthoringStatus } from './SchoolAuthoringStatus'
 import { isSchoolRoute, schoolViews } from './schoolMode'
 
 export const SchoolShell = ({ children }: { children: ReactNode }) => {
   const { authenticatedApi, logout } = useAuthenticatedApi()
   const [creator, setCreator] = useState<{ api: object; allowed: boolean } | null>(null)
-  const [workshop, setWorkshop] = useState(false)
+  const [workshop, setWorkshop] = useState<{ api: object } | null>(null)
   useEffect(() => {
     let cancelled = false
     authenticatedApi.amIAdmin().then((allowed) => {
@@ -43,8 +44,8 @@ export const SchoolShell = ({ children }: { children: ReactNode }) => {
     return path === '/admin' || path.startsWith('/admin/') || path.startsWith('/schools/')
   }) ?? []
 
-  if (workshop && canOpenWorkshop) return <div className="flex h-full flex-col">
-    <Button variant="secondary" onClick={() => setWorkshop(false)}>Return to School</Button>
+  if (workshop?.api === authenticatedApi && canOpenWorkshop) return <div className="flex h-full flex-col">
+    <Button variant="secondary" onClick={() => setWorkshop(null)}>Return to School</Button>
     <div className="min-h-0 flex-1"><AppShell>{children}</AppShell></div>
   </div>
 
@@ -61,7 +62,7 @@ export const SchoolShell = ({ children }: { children: ReactNode }) => {
             {view.label}
           </Link>)}
         </nav>}
-        {canOpenWorkshop && <Button variant="secondary" onClick={() => setWorkshop(true)}>Advanced Workshop</Button>}
+        {canOpenWorkshop && <Button variant="secondary" onClick={() => setWorkshop({ api: authenticatedApi })}>Advanced Workshop</Button>}
         <Button variant="secondary" onClick={logout}>Sign out</Button>
       </header>
       <div className="flex min-h-0 flex-1 flex-col overflow-auto md:flex-row">
@@ -71,6 +72,7 @@ export const SchoolShell = ({ children }: { children: ReactNode }) => {
         <main id="school-content" tabIndex={-1} className="min-h-0 min-w-0 flex-1">
           {app && isSchoolRoute(pathname) ? children : <section className="mx-auto max-w-xl space-y-4 p-8">
             <h1 className="text-2xl font-semibold">Welcome to your school</h1>
+            <SchoolAuthoringStatus />
             <p>Use your district account to open your classes, teaching, family, or administration pages. Your district determines which records and actions are available.</p>
             {app ? <Link to="/gatekeepers/$appId" params={{ appId: app.id }}
               search={{ path: active?.path }} className="text-kumo-brand underline">Open School</Link>
