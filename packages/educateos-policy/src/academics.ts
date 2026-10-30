@@ -58,6 +58,8 @@ export function academicSchoolTools(store: AcademicStore, directory: AcademicDir
       description: operation.description,
       inputSchema: operation.input,
       action: "invoke-tool",
+      // A read changes nothing, so an agent's call of it is not queued for confirmation (SCHO-285).
+      readOnly: operation.reads === true,
       resource: async () => {
         const { district } = (await store.load()).snapshot;
         return {

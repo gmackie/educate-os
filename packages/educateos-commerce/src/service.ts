@@ -48,11 +48,12 @@ import {
   PaymentMethodKind,
   Plan,
   PoNumber,
+  type ProcessorOperation,
   PurchaseOrder,
   Subscription,
 } from "./model.ts";
 import { Cents, multiplyCents, subtractCents, sumCents } from "./money.ts";
-import type { PaymentProcessor, ProcessorEvent } from "./processor.ts";
+import type { CardSetup, ChargeResult, PaymentProcessor, ProcessorEvent } from "./processor.ts";
 import { reconcile, type ReconciliationReport } from "./reconciliation.ts";
 import type { CommerceRecords, CommerceStore } from "./store.ts";
 
@@ -130,6 +131,33 @@ export const AwardGrantRequest = z.strictObject({
 /** An award-grant request. */
 export type AwardGrantRequest = z.input<typeof AwardGrantRequest>;
 
+/**
+ * A verified processor event about a charge or refund commerce has no record of: `not-found`,
+ * naming the processor's IDs (never anything personal) so the caller can log what went unmatched.
+ * `ours` is true for a charge made for an invoice commerce holds that reconciling still couldn't
+ * find, which is transient (the processor should redeliver); false for anything else, which
+ * commerce will never record: another product's charge, a refund made outside commerce.
+ */
+export class UnmatchedProcessorEventError extends EducateOsError {
+  readonly eventId: ProcessorRef;
+  readonly operationRef: ProcessorRef;
+  readonly ours: boolean;
+  constructor(eventId: ProcessorRef, operationRef: ProcessorRef, ours = false) {
+    super("not-found", "processor operation not found");
+    this.eventId = eventId;
+    this.operationRef = operationRef;
+    this.ours = ours;
+  }
+}
+
+/**
+ * Where an invoice's charge stands: `paid`; `pending` while a charge is requested and its outcome
+ * hasn't arrived; `declined` if every charge made for it was declined; `uncharged` if it was never
+ * charged; `reopened` if it was paid and a refund reopened it, which only an explicit new charge
+ * pays again.
+ */
+export type InvoiceChargeState = "paid" | "pending" | "declined" | "uncharged" | "reopened";
+
 /** The outcome of {@link CommerceService.handleProcessorDelivery}. */
 export interface ProcessorDeliveryOutcome {
   /** `applied` the first time an event is seen, `duplicate` on any redelivery, `ignored` for event types commerce doesn't act on. */
@@ -150,6 +178,8 @@ export interface CommerceServiceOptions {
   /** Generates record IDs. Defaults to {@link randomCommerceId}. */
   newId?: CommerceIdGenerator;
 }
+
+const PROCESSOR_ACTOR: FinanceActor = { kind: "processor", ref: "webhook" };
 
 const DELINQUENT = new Set<Subscription["status"]>(["past-due", "grace", "lapsed"]);
 
@@ -223,14 +253,73 @@ export class CommerceService implements CommercialAccountVerifier {
 
   /** Creates the account's processor customer if it has none, passing only the opaque account ID. */
   async ensureProcessorCustomer(accountId: CommercialAccountId, actor: FinanceActor): Promise<ProcessorRef> {
+    return this.#store.atomically(() => this.#ensureProcessorCustomer(accountId, actor));
+  }
+
+  async #ensureProcessorCustomer(accountId: CommercialAccountId, actor: FinanceActor): Promise<ProcessorRef> {
+    const account = await this.#require("account", accountId);
+    if (account.processorCustomerRef !== undefined) return account.processorCustomerRef;
+    const customerRef = await this.#processor.createCustomer(account.accountId);
+    await this.#store.put("account", accountId, CommercialAccount.parse({ ...account, processorCustomerRef: customerRef }));
+    await this.#audit(accountId, actor, "account.processor-customer-created", { kind: "account", id: accountId });
+    return customerRef;
+  }
+
+  // Cards (SCHO-208)
+
+  /**
+   * Opens the processor's hosted page where the account saves the card a trialing card
+   * subscription will be charged to, creating the processor customer first if need be. Nothing is
+   * charged. The customer comes back to `returnUrl`, which names the setup by the processor's
+   * `SETUP_REF_PLACEHOLDER`, for {@link CommerceService.completeCardSetup}.
+   */
+  async startCardSetup(
+    subscriptionId: SubscriptionId,
+    urls: { returnUrl: string; cancelUrl: string; idempotencyKey: string },
+    actor: FinanceActor,
+  ): Promise<CardSetup> {
+    return this.#store.atomically(async () => {
+      const subscription = await this.#cardSubscription(subscriptionId);
+      if (subscription.status !== "trialing") throw new EducateOsError("conflict", "only a trialing subscription needs a card set up");
+      const customerRef = await this.#ensureProcessorCustomer(subscription.accountId, actor);
+      return await this.#processor.startCardSetup({ customerRef, reference: subscription.subscriptionId, ...urls });
+    });
+  }
+
+  /**
+   * Finishes a card setup the customer came back from, and activates the trialing subscription it
+   * was for once the card is the customer's default. The term starts then, keeping its length, so
+   * time spent before a card was saved isn't billed. A setup the customer hasn't finished leaves the
+   * subscription trialing; one made for another subscription is `not-found`. Repeating it, or
+   * calling it for a subscription already past trialing, changes nothing.
+   */
+  async completeCardSetup(subscriptionId: SubscriptionId, setupRef: ProcessorRef, actor: FinanceActor): Promise<Subscription> {
+    return this.#store.atomically(async () => {
+      const subscription = await this.#cardSubscription(subscriptionId);
+      if (subscription.status !== "trialing") return subscription;
+      const account = await this.#require("account", subscription.accountId);
+      if (account.processorCustomerRef === undefined) throw new EducateOsError("not-found", "card setup not found");
+      if (!(await this.#processor.completeCardSetup(account.processorCustomerRef, setupRef, subscription.subscriptionId))) return subscription;
+      await this.#audit(account.accountId, actor, "account.payment-method-saved", { kind: "account", id: account.accountId });
+      const now = this.#now().getTime();
+      const length = Date.parse(subscription.termEnd) - Date.parse(subscription.termStart);
+      return await this.#activate(subscription, actor, { termStart: new Date(now).toISOString(), termEnd: new Date(now + length).toISOString() });
+    });
+  }
+
+  /** Opens the processor's hosted page where the account manages its saved cards. Returns its URL. */
+  async paymentMethodPortal(accountId: CommercialAccountId, returnUrl: string): Promise<string> {
     return this.#store.atomically(async () => {
       const account = await this.#require("account", accountId);
-      if (account.processorCustomerRef !== undefined) return account.processorCustomerRef;
-      const customerRef = await this.#processor.createCustomer(account.accountId);
-      await this.#store.put("account", accountId, CommercialAccount.parse({ ...account, processorCustomerRef: customerRef }));
-      await this.#audit(accountId, actor, "account.processor-customer-created", { kind: "account", id: accountId });
-      return customerRef;
+      if (account.processorCustomerRef === undefined) throw new EducateOsError("conflict", "the account has no saved payment method");
+      return await this.#processor.openPaymentMethodPortal(account.processorCustomerRef, returnUrl);
     });
+  }
+
+  async #cardSubscription(subscriptionId: SubscriptionId): Promise<Subscription> {
+    const subscription = await this.#reconcileStatus(subscriptionId);
+    if (subscription.paymentMethod !== "card") throw new EducateOsError("validation-failed", "only a card subscription is paid by card");
+    return subscription;
   }
 
   /**
@@ -280,19 +369,20 @@ export class CommerceService implements CommercialAccountVerifier {
    * subscription needs a processor customer.
    */
   async activate(subscriptionId: SubscriptionId, actor: FinanceActor): Promise<Subscription> {
-    return this.#store.atomically(async () => {
-      const subscription = await this.#reconcileStatus(subscriptionId);
-      if (subscription.status !== "trialing") throw new EducateOsError("conflict", "only a trialing subscription can be activated");
-      if (subscription.paymentMethod === "purchase-order") {
-        const po = subscription.purchaseOrderId && (await this.#store.get("purchaseOrder", subscription.purchaseOrderId));
-        if (!po || po.state !== "approved") throw new EducateOsError("policy-violation", "an approved purchase order is required");
-      }
-      if (subscription.paymentMethod === "card") {
-        const account = await this.#require("account", subscription.accountId);
-        if (account.processorCustomerRef === undefined) throw new EducateOsError("policy-violation", "a processor customer is required");
-      }
-      return await this.#transition(subscription, { status: "active" }, actor, "subscription.activated");
-    });
+    return this.#store.atomically(async () => this.#activate(await this.#reconcileStatus(subscriptionId), actor));
+  }
+
+  async #activate(subscription: Subscription, actor: FinanceActor, term: Partial<Subscription> = {}): Promise<Subscription> {
+    if (subscription.status !== "trialing") throw new EducateOsError("conflict", "only a trialing subscription can be activated");
+    if (subscription.paymentMethod === "purchase-order") {
+      const po = subscription.purchaseOrderId && (await this.#store.get("purchaseOrder", subscription.purchaseOrderId));
+      if (!po || po.state !== "approved") throw new EducateOsError("policy-violation", "an approved purchase order is required");
+    }
+    if (subscription.paymentMethod === "card") {
+      const account = await this.#require("account", subscription.accountId);
+      if (account.processorCustomerRef === undefined) throw new EducateOsError("policy-violation", "a processor customer is required");
+    }
+    return await this.#transition(subscription, { status: "active", ...term }, actor, "subscription.activated");
   }
 
   /** Extends the term. Delinquency from a missed payment stands until an invoice is paid. */
@@ -409,6 +499,7 @@ export class CommerceService implements CommercialAccountVerifier {
       const request = parseWire(IssueInvoiceRequest, input, "invoice request");
       const account = await this.#require("account", request.accountId);
       const subscription = request.subscriptionId && (await this.#owned("subscription", request.subscriptionId, account.accountId));
+      if (subscription && subscription.status === "cancelled") throw new EducateOsError("conflict", "subscription is cancelled");
       const lines: InvoiceLine[] = request.lines.map((line) => ({ ...line, amountCents: multiplyCents(line.unitAmountCents, line.quantity) }));
       if (request.aiUsageHeartbeat !== undefined) {
         const report = this.#aiUsageReportLine(account, subscription || undefined, request.aiUsageHeartbeat);
@@ -526,27 +617,74 @@ export class CommerceService implements CommercialAccountVerifier {
 
   // Payments
 
-  /** Asks the processor to charge what is still owed on an invoice. The outcome arrives by webhook. */
+  /**
+   * Asks the processor to charge what is still owed on an invoice, unless a charge for it is
+   * already pending (whose reference is returned). Each request is one attempt, idempotent at the
+   * processor under the invoice and attempt number, so a retried request is the same charge.
+   *
+   * First the invoice's charges are reconciled with the processor ({@link reconcileCharges}): one
+   * whose creation reply was lost is found and recorded, so it is never charged again, whatever
+   * the processor's idempotency window. A declined attempt is cancelled at the processor before a
+   * new one is made, so it can't also succeed later; if it had succeeded after all, it is recorded
+   * and nothing new is charged. When reconciling settles the invoice, the charge that paid it is
+   * returned and what reconciling recorded commits. The processor's reply records the new
+   * charge's status at once; a pending one's outcome arrives by webhook.
+   */
   async chargeInvoice(invoiceId: InvoiceId, actor: FinanceActor): Promise<ProcessorRef> {
     return this.#store.atomically(async () => {
       const invoice = await this.#require("invoice", invoiceId);
       const account = await this.#require("account", invoice.accountId);
-      if (account.processorCustomerRef === undefined) throw new EducateOsError("policy-violation", "a processor customer is required");
+      const customerRef = account.processorCustomerRef;
+      if (customerRef === undefined) throw new EducateOsError("policy-violation", "a processor customer is required");
+      if (invoice.status !== "open" || (await this.#owed(invoice)) <= 0) throw new EducateOsError("conflict", "nothing is owed on this invoice");
+      await this.#reconcileCharges(invoice, customerRef);
+      const pending = (await this.#charges(invoice)).find((op) => op.outcome === undefined);
+      if (pending !== undefined) return pending.processorRef;
+      for (const declined of (await this.#charges(invoice)).filter((op) => op.outcome === "failed")) {
+        const status = await this.#processor.cancelCharge(declined.processorRef);
+        if (status === "succeeded") await this.#applyChargeOutcome(declined, "succeeded", declined.amountCents, PROCESSOR_ACTOR);
+        if (status === "pending") return declined.processorRef;
+      }
       const owed = await this.#owed(invoice);
-      if (invoice.status !== "open" || owed <= 0) throw new EducateOsError("conflict", "nothing is owed on this invoice");
-      // Keyed on what has been paid and how many attempts were declined: repeating a request while
-      // its charge is pending reuses that charge, but a retry after a decline is a new charge.
-      const declined = (await this.#store.list("processorOperation", invoice.accountId)).filter(
-        (op) => op.kind === "charge" && op.invoiceId === invoice.invoiceId && op.outcome === "failed",
-      ).length;
-      const idempotencyKey = `${invoice.invoiceId}:${invoice.totalCents - owed}:${declined}`;
-      const chargeRef = await this.#processor.charge({ customerRef: account.processorCustomerRef, amountCents: owed, idempotencyKey });
-      await this.#store.put("processorOperation", chargeRef, {
-        processorRef: chargeRef, accountId: invoice.accountId, kind: "charge", invoiceId: invoice.invoiceId, amountCents: owed,
-      });
+      if (owed <= 0) return (await this.#charges(invoice)).findLast((op) => op.outcome === "succeeded")!.processorRef;
+      const attempt = (await this.#charges(invoice)).length;
+      const result = await this.#processor.charge({ customerRef, amountCents: owed, idempotencyKey: `${invoice.invoiceId}:${attempt}`, invoiceRef: invoice.invoiceId });
       await this.#audit(invoice.accountId, actor, "invoice.charge-requested", this.#subject(invoice), undefined, { state: "requested", amountCents: owed });
-      return chargeRef;
+      await this.#recordCharge(invoice, result);
+      return result.chargeRef;
     });
+  }
+
+  /**
+   * Brings the invoice's charges in line with the processor's: records any charge it holds for the
+   * invoice that commerce never recorded (a lost reply), and applies any outcome that has since
+   * been reached. So a charge made but not answered can't stay unknown, or be made twice.
+   */
+  async reconcileCharges(invoiceId: InvoiceId): Promise<void> {
+    return this.#store.atomically(async () => {
+      const invoice = await this.#require("invoice", invoiceId);
+      const account = await this.#require("account", invoice.accountId);
+      if (account.processorCustomerRef !== undefined) await this.#reconcileCharges(invoice, account.processorCustomerRef);
+    });
+  }
+
+  async #reconcileCharges(invoice: Invoice, customerRef: ProcessorRef): Promise<void> {
+    for (const result of await this.#processor.chargesFor(customerRef, invoice.invoiceId, invoice.issuedAt)) await this.#recordCharge(invoice, result);
+  }
+
+  // Records a charge as the processor reported it: a new one with its status, or a known one's
+  // outcome if it has reached one since.
+  async #recordCharge(invoice: Invoice, result: ChargeResult): Promise<void> {
+    let operation = await this.#store.get("processorOperation", result.chargeRef);
+    if (operation === undefined) {
+      operation = { processorRef: result.chargeRef, accountId: invoice.accountId, kind: "charge", invoiceId: invoice.invoiceId, amountCents: result.amountCents };
+      await this.#store.put("processorOperation", result.chargeRef, operation);
+    }
+    if (result.status !== "pending") await this.#applyChargeOutcome(operation, result.status, result.amountCents, PROCESSOR_ACTOR);
+  }
+
+  async #charges(invoice: Invoice): Promise<ProcessorOperation[]> {
+    return (await this.#store.list("processorOperation", invoice.accountId)).filter((op) => op.kind === "charge" && op.invoiceId === invoice.invoiceId);
   }
 
   /** Records a payment received outside the processor (a PO remittance, a check), by its remittance code. */
@@ -604,35 +742,60 @@ export class CommerceService implements CommercialAccountVerifier {
   // refund.updated for one refund), so event IDs alone don't stop money being counted twice. Once
   // an operation succeeded it is settled; a declined charge can still succeed on a later attempt.
   async #applyEvent(event: ProcessorEvent): Promise<boolean> {
-    const operation = await this.#store.get("processorOperation", event.operationRef);
+    let operation = await this.#store.get("processorOperation", event.operationRef);
+    // A charge commerce never heard back about: the processor says which invoice it was for, and
+    // reconciling that invoice records it, so the event applies now rather than waiting for the
+    // invoice's next charge. A paying customer's charge whose reply was lost can't lapse them.
+    if (operation === undefined && event.type !== "refund.succeeded") operation = await this.#reconcileForEvent(event);
     if (operation === undefined || operation.kind !== (event.type === "refund.succeeded" ? "refund" : "charge")) {
-      throw new EducateOsError("not-found", "processor operation not found");
+      throw new UnmatchedProcessorEventError(event.eventId, event.operationRef);
     }
-    const outcome = event.type === "charge.failed" ? "failed" : "succeeded";
-    if (operation.outcome === "succeeded" || operation.outcome === outcome) return false;
-    const actor: FinanceActor = { kind: "processor", ref: "webhook" };
+    if (event.type !== "refund.succeeded") {
+      return await this.#applyChargeOutcome(operation, event.type === "charge.failed" ? "failed" : "succeeded", event.amountCents, PROCESSOR_ACTOR);
+    }
+    if (operation.outcome === "succeeded") return false;
+    await this.#store.put("processorOperation", operation.processorRef, { ...operation, outcome: "succeeded" });
+    const invoice = await this.#require("invoice", operation.invoiceId);
+    await this.#recordPayment(invoice, "refund", event.amountCents, event.operationRef, PROCESSOR_ACTOR, operation.refundOf);
+    await this.#settle(invoice, PROCESSOR_ACTOR);
+    return true;
+  }
+
+  // The charge's operation once its invoice is reconciled, if the processor names an invoice
+  // commerce holds. One commerce holds but reconciling still can't find is transient: `ours`.
+  async #reconcileForEvent(event: ProcessorEvent): Promise<ProcessorOperation | undefined> {
+    const invoiceRef = await this.#processor.chargeInvoiceRef(event.operationRef);
+    const invoiceId = InvoiceId.safeParse(invoiceRef);
+    const invoice = invoiceId.success ? await this.#store.get("invoice", invoiceId.data) : undefined;
+    if (invoice === undefined) return undefined;
+    const account = await this.#require("account", invoice.accountId);
+    if (account.processorCustomerRef !== undefined) await this.#reconcileCharges(invoice, account.processorCustomerRef);
+    const operation = await this.#store.get("processorOperation", event.operationRef);
+    if (operation === undefined) throw new UnmatchedProcessorEventError(event.eventId, event.operationRef, true);
+    return operation;
+  }
+
+  // Records a charge's outcome, from a webhook or the processor's own reply. Returns false if that
+  // outcome, or success, is already recorded. A declined charge can still succeed later; a
+  // replacement is made only after it was cancelled (see chargeInvoice).
+  async #applyChargeOutcome(operation: ProcessorOperation, outcome: "succeeded" | "failed", amountCents: number, actor: FinanceActor): Promise<boolean> {
+    const current = await this.#store.get("processorOperation", operation.processorRef);
+    if (current?.outcome === "succeeded" || current?.outcome === outcome) return false;
     await this.#store.put("processorOperation", operation.processorRef, { ...operation, outcome });
     const invoice = await this.#require("invoice", operation.invoiceId);
-    switch (event.type) {
-      case "charge.succeeded":
-        await this.#recordPayment(invoice, "charge", event.amountCents, event.operationRef, actor);
-        await this.#settle(invoice, actor);
-        return true;
-      case "refund.succeeded":
-        await this.#recordPayment(invoice, "refund", event.amountCents, event.operationRef, actor, operation.refundOf);
-        await this.#settle(invoice, actor);
-        return true;
-      case "charge.failed": {
-        if (invoice.subscriptionId === undefined) return true;
-        const subscription = await this.#reconcileStatus(invoice.subscriptionId);
-        if (subscription.status === "trialing" || subscription.status === "active") {
-          await this.#transition(subscription, { status: "past-due", pastDueSince: this.#timestamp() }, actor, "subscription.past-due");
-          // With no past-due days the subscription is in grace at once.
-          await this.#reconcileStatus(subscription.subscriptionId);
-        }
-        return true;
-      }
+    if (outcome === "succeeded") {
+      await this.#recordPayment(invoice, "charge", amountCents, operation.processorRef, actor);
+      await this.#settle(invoice, actor);
+      return true;
     }
+    if (invoice.subscriptionId === undefined) return true;
+    const subscription = await this.#reconcileStatus(invoice.subscriptionId);
+    if (subscription.status === "trialing" || subscription.status === "active") {
+      await this.#transition(subscription, { status: "past-due", pastDueSince: this.#timestamp() }, actor, "subscription.past-due");
+      // With no past-due days the subscription is in grace at once.
+      await this.#reconcileStatus(subscription.subscriptionId);
+    }
+    return true;
   }
 
   // Entitlements
@@ -686,6 +849,40 @@ export class CommerceService implements CommercialAccountVerifier {
   async subscription(subscriptionId: SubscriptionId): Promise<Subscription> {
     return this.#store.atomically(async () => {
       return await this.#require("subscription", subscriptionId);
+    });
+  }
+
+  /** The account's subscriptions, as stored, after applying any clock-driven transitions now due. */
+  async subscriptions(accountId: CommercialAccountId): Promise<Subscription[]> {
+    return this.#store.atomically(async () => {
+      const stored = await this.#store.list("subscription", accountId);
+      return Promise.all(stored.map((subscription) => this.#reconcileStatus(subscription.subscriptionId)));
+    });
+  }
+
+  /** The account, if it has been opened. */
+  async account(accountId: CommercialAccountId): Promise<CommercialAccount | undefined> {
+    return this.#store.atomically(async () => {
+      return await this.#store.get("account", accountId);
+    });
+  }
+
+  /** The account's invoices, as stored. */
+  async invoices(accountId: CommercialAccountId): Promise<Invoice[]> {
+    return this.#store.atomically(async () => {
+      return await this.#store.list("invoice", accountId);
+    });
+  }
+
+  /** Where the invoice's charge stands (see {@link InvoiceChargeState}). */
+  async chargeState(invoiceId: InvoiceId): Promise<InvoiceChargeState> {
+    return this.#store.atomically(async () => {
+      const invoice = await this.#require("invoice", invoiceId);
+      if (invoice.status === "paid") return "paid";
+      const charges = await this.#charges(invoice);
+      if (charges.some((op) => op.outcome === undefined)) return "pending";
+      if (charges.length === 0) return "uncharged";
+      return charges.every((op) => op.outcome === "failed") ? "declined" : "reopened";
     });
   }
 

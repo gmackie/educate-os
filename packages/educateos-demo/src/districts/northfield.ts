@@ -69,6 +69,8 @@ export async function bootNorthfield(options: NorthfieldOptions = {}): Promise<D
     stores: inMemoryDistrictStores(directory),
     verifyRequest: personaVerifier(directory, options.subjectOf),
     ...(options.deviceTokenSecret === undefined ? {} : { deviceTokenSecret: options.deviceTokenSecret }),
+    // Synthetic personas only: publish their discussion posts without Hall Monitor.
+    unscreenedStudentPosts: "publish",
     importFetch: demoWeb,
     verifyCatalogRelease: verifySeedRelease,
   });

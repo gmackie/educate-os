@@ -12,6 +12,7 @@
     "./worker": "./src/worker.ts"
   },
   "dependencies": {
+    "@educateos/commerce": "workspace:*",
     "@educateos/contracts": "workspace:*",
     "@educateos/fleet": "workspace:*",
     "@educateos/identity": "workspace:*",
