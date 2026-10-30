@@ -16,6 +16,13 @@ const logger = createWorkshopLogger("workshop.principal-sign-in");
 export const PRINCIPAL_RESOLVER_UNAVAILABLE_MESSAGE =
     "Your school's directory can't be reached to sign you in right now. Try again in a few minutes.";
 
+/**
+ * What execution and sessions are refused with once the district says their principal is no longer
+ * in standing (SCHO-309); see UserDurableObject.assertWorkshopStanding().
+ */
+export const PRINCIPAL_STANDING_LOST_MESSAGE =
+    "Your school account is no longer active, so this Workshop session has ended.";
+
 /** The resolver method the kernel calls. */
 export type PrincipalResolverClient = Pick<PrincipalResolver, "resolveAccessSignIn">;
 

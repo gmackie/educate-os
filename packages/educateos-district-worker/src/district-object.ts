@@ -235,6 +235,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return (await this.#boot()).principals.resolveAccessSignIn(signIn);
   }
 
+  /** Whether a Workshop principal is still an active person of this district (SCHO-309). */
+  async principalStanding(principalId: unknown): Promise<{ outcome: "active" | "inactive" }> {
+    return (await this.#boot()).principals.principalStanding(principalId);
+  }
+
   /** Matches the Workshop's email-keyed users to the district's people (SCHO-259). */
   async matchEmailKeyedUsers(users: unknown): Promise<EmailKeyedUserMatch[]> {
     return (await this.#boot()).principals.matchEmailKeyedUsers(users);

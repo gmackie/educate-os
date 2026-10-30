@@ -1,11 +1,15 @@
-import { assertCapability, hasCapabilityPolicy } from "./capability-policy.js";
+import {
+  assertCapability, EXECUTION_ACTIONS, hasCapabilityPolicy, STANDING_RECHECK_MS, type ExecutionAction,
+} from "./capability-policy.js";
 import type { WorkshopCapabilityScope, WorkshopAuthoringTarget, WorkshopAuthoringCapability } from "@gadgets/workshop-shared/capability-policy";
 import { RpcStub } from "capnweb";
 import { WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, AiModelConfig, RedactedAiModelConfig, ModelKind, modelKind, CollaboratorRole, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, WorkspaceMetadata, BlueprintMetadata, BlueprintLibrarySummary, BlueprintSource, BlueprintUserSummary, BLUEPRINT_SCREENSHOT_R2_PREFIX, GatekeeperVendorInfo, OutputSummary, ListOutputsResult, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, validateCommitEmail, NotificationSubscriber, NotificationMute, UserNotification, type DeviceSessionHandoffStart, type WebPushSubscription, type ExternalWorkspaceRequest } from '@gadgets/workshop-shared/api';
 import { ActionDescription, Gatekeeper, GatekeeperUser, GatekeeperUserVerifier, GatekeeperVendor, AccountDescription, VendorDescription, GatekeeperConnectCallback, ConnectHandoff, SupportedResource, ResourceConfiguratorFrame, AppUiContext, GatekeeperAppNavEntry, GatekeeperUiFrame, GatekeeperUserSelection, GatekeeperUserSelectionExchange, RedeemedGatekeeperUserSelection, sanitizeGatekeeperAppNav } from "@gadgets/workshop-shared/gatekeeper";
 import { shouldAutoProvisionAccount, ambientGatekeeperMode } from "./provisioning-policy.js";
 import { CloudflareGatekeeperUser } from "@gadgets/workshop-shared/cloudflare-gatekeeper";
-import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
+import {
+  DurableObject, RpcStub as NativeRpcStub, RpcTarget as NativeRpcTarget, WorkerEntrypoint,
+} from "cloudflare:workers";
 import { skipRpcValidation, validateRpc } from "capnweb-validate";
 import {
   makeUserStorage, type BlueprintUserRecord, type CloudflareBilling, type ConnectedAccountRecord,
@@ -13,6 +17,9 @@ import {
   type PendingHandoffRecord, type UserAiModelRecord, type UserStorage, type WorkspaceOutputEntry,
 } from "./storage-schema/user-storage.js";
 import { recordAnalytics } from "./analytics";
+import {
+  PRINCIPAL_RESOLVER_UNAVAILABLE_MESSAGE, PRINCIPAL_STANDING_LOST_MESSAGE, PRINCIPAL_USER_PREFIX,
+} from "./auth/principal-sign-in.js";
 import { createWorkshopLogger } from "./observability";
 import { getGatewayModels, type GatewayModels } from "./ai-gateway.js";
 import { utcDayKey, nextUtcMidnightIso, DailyQuotaResult } from "./ai-gateway-billing/limits/config.js";
@@ -223,9 +230,154 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     if (!hasCapabilityPolicy(this.env)) return;
     if (!this.storage.created.get()) throw new Error("Workshop policy requires an initialized user.");
     await assertCapability(this.env.WORKSHOP_CAPABILITY_POLICY, {
-      userId: this.storage.profile.get().id,
+      userId: this.storage.principalName.get() ?? this.storage.profile.get().id,
       ...scope,
     });
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Live-capability revocation (SCHO-309). With a capability policy bound, everything this user
+  // holds that a policy check admitted -- execution in workspaces, and Workshop API sessions --
+  // lasts only as long as the user stays in standing: the district still has them as an active
+  // principal (when a principal resolver is bound), and the policy still allows what they were
+  // admitted for. Workspaces recheck the principals they admitted (OverseerImpl.admitPrincipal);
+  // this object rechecks for its watched sessions (watchSessionStanding), and on lost standing
+  // restarts every workspace the user is in and itself, which drops those sessions. Revocation is
+  // by restart only: nothing here wraps or proxies a capability.
+
+  // Each watched session's `notifyClosed` callback (see watchSessionStanding). In memory, so the
+  // set ends with this incarnation, and with it every callback: the session sees its callback
+  // dropped uncalled and closes its WebSocket (AuthenticatedApiImpl.#watchStanding).
+  #standingSessions = new Set<NativeRpcStub<() => void>>();
+  #standingRecheckAt: number | undefined;
+  #revoking = false;
+
+  // The district principal this user answers for, or undefined (no resolver, or none recorded).
+  #principalName(): string | undefined {
+    let name = this.storage.principalName.get();
+    return name !== null && name.startsWith(PRINCIPAL_USER_PREFIX) ? name : undefined;
+  }
+
+  // Asks the district, now, whether this user's principal is still active. Throws if it can't
+  // answer; anything but a well-formed `active` is lost standing.
+  async #principalStanding(principal: string): Promise<"active" | "inactive"> {
+    let answer = await this.env.PRINCIPAL_RESOLVER!.principalStanding(
+        principal.slice(PRINCIPAL_USER_PREFIX.length));
+    return answer?.outcome === "active" ? "active" : "inactive";
+  }
+
+  /**
+   * Internal kernel entrypoint: throws unless this user is still in standing for execution in
+   * `workspaceId` -- an active principal of the district (with a principal resolver bound), whom
+   * the policy allows each of `actions` there now. A workspace calls this to admit the user and on
+   * every recheck after. Decisions are never cached. Lost district standing also revokes everything
+   * the user holds (#revokePrincipal). Without a policy, always passes.
+   */
+  async assertWorkshopStanding(workspaceId: string, actions: ExecutionAction[]): Promise<void> {
+    if (!hasCapabilityPolicy(this.env)) return;
+    if (typeof workspaceId !== "string" || !Array.isArray(actions) ||
+        actions.some(action => !EXECUTION_ACTIONS.includes(action))) {
+      throw new TypeError("Invalid standing check.");
+    }
+    if (!this.storage.created.get()) throw new Error("Workshop policy requires an initialized user.");
+    if (this.#revoking) throw new Error(PRINCIPAL_STANDING_LOST_MESSAGE);
+    let principal = this.#principalName();
+    if (this.env.PRINCIPAL_RESOLVER && principal !== undefined) {
+      let standing;
+      try {
+        standing = await this.#principalStanding(principal);
+      } catch (error) {
+        logger.warn("principal standing check failed", { event: "principal.standing.failed", error });
+        throw new Error(PRINCIPAL_RESOLVER_UNAVAILABLE_MESSAGE, { cause: error });
+      }
+      if (standing !== "active") {
+        this.ctx.waitUntil(this.#revokePrincipal());
+        throw new Error(PRINCIPAL_STANDING_LOST_MESSAGE);
+      }
+    }
+    for (let action of actions) await this.#assertCapability({ action, workspaceId });
+  }
+
+  /**
+   * Called by the API session that just signed in as this user (server.ts), when a capability policy
+   * and a principal resolver are bound: holds `notifyClosed` until the returned lease is disposed,
+   * and rechecks the principal's standing every STANDING_RECHECK_MS meanwhile. If the principal
+   * loses standing, or the district can't say, every watched session is dropped (their callbacks
+   * disposed uncalled), which closes their WebSockets; a reconnect signs in through the resolver
+   * again, which refuses it.
+   */
+  async watchSessionStanding(notifyClosed: NativeRpcStub<() => void>): Promise<NativeRpcTarget> {
+    if (!hasCapabilityPolicy(this.env) || !this.env.PRINCIPAL_RESOLVER || this.#principalName() === undefined) {
+      throw new Error("Session standing needs a capability policy, a principal resolver and a principal.");
+    }
+    if (this.#revoking) throw new Error(PRINCIPAL_STANDING_LOST_MESSAGE);
+    let held = notifyClosed.dup();
+    this.#standingSessions.add(held);
+    this.#standingRecheckAt ??= Date.now() + STANDING_RECHECK_MS;
+    await this.#armExpirySweep();
+    return new SessionStandingLease(() => {
+      // The session ended on its own: call the callback so its disposal reads as a clean close.
+      if (!this.#standingSessions.delete(held)) return;
+      try {
+        held();
+      } catch {
+        // The session is already gone.
+      }
+      held[Symbol.dispose]();
+      if (this.#standingSessions.size === 0) this.#standingRecheckAt = undefined;
+    });
+  }
+
+  // Drop every watched session uncalled: each sees its callback disposed and aborts.
+  #dropStandingSessions(): void {
+    for (let held of this.#standingSessions) held[Symbol.dispose]();
+    this.#standingSessions.clear();
+    this.#standingRecheckAt = undefined;
+  }
+
+  // The alarm's standing recheck for watched sessions.
+  async #recheckSessionStanding(): Promise<void> {
+    if (this.#standingSessions.size === 0) {
+      this.#standingRecheckAt = undefined;
+      return;
+    }
+    if (this.#standingRecheckAt !== undefined && this.#standingRecheckAt > Date.now()) return;
+    let principal = this.#principalName();
+    let standing: "active" | "inactive" | "unavailable" = "inactive";
+    if (principal !== undefined && this.env.PRINCIPAL_RESOLVER) {
+      try {
+        standing = await this.#principalStanding(principal);
+      } catch (error) {
+        logger.warn("principal standing check failed", { event: "principal.standing.failed", error });
+        standing = "unavailable";
+      }
+    }
+    if (standing === "active") {
+      this.#standingRecheckAt = Date.now() + STANDING_RECHECK_MS;
+    } else if (standing === "unavailable") {
+      // Fail closed: no answer ends the sessions. Workspaces recheck their own admissions.
+      this.#dropStandingSessions();
+    } else {
+      await this.#revokePrincipal();
+    }
+  }
+
+  // Lost standing: restart every workspace the user owns or shares, so whatever they hold there --
+  // sessions, gadget stubs, facets, callbacks, agent turns, subscriptions -- is disposed, then
+  // restart this object, which drops every watched session. Once per incarnation.
+  async #revokePrincipal(): Promise<void> {
+    if (this.#revoking) return;
+    this.#revoking = true;
+    logger.warn("revoking a principal that lost standing", { event: "principal.standing.revoked" });
+    let userId = this.ctx.id.toString();
+    let overseers = this.ctx.exports.OverseerDurableObject;
+    await Promise.allSettled(Array.from(this.storage.gadgets.list(), record =>
+        overseers.get(overseers.idFromString(record.id)).revokePrincipal(userId)));
+    this.#dropStandingSessions();
+    // As OverseerImpl.scheduleAccessRestart: let the call (or alarm) that found it finish first.
+    // Every check refuses meanwhile (#revoking).
+    await this.ctx.storage.sync();
+    void scheduler.wait(100).then(() => this.ctx.abort(PRINCIPAL_STANDING_LOST_MESSAGE));
   }
 
   /** Internal kernel entrypoint: derives the principal exclusively from persisted storage. */
@@ -314,8 +466,8 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
    * principal name when a principal resolver is bound (see auth/principal-sign-in.ts), which also
    * supplies the initial display name.
    */
-  async authenticateFromCfAccess(id: string, allowCreate: boolean, displayName?: string)
-      : Promise<boolean> {
+  async authenticateFromCfAccess(id: string, allowCreate: boolean, displayName?: string,
+                                 principalName?: string): Promise<boolean> {
     const isNew = !this.storage.created.get();
     if (isNew) {
       if (!allowCreate) {
@@ -328,6 +480,10 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
         name: displayName ?? id.split("@")[0],
         id,
       });
+    }
+    // Only a principal resolver's sign-in names one (server.ts); see UserStorage.principalName.
+    if (principalName !== undefined && principalName !== this.storage.principalName.get()) {
+      this.storage.principalName.put(principalName);
     }
     this.#syncDirectory();
     return isNew;
@@ -2199,6 +2355,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     for (let selection of this.storage.pendingUserSelections.list()) {
       consider(selection.expiresAt.getTime());
     }
+    if (this.#standingRecheckAt !== undefined) consider(this.#standingRecheckAt);
     try {
       for (let pending of this.storage.pendingHandoffs.list()) consider(pending.expiresAt.getTime());
     } catch (err) {
@@ -2221,6 +2378,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   /**
    * Drop unconfirmed connect handoffs, abandoned connect flows and picker selections, and expired
    * device handoffs and sessions. Device handoff cleanup also deletes its unactivated session.
+   * Also rechecks the standing of watched API sessions when due (see watchSessionStanding).
    */
   async alarm(): Promise<void> {
     let now = Date.now();
@@ -2256,6 +2414,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
         this.storage.sessions.delete(session.tokenId);
       }
     }
+    await this.#recheckSessionStanding();
     await this.#armExpirySweep();
   }
 
@@ -2385,6 +2544,17 @@ type GatekeeperConnectCallbackProps = {
   userId: string;
   accountId: number;
   vendorId: string;
+}
+
+/** What watchSessionStanding() returns: disposing it ends the session's watch. */
+class SessionStandingLease extends NativeRpcTarget {
+  constructor(private release: () => void) {
+    super();
+  }
+
+  [Symbol.dispose](): void {
+    this.release();
+  }
 }
 
 export class GatekeeperConnectCallbackImpl

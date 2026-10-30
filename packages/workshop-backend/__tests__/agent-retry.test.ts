@@ -169,12 +169,32 @@ describe("the request a turn leaves to keep cached", () => {
 });
 
 
-describe("policy execution quarantine during an agent turn", () => {
-  it("stops the next tool and model request after a response already started",
+// SCHO-309: a running turn re-admits its initiator before each pass, model request and tool call,
+// so revoking them stops the turn at its next step, and restarts the workspace to dispose the rest.
+describe("revoking a running agent turn's initiator", () => {
+  it("stops the next tool and model request after a response already started, and restarts",
       () => withImpl(async impl => {
     seedChat(impl);
-    const runtimeEnv = Reflect.get(impl, "env");
-    const previous = runtimeEnv.WORKSHOP_CAPABILITY_POLICY;
+    const runtime = impl as unknown as {
+      env: Cloudflare.Env; users: unknown; scheduleAccessRestart(reason: string): Promise<void>;
+      storage: { activeAgents: { put(record: object): void } };
+    };
+    const previous = { policy: runtime.env.WORKSHOP_CAPABILITY_POLICY, users: runtime.users,
+      restart: runtime.scheduleAccessRestart };
+    let revoked = false;
+    const standingChecks: string[][] = [];
+    // The initiator's user object, as OverseerImpl.admitPrincipal asks it.
+    runtime.users = { idFromString: (id: string) => id, get: () => ({
+      assertWorkshopStanding: async (_workspaceId: string, actions: string[]) => {
+        standingChecks.push(actions);
+        if (revoked) throw new Error("Workshop policy denied agent.execute: synthetic revocation.");
+      },
+    }) };
+    const restarts: string[] = [];
+    runtime.scheduleAccessRestart = async reason => { restarts.push(reason); };
+    Reflect.set(runtime.env, "WORKSHOP_CAPABILITY_POLICY", { authorizeCapability: async () => ({ outcome: "allow" }) });
+    runtime.storage.activeAgents.put({ chatId: CHAT_ID, initiatorUserId: "initiator-user-do",
+      modelId: "faux-model", initiator: OWNER });
     let executions = 0;
     const execute = impl.executeCodeMode;
     impl.executeCodeMode = async () => { ++executions; return "must not run"; };
@@ -182,21 +202,23 @@ describe("policy execution quarantine during an agent turn", () => {
     const faux = createFauxCore({ models: [{ id: "faux-model" }] });
     faux.setResponses([() => {
       ++requests;
-      // Configure policy while the first model request is in flight.
-      runtimeEnv.WORKSHOP_CAPABILITY_POLICY = {
-        authorizeCapability: async () => ({ outcome: "deny" }),
-      };
+      // The initiator loses standing while the first model request is in flight.
+      revoked = true;
       return fauxAssistantMessage(fauxToolCall("executeCode", { code: "return 123" }));
     }]);
     try {
       await expect(runAgent(impl, { model: faux.getModel(), stream: faux.stream }, CHAT_ID,
           { type: "agent", id: "faux-model", name: "Faux" }, new AbortController().signal, OWNER,
           { provider: "cloudflare", model: "faux-model", apiToken: "" }))
-        .rejects.toThrow("transitive revocation");
+        .rejects.toThrow("restarting");
       expect(requests).toBe(1);
       expect(executions).toBe(0);
+      expect(standingChecks[0]).toEqual(["agent.execute"]);
+      expect(restarts).toEqual(["Gadget restarted because a principal's Workshop access changed."]);
     } finally {
-      runtimeEnv.WORKSHOP_CAPABILITY_POLICY = previous;
+      Reflect.set(runtime.env, "WORKSHOP_CAPABILITY_POLICY", previous.policy);
+      runtime.users = previous.users;
+      runtime.scheduleAccessRestart = previous.restart;
       impl.executeCodeMode = execute;
     }
   }));

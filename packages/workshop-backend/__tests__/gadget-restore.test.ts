@@ -7,14 +7,16 @@
 //
 // Runs a real gadget, loaded from a real commit, inside a real OverseerDurableObject.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:workers";
 import { runInDurableObject } from "cloudflare:test";
 import type { OverseerDurableObject } from "../src/overseer.js";
+import type { UserDurableObject } from "../src/user.js";
 
 declare module "cloudflare:workers" {
   interface ProvidedEnv {
     TEST_OVERSEER: DurableObjectNamespace<OverseerDurableObject>;
+    TEST_USER: DurableObjectNamespace<UserDurableObject>;
   }
 }
 
@@ -64,8 +66,9 @@ class Callback extends RpcTarget {
 
 let doCounter = 0;
 
-async function withGadget(fn: (impl: any) => Promise<void>): Promise<void> {
-  let stub = env.TEST_OVERSEER.getByName(`gadget-restore-${++doCounter}`);
+async function withGadget(fn: (impl: any) => Promise<void>,
+                          stub = env.TEST_OVERSEER.getByName(`gadget-restore-${++doCounter}`))
+    : Promise<void> {
   await runInDurableObject(stub, async (instance: OverseerDurableObject) => {
     let impl = (instance as unknown as { impl: any }).impl;
     let commitId = await impl.gitStore.writeFilesAsCommit(new Map([["server.js", SERVER_JS]]), {
@@ -126,41 +129,63 @@ describe("gadget ctx.restore()", () => {
 });
 
 
-describe("policy execution quarantine (SCHO-292)", () => {
-  it("blocks a retained root and future loaders but proves descendants remain live",
-      () => withGadget(async impl => {
-    using gadget = await impl.getGadgetFacet(GADGET_ID);
-    using callback = await gadget.mintCallback("pre-policy");
-    expect(await gadget.hello()).toBe("hi");
-    const previous = impl.env.WORKSHOP_CAPABILITY_POLICY;
-    // Even an allowing policy cannot make the raw descendants revocable.
-    impl.env.WORKSHOP_CAPABILITY_POLICY = { authorizeCapability: async () => ({ outcome: "allow" }) };
+describe("live-capability revocation (SCHO-309)", () => {
+  // Formerly SCHO-292's surviving-escape repro: a descendant callback outlived the root's
+  // restriction. Revocation now restarts the workspace, which ends descendants with their root.
+  it("gates a retained root and loaders on admission, and revoking ends its descendants too",
+      async () => {
+    let stub = env.TEST_OVERSEER.getByName(`gadget-restore-${++doCounter}`);
+    let name = `principal:prn_restore-${doCounter}`;
+    let user = env.TEST_USER.getByName(name);
+    await user.authenticateFromCfAccess(name, true, "Teacher", name);
+    let userId = env.TEST_USER.idFromName(name).toString();
+    let allowed = true;
+    let policy = { authorizeCapability: async () => allowed
+      ? { outcome: "allow" } : { outcome: "deny", message: "Synthetic revocation." } };
+    // Durable Objects in this isolate share one env object.
+    let setPolicy = (value: unknown) => runInDurableObject(
+        env.TEST_USER.getByName("policy-installer"),
+        instance => { Reflect.set(Reflect.get(instance, "env"), "WORKSHOP_CAPABILITY_POLICY", value); });
+    await setPolicy(policy);
     try {
-      await expectQuarantined(gadget.hello());
-      await expectQuarantined(gadget.attemptExfiltration());
-      await expect(impl.getGadgetFacet(GADGET_ID)).rejects.toThrow("transitive revocation");
-      expect(() => impl.loadGadgetWorker(GADGET_ID)).toThrow("transitive revocation");
-      await expect(impl.executeCodeMode(1, "throw new Error('must not run')", {}, "model", {}))
-        .rejects.toThrow("transitive revocation");
-      expect(() => impl.startGatekeeperSession({ type: "gadget", id: GADGET_ID }, { from: "user" }))
-        .toThrow("transitive revocation");
-      expect(() => impl.startGatekeeperSession({ type: "gatekeeper", id: 999 }, { from: "user" }))
-        .toThrow("transitive revocation");
-      await expect(impl.applyPendingAction({ type: "action", gatekeeperId: 999 }, {}, false))
-        .rejects.toThrow("transitive revocation");
-      // Concrete release-blocking repro: a descendant bypasses the root's restriction.
-      // Do not change this assertion into a claim of full revocation.
-      expect(await callback.ping()).toBe("pong:pre-policy");
+      await withGadget(async impl => {
+        // Nobody admitted: nothing executes, whatever the policy would allow.
+        expect(() => impl.loadGadgetWorker(GADGET_ID)).toThrow("needs an admitted principal");
+        await expect(impl.getGadgetFacet(GADGET_ID)).rejects.toThrow("needs an admitted principal");
+        await expect(impl.executeCodeMode(1, "throw new Error('must not run')", {}, "model", {}))
+          .rejects.toThrow("needs an admitted principal");
+        expect(() => impl.startGatekeeperSession({ type: "gadget", id: GADGET_ID }, { from: "user" }))
+          .toThrow("needs an admitted principal");
+        await expect(impl.applyPendingAction({ type: "action", gatekeeperId: 999 }, {}, false))
+          .rejects.toThrow("needs an admitted principal");
+        await impl.admitPrincipal(userId, "gadget.execute");
+      }, stub);
+
+      // Minted while allowed, and held outside the workspace as a client holds them.
+      using gadget = await stub.testGadgetFacet(GADGET_ID);
+      using callback = await gadget.mintCallback("allowed");
+      expect(await gadget.hello()).toBe("hi");
+      expect(await callback.ping()).toBe("pong:allowed");
+
+      allowed = false;
+      await runInDurableObject(stub, (instance: OverseerDurableObject) =>
+          (instance as unknown as { impl: any }).impl.recheckStanding());
+      // The restart disposes the descendant along with its root.
+      await vi.waitFor(async () => expect(await failed(callback.ping())).toBe(true),
+          { timeout: 5_000, interval: 50 });
+      expect(await failed(gadget.hello())).toBe(true);
     } finally {
-      impl.env.WORKSHOP_CAPABILITY_POLICY = previous;
+      await setPolicy(undefined);
     }
-    expect(await gadget.hello()).toBe("hi");
-  }));
+  });
 });
 
 // Use one rejection handler: .rejects forks native JsRpcPromise continuations.
-async function expectQuarantined(call: Promise<unknown>): Promise<void> {
-  let caught: unknown;
-  try { await call; } catch (error) { caught = error; }
-  expect(String(caught)).toContain("transitive revocation");
+async function failed(call: Promise<unknown>): Promise<boolean> {
+  try {
+    await call;
+    return false;
+  } catch {
+    return true;
+  }
 }

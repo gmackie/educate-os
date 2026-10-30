@@ -264,29 +264,55 @@ describe("spawned agent tools", () => {
   }));
 });
 
-it("refuses a retained spawner after execution quarantine is enabled", () => withImpl(async impl => {
+// SCHO-309: under a capability policy a spawn is admitted as its recorded creator, now; a spawner
+// with no creator never falls back to the owner's rights.
+it("admits spawns as their creator, refuses a revoked one, and never borrows the owner", () => withImpl(async impl => {
   const config = { displayName: "Spawner", modelId: null };
-  const cls = impl.ctx.exports.AgentSpawnerGatekeeper({ props: {
-    config, creatorUserId: OWNER_USER_ID,
-  } });
-  const client = await impl.addGatekeeper(
-      cls, { type: "agentSpawner", config }, OWNER_USER_ID, undefined, {});
-  using binding: AgentSpawnerBinding = await client.openSession();
-  await binding.spawn("Before", "Synthetic task");
-  const count = [...impl.storage.chatMeta.list()].length;
+  let revoked = false;
+  const admitted: string[] = [];
+  impl.users = {
+    idFromString: (id: string) => id,
+    get: (id: string) => ({
+      getChatContext: async () => ({ profile: OWNER }),
+      assertWorkshopStanding: async (_workspaceId: string, actions: string[]) => {
+        if (revoked) throw new Error("Workshop policy denied agent.execute: synthetic revocation.");
+        admitted.push(`${id}:${actions.join(",")}`);
+      },
+    }),
+  };
+  const restarts: string[] = [];
+  impl.scheduleAccessRestart = async (reason: string) => { restarts.push(reason); };
+  const open = async (creatorUserId?: string) => {
+    const cls = impl.ctx.exports.AgentSpawnerGatekeeper({ props: {
+      config, ...(creatorUserId ? { creatorUserId } : {}),
+    } });
+    const client = await impl.addGatekeeper(
+        cls, { type: "agentSpawner", config }, OWNER_USER_ID, undefined, {});
+    return client;
+  };
+  const client = await open(OWNER_USER_ID);
+  const legacyClient = await open();
   const previous = impl.env.WORKSHOP_CAPABILITY_POLICY;
   impl.env.WORKSHOP_CAPABILITY_POLICY = { authorizeCapability: async () => ({ outcome: "allow" }) };
   try {
-    await expectQuarantined(binding.spawn("After", "Synthetic task"));
+    using binding: AgentSpawnerBinding = await client.openSession();
+    await binding.spawn("Before", "Synthetic task");
+    expect(admitted).toContain(`${OWNER_USER_ID}:agent.execute`);
+    const count = [...impl.storage.chatMeta.list()].length;
+    using legacy: AgentSpawnerBinding = await legacyClient.openSession();
+    await expectRefused(legacy.spawn("Legacy", "Synthetic task"), "records no creator");
+    revoked = true;
+    await expectRefused(binding.spawn("After", "Synthetic task"), "synthetic revocation");
     expect([...impl.storage.chatMeta.list()]).toHaveLength(count);
+    expect(restarts).toEqual(["Gadget restarted because a principal's Workshop access changed."]);
   } finally {
     impl.env.WORKSHOP_CAPABILITY_POLICY = previous;
   }
 }));
 
 // Use one rejection handler: .rejects forks native JsRpcPromise continuations.
-async function expectQuarantined(call: Promise<unknown>): Promise<void> {
+async function expectRefused(call: Promise<unknown>, message: string): Promise<void> {
   let caught: unknown;
   try { await call; } catch (error) { caught = error; }
-  expect(String(caught)).toContain("transitive revocation");
+  expect(String(caught)).toContain(message);
 }

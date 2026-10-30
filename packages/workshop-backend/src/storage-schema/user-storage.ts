@@ -249,6 +249,11 @@ export function makeUserStorage(storage: DurableObjectStorage) {
       // (-1 = never, which also lazily backfills users created before the
       // directory existed). See #syncDirectory().
       directoryRev: -1,
+      // The principal (`principal:<id>`) a principal resolver's Access sign-in last named for this
+      // user (SCHO-309): the user's own name, or for a user the principal migration aliased, the
+      // principal its email-keyed account answers for. Null without a resolver. Capability policy
+      // requests and district standing checks name this principal.
+      principalName: <string | null>null,
     }
   });
 }

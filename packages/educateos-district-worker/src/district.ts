@@ -4,7 +4,7 @@
 // Durable Object shell around it.
 import type { JWTVerifyGetKey } from "jose";
 import { AcademicDirectory } from "@educateos/academics";
-import { checkDirectoryIntegrity, DistrictDirectorySnapshot } from "@educateos/contracts";
+import { checkDirectoryIntegrity, DistrictDirectorySnapshot, EducateOsError, PrincipalId } from "@educateos/contracts";
 import type { ImportFetch } from "@educateos/content-studio";
 import {
   CLEVER_ISSUER,
@@ -53,6 +53,12 @@ export interface DistrictPrincipals {
   resolveAccessSignIn(signIn: unknown): Promise<AccessSignInResolution>;
   /** Matches the Workshop's email-keyed users to the district's people, for its one-time migration. */
   matchEmailKeyedUsers(users: unknown): Promise<EmailKeyedUserMatch[]>;
+  /**
+   * Whether a principal the seam resolved is still an active person of this district, read from
+   * the live directory (SCHO-309). A malformed or unknown ID is `inactive`. Rejects only when the
+   * directory cannot answer (it fails its integrity checks).
+   */
+  principalStanding(principalId: unknown): Promise<{ outcome: "active" | "inactive" }>;
 }
 
 /** The Worker's settings a district starts from: its vars, as text. */
@@ -270,6 +276,16 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     },
     async matchEmailKeyedUsers(users) {
       return matchEmailKeyedUsers((await stores.directory.load()).snapshot, users);
+    },
+    async principalStanding(principalId) {
+      const directory = (await stores.directory.load()).snapshot;
+      if (checkDirectoryIntegrity(directory).length > 0) {
+        throw new EducateOsError("unavailable", "The district directory failed its integrity checks.");
+      }
+      const id = PrincipalId.safeParse(principalId);
+      const principal = id.success ? directory.principals.find((p) => p.id === id.data) : undefined;
+      const active = principal !== undefined && principal.districtId === directory.district.id && principal.status === "active";
+      return { outcome: active ? "active" : "inactive" };
     },
   };
   return { app, tools, lti, principals };

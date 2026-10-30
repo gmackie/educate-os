@@ -55,3 +55,18 @@ describe("DistrictPrincipalResolver over real workerd service RPC and SQLite", (
     expect(await env.PRINCIPALS.resolveAccessSignIn(signIn)).toEqual({ outcome: "unauthenticated" });
   });
 });
+
+// SCHO-309: what the Workshop re-asks while a principal holds live sessions or execution.
+describe("DistrictPrincipalResolver.principalStanding", () => {
+  it.each(["inactive", "graduated"])("answers inactive for a %s principal without a restart", async status => {
+    expect(await env.PRINCIPALS.principalStanding(person.id)).toEqual({ outcome: "active" });
+    await changePerson({ status });
+    expect(await env.PRINCIPALS.principalStanding(person.id)).toEqual({ outcome: "inactive" });
+  });
+
+  it("answers inactive for unknown and malformed principals", async () => {
+    for (const id of ["prn_nf-missing", "principal:" + person.id, "", "prn_rb-district-admin"]) {
+      expect(await env.PRINCIPALS.principalStanding(id)).toEqual({ outcome: "inactive" });
+    }
+  });
+});

@@ -57,14 +57,18 @@ function aliasDirectory(exports: AliasExports): AliasDirectory {
  * - Without PRINCIPAL_RESOLVER: the token's email, exactly as before.
  * - With it: `principal:<id>` for the principal it resolves to, unless the migration aliased that
  *   name to an existing user, whose name (its email) is used instead. A sign-in the resolver
- *   refuses throws, as `resolvePrincipalUser` does; it never falls back to the email.
+ *   refuses throws, as `resolvePrincipalUser` does; it never falls back to the email. `principal`
+ *   is then the principal's own name, aliased or not.
  */
 export async function accessUserName(env: ResolverEnv, exports: AliasExports, payload: JWTPayload)
-    : Promise<{ name: string; displayName?: string }> {
+    : Promise<{ name: string; displayName?: string; principal?: string }> {
   if (!env.PRINCIPAL_RESOLVER) return { name: payload.email as string };
   let user = await resolvePrincipalUser(env.PRINCIPAL_RESOLVER, payload);
   let alias = await aliasDirectory(exports).principalAlias(user.name);
-  return alias === null ? user : { name: alias, displayName: user.displayName };
+  // `principal` is the principal's own name either way (SCHO-309: UserStorage.principalName).
+  return alias === null
+    ? { ...user, principal: user.name }
+    : { name: alias, displayName: user.displayName, principal: user.name };
 }
 
 /** What the migration reads about user Durable Objects. */

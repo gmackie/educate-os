@@ -35,16 +35,18 @@ New scopes (deployment policies must explicitly handle them; unknown actions mus
   the corresponding User DO rather than accepted as a role assertion.
 
 Decisions are never cached. A retained Workshop/Gadget client must pass a fresh check on
-its next protected call, so revocation applies without reconnecting that client. There is
-no policy-controlled session kill or claim of transitive revocation.
+its next protected call, so revocation applies without reconnecting that client.
 
-## Execution restriction in the next stacked slice
+## Live revocation (SCHO-309)
 
-See [live capability revocation](live-capability-revocation.md): configured-policy execution
-is unconditionally disabled at runtime boundaries. This supersedes the allowed-execution
-behavior described above for the next slice, but does not revoke every descendant stub.
+SCHO-292's unconditional execution refusal is replaced by policy-checked execution with
+revocation by restart: see [live capability revocation](live-capability-revocation.md). Items 1-3
+below are now addressed as that document describes (raw stubs, descendants, gatekeeper sessions,
+subscriptions and turns die with the restarted workspace; turns readmit their initiator at every
+step; owner rights are never borrowed for a missing initiator). Its "What remains" section lists
+what is still not guaranteed. Item 4 is unchanged.
 
-## BLOCKING for school rollout: retained execution and data capabilities
+## Original SCHO-292 blocking list (status above)
 
 This PR is not sufficient to enable the Workshop for students. Resolve and test all of the
 following against the production policy binding before school rollout:

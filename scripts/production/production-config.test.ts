@@ -35,6 +35,7 @@ const TWO_HOSTS: ProductionInstance = {
   ...SCHOOLOS_GMAC_IO,
   oneOrigin: { enabled: false, hostname: "northfield.educateos.io" },
   principalBinding: "migration",
+  capabilityPolicyBinding: false,
 };
 
 function configFor(configs: Map<string, ProductionConfig>, pkgName: string): ProductionConfig {
@@ -290,7 +291,8 @@ test("fails closed on a pin for an undeployed package, a name clash, or a bindin
 });
 
 test("an instance without a district deploys no district Worker, and cannot install the EducateOS connector", () => {
-  const { district: _district, workerNames: _workerNames, principalBinding: _binding, oneOrigin: _origin, ...withoutDistrict } = SCHOOLOS_GMAC_IO;
+  const { district: _district, workerNames: _workerNames, principalBinding: _binding, oneOrigin: _origin,
+    capabilityPolicyBinding: _policy, ...withoutDistrict } = SCHOOLOS_GMAC_IO;
   assert.throws(() => build(withoutDistrict), /gatekeeper-educateos needs the instance's district Worker/);
   const withoutConnector = {
     ...withoutDistrict,
@@ -527,9 +529,33 @@ test("one origin: a demo district answers /ai itself, linking to Northfield, and
   }
 });
 
+test("the capability policy binding reaches the district's policy by its pinned name, and is required", () => {
+  const backend = (instance: ProductionInstance) => configFor(build(instance), "workshop-backend");
+  const policy = (instance: ProductionInstance) => backend(instance).services
+      ?.filter(({ binding }) => binding === "WORKSHOP_CAPABILITY_POLICY");
+  // Production turns it on once the district's DISTRICT_CONFIG grants its staff (SCHO-309); bound,
+  // it is required, so losing it refuses rather than opens.
+  assert.equal(SCHOOLOS_GMAC_IO.capabilityPolicyBinding, false);
+  assert.deepEqual(policy(SCHOOLOS_GMAC_IO), []);
+  const bound = { ...SCHOOLOS_GMAC_IO, capabilityPolicyBinding: true };
+  assert.deepEqual(policy(bound), [
+    { binding: "WORKSHOP_CAPABILITY_POLICY", service: "schoolos-district-worker", entrypoint: "DistrictWorkshopCapabilityPolicy" },
+  ]);
+  assert.equal(backend(bound).vars?.REQUIRE_WORKSHOP_CAPABILITY_POLICY, "true");
+  const { capabilityPolicyBinding: _flag, ...unbound } = SCHOOLOS_GMAC_IO;
+  assert.deepEqual(policy(unbound), []);
+  assert.equal(backend(unbound).vars?.REQUIRE_WORKSHOP_CAPABILITY_POLICY, undefined);
+  // Revocation rechecks standing through the resolver, so the policy never binds without it.
+  assert.throws(() => build({ ...bound, principalBinding: "migration" }),
+      /capability policy binding needs principalBinding: "resolver"/);
+  const { principalBinding: _binding, ...noResolver } = bound;
+  assert.throws(() => build(noResolver), /capability policy binding needs principalBinding: "resolver"/);
+});
+
 test("the principal bindings reach the district's resolver by its pinned name, one cutover step at a time", () => {
   const services = (principalBinding?: "migration" | "resolver") =>
-    configFor(build({ ...SCHOOLOS_GMAC_IO, ...principalBinding ? { principalBinding } : {} }), "workshop-backend").services
+    configFor(build({ ...SCHOOLOS_GMAC_IO, capabilityPolicyBinding: principalBinding === undefined || principalBinding === "resolver",
+      ...principalBinding ? { principalBinding } : {} }), "workshop-backend").services
         ?.filter(({ binding }) => binding.startsWith("PRINCIPAL_"));
   // Production is past the cutover: both bindings.
   assert.equal(SCHOOLOS_GMAC_IO.principalBinding, "resolver");
@@ -537,7 +563,7 @@ test("the principal bindings reach the district's resolver by its pinned name, o
     { binding: "PRINCIPAL_MIGRATION", service: "schoolos-district-worker", entrypoint: "DistrictPrincipalResolver" },
     { binding: "PRINCIPAL_RESOLVER", service: "schoolos-district-worker", entrypoint: "DistrictPrincipalResolver" },
   ]);
-  const { principalBinding: _binding, ...unbound } = SCHOOLOS_GMAC_IO;
+  const { principalBinding: _binding, capabilityPolicyBinding: _policy, ...unbound } = SCHOOLOS_GMAC_IO;
   assert.deepEqual(configFor(build(unbound), "workshop-backend").services
       ?.filter(({ binding }) => binding.startsWith("PRINCIPAL_")), []);
   const migration = { binding: "PRINCIPAL_MIGRATION", service: "schoolos-district-worker", entrypoint: "DistrictPrincipalResolver" };

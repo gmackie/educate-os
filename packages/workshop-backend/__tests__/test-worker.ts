@@ -48,6 +48,22 @@ export class OverseerDurableObject extends RealOverseerDurableObject {
     if (params.type === "test-response-target") return new FakeChatResponseTarget(params.name);
     return super[restore](params);
   }
+
+  // Test-only: capabilities as the workspace mints them for a client, returned over real RPC so a
+  // test holds them outside this object, as a browser session would (live-capability-revocation).
+  /** The root gadget stub connectToGadget hands a client. */
+  testGadgetFacet(gadgetId: number) {
+    return (this as unknown as { impl: any }).impl.getGadgetFacet(gadgetId);
+  }
+
+  /** A session on a new agent spawner connection, opened as the client `actorUserId`. */
+  async testSpawnerSession(actorUserId: string) {
+    const impl = (this as unknown as { impl: any }).impl;
+    const config = { displayName: "Spawner", modelId: null };
+    const cls = impl.ctx.exports.AgentSpawnerGatekeeper({ props: { config, creatorUserId: actorUserId } });
+    const client = await impl.addGatekeeper(cls, { type: "agentSpawner", config }, actorUserId, undefined, {});
+    return client.openSession();
+  }
 }
 /**
  * The `self` object / spawnCallable() stub entrypoint, named explicitly for the same reason as the

@@ -81,6 +81,11 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
   // Workshop sign-in resolves the Access subject to a district principal (PRINCIPAL_RESOLVER); the
   // users the migration aliased keep their email-keyed accounts.
   principalBinding: "resolver",
+  // Workshop mints and execution become the district's to allow, and a principal who loses
+  // standing loses what they hold (SCHO-309), once this is on. It stays off until the district's
+  // DISTRICT_CONFIG.workshopPolicy grants the demo's staff: without one the district denies every
+  // mint and execution, and the district Worker answering principalStanding must deploy first.
+  capabilityPolicyBinding: false,
   // Deployed before the EducateOS rename (SCHO-200), and pinned so it is never deployed under its
   // package's new name (SCHO-231). Its Durable Object holds the demo district's data, a Worker's
   // Durable Object namespace belongs to its name, and district.schoolos.gmac.io is attached to it:

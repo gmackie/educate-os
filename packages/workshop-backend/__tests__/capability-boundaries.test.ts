@@ -22,6 +22,11 @@ async function client(principal: string, role: "build" | "use" = "build") {
   const api = await openFakeOverseer({}, { role, impl: {
     env: { WORKSHOP_CAPABILITY_POLICY: policy },
     users: { idFromString: (id: string) => id, get: () => user },
+    // What the real OverseerImpl.admitPrincipal asks the user object for (SCHO-309); its standing
+    // rechecks and restarts are covered by live-capability-revocation.test.ts.
+    admitPrincipal: async (_userId: string, action?: "gadget.execute" | "agent.execute") => {
+      if (action) await user.assertWorkshopCapability({ action, workspaceId: "workspace-id" });
+    },
     getGadgetRecord: () => ({ type: "gadget", id: 1 }),
     getSharingManager: async () => ({ createShareLink: sideEffect }),
     getGadgetUiBundle: sideEffect,
@@ -84,10 +89,17 @@ describe("policy checks at retained Workshop RPC boundaries", () => {
 
 it("refuses direct retained RPC when required school policy binding is missing", async () => {
   const sideEffect = vi.fn();
+  const env = { REQUIRE_WORKSHOP_CAPABILITY_POLICY: "true" };
+  // open() admits the caller under policy (SCHO-309), so a missing required binding refuses there.
+  await expect(openFakeOverseer({}, { role: "build", impl: { env, getSharingManager: sideEffect } }))
+    .rejects.toThrow("Required Workshop capability policy");
+  // A session opened while the binding was present is refused once it is missing.
+  const live = { REQUIRE_WORKSHOP_CAPABILITY_POLICY: "true" } as Record<string, unknown>;
+  live.WORKSHOP_CAPABILITY_POLICY = { authorizeCapability: async () => ({ outcome: "allow" }) };
   const api = await openFakeOverseer({}, { role: "build", impl: {
-    env: { REQUIRE_WORKSHOP_CAPABILITY_POLICY: "true" },
-    getSharingManager: sideEffect,
+    env: live, getSharingManager: sideEffect, admitPrincipal: async () => {},
   } });
+  delete live.WORKSHOP_CAPABILITY_POLICY;
   try {
     await expect(api.createGadget("student")).rejects.toThrow("Required Workshop capability policy");
     await expect(api.createShareLink("build")).rejects.toThrow("Required Workshop capability policy");
