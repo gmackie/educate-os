@@ -18,6 +18,8 @@
     "@educateos/district-app": "workspace:*",
     "@educateos/fixtures": "workspace:*",
     "@educateos/harness": "workspace:*",
+    "@educateos/integrations": "workspace:*",
+    "@educateos/provider-fakes": "workspace:*",
     "@educateos/student-ui": "workspace:*",
     "@educateos/teacher-ui": "workspace:*",
     "@gadgets/ui": "workspace:*",

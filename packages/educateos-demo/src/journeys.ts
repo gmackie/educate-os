@@ -1,7 +1,7 @@
 // The guided journeys: what to try as each persona. A step is done when the persona's UI makes the
 // district request that doing it takes, so the checklist follows the real apps rather than
 // duplicating their screens.
-import type { PersonaId } from "./demoDistrict.ts";
+import type { PersonaId } from "./districts/index.ts";
 
 /** One thing to try. */
 export interface JourneyStep {

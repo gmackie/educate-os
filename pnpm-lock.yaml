@@ -967,6 +967,12 @@ importers:
       '@educateos/harness':
         specifier: workspace:*
         version: link:../educateos-harness
+      '@educateos/integrations':
+        specifier: workspace:*
+        version: link:../educateos-integrations
+      '@educateos/provider-fakes':
+        specifier: workspace:*
+        version: link:../educateos-provider-fakes
       '@educateos/student-ui':
         specifier: workspace:*
         version: link:../educateos-student-ui
