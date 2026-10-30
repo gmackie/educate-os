@@ -1,0 +1,5 @@
+name,email,organization,role,sourceUrl,tags
+Avery Example,avery@cedar-example.invalid,Cedar Example District,Fictional curriculum lead,https://cedar-example.invalid/staff/avery,teaching|curriculum|training
+Morgan Sample,morgan@maple-example.invalid,Maple Example District,Fictional accessibility educator,https://maple-example.invalid/staff/morgan,special-education|accessibility|community
+Rowan Demo,rowan@birch-example.invalid,Birch Example Lab,Fictional security engineer,https://birch-example.invalid/team/rowan,security|privacy|cloud
+Quinn Fiction,quinn@elm-example.invalid,Elm Example Lab,Fictional integration engineer,https://elm-example.invalid/team/quinn,integrations|testing|accessibility
