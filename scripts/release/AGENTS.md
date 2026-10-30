@@ -53,3 +53,16 @@ For a frontend-only ForgeGraph build, use
 `EDUCATEOS_SCHOOL_BUILD=true node ../../scripts/release/build-frontend.ts` from a package directory (or `node scripts/release/build-frontend.ts` from the repository root). This builds assets without deploying. Existing production job configuration is unchanged and does not opt in automatically. A frontend-only build produces no signed manifest; use `build-release.ts` for signed district releases.
 
 The actual shell implementation depends on UI PR #9 being present in the source revision being built. Selecting the school variant records build intent and asset identity; it does not prove live Access sign-in or end-to-end deployment readiness. No credentials or deployment commands are changed by this opt-in.
+
+The integrated school profile also sets backend `REQUIRE_WORKSHOP_CAPABILITY_POLICY=true` and
+`REQUIRE_PRINCIPAL_RESOLVER=true`, binds district-owned policy and principal entrypoints, and routes
+MCP plus protected-resource discovery to the school MCP Worker before signing. `--profile school`
+is an alias for the opt-in environment selector; conflicting explicit values fail. School activation
+requires enabled district and MCP services with their explicit configuration. Generic manifests and
+existing production instance config remain unchanged apart from discovering the optional MCP service.
+
+School dev uses `EDUCATEOS_SCHOOL_BUILD=true` with explicit district configuration, Access issuer and
+audience, and MCP configuration; missing values reject startup. It binds the same two district
+entrypoints. It uses no fixture authority fallback. See architecture/integration-evidence for rollout
+blockers: authoring and all policy-bound execution are intentionally disabled pending ABAC/provenance
+and transitive revocation support. This profile is not approved for school rollout.

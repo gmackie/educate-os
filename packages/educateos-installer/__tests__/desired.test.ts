@@ -22,6 +22,20 @@ describe("release manifest", () => {
       entrypoint: "DistrictWorkshopCapabilityPolicy" });
     expect(() => compileDesiredState(school.manifest, configFor(NORTHFIELD, school)))
       .toThrow("school release requires enabled service");
+    const enabled = compileDesiredState(school.manifest, configFor(NORTHFIELD, school, { services: {
+      "educateos-district-worker": { enabled: true, vars: { DISTRICT_CONFIG: "{}", CF_ACCESS_ISS: "https://synthetic.example", CF_ACCESS_AUD: "synthetic" } },
+      "educateos-external-mcp": { enabled: true, vars: { MCP_CONFIG: "{}" } },
+    } }));
+    const backend = enabled.resources.find(resource => resource.kind === "worker_script" && resource.role === "backend");
+    expect(backend?.kind).toBe("worker_script");
+    if (backend?.kind !== "worker_script") throw new Error("Missing backend");
+    expect(backend.bindings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "REQUIRE_WORKSHOP_CAPABILITY_POLICY", text: "true" }),
+      expect.objectContaining({ name: "REQUIRE_PRINCIPAL_RESOLVER", text: "true" }),
+      expect.objectContaining({ name: "WORKSHOP_CAPABILITY_POLICY", entrypoint: "DistrictWorkshopCapabilityPolicy" }),
+      expect.objectContaining({ name: "PRINCIPAL_RESOLVER", entrypoint: "DistrictPrincipalResolver" }),
+    ]));
+    expect(backend.dependsOn).toContain("worker:educateos-district-worker");
     school.manifest.workers["workshop-backend"]!.bindings.pop();
     school.manifest.workers["workshop-backend"]!.bindings.pop();
     // Validate assets independently of activation, which is intentionally blocked above.

@@ -73,8 +73,8 @@ function loadDevVars(): void {
 loadDevVars();
 
 const schoolBuild = frontendProfile(process.env).variant === "access-school";
-if (schoolBuild && !process.env.DISTRICT_CONFIG) {
-  throw new Error("School dev requires district-owned DISTRICT_CONFIG; refusing unrestricted Workshop");
+if (schoolBuild && (!process.env.DISTRICT_CONFIG || !process.env.CF_ACCESS_ISS || !process.env.CF_ACCESS_AUD)) {
+  throw new Error("School dev requires district-owned DISTRICT_CONFIG and Access issuer/audience; refusing unrestricted Workshop");
 }
 const schoolPackages = schoolBuild ? ["educateos-district-worker", "educateos-external-mcp"] : [];
 
@@ -603,6 +603,7 @@ for (const gk of gatekeepers) {
   // without editing any config files.
   const OPTIONAL_FEATURE_VARS = [
     "DISABLE_PASSWORD_AUTH", "AUTH_GATEKEEPERS", "ENABLE_CLOUDFLARE_LIMITS", "PUBLIC_BASE_URL",
+    ...(schoolBuild ? ["CF_ACCESS_ISS", "CF_ACCESS_AUD"] : []),
     "DAILY_LLM_CALL_LIMIT", "MINIMUM_CLOUDFLARE_BALANCE",
     // Platform AI Gateway — makes the cross-provider model catalog available. CF_AI_GATEWAY
     // always needs CF_AI_GATEWAY_ACCOUNT_ID plus one transport: the WORKERS_AI binding

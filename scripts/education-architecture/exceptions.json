@@ -23,9 +23,9 @@
     },
     {
       "path": "packages/router/__tests__/router.test.ts",
-      "fingerprint": "f904394eb869f75b7d5463f38d0fc4ca21cbb0139d7a46b462b281a3b67e7a5d",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "414daf5fbc25255a8b161d2fc64c689bbfd1894bd24841c7a289197aff61ddbe",
+      "rationale": "Exact school MCP/discovery route tests require explicit binding and preserve generic assets behavior; prefix lookalikes do not route.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/router/cloudflare.config.ts",
@@ -82,6 +82,12 @@
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
     },
     {
+      "path": "packages/workshop-backend/__tests__/agent-retry.test.ts",
+      "fingerprint": "d8f9404ee3828e2ad55f4a52443f47859479a14f7962131796f42216a24e6a4a",
+      "rationale": "Regression refuses existing agent resume and next model/tool step under configured policy; generic execution remains unchanged.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
+    },
+    {
       "path": "packages/workshop-backend/__tests__/ai-call-guard.test.ts",
       "fingerprint": "da2fc160c753c4ed7adcc2f22820fedf988e9335a6581311f3e60e36b0d05b5e",
       "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
@@ -119,8 +125,8 @@
     },
     {
       "path": "packages/workshop-backend/__tests__/capability-policy.test.ts",
-      "fingerprint": "3a75c1f8873d8db108aa7e35fc0f5868c8fa6cef4ae062e86ead9c5d35c1fceb",
-      "rationale": "Protect optional generic behavior and fail-closed mandatory school authority, service failures, invalid decisions and persisted-principal mints.",
+      "fingerprint": "8f59bedb4ba2cd5215970d3907c0b3245581ef4e3c5c4c2ebd1f4af02a10a431",
+      "rationale": "Protect optional generic behavior and fail-closed mandatory school authority, service failures, invalid decisions persisted-principal mints and read-only scoped authoring discovery, with no client identity override.",
       "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
@@ -131,8 +137,8 @@
     },
     {
       "path": "packages/workshop-backend/__tests__/gadget-restore.test.ts",
-      "fingerprint": "dc4b8f23dc7539d5722f3395df015e0fabd6baa139f6b3c2dd750002ed4867c6",
-      "rationale": "Real workerd regression asserts null-outbound Gadget fetch fails with explicit internet access denial; does not claim complete capability/browser exfiltration safety.",
+      "fingerprint": "20534fe7c53dfac9fbba87134332a9d825745c56857a3adb0ca4772181872e87",
+      "rationale": "Real workerd regression asserts null-outbound Gadget fetch fails with explicit internet access denial; asserts execution refusal after policy activation and records surviving raw descendant callback as a rollout blocker, not a transitive-revocation pass.",
       "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
@@ -149,8 +155,14 @@
     },
     {
       "path": "packages/workshop-backend/__tests__/principal-sign-in.test.ts",
-      "fingerprint": "e3f18a7509264bfc3aa41f107beb25e2efa8efa6e99a30a58a52237331593201",
-      "rationale": "Protect principal sign-in against expired/missing Access expiry and malformed identities; added HTTP 503 for missing mandatory policy.",
+      "fingerprint": "55b69783466531a88e934c7f02f665bcef498a16379e8cdec996b743cbf3b390",
+      "rationale": "Protect principal sign-in against expired/missing Access expiry and malformed identities; required resolver disables all fallback authentication; added HTTP 503 for missing mandatory policy.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/spawned-agent-tools.test.ts",
+      "fingerprint": "10a6106128a514f7f5368df6f0a0811f5625f72e80a4d2557ec552d28996ae83",
+      "rationale": "Regression disables code-mode and spawned tools under policy, avoiding owner-authority substitution and credential capability creation.",
       "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
@@ -197,9 +209,9 @@
     },
     {
       "path": "packages/workshop-backend/src/agent.ts",
-      "fingerprint": "4f4592a27bfdfbd3a875ac24a84e53334a6748045ed630e5d329356f01eedacb",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "d73f45f73aa7c8dc59535326b63bee9508d16348abdcc3d2c311258650126851",
+      "rationale": "Unconditional execution restriction under configured policy at model/tool/loop boundaries until arbitrary RPC descendants can be transitively revoked. Not a revocation implementation.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-backend/src/ai-call-guard.ts",
@@ -233,9 +245,9 @@
     },
     {
       "path": "packages/workshop-backend/src/auth/config.ts",
-      "fingerprint": "30f5efb3c77b6bac855d698419750755f209a593c1c3c8f47beb8cbaf9685de4",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "de9631cc42b843cbe5d69831bdefd877225620a8cdcac213f0415a0312d64da4",
+      "rationale": "Explicit required principal mode disables password and gatekeeper fallbacks even when the resolver binding is missing.",
+      "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-backend/src/auth/principal-sign-in.ts",
@@ -245,14 +257,14 @@
     },
     {
       "path": "packages/workshop-backend/src/capability-policy.ts",
-      "fingerprint": "791a85eec976b1a9073dffa64da6cba744a23bf7840cc9f5e3bd4d9ddc4554df",
-      "rationale": "Small deployment-neutral authorization seam: explicit allow only, safe errors, mandatory backend flag validation. Generic missing-policy behavior is preserved.",
+      "fingerprint": "028e749973f715f0845d7d91edb5cf4fedd37fdd47d347729cc03b76ff4f9bdb",
+      "rationale": "Small deployment-neutral authorization seam: explicit allow only, safe errors, mandatory backend flag validation and unconditional policy-mode execution restriction pending transitive revocation. Generic missing-policy behavior is preserved.",
       "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-backend/src/env.d.ts",
-      "fingerprint": "0e48479c5eb133daab7ab0305cdf5345abdd58290be0574e06e98efebfcece85",
-      "rationale": "Declare optional authority service and explicit REQUIRE_WORKSHOP_CAPABILITY_POLICY flag; school release sets backend enforcement independently of UI flags.",
+      "fingerprint": "0013b61a522c7b7962dbb816523b97ee32d4aca1a21c9e84bceb7e1bffce20cd",
+      "rationale": "Declare optional authority and resolver services with explicit required principal mode and REQUIRE_WORKSHOP_CAPABILITY_POLICY flag; school release sets backend enforcement independently of UI flags.",
       "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
@@ -269,14 +281,14 @@
     },
     {
       "path": "packages/workshop-backend/src/overseer.ts",
-      "fingerprint": "0ff2fe5d705c4d2049c3996567066fee2ece4dd6129ff6265d68ea701fe07bce",
-      "rationale": "Recheck policy at sharing/publication/Gadget/agent boundaries with persisted client identity and workspace scope; required absent binding throws. Raw issued stubs remain a documented blocker.",
+      "fingerprint": "e97f16008058c95e9f5caa85d84bf788241e0841cb9be026d9c9368728570afe",
+      "rationale": "Recheck policy at sharing/publication/Gadget/agent boundaries with persisted client identity and workspace scope; required absent binding throws. Execution is now unconditionally disabled under policy, including agent and binding paths; raw pre-policy descendants remain a documented blocker.",
       "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-backend/src/server.ts",
-      "fingerprint": "8745596a2ab883a05eccd4e63f18b1772e3a66b465d3ce66f2907a12308a2c38",
-      "rationale": "Preserve source Blueprint context on workspace mint, expose advisory discovery and reject all HTTP activation with missing mandatory school authority. Access requires subject and expiry.",
+      "fingerprint": "aac66bd41ad157d7e05c2f909077c972ef68e37e7cf87585cd124128a1ffbf4e",
+      "rationale": "Preserve source Blueprint context on workspace mint, expose advisory discovery and reject all HTTP activation with missing mandatory school authority or resolver. Scoped discovery returns only data; Access requires subject and expiry.",
       "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
@@ -293,7 +305,7 @@
     },
     {
       "path": "packages/workshop-backend/src/user.ts",
-      "fingerprint": "f0bcb56ff08dcb07e1ce2344b06d7a2fe0e8399cfc07d9ce862c6447a9a1d718",
+      "fingerprint": "94b7f978bea79844785c432cde5763fb8cca242672b56c9f4c6bd05cc1398e64",
       "rationale": "Derive policy identity from stored user profile and check resource/model/connector/workspace/import mints before side effects; never trust caller role claims. Mandatory absent authority denies.",
       "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
@@ -317,14 +329,14 @@
     },
     {
       "path": "packages/workshop-shared/src/api.ts",
-      "fingerprint": "9277bfe93c390872c3b1c9e5ce52eea98212249f58bd5d2c6edcc2d659da2fc1",
-      "rationale": "Document advisory canCreateGadget RPC; server mutation enforcement remains mandatory and district adapter currently denies discovery for disabled authoring.",
+      "fingerprint": "7d86491dc89d0c06719b24549ea759d64a3f17442546ae428413adaaa8a2da05",
+      "rationale": "Document advisory canCreateGadget and scoped getWorkshopAuthoringCapability RPCs; server mutation enforcement remains mandatory and district adapter currently denies discovery for disabled authoring.",
       "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
       "path": "packages/workshop-shared/src/capability-policy.ts",
-      "fingerprint": "2b17b996ee8610e0239fd39ea40876bf7844058297336912bef7d5760705e2d9",
-      "rationale": "Document minimal data-only authorization descriptors/decisions and limits of raw-capability revocation. Unknown actions deny in district authority; no domain policy embedded in kernel.",
+      "fingerprint": "de70a5162d63e917bca26eee9cb776ea8c5821004ba4a28613cc2751bd7ce8f8",
+      "rationale": "Document minimal data-only authorization descriptors/decisions and authoring discovery targets and limits of raw-capability revocation. Unknown actions deny in district authority; no domain policy embedded in kernel.",
       "review": "docs/educateos/architecture/integration-evidence/README.md"
     },
     {
