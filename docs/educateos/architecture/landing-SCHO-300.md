@@ -207,3 +207,15 @@ video safety/unit tests, root `pnpm lint`, and workspace `vp run --no-cache` bui
 pass. All 24 feature heads and both original main heads remain ancestors; source asset bytes are
 unchanged. The earlier successful video E2E is supporting local evidence, not proof that the new
 Linux dependency installation passed. Await the current-head Forgejo run before landing.
+
+GitHub run 41047927944 exposed one further pilot-gate expectation mismatch, reproduced on the
+canonical integration: graduation retires the principal, so the current directory resolver returns
+`401 unauthenticated` before class authorization. The graduation scenario now requires that exact
+result for retained and freshly issued credentials, proves the student was authenticated before
+graduation, and retains the revoked-grant, retained-work and teacher-access assertions. The shared
+403/404 denial helper and production authentication code are unchanged. Its aggregate “Build and
+test” job failed only because the package test job failed.
+
+Graduation repair validation: full pilot-gate suite passes (142 tests, 23 existing TODOs), fresh
+pilot source/test typecheck passes, and root lint/build passes all 181 tasks. No production
+identity/policy code changed; these results still require new exact-head canonical CI.
