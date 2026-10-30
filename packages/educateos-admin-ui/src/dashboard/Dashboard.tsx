@@ -1,19 +1,12 @@
 import type { ReactNode } from "react";
 import { LayerCard, Text } from "@cloudflare/kumo";
 import type { RouteResponse } from "@educateos/api-client";
-import { count } from "../app/labels.ts";
+import { count, rosterProviderName } from "../app/labels.ts";
 import { LoadState } from "../app/LoadState.tsx";
 import { useLoad } from "../app/useLoad.ts";
 import type { DistrictConfigState } from "../app/useDistrictConfig.ts";
 import { documentFromDesired, type DesiredStateView } from "../configDocument.ts";
 import { formatUsdNano } from "../policies/policySettings.ts";
-
-const ROSTER_PROVIDERS: Record<string, string> = {
-  "oneroster-csv": "OneRoster CSV export",
-  "oneroster-api": "OneRoster connection",
-  clever: "Clever",
-  manual: "Entered by hand",
-};
 
 type Health = RouteResponse<"admin.health">;
 
@@ -92,7 +85,7 @@ export const Dashboard = ({ state }: { state: DistrictConfigState }) => {
             </li>
             <li>
               {rosterManaged(h.authority) ? (
-                <Tile title="Roster integration" value={head === undefined ? "Not set up" : ROSTER_PROVIDERS[head.desired.rostering.provider] ?? head.desired.rostering.provider}>
+                <Tile title="Roster integration" value={head === undefined ? "Not set up" : rosterProviderName(head.desired.rostering.provider)}>
                   {head?.desired.rostering.mode === "preview-before-apply" ? "Roster imports wait for an administrator's preview. " : ""}
                   {count(h.work.workspaces, "learning space")}, {count(h.work.submissions, "submission")} and {count(h.config.revisions, "configuration version")} on record.
                 </Tile>
