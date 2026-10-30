@@ -1,4 +1,5 @@
 import { hasCapabilityPolicy } from "./capability-policy.js";
+import type { WorkshopAuthoringTarget, WorkshopAuthoringCapability } from "@gadgets/workshop-shared/capability-policy";
 import { RpcStub, RpcTarget, newHttpBatchRpcResponse, newWebSocketRpcSession, RpcSessionOptions } from "capnweb";
 import { validateRpc } from "capnweb-validate";
 import type { JWTPayload } from "jose";
@@ -346,6 +347,10 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     // @ts-expect-error Cap'n Web RPC stubs and native RPC stubs are compatible but the type
     //     system doesn't know this.
     return this.#openWorkspaceInternal(id, shareKey, configureObservers);
+  }
+
+  getWorkshopAuthoringCapability(target: WorkshopAuthoringTarget): Promise<WorkshopAuthoringCapability> {
+    return this.#user.getWorkshopAuthoringCapability(target);
   }
 
   canCreateGadget(): Promise<boolean> {

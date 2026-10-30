@@ -1,3 +1,4 @@
+import type { WorkshopAuthoringTarget, WorkshopAuthoringCapability } from "./capability-policy";
 // This file defines the API spoken between the Gadgets Workshop service and the front-end UI.
 //
 // The UI is a good old "fat client" SPA. Why not use SSR? Because:
@@ -684,6 +685,13 @@ export interface AuthenticatedApi extends RpcTarget {
 
   /** Advisory creation visibility; server mutations independently enforce concrete scope. */
   canCreateGadget(): Promise<boolean>;
+
+  /**
+   * Read-only discovery for this authenticated principal and target operation/Blueprint.
+   * No policy binding, unavailable policy, or any non-allow decision returns allowed: false.
+   * An allow never grants authority: protected mutations must independently authorize their scope.
+   */
+  getWorkshopAuthoringCapability(target: WorkshopAuthoringTarget): Promise<WorkshopAuthoringCapability>;
 
   /**
    * Create a new workspace. It will start out titled "Untitled Workspace".
