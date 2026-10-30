@@ -27,7 +27,8 @@
     "capnweb": "catalog:",
     "capnweb-validate": "catalog:",
     "jose": "^6.2.12",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@gadgets/workshop-shared": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "catalog:",

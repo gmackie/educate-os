@@ -5,6 +5,7 @@
 
 declare namespace Cloudflare {
   interface Env {
+    WORKSHOP_POLICY: Service<import("../src/worker.ts").DistrictWorkshopCapabilityPolicy>;
     /** The district objects, so a test can restart one. */
     DISTRICT: DurableObjectNamespace<import("./worker.ts").DistrictObject>;
     /** The guard entrypoint, over a real service binding. */
