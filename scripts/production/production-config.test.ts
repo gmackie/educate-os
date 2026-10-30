@@ -533,19 +533,22 @@ test("the capability policy binding reaches the district's policy by its pinned 
   const backend = (instance: ProductionInstance) => configFor(build(instance), "workshop-backend");
   const policy = (instance: ProductionInstance) => backend(instance).services
       ?.filter(({ binding }) => binding === "WORKSHOP_CAPABILITY_POLICY");
-  // Production binds it (SCHO-309), and requires it, so losing it refuses rather than opens.
-  assert.equal(SCHOOLOS_GMAC_IO.capabilityPolicyBinding, true);
-  assert.deepEqual(policy(SCHOOLOS_GMAC_IO), [
+  // Production turns it on once the district's DISTRICT_CONFIG grants its staff (SCHO-309); bound,
+  // it is required, so losing it refuses rather than opens.
+  assert.equal(SCHOOLOS_GMAC_IO.capabilityPolicyBinding, false);
+  assert.deepEqual(policy(SCHOOLOS_GMAC_IO), []);
+  const bound = { ...SCHOOLOS_GMAC_IO, capabilityPolicyBinding: true };
+  assert.deepEqual(policy(bound), [
     { binding: "WORKSHOP_CAPABILITY_POLICY", service: "schoolos-district-worker", entrypoint: "DistrictWorkshopCapabilityPolicy" },
   ]);
-  assert.equal(backend(SCHOOLOS_GMAC_IO).vars?.REQUIRE_WORKSHOP_CAPABILITY_POLICY, "true");
+  assert.equal(backend(bound).vars?.REQUIRE_WORKSHOP_CAPABILITY_POLICY, "true");
   const { capabilityPolicyBinding: _flag, ...unbound } = SCHOOLOS_GMAC_IO;
   assert.deepEqual(policy(unbound), []);
   assert.equal(backend(unbound).vars?.REQUIRE_WORKSHOP_CAPABILITY_POLICY, undefined);
   // Revocation rechecks standing through the resolver, so the policy never binds without it.
-  assert.throws(() => build({ ...SCHOOLOS_GMAC_IO, principalBinding: "migration" }),
+  assert.throws(() => build({ ...bound, principalBinding: "migration" }),
       /capability policy binding needs principalBinding: "resolver"/);
-  const { principalBinding: _binding, ...noResolver } = SCHOOLOS_GMAC_IO;
+  const { principalBinding: _binding, ...noResolver } = bound;
   assert.throws(() => build(noResolver), /capability policy binding needs principalBinding: "resolver"/);
 });
 
