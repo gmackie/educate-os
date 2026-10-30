@@ -1,0 +1,24 @@
+{
+  "name": "@educateos/assessment-sdk",
+  "version": "0.1.0",
+  "description": "Portable assessment definitions, evidence and suggestion runtime with optional EducateOS adapters",
+  "type": "module",
+  "files": ["dist", "README.md"],
+  "exports": {
+    ".": { "types": "./src/index.ts", "default": "./src/index.ts" },
+    "./educateos": "./src/educateos.ts",
+    "./assessment-ci": "./src/assessmentCi.ts"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "./educateos": { "types": "./dist/educateos.d.ts", "default": "./dist/educateos.js" },
+      "./assessment-ci": { "types": "./dist/assessmentCi.d.ts", "default": "./dist/assessmentCi.js" }
+    }
+  },
+  "scripts": { "test:run": "vitest run", "quickstart": "node examples/quickstart.ts", "build:dist": "tsc -p tsconfig.build.json", "prepack": "pnpm build:dist" },
+  "dependencies": { "zod": "catalog:" },
+  "peerDependencies": { "@educateos/assessment": "^0.1.0", "@educateos/assessment-ci": "^0.1.0", "@educateos/contracts": "^0.1.0", "@educateos/learning-artifacts": "^0.1.0" },
+  "peerDependenciesMeta": { "@educateos/assessment": {"optional":true}, "@educateos/assessment-ci": {"optional":true}, "@educateos/contracts": {"optional":true}, "@educateos/learning-artifacts": {"optional":true} },
+  "devDependencies": { "@educateos/assessment": "workspace:*", "@educateos/assessment-ci": "workspace:*", "@educateos/contracts": "workspace:*", "@educateos/learning-artifacts": "workspace:*", "@gadgets/scripts": "workspace:*", "vitest": "catalog:" }
+}
