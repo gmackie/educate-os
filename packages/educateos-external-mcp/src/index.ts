@@ -45,14 +45,46 @@ export function createSchoolMcpApi(options: {
   tokens: SchoolTokenAuthority;
   /** Exact browser origins allowed; absent Origin permits non-browser clients. */
   allowedOrigins: readonly string[];
+  /** Canonical public origin and trusted authorization servers for RFC 9728 discovery. */
+  resource?: { origin: string; authorizationServers: readonly string[]; scopes: readonly string[] };
 }) {
   return {
     async fetch(request: Request): Promise<Response> {
+      const response = await serve(request);
+      const headers = new Headers(response.headers);
+      headers.set("cache-control", "no-store");
+      headers.set("x-content-type-options", "nosniff");
+      headers.set("vary", "Origin");
+      const origin = request.headers.get("origin");
+      if (origin && options.allowedOrigins.includes(origin)) {
+        headers.set("access-control-allow-origin", origin);
+        headers.set("access-control-expose-headers", "WWW-Authenticate, MCP-Protocol-Version");
+      }
+      return new Response(response.body, { status: response.status, headers });
+    },
+  };
+  async function serve(request: Request): Promise<Response> {
       const path = new URL(request.url).pathname;
-      if (path !== "/mcp" && path !== "/token") return json({ error: "not_found" }, 404);
+      if (options.resource && new URL(request.url).origin !== options.resource.origin)
+        return json({ error: "forbidden" }, 403);
       const origin = request.headers.get("origin");
       if (origin !== null && !options.allowedOrigins.includes(origin))
         return json({ error: "forbidden" }, 403);
+      if (options.resource && (path === "/.well-known/oauth-protected-resource" || path === "/.well-known/oauth-protected-resource/mcp")) {
+        if (request.method !== "GET") return new Response(null, { status: 405, headers: { allow: "GET" } });
+        return json({ resource: `${options.resource.origin}/mcp`, authorization_servers: options.resource.authorizationServers,
+          scopes_supported: options.resource.scopes, bearer_methods_supported: ["header"] });
+      }
+      if (path !== "/mcp" && path !== "/token") return json({ error: "not_found" }, 404);
+      if (request.method === "OPTIONS" && origin !== null) {
+        const requested = (request.headers.get("access-control-request-headers") ?? "").toLowerCase().split(",").map((v) => v.trim()).filter(Boolean);
+        const allowed = ["authorization", "content-type", "mcp-protocol-version"];
+        if (request.headers.get("access-control-request-method") !== "POST" || requested.some((h) => !allowed.includes(h)))
+          return json({ error: "forbidden" }, 403);
+        return new Response(null, { status: 204, headers: {
+          "access-control-allow-methods": "POST", "access-control-allow-headers": allowed.join(", "),
+        } });
+      }
       if (request.method !== "POST")
         return new Response(null, { status: 405, headers: { allow: "POST" } });
       if (request.headers.get("content-type")?.split(";", 1)[0]?.trim() !== "application/json")
@@ -82,7 +114,9 @@ export function createSchoolMcpApi(options: {
       } catch {
         return new Response(null, {
           status: 401,
-          headers: { "www-authenticate": "Bearer", "cache-control": "no-store" },
+          headers: { "www-authenticate": options.resource
+            ? `Bearer resource_metadata="${options.resource.origin}/.well-known/oauth-protected-resource/mcp", scope="${options.resource.scopes.join(" ")}"`
+            : "Bearer", "cache-control": "no-store" },
         });
       }
       const accept = request.headers.get("accept") ?? "";
@@ -138,8 +172,7 @@ export function createSchoolMcpApi(options: {
         result = {};
       } else return rpcError(id, -32601, "Method not found");
       return json({ jsonrpc: "2.0", id, result });
-    },
-  };
+  }
 }
 
 async function limitedBody(request: Request): Promise<string> {

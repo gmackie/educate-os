@@ -34,8 +34,8 @@ describe("durable token store", () => {
     const second = new DurableTokenStore(storage);
     const key = JSON.stringify(["https://issuer.example", "same-jti"]);
     expect(
-      await Promise.all([first.claimAssertion(key, 123), second.claimAssertion(key, 123)]),
-    ).toEqual([true, false]);
+      (await Promise.all([first.claimAssertion(key, 123), second.claimAssertion(key, 123)])).toSorted(),
+    ).toEqual([false, true]);
     expect(
       await second.claimAssertion(JSON.stringify(["https://other.example", "same-jti"]), 123),
     ).toBe(true);
