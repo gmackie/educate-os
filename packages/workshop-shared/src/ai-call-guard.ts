@@ -150,11 +150,18 @@ export type AiCallTextPart = Extract<AiCallMessagePart, { type: "text" }>;
 
 /**
  * What a model's response shows its reader, passed to {@link AiCallGuard.screenModelOutput}: its
- * text and its reasoning that is not redacted, as text parts in order. Tool calls are not part of it.
+ * text, its reasoning that is not redacted, and each tool call it makes (as `name(arguments)`, the
+ * arguments as JSON, since they can carry text that ends up shown, in a file or page), as text
+ * parts in order.
  */
 export type AiCallModelOutput = {
-  /** The response's text, never empty: a response with no text is released unscreened. */
+  /** The response's text, never empty: a response with none of it is released unscreened. */
   parts: AiCallTextPart[];
+  /**
+   * Who the admitted call was made for, as its {@link AiCallDescriptor.initiator} said, so the
+   * output is screened for the same reader. A Workshop that predates it omits it.
+   */
+  initiator?: AiCallDescriptor["initiator"];
 };
 
 /** The guard's answer to {@link AiCallGuard.screenModelOutput}. */

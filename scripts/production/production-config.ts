@@ -489,7 +489,9 @@ export function buildProductionConfigs({
       }
       config.ai = { binding: "WORKERS_AI" };
       config.services = [...backendGatekeeperServices(gatekeepers, baseUrl), backendAiGuardBinding(), ...principalServices(instance)];
-      withVars(pkgName, config, { PUBLIC_BASE_URL: baseUrl, ...oneOrigin ? { PUBLIC_BASE_PATH: ONE_ORIGIN_BASE_PATH } : {}, ...vars });
+      // Every instance binds the guard, so losing the binding must deny model calls rather than
+      // run them unguarded (SCHO-307).
+      withVars(pkgName, config, { PUBLIC_BASE_URL: baseUrl, ...oneOrigin ? { PUBLIC_BASE_PATH: ONE_ORIGIN_BASE_PATH } : {}, REQUIRE_AI_CALL_GUARD: "true", ...vars });
     } else if (pkgName === "router") {
       config.services = routerServices(gatekeepers);
       config.routes = [{ pattern: instance.hostname, custom_domain: true }];

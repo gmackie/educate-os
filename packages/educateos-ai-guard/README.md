@@ -60,7 +60,9 @@ The release manifest carries it as the entry's `crons`.
 - guard profiles: a Hall Monitor policy profile revision, whether input is moderated, a
   `failureMode`, and `outputModeration` (`required`, `optional` or `off`, default `off`, mirroring
   the Hall Monitor profile), one for each audience class (`student-k5`, `student-6-8`, `student-9-12`,
-  `educator`);
+  `educator`). A profile students are moderated under (each `student-*` class, or one a static
+  binding gives a student) must moderate input and set `outputModeration: "required"`, or the
+  config is refused and every call denied (SCHO-307);
 - when no district app is bound, the district's workspaces and its administrator-confirmed
   Workshop user links (see below);
 - `contextSource`, `district` by default. `static` reads hand-written `principals` bindings
@@ -240,7 +242,8 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
 - **Output screening.** A language-model call whose profile's `outputModeration` is `required` is
   admitted with `screenOutput`, so the Workshop buffers its response and calls
   `screenModelOutput(callId, output)` before showing any of it. `optional` and `off` stream
-  unscreened. The guard finds the call by its generative reservation, which names the principal
+  unscreened. The output is the response's text, its unredacted reasoning and each tool call it
+  makes, as `name(arguments)`, since arguments can carry text into a file or page (SCHO-307). The guard finds the call by its generative reservation, which names the principal
   and workspace (so a principal may be bound to only one Workshop user), and evaluates each
   32,000-character chunk as `interaction.output` under check ID `<callId>.o.c<j>`, funded from the
   safety pool like an input check. `allow` and `coach` release the response; `hold` and `block`
@@ -252,7 +255,16 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   IDs, decisions, Hall Monitor reason codes and error codes only, and a test spies on the console
   to check this. Hall Monitor error messages aren't logged either, only their codes.
 - **Initiators.** `user` and `gadget` initiators resolve by Workshop user ID; a gadget's calls are
-  its owner's. An `agent` initiator names a model, not a person, so it is refused.
+  billed to its owner. An `agent` initiator names a model, not a person, so it is refused.
+- **Gadget calls** (SCHO-307). Whoever a gadget is shown to may be typing into it (a student using
+  a teacher's shared gadget, say), and the Workshop cannot tell who. So a `gadget` initiator's
+  calls are moderated, input and output, as for the youngest students: the `student-k5` profile and
+  grade band `K-2`, failing closed. A config without that profile keeps a student owner's own
+  profile and refuses anyone else's gadget calls. The Workshop names the initiator again when it
+  asks for output screening, so the reply is screened for the same reader.
+- **Images** (SCHO-307). Hall Monitor screens text only, so a student's message carrying an image
+  is denied (`image_unscreened`, with the `imageUnscreened` message) rather than reaching the
+  model unread. An educator's image proceeds.
 - **Nightly reconciliation** (`src/reconciliation.ts`). The Cron Trigger runs two idempotent
   steps against the district ledger:
   1. With gateway logs readable, up to 200 settled requests whose cost is still unknown, and whose
@@ -282,7 +294,8 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   That needs per-chat state in the guard, or a Workshop signal for the turn.
 - Telling the guard whether work is graded (the descriptor carries no assignment context), so
   `answerAssistance` can apply without Hall Monitor's `academic_integrity.*` codes.
-- Moderating attachments. Image parts are skipped; Hall Monitor accepts them only as digests.
+- Moderating attachments. Hall Monitor accepts images only as digests, so students' images are
+  refused until it can screen them.
 - Teaching the hosted deploy service the `service` kind and its `backendBinding`. The EducateOS
   district installer already does (`services` in the install config, SCHO-131; see
   `docs/educateos/installer-permissions.md`), but the upstream Cloudflare deploy service is external
