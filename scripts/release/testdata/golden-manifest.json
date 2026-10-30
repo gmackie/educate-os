@@ -261,6 +261,89 @@
       "singleton": true,
       "vars": {}
     },
+    "gatekeeper-clever": {
+      "bindings": [
+        {
+          "name": "CLIENT_ID",
+          "text": "$SECRET(CLIENT_ID)",
+          "type": "secret_text"
+        },
+        {
+          "name": "CLIENT_SECRET",
+          "text": "$SECRET(CLIENT_SECRET)",
+          "type": "secret_text"
+        },
+        {
+          "name": "CLEVER_DISTRICT_TOKENS",
+          "text": "$SECRET(CLEVER_DISTRICT_TOKENS)",
+          "type": "secret_text"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
+      "inputs": [
+        {
+          "consoleUrl": "https://apps.clever.com",
+          "help": "Users connect by signing in with Clever. The sign-in only proves who they are; their data is read with the district's own token below.",
+          "kind": "secret",
+          "label": "Clever app client ID",
+          "name": "CLIENT_ID",
+          "redirectUriTemplate": "{PUBLIC_BASE_URL}/gatekeeper/clever/oauth",
+          "setupSteps": [
+            "In the Clever developer dashboard, open your district app's Settings.",
+            "Add the redirect URI below to the app's OAuth redirect URIs.",
+            "Copy the app's client ID and client secret here."
+          ]
+        },
+        {
+          "kind": "secret",
+          "label": "Clever app client secret",
+          "name": "CLIENT_SECRET"
+        },
+        {
+          "consoleUrl": "https://apps.clever.com",
+          "help": "A JSON object mapping each Clever district ID to that district's district-app bearer token, e.g. {\"5f…\": \"token\"}. Every read and gradebook change is made with it, scoped to what the signed-in user may reach; agents never see it. Assignments and grades need Clever LMS Connect, which Clever offers under a Clever Complete agreement.",
+          "kind": "secret",
+          "label": "District tokens",
+          "name": "CLEVER_DISTRICT_TOKENS"
+        }
+      ],
+      "installable": true,
+      "kind": "gatekeeper",
+      "mainModule": "clever.js",
+      "migrations": [
+        {
+          "new_sqlite_classes": [
+            "UserAccount",
+            "CleverGatekeeperImpl",
+            "CleverDistrictLedger"
+          ],
+          "tag": "v0"
+        }
+      ],
+      "modules": [
+        {
+          "name": "clever.js",
+          "r2Key": "blobs/modules/88d763152033aa4c262f1029b0df4ae057102cd320ca01ce711f4bbafa18c427",
+          "sha256": "88d763152033aa4c262f1029b0df4ae057102cd320ca01ce711f4bbafa18c427",
+          "size": 59,
+          "type": "esm"
+        }
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "shortName": "clever",
+      "vars": {
+        "BASE_URL": "$PUBLIC_BASE_URL/gatekeeper/clever"
+      }
+    },
     "gatekeeper-cloudflare": {
       "bindings": [
         {
@@ -781,6 +864,12 @@
             "GoogleClassroomGatekeeperImpl"
           ],
           "tag": "v9"
+        },
+        {
+          "new_sqlite_classes": [
+            "GoogleClassroomStudentGatekeeperImpl"
+          ],
+          "tag": "v10"
         }
       ],
       "modules": [

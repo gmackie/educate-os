@@ -1,38 +1,22 @@
-// The demo's district: the real district application over in-memory stores, running in the page,
-// seeded as the harness seeds its districts. Nothing here reaches the network. Imports read the
-// harness's synthetic web, and no AI is funded or reviewed, so no request ever leaves for a model.
-import { createDistrictApiClient, type DistrictApiClient } from "@educateos/api-client";
-import { catalogSeedRelease, type CatalogRelease } from "@educateos/catalog";
-import type { DistrictDirectorySnapshot, PrincipalId, VerifiedIdentity } from "@educateos/contracts";
+// Northfield, the demo's first district: the real district application over in-memory stores,
+// rostered by OneRoster and seeded as the harness seeds its districts. Imports read the harness's
+// synthetic web, and no AI is funded or reviewed, so no request ever leaves for a model.
+import type { DistrictApiClient } from "@educateos/api-client";
+import type { PrincipalId } from "@educateos/contracts";
 import { createDistrictApp, inMemoryDistrictStores } from "@educateos/district-app";
 import { NORTHFIELD } from "@educateos/fixtures";
 import { demoWeb, seedDistrict } from "@educateos/harness";
-
-/** The four people a visitor can be. */
-export type PersonaId = "student" | "teacher" | "guardian" | "admin";
-
-/** Someone a visitor can be, and what they will see. */
-export interface Persona {
-  id: PersonaId;
-  /** Their name in the district. */
-  name: string;
-  /** What they are, such as "Grade 9 student". */
-  role: string;
-  /** One line on what they can do here. */
-  description: string;
-  /** Their IdP subject, which is what the demo signs them in as. */
-  subject: string;
-}
+import { clientsOver, personaVerifier, seedRelease, verifySeedRelease, type DemoDistrict, type Persona, type PersonaId } from "./shared.ts";
 
 /** The guardian the demo onboards for its student, who is not on the roster. */
 const GUARDIAN = { subject: "nf-g-3001", displayName: "Grace Okafor" } as const;
 
 /**
  * Who a visitor can be in Northfield, in the order the picker offers them. Known before the
- * district boots, so the picker shows at once; {@link bootDemoDistrict} checks the seed made them
+ * district boots, so the picker shows at once; {@link bootNorthfield} checks the seed made them
  * the people it seeded work for.
  */
-export const PERSONAS: readonly Persona[] = [
+export const NORTHFIELD_PERSONAS: readonly Persona[] = [
   {
     id: "student",
     name: "Amara Okafor",
@@ -63,19 +47,8 @@ export const PERSONAS: readonly Persona[] = [
   },
 ];
 
-/** A booted, seeded demo district. */
-export interface DemoDistrict {
-  /**
-   * A client signed in as `subject`. `onResponse` sees each request it sends and the district's
-   * answer, which is how the demo notices a visitor finishing a step of a journey.
-   */
-  clientFor(subject: string, onResponse?: (request: Request, response: Response) => void): DistrictApiClient;
-  /** The district application itself, for serving it over HTTP (the mobile dev district). */
-  fetch(request: Request): Promise<Response>;
-}
-
-/** How {@link bootDemoDistrict} serves people other than the demo's own pages. */
-export interface DemoDistrictOptions {
+/** How {@link bootNorthfield} serves people other than the demo's own pages. */
+export interface NorthfieldOptions {
   /** Turns on the device API and phone pairing (`/api/m`, `/api/pair`, `/connect-phone`). */
   deviceTokenSecret?: string;
   /**
@@ -85,63 +58,21 @@ export interface DemoDistrictOptions {
   subjectOf?: (request: Request) => string | undefined;
 }
 
-/** The base URL the UIs' clients address. It is never fetched: requests go to the in-page app. */
-const DEMO_ORIGIN = "https://district.demo.educateos.invalid";
-
-const seedReleases = new Map<string, Promise<CatalogRelease>>();
-
 /**
- * The catalog's own release of a framework, built once per page. Building one takes seconds, and
- * the district's default verifier rebuilds it on every install, which the demo, booting a fresh
- * district on every reset, cannot afford; this verifies the same thing, the seed's digest.
+ * Boots Northfield and seeds it, without funding pools, a model catalog or a content reviewer: AI
+ * is off, and every AI surface reports that it is not set up. `fetch` is the district application
+ * itself, for serving it over HTTP (the mobile dev district).
  */
-function seedRelease(key: string): Promise<CatalogRelease> {
-  let release = seedReleases.get(key);
-  if (release === undefined) {
-    release = catalogSeedRelease(key);
-    seedReleases.set(key, release);
-  }
-  return release;
-}
-
-/**
- * The demo has no sign-in: a request's bearer is the IdP subject of the persona the visitor
- * picked, and this verifier takes it as that person's verified identity at the district's issuer.
- * Resolving it to a principal is still the district's own resolver's job, so a guardian who has not
- * yet been approved is refused exactly as they would be anywhere.
- */
-const personaVerifier = (directory: DistrictDirectorySnapshot, subjectOf?: (request: Request) => string | undefined) => async (request: Request): Promise<VerifiedIdentity | undefined> => {
-  const header = request.headers.get("authorization") ?? "";
-  const subject = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : subjectOf?.(request);
-  if (!subject) return undefined;
-  return { issuer: directory.district.trustedIssuers[0]!, subject, credential: "person" };
-};
-
-/**
- * Boots the district application for `directory` and seeds it, without funding pools, a model
- * catalog or a content reviewer: AI is off, and every AI surface reports that it is not set up.
- */
-export async function bootDemoDistrict(options: DemoDistrictOptions = {}): Promise<DemoDistrict> {
+export async function bootNorthfield(options: NorthfieldOptions = {}): Promise<DemoDistrict & { fetch(request: Request): Promise<Response> }> {
   const directory = NORTHFIELD;
   const app = await createDistrictApp({
     stores: inMemoryDistrictStores(directory),
     verifyRequest: personaVerifier(directory, options.subjectOf),
     ...(options.deviceTokenSecret === undefined ? {} : { deviceTokenSecret: options.deviceTokenSecret }),
     importFetch: demoWeb,
-    verifyCatalogRelease: async (release) => {
-      const seed = await seedRelease(release.frameworkKey);
-      return seed.version === release.version && seed.contentDigest === release.contentDigest;
-    },
+    verifyCatalogRelease: verifySeedRelease,
   });
-  const clientFor = (subject: string, onResponse?: (request: Request, response: Response) => void): DistrictApiClient => createDistrictApiClient({
-    baseUrl: DEMO_ORIGIN,
-    token: subject,
-    fetch: async (request) => {
-      const response = await app.fetch(request);
-      onResponse?.(request, response);
-      return response;
-    },
-  });
+  const clientFor = clientsOver((request) => app.fetch(request));
   const signInAs = async (subject: string) => clientFor(subject);
 
   const seeded = await seedDistrict(directory, app, signInAs);
@@ -155,12 +86,12 @@ export async function bootDemoDistrict(options: DemoDistrictOptions = {}): Promi
   await onboardGuardian(admin, clientFor(GUARDIAN.subject), seeded.student.id);
 
   const seededAs: Record<Exclude<PersonaId, "guardian">, PrincipalId> = { student: seeded.student.id, teacher: seeded.teacher.id, admin: seeded.admin.id };
-  for (const persona of PERSONAS) {
+  for (const persona of NORTHFIELD_PERSONAS) {
     if (persona.id !== "guardian" && subjectOf(seededAs[persona.id]) !== persona.subject) {
       throw new Error(`the demo seed's ${persona.id} is not ${persona.name}`);
     }
   }
-  return { clientFor, fetch: (request) => app.fetch(request) };
+  return { key: "northfield", clientFor, fetch: (request) => app.fetch(request) };
 }
 
 /**

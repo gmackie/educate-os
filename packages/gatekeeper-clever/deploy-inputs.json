@@ -1,0 +1,27 @@
+[
+  {
+    "name": "CLIENT_ID",
+    "kind": "secret",
+    "label": "Clever app client ID",
+    "help": "Users connect by signing in with Clever. The sign-in only proves who they are; their data is read with the district's own token below.",
+    "consoleUrl": "https://apps.clever.com",
+    "setupSteps": [
+      "In the Clever developer dashboard, open your district app's Settings.",
+      "Add the redirect URI below to the app's OAuth redirect URIs.",
+      "Copy the app's client ID and client secret here."
+    ],
+    "redirectUriTemplate": "{PUBLIC_BASE_URL}/gatekeeper/clever/oauth"
+  },
+  {
+    "name": "CLIENT_SECRET",
+    "kind": "secret",
+    "label": "Clever app client secret"
+  },
+  {
+    "name": "CLEVER_DISTRICT_TOKENS",
+    "kind": "secret",
+    "label": "District tokens",
+    "help": "A JSON object mapping each Clever district ID to that district's district-app bearer token, e.g. {\"5f…\": \"token\"}. Every read and gradebook change is made with it, scoped to what the signed-in user may reach; agents never see it. Assignments and grades need Clever LMS Connect, which Clever offers under a Clever Complete agreement.",
+    "consoleUrl": "https://apps.clever.com"
+  }
+]
