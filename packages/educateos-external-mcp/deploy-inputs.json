@@ -1,0 +1,4 @@
+[
+  { "name": "MCP_CONFIG", "kind": "var", "label": "District MCP configuration (JSON)",
+    "help": "District-owned origin, issuer, directory and allowed origins. See external-mcp README. Required for school release activation." }
+]

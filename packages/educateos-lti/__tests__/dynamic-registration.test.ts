@@ -2,9 +2,10 @@
 // pending registration that launches nothing until a district administrator approves it.
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { DistrictId, OfferingId, PrincipalId } from "@educateos/contracts";
+import { DistrictId, EducateOsError, OfferingId, PrincipalId } from "@educateos/contracts";
 import {
   approvedRegistration,
+  assertPlatformServedByIssuer,
   createLtiHandler,
   DynamicRegistration,
   InMemoryPendingRegistrationStore,
@@ -188,6 +189,45 @@ describe("LTI dynamic registration (SCHO-59)", () => {
     const invited = await plain.registration.issueInvitation(NF, ADMIN);
     expect(await rejection(plain.open(invited.url, { openid_configuration: "http://canvas.northfield.example/config" }))).toBe("validation-failed");
     expect(plain.requests).toEqual([]);
+  });
+
+  it("refuses a configuration that claims an issuer it is not served from, before registering (SCHO-306)", async () => {
+    for (const overrides of [
+      // Another platform's issuer, or the district's own sign-in, with the attacker's keys.
+      { issuer: "https://canvas.instructure.com" },
+      { issuer: "https://northfield.cloudflareaccess.com" },
+      // The right issuer, but keys or endpoints somewhere else.
+      { jwks_uri: "https://attacker.example/jwks" },
+      { authorization_endpoint: "https://attacker.example/authorize" },
+      { token_endpoint: "https://canvas.northfield.example.attacker.example/token" },
+      { registration_endpoint: "https://attacker.example/register" },
+    ]) {
+      const world = createRegistration({ config: () => Response.json(openIdConfiguration(overrides)) });
+      const { url } = await world.registration.issueInvitation(NF, ADMIN);
+      expect(await rejection(world.open(url))).toBe("validation-failed");
+      // The registration token never reaches any registration endpoint, and nothing is pending.
+      expect(world.requests.map((request) => request.url)).toEqual([CONFIG_URL]);
+      expect(await world.pending.list()).toEqual([]);
+    }
+  });
+
+  it("accepts Canvas Cloud's split hosts for its issuer, and no look-alikes", () => {
+    const cloud = {
+      issuer: "https://canvas.instructure.com",
+      authorization_endpoint: "https://sso.canvaslms.com/api/lti/authorize_redirect",
+      token_endpoint: "https://sso.canvaslms.com/login/oauth2/token",
+      jwks_uri: "https://sso.canvaslms.com/api/lti/security/jwks",
+      registration_endpoint: "https://northfield.instructure.com/api/lti/registrations",
+    };
+    expect(() => assertPlatformServedByIssuer("https://northfield.instructure.com/api/lti/security/openid-configuration", cloud)).not.toThrow();
+    for (const [url, platform] of [
+      ["https://northfield.instructure.com.attacker.example/config", cloud],
+      ["https://instructure.com/config", cloud],
+      ["https://northfield.instructure.com/config", { ...cloud, jwks_uri: "https://attacker.example/jwks" }],
+      ["https://northfield.instructure.com:8443/config", cloud],
+    ] as const) {
+      expect(() => assertPlatformServedByIssuer(url, platform)).toThrow(EducateOsError);
+    }
   });
 
   it("never follows a redirect and never repeats the platform's error body", async () => {

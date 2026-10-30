@@ -1,3 +1,4 @@
+import { GadgetAssessmentBinding, sameGadgetAssessmentPin, type GadgetAssessmentStore } from "./gadget-assessment.ts";
 // Durable stores for one district (SCHO-171), published as their own entry point
 // (`@educateos/district-app/durable-stores`). Every `DistrictAppStores` member lives in one
 // SQLite-backed Durable Object's storage: the domain packages' own Durable Object stores where they
@@ -86,7 +87,7 @@ import {
 } from "@educateos/policy";
 import { DurableObjectPolicyAuditSink } from "@educateos/policy/durable-object-audit-sink";
 import { oneroster } from "@educateos/integrations";
-import { WorkshopUserLink } from "@educateos/identity";
+import { assertWorkshopUserLinkAvailable, WorkshopUserLink } from "@educateos/identity";
 import {
   GuardianInvitation,
   GuardianInvitationRedemption,
@@ -419,7 +420,12 @@ export class DurableObjectWorkshopUserLinkStore implements WorkshopUserLinkStore
 
   async add(link: WorkshopUserLink): Promise<void> {
     const json = JSON.stringify(WorkshopUserLink.parse(link));
-    this.#tables.transaction((sql) => sql.exec(`INSERT INTO ${DISTRICT_TABLES.workshopUserLinks} (link_json) VALUES (?)`, json));
+    this.#tables.transaction((sql) => {
+      const existing = sql.exec(`SELECT link_json FROM ${DISTRICT_TABLES.workshopUserLinks} ORDER BY seq`).toArray()
+        .map((row) => parseStored(WorkshopUserLink, row.link_json, "a Workshop user link"));
+      assertWorkshopUserLinkAvailable(existing, link);
+      sql.exec(`INSERT INTO ${DISTRICT_TABLES.workshopUserLinks} (link_json) VALUES (?)`, json);
+    });
   }
 }
 
@@ -1153,6 +1159,7 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     artifactRecords: new DurableObjectArtifactRecordStore(storage),
     artifactContent: new BackendArtifactStore({ text: new DurableObjectInlineTextTable(storage), r2: new DurableObjectBlobBucket(storage) }),
     assessment: new DurableObjectAssessmentRecordStore(storage),
+    gadgetAssessments: new DurableObjectGadgetAssessmentStore(storage),
     rubrics: new DurableObjectRubricReleaseStore(storage),
     assessmentRuns: new DurableObjectAssessmentRunStore(storage),
     contentStudio: new DurableObjectContentStudioStorage(storage),
@@ -1742,6 +1749,32 @@ export class DurableObjectQuizStorage implements QuizStorage {
     });
     if (!parsed.success) throw new DistrictStoreCorruptionError(`${what} do not match their schema`);
     return parsed.data;
+  }
+}
+
+/** Immutable assignment pins persisted across Worker restarts. */
+export class DurableObjectGadgetAssessmentStore implements GadgetAssessmentStore {
+  readonly #storage: DistrictSqlStorage;
+  constructor(storage: DistrictSqlStorage) {
+    this.#storage = storage;
+    storage.sql.exec("CREATE TABLE IF NOT EXISTS educateos_gadget_assessments (assignment_id TEXT PRIMARY KEY, binding_json TEXT NOT NULL)");
+  }
+  async get(assignmentId: AssignmentId): Promise<GadgetAssessmentBinding | undefined> {
+    const [row] = this.#storage.sql.exec("SELECT binding_json FROM educateos_gadget_assessments WHERE assignment_id = ?", assignmentId).toArray();
+    return row === undefined ? undefined : parseStored(GadgetAssessmentBinding, row.binding_json, "a Gadget assessment binding");
+  }
+  async bind(raw: GadgetAssessmentBinding): Promise<GadgetAssessmentBinding> {
+    const binding = GadgetAssessmentBinding.parse(raw);
+    return this.#storage.transactionSync(() => {
+      const [row] = this.#storage.sql.exec("SELECT binding_json FROM educateos_gadget_assessments WHERE assignment_id = ?", binding.assignmentId).toArray();
+      if (row !== undefined) {
+        const current = parseStored(GadgetAssessmentBinding, row.binding_json, "a Gadget assessment binding");
+        if (!sameGadgetAssessmentPin(current, binding)) throw new EducateOsError("conflict", "This assignment already pins another Gadget assessment release.");
+        return current;
+      }
+      this.#storage.sql.exec("INSERT INTO educateos_gadget_assessments (assignment_id, binding_json) VALUES (?, ?)", binding.assignmentId, JSON.stringify(binding));
+      return binding;
+    });
   }
 }
 

@@ -33,7 +33,8 @@ export interface AccessSignInMigration {
   plan: MigrationPlan;
   /**
    * Stores a pending link for a district administrator to approve or reject. Until one approves
-   * it (and the resolver is rebuilt from the new directory), the sign-in keeps being refused.
+   * it, the sign-in keeps being refused. Approval alone does not adopt Workshop data: the
+   * migration entry must remain pending until that data has been transferred and verified.
    */
   recordPendingLink(link: PendingIdentityLink): Promise<void>;
 }
@@ -66,8 +67,8 @@ const normalizeEmail = (email: string) => email.trim().toLowerCase();
  * `identityFromAccessPayload` and `createDirectoryPrincipalResolver`. A Worker entrypoint bound as
  * `PRINCIPAL_RESOLVER` delegates its `resolveAccessSignIn` here.
  *
- * - A sign-in whose `(issuer, subject)` is linked to a person resolves to that principal. Email
- *   plays no part.
+ * - A sign-in whose `(issuer, subject)` is linked to an active person resolves to that principal,
+ *   unless its Workshop data adoption is still pending. Email plays no part.
  * - An unlinked sign-in whose email matches an `exact-single` migration entry records a pending
  *   link through `migration.recordPendingLink` and answers `adoption-pending`. It is never linked
  *   here: a district administrator must approve the link.
@@ -85,8 +86,12 @@ export function createAccessSignInResolver(options: AccessSignInResolverOptions)
     throw new EducateOsError("validation-failed", "The migration plan belongs to another district.");
   }
   const adoptions = new Map<string, PendingWorkshopUserAdoption>();
+  const adoptingPrincipals = new Set<PrincipalId>();
   for (const entry of migration?.plan.entries ?? []) {
-    if (entry.outcome === "exact-single") adoptions.set(normalizeEmail(entry.email), entry.pendingAdoption);
+    if (entry.outcome === "exact-single") {
+      adoptions.set(normalizeEmail(entry.email), entry.pendingAdoption);
+      adoptingPrincipals.add(entry.pendingAdoption.principalId);
+    }
   }
 
   return {
@@ -98,6 +103,12 @@ export function createAccessSignInResolver(options: AccessSignInResolverOptions)
       try {
         identity = identityFromAccessPayload({ iss: issuer, sub: subject }, access);
         const { principalId } = await resolver.resolve(identity);
+        // Linking the identity is not adoption of the existing Workshop data. Keep the
+        // principal blocked until the migration owner has transferred and verified that data
+        // and removed its pending entry, even if the IdP email has changed or disappeared.
+        if (adoptingPrincipals.has(principalId)) {
+          return { outcome: "adoption-pending" };
+        }
         return { outcome: "resolved", principalId, displayName: displayNames.get(principalId)! };
       } catch (err) {
         if (!isUnauthenticated(err)) throw err;

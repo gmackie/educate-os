@@ -155,7 +155,7 @@ const ORIGIN = "https://workshop.example";
 const ISS = "https://team.cloudflareaccess.example";
 
 function jwt(claims: Record<string, unknown>): string {
-  return new TextEncoder().encode(JSON.stringify({ iss: ISS, aud: "audience", ...claims }))
+  return new TextEncoder().encode(JSON.stringify({ iss: ISS, aud: "audience", exp: Math.floor(Date.now() / 1000) + 3600, ...claims }))
       .toBase64({ alphabet: "base64url", omitPadding: true });
 }
 
@@ -232,8 +232,8 @@ async function legacyUser(email: string, threads: number) {
   const user = env.TEST_USER.getByName(email);
   await user.authenticateFromCfAccess(email, true);
   for (let i = 0; i < threads; i++) {
-    await user.newGadget(`gadget-${RUN}-${email}-${i}`, `Thread ${i}`);
-    await user.setGadgetLastActive(`gadget-${RUN}-${email}-${i}`, new Date(), undefined);
+    await user.newWorkspace(`gadget-${RUN}-${email}-${i}`, `Thread ${i}`);
+    await user.setWorkspaceLastActive(`gadget-${RUN}-${email}-${i}`, new Date(), undefined);
   }
   // The DO mirrors its profile into the directory in the background; record it directly too.
   await env.TEST_USER_DIRECTORY.getByName("").syncUser({ id: email, name: email.split("@")[0]! }, 1);
@@ -283,7 +283,7 @@ describe("the principal migration route", () => {
     // account, threads and all, and its DO keeps the email name; the old DO is untouched.
     const teacher = await signInAs({ resolver: true }, jwt({ sub: `sub-teacher-${RUN}`, email: TEACHER }));
     expect(teacher.id).toBe(TEACHER);
-    await expect(env.TEST_USER.getByName(TEACHER).listGadgets()).resolves.toHaveLength(2);
+    await expect(env.TEST_USER.getByName(TEACHER).listWorkspaces()).resolves.toHaveLength(2);
     await expect(env.TEST_USER.getByName(`principal:prn_teacher-${RUN}`).whoamiIfExists()).resolves.toBeNull();
     // A principal nobody aliased gets a fresh principal-named account.
     expect((await signInAs({ resolver: true }, jwt({ sub: `sub-new-${RUN}` }))).id).toBe(`principal:prn_new-${RUN}`);

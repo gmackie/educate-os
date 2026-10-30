@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_EDUCATEOS_SCHOOL_MODE?: string;
   // Override the local backend host used by Vite dev, e.g. "localhost:9000".
   readonly VITE_BACKEND_HOST?: string;
 
@@ -8,6 +9,8 @@ interface ImportMetaEnv {
   // In this mode, password-based login/signup is disabled and the app authenticates
   // via the CF Access JWT that Access injects into requests before they reach the server.
   readonly VITE_CF_ACCESS_MODE?: string;
+  // The HTTPS App Link claimed by the configured native application.
+  readonly VITE_NATIVE_APP_CALLBACK_ORIGIN?: string;
 }
 
 interface ImportMeta {

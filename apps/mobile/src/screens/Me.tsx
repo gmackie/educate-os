@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, Switch, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Bell, Building2, CalendarDays, GraduationCap, KeyRound, LogOut, ScanFace, ShieldCheck, Trash2 } from 'lucide-react-native';
+import { Bell, Building2, CalendarDays, KeyRound, LogOut, ScanFace, ShieldCheck, Trash2, UserRound } from 'lucide-react-native';
 import type { ThemePreference } from '../theme';
 import { useAppState } from '../state/app-state';
+import { CalendarFeed, EmailSettings, SignOutEverywhere } from './MeSettings';
 import { enablePush, pushOptedIn, setPushOptOut } from '../push';
 import { biometricsAvailable, useAppLock } from '../lock';
 import { useTheme } from '../ui/theme-context';
@@ -30,7 +31,7 @@ function ThemePicker() {
 export function Me() {
   const { palette } = useTheme();
   const router = useRouter();
-  const { session, principal, client, signOut } = useAppState();
+  const { session, principal, client, signOut, role } = useAppState();
   const lock = useAppLock();
   const [push, setPush] = useState(false);
   const [faceId, setFaceId] = useState(false);
@@ -46,7 +47,9 @@ export function Me() {
     <View style={{ alignItems: 'center', gap: 9, marginBottom: 28 }}>
       <View style={{ width: 72, height: 72, borderRadius: 24, backgroundColor: palette.primarySoft,
         alignItems: 'center', justifyContent: 'center' }}>
-        <GraduationCap size={34} color={palette.primary}/>
+        {principal?.displayName
+          ? <Text style={{ fontSize: 26, fontWeight: '800', color: palette.primary }}>{initials(principal.displayName)}</Text>
+          : <UserRound size={34} color={palette.primary}/>}
       </View>
       <Text style={{ fontWeight: '800', fontSize: 23, color: palette.ink }}>{principal?.displayName ?? 'Your school account'}</Text>
       <Chip label={principal?.kind === 'staff' ? 'Staff' : principal?.kind === 'guardian' ? 'Family' :
@@ -60,11 +63,17 @@ export function Me() {
         leading={<KeyRound size={21} color={palette.primary}/>}/>
       {principal?.kind !== 'guardian' && <Item title="Calendar" detail="Deadlines, announcements and term dates"
         leading={<CalendarDays size={21} color={palette.primary}/>} onPress={() => router.push('/calendar')}/>}
-    </Card></Section>
+    </Card>
+      {client?.available && principal?.kind !== 'guardian' && <CalendarFeed client={client} origin={session.district.origin}/>}
+    </Section>
 
-    {device && <Section title="Your devices"><DevicesSection/></Section>}
+    {device && <Section title="Your devices"><DevicesSection/>
+      {client && <SignOutEverywhere client={client} onDone={() => { void signOut().then(() => router.replace('/welcome')); }}/>}
+    </Section>}
 
     <Section title="Appearance"><Card><ThemePicker/></Card></Section>
+
+    {client?.available && principal && <EmailSettings client={client} role={role}/>}
 
     <Section title="Notifications and security"><Card>
       <Item title="Notifications" detail="Due work and messages. Never grades or names."
@@ -95,4 +104,9 @@ export function Me() {
       EducateOS is open source. No central EducateOS student account is created.
     </Text>
   </Page>;
+}
+
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  return ((words[0]?.[0] ?? '') + (words.length > 1 ? words.at(-1)![0] : '')).toUpperCase();
 }

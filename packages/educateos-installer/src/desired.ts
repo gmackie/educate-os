@@ -441,6 +441,24 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     }
     services.push(name);
   }
+  // The signed asset variant selects a school deployment, but enforcement is backend-owned.
+  const variants = router[0]![1].assetsConfig?.variants;
+  const schoolBuild = Boolean(variants?.["access-school"]);
+  if (schoolBuild && variants?.access) invalid("ambiguous Access asset variants");
+  if (schoolBuild) {
+    const policy = backend[0]![1].bindings.find(binding => binding.type === "service" &&
+      binding.name === "WORKSHOP_CAPABILITY_POLICY");
+    if (!policy || policy.type !== "service" ||
+        policy.service !== "$WORKER_NAME(educateos-district-worker)" ||
+        policy.entrypoint !== "DistrictWorkshopCapabilityPolicy") {
+      invalid("school release requires a district WORKSHOP_CAPABILITY_POLICY binding");
+    }
+  }
+  if (schoolBuild) {
+    for (const name of ["educateos-district-worker", "educateos-external-mcp"]) {
+      if (!services.includes(name)) invalid(`school release requires enabled service ${name}`);
+    }
+  }
   inputs.push(...adminInputs);
   const scriptNames = new Map([backendPkg, routerPkg, ...installed, ...services, ...adminPkg ? [adminPkg] : []]
     .map((pkg) => [pkg, workerScriptName(config, pkg)]));
@@ -633,6 +651,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     };
     if (entry.kind === "backend") {
       // The instance-state vars the hosted deploy service would inject (see manifest-lib).
+      if (schoolBuild) vars.REQUIRE_WORKSHOP_CAPABILITY_POLICY = "true";
       vars.ADMINS = config.admins;
       vars.CF_ACCESS_ISS = `https://${config.access.teamName}.cloudflareaccess.com`;
       dependsOn.add(accessApplication.key);
@@ -698,7 +717,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       // every path: the Workshop's assets would otherwise answer `/` and shadow the district's.
       // The admin serves its own SPA.
       const routerOfOrigin = entry.kind === "router" && oneOrigin;
-      const variantName = routerOfOrigin ? wiring!.assetVariant : isAdmin ? ADMIN_ASSET_VARIANT : ASSET_VARIANT;
+      const variantName = routerOfOrigin ? (schoolBuild ? "access-school-ai" : wiring!.assetVariant) : isAdmin ? ADMIN_ASSET_VARIANT : schoolBuild ? "access-school" : ASSET_VARIANT;
       const variant = entry.assetsConfig.variants[variantName];
       if (!variant) invalid(`${pkgName} has no "${variantName}" asset variant`);
       const runWorkerFirst = routerOfOrigin ? true : entry.assetsConfig.run_worker_first;

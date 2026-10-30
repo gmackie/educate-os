@@ -32,6 +32,16 @@ describe("Workshop user links", () => {
     expect(codeOf(() => createWorkshopUserResolver(NORTHFIELD, []).resolve(MORGAN_KEY))).toBe("unauthenticated");
   });
 
+  it.each(["inactive", "graduated"] as const)("refuses %s linked users and confirming administrators", (status) => {
+    const links = [link(MORGAN_KEY, MORGAN)];
+    const directory = { ...NORTHFIELD, principals: NORTHFIELD.principals.map((p) =>
+      p.id === MORGAN || p.id === NF_ADMIN ? { ...p, status } : p) };
+    expect(codeOf(() => createWorkshopUserResolver(directory, links).resolve(MORGAN_KEY))).toBe("unauthenticated");
+    expect(codeOf(() => confirmWorkshopUserLink(directory, [], {
+      workshopUser: "new-account", principalId: AMARA, confirmedBy: NF_ADMIN, confirmedAt: AT,
+    }))).toBe("forbidden");
+  });
+
   it("keeps districts apart: another district's link resolves to nothing here", () => {
     const riverbend = confirmWorkshopUserLink(RIVERBEND, [], {
       workshopUser: MORGAN_KEY, principalId: "prn_rb-morgan-lee" as PrincipalId, confirmedBy: RB_ADMIN, confirmedAt: AT,

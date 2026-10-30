@@ -115,6 +115,26 @@ async function describeContext(context: Context): Promise<AiCallMessage[]> {
   return described;
 }
 
+/** Stands in for a guard the deployment requires but has not bound: every call fails to be checked. */
+const MISSING_REQUIRED_GUARD: AiCallGuardClient = {
+  beforeModelCall: async () => {
+    throw new Error("REQUIRE_AI_CALL_GUARD is set but AI_CALL_GUARD is not bound");
+  },
+  afterModelCall: async () => {},
+};
+
+/**
+ * The guard every model call goes through: `AI_CALL_GUARD`, or, when the deployment requires one
+ * (`REQUIRE_AI_CALL_GUARD` set to anything but `false`) and none is bound, one that denies every
+ * call, so an unbound guard can never mean unguarded AI for students (SCHO-307).
+ */
+export function aiCallGuardFor(env: { AI_CALL_GUARD?: AiCallGuardClient; REQUIRE_AI_CALL_GUARD?: string })
+    : AiCallGuardClient | undefined {
+  if (env.AI_CALL_GUARD) return env.AI_CALL_GUARD;
+  let required = env.REQUIRE_AI_CALL_GUARD;
+  return required === undefined || required === "" || required === "false" ? undefined : MISSING_REQUIRED_GUARD;
+}
+
 /** How long a guard may take to decide before the call is denied or its response withheld. */
 const GUARD_DECISION_TIMEOUT_MS = 15_000;
 // A cold isolate sends the full conversation again. Input screening may check many messages in
@@ -178,12 +198,15 @@ async function admit(
            ...(decision.instructions ? { instructions: decision.instructions } : {}) };
 }
 
-// What a response shows its reader: its text and its unredacted reasoning. Tool calls pass.
+// What a response can show its reader: its text, its unredacted reasoning, and the tool calls it
+// makes, whose arguments can carry text into a file, a page or a message.
 function visibleOutput(response: AssistantMessage): AiCallTextPart[] {
   return response.content.flatMap((block): AiCallTextPart[] =>
       block.type === "text" && block.text ? [{ type: "text", text: block.text }]
       : block.type === "thinking" && !block.redacted && block.thinking
           ? [{ type: "text", text: block.thinking }]
+      : block.type === "toolCall"
+          ? [{ type: "text", text: `${block.name}(${JSON.stringify(block.arguments ?? {})})` }]
       : []);
 }
 
@@ -194,14 +217,16 @@ function visibleOutput(response: AssistantMessage): AiCallTextPart[] {
  * deciding when the call is aborted withholds.
  */
 async function screen(
-    guard: AiCallGuardClient, callId: string, callSite: AiCallSite, response: AssistantMessage,
-    signal?: AbortSignal): Promise<AiCallDeniedError | undefined> {
+    guard: AiCallGuardClient, callId: string, scope: Pick<AiCallScope, "callSite" | "initiator">,
+    response: AssistantMessage, signal?: AbortSignal): Promise<AiCallDeniedError | undefined> {
+  let callSite = scope.callSite;
   let parts = visibleOutput(response);
   if (parts.length === 0) return undefined;
   let decision: AiCallOutputDecision;
   try {
     if (!guard.screenModelOutput) throw new Error("the guard asked for screening it cannot do");
-    decision = await decisionWithin(guard.screenModelOutput(callId, { parts }), signal);
+    decision = await decisionWithin(guard.screenModelOutput(callId,
+        { parts, initiator: { type: scope.initiator.type, id: scope.initiator.id } }), signal);
   } catch (error) {
     logger.error("AI call guard failed to screen a response; withholding it", {
       event: "ai_call_guard.screen.failed", callId, callSite, error,
@@ -247,6 +272,16 @@ function reportedUsage(usage: Usage | undefined): AiCallOutcome["usage"] {
 export function guardModelHandle(
     guard: AiCallGuardClient | undefined, handle: ModelHandle, scope: AiCallScope): ModelHandle {
   if (!guard) return handle;
+  // A cached resend replays a frozen provider payload outside stream(), so it cannot honor a
+  // fresh guard decision or instructions. Do not expose it on guarded handles. A setter also
+  // discards requests captured asynchronously by the inner stream after it finishes; clearing
+  // lastRequest just once would leave that path open again. Normal provider prompt caching is
+  // unchanged, and deployments without a guard keep background cache warming.
+  Object.defineProperty(handle, "lastRequest", {
+    configurable: true,
+    get: () => undefined,
+    set: () => {},
+  });
   let stream = handle.stream;
   handle.stream = (model, context, { callSite, ...options } = {}) => {
     let callScope = callSite ? { ...scope, callSite } : scope;
@@ -279,8 +314,7 @@ export function guardModelHandle(
         }
         response = await inner.result();
         if (held) {
-          let withheld = await screen(guard, admitted.callId, callScope.callSite, response,
-              options.signal);
+          let withheld = await screen(guard, admitted.callId, callScope, response, options.signal);
           if (withheld) return fail(withheld.message, withheld);
           for (let event of held) guarded.push(event);
         }

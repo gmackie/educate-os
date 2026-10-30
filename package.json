@@ -8,6 +8,7 @@
     "build": "node scripts/vp/run.ts --filter=!cloudflare-os --cache build",
     "run-local": "node scripts/run-local.ts",
     "educateos:harness": "pnpm --filter @educateos/harness start",
+    "educateos:mobile-district": "pnpm --filter @educateos/demo mobile-district",
     "test": "node scripts/vp/run.ts --filter=!cloudflare-os --cache test",
     "evals": "pnpm --filter @gadgets/workshop-evals evals",
     "evals:ui": "pnpm --filter @gadgets/workshop-evals evals:ui",

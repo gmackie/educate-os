@@ -35,6 +35,10 @@
       "types": "./src/ai-call-guard.ts",
       "import": "./src/ai-call-guard.ts"
     },
+    "./capability-policy": {
+      "types": "./src/capability-policy.ts",
+      "import": "./src/capability-policy.ts"
+    },
     "./principal-resolver": {
       "types": "./src/principal-resolver.ts",
       "import": "./src/principal-resolver.ts"

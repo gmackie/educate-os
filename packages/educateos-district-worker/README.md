@@ -178,6 +178,14 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
 - `email` (optional, in `DISTRICT_CONFIG`): `from`, an address on a domain the district has
   onboarded to Cloudflare Email Service in this account, an optional `fromName`, and an optional
   `appUrl` linked from every email. Without it, or without the binding, nothing is emailed.
+- `discussionScreening` (optional, in `DISTRICT_CONFIG`, SCHO-305): the Hall Monitor `tenantId`,
+  pinned `profileId` and `revision`, and `costCenterId` students' discussion posts are screened
+  under, at `HALL_MONITOR_URL` with service tokens signed by `HALL_MONITOR_SIGNING_KEY` (a secret:
+  a private Ed25519 or P-256 JWK) for `HALL_MONITOR_ISSUER` (and `HALL_MONITOR_AUDIENCE`, default
+  `hall-monitor`). Configured but unreachable, every student post is refused as unavailable.
+  Without it, each student post waits for a teacher's approval, flagged `screening_not_configured`,
+  unless `unscreenedStudentPosts` is `"publish"`, which only synthetic demo districts should set.
+  None of these is a deploy input yet, so the installer does not offer them.
 
 ## Email and scheduled jobs (SCHO-189)
 
@@ -257,3 +265,45 @@ storage included, is the deployed code.
   and launches as her across a restart, and refuses a replayed launch, a launch signed by another
   key, one without the state cookie and one with the wrong nonce. It also keeps the tool keys and a
   rotation across restarts. The test object's `platformFetch` is the synthetic LMS.
+
+## Workshop capability policy
+
+`DistrictWorkshopCapabilityPolicy` is the backend-only `WORKSHOP_CAPABILITY_POLICY` service target
+(SCHO-299, stacked on SCHO-292). It resolves current principal status and scoped roles from district
+stores and applies ABAC to exact deployment grants. Without `DISTRICT_CONFIG.workshopPolicy` it
+denies every request. No binding is enabled by this change. See
+[security boundaries and integration wiring](../../docs/educateos/security/district-workshop-capability-policy.md)
+before binding it; a binding holder is trusted to assert the Workshop user ID.
+
+
+## Workshop principal sign-in
+
+`DistrictPrincipalResolver.resolveAccessSignIn` is a service-only capability for the school
+Workshop backend. It delegates through the existing district object and `startDistrict`, loading
+the persisted Directory on every login. Only a configured Access issuer and an existing active
+person's district-scoped issuer/subject link can resolve. Its response carries only an outcome,
+principal ID and initial display name. Configuration/storage failures refuse login without returning
+directory diagnostics. Bind this capability only to the trusted backend that verifies Access JWTs;
+it accepts verified claims, not browser-supplied claims or tokens.
+
+Build a school release with `node scripts/release/build-release.ts --out release-out --profile school`.
+The school manifest binds the backend's `PRINCIPAL_RESOLVER` to this entrypoint and sets
+`REQUIRE_PRINCIPAL_RESOLVER=true`. Installation must include the district service: the installer's
+existing Worker-name resolution rejects an absent target. Generic releases retain upstream behavior.
+The school production config generator emits the same binding when the instance owns a district.
+Missing binding, issuer or audience in required mode refuses backend requests; no password, email,
+gatekeeper or session-token fallback is enabled.
+
+No new storage migration is needed: existing DO tables and district ownership checks are reused.
+This entrypoint never writes identity links, matches email, creates migration candidates, or adopts
+email-keyed Workshop data. Email adoption requires the existing explicit administrator-approved link
+and separately verified data transfer before enabling this school profile. Existing email-keyed data
+is not moved by this change. A Clever-configured district refuses Workshop login because the current
+Workshop resolver seam carries no verified Clever claims; extending that seam requires separate work.
+Fresh login lookup revokes future logins, not RPC capabilities already issued to an open session.
+
+Integration handoff: apply after `feat/edu-identity-session-hardening-20261030` (GitHub PR #11).
+The policy-adapter track also touches `src/worker.ts`; retain both named entrypoints when integrating.
+This change only adds the principal entrypoint and its imports there. Integration captain must
+recheck the combined school configuration, adoption prerequisites and live-session revocation before
+claiming school login ready. No deployment or secret changes are part of this draft publication.

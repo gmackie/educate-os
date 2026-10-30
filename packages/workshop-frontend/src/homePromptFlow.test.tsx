@@ -7,14 +7,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const testState = vi.hoisted(() => {
   const listModels = vi.fn<() => Promise<never[]>>(async () => []);
-  const newGadget = vi.fn<() => never>();
+  const newWorkspace = vi.fn<() => never>();
   return {
     addToast: vi.fn<(toast: unknown) => void>(),
-    authenticatedApi: { listModels, newGadget },
+    authenticatedApi: { listModels, newWorkspace },
     currentUser: { id: "user-a", name: "User A" },
     listModels,
     navigate: vi.fn<(options: unknown) => void>(),
-    newGadget,
+    newWorkspace,
     seeds: [] as Array<{ text?: string; nonce?: number }>,
     draftStorageKeys: [] as Array<string | undefined>,
   };
@@ -25,7 +25,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
   useNavigate: () => testState.navigate,
 }));
 
-vi.mock("@cloudflare/kumo", () => ({
+vi.mock("@cloudflare/kumo", async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@cloudflare/kumo')>()),
   useKumoToastManager: () => ({ add: testState.addToast }),
 }));
 
@@ -48,12 +49,12 @@ vi.mock("./features/chat/composer/ChatComposer", () => ({
   },
 }));
 
-vi.mock("./components/MeshBackground", () => ({ default: () => null }));
-vi.mock("./components/AppShell/HomeTaskSuggestions", () => ({ default: () => null }));
+vi.mock("./pages/home/MeshBackground", () => ({ default: () => null }));
+vi.mock("./pages/home/HomeTaskSuggestions", () => ({ default: () => null }));
 vi.mock("./features/deployment-updates/UpdateAvailableNotice", () => ({ UpdateAvailableNotice: () => null }));
 vi.mock("./useDocumentTitle", () => ({ useDocumentTitle: () => {} }));
 
-import { HomePageContent } from "./routes/index";
+import { HomePage } from "./pages/home/HomePage";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -74,14 +75,14 @@ describe("Home prompt route flow", () => {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
-    await act(async () => root!.render(<HomePageContent prompt="Create a daily brief." />));
+    await act(async () => root!.render(<HomePage prompt="Create a daily brief." />));
 
     expect(container.querySelector<HTMLTextAreaElement>('[aria-label="Prompt"]')?.value).toBe(
       "Create a daily brief.",
     );
     expect(Math.max(...testState.seeds.map(({ nonce }) => nonce ?? 0))).toBe(1);
     expect(testState.navigate).toHaveBeenCalledWith({ to: "/", search: {}, replace: true });
-    expect(testState.newGadget).not.toHaveBeenCalled();
+    expect(testState.newWorkspace).not.toHaveBeenCalled();
     expect(testState.draftStorageKeys).toContain("gadgets:composer-draft:v1:user-a:home");
   });
 });

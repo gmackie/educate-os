@@ -126,6 +126,18 @@ describe("course discussions (SCHO-190)", () => {
     expect(JSON.stringify(queue)).not.toContain("Mean words");
   });
 
+  it("holds a student's post for the teacher when the district screens nothing", async () => {
+    const district = await bootDistrict(undefined, { unscreenedStudentPosts: undefined });
+    const rivera = district.tokenFor(NF.rivera);
+    const topic = await district.ok(rivera, "teacher.createTopic", { params: { offeringId: NF.eng9 }, body: { title: "Debate", prompt: "Go." } });
+    const at = { params: { offeringId: NF.eng9, topicId: topic.id } };
+    const post = await district.ok(district.tokenFor(NF.amara), "student.createPost", { ...at, body: { body: "Unchecked" } });
+    expect(post.status).toBe("pending");
+    expect((await district.ok(district.tokenFor(NF.elena), "student.discussionThread", at)).posts).toStrictEqual([]);
+    const queue = await district.ok(rivera, "teacher.moderationQueue", { params: { offeringId: NF.eng9 } });
+    expect(queue.pending).toMatchObject([{ id: post.id, flags: [{ kind: "screening", decision: "hold", reasonCodes: ["screening_not_configured"] }] }]);
+  });
+
   it("lists a student's posts in a topic graded under an assignment, for the teacher grading it", async () => {
     const district = await bootDistrict();
     const { assignment } = await teacherSetsUpEssay(district);

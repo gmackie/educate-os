@@ -1,0 +1,9 @@
+{
+  "sourceId": "fixture",
+  "observedAt": "2026-10-30",
+  "attribution": "Fictional local organization fixture; no actual school or personnel data",
+  "approvedSource": true,
+  "noStudentData": true,
+  "operator": "Fictional local test operator",
+  "csv": "ncesId,name,state,kind,website\n0099999,Cedar Example District,MI,public,https://cedar-example.invalid\n0088888,Juniper Example Regional Center,TX,regional,https://juniper-example.invalid\n"
+}

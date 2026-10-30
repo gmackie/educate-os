@@ -4,7 +4,7 @@
 import { screen, waitFor, within } from "@testing-library/dom";
 import { describe, expect, it } from "vitest";
 import { fakeDistrict, IDS } from "./fakeDistrict.ts";
-import { onScreen, renderApp } from "./render.tsx";
+import { onScreen, renderApp, settle } from "./render.tsx";
 
 const LEVELS = [
   { id: "beginning", label: "Beginning", points: 1 },
@@ -109,5 +109,44 @@ describe("the official grade", () => {
     expect(screen.getByText(/changed 1 time/)).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "Points" })).toBeNull();
     expect(district.callsTo("teacher.officialGrades")[0]!.input.params).toStrictEqual({ assignmentId: expect.any(String), studentId: IDS.amara });
+  });
+});
+
+
+describe("assessment review availability", () => {
+  it("shows a permission failure when pending approvals cannot be read", async () => {
+    const { district, hash } = setUp();
+    district.fail("teacher.pendingGrades", { status: 403, body: { code: "forbidden", message: "no longer a teacher" } });
+    await renderApp(district.client, hash);
+    await onScreen(/Amara Okafor’s work/);
+    expect(await screen.findByText("You don't have permission to do that in this class.")).toBeTruthy();
+    expect(district.callsTo("teacher.approveGrade")).toStrictEqual([]);
+    expect(screen.queryByRole("button", { name: "Approve official grade" })).toBeNull();
+  });
+
+  it("makes submitted revision references and declared AI provenance available for review", async () => {
+    const { district, hash } = setUp();
+    await renderApp(district.client, hash);
+    await onScreen(/Amara Okafor’s work/);
+    expect(screen.getAllByText("Evidence version")).toHaveLength(4);
+    expect(screen.getByText("rev_c")).toBeTruthy();
+    expect(screen.getAllByText(/student declared no AI assistance/)).toHaveLength(4);
+  });
+});
+
+
+describe("moving between submissions", () => {
+  it("does not carry an unsaved grade to another student's attempt", async () => {
+    const { district, hash, assignmentId } = setUp();
+    const anotherId = district.studentSubmits(assignmentId, "A different answer.", IDS.noah);
+    const user = await renderApp(district.client, hash);
+    await user.type(await screen.findByRole("textbox", { name: "Points" }), "5");
+    await user.type(screen.getByRole("textbox", { name: "Out of" }), "6");
+    window.location.hash = `#/classes/${IDS.offering}/assignments/${assignmentId}/submissions/${anotherId}`;
+    await settle();
+    await onScreen(/This student’s work/);
+    expect((await screen.findByRole("textbox", { name: "Points" }) as HTMLInputElement).value).toBe("");
+    expect((screen.getByRole("textbox", { name: "Out of" }) as HTMLInputElement).value).toBe("");
+    expect(district.callsTo("teacher.recordGrade")).toStrictEqual([]);
   });
 });

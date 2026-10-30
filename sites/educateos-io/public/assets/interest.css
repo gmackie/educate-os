@@ -1,0 +1,20 @@
+/* Native controls and the existing site tokens; no tracking or external UI dependency. */
+.intake-choices { display: flex; flex-wrap: wrap; gap: .75rem; margin-block: 1.5rem; }
+#request { padding-block: 2rem; }
+#interest-form fieldset { border: 0; padding: 0; min-width: 0; }
+#interest-form legend { font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem; }
+#interest-form label, #interest-form input:not([type=checkbox]), #interest-form select, #interest-form textarea,
+form[action="/api/interest/unsubscribe"] label, form[action="/api/interest/unsubscribe"] input { display: block; width: 100%; }
+#interest-form label { margin-top: 1rem; }
+#interest-form input:not([type=checkbox]), #interest-form select, #interest-form textarea,
+form[action="/api/interest/unsubscribe"] input { padding: .75rem; margin-block: .4rem; border: 1px solid currentColor; border-radius: .35rem; background: Canvas; color: CanvasText; font: inherit; }
+#interest-form .check { display: flex; gap: .75rem; align-items: start; }
+#interest-form input[type=checkbox] { flex: 0 0 auto; width: 1.25rem; height: 1.25rem; margin-top: .2rem; }
+#interest-form button { margin-block: 1.5rem; }
+#interest-form [disabled] { opacity: .65; cursor: wait; }
+.intake-notice { border-top: 1px solid currentColor; padding-block: 1rem; margin-top: 2rem; }
+.intake-honeypot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.skip-link { position: absolute; inset-inline-start: 1rem; top: -10rem; padding: 1rem; background: Canvas; color: CanvasText; z-index: 100; }
+.skip-link:focus { top: 1rem; }
+:focus-visible { outline: 3px solid #155dfc; outline-offset: 4px; }
+#form-errors:not(:empty) { border: 2px solid currentColor; padding: 1rem; }

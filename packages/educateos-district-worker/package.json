@@ -14,6 +14,7 @@
     "@educateos/ai-governance": "workspace:*",
     "@educateos/content-studio": "workspace:*",
     "@educateos/contracts": "workspace:*",
+    "@educateos/discussions": "workspace:*",
     "@educateos/district-app": "workspace:*",
     "@educateos/gatekeeper": "workspace:*",
     "@educateos/identity": "workspace:*",
@@ -24,13 +25,17 @@
     "@educateos/policy": "workspace:*",
     "@educateos/workspaces": "workspace:*",
     "@gadgets/observability": "workspace:*",
+    "@gmacko/hall-monitor-client": "file:../../vendor/hall-monitor/gmacko-hall-monitor-client-0.3.0.tgz",
+    "@gmacko/hall-monitor-contracts": "file:../../vendor/hall-monitor/gmacko-hall-monitor-contracts-0.3.0.tgz",
     "capnweb": "catalog:",
     "capnweb-validate": "catalog:",
     "jose": "^6.2.12",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@gadgets/workshop-shared": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "catalog:",
+    "@educateos/ai-guard": "workspace:*",
     "@educateos/catalog": "workspace:*",
     "@educateos/config": "workspace:*",
     "@educateos/fixtures": "workspace:*",
@@ -39,6 +44,7 @@
     "miniflare": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
-    "wrangler": "catalog:"
+    "wrangler": "catalog:",
+    "@educateos/assessment-sdk": "workspace:*"
   }
 }

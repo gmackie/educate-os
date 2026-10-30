@@ -1,3 +1,4 @@
+import type { GadgetAssessmentResponse } from "@educateos/district-app";
 // The district's Durable Object: one per district, named by its district ID, holding every store
 // of the district application in its SQLite storage and running the application itself
 // (`startDistrict` in district.ts). The Worker's `/api` requests and both service entrypoints reach
@@ -18,6 +19,9 @@
 //
 // Like the other Workers-only modules, this shell is checked by running it (`__tests__/`): the
 // Workers runtime's typings reject the web-standard sources it composes (ADR-0009).
+import { authorizeWorkshopCapability } from "./workshop-policy.ts";
+import { readDistrictWorkerConfig } from "./config.ts";
+import type { WorkshopCapabilityDescriptor, WorkshopCapabilityDecision } from "@gadgets/workshop-shared/capability-policy";
 import { DurableObject } from "cloudflare:workers";
 import type { JWTVerifyGetKey } from "jose";
 import { createLogger } from "@gadgets/observability/logger";
@@ -27,6 +31,7 @@ import type { AccessSignInResolution, EmailKeyedUserMatch } from "@educateos/ide
 import type { AdmittedSubjectRequest, GuardSubject, GuardSubjectRequest } from "@educateos/district-app/guard-directory";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
 import { startDistrict, type District } from "./district.ts";
+import { discussionHallMonitor } from "./hall-monitor.ts";
 import type { SendEmailBinding } from "./mail.ts";
 import { jobForCron } from "./schedule.ts";
 import { onLegacyTableMigrated, type LegacyTableReport } from "@educateos/contracts/legacy-tables";
@@ -94,6 +99,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return fetch(input, init);
   }
 
+  /** The fetch discussion screening reaches Hall Monitor with (SCHO-305). Tests replace it with a fake. */
+  protected hallMonitorFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    return fetch(input, init);
+  }
+
   /**
    * The fetch the analytics proxy reaches Cloudflare's API with (SCHO-263). Bound to `globalThis`,
    * as workerd requires of a fetch kept on an object. Tests replace it with recorded responses.
@@ -134,6 +144,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return app.fetch(request);
   }
 
+  /** Checks a mint against current district state, never request roles. */
+  async authorizeCapability(request: WorkshopCapabilityDescriptor): Promise<WorkshopCapabilityDecision> {
+    return authorizeWorkshopCapability((await this.#boot()).app, readDistrictWorkerConfig(this.env.DISTRICT_CONFIG).workshopPolicy, request);
+  }
+
   /** What the district says about a Workshop user, for the AI call guard. */
   async guardSubject(request: GuardSubjectRequest): Promise<GuardSubject | null> {
     return (await this.#boot()).app.guardDirectory.guardSubject(request);
@@ -152,6 +167,16 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
   /** The principal a browser request is signed in as, for the EducateOS gatekeeper. */
   async authenticate(request: Request): Promise<VerifiedPrincipal | null> {
     return (await this.#boot()).tools.authenticate(request);
+  }
+
+  /** Reads only the connected student's configured assessment and own submissions. */
+  async gadgetAssessmentRead(principal: VerifiedPrincipal, assignmentId: string): Promise<GadgetAssessmentResponse> {
+    return (await this.#boot()).app.gadgetAssessmentRead(principal, assignmentId);
+  }
+
+  /** Applies a queued evidence submission after rechecking current ownership and policy. */
+  async gadgetAssessmentSubmit(principal: VerifiedPrincipal, assignmentId: string, request: unknown): Promise<GadgetAssessmentResponse> {
+    return (await this.#boot()).app.gadgetAssessmentSubmit(principal, assignmentId, request);
   }
 
   /** The district's school tools. */
@@ -298,6 +323,13 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         }),
         platformFetch: (input, init) => this.platformFetch(input, init),
         rosterFetch: (input, init) => this.rosterFetch(input, init),
+        discussionHallMonitor: (screening) => discussionHallMonitor({
+          url: this.env.HALL_MONITOR_URL,
+          signingKey: this.env.HALL_MONITOR_SIGNING_KEY,
+          issuer: this.env.HALL_MONITOR_ISSUER,
+          audience: this.env.HALL_MONITOR_AUDIENCE,
+          fetch: (input, init) => this.hallMonitorFetch(input, init),
+        }, screening),
         analyticsFetch: (request) => this.analyticsFetch(request),
         ...(keys === undefined ? {} : { accessKeys: keys }),
         ...(sendEmail === undefined ? {} : { sendEmail }),

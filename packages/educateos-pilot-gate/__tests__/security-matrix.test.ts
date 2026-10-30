@@ -575,6 +575,7 @@ criterion("s14.term-end", {
     const northfield = await bootDistrictFor(entry!, { authority: ALL_LOCAL });
     const { assignment } = await teacherInstallsEssay(northfield, NF.rivera, NF.eng9);
     const { student, artifact, head, workspace, receipt } = await studentSubmitsEssay(northfield, NF.amara, NF.eng9, assignment.id);
+    expect((await student.call("me.get")).principalId).toBe(NF.amara);
 
     const admin = callerOf(northfield, NF.admin);
     const academics = new AcademicDirectory({ store: northfield.stores.directory, authority: ALL_LOCAL, authorizer: northfield.app.engine });
@@ -582,11 +583,14 @@ criterion("s14.term-end", {
     expect(result).toMatchObject({ principal: { status: "graduated" }, grantsRevoked: 2 });
     expect(northfield.audit.events()).toContainEqual(expect.objectContaining({ principalId: NF.admin, action: "update", resourceKind: "principal", resourceId: NF.amara, effect: "allow" }));
 
-    // Her class grants are revoked, and her class requests are denied on the next decision.
+    // Her grants are revoked; even an existing credential cannot resolve a retired principal.
     const grants = (await northfield.stores.workspaces.load()).state.grants.filter((g) => g.workspaceId === workspace.id);
     expect(grants.map((g) => [g.kind, g.state === "revoked" && g.reason])).toStrictEqual([["course-tools", "principal-departed"], ["course-ai-funding", "principal-departed"]]);
-    await expectDenied(student.call("student.saveRevision", { params: { artifactId: artifact.id }, body: { content: { kind: "text", mediaType: "text/plain", text: "after graduating" } } }));
-    await expectDenied(student.call("student.listActivities", { params: { offeringId: NF.eng9 } }));
+    await expectRefused(student.call("me.get"), 401, "unauthenticated");
+    await expectRefused(student.call("student.saveRevision", { params: { artifactId: artifact.id }, body: { content: { kind: "text", mediaType: "text/plain", text: "after graduating" } } }), 401, "unauthenticated");
+    await expectRefused(student.call("student.listActivities", { params: { offeringId: NF.eng9 } }), 401, "unauthenticated");
+    const freshCredential = await northfield.as(NF.amara);
+    await expectRefused(freshCredential.call("me.get"), 401, "unauthenticated");
 
     // Nothing is deleted: her workspace, her work and her submission stay with the district.
     expect((await northfield.stores.workspaces.load()).state.workspaces.map((w) => w.id)).toContain(workspace.id);

@@ -6,6 +6,8 @@ import type { Session } from '../../src/types';
 import { useAppState } from '../../src/state/app-state';
 import { signIn } from '../../src/auth/auth';
 import { prepareWebView, restoreSession } from '../../src/auth/session';
+import { tabHref } from '../../src/navigation';
+import { homeTab } from '../../src/tabs';
 import { Workspace } from '../../src/screens/Workspace';
 import { usePalette } from '../../src/ui/theme-context';
 import { Button, Loading, Page, Placeholder } from '../../src/ui/Primitives';
@@ -19,7 +21,7 @@ import { Button, Loading, Page, Placeholder } from '../../src/ui/Primitives';
  * view's cookie, so later visits open straight into the workspace until it expires.
  */
 export default function AiTab() {
-  const { session } = useAppState();
+  const { session, role } = useAppState();
   const router = useRouter();
   if (!session) return null;
   if (session.district.features?.ai === false) {
@@ -27,7 +29,7 @@ export default function AiTab() {
       message="Your school hasn't enabled the AI workspace. Your classes, calendar and messages still work."/></Page>;
   }
   // Leaving the workspace goes home, not to the school picker.
-  const onReturn = () => router.navigate('/' as never);
+  const onReturn = () => router.navigate(tabHref(homeTab(role)) as never);
   if (session.credential.kind !== 'device') return <Workspace session={session} onReturn={onReturn}/>;
   return <DeviceWorkspace session={session} onReturn={onReturn}/>;
 }

@@ -3,6 +3,7 @@
 // Every value that reaches a page passes through `html`, which escapes it.
 import { ACCESS_LOGOUT_PATH } from "./access.ts";
 import type { ProbedEntry } from "./app.ts";
+import { BILLING_PATHS, type BilledInvoice, type BillingOverview, MANAGED_PLANS, PLACEHOLDER_PRICE_NOTE, TERM_DAYS } from "./billing.ts";
 import { ECHOED_FIELDS, type InstallEvent } from "./guided-install.ts";
 import type { ProbeResult } from "./probe.ts";
 import type { Registration } from "./registry.ts";
@@ -68,6 +69,19 @@ export const PAGE_HEADERS: Readonly<Record<string, string>> = {
   ].join("; "),
   "referrer-policy": "same-origin",
   "x-content-type-options": "nosniff",
+};
+
+/**
+ * The billing page's headers. Its forms answer with a redirect to Stripe's hosted card setup page or
+ * Customer Portal, and `form-action` governs where a form's redirects may go too, so those two
+ * origins are admitted on this page alone.
+ */
+export const BILLING_PAGE_HEADERS: Readonly<Record<string, string>> = {
+  ...PAGE_HEADERS,
+  "content-security-policy": PAGE_HEADERS["content-security-policy"]!.replace(
+    "form-action 'self'",
+    "form-action 'self' https://checkout.stripe.com https://billing.stripe.com",
+  ),
 };
 
 /** A whole page in the site's shell. */
@@ -154,11 +168,91 @@ export function dashboardPage(shell: SiteShell, operator: Operator, entries: rea
       <div class="eyebrow">Operator console</div>
       <h1>Your installations</h1>
       ${signedInBar(operator)}
-      <p><a class="btn primary" href="/app/install">Install EducateOS</a></p>
+      <p><a class="btn primary" href="/app/install">Install EducateOS</a> <a class="btn" href="${BILLING_PATHS.page}">Billing</a></p>
     </div>
   </section>
   <section class="tight">
     <div class="wrap">${list}</div>
+  </section>`);
+}
+
+function dollars(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+const CHARGE_LABELS: Record<BilledInvoice["charge"], Html> = {
+  paid: html`<span class="status avail">Paid</span>`,
+  pending: html`<span class="status planned">Open</span> <small class="muted">charge on its way</small>`,
+  declined: html`<span class="badge warn">Declined</span>`,
+  uncharged: html`<span class="status planned">Open</span> <small class="muted">not charged yet</small>`,
+  reopened: html`<span class="status planned">Open</span> <small class="muted">due again after a refund</small>`,
+};
+
+const STATUS_LABELS: Record<NonNullable<BillingOverview["subscription"]>["status"], Html> = {
+  "trialing": html`<span class="status planned">Waiting for a card</span>`,
+  "active": html`<span class="status avail">Active</span>`,
+  "past-due": html`<span class="badge warn">Payment due</span>`,
+  "grace": html`<span class="badge warn">In grace</span>`,
+  "lapsed": html`<span class="badge warn">Lapsed</span>`,
+  "cancelled": html`<span class="muted">Cancelled</span>`,
+};
+
+/**
+ * The operator's billing: the managed services plans until they subscribe, then their subscription
+ * and invoices. Every price is marked as a placeholder until pricing is decided (SCHO-208).
+ */
+export function billingPage(shell: SiteShell, operator: Operator, overview: BillingOverview, notice?: string): string {
+  const { subscription } = overview;
+  const payable = subscription !== undefined && subscription.status !== "trialing" &&
+    overview.invoices.some(({ invoice, charge }) => invoice.subscriptionId === subscription.subscriptionId && (charge === "declined" || charge === "uncharged" || charge === "reopened"));
+  const planName = (planId: string) => MANAGED_PLANS.find(({ plan }) => plan.planId === planId)?.name ?? planId;
+  const current = subscription === undefined
+    ? html`<form method="post" action="${BILLING_PATHS.subscribe}" class="card">
+        <div class="field">
+          <label for="organization">Organization billed</label>
+          <input class="input" id="organization" name="organization" value="${overview.organization ?? ""}" placeholder="Riverbend Unified School District" required maxlength="120" autocomplete="organization">
+          <small class="muted">The district or organization the invoices are made out to.</small>
+        </div>
+        <div class="field">
+          ${MANAGED_PLANS.map(({ plan, name, summary }, i) => html`<label class="li"><input type="radio" name="plan" value="${plan.planId}"${i === 0 ? new Html(" checked") : ""}> <b class="strong">${name}</b>, ${dollars(plan.termFeeCents)} per ${TERM_DAYS} days <span class="badge warn">${PLACEHOLDER_PRICE_NOTE}</span><br><small class="muted">${summary}</small></label>`)}
+        </div>
+        <p class="muted">Next, Stripe asks for a card and saves it; nothing is charged until you come back. Billing pays for what educateos.io does for you. Your installations never check it, and keep running and keep their data whether or not you subscribe.</p>
+        <p><button class="btn primary" type="submit">Continue to add a card</button></p>
+      </form>`
+    : html`<div class="card">
+        <p><b class="strong">${planName(subscription.planId)}</b> ${STATUS_LABELS[subscription.status]}</p>
+        <p class="muted">Billed to ${overview.organization ?? ""} · term ends ${subscription.termEnd.slice(0, 10)}</p>
+        ${subscription.status === "trialing"
+          ? html`<form method="post" action="${BILLING_PATHS.card}"><p><button class="btn primary" type="submit">Add a card</button></p></form>`
+          : ""}
+        ${payable ? html`<form method="post" action="${BILLING_PATHS.pay}"><p><button class="btn primary" type="submit">Pay now</button></p></form>` : ""}
+        <p>${overview.hasCustomer ? html`<form method="post" action="${BILLING_PATHS.portal}" class="inline"><button class="btn" type="submit">Manage payment methods</button></form>` : ""}
+        <form method="post" action="${BILLING_PATHS.cancel}" class="inline"><button class="btn" type="submit">Cancel subscription</button></form></p>
+        <small class="muted">Cancelling stops further charges. Your installations keep running and keep their data.</small>
+      </div>`;
+  const invoices = overview.invoices.length === 0
+    ? ""
+    : html`<h2>Invoices</h2><div class="table-scroll"><table class="spec">
+        <thead><tr><th>Invoice</th><th>Issued</th><th>Due</th><th>Total</th><th>Status</th></tr></thead>
+        <tbody>${overview.invoices.map(({ invoice, charge }) => html`<tr>
+          <td><code>${invoice.invoiceId}</code></td>
+          <td>${invoice.issuedAt.slice(0, 10)}</td>
+          <td>${invoice.dueAt.slice(0, 10)}</td>
+          <td>${dollars(invoice.totalCents)}</td>
+          <td>${CHARGE_LABELS[charge]}</td>
+        </tr>`)}</tbody>
+      </table></div>`;
+  return page(shell, "Billing", html`<section class="page-hero">
+    <div class="wrap">
+      <div class="eyebrow">Operator console</div>
+      <h1>Billing</h1>
+      ${signedInBar(operator)}
+      <p><a class="btn" href="/app/">Your installations</a></p>
+      ${notice === undefined ? "" : html`<div class="note-box">${notice}</div>`}
+    </div>
+  </section>
+  <section class="tight">
+    <div class="wrap">${current}${invoices}</div>
   </section>`);
 }
 

@@ -261,6 +261,48 @@
       "singleton": true,
       "vars": {}
     },
+    "educateos-external-mcp": {
+      "backendBinding": {
+        "entrypoint": "default",
+        "name": "EDUCATEOS_EXTERNAL_MCP"
+      },
+      "bindings": [],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [],
+      "inputs": [
+        {
+          "help": "District-owned origin, issuer, directory and allowed origins. See external-mcp README. Required for school release activation.",
+          "kind": "var",
+          "label": "District MCP configuration (JSON)",
+          "name": "MCP_CONFIG"
+        }
+      ],
+      "installable": true,
+      "kind": "service",
+      "mainModule": "worker.js",
+      "migrations": [
+        {
+          "new_sqlite_classes": [
+            "McpDistrict"
+          ],
+          "tag": "v1"
+        }
+      ],
+      "modules": [
+        {
+          "name": "worker.js",
+          "r2Key": "blobs/modules/6a6b9372f67dce21df2dba4e8cf3668896ce7cb97aaeb1682ec5ae7051e6b41c",
+          "sha256": "6a6b9372f67dce21df2dba4e8cf3668896ce7cb97aaeb1682ec5ae7051e6b41c",
+          "size": 64,
+          "type": "esm"
+        }
+      ],
+      "observability": {
+        "enabled": false
+      },
+      "singleton": true,
+      "vars": {}
+    },
     "gatekeeper-clever": {
       "bindings": [
         {
@@ -761,6 +803,10 @@
     },
     "gatekeeper-google": {
       "bindings": [
+        {
+          "name": "AI",
+          "type": "ai"
+        },
         {
           "name": "CLIENT_ID",
           "text": "$SECRET(CLIENT_ID)",
@@ -1707,6 +1753,10 @@
         {
           "name": "BROWSER",
           "type": "browser"
+        },
+        {
+          "name": "CF_VERSION_METADATA",
+          "type": "version_metadata"
         },
         {
           "name": "LOADER",

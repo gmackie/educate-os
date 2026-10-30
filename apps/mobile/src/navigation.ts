@@ -23,6 +23,9 @@ export function hrefFor(detail: Detail): string {
     });
     case 'family-child': return '/family/' + id(detail.id);
     case 'family-class': return '/family/' + id(detail.studentId) + '/class/' + id(detail.offeringId);
+    case 'page': return '/class/' + id(detail.offeringId) + '/page/' + id(detail.pageId);
+    case 'discussion': return '/class/' + id(detail.offeringId) + '/discussion/' + id(detail.topicId);
+    case 'quiz': return '/class/' + id(detail.offeringId) + '/quiz/' + id(detail.quizId);
     case 'grades': return '/grades';
     case 'announcements': return '/announcements';
   }

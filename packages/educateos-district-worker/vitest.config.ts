@@ -4,7 +4,7 @@ import capnwebValidate from "capnweb-validate/vite";
 import { kCurrentWorker } from "miniflare";
 import { defineConfig } from "vitest/config";
 import deployed from "./cloudflare.config.ts";
-import { ACCESS_AUDIENCES, ACCESS_ISSUER, DEVICE_TOKEN_SECRET, LTI_TOOL_ORIGIN, TEST_CONFIG } from "./__tests__/fixtures.ts";
+import { ACCESS_AUDIENCES, ACCESS_ISSUER, DEVICE_TOKEN_SECRET, HALL_MONITOR_URL, LTI_TOOL_ORIGIN, TEST_CONFIG } from "./__tests__/fixtures.ts";
 
 const { compatibilityDate, compatibilityFlags } = deployed.worker;
 
@@ -16,6 +16,8 @@ const KID = "test-access-key";
 // test district's platform fetch publishes its public half as the platform's JWKS.
 const platform = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const PLATFORM_KID = "test-platform-key";
+// The key the district signs Hall Monitor service tokens with (SCHO-305), for this run only.
+const hallMonitorKey = generateKeyPairSync("ed25519");
 
 /**
  * The Worker runs in workerd: the district is a real SQLite Durable Object, reached through the
@@ -43,6 +45,10 @@ export default defineConfig({
           CF_ANALYTICS_TOKEN: "test-analytics-token",
           CF_ACCOUNT_ID: "0123456789abcdef0123456789abcdef",
           ANALYTICS_SCRIPTS: "educateos-district-worker",
+          // Discussion screening (SCHO-305): the test object answers Hall Monitor with the guard's fake.
+          HALL_MONITOR_URL,
+          HALL_MONITOR_SIGNING_KEY: JSON.stringify({ ...hallMonitorKey.privateKey.export({ format: "jwk" }), kid: "test-hall-monitor-key" }),
+          HALL_MONITOR_ISSUER: "educateos",
           TEST_PLATFORM_PRIVATE_JWK: JSON.stringify({ ...platform.privateKey.export({ format: "jwk" }), kid: PLATFORM_KID, alg: "RS256" }),
           TEST_PLATFORM_PUBLIC_JWK: JSON.stringify({ ...platform.publicKey.export({ format: "jwk" }), kid: PLATFORM_KID, alg: "RS256", use: "sig" }),
         },
@@ -51,6 +57,7 @@ export default defineConfig({
           DISTRICT: { className: "DistrictObject", useSQLite: true },
         },
         serviceBindings: {
+          WORKSHOP_POLICY: { name: kCurrentWorker, entrypoint: "DistrictWorkshopCapabilityPolicy" },
           GUARD: { name: kCurrentWorker, entrypoint: "DistrictGuardDirectory" },
           TOOLS: { name: kCurrentWorker, entrypoint: "DistrictSchoolTools" },
           PRINCIPALS: { name: kCurrentWorker, entrypoint: "DistrictPrincipalResolver" },

@@ -15,7 +15,7 @@ import type {
   AiCallOutputDecision,
 } from "@gadgets/workshop-shared/ai-call-guard";
 import { createLogger, type Logger } from "@gadgets/observability/logger";
-import { HallMonitorError, type HallMonitorClient } from "@gmacko/hall-monitor-client";
+import { HallMonitorError } from "@gmacko/hall-monitor-client";
 import {
   MAX_TEXT_LENGTH,
   SCHEMA_VERSION,
@@ -28,7 +28,8 @@ import {
 import { denialErrorCode, type AiDenialReason, type ModelRef } from "@educateos/ai-governance";
 import { guardMessages, type GuardConfig, type GuardMessages } from "./config.ts";
 import type { GuardContext, GuardContextResolver } from "./context.ts";
-import { receiptAttempts } from "./hall-monitor.ts";
+import { receiptAttempts, type GuardHallMonitorClient } from "./hall-monitor.ts";
+import { sourceEligibility } from "./source-governance.ts";
 import type { DistrictAiLedger } from "./ledger-object.ts";
 import type { GatewayLogSource } from "./gateway-logs.ts";
 import { estimateMaxUsdNano, priceSettlement, rateFor, tokenUsageOf } from "./pricing.ts";
@@ -61,7 +62,7 @@ export interface GuardDependencies {
   /** Maps a call's initiator to a principal and their moderation profile. */
   resolver: GuardContextResolver;
   /** Hall Monitor, or `null` when none is configured (moderation is then unavailable). */
-  hallMonitor: HallMonitorClient | null;
+  hallMonitor: GuardHallMonitorClient | null;
   /** The AI Gateway's logs, when the deployment can read them; settlements then use their costs. */
   gatewayLogs?: GatewayLogSource | null;
 }
@@ -112,7 +113,7 @@ export class AiCallGuardService {
   readonly #config: GuardConfig;
   readonly #ledger: DurableObjectStub<DistrictAiLedger>;
   readonly #resolver: GuardContextResolver;
-  readonly #hallMonitor: HallMonitorClient | null;
+  readonly #hallMonitor: GuardHallMonitorClient | null;
   readonly #gatewayLogs: GatewayLogSource | null;
   readonly #messages: GuardMessages;
 
@@ -157,9 +158,16 @@ export class AiCallGuardService {
       log.error("AI call refused: the district directory could not say who the call is for", { event: "ai_guard.failed", reason: "context_unavailable", error: error instanceof Error ? error.name : "unknown" });
       return deny("context_unavailable", this.#messages.aiUnavailable);
     }
+    if (context !== null && call.initiator.type === "gadget") context = this.#gadgetContext(context);
     if (context === null) {
       log.info("AI call refused: initiator is no principal of this deployment", { event: "ai_guard.denied", reason: "unknown_principal" });
       return deny("unknown_principal", this.#messages.unknownPrincipal);
+    }
+    try {
+      sourceEligibility(this.#config, context, Math.floor(Date.now() / 1000));
+    } catch {
+      log.info("AI call refused: source eligibility is unavailable", { event: "ai_guard.denied", reason: "source_eligibility_unavailable" });
+      return deny("source_eligibility_unavailable", this.#messages.aiUnavailable);
     }
     const model: ModelRef = { provider: call.model.provider, modelId: call.model.id };
     const rate = rateFor(this.#config, model);
@@ -232,7 +240,8 @@ export class AiCallGuardService {
       log.warn("AI response withheld: its call is not one awaiting release", { event: "ai_guard.output.withheld", reason: "unknown_call" });
       return withhold("unknown_call", this.#messages.notAllowed);
     }
-    const context = await this.#resolver.resolveAdmitted({ principalId: reservation.principalId, districtId: reservation.districtId }, reservation.workspace);
+    let context = await this.#resolver.resolveAdmitted({ principalId: reservation.principalId, districtId: reservation.districtId }, reservation.workspace);
+    if (context !== null && output.initiator?.type === "gadget") context = this.#gadgetContext(context);
     if (context === null) {
       log.warn("AI response withheld: its principal is no longer served", { event: "ai_guard.output.withheld", reason: "unknown_principal" });
       return withhold("unknown_principal", this.#messages.notAllowed);
@@ -255,7 +264,8 @@ export class AiCallGuardService {
 
   /**
    * Settles an admitted call's generative hold, exactly once per `callId`. A call that ended
-   * without billing anything (failed or aborted with no reported tokens) is released instead.
+   * with explicit zero usage and no gateway log (failed or aborted) is released instead.
+   * Missing or invalid counters retain a liability; a gateway log may still report a bill.
    * The Workshop reports tokens but no cost, so the cost is the AI Gateway log's when the guard can
    * read one (`provider_reported`), else priced from the rate table merged with the shared price
    * book (`estimated`; see `priceSettlement`). Usage that is missing, or a model nothing prices, is
@@ -276,7 +286,9 @@ export class AiCallGuardService {
 
     const usage = outcome.usage === undefined ? undefined : tokenUsageOf(outcome.usage);
     const billed = usage !== undefined && usage.inputTokens + usage.outputTokens + usage.cacheReadTokens + usage.cacheWriteTokens > 0;
-    if (outcome.status !== "completed" && !billed) {
+    // Missing/invalid usage is not evidence of a free failure. Even explicit zero counters
+    // may be placeholders when a gateway log exists; consult its bill before releasing funds.
+    if (outcome.status !== "completed" && usage !== undefined && !billed && outcome.aiGatewayLogId === undefined) {
       const result = await this.#ledger.void(outcome.callId);
       log.info("AI call released", { event: "ai_guard.voided", outcome: result.outcome });
       return;
@@ -291,8 +303,11 @@ export class AiCallGuardService {
       at: record.reservation.reservedAt,
       ...gatewayLogId,
     });
-    const { attempt } = priced;
-    const result = await this.#ledger.settle(outcome.callId, { attempts: [attempt], ...(priced.priceBookId === undefined ? {} : { priceBookId: priced.priceBookId }) });
+    // A failed stream's zero counters must not turn a pending/unreachable bill into a $0
+    // estimate. Keep the log ID so reconciliation can replace the liability later.
+    const unknownFailure = outcome.status !== "completed" && !billed && priced.attempt.state !== "provider_reported";
+    const attempt = unknownFailure ? { attemptIndex: 0, state: "unknown" as const, ...gatewayLogId } : priced.attempt;
+    const result = await this.#ledger.settle(outcome.callId, { attempts: [attempt], ...(unknownFailure || priced.priceBookId === undefined ? {} : { priceBookId: priced.priceBookId }) });
     const log2 = log.with({ outcome: result.outcome });
     if (result.outcome === "settled" || result.outcome === "already-voided") {
       log2.info("AI call settled", { event: "ai_guard.settled", reason: attempt.state, gatewayLookup: priced.gateway });
@@ -301,8 +316,25 @@ export class AiCallGuardService {
     }
   }
 
+  /**
+   * The context a gadget's own model call is moderated under (SCHO-307). Its initiator is the
+   * gadget's owner, who pays for it, but whoever the gadget is shown to may be typing: a student
+   * using a teacher's shared gadget, say. The Workshop cannot tell, so the call is moderated as for
+   * the youngest students (`student-k5`, grades K-2). A configuration with no such profile keeps a
+   * student owner's own profile, and refuses anyone else's call.
+   */
+  #gadgetContext(context: GuardContext): GuardContext | null {
+    const profile = this.#config.profiles["student-k5"] ?? (context.audience === "student" ? context.profile : undefined);
+    if (profile === undefined) return null;
+    return { ...context, audience: "student", gradeBand: "K-2", profile };
+  }
+
   async #moderate(call: AiCallDescriptor, context: GuardContext, log: Logger<GuardLogFields>): Promise<Moderation> {
-    if (!context.profile.moderateInput) return { kind: "proceed", coach: false };
+    // Hall Monitor screens text only, so an image a student sends would reach the model unread.
+    if (context.audience === "student" && call.newMessages.some((message) => message.parts.some((part) => part.type === "image"))) {
+      return { kind: "deny", reason: "image_unscreened", message: this.#messages.imageUnscreened };
+    }
+    if (!context.profile.moderateInput && this.#config.moderation.governance === undefined) return { kind: "proceed", coach: false };
     const checks = call.newMessages.flatMap((message, m) => textChunks(message.parts).map((text, c) => ({ checkId: `${call.callId}.m${m}.c${c}`, text })));
     return this.#evaluate(call.callId, context, checks, "interaction.input", log);
   }
@@ -324,6 +356,12 @@ export class AiCallGuardService {
     let coached = false;
     for (const { checkId, text } of checks) {
       const checkLog = log.with({ checkId });
+      try {
+        sourceEligibility(this.#config, context, Math.floor(Date.now() / 1000));
+      } catch {
+        checkLog.info("moderation refused: source eligibility is unavailable", { event: "ai_guard.denied", reason: "source_eligibility_unavailable" });
+        return { kind: "deny", reason: "source_eligibility_unavailable", message: this.#messages.aiUnavailable };
+      }
       const held = await this.#ledger.reserve({
         requestId: checkId,
         principal: context.principal,
@@ -341,7 +379,7 @@ export class AiCallGuardService {
 
       let result: EvaluationResult;
       try {
-        result = await this.#hallMonitor.evaluate(this.#evaluationRequest(callId, context, checkId, text, kind));
+        result = await this.#hallMonitor.evaluate(this.#evaluationRequest(callId, context, checkId, text, kind), { sourceContext: context });
       } catch (error) {
         // The call may have reached Hall Monitor and been billed, so its cost is unknown, not $0.
         await this.#ledger.settle(checkId, { attempts: [{ attemptIndex: 0, state: "unknown" }] });
@@ -364,6 +402,10 @@ export class AiCallGuardService {
         return result.decision === "support"
           ? { kind: "deny", reason: "moderation_support", message: this.#messages.support }
           : { kind: "deny", reason: `moderation_${result.decision}`, message: output ? this.#messages.outputWithheld : this.#messages.blocked };
+      }
+      if (this.#config.moderation.governance !== undefined && result.degraded !== undefined) {
+        checkLog.info("moderation refused a degraded governed result", { event: "ai_guard.denied", reason: "moderation_unavailable", ...fields });
+        return { kind: "deny", reason: "moderation_unavailable", message: output ? this.#messages.outputWithheld : this.#messages.aiUnavailable };
       }
       const integrity = context.profile.answerAssistance !== "direct" && result.reasonCodes.some((code) => code.startsWith("academic_integrity."));
       if (result.decision === "coach" || integrity) {
@@ -401,7 +443,10 @@ export class AiCallGuardService {
     const fields = error instanceof HallMonitorError
       ? { hallMonitorCode: error.code, ...(error.status === undefined ? {} : { hallMonitorStatus: error.status }) }
       : {};
-    if (!output && context.audience === "educator" && context.profile.failureMode === "proceed") {
+    // Only service outages may use the educator fallback. Authentication, policy and wire
+    // faults cannot bypass moderation; governed transfers always fail closed.
+    const outage = error === undefined || (error instanceof HallMonitorError && (error.code === "unavailable" || error.code === "rate_limited"));
+    if (this.#config.moderation.governance === undefined && !output && outage && context.audience === "educator" && context.profile.failureMode === "proceed") {
       log.warn("Hall Monitor unavailable; educator profile proceeds unmoderated", { event: "ai_guard.moderation.unavailable", reason: "moderation_unavailable_proceed", ...fields });
       return { kind: "proceed", coach: false };
     }

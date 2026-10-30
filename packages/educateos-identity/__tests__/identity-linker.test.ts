@@ -53,6 +53,17 @@ describe("identity linking", () => {
     });
   });
 
+  it.each(["inactive", "graduated"] as const)("refuses decisions by a %s administrator and linking a revoked person", (status) => {
+    const pending = requestIdentityLink(directory, { principalId: MORGAN, identity: morganAccess, requestedAt: AT });
+    const revokedAdmin = { ...directory, principals: directory.principals.map((p) =>
+      p.id === NF_ADMIN ? { ...p, status } : p) };
+    expect(codeOf(() => approveIdentityLink(revokedAdmin, pending, decision))).toBe("forbidden");
+    expect(codeOf(() => rejectIdentityLink(revokedAdmin, pending, decision))).toBe("forbidden");
+    const revokedPerson = { ...directory, principals: directory.principals.map((p) =>
+      p.id === MORGAN ? { ...p, status } : p) };
+    expect(codeOf(() => approveIdentityLink(revokedPerson, pending, decision))).toBe("forbidden");
+  });
+
   it("keeps email out of audit events", () => {
     const pending = requestIdentityLink(directory, { principalId: MORGAN, identity: morganAccess, requestedAt: AT });
     const events = [approveIdentityLink(directory, pending, decision).event, rejectIdentityLink(directory, pending, decision)];

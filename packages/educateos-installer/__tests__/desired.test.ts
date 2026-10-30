@@ -1,11 +1,50 @@
 import { describe, expect, it } from "vitest";
-import { compileDesiredState, DistrictInstallConfig, loadPinnedManifest } from "../src/index.ts";
+import { compileDesiredState, DistrictInstallConfig, loadPinnedManifest, ManifestBinding } from "../src/index.ts";
 import { configFor, deriveRelease, goldenRelease, NORTHFIELD } from "./support.ts";
 
 describe("release manifest", () => {
+  it("loads signed school assets and refuses an ambiguous school/upstream release", async () => {
+    const base = await goldenRelease();
+    const school = await deriveRelease(base, "r000003-school", (manifest) => {
+      const variants = manifest.workers.router!.assetsConfig!.variants;
+      variants["access-school"] = variants.access!;
+      delete variants.access;
+    });
+    expect(() => compileDesiredState(school.manifest, configFor(NORTHFIELD, school)))
+      .toThrow("school release requires a district WORKSHOP_CAPABILITY_POLICY binding");
+    // A binding to an uninstalled authority must fail placeholder resolution as well.
+    school.manifest.workers["workshop-backend"]!.bindings.push({ type: "service",
+      name: "WORKSHOP_CAPABILITY_POLICY", service: "$WORKER_NAME(educateos-district-worker)",
+      entrypoint: "DistrictWorkshopCapabilityPolicy" });
+    expect(() => compileDesiredState(school.manifest, configFor(NORTHFIELD, school)))
+      .toThrow("school release requires enabled service");
+    school.manifest.workers["workshop-backend"]!.bindings.pop();
+    // Validate assets independently of activation, which is intentionally blocked above.
+    delete school.manifest.workers.router!.assetsConfig!.variants["access-school"];
+    school.manifest.workers.router!.assetsConfig!.variants.access = base.manifest.workers.router!.assetsConfig!.variants.access!;
+    const desired = compileDesiredState(school.manifest, configFor(NORTHFIELD, school));
+    const router = desired.resources.find((resource) => resource.kind === "worker_script" && resource.pkgName === "router");
+    expect(router && router.kind === "worker_script" && router.assets?.manifest)
+      .toEqual(base.manifest.workers.router!.assetsConfig!.variants.access!.manifest);
+    const ambiguous = await deriveRelease(school, "r000004-ambiguous", (manifest) => {
+      const variants = manifest.workers.router!.assetsConfig!.variants;
+      variants["access-school"] = variants.access!;
+    });
+    expect(() => compileDesiredState(ambiguous.manifest, configFor(NORTHFIELD, ambiguous)))
+      .toThrow("ambiguous Access asset variants");
+  });
+
   it("accepts the release pipeline's golden manifest against the root's signed statement", async () => {
     const release = await goldenRelease();
     expect(Object.keys(release.manifest.workers)).toContain("workshop-backend");
+  });
+
+  it("accepts version metadata without relaxing the closed binding schema", () => {
+    expect(ManifestBinding.parse({ type: "version_metadata", name: "CF_VERSION_METADATA" }))
+      .toEqual({ type: "version_metadata", name: "CF_VERSION_METADATA" });
+    expect(ManifestBinding.safeParse({ type: "version_metadata", name: "invalid-name" }).success).toBe(false);
+    expect(ManifestBinding.safeParse({ type: "version_metadata", name: "CF_VERSION_METADATA", id: "unexpected" }).success).toBe(false);
+    expect(ManifestBinding.safeParse({ type: "unknown_binding", name: "UNKNOWN" }).success).toBe(false);
   });
 
   it("rejects bytes that do not match the signed digest", async () => {

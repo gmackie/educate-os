@@ -1,3 +1,4 @@
+import { InMemoryGadgetAssessmentStore, type GadgetAssessmentStore } from "./gadget-assessment.ts";
 import {
   EducateOsError,
   IntegrationSyncRun,
@@ -34,7 +35,7 @@ import { z } from "zod";
 import { InMemoryDiscussionStorage, type DiscussionStorage } from "@educateos/discussions";
 // Quizzes (SCHO-191)
 import { InMemoryQuizStorage, type QuizStorage } from "@educateos/quizzes";
-import type { WorkshopUserLink } from "@educateos/identity";
+import { assertWorkshopUserLinkAvailable, type WorkshopUserLink } from "@educateos/identity";
 import { InMemoryGuardianRelationshipStore, type GuardianRelationshipStore } from "@educateos/policy";
 import { InMemoryGuardianInvitationStore, InMemoryIdentityLinkStore, type GuardianInvitationStore, type IdentityLinkStore } from "@educateos/identity-links";
 import type { FundingAllocationRevision } from "./routes.ts";
@@ -192,7 +193,7 @@ export class InMemoryRosterSyncStore implements RosterSyncStore {
 export interface WorkshopUserLinkStore {
   /** Every link, oldest first. */
   list(): Promise<WorkshopUserLink[]>;
-  /** Appends a confirmed link. */
+  /** Appends a confirmed link, atomically refusing an existing account or principal. */
   add(link: WorkshopUserLink): Promise<void>;
 }
 
@@ -205,6 +206,7 @@ export class InMemoryWorkshopUserLinkStore implements WorkshopUserLinkStore {
   }
 
   async add(link: WorkshopUserLink): Promise<void> {
+    assertWorkshopUserLinkAvailable(this.#links, link);
     this.#links.push(structuredClone(link));
   }
 }
@@ -243,6 +245,8 @@ export interface DistrictAppStores {
   artifactContent: ArtifactStore;
   /** Assignments, submissions, feedback and grades (E01). */
   assessment: AssessmentRecordStore;
+  /** Teacher-reviewed immutable Workshop releases configured for assignments. */
+  gadgetAssessments: GadgetAssessmentStore;
   /** Signed rubric releases (E02). */
   rubrics: RubricReleaseStore;
   /** Assessment CI runs (E02). */
@@ -308,6 +312,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     artifactRecords: new InMemoryArtifactRecordStore(),
     artifactContent: new BackendArtifactStore({ text: new InMemoryInlineTextTable(), r2: new InMemoryR2Bucket() }),
     assessment: new InMemoryAssessmentRecordStore(),
+    gadgetAssessments: new InMemoryGadgetAssessmentStore(),
     rubrics: new InMemoryRubricReleaseStore(),
     assessmentRuns: new InMemoryAssessmentRunStore(),
     contentStudio: new InMemoryContentStudioStorage(),

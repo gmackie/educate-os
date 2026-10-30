@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/interest.css">
+<title>Share a practical observation · EducateOS</title>
+<meta name="description" content="Tell us which teacher workflow or technology constraint deserves attention. You can share feedback without opting into ongoing updates. Please use fictional examples and professional details only.">
+<script src="/assets/interest.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+    <div class="right">
+      <a class="btn hide-sm" href="/demo/">Try the demo</a>
+      <a class="btn primary" href="/interest/">Share your interest</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/demo/">Try the demo</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+<main id="main" data-intake-page="feedback"><section class="page-hero"><div class="wrap doc"><div class="eyebrow">Early conversations · no student data</div><h1>Share a practical observation</h1><p>Tell us which teacher workflow or technology constraint deserves attention. You can share feedback without opting into ongoing updates. Please use fictional examples and professional details only.</p><p id="maturity">EducateOS is an early open-source project with a district-owned design. The demo uses fictional data. We are exploring a foundation model; incorporation, tax-exempt status and a Clever master partnership are not established. We do not claim certifications, participating districts or production-ready pilots. A pilot request starts a readiness discussion, not a deployment commitment.</p><div class="intake-choices" aria-label="Ways to take part"><a class="btn" href="/interest/?outcome=demo#request">Request a 20-minute demo</a><a class="btn" href="/advisory/?outcome=educator-council#request">Educator Council</a><a class="btn" href="/advisory/?outcome=technical-council#request">Technical Council</a><a class="btn" href="/interest/?outcome=technical-review#request">Technical review</a><a class="btn" href="/interest/?outcome=pilot#request">Pilot evaluation</a><a class="btn" href="/feedback/#request">Share feedback</a></div></div></section><section class="wrap doc" id="request" aria-labelledby="form-title"><h2 id="form-title">Your request</h2>
+<p id="intake-status" role="status" tabindex="-1">Intake is closed until security, privacy, retention and reviewer access have been reviewed. The form becomes available only when configured.</p>
+<noscript><p>The interest form requires JavaScript for its security check. Email hello@educateos.io with professional details only. <a href="/unsubscribe/">Email-only opt-out works without JavaScript.</a></p></noscript>
+<form id="interest-form" aria-describedby="privacy-notice data-warning" hidden>
+<p id="form-errors" role="alert" tabindex="-1"></p>
+<fieldset id="interest-fields"><legend>Professional contact and request</legend>
+<label for="name">Name (required)</label><input id="name" name="name" autocomplete="name" maxlength="120" required>
+<label for="workEmail">Work email (required)</label><input id="workEmail" name="workEmail" type="email" autocomplete="email" maxlength="254" required>
+<label for="org">School, district or organization (required)</label><input id="org" name="org" autocomplete="organization" maxlength="160" required>
+<label for="state">Location (required)</label><select id="state" name="state" required><option value="">Choose a location</option><option value="MI">Michigan</option><option value="TX">Texas</option><option value="other">Other</option></select>
+<label for="role">Your perspective (required; self-reported)</label><select id="role" name="role" required><option value="">Choose your perspective</option><option>Teacher/Curriculum</option><option>District IT</option><option>Head of School</option><option>Regional Partner</option><option>Developer</option></select>
+<label for="outcome">What would help? (required)</label><select id="outcome" name="outcome" required><option value="demo">A 20-minute demo conversation</option><option value="feedback">Share practical feedback</option><option value="educator-council">Founding Educator Advisory Council discussion</option><option value="technical-council">Founding Technical Advisory Council discussion</option><option value="technical-review">Technical review</option><option value="pilot">Pilot evaluation and readiness discussion</option><option value="deletion">Request privacy deletion (ownership verification required)</option></select>
+<label for="blocker">Biggest blocker (optional)</label><select id="blocker" name="blocker"><option value="">Prefer not to say</option><option value="privacy">Privacy</option><option value="teacher workflow">Teacher workflow</option><option value="cost">Cost</option><option value="compatibility">Compatibility</option><option value="IT support">IT support</option><option value="assessment">Assessment</option></select>
+<label for="systems">Existing LMS or SSO products (optional; product names only)</label><input id="systems" name="systems" maxlength="120" aria-describedby="data-warning" placeholder="For example: Canvas, Google Workspace">
+<label for="limitedFeedback">Your practical feedback or question (optional; 1,000 characters maximum)</label><textarea id="limitedFeedback" name="limitedFeedback" rows="5" maxlength="1000" aria-describedby="data-warning"></textarea>
+<p id="data-warning"><strong>Adults and professional details only. Do not enter identifying student or pupil data, names of children, student records, grades, credentials, secrets, links or URLs.</strong> Describe a workflow in general terms. This form cannot guarantee automated detection of sensitive information.</p>
+<div class="intake-honeypot" aria-hidden="true" inert><label for="website">Leave this field empty</label><input id="website" name="honeypot" tabindex="-1" autocomplete="off" maxlength="200"></div>
+<label class="check"><input type="checkbox" name="staffConfirmed" required> I am an adult acting in a professional capacity. This does not verify my role or organization. (required)</label>
+<label class="check"><input type="checkbox" name="privacyAcknowledged" required> I have read how my details will be used and will not submit student or sensitive data. (required)</label>
+<label class="check"><input type="checkbox" name="responseConsent" required> You may respond about this specific request, including verification needed to handle it. (required)</label>
+<label class="check"><input type="checkbox" name="marketingOptIn"> Optional: email me occasional EducateOS project updates. I can opt out at any time.</label>
+<div id="turnstile" aria-label="Security check"></div>
+<button class="btn primary" type="submit" id="submit-interest" disabled>Submit request</button>
+</fieldset></form>
+<aside class="intake-notice" id="privacy-notice" aria-labelledby="privacy-title"><h2 id="privacy-title">How we use your details</h2>
+<p>Gmacko Ventures LLC, the current project operator, uses your professional contact details to review this request. Permission to respond covers this specific request. Ongoing updates require the separate optional checkbox. Nothing here sends email automatically or enrolls a school.</p>
+<p>Requests are held as <strong>unverified</strong> until a person verifies email control and organizational affiliation. Self-reported roles are not proof of authority. Authorized reviewers may manually download requests to a private review tool. We do not sell these details.</p>
+<p>Contact records expire after 90 days. We keep a keyed, non-plaintext address suppression marker to honor opt-outs. A reviewer must verify address ownership before erasure. <a href="/unsubscribe/">Opt out with only your email</a>, or reply “unsubscribe” to any future update; no login or confirmation email is required. You can also request deletion using this form or contact <a href="mailto:hello@educateos.io">hello@educateos.io</a>.</p>
+<p>The security check uses Cloudflare Turnstile and sends your IP address and challenge response to Cloudflare. It loads only when intake is open. No advertising pixels or behavioral tracking are added. See the <a href="/privacy/">site privacy policy</a>.</p></aside></section>
+</main>
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/demo/">Demo</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body></html>

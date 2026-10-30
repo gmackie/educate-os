@@ -75,7 +75,7 @@ function requireIntact(directory: DistrictDirectorySnapshot): void {
 /** The person `principalId` names in `directory`, if it names one. Services never act as Workshop users. */
 function linkablePrincipal(directory: DistrictDirectorySnapshot, principalId: PrincipalId): Principal | undefined {
   const principal = directory.principals.find((p) => p.id === principalId);
-  return principal === undefined || principal.kind === "service" ? undefined : principal;
+  return principal === undefined || principal.status !== "active" || principal.kind === "service" ? undefined : principal;
 }
 
 /**
@@ -132,17 +132,23 @@ export function confirmWorkshopUserLink(
   const parsed = WorkshopUserLink.safeParse({ districtId, ...request });
   if (!parsed.success) throw new EducateOsError("validation-failed", "The Workshop user link is malformed.");
   const link = parsed.data;
-  const isAdmin = directory.roleAssignments.some((a) =>
+  const isAdmin = directory.principals.some((p) => p.id === link.confirmedBy && p.status === "active")
+    && directory.roleAssignments.some((a) =>
     a.principalId === link.confirmedBy && a.role === "district-admin" && a.scope.level === "district" && a.scope.districtId === districtId
     && roleAssignmentInForce(a, new Date(link.confirmedAt)));
   if (!isAdmin) throw new EducateOsError("forbidden", "Only a district administrator can link Workshop accounts.");
   if (linkablePrincipal(directory, link.principalId) === undefined) throw new EducateOsError("not-found", "No such person in this district.");
-  const local = existing.filter((other) => other.districtId === districtId);
+  assertWorkshopUserLinkAvailable(existing, link);
+  return link;
+}
+
+/** Refuses a duplicate account or principal; stores repeat this check atomically when appending. */
+export function assertWorkshopUserLinkAvailable(existing: readonly WorkshopUserLink[], link: WorkshopUserLink): void {
+  const local = existing.filter((other) => other.districtId === link.districtId);
   if (local.some((other) => other.workshopUser === link.workshopUser)) {
     throw new EducateOsError("conflict", "This Workshop account is already linked.");
   }
   if (local.some((other) => other.principalId === link.principalId)) {
     throw new EducateOsError("conflict", "This principal is already linked to a Workshop account.");
   }
-  return link;
 }

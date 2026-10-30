@@ -40,6 +40,17 @@ describe("createAccessSignInResolver", () => {
     expect(resolved).toEqual({ outcome: "resolved", principalId: "prn_nf-morgan-lee", displayName: expect.any(String) });
   });
 
+  it.each(["inactive", "graduated"] as const)("refuses a %s principal even with a linked subject and migration email", async (status) => {
+    const directory = northfieldWithAccess();
+    directory.principals = directory.principals.map((p) =>
+      p.id === "prn_nf-morgan-lee" ? { ...p, status } : p);
+    const { migration, recorded } = migrationFor(directory);
+    expect(await resolverFor({ directory, migration }).resolveAccessSignIn({
+      issuer: NF_ACCESS, subject: "access-uuid-1042", email: "sam.rivera@northfield.example",
+    })).toEqual({ outcome: "unauthenticated" });
+    expect(recorded).toEqual([]);
+  });
+
   it("refuses another team's issuer, even for a subject linked here", async () => {
     expect(await resolverFor().resolveAccessSignIn({ issuer: RB_ACCESS, subject: "access-uuid-1042" }))
       .toEqual({ outcome: "unauthenticated" });
@@ -77,9 +88,15 @@ describe("createAccessSignInResolver", () => {
       workshopUserId: id("5"),
     }]);
 
-    // Only an administrator's approval links it; the resolver over the new directory then resolves.
+    // Approval links the identity, but does not transfer the existing Workshop data.
     const { directory } = approveIdentityLink(northfieldWithAccess(), recorded[0]!, { actorId: NF_ADMIN, decidedAt: AT });
-    expect(await resolverFor({ directory, migration }).resolveAccessSignIn(signIn))
+    for (const email of [signIn.email, "renamed@northfield.example", undefined]) {
+      expect(await resolverFor({ directory, migration }).resolveAccessSignIn({ ...signIn, email }))
+        .toEqual({ outcome: "adoption-pending" });
+    }
+    // The migration owner removes the entry only after verified adoption of the old data.
+    const completed = { ...migration, plan: { ...migration.plan, entries: [] } };
+    expect(await resolverFor({ directory, migration: completed }).resolveAccessSignIn(signIn))
       .toMatchObject({ outcome: "resolved", principalId: "prn_nf-teacher-rivera" });
   });
 

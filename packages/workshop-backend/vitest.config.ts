@@ -28,6 +28,17 @@ const textModules: Plugin = {
   },
 }
 
+// capnweb-validate 0.3 strips query suffixes before transforming. A ?raw module is source
+// text for the ingress audit, not executable TypeScript; transforming it corrupts Vite's string
+// export. Keep RPC validation enabled for every executable module.
+const rpcValidation = capnwebValidate()
+const validateTransform = rpcValidation.transform
+if (typeof validateTransform !== 'function') throw new Error('Unexpected RPC validation transform')
+rpcValidation.transform = function (code, id, ...options) {
+  if (new URLSearchParams(id.split('?')[1] ?? '').has('raw')) return null
+  return validateTransform.call(this, code, id, ...options)
+}
+
 // Records the agent and step-persistence spans this Worker emits, as a streaming tail
 // worker receives them, so tests can read them back through the SPAN_RECORDER binding.
 const spanRecorder = `
@@ -68,7 +79,7 @@ export default {
 export default defineConfig({
   plugins: [
     textModules,
-    capnwebValidate(),
+    rpcValidation,
     cloudflareTest({
       // The production Worker plus test-only entrypoints (see __tests__/test-worker.ts).
       main: './__tests__/test-worker.ts',

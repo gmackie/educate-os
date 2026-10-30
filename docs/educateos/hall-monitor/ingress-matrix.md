@@ -48,6 +48,16 @@ carries `clientUserId` and `clientProfileId` (`overseer.ts:11054-11062`).
   `:6661`), `spawnAgent` (`:10677`), agent-callback draining (`:7489`) and `LanguageModelBindingImpl.run`
   stop unmoderated text from being stored, and give the user a clear decision before a turn starts.
 
+## Background cache warming
+
+Upstream can keep a provider's prompt cache warm by resending the last frozen payload while a
+chat is idle. That resend bypasses `ModelHandle.stream` and cannot honor fresh guard instructions,
+so `guardModelHandle` withholds its `lastRequest` capability whenever `AI_CALL_GUARD` is bound,
+including requests captured after the stream finishes. Ordinary prompt caching during guarded
+model calls remains enabled. Deployments without a guard retain upstream cache warming.
+`ai-models.test.ts` drives a real provider response with cache usage and verifies that guarded
+handles never expose a resend, while the adjacent unguarded tests exercise upstream resending.
+
 ## Output screening (SCHO-133)
 
 The rows above are about what reaches a model. What a model sends back is screened at one place,

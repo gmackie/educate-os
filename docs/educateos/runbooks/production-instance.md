@@ -99,9 +99,13 @@ The budget is $5 a month for personal workspaces and $1 a month for the safety p
 models use a deliberately high demo rate ($1 in and $4 out per million tokens). The Clef decision
 models use the shared Cloudflare price book.
 
+For the staged move from this operator-only guard to the district directory, see
+[Workshop guard linking](workshop-guard-linking.md). District sign-in and guard admission are
+separate setup steps; linking grants no educator role.
+
 ## Principal identity cutover (SCHO-259)
 
-Today no principal resolver is bound, so Workshop users are keyed by Access email (above). On a
+Before the cutover, Workshop users were keyed by Access email (above). On a
 district origin the Workshop resolves the same principal as the district: the backend's
 `PRINCIPAL_RESOLVER` service binding names the district Worker's `DistrictPrincipalResolver`
 entrypoint, and an Access sign-in names its user Durable Object `principal:<id>` (ADR-0003, ADR-0014).

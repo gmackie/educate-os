@@ -60,7 +60,9 @@ The release manifest carries it as the entry's `crons`.
 - guard profiles: a Hall Monitor policy profile revision, whether input is moderated, a
   `failureMode`, and `outputModeration` (`required`, `optional` or `off`, default `off`, mirroring
   the Hall Monitor profile), one for each audience class (`student-k5`, `student-6-8`, `student-9-12`,
-  `educator`);
+  `educator`). A profile students are moderated under (each `student-*` class, or one a static
+  binding gives a student) must moderate input and set `outputModeration: "required"`, or the
+  config is refused and every call denied (SCHO-307);
 - when no district app is bound, the district's workspaces and its administrator-confirmed
   Workshop user links (see below);
 - `contextSource`, `district` by default. `static` reads hand-written `principals` bindings
@@ -97,6 +99,63 @@ workspaces and links.
   directory that fails or answers something malformed denies the call (`context_unavailable`)
   before anything is held. Nothing in a call's content, or anything a browser sends, says what
   role or grade a user has.
+
+## First Hall Monitor pilot (SCHO-264)
+
+EducateOS is the first selected pilot integration (owner decision, 29 October 2026). The existing
+guard now supports an **opt-in** `moderation.governance` object in `AI_GUARD_CONFIG`. No shipped
+config enables it. The configured district resolver remains the identity authority; static
+principal bindings are refused in this mode. This slice does not enable discussion screening,
+enroll an institution, or add a safety-event/case store.
+
+The object contains `institutionId`, `policyRevision`, separate `purposes.input` and
+`purposes.output`, `maxEligibilityAgeSeconds` (1–3600, no default), and an `eligibility` array.
+Each entry names a district-local `principalId`, `dataClass`, explicit `ageEligibility`, an opaque
+`eligibilityRef`, original `issuedAt`, `expiresAt` (Unix seconds), and `revoked`. An entry must be
+unique per principal. These are bounded operator-installed source records for the pilot, not a
+consent UI or a live approval registry. Their provenance and update/revocation process must be
+approved before actual use; install a new configuration to withdraw a record. A running call
+uses its configuration snapshot, bounded by record expiry/freshness; this provides no immediate
+cross-isolate revocation guarantee. A future live registry must address that separately.
+
+The guard resolves the authenticated Workshop user through district links, then matches that
+principal's entry. It never infers age from grade or accepts eligibility from message content or
+RPC arguments. Unknown, ineligible, future, stale, expired, revoked, cross-district or
+audience-inconsistent records fail closed before transfer. Staff requires adult eligibility;
+student records must be explicit; synthetic data requires synthetic eligibility. A source
+record says nothing about provider age permission on its own: Hall Monitor independently checks
+its own enrolled policy, agreement, approvals and route evidence before each provider call.
+
+The adapter signs a request-bound `hm_governance` JWT extension, without principal identity or
+DOB, using the existing Ed25519/P-256 signer. It binds institution, request, product, surface,
+input/output purpose, class, eligibility reference and policy revision. Its expiry never exceeds
+the JWT or source record; its original eligibility check time is preserved on retries. Every
+attempt gets a fresh JWT/jti and a fresh eligibility check. One JWT cannot authorize a batch,
+so the governed adapter refuses `evaluateBatch`. Governance stays out of evaluation DTOs.
+
+Governed evaluations use `POST /v1/evaluations:governed` with the pinned 0.3.0 SDK's unchanged
+DTOs. A small transport adapter rewrites only single-evaluation requests. Older receivers return
+404 and the guard refuses the call; it never retries on the legacy route. The receiver requires
+signed context and tenant enrollment independently of the source configuration.
+
+This mode requires a signing key even on a service binding and screens input even if a legacy
+profile skips it. It disables the educator `proceed` fallback on moderation failures and refuses
+degraded allow/coach results while preserving deterministic support messages. Required
+output screening rechecks eligibility before releasing content. Missing signing, endpoint or
+eligibility cannot downgrade a governed call into a legacy ungoverned transfer. Legacy behavior
+remains when the governance object is absent. Existing output-profile requirements still apply.
+
+Tests use fictional Northfield principals, throwaway test keys, the real district resolver and
+ledger, and a fake Hall Monitor. They verify signatures, exact claim/body binding, concurrency,
+retry/expiry, local denials and required-output withholding. They do not prove a deployed receiver
+or a cloud privacy posture. Live activation requires compatible pinned Hall Monitor profiles,
+matching receiver enrollment/purposes/freshness, authenticated target acceptance, privacy and
+provider/age approval, calibration and staffed referral. No trust material is installed here.
+
+Hall Monitor's evaluated-volume denominator includes every unique committed evaluation across
+all four evaluation kinds, including degraded results. A chunk's input and output checks are
+separate evaluations; replays and failures before commit add no new unit. It is not a count of
+students, model calls or source submissions. Missing telemetry remains unavailable, never zero.
 
 ## Development and previews
 
@@ -154,7 +213,9 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
 - **Safety pool exhausted.** The call is denied (`safety_budget_exhausted`) with the "AI isn't
   available, keep working without it" message. Moderation is never skipped to save money.
 - **Hall Monitor unavailable.** A student audience fails closed, whatever its profile says. An
-  educator follows the profile's `failureMode`, either `fail-closed` or `proceed`. A failed check
+  educator follows the profile's `failureMode`, either `fail-closed` or `proceed`, only for an
+  unavailable/rate-limited service (or an unconfigured client). Authentication, policy, schema
+  and idempotency faults always fail closed, including for educators. A failed check
   may already have been billed, so it is settled as an `unknown` attempt: a liability at the hold,
   never $0.
 - **Hall Monitor receipts** reach the ledger unchanged, since both use `UsdNano` strings.
@@ -167,7 +228,11 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   `provider_reported` at that cost. Otherwise usage is priced from the merged rate table
   (`estimated`, with the rate's or the shared book's `priceBookId`). The Workshop's token counts
   are used either way, since only they split out the prompt cache. A log lookup that fails or
-  times out (3 s) falls back to the estimate. With no usage, or no rate, the attempt is `unknown`. A failed or aborted call that reported no tokens is voided. Settlement
+  times out (3 s) falls back to the estimate. With no usage, or no rate, the attempt is `unknown`.
+  A failed or aborted call is voided only when it reports valid, explicit zero usage and no gateway
+  log. Missing or invalid usage remains an unknown liability, including on failures and aborts.
+  A zero-token failure with a gateway log uses its reported bill when available; otherwise it
+  retains an unknown liability until reconciliation. Settlement
   happens exactly once per `callId`: a repeated outcome finds the call already settled, and
   concurrent repeats replay in the ledger.
 - **Coaching.** A `coach` decision on a language-model call's input, or, under a profile whose
@@ -183,7 +248,8 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
 - **Output screening.** A language-model call whose profile's `outputModeration` is `required` is
   admitted with `screenOutput`, so the Workshop buffers its response and calls
   `screenModelOutput(callId, output)` before showing any of it. `optional` and `off` stream
-  unscreened. The guard finds the call by its generative reservation, which names the principal
+  unscreened. The output is the response's text, its unredacted reasoning and each tool call it
+  makes, as `name(arguments)`, since arguments can carry text into a file or page (SCHO-307). The guard finds the call by its generative reservation, which names the principal
   and workspace (so a principal may be bound to only one Workshop user), and evaluates each
   32,000-character chunk as `interaction.output` under check ID `<callId>.o.c<j>`, funded from the
   safety pool like an input check. `allow` and `coach` release the response; `hold` and `block`
@@ -195,7 +261,16 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   IDs, decisions, Hall Monitor reason codes and error codes only, and a test spies on the console
   to check this. Hall Monitor error messages aren't logged either, only their codes.
 - **Initiators.** `user` and `gadget` initiators resolve by Workshop user ID; a gadget's calls are
-  its owner's. An `agent` initiator names a model, not a person, so it is refused.
+  billed to its owner. An `agent` initiator names a model, not a person, so it is refused.
+- **Gadget calls** (SCHO-307). Whoever a gadget is shown to may be typing into it (a student using
+  a teacher's shared gadget, say), and the Workshop cannot tell who. So a `gadget` initiator's
+  calls are moderated, input and output, as for the youngest students: the `student-k5` profile and
+  grade band `K-2`, failing closed. A config without that profile keeps a student owner's own
+  profile and refuses anyone else's gadget calls. The Workshop names the initiator again when it
+  asks for output screening, so the reply is screened for the same reader.
+- **Images** (SCHO-307). Hall Monitor screens text only, so a student's message carrying an image
+  is denied (`image_unscreened`, with the `imageUnscreened` message) rather than reaching the
+  model unread. An educator's image proceeds.
 - **Nightly reconciliation** (`src/reconciliation.ts`). The Cron Trigger runs two idempotent
   steps against the district ledger:
   1. With gateway logs readable, up to 200 settled requests whose cost is still unknown, and whose
@@ -214,9 +289,10 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
 
 - Passing an answer key with output checks, for Hall Monitor's answer-leakage evaluator. The
   Workshop knows no answer keys yet.
-- Deploying the district app as a Worker with a guard-only entrypoint for `EDUCATEOS_DISTRICT`,
-  and an admin route that confirms Workshop user links into its `workshopUserLinks` store. Until
-  then the directory, links and workspaces are configured, and the var size limit remains.
+- Activating district-backed resolution in existing operator-only installations. The district
+  Worker exposes `DistrictGuardDirectory`, and its admin API confirms Workshop links. Follow
+  [Workshop guard linking](../../docs/educateos/runbooks/workshop-guard-linking.md) to deploy the
+  binding and matching policy configuration together; configured snapshots remain supported.
 - Importing the provider's and Cloudflare's bills on a schedule, and reading the nightly
   allocation snapshot from the admin console.
 - Teaching the deploy service to set a worker's `crons`. Until then, the guard's Cron Trigger must
@@ -225,7 +301,8 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   That needs per-chat state in the guard, or a Workshop signal for the turn.
 - Telling the guard whether work is graded (the descriptor carries no assignment context), so
   `answerAssistance` can apply without Hall Monitor's `academic_integrity.*` codes.
-- Moderating attachments. Image parts are skipped; Hall Monitor accepts them only as digests.
+- Moderating attachments. Hall Monitor accepts images only as digests, so students' images are
+  refused until it can screen them.
 - Teaching the hosted deploy service the `service` kind and its `backendBinding`. The EducateOS
   district installer already does (`services` in the install config, SCHO-131; see
   `docs/educateos/installer-permissions.md`), but the upstream Cloudflare deploy service is external
@@ -235,3 +312,30 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
 
 [ADR-0007]: ../../docs/educateos/adr/0007-hall-monitor-and-ai-call-guard.md
 [Hall Monitor]: https://github.com/gmackie/hall-monitor
+
+## Integration and threat boundaries (SCHO-296)
+
+The backend must bind this service as `AI_CALL_GUARD`, await `beforeModelCall` before
+invoking a provider, and refuse spending on a denial or guard error. When admission returns
+`screenOutput`, buffer the response and await `screenModelOutput` before releasing text;
+a screening error or `withhold` must prevent release. Always call `afterModelCall` for an
+admitted provider attempt, including failed and aborted streams. Settlement is independent of
+whether a response was released or the principal was subsequently revoked.
+
+Use a fresh `callId` for each provider attempt and retry delivery with that same ID only for
+the same attempt. Ledger idempotency prevents duplicate holds/charges; it does not authorize
+invoking a provider twice. Admission retries recheck current policy, enrollment and model
+routing before reusing a held reservation. A revoked hold remains accounted for, because an
+already dispatched attempt may still bill; settlement can record that bill after revocation.
+Hall Monitor checks use stable per-message/per-output IDs, so the Hall Monitor service must
+honor its idempotency contract and reject a changed payload under an existing key.
+
+The threat is an interrupted or retried stream being mistaken for free work, allowing students
+to exhaust provider funds while bypassing principal/class limits. Missing counters are never
+proof of zero cost. Unknown costs consume the reservation in both limits until reconciliation;
+no gateway log means the liability cannot be cleared automatically. Explicit zero counters
+without a gateway log are trusted only from the authenticated backend, never from a student.
+A reservation is a conservative estimate, not a provider-enforced spending ceiling: actual
+bills may exceed it and still count against subsequent admissions. This package's tests use a
+real SQLite ledger and service-bound fake Hall Monitor; they do not validate a live classifier
+or prove every backend provider path invokes the guard.

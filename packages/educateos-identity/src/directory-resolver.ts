@@ -55,7 +55,7 @@ export function createDirectoryPrincipalResolver(directory: DistrictDirectorySna
       // Only a sign-in nobody is linked to shows the caller their own issuer and subject, to give
       // to an administrator. A linked one of the wrong credential kind has nothing to add.
       if (principal === undefined) throw new UnlinkedSignInError({ issuer, subject }, UNMATCHED);
-      if (!credentialMatchesPrincipal(credential, principal.kind)) throw new EducateOsError("unauthenticated", UNMATCHED);
+      if (principal.status !== "active" || !credentialMatchesPrincipal(credential, principal.kind)) throw new EducateOsError("unauthenticated", UNMATCHED);
       return { districtId, principalId: principal.id, kind: principal.kind, identity };
     },
   };

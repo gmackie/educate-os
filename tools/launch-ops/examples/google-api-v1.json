@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "mailbox": "operator@foundation-example.invalid",
+  "draftId": "draft_fixture_1",
+  "draftMessageId": "draft_message_1",
+  "sentMessageId": "sent_message_2",
+  "threadId": "known_thread_1",
+  "replyMessageId": "reply_message_3",
+  "replyText": "I accept the educator council seat and request a meeting to review a synthetic workflow.\n\n-- \nFictional staff signature\nphone 555-555-0100\nhttps://example.invalid/staff\n\nOn Monday, Operator wrote:\n> Quoted invitation must never be retained."
+}

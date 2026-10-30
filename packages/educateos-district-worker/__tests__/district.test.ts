@@ -1,3 +1,5 @@
+import { digestJson, pinWorkshopAssessmentBlueprint, type WorkshopAssessmentBlueprint } from "@educateos/assessment-sdk";
+import { PrincipalId } from "@educateos/contracts";
 // The district Worker in workerd, over a real SQLite Durable Object: what the district writes through
 // its `/api` surface and its school tools survives a restart of its object, requests are accepted
 // only with a valid Access assertion, and the guard and gatekeeper entrypoints answer over real
@@ -129,6 +131,8 @@ describe("the district Worker", () => {
   let assignmentId = "";
   let submissionId = "";
   let artifactId = "";
+  let gadgetBlueprint: WorkshopAssessmentBlueprint;
+  let revisionId = "";
 
   it("refuses a request without a valid Access assertion", async () => {
     expect((await fetchWorker(request(undefined, "me.get"))).status).toBe(401);
@@ -208,6 +212,16 @@ describe("the district Worker", () => {
       body: { offeringId: NF.eng9, assignment: { rubric: { rubricId: rubric.rubricId, version: rubric.version } } },
     });
     assignmentId = installed.assignment.id;
+    const files: [string, string][] = [["educateos.assessment.json", JSON.stringify({
+      format: "educateos.assessment.v1", id: "essay", version: "1.0.0", title: "Essay", intent: "Support a claim.",
+      outcomes: [{ id: "argument", description: "Support a claim" }],
+      tasks: [{ id: "essay", kind: "writing", prompt: "Write an essay", evidence: [{ id: "essay", description: "Your essay", mediaTypes: ["text/markdown"], maxBytes: 10000 }], aiAssistance: { allowedUses: [], disclosureRequired: true } }],
+      rubric: { id: rubric.rubricId, version: `${rubric.version}.0.0`, digest: rubric.signature.digest },
+      evaluator: { id: "writing.structure", version: "1.0.0", digest: "sha256:" + "b".repeat(64) },
+    })]];
+    gadgetBlueprint = await pinWorkshopAssessmentBlueprint("essay-blueprint", { commitId: "1".repeat(40), files, sourceDigest: await digestJson(files) });
+    await ok(teacher, "teacher.bindGadgetAssessment", { params: { assignmentId }, body: { blueprint: gadgetBlueprint } });
+
 
     const student = await signIn(NF.amara);
     const workspace = await ok(student, "student.openCourseWorkspace", { params: { offeringId: NF.eng9 } });
@@ -220,6 +234,25 @@ describe("the district Worker", () => {
     });
     submissionId = receipt.submissionId;
     artifactId = created.artifact.id;
+    revisionId = created.head.id;
+  });
+
+  it("reaches the pinned assessment through the real service binding and rechecks evidence ownership", async () => {
+    const subject = { districtId: NORTHFIELD.district.id, principalId: PrincipalId.parse(NF.amara) };
+    const read = await env.TOOLS.gadgetAssessmentRead(subject, assignmentId);
+    expect(read.status).toBe(200);
+    expect(JSON.parse(read.body).blueprint).toEqual(gadgetBlueprint);
+    const input = { blueprint: gadgetBlueprint.blueprint, revisions: [{ artifactId, revisionId }] };
+    const submitted = await env.TOOLS.gadgetAssessmentSubmit(subject, assignmentId, input);
+    expect(submitted.status).toBe(200);
+    expect(JSON.parse(submitted.body).submissionId).toBe(submissionId);
+    expect((await env.TOOLS.gadgetAssessmentSubmit(subject, assignmentId, { ...input, principalId: NF.rivera })).status).toBe(400);
+    expect((await env.TOOLS.gadgetAssessmentRead({ ...subject, districtId: "dst_riverbend" as typeof subject.districtId }, assignmentId)).status).toBe(401);
+    await evictDurableObject(district());
+    const restored = await env.TOOLS.gadgetAssessmentRead(subject, assignmentId);
+    expect(restored.status).toBe(200);
+    expect(JSON.parse(restored.body).blueprint).toEqual(gadgetBlueprint);
+    expect(JSON.parse(restored.body).submissions[0].id).toBe(submissionId);
   });
 
   it("reads all of it back after the district's object restarts", async () => {
@@ -258,6 +291,21 @@ describe("the district Worker", () => {
     expect(await env.GUARD.guardSubject({ workshopUser: "workshop-user-1" })).toBeNull();
   });
 
+  it("persists an admin-confirmed student Workshop link and exposes it only through the guard", async () => {
+    // An email-keyed account the principal migration aliased; a `principal:` key needs no link.
+    const workshopUser = "amara-migrated@example.com";
+    const student = await signIn(NF.amara);
+    expect(await env.GUARD.guardSubject({ workshopUser })).toBeNull();
+    expect((await fetchWorker(request(student, "admin.workshopUserLinks"))).status).toBe(403);
+    const admin = await signIn(NF.admin);
+    const link = await ok(admin, "admin.linkWorkshopUser", { body: { workshopUser, principalId: NF.amara } });
+    expect(link.confirmedBy).toBe(NF.admin);
+    expect((await fetchWorker(request(admin, "admin.linkWorkshopUser", { body: { workshopUser, principalId: NF.amara } }))).status).toBe(409);
+    await evictDurableObject(env.DISTRICT.getByName(NORTHFIELD.district.id));
+    expect(await ok(admin, "admin.workshopUserLinks")).toContainEqual(link);
+    expect(await env.GUARD.guardSubject({ workshopUser })).toMatchObject({ kind: "student", roles: [], principal: { principalId: NF.amara } });
+  });
+
   it("queues a school tool's write for a person, and decides it after a restart", async () => {
     const tools = await env.TOOLS.listTools();
     expect(tools.map((t) => t.name)).toContain("create_term");
@@ -267,7 +315,14 @@ describe("the district Worker", () => {
     expect(admin).toEqual({ principalId: NF.admin, districtId: NORTHFIELD.district.id });
     expect(await env.TOOLS.authenticate(new Request("https://district.example/"))).toBeNull();
 
-    // On the agent channel every directory operation (`invoke-tool`) waits for a person.
+    // On the agent channel a read answers at once (SCHO-285): it changes nothing to confirm.
+    const teacher = await env.TOOLS.authenticate(new Request("https://district.example/", { headers: { "cf-access-jwt-assertion": await signIn(NF.rivera) } }));
+    const mine = await env.TOOLS.callTool(teacher!, "my_enrollments", {});
+    expect(mine).toMatchObject({ status: "ok" });
+    expect(JSON.stringify((mine as { value: unknown }).value)).toContain(NF.eng9);
+    expect(await env.TOOLS.callTool(admin!, "list_terms", {})).toMatchObject({ status: "ok" });
+
+    // Every directory change waits for a person.
     const queued = await env.TOOLS.callTool(admin!, "create_term", { name: "Spring 2027", startsOn: "2027-01-25", endsOn: "2027-06-11" });
     expect(queued).toMatchObject({ status: "approval-required" });
     const approvalId = (queued as { approvalId: string }).approvalId;
@@ -320,6 +375,29 @@ describe("the district Worker", () => {
     const seen = await ok(student, "student.discussionThread", { params: { offeringId: NF.eng9, topicId: topic.id } });
     expect(seen.posts.map((p) => p.status)).toStrictEqual(["withdrawn", "visible"]);
     expect((await ok(teacher, "teacher.moderationQueue", { params: { offeringId: NF.eng9 } })).recent.map((e) => e.action)).toStrictEqual(["hide"]);
+  });
+
+  // Discussion screening (SCHO-305).
+  it("screens student posts with the district's Hall Monitor, refusing what it blocks and failing closed when it is down", async () => {
+    const teacher = await signIn(NF.rivera);
+    const student = await signIn(NF.amara);
+    const topic = await ok(teacher, "teacher.createTopic", { params: { offeringId: NF.eng9 }, body: { title: "Uniforms?", prompt: "Say why." } });
+    const at = { params: { offeringId: NF.eng9, topicId: topic.id } };
+    const refused = async (text: string) => {
+      const response = await fetchWorker(request(student, "student.createPost", { ...at, body: { body: text } }));
+      return { status: response.status, body: await response.json() };
+    };
+    expect(await refused("Mean words [[block]]")).toMatchObject({ status: 403, body: { code: "policy-violation" } });
+    expect(await refused("Hello [[down]]")).toMatchObject({ status: 503, body: { code: "unavailable" } });
+    expect((await ok(student, "student.createPost", { ...at, body: { body: "Worrying [[hold]]" } })).status).toBe("pending");
+    expect((await ok(student, "student.createPost", { ...at, body: { body: "Comfort matters." } })).status).toBe("visible");
+    const seen = await ok(student, "student.discussionThread", at);
+    expect(seen.posts.map((p) => p.body)).toStrictEqual(["Worrying [[hold]]", "Comfort matters."]);
+    // Every call carried a signed service token of its own.
+    const authorizations = await district().hallMonitorAuthorizations();
+    expect(authorizations.length).toBeGreaterThanOrEqual(4);
+    expect(authorizations.every((value) => value !== null && /^Bearer [\w-]+\.[\w-]+\.[\w-]+$/.test(value))).toBe(true);
+    expect(new Set(authorizations).size).toBe(authorizations.length);
   });
 });
 

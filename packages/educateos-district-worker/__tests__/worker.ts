@@ -8,10 +8,11 @@ import { catalogSeedRelease } from "@educateos/catalog";
 import type { PrincipalId } from "@educateos/contracts";
 import { DistrictObject as DeployedDistrictObject } from "../src/district-object.ts";
 import type { SendEmailBinding } from "../src/mail.ts";
+import { fakeHallMonitor } from "@educateos/ai-guard/src/fake-hall-monitor.ts";
 import { LMS_ISSUER } from "./fixtures.ts";
 
 // Named rather than `export *`: the pool finds entrypoints from the module's named exports.
-export { DistrictApi, DistrictGuardDirectory, DistrictPrincipalResolver, DistrictSchoolTools } from "../src/worker.ts";
+export { DistrictPrincipalResolver, DistrictWorkshopCapabilityPolicy, DistrictApi, DistrictGuardDirectory, DistrictSchoolTools } from "../src/worker.ts";
 export { default } from "../src/worker.ts";
 
 /** The synthetic pages teachers import, by URL. Every other URL is a 404. */
@@ -38,6 +39,20 @@ export class DistrictObject extends DeployedDistrictObject {
   async scheduledRosterSync(): Promise<{ ran: boolean; reason?: string }> {
     const outcome = await (await this.districtApp()).rostering.runScheduledSync();
     return outcome.ran ? { ran: true } : { ran: false, reason: outcome.reason };
+  }
+
+  /** The Authorization headers Hall Monitor was called with, since this instance started (SCHO-305). */
+  readonly #hallMonitorAuthorizations: (string | null)[] = [];
+
+  /** Answers Hall Monitor with the AI call guard's fake, which speaks its real wire format. */
+  protected override async hallMonitorFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const request = new Request(input, init);
+    this.#hallMonitorAuthorizations.push(request.headers.get("authorization"));
+    return fakeHallMonitor(request);
+  }
+
+  async hallMonitorAuthorizations(): Promise<(string | null)[]> {
+    return [...this.#hallMonitorAuthorizations];
   }
 
   /** What the analytics proxy asked Cloudflare's API, since this instance started (SCHO-263). */

@@ -33,12 +33,10 @@ export const PRINCIPAL_MIGRATION_PATH = "/api/admin/principal-migration";
 const PRINCIPAL_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 /** The user directory's alias methods, as a stub to it offers them. */
-export interface AliasDirectory {
-  listUserIds(): Promise<string[]>;
-  principalAlias(principal: string): Promise<string | null>;
-  listPrincipalAliases(): Promise<{ principal: string; user: string }[]>;
-  addPrincipalAlias(principal: string, user: string): Promise<"added" | "already-aliased" | "conflict">;
-}
+export type AliasDirectory = Pick<
+  DurableObjectStub<import("../user-directory.js").UserDirectoryDurableObject>,
+  "listUserIds" | "principalAlias" | "listPrincipalAliases" | "addPrincipalAlias"
+>;
 
 /** The Durable Object namespaces sign-in and the migration reach. */
 export type AliasExports = {
@@ -49,7 +47,7 @@ export type AliasExports = {
 type ResolverEnv = { PRINCIPAL_RESOLVER?: Pick<PrincipalResolver, "resolveAccessSignIn"> };
 
 function aliasDirectory(exports: AliasExports): AliasDirectory {
-  return exports.UserDirectoryDurableObject.getByName("") as unknown as AliasDirectory;
+  return exports.UserDirectoryDurableObject.getByName("");
 }
 
 /**
@@ -85,7 +83,7 @@ export function migrationUsers(exports: AliasExports): MigrationUsers {
   let stub = (name: string) => users.get(users.idFromName(name));
   return {
     workshopUserId: name => users.idFromName(name).toString(),
-    threadCount: async name => (await stub(name).listGadgets()).length,
+    threadCount: async name => (await stub(name).listWorkspaces()).length,
     accountExists: async name => (await stub(name).whoamiIfExists()) !== null,
   };
 }

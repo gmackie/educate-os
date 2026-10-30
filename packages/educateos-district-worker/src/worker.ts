@@ -1,3 +1,4 @@
+import type { GadgetAssessmentResponse } from "@educateos/district-app";
 // The EducateOS district Worker (SCHO-171): the district application (`@educateos/district-app`)
 // deployed over Durable Object storage. It serves the district's `/api` surface, and two service
 // entrypoints for the Workers that take a `EDUCATEOS_DISTRICT` binding:
@@ -5,6 +6,7 @@
 // - `DistrictGuardDirectory`, the AI call guard's read model (`GuardDirectoryPort` in
 //   `@educateos/ai-guard`, SCHO-132/SCHO-147). Given to the guard alone, never on `/api`.
 // - `DistrictSchoolTools`, the EducateOS gatekeeper's `SchoolToolService` (SCHO-57).
+// - `DistrictWorkshopCapabilityPolicy`, Workshop's backend-only mint policy (SCHO-299).
 //
 // `DistrictPrincipalResolver`, the Workshop backend's `PRINCIPAL_RESOLVER` (SCHO-259), which says
 // who a sign-in the backend has already verified is;
@@ -16,6 +18,7 @@
 // Every call reaches the district's one `DistrictObject` through `ctx.exports`, named by the
 // district ID in `DISTRICT_CONFIG`. README.md explains the design and the deployment. Like
 // district-object.ts, this module is checked by running it (ADR-0009, see tsconfig.json).
+import type { WorkshopCapabilityPolicy, WorkshopCapabilityDescriptor, WorkshopCapabilityDecision } from "@gadgets/workshop-shared/capability-policy";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { skipRpcValidation, validateRpc } from "capnweb-validate";
 import type { DistrictDirectorySnapshot, VerifiedPrincipal } from "@educateos/contracts";
@@ -35,6 +38,16 @@ export { DistrictObject } from "./district-object.ts";
 function districtObject(env: Cloudflare.Env, exports: Cloudflare.Exports) {
   return exports.DistrictObject.getByName(configuredDistrictId(env.DISTRICT_CONFIG));
 }
+
+/** Backend-only WORKSHOP_CAPABILITY_POLICY target; never expose this binding to gadgets. */
+@validateRpc()
+export class DistrictWorkshopCapabilityPolicy extends WorkerEntrypoint<Cloudflare.Env> implements WorkshopCapabilityPolicy {
+  /** Resolves current district facts before authorizing a capability mint. */
+  async authorizeCapability(request: WorkshopCapabilityDescriptor): Promise<WorkshopCapabilityDecision> {
+    return districtObject(this.env, this.ctx.exports).authorizeCapability(request);
+  }
+}
+
 
 /** The `EDUCATEOS_DISTRICT` entrypoint for the AI call guard: the district's guard read model. */
 @validateRpc()
@@ -66,6 +79,16 @@ export class DistrictSchoolTools extends WorkerEntrypoint<Cloudflare.Env> implem
   @skipRpcValidation()
   async authenticate(request: Request): Promise<VerifiedPrincipal | null> {
     return districtObject(this.env, this.ctx.exports).authenticate(request);
+  }
+
+  /** Reads only the connected student's configured assessment and own submissions. */
+  async gadgetAssessmentRead(principal: VerifiedPrincipal, assignmentId: string): Promise<GadgetAssessmentResponse> {
+    return districtObject(this.env, this.ctx.exports).gadgetAssessmentRead(principal, assignmentId);
+  }
+
+  /** Applies a queued evidence submission after rechecking current ownership and policy. */
+  async gadgetAssessmentSubmit(principal: VerifiedPrincipal, assignmentId: string, request: unknown): Promise<GadgetAssessmentResponse> {
+    return districtObject(this.env, this.ctx.exports).gadgetAssessmentSubmit(principal, assignmentId, request);
   }
 
   /** The district's school tools. */
@@ -134,7 +157,12 @@ type WorkshopEmailKeyedUserMatch =
 export class DistrictPrincipalResolver extends WorkerEntrypoint<Cloudflare.Env> {
   /** The principal a verified Access sign-in is linked to, or `unauthenticated`. */
   async resolveAccessSignIn(signIn: WorkshopAccessSignIn): Promise<WorkshopPrincipalResolution> {
-    return districtObject(this.env, this.ctx.exports).resolveAccessSignIn(signIn);
+    try {
+      return await districtObject(this.env, this.ctx.exports).resolveAccessSignIn(signIn);
+    } catch {
+      // Corrupt or unavailable directory records carry no sign-in authority and no safe details.
+      return { outcome: "unauthenticated" };
+    }
   }
 
   /** Matches existing email-keyed Workshop users to the district's people. Links nothing. */

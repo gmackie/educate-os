@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
-import { BookOpen, ClipboardCheck, ClipboardList, FileText, GraduationCap, Users } from 'lucide-react-native';
+import { BookOpen, ClipboardCheck, ClipboardList, FileText, GraduationCap, Megaphone, Users } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
-import type { Assignment, ClassItem, Detail, GuardianChild, Principal } from '../types';
-import { useLoad } from '../hooks/useLoad';
+import type { Assignment, ClassItem, Detail, Gradebook, GuardianChild, Principal } from '../types';
+import { useLoad, useReloadOnFocus } from '../hooks/useLoad';
+import { CourseSections, loadStudentExtras } from './Course';
+import { GradebookView, TeacherClassHub } from './Teaching';
+import { Markdown } from '../ui/Markdown';
 import { usePalette } from '../ui/theme-context';
-import { Button, Card, Chip, dateLabel, Item, Page, Placeholder, QueryState, Section, Title } from '../ui/Primitives';
+import { Button, Card, Chip, dateLabel, Item, Page, Placeholder, QueryState, Section, Segmented, Title } from '../ui/Primitives';
 
 export function Classes({ client, me, navigate }: {
   client: DistrictClient; me: Principal; navigate: (d: Detail) => void;
@@ -47,15 +50,17 @@ export function StudentClass({ client, offeringId, navigate }: {
 }) {
   const palette = usePalette();
   const [state, reload] = useLoad('student-class:' + offeringId, async () => {
-    const [courses, activities, grades] = await Promise.all([
+    const [courses, activities, grades, extras] = await Promise.all([
       client.studentClasses(), client.studentActivities(offeringId),
       client.studentGradeSummary(offeringId).catch(() => null),
+      loadStudentExtras(client, offeringId),
     ]);
-    return { course: courses.find((c) => c.offering.id === offeringId), activities, grades };
+    return { course: courses.find((c) => c.offering.id === offeringId), activities, grades, extras };
   });
+  useReloadOnFocus(reload);
   return <Page refresh={reload}>
     <QueryState state={state} retry={reload}>{(data) => <>
-      <Title subtitle={data.course?.offering.sectionName}> {data.course?.course.title || 'Class'} </Title>
+      <Title subtitle={data.course?.offering.sectionName}>{data.course?.course.title || 'Class'}</Title>
       <View style={{ gap: 12, flexDirection: 'row', marginBottom: 26 }}>
         <Card style={{ flex: 1, alignItems: 'center', gap: 6 }}>
           <Text style={{ fontSize: 24, fontWeight: '800', color: palette.primary }}>{data.activities.length}</Text>
@@ -64,16 +69,22 @@ export function StudentClass({ client, offeringId, navigate }: {
         <Card style={{ flex: 1, alignItems: 'center', gap: 6 }}>
           <Text style={{ fontSize: 24, fontWeight: '800', color: palette.ink }}>
             {typeof data.grades?.row?.totals?.final === 'number' ? data.grades.row.totals.final.toFixed(1) + '%' : '—'}
+            {data.grades?.row?.totals?.letter ? ' ' + data.grades.row.totals.letter : ''}
           </Text>
           <Text style={{ fontSize: 12, color: palette.muted }}>Official grade</Text>
         </Card>
       </View>
+      <CourseSections offeringId={offeringId} extras={data.extras} activities={data.activities} navigate={navigate}/>
       <Section title="Assignments">
         {data.activities.length === 0 ? <Placeholder title="No assignments" message="Your teacher hasn't published any activities yet."/> :
-          <Card>{data.activities.map(({ assignment }) => <Item key={assignment.id} title={assignment.title}
+          <Card>{data.activities.map(({ assignment }) => {
+            const cell = data.grades?.row?.cells?.find((c) => c.assignmentId === assignment.id);
+            return <Item key={assignment.id} title={assignment.title}
             detail={'Due ' + dateLabel(assignment.dueAt, true)}
+            trailing={cell?.score ? <Chip label={cell.score.points + '/' + cell.score.maxPoints} tone={cell.dropped ? 'neutral' : 'green'}/> : undefined}
             leading={<ClipboardList size={20} color={palette.primary}/>}
-            onPress={() => navigate({ type: 'assignment', id: assignment.id, offeringId })}/>)}</Card>}
+            onPress={() => navigate({ type: 'assignment', id: assignment.id, offeringId })}/>;
+          })}</Card>}
       </Section>
       <Button label="See all my grades" variant="outline" onPress={() => navigate({ type: 'grades' })}/>
     </>}</QueryState>
@@ -84,30 +95,30 @@ export function TeacherClass({ client, offeringId, navigate }: {
   client: DistrictClient; offeringId: string; navigate: (d: Detail) => void;
 }) {
   const palette = usePalette();
-  const [screen, setScreen] = useState<'assignments' | 'roster'>('assignments');
+  const [screen, setScreen] = useState<'assignments' | 'grades' | 'roster'>('assignments');
   const [state, reload] = useLoad('teacher-class:' + offeringId + ':' + screen, async () => {
     const [offerings, records] = await Promise.all([
       client.teacherClasses(),
-      screen === 'assignments' ? client.teacherAssignments(offeringId) : client.teacherRoster(offeringId),
+      screen === 'assignments' ? client.teacherAssignments(offeringId)
+        : screen === 'grades' ? client.teacherGradebook(offeringId) : client.teacherRoster(offeringId),
     ]);
     return { course: offerings.find((c) => c.offering.id === offeringId), records };
   });
   return <Page refresh={reload}>
     <QueryState state={state} retry={reload}>{(data) => <>
-      <Title subtitle={data.course?.offering.sectionName}> {data.course?.course.title || 'Classroom'} </Title>
-      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 22 }}>
-        <View style={{ flex: 1 }}><Button label="Assignments" variant={screen === 'assignments' ? 'primary' : 'outline'}
-          onPress={() => setScreen('assignments')}/></View>
-        <View style={{ flex: 1 }}><Button label="Roster" variant={screen === 'roster' ? 'primary' : 'outline'}
-          onPress={() => setScreen('roster')}/></View>
-      </View>
+      <Title subtitle={data.course?.offering.sectionName}>{data.course?.course.title || 'Classroom'}</Title>
+      <View style={{ marginBottom: 22 }}><Segmented value={screen} onChange={setScreen} options={[
+        { value: 'assignments', label: 'Class' }, { value: 'grades', label: 'Grades' }, { value: 'roster', label: 'Roster' },
+      ]}/></View>
       {screen === 'assignments' ? <Section title="Published assignments">
         {(data.records as Assignment[]).length === 0 ?
-          <Placeholder title="Nothing published" message="Open Teacher Studio in your AI workspace to author assignments."/> :
+          <Placeholder title="Nothing published" message="Create assignments in EducateOS on a computer; they appear here to review and grade."/> :
           <Card>{(data.records as Assignment[]).map((assignment) => <Item key={assignment.id}
             title={assignment.title} detail={'Due ' + dateLabel(assignment.dueAt, true)}
             leading={<ClipboardCheck size={21} color={palette.primary}/>}
             onPress={() => navigate({ type: 'teacher-assignment', id: assignment.id, offeringId })}/>)}</Card>}
+      </Section> : screen === 'grades' ? <Section title="Gradebook">
+        <GradebookView gradebook={data.records as Gradebook}/>
       </Section> : <Section title="Class roster">
         {(data.records as { enrollment: { principalId: string }; displayName: string }[]).length === 0 ?
           <Placeholder title="No students" message="Your roster will appear once your district enrolls students."/> :
@@ -115,13 +126,7 @@ export function TeacherClass({ client, offeringId, navigate }: {
             .map((member) => <Item key={member.enrollment.principalId} title={member.displayName}
               detail="Enrolled student" leading={<Users color={palette.teal} size={20}/>}/>)}</Card>}
       </Section>}
-      <Card style={{ gap: 9, marginBottom: 24 }}>
-        <Text style={{ color: palette.ink, fontWeight: '800' }}>More teaching tools</Text>
-        <Text style={{ color: palette.muted, lineHeight: 20, fontSize: 13 }}>
-          Course authoring, rubrics, quizzes, moderation, and advanced gradebook settings remain available
-          in the full EducateOS Teacher Studio through your workspace.
-        </Text>
-      </Card>
+      {screen === 'assignments' && <TeacherClassHub client={client} offeringId={offeringId} navigate={navigate}/>}
     </>}</QueryState>
   </Page>;
 }
@@ -164,9 +169,14 @@ export function FamilyClass({ client, studentId, offeringId }: {
           })}</Card>}
       </Section>
       {data.announcements && data.announcements.length > 0 && <Section title="Announcements">
-        <Card>{data.announcements.map(({ announcement }) => <Item key={announcement.id}
-          title={announcement.title} detail={announcement.body}
-          leading={<GraduationCap size={19} color={palette.primary}/>}/>)}</Card>
+        <View style={{ gap: 12 }}>{data.announcements.map((announcement) => <Card key={announcement.id} style={{ gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+            <Megaphone size={18} color={palette.teal}/>
+            <Text style={{ color: palette.ink, fontWeight: '800', fontSize: 16, flex: 1 }}>{announcement.title}</Text>
+          </View>
+          <Text style={{ color: palette.subtle, fontSize: 12 }}>{dateLabel(announcement.publishAt, true)}</Text>
+          <Markdown source={announcement.body}/>
+        </Card>)}</View>
       </Section>}
       <Text style={{ color: palette.muted, fontSize: 12, lineHeight: 19 }}>
         Guardian access does not include student drafts, private submissions, or classroom discussions.

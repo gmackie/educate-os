@@ -10,7 +10,7 @@ import type { Tab } from '../../src/types';
 import { useAppState } from '../../src/state/app-state';
 import { tabsFor } from '../../src/tabs';
 import { usePalette } from '../../src/ui/theme-context';
-import { Loading } from '../../src/ui/Primitives';
+import { Loading, Mark } from '../../src/ui/Primitives';
 
 const TAB_DETAILS: Record<Tab, { title: string; Icon: typeof Home }> = {
   family: { title: 'Family', Icon: Users },
@@ -36,7 +36,7 @@ function SchoolHeader({ name, logo }: { name: string; logo: string | null | unde
           style={{ width: 36, height: 36, borderRadius: 11 }} resizeMode="contain"/>
         : <View style={{ width: 36, height: 36, backgroundColor: palette.primary, borderRadius: 11,
           justifyContent: 'center', alignItems: 'center' }}>
-          <GraduationCap color={palette.onPrimary} size={21}/>
+          <Mark color={palette.onPrimary} size={22}/>
         </View>}
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ fontSize: 16, color: palette.ink, fontWeight: '800' }} numberOfLines={1}>{name}</Text>

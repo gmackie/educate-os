@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, Image, Text, View } from 'react-native';
 import { FileText, MessageSquareText } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Detail } from '../types';
-import { useLoad } from '../hooks/useLoad';
+import { Markdown } from '../ui/Markdown';
+import { imageType } from '../media.ts';
+import { useLoad, useReloadOnFocus } from '../hooks/useLoad';
+import { AssignmentSettings } from './Teaching';
 import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Field, Item, Page, Placeholder, QueryState, Section, Title } from '../ui/Primitives';
 
@@ -12,20 +15,33 @@ export function TeacherAssignment({ client, assignmentId, offeringId, navigate }
 }) {
   const palette = usePalette();
   const [data, reload] = useLoad('teacher-assignment:' + assignmentId, async () => {
-    const [assignment, submissions] = await Promise.all([
+    const [assignment, submissions, proposals] = await Promise.all([
       client.teacherAssignment(assignmentId),
       client.teacherSubmissions(assignmentId),
+      client.gradeProposals(assignmentId).catch(() => []),
     ]);
     // A deep link may not name the class; the assignment does.
     const students = await client.teacherRoster(offeringId || assignment.assignment.offeringId).catch(() => []);
     const names = new Map(students.map((s) => [s.enrollment.principalId, s.displayName]));
-    return { assignment, submissions, names };
+    return { assignment, submissions, names, proposals: proposals.filter((p) => !p.approvedAsVersion && !p.declined && !p.expired) };
   });
+  useReloadOnFocus(reload);
+  const decide = (proposalId: string, approve: boolean) => {
+    const done = () => reload();
+    const fail = (e: unknown) => Alert.alert("Couldn't save", e instanceof Error ? e.message : 'Try again.');
+    if (approve) { client.approveGrade(proposalId).then(done, fail); return; }
+    Alert.alert('Decline this grade?', 'The person who proposed it sees your reason.', [
+      { text: 'Cancel', style: 'cancel' },
+      ...['The score needs another look', 'It is for the wrong submission'].map((reason) => ({
+        text: reason, onPress: () => { client.declineGrade(proposalId, reason).then(done, fail); },
+      })),
+    ]);
+  };
   return <Page refresh={reload}>
-    <QueryState state={data} retry={reload}>{({ assignment, submissions, names }) => <>
-      <Title subtitle={'Due ' + dateLabel(assignment.assignment.dueAt, true)}>
-        {assignment.assignment.title}
-      </Title>
+    <QueryState state={data} retry={reload}>{({ assignment, submissions, names, proposals }) => <>
+      <Title>{assignment.assignment.title}</Title>
+      <AssignmentSettings client={client} assignmentId={assignmentId} dueAt={assignment.assignment.dueAt}
+        attemptsAllowed={assignment.assignment.attemptsAllowed} onSaved={reload}/>
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 26 }}>
         <Card style={{ flex: 1, alignItems: 'center', gap: 6 }}>
           <Text style={{ fontSize: 27, fontWeight: '800', color: palette.primary }}>{submissions.length}</Text>
@@ -36,6 +52,15 @@ export function TeacherAssignment({ client, assignmentId, offeringId, navigate }
           <Text style={{ fontSize: 12, color: palette.muted }}>Enrolled</Text>
         </Card>
       </View>
+      {proposals.length > 0 && <Section title="Grades waiting for approval">
+        <Card>{proposals.map((p) => <View key={p.id} style={{ gap: 8, paddingVertical: 8 }}>
+          <Text style={{ color: palette.ink, fontWeight: '700' }}>{(names.get(p.studentPrincipalId) ?? 'Student') + ': ' + p.score.points + ' / ' + p.score.maxPoints}</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}><Button label="Approve" variant="outline" onPress={() => decide(p.id, true)}/></View>
+            <View style={{ flex: 1 }}><Button label="Decline" variant="quiet" onPress={() => decide(p.id, false)}/></View>
+          </View>
+        </View>)}</Card>
+      </Section>}
       <Section title="Review student work">
         {submissions.length === 0 ? <Placeholder title="No submissions yet"
           message="Student submissions will appear here when they turn in their work."/> :
@@ -74,12 +99,12 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
       client.teacherFeedback(submissionId),
       Promise.all(artifacts.map((a) => client.teacherSubmittedContent(submissionId, a.artifactId)
         .then((item) => ({ ...item, type: a.type }))
-        .catch(() => ({ title: a.type, type: a.type, content: { kind: 'unavailable' } as { kind: string; text?: string } })))),
+        .catch(() => ({ title: a.type, type: a.type, content: { kind: 'unavailable' } as { kind: string; text?: string; base64?: string } })))),
     ]);
     return { feedback, content };
   });
 
-  const save = async (job: 'comment' | 'grade' | 'release') => {
+  const save = async (job: 'comment' | 'grade' | 'release' | 'final') => {
     if (busy) return;
     if (job === 'comment' && comment.trim().length < 1) return;
     if (job === 'grade') {
@@ -100,8 +125,8 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
         setMessage(result.status === 'pending-approval' ? 'Grade proposed. It is awaiting approval.' :
           'Official grade recorded.');
       } else {
-        await client.teacherReleaseFeedback(submissionId, 'shared-with-student');
-        setMessage('Feedback released to the student.');
+        await client.teacherReleaseFeedback(submissionId, job === 'final' ? 'final' : 'shared-with-student');
+        setMessage(job === 'final' ? 'Feedback marked final and shared with the student.' : 'Feedback released to the student.');
       }
       reload();
     } catch (e) {
@@ -125,8 +150,12 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
               </Text>
               {item.content.kind === 'text' && typeof item.content.text === 'string' ?
                 <Text selectable style={{ fontSize: 15, color: palette.ink, lineHeight: 24 }}>{item.content.text}</Text> :
+                item.content.kind === 'bytes' && item.content.base64 && imageType(item.content.base64) ?
+                  <Image accessibilityLabel={'Submitted ' + item.type} resizeMode="contain"
+                    source={{ uri: 'data:' + imageType(item.content.base64) + ';base64,' + item.content.base64 }}
+                    style={{ width: '100%', height: 320, borderRadius: 12, backgroundColor: palette.background }}/> :
                 <Text style={{ color: palette.muted, lineHeight: 20 }}>
-                  This file type needs the full Teacher Studio document viewer.
+                  Open this file on a computer to see it.
                 </Text>}
             </View>)}
         </Card>
@@ -135,8 +164,7 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
         tone={feedback.state === 'final' ? 'green' : 'amber'}/></View>
       <Section title="Existing comments">
         <Card>{feedback.comments.length === 0 ? <Text style={{ color: palette.muted }}>No comments yet.</Text> :
-          feedback.comments.map((item, index) => <Text key={index}
-            style={{ color: palette.ink, marginBottom: 10, lineHeight: 22 }}>{item.body}</Text>)}
+          feedback.comments.map((item, index) => <View key={index} style={{ marginBottom: 10 }}><Markdown source={item.body}/></View>)}
         </Card>
       </Section>
       <Section title="Add feedback">
@@ -170,10 +198,16 @@ export function TeacherReview({ client, submissionId, studentName, artifacts }: 
         </Card>
       </Section>
       <Section title="Share feedback">
-        <Button label="Release comments to student" disabled={busy || feedback.state === 'final'}
-          onPress={() => Alert.alert('Release feedback?', 'Your comments will become visible to this student, subject to district policy.', [
-            { text: 'Cancel', style: 'cancel' }, { text: 'Release', onPress: () => { void save('release'); } },
-          ])}/>
+        <View style={{ gap: 10 }}>
+          <Button label="Release comments to student" disabled={busy || feedback.state === 'final' || feedback.state === 'shared-with-student'}
+            onPress={() => Alert.alert('Release feedback?', 'Your comments will become visible to this student, subject to district policy.', [
+              { text: 'Cancel', style: 'cancel' }, { text: 'Release', onPress: () => { void save('release'); } },
+            ])}/>
+          <Button label="Mark feedback final" variant="outline" disabled={busy || feedback.state === 'final'}
+            onPress={() => Alert.alert('Mark feedback final?', 'The student sees it, and it can no longer be changed.', [
+              { text: 'Cancel', style: 'cancel' }, { text: 'Mark final', onPress: () => { void save('final'); } },
+            ])}/>
+        </View>
       </Section>
     </>}</QueryState>
   </Page>;

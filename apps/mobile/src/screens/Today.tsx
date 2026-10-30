@@ -1,26 +1,29 @@
 import { Pressable, Text, View } from 'react-native';
-import { Bell, BookOpen, CalendarDays, ChevronRight, ClipboardList, Clock, GraduationCap, Megaphone, Users } from 'lucide-react-native';
+import { Bell, BookOpen, CalendarDays, ChevronRight, ClipboardList, Clock, Megaphone, Sparkles, Users } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Activity, Announcement, CalendarEvent, ClassItem, Detail, GuardianChild, Notifications, Principal, Tab } from '../types';
 import { useLoad } from '../hooks/useLoad';
 import { usePalette } from '../ui/theme-context';
 import { Card, dateLabel, Eyebrow, Item, Page, QueryState, Section, shortName, Title } from '../ui/Primitives';
+import { loadFamilyFeed, upcoming as familyUpcoming, type FamilyDue, type FamilyNews } from './FamilyFeed';
 
 type Upcoming = { assignment: Activity['assignment']; course: ClassItem };
 type Home = { classes: ClassItem[]; notifications: Notifications | null; upcoming: Upcoming[];
-  announcements: Announcement[]; children: GuardianChild[]; agenda: CalendarEvent[] };
+  announcements: Announcement[]; children: GuardianChild[]; agenda: CalendarEvent[];
+  /** A guardian's view of their children's classes (FamilyFeed.tsx): the district calendar has none. */
+  family: { due: FamilyDue[]; news: FamilyNews[] } | null };
 
 const EMPTY_NOTIFICATIONS: Notifications = { notifications: [], unread: 0 };
 
 /** Student/teacher home only reads data the district already authorizes for the principal. */
 async function loadHome(api: DistrictClient, me: Principal): Promise<Home> {
   const now = new Date();
-  const [classes, notifications, announcements, children, agenda] = await Promise.all([
+  const [classes, notifications, announcements, feed, agenda] = await Promise.all([
     me.kind === 'student' ? api.studentClasses() :
       me.kind === 'staff' ? api.teacherClasses().catch(() => []) : Promise.resolve([]),
     api.notifications().catch(() => EMPTY_NOTIFICATIONS),
     me.kind === 'student' ? api.studentAnnouncements().catch(() => []) : Promise.resolve([]),
-    me.kind === 'guardian' ? api.guardianChildren() : Promise.resolve([]),
+    me.kind === 'guardian' ? loadFamilyFeed(api) : Promise.resolve(null),
     // The calendar folds into Today as a one-week agenda for students and teachers.
     me.kind === 'guardian' ? Promise.resolve([]) :
       api.calendar(now, new Date(now.getTime() + 7 * 86_400_000)).then((c) => c.events).catch(() => []),
@@ -35,7 +38,8 @@ async function loadHome(api: DistrictClient, me: Principal): Promise<Home> {
     .filter(({ assignment }) => Date.parse(assignment.dueAt) >= now.getTime() - 86_400_000)
     .toSorted((a, b) => Date.parse(a.assignment.dueAt) - Date.parse(b.assignment.dueAt))
     .slice(0, 8);
-  return { classes, notifications, upcoming, announcements, children,
+  return { classes, notifications, upcoming, announcements, children: feed?.children ?? [],
+    family: feed ? { due: familyUpcoming(feed).slice(0, 8), news: feed.news.slice(0, 3) } : null,
     agenda: agenda.toSorted((a, b) => Date.parse(a.start) - Date.parse(b.start)).slice(0, 8) };
 }
 
@@ -67,8 +71,9 @@ export function Today({ client, me, navigate, changeTab, showAi = true }: {
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 28 }}>
         <Stat count={me.kind === 'guardian' ? data.children.length : data.classes.length}
           label={me.kind === 'guardian' ? 'Children' : 'Classes'} onPress={() => changeTab('classes')}/>
-        <Stat count={data.notifications?.unread ?? 0} label="New updates" onPress={() => changeTab('inbox')}/>
-        <Stat count={data.upcoming.length} label="Coming due" onPress={() => changeTab(me.kind === 'guardian' ? 'agenda' : 'calendar')}/>
+        <Stat count={data.family ? data.family.news.length : data.notifications?.unread ?? 0}
+          label={data.family ? 'School news' : 'New updates'} onPress={() => changeTab('inbox')}/>
+        <Stat count={data.family ? data.family.due.length : data.upcoming.length} label="Coming due" onPress={() => changeTab(me.kind === 'guardian' ? 'agenda' : 'calendar')}/>
       </View>
 
       {data.notifications && data.notifications.unread > 0 && <Pressable onPress={() => changeTab('inbox')}
@@ -91,6 +96,22 @@ export function Today({ client, me, navigate, changeTab, showAi = true }: {
             onPress={() => navigate({ type: 'family-child', id: child.studentPrincipalId })}/>)}</Card>}
       </Section> : null}
 
+      {data.family && data.family.due.length > 0 && <Section title="Coming up"
+        trailing={<Pressable onPress={() => changeTab('agenda')} accessibilityRole="button">
+          <Text style={{ color: palette.primary, fontSize: 13, fontWeight: '700' }}>Agenda</Text>
+        </Pressable>}>
+        <Card>{data.family.due.map((item) => <Item key={item.child.studentPrincipalId + item.id} title={item.title}
+          detail={(data.children.length > 1 ? shortName(item.child.displayName) + ' · ' : '') + item.course + ' · ' + dateLabel(item.dueAt, true)}
+          leading={<ClipboardList size={19} color={palette.amber}/>}
+          onPress={() => navigate({ type: 'family-class', studentId: item.child.studentPrincipalId, offeringId: item.offeringId })}/>)}</Card>
+      </Section>}
+
+      {data.family && data.family.news.length > 0 && <Section title="Latest announcements">
+        <Card>{data.family.news.map((item) => <Item key={item.child.studentPrincipalId + item.announcement.id}
+          title={item.announcement.title} detail={item.course + ' · ' + dateLabel(item.announcement.publishAt)}
+          leading={<Megaphone size={19} color={palette.teal}/>} onPress={() => changeTab('inbox')}/>)}</Card>
+      </Section>}
+
       {me.kind !== 'guardian' && <Section title={me.kind === 'staff' ? 'My classrooms' : 'My courses'}
         trailing={<Pressable onPress={() => changeTab(me.kind === 'guardian' ? 'family' : 'classes')} accessibilityRole="button">
           <Text style={{ color: palette.primary, fontSize: 13, fontWeight: '700' }}>See all</Text>
@@ -108,7 +129,7 @@ export function Today({ client, me, navigate, changeTab, showAi = true }: {
           title={assignment.title} detail={course.course.title + ' · ' + dateLabel(assignment.dueAt, true)}
           leading={<ClipboardList size={19} color={palette.amber}/>}
           onPress={() => navigate(me.kind === 'staff'
-            ? { type: 'teacher-class', id: assignment.offeringId }
+            ? { type: 'teacher-assignment', id: assignment.id, offeringId: assignment.offeringId }
             : { type: 'assignment', id: assignment.id, offeringId: assignment.offeringId })}/>)}</Card>
       </Section>}
 
@@ -138,7 +159,7 @@ export function Today({ client, me, navigate, changeTab, showAi = true }: {
         <Pressable onPress={() => changeTab('ai')} accessibilityRole="button"
           style={{ borderRadius: 22, padding: 20, backgroundColor: palette.navy,
             flexDirection: 'row', alignItems: 'center', gap: 15 }}>
-          <GraduationCap size={28} color="#FFFFFF"/>
+          <Sparkles size={28} color="#FFFFFF"/>
           <View style={{ flex: 1, gap: 6 }}>
             <Text style={{ fontSize: 17, color: '#FFFFFF', fontWeight: '800' }}>Study, create, explore</Text>
             <Text style={{ fontSize: 12, color: '#C5D3F4', lineHeight: 19 }}>Your school's AI agents and interactive learning tools.</Text>

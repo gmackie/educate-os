@@ -3,12 +3,12 @@ import { Alert, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CheckCircle2, Globe, GraduationCap, LockKeyhole, QrCode, School, Search, Trash2 } from 'lucide-react-native';
+import { CheckCircle2, Globe, LockKeyhole, QrCode, School, Search, Trash2 } from 'lucide-react-native';
 import type { District } from '../src/types';
 import { useAppState } from '../src/state/app-state';
 import { directoryVisible, readDirectoryConfig } from '../src/directory';
 import { usePalette } from '../src/ui/theme-context';
-import { Button, Card, Eyebrow, Item, Page, Title } from '../src/ui/Primitives';
+import { Button, Card, Eyebrow, Item, Mark, Page, Title } from '../src/ui/Primitives';
 
 /** Storyboard 1: three ways in, plus the schools this phone already knows. */
 export default function Welcome() {
@@ -34,7 +34,7 @@ export default function Welcome() {
   return <View style={{ flex: 1, backgroundColor: palette.background, paddingTop: insets.top }}><Page>
     <View style={{ alignItems: 'center', paddingTop: 18, paddingBottom: 16 }}>
       <View style={{ width: 64, height: 64, borderRadius: 22, backgroundColor: palette.primary,
-        alignItems: 'center', justifyContent: 'center' }}><GraduationCap size={36} color={palette.onPrimary}/></View>
+        alignItems: 'center', justifyContent: 'center' }}><Mark size={38} color={palette.onPrimary}/></View>
     </View>
     <Eyebrow>Welcome to EducateOS</Eyebrow>
     <Title subtitle="Your school's classes, calendar and AI workspace.">Your school. Your space.</Title>

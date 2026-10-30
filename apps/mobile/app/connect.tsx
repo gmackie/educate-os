@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { CheckCircle2, GraduationCap, Laptop, QrCode } from 'lucide-react-native';
+import { CheckCircle2, Laptop, QrCode } from 'lucide-react-native';
 import type { District } from '../src/types';
 import { isOwnRoomReturn, onPendingLink, rememberOwnRoom, takePendingLink, type Enrollment, type JoinLink, type PendingLink } from '../src/links';
 import { fetchSchoolManifest, speaksMobileApi, supportsPhoneSignIn, type SchoolManifest } from '../src/manifest';
@@ -13,7 +13,7 @@ import { describeDevice, newDeviceKey, storePairedDevice } from '../src/api/devi
 import { useAppState } from '../src/state/app-state';
 import { param } from '../src/params';
 import { usePalette } from '../src/ui/theme-context';
-import { Button, Card, Loading, Page, Placeholder, Title } from '../src/ui/Primitives';
+import { Button, Card, Loading, Mark, Page, Placeholder, Title } from '../src/ui/Primitives';
 
 type Target = { origin: string; join?: JoinLink; enrollment?: Enrollment } | { error: string };
 
@@ -33,7 +33,7 @@ function SchoolCard({ manifest }: { manifest: SchoolManifest }) {
     {manifest.brand.logo
       ? <Image source={{ uri: manifest.brand.logo }} style={{ width: 48, height: 48, borderRadius: 14 }} resizeMode="contain"/>
       : <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: manifest.brand.accent ?? palette.primary,
-        alignItems: 'center', justifyContent: 'center' }}><GraduationCap size={26} color="#FFFFFF"/></View>}
+        alignItems: 'center', justifyContent: 'center' }}><Mark size={28} color="#FFFFFF"/></View>}
     <View style={{ flex: 1, gap: 3 }}>
       <Text style={{ color: palette.ink, fontSize: 18, fontWeight: '800' }}>{manifest.name}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -236,7 +236,7 @@ export default function Connect() {
         ? manifest.signIn.map((method) => <Button key={method.id} variant="outline" label={'Sign in with ' + method.label}
           disabled={pairing} onPress={() => signInHere(method.id)}/>)
         : <Text style={{ color: palette.muted, lineHeight: 21 }}>
-          Signing in on this phone is coming soon for {manifest.name}. For now, connect from a computer.
+          {manifest.name} hasn't turned on signing in on the phone. Connect from a computer instead.
         </Text>}
     </Card>
     {error && <Text accessibilityRole="alert" style={{ color: palette.red, marginTop: 14 }}>{error}</Text>}

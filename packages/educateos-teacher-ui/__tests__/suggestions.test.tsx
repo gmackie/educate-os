@@ -24,6 +24,8 @@ describe("suggested scores", () => {
 
     const argument = await screen.findByRole("group", { name: "argument" });
     expect(within(argument).getByText("AI suggestion")).toBeTruthy();
+    expect(within(argument).getByText("Model: synthetic-demo-model")).toBeTruthy();
+    expect(screen.getByText("Evaluator: writing.conventions@1.0.0")).toBeTruthy();
     expect(within(argument).getByText(/Suggests 4 of 4\. Not your score until you save it\./)).toBeTruthy();
     expect(within(screen.getByRole("group", { name: "conventions" })).getByText("Automatic check")).toBeTruthy();
 

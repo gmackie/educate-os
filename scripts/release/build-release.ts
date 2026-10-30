@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { applySchoolProfile } from "./school-profile.ts";
+import { releaseProfile } from "./frontend-profile.ts";
 
 // Builds an immutable release: every deployable worker bundled exactly as `wrangler deploy`
 // would upload it (dry-run + outdir, with the repo's pinned wrangler), plus the workshop-frontend
@@ -46,7 +48,7 @@ import {
   SIGNED_MANIFEST_FILE, signReleaseManifest, type ReleaseSigningOptions,
 } from "./release-signing.ts";
 import {
-  ASSET_VARIANTS, generateManifest, readD1Migrations, readDeployablePackages, readDeployInputs,
+  releaseAssetVariants, generateManifest, readD1Migrations, readDeployablePackages, readDeployInputs,
   readReleaseComponents, type DeployablePackage, type WorkerBuild,
 } from "./manifest-lib.ts";
 
@@ -103,7 +105,9 @@ function parseArgs(argv: string[]): {
   releaseId: string | undefined;
   concurrency: number;
   signing: Partial<ReleaseSigningOptions>;
+  profile: "generic" | "school" | undefined;
 } {
+  let profile: "generic" | "school" | undefined;
   let out: string | undefined;
   let releaseId: string | undefined;
   const signing: Partial<ReleaseSigningOptions> = {};
@@ -114,6 +118,11 @@ function parseArgs(argv: string[]): {
     const signingArg = parseSigningArg(argv, i, signing);
     if (signingArg !== undefined) i = signingArg;
     else if (argv[i] === "--out") out = resolve(argv[++i]);
+    else if (argv[i] === "--profile") {
+      const value = argv[++i];
+      if (value !== "generic" && value !== "school") throw new Error("--profile must be generic or school");
+      profile = value;
+    }
     else if (argv[i] === "--release-id") releaseId = argv[++i];
     else if (argv[i] === "--concurrency") {
       concurrency = Number(argv[++i]);
@@ -123,7 +132,7 @@ function parseArgs(argv: string[]): {
     } else throw new Error(`unknown argument: ${argv[i]}`);
   }
   if (!out) throw new Error("--out <dir> is required");
-  return { out, releaseId, concurrency, signing };
+  return { out, releaseId, concurrency, signing, profile };
 }
 
 // Runs a command to completion and prints its output as one block once it finishes.
@@ -244,16 +253,16 @@ function pinnedWranglerVersion(): string {
 // task declares VITE_* as fingerprinted env — a release built at a different flag value is a cache
 // miss rather than a stale replay. Based on `vpRunEnv()` so the run gets the machine-aware
 // concurrency limit (vp/concurrency.ts); the limit is not a task input, so it never affects the hash.
-async function buildFrontend(signal: AbortSignal): Promise<Record<string, CollectedAssets>> {
+async function buildFrontend(signal: AbortSignal, buildEnv: NodeJS.ProcessEnv): Promise<Record<string, CollectedAssets>> {
   const variants: Record<string, CollectedAssets> = {};
-  for (const name of Object.keys(ASSET_VARIANTS).toSorted((a, b) => Number(a === "access") - Number(b === "access"))) {
-    const env = { ...vpRunEnv(), ...ASSET_VARIANTS[name] };
+  for (const name of Object.keys(releaseAssetVariants(buildEnv)).toSorted((a, b) => Number(a === "access") - Number(b === "access"))) {
+    const env = { ...vpRunEnv({ env: buildEnv }), ...releaseAssetVariants(buildEnv)[name] };
     await run(`frontend (${name})`, "pnpm",
         ["exec", "vp", "run", "-F", "@gadgets/workshop-frontend", "build"], { env, signal });
     variants[name] = collectAssets(join(FRONTEND_DIR, "dist"));
   }
   // Written back in ASSET_VARIANTS order, so the manifest does not depend on the build order.
-  return Object.fromEntries(Object.keys(ASSET_VARIANTS).map((name) => [name, variants[name]!]));
+  return Object.fromEntries(Object.keys(releaseAssetVariants(buildEnv)).map((name) => [name, variants[name]!]));
 }
 
 // Bundles one package the way `wrangler deploy` would, without uploading. Run from the package dir
@@ -294,7 +303,7 @@ async function bundleWorker(pkg: DeployablePackage, bundleDir: string, signal: A
 // descendant is dead when a task settles; `run` says why that is tolerated. A cancelled command
 // rejects with the abort reason, i.e. the root cause itself, which is what lets the failure summary
 // below dedupe down to the real failures by identity.
-async function buildAll(packages: DeployablePackage[], concurrency: number): Promise<{
+async function buildAll(packages: DeployablePackage[], concurrency: number, buildEnv: NodeJS.ProcessEnv): Promise<{
   bundles: Awaited<ReturnType<typeof bundleWorker>>[];
   assets: Record<string, CollectedAssets>;
 }> {
@@ -347,7 +356,7 @@ async function buildAll(packages: DeployablePackage[], concurrency: number): Pro
   for (const signal of stopSignals) process.on(signal, onStopSignal);
 
   try {
-    const frontend = failFast(buildFrontend(controller.signal));
+    const frontend = failFast(buildFrontend(controller.signal, buildEnv));
     const [bundlesResult, frontendResult] = await Promise.allSettled([
       mapConcurrent(packages, concurrency, async (pkg) => {
         // A release component serves its own assets, which its bundle builds first.
@@ -383,6 +392,7 @@ async function buildAll(packages: DeployablePackage[], concurrency: number): Pro
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  const profile = releaseProfile(process.env, args.profile);
   // Read and checked before anything is built, so a bad key or missing flag fails in seconds.
   const signingKey = await releaseSigningKey(process.env);
   const signing = signingKey ? requireSigningOptions(args.signing) : undefined;
@@ -400,7 +410,7 @@ async function main() {
       .toSorted((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
   // 1. Every bundle, overlapping.
-  const { bundles, assets } = await buildAll(packages, args.concurrency);
+  const { bundles, assets } = await buildAll(packages, args.concurrency, profile.env);
 
   // 2. Everything below is ordered by package, so the release bytes do not depend on which build
   //    finished first.
@@ -434,6 +444,7 @@ async function main() {
   // 3. The manifest ties it together. Written last locally too, mirroring the R2 upload order
   //    (manifest presence == release complete).
   const manifest = generateManifest({
+    profile: profile.profile,
     releaseId,
     commit,
     createdAt: new Date().toISOString(),
@@ -441,6 +452,7 @@ async function main() {
     workers,
     assetVariants,
   });
+  if (profile.profile === "school") applySchoolProfile(manifest);
   const manifestBytes = new TextEncoder().encode(stableStringify(manifest) + "\n");
   if (signingKey && signing) {
     const signed = await signReleaseManifest(manifestBytes, signingKey, signing);

@@ -4,6 +4,7 @@ import { Bell, CheckCheck } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Detail, Notification } from '../types';
 import { useLoad } from '../hooks/useLoad';
+import { useAppState } from '../state/app-state';
 import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Item, Page, QueryState, Title } from '../ui/Primitives';
 
@@ -11,6 +12,7 @@ export function Inbox({ client, navigate, onChange }: {
   client: DistrictClient; navigate: (detail: Detail) => void; onChange?: () => void;
 }) {
   const palette = usePalette();
+  const { role } = useAppState();
   const [list, reload] = useLoad('inbox', () => client.notifications());
   const [saving, setSaving] = useState(false);
   const mark = async (ids: string[] | 'all') => {
@@ -22,10 +24,12 @@ export function Inbox({ client, navigate, onChange }: {
   };
   const open = (item: Notification) => {
     if (!item.readAt) void mark([item.id]);
+    const staff = role === 'teacher';
     if (item.ref.assignmentId) navigate({
-      type: 'assignment', id: item.ref.assignmentId, offeringId: item.offeringId,
+      type: staff ? 'teacher-assignment' : 'assignment', id: item.ref.assignmentId, offeringId: item.offeringId,
     });
-    else navigate({ type: 'class', id: item.offeringId });
+    else if (item.ref.announcementId && !staff) navigate({ type: 'announcements' });
+    else navigate({ type: staff ? 'teacher-class' : 'class', id: item.offeringId });
   };
   return <Page refresh={reload}>
     <Title subtitle="Updates from your school, without losing track of what matters.">Inbox</Title>

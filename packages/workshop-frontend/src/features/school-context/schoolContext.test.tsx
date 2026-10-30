@@ -25,7 +25,7 @@ const testState = vi.hoisted(() => {
 })
 testState.authenticatedApi = {
   listModels: async () => [],
-  newGadget: () => testState.overseer,
+  newWorkspace: () => testState.overseer,
   resolveSchoolContext: testState.resolveSchoolContext,
 }
 
@@ -33,7 +33,10 @@ vi.mock('@tanstack/react-router', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tanstack/react-router')>()),
   useNavigate: () => testState.navigate,
 }))
-vi.mock('@cloudflare/kumo', () => ({ useKumoToastManager: () => ({ add: testState.addToast }) }))
+vi.mock('@cloudflare/kumo', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@cloudflare/kumo')>()),
+  useKumoToastManager: () => ({ add: testState.addToast }),
+}))
 vi.mock('../../AuthContext', () => ({
   useAuthenticatedApi: () => ({ authenticatedApi: testState.authenticatedApi, currentUser: { id: 'u', name: 'Ava' } }),
 }))
@@ -43,12 +46,12 @@ vi.mock('../chat/composer/ChatComposer', () => ({
     return <textarea aria-label="Prompt" />
   },
 }))
-vi.mock('../../components/MeshBackground', () => ({ default: () => null }))
-vi.mock('../../components/AppShell/HomeTaskSuggestions', () => ({ default: () => null }))
+vi.mock('../../pages/home/MeshBackground', () => ({ default: () => null }))
+vi.mock('../../pages/home/HomeTaskSuggestions', () => ({ default: () => null }))
 vi.mock('../deployment-updates/UpdateAvailableNotice', () => ({ UpdateAvailableNotice: () => null }))
 vi.mock('../../useDocumentTitle', () => ({ useDocumentTitle: () => {} }))
 
-import { HomePageContent } from '../../routes/index'
+import { HomePage } from '../../pages/home/HomePage'
 import { clearPendingSchoolContext, pendingSchoolContext, takeSchoolContextFromUrl } from './schoolContext'
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -108,7 +111,7 @@ describe('the home page with a context link', () => {
     container = document.createElement('div')
     document.body.append(container)
     root = createRoot(container)
-    await act(async () => root!.render(<HomePageContent />))
+    await act(async () => root!.render(<HomePage />))
     return container
   }
 

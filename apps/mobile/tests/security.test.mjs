@@ -12,6 +12,17 @@ test('school endpoints accept one canonical HTTPS origin', () => {
   }
   assert.equal(strictOrigin('http://localhost:4801', true), 'http://localhost:4801');
 });
+test('loopback school addresses are refused outside development builds', () => {
+  // __DEV__ is undefined here, as it is false in release builds.
+  assert.throws(() => strictOrigin('http://localhost:4810'));
+  assert.throws(() => strictOrigin('http://127.0.0.1:4810'));
+});
+test('Array.prototype.toSorted exists after the polyfill, and leaves the array alone', async () => {
+  await import('../src/polyfills.ts');
+  const list = [3, 1, 2];
+  assert.deepEqual(list.toSorted((a, b) => a - b), [1, 2, 3]);
+  assert.deepEqual(list, [3, 1, 2]);
+});
 test('webview navigation cannot leave the selected school origin', () => {
   assert.equal(trustedUrl('https://work.school.example/hello', 'https://work.school.example'), true);
   assert.equal(trustedUrl('https://work.school.example.evil.test/', 'https://work.school.example'), false);

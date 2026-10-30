@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://educateos.io/schemas/website-interest-v1",
+  "title": "EducateOS operator-downloaded website interest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "source",
+    "records"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "source": {
+      "const": "website-interest"
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "externalId",
+          "receivedAt",
+          "name",
+          "workEmail",
+          "org",
+          "state",
+          "role",
+          "interestType",
+          "marketingOptIn",
+          "verificationStatus",
+          "consentVersion",
+          "limitedFeedback",
+          "referralSource",
+          "responseConsent",
+          "staffConfirmed",
+          "privacyAcknowledged"
+        ],
+        "properties": {
+          "externalId": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{1,120}$"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "workEmail": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "org": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "state": {
+            "enum": [
+              "MI",
+              "TX",
+              "other"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "interestType": {
+            "enum": [
+              "demo",
+              "council",
+              "technical-review",
+              "pilot",
+              "feedback",
+              "webinar",
+              "unsubscribe",
+              "deletion"
+            ]
+          },
+          "marketingOptIn": {
+            "type": "boolean"
+          },
+          "verificationStatus": {
+            "enum": [
+              "unverified",
+              "verified",
+              "rejected"
+            ]
+          },
+          "consentVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "limitedFeedback": {
+            "type": "string",
+            "maxLength": 1500
+          },
+          "referralSource": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "responseConsent": {
+            "type": "boolean"
+          },
+          "staffConfirmed": {
+            "type": "boolean"
+          },
+          "privacyAcknowledged": {
+            "type": "boolean"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "interestType": {
+                  "not": {
+                    "enum": [
+                      "unsubscribe",
+                      "deletion"
+                    ]
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "name": {
+                  "minLength": 1
+                },
+                "org": {
+                  "minLength": 1
+                },
+                "role": {
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$comment": "Semantic validation additionally enforces professional organizational email, no future dates, no student/credential/URL feedback, and first-party referral labels. Minimal privacy actions may leave name/org/role empty and all consent flags false. Export verification never substitutes for local human verification. Opt-out is distinct from marketingOptIn=false."
+}

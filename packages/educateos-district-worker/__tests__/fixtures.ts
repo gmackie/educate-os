@@ -21,6 +21,13 @@ export const LMS_ISSUER = "https://lms.northfield.example";
 /** Northfield as the district's seed, its records owned by the roster, funded for one synthetic model. */
 export const TEST_CONFIG: DistrictWorkerConfig = {
   directory: NORTHFIELD,
+  workshopPolicy: {
+    personalCreation: true,
+    personalBlueprints: ["personal-notebook"],
+    classBlueprints: [{ blueprintId: "english-authoring", offeringId: "off_nf-eng9-fall-p3" as never }],
+    models: [{ provider: "cloudflare", modelId: "synthetic-model" }],
+    connectors: [{ vendorId: "educateos", accountId: 7, resourceUrlPatterns: ["school://approved"], resources: ["SchoolTools"] }],
+  },
   fundingPools: [{
     id: "fpl_courses" as never,
     name: "Course AI",
@@ -32,4 +39,9 @@ export const TEST_CONFIG: DistrictWorkerConfig = {
   modelCatalog: [{ provider: "cloudflare", modelId: "synthetic-model", mode: "enabled" }],
   // SCHO-189: email through the (recorded) Email Service binding.
   email: { from: "educateos@northfield.example", fromName: "Northfield EducateOS", appUrl: "https://learn.northfield.example" },
+  // SCHO-305: student posts are screened by the (fake) Hall Monitor the test object answers with.
+  discussionScreening: { tenantId: "northfield", profileId: "discussion-posts", revision: "r1", costCenterId: "cc-discussions" },
 };
+
+/** Where the test district reaches Hall Monitor; the test object answers it with the fake. */
+export const HALL_MONITOR_URL = "https://hall-monitor.example";
