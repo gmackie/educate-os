@@ -134,13 +134,14 @@ export async function bootDistrict(
     return idp.issue(principal.externalIdentities[0]!.subject);
   };
 
-  const call = async <N extends RouteName>(token: string | undefined, name: N, input: RouteInput<N> = {} as RouteInput<N>) => {
+  const call = async <N extends RouteName>(token: string | undefined, name: N, input: RouteInput<N> = {} as RouteInput<N>, extraHeaders: Record<string, string> = {}) => {
     const spec = ROUTES[name];
     const parts = input as { params?: Record<string, string>; query?: Record<string, string>; body?: unknown };
     const url = new URL(routePath(spec.path, parts.params), "https://district.example");
     for (const [key, value] of Object.entries(parts.query ?? {})) if (value !== undefined) url.searchParams.set(key, value);
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (token !== undefined) headers.authorization = `Bearer ${token}`;
+    Object.assign(headers, extraHeaders);
     const response = await app.fetch(new Request(url, {
       method: spec.method,
       headers,

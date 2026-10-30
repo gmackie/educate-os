@@ -7,6 +7,7 @@ import { AcademicDirectory } from "@educateos/academics";
 import { checkDirectoryIntegrity, DistrictDirectorySnapshot } from "@educateos/contracts";
 import type { ImportFetch } from "@educateos/content-studio";
 import {
+  CLEVER_ISSUER,
   createAccessSignInResolver,
   createDirectoryPrincipalResolver,
   matchEmailKeyedUsers,
@@ -231,6 +232,8 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       verifyRequest,
       toolOrigin: settings.ltiToolOrigin,
       platformFetch: seams.platformFetch ?? ((input, init) => fetch(input, init)),
+      // The issuers people sign in with are never an LMS's (SCHO-306).
+      reservedIssuers: [...(settings.accessIssuer ? [settings.accessIssuer] : []), CLEVER_ISSUER],
     });
   // The same issuer and Clever setting the district's own sign-in reads, so the two agree. The
   // seam carries no Clever claims, so a Clever district resolves no Workshop sign-in this way.
