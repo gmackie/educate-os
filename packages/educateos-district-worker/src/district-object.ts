@@ -184,6 +184,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return (await this.#boot()).app.gadgetAssessmentSubmit(principal, assignmentId, request);
   }
 
+  /** Stores approved Workshop source through immutable district artifacts and assessment. */
+  async gadgetAssessmentSubmitCheckpoint(principal: VerifiedPrincipal, assignmentId: string, request: unknown): Promise<GadgetAssessmentResponse> {
+    return (await this.#boot()).app.gadgetAssessmentSubmitCheckpoint(principal, assignmentId, request);
+  }
+
   /** The district's school tools. */
   async listTools(): Promise<SchoolToolListing[]> {
     return (await this.#boot()).tools.listTools();
@@ -326,6 +331,9 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
       },
       {
         importFetch: (url, init) => this.importFetch(url, init),
+        ...(this.env.WORKSHOP_ASSESSMENT_RELEASES === undefined ? {} : {
+          workshopReleases: this.env.WORKSHOP_ASSESSMENT_RELEASES,
+        }),
         // SCHO-232: a configuration head policy cannot read is passed over; say so, once per revision.
         onUnreadableConfigRevision: (revisionId) => logger.error("a configuration revision cannot be read; policy falls back to the revision before it", {
           event: "config.revision.unreadable",

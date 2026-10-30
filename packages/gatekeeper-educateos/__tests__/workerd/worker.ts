@@ -11,6 +11,7 @@ import type {
   GatekeeperUser,
   GatekeeperUserVerifier,
   GitCache,
+  GadgetSourceCheckpoint,
   ObservationDescription,
 } from "@gadgets/workshop-shared/gatekeeper";
 import type { VerifiedPrincipal } from "@educateos/contracts";
@@ -56,6 +57,13 @@ export class FakeDistrict extends WorkerEntrypoint implements SchoolToolService 
     assessmentWrites.push({ principal, assignmentId, request });
     return { status: 201, body: "{}", correlationId: null };
   }
+  async gadgetAssessmentSubmitCheckpoint(principal: VerifiedPrincipal, assignmentId: string, request: unknown) {
+    const access = await this.gadgetAssessmentRead(principal, assignmentId);
+    if (access.status !== 200) return access;
+    if (!checkpointPolicy.allowed) return { status: 403, body: "{}", correlationId: null };
+    checkpointWrites.push({ principal, assignmentId, request });
+    return { status: 201, body: "{}", correlationId: null };
+  }
   serveAs(principal: VerifiedPrincipal, request: Request) {
     return district.service.serveAs(principal, request);
   }
@@ -63,6 +71,11 @@ export class FakeDistrict extends WorkerEntrypoint implements SchoolToolService 
 
 /** Submission calls received through the binding (domain policy is tested in district-app). */
 export const assessmentWrites: { principal: VerifiedPrincipal; assignmentId: string; request: unknown }[] = [];
+
+/** Binding observations; real district artifact and replay behavior is covered in district-app. */
+export const checkpointWrites: { principal: VerifiedPrincipal; assignmentId: string; request: unknown }[] = [];
+/** Simulates policy changing while a durable action waits for the user. */
+export const checkpointPolicy = { allowed: true };
 
 /** How many accounts the Workshop's connect callback was handed. */
 export const completions = { count: 0 };
@@ -85,6 +98,15 @@ class Unused extends RpcTarget {}
 class TestApprovalQueue extends RpcTarget {
   readonly observations: ObservationDescription[] = [];
   readonly actions: { id: number; description: ActionDescription }[] = [];
+
+  async getCurrentGadgetCheckpoint(): Promise<GadgetSourceCheckpoint> {
+    return {
+      format: "workshop.gadget-source.v1", policy: "educateos-source-v1",
+      workspaceId: "owner-workspace", gadgetId: 1, commitId: "c".repeat(40),
+      sourceDigest: `sha256:${"d".repeat(64)}`, blueprint: { id: "lab", commitId: "a".repeat(40) },
+      files: [["main.ts", "export default { answer: 42 };"]],
+    };
+  }
 
   async authorizeObservation(description: ObservationDescription): Promise<void> {
     this.observations.push(description);
@@ -180,6 +202,26 @@ export class TestHooks extends DurableObject<Cloudflare.Env> {
     const view = await assessment.read();
     await assessment.submit([{ artifactId: "art_lab", revisionId: "rev_one" }]);
     return { view, observations: queue.observations.length, actionId: queue.actions[0]!.id };
+  }
+
+  /** A fresh trusted queue supplies the snapshot, and the session is disposed before approval. */
+  async submitCheckpoint(accountObjectId: string) {
+    const queue = new TestApprovalQueue();
+    using session = await (await this.#facet(accountObjectId)).startSession(new RpcStub(queue) as unknown as ApprovalQueue);
+    using assessment = await session.assessment("asg_lab");
+    const preview = await assessment.previewCurrentGadget();
+    await assessment.submitCurrentGadget(JSON.parse(preview).requestId);
+    return { preview, action: queue.actions[0]!, observations: queue.observations.length };
+  }
+
+  /** A person declines the pending action without calling the district. */
+  async reject(accountObjectId: string, actionId: number): Promise<void> {
+    await (await this.#facet(accountObjectId)).rejectAction(actionId);
+  }
+
+  /** Evicts the gatekeeper facet while preserving its durable action journal. */
+  restart(accountObjectId: string): void {
+    this.ctx.facets.abort(`school-${accountObjectId}`, new Error("test restart"));
   }
 
   /** Keep expected RPC refusals inside the request's lifetime. */

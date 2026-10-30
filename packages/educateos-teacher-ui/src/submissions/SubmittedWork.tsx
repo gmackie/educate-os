@@ -67,17 +67,24 @@ export const SubmittedWork = ({ submissionId, submitted, label, onCommented }: {
     <LayerCard className="flex flex-col gap-3 p-4">
       <span className="flex flex-wrap items-center gap-2">
         <h3><Text bold as="span">{label}</Text></h3>
+        {item.sourceCheckpoint !== undefined && <Badge variant="success">Workshop source verified</Badge>}
         <Badge variant="neutral" icon={<LockSimple aria-hidden />}>Read-only: the version they turned in</Badge>
-        {item.aiAssistance.level !== "none" && <Badge variant="warning">{item.aiAssistance.level === "generated" ? "Student says AI wrote this" : "Student says AI helped"}</Badge>}
+        {item.aiAssistance.level !== "none" && <Badge variant="warning">{item.aiAssistance.level === "undisclosed" ? "AI assistance not declared" : item.aiAssistance.level === "generated" ? "Student says AI wrote this" : "Student says AI helped"}</Badge>}
       </span>
       <Text variant="secondary" size="sm">
-        {item.aiAssistance.level === "none"
+        {item.aiAssistance.level === "undisclosed"
+          ? "AI assistance has not been declared. Review explanations and AI assistance separately; do not infer independent human authorship."
+          : item.aiAssistance.level === "none"
           ? "The student declared no AI assistance. This declaration is not an AI detection result."
           : `Declared AI model: ${item.aiAssistance.modelId}. This is the student's declaration, not an independent verification.`}
       </Text>
       <details className="rounded border border-kumo-line p-2">
         <summary className="cursor-pointer">Evidence version</summary>
         <dl className="mt-2 grid gap-1 break-all text-sm">
+          {item.sourceCheckpoint !== undefined && <>
+            <dt>Workshop source commit</dt><dd>{item.sourceCheckpoint.commitId}</dd>
+            <dt>Source fingerprint</dt><dd>{item.sourceCheckpoint.sourceDigest}</dd>
+          </>}
           <dt>Artifact</dt><dd>{item.artifactId}</dd>
           <dt>Submitted revision</dt><dd>{item.revisionId}</dd>
           <dt>Content fingerprint</dt><dd>{item.digest}</dd>

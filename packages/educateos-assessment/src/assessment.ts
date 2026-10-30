@@ -348,6 +348,32 @@ export class AssessmentService {
 
   // Submissions
 
+  /** Preflight a staged source transfer before saving bytes; submit rechecks after the save. */
+  async assertSubmissionOpen(caller: Caller, rawAssignmentId: AssignmentId, requestKey: string): Promise<void> {
+    const loaded = await this.#load();
+    const decisions = this.#decisions(caller);
+    const assignment = await this.#visibleAssignment(decisions, loaded, parse(AssignmentId, rawAssignmentId));
+    const at = this.#offering(loaded.snapshot, assignment.offeringId);
+    if (!(await decisions.allows("submit", submissionTarget(at, caller.principal.principalId, undefined)))) {
+      throw new EducateOsError("forbidden", "You cannot submit to this assignment.");
+    }
+    const mine = loaded.state.submissions.filter((submission) => submission.assignmentId === assignment.id
+      && submission.studentPrincipalId === caller.principal.principalId);
+    const replay = mine.find((submission) => submission.requestKey === requestKey);
+    if (replay !== undefined) {
+      if (replay.withdrawnAt !== undefined) throw new EducateOsError("conflict", "Submission request was withdrawn.");
+      return;
+    }
+    this.#submissionTiming(assignment, mine.filter((submission) => submission.withdrawnAt === undefined));
+  }
+
+  #submissionTiming(assignment: AssignmentBinding, live: readonly SubmissionSnapshot[]): SubmissionTiming {
+    const timing = timingAt(assignment, this.#now());
+    if (timing === undefined) throw new EducateOsError("forbidden", "This assignment is no longer accepting work.");
+    if (live.length >= assignment.attemptsAllowed) throw new EducateOsError("forbidden", "You have used every attempt this assignment allows.");
+    return timing;
+  }
+
   /**
    * Submits exact revisions of the caller's own work in the assignment's offering as an immutable
    * snapshot, pinning each revision for the submission, and returns its receipt.
@@ -357,10 +383,13 @@ export class AssessmentService {
    * - Refused once the caller has as many live (not withdrawn) submissions as the assignment allows,
    *   or after the due date under a `refuse` late policy or once a late window has closed.
    *   Work accepted after the due date is flagged `late`.
+   * - A host request key reuses its original receipt even after newer attempts; changed evidence
+   *   or withdrawal refuses replay. Authorization is rechecked before returning a receipt.
    */
-  async submit(caller: Caller, rawAssignmentId: AssignmentId, rawRevisions: readonly SubmittedRevision[]): Promise<SubmissionReceipt> {
+  async submit(caller: Caller, rawAssignmentId: AssignmentId, rawRevisions: readonly SubmittedRevision[], requestKey?: string): Promise<SubmissionReceipt> {
     const assignmentId = parse(AssignmentId, rawAssignmentId);
     const refs = parse(SubmittedRevisions, rawRevisions);
+    if (requestKey !== undefined) requestKey = z.string().min(1).max(512).parse(requestKey);
     const me = caller.principal.principalId;
     const decisions = this.#decisions(caller);
 
@@ -387,6 +416,7 @@ export class AssessmentService {
         mediaType: revision.mediaType,
         sizeBytes: revision.sizeBytes,
         aiAssistance: revision.aiAssistance,
+        ...(revision.provenance.sourceCheckpoint === undefined ? {} : { sourceCheckpoint: revision.provenance.sourceCheckpoint }),
       });
     }
     const digest = await submissionDigest(items);
@@ -398,21 +428,24 @@ export class AssessmentService {
         throw new EducateOsError("forbidden", "You cannot submit to this assignment.");
       }
       const mine = loaded.state.submissions.filter((s) => s.assignmentId === current.id && s.studentPrincipalId === me);
+      const replay = requestKey === undefined ? undefined : mine.find((s) => s.requestKey === requestKey);
+      if (replay !== undefined) {
+        if (replay.withdrawnAt !== undefined || !(await isSubmissionDigestOf(items, replay.submissionDigest))) {
+          throw new EducateOsError("conflict", "Submission request was withdrawn or used for different evidence.");
+        }
+        return { result: receiptOf(replay) };
+      }
       const live = mine.filter((s) => s.withdrawnAt === undefined);
       const latest = live.at(-1);
       // A retry of the same work returns the same receipt, even for a submission digested before the rename.
-      if (latest !== undefined && (await isSubmissionDigestOf(items, latest.submissionDigest))) return { result: receiptOf(latest) };
+      if (requestKey === undefined && latest !== undefined && (await isSubmissionDigestOf(items, latest.submissionDigest))) return { result: receiptOf(latest) };
 
       const disallowed = items.find((item) => !current.permittedArtifactTypes.includes(item.artifactType));
       if (disallowed !== undefined) {
         throw new EducateOsError("validation-failed", `This assignment does not accept ${disallowed.artifactType} work.`);
       }
       const now = this.#now();
-      const timing = timingAt(current, now);
-      if (timing === undefined) throw new EducateOsError("forbidden", "This assignment is no longer accepting work.");
-      if (live.length >= current.attemptsAllowed) {
-        throw new EducateOsError("forbidden", "You have used every attempt this assignment allows.");
-      }
+      const timing = this.#submissionTiming(current, live);
       const attempt = Math.max(0, ...mine.map((s) => s.attempt)) + 1;
       const id = await submissionIdFor(current.id, me, attempt);
       for (const item of items) {
@@ -431,6 +464,7 @@ export class AssessmentService {
         submittedAt: now.toISOString(),
         timing,
         channel: caller.channel,
+        ...(requestKey === undefined ? {} : { requestKey }),
       };
       return { next: { ...loaded.state, submissions: [...loaded.state.submissions, snapshot] }, result: receiptOf(snapshot) };
     });
