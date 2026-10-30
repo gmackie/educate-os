@@ -44,8 +44,9 @@ function readTestWorkerBuilds() {
   });
 }
 
-function buildTestManifest(workers: WorkerBuild[] = readTestWorkerBuilds()) {
+function buildTestManifest(workers: WorkerBuild[] = readTestWorkerBuilds(), profile: "generic" | "school" = "generic") {
   return generateManifest({
+    profile,
     releaseId: "r000000-fixture",
     commit: "0000000000000000000000000000000000000000",
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -446,4 +447,17 @@ test("a worker's Cron Triggers reach its manifest entry, and no other trigger is
   const routed = { ...guard, config: { ...guard.config, triggers: { crons: [], routes: ["example.com/*"] } } };
   assert.throws(() => buildTestManifest([...builds.filter((w) => w !== guard), routed]),
       /trigger\(s\) this generator doesn't handle: routes/);
+});
+
+
+test("school release requires district principal resolution while generic stays unchanged", () => {
+  const generic = buildTestManifest().workers["workshop-backend"]!;
+  assert.equal(generic.vars.REQUIRE_PRINCIPAL_RESOLVER, undefined);
+  assert.ok(!generic.bindings.some(b => b.name === "PRINCIPAL_RESOLVER"));
+  const school = buildTestManifest(readTestWorkerBuilds(), "school").workers["workshop-backend"]!;
+  assert.equal(school.vars.REQUIRE_PRINCIPAL_RESOLVER, "true");
+  assert.deepEqual(school.bindings.find(b => b.name === "PRINCIPAL_RESOLVER"), {
+    type: "service", name: "PRINCIPAL_RESOLVER", service: "$WORKER_NAME(educateos-district-worker)", entrypoint: "DistrictPrincipalResolver",
+  });
+  assert.throws(() => buildTestManifest(readTestWorkerBuilds().filter(w => w.pkgName !== "educateos-district-worker"), "school"), /require/);
 });

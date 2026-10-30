@@ -19,6 +19,7 @@ import type { DistrictDirectorySnapshot, VerifiedPrincipal } from "@educateos/co
 import type { AdmittedSubjectRequest, GuardDirectory, GuardSubject, GuardSubjectRequest } from "@educateos/district-app/guard-directory";
 import type { SchoolToolService } from "@educateos/gatekeeper";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
+import type { AccessSignIn, AccessSignInResolution } from "@educateos/identity";
 import { configuredDistrictId } from "./district.ts";
 
 export { DistrictObject } from "./district-object.ts";
@@ -26,6 +27,20 @@ export { DistrictObject } from "./district-object.ts";
 /** The district's object. */
 function districtObject(env: Cloudflare.Env, exports: Cloudflare.Exports) {
   return exports.DistrictObject.getByName(configuredDistrictId(env.DISTRICT_CONFIG));
+}
+
+/** District-owned principal sign-in capability. Bind only to the school Workshop backend. */
+@validateRpc()
+export class DistrictPrincipalResolver extends WorkerEntrypoint<Cloudflare.Env> {
+  /** Resolves verified Access claims; returns no directory or school records. */
+  async resolveAccessSignIn(signIn: AccessSignIn): Promise<AccessSignInResolution> {
+    try {
+      return await districtObject(this.env, this.ctx.exports).resolveAccessSignIn(signIn);
+    } catch {
+      // Storage/configuration failures refuse sign-in without serializing directory diagnostics.
+      return { outcome: "unauthenticated" };
+    }
+  }
 }
 
 /** The `EDUCATEOS_DISTRICT` entrypoint for the AI call guard: the district's guard read model. */

@@ -10,6 +10,8 @@ declare namespace Cloudflare {
     /** The guard entrypoint, over a real service binding. */
     GUARD: Service<import("../src/worker.ts").DistrictGuardDirectory>;
     /** The school tools entrypoint, over a real service binding. */
+    /** The principal resolver over real Workers RPC. */
+    PRINCIPALS: Service<import("../src/worker.ts").DistrictPrincipalResolver>;
     TOOLS: Service<import("../src/worker.ts").DistrictSchoolTools>;
     /** The private half of this run's Access key, as a JWK. */
     TEST_ACCESS_PRIVATE_JWK: string;

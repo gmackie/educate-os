@@ -86,6 +86,7 @@ test("the backend binds the gatekeepers' vendor entrypoint, the guard, Workers A
     { binding: "GATEKEEPER_SCHEDULER", service: "gatekeeper-scheduler", entrypoint: "GatekeeperVendor" },
     { binding: "GATEKEEPER_WEBSEARCH", service: "gatekeeper-websearch", entrypoint: "GatekeeperVendor" },
     { binding: "AI_CALL_GUARD", service: AI_GUARD_PACKAGE, entrypoint: "EducateOsAiCallGuard" },
+    { binding: "PRINCIPAL_RESOLVER", service: "schoolos-district-worker", entrypoint: "DistrictPrincipalResolver" },
   ]);
   assert.deepEqual(backend.ai, { binding: "WORKERS_AI" });
   assert.deepEqual(backend.kv_namespaces, [
@@ -96,6 +97,7 @@ test("the backend binds the gatekeepers' vendor entrypoint, the guard, Workers A
       [{ binding: "BLUEPRINT_CONTENT", bucket_name: "schoolos-prod-blueprint-content" }]);
   assert.deepEqual(backend.vars, {
     PUBLIC_BASE_URL: BASE_URL,
+    REQUIRE_PRINCIPAL_RESOLVER: "true",
     CF_AI_GATEWAY: "default",
     CF_AI_GATEWAY_ACCOUNT_ID: SCHOOLOS_GMAC_IO.accountId,
     CF_AI_GATEWAY_PROVIDERS: "cloudflare",
@@ -158,7 +160,7 @@ test("the district Worker has its own custom domains, serves the UIs as assets a
   for (const [pkgName, config] of build()) {
     const binds = config.services?.some(({ service }) =>
       service === DISTRICT_PACKAGE || service === district.name) ?? false;
-    assert.equal(binds, pkgName === EDUCATEOS_GATEKEEPER_PACKAGE, pkgName);
+    assert.equal(binds, pkgName === EDUCATEOS_GATEKEEPER_PACKAGE || pkgName === "workshop-backend", pkgName);
   }
 });
 

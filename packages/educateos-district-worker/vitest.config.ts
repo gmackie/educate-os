@@ -45,6 +45,7 @@ export default defineConfig({
           DISTRICT: { className: "DistrictObject", useSQLite: true },
         },
         serviceBindings: {
+          PRINCIPALS: { name: kCurrentWorker, entrypoint: "DistrictPrincipalResolver" },
           GUARD: { name: kCurrentWorker, entrypoint: "DistrictGuardDirectory" },
           TOOLS: { name: kCurrentWorker, entrypoint: "DistrictSchoolTools" },
         },

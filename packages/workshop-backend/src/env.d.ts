@@ -78,6 +78,8 @@ declare global {
 
       // Optional principal resolver (see auth/principal-sign-in.ts). The deployment binds it; when
       // it is bound, Access sign-in names users by principal and every other sign-in is refused.
+      // School profiles require the binding and must never fall back to generic authentication.
+      REQUIRE_PRINCIPAL_RESOLVER?: string;
       PRINCIPAL_RESOLVER?: Service<
         import("@gadgets/workshop-shared/principal-resolver").PrincipalResolver
       >;

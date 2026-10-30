@@ -112,6 +112,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return app.fetch(request);
   }
 
+  /** Resolves a verified Workshop sign-in against the current district directory. */
+  async resolveAccessSignIn(signIn: unknown) {
+    return (await this.#boot()).principalResolver.resolveAccessSignIn(signIn);
+  }
+
   /** What the district says about a Workshop user, for the AI call guard. */
   async guardSubject(request: GuardSubjectRequest): Promise<GuardSubject | null> {
     return (await this.#boot()).app.guardDirectory.guardSubject(request);

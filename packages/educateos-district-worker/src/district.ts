@@ -5,7 +5,7 @@
 import type { JWTVerifyGetKey } from "jose";
 import { AcademicDirectory } from "@educateos/academics";
 import type { ImportFetch } from "@educateos/content-studio";
-import { createDirectoryPrincipalResolver } from "@educateos/identity";
+import { createAccessSignInResolver, type AccessSignInResolver, createDirectoryPrincipalResolver } from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
 import { authorityFor, createDistrictApp, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
 import { clever } from "@educateos/integrations";
@@ -22,6 +22,8 @@ import { startDistrictLti, type DistrictLti } from "./lti.ts";
 export interface District {
   /** The application: the `/api` surface and the AI call guard's read model. */
   app: DistrictApp;
+  /** Principal-only Workshop sign-in, resolved from the current stored directory. */
+  principalResolver: AccessSignInResolver;
   /** The school tools the EducateOS gatekeeper reaches. */
   tools: SchoolToolService;
   /** The district's LTI 1.3 Tool, when the deployment names its origin (SCHO-177). */
@@ -147,5 +149,19 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       toolOrigin: settings.ltiToolOrigin,
       platformFetch: seams.platformFetch ?? ((input, init) => fetch(input, init)),
     });
-  return { app, tools, lti };
+  const principalResolver: AccessSignInResolver = {
+    async resolveAccessSignIn(signIn) {
+      // Never cache identity links across logins. No email migration is enabled here: only
+      // administrator-confirmed directory links can sign in; this endpoint never writes links.
+      const directory = (await stores.directory.load()).snapshot;
+      return createAccessSignInResolver({
+        directory,
+        access: {
+          issuer: settings.accessIssuer ?? "",
+          ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }),
+        },
+      }).resolveAccessSignIn(signIn);
+    },
+  };
+  return { app, tools, lti, principalResolver };
 }
