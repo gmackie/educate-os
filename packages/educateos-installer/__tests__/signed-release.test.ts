@@ -9,7 +9,7 @@ import {
   RootReleaseSigner,
 } from "@educateos/releases";
 import { describe, expect, it } from "vitest";
-import { dryRunDrift, install, loadPinnedManifest } from "../src/index.ts";
+import { DurableObjectMigration, dryRunDrift, install, loadPinnedManifest } from "../src/index.ts";
 import {
   accountFor,
   configFor,
@@ -28,6 +28,32 @@ const DAY = 24 * 60 * 60_000;
 const HOST = "educateos.northfield.example";
 
 describe("R03 installer: the signed-manifest path", () => {
+  it("preserves reviewed migration operations without stripping fields", () => {
+    const migration = {
+      tag: "v2",
+      new_classes: ["Legacy"],
+      new_sqlite_classes: ["Current"],
+      deleted_classes: ["Retired"],
+      renamed_classes: [{ from: "Old", to: "New" }],
+      transferred_classes: [{ from: "Source", from_script: "district-source", to: "Target" }],
+    };
+    expect(DurableObjectMigration.parse(migration)).toEqual(migration);
+    expect(DurableObjectMigration.safeParse({ tag: "v3", renamed_classes: [{ from: "Old", to: "New", future: true }] }).success).toBe(false);
+  });
+
+  it.each(["manifest-version", "binding", "migration"])("rejects a signed upstream release with an unsupported %s capability", async (capability) => {
+    const release = await goldenRelease();
+    const manifest = JSON.parse(new TextDecoder().decode(release.bytes));
+    if (capability === "manifest-version") manifest.manifestVersion = 2;
+    if (capability === "binding") manifest.workers["workshop-backend"].bindings.push({ type: "future_binding", name: "FUTURE" });
+    if (capability === "migration") manifest.workers["workshop-backend"].migrations.push({ tag: "future", future_classes: ["Unknown"] });
+    const bytes = new TextEncoder().encode(JSON.stringify(manifest));
+    const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    const signedManifest = await signRelease(manifest.releaseId, release.version, digest);
+    await expect(loadPinnedManifest(bytes, configFor(NORTHFIELD, release).release, { signedManifest }))
+      .rejects.toMatchObject({ code: "validation-failed" });
+  });
+
   it("rejects a statement signed by a key the district does not pin", async () => {
     const release = await goldenRelease();
     const attacker = new RootReleaseSigner(await SigningIdentity.generate());

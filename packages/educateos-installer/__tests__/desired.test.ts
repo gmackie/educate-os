@@ -3,6 +3,25 @@ import { compileDesiredState, DistrictInstallConfig, loadPinnedManifest, Manifes
 import { configFor, deriveRelease, goldenRelease, NORTHFIELD } from "./support.ts";
 
 describe("release manifest", () => {
+  it("loads signed school assets and refuses an ambiguous school/upstream release", async () => {
+    const base = await goldenRelease();
+    const school = await deriveRelease(base, "r000003-school", (manifest) => {
+      const variants = manifest.workers.router!.assetsConfig!.variants;
+      variants["access-school"] = variants.access!;
+      delete variants.access;
+    });
+    const desired = compileDesiredState(school.manifest, configFor(NORTHFIELD, school));
+    const router = desired.resources.find((resource) => resource.kind === "worker_script" && resource.pkgName === "router");
+    expect(router && router.kind === "worker_script" && router.assets?.manifest)
+      .toEqual(school.manifest.workers.router!.assetsConfig!.variants["access-school"]!.manifest);
+    const ambiguous = await deriveRelease(school, "r000004-ambiguous", (manifest) => {
+      const variants = manifest.workers.router!.assetsConfig!.variants;
+      variants.access = variants["access-school"]!;
+    });
+    expect(() => compileDesiredState(ambiguous.manifest, configFor(NORTHFIELD, ambiguous)))
+      .toThrow("ambiguous Access asset variants");
+  });
+
   it("accepts the release pipeline's golden manifest against the root's signed statement", async () => {
     const release = await goldenRelease();
     expect(Object.keys(release.manifest.workers)).toContain("workshop-backend");

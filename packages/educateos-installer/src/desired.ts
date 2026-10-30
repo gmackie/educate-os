@@ -500,7 +500,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
 
     let assets: DesiredWorker["assets"];
     if (entry.assetsConfig) {
-      const variant = entry.assetsConfig.variants[ASSET_VARIANT];
+      const school = entry.assetsConfig.variants["access-school"];
+      if (school && entry.assetsConfig.variants[ASSET_VARIANT]) invalid(`${pkgName} has ambiguous Access asset variants`);
+      const variant = school ?? entry.assetsConfig.variants[ASSET_VARIANT];
       if (!variant) invalid(`${pkgName} has no "${ASSET_VARIANT}" asset variant`);
       assets = {
         manifest: variant.manifest,

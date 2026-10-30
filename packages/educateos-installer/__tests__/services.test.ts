@@ -60,6 +60,16 @@ const guardBinding = (fake: ReturnType<typeof accountFor>) =>
   fake.worker(BACKEND_SCRIPT)!.bindings.find((b) => b.name === "AI_CALL_GUARD");
 
 describe("optional backend services", () => {
+  it("refuses an enabled guard whose upstream release omits its backend binding before mutating the account", async () => {
+    const base = await goldenRelease();
+    const release = await deriveRelease(base, "r000002-missingbinding", (manifest) => {
+      delete manifest.workers[GUARD]!.backendBinding;
+    });
+    const { fake, run } = setup();
+    await expect(run(release, { enabled: true, vars: GUARD_VARS })).rejects.toThrow("has no backendBinding");
+    expect(mutations(fake)).toHaveLength(0);
+  });
+
   it("installs the guard with its inputs and binds it to the backend only after it and its secret exist", async () => {
     const release = await goldenRelease();
     const { fake, run } = setup();
