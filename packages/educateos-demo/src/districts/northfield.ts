@@ -47,15 +47,28 @@ export const NORTHFIELD_PERSONAS: readonly Persona[] = [
   },
 ];
 
+/** How {@link bootNorthfield} serves people other than the demo's own pages. */
+export interface NorthfieldOptions {
+  /** Turns on the device API and phone pairing (`/api/m`, `/api/pair`, `/connect-phone`). */
+  deviceTokenSecret?: string;
+  /**
+   * The persona subject a request is from when it carries no bearer, such as the mobile dev
+   * district's sign-in cookie on its `/connect-phone` page.
+   */
+  subjectOf?: (request: Request) => string | undefined;
+}
+
 /**
  * Boots Northfield and seeds it, without funding pools, a model catalog or a content reviewer: AI
- * is off, and every AI surface reports that it is not set up.
+ * is off, and every AI surface reports that it is not set up. `fetch` is the district application
+ * itself, for serving it over HTTP (the mobile dev district).
  */
-export async function bootNorthfield(): Promise<DemoDistrict> {
+export async function bootNorthfield(options: NorthfieldOptions = {}): Promise<DemoDistrict & { fetch(request: Request): Promise<Response> }> {
   const directory = NORTHFIELD;
   const app = await createDistrictApp({
     stores: inMemoryDistrictStores(directory),
-    verifyRequest: personaVerifier(directory),
+    verifyRequest: personaVerifier(directory, options.subjectOf),
+    ...(options.deviceTokenSecret === undefined ? {} : { deviceTokenSecret: options.deviceTokenSecret }),
     // Synthetic personas only: publish their discussion posts without Hall Monitor.
     unscreenedStudentPosts: "publish",
     importFetch: demoWeb,
@@ -80,7 +93,7 @@ export async function bootNorthfield(): Promise<DemoDistrict> {
       throw new Error(`the demo seed's ${persona.id} is not ${persona.name}`);
     }
   }
-  return { key: "northfield", clientFor };
+  return { key: "northfield", clientFor, fetch: (request) => app.fetch(request) };
 }
 
 /**

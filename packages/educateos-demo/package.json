@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "mobile-district": "node src/mobile-dev-district.ts"
   },
   "dependencies": {
     "@cloudflare/kumo": "^2.14.0",

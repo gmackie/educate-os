@@ -1,9 +1,14 @@
 export const CALLBACK_ORIGIN = 'https://mobile.educateos.io';
 
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+/**
+ * Development builds also accept `http://localhost:<port>`, the mobile dev district
+ * (`pnpm educateos:mobile-district`, SCHO-272). Release builds (and the tests) never do.
+ */
+const DEV_LOOPBACK = typeof __DEV__ !== 'undefined' && __DEV__;
 
 /** A school address must name exactly one HTTPS origin, never a redirectable subresource. */
-export function strictOrigin(value: string, allowLoopback = false): string {
+export function strictOrigin(value: string, allowLoopback = DEV_LOOPBACK): string {
   const input = value.trim();
   let url: URL;
   try { url = new URL(input); } catch { throw new Error('Enter a full HTTPS address from your school.'); }

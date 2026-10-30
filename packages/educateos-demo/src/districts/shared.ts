@@ -109,10 +109,11 @@ export const verifySeedRelease = async (release: CatalogRelease): Promise<boolea
  * Resolving it to a principal is still the district's own resolver's job, so a guardian who has not
  * yet been approved is refused exactly as they would be anywhere.
  */
-export const personaVerifier = (directory: DistrictDirectorySnapshot) => async (request: Request): Promise<VerifiedIdentity | undefined> => {
+export const personaVerifier = (directory: DistrictDirectorySnapshot, subjectOf?: (request: Request) => string | undefined) => async (request: Request): Promise<VerifiedIdentity | undefined> => {
   const header = request.headers.get("authorization") ?? "";
-  if (!header.startsWith("Bearer ")) return undefined;
-  return { issuer: directory.district.trustedIssuers[0]!, subject: header.slice("Bearer ".length), credential: "person" };
+  const subject = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : subjectOf?.(request);
+  if (!subject) return undefined;
+  return { issuer: directory.district.trustedIssuers[0]!, subject, credential: "person" };
 };
 
 /**
