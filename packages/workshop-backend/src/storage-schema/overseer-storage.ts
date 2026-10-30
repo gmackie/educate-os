@@ -409,6 +409,8 @@ export type GatekeeperCaller = {
    * should be assumed when `gadgetId` is absent.
    */
   gadgetId?: WorkpieceId;
+  /** Exact mainline commit loaded by the runtime; absent on previews and legacy callers. */
+  sourceCommitId?: string;
 } | {
   from: "user";
   chatId?: number;

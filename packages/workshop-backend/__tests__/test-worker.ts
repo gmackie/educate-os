@@ -17,6 +17,7 @@ import { FakeChatResponseTarget } from "./response-target";
 
 export * from "../src/server.js";
 export { default } from "../src/server.js";
+export { WorkshopAssessmentReleases } from "../src/assessment-releases.js";
 
 /**
  * The pool stands a proxy class in front of every Durable Object (`createDurableObjectWrapper`) and
