@@ -20,6 +20,16 @@ async function rejection(promise: Promise<unknown>): Promise<string> {
 }
 
 describe("createDirectoryPrincipalResolver", () => {
+  it.each(["inactive", "graduated"] as const)("denies %s principals while retaining identity links and data", async (status) => {
+    const directory = { ...NORTHFIELD, principals: NORTHFIELD.principals.map((p) =>
+      p.id === "prn_nf-morgan-lee" ? { ...p, status } : p) };
+    const identity = person(NF_IDP, "user-1042");
+    expect(await rejection(createDirectoryPrincipalResolver(directory).resolve(identity))).toBe("unauthenticated");
+    expect(directory.principals.find((p) => p.id === "prn_nf-morgan-lee")!.externalIdentities)
+      .toEqual(NORTHFIELD.principals.find((p) => p.id === "prn_nf-morgan-lee")!.externalIdentities);
+    await expect(nf.resolve(identity)).resolves.toMatchObject({ principalId: "prn_nf-morgan-lee" });
+  });
+
   it("maps a trusted (issuer, subject) to its principal", async () => {
     await expect(nf.resolve(person(NF_IDP, "nf-0101"))).resolves.toEqual({
       districtId: "dst_northfield",
