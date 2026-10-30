@@ -12,12 +12,14 @@ import { useAuthenticatedApi } from "./AuthContext";
 import { BindingBadge, uniqueBindingBadges } from "./components/BlueprintCard";
 import { BlueprintPreviewPlaceholder } from "./components/BlueprintPreviewImage";
 import ViewToggle from "./components/ViewToggle";
+import { useLibraryCopy } from "./features/district-frame/libraryCopy";
 
 type VendorMap = Map<string, VendorDescription>;
 
 export default function BlueprintsPage() {
   const { authenticatedApi } = useAuthenticatedApi();
   const toasts = useKumoToastManager();
+  const { description } = useLibraryCopy("explore");
   const toastsRef = useRef(toasts);
   toastsRef.current = toasts;
 
@@ -81,8 +83,7 @@ export default function BlueprintsPage() {
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-kumo-default">Explore</h1>
           <p className="mt-1 text-[13px] leading-[18px] tracking-[-0.25px] text-kumo-subtle">
-            Discover featured blueprints to use as starting points. Open one to create a workspace
-            from it, or save it to reuse later.
+            {description}
           </p>
         </div>
         <ViewToggle view={view} onChange={setView} />
