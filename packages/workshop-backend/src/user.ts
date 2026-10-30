@@ -1,3 +1,5 @@
+import { assertCapability } from "./capability-policy.js";
+import type { WorkshopCapabilityScope } from "@gadgets/workshop-shared/capability-policy";
 import { RpcStub } from "capnweb";
 import { WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, AiModelConfig, RedactedAiModelConfig, ModelKind, modelKind, CollaboratorRole, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, WorkspaceMetadata, BlueprintMetadata, BlueprintLibrarySummary, BlueprintSource, BlueprintUserSummary, BLUEPRINT_SCREENSHOT_R2_PREFIX, GatekeeperVendorInfo, OutputSummary, ListOutputsResult, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, validateCommitEmail, NotificationSubscriber, NotificationMute, UserNotification, type DeviceSessionHandoffStart, type WebPushSubscription, type ExternalWorkspaceRequest } from '@gadgets/workshop-shared/api';
 import { ActionDescription, Gatekeeper, GatekeeperUser, GatekeeperUserVerifier, GatekeeperVendor, AccountDescription, VendorDescription, GatekeeperConnectCallback, ConnectHandoff, SupportedResource, ResourceConfiguratorFrame, AppUiContext, GatekeeperAppNavEntry, GatekeeperUiFrame, GatekeeperUserSelection, GatekeeperUserSelectionExchange, RedeemedGatekeeperUserSelection, sanitizeGatekeeperAppNav } from "@gadgets/workshop-shared/gatekeeper";
@@ -213,6 +215,17 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     this.adminSettings = this.ctx.exports.AdminSettings;
 
     this.vendors = buildGatekeeperVendorMap(env);
+  }
+
+  // Only the persisted identity is authoritative. Neither model profiles nor caller-supplied
+  // role labels participate in authorization. Do not cache decisions across operations.
+  async #assertCapability(scope: WorkshopCapabilityScope): Promise<void> {
+    if (this.env.WORKSHOP_CAPABILITY_POLICY === undefined) return;
+    if (!this.storage.created.get()) throw new Error("Workshop policy requires an initialized user.");
+    await assertCapability(this.env.WORKSHOP_CAPABILITY_POLICY, {
+      userId: this.storage.profile.get().id,
+      ...scope,
+    });
   }
 
   // Mirrors the profile into the deployment-wide user directory. Best-effort
@@ -672,6 +685,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
 
   async addModel(profile: AiChatAuthorInfo, config: RedactedAiModelConfig,
                  copySecretsFrom?: string): Promise<void> {
+    await this.#assertCapability({ action: "model.configure", modelId: profile.id, provider: config.provider });
     let models = await getGatewayModels(this.env);
     models?.refuseUserModel();
     let source: AiModelConfig | undefined;
@@ -691,6 +705,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   }
 
   async updateModel(profile: AiChatAuthorInfo, config: RedactedAiModelConfig): Promise<void> {
+    await this.#assertCapability({ action: "model.configure", modelId: profile.id, provider: config.provider });
     let models = await getGatewayModels(this.env);
     models?.refuseUserModel();
     let stored = this.#getHandAddedModel(profile.id, models).config;
@@ -949,7 +964,9 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
     return this.storage.gadgets.get(id) || null;
   }
 
-  async newWorkspace(id: string, title: string, external?: GadgetRecord["external"]): Promise<void> {
+  async newWorkspace(id: string, title: string, external?: GadgetRecord["external"],
+                     sourceBlueprintId?: string): Promise<void> {
+    await this.#assertCapability({ action: "workspace.create", workspaceId: id, sourceBlueprintId });
     let created = new Date();
     this.storage.gadgets.put({id, title, created, ...(external && {external})});
   }
@@ -1339,6 +1356,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   }
 
   async connectAccount(vendorId: string, resourceUrlPatterns?: string[]): Promise<ConnectFlowStart> {
+    await this.#assertCapability({ action: "gatekeeper.connect", vendorId, resourceUrlPatterns });
     let vendor = this.vendors.get(vendorId);
     if (!vendor) {
       throw new Error("No such service: " + vendorId);
@@ -1468,6 +1486,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   // caller must have already confirmed the vendor sets autoProvisionsAccount (so createAccount is
   // present) and that the user has no account for it yet.
   async #createAutoProvisionedAccount(vendorId: string, vendor: Service<GatekeeperVendor>): Promise<void> {
+    await this.#assertCapability({ action: "gatekeeper.connect", vendorId });
     let account = await (vendor as unknown as AccountCreatorStub).createAccount();
     // Resolve the description before allocating the id, so a describe() failure doesn't burn a slot.
     let description = await account.describe();
@@ -1671,6 +1690,8 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
       : Promise<ConnectFlowStart | null> {
     let record = this.storage.connectedAccounts.get(accountId);
     if (!record) throw new Error("No such account.");
+    await this.#assertCapability({ action: "gatekeeper.connect", vendorId: record.vendorId,
+      accountId, resourceUrlPatterns });
     let { url } = await record.account.ensureResources(resourceUrlPatterns);
     if (url === undefined) {
       // Nothing to grant, yet callers ask for what the account's stored description doesn't list as
@@ -1859,6 +1880,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   async reconnectAccount(accountId: number): Promise<ConnectFlowStart> {
     let record = this.storage.connectedAccounts.get(accountId);
     if (!record) throw new Error("No such account.");
+    await this.#assertCapability({ action: "gatekeeper.connect", vendorId: record.vendorId, accountId });
     let { url } = await record.account.reconnect();
     return { url, nonce: await this.openConnectFlow(accountId) };
   }
@@ -2212,6 +2234,8 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
                   typeUrlPattern: string}> {
     let account = this.storage.connectedAccounts.get(accountId);
     if (!account) throw new Error("No such account.");
+    await this.#assertCapability({ action: "resource.acquire", vendorId: account.vendorId,
+      accountId, resource: url });
     let {class: cls, resource} = await account.account.getGatekeeperClassFor(url);
     await this.#assertResourceEnabled(account.vendorId, resource);
     return {class: cls, vendorId: account.vendorId, typeUrlPattern: resource.urlPattern};
@@ -2225,6 +2249,7 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
   async createResourceGatekeeper(vendorId: string, resourceUrlPattern: string, title: string)
       : Promise<{class: DurableObjectClass<Gatekeeper<any>>, typeUrlPattern: string,
                   action: ActionDescription}> {
+    await this.#assertCapability({ action: "resource.acquire", vendorId, resource: resourceUrlPattern });
     let vendor = this.vendors.get(vendorId);
     if (!vendor) throw new Error(`Unknown vendor "${vendorId}".`);
     let {class: cls, resource, action} = await (vendor as unknown as ResourceCreatorStub)
