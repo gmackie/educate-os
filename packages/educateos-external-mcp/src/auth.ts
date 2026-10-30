@@ -6,6 +6,8 @@ import type { PrincipalResolver } from "@educateos/identity";
 export interface AccessGrant {
   identity: VerifiedIdentity;
   expiresAt: number;
+  /** OAuth scopes copied only from the verified assertion. */
+  scopes?: string[];
 }
 
 /** Durable, shared storage required across all Worker isolates. Never implement claim as get/put. */
@@ -37,6 +39,8 @@ export class SchoolTokenAuthority {
     /** Must reload the district directory on every call, including after token exchange. */
     resolver: () => Promise<PrincipalResolver>;
     now?: () => number;
+    /** Scopes required in both direct JWTs and exchanged grants. */
+    requiredScopes?: readonly string[];
   }) {
     this.#options = { ...options, now: options.now ?? Date.now };
     for (const trust of options.issuers) {
@@ -75,10 +79,18 @@ export class SchoolTokenAuthority {
       payload.exp! - payload.iat! > 300
     )
       throw new Error("Invalid lifetime");
+    const scopes = typeof payload.scope === "string" ? payload.scope.split(" ").filter(Boolean) : [];
+    this.#requireScopes(scopes);
     return {
+      scopes,
       identity: { issuer: trust.issuer, subject: payload.sub!, credential: trust.credential },
       payload,
     };
+  }
+
+  #requireScopes(scopes: readonly string[]) {
+    if (this.#options.requiredScopes?.some((scope) => !scopes.includes(scope)))
+      throw new Error("Insufficient scope");
   }
 
   /** Throws on any invalid, expired, revoked, unlinked or cross-district credential. */
@@ -88,6 +100,7 @@ export class SchoolTokenAuthority {
       const grant = await this.#options.store.getAccess(await digest(token));
       if (grant === undefined || grant.expiresAt <= this.#options.now())
         throw new Error("Invalid grant");
+      this.#requireScopes(grant.scopes ?? []);
       identity = grant.identity;
       if (
         !this.#options.issuers.some(
@@ -105,7 +118,7 @@ export class SchoolTokenAuthority {
 
   /** Exchanges a short-lived signed assertion once; failure never reveals identity or token claims. */
   async exchange(assertion: string) {
-    const { identity, payload } = await this.#verify(assertion, true);
+    const { identity, payload, scopes } = await this.#verify(assertion, true);
     await (await this.#options.resolver()).resolve(identity);
     if (typeof payload.jti !== "string" || payload.jti.length === 0 || payload.jti.length > 255)
       throw new Error("Invalid assertion ID");
@@ -120,10 +133,11 @@ export class SchoolTokenAuthority {
     }
     const secret = crypto.getRandomValues(new Uint8Array(32));
     const accessToken = `edu_${Array.from(secret, (v) => v.toString(16).padStart(2, "0")).join("")}`;
-    await this.#options.store.putAccess(await digest(accessToken), { identity, expiresAt });
+    await this.#options.store.putAccess(await digest(accessToken), { identity, expiresAt, scopes });
     return {
       access_token: accessToken,
       token_type: "Bearer",
+      scope: scopes.join(" "),
       expires_in: Math.floor((expiresAt - this.#options.now()) / 1000),
     };
   }

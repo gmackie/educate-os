@@ -109,6 +109,7 @@ async function world() {
     store,
     resolver: async () => createDirectoryPrincipalResolver(snapshot),
     now: () => now,
+    requiredScopes: ["mcp:tools"],
   });
   async function token(
     principal = P.morgan,
@@ -118,7 +119,7 @@ async function world() {
     const externalSubject = snapshot.principals
       .find((p) => p.id === principal.principalId)!
       .externalIdentities.find((i) => i.issuer === issuer)!.subject;
-    return new SignJWT({ ...overrides })
+    return new SignJWT({ scope: "mcp:tools", ...overrides })
       .setProtectedHeader({ alg: "RS256", typ: exchange ? "JWT" : "at+jwt" })
       .setIssuer(typeof overrides.iss === "string" ? overrides.iss : issuer)
       .setSubject(externalSubject)
@@ -181,6 +182,7 @@ async function world() {
     runner,
     tokens,
     allowedOrigins: ["https://school.example"],
+    resource: { origin: "https://school.example", authorizationServers: [issuer], scopes: ["mcp:tools"] },
   });
   async function post(
     body: unknown,
@@ -211,6 +213,7 @@ async function world() {
     return JSON.parse(body.result.content[0]!.text);
   }
   return {
+    api,
     post,
     call,
     token,
@@ -405,5 +408,43 @@ describe("external MCP integration", () => {
       ).status,
     ).toBe(202);
     expect(w.handled).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("OAuth resource and browser profile", () => {
+  it("publishes metadata, resource hints and exact-origin CORS", async () => {
+    const w = await world();
+    const metadata = await w.api.fetch(new Request("https://school.example/.well-known/oauth-protected-resource/mcp"));
+    expect(await metadata.json()).toMatchObject({ resource: "https://school.example/mcp", scopes_supported: ["mcp:tools"] });
+    const unauthorized = await w.post({ jsonrpc: "2.0", id: 1, method: "ping" });
+    expect(unauthorized.status).toBe(401);
+    expect(unauthorized.headers.get("www-authenticate")).toContain('resource_metadata="https://school.example/.well-known/oauth-protected-resource/mcp"');
+    expect(await unauthorized.text()).toBe("");
+    const preflight = await w.api.fetch(new Request("https://school.example/mcp", { method: "OPTIONS", headers: {
+      origin: "https://school.example", "access-control-request-method": "POST", "access-control-request-headers": "authorization, content-type, mcp-protocol-version",
+    } }));
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get("access-control-allow-origin")).toBe("https://school.example");
+    expect(preflight.headers.get("access-control-allow-credentials")).toBeNull();
+    for (const origin of ["null", "https://evil.example", "https://school.example.evil.example"]) {
+      const denied = await w.post({}, undefined, "/mcp", { origin });
+      expect(denied.status).toBe(403);
+      expect(denied.headers.get("access-control-allow-origin")).toBeNull();
+    }
+    expect((await w.api.fetch(new Request("https://evil.example/mcp"))).status).toBe(403);
+  });
+  it("requires signed scopes and denies refresh grants and revoked identity after reissuance", async () => {
+    const w = await world();
+    for (const scope of [undefined, "", "other", ["mcp:tools"]]) {
+      await expect(w.tokens.authenticate(await w.token(P.morgan, { scope }))).rejects.toThrow();
+      await expect(w.tokens.exchange(await w.token(P.morgan, { scope }, true))).rejects.toThrow();
+    }
+    expect((await w.post({ grant_type: "refresh_token", refresh_token: "private" }, undefined, "/token")).status).toBe(400);
+    expect((await w.post({}, await w.token(P.morgan, { exp: 1 }))).status).toBe(401);
+    expect(await w.call(await w.token())).toMatchObject({ status: "ok" });
+    const reissued = await w.token();
+    w.snapshot.principals.find((p) => p.id === P.morgan.principalId)!.externalIdentities = [];
+    await expect(w.tokens.authenticate(reissued)).rejects.toThrow();
   });
 });

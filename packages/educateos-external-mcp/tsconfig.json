@@ -2,12 +2,24 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ESNext", "DOM"],
+    "lib": [
+      "ESNext",
+      "DOM"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": [],
+    "types": [
+      "node"
+    ],
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true
   },
-  "include": ["src", "__tests__"]
+  "include": [
+    "src",
+    "__tests__"
+  ],
+  "exclude": [
+    "src/worker.ts",
+    "__tests__/workerd"
+  ]
 }
