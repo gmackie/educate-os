@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_EDUCATEOS_SCHOOL_MODE?: string;
   // Override the local backend host used by Vite dev, e.g. "localhost:9000".
   readonly VITE_BACKEND_HOST?: string;
 

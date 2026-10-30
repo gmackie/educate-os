@@ -13,6 +13,8 @@ import Header from '../components/Header'
 import AppShell from '../components/AppShell/AppShell'
 import LoginPage from '../LoginPage'
 import OnboardingWizard from '../OnboardingWizard'
+import { SCHOOL_MODE } from '../features/school/schoolMode'
+import { SchoolShell } from '../features/school/SchoolShell'
 import AccountSelectionModal from '../components/billing/AccountSelectionModal'
 import { NotificationBridge } from '../features/notifications/NotificationBridge'
 import { BrowserPushBridge } from '../features/notifications/BrowserPushBridge'
@@ -156,9 +158,10 @@ function AuthenticatedShell({
   isWorkspaceEditor: boolean
 }) {
   // null = still checking, true = needs onboarding, false = onboarding done
-  const [onboardingNeeded, setOnboardingNeeded] = useState<boolean | null>(null)
+  const [onboardingNeeded, setOnboardingNeeded] = useState<boolean | null>(SCHOOL_MODE ? false : null)
 
   useEffect(() => {
+    if (SCHOOL_MODE) return
     let cancelled = false
     authenticatedApi.isOnboardingCompleted().then((completed) => {
       if (!cancelled) setOnboardingNeeded(!completed)
@@ -180,9 +183,11 @@ function AuthenticatedShell({
   }
 
   // Show onboarding wizard
-  if (onboardingNeeded) {
+  if (onboardingNeeded && !SCHOOL_MODE) {
     return <OnboardingWizard onComplete={() => setOnboardingNeeded(false)} />
   }
+
+  if (SCHOOL_MODE) return <SchoolShell><Outlet /></SchoolShell>
 
   // Normal app shell. The workspace editor is rendered fullscreen (no chrome); everything else
   // gets the persistent left-rail AppShell. Connection loss is surfaced by a chip in whichever of
