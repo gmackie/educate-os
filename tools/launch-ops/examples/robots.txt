@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /login
+Disallow: /students
+Disallow: /members
+Allow: /staff
+Crawl-delay: 1

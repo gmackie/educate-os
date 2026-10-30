@@ -2,20 +2,21 @@ import { readFileSync } from 'node:fs';
 import { Store } from './store.mjs';
 import { createDashboard } from './server.mjs';
 import { importContacts } from './domain.mjs';
+import { runFunnelCommand, FUNNEL_HELP } from './funnel-cli.mjs';
 import { check } from './safety.mjs';
 
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (command === 'help') {
-    console.log('EducateOS Foundation Launch Operations (Node 22+)\n\nnode tools/launch-ops/src/cli.mjs serve [--port 4318]\nnode tools/launch-ops/src/cli.mjs demo\nnode tools/launch-ops/src/cli.mjs suggest --allow-network --allow-expense educator teaching,training\n\nAll state and exports: tools/launch-ops/.private/ (gitignored). No send action.'); return;
+    console.log('EducateOS Foundation Launch Operations (Node 22+)\n\nnode tools/launch-ops/src/cli.mjs serve [--port 4318]\nnode tools/launch-ops/src/cli.mjs demo\nnode tools/launch-ops/src/cli.mjs suggest --allow-network --allow-expense educator teaching,training\n\nAll state and exports: tools/launch-ops/.private/ (gitignored). No send action.' + FUNNEL_HELP); return;
   }
   if (command === 'suggest') {
     const { suggest } = await import('./llm.mjs');
     check(args.length === 4 && args[0] === '--allow-network' && args[1] === '--allow-expense', 'Use suggest --allow-network --allow-expense <educator|technical> <comma-separated-tags>');
     console.log(JSON.stringify(await suggest({ allowNetwork: true, allowExpense: true, council: args[2], tags: args[3].split(',') }), null, 2)); return;
   }
-  check(['serve', 'demo'].includes(command), 'Unknown command');
   const store = new Store();
+  if (!['serve', 'demo'].includes(command)) { console.log(JSON.stringify(await runFunnelCommand(store, command, args), null, 2)); return; }
   if (command === 'demo') {
     check(args.length === 0, 'Demo takes no arguments');
     const csv = readFileSync(new URL('../examples/fictional-contacts.csv', import.meta.url), 'utf8');

@@ -1,0 +1,12 @@
+{
+  "senderName": "Fictional EducateOS Coordinator",
+  "senderEmail": "coordinator@foundation-example.invalid",
+  "physicalAddress": "FICTIONAL TEST ONLY \u2014 100 Example Way, Example City, MI 00000",
+  "optOutEmail": "unsubscribe@foundation-example.invalid",
+  "dailyCap": 5,
+  "cooldownDays": 30,
+  "followUpDays": 30,
+  "retentionDays": 90,
+  "complianceReviewed": true,
+  "operator": "Fictional local test operator"
+}

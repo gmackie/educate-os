@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "source": "website-interest",
+  "records": [
+    {
+      "externalId": "fictional-staff-demo-1",
+      "receivedAt": "2026-10-30T09:00:00Z",
+      "name": "Avery Example",
+      "workEmail": "avery@cedar-example.invalid",
+      "org": "Cedar Example District",
+      "state": "MI",
+      "role": "Instructional Technology Coach",
+      "interestType": "demo",
+      "marketingOptIn": false,
+      "verificationStatus": "unverified",
+      "consentVersion": "website-interest-v1",
+      "limitedFeedback": "Please show a synthetic curriculum workflow.",
+      "referralSource": "demo",
+      "responseConsent": true,
+      "staffConfirmed": true,
+      "privacyAcknowledged": true
+    }
+  ]
+}
