@@ -14,6 +14,8 @@ type EmailEntrypoint = CloudflareWorkersModule.WorkerEntrypoint &
 
 export interface Env {
   WORKSHOP_BACKEND: Fetcher;
+  /** School-only MCP transport, absent on generic installs. */
+  EDUCATEOS_EXTERNAL_MCP?: Fetcher;
   /** Present in production (wrangler.jsonc assets stanza); absent in dev. */
   ASSETS?: Fetcher;
   /** Dormant until custom domains + Email Routing exist; the handler ships anyway. */
@@ -52,6 +54,11 @@ export default {
     // one path from sign-in so the probe can reach it.
     if (url.pathname === "/healthz") {
       return new Response("ok", { headers: { "content-type": "text/plain", "cache-control": "no-store" } });
+    }
+
+    if (env.EDUCATEOS_EXTERNAL_MCP && ["/mcp", "/token",
+      "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"].includes(url.pathname)) {
+      return env.EDUCATEOS_EXTERNAL_MCP.fetch(req);
     }
 
     for (const key of Object.keys(env)) {

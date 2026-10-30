@@ -1,3 +1,4 @@
+import { frontendProfile } from "./release/frontend-profile.ts";
 #!/usr/bin/env node
 
 // Generates dev-only wrangler.dev.jsonc files for dynamic service bindings,
@@ -70,6 +71,12 @@ function loadDevVars(): void {
   }
 }
 loadDevVars();
+
+const schoolBuild = frontendProfile(process.env).variant === "access-school";
+if (schoolBuild && !process.env.DISTRICT_CONFIG) {
+  throw new Error("School dev requires district-owned DISTRICT_CONFIG; refusing unrestricted Workshop");
+}
+const schoolPackages = schoolBuild ? ["educateos-district-worker", "educateos-external-mcp"] : [];
 
 const useWorkersAi = process.argv.includes("--use-workers-ai-binding");
 
@@ -487,6 +494,7 @@ function devBuildConfig(build: WranglerBuild | undefined, pkgDir: string): Wrang
     config.services.push({ binding: bindingName(gk), service: gk.name });
   }
 
+  if (schoolBuild) config.services.push({ binding: "EDUCATEOS_EXTERNAL_MCP", service: "educateos-external-mcp" });
   const outPath = join(ROOT, "wrangler.dev.jsonc");
   writeFileSync(outPath, JSON.stringify(config, null, 2) + "\n");
   console.log(`generated: ${outPath}`);
@@ -639,6 +647,11 @@ for (const gk of gatekeepers) {
   }
 
   if (withAiGuard) config.services.push(backendAiGuardBinding());
+  if (schoolBuild) {
+    config.vars.REQUIRE_WORKSHOP_CAPABILITY_POLICY = "true";
+    config.services.push({ binding: "WORKSHOP_CAPABILITY_POLICY", service: "educateos-district-worker",
+      entrypoint: "DistrictWorkshopCapabilityPolicy" });
+  }
 
   // In run-local mode, serve the pre-built frontend bundle as static assets directly from the
   // backend Worker (mirrors the production layout). The dev-router forwards all non-gatekeeper
@@ -676,10 +689,25 @@ if (withAiGuard) {
   console.log(`generated: ${outPath} (AI_CALL_GUARD bound to the backend)`);
 }
 
+for (const pkg of schoolPackages) {
+  const dir = join(PACKAGES_DIR, pkg);
+  const config = parse(readFileSync(join(dir, "wrangler.jsonc"), "utf8"));
+  config.vars = { ...config.vars };
+  for (const name of ["DISTRICT_CONFIG", "CF_ACCESS_ISS", "CF_ACCESS_AUD", "MCP_CONFIG"]) {
+    if (process.env[name] !== undefined) config.vars[name] = process.env[name];
+  }
+  if (pkg === "educateos-external-mcp" && !config.vars.MCP_CONFIG) {
+    throw new Error("School dev requires explicit district MCP_CONFIG");
+  }
+  config.build = devBuildConfig(config.build, dir);
+  writeFileSync(join(dir, "wrangler.dev.jsonc"), JSON.stringify(config, null, 2) + "\n");
+}
+
 const configs = [
   "wrangler.dev.jsonc",
   join("packages", "workshop-backend", "wrangler.dev.jsonc"),
   ...gatekeepers.map(gk => join(gk.dir, "wrangler.dev.jsonc")),
+  ...schoolPackages.map(pkg => join("packages", pkg, "wrangler.dev.jsonc")),
   ...withAiGuard ? [join(AI_GUARD_DIR, "wrangler.dev.jsonc")] : [],
 ];
 

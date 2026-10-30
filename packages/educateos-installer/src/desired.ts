@@ -334,6 +334,11 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       binding.name === "WORKSHOP_CAPABILITY_POLICY");
     if (!policy) invalid("school release requires a district WORKSHOP_CAPABILITY_POLICY binding");
   }
+  if (schoolBuild) {
+    for (const name of ["educateos-district-worker", "educateos-external-mcp"]) {
+      if (!services.includes(name)) invalid(`school release requires enabled service ${name}`);
+    }
+  }
   const scriptNames = new Map([backendPkg, routerPkg, ...installed, ...services].map((pkg) => [pkg, workerScriptName(config, pkg)]));
 
   const storage = new Map<ResourceKey, DesiredResource>();

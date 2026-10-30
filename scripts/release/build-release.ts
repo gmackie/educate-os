@@ -1,3 +1,4 @@
+import { applySchoolProfile } from "./school-profile.ts";
 #!/usr/bin/env node
 import { frontendProfile } from "./frontend-profile.ts";
 
@@ -419,6 +420,7 @@ async function main() {
     workers,
     assetVariants,
   });
+  if (frontendProfile(process.env).variant === "access-school") applySchoolProfile(manifest);
   const manifestBytes = new TextEncoder().encode(stableStringify(manifest) + "\n");
   if (signingKey && signing) {
     const signed = await signReleaseManifest(manifestBytes, signingKey, signing);

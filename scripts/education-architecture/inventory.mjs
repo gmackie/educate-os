@@ -49,7 +49,7 @@ export function inventory(upstream, head) {
     const after = afterTree.get(change.path) ?? null;
     const fingerprint = createHash('sha256').update(JSON.stringify({ ...change, before, after })).digest('hex');
     return { ...change, ...classification, before, after, fingerprint };
-  }).sort((a, b) => a.package.localeCompare(b.package, 'en') || a.path.localeCompare(b.path, 'en'));
+  }).toSorted((a, b) => a.package.localeCompare(b.package, 'en') || a.path.localeCompare(b.path, 'en'));
   return { schemaVersion: 1, upstreamCommit, headCommit, entries };
 }
 

@@ -455,6 +455,7 @@ export interface BackendServiceBinding {
 // wizard inputs come from its deploy-inputs.json, with no OAuth default, and it gets no BASE_URL:
 // it is reached only through the backend's binding, never routed.
 const SERVICE_PACKAGES: Record<string, BackendServiceBinding> = {
+  "educateos-external-mcp": { name: "EDUCATEOS_EXTERNAL_MCP", entrypoint: "default" },
   // ADR-0007: EducateOS budgets and Hall Monitor moderation around every model call.
   "educateos-ai-guard": { name: "AI_CALL_GUARD", entrypoint: "EducateOsAiCallGuard" },
   // SCHO-171: the district application. Its real consumers are the AI call guard and the EducateOS
