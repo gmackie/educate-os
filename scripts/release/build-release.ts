@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { applySchoolProfile } from "./school-profile.ts";
 import { frontendProfile } from "./frontend-profile.ts";
 
 // Builds an immutable release: every deployable worker bundled exactly as `wrangler deploy`
@@ -433,7 +432,6 @@ async function main() {
     workers,
     assetVariants,
   });
-  if (frontendProfile(process.env).variant === "access-school") applySchoolProfile(manifest);
   const manifestBytes = new TextEncoder().encode(stableStringify(manifest) + "\n");
   if (signingKey && signing) {
     const signed = await signReleaseManifest(manifestBytes, signingKey, signing);

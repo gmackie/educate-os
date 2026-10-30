@@ -142,6 +142,7 @@ it("intentionally disables new authoring actions until district provenance and A
   for (const userId of [student, teacher, admin]) {
     for (const request of [
       { action: "workspace.create.query", userId },
+      { action: "workshop.authoring.query", userId, operation: "create" },
       { action: "blueprint.import", userId },
       ...(["gadget.create", "blueprint.publish", "workspace.share", "gadget.execute", "agent.execute"] as const)
         .map(action => ({ action, userId, workspaceId: "approved-looking-workspace" })),

@@ -11,6 +11,10 @@ describe("release manifest", () => {
       delete variants.access;
     });
     expect(() => compileDesiredState(school.manifest, configFor(NORTHFIELD, school)))
+      .toThrow("school release requires a district PRINCIPAL_RESOLVER binding");
+    school.manifest.workers["workshop-backend"]!.bindings.push({ type: "service",
+      name: "PRINCIPAL_RESOLVER", service: "$WORKER_NAME(educateos-district-worker)", entrypoint: "DistrictPrincipalResolver" });
+    expect(() => compileDesiredState(school.manifest, configFor(NORTHFIELD, school)))
       .toThrow("school release requires a district WORKSHOP_CAPABILITY_POLICY binding");
     // A binding to an uninstalled authority must fail placeholder resolution as well.
     school.manifest.workers["workshop-backend"]!.bindings.push({ type: "service",
@@ -18,6 +22,7 @@ describe("release manifest", () => {
       entrypoint: "DistrictWorkshopCapabilityPolicy" });
     expect(() => compileDesiredState(school.manifest, configFor(NORTHFIELD, school)))
       .toThrow("school release requires enabled service");
+    school.manifest.workers["workshop-backend"]!.bindings.pop();
     school.manifest.workers["workshop-backend"]!.bindings.pop();
     // Validate assets independently of activation, which is intentionally blocked above.
     delete school.manifest.workers.router!.assetsConfig!.variants["access-school"];

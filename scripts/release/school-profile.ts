@@ -1,7 +1,7 @@
 import type { ReleaseManifest } from "./manifest-lib.ts";
 
 /** Apply backend authority and public MCP routing before the school manifest is signed. */
-export function applySchoolProfile(manifest: ReleaseManifest): void {
+export function applySchoolProfile(manifest: Pick<ReleaseManifest, "workers">): void {
   const workers = Object.values(manifest.workers);
   const backend = workers.find(worker => worker.kind === "backend");
   const router = workers.find(worker => worker.kind === "router");

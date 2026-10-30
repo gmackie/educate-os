@@ -1,3 +1,4 @@
+import { applySchoolProfile } from "./school-profile.ts";
 // Generates the release manifest: the contract between this repo's CI (which builds worker
 // bundles once, byte-identically, per commit) and the deploy service (which PUTs those bundles
 // into customer accounts via the Workers script-upload API).
@@ -834,15 +835,7 @@ export function generateManifest({
     workerEntries[w.pkgName] = entry;
   }
 
-  if (profile === "school") {
-    const backend = workerEntries["workshop-backend"];
-    if (!backend || !workerEntries["educateos-district-worker"]) {
-      throw new Error("School releases require the backend and district Worker.");
-    }
-    backend.vars.REQUIRE_PRINCIPAL_RESOLVER = "true";
-    backend.bindings.push({ type: "service", name: "PRINCIPAL_RESOLVER",
-      service: "$WORKER_NAME(educateos-district-worker)", entrypoint: "DistrictPrincipalResolver" });
-  }
+  if (profile === "school") applySchoolProfile({ workers: workerEntries });
 
   const assets: ReleaseManifest["assets"] = {};
   for (const [variant, { manifest, blobs }] of Object.entries(assetVariants ?? {})) {
