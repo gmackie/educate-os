@@ -14,9 +14,10 @@
 
 import * as Y from 'yjs';
 import { BlueprintMetadata, BlueprintOutput, isOutputIcon } from '@gadgets/workshop-shared/api';
+import type { BlueprintReleaseSource } from '@gadgets/workshop-shared/api';
 import type { GitOid } from '@gadgets/workshop-shared/gatekeeper';
 import {
-  buildSnapshotRelease, readReleasePack, validateReleaseObjects, type GitObjectMap,
+  buildSnapshotRelease, listReleaseFiles, readReleasePack, validateReleaseObjects, type GitObjectMap,
 } from './blueprint-release.js';
 import { validateGitOid } from './git-codec.js';
 import { reviveBlueprintMetadata } from './storage-schema/blueprints-kv.js';
@@ -106,6 +107,25 @@ export async function readBlueprintRelease(
   let release = await buildSnapshotRelease(files);
   validateReleaseObjects(release.objects, release.commitId);
   return release;
+}
+
+/** Read and independently hash an exact stored release; never fall back to the latest version. */
+export async function readBlueprintReleaseSource(
+  env: BlueprintContentEnv,
+  blueprintId: string,
+  commitId: string,
+): Promise<BlueprintReleaseSource> {
+  validateGitOid(commitId);
+  const object = await env.BLUEPRINT_CONTENT.get(`${blueprintId}/${commitId}`);
+  if (!object) throw new Error("Blueprint release not found.");
+  const objects = await readReleasePack(new Uint8Array(await object.arrayBuffer()), commitId);
+  const files = [...listReleaseFiles(objects, commitId)].toSorted(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", textEncoder.encode(JSON.stringify(files))));
+  return {
+    commitId,
+    files,
+    sourceDigest: `sha256:${Array.from(digest, byte => byte.toString(16).padStart(2, "0")).join("")}`,
+  };
 }
 
 /** Deletes all of a blueprint's content: every version of it, in either form. */

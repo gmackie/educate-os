@@ -159,6 +159,14 @@ export interface PublicApi extends RpcTarget {
   getBlueprint(id: string): Promise<BlueprintPublicInfo | null>;
 
   /**
+   * Read the files of an exact published release, verifying its stored Git pack. The commit must
+   * already be known (for example from getBlueprint); this never follows a moving version.
+   * Public blueprint source only: no gadget state, chat history, or connected capabilities.
+   * Throws if the blueprint or release is missing, deleted, or corrupt.
+   */
+  getBlueprintRelease(id: string, commitId: string): Promise<BlueprintReleaseSource>;
+
+  /**
    * Download a blueprint as a `.gadget` archive stream. The archive contains only
    * BlueprintMetadata plus the current blueprint code snapshot, not the full KV record.
    */
@@ -5455,6 +5463,16 @@ export type BlueprintMetadata = {
   /** Key = binding name. */
   bindings: Record<string, BlueprintBinding>;
 };
+
+/** Immutable public source returned after verifying a blueprint's release pack. */
+export interface BlueprintReleaseSource {
+  /** Git release commit (40 lowercase hexadecimal digits), verified against the pack's objects. */
+  commitId: string;
+  /** Path/text pairs, sorted by UTF-16 path order. No runtime storage or connection values. */
+  files: [string, string][];
+  /** SHA-256 of UTF-8 JSON.stringify(files), prefixed with `sha256:`. */
+  sourceDigest: string;
+}
 
 /** Public view (returned by PublicApi.getBlueprint). */
 export type BlueprintPublicInfo = {
