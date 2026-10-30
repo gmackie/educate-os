@@ -117,6 +117,9 @@ function checkLinkable(
   }
   const principal = directory.principals.find((p) => p.id === principalId);
   if (link.newPrincipal === undefined && principal === undefined) throw new EducateOsError("not-found", "No such principal in this district.");
+  if (principal !== undefined && principal.status !== "active") {
+    throw new EducateOsError("forbidden", "This principal is not active.");
+  }
   // A link that creates its principal must not take over one that exists under the chosen ID.
   if (link.newPrincipal !== undefined && principal !== undefined) throw new EducateOsError("conflict", "A principal with this ID already exists.");
   if (!directory.district.trustedIssuers.includes(identity.issuer)) {
@@ -139,7 +142,8 @@ function checkLinkable(
 /** Throws unless `actorId` holds `district-admin` at district scope in `directory` at `at`. */
 function requireDistrictAdmin(directory: DistrictDirectorySnapshot, actorId: PrincipalId, at: string): void {
   const districtId = directory.district.id;
-  const isAdmin = directory.roleAssignments.some((a) =>
+  const isAdmin = directory.principals.some((p) => p.id === actorId && p.status === "active")
+    && directory.roleAssignments.some((a) =>
     a.principalId === actorId && a.role === "district-admin"
       && a.scope.level === "district" && a.scope.districtId === districtId
       && roleAssignmentInForce(a, new Date(at)));

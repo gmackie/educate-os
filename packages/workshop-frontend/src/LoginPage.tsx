@@ -10,6 +10,7 @@ import { useDocumentTitle } from './useDocumentTitle'
 import { useConnectionLost } from './RpcContext'
 import OAuthButtons from './components/auth/OAuthButtons'
 import SiteLogo from './components/SiteLogo'
+import { SCHOOL_MODE } from './features/school/schoolMode'
 import { deviceSessionSearch } from './features/native-app/DeviceSessionHandoff'
 
 
@@ -108,7 +109,8 @@ export default function LoginPage({ rpcStub, onLoginSuccess }: LoginPageProps) {
             </div>
           </SiteLogo>
           <h1 className="text-xl font-semibold text-kumo-default">{siteName}</h1>
-          <p className="text-sm text-kumo-subtle mt-1">Sign in to your account</p>
+          <p className="text-sm text-kumo-subtle mt-1">{SCHOOL_MODE ? 'Sign in to EducateOS with your school account' : 'Sign in to your account'}</p>
+          {SCHOOL_MODE && <p className="mt-3 text-center text-sm text-kumo-subtle">Your district supplies your student, teacher, guardian, or administrator view after you connect School. Contact your school if you need an account.</p>}
         </div>
 
         {passwordAuthEnabled && (

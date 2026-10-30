@@ -15,6 +15,13 @@ function value(node) {
     if (!constants.has(node.text)) throw Error(`Unknown constant ${node.text}`);
     return constants.get(node.text);
   }
+  if (ts.isPropertyAccessExpression(node)) {
+    const object = value(node.expression);
+    if (object === null || typeof object !== "object" || !Object.hasOwn(object, node.name.text)) {
+      throw Error(`Unknown static property ${node.getText(file).slice(0,60)}`);
+    }
+    return object[node.name.text];
+  }
   if (node.kind === ts.SyntaxKind.TrueKeyword) return true;
   if (node.kind === ts.SyntaxKind.FalseKeyword) return false;
   if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) return value(node.left) + value(node.right);
@@ -45,8 +52,8 @@ for (const name of (await readdir(directory)).filter((name) => name.endsWith("ty
 }
 const evidence = JSON.parse(await readFile(new URL("./evidence.json", import.meta.url), "utf8"));
 const output = {
-  revision: evidence.production.commit,
-  description:"Current static declarations at the audited source revision; inherited methods are referenced through extends. This inventory is not live acceptance.",
+  productionEvidenceRevision: evidence.production.commit,
+  description:"Static declarations from the checked-out source; inherited methods are referenced through extends. productionEvidenceRevision identifies separate historical deployment evidence, not the source revision or live acceptance of this inventory.",
   resources: constants.get("RESOURCE_SCOPES").map(({resource,scopes}) => ({...resource,oauthScopes:scopes})),
   interfaces,
 };

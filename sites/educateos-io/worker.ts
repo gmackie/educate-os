@@ -9,6 +9,8 @@
  */
 import footer from "./partials/footer.html";
 import header from "./partials/header.html";
+import { handleIntake } from "./intake/core.mjs";
+import type { ControlPlaneEnv } from "../../packages/educateos-control-plane/src/worker.ts";
 import { siteWorker } from "../../packages/educateos-control-plane/src/worker.ts";
 
 export { ControlPlane } from "../../packages/educateos-control-plane/src/worker.ts";
@@ -16,4 +18,11 @@ export { ControlPlane } from "../../packages/educateos-control-plane/src/worker.
 // installations and slug reservations (SCHO-263). An RPC entrypoint: it has no URL.
 export { ControlPlaneExporter } from "../../packages/educateos-control-plane/src/worker.ts";
 
-export default siteWorker({ header, footer });
+export { InterestIntake } from "./intake/worker.ts";
+
+const existing = siteWorker({ header, footer });
+export default {
+  async fetch(request, env, ctx) {
+    return await handleIntake(request, env) ?? existing.fetch!(request, env, ctx);
+  },
+} satisfies ExportedHandler<ControlPlaneEnv>;

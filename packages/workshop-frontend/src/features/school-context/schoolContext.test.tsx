@@ -25,7 +25,7 @@ const testState = vi.hoisted(() => {
 })
 testState.authenticatedApi = {
   listModels: async () => [],
-  newGadget: () => testState.overseer,
+  newWorkspace: () => testState.overseer,
   resolveSchoolContext: testState.resolveSchoolContext,
 }
 

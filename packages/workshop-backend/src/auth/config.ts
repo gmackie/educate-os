@@ -15,7 +15,7 @@ export function getAuthGatekeeperAllowlist(env: Cloudflare.Env): string[] {
   const raw = (env as { AUTH_GATEKEEPERS?: string }).AUTH_GATEKEEPERS;
   // A gatekeeper reports an email, not the issuer and subject a principal resolver resolves, so
   // gatekeeper sign-in stays off with one bound until gatekeepers can report a verified pair.
-  if (!raw || env.PRINCIPAL_RESOLVER) return [];
+  if (!raw || (env.PRINCIPAL_RESOLVER || env.REQUIRE_PRINCIPAL_RESOLVER === "true")) return [];
   return raw.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
 }
 
@@ -31,7 +31,7 @@ export function hasAuthGatekeepers(env: Cloudflare.Env): boolean {
  */
 export function isPasswordAuthEnabled(env: Cloudflare.Env): boolean {
   // Password users are keyed by username, which a principal resolver must never fall back to.
-  if (env.PRINCIPAL_RESOLVER) return false;
+  if (env.PRINCIPAL_RESOLVER || env.REQUIRE_PRINCIPAL_RESOLVER === "true") return false;
   if (env.DISABLE_PASSWORD_AUTH !== "true") return true;
   return !hasAuthGatekeepers(env);
 }

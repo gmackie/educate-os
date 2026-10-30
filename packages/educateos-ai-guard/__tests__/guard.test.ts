@@ -4,13 +4,13 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AiCallDescriptor, AiCallOutcome } from "@gadgets/workshop-shared/ai-call-guard";
-import type { HallMonitorClient } from "@gmacko/hall-monitor-client";
+import { HallMonitorError, type HallMonitorClient } from "@gmacko/hall-monitor-client";
 import { LEDGER_ENTRIES_TABLE } from "@educateos/ai-governance/durable-object-store";
 import { DEFAULT_COACHING_INSTRUCTIONS, DEFAULT_GUARD_MESSAGES, readGuardConfig } from "../src/config.ts";
 import { StaticGuardContextResolver } from "../src/context.ts";
 import { AiCallGuardService } from "../src/guard.ts";
 import { hallMonitorClient, serviceTokenSource } from "../src/hall-monitor.ts";
-import { CHECK_COST, MODERATOR, SAFETY_ALLOCATION, TEST_CONFIG, USERS } from "./fixtures.ts";
+import { CHECK_COST, MODERATOR, SAFETY_ALLOCATION, SONNET, TEST_CONFIG, USERS } from "./fixtures.ts";
 
 const config = readGuardConfig(env.AI_GUARD_CONFIG);
 /** What a student's call is admitted with: their profile requires output moderation. */
@@ -23,8 +23,9 @@ let ledgers = 0;
 /** A guard over a fresh ledger, with the fake Hall Monitor unless another client (or none) is given. */
 function setup(hallMonitor: HallMonitorClient | null = hallMonitorClient(env, config)) {
   const ledger = env.AI_LEDGER.getByName(`ledger-${ledgers++}`);
-  const guard = new AiCallGuardService({ config, ledger, resolver: new StaticGuardContextResolver(config), hallMonitor });
-  return { guard, ledger };
+  const resolver = new StaticGuardContextResolver(config);
+  const guard = new AiCallGuardService({ config, ledger, resolver, hallMonitor });
+  return { guard, ledger, resolver };
 }
 
 function call(user: string, texts: string[], overrides: Partial<AiCallDescriptor> = {}): AiCallDescriptor {
@@ -163,6 +164,16 @@ describe("beforeModelCall", () => {
   });
 
   describe("when Hall Monitor is down", () => {
+    it.each(["policy_not_found", "unauthorized", "forbidden", "idempotency_conflict", "invalid_request", "unsupported_schema"] as const)("fails closed on %s even for an educator configured to proceed", async (code) => {
+      const client = hallMonitorClient(env, config)!;
+      vi.spyOn(client, "evaluate").mockRejectedValue(new HallMonitorError({ code, message: "policy fault", retryable: false }, 400));
+      const { guard, ledger } = setup(client);
+      const descriptor = call(USERS.educatorProceeds, ["hello"]);
+      expect(await guard.beforeModelCall(descriptor)).toMatchObject({ action: "deny", reason: "moderation_unavailable" });
+      expect((await ledger.request(descriptor.callId))?.voided).toBeDefined();
+      expect((await ledger.request(`${descriptor.callId}.m0.c0`))?.settlement).toMatchObject({ hasUnknownCost: true });
+    });
+
     it("fails closed for a student, recording the check's cost as unknown rather than $0", async () => {
       const { guard, ledger } = setup();
       const descriptor = call(USERS.student, ["hello [[down]]"]);
@@ -260,9 +271,56 @@ describe("beforeModelCall", () => {
     expect(await guard.beforeModelCall(descriptor)).toEqual({ action: "deny", reason: "ledger_principal_cap_reached", message: DEFAULT_GUARD_MESSAGES.budget });
     expect(await ledger.request(`${descriptor.callId}.m0.c0`)).toBeNull();
   });
+
+  it("counts unknown failed-call liabilities against the principal cap across admit, screen and settle", async () => {
+    const { guard, ledger } = setup();
+    // Ten $0.39 liabilities fit the $4 cap; an eleventh does not. Moderation has its own pool.
+    for (let i = 0; i < 10; i++) {
+      const descriptor = call(USERS.student, ["hello"]);
+      expect(await guard.beforeModelCall(descriptor)).toEqual(SCREENED);
+      expect(await guard.screenModelOutput(descriptor.callId, { parts: [{ type: "text", text: "hello back" }] })).toEqual({ action: "release" });
+      await guard.afterModelCall({ callId: descriptor.callId, status: "failed" });
+      await guard.afterModelCall({ callId: descriptor.callId, status: "failed" });
+      expect((await ledger.request(descriptor.callId))?.settlement).toMatchObject({ hasUnknownCost: true, chargedUsdNano: HOLD_1000 });
+      expect(await guard.beforeModelCall(descriptor)).toMatchObject({ action: "deny", reason: "request_already_completed" });
+    }
+    const denied = call(USERS.student, ["hello"]);
+    expect(await guard.beforeModelCall(denied)).toMatchObject({ action: "deny", reason: "ledger_principal_cap_reached" });
+    expect(await ledger.request(`${denied.callId}.m0.c0`)).toBeNull();
+  });
+
+  it("denies another student's call when the shared class pool is exhausted, before moderation", async () => {
+    const { guard, ledger } = setup();
+    const student = config.principals[0]!;
+    expect(await ledger.reserve({
+      requestId: "class-spend",
+      principal: { principalId: config.principals[1]!.principalId, districtId: config.districtId },
+      workspace: student.workspace,
+      model: SONNET,
+      estimatedMaxUsdNano: "1",
+      fundingPurpose: "generative",
+    })).toMatchObject({ outcome: "reserved" });
+    // Actual bills may overrun their hold. They still consume the shared class allocation.
+    await ledger.settle("class-spend", { attempts: [{ attemptIndex: 0, state: "provider_reported", actualUsdNano: "10000000000", usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 } }] });
+    const descriptor = call(USERS.student, ["hello"]);
+    expect(await guard.beforeModelCall(descriptor)).toMatchObject({ action: "deny", reason: "ledger_pool_exhausted", message: DEFAULT_GUARD_MESSAGES.budget });
+    expect(await ledger.request(descriptor.callId)).toBeNull();
+    expect(await ledger.request(`${descriptor.callId}.m0.c0`)).toBeNull();
+  });
 });
 
 describe("output screening", () => {
+  it("withholds after principal revocation but still settles the model's spend", async () => {
+    const { guard, ledger, resolver } = setup();
+    const descriptor = call(USERS.student, ["hello"]);
+    expect(await guard.beforeModelCall(descriptor)).toEqual(SCREENED);
+    vi.spyOn(resolver, "resolveAdmitted").mockResolvedValue(null);
+    expect(await guard.screenModelOutput(descriptor.callId, { parts: [{ type: "text", text: "hello back" }] })).toMatchObject({ action: "withhold", reason: "unknown_principal" });
+    expect(await ledger.request(`${descriptor.callId}.o.c0`)).toBeNull();
+    await guard.afterModelCall({ callId: descriptor.callId, status: "completed" });
+    expect((await ledger.request(descriptor.callId))?.settlement).toMatchObject({ hasUnknownCost: true, chargedUsdNano: HOLD_1000 });
+  });
+
   const reply = (text: string) => ({ parts: [{ type: "text" as const, text }] });
 
   /** A guard that has admitted one call by `user`, and a spy on the Hall Monitor requests it makes. */
@@ -393,13 +451,25 @@ describe("afterModelCall", () => {
     });
   });
 
-  it("releases a failed or aborted call that billed nothing", async () => {
+  it("releases a failed or aborted call reporting explicit zero usage and no gateway log", async () => {
     for (const status of ["failed", "aborted"] as const) {
       const { guard, ledger, callId } = await admitted();
-      await guard.afterModelCall({ callId, status });
       await guard.afterModelCall({ callId, status, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } });
       expect((await ledger.request(callId))?.voided).toBeDefined();
       expect(await rows(ledger, callId, "void")).toBe(1);
+    }
+  });
+
+  it.each(["failed", "aborted"] as const)("keeps missing or invalid usage on a %s call as a liability, idempotently", async (status) => {
+    for (const reported of [undefined, { input: -1, output: 0, cacheRead: 0, cacheWrite: 0 }]) {
+      const { guard, ledger, callId } = await admitted();
+      const outcome = { callId, status, usage: reported };
+      await Promise.all([guard.afterModelCall(outcome), guard.afterModelCall(outcome)]);
+      await guard.afterModelCall(outcome);
+      const record = await ledger.request(callId);
+      expect(record?.voided).toBeUndefined();
+      expect(record?.settlement).toMatchObject({ hasUnknownCost: true, chargedUsdNano: HOLD_1000, attempts: [{ state: "unknown" }] });
+      expect(await rows(ledger, callId, "settlement")).toBe(1);
     }
   });
 

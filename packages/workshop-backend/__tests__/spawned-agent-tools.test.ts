@@ -63,12 +63,15 @@ async function commitFiles(impl: any, files: Record<string, string>): Promise<st
 }
 
 // Spawns a chat through the spawner binding a gadget would hold, returning its chat id.
-async function spawnChat(impl: any, config: AgentSpawnerConfig): Promise<number> {
+async function spawnChat(impl: any, {env, ...config}: AgentSpawnerConfig): Promise<number> {
   let cls = impl.ctx.exports.AgentSpawnerGatekeeper({ props: {
-    overseerId: impl.ctx.id.toString(), config, creatorUserId: OWNER_USER_ID,
+    config, creatorUserId: OWNER_USER_ID,
   } });
-  let facet = await impl.getGatekeeperFacet(900, cls);
-  let binding: AgentSpawnerBinding = await facet.startSession(undefined);
+  let bindings = Object.fromEntries(
+      Object.entries(env).map(([name, target]) => [name, { target }]));
+  let client = await impl.addGatekeeper(
+      cls, { type: "agentSpawner", config }, OWNER_USER_ID, undefined, bindings);
+  let binding: AgentSpawnerBinding = await client.openSession();
   await binding.spawn("Task", "Do the task.");
   let [meta] = [...impl.storage.chatMeta.list()];
   return meta.id;
@@ -260,3 +263,30 @@ describe("spawned agent tools", () => {
          "requestConnection"]));
   }));
 });
+
+it("refuses a retained spawner after execution quarantine is enabled", () => withImpl(async impl => {
+  const config = { displayName: "Spawner", modelId: null };
+  const cls = impl.ctx.exports.AgentSpawnerGatekeeper({ props: {
+    config, creatorUserId: OWNER_USER_ID,
+  } });
+  const client = await impl.addGatekeeper(
+      cls, { type: "agentSpawner", config }, OWNER_USER_ID, undefined, {});
+  using binding: AgentSpawnerBinding = await client.openSession();
+  await binding.spawn("Before", "Synthetic task");
+  const count = [...impl.storage.chatMeta.list()].length;
+  const previous = impl.env.WORKSHOP_CAPABILITY_POLICY;
+  impl.env.WORKSHOP_CAPABILITY_POLICY = { authorizeCapability: async () => ({ outcome: "allow" }) };
+  try {
+    await expectQuarantined(binding.spawn("After", "Synthetic task"));
+    expect([...impl.storage.chatMeta.list()]).toHaveLength(count);
+  } finally {
+    impl.env.WORKSHOP_CAPABILITY_POLICY = previous;
+  }
+}));
+
+// Use one rejection handler: .rejects forks native JsRpcPromise continuations.
+async function expectQuarantined(call: Promise<unknown>): Promise<void> {
+  let caught: unknown;
+  try { await call; } catch (error) { caught = error; }
+  expect(String(caught)).toContain("transitive revocation");
+}

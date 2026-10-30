@@ -8,6 +8,7 @@ import { Problem } from "../Problem.tsx";
 import { routeHref } from "../route.ts";
 import type { CheckRun, RubricRelease, TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
+import { useSteadyLoad } from "../useSteadyLoad.ts";
 import { CheckResults } from "./CheckResults.tsx";
 import { FeedbackSharing } from "./FeedbackSharing.tsx";
 import { OfficialGrade } from "./OfficialGrade.tsx";
@@ -62,7 +63,7 @@ export const SubmissionReviewPage = ({ teaching, assignmentId, submissionId }: {
   });
   // Feedback and proposed grades change with every action on the page, so they reload on their own.
   const feedback = useLoad(`feedback:${submissionId}`, (client) => client.call("teacher.getFeedback", { params: { submissionId } }));
-  const proposals = useLoad(`proposals:${assignmentId}`, (client) => client.call("teacher.pendingGrades", { params: { assignmentId } }));
+  const proposals = useSteadyLoad(`proposals:${assignmentId}`, (client) => client.call("teacher.pendingGrades", { params: { assignmentId } }));
   const studentId = review.status === "ready" ? review.data?.submission.studentPrincipalId : undefined;
   const grades = useLoad(`grades:${assignmentId}:${studentId ?? ""}`, async (client) =>
     studentId === undefined ? [] : client.call("teacher.officialGrades", { params: { assignmentId, studentId } }));
@@ -104,6 +105,7 @@ export const SubmissionReviewPage = ({ teaching, assignmentId, submissionId }: {
 
       <CheckResults
         submissionId={submissionId}
+        work={work}
         rubric={submission.rubric === undefined ? { kind: "none" } : rubric === undefined ? { kind: "unknown" } : { kind: "known", checks: rubricChecks(rubric) }}
         run={run}
         onRun={(result) => {
@@ -118,18 +120,20 @@ export const SubmissionReviewPage = ({ teaching, assignmentId, submissionId }: {
         <>
           <RubricScores submissionId={submissionId} hasRubric={submission.rubric !== undefined} criteria={criteria} scores={feedback.data.scores} onSaved={feedback.reload} />
           <FeedbackSharing submissionId={submissionId} feedback={feedback.data} excerpt={excerpt} onShared={feedback.reload} />
-          <OfficialGrade
+          {proposals.data === undefined && proposals.error === undefined && <Loading label="Loading grade approvals…" />}
+          {proposals.error !== undefined && <Problem error={proposals.error} onRetry={proposals.reload} />}
+          {proposals.data !== undefined && proposals.error === undefined && <OfficialGrade
             submissionId={submissionId}
             student={student}
             suggestedTotal={teacherTotal(criteria, feedback.data.scores)}
-            proposals={proposals.status === "ready" ? proposals.data.filter((p) => p.submissionId === submissionId) : []}
+            proposals={proposals.data.filter((p) => p.submissionId === submissionId)}
             official={grades.status === "ready" ? grades.data.at(-1) : undefined}
             officialLoading={grades.status === "loading"}
             onChanged={() => {
               proposals.reload();
               grades.reload();
             }}
-          />
+          />}
           {grades.status === "error" && <Problem error={grades.error} onRetry={grades.reload} />}
         </>
       )}

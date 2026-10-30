@@ -252,6 +252,9 @@ export class AiLedger {
           throw new EducateOsError("conflict", "request ID was already used for a different request");
         }
         const status: RequestStatus = existing.settlement ? "settled" : existing.voided ? "voided" : "held";
+        // A hold is billing state, not lasting authorization. Recheck current routing on
+        // admission retries so revoking policy, enrollment or a model takes effect immediately.
+        if (status === "held" && !decision.ok) return { append: [], result: { outcome: "denied", reason: decision.reason } };
         return { append: [], result: { outcome: "reserved", reservation: held, replayed: true, status } };
       }
       if (!decision.ok) return { append: [], result: { outcome: "denied", reason: decision.reason } };

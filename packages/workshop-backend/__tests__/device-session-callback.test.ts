@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { createExecutionContext } from "cloudflare:test";
 import { describe, expect, it, vi } from "vitest";
 import type { DeviceSessionHandoff } from "../src/auth/device-session-handoff";
-import { deviceSessionCallback } from "../src/auth/device-session-callback";
+import { deviceSessionCallback, nativeCallbackOrigin } from "../src/auth/device-session-callback";
 import server from "../src/server";
 
 const origin = "https://install.example.test";
@@ -176,4 +176,14 @@ describe("device session callback", () => {
       vi.fn().mockRejectedValue(new Error("storage unavailable")),
     )).rejects.toThrow("storage unavailable");
   });
+});
+
+
+it("rejects invalid configured native callback origins before use", () => {
+  expect(nativeCallbackOrigin()).toBe("https://mobile.educateos.io");
+  expect(nativeCallbackOrigin("https://native.example")).toBe("https://native.example");
+  for (const origin of ["http://native.example", "https://native.example/evil",
+    "https://user@native.example", "https://native.example?to=evil", "https://native.example:444"]) {
+    expect(() => nativeCallbackOrigin(origin)).toThrow();
+  }
 });

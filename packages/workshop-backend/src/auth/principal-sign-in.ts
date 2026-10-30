@@ -36,7 +36,8 @@ const PRINCIPAL_ID = /^[A-Za-z0-9_-]{1,128}$/;
 export async function resolvePrincipalUser(resolver: PrincipalResolverClient, payload: JWTPayload)
     : Promise<{ name: string; displayName: string }> {
   let { iss, sub, email } = payload;
-  if (typeof iss !== "string" || typeof sub !== "string" || sub.length === 0) {
+  if (typeof iss !== "string" || iss.length === 0 || typeof sub !== "string" || sub.length === 0
+      || typeof payload.exp !== "number" || !Number.isFinite(payload.exp) || payload.exp * 1000 <= Date.now()) {
     throw createAuthError(AUTH_ERROR_CODES.principalUnresolved);
   }
   let resolution;

@@ -44,10 +44,25 @@ export class FakeDistrict extends WorkerEntrypoint implements SchoolToolService 
   declineChange(decider: VerifiedPrincipal, approvalId: string, reason: string) {
     return district.service.declineChange(decider, approvalId, reason);
   }
+  async gadgetAssessmentRead(principal: VerifiedPrincipal, assignmentId: string) {
+    if (principal.principalId !== "prn_nf-student-amara" || assignmentId !== "asg_lab") {
+      return { status: 403, body: "{}", correlationId: null };
+    }
+    return { status: 200, body: JSON.stringify({ assignmentId, blueprint: { blueprint: { id: "lab", commitId: "a".repeat(40), sourceDigest: `sha256:${"b".repeat(64)}` } } }), correlationId: null };
+  }
+  async gadgetAssessmentSubmit(principal: VerifiedPrincipal, assignmentId: string, request: unknown) {
+    const access = await this.gadgetAssessmentRead(principal, assignmentId);
+    if (access.status !== 200) return access;
+    assessmentWrites.push({ principal, assignmentId, request });
+    return { status: 201, body: "{}", correlationId: null };
+  }
   serveAs(principal: VerifiedPrincipal, request: Request) {
     return district.service.serveAs(principal, request);
   }
 }
+
+/** Submission calls received through the binding (domain policy is tested in district-app). */
+export const assessmentWrites: { principal: VerifiedPrincipal; assignmentId: string; request: unknown }[] = [];
 
 /** How many accounts the Workshop's connect callback was handed. */
 export const completions = { count: 0 };
@@ -155,6 +170,26 @@ export class TestHooks extends DurableObject<Cloudflare.Env> {
       observations: queue.observations.map((o) => o.title),
       actions: queue.actions.map(({ id, description }) => ({ id, title: description.title, autoApprovable: description.autoApprovable === true })),
     };
+  }
+
+  /** Exercises the real returned RPC capability and queue, not a standalone adapter. */
+  async submitAssessment(accountObjectId: string, assignmentId: string) {
+    const queue = new TestApprovalQueue();
+    using session = await (await this.#facet(accountObjectId)).startSession(new RpcStub(queue) as unknown as ApprovalQueue);
+    using assessment = await session.assessment(assignmentId);
+    const view = await assessment.read();
+    await assessment.submit([{ artifactId: "art_lab", revisionId: "rev_one" }]);
+    return { view, observations: queue.observations.length, actionId: queue.actions[0]!.id };
+  }
+
+  /** Keep expected RPC refusals inside the request's lifetime. */
+  async submitAssessmentFailure(accountObjectId: string, assignmentId: string): Promise<string> {
+    try {
+      await this.submitAssessment(accountObjectId, assignmentId);
+      return "did not throw";
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error);
+    }
   }
 
   /** Calls one tool, expecting the session to throw. Returns the message. */

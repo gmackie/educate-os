@@ -188,9 +188,12 @@ export interface WranglerConfig {
   services?: ServiceBinding[];
   /** Browser Rendering binding (Gadget PDF exports). */
   browser?: BindingDecl;
+  /** This Worker version's metadata (the backend's, so a session can tell it is out of date). */
+  version_metadata?: BindingDecl;
   /**
-   * Workers AI binding of a worker that declares its own (gatekeeper-websearch). The backend's
-   * `WORKERS_AI` is hardcoded in buildWorkerEntry instead, which refuses one in its config.
+   * Workers AI binding of a worker that declares its own (gatekeeper-websearch, gatekeeper-google).
+   * The backend's `WORKERS_AI` is hardcoded in buildWorkerEntry instead, which refuses one in its
+   * config.
    */
   ai?: BindingDecl;
   /** Artifacts binding — closed beta, cut from customer manifests. */
@@ -382,9 +385,11 @@ const HANDLED_CONFIG_KEYS = new Set([
   // Browser Rendering (Gadget PDF exports). Unlike artifacts it is generally available, so it
   // passes through to customer instances as a placeholder-free binding, like the AI binding.
   "browser",
-  // Workers AI, for a gatekeeper that calls it itself (gatekeeper-websearch). Placeholder-free,
-  // like browser.
+  // Workers AI, for a gatekeeper that calls it itself (gatekeeper-websearch's searches,
+  // gatekeeper-google's Drive PDF reading). Placeholder-free, like browser.
   "ai",
+  // The Worker version's metadata. Placeholder-free, like browser.
+  "version_metadata",
   // gatekeeper-context's Artifacts binding is closed-beta and cannot be provisioned in arbitrary
   // user accounts; it is dropped from customer manifests (the gatekeeper degrades gracefully).
   "artifacts",
@@ -477,6 +482,7 @@ export interface BackendServiceBinding {
 // wizard inputs come from its deploy-inputs.json, with no OAuth default, and it gets no BASE_URL:
 // it is reached only through the backend's binding, never routed.
 const SERVICE_PACKAGES: Record<string, BackendServiceBinding> = {
+  "educateos-external-mcp": { name: "EDUCATEOS_EXTERNAL_MCP", entrypoint: "default" },
   // ADR-0007: EducateOS budgets and Hall Monitor moderation around every model call.
   "educateos-ai-guard": { name: "AI_CALL_GUARD", entrypoint: "EducateOsAiCallGuard" },
   // SCHO-171: the district application. Its real consumers are the AI call guard and the EducateOS
@@ -498,6 +504,16 @@ export const ASSET_VARIANTS: Readonly<Record<string, Readonly<Record<string, str
   access: { VITE_CF_ACCESS_MODE: "true" },
   "access-ai": { VITE_CF_ACCESS_MODE: "true", VITE_WORKSHOP_BASE_PATH: "/ai/" },
 };
+
+/** Resolve both root and /ai assets for the explicitly selected school or generic profile. */
+export function releaseAssetVariants(env: NodeJS.ProcessEnv): Readonly<Record<string, Readonly<Record<string, string>>>> {
+  const school = env.EDUCATEOS_SCHOOL_BUILD === "true";
+  if (!school) return ASSET_VARIANTS;
+  return {
+    "access-school": { VITE_CF_ACCESS_MODE: "true", VITE_EDUCATEOS_SCHOOL_MODE: "true" },
+    "access-school-ai": { VITE_CF_ACCESS_MODE: "true", VITE_EDUCATEOS_SCHOOL_MODE: "true", VITE_WORKSHOP_BASE_PATH: "/ai/" },
+  };
+}
 
 /** The district Worker's package: the optional service a district's one origin routes to. */
 export const DISTRICT_SERVICE_PACKAGE = "educateos-district-worker";
@@ -772,6 +788,9 @@ export function buildWorkerEntry(
     // `remote` is dev-only, as for browser and ai.
     bindings.push({ type: "send_email", name: email.name });
   }
+  if (config.version_metadata) {
+    bindings.push({ type: "version_metadata", name: config.version_metadata.binding });
+  }
   for (const loader of config.worker_loaders ?? []) {
     bindings.push({ type: "worker_loader", name: loader.binding });
   }
@@ -927,7 +946,7 @@ export function assetR2Key(cfHash: string): string {
  *  - a worker's `ownAssets` (a release component's SPA) become its one COMPONENT_ASSET_VARIANT.
  */
 export function generateManifest({
-  releaseId, commit, createdAt, wranglerVersion, workers, assetVariants,
+  releaseId, commit, createdAt, wranglerVersion, workers, assetVariants, profile = "generic",
 }: {
   releaseId: string;
   commit: string;
@@ -935,6 +954,8 @@ export function generateManifest({
   wranglerVersion: string;
   workers: WorkerBuild[];
   assetVariants?: Record<string, CollectedAssets>;
+  /** School releases require district principal sign-in; generic releases retain upstream auth. */
+  profile?: "generic" | "school";
 }): ReleaseManifest {
   const workerEntries: Record<string, WorkerEntry> = {};
   // releaseShortName() folds the package name into the install-slug charset, and that fold is
@@ -965,8 +986,21 @@ export function generateManifest({
     workerEntries[w.pkgName] = entry;
   }
 
+  if (profile === "school") {
+    const backend = workerEntries["workshop-backend"];
+    if (!backend || !workerEntries["educateos-district-worker"]) {
+      throw new Error("School releases require the backend and district Worker.");
+    }
+    backend.vars.REQUIRE_PRINCIPAL_RESOLVER = "true";
+    for (const entry of Object.values(workerEntries)) {
+      if (entry.districtOrigin) entry.districtOrigin = { ...entry.districtOrigin, assetVariant: "access-school-ai" };
+    }
+    backend.bindings.push({ type: "service", name: "PRINCIPAL_RESOLVER",
+      service: "$WORKER_NAME(educateos-district-worker)", entrypoint: "DistrictPrincipalResolver" });
+  }
+
   for (const [variant, { manifest, blobs }] of Object.entries(assetVariants ?? {})) {
-    const buildEnv = ASSET_VARIANTS[variant];
+    const buildEnv = { ...ASSET_VARIANTS, ...releaseAssetVariants({ EDUCATEOS_SCHOOL_BUILD: "true" }) }[variant];
     if (!buildEnv) throw new Error(`unknown asset variant ${variant}; declare its build env in ASSET_VARIANTS`);
     for (const [hash, blob] of blobs) {
       assets[hash] = { size: blob.size, r2Key: assetR2Key(hash) };

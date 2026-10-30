@@ -1,0 +1,3 @@
+# Intentionally isolated from the application workspace and release discovery.
+packages: []
+minimumReleaseAge: 1440

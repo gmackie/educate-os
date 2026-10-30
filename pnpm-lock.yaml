@@ -678,6 +678,68 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
 
+  packages/educateos-assessment-sdk:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+    devDependencies:
+      '@educateos/assessment':
+        specifier: workspace:*
+        version: link:../educateos-assessment
+      '@educateos/assessment-ci':
+        specifier: workspace:*
+        version: link:../educateos-assessment-ci
+      '@educateos/contracts':
+        specifier: workspace:*
+        version: link:../educateos-contracts
+      '@educateos/learning-artifacts':
+        specifier: workspace:*
+        version: link:../educateos-learning-artifacts
+      '@gadgets/scripts':
+        specifier: workspace:*
+        version: link:../../scripts
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
+
+  packages/educateos-assessment-sdk-react:
+    dependencies:
+      '@educateos/assessment-sdk':
+        specifier: workspace:*
+        version: link:../educateos-assessment-sdk
+    devDependencies:
+      '@gadgets/scripts':
+        specifier: workspace:*
+        version: link:../../scripts
+      '@testing-library/dom':
+        specifier: 10.4.2
+        version: 10.4.2
+      '@types/react':
+        specifier: ^19.2.18
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: ^19.2.7
+        version: 19.2.7(@types/react@19.2.18)
+      jsdom:
+        specifier: ^26.1.0
+        version: 26.1.0(supports-color@10.2.2)
+      react:
+        specifier: ^19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.2.8
+        version: 19.2.8(react@19.2.8)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
+
   packages/educateos-cartridge:
     dependencies:
       '@educateos/catalog':
@@ -1107,6 +1169,9 @@ importers:
       '@educateos/assessment-ci':
         specifier: workspace:*
         version: link:../educateos-assessment-ci
+      '@educateos/assessment-sdk':
+        specifier: workspace:*
+        version: link:../educateos-assessment-sdk
       '@educateos/cartridge':
         specifier: workspace:*
         version: link:../educateos-cartridge
@@ -1225,6 +1290,9 @@ importers:
       '@gadgets/observability':
         specifier: workspace:*
         version: link:../observability
+      '@gadgets/workshop-shared':
+        specifier: workspace:*
+        version: link:../workshop-shared
       '@gmacko/hall-monitor-client':
         specifier: file:../../vendor/hall-monitor/gmacko-hall-monitor-client-0.3.0.tgz
         version: file:vendor/hall-monitor/gmacko-hall-monitor-client-0.3.0.tgz
@@ -1247,6 +1315,9 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 'catalog:'
         version: 1.4.3(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)(vitest@5.0.5)
+      '@educateos/assessment-sdk':
+        specifier: workspace:*
+        version: link:../educateos-assessment-sdk
       '@educateos/ai-guard':
         specifier: workspace:*
         version: link:../educateos-ai-guard
@@ -1308,6 +1379,52 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
+
+  packages/educateos-external-mcp:
+    dependencies:
+      '@educateos/academics':
+        specifier: workspace:*
+        version: link:../educateos-academics
+      '@educateos/contracts':
+        specifier: workspace:*
+        version: link:../educateos-contracts
+      '@educateos/district-app':
+        specifier: workspace:*
+        version: link:../educateos-district-app
+      '@educateos/identity':
+        specifier: workspace:*
+        version: link:../educateos-identity
+      '@educateos/policy':
+        specifier: workspace:*
+        version: link:../educateos-policy
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+    devDependencies:
+      '@cloudflare/vitest-plugin':
+        specifier: 'catalog:'
+        version: 1.4.3(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)(vitest@5.0.5)
+      '@educateos/fixtures':
+        specifier: workspace:*
+        version: link:../educateos-fixtures
+      '@gadgets/scripts':
+        specifier: workspace:*
+        version: link:../../scripts
+      '@types/node':
+        specifier: 26.1.0
+        version: 26.1.0
+      miniflare:
+        specifier: 'catalog:'
+        version: 5.20261001.0-alpha(@types/node@26.1.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/browser-playwright@5.0.5)(@vitest/browser-preview@5.0.4(@voidzero-dev/vite-plus-core@1.2.0(@types/node@26.1.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2)(yaml@2.9.1))(vitest@5.0.4))(@vitest/ui@5.0.5)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@26.1.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))
+      wrangler:
+        specifier: 'catalog:'
+        version: 4.147.0(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)
 
   packages/educateos-fixtures:
     dependencies:
@@ -1925,6 +2042,12 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
+      '@cloudflare/vitest-plugin':
+        specifier: 'catalog:'
+        version: 1.4.3(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)(vitest@5.0.5)
+      '@cloudflare/workers-types':
+        specifier: 'catalog:'
+        version: 5.20261005.1
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
@@ -2112,6 +2235,9 @@ importers:
       '@educateos/api-client':
         specifier: workspace:*
         version: link:../educateos-api-client
+      '@educateos/assessment-sdk':
+        specifier: workspace:*
+        version: link:../educateos-assessment-sdk
       '@educateos/shell':
         specifier: workspace:*
         version: link:../educateos-shell

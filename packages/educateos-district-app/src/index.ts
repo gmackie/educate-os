@@ -11,6 +11,8 @@ export * from "./guard-directory.ts";
 export * from "./guardians.ts";
 // Communication (SCHO-189)
 export * from "./communication/index.ts";
+
+export * from "./gadget-assessment.ts";
 // Devices (SCHO-261)
 export * from "./devices.ts";
 // Pairing (SCHO-261)

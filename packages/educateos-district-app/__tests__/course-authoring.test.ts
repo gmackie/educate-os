@@ -174,7 +174,7 @@ describe("a co-op administrator manages its people (SCHO-212)", () => {
     const sky = (await district.ok(admin, "admin.authoring")).principals.find((p) => p.displayName === "Sky Learner")!;
     const left = await district.ok(admin, "admin.setPrincipalStatus", { params: { principalId: sky.id }, body: { status: "inactive" } });
     expect(left.principal.status).toBe("inactive");
-    expectError(await district.call(student, "student.listModules", { params: { offeringId: offering.id } }), 404, "not-found");
+    expectError(await district.call(student, "student.listModules", { params: { offeringId: offering.id } }), 401, "unauthenticated");
     const back = await district.ok(admin, "admin.setPrincipalStatus", { params: { principalId: sky.id }, body: { status: "active" } });
     expect(back.principal.status).toBe("active");
     await district.ok(student, "student.listModules", { params: { offeringId: offering.id } });

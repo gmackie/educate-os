@@ -1,0 +1,7 @@
+[
+  { "status": "A", "path": "packages/educateos-policy/src/new.ts" },
+  { "status": "M", "path": "packages/workshop-shared/src/api.ts" },
+  { "status": "D", "path": "packages/workshop-backend/src/removed.ts" },
+  { "status": "R100", "oldPath": "packages/workshop-backend/src/old.ts", "path": "packages/educateos-policy/src/moved.ts" },
+  { "status": "M", "path": "packages/ui/a\tpipe|line\n.ts" }
+]

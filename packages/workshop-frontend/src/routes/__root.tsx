@@ -13,13 +13,17 @@ import Header from '../components/Header'
 import AppShell from '../components/AppShell/AppShell'
 import LoginPage from '../LoginPage'
 import OnboardingWizard from '../OnboardingWizard'
+import { SCHOOL_MODE } from '../features/school/schoolMode'
+import { SchoolShell } from '../features/school/SchoolShell'
 import AccountSelectionModal from '../components/billing/AccountSelectionModal'
 import { NotificationBridge } from '../features/notifications/NotificationBridge'
+import { BrowserPushBridge } from '../features/notifications/BrowserPushBridge'
 import {
   DeviceSessionHandoff,
   hasDeviceSessionParameters,
 } from '../features/native-app/DeviceSessionHandoff'
 import { NativeAppBridge } from '../features/native-app/NativeAppBridge'
+import { PageUpdateNotice } from '../features/stale-session/PageUpdateNotice'
 import { DistrictFrame, useDistrictFrame } from '../features/district-frame/districtFrame'
 
 export const Route = createRootRoute({
@@ -101,6 +105,7 @@ function RootComponent() {
     return (
       <TooltipProvider>
         <Toasty>
+          <PageUpdateNotice />
           <div className="flex h-full min-h-0 flex-col">
             {showHeader && <Header />}
             <main className="min-h-0 flex-1 overflow-y-auto">
@@ -127,7 +132,9 @@ function RootComponent() {
         <TooltipProvider>
           <Toasty>
             <NotificationBridge authenticatedApi={authenticatedApi} />
+            <BrowserPushBridge />
             <NativeAppBridge />
+            <PageUpdateNotice />
             <AuthenticatedShell
               authenticatedApi={authenticatedApi}
               isWorkspaceEditor={isWorkspaceEditor}
@@ -152,10 +159,11 @@ function AuthenticatedShell({
   isWorkspaceEditor: boolean
 }) {
   // null = still checking, true = needs onboarding, false = onboarding done
-  const [onboardingNeeded, setOnboardingNeeded] = useState<boolean | null>(null)
+  const [onboardingNeeded, setOnboardingNeeded] = useState<boolean | null>(SCHOOL_MODE ? false : null)
   const frame = useDistrictFrame()
 
   useEffect(() => {
+    if (SCHOOL_MODE) return
     let cancelled = false
     authenticatedApi.isOnboardingCompleted().then((completed) => {
       if (!cancelled) setOnboardingNeeded(!completed)
@@ -177,9 +185,11 @@ function AuthenticatedShell({
   }
 
   // Show onboarding wizard
-  if (onboardingNeeded) {
+  if (onboardingNeeded && !SCHOOL_MODE) {
     return <OnboardingWizard onComplete={() => setOnboardingNeeded(false)} />
   }
+
+  if (SCHOOL_MODE) return <SchoolShell><Outlet /></SchoolShell>
 
   // Normal app shell. The workspace editor is rendered fullscreen (no chrome); everything else
   // gets the persistent left-rail AppShell. Connection loss is surfaced by a chip in whichever of

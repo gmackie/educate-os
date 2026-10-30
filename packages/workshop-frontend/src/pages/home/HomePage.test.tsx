@@ -9,7 +9,7 @@ import { clearPendingSchoolContext } from '../../features/school-context/schoolC
 import { HomePage } from './HomePage'
 
 const state = vi.hoisted(() => ({
-  api: { listModels: async () => [], newGadget: vi.fn<() => never>() },
+  api: { listModels: async () => [], newWorkspace: vi.fn<() => never>() },
   navigate: vi.fn<(options: unknown) => void>(),
   addToast: vi.fn<(toast: unknown) => void>(),
 }))
@@ -79,7 +79,7 @@ describe('school AI home', () => {
     expect(starters.querySelectorAll('button')).toHaveLength(4)
     expect(starters.textContent).toContain(starter)
     expect(container.textContent).not.toContain('direct report')
-    expect(state.api.newGadget).not.toHaveBeenCalled()
+    expect(state.api.newWorkspace).not.toHaveBeenCalled()
   })
 
   it('puts a learning prompt in the draft without creating or sending a conversation', async () => {
@@ -87,7 +87,7 @@ describe('school AI home', () => {
     const practice = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Practice step by step'))!
     act(() => practice.click())
     expect(container.querySelector('textarea')?.value).toContain('Let me try before offering a hint')
-    expect(state.api.newGadget).not.toHaveBeenCalled()
+    expect(state.api.newWorkspace).not.toHaveBeenCalled()
     expect(state.navigate).not.toHaveBeenCalled()
   })
 
@@ -99,7 +99,7 @@ describe('school AI home', () => {
     expect(container.querySelector('h1')?.textContent).toBe('Make room for your next great lesson.')
     expect(container.textContent).toContain('Plan a lesson')
     expect(container.querySelector('textarea')?.value).toBe('Keep this project idea.')
-    expect(state.api.newGadget).not.toHaveBeenCalled()
+    expect(state.api.newWorkspace).not.toHaveBeenCalled()
   })
 
   it('uses neutral learning examples when the district cannot resolve a role', async () => {

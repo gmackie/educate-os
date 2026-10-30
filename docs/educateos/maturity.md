@@ -52,6 +52,16 @@ Each level includes the ones before it.
 | AI call guard and Hall Monitor | Unit-tested (guard); client vendored | `packages/educateos-ai-guard`, `vendor/hall-monitor` (client and contracts only) | The Hall Monitor Worker is built outside the release, from `gmackie/hall-monitor`. | Pinned Worker build in the release (IF-00b, RFC 0002 §12) |
 | Commerce and fleet | Unit-tested, optional and non-default | `packages/educateos-commerce`, `packages/educateos-fleet` | Not part of the default runtime (ADR-0011). | Owner decision on keeping or extracting them |
 
+## Assessment SDK Gadget bridge
+
+The Assessment SDK now connects immutable public Workshop Git releases to teacher-pinned class
+assignments and the existing AssessmentService/AssessmentCi workflow. The Teacher Studio screens
+use the real district API for pinning, evidence, provenance and review. Local Node and workerd
+harnesses cover the separate Blueprint, Gatekeeper and district boundaries; this is **Harness-tested**,
+not deployed or externally certified. See [workflow and limitations](assessment-gadget-workflow.md).
+There is no automatic Workshop checkpoint-to-district-artifact export, reverse source verification
+binding, or production untrusted-code executor. Imported source pins are explicitly teacher reviewed.
+
 ## Provider fakes
 
 `packages/educateos-provider-fakes` (SCHO-201) holds in-process fakes of the providers EducateOS

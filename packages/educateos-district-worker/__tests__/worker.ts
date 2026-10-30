@@ -12,7 +12,7 @@ import { fakeHallMonitor } from "@educateos/ai-guard/src/fake-hall-monitor.ts";
 import { LMS_ISSUER } from "./fixtures.ts";
 
 // Named rather than `export *`: the pool finds entrypoints from the module's named exports.
-export { DistrictApi, DistrictGuardDirectory, DistrictPrincipalResolver, DistrictSchoolTools } from "../src/worker.ts";
+export { DistrictPrincipalResolver, DistrictWorkshopCapabilityPolicy, DistrictApi, DistrictGuardDirectory, DistrictSchoolTools } from "../src/worker.ts";
 export { default } from "../src/worker.ts";
 
 /** The synthetic pages teachers import, by URL. Every other URL is a 404. */

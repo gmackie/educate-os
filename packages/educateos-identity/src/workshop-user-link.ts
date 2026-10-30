@@ -75,7 +75,7 @@ function requireIntact(directory: DistrictDirectorySnapshot): void {
 /** The person `principalId` names in `directory`, if it names one. Services never act as Workshop users. */
 function linkablePrincipal(directory: DistrictDirectorySnapshot, principalId: PrincipalId): Principal | undefined {
   const principal = directory.principals.find((p) => p.id === principalId);
-  return principal === undefined || principal.kind === "service" ? undefined : principal;
+  return principal === undefined || principal.status !== "active" || principal.kind === "service" ? undefined : principal;
 }
 
 /**
@@ -132,7 +132,8 @@ export function confirmWorkshopUserLink(
   const parsed = WorkshopUserLink.safeParse({ districtId, ...request });
   if (!parsed.success) throw new EducateOsError("validation-failed", "The Workshop user link is malformed.");
   const link = parsed.data;
-  const isAdmin = directory.roleAssignments.some((a) =>
+  const isAdmin = directory.principals.some((p) => p.id === link.confirmedBy && p.status === "active")
+    && directory.roleAssignments.some((a) =>
     a.principalId === link.confirmedBy && a.role === "district-admin" && a.scope.level === "district" && a.scope.districtId === districtId
     && roleAssignmentInForce(a, new Date(link.confirmedAt)));
   if (!isAdmin) throw new EducateOsError("forbidden", "Only a district administrator can link Workshop accounts.");

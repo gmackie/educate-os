@@ -1,3 +1,5 @@
+import { importWorkshopAssessmentBlueprint } from "@educateos/assessment-sdk";
+import { GadgetAssessmentSubmission } from "./gadget-assessment.ts";
 import {
   AuthorizationRequest,
   EducateOsError,
@@ -20,7 +22,7 @@ import { AcademicDirectory, assertSyncWritable, DIRECTORY_ENTITY_KINDS, isDistri
 import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule } from "@educateos/policy";
 import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@educateos/workspaces";
 import { LearningArtifacts } from "@educateos/learning-artifacts";
-import { AssessmentService, GradebookService, type AssignmentId } from "@educateos/assessment";
+import { AssessmentService, GradebookService, AssignmentId } from "@educateos/assessment";
 import { catalogAlignmentSource, ContentStudio, type AlignmentSource, type ContentReviewer, type ImportFetch } from "@educateos/content-studio";
 import { contentStudioReleases, CourseContentService, CurriculumService, type AiHelpPolicySource, type OfferingScope } from "@educateos/curriculum";
 import { CatalogMirror, catalogSeedRelease, type VerifyRelease } from "@educateos/catalog";
@@ -29,7 +31,7 @@ import { AiLedger, ledgerGovernor, type AiRequestGovernor, type CloudflareAccoun
 import { createDraftRevision, DesiredState, planConfigurationChange, SHIPPED_REGISTRY, type CapabilityRegistry } from "@educateos/config";
 import { integrationHealth, oneroster } from "@educateos/integrations";
 import { ArtifactsGitBackend, InMemoryCredentialLedger, ProjectArtifacts, type ArtifactsPlan } from "@educateos/artifacts-git";
-import { AssessmentCi, AssessmentRuns, builtinRegistry, signRubricRelease, type EvaluatorRegistry } from "@educateos/assessment-ci";
+import { AssessmentCi, AssessmentRuns, assertRubricAuthority, builtinRegistry, signRubricRelease, verifyRubricRelease, type EvaluatorRegistry } from "@educateos/assessment-ci";
 import { changeAllocations, effectivePools } from "./funding.ts";
 import { applyRosterImport, runRosterSyncOver, type RosterSyncOutcome, type RosterSyncSettings, contentBody, installAndAssign, keepArtifact, publishStarterMaterial, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
 import { CORRELATION_HEADER, errorResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
@@ -208,6 +210,13 @@ export interface CommunicationJobs {
   runWeeklyDigest(): Promise<{ week: string; sent: number; skipped: number; failed: number; alreadyDone: number }>;
 }
 
+/** JSON-only result returned over the district service binding. */
+export interface GadgetAssessmentResponse {
+  status: number;
+  body: string;
+  correlationId: string | null;
+}
+
 /** One district's running application. */
 export interface DistrictApp {
   /** The district. */
@@ -228,6 +237,10 @@ export interface DistrictApp {
    * the calendar feed is not served, since a token alone authorizes it.
    */
   serveAs(principal: VerifiedPrincipal, request: Request): Promise<Response>;
+  /** Narrow gatekeeper read for the verified student's configured assignment. */
+  gadgetAssessmentRead(principal: VerifiedPrincipal, assignmentId: string): Promise<GadgetAssessmentResponse>;
+  /** Applies a student-approved submission; no grade, role, model or other student can be selected. */
+  gadgetAssessmentSubmit(principal: VerifiedPrincipal, assignmentId: string, request: unknown): Promise<GadgetAssessmentResponse>;
   /** The one policy engine every service decides through. */
   readonly engine: PolicyEngine;
   /** The AI spend ledger. */
@@ -885,6 +898,36 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         offering: ctx.offeringScope(body.offeringId),
         settings: body.assignment,
       }),
+    "teacher.bindGadgetAssessment": async (ctx, { params, body }) => {
+      const assessment = ctx.assessment();
+      const { assignment } = await assessment.getAssignment(ctx.caller, params.assignmentId);
+      await ctx.require("create", { kind: "rubric", scope: ctx.offeringScope(assignment.offeringId), classification: "teacher-only" }, "Only the class's teachers can bind its Gadget assessment.");
+      if (assignment.rubric === undefined) throw new EducateOsError("policy-violation", "Pin a rubric before configuring a Gadget assessment.");
+      const blueprint = await importWorkshopAssessmentBlueprint(body.blueprint).catch(() => {
+        throw new EducateOsError("validation-failed", "The public assessment definition does not match its digest.");
+      });
+      const rubric = await stores.rubrics.get(assignment.rubric);
+      if (rubric === undefined) throw new EducateOsError("unavailable", "The assignment rubric release is unavailable.");
+      await verifyRubricRelease(rubric);
+      await assertRubricAuthority(rubric, assignment.offeringId, undefined);
+      // District rubric versions are integers; the portable pin names them as N.0.0.
+      // The signed rubric's digest commits to actual CI checks, including private config. Only
+      // that opaque digest is public. The SDK evaluator field is authoring metadata: execution
+      // uses AssessmentCi's verified evaluators inside this signed rubric, never a downloaded one.
+      if (blueprint.definition.rubric.id !== rubric.rubricId || blueprint.definition.rubric.version !== `${rubric.version}.0.0` || blueprint.definition.rubric.digest !== rubric.signature.digest) {
+        throw new EducateOsError("conflict", "The public assessment must pin this assignment's signed rubric ID, version (N.0.0), and digest.");
+      }
+      const current = await stores.gadgetAssessments.get(assignment.id);
+      if (current === undefined && (await assessment.listSubmissions(ctx.caller, assignment.id)).length !== 0) {
+        throw new EducateOsError("conflict", "Configure the Gadget assessment before students submit work.");
+      }
+      return stores.gadgetAssessments.bind({ assignmentId: assignment.id, blueprint, rubric: assignment.rubric, boundBy: ctx.principal.principalId, boundAt: now().toISOString() });
+    },
+    "teacher.getGadgetAssessment": async (ctx, { params }) => {
+      const { assignment } = await ctx.assessment().getAssignment(ctx.caller, params.assignmentId);
+      await ctx.require("read", { kind: "rubric", scope: ctx.offeringScope(assignment.offeringId), classification: "teacher-only" }, "Only the class's teachers can read its Gadget assessment configuration.");
+      return await stores.gadgetAssessments.get(assignment.id) ?? null;
+    },
     "teacher.listAssignments": (ctx, { params }) => ctx.assessment().listAssignments(ctx.caller, params.offeringId),
     "teacher.getAssignment": (ctx, { params }) => assignmentView(ctx.assessment(), ctx.caller, params.assignmentId),
     "teacher.updateAssignment": (ctx, { params, body: { dueAt, ...settings } }) =>
@@ -1561,6 +1604,35 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     }
   }
 
+  // The gatekeeper alone supplies the verified principal. Resolve active membership and policy
+  // afresh for each call, including after its approval queue delays a submission.
+  async function gadgetAssessment(principal: VerifiedPrincipal, rawId: string, request?: unknown): Promise<GadgetAssessmentResponse> {
+    const response = await respond(new Request("https://district.invalid/api/gadget-assessment"), async (correlationId) => {
+      const assignmentId = parsePart("assignmentId", AssignmentId, rawId);
+      const { snapshot } = await stores.directory.load();
+      const person = principalServedAs(snapshot, principal);
+      if (person.kind !== "student") throw new EducateOsError("forbidden", "This capability accepts only student evidence.");
+      const ctx = new RequestContext(correlationId, person, snapshot, "https://district.invalid");
+      const assessment = ctx.assessment();
+      const { assignment } = await assessment.getAssignment(ctx.caller, assignmentId);
+      const binding = await stores.gadgetAssessments.get(assignmentId);
+      if (binding === undefined) throw new EducateOsError("unavailable", "No Gadget assessment is configured for this assignment.");
+      if (JSON.stringify(binding.rubric) !== JSON.stringify(assignment.rubric)) throw new EducateOsError("conflict", "The assignment rubric no longer matches its Gadget assessment pin.");
+      const rubric = await stores.rubrics.get(binding.rubric);
+      if (rubric === undefined) throw new EducateOsError("unavailable", "The configured rubric release is unavailable.");
+      await verifyRubricRelease(rubric);
+      await assertRubricAuthority(rubric, assignment.offeringId, undefined);
+      if (rubric.signature.digest !== binding.blueprint.definition.rubric.digest) throw new EducateOsError("conflict", "The configured rubric digest changed.");
+      if (request === undefined) {
+        return jsonResponse({ assignmentId, blueprint: binding.blueprint, rubric: binding.rubric, submissions: await assessment.listSubmissions(ctx.caller, assignmentId) }, 200, correlationId);
+      }
+      const input = parsePart("submission", GadgetAssessmentSubmission, request);
+      if (JSON.stringify(input.blueprint) !== JSON.stringify(binding.blueprint.blueprint)) throw new EducateOsError("conflict", "The Gadget release does not match this assignment's pin.");
+      return jsonResponse(await assessment.submit(ctx.caller, assignmentId, input.revisions), 200, correlationId);
+    });
+    return { status: response.status, body: await response.text(), correlationId: response.headers.get(CORRELATION_HEADER) };
+  }
+
   return {
     districtId,
     engine,
@@ -1622,6 +1694,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       if (pathname === CONNECT_PHONE_PATH) return pairing.connectPhone(request);
       return respond(request, async (correlationId) => await serveCalendarFeed(request, correlationId) ?? await handle(request, correlationId));
     },
+    gadgetAssessmentRead: (principal, assignmentId) => gadgetAssessment(principal, assignmentId),
+    gadgetAssessmentSubmit: (principal, assignmentId, request) => gadgetAssessment(principal, assignmentId, request),
     serveAs,
   };
 }

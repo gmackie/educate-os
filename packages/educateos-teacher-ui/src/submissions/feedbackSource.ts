@@ -13,3 +13,11 @@ export const sourceLabel = (source: FeedbackSource): "You" | "Automatic check" |
 /** The badge colour for a source, so suggestions never look like the teacher's own entries. */
 export const sourceBadge = (source: FeedbackSource): "neutral" | "teal" | "purple" =>
   source.kind === "teacher" ? "neutral" : source.suggester.kind === "evaluator" ? "teal" : "purple";
+
+/** Recorded source identifier, without inferring a model's reasoning or verified authorship. */
+export const sourceDetail = (source: FeedbackSource): string | undefined => {
+  if (source.kind === "teacher") return undefined;
+  return source.suggester.kind === "ai"
+    ? `Model: ${source.suggester.modelId}`
+    : `Evaluator: ${source.suggester.evaluatorId}`;
+};

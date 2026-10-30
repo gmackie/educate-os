@@ -1,3 +1,4 @@
+import { InMemoryGadgetAssessmentStore, type GadgetAssessmentStore } from "./gadget-assessment.ts";
 import {
   EducateOsError,
   IntegrationSyncRun,
@@ -244,6 +245,8 @@ export interface DistrictAppStores {
   artifactContent: ArtifactStore;
   /** Assignments, submissions, feedback and grades (E01). */
   assessment: AssessmentRecordStore;
+  /** Teacher-reviewed immutable Workshop releases configured for assignments. */
+  gadgetAssessments: GadgetAssessmentStore;
   /** Signed rubric releases (E02). */
   rubrics: RubricReleaseStore;
   /** Assessment CI runs (E02). */
@@ -309,6 +312,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     artifactRecords: new InMemoryArtifactRecordStore(),
     artifactContent: new BackendArtifactStore({ text: new InMemoryInlineTextTable(), r2: new InMemoryR2Bucket() }),
     assessment: new InMemoryAssessmentRecordStore(),
+    gadgetAssessments: new InMemoryGadgetAssessmentStore(),
     rubrics: new InMemoryRubricReleaseStore(),
     assessmentRuns: new InMemoryAssessmentRunStore(),
     contentStudio: new InMemoryContentStudioStorage(),

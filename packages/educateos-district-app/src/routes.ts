@@ -1,3 +1,5 @@
+import { WorkshopAssessmentBlueprint } from "@educateos/assessment-sdk";
+import { GadgetAssessmentBinding } from "./gadget-assessment.ts";
 // The district application's HTTP contract: every route's method, path, surface and Zod schemas.
 // The server validates requests with these schemas and the typed client (`@educateos/api-client`)
 // is written against the same table, so the two cannot drift.
@@ -1057,6 +1059,14 @@ export const ROUTES = {
     params: params({ definitionId: ActivityDefinitionId }),
     body: z.strictObject({ offeringId: OfferingId, version: z.int().positive().optional(), assignment: AssignmentSettingsInput.prefault({}) }),
     response: z.strictObject({ installation: ActivityInstallation, assignment: AssignmentBinding }),
+  }),
+  "teacher.bindGadgetAssessment": route({
+    method: "POST", path: "/api/teacher/assignments/:assignmentId/gadget-assessment", surface: "teacher",
+    params: params({ assignmentId: AssignmentId }), body: z.strictObject({ blueprint: WorkshopAssessmentBlueprint }), response: GadgetAssessmentBinding,
+  }),
+  "teacher.getGadgetAssessment": route({
+    method: "GET", path: "/api/teacher/assignments/:assignmentId/gadget-assessment", surface: "teacher",
+    params: params({ assignmentId: AssignmentId }), response: GadgetAssessmentBinding.nullable(),
   }),
   "teacher.listAssignments": route({
     method: "GET", path: "/api/teacher/offerings/:offeringId/assignments", surface: "teacher",

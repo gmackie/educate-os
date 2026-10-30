@@ -135,6 +135,7 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
   }]]);
   const assignments: ReturnType<typeof assignment>[] = [assignment(IDS.existingAssignment, IDS.existingActivity, "Persuasive paragraph")];
   const submissions: Body[] = [];
+  const gadgetBindings = new Map<string, Body>();
   const texts = new Map<string, string>();
   // Each submitted item's title and text, by submission and artifact.
   const works = new Map<string, { artifactId: string; title?: string; text: string }[]>();
@@ -336,6 +337,13 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
       assignments.push(created);
       return { installation: { id: activityId }, assignment: created };
     },
+    "teacher.getGadgetAssessment": ({ params }) => gadgetBindings.get(params!.assignmentId!) ?? null,
+    "teacher.bindGadgetAssessment": ({ params, body }) => {
+      const assignmentId = params!.assignmentId!;
+      const binding = { assignmentId, blueprint: body!.blueprint, rubric: assignments.find((a) => a.id === assignmentId)!.rubric, boundBy: IDS.teacher, boundAt: NOW };
+      gadgetBindings.set(assignmentId, binding);
+      return binding;
+    },
     "teacher.listSubmissions": ({ params }) => submissions.filter((s) => s.assignmentId === params!.assignmentId),
     "teacher.submittedContent": ({ params }) => {
       const submission = submissions.find((s) => s.id === params!.submissionId)! as { items: Body[] };
@@ -366,6 +374,13 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
           runId: "asr_run-1",
           state: "completed",
           report: {
+            format: "educateos.assessment-report.v2",
+            runId: "asr_run-1",
+            key: { submissionDigest: DIGEST, rubricRelease: submission.rubric, evaluatorRelease: DIGEST, executionProfile: "deterministic-v1", idempotencyKey: "default" },
+            rubricDigest: DIGEST,
+            evaluatorReleases: [{ id: "writing.structure", release: "1.0.0" }],
+            stepsUsed: 1,
+            costUsdNano: "0",
             criteria: criteria.map((c) => ({
               criterionId: c.id,
               title: c.title,

@@ -21,6 +21,13 @@ export const LMS_ISSUER = "https://lms.northfield.example";
 /** Northfield as the district's seed, its records owned by the roster, funded for one synthetic model. */
 export const TEST_CONFIG: DistrictWorkerConfig = {
   directory: NORTHFIELD,
+  workshopPolicy: {
+    personalCreation: true,
+    personalBlueprints: ["personal-notebook"],
+    classBlueprints: [{ blueprintId: "english-authoring", offeringId: "off_nf-eng9-fall-p3" as never }],
+    models: [{ provider: "cloudflare", modelId: "synthetic-model" }],
+    connectors: [{ vendorId: "educateos", accountId: 7, resourceUrlPatterns: ["school://approved"], resources: ["SchoolTools"] }],
+  },
   fundingPools: [{
     id: "fpl_courses" as never,
     name: "Course AI",

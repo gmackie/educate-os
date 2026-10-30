@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Organization registry import v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sourceId",
+    "observedAt",
+    "attribution",
+    "approvedSource",
+    "noStudentData",
+    "operator",
+    "csv"
+  ],
+  "properties": {
+    "sourceId": {
+      "enum": [
+        "nces-ccd-lea-2024-25",
+        "tea-askted",
+        "texas-esc",
+        "mi-remc-rits",
+        "mi-school-data",
+        "nces-pss-2023-24",
+        "cosn-chapters",
+        "mi-nonpublic-2025-26",
+        "tcea-roles",
+        "tcea-2027",
+        "fixture"
+      ]
+    },
+    "observedAt": {
+      "type": "string",
+      "format": "date"
+    },
+    "attribution": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "approvedSource": {
+      "const": true
+    },
+    "noStudentData": {
+      "const": true
+    },
+    "operator": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "csv": {
+      "type": "string",
+      "maxLength": 200000
+    },
+    "mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ncesId",
+        "name",
+        "state",
+        "kind",
+        "website"
+      ],
+      "properties": {
+        "ncesId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "website": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$comment": "CSV projected to five columns only. ncesId string preserves leading zeros; empty allowed for regional organizations. State MI/TX. kind public/charter/private/regional/isd/association, constrained by source manifest. website public HTTPS without credentials/query/fragment; no fetching on import. Mapping does not derive kind from raw numeric NCES codes: operator must project and classify from release documentation."
+}

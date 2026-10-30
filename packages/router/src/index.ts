@@ -27,6 +27,8 @@ export interface Env {
    * (see `DISTRICT` and `AI_ENABLED`) may leave it out.
    */
   WORKSHOP_BACKEND?: Fetcher;
+  /** School-only MCP transport. */
+  EDUCATEOS_EXTERNAL_MCP?: Fetcher;
   /** Present in production (wrangler.jsonc assets stanza); absent in dev. */
   ASSETS?: Fetcher;
   /** Dormant until custom domains + Email Routing exist; the handler ships anyway. */
@@ -119,6 +121,10 @@ export default {
         return new Response("This deployment's legacy hostnames are misconfigured.", { status: 500 });
       }
       if (redirect) return redirect;
+    }
+    if (env.EDUCATEOS_EXTERNAL_MCP && ["/mcp", "/token",
+      "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"].includes(url.pathname)) {
+      return env.EDUCATEOS_EXTERNAL_MCP.fetch(req);
     }
 
     for (const key of Object.keys(env)) {
