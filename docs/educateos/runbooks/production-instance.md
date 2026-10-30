@@ -281,11 +281,16 @@ district Workers at their own `<slug>.educateos.io`; see [the demo districts run
   `forge secret set DISTRICT_CONFIG --stage production --stdin` for app `educateos-district`.
   `__tests__/demo-config.test.ts` in the package checks that the example parses and fits in a
   secret. The seed is read only on the object's first start.
-- **Bound by the connector only.** `gatekeeper-educateos` binds `DistrictSchoolTools` (SCHO-218).
-  The guard keeps its configured directory: binding its `EDUCATEOS_DISTRICT` to
-  `DistrictGuardDirectory` would resolve Workshop users through the district's identity links, which
-  the instance's admin does not have (SCHO-147). The backend's `EDUCATEOS_DISTRICT_API` is left out
-  too, since nothing routes to it.
+- **Bound by the connector and the guard.** `gatekeeper-educateos` binds `DistrictSchoolTools`
+  (SCHO-218). The AI call guard binds `DistrictGuardDirectory` as its `EDUCATEOS_DISTRICT`
+  (SCHO-283), and reads it once `AI_GUARD_CONFIG` says `contextSource: "district"` (with the
+  district's `districtId`, funding pools scoped to it, and every audience profile). A Workshop user
+  named `principal:<id>` (anyone who signed in after `PRINCIPAL_RESOLVER` was bound) is that
+  principal with no further step. An email-keyed user the principal migration aliased needs a link
+  a district administrator confirms: `POST /api/admin/workshop-user-links`
+  `{"workshopUser": "<their Workshop user ID>", "principalId": "<prn_…>"}` (list them with `GET`).
+  Link the operator's own accounts before switching the config, or their assistant goes off. The
+  backend's `EDUCATEOS_DISTRICT_API` is left out, since nothing routes to it.
 - **Email.** `DISTRICT_CONFIG.email.from` must be on a domain onboarded to Cloudflare Email Service
   in the account. Without `email`, notifications stay in-app and the digest is not mailed.
 - **ForgeGraph.** App `educateos-district`, stage `production`, one `cloudflare-workers` target

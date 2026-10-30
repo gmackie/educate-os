@@ -117,6 +117,15 @@ export const EDUCATEOS_GATEKEEPER_PACKAGE = "gatekeeper-educateos";
 export const EDUCATEOS_DISTRICT_BINDING: ServiceBinding =
     { binding: "EDUCATEOS_DISTRICT", service: DISTRICT_PACKAGE, entrypoint: "DistrictSchoolTools" };
 
+/**
+ * The AI call guard's `EDUCATEOS_DISTRICT`: the district Worker's `DistrictGuardDirectory`, so the
+ * guard learns who a Workshop user is from the district's records (`contextSource: "district"`)
+ * rather than a list in its config (SCHO-283). Principal-keyed Workshop users need no link; the
+ * email-keyed users the principal migration aliased need one an administrator confirms.
+ */
+export const GUARD_DISTRICT_BINDING: ServiceBinding =
+    { binding: "EDUCATEOS_DISTRICT", service: DISTRICT_PACKAGE, entrypoint: "DistrictGuardDirectory" };
+
 /** One long-lived instance: where it runs and the account resources its Workers bind. */
 export interface ProductionInstance {
   /** The public hostname: the router's custom domain. Every other URL derives from it. */
@@ -297,9 +306,16 @@ function asDistrict(
   withVars(DISTRICT_PACKAGE, config, { LTI_TOOL_ORIGIN: `https://${hostnames[0]}`, ...vars });
 }
 
+/**
+ * How a phone signs in to a one-origin instance's district without a computer (SCHO-283): the
+ * district's own `/connect-phone`, behind the instance's Access with its Google login. A person's
+ * Access identity is the same whichever login they pick, so this names the one they will use.
+ */
+const ONE_ORIGIN_PHONE_SIGN_IN = [{ id: "google", label: "Google" }];
+
 /** The public school manifest's settings (`SCHOOL_MANIFEST`, ADR-0014) of a district at `origin`. */
-function schoolManifestVar(origin: string, ai: boolean): string {
-  return JSON.stringify({ origin, features: { ai } });
+function schoolManifestVar(origin: string, ai: boolean, signIn?: { id: string; label: string }[]): string {
+  return JSON.stringify({ origin, ...signIn ? { signIn } : {}, features: { ai } });
 }
 
 /**
@@ -497,14 +513,14 @@ export function buildProductionConfigs({
       // Preferred by the guard over HALL_MONITOR_URL (src/hall-monitor.ts), so that var is not set.
       const hallMonitor: ServiceBinding =
           { binding: "HALL_MONITOR", service: instance.aiGuard.hallMonitorService };
-      config.services = [...config.services ?? [], hallMonitor];
+      config.services = [...config.services ?? [], hallMonitor, ...instance.district ? [GUARD_DISTRICT_BINDING] : []];
       withVars(pkgName, config, vars);
     } else if (pkgName === DISTRICT_PACKAGE && instance.district) {
       const hostnames = [instance.district.hostname, ...instance.district.aliases ?? []];
       if (oneOrigin) {
         // Behind the router, at no hostname of its own. Its LTI Tool keeps the origin platforms
         // registered, which the router redirects to the one origin with method and body kept.
-        asDistrict(config, hostnames, { SCHOOL_MANIFEST: schoolManifestVar(baseUrl, true), ...vars }, { routed: false });
+        asDistrict(config, hostnames, { SCHOOL_MANIFEST: schoolManifestVar(baseUrl, true, ONE_ORIGIN_PHONE_SIGN_IN), ...vars }, { routed: false });
       } else {
         asDistrict(config, hostnames, vars);
       }

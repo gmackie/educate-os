@@ -161,7 +161,11 @@ test("the guard runs its production entrypoint and cron, reaching Hall Monitor b
   assert.notEqual(guard.main, AI_GUARD_DEV_MAIN);
   assert.equal(guard.main, ".wrangler/validate/src/worker.ts");
   assert.deepEqual(guard.triggers, { crons: ["17 3 * * *"] });
-  assert.deepEqual(guard.services, [{ binding: "HALL_MONITOR", service: "hall-monitor" }]);
+  // With a district, the guard reads who people are from it (SCHO-283).
+  assert.deepEqual(guard.services, [
+    { binding: "HALL_MONITOR", service: "hall-monitor" },
+    { binding: "EDUCATEOS_DISTRICT", service: "schoolos-district-worker", entrypoint: "DistrictGuardDirectory" },
+  ]);
   assert.equal(guard.vars?.HALL_MONITOR_URL, undefined, "the service binding is preferred");
   assert.equal(guard.vars?.HALL_MONITOR_ISSUER, "educateos");
   // A secret: it names the admin's Workshop user, and this repository is public.
@@ -184,13 +188,13 @@ test("the district Worker has its own custom domains, serves the UIs as assets a
   assert.deepEqual(district.vars, { LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io" });
   assert.deepEqual(district.triggers, { crons: ["7 * * * *", "0 14 * * SUN"] });
   assert.deepEqual(district.send_email, [{ name: "SEND_EMAIL" }]);
-  // Only the EducateOS connector binds it (SCHO-218), and the backend for its principal bindings
-  // (SCHO-259); the guard keeps its configured directory (SCHO-147), and the backend's
-  // EDUCATEOS_DISTRICT_API is left out, since nothing routes to it.
+  // The EducateOS connector binds it (SCHO-218), the backend for its principal bindings (SCHO-259)
+  // and the guard for its directory (SCHO-283); the backend's EDUCATEOS_DISTRICT_API is left out,
+  // since nothing routes to it.
   for (const [pkgName, config] of build(TWO_HOSTS)) {
     const bindings = config.services?.filter(({ service }) =>
       service === DISTRICT_PACKAGE || service === district.name).map(({ binding }) => binding) ?? [];
-    assert.deepEqual(bindings, pkgName === EDUCATEOS_GATEKEEPER_PACKAGE ? ["EDUCATEOS_DISTRICT"]
+    assert.deepEqual(bindings, pkgName === EDUCATEOS_GATEKEEPER_PACKAGE || pkgName === AI_GUARD_PACKAGE ? ["EDUCATEOS_DISTRICT"]
         : pkgName === "workshop-backend" ? ["PRINCIPAL_MIGRATION"] : [], pkgName);
   }
 });
@@ -463,13 +467,14 @@ test("one origin: the district Worker gives up its hostnames, keeps its name, LT
   assert.deepEqual(district.assets, configFor(build(), DISTRICT_PACKAGE).assets);
   assert.deepEqual(district.vars, {
     LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
-    SCHOOL_MANIFEST: JSON.stringify({ origin: NORTHFIELD, features: { ai: true } }),
+    // Phones sign in at the district's /connect-phone with Google (SCHO-283).
+    SCHOOL_MANIFEST: JSON.stringify({ origin: NORTHFIELD, signIn: [{ id: "google", label: "Google" }], features: { ai: true } }),
   });
-  // Still reached only through its bindings: the router's DISTRICT, the connector's school tools
-  // and the backend's principal bindings.
+  // Still reached only through its bindings: the router's DISTRICT, the connector's school tools,
+  // the backend's principal bindings and the guard's directory (SCHO-283).
   for (const [pkgName, config] of build(ONE_ORIGIN)) {
     const binds = config.services?.some(({ service }) => service === "schoolos-district-worker") ?? false;
-    assert.equal(binds, ["router", EDUCATEOS_GATEKEEPER_PACKAGE, "workshop-backend"].includes(pkgName), pkgName);
+    assert.equal(binds, ["router", EDUCATEOS_GATEKEEPER_PACKAGE, "workshop-backend", AI_GUARD_PACKAGE].includes(pkgName), pkgName);
   }
 });
 
