@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { SchoolNavigation } from '@educateos/shell'
 import {
   ArrowLeft,
   Blueprint,
@@ -24,6 +25,7 @@ import {
 } from './SidebarWorkspaces'
 import SidebarUtilityStrip from './SidebarUtilityStrip'
 import { inNativeApp, returnToInstalls } from '../../features/native-app/nativeApp'
+import { useDistrictSidebar } from '../../features/district-frame/districtFrame'
 
 /**
  * The persistent left rail. Three pinned regions sandwich a single scrolling region of lists, so
@@ -45,7 +47,21 @@ export default function Sidebar({
   collapsed: boolean
   onToggleCollapsed: () => void
 }) {
-  const siteName = useSiteName()
+  const workshopName = useSiteName()
+  const district = useDistrictSidebar()
+  const siteName = district?.school.name ?? workshopName
+  const brand = (
+    <>
+      <SiteLogo size={20} className="shrink-0" srcOverride={district ? district.school.brand.logo ?? null : undefined}>
+        <Hexagon size={20} weight="bold" className="text-kumo-brand shrink-0" />
+      </SiteLogo>
+      {!collapsed && (
+        <span className="truncate text-[14px] leading-5 font-semibold tracking-[-0.25px] text-kumo-default">
+          {siteName}
+        </span>
+      )}
+    </>
+  )
   // Gatekeeper-served management apps the user can reach now (one per gatekeeper that provides a UI
   // and is connected / enabled for everyone). Disabled or not-yet-connected ones aren't returned, so
   // they simply don't appear. The set is fully dynamic — no gatekeeper is hardcoded.
@@ -73,16 +89,11 @@ export default function Sidebar({
           collapsed ? 'justify-center px-1.5' : 'justify-between gap-2 px-3',
         ].join(' ')}
       >
-        <Link to="/" aria-label={siteName} className="flex min-w-0 items-center gap-2">
-          <SiteLogo size={20} className="shrink-0">
-            <Hexagon size={20} weight="bold" className="text-kumo-brand shrink-0" />
-          </SiteLogo>
-          {!collapsed && (
-            <span className="truncate text-[14px] leading-5 font-semibold tracking-[-0.25px] text-kumo-default">
-              {siteName}
-            </span>
-          )}
-        </Link>
+        {district ? (
+          <a href={district.navigation[0]?.items[0]?.href ?? '/'} aria-label={siteName} className="flex min-w-0 items-center gap-2">{brand}</a>
+        ) : (
+          <Link to="/" aria-label={siteName} className="flex min-w-0 items-center gap-2">{brand}</Link>
+        )}
         {!collapsed && (
           <div className="flex items-center gap-0.5">
             <button
@@ -127,7 +138,7 @@ export default function Sidebar({
           <nav className="flex flex-col gap-0.5 px-2">
             <SidebarItem
               to="/"
-              label="Home"
+              label={district ? 'AI home' : 'Home'}
               icon={<House size={14} weight="regular" />}
               collapsed={collapsed}
             />
@@ -172,9 +183,14 @@ export default function Sidebar({
           <SidebarWorkspacesTools collapsed={collapsed} />
         </div>
 
-        {/* Scrolling middle: only the Favorites / Recent workspaces / Recent blueprints lists.
-            min-h-0 lets flex children compute scroll height correctly. */}
+        {/* School destinations share the workspace list's scroll area so long role menus cannot
+            push the pinned search and account controls out of reach. */}
         <div className="sidebar-scroll mt-1 min-h-0 flex-1 overflow-y-auto">
+          {district && (
+            <div className="border-b border-kumo-line px-2 py-3">
+              <SchoolNavigation groups={district.navigation} location={district.location} collapsed={collapsed} />
+            </div>
+          )}
           {appSections.map((app) => (
             <SidebarGatekeeperAppSection key={app.id} app={app} nav={app.nav ?? []} />
           ))}

@@ -1,7 +1,7 @@
 # Runbook: the schoolos.gmac.io production instance
 
 - Issues: SCHO-192 (the instance), SCHO-193 (the LMS-lite district), SCHO-214 (the Google
-  connector), SCHO-218 (the EducateOS connector).
+  connector), SCHO-218 (the EducateOS connector), SCHO-282 (the Clever connector).
 - Instance: <https://northfield.educateos.io> (Workshop at `/ai`; formerly <https://schoolos.gmac.io>), one long-lived EducateOS deployment on the gmacko Cloudflare
   account (`c07a7e704db1808e1fff91bed2b1cd49`), deployed by ForgeGraph.
 - Configs: `packages/<worker>/wrangler.production.jsonc`, generated and committed.
@@ -35,11 +35,12 @@ Every other Worker is reached only through the router.
 
 | Worker | Config | Binds |
 |---|---|---|
-| `router` | `packages/router/wrangler.production.jsonc` | `WORKSHOP_BACKEND`, `GATEKEEPER_{CONTEXT,GOOGLE,SCHEDULER,EDUCATEOS,WEBSEARCH}`, and the Access-mode frontend as `ASSETS` |
-| `workshop-backend` | `packages/workshop-backend/wrangler.production.jsonc` | The five gatekeepers' `GatekeeperVendor` entrypoints (context gets `props.sharingDomain` = the origin), `AI_CALL_GUARD` → `educateos-ai-guard#EducateOsAiCallGuard`, `WORKERS_AI`, KV `BLUEPRINTS` and `AVATARS`, R2 `BLUEPRINT_CONTENT` (`schoolos-prod-blueprint-content`), `BROWSER`, `LOADER` |
+| `router` | `packages/router/wrangler.production.jsonc` | `WORKSHOP_BACKEND`, `GATEKEEPER_{CLEVER,CONTEXT,GOOGLE,SCHEDULER,EDUCATEOS,WEBSEARCH}`, and the Access-mode frontend as `ASSETS` |
+| `workshop-backend` | `packages/workshop-backend/wrangler.production.jsonc` | The six gatekeepers' `GatekeeperVendor` entrypoints (context gets `props.sharingDomain` = the origin), `AI_CALL_GUARD` → `educateos-ai-guard#EducateOsAiCallGuard`, `WORKERS_AI`, KV `BLUEPRINTS` and `AVATARS`, R2 `BLUEPRINT_CONTENT` (`schoolos-prod-blueprint-content`), `BROWSER`, `LOADER` |
 | `gatekeeper-context` | `packages/gatekeeper-context/wrangler.production.jsonc` | KV `CONTEXT_COLLECTIONS` |
 | `gatekeeper-google` | `packages/gatekeeper-google/wrangler.production.jsonc` | none (its Durable Objects need no binding); the OAuth client is its `CLIENT_ID` and `CLIENT_SECRET` secrets. See [The Google connector](#the-google-connector). |
 | `gatekeeper-scheduler` | `packages/gatekeeper-scheduler/wrangler.production.jsonc` | none |
+| `gatekeeper-clever` | `packages/gatekeeper-clever/wrangler.production.jsonc` | none; vars point it at the demo's Clever fake. See [The Clever connector](#the-clever-connector). |
 | `gatekeeper-educateos` | `packages/gatekeeper-educateos/wrangler.production.jsonc` | `EDUCATEOS_DISTRICT` → `educateos-district-worker#DistrictSchoolTools`. See [The EducateOS connector](#the-educateos-connector). |
 | `gatekeeper-websearch` | `packages/gatekeeper-websearch/wrangler.production.jsonc` | `AI`, with `CF_AI_GATEWAY=default` |
 | `educateos-ai-guard` | `packages/educateos-ai-guard/wrangler.production.jsonc` | `HALL_MONITOR` → `hall-monitor` (already in the account). It runs its production entrypoint `src/worker.ts` with the nightly `17 3 * * *` reconciliation cron. |
@@ -68,8 +69,9 @@ reconciliation only records snapshots.
 | `educateos-ai-guard` | `HALL_MONITOR_SIGNING_KEY` (private Ed25519 or P-256 JWK, with a `kid`), `AI_GUARD_CONFIG` (the example config with the admin's Access email in place of `admin@example.com`, minified) | `educateos-ai-guard` |
 | `schoolos-district-worker` | `DISTRICT_CONFIG` (the demo district's seed, minified), `CF_ACCESS_AUD` (comma-separated: the district Access application's audience, then the instance's; see [The EducateOS connector](#the-educateos-connector)), `CF_ACCESS_ISS` | `educateos-district` |
 | `gatekeeper-google` | `CLIENT_ID` and `CLIENT_SECRET` (the educateos-classroom-demo OAuth web client) | `educateos-google` |
+| `gatekeeper-clever` | `CLIENT_ID` and `CLIENT_SECRET` (Cedar Valley's Clever SSO client in the fakes Worker), `CLEVER_DISTRICT_TOKENS` | `educateos-clever` |
 
-The guard, the district, the Google connector and the EducateOS connector are each their own ForgeGraph app because
+The guard, the district, the Google, Clever and EducateOS connectors are each their own ForgeGraph app because
 ForgeGraph's `syncSecrets` copies every secret of a stage onto each target that sets it: in one app,
 the backend would also receive the guard's signing key, the district would receive the backend's
 Access audience in place of its own, and the backend would receive the Google OAuth client. The
@@ -170,6 +172,7 @@ version (`wrangler deployments list`).
 | `packages/gatekeeper-websearch` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc` (Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/gatekeeper-educateos` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && if [ -f build-app.ts ]; then pnpm exec vp run --no-cache build:app; fi` (the School app, SCHO-218; the guard kept commits from before it deployable. Wrangler's own build runs capnweb-validate; its `types.txt` is committed) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/gatekeeper-google` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache build:configurator` (the configurator frames; Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
+| `packages/gatekeeper-clever` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache build:configurator` (as Google's) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/educateos-ai-guard` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc` (Wrangler's own build runs capnweb-validate) | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/workshop-backend` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && pnpm exec vp run --no-cache -F @gadgets/typed-storage build && pnpm exec vp run --no-cache build:bundled-blueprints` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
 | `packages/educateos-district-worker` | `node ../../scripts/production/stamp-commit.ts wrangler.production.jsonc && VITE_CF_ACCESS_MODE=true pnpm exec vp run --no-cache -F @educateos/student-ui build && EDUCATEOS_UI_BASE=/admin/ pnpm exec vp run --no-cache -F @educateos/admin-ui build && EDUCATEOS_UI_BASE=/teach/ pnpm exec vp run --no-cache -F @educateos/teacher-ui build && node ../../scripts/production/assemble-district-ui.ts` | `pnpm exec wrangler deploy -c wrangler.production.jsonc` |
@@ -183,7 +186,7 @@ that the backend rejects. The release build sets it the same way (`build-release
 A service binding needs its target to exist, so deploy in tiers:
 
 1. `educateos-district-worker`, which binds no other Worker. `hall-monitor` must already exist.
-2. `gatekeeper-context`, `gatekeeper-google`, `gatekeeper-scheduler`, `gatekeeper-educateos`,
+2. `gatekeeper-clever`, `gatekeeper-context`, `gatekeeper-google`, `gatekeeper-scheduler`, `gatekeeper-educateos`,
    `gatekeeper-websearch` and `educateos-ai-guard`. They can go in parallel. `gatekeeper-educateos`
    binds the district Worker, so it needs step 1.
 3. `workshop-backend`, after setting its secrets.
@@ -278,11 +281,16 @@ district Workers at their own `<slug>.educateos.io`; see [the demo districts run
   `forge secret set DISTRICT_CONFIG --stage production --stdin` for app `educateos-district`.
   `__tests__/demo-config.test.ts` in the package checks that the example parses and fits in a
   secret. The seed is read only on the object's first start.
-- **Bound by the connector only.** `gatekeeper-educateos` binds `DistrictSchoolTools` (SCHO-218).
-  The guard keeps its configured directory: binding its `EDUCATEOS_DISTRICT` to
-  `DistrictGuardDirectory` would resolve Workshop users through the district's identity links, which
-  the instance's admin does not have (SCHO-147). The backend's `EDUCATEOS_DISTRICT_API` is left out
-  too, since nothing routes to it.
+- **Bound by the connector and the guard.** `gatekeeper-educateos` binds `DistrictSchoolTools`
+  (SCHO-218). The AI call guard binds `DistrictGuardDirectory` as its `EDUCATEOS_DISTRICT`
+  (SCHO-283), and reads it once `AI_GUARD_CONFIG` says `contextSource: "district"` (with the
+  district's `districtId`, funding pools scoped to it, and every audience profile). A Workshop user
+  named `principal:<id>` (anyone who signed in after `PRINCIPAL_RESOLVER` was bound) is that
+  principal with no further step. An email-keyed user the principal migration aliased needs a link
+  a district administrator confirms: `POST /api/admin/workshop-user-links`
+  `{"workshopUser": "<their Workshop user ID>", "principalId": "<prn_…>"}` (list them with `GET`).
+  Link the operator's own accounts before switching the config, or their assistant goes off. The
+  backend's `EDUCATEOS_DISTRICT_API` is left out, since nothing routes to it.
 - **Email.** `DISTRICT_CONFIG.email.from` must be on a domain onboarded to Cloudflare Email Service
   in the account. Without `email`, notifications stay in-app and the digest is not mailed.
 - **ForgeGraph.** App `educateos-district`, stage `production`, one `cloudflare-workers` target
@@ -331,6 +339,38 @@ Sheets, Slides, Calendar, Chat and BigQuery, through each user's own Google acco
   before this change is on `main`, with `--ref` at the change's commit). Only then may
   `workshop-backend` and `router` deploy with their new `GATEKEEPER_GOOGLE` binding; a deploy of
   either before the Worker exists is rejected.
+
+## The Clever connector
+
+SCHO-282 installs the Workshop's Clever connector, `gatekeeper-clever` (package
+`@educateos/gatekeeper-clever`), mounted at `https://northfield.educateos.io/gatekeeper/clever`.
+A person signs in with Clever; agents then read the sections they teach or are enrolled in, their
+rosters, and LMS Connect assignments and grades, with every change waiting for approval (see the
+package README).
+
+- **Which Clever.** The demo has no real Clever district. The connector is pointed at the provider
+  fakes Worker's Cedar Valley district (`sites/educateos-demo-fakes`): `CLEVER_API_BASE` and
+  `CLEVER_OAUTH_BASE` are both `https://fakes.demo.educateos.io/cedarvalley/clever`. The fake has no
+  sign-in page, so `CLEVER_LOGIN_HINT_FORM=true` makes the connector ask who to sign in as and pass
+  it as `login_hint`. Anyone who can reach the connect flow can therefore be any of Cedar Valley's
+  synthetic people, administrators included; that is the fakes' design and holds no real data.
+- **Redirect URI.** `https://northfield.educateos.io/gatekeeper/clever/oauth`, listed in the fakes
+  Worker's `OIDC_REDIRECT_URIS`. As for Google, it lands behind the instance's Access application,
+  where the user's browser already has a session.
+- **Secrets** (app `educateos-clever`, stage `production`, all with `--stdin`):
+  `CLIENT_ID` and `CLIENT_SECRET` are `clever.oidc.clientId` and `clever.oidc.clientSecret` from the
+  fakes Worker's `GET /_admin/cedarvalley/credentials`; `CLEVER_DISTRICT_TOKENS` is
+  `{"<district id>":"<clever.districtToken>"}`, the district ID from `GET <base>/v3.1/districts`
+  with that token. All of them derive from the fakes Worker's `FAKES_SECRET`: rotating it means
+  setting these again.
+- **ForgeGraph.** App `educateos-clever`, stage `production`, one `cloudflare-workers` target
+  `gatekeeper-clever` on hetzner-fg: `workerName` `gatekeeper-clever`, `appDir`
+  `packages/gatekeeper-clever`, `configPath` `packages/gatekeeper-clever/wrangler.production.jsonc`,
+  the `buildCommand` and `deployCommand` in the table above, `syncSecrets: true`, and
+  `healthCheckUrl` `https://northfield.educateos.io/healthz`.
+- **Bring-up.** As for Google: set the secrets, deploy `gatekeeper-clever` first (`--ref` at the
+  change's commit, before it is on `main`), and only then let `workshop-backend` and `router` deploy
+  with their new `GATEKEEPER_CLEVER` binding.
 
 ## Google sign-in
 
@@ -405,7 +445,9 @@ auto-provisioned and takes no OAuth client.
 The native session handoff returns to `https://mobile.educateos.io/oauthredirect`, an app-owned
 HTTPS endpoint. The phone must have both the `applinks:mobile.educateos.io` and
 `webcredentials:mobile.educateos.io` associated-domain entitlements. The callback host publishes
-both associations for `P4SWQXAB5H.io.educateos.mobile` without Cloudflare Access protection.
+both associations for `P4SWQXAB5H.io.educateos.mobile` and the preview and dev builds
+(`P4SWQXAB5H.com.gmacko.educateos.preview`, `P4SWQXAB5H.com.gmacko.educateos.dev`) without
+Cloudflare Access protection.
 
 After changing this callback, deploy both `workshop-backend` (the encrypted session redirect) and
 `router` (the confirmation UI and frontend auth callback). Building a new phone app alone does not

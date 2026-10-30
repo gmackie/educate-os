@@ -7,11 +7,12 @@ served from `apps/mobile/app-links`.
 
 ## What it serves
 
-- `/.well-known/apple-app-site-association`: the real Apple team and bundle identity, the exact app
+- `/.well-known/apple-app-site-association`: the real Apple team and every variant's bundle ID, the exact app
   paths below, and `webcredentials` for the HTTPS sign-in callback (static file).
-- `/.well-known/assetlinks.json`: the Android Digital Asset Links statement for
-  `io.educateos.mobile` (`app-links.ts`), listing the SHA-256 of the EAS keystore that signs the
-  preview APKs (SCHO-262). After Play App Signing enrollment, add Google's app signing certificate
+- `/.well-known/assetlinks.json`: the Android Digital Asset Links statements (`app-links.ts`), one
+  per build variant: `io.educateos.mobile` (store), `com.gmacko.educateos.preview` and
+  `com.gmacko.educateos.dev` (SCHO-265), each listing the SHA-256 of the EAS keystore that signs it
+  (SCHO-262). After Play App Signing enrollment, add Google's app signing certificate
   too (Play Console > Test and release > App integrity), or store installs fail verification.
 - `/j`: the pairing QR (`/j#o=<district origin>&r=<room>&s=<secret>`). The room lives on the
   district's own `/api/pair/*` (pairing v2, docs/educateos/mobile.md); this host only opens the app

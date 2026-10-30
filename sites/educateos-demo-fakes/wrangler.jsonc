@@ -35,7 +35,10 @@
     // Access callback here. They have no sign-in page: `login_hint` signs in whoever the caller
     // names, administrators included, so an Access team trusting one would admit anyone to its
     // applications. The Worker refuses to serve while any URI here is on *.cloudflareaccess.com.
-    "OIDC_REDIRECT_URIS": "https://{slug}.educateos.io/api/sso/callback",
+    //
+    // The second is the demo Workshop's Clever connector (gatekeeper-clever, SCHO-282), which signs
+    // Cedar Valley's people in against the `clever` fake.
+    "OIDC_REDIRECT_URIS": "https://{slug}.educateos.io/api/sso/callback,https://northfield.educateos.io/gatekeeper/clever/oauth",
     "RATE_LIMIT_PER_MINUTE": "600"
   },
   // One object per demo district, reached through ctx.exports; no binding is needed.

@@ -193,7 +193,7 @@ function AuthenticatedShell({
           <Outlet />
         </main>
       ) : frame.status === 'framed' ? (
-        // On a district origin the school's shell frames the Workshop's own (SCHO-260).
+        // School navigation and branding live in the Workshop's existing AI sidebar.
         <DistrictFrame manifest={frame.manifest}>
           <AppShell>
             <Outlet />

@@ -4,69 +4,19 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type AnchorHTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactElement,
   type ReactNode,
 } from "react";
 import {
-  AddressBookIcon,
-  ArrowSquareOutIcon,
-  ArrowsClockwiseIcon,
-  BooksIcon,
-  CalendarBlankIcon,
-  CaretUpDownIcon,
-  ChalkboardTeacherIcon,
-  ChartBarIcon,
-  CoinsIcon,
-  DeviceMobileIcon,
-  DevicesIcon,
-  ExamIcon,
-  HouseIcon,
-  ListIcon,
-  LockSimpleIcon,
-  PaletteIcon,
-  ShieldCheckIcon,
-  SignOutIcon,
-  SparkleIcon,
-  SquaresFourIcon,
-  SunHorizonIcon,
-  TableIcon,
-  TrayIcon,
-  UserListIcon,
-  UsersThreeIcon,
-  XIcon,
-  type Icon,
+  CaretUpDownIcon, ChalkboardTeacherIcon, DeviceMobileIcon, DevicesIcon,
+  ListIcon, SignOutIcon, XIcon,
 } from "@phosphor-icons/react";
 import { ThemeModeButton } from "@gadgets/ui/theme";
 import type { SchoolManifest } from "./manifest.ts";
-import { ROLE_LABELS, activeItemId, navigationFor, type NavGroup, type NavIcon, type ShellFeatures, type ShellLocation, type ShellRole } from "./navigation.ts";
+import { ROLE_LABELS, navigationFor, type NavGroup, type ShellFeatures, type ShellLocation, type ShellRole } from "./navigation.ts";
+import { SchoolNavigation, type ShellLinkProps } from "./SchoolNavigation.tsx";
 import { useBrandAccent } from "./theme.ts";
-
-const ICONS: Record<NavIcon, Icon> = {
-  home: HouseIcon,
-  classes: BooksIcon,
-  calendar: CalendarBlankIcon,
-  inbox: TrayIcon,
-  grades: ExamIcon,
-  ai: SparkleIcon,
-  "my-space": LockSimpleIcon,
-  today: SunHorizonIcon,
-  gradebook: TableIcon,
-  studio: PaletteIcon,
-  family: UsersThreeIcon,
-  dashboard: SquaresFourIcon,
-  roster: UserListIcon,
-  guardians: AddressBookIcon,
-  policies: ShieldCheckIcon,
-  budgets: CoinsIcon,
-  usage: ChartBarIcon,
-  rollover: ArrowsClockwiseIcon,
-  external: ArrowSquareOutIcon,
-};
-
-/** What a shell link is drawn with. Plain anchors by default; an SPA may route its own paths. */
-export type ShellLinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & { href: string };
 
 const PlainLink = (props: ShellLinkProps) => <a {...props} />;
 
@@ -165,71 +115,6 @@ const Brand = ({ school, href }: { school: SchoolManifest; href: string }) => {
 
 const ITEM_CLASS =
   "flex items-center gap-3 rounded-md px-2 py-2 text-kumo-default no-underline outline-none hover:bg-kumo-tint focus-visible:ring-2 focus-visible:ring-kumo-focus aria-[current=page]:bg-kumo-tint aria-[current=page]:font-semibold aria-[current=page]:text-kumo-brand";
-
-const Navigation = ({
-  groups,
-  location,
-  badges,
-  renderLink: LinkComponent,
-  onNavigate,
-}: {
-  groups: NavGroup[];
-  location: ShellLocation;
-  badges: Partial<Record<string, number>>;
-  renderLink: (props: ShellLinkProps) => ReactElement;
-  onNavigate?: () => void;
-}) => {
-  const baseId = useId();
-  const active = activeItemId(groups, location);
-  // No landmark until there is somewhere to go: an empty navigation is only noise to a screen reader.
-  if (groups.every((group) => group.items.length === 0)) return null;
-  return (
-    <nav aria-label="Main" className="flex flex-col gap-4">
-      {groups.map((group) => {
-        if (group.items.length === 0) return null;
-        const labelId = `${baseId}-${group.id}`;
-        return (
-          <div key={group.id} className="flex flex-col gap-1">
-            {group.label === undefined ? null : (
-              <p id={labelId} className="px-2 text-xs font-medium uppercase tracking-wide text-kumo-subtle">
-                {group.label}
-              </p>
-            )}
-            <ul className="flex flex-col gap-0.5" {...(group.label === undefined ? {} : { "aria-labelledby": labelId })}>
-              {group.items.map((item) => {
-                const Icon = ICONS[item.icon];
-                const count = badges[item.id] ?? 0;
-                return (
-                  <li key={item.id}>
-                    <LinkComponent
-                      href={item.href}
-                      className={ITEM_CLASS}
-                      {...(item.id === active ? { "aria-current": "page" as const } : {})}
-                      {...(item.external === true ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                      {...(onNavigate === undefined ? {} : { onClick: onNavigate })}
-                    >
-                      <Icon aria-hidden size={20} className="shrink-0" />
-                      <span className="flex-1 truncate">{item.label}</span>
-                      {count > 0 ? (
-                        <>
-                          <span aria-hidden className="rounded-full bg-kumo-brand px-1.5 text-xs font-semibold text-white">
-                            {count}
-                          </span>
-                          <span className="sr-only">{`, ${count} new`}</span>
-                        </>
-                      ) : null}
-                      {item.external === true ? <span className="sr-only"> (opens in a new tab)</span> : null}
-                    </LinkComponent>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        );
-      })}
-    </nav>
-  );
-};
 
 const AccountMenu = ({
   user,
@@ -387,7 +272,7 @@ export const SchoolShell = ({
 
   const sidebar = (onNavigate?: () => void) => (
     <div className="flex h-full flex-col gap-4 overflow-y-auto p-3">
-      <Navigation groups={groups} location={here} badges={badges} renderLink={renderLink} {...(onNavigate === undefined ? {} : { onNavigate })} />
+      <SchoolNavigation groups={groups} location={here} badges={badges} renderLink={renderLink} {...(onNavigate === undefined ? {} : { onNavigate })} />
       <div className="mt-auto">
         <AccountMenu user={user} role={role} school={school} account={account} renderLink={renderLink} onAnnounce={onAnnounce} />
       </div>
