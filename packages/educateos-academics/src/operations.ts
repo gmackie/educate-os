@@ -41,6 +41,8 @@ export interface AcademicOperation {
   description: string;
   /** The operation's whole input. Unknown fields are rejected. */
   input: z.ZodType;
+  /** True when the operation only reads the directory: an agent's call needs no confirmation. */
+  reads?: boolean;
   /** Runs the operation with input that `input` has already parsed. */
   run(directory: AcademicDirectory, caller: Caller, input: unknown): Promise<unknown>;
 }
@@ -49,6 +51,7 @@ function defineOperation<S extends z.ZodType>(definition: {
   name: string;
   description: string;
   input: S;
+  reads?: boolean;
   run: (directory: AcademicDirectory, caller: Caller, input: z.output<S>) => Promise<unknown>;
 }): AcademicOperation {
   return definition as AcademicOperation;
@@ -65,12 +68,14 @@ const withEnrollment = z.strictObject({ enrollmentId: EnrollmentId });
 export const ACADEMIC_OPERATIONS = {
   list_schools: defineOperation({
     name: "list_schools",
+    reads: true,
     description: "List the schools you may see.",
     input: none,
     run: (d, c) => d.listSchools(c),
   }),
   get_school: defineOperation({
     name: "get_school",
+    reads: true,
     description: "Get one school.",
     input: withSchool,
     run: (d, c, i) => d.getSchool(c, i.schoolId),
@@ -89,12 +94,14 @@ export const ACADEMIC_OPERATIONS = {
   }),
   list_terms: defineOperation({
     name: "list_terms",
+    reads: true,
     description: "List academic terms, optionally only those in one state.",
     input: z.strictObject({ state: TermState.optional() }),
     run: (d, c, i) => d.listTerms(c, i),
   }),
   get_term: defineOperation({
     name: "get_term",
+    reads: true,
     description: "Get one academic term.",
     input: withTerm,
     run: (d, c, i) => d.getTerm(c, i.termId),
@@ -119,12 +126,14 @@ export const ACADEMIC_OPERATIONS = {
   }),
   list_courses: defineOperation({
     name: "list_courses",
+    reads: true,
     description: "List catalog courses.",
     input: none,
     run: (d, c) => d.listCourses(c),
   }),
   get_course: defineOperation({
     name: "get_course",
+    reads: true,
     description: "Get one catalog course.",
     input: withCourse,
     run: (d, c, i) => d.getCourse(c, i.courseId),
@@ -149,12 +158,14 @@ export const ACADEMIC_OPERATIONS = {
   }),
   list_offerings: defineOperation({
     name: "list_offerings",
+    reads: true,
     description: "List course offerings, by school, term or a principal's active enrollments.",
     input: OfferingFilter,
     run: (d, c, i) => d.listOfferings(c, i),
   }),
   get_offering: defineOperation({
     name: "get_offering",
+    reads: true,
     description: "Get one course offering.",
     input: withOffering,
     run: (d, c, i) => d.getOffering(c, i.offeringId),
@@ -179,24 +190,28 @@ export const ACADEMIC_OPERATIONS = {
   }),
   get_roster: defineOperation({
     name: "get_roster",
+    reads: true,
     description: "List the active enrollments of a course offering.",
     input: withOffering,
     run: (d, c, i) => d.roster(c, i.offeringId),
   }),
   list_enrollments: defineOperation({
     name: "list_enrollments",
+    reads: true,
     description: "List a principal's enrollments.",
     input: z.strictObject({ principalId: PrincipalId }),
     run: (d, c, i) => d.listEnrollments(c, i.principalId),
   }),
   my_enrollments: defineOperation({
     name: "my_enrollments",
+    reads: true,
     description: "List your own enrollments.",
     input: none,
     run: (d, c) => d.listEnrollments(c, c.principal.principalId),
   }),
   get_enrollment: defineOperation({
     name: "get_enrollment",
+    reads: true,
     description: "Get one enrollment.",
     input: withEnrollment,
     run: (d, c, i) => d.getEnrollment(c, i.enrollmentId),

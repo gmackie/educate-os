@@ -282,7 +282,14 @@ describe("the district Worker", () => {
     expect(admin).toEqual({ principalId: NF.admin, districtId: NORTHFIELD.district.id });
     expect(await env.TOOLS.authenticate(new Request("https://district.example/"))).toBeNull();
 
-    // On the agent channel every directory operation (`invoke-tool`) waits for a person.
+    // On the agent channel a read answers at once (SCHO-285): it changes nothing to confirm.
+    const teacher = await env.TOOLS.authenticate(new Request("https://district.example/", { headers: { "cf-access-jwt-assertion": await signIn(NF.rivera) } }));
+    const mine = await env.TOOLS.callTool(teacher!, "my_enrollments", {});
+    expect(mine).toMatchObject({ status: "ok" });
+    expect(JSON.stringify((mine as { value: unknown }).value)).toContain(NF.eng9);
+    expect(await env.TOOLS.callTool(admin!, "list_terms", {})).toMatchObject({ status: "ok" });
+
+    // Every directory change waits for a person.
     const queued = await env.TOOLS.callTool(admin!, "create_term", { name: "Spring 2027", startsOn: "2027-01-25", endsOn: "2027-06-11" });
     expect(queued).toMatchObject({ status: "approval-required" });
     const approvalId = (queued as { approvalId: string }).approvalId;
