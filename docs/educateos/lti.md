@@ -252,6 +252,7 @@ Each offering has a `GradeRoute`, set by an administrator; there is no default:
 | `local` | none | Refused (`conflict`). EducateOS keeps the gradebook; nothing is sent anywhere. |
 | `lms:<platform>` | `via: "lti-ags"`, the context's services | Publishes approved grades through AGS. |
 | `lms:<platform>` | `via: "google-classroom"`, a course ID | Publishes approved grades through `ClassroomProvider`. |
+| `lms:<platform>` | `via: "clever-lms-connect"`, a Clever district and section ID, optional column-to-assignment map | Publishes approved grades through Clever LMS Connect (built to the spec, not tested against Clever). |
 
 `GradePassback.publish({ offeringId, studentId, column, gradeVersion, scoreGiven, scoreMaximum })`
 publishes only if all of these hold (threat T10, "no surprise gradebook writes"):
@@ -292,6 +293,34 @@ There is no real Google client and nothing in EducateOS calls Google. The real i
 on verified Google API access (OAuth verification of the Classroom scopes) and Google's partner
 terms. Classroom only lets a project grade coursework the same project created, so a real client
 will also create the coursework it grades. Tests use an in-memory fake provider.
+
+## Clever LMS Connect (SCHO-278)
+
+**Built to Clever's published API v3.1 spec only; not tested against Clever.** LMS Connect needs a
+Clever Complete agreement, which EducateOS does not have. The sources are the OpenAPI file
+(github.com/Clever/swagger-api, `full-v3.yml`, version 3.1.0) and the
+[LMS Connect quickstart](https://dev.clever.com/docs/clever-lms-connect). The tests run against
+`CleverDataFake` in `@educateos/provider-fakes`, which follows the same spec.
+
+LMS Connect writes into the district LMS (Classroom, Canvas, Schoology) behind a Clever section.
+`CleverLmsConnectClient` calls `GET /sections/{id}`, `POST /sections/{id}/assignments`,
+`GET /sections/{id}/assignments/{assignment_id}` and
+`PATCH /sections/{id}/assignments/{assignment_id}/submissions/{user_id}` with the district-app
+token of the route's Clever district. `CleverLmsConnectAdapter` creates points assignments for an
+offering whose route is a Clever route. `CleverLmsConnectGradeSink` publishes through
+`GradePassback`:
+
+- A column is the Clever assignment the route's `assignments` maps it to, or the assignment with the
+  column as its ID. It must be in the route's section, out of `points`, with `points_possible` equal
+  to the approved maximum. Anything else is refused, not rescaled.
+- The student is found by their identity link under `https://clever.com` (the issuer Clever SSO and
+  the Clever roster import share, the subject being the Clever user ID), and must be a student on
+  the section's Clever roster. The section must belong to the route's district.
+- The grade is `grade_points`, the comment is `grade_comment`. The submission `state` is not
+  changed: returning work stays the teacher's action, as with Classroom. Re-sending the same points
+  leaves the same grade.
+- Clever errors become `EducateOsError`s: 400 `validation-failed`, 401 and 403 `forbidden`, 404
+  `not-found` (or `forbidden` for an assignment outside the section), anything else `unavailable`.
 
 # District wiring (SCHO-60, SCHO-76)
 

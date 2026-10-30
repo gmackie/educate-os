@@ -227,8 +227,13 @@ export interface DeployablePackage {
   name: string;
   /** Absolute path to the package directory. */
   dir: string;
-  /** The package's parsed wrangler.jsonc. */
+  /** The package's parsed wrangler.jsonc, or a release component's config template. */
   config: WranglerConfig;
+  /**
+   * A {@link RELEASE_COMPONENTS} package only: the config template's file name, which the bundle is
+   * built with (`wrangler deploy -c`), and the build that produces its own static assets.
+   */
+  component?: ReleaseComponent;
 }
 
 /** One user-supplied value the deploy wizard collects before installing a gatekeeper or service. */
@@ -247,7 +252,16 @@ export interface DeployInput {
   setupSteps?: string[];
   /** Redirect URI to show the user, with `$PUBLIC_BASE_URL` still unresolved. */
   redirectUriTemplate?: string;
+  /**
+   * Secrets only: a random key nobody needs to know, which the deploy service generates when the
+   * worker does not have one yet ({@link GENERATED_SECRET_BYTES} random bytes, base64url) and never
+   * rotates. The wizard does not ask for it. Such as the district's `DEVICE_TOKEN_SECRET` (SCHO-261).
+   */
+  generated?: true;
 }
+
+/** The size of a {@link DeployInput.generated} secret: 32 random bytes, base64url-encoded. */
+export const GENERATED_SECRET_BYTES = 32;
 
 /** A rendered binding in a worker's manifest entry; account-specific values are placeholders. */
 export type ManifestBinding = { type: string; name: string } & Record<string, unknown>;
@@ -257,9 +271,11 @@ export interface WorkerEntry {
   /**
    * Which role this worker plays in a deployment. A `service` is an optional deployment-provided
    * service the backend binds by a fixed name (see `backendBinding`), such as the EducateOS AI call
-   * guard bound as `AI_CALL_GUARD`.
+   * guard bound as `AI_CALL_GUARD`. `admin` is the open-source EducateOS admin (SCHO-263), a
+   * standalone Worker on its own hostname that the district installer adds on request; nothing
+   * binds it.
    */
-  kind: "backend" | "router" | "gatekeeper" | "service";
+  kind: "backend" | "router" | "gatekeeper" | "service" | "admin";
   /** Gatekeepers only: the path segment the router routes `/gatekeeper/<shortName>/*` on. */
   shortName?: string;
   /**
@@ -299,12 +315,17 @@ export interface WorkerEntry {
     entrypoint?: string;
     propsByPackage: Record<string, Record<string, unknown>>;
   };
-  /** Static-asset serving config, with one manifest per asset variant. */
+  /**
+   * Static-asset serving config, with one manifest per asset variant and the build env each variant
+   * was built with (see {@link ASSET_VARIANTS}).
+   */
   assetsConfig?: {
     not_found_handling: string | undefined;
     run_worker_first: string[] | undefined;
-    variants: Record<string, { manifest: Record<string, AssetManifestEntry> }>;
+    variants: Record<string, { manifest: Record<string, AssetManifestEntry>; buildEnv: Record<string, string> }>;
   };
+  /** Router only: how the router serves a district's one origin (ADR-0014). See {@link DISTRICT_ORIGIN}. */
+  districtOrigin?: DistrictOriginWiring;
   /** Values the deploy wizard collects before installing. Absent for core workers. */
   inputs?: DeployInput[];
   /**
@@ -346,6 +367,12 @@ export interface WorkerBuild {
   deployInputs?: DeployInput[];
   /** The package's D1 migration files (see {@link readD1Migrations}). */
   d1Migrations?: CollectedD1Migration[];
+  /**
+   * A release component's own static assets (the OSS admin's SPA), recorded as its one
+   * {@link COMPONENT_ASSET_VARIANT} variant. Without them, a worker that serves assets gets the
+   * Workshop frontend's variants (`assetVariants`).
+   */
+  ownAssets?: CollectedAssets;
 }
 
 // wrangler.jsonc keys this generator understands. Anything else fails closed — a new config key
@@ -464,6 +491,102 @@ const SERVICE_PACKAGES: Record<string, BackendServiceBinding> = {
   // The backend is bound only to the `/api` surface, which every request must authenticate to.
   "educateos-district-worker": { name: "EDUCATEOS_DISTRICT_API", entrypoint: "DistrictApi" },
 };
+
+/**
+ * The Workshop frontend's asset variants every release carries, by name, with the build-time env
+ * each is built with. `access` is the Workshop at the origin's root, as every deployment served it
+ * before ADR-0014; `access-ai` is the same Access-mode build mounted under `/ai`, for a district's
+ * one origin, where the router serves the LMS at the root (`VITE_WORKSHOP_BASE_PATH`,
+ * workshop-frontend/vite.config.ts). build-release.ts builds each in turn; the manifest records each
+ * one's env beside its asset manifest.
+ */
+export const ASSET_VARIANTS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  access: { VITE_CF_ACCESS_MODE: "true" },
+  "access-ai": { VITE_CF_ACCESS_MODE: "true", VITE_WORKSHOP_BASE_PATH: "/ai/" },
+};
+
+/** Resolve both root and /ai assets for the explicitly selected school or generic profile. */
+export function releaseAssetVariants(env: NodeJS.ProcessEnv): Readonly<Record<string, Readonly<Record<string, string>>>> {
+  const school = env.EDUCATEOS_SCHOOL_BUILD === "true";
+  if (!school) return ASSET_VARIANTS;
+  return {
+    "access-school": { VITE_CF_ACCESS_MODE: "true", VITE_EDUCATEOS_SCHOOL_MODE: "true" },
+    "access-school-ai": { VITE_CF_ACCESS_MODE: "true", VITE_EDUCATEOS_SCHOOL_MODE: "true", VITE_WORKSHOP_BASE_PATH: "/ai/" },
+  };
+}
+
+/** The district Worker's package: the optional service a district's one origin routes to. */
+export const DISTRICT_SERVICE_PACKAGE = "educateos-district-worker";
+
+/**
+ * How a deployment serves a district's one origin (ADR-0014), carried on the router's manifest
+ * entry. An installer that installs the district service as well:
+ *  - adds `binding` to the router (a service binding to the district Worker, `DISTRICT`), whose
+ *    path table then sends everything but `/ai`, `/gatekeeper/*` and `/healthz` to the district;
+ *  - serves the asset variant `assetVariant`, built for `basePath`, and runs the router first for
+ *    every path (`run_worker_first: true`), since the Workshop's assets would otherwise answer `/`;
+ *  - sets the backend's `PUBLIC_BASE_PATH` to `basePath`.
+ * Without the district service the router stays as it was, and none of this applies.
+ */
+export interface DistrictOriginWiring {
+  /** The router's service binding to the district Worker. */
+  binding: ManifestBinding;
+  /** The asset variant built for the Workshop under {@link DistrictOriginWiring.basePath}. */
+  assetVariant: string;
+  /** Where the Workshop is mounted on the district origin, the backend's `PUBLIC_BASE_PATH`. */
+  basePath: string;
+}
+
+/** The router's {@link DistrictOriginWiring}. */
+export const DISTRICT_ORIGIN: DistrictOriginWiring = {
+  binding: { type: "service", name: "DISTRICT", service: `$WORKER_NAME(${DISTRICT_SERVICE_PACKAGE})` },
+  assetVariant: "access-ai",
+  basePath: "/ai",
+};
+
+/** The open-source EducateOS admin's package (SCHO-263), a {@link RELEASE_COMPONENTS} member. */
+export const ADMIN_PACKAGE = "educateos-admin";
+
+/** How a {@link RELEASE_COMPONENTS} package is configured and built for a release. */
+export interface ReleaseComponent {
+  /** The config template, beside the package's other configs. Never `wrangler.jsonc`. */
+  configFile: string;
+  /** The workspace package whose Vite+ `build` task writes the component's own assets to `dist/`. */
+  assetsBuildFilter: string;
+}
+
+/**
+ * Packages a release carries that release discovery does not find, because they deliberately have
+ * no `wrangler.jsonc` (the name discovery, the staging, preview and production generators and the
+ * dev server all key on). Each is built from its own config template instead, and serves its own
+ * assets rather than the Workshop frontend's.
+ *
+ * The EducateOS admin (SCHO-263): its hosted edition at admin.educateos.io deploys only through its
+ * own ForgeGraph app (wrangler.production.jsonc), and it develops from wrangler.local.jsonc; the
+ * district installer installs the open-source edition from this release entry.
+ */
+export const RELEASE_COMPONENTS: Readonly<Record<string, ReleaseComponent>> = {
+  [ADMIN_PACKAGE]: { configFile: "wrangler.release.jsonc", assetsBuildFilter: "@educateos/admin" },
+};
+
+/** The one asset variant of a release component that serves its own assets (see `ownAssets`). */
+export const COMPONENT_ASSET_VARIANT = "spa";
+
+/**
+ * The {@link RELEASE_COMPONENTS} packages and their config templates, sorted by package name. A
+ * missing template fails the build: the release would silently lose the component.
+ */
+export function readReleaseComponents(packagesDir: string): DeployablePackage[] {
+  return Object.entries(RELEASE_COMPONENTS).toSorted(([a], [b]) => a.localeCompare(b)).map(([name, component]) => {
+    const dir = join(packagesDir, name);
+    const path = join(dir, component.configFile);
+    if (!existsSync(path)) throw new Error(`release component ${name} has no ${component.configFile}`);
+    if (existsSync(join(dir, "wrangler.jsonc"))) {
+      throw new Error(`release component ${name} has a wrangler.jsonc, so discovery would release it twice`);
+    }
+    return { name, dir, config: parse(readFileSync(path, "utf8")) as WranglerConfig, component };
+  });
+}
 
 /** True when a deployable package is an optional backend service (see `SERVICE_PACKAGES`). */
 export function isServicePackage(pkgName: string): boolean {
@@ -591,6 +714,7 @@ function workerKind(pkgName: string): WorkerEntry["kind"] {
   if (pkgName === "router") return "router";
   if (isGatekeeperPackage(pkgName)) return "gatekeeper";
   if (isServicePackage(pkgName)) return "service";
+  if (pkgName === ADMIN_PACKAGE) return "admin";
   throw new Error(`cannot classify deployable package: ${pkgName}`);
 }
 
@@ -729,8 +853,21 @@ export function buildWorkerEntry(
     // The router routes /gatekeeper/<short>/* by scanning its own GATEKEEPER_* bindings
     // (default entrypoint — it forwards whole HTTP requests, not vendor RPC).
     gatekeeperBindingExpansion = { propsByPackage: {} };
+    if (config.services?.some((svc) => svc.binding === DISTRICT_ORIGIN.binding.name)) {
+      throw new Error(`${pkgName}/wrangler.jsonc binds ${DISTRICT_ORIGIN.binding.name}; a district's one ` +
+          `origin is wired by the deploy service from districtOrigin, never by the release`);
+    }
   } else if (kind === "service") {
     inputs = deployInputs ?? [];
+  } else if (kind === "admin") {
+    // The installer sets every var of the OSS admin itself (EDITION, OSS_WORKSPACE_ORIGINS, the
+    // Access pair, ADMINS), so the only inputs it can take are keys the installer generates.
+    inputs = deployInputs ?? [];
+    const asked = inputs.filter((input) => input.kind !== "secret" || input.generated !== true);
+    if (asked.length > 0) {
+      throw new Error(`${pkgName}: deploy input(s) ${asked.map((input) => input.name).join(", ")} would have to be ` +
+          `asked for; the OSS admin takes only generated secrets`);
+    }
   } else {
     vars.BASE_URL = `$PUBLIC_BASE_URL/gatekeeper/${releaseShortName(pkgName)}`;
     installable = !NOT_INSTALLABLE.has(pkgName);
@@ -748,6 +885,9 @@ export function buildWorkerEntry(
 
   // Every declared secret input becomes a pass-through secret_text binding.
   for (const input of inputs ?? []) {
+    if (input.generated !== undefined && (input.generated !== true || input.kind !== "secret")) {
+      throw new Error(`${pkgName}: deploy input ${input.name} is marked generated, which only a secret can be`);
+    }
     if (input.kind === "secret") {
       bindings.push({ type: "secret_text", name: input.name, text: `$SECRET(${input.name})` });
     }
@@ -759,7 +899,7 @@ export function buildWorkerEntry(
     ...(kind === "service" ? { backendBinding: SERVICE_PACKAGES[pkgName] } : {}),
     installable,
     ...(PREINSTALL.has(pkgName) ? { preinstall: true } : {}),
-    ...(SINGLETON.has(pkgName) || kind === "service" ? { singleton: true } : {}),
+    ...(SINGLETON.has(pkgName) || kind === "service" || kind === "admin" ? { singleton: true } : {}),
     mainModule,
     modules: modules.map(({ name, type, sha256, size }) => ({
       name, type, sha256, size, r2Key: moduleR2Key(sha256),
@@ -775,6 +915,7 @@ export function buildWorkerEntry(
     ...(crons.length > 0 ? { crons: [...crons] } : {}),
     ...(gatekeeperBindingExpansion ? { gatekeeperBindingExpansion } : {}),
     ...(assetsConfig ? { assetsConfig } : {}),
+    ...(kind === "router" ? { districtOrigin: structuredClone(DISTRICT_ORIGIN) } : {}),
     ...(inputs ? { inputs } : {}),
     ...(databases.length > 0
       ? { d1Migrations: d1MigrationEntries(pkgName, databases, d1Migrations ?? []) }
@@ -799,7 +940,10 @@ export function assetR2Key(cfHash: string): string {
  * Assembles the full manifest.
  *  - workers: [{ pkgName, config, mainModule, modules, deployInputs, d1Migrations }]
  *  - assetVariants: { [variantName]: { manifest, blobs } } from collectAssets() — attached to
- *    every worker entry that has an assetsConfig (today: just the router).
+ *    every worker entry that has an assetsConfig and no `ownAssets` (today: just the router), with
+ *    the variant's build env from ASSET_VARIANTS. Every variant in ASSET_VARIANTS that the router's
+ *    districtOrigin names must be present.
+ *  - a worker's `ownAssets` (a release component's SPA) become its one COMPONENT_ASSET_VARIANT.
  */
 export function generateManifest({
   releaseId, commit, createdAt, wranglerVersion, workers, assetVariants, profile = "generic",
@@ -820,8 +964,16 @@ export function generateManifest({
   // one would silently shadow the other on every customer instance. Fail the release build here —
   // the per-entry slug check can't see the collision, only the assembled set can.
   const shortNameOwner = new Map<string, string>();
+  const assets: ReleaseManifest["assets"] = {};
+  const withOwnAssets = new Set<string>();
   for (const w of workers) {
     const entry = buildWorkerEntry(w);
+    if (w.ownAssets) {
+      if (!entry.assetsConfig) throw new Error(`${w.pkgName} has its own assets but its config declares no assets`);
+      entry.assetsConfig.variants[COMPONENT_ASSET_VARIANT] = { manifest: w.ownAssets.manifest, buildEnv: {} };
+      for (const [hash, blob] of w.ownAssets.blobs) assets[hash] = { size: blob.size, r2Key: assetR2Key(hash) };
+      withOwnAssets.add(w.pkgName);
+    }
     if (entry.shortName !== undefined) {
       const owner = shortNameOwner.get(entry.shortName);
       if (owner !== undefined) {
@@ -840,20 +992,29 @@ export function generateManifest({
       throw new Error("School releases require the backend and district Worker.");
     }
     backend.vars.REQUIRE_PRINCIPAL_RESOLVER = "true";
+    for (const entry of Object.values(workerEntries)) {
+      if (entry.districtOrigin) entry.districtOrigin = { ...entry.districtOrigin, assetVariant: "access-school-ai" };
+    }
     backend.bindings.push({ type: "service", name: "PRINCIPAL_RESOLVER",
       service: "$WORKER_NAME(educateos-district-worker)", entrypoint: "DistrictPrincipalResolver" });
   }
 
-  const assets: ReleaseManifest["assets"] = {};
   for (const [variant, { manifest, blobs }] of Object.entries(assetVariants ?? {})) {
+    const buildEnv = { ...ASSET_VARIANTS, ...releaseAssetVariants({ EDUCATEOS_SCHOOL_BUILD: "true" }) }[variant];
+    if (!buildEnv) throw new Error(`unknown asset variant ${variant}; declare its build env in ASSET_VARIANTS`);
     for (const [hash, blob] of blobs) {
       assets[hash] = { size: blob.size, r2Key: assetR2Key(hash) };
     }
-    for (const entry of Object.values(workerEntries)) {
-      if (entry.assetsConfig) {
-        entry.assetsConfig.variants[variant] = { manifest };
+    for (const [name, entry] of Object.entries(workerEntries)) {
+      if (entry.assetsConfig && !withOwnAssets.has(name)) {
+        entry.assetsConfig.variants[variant] = { manifest, buildEnv: { ...buildEnv } };
       }
     }
+  }
+  const router = Object.values(workerEntries).find((entry) => entry.kind === "router");
+  if (router?.districtOrigin && assetVariants && !Object.hasOwn(assetVariants, router.districtOrigin.assetVariant)) {
+    throw new Error(`the release has no ${router.districtOrigin.assetVariant} asset variant, which a district's ` +
+        `one origin serves`);
   }
 
   return {

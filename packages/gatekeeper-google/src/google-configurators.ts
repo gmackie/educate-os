@@ -35,6 +35,7 @@ import type {
   DriveConfiguratorRpc, DriveNode, DriveNodeAncestor, DriveNodePage,
 } from "./configurator/drive-configurator-types";
 import { parseResourceUrl, SHARED_DRIVES_GRANT } from "./resources";
+import type { ClassroomStudentCourseConfiguratorRpc } from "./configurator/classroom-student-course-configurator-types";
 
 /**
  * Mints an access token for a configurator, forwarding `AccessTokenRequest` to the `UserAccount`
@@ -664,6 +665,24 @@ export class ClassroomCourseConfiguratorUI extends RpcTarget implements Classroo
   async listCourses(query: string): Promise<ConfiguratorOption[]> {
     let courses = await new ClassroomApi(googleTokenProvider(this)).listTaughtCourses();
     return tellApartSameNamedCourses(courses
+      .map(course => ({
+        value: course.id, title: course.name, ...course.section ? { subtitle: course.section } : {},
+      }))
+      .filter(option => optionMatches([option.title, option.subtitle], query)));
+  }
+}
+
+/** Selects only active courses the connected Google account attends as a student. */
+@validateRpc()
+export class ClassroomStudentCourseConfiguratorUI extends RpcTarget implements ClassroomStudentCourseConfiguratorRpc {
+  constructor(getToken: () => Promise<GoogleAccessToken>) {
+    super();
+    googleTokenGetters.set(this, getToken);
+  }
+
+  async listCourses(query: string): Promise<ConfiguratorOption[]> {
+    const courses = await new ClassroomApi(googleTokenProvider(this)).listStudentCourses();
+    return tellApartSameNamed(courses
       .map(course => ({
         value: course.id, title: course.name, ...course.section ? { subtitle: course.section } : {},
       }))

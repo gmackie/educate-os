@@ -26,6 +26,7 @@ import { useDialogSelectPortalContainer } from './useDialogSelectPortalContainer
 import { openConnectWindow } from './connectHandoff'
 import { requestAccountResources } from './requestAccountResources'
 import { AuthPopupCancelledError } from './features/native-app/authPopup'
+import { workshopPath } from './workshopPath'
 
 interface Props {
   rpcStub: RpcStub<PublicApi>
@@ -624,7 +625,7 @@ export default function BlueprintLandingPage({ rpcStub }: Props) {
     const overseer = authenticatedApi.newWorkspaceFromBlueprint(id, usableDraftAssignments)
     try {
       let metadata = await overseer.getMetadata()
-      window.location.href = `/workspace/${metadata.id}`
+      window.location.href = workshopPath(`/workspace/${metadata.id}`)
     } catch (err: any) {
       setError(err.message || 'Failed to create gadget from blueprint.')
     } finally {
@@ -939,7 +940,7 @@ export default function BlueprintLandingPage({ rpcStub }: Props) {
                 {sourceWorkspace && (
                   <DropdownMenu.Item
                     icon={<ArrowSquareOut size={13} className="mr-2" />}
-                    onClick={() => window.open(`/workspace/${sourceWorkspace.workspaceId}`, '_blank', 'noopener,noreferrer')}
+                    onClick={() => window.open(workshopPath(`/workspace/${sourceWorkspace.workspaceId}`), '_blank', 'noopener,noreferrer')}
                     className={MENU_ITEM}
                   >
                     Go to workspace

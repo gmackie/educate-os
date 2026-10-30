@@ -40,6 +40,22 @@ export function directoryNames(names?: RouteResponse<"admin.directoryNames">): D
   };
 }
 
+const ROSTER_PROVIDERS: Readonly<Record<string, string>> = {
+  "oneroster-csv": "OneRoster CSV export",
+  "oneroster-api": "OneRoster connection",
+  clever: "Clever",
+  "google-classroom": "Google Classroom",
+  manual: "Entered by hand",
+};
+
+/**
+ * A roster provider's name, from the configuration's `rostering.provider`: `clever` reads "Clever".
+ * A provider this console does not know yet is shown by its code.
+ */
+export function rosterProviderName(provider: string): string {
+  return ROSTER_PROVIDERS[provider] ?? provider;
+}
+
 /** A count with its noun, singular or plural. */
 export function count(n: number, singular: string, plural = `${singular}s`): string {
   return `${n.toLocaleString("en-US")} ${n === 1 ? singular : plural}`;

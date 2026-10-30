@@ -4,8 +4,8 @@ import type {
 
 /** Refuse execution until descendant capabilities support transitive policy revocation. */
 export function assertRevocableExecution(
-    env: Pick<Cloudflare.Env, "WORKSHOP_CAPABILITY_POLICY"> | undefined): void {
-  if (env?.WORKSHOP_CAPABILITY_POLICY !== undefined) {
+    env: Pick<Cloudflare.Env, "WORKSHOP_CAPABILITY_POLICY" | "REQUIRE_WORKSHOP_CAPABILITY_POLICY"> | undefined): void {
+  if (hasCapabilityPolicy(env)) {
     throw new Error("Workshop execution is disabled with capability policy: transitive revocation is unavailable.");
   }
 }

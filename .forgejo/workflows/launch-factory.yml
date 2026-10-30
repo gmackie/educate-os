@@ -40,7 +40,6 @@ jobs:
         env:
           LAUNCH_FACTORY_E2E_RUN: runs/ci
         run: pnpm run test:e2e
-      # Forgejo accepts v3 artifacts. These are only synthetic internal drafts, not public releases.
       - name: Retain synthetic draft evidence
         if: always()
         uses: actions/upload-artifact@v3

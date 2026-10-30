@@ -4,15 +4,15 @@
 // The site Worker owns this Durable Object's data from its first deploy on, so it must keep its
 // Worker name (`educateos-site`) and this class name: a renamed Worker or class starts with an
 // empty namespace (SCHO-231). `sites/educateos-io/site-config.test.mjs` fails if either changes.
-import { DurableObject } from "cloudflare:workers";
+import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import type { JWTVerifyGetKey } from "jose";
 import { operatorVerifier, type OperatorIdentity, type OperatorVerifier } from "./access.ts";
 import { handleRequest, type ControlPlaneApi, type ControlPlaneDeps } from "./app.ts";
-import { configuredLaunchDistricts } from "./clever-launch.ts";
+import { configuredLaunchDistricts, configuredUnaffiliatedHostname } from "./clever-launch.ts";
 import type { SiteShell } from "./pages.ts";
 import type { ProbeResult } from "./probe.ts";
 import { ControlPlaneRegistry, type DashboardEntry, type RegistryMessage, type RegistryReply } from "./registry.ts";
-import { ControlPlaneStore, type Installation, type Operator, type Reservation } from "./store.ts";
+import { ControlPlaneStore, type ControlPlaneExport, type Installation, type Operator, type Reservation } from "./store.ts";
 
 /** The site Worker's bindings and vars. */
 export interface ControlPlaneEnv {
@@ -33,12 +33,19 @@ export interface ControlPlaneEnv {
    * that aren't registered installations (the demo districts). A var, not a secret.
    */
   CLEVER_LAUNCH_DISTRICTS?: string;
+  /** The `<slug>.educateos.io` a Clever user in no district is sent to (a demo district). A var. */
+  CLEVER_LAUNCH_UNAFFILIATED?: string;
   /** Stamped by the ForgeGraph build (`scripts/production/stamp-commit.ts`). */
   FG_COMMIT_HASH?: string;
   /** Signed releases for the guided install, as `scripts/release/upload-release.ts` lays them out. */
   RELEASES?: R2Bucket;
   /** The release keys the guided install verifies releases against: a `ReleaseTrust`. */
   RELEASE_TRUST?: unknown;
+  /**
+   * Where the operator console moved (SCHO-263), such as `https://admin.educateos.io/`. When set,
+   * /app and /app/* answer a 302 there, except the guided install. Unset keeps the console here.
+   */
+  ADMIN_URL?: string;
 }
 
 /** The one Durable Object instance holding the control plane's state. */
@@ -92,9 +99,44 @@ export class ControlPlane extends DurableObject<ControlPlaneEnv> implements Cont
     return this.#registry.cleverLaunchHostname(cleverDistrictId);
   }
 
+  /** A read-only snapshot for the admin's import. Reached only through {@link ControlPlaneExporter}. */
+  exportSnapshot(): ControlPlaneExport {
+    return this.#store.exportSnapshot();
+  }
+
   ping(): true {
     return this.#store.ping();
   }
+}
+
+/**
+ * The control plane's read-only export over RPC (SCHO-263): the admin Worker binds it as a service
+ * (`entrypoint: "ControlPlaneExporter"`) to import operators, installations and slug reservations
+ * into its D1. A named entrypoint has no URL: only a Worker in this account that is deployed with a
+ * binding to it can call it, so it is not on the internet at all, and it only reads.
+ */
+export class ControlPlaneExporter extends WorkerEntrypoint<ControlPlaneEnv> {
+  async exportSnapshot(): Promise<ControlPlaneExport> {
+    return this.env.CONTROL_PLANE.getByName(CONTROL_PLANE_OBJECT).exportSnapshot();
+  }
+}
+
+/**
+ * ADMIN_URL as an absolute `https://` URL, or undefined when it is unset or blank. Anything else is
+ * ignored with a log line, so a typo leaves the console where it is rather than redirecting into
+ * nowhere.
+ */
+export function adminUrl(value: string | undefined): string | undefined {
+  const trimmed = value?.trim() ?? "";
+  if (trimmed === "") return undefined;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol === "https:" && url.username === "" && url.password === "") return url.href;
+  } catch {
+    // Falls through to the log line.
+  }
+  console.error("ADMIN_URL is not an https URL; the console stays on educateos.io");
+  return undefined;
 }
 
 /** What {@link siteWorker} may be given besides the shell. */
@@ -123,6 +165,7 @@ export function siteWorker(shell: SiteShell, options: SiteWorkerOptions = {}): E
   };
   return {
     async fetch(request, env, ctx) {
+      const movedTo = adminUrl(env.ADMIN_URL);
       return handleRequest(request, {
         shell,
         verifyOperator: (operatorRequest) => verifierFor(env)(operatorRequest),
@@ -135,9 +178,11 @@ export function siteWorker(shell: SiteShell, options: SiteWorkerOptions = {}): E
           : {}),
         ...(options.cleverFetch === undefined ? {} : { cleverFetch: options.cleverFetch }),
         cleverLaunchDistricts: configuredLaunchDistricts(env.CLEVER_LAUNCH_DISTRICTS),
+        cleverLaunchUnaffiliated: configuredUnaffiliatedHostname(env.CLEVER_LAUNCH_UNAFFILIATED),
         ...(env.RELEASES && env.RELEASE_TRUST ? { releases: { bucket: env.RELEASES, trust: env.RELEASE_TRUST } } : {}),
         waitUntil: (promise) => ctx.waitUntil(promise),
         ...(options.cloudflareApi ? { cloudflareApi: options.cloudflareApi } : {}),
+        ...(movedTo === undefined ? {} : { adminUrl: movedTo }),
       });
     },
   };

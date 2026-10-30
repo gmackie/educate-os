@@ -13,3 +13,10 @@ export * from "./guardians.ts";
 export * from "./communication/index.ts";
 
 export * from "./gadget-assessment.ts";
+// Devices (SCHO-261)
+export * from "./devices.ts";
+// Pairing (SCHO-261)
+export * from "./pairing.ts";
+// Operations (SCHO-263)
+export * from "./ops.ts";
+export * from "./ops-analytics.ts";

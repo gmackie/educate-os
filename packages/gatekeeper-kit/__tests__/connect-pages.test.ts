@@ -92,6 +92,25 @@ describe("connectHandoffPageHtml", () => {
       .not.toThrow();
   });
 
+  it("navigates under the Workshop's mount when it is not at the root", () => {
+    const html = connectHandoffPageHtml({ ...HANDOFF, targetBasePath: "/ai" });
+
+    expect(scriptLiterals(html)[1]).toBe("https://workshop.example/ai");
+    expect(html).toContain(
+      `window.location.replace(target + "/connect/handoff#" + encodeURIComponent(ticket))`);
+  });
+
+  it("refuses a targetBasePath that is not plain path segments", () => {
+    for (const targetBasePath of [
+      "ai", "/ai/", "//evil.example", "/ai?x=1", "/ai#x", "/../x", "/a/./b", "/ai\\x", "/a b",
+    ]) {
+      expect(() => connectHandoffPageHtml({ ...HANDOFF, targetBasePath }))
+        .toThrow("targetBasePath is not a plain path");
+    }
+    expect(scriptLiterals(connectHandoffPageHtml({ ...HANDOFF, targetBasePath: "" }))[1])
+      .toBe("https://workshop.example");
+  });
+
   it("keeps the referrer policy that hides the path from cross-origin requests", () => {
     expect(connectHandoffPageHtml(HANDOFF))
       .toContain(`<meta name="referrer" content="strict-origin-when-cross-origin">`);

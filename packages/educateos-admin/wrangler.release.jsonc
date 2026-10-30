@@ -1,0 +1,44 @@
+// The open-source EducateOS admin as a district release carries it (SCHO-263): the config template
+// scripts/release/build-release.ts bundles the admin with (`wrangler deploy --dry-run -c`), and
+// manifest-lib.ts turns into the release's `educateos-admin` entry (kind `admin`). The district
+// installer installs it into the district's own account when its config has `admin.enabled`
+// (docs/educateos/admin.md, "Install the OSS admin").
+//
+// Deliberately not named wrangler.jsonc, like wrangler.local.jsonc: release discovery, the staging,
+// preview and production generators, the dev server and `pnpm configs:check` all key on that name.
+// The release finds this file through manifest-lib's RELEASE_COMPONENTS instead.
+//
+// Nothing here is account-specific. The D1 ID becomes the `$D1_DB_ID` placeholder, and the installer
+// sets OSS_WORKSPACE_ORIGINS, ACCESS_ISSUER, ACCESS_AUD and ADMINS, and generates the
+// ADMIN_KEY_ENCRYPTION_KEY secret (deploy-inputs.json).
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "educateos-admin",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-09-04",
+  // As the hosted edition: traces sampled in full, without per-invocation request logs.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "invocation_logs": false
+    }
+  },
+  "assets": {
+    "directory": "dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/healthz"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "educateos-admin",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "EDITION": "oss"
+  }
+}

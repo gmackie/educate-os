@@ -1,30 +1,38 @@
 import type {
-  Activity, Announcement, Assignment, CalendarEvent, ClassItem, Credential, GradeSummary,
+  Activity, Announcement, Assignment, CalendarEvent, ClassItem, Credential, DeviceSummary, GradeSummary,
   GuardianChild, GuardianCourse, Notifications, Principal, Submission,
 } from '../types';
+import type { DeviceSession } from './device.ts';
+import { DistrictApiError, MESSAGES, errorFrom, isRedirect } from './errors.ts';
 
 /**
- * Direct district API calls are available only with an Access assertion accepted by that district.
+ * District API calls. Two credentials are accepted:
+ * - `device` (preferred): a district-issued, key-bound credential, sent to `/api/m/*` through
+ *   DeviceSession (proofs, silent refresh, revocation; see device.ts).
+ * - `cloudflare-access` (legacy): an Access assertion, sent to `/api/*` as the header and cookie.
  * The Workshop's password-token session is NOT a district API credential.
- * The district always validates the JWT and authorizes each request on the server.
+ * The district always validates the credential and authorizes each request on the server.
  */
-export class DistrictApiError extends Error {
-  constructor(public readonly status: number, public readonly code: string, message: string) {
-    super(message);
-    this.name = 'DistrictApiError';
-  }
-}
-const NEEDS_SIGN_IN_MESSAGE =
-  'Your school needs a fresh sign-in before classes can load on this phone. Your AI workspace still works.';
-const UNREACHABLE_MESSAGE = "We couldn't reach your school. Check your internet connection and try again.";
+export { DistrictApiError } from './errors.ts';
 
 export class DistrictClient {
-  constructor(private readonly base: string, private readonly credential: Credential) {}
+  constructor(private readonly base: string, private readonly credential: Credential,
+    private readonly device?: DeviceSession) {}
 
-  get available(): boolean { return this.credential.kind === 'cloudflare-access'; }
+  get available(): boolean {
+    return this.credential.kind === 'cloudflare-access' || (this.credential.kind === 'device' && !!this.device);
+  }
+  get usesDevice(): boolean { return this.credential.kind === 'device'; }
 
   private async call<T>(method: 'GET' | 'POST', path: string, body?: unknown, query?: Record<string, string>): Promise<T> {
-    if (!this.available) throw new DistrictApiError(403, 'needs-access', 'Your school has not enabled native district API access.');
+    if (this.credential.kind === 'device') {
+      if (!this.device) throw new DistrictApiError(401, 'needs-pairing', MESSAGES.needsPairing);
+      return this.device.request<T>(method, path, body, query);
+    }
+    if (this.credential.kind !== 'cloudflare-access') {
+      throw new DistrictApiError(403, 'needs-access', 'Your school has not enabled native district API access.');
+    }
+    const token = this.credential.token;
     const url = new URL(path, this.base);
     if (!url.pathname.startsWith('/api/') || url.origin !== this.base) throw new Error('Invalid district API path.');
     for (const [key, value] of Object.entries(query || {})) url.searchParams.set(key, value);
@@ -37,27 +45,20 @@ export class DistrictClient {
         redirect: 'manual',
         headers: {
           accept: 'application/json',
-          'cf-access-jwt-assertion': this.credential.token,
+          'cf-access-jwt-assertion': token,
           // Access's edge checks the cookie before the district Worker validates the assertion.
-          cookie: 'CF_Authorization=' + this.credential.token,
+          cookie: 'CF_Authorization=' + token,
           ...(method === 'POST' ? { 'content-type': 'application/json' } : {}),
         },
         ...(method === 'POST' ? { body: JSON.stringify(body ?? {}) } : {}),
       });
     } catch {
       // Native fetch errors are not user-readable.
-      throw new DistrictApiError(0, 'unreachable', UNREACHABLE_MESSAGE);
+      throw new DistrictApiError(0, 'unreachable', MESSAGES.unreachable);
     }
-    if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
-      throw new DistrictApiError(401, 'needs-sign-in', NEEDS_SIGN_IN_MESSAGE);
-    }
-    const value: unknown = await response.json().catch(() => null);
-    if (!response.ok) {
-      const error = value as { code?: string; message?: string } | null;
-      throw new DistrictApiError(response.status, error?.code || 'unavailable',
-        typeof error?.message === 'string' ? error.message : 'Your school could not complete this request.');
-    }
-    return value as T;
+    if (isRedirect(response)) throw new DistrictApiError(401, 'needs-sign-in', MESSAGES.needsSignIn);
+    if (!response.ok) throw await errorFrom(response);
+    return await response.json().catch(() => null) as T;
   }
   private id(value: string): string { return encodeURIComponent(value); }
   me(): Promise<Principal> { return this.call('GET', '/api/me'); }
@@ -148,5 +149,20 @@ export class DistrictClient {
   }
   guardianClass(studentId: string, offeringId: string): Promise<GuardianCourse> {
     return this.call('GET', '/api/guardian/children/' + this.id(studentId) + '/offerings/' + this.id(offeringId));
+  }
+  /** Your devices (SCHO-261). Device credentials only: these are `/api/m/me/devices…`. */
+  myDevices(): Promise<{ devices: DeviceSummary[] }> { return this.call('GET', '/api/me/devices'); }
+  revokeDevice(deviceId: string): Promise<DeviceSummary> {
+    return this.call('POST', '/api/me/devices/' + this.id(deviceId) + '/revoke');
+  }
+  /** Registers this phone's Expo push token. A district without push answers 404, which is fine. */
+  async registerPushToken(token: string, platform: string): Promise<'registered' | 'unsupported'> {
+    try {
+      await this.call('POST', '/api/me/devices/push-token', { token, provider: 'expo', platform });
+      return 'registered';
+    } catch (e) {
+      if (e instanceof DistrictApiError && (e.status === 404 || e.status === 405)) return 'unsupported';
+      throw e;
+    }
   }
 }

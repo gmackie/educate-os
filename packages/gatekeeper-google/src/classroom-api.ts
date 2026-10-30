@@ -8,10 +8,15 @@
 
 import { AccessTokenProvider, fetchWithAuthRetry } from "./auth-retry";
 import type {
+  ClassroomRubricUpdate, ClassroomGradingPeriodUpdate, ClassroomRubric, ClassroomRubricDraft, ClassroomGradingPeriodSettings,
   ClassroomCourse, ClassroomCourseWork, ClassroomCourseWorkDraft, ClassroomRoster,
   ClassroomRosterMember, ClassroomSubmission,
+  ClassroomMySubmission, ClassroomCourseWorkMaterial,
 } from "./classroom-types";
+import type { ClassroomStudentCourseWork, ClassroomStudentSubmission } from "./classroom-student-types";
 import { GoogleApiError, readGoogleJson } from "./google-response";
+
+import { classroomRubricUpdate, classroomGradingPeriodUpdate, classroomRubricDraft, classroomRubricFromRaw, classroomGradingPeriodsFromRaw } from "./classroom-plus";
 
 const CLASSROOM_API_BASE = "https://classroom.googleapis.com/v1";
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
@@ -75,6 +80,25 @@ export class ClassroomNotOwnedError extends Error {
       "was not created through this Google connection. Create the coursework with " +
       "createCourseWork() to grade it here.");
   }
+}
+
+/** The student must turn work in before the teacher can return its grade. */
+export class ClassroomSubmissionNotReadyError extends Error {
+  constructor() {
+    super("This submission has not been turned in. Ask the student to turn it in before grading and returning it.");
+  }
+}
+
+/** A student action is unavailable until the signed-in student has editable own work. */
+export class ClassroomStudentSubmissionNotReadyError extends Error {
+  constructor(message = "There is no editable Classroom submission for the signed-in student.") {
+    super(message);
+  }
+}
+
+/** Refuse return-ineligible work before changing a grade. Returned work may be regraded. */
+export function assertClassroomSubmissionReady(submission: ClassroomSubmission): void {
+  if (submission.state !== "TURNED_IN" && submission.state !== "RETURNED") throw new ClassroomSubmissionNotReadyError();
 }
 
 const API_DISABLED_MESSAGE =
@@ -179,6 +203,18 @@ export type OwnedCourseWork = { courseWork: ClassroomCourseWork; owned: boolean 
 export function classroomCourseWorkFromRaw(value: unknown): OwnedCourseWork {
   let raw = record(value);
   let updateTime = text(raw.updateTime);
+  let materials: ClassroomCourseWorkMaterial[] | undefined = Array.isArray(raw.materials) ? raw.materials.flatMap((value): ClassroomCourseWorkMaterial[] => {
+    let material = record(value);
+    for (let kind of ["driveFile", "link", "youtubeVideo", "form"] as const) {
+      if (!(kind in material)) continue;
+      let item = record(material[kind]);
+      let drive = kind === "driveFile" ? record(item.driveFile) : item;
+      let url = kind === "form" ? text(item.formUrl) : text(drive.alternateLink) ?? text(item.url);
+      let mimeType = kind === "driveFile" ? text(drive.mimeType) : undefined;
+      return [{ kind, title: text(drive.title) ?? text(item.title) ?? "Class material", ...present({ url, mimeType }) }];
+    }
+    return [];
+  }) : undefined;
   return {
     courseWork: {
       id: requiredId(raw, "id", "coursework item"),
@@ -186,7 +222,7 @@ export function classroomCourseWorkFromRaw(value: unknown): OwnedCourseWork {
       state: oneOf(raw.state, COURSE_WORK_STATES, "COURSE_WORK_STATE_UNSPECIFIED"),
       ...present({
         description: text(raw.description), maxPoints: finite(raw.maxPoints),
-        alternateLink: text(raw.alternateLink),
+        alternateLink: text(raw.alternateLink), materials: materials?.length ? materials : undefined,
         updateTime: updateTime === undefined ? undefined : new Date(updateTime),
       }),
     },
@@ -210,6 +246,37 @@ export function classroomSubmissionFromRaw(value: unknown): ClassroomSubmission 
   };
 }
 
+/** A submission as its own signed-in student sees it, with identity and draft grades discarded. */
+export function classroomMySubmissionFromRaw(value: unknown): ClassroomMySubmission {
+  let raw = record(value);
+  let assignment = record(raw.assignmentSubmission);
+  let rawAttachments = Array.isArray(assignment.attachments) ? assignment.attachments : [];
+  const attachments = rawAttachments.map(value => {
+    let attachment = record(value);
+    let driveFile = record(attachment.driveFile);
+    let link = record(attachment.link);
+    return {
+      title: text(driveFile.title) ?? text(link.title) ?? "Classroom attachment",
+      ...present({
+        url: text(driveFile.alternateLink) ?? text(link.url),
+        mimeType: text(driveFile.mimeType),
+      }),
+    };
+  });
+  const answer = text(record(raw.shortAnswerSubmission).answer) ??
+    text(record(raw.multipleChoiceSubmission).answer);
+  return {
+    courseWorkId: requiredId(raw, "courseWorkId", "student submission"),
+    state: oneOf(raw.state, SUBMISSION_STATES, "SUBMISSION_STATE_UNSPECIFIED"),
+    ...present({
+      late: raw.late === true ? true : undefined,
+      alternateLink: text(raw.alternateLink),
+      answer,
+      attachments: attachments.length ? attachments : undefined,
+    }),
+  };
+}
+
 /** A Classroom REST client for one connected account. */
 export class ClassroomApi {
   constructor(private getAccessToken: AccessTokenProvider) {}
@@ -226,6 +293,7 @@ export class ClassroomApi {
       let response = await fetchWithAuthRetry(
         `${CLASSROOM_API_BASE}${path}`, { ...init, headers }, this.getAccessToken,
         { timeoutMs: REQUEST_TIMEOUT_MS, idempotent });
+      if (init.method === "DELETE" && response.status === 204) return {};
       return record(await readGoogleJson<unknown>(response, {
         provider: "Google Classroom", operation, maxBytes: MAX_RESPONSE_BYTES,
       }));
@@ -274,8 +342,68 @@ export class ClassroomApi {
       .map(classroomCourseFromRaw);
   }
 
+  /** Active courses in which the connected account is enrolled as a student. */
+  async listStudentCourses(): Promise<ClassroomCourse[]> {
+    let params = new URLSearchParams({ studentId: "me", courseStates: "ACTIVE" });
+    return (await this.#listAll("/courses", params, "courses", "list student courses"))
+      .map(classroomCourseFromRaw);
+  }
+
   async getCourse(courseId: string): Promise<ClassroomCourse> {
     return classroomCourseFromRaw(await this.#request(this.#course(courseId), "get course"));
+  }
+
+  /** Whether the connected account is a student of this course; no roster data is returned. */
+  async isStudent(courseId: string): Promise<boolean> {
+    return (await this.listStudentCourses()).some(course => course.id === courseId);
+  }
+
+  /** Published coursework visible to the signed-in student. Drafts are excluded by Google. */
+  async listStudentCourseWork(courseId: string): Promise<ClassroomStudentCourseWork[]> {
+    const params = new URLSearchParams({ courseWorkStates: "PUBLISHED" });
+    return (await this.#listAll(`${this.#course(courseId)}/courseWork`, params, "courseWork", "list student coursework"))
+      .map(classroomCourseWorkFromRaw)
+      .map(({ courseWork }) => courseWork)
+      .filter((courseWork): courseWork is ClassroomCourseWork & { state: "PUBLISHED" } => courseWork.state === "PUBLISHED");
+  }
+
+  /** Read the one submission Google associates with the signed-in student. */
+  async getMySubmission(courseId: string, courseWorkId: string): Promise<ClassroomStudentSubmission | null> {
+    const params = new URLSearchParams({ userId: "me" });
+    const rows = (await this.#listAll(
+      `${this.#courseWork(courseId, courseWorkId)}/studentSubmissions`, params,
+      "studentSubmissions", "read own student submission"))
+      .map(classroomMySubmissionFromRaw);
+    if (rows.length > 1) throw new Error("Google Classroom returned multiple submissions for the signed-in student.");
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      courseWorkId: row.courseWorkId,
+      state: row.state,
+      ...present({
+        late: row.late,
+        alternateLink: row.alternateLink,
+        answer: row.answer,
+        attachments: row.attachments,
+      }),
+    };
+  }
+
+  /** Turn in the signed-in student's existing submission, using its ID only inside the gatekeeper. */
+  async turnInMySubmission(courseId: string, courseWorkId: string): Promise<void> {
+    const params = new URLSearchParams({ userId: "me" });
+    const rows = (await this.#listAll(
+      `${this.#courseWork(courseId, courseWorkId)}/studentSubmissions`, params,
+      "studentSubmissions", "check own submission before turn-in"))
+      .map(classroomSubmissionFromRaw);
+    if (rows.length !== 1) throw new ClassroomStudentSubmissionNotReadyError("There is no Classroom submission for the signed-in student to turn in.");
+    const row = rows[0];
+    if (row.state !== "CREATED" && row.state !== "RECLAIMED_BY_STUDENT") {
+      throw new ClassroomStudentSubmissionNotReadyError("Only a created or reclaimed Classroom submission can be turned in.");
+    }
+    await this.#request(
+      `${this.#submission(courseId, courseWorkId, row.id)}:turnIn`, "turn in own student submission",
+      { method: "POST", body: "{}" });
   }
 
   /** Whether the connected account teaches the course. */
@@ -294,6 +422,48 @@ export class ClassroomApi {
       (await this.#listAll(`${this.#course(courseId)}/${key}`, new URLSearchParams(), key,
         `list ${key}`)).map(classroomRosterMemberFromRaw)));
     return { teachers, students };
+  }
+
+  /** Grading periods of the bound course, without inventing missing settings. */
+  async getGradingPeriodSettings(courseId: string): Promise<ClassroomGradingPeriodSettings> {
+    return classroomGradingPeriodsFromRaw(await this.#request(`${this.#course(courseId)}/gradingPeriodSettings`, "read grading periods"));
+  }
+
+  /** Rubrics are visible only through coursework this project owns. */
+  async listRubrics(courseId: string, courseWorkId: string): Promise<ClassroomRubric[]> {
+    await this.getOwnedCourseWork(courseId, courseWorkId);
+    return (await this.#listAll(`${this.#courseWork(courseId, courseWorkId)}/rubrics`, new URLSearchParams(), "rubrics", "list rubrics"))
+      .map(classroomRubricFromRaw);
+  }
+
+  /** Create once; the action journal handles an unknown outcome rather than retrying a POST. */
+  async createRubric(courseId: string, courseWorkId: string, draft: ClassroomRubricDraft): Promise<ClassroomRubric> {
+    const body = classroomRubricDraft(draft);
+    await this.getOwnedCourseWork(courseId, courseWorkId);
+    return classroomRubricFromRaw(await this.#request(`${this.#courseWork(courseId, courseWorkId)}/rubrics`, "create rubric", {
+      method: "POST", body: JSON.stringify(body),
+    }));
+  }
+
+  /** Replace only criteria on coursework owned by this OAuth project. */
+  async updateRubric(courseId: string, courseWorkId: string, rubricId: string, update: ClassroomRubricUpdate): Promise<ClassroomRubric> {
+    const body = classroomRubricUpdate(update);
+    const id = validated(rubricId, NUMERIC_ID_RE, "rubric ID");
+    await this.getOwnedCourseWork(courseId, courseWorkId);
+    return classroomRubricFromRaw(await this.#request(`${this.#courseWork(courseId, courseWorkId)}/rubrics/${id}?updateMask=criteria`, "update rubric", { method: "PATCH", body: JSON.stringify(body) }));
+  }
+
+  /** Delete a rubric only after rechecking coursework ownership at apply time. */
+  async deleteRubric(courseId: string, courseWorkId: string, rubricId: string): Promise<void> {
+    const id = validated(rubricId, NUMERIC_ID_RE, "rubric ID");
+    await this.getOwnedCourseWork(courseId, courseWorkId);
+    await this.#request(`${this.#courseWork(courseId, courseWorkId)}/rubrics/${id}`, "delete rubric", { method: "DELETE" });
+  }
+
+  /** Replace the bound course's periods; new periods can be minted, so never retry an uncertain PATCH. */
+  async updateGradingPeriodSettings(courseId: string, settings: ClassroomGradingPeriodUpdate): Promise<ClassroomGradingPeriodSettings> {
+    const body = classroomGradingPeriodUpdate(settings);
+    return classroomGradingPeriodsFromRaw(await this.#request(`${this.#course(courseId)}/gradingPeriodSettings?updateMask=grading_periods,apply_to_existing_coursework`, "update grading periods", { method: "PATCH", body: JSON.stringify(body) }));
   }
 
   /** The course's published and draft coursework that this connection's project created. */
@@ -354,11 +524,16 @@ export class ClassroomApi {
   async gradeAndReturn(
     courseId: string, courseWorkId: string, submissionId: string, assignedGrade: number,
   ): Promise<void> {
+    validateClassroomGrade(assignedGrade);
+    const submission = await this.getSubmission(courseId, courseWorkId, submissionId);
+    assertClassroomSubmissionReady(submission);
     let path = this.#submission(courseId, courseWorkId, submissionId);
     await this.#request(
       `${path}?updateMask=assignedGrade`, "patch submission",
       { method: "PATCH", body: JSON.stringify({ assignedGrade: validateClassroomGrade(assignedGrade) }) },
       true);
-    await this.#request(`${path}:return`, "return submission", { method: "POST", body: "{}" }, true);
+    if (submission.state !== "RETURNED") {
+      await this.#request(`${path}:return`, "return submission", { method: "POST", body: "{}" }, true);
+    }
   }
 }

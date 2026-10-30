@@ -23,6 +23,7 @@
     "@educateos/contracts": "workspace:*",
     "@educateos/curriculum": "workspace:*",
     "@educateos/discussions": "workspace:*",
+    "@educateos/fleet": "workspace:*",
     "@educateos/identity": "workspace:*",
     "@educateos/identity-links": "workspace:*",
     "@educateos/integrations": "workspace:*",

@@ -4,7 +4,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { DistrictApiError } from "@educateos/api-client";
 import { fakeDistrict } from "./fakeDistrict.ts";
 import { AMARA, ENGLISH, fakeFamily } from "./fakeFamily.ts";
-import { announcement, renderApp } from "./render.tsx";
+import { announcement, openAccountMenu, renderApp } from "./render.tsx";
 
 /** Presses Tab until `target` has focus, failing if it is not in the Tab order. */
 async function tabTo(user: UserEvent, target: HTMLElement): Promise<void> {
@@ -27,13 +27,14 @@ describe("the family view (ADR-0012)", () => {
     expect(within(past).getByRole("link", { name: "Art · Period 2" })).toBeTruthy();
     expect(within(past).getByText("Finished")).toBeTruthy();
 
-    // A family's navigation, never a student's places.
+    // A family's navigation, never a student's places: the shell's guardian set, less the places the
+    // family view would only send them back from (SCHO-260).
     const nav = screen.getByRole("navigation", { name: "Main" });
-    expect(within(nav).getAllByRole("link").map((l) => l.textContent)).toStrictEqual(["My children"]);
+    expect(within(nav).getAllByRole("link").map((l) => l.textContent)).toStrictEqual(["Family"]);
     // Notifications are a student's (SCHO-189); a guardian has their own settings and can sign out (SCHO-222).
     expect(screen.queryByRole("link", { name: /Notifications/ })).toBeNull();
     expect(screen.getByRole("link", { name: "Settings" }).getAttribute("href")).toBe("/family/settings");
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+    expect(within(await openAccountMenu()).getByRole("button", { name: "Sign out" })).toBeTruthy();
     // Each class says what its graded work adds up to so far (SCHO-222).
     expect(await within(current).findByText("Graded so far: 11 of 13 points")).toBeTruthy();
     expect(await within(past).findByText("Nothing graded yet")).toBeTruthy();
@@ -123,7 +124,7 @@ describe("the family view (ADR-0012)", () => {
   it("never offers a student the family view", async () => {
     await renderApp(fakeDistrict(), "/family/children/prn_nf-student-amara");
     expect(await screen.findByText("There's nothing here")).toBeTruthy();
-    expect(within(screen.getByRole("navigation", { name: "Main" })).getAllByRole("link").map((l) => l.textContent)).toStrictEqual(["Home", "My space", "Grades", "Calendar"]);
+    expect(within(screen.getByRole("navigation", { name: "Main" })).getAllByRole("link").map((l) => l.textContent)).toStrictEqual(["Home", "Classes", "Calendar", "Inbox", "Grades", "My Space"]);
   });
 });
 

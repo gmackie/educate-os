@@ -30,6 +30,14 @@
 // (SCHO-210, demo-districts.ts): the same district Worker, under its own name and at its own
 // `<slug>.educateos.io`, with nothing around it.
 //
+// One origin per district (ADR-0014, SCHO-259) is prepared here behind opt-in flags that are off:
+// `oneOrigin` on the instance (schoolos-gmac-io.ts) and on each demo district (demo-districts.ts).
+// Off, every generated config is byte-identical to what it was before the flags existed. On, the
+// instance's router owns the district's one hostname, with the district bound as `DISTRICT`, the
+// Workshop under /ai and the old hostnames redirecting (`LEGACY_HOSTS`); a demo district serves `/ai`
+// itself as an "AI isn't enabled" page. docs/educateos/runbooks/one-origin-cutover.md is the
+// cutover that turns them on.
+//
 // Secrets are never part of a generated config (Wrangler prints vars, and these files are
 // committed): a var with a secret's name fails the generator.
 //
@@ -67,8 +75,21 @@ export const MAX_VAR_BYTES = 5000;
  */
 const SECRET_NAMES = new Set([
   "ADMINS", "AI_GUARD_CONFIG", "CF_ACCESS_AUD", "CF_ACCESS_ISS", "CF_AI_GATEWAY_API_TOKEN", "HALL_MONITOR_SIGNING_KEY",
-  "AI_GATEWAY_LOGS_TOKEN", "CLIENT_ID", "CLIENT_SECRET", "DISTRICT_CONFIG",
+  "AI_GATEWAY_LOGS_TOKEN", "CLIENT_ID", "CLIENT_SECRET", "CLEVER_DISTRICT_TOKENS", "DISTRICT_CONFIG", "DEVICE_TOKEN_SECRET",
 ]);
+
+/** Where the Workshop is mounted on a district's one origin (ADR-0014): the backend's `PUBLIC_BASE_PATH`. */
+export const ONE_ORIGIN_BASE_PATH = "/ai";
+
+/**
+ * The frontend build env of a one-origin router (the Workshop's Vite base, as manifest-lib's
+ * `access-ai` asset variant). Build env is not part of a Wrangler config: the deployer's router
+ * build command must set it (see {@link productionBuildEnv} and the cutover runbook).
+ */
+export const ONE_ORIGIN_BUILD_ENV: Readonly<Record<string, string>> = { VITE_WORKSHOP_BASE_PATH: `${ONE_ORIGIN_BASE_PATH}/` };
+
+/** The demo districts' own routes besides {@link DISTRICT_WORKER_ROUTES} once they serve `/ai` themselves. */
+export const AI_DISABLED_ROUTES = ["/ai", "/ai/*"];
 
 /** The district Worker's package (and worker) name. */
 export const DISTRICT_PACKAGE = "educateos-district-worker";
@@ -80,10 +101,11 @@ export const DISTRICT_PACKAGE = "educateos-district-worker";
 export const DISTRICT_UI_DIR = "./dist/ui";
 
 /**
- * The district Worker's own routes, which run before its assets: the API, the liveness probe and
- * the LTI Tool's endpoints (SCHO-177).
+ * The district Worker's own routes, which run before its assets: the API (the pairing relay's
+ * `/api/pair/*` among it), the liveness probe, the LTI Tool's endpoints (SCHO-177), the public school
+ * manifest (ADR-0014) and the pairing relay's `/connect-phone` page (SCHO-261).
  */
-export const DISTRICT_WORKER_ROUTES = ["/api/*", "/healthz", "/lti/*"];
+export const DISTRICT_WORKER_ROUTES = ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone"];
 
 /** The EducateOS connector's package: the one gatekeeper bound to the district Worker (SCHO-218). */
 export const EDUCATEOS_GATEKEEPER_PACKAGE = "gatekeeper-educateos";
@@ -94,6 +116,15 @@ export const EDUCATEOS_GATEKEEPER_PACKAGE = "gatekeeper-educateos";
  */
 export const EDUCATEOS_DISTRICT_BINDING: ServiceBinding =
     { binding: "EDUCATEOS_DISTRICT", service: DISTRICT_PACKAGE, entrypoint: "DistrictSchoolTools" };
+
+/**
+ * The AI call guard's `EDUCATEOS_DISTRICT`: the district Worker's `DistrictGuardDirectory`, so the
+ * guard learns who a Workshop user is from the district's records (`contextSource: "district"`)
+ * rather than a list in its config (SCHO-283). Principal-keyed Workshop users need no link; the
+ * email-keyed users the principal migration aliased need one an administrator confirms.
+ */
+export const GUARD_DISTRICT_BINDING: ServiceBinding =
+    { binding: "EDUCATEOS_DISTRICT", service: DISTRICT_PACKAGE, entrypoint: "DistrictGuardDirectory" };
 
 /** One long-lived instance: where it runs and the account resources its Workers bind. */
 export interface ProductionInstance {
@@ -131,6 +162,25 @@ export interface ProductionInstance {
     aliases?: string[];
   };
   /**
+   * One origin per district (ADR-0014): when `enabled`, the router serves the district at the root
+   * of `hostname` (a `DISTRICT` service binding, `run_worker_first: true`), the Workshop under
+   * `/ai`, and the instance's and the district's old hostnames answer with redirects to it
+   * (`LEGACY_HOSTS`). The district Worker gets no hostname of its own. Off (or absent), nothing
+   * changes.
+   */
+  oneOrigin?: {
+    enabled: boolean;
+    /** The district's one hostname, which the router takes over from the district Worker. */
+    hostname: string;
+  };
+  /**
+   * The Workshop backend's bindings to the district's `DistrictPrincipalResolver` (ADR-0003,
+   * SCHO-259), one cutover step at a time: `migration` binds `PRINCIPAL_MIGRATION` only, for the
+   * migration's dry run and apply, which changes no sign-in; `resolver` adds `PRINCIPAL_RESOLVER`, so
+   * the Workshop keys sign-ins by principal. Absent, neither is bound.
+   */
+  principalBinding?: "migration" | "resolver";
+  /**
    * Deployed Worker names that differ from their package's, by package. A deployed Worker's name
    * is production identity, like a hostname or a ForgeGraph app slug: a Durable Object namespace
    * belongs to its Worker's name, so deploying a stateful Worker under a new name starts it with
@@ -159,7 +209,9 @@ interface R2Bucket {
 }
 
 /** A generated `wrangler.production.jsonc`. */
-export interface ProductionConfig extends Omit<StagingConfig, "previews" | "routes" | "kv_namespaces" | "r2_buckets"> {
+export interface ProductionConfig extends Omit<StagingConfig, "previews" | "routes" | "kv_namespaces" | "r2_buckets" | "assets"> {
+  /** Static assets; a one-origin router runs first for every path (`run_worker_first: true`). */
+  assets?: Omit<NonNullable<StagingConfig["assets"]>, "run_worker_first"> & { run_worker_first?: string[] | true };
   /** KV namespaces, with the instance's ids. */
   kv_namespaces?: KvNamespace[];
   /** R2 buckets, with the instance's bucket names. */
@@ -228,7 +280,12 @@ function withVars(
  * its custom domains, its UIs as assets, and its LTI Tool at its first hostname, the district's
  * identity. Shared by an instance's district and the demo districts.
  */
-function asDistrict(config: ProductionConfig, hostnames: readonly string[], vars: Record<string, string>): void {
+function asDistrict(
+  config: ProductionConfig,
+  hostnames: readonly string[],
+  vars: Record<string, string>,
+  { routed = true, extraRoutes = [] }: { routed?: boolean; extraRoutes?: readonly string[] } = {},
+): void {
   if ((config.triggers?.crons?.length ?? 0) < 2) {
     throw new Error(`${DISTRICT_PACKAGE}/wrangler.jsonc has lost its notification and digest Cron Triggers`);
   }
@@ -236,15 +293,29 @@ function asDistrict(config: ProductionConfig, hostnames: readonly string[], vars
   if (config.services?.length) {
     throw new Error(`${DISTRICT_PACKAGE}/wrangler.jsonc binds another Worker; the generator cannot place it`);
   }
-  // Wrangler replaces a Worker's custom domains with exactly these, so every alias is listed.
-  config.routes = hostnames.map((pattern) => ({ pattern, custom_domain: true as const }));
+  // Wrangler replaces a Worker's custom domains with exactly these, so every alias is listed. Behind
+  // a one-origin router the district has none: the router reaches it by service binding.
+  if (routed) config.routes = hostnames.map((pattern) => ({ pattern, custom_domain: true as const }));
   config.assets = {
     directory: DISTRICT_UI_DIR,
     not_found_handling: "single-page-application",
-    run_worker_first: DISTRICT_WORKER_ROUTES,
+    run_worker_first: [...DISTRICT_WORKER_ROUTES, ...extraRoutes],
   };
-  // The LTI Tool (SCHO-177) is served at the district's own hostname.
+  // The LTI Tool (SCHO-177) is served at the district's own hostname, the origin its platform
+  // registrations name.
   withVars(DISTRICT_PACKAGE, config, { LTI_TOOL_ORIGIN: `https://${hostnames[0]}`, ...vars });
+}
+
+/**
+ * How a phone signs in to a one-origin instance's district without a computer (SCHO-283): the
+ * district's own `/connect-phone`, behind the instance's Access with its Google login. A person's
+ * Access identity is the same whichever login they pick, so this names the one they will use.
+ */
+const ONE_ORIGIN_PHONE_SIGN_IN = [{ id: "google", label: "Google" }];
+
+/** The public school manifest's settings (`SCHOOL_MANIFEST`, ADR-0014) of a district at `origin`. */
+function schoolManifestVar(origin: string, ai: boolean, signIn?: { id: string; label: string }[]): string {
+  return JSON.stringify({ origin, ...signIn ? { signIn } : {}, features: { ai } });
 }
 
 /**
@@ -258,6 +329,16 @@ export interface DemoDistrictDeployment {
   accountId: string;
   /** Its one hostname, `<slug>.educateos.io`: a custom domain, and the district's identity. */
   hostname: string;
+  /**
+   * One origin per district (ADR-0014): when `enabled`, the district serves `/ai` itself as an "AI
+   * isn't enabled at your school" page linking to `aiDemoUrl`, and publishes its school manifest's
+   * origin. Off (or absent), nothing changes.
+   */
+  oneOrigin?: {
+    enabled: boolean;
+    /** The AI-enabled demo district's Workshop, which the page links to. */
+    aiDemoUrl: string;
+  };
 }
 
 /** A demo district's Worker name: its own, so its own Durable Object namespace. */
@@ -307,7 +388,15 @@ export function buildDemoDistrictConfigs({
       workers_dev: false,
       preview_urls: false,
     };
-    asDistrict(config, [district.hostname], {});
+    if (district.oneOrigin?.enabled) {
+      // No router in front: the district answers /ai itself, so the Worker runs first for it.
+      asDistrict(config, [district.hostname], {
+        AI_DEMO_URL: district.oneOrigin.aiDemoUrl,
+        SCHOOL_MANIFEST: schoolManifestVar(`https://${district.hostname}`, false),
+      }, { extraRoutes: AI_DISABLED_ROUTES });
+    } else {
+      asDistrict(config, [district.hostname], {});
+    }
     configs.set(district.slug, config);
   }
   return configs;
@@ -324,7 +413,9 @@ export function buildProductionConfigs({
   instance: ProductionInstance;
   packages: readonly PackageConfig[];
 }): Map<string, ProductionConfig> {
-  const baseUrl = `https://${instance.hostname}`;
+  const oneOrigin = instance.oneOrigin?.enabled ? oneOriginHosts(instance) : undefined;
+  // On one origin every URL the instance hands out is on the district's hostname.
+  const baseUrl = `https://${oneOrigin?.origin ?? instance.hostname}`;
   const gatekeepers = instance.gatekeepers.toSorted();
   for (const name of gatekeepers) {
     if (!isGatekeeperPackage(name)) throw new Error(`${name} is not a gatekeeper package`);
@@ -387,7 +478,9 @@ export function buildProductionConfigs({
         config.services = [...config.services ?? [], EDUCATEOS_DISTRICT_BINDING];
       }
       // The School app's links that leave it (a calendar feed) name the district's own address.
-      const district = pkgName === EDUCATEOS_GATEKEEPER_PACKAGE ? { DISTRICT_URL: `https://${instance.district!.hostname}` } : {};
+      const district = pkgName === EDUCATEOS_GATEKEEPER_PACKAGE
+        ? { DISTRICT_URL: oneOrigin ? baseUrl : `https://${instance.district!.hostname}` }
+        : {};
       withVars(pkgName, config, { BASE_URL: gatekeeperBaseUrl(baseUrl, pkgName), ...district, ...vars });
     } else if (pkgName === "workshop-backend") {
       if (config.ai) {
@@ -395,16 +488,21 @@ export function buildProductionConfigs({
             "manifest-lib.ts does); declaring it too would bind it twice");
       }
       config.ai = { binding: "WORKERS_AI" };
-      config.services = [...backendGatekeeperServices(gatekeepers, baseUrl), backendAiGuardBinding()];
-      if (instance.district) {
-        config.services.push({ binding: "PRINCIPAL_RESOLVER", service: DISTRICT_PACKAGE, entrypoint: "DistrictPrincipalResolver" });
-      }
-      withVars(pkgName, config, { PUBLIC_BASE_URL: baseUrl, ...vars,
-        ...(instance.district ? { REQUIRE_PRINCIPAL_RESOLVER: "true" } : {}) });
+      config.services = [...backendGatekeeperServices(gatekeepers, baseUrl), backendAiGuardBinding(), ...principalServices(instance)];
+      withVars(pkgName, config, { PUBLIC_BASE_URL: baseUrl, ...oneOrigin ? { PUBLIC_BASE_PATH: ONE_ORIGIN_BASE_PATH } : {}, ...vars });
     } else if (pkgName === "router") {
       config.services = routerServices(gatekeepers);
       config.routes = [{ pattern: instance.hostname, custom_domain: true }];
-      withVars(pkgName, config, vars);
+      if (oneOrigin) {
+        // ADR-0014: the router owns the district's hostname, and keeps the old ones to redirect.
+        config.services.push({ binding: "DISTRICT", service: DISTRICT_PACKAGE });
+        config.routes = [oneOrigin.origin, ...oneOrigin.legacy.keys()].map((pattern) => ({ pattern, custom_domain: true as const }));
+        if (!config.assets) throw new Error(`${pkgName}/wrangler.jsonc serves no assets; a one-origin router serves the Workshop's`);
+        config.assets = { ...config.assets, run_worker_first: true };
+        withVars(pkgName, config, { LEGACY_HOSTS: JSON.stringify(Object.fromEntries(oneOrigin.legacy)), ...vars });
+      } else {
+        withVars(pkgName, config, vars);
+      }
     } else if (pkgName === AI_GUARD_PACKAGE) {
       if (config.main === AI_GUARD_DEV_MAIN) {
         throw new Error(`${pkgName}/wrangler.jsonc names the development entrypoint`);
@@ -415,10 +513,17 @@ export function buildProductionConfigs({
       // Preferred by the guard over HALL_MONITOR_URL (src/hall-monitor.ts), so that var is not set.
       const hallMonitor: ServiceBinding =
           { binding: "HALL_MONITOR", service: instance.aiGuard.hallMonitorService };
-      config.services = [...config.services ?? [], hallMonitor];
+      config.services = [...config.services ?? [], hallMonitor, ...instance.district ? [GUARD_DISTRICT_BINDING] : []];
       withVars(pkgName, config, vars);
     } else if (pkgName === DISTRICT_PACKAGE && instance.district) {
-      asDistrict(config, [instance.district.hostname, ...instance.district.aliases ?? []], vars);
+      const hostnames = [instance.district.hostname, ...instance.district.aliases ?? []];
+      if (oneOrigin) {
+        // Behind the router, at no hostname of its own. Its LTI Tool keeps the origin platforms
+        // registered, which the router redirects to the one origin with method and body kept.
+        asDistrict(config, hostnames, { SCHOOL_MANIFEST: schoolManifestVar(baseUrl, true, ONE_ORIGIN_PHONE_SIGN_IN), ...vars }, { routed: false });
+      } else {
+        asDistrict(config, hostnames, vars);
+      }
     } else {
       throw new Error(`cannot build a production config for package: ${pkgName}`);
     }
@@ -440,6 +545,49 @@ export function buildProductionConfigs({
     });
   }
   return configs;
+}
+
+/** The district principal resolver's entrypoint, which only the Workshop backend may bind. */
+export const PRINCIPAL_RESOLVER_ENTRYPOINT = "DistrictPrincipalResolver";
+
+/** A backend binding named `binding` to the district's principal resolver. */
+function principalBindingTo(binding: string): ServiceBinding {
+  return { binding, service: DISTRICT_PACKAGE, entrypoint: PRINCIPAL_RESOLVER_ENTRYPOINT };
+}
+
+/** The backend's principal bindings for {@link ProductionInstance.principalBinding}. */
+function principalServices(instance: ProductionInstance): ServiceBinding[] {
+  if (!instance.principalBinding) return [];
+  if (!instance.district) throw new Error("principal bindings need the instance's district Worker");
+  return instance.principalBinding === "resolver"
+    ? [principalBindingTo("PRINCIPAL_MIGRATION"), principalBindingTo("PRINCIPAL_RESOLVER")]
+    : [principalBindingTo("PRINCIPAL_MIGRATION")];
+}
+
+/**
+ * A one-origin instance's hostnames: its one origin, and every old hostname with the URL prefix it
+ * now redirects to, the instance's (the Workshop's, so under /ai) and the district's (the LMS's,
+ * so the root). Fails on an instance that cannot have one origin.
+ */
+function oneOriginHosts(instance: ProductionInstance): { origin: string; legacy: Map<string, string> } {
+  const origin = instance.oneOrigin!.hostname;
+  if (!instance.district) throw new Error("a one-origin instance needs a district Worker for the router to front");
+  if (origin === instance.hostname) throw new Error(`${origin} is the instance's old hostname; one origin needs the district's`);
+  const base = `https://${origin}`;
+  const legacy = new Map<string, string>([[instance.hostname, `${base}${ONE_ORIGIN_BASE_PATH}`]]);
+  for (const host of [instance.district.hostname, ...instance.district.aliases ?? []]) {
+    if (host !== origin) legacy.set(host, base);
+  }
+  return { origin, legacy };
+}
+
+/**
+ * Build env each package's deploy build must set, by package: a one-origin router's frontend is
+ * built for /ai. Empty for every other instance. The deployer's build command carries it (the
+ * router's `buildCommand` in .forgegraph.yaml), since a Wrangler config cannot.
+ */
+export function productionBuildEnv(instance: ProductionInstance): Record<string, Record<string, string>> {
+  return instance.oneOrigin?.enabled ? { router: { ...ONE_ORIGIN_BUILD_ENV } } : {};
 }
 
 /** A generated config file's text. */

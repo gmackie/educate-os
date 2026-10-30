@@ -9,6 +9,7 @@ import { isCloudflareLimitsEnabled } from "./ai-gateway-billing/config.js";
 import { getAuthVendorBinding } from "./auth/auth-vendors.js";
 import { readAdminConfig } from "./admin-config.js";
 import { siteLogoImage } from "./site-logo.js";
+import { publicBasePath } from "./public-path.js";
 
 const logger = createWorkshopLogger("workshop.deployment.config");
 
@@ -59,7 +60,7 @@ export async function getServerConfig(env: Cloudflare.Env): Promise<ServerConfig
     signupsEnabled: config.signupsEnabled,
     userSearchEnabled: config.userSearchEnabled,
     siteName: config.siteName,
-    siteLogo: siteLogoImage(config.siteLogoConfigured),
+    siteLogo: siteLogoImage(config.siteLogoConfigured, publicBasePath(env)),
     announcement: config.announcement,
     banner: config.banner.text,
     bannerColor: config.banner.color,

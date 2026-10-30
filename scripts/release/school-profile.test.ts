@@ -7,7 +7,7 @@ import { generateManifest, readDeployablePackages } from "./manifest-lib.ts";
 test("school manifest binds district authority and MCP before signing; generic is untouched", () => {
   const packages = readDeployablePackages(join(import.meta.dirname, "../../packages"));
   const manifest = generateManifest({ releaseId: "school-test", commit: "0".repeat(40),
-    createdAt: "2026-10-30T00:00:00Z", wranglerVersion: "test", profile: "school", assetVariants: {},
+    createdAt: "2026-10-30T00:00:00Z", wranglerVersion: "test", profile: "school",
     workers: packages.filter(pkg => ["router", "workshop-backend", "educateos-district-worker",
       "educateos-external-mcp"].includes(pkg.name)).map(pkg => ({ pkgName: pkg.name,
       config: pkg.config, mainModule: "index.js", modules: [] })),

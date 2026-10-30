@@ -4,7 +4,7 @@ import { BookOpen, FilePenLine, GraduationCap, Send } from 'lucide-react-native'
 import type { DistrictClient } from '../api/client';
 import type { Detail } from '../types';
 import { useLoad } from '../hooks/useLoad';
-import { palette } from '../theme';
+import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Field, Item, Page, QueryState, Section, Title } from '../ui/Primitives';
 
 
@@ -12,6 +12,7 @@ import { Button, Card, Chip, dateLabel, Field, Item, Page, QueryState, Section, 
 export function AssignmentScreen({ client, assignmentId, offeringId, navigate }: {
   client: DistrictClient; assignmentId: string; offeringId: string; navigate: (d: Detail) => void;
 }) {
+  const palette = usePalette();
   const [result, reload] = useLoad('assignment:' + assignmentId, async () => {
     const [details, submissions, grades] = await Promise.all([
       client.studentAssignment(assignmentId), client.studentSubmissions(assignmentId),
@@ -69,8 +70,8 @@ export function AssignmentScreen({ client, assignmentId, offeringId, navigate }:
         </Card>
       </Section>}
       {details.assignment.permittedArtifactTypes?.includes('document') ?
-        <Button label="Write a response" icon={<FilePenLine size={19} color={palette.white}/>}
-          onPress={() => navigate({ type: 'write', id: assignmentId, offeringId })}/> :
+        <Button label="Write a response" icon={<FilePenLine size={19} color={palette.onPrimary}/>}
+          onPress={() => navigate({ type: 'write', id: assignmentId, offeringId: offeringId || details.assignment.offeringId })}/> :
         <Card style={{ marginBottom: 18 }}>
           <Text style={{ color: palette.muted, lineHeight: 21 }}>
             This assignment uses a quiz or another type of learning artifact. Open your school's complete learning experience in the AI Workspace.
@@ -88,6 +89,7 @@ export function AssignmentScreen({ client, assignmentId, offeringId, navigate }:
 export function WriteResponse({ client, assignmentId, offeringId, onComplete }: {
   client: DistrictClient; assignmentId: string; offeringId: string; onComplete: () => void;
 }) {
+  const palette = usePalette();
   const [title, setTitle] = useState('');
   const [response, setResponse] = useState('');
   const [saving, setSaving] = useState(false);
@@ -105,7 +107,9 @@ export function WriteResponse({ client, assignmentId, offeringId, onComplete }: 
         if (!assignment.permittedArtifactTypes?.includes('document')) {
           throw new Error('This assignment does not accept written documents. Open it in your school workspace.');
         }
-        const workspace = await client.openCourseWorkspace(offeringId);
+        // A deep link may not name the class; the assignment does.
+        const offering = offeringId || (await client.studentAssignment(assignmentId)).assignment.offeringId;
+        const workspace = await client.openCourseWorkspace(offering);
         const created = await client.createDocument(workspace.id, title.trim(), response.trim());
         revision = { artifactId: created.artifact.id, revisionId: created.head.id, text: response.trim(), title: title.trim() };
         setSaved(revision);
@@ -138,7 +142,7 @@ export function WriteResponse({ client, assignmentId, offeringId, onComplete }: 
         multiline placeholder="Begin writing your response here…" placeholderTextColor={palette.subtle}
         textAlignVertical="top" maxLength={30000}
         style={{ minHeight: 235, padding: 14, borderWidth: 1, borderColor: palette.line,
-          borderRadius: 14, backgroundColor: palette.white, fontSize: 15,
+          borderRadius: 14, backgroundColor: palette.raised, fontSize: 15,
           lineHeight: 24, color: palette.ink }}/>
       <Text style={{ color: palette.muted, fontSize: 12 }}>{response.length.toLocaleString()} characters</Text>
       <Text style={{ color: palette.muted, lineHeight: 20, fontSize: 12 }}>
@@ -152,7 +156,7 @@ export function WriteResponse({ client, assignmentId, offeringId, onComplete }: 
         <Button label={saving ? 'Saving…' : 'Save to class'} disabled={disabled} variant="outline"
           onPress={() => void submit(false)}/>
         <Button label={saving ? 'Submitting…' : 'Submit response'} disabled={disabled}
-          icon={<Send size={18} color={palette.white}/>}
+          icon={<Send size={18} color={palette.onPrimary}/>}
           onPress={() => Alert.alert('Submit this response?', 'Your teacher will receive the saved version of this work.', [
             { text: 'Cancel', style: 'cancel' }, { text: 'Submit', onPress: () => { void submit(true); } },
           ])}/>
@@ -163,6 +167,7 @@ export function WriteResponse({ client, assignmentId, offeringId, onComplete }: 
 export function StudentGrades({ client, navigate }: {
   client: DistrictClient; navigate: (d: Detail) => void;
 }) {
+  const palette = usePalette();
   const [data, retry] = useLoad('student-grades', async () => {
     const classes = await client.studentClasses();
     return Promise.all(classes.map(async (course) => {
@@ -188,6 +193,7 @@ export function StudentGrades({ client, navigate }: {
 }
 
 export function Announcements({ client }: { client: DistrictClient }) {
+  const palette = usePalette();
   const [data, retry] = useLoad('announcements', () => client.studentAnnouncements());
   return <Page refresh={retry}>
     <Title subtitle="Official classroom messages from your teachers.">Announcements</Title>

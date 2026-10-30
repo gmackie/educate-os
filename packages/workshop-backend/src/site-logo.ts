@@ -29,10 +29,13 @@ export function validateSiteLogo(data: Uint8Array): void {
   }
 }
 
-/** Projects configured logo state into its canonical public image URL. */
-export function siteLogoImage(configured: boolean): AvatarImage | undefined {
+/**
+ * Projects configured logo state into its canonical public image URL, under `basePath` (where the
+ * Workshop is mounted: `""` at the root, `/ai` on a district origin; see public-path.ts).
+ */
+export function siteLogoImage(configured: boolean, basePath = ""): AvatarImage | undefined {
   if (!configured) return undefined;
-  return { url: SITE_LOGO_PATH };
+  return { url: basePath + SITE_LOGO_PATH };
 }
 
 /** Serves the current logo bytes from R2 as a safely typed public image. */

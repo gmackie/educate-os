@@ -35,6 +35,7 @@
     "@educateos/catalog": "workspace:*",
     "@educateos/config": "workspace:*",
     "@educateos/fixtures": "workspace:*",
+    "@educateos/fleet": "workspace:*",
     "@gadgets/scripts": "workspace:*",
     "miniflare": "catalog:",
     "typescript": "catalog:",

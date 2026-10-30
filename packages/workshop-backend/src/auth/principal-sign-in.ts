@@ -5,6 +5,16 @@
 import type { JWTPayload } from "jose";
 import { AUTH_ERROR_CODES, createAuthError } from "@gadgets/workshop-shared/api";
 import type { PrincipalResolver } from "@gadgets/workshop-shared/principal-resolver";
+import { createWorkshopLogger } from "../observability.js";
+
+const logger = createWorkshopLogger("workshop.principal-sign-in");
+
+/**
+ * What a sign-in is refused with when the resolver (the district) cannot answer. Not an auth error:
+ * the sign-in itself may be fine, and trying again later can succeed.
+ */
+export const PRINCIPAL_RESOLVER_UNAVAILABLE_MESSAGE =
+    "Your school's directory can't be reached to sign you in right now. Try again in a few minutes.";
 
 /** The resolver method the kernel calls. */
 export type PrincipalResolverClient = Pick<PrincipalResolver, "resolveAccessSignIn">;
@@ -30,11 +40,18 @@ export async function resolvePrincipalUser(resolver: PrincipalResolverClient, pa
       || typeof payload.exp !== "number" || !Number.isFinite(payload.exp) || payload.exp * 1000 <= Date.now()) {
     throw createAuthError(AUTH_ERROR_CODES.principalUnresolved);
   }
-  let resolution = await resolver.resolveAccessSignIn({
-    issuer: iss,
-    subject: sub,
-    ...(typeof email === "string" && email.length > 0 ? { email } : {}),
-  });
+  let resolution;
+  try {
+    resolution = await resolver.resolveAccessSignIn({
+      issuer: iss,
+      subject: sub,
+      ...(typeof email === "string" && email.length > 0 ? { email } : {}),
+    });
+  } catch (error) {
+    // Never falls back to email: an unreachable district refuses every sign-in until it is back.
+    logger.error("the principal resolver failed", { event: "principal.resolve.failed", error });
+    throw new Error(PRINCIPAL_RESOLVER_UNAVAILABLE_MESSAGE, { cause: error });
+  }
   if (resolution.outcome === "adoption-pending") {
     throw createAuthError(AUTH_ERROR_CODES.principalAdoptionPending);
   }

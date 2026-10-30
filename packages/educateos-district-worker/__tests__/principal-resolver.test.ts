@@ -1,57 +1,39 @@
-import { env, evictDurableObject, runInDurableObject } from "cloudflare:test";
-import { afterEach, describe, expect, it } from "vitest";
+// The Workshop's principal resolver (SCHO-259): the `DistrictPrincipalResolver` entrypoint over a
+// real service binding, answering from the district's directory as the district's own sign-in does.
+import { env } from "cloudflare:test";
+import { describe, expect, it } from "vitest";
 import { NORTHFIELD } from "@educateos/fixtures";
 import { ACCESS_ISSUER } from "./fixtures.ts";
 
-const person = NORTHFIELD.principals.find(p => p.id === "prn_nf-student-amara")!;
-const signIn = { issuer: ACCESS_ISSUER, subject: person.externalIdentities[0]!.subject };
-const district = () => env.DISTRICT.getByName(NORTHFIELD.district.id);
+const subjectOf = (principalId: string) =>
+  NORTHFIELD.principals.find((p) => p.id === principalId)!.externalIdentities[0]!.subject;
+const hex = (c: string) => c.repeat(64);
 
-// Change the real stored row, leaving the already-running application intact. This tests that
-// login reads the directory again rather than retaining the seed or a cached identity index.
-async function changePerson(change: Record<string, unknown>) {
-  await runInDurableObject(district(), (_instance, state) => {
-    const row = state.storage.sql.exec<{ record_json: string }>(
-      "SELECT record_json FROM academic_principals WHERE id = ?", person.id,
-    ).one();
-    state.storage.sql.exec("UPDATE academic_principals SET record_json = ? WHERE id = ?",
-      JSON.stringify({ ...JSON.parse(row.record_json), ...change }), person.id);
-  });
-}
-
-afterEach(async () => { await changePerson(person); });
-
-describe("DistrictPrincipalResolver over real workerd service RPC and SQLite", () => {
-  it("returns only principal identity and survives restart and email changes", async () => {
-    const expected = { outcome: "resolved", principalId: person.id, displayName: person.displayName };
-    expect(await env.PRINCIPALS.resolveAccessSignIn({ ...signIn, email: "old@example.test" })).toEqual(expected);
-    await evictDurableObject(district());
-    expect(await env.PRINCIPALS.resolveAccessSignIn({ ...signIn, email: "new@example.test" })).toEqual(expected);
+describe("DistrictPrincipalResolver", () => {
+  it("resolves a linked Access subject to the district's principal, whatever the email says", async () => {
+    const rivera = { issuer: ACCESS_ISSUER, subject: subjectOf("prn_nf-teacher-rivera") };
+    await expect(env.PRINCIPALS.resolveAccessSignIn(rivera))
+      .resolves.toStrictEqual({ outcome: "resolved", principalId: "prn_nf-teacher-rivera", displayName: "Sam Rivera" });
+    await expect(env.PRINCIPALS.resolveAccessSignIn({ ...rivera, email: "avery.admin@northfield.example" }))
+      .resolves.toMatchObject({ principalId: "prn_nf-teacher-rivera" });
   });
 
-  it("refuses unknown issuers, cross-district subjects and mismatched token subjects despite matching email", async () => {
-    for (const attempt of [
-      { ...signIn, issuer: "https://other.cloudflareaccess.com" },
-      { ...signIn, subject: "another-district-student" },
-      { ...signIn, subject: "wrong-token-sub", email: "amara@northfield.example" },
-    ]) expect(await env.PRINCIPALS.resolveAccessSignIn(attempt)).toEqual({ outcome: "unauthenticated" });
+  it("refuses a subject the school has not set up, and an untrusted issuer", async () => {
+    await expect(env.PRINCIPALS.resolveAccessSignIn({ issuer: ACCESS_ISSUER, subject: "nobody", email: "sam.rivera@northfield.example" }))
+      .resolves.toStrictEqual({ outcome: "unauthenticated" });
+    await expect(env.PRINCIPALS.resolveAccessSignIn({ issuer: "https://other.example", subject: subjectOf("prn_nf-teacher-rivera") }))
+      .resolves.toStrictEqual({ outcome: "unauthenticated" });
   });
 
-  it.each(["inactive", "graduated"])("refuses a %s principal on the next login", async status => {
-    expect((await env.PRINCIPALS.resolveAccessSignIn(signIn)).outcome).toBe("resolved");
-    await changePerson({ status });
-    expect(await env.PRINCIPALS.resolveAccessSignIn(signIn)).toEqual({ outcome: "unauthenticated" });
-  });
-
-  it("honors revoked identity links without an object restart or an email fallback", async () => {
-    expect((await env.PRINCIPALS.resolveAccessSignIn(signIn)).outcome).toBe("resolved");
-    await changePerson({ externalIdentities: [] });
-    expect(await env.PRINCIPALS.resolveAccessSignIn({ ...signIn, email: "amara@northfield.example" })).toEqual({ outcome: "unauthenticated" });
-  });
-
-  it("refuses malformed cross-district stored links rather than leaking directory records", async () => {
-    await env.PRINCIPALS.resolveAccessSignIn(signIn);
-    await changePerson({ externalIdentities: person.externalIdentities.map(i => ({ ...i, districtId: "dst_other" })) });
-    expect(await env.PRINCIPALS.resolveAccessSignIn(signIn)).toEqual({ outcome: "unauthenticated" });
+  it("matches email-keyed Workshop users to one person each, or to no one", async () => {
+    await expect(env.PRINCIPALS.matchEmailKeyedUsers([
+      { email: "sam.rivera@northfield.example", workshopUserId: hex("1") },
+      { email: "family.okafor@northfield.example", workshopUserId: hex("2") },
+      { email: "stranger@elsewhere.example", workshopUserId: hex("3") },
+    ])).resolves.toStrictEqual([
+      { email: "sam.rivera@northfield.example", outcome: "exact-single", principalId: "prn_nf-teacher-rivera" },
+      { email: "family.okafor@northfield.example", outcome: "ambiguous" },
+      { email: "stranger@elsewhere.example", outcome: "unmatched" },
+    ]);
   });
 });

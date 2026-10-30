@@ -21,8 +21,8 @@ before any script runs. Only the paths in `assets.run_worker_first` reach the Wo
 | --- | --- |
 | `/healthz` | JSON `{"status":"ok","commit":…}` once the store answers. ForgeGraph's health check. |
 | `/registry/v1/heartbeat` | The opt-in instance registry's heartbeats: signed by the installation, no sign-in. |
-| `/app/install` | The guided install: the form (GET) and the run (POST), inside the console. |
-| `/app`, `/app/*` | The operator console, behind Cloudflare Access, on educateos.io only. The other hostnames redirect there, since the Access application covers only `educateos.io/app`. |
+| `/app/install` | The guided install: the form (GET) and the run (POST), inside the console. It stays when the console moves. |
+| `/app`, `/app/*` | The operator console, behind Cloudflare Access, on educateos.io only. The other hostnames redirect there, since the Access application covers only `educateos.io/app`. With `ADMIN_URL` set, a 302 to the hosted admin ([below](#moving-to-the-admin-scho-263)). |
 | `/clever/launch` | Clever portal launches, sent on to the registered installation for the user's Clever district (SCHO-249). No sign-in. See [Clever portal launches](#clever-portal-launches). |
 
 Anything else that reaches the script goes back to the assets binding and its 404 page. The paths
@@ -161,6 +161,13 @@ match. It is a demo bridge until the guided install writes installation rows; to
 the guided install offers the link, it needs a proof that the operator speaks for that Clever
 district.
 
+**Users in no district.** Clever places a teacher who authorized the app themselves in no district:
+`/me` names none, the user record's roles carry only a legacy ID, and the user's district record is
+a 404. Every sandbox demo login is one. Such a launch goes to the site Worker's
+`CLEVER_LAUNCH_UNAFFILIATED` hostname (today `northfield.educateos.io`) and is otherwise refused
+with `no-district`. The redirect grants nothing: the district's own sign-in still decides who gets
+in.
+
 **Setup.**
 
 - The Clever app's first redirect URI is `https://educateos.io/clever/launch`. Each district's own
@@ -277,3 +284,30 @@ same token permissions. They found one bug: `GET /accounts/{id}/workers/domains`
 unavailable. `cloudflare-http.ts` now reads `null` as no errors, with a test. With that fixed, a
 CLI apply into account c07a7e70 created all 13 resources of release `r000001-088ddc0`, and both
 hostnames then served behind Access.
+
+## Moving to the admin (SCHO-263)
+
+The operator-facing console moves to the hosted admin at admin.educateos.io
+([admin.md](admin.md), [runbook](runbooks/admin-hosted.md)), whose D1 becomes the system of record
+for operators, workspaces and installations. What changes here, and what doesn't:
+
+- **The export.** The `ControlPlane` Durable Object gained a read-only `exportSnapshot()`: every
+  operator, installation and slug reservation, in one transaction, validated against
+  `ControlPlaneExport` (`@educateos/control-plane/export`). The site Worker serves it only as the RPC
+  entrypoint `ControlPlaneExporter`, which the admin binds as a service. An entrypoint has no URL, so
+  only a Worker in this account deployed with a binding to it can call it; there is no HTTP route.
+  The admin's import reads it and writes nothing back.
+- **The redirect.** With the site var `ADMIN_URL` set (an `https://` URL), `/app` and every `/app/*`
+  path answer `302` to it, `no-store`. Unset, blank or not `https://` means no redirect: the console
+  stays, which is how production runs until the admin is live and the import has run. A 302 rather
+  than a 308, so unsetting the var undoes the move.
+- **The guided install stays** at `/app/install` (`STAYS_ON_CONSOLE`). It is reusable as a library,
+  but moving it would mean giving the admin the `RELEASES` bucket, `RELEASE_TRUST`, an RPC path to
+  this Durable Object's `reserveInstall`, `endInstall`, `recordInstallation` and registry
+  registration (the reservation is what makes a slug atomic, and Clever launches and the registry read
+  the same object), and a second rendering of the server-streamed progress page inside an SPA. That is
+  a cross-Worker write path to the one object that serves Clever and the registry, for no change an
+  operator would see. So the install keeps running here, the admin's Workspaces page links to it,
+  and the admin brings each new installation in by running the import again.
+- **Unchanged:** `/clever/launch`, `/registry/v1/*`, `/healthz`, the reservation logic and the
+  registry and Clever tables. The Durable Object keeps all its data; the import only reads it.

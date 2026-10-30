@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build:site": "node build.mjs",
-    "test:run": "node --experimental-strip-types --test pairing.test.ts"
+    "test:run": "node --experimental-strip-types --test pairing.test.ts app-links.test.ts"
   },
   "dependencies": {
     "qrcode": "^1.5.4"

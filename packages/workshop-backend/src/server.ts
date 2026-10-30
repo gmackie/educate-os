@@ -34,11 +34,15 @@ import { handleClientErrorRequest } from "./client-errors.js";
 import { verifyCfAccessJwt } from "./access.js";
 import { resolveUiFeatureFlags } from "./feature-flags";
 import { serveSiteLogo, SITE_LOGO_PATH } from "./site-logo.js";
+import { publicBasePath, workshopRequestPath } from "./public-path.js";
+import { resolveSchoolContext } from "./school-context.js";
+import type { SchoolContextResolution } from "@gadgets/workshop-shared/school-context";
 import { createWorkshopLogger } from "./observability";
 import { deployServiceInstall, routerVersionTag } from "./deployment-updates.js";
 import { retryOnDoReset, wrapDoStubForTelemetry } from "./do-retry";
 import { deviceSessionCallback } from "./auth/device-session-callback.js";
-import { resolvePrincipalUser } from "./auth/principal-sign-in.js";
+import { isAdminUserName } from "./auth/admins.js";
+import { accessUserName, handlePrincipalMigrationRequest, PRINCIPAL_MIGRATION_PATH } from "./auth/principal-aliases.js";
 
 const logger = createWorkshopLogger("workshop.server");
 
@@ -56,11 +60,12 @@ const ROUTER_TAG_REPORT_INTERVAL_MS = 60_000;
 
 const USER_SEARCH_POLICY_CACHE_TTL_MS = 30_000;
 
-function publicBlueprintInfo(id: string, metadata: BlueprintPublicInfo['metadata']): BlueprintPublicInfo {
+function publicBlueprintInfo(
+    env: Cloudflare.Env, id: string, metadata: BlueprintPublicInfo['metadata']): BlueprintPublicInfo {
   return {
     id,
     metadata,
-    screenshotUrl: blueprintScreenshotUrl(id, metadata),
+    screenshotUrl: blueprintScreenshotUrl(id, metadata, publicBasePath(env)),
   };
 }
 
@@ -137,22 +142,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
   }
 
   #isAdmin(): boolean {
-    let name = this.#userId.name;
-    let admins = this.env.ADMINS;
-
-    if (!name || !admins) return false;
-
-    if (typeof admins === "string") {
-      // Admins should be a JSON binding of array type, but `.env` doesn't actually let you
-      // specify JSON bindings, so we also support a string that parses as JSON array.
-      admins = JSON.parse(admins);
-    }
-
-    if (!Array.isArray(admins)) {
-      throw new TypeError("ADMINS must be configured as an array of usernames.");
-    }
-
-    return admins.includes(name);
+    return isAdminUserName(this.env, this.#userId.name);
   }
 
   whoami(): Promise<AiChatAuthorInfo> {
@@ -167,6 +157,11 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     const result = await this.#user.stageDeviceSessionHandoff(
         publicKey, state, this.accessSession?.jwt);
     return result;
+  }
+  // "Ask AI about this" (SCHO-260): the district decides, as the signed-in person, whether the
+  // reference is theirs to read. See school-context.ts.
+  resolveSchoolContext(ref: string): Promise<SchoolContextResolution> {
+    return resolveSchoolContext(this.env.EDUCATEOS_DISTRICT_API, this.accessSession?.jwt, ref);
   }
   setOwnDisplayName(name: string): Promise<void> {
     return this.#user.setOwnDisplayName(name);
@@ -481,7 +476,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
 
   async listFeaturedBlueprints(): Promise<BlueprintPublicInfo[]> {
     return (await listFeaturedBlueprintsFromKv(this.env)).map(
-        blueprint => publicBlueprintInfo(blueprint.id, blueprint.metadata));
+        blueprint => publicBlueprintInfo(this.env, blueprint.id, blueprint.metadata));
   }
 
   async addBlueprintToLibrary(blueprintId: string): Promise<void> {
@@ -723,7 +718,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     let adminUserId = this.#userId.name!;
     // @ts-expect-error Cap'n Web RPC stubs and native RPC targets are compatible but the type
     //     system doesn't know this.
-    return new AdminApiImpl(this.adminSettings.getByName(""), adminUserId);
+    return new AdminApiImpl(this.adminSettings.getByName(""), adminUserId, publicBasePath(this.env));
   }
 }
 
@@ -842,10 +837,9 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
       throw createAuthError(AUTH_ERROR_CODES.notAuthenticatedWithAccess);
     }
 
-    let email = this.accessSession.payload.email as string;
-    let user = this.env.PRINCIPAL_RESOLVER
-        ? await resolvePrincipalUser(this.env.PRINCIPAL_RESOLVER, this.accessSession.payload)
-        : { name: email, displayName: undefined };
+    // The email without a principal resolver; with one, the principal's name, or the existing
+    // email-keyed user the principal migration aliased it to (auth/principal-aliases.ts).
+    let user = await accessUserName(this.env, this.ctx.exports, this.accessSession.payload);
     let userId = this.users.idFromName(user.name);
     let signupsEnabled = (await readAdminConfig(this.env)).signupsEnabled;
     let accountCreated = await this.users.get(userId)
@@ -922,7 +916,7 @@ class PublicApiImpl extends RpcTarget implements PublicApi {
     let kvRecord = await readBlueprintKvRecord(this.env, id);
     if (!kvRecord) return null;
 
-    return publicBlueprintInfo(id, kvRecord.metadata);
+    return publicBlueprintInfo(this.env, id, kvRecord.metadata);
   }
 
   async downloadBlueprint(id: string): Promise<ReadableStream<Uint8Array>> {
@@ -957,6 +951,10 @@ export default {
     if (env.REQUIRE_PRINCIPAL_RESOLVER === "true" && (!env.PRINCIPAL_RESOLVER || !env.CF_ACCESS_AUD || !env.CF_ACCESS_ISS)) {
       return new Response("Principal authentication is unavailable.", { status: 503, headers: { "Cache-Control": "no-store" } });
     }
+    // The router forwards a district origin's `/ai/api*` and `/ai/blueprint-screenshot/*` here
+    // with the Workshop's mount intact; strip it once so both mounts route alike (SCHO-259). The
+    // origin is untouched, so the same-origin checks below still compare against the request's.
+    let pathname = workshopRequestPath(url.pathname, env);
 
     // Read on every request, off the critical path: a failure only means the next request reports
     // it again. Only the update status of a deployment the deploy flow installed reads the tag, so
@@ -979,7 +977,7 @@ export default {
       routerTagReport = report;
       ctx.waitUntil(recorded);
     }
-    if (url.pathname === ROUTER_TAG_PROBE_PATH && req.method === "POST") {
+    if (pathname === ROUTER_TAG_PROBE_PATH && req.method === "POST") {
       if (routerTag !== undefined && routerTagReport?.tag === routerTag) {
         await routerTagReport.recorded;
       }
@@ -990,12 +988,12 @@ export default {
           { headers: { "Cache-Control": "no-store" } });
     }
 
-    if (url.pathname === SITE_LOGO_PATH) {
+    if (pathname === SITE_LOGO_PATH) {
       return serveSiteLogo(req, env.BLUEPRINT_CONTENT);
     }
 
-    if (url.pathname.startsWith(BLUEPRINT_SCREENSHOT_PATH_PREFIX)) {
-      let blueprintId = url.pathname.slice(BLUEPRINT_SCREENSHOT_PATH_PREFIX.length);
+    if (pathname.startsWith(BLUEPRINT_SCREENSHOT_PATH_PREFIX)) {
+      let blueprintId = pathname.slice(BLUEPRINT_SCREENSHOT_PATH_PREFIX.length);
       return serveBlueprintScreenshot(env, blueprintId);
     }
 
@@ -1004,17 +1002,17 @@ export default {
     // browser via the `attempt` stub from PublicApi.startGatekeeperLogin(). So the backend no longer
     // hosts /auth/* callbacks.
 
-    if (url.pathname === "/api/client-errors") {
+    if (pathname === "/api/client-errors") {
       return handleClientErrorRequest(req, env, ctx);
     }
 
-    if (url.pathname === "/api/device-session/callback") {
+    if (pathname === "/api/device-session/callback") {
       let expectedUserDoId: string | undefined;
       if (env.CF_ACCESS_AUD || env.PRINCIPAL_RESOLVER) {
         const payload = await verifyCfAccessJwt(req, env);
-        const name = payload && env.PRINCIPAL_RESOLVER
-          ? await resolvePrincipalUser(env.PRINCIPAL_RESOLVER, payload).then(u => u.name, () => null)
-          : payload?.email;
+        const name = payload
+          ? await accessUserName(env, ctx.exports, payload).then(u => u.name, () => null)
+          : undefined;
         if (typeof name !== "string" || name.length === 0) {
           return new Response("Invalid CF access JWT.", {
             status: 403,
@@ -1034,7 +1032,13 @@ export default {
       }, expectedUserDoId, env.NATIVE_APP_CALLBACK_ORIGIN);
     }
 
-    if (url.pathname === "/api") {
+    if (pathname === PRINCIPAL_MIGRATION_PATH) {
+      // The one-time migration of email-keyed users to principals. Not Found unless a district
+      // directory is bound for it (PRINCIPAL_MIGRATION or PRINCIPAL_RESOLVER).
+      return handlePrincipalMigrationRequest(req, env, ctx.exports);
+    }
+
+    if (pathname === "/api") {
       // Make sure the bundled blueprints are installed. The AdminSettings DO doesn't wake
       // merely because someone deployed, so the install needs a trigger; hanging it off API
       // traffic means a fresh deployment is provisioned by its first visitor. Fire-and-forget,

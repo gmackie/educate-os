@@ -9,9 +9,10 @@ import {
   CLASSROOM_ACTIONS, type ClassroomAction, type ClassroomActions,
 } from "./classroom-actions";
 import {
-  ClassroomApi, validateClassroomCourseWorkId, validateClassroomGrade,
+  ClassroomApi, assertClassroomSubmissionReady, validateClassroomCourseWorkId, validateClassroomGrade,
 } from "./classroom-api";
 import type {
+  ClassroomRubricUpdate, ClassroomGradingPeriodUpdate, ClassroomRubric, ClassroomRubricDraft, ClassroomGradingPeriodSettings,
   ClassroomCourse, ClassroomCourseWork, ClassroomCourseWorkDraft, ClassroomRoster,
   ClassroomSubmission, GoogleClassroomCourseSession,
 } from "./classroom-types";
@@ -30,6 +31,8 @@ export type ClassroomChanges = {
   /** Queues a change for approval. */
   submit<K extends keyof ClassroomActions>(kind: K, payload: ClassroomActions[K]): Promise<void>;
 };
+
+import { classroomRubricUpdate, classroomGradingPeriodUpdate, classroomRubricDraft } from "./classroom-plus";
 
 const PENDING_COURSE_WORK_PREFIX = "pending:create:";
 
@@ -138,6 +141,41 @@ export class GoogleClassroomCourseSessionImpl extends RpcTarget implements Googl
     this.#queue[Symbol.dispose]();
   }
 
+  async getGradingPeriodSettings(): Promise<ClassroomGradingPeriodSettings> {
+    const settings = await this.#api.getGradingPeriodSettings(this.#courseId);
+    await this.#queue.authorizeObservation({ title: "Read Classroom grading periods", description: `Read grading periods of course ${this.#courseId}.` });
+    return settings;
+  }
+
+  async listRubrics(courseWorkId: string): Promise<ClassroomRubric[]> {
+    const rubrics = await this.#api.listRubrics(this.#courseId, courseWorkId);
+    await this.#queue.authorizeObservation({ title: "Read Classroom rubrics", description: `Read rubrics of coursework ${courseWorkId} in course ${this.#courseId}.` });
+    return rubrics;
+  }
+
+  async createRubric(courseWorkId: string, draft: ClassroomRubricDraft): Promise<void> {
+    const parsed = classroomRubricDraft(draft);
+    await this.#api.getOwnedCourseWork(this.#courseId, courseWorkId);
+    await this.#changes.submit("createRubric", { courseWorkId, draft: parsed });
+  }
+
+  async updateRubric(courseWorkId: string, rubricId: string, update: ClassroomRubricUpdate): Promise<void> {
+    const parsed = classroomRubricUpdate(update);
+    validateClassroomCourseWorkId(rubricId);
+    await this.#api.getOwnedCourseWork(this.#courseId, courseWorkId);
+    await this.#changes.submit("updateRubric", { courseWorkId, rubricId, update: parsed });
+  }
+
+  async deleteRubric(courseWorkId: string, rubricId: string): Promise<void> {
+    validateClassroomCourseWorkId(rubricId);
+    await this.#api.getOwnedCourseWork(this.#courseId, courseWorkId);
+    await this.#changes.submit("deleteRubric", { courseWorkId, rubricId });
+  }
+
+  async updateGradingPeriodSettings(settings: ClassroomGradingPeriodUpdate): Promise<void> {
+    await this.#changes.submit("updateGradingPeriodSettings", { settings: classroomGradingPeriodUpdate(settings) });
+  }
+
   async getCourse(): Promise<ClassroomCourse> {
     let course = await this.#api.getCourse(this.#courseId);
     await this.#queue.authorizeObservation({
@@ -211,6 +249,7 @@ export class GoogleClassroomCourseSessionImpl extends RpcTarget implements Googl
     }
     let courseWork = await this.#api.getOwnedCourseWork(this.#courseId, courseWorkId);
     let submission = await this.#api.getSubmission(this.#courseId, courseWorkId, submissionId);
+    assertClassroomSubmissionReady(submission);
     await this.#changes.submit("setGrade", {
       courseWorkId, courseWorkTitle: courseWork.title, submissionId, userId: submission.userId,
       assignedGrade,
@@ -231,7 +270,10 @@ export class GoogleClassroomCourseSessionImpl extends RpcTarget implements Googl
 
   /** The submissions, refused unless this connection created the coursework, with queued grades. */
   async #ownedSubmissions(courseWorkId: string, userId?: string): Promise<ClassroomSubmission[]> {
-    await this.#api.getOwnedCourseWork(this.#courseId, courseWorkId);
+    const courseWork = await this.#api.getOwnedCourseWork(this.#courseId, courseWorkId);
+    // Google does not create student submissions until the assignment is published, and refuses
+    // the submissions endpoint for a draft. Ownership is still checked before returning no rows.
+    if (courseWork.state === "DRAFT") return [];
     let submissions = await this.#api.listSubmissions(this.#courseId, courseWorkId, userId);
     let grades = new Map<string, number>();
     for (let { action } of this.#changes.pending()) {

@@ -27,7 +27,7 @@ import {
   type DistrictDirectorySnapshot,
   type GuardianRelationshipId,
   type OfferingId,
-  type PrincipalId,
+  PrincipalId,
 } from "@educateos/contracts";
 import { DurableObjectAcademicStore } from "@educateos/academics/durable-object-store";
 import { DurableObjectWorkspaceStore, legacyWorkspaceReplacements } from "@educateos/workspaces/durable-object-store";
@@ -109,6 +109,24 @@ import {
 import { QUIZ_CONFLICT, Quiz, QuizAttempt, QuizBook, QuizRelease, type QuizBookWrite, type QuizStorage } from "@educateos/quizzes";
 import { FundingAllocationRevision } from "./routes.ts";
 import { MAX_ROSTER_SYNC_RUNS, RosterSyncRecord } from "./stores.ts";
+// Devices (SCHO-261)
+import {
+  DeviceId,
+  DevicePlatform,
+  DevicePublicJwk,
+  DeviceRevocationReason,
+  DeviceStatus,
+  type DeviceRecord,
+  type DeviceRevocation,
+  type DeviceStore,
+  type RefreshTokenRecord,
+  type RotationOutcome,
+} from "./devices.ts";
+// Pairing (SCHO-261)
+import { PairRoom, type PairRoomStore } from "./pairing.ts";
+// Operations (SCHO-263)
+import { OpsPublicJwk, type OpsAuditRecord, type OpsKeyRecord, type OpsStore } from "./ops.ts";
+import { KeyId, OpsScope } from "@educateos/fleet/ops";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, RosterSyncStore, WorkshopUserLinkStore } from "./stores.ts";
 // Communication (SCHO-189)
 import {
@@ -185,6 +203,16 @@ export const DISTRICT_TABLES = {
   quizzes: "educateos_quizzes",
   quizAttempts: "educateos_quiz_attempts",
   quizReleases: "educateos_quiz_releases",
+  // Devices (SCHO-261)
+  devices: "educateos_devices",
+  deviceRefreshTokens: "educateos_device_refresh_tokens",
+  deviceProofs: "educateos_device_proofs",
+  // Pairing (SCHO-261)
+  pairRooms: "educateos_pair_rooms",
+  // Operations (SCHO-263)
+  opsKeys: "educateos_ops_keys",
+  opsNonces: "educateos_ops_nonces",
+  opsAudit: "educateos_ops_audit",
 } as const;
 
 /** Thrown when a stored row cannot be read. Nothing is decided on state that cannot be read. */
@@ -1152,6 +1180,12 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     discussions: new DurableObjectDiscussionStorage(storage),
     // Quizzes (SCHO-191)
     quizzes: new DurableObjectQuizStorage(storage),
+    // Devices (SCHO-261)
+    devices: new DurableObjectDeviceStore(storage),
+    // Pairing (SCHO-261)
+    pairRooms: new DurableObjectPairRoomStore(storage),
+    // Operations (SCHO-263)
+    ops: new DurableObjectOpsStore(storage),
   };
 }
 
@@ -1735,6 +1769,417 @@ export class DurableObjectGadgetAssessmentStore implements GadgetAssessmentStore
       }
       this.#storage.sql.exec("INSERT INTO educateos_gadget_assessments (assignment_id, binding_json) VALUES (?, ?)", binding.assignmentId, JSON.stringify(binding));
       return binding;
+    });
+  }
+}
+
+// Devices (SCHO-261)
+
+/** A device row as stored; columns are checked as they are read. */
+const StoredDevice = z.object({
+  id: DeviceId,
+  principal_id: z.string(),
+  label: z.string(),
+  platform: DevicePlatform,
+  model: z.string(),
+  app_version: z.string(),
+  key_thumbprint: z.string(),
+  public_jwk: z.string(),
+  created_at: z.string(),
+  last_seen_at: z.string(),
+  last_country: z.string().nullable(),
+  push_token: z.string().nullable(),
+  status: DeviceStatus,
+  revoked_at: z.string().nullable(),
+  revoked_by: z.string().nullable(),
+  revoked_reason: DeviceRevocationReason.nullable(),
+});
+
+function deviceFromRow(row: Record<string, unknown>): DeviceRecord {
+  const parsed = StoredDevice.safeParse(row);
+  if (!parsed.success) throw new DistrictStoreCorruptionError("a device does not match its schema");
+  const d = parsed.data;
+  return {
+    id: d.id,
+    principalId: d.principal_id as PrincipalId,
+    label: d.label,
+    platform: d.platform,
+    model: d.model,
+    appVersion: d.app_version,
+    keyThumbprint: d.key_thumbprint,
+    publicJwk: parseStored(DevicePublicJwk, d.public_jwk, "a device key"),
+    createdAt: d.created_at,
+    lastSeenAt: d.last_seen_at,
+    lastCountry: d.last_country,
+    pushToken: d.push_token,
+    status: d.status,
+    revokedAt: d.revoked_at,
+    revokedBy: d.revoked_by,
+    revokedReason: d.revoked_reason,
+  };
+}
+
+/**
+ * A {@link DeviceStore} in a Durable Object's SQLite: one row per device; one row per refresh token,
+ * by its hash, kept after use so a second use is recognised; and the proof IDs each device used
+ * within the last minute, so a proof is accepted once. New tables, so they have no legacy twins.
+ */
+export class DurableObjectDeviceStore implements DeviceStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    const t = DISTRICT_TABLES;
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${t.devices} (
+        id TEXT PRIMARY KEY, principal_id TEXT NOT NULL, label TEXT NOT NULL, platform TEXT NOT NULL, model TEXT NOT NULL,
+        app_version TEXT NOT NULL, key_thumbprint TEXT NOT NULL, public_jwk TEXT NOT NULL, created_at TEXT NOT NULL,
+        last_seen_at TEXT NOT NULL, last_country TEXT, push_token TEXT,
+        status TEXT NOT NULL CHECK (status IN ('active', 'revoked')), revoked_at TEXT, revoked_by TEXT, revoked_reason TEXT
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${t.devices}_principal ON ${t.devices} (principal_id)`,
+      // One active device per key: a phone that pairs again makes a new key.
+      `CREATE UNIQUE INDEX IF NOT EXISTS ${t.devices}_active_key ON ${t.devices} (key_thumbprint) WHERE status = 'active'`,
+      `CREATE TABLE IF NOT EXISTS ${t.deviceRefreshTokens} (
+        token_hash TEXT PRIMARY KEY, device_id TEXT NOT NULL, family TEXT NOT NULL, issued_at TEXT NOT NULL, used_at TEXT, expires_at TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${t.deviceRefreshTokens}_device ON ${t.deviceRefreshTokens} (device_id)`,
+      `CREATE TABLE IF NOT EXISTS ${t.deviceProofs} (device_id TEXT NOT NULL, jti TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY (device_id, jti))`,
+    ], []);
+  }
+
+  async register(device: DeviceRecord, refresh: RefreshTokenRecord): Promise<void> {
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      const [existing] = sql.exec(`SELECT id FROM ${t.devices} WHERE id = ? OR (key_thumbprint = ? AND status = 'active')`, device.id, device.keyThumbprint).toArray();
+      if (existing !== undefined) throw new EducateOsError("conflict", "That device key is already registered.");
+      sql.exec(
+        `INSERT INTO ${t.devices} (id, principal_id, label, platform, model, app_version, key_thumbprint, public_jwk, created_at, last_seen_at,
+           last_country, push_token, status, revoked_at, revoked_by, revoked_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        device.id, device.principalId, device.label, device.platform, device.model, device.appVersion, device.keyThumbprint,
+        JSON.stringify(device.publicJwk), device.createdAt, device.lastSeenAt, device.lastCountry, device.pushToken, device.status,
+        device.revokedAt, device.revokedBy, device.revokedReason,
+      );
+      this.#insertRefresh(sql, refresh);
+    });
+  }
+
+  async get(id: DeviceId): Promise<DeviceRecord | undefined> {
+    const [row] = this.#tables.transaction((sql) => sql.exec(`SELECT * FROM ${DISTRICT_TABLES.devices} WHERE id = ?`, id).toArray());
+    return row === undefined ? undefined : deviceFromRow(row);
+  }
+
+  async list(principalId?: PrincipalId): Promise<DeviceRecord[]> {
+    const t = DISTRICT_TABLES;
+    const rows = this.#tables.transaction((sql) =>
+      principalId === undefined
+        ? sql.exec(`SELECT * FROM ${t.devices} ORDER BY rowid DESC`).toArray()
+        : sql.exec(`SELECT * FROM ${t.devices} WHERE principal_id = ? ORDER BY rowid DESC`, principalId).toArray()
+    );
+    return rows.map(deviceFromRow);
+  }
+
+  async touch(id: DeviceId, at: string, country: string | null): Promise<void> {
+    this.#tables.transaction((sql) =>
+      sql.exec(`UPDATE ${DISTRICT_TABLES.devices} SET last_seen_at = ?, last_country = COALESCE(?, last_country) WHERE id = ?`, at, country, id)
+    );
+  }
+
+  async revoke(ids: readonly DeviceId[], at: string, revocation: DeviceRevocation): Promise<DeviceId[]> {
+    const t = DISTRICT_TABLES;
+    return this.#tables.transaction((sql) => {
+      const revoked: DeviceId[] = [];
+      for (const id of ids) {
+        const [row] = sql.exec(`SELECT status FROM ${t.devices} WHERE id = ?`, id).toArray();
+        if (row?.status !== "active") continue;
+        sql.exec(
+          `UPDATE ${t.devices} SET status = 'revoked', revoked_at = ?, revoked_by = ?, revoked_reason = ? WHERE id = ?`,
+          at, revocation.by, revocation.reason, id,
+        );
+        revoked.push(id);
+      }
+      return revoked;
+    });
+  }
+
+  async findRefreshToken(tokenHash: string): Promise<RefreshTokenRecord | undefined> {
+    const [row] = this.#tables.transaction((sql) => sql.exec(`SELECT * FROM ${DISTRICT_TABLES.deviceRefreshTokens} WHERE token_hash = ?`, tokenHash).toArray());
+    return row === undefined ? undefined : refreshFromRow(row);
+  }
+
+  async rotateRefreshToken(tokenHash: string, next: RefreshTokenRecord, at: string): Promise<RotationOutcome> {
+    const t = DISTRICT_TABLES;
+    return this.#tables.transaction((sql): RotationOutcome => {
+      const [row] = sql.exec(`SELECT used_at FROM ${t.deviceRefreshTokens} WHERE token_hash = ?`, tokenHash).toArray();
+      if (row === undefined) return "missing";
+      if (row.used_at !== null) return "reused";
+      sql.exec(`UPDATE ${t.deviceRefreshTokens} SET used_at = ? WHERE token_hash = ?`, at, tokenHash);
+      // Tokens are kept, spent or a revoked device's, so a later use is recognised, until they expire.
+      sql.exec(`DELETE FROM ${t.deviceRefreshTokens} WHERE expires_at < ?`, at);
+      this.#insertRefresh(sql, next);
+      return "rotated";
+    });
+  }
+
+  async claimProofId(deviceId: DeviceId, jti: string, expiresAtMs: number, nowMs: number): Promise<boolean> {
+    const t = DISTRICT_TABLES;
+    return this.#tables.transaction((sql) => {
+      sql.exec(`DELETE FROM ${t.deviceProofs} WHERE expires_at < ?`, nowMs);
+      const [row] = sql.exec(`SELECT 1 AS seen FROM ${t.deviceProofs} WHERE device_id = ? AND jti = ?`, deviceId, jti).toArray();
+      if (row !== undefined) return false;
+      sql.exec(`INSERT INTO ${t.deviceProofs} (device_id, jti, expires_at) VALUES (?, ?, ?)`, deviceId, jti, expiresAtMs);
+      return true;
+    });
+  }
+
+  async setPushToken(id: DeviceId, token: string | null): Promise<void> {
+    this.#tables.transaction((sql) => sql.exec(`UPDATE ${DISTRICT_TABLES.devices} SET push_token = ? WHERE id = ?`, token, id));
+  }
+
+  #insertRefresh(sql: DistrictSqlStorage["sql"], record: RefreshTokenRecord): void {
+    sql.exec(
+      `INSERT INTO ${DISTRICT_TABLES.deviceRefreshTokens} (token_hash, device_id, family, issued_at, used_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)`,
+      record.tokenHash, record.deviceId, record.family, record.issuedAt, record.usedAt, record.expiresAt,
+    );
+  }
+}
+
+const StoredRefreshToken = z.object({
+  token_hash: z.string(),
+  device_id: DeviceId,
+  family: z.string(),
+  issued_at: z.string(),
+  used_at: z.string().nullable(),
+  expires_at: z.string(),
+});
+
+function refreshFromRow(row: Record<string, unknown>): RefreshTokenRecord {
+  const parsed = StoredRefreshToken.safeParse(row);
+  if (!parsed.success) throw new DistrictStoreCorruptionError("a refresh token does not match its schema");
+  const r = parsed.data;
+  return { tokenHash: r.token_hash, deviceId: r.device_id, family: r.family, issuedAt: r.issued_at, usedAt: r.used_at, expiresAt: r.expires_at };
+}
+
+// Pairing (SCHO-261)
+
+/**
+ * A {@link PairRoomStore} in a Durable Object's SQLite: one row per room, its JSON beside the columns
+ * the store queries by. A room is changed only where its version still matches, so concurrent
+ * claims, approvals and polls cannot both win. A new table, so it has no legacy twin.
+ */
+export class DurableObjectPairRoomStore implements PairRoomStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    const t = DISTRICT_TABLES;
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${t.pairRooms} (
+        id TEXT PRIMARY KEY, version INTEGER NOT NULL, kind TEXT NOT NULL, creator_principal_id TEXT, state TEXT NOT NULL,
+        expires_at INTEGER NOT NULL, room_json TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${t.pairRooms}_creator ON ${t.pairRooms} (creator_principal_id)`,
+      `CREATE INDEX IF NOT EXISTS ${t.pairRooms}_expires ON ${t.pairRooms} (expires_at)`,
+    ], []);
+  }
+
+  async get(id: string): Promise<PairRoom | undefined> {
+    const [row] = this.#tables.transaction((sql) => sql.exec(`SELECT room_json FROM ${DISTRICT_TABLES.pairRooms} WHERE id = ?`, id).toArray());
+    return row === undefined ? undefined : parseStored(PairRoom, row.room_json, "a pairing room");
+  }
+
+  async insert(room: PairRoom): Promise<void> {
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      const [existing] = sql.exec(`SELECT id FROM ${t.pairRooms} WHERE id = ?`, room.id).toArray();
+      if (existing !== undefined) throw new EducateOsError("conflict", "That pairing room already exists.");
+      sql.exec(
+        `INSERT INTO ${t.pairRooms} (id, version, kind, creator_principal_id, state, expires_at, room_json) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        room.id, room.version, room.kind, room.creatorPrincipalId, room.state, room.expiresAt, JSON.stringify(room),
+      );
+    });
+  }
+
+  async replace(next: PairRoom): Promise<boolean> {
+    const t = DISTRICT_TABLES;
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT version FROM ${t.pairRooms} WHERE id = ?`, next.id).toArray();
+      if (row === undefined || row.version !== next.version - 1) return false;
+      sql.exec(
+        `UPDATE ${t.pairRooms} SET version = ?, creator_principal_id = ?, state = ?, expires_at = ?, room_json = ? WHERE id = ?`,
+        next.version, next.creatorPrincipalId, next.state, next.expiresAt, JSON.stringify(next), next.id,
+      );
+      return true;
+    });
+  }
+
+  async expireOpen(creatorPrincipalId: string, nowMs: number): Promise<void> {
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      const rows = sql.exec(
+        `SELECT room_json FROM ${t.pairRooms} WHERE creator_principal_id = ? AND state IN ('waiting', 'claimed') AND expires_at > ?`,
+        creatorPrincipalId, nowMs,
+      ).toArray();
+      for (const row of rows) {
+        const room = parseStored(PairRoom, row.room_json, "a pairing room");
+        const next: PairRoom = { ...room, version: room.version + 1, state: "expired", expiresAt: nowMs };
+        sql.exec(
+          `UPDATE ${t.pairRooms} SET version = ?, state = ?, expires_at = ?, room_json = ? WHERE id = ?`,
+          next.version, next.state, next.expiresAt, JSON.stringify(next), next.id,
+        );
+      }
+    });
+  }
+
+  async countOpenSelfRooms(nowMs: number): Promise<number> {
+    const [row] = this.#tables.transaction((sql) =>
+      sql.exec(`SELECT COUNT(*) AS open FROM ${DISTRICT_TABLES.pairRooms} WHERE kind = 'self' AND state = 'claimed' AND expires_at > ?`, nowMs).toArray()
+    );
+    return Number(row?.open ?? 0);
+  }
+
+  async purge(beforeMs: number): Promise<void> {
+    this.#tables.transaction((sql) => sql.exec(`DELETE FROM ${DISTRICT_TABLES.pairRooms} WHERE expires_at < ?`, beforeMs));
+  }
+}
+
+// Operations (SCHO-263)
+
+const StoredOpsKey = z.object({
+  key_id: KeyId,
+  public_jwk: z.string(),
+  scopes_json: z.string(),
+  requested_scopes_json: z.string(),
+  label: z.string(),
+  admin_origin: z.string(),
+  enrolled_at: z.string(),
+  enrolled_by: PrincipalId,
+  revoked_at: z.string().nullable(),
+  revoked_by: PrincipalId.nullable(),
+});
+
+function opsKeyFromRow(row: Record<string, unknown>): OpsKeyRecord {
+  const parsed = StoredOpsKey.safeParse(row);
+  if (!parsed.success) throw new DistrictStoreCorruptionError("an ops key does not match its schema");
+  const r = parsed.data;
+  return {
+    keyId: r.key_id,
+    publicJwk: parseStored(OpsPublicJwk, r.public_jwk, "an ops key's public key"),
+    scopes: parseStored(z.array(OpsScope), r.scopes_json, "an ops key's scopes"),
+    requestedScopes: parseStored(z.array(OpsScope), r.requested_scopes_json, "an ops key's requested scopes"),
+    label: r.label,
+    adminOrigin: r.admin_origin,
+    enrolledAt: r.enrolled_at,
+    enrolledBy: r.enrolled_by,
+    revokedAt: r.revoked_at,
+    revokedBy: r.revoked_by,
+  };
+}
+
+const StoredOpsAudit = z.object({
+  id: z.string(),
+  key_id: z.string(),
+  operator: z.string(),
+  route: z.string(),
+  target: z.string().nullable(),
+  result: z.string(),
+  at: z.string(),
+});
+
+/**
+ * An {@link OpsStore} in a Durable Object's SQLite: the enrolled admin keys, the ops nonces seen
+ * recently, and the district's ops audit log. A nonce is claimed by an insert the table's primary
+ * key makes unique, in the same transaction that forgets expired ones, so of two copies of one
+ * signed request exactly one is served, whatever restarts the object between them. New tables, so
+ * they have no legacy twins.
+ */
+export class DurableObjectOpsStore implements OpsStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    const t = DISTRICT_TABLES;
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${t.opsKeys} (
+        key_id TEXT PRIMARY KEY, public_jwk TEXT NOT NULL, scopes_json TEXT NOT NULL, requested_scopes_json TEXT NOT NULL,
+        label TEXT NOT NULL, admin_origin TEXT NOT NULL, enrolled_at TEXT NOT NULL, enrolled_by TEXT NOT NULL,
+        revoked_at TEXT, revoked_by TEXT
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${t.opsNonces} (key_id TEXT NOT NULL, nonce TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY (key_id, nonce))`,
+      `CREATE INDEX IF NOT EXISTS ${t.opsNonces}_expires ON ${t.opsNonces} (expires_at)`,
+      `CREATE TABLE IF NOT EXISTS ${t.opsAudit} (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, key_id TEXT NOT NULL, operator TEXT NOT NULL,
+        route TEXT NOT NULL, target TEXT, result TEXT NOT NULL, at TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS ${t.opsAudit}_at ON ${t.opsAudit} (at)`,
+    ], []);
+  }
+
+  async listKeys(): Promise<OpsKeyRecord[]> {
+    const rows = this.#tables.transaction((sql) => sql.exec(`SELECT * FROM ${DISTRICT_TABLES.opsKeys} ORDER BY enrolled_at DESC, rowid DESC`).toArray());
+    return rows.map(opsKeyFromRow);
+  }
+
+  async findKey(keyId: string): Promise<OpsKeyRecord | undefined> {
+    const [row] = this.#tables.transaction((sql) => sql.exec(`SELECT * FROM ${DISTRICT_TABLES.opsKeys} WHERE key_id = ?`, keyId).toArray());
+    return row === undefined ? undefined : opsKeyFromRow(row);
+  }
+
+  async enrollKey(record: OpsKeyRecord): Promise<void> {
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      const [existing] = sql.exec(`SELECT revoked_at FROM ${t.opsKeys} WHERE key_id = ?`, record.keyId).toArray();
+      if (existing !== undefined && existing.revoked_at === null) throw new EducateOsError("conflict", "That admin key is already enrolled.");
+      sql.exec(`DELETE FROM ${t.opsKeys} WHERE key_id = ?`, record.keyId);
+      sql.exec(
+        `INSERT INTO ${t.opsKeys} (key_id, public_jwk, scopes_json, requested_scopes_json, label, admin_origin, enrolled_at, enrolled_by, revoked_at, revoked_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        record.keyId, JSON.stringify(record.publicJwk), JSON.stringify(record.scopes), JSON.stringify(record.requestedScopes),
+        record.label, record.adminOrigin, record.enrolledAt, record.enrolledBy, record.revokedAt, record.revokedBy,
+      );
+    });
+  }
+
+  async setScopes(keyId: string, scopes: readonly OpsScope[]): Promise<boolean> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`UPDATE ${DISTRICT_TABLES.opsKeys} SET scopes_json = ? WHERE key_id = ? AND revoked_at IS NULL RETURNING key_id`, JSON.stringify(scopes), keyId)
+        .toArray().length > 0
+    );
+  }
+
+  async removeKey(keyId: string, at: string, by: PrincipalId): Promise<boolean> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`UPDATE ${DISTRICT_TABLES.opsKeys} SET revoked_at = ?, revoked_by = ? WHERE key_id = ? AND revoked_at IS NULL RETURNING key_id`, at, by, keyId)
+        .toArray().length > 0
+    );
+  }
+
+  async claimNonce(keyId: string, nonce: string, expiresAtMs: number, nowMs: number): Promise<boolean> {
+    const t = DISTRICT_TABLES;
+    return this.#tables.transaction((sql) => {
+      sql.exec(`DELETE FROM ${t.opsNonces} WHERE expires_at < ?`, nowMs);
+      return sql.exec(
+        `INSERT INTO ${t.opsNonces} (key_id, nonce, expires_at) VALUES (?, ?, ?) ON CONFLICT (key_id, nonce) DO NOTHING RETURNING nonce`,
+        keyId, nonce, expiresAtMs,
+      ).toArray().length > 0;
+    });
+  }
+
+  async appendAudit(entry: OpsAuditRecord, retainAfter: string): Promise<void> {
+    const t = DISTRICT_TABLES;
+    this.#tables.transaction((sql) => {
+      sql.exec(`DELETE FROM ${t.opsAudit} WHERE at < ?`, retainAfter);
+      sql.exec(
+        `INSERT INTO ${t.opsAudit} (id, key_id, operator, route, target, result, at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        entry.id, entry.keyId, entry.operator, entry.route, entry.target, entry.result, entry.at,
+      );
+    });
+  }
+
+  async listAudit(limit: number): Promise<OpsAuditRecord[]> {
+    const rows = this.#tables.transaction((sql) => sql.exec(`SELECT * FROM ${DISTRICT_TABLES.opsAudit} ORDER BY seq DESC LIMIT ?`, limit).toArray());
+    return rows.map((row) => {
+      const parsed = StoredOpsAudit.safeParse(row);
+      if (!parsed.success) throw new DistrictStoreCorruptionError("an ops audit entry does not match its schema");
+      const r = parsed.data;
+      return { id: r.id, keyId: r.key_id, operator: r.operator, route: r.route, target: r.target, result: r.result, at: r.at };
     });
   }
 }

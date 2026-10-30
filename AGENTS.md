@@ -84,3 +84,7 @@ IMPORTANT: This repository uses pnpm, not npm. Always use pnpm.
 - Cached Vite+ tasks strip undeclared environment variables. Declare output-affecting variables in `cache.env`; a path value does not fingerprint the external files it names.
 - For slow CI/container runs, keep the local watchdog defaults and explicitly choose longer limits. See [testing guidance](docs/testing.md) for commands and timeout policy.
 - Read [build-system guidance](docs/build-system.md) when changing task graphs, codegen, caching, or dev-server startup; [integration testing](docs/integration-testing.md) covers the workerd harness.
+
+## Clever connector
+
+`packages/gatekeeper-clever` reads and writes with district-owned tokens, scoped to the caller on every call. Rosters expose only ID, name and grade. Read its README before changing it.

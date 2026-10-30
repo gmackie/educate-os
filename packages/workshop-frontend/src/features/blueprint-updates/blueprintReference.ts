@@ -1,4 +1,5 @@
-const BLUEPRINT_PATH = /^\/blueprint\/([^/]+)\/?$/
+// Under any base path the Workshop is mounted at (`/ai/blueprint/<id>` on a district origin).
+const BLUEPRINT_PATH = /^(?:\/[A-Za-z0-9._~-]+)*\/blueprint\/([^/]+)\/?$/
 
 // Published ids are random hex and bundled ones are names such as `format.document`. A leading
 // dot is refused because the blueprint namespace's reserved keys (`.featured`, ...) start with one.

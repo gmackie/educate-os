@@ -673,6 +673,12 @@ export type GatekeeperConnectOptions = {
 export type ConnectHandoff = {
   targetOrigin: string;
   ticket: string;
+  /**
+   * Where the Workshop is mounted on `targetOrigin` when not at the root, e.g. `/ai` on a district
+   * origin (SCHO-259): the completion page then navigates to `<targetOrigin><targetBasePath>/connect/handoff`.
+   * Absent for a root mount, so root deployments' handoffs are unchanged.
+   */
+  targetBasePath?: string;
 };
 
 export interface GatekeeperVendor extends WorkerEntrypoint {

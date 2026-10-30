@@ -92,7 +92,8 @@ included). Across all resource types, the gatekeeper can request:
 - `calendar.events` to read and manage the selected calendar.
 - `calendar.events.freebusy` to check availability, which `calendar.events` does not cover. Adding it retracted every existing Calendar grant that lacks a whole-calendar scope: owners re-consent the next time they connect a calendar, and an existing binding checks availability only after its account reconnects or grants Calendar again.
 - `chat.spaces.readonly`, `chat.messages`, and `chat.memberships.readonly` for every Chat resource. A whole-account Chat connection adds `chat.users.readstate.readonly` for its unread-only search, and `chat.spaces.create` and `directory.readonly` to start direct messages and group chats with people in the connected account's Workspace directory. Starting a conversation is its own approval kind, separate from sending in an existing one, and people outside the organization can't be added to a new conversation.
-- `classroom.courses.readonly`, `classroom.rosters.readonly`, and `classroom.coursework.students` for a Google Classroom course: the course picker and course details, its teachers and students, and creating, reading and grading coursework. Classroom lets an app change only the coursework it created, and binds that coursework to this OAuth client's Cloud project, so the gatekeeper lists and grades only coursework it created (`associatedWithDeveloper`), and swapping the OAuth client's project orphans it. Email addresses, photos, guardians and add-ons are not requested. See `docs/educateos/integrations/google-classroom.md`.
+- `classroom.courses.readonly`, `classroom.rosters.readonly`, and `classroom.coursework.students` for a teacher Google Classroom course: the course picker and details, its teachers and students, and app-owned coursework and grades. Classroom lets an app change only coursework it created, and binds that coursework to this OAuth client's Cloud project, so the gatekeeper lists and grades only coursework it created (`associatedWithDeveloper`), and swapping the OAuth client's project orphans it.
+- `classroom.courses.readonly` and `classroom.coursework.me` for a student Google Classroom course: published coursework and the signed-in student's own submission, with approval-backed turn-in. This is a separate resource capability bound to the connecting account and one enrolled course; it exposes no roster, classmates' submissions, teacher grades, or teacher configuration and cannot be shared with collaborators. Email addresses, photos, guardians and add-ons are not requested. See `docs/educateos/integrations/google-classroom.md`.
 - `bigquery` for BigQuery dry-runs and queries. This is intentionally broader than `bigquery.readonly` because dry-runs use `jobs.insert`; the gatekeeper enforces read-only SQL and resource scope checks before running queries.
 
 ### Step 4: Test Users
@@ -664,3 +665,17 @@ This is normal for apps in Testing mode. Click "Advanced" and then "Go to [app n
 ### "This app is blocked" or quota errors
 
 You may have hit rate limits or your project may have issues. Check the [Google Cloud Console](https://console.cloud.google.com/) for any alerts or quota warnings on your project.
+
+
+### Classroom Plus validation (SCHO-255)
+
+Course bindings expose audited `listRubrics` and `getGradingPeriodSettings` reads, and an
+approval-backed `createRubric`. Rubric creation is restricted to coursework the same Cloud project
+owns and waits for approval; Google enforces the teacher's license. A creation whose outcome is
+unknown is not resent. Rubric-level grade publishing is not supported by Google's API; publish the
+teacher-approved total with `setGrade` after the student turns the submission in. Work already
+returned can be regraded without returning it again.
+
+Grading-period writes, rubric editing/deletion, capability discovery and Classroom add-ons remain
+open in SCHO-255. See `docs/educateos/runbooks/classroom-verification.md` for live evidence and the
+remaining customer demo gates. No fully validated demo is claimed by this implementation slice.

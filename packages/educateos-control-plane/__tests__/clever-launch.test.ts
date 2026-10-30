@@ -7,10 +7,10 @@ import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { DistrictAgent, InMemorySequenceCounter, SigningIdentity } from "@educateos/fleet";
 import { importJWK, SignJWT, type JWK } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CLEVER_LAUNCH_PATH, cleverLaunch, configuredLaunchDistricts, type CleverLaunchDeps } from "../src/clever-launch.ts";
+import { CLEVER_LAUNCH_PATH, cleverLaunch, configuredLaunchDistricts, configuredUnaffiliatedHostname, type CleverLaunchDeps } from "../src/clever-launch.ts";
 import { TABLES } from "../src/store.ts";
 import { CONTROL_PLANE_OBJECT } from "../src/worker.ts";
-import { CLEVER_CLIENT, fakeClever, tokenFor } from "./clever-fake.ts";
+import { CLEVER_CLIENT, CLEVER_USER, fakeClever, tokenFor } from "./clever-fake.ts";
 import { ACCESS_AUD, ACCESS_ISSUER } from "./fixtures.ts";
 
 const ORIGIN = "https://educateos.io";
@@ -62,6 +62,70 @@ describe("the launch handler", () => {
     for (const secret of [code, tokenFor(code), SANDBOX_DISTRICT, CLEVER_CLIENT.clientSecret]) expect(logs).not.toContain(secret);
   });
 
+  it("reads the district from the user's record when a teacher-authorized /me leaves it out", async () => {
+    const consoleSpies = spyOnConsole();
+    const code = `launch-teacher-${SANDBOX_DISTRICT}`;
+    const response = await cleverLaunch(launch(code), deps());
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("https://cedarvalley.educateos.io/");
+    const logs = logged(consoleSpies);
+    for (const secret of [code, tokenFor(code), SANDBOX_DISTRICT]) expect(logs).not.toContain(secret);
+  });
+
+  it("refuses a teacher-authorized launch whose user record Clever won't show", async () => {
+    const fetch: CleverLaunchDeps["fetch"] = async (input, init) =>
+      input.includes("/users/") ? Response.json({ error: "forbidden" }, { status: 403 }) : fakeClever(input, init);
+    const consoleSpies = spyOnConsole();
+    const response = await cleverLaunch(launch(`launch-teacher-${SANDBOX_DISTRICT}`), deps({ fetch }));
+    expect(response.status).toBe(502);
+    await response.body?.cancel();
+    expect(consoleSpies[2]!.mock.calls).toEqual([
+      ["clever launch refused", { event: "clever.launch.refused", reason: "identity-failed", cleverStatus: 403, cleverError: "forbidden" }],
+    ]);
+  });
+
+  it("reads the district from the user's district record when the user record names none", async () => {
+    const fetch: CleverLaunchDeps["fetch"] = async (input, init) =>
+      input.endsWith(`/users/${CLEVER_USER}/district`) ? Response.json({ data: { id: SANDBOX_DISTRICT } }) : fakeClever(input, init);
+    const consoleSpies = spyOnConsole();
+    const response = await cleverLaunch(launch(`launch-demo-${SANDBOX_DISTRICT}`), deps({ fetch }));
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("https://cedarvalley.educateos.io/");
+    expect(logged(consoleSpies)).toContain("clever.launch.user-record");
+  });
+
+  it("sends a user Clever places in no district to the configured unaffiliated site", async () => {
+    const consoleSpies = spyOnConsole();
+    const code = `launch-demo-${SANDBOX_DISTRICT}`;
+    const response = await cleverLaunch(launch(code), deps({ unaffiliatedHostname: "northfield.educateos.io" }));
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("https://northfield.educateos.io/");
+    const logs = logged(consoleSpies);
+    expect(logs).toContain("\"unaffiliated\":true");
+    for (const secret of [code, tokenFor(code), CLEVER_USER]) expect(logs).not.toContain(secret);
+  });
+
+  it("tells a user Clever places in no district so when no unaffiliated site is configured", async () => {
+    const consoleSpies = spyOnConsole();
+    const response = await cleverLaunch(launch(`launch-demo-${SANDBOX_DISTRICT}`), deps());
+    expect(response.status).toBe(404);
+    expect(await response.text()).toContain("linked to a district");
+    expect(consoleSpies[2]!.mock.calls).toEqual([
+      ["clever launch refused", { event: "clever.launch.refused", reason: "no-district" }],
+    ]);
+  });
+
+  it("does not route by a user record whose roles name two districts", async () => {
+    const fetch: CleverLaunchDeps["fetch"] = async (input, init) =>
+      input.endsWith(`/users/${CLEVER_USER}`)
+        ? Response.json({ data: { id: CLEVER_USER, roles: { teacher: { district: SANDBOX_DISTRICT }, staff: { district: OTHER_DISTRICT } } } })
+        : fakeClever(input, init);
+    const response = await cleverLaunch(launch(`launch-teacher-${SANDBOX_DISTRICT}`), deps({ fetch }));
+    // Neither district is trusted; with no district record either, the user is in no district.
+    expect(response.status).toBe(404);
+    expect(await response.text()).toContain("linked to a district");
+  });
+
   it("tells a user whose district registered no installation so, without naming the district", async () => {
     const response = await cleverLaunch(launch(`launch-${OTHER_DISTRICT}`), deps());
     expect(response.status).toBe(404);
@@ -82,6 +146,19 @@ describe("the launch handler", () => {
     expect(logged(consoleSpies)).not.toContain("expired-code");
   });
 
+  it("logs Clever's status and OAuth error code with a refusal, and nothing else of its reply", async () => {
+    const consoleSpies = spyOnConsole();
+    const fetch: CleverLaunchDeps["fetch"] = async () =>
+      Response.json({ error: "invalid_client", error_description: "client secret-ish detail" }, { status: 401 });
+    const response = await cleverLaunch(launch(`launch-${SANDBOX_DISTRICT}`), deps({ fetch }));
+    expect(response.status).toBe(502);
+    await response.body?.cancel();
+    expect(consoleSpies[2]!.mock.calls).toEqual([
+      ["clever launch refused", { event: "clever.launch.refused", reason: "exchange-failed", cleverStatus: 401, cleverError: "invalid_client" }],
+    ]);
+    expect(logged(consoleSpies)).not.toContain("secret-ish");
+  });
+
   it("answers Clever being down or redirecting like a refusal", async () => {
     const down = await cleverLaunch(launch(`launch-${SANDBOX_DISTRICT}`), deps({ fetch: async () => { throw new TypeError("network"); } }));
     expect(down.status).toBe(502);
@@ -93,12 +170,19 @@ describe("the launch handler", () => {
     await moved.body?.cancel();
   });
 
-  it("refuses an identity without a Clever district ID", async () => {
+  it("refuses an identity without a Clever district ID, logging only its shape", async () => {
+    const consoleSpies = spyOnConsole();
     const fetch: CleverLaunchDeps["fetch"] = async (input, init) =>
       input.endsWith("/me") ? Response.json({ data: { id: "x", district: "../../evil" } }) : fakeClever(input, init);
     const response = await cleverLaunch(launch(`launch-${SANDBOX_DISTRICT}`), deps({ fetch, hostnameFor: async () => "evil.educateos.io" }));
     expect(response.status).toBe(502);
     await response.body?.cancel();
+    expect(consoleSpies[2]!.mock.calls).toEqual([
+      ["clever launch refused", {
+        event: "clever.launch.refused", reason: "identity-failed", cleverStatus: 200, cleverShape: "{data:{id:string(1),district:string(10)}}",
+      }],
+    ]);
+    expect(logged(consoleSpies)).not.toContain("evil");
   });
 
   it("refuses a launch without a code, or with no Clever client configured, before calling Clever", async () => {
@@ -216,6 +300,9 @@ describe("/clever/launch on the site Worker", () => {
     await foreign.body?.cancel();
     expect(configuredLaunchDistricts("not json").size).toBe(0);
     expect(configuredLaunchDistricts(undefined).size).toBe(0);
+    expect(configuredUnaffiliatedHostname(" northfield.educateos.io ")).toBe("northfield.educateos.io");
+    expect(configuredUnaffiliatedHostname("evil.example.com")).toBeUndefined();
+    expect(configuredUnaffiliatedHostname(undefined)).toBeUndefined();
   });
 
   it("refuses a POST", async () => {

@@ -27,11 +27,15 @@ export class FakeClassroom {
     member("2001", "Alice"), member("2002", "Bob"), member("2003", "Carol"), member("2004", "Dan"),
     member("2005", "Eve"),
   ];
+  /** Classroom's `userId=me` is always resolved to this fixture identity. */
+  authenticatedStudentId = "2001";
   courseWork: Item[] = [
     courseWork("201", "Lab report", true),
     courseWork("202", "Teacher-made quiz", false),
     courseWork("203", "Essay", true, { state: "DRAFT" }),
   ];
+  rubrics: Item[] = [];
+  gradingPeriodSettings: Item = {};
   submissions: Item[] = [
     submission("Cg4Isub1", "201", "2001"),
     submission("Cg4Isub2", "201", "2002"),
@@ -63,7 +67,13 @@ export class FakeClassroom {
 
   #serve({ method, path, query, body }: ServedRequest): Response {
     let parts = path.split("/").slice(1);
-    if (parts.length === 1 && method === "GET") return this.#page(this.courses, query, "courses");
+    if (parts.length === 1 && method === "GET") {
+      let courses = this.courses.filter(({ courseState }) =>
+        !query.has("courseStates") || query.getAll("courseStates").includes(String(courseState)));
+      if (query.get("studentId") === "me") courses = courses.filter(({ id }) =>
+        this.students.some(member => member.courseId === id && member.userId === this.authenticatedStudentId));
+      return this.#page(courses, query, "courses");
+    }
 
     let course = this.courses.find(({ id }) => id === parts[1]);
     if (!course) return googleError(404, "NOT_FOUND");
@@ -73,8 +83,19 @@ export class FakeClassroom {
       return this.teachers.some(({ userId }) => userId === "1001")
         ? Response.json(this.teachers[0]) : googleError(403, "PERMISSION_DENIED");
     }
+    if (parts[2] === "students" && parts[3] === "me") {
+      let student = this.students.find(({ userId }) => userId === this.authenticatedStudentId);
+      return student ? Response.json(student) : googleError(403, "PERMISSION_DENIED");
+    }
     if (parts[2] === "teachers" || parts[2] === "students") {
       return this.#page(parts[2] === "teachers" ? this.teachers : this.students, query, parts[2]);
+    }
+    if (parts[2] === "gradingPeriodSettings") {
+      if (method === "PATCH") {
+        if (!body) return googleError(400, "INVALID_ARGUMENT");
+        this.gradingPeriodSettings = { ...body, gradingPeriods: (body.gradingPeriods as Item[]).map(p => ({ ...p, id: p.id ?? String(this.#nextId++) })) };
+      }
+      return Response.json(this.gradingPeriodSettings);
     }
     if (parts[2] !== "courseWork") return googleError(404, "NOT_FOUND");
 
@@ -93,10 +114,26 @@ export class FakeClassroom {
     if (!work) return googleError(404, "NOT_FOUND");
     if (parts.length === 4) return Response.json(work);
 
+    if (parts[4] === "rubrics") {
+      if (work.associatedWithDeveloper !== true) return googleError(403, "PERMISSION_DENIED", "ProjectPermissionDenied");
+      if (parts[5]) {
+        const rubric = this.rubrics.find(r => r.id === parts[5] && r.courseWorkId === work.id);
+        if (!rubric) return googleError(404, "NOT_FOUND");
+        if (method === "PATCH") { Object.assign(rubric, body); return Response.json(rubric); }
+        if (method === "DELETE") { this.rubrics = this.rubrics.filter(r => r !== rubric); return new Response(null, { status: 204 }); }
+      }
+      if (method === "POST") {
+        const created = { ...body, id: String(this.#nextId++), courseWorkId: work.id };
+        this.rubrics.push(created);
+        return Response.json(created);
+      }
+      return this.#page(this.rubrics.filter(r => r.courseWorkId === work.id), query, "rubrics");
+    }
     if (parts.length === 5) {
+      if (work.state === "DRAFT") return googleError(400, "INVALID_ARGUMENT");
       let userId = query.get("userId");
       return this.#page(this.submissions.filter(sub => sub.courseWorkId === work.id &&
-        (userId === null || sub.userId === userId)), query, "studentSubmissions");
+        (userId === null || sub.userId === (userId === "me" ? this.authenticatedStudentId : userId))), query, "studentSubmissions");
     }
 
     let [submissionId, verb] = parts[5].split(":");
@@ -104,6 +141,14 @@ export class FakeClassroom {
       id === submissionId && courseWorkId === work.id);
     if (!found) return googleError(404, "NOT_FOUND");
     if (method === "GET") return Response.json(found);
+    if (method === "POST" && verb === "turnIn") {
+      if (found.userId !== this.authenticatedStudentId ||
+          (found.state !== "CREATED" && found.state !== "RECLAIMED_BY_STUDENT")) {
+        return googleError(403, "PERMISSION_DENIED");
+      }
+      found.state = "TURNED_IN";
+      return Response.json({});
+    }
     // Only the project that created the coursework may change its submissions.
     if (work.associatedWithDeveloper !== true) {
       return googleError(403, "PERMISSION_DENIED", "ProjectPermissionDenied");
@@ -148,6 +193,8 @@ function courseWork(id: string, title: string, owned: boolean, extra: Item = {})
 function submission(id: string, courseWorkId: string, userId: string): Item {
   return {
     courseId: "101", courseWorkId, id, userId, state: "TURNED_IN", draftGrade: 80,
+    shortAnswerSubmission: { answer: userId === "2001" ? "My own response" : "Classmate response" },
+    assignmentSubmission: { attachments: [{ link: { title: "My source", url: "https://example.test/source" } }] },
     submissionHistory: [{ stateHistory: { state: "CREATED" } }],
     associatedWithDeveloper: courseWorkId !== "202",
   };

@@ -83,6 +83,7 @@ import {
   ChatSpaceConfiguratorUI,
   ChatThreadConfiguratorUI,
   ClassroomCourseConfiguratorUI,
+  ClassroomStudentCourseConfiguratorUI,
   GmailConfiguratorUI,
   GoogleDocConfiguratorUI,
   GoogleSheetsConfiguratorUI,
@@ -95,6 +96,7 @@ import CHAT_ACCOUNT_CONFIGURATOR_HTML from "./generated/chat-account-configurato
 import CHAT_SPACE_CONFIGURATOR_HTML from "./generated/chat-space-configurator-ui.txt";
 import CHAT_THREAD_CONFIGURATOR_HTML from "./generated/chat-thread-configurator-ui.txt";
 import CLASSROOM_COURSE_CONFIGURATOR_HTML from "./generated/classroom-course-configurator-ui.txt";
+import CLASSROOM_STUDENT_COURSE_CONFIGURATOR_HTML from "./generated/classroom-student-course-configurator-ui.txt";
 import GMAIL_CONFIGURATOR_HTML from "./generated/gmail-configurator-ui.txt";
 import GOOGLE_DOC_CONFIGURATOR_HTML from "./generated/google-doc-configurator-ui.txt";
 import GOOGLE_SHEETS_CONFIGURATOR_HTML from "./generated/google-sheets-configurator-ui.txt";
@@ -107,9 +109,9 @@ import { Mutex } from "./mutex";
 import {
   BIGQUERY_HOST, BIGQUERY_RESOURCE, GMAIL_RESOURCE, GOOGLE_CALENDAR_RESOURCE,
   GOOGLE_CHAT_RESOURCE, GOOGLE_CHAT_SPACE_RESOURCE, GOOGLE_CHAT_THREAD_RESOURCE,
-  GOOGLE_CLASSROOM_COURSE_RESOURCE, GOOGLE_DOC_RESOURCE, GOOGLE_DRIVE_RESOURCE,
-  GOOGLE_SHEETS_RESOURCE, GOOGLE_SLIDES_RESOURCE, RESOURCE_BY_KIND,
-  SUPPORTED_RESOURCES, creatableKind, nativeFileUrl,
+  GOOGLE_CLASSROOM_COURSE_RESOURCE, GOOGLE_CLASSROOM_STUDENT_RESOURCE,
+  GOOGLE_DOC_RESOURCE, GOOGLE_DRIVE_RESOURCE, GOOGLE_SHEETS_RESOURCE,
+  GOOGLE_SLIDES_RESOURCE, RESOURCE_BY_KIND, SUPPORTED_RESOURCES, creatableKind, nativeFileUrl,
   grantedResourceUrlPatterns, hasDriveResourceGrant, isPrivateGrant, OFFICE_IMPORT_GRANT,
   SHARED_DRIVES_GRANT,
   parseResourceUrl, recordedResourceUrlPatterns, type RecordedResourceGrant,
@@ -159,10 +161,12 @@ function getGoogleDriveTypesCode(): string {
 import type {GmailGatekeeperImplProps} from "./gmail";
 import type {GoogleChatGatekeeperImplProps} from "./chat";
 import type {GoogleClassroomGatekeeperImplProps} from "./classroom";
+import type {GoogleClassroomStudentGatekeeperImplProps} from "./classroom-student";
 
 export { GmailGatekeeperImpl } from "./gmail";
 export { GoogleChatGatekeeperImpl } from "./chat";
 export { GoogleClassroomGatekeeperImpl } from "./classroom";
+export { GoogleClassroomStudentGatekeeperImpl } from "./classroom-student";
 export { ChatHookController, ChatHookDriver } from "./chat-hooks";
 export { GmailHookController, GmailHookDriver } from "./gmail-hooks";
 export { GoogleSheetsGatekeeperImpl } from "./sheets";
@@ -894,6 +898,10 @@ export class GatekeeperUserImpl extends WorkerEntrypoint<Env, GatekeeperUserImpl
         let props: GoogleClassroomGatekeeperImplProps = { userObjectId, courseId: target.courseId };
         return { class: this.ctx.exports.GoogleClassroomGatekeeperImpl({ props }), resource };
       }
+      case "classroomStudentCourse": {
+        let props: GoogleClassroomStudentGatekeeperImplProps = { userObjectId, courseId: target.courseId };
+        return { class: this.ctx.exports.GoogleClassroomStudentGatekeeperImpl({ props }), resource };
+      }
       case "driveAccount":
       case "driveFolder":
       case "driveFile": {
@@ -988,6 +996,13 @@ export class GatekeeperUserImpl extends WorkerEntrypoint<Env, GatekeeperUserImpl
       return {
         iframeHtml: CLASSROOM_COURSE_CONFIGURATOR_HTML,
         ui: new RpcStub(new ClassroomCourseConfiguratorUI(getToken)),
+      };
+    }
+
+    if (resourceUrlPattern === GOOGLE_CLASSROOM_STUDENT_RESOURCE.urlPattern) {
+      return {
+        iframeHtml: CLASSROOM_STUDENT_COURSE_CONFIGURATOR_HTML,
+        ui: new RpcStub(new ClassroomStudentCourseConfiguratorUI(getToken)),
       };
     }
 

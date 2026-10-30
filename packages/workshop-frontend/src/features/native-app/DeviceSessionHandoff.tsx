@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import type { RpcStub } from 'capnweb'
 import type { AiChatAuthorInfo, AuthenticatedApi, DeviceSessionHandoffStart } from '@gadgets/workshop-shared/api'
 import { logRpcFailure, rpcFailureDescription } from '../../rpcErrors'
+import { workshopPath } from '../../workshopPath'
 
 const STATE_PARAMETER = 'cfos_native_state'
 const KEY_PARAMETER = 'cfos_native_key'
@@ -52,7 +53,7 @@ export const deviceSessionDestination = (pathname: string, search: string): stri
 export const submitDeviceSession = (state: string, start: DeviceSessionHandoffStart): void => {
   const form = document.createElement('form')
   form.method = 'POST'
-  form.action = '/api/device-session/callback'
+  form.action = workshopPath('/api/device-session/callback')
   form.style.display = 'none'
   for (const [name, value] of Object.entries({ state, ...start })) {
     const input = document.createElement('input')

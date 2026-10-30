@@ -59,6 +59,32 @@ describe("Cloudflare HTTP client", () => {
     expect(await api.listWorkerDomains(ACCOUNT)).toEqual([{ id: "d1", hostname: "northfield.educateos.io", service: "router", zoneId: "z1" }]);
   });
 
+  it("reads back a bypass policy's everyone rule and a path destination, and writes them as Access expects", async () => {
+    const { fetchImpl, requests } = stubFetch((request) => {
+      const path = new URL(request.url).pathname;
+      if (path.endsWith("/access/policies")) {
+        return ok([
+          { id: "p1", name: "educateos-northfield-bypass", decision: "bypass", include: [{ everyone: {} }, { ip: { ip: "192.0.2.1/32" } }] },
+          { id: "p2", name: "educateos-northfield-members", decision: "allow", include: [{ email_domain: { domain: "northfield.example" } }] },
+        ], { page: 1, total_pages: 1 });
+      }
+      if (request.method === "POST") return ok({ id: "a1", name: "x", domain: "h.example/healthz", aud: "aud-1", destinations: [{ type: "public", uri: "h.example/healthz" }], policies: [{ id: "p1" }] });
+      return ok([], { page: 1, total_pages: 1 });
+    });
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+
+    expect(await api.listAccessPolicies(ACCOUNT)).toEqual([
+      { id: "p1", name: "educateos-northfield-bypass", decision: "bypass", include: [{ everyone: {} }] },
+      { id: "p2", name: "educateos-northfield-members", decision: "allow", include: [{ email_domain: { domain: "northfield.example" } }] },
+    ]);
+    const app = await api.createAccessApplication(ACCOUNT, {
+      name: "x", domain: "h.example/healthz", destinations: ["h.example/healthz", "h.example/api/m/*"], type: "self_hosted", sessionDuration: "12h", policyIds: ["p1"],
+    });
+    expect(app.destinations).toEqual(["h.example/healthz"]);
+    const body = await requests.at(-1)!.json() as { destinations: unknown };
+    expect(body.destinations).toEqual([{ type: "public", uri: "h.example/healthz" }, { type: "public", uri: "h.example/api/m/*" }]);
+  });
+
   it("never follows a redirect, so the token can't leave api.cloudflare.com", async () => {
     const { fetchImpl, requests } = stubFetch(() => new Response(null, { status: 307, headers: { location: "https://evil.example/" } }));
     const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });

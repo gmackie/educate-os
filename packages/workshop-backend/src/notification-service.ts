@@ -2,6 +2,7 @@
 // installation's key; the service accepts only fixed, typed templates. See docs/notifications.md.
 
 import type { UserNotification, WebPushSubscription } from "@gadgets/workshop-shared/api";
+import { publicPath } from "./public-path.js";
 
 const encoder = new TextEncoder();
 
@@ -105,7 +106,7 @@ export async function deliver(
     eventId: id,
     taskId: `${workspaceId}:${chatId}`,
     threadTitle: threadTitle(chatTitle),
-    path: `/workspace/${workspaceId}?chat=${chatId}&showChat=true`,
+    path: publicPath(env, `/workspace/${workspaceId}?chat=${chatId}&showChat=true`),
     subscriptionId,
   });
   if (response.ok) return true;

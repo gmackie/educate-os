@@ -35,7 +35,8 @@ export async function signIn(district: District): Promise<Session> {
   if (activeAttempt) throw new Error('Finish or cancel the current sign-in first.');
   const attempt = await newAttempt();
   activeAttempt = attempt;
-  const landing = new URL('/', district.workshop);
+  // The Workshop's own landing page: `<origin>/ai/` on one-origin schools, `/` on a legacy host.
+  const landing = new URL(district.workshop);
   landing.searchParams.set('cfos_native_state', attempt.state);
   landing.searchParams.set('cfos_native_key', attempt.publicKey);
   const callback = CALLBACK_ORIGIN + '/oauthredirect';
@@ -66,7 +67,7 @@ export async function signIn(district: District): Promise<Session> {
 }
 
 /** Pair through the public ciphertext relay; the Workshop still owns credential creation and consent. */
-export async function signInFromComputer(district: District, pairing: { id: string; secret: string }, onCode: (code: string) => void, signal: AbortSignal): Promise<Session> {
+export async function signInFromComputer(district: District, pairing: { id: string; secret: string; name: string; portal: string; workshop: string }, onCode: (code: string) => void, signal: AbortSignal): Promise<Session> {
   if (activeAttempt) throw new Error('Finish or cancel the current sign-in first.');
   const attempt = await newAttempt();
   attempt.state = `pair-v1.${pairing.id}.${attempt.state}`;
@@ -81,7 +82,8 @@ export async function signInFromComputer(district: District, pairing: { id: stri
   };
   try {
     const room = await request('');
-    if (!room.school || room.school.portal !== district.portal || room.school.workshop !== district.workshop || room.school.name !== district.name) {
+    if (!room.school || room.school.portal !== pairing.portal || room.school.workshop !== pairing.workshop ||
+        room.school.name !== pairing.name || district.origin !== pairing.portal) {
       throw new Error('The computer and phone school details do not match.');
     }
     const code = (await ExpoCrypto.digestStringAsync(ExpoCrypto.CryptoDigestAlgorithm.SHA256, attempt.state + '.' + attempt.publicKey)).slice(0, 8).toUpperCase();

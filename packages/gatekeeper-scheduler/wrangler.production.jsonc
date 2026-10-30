@@ -41,6 +41,6 @@
   "workers_dev": false,
   "preview_urls": false,
   "vars": {
-    "BASE_URL": "https://schoolos.gmac.io/gatekeeper/scheduler"
+    "BASE_URL": "https://northfield.educateos.io/gatekeeper/scheduler"
   }
 }

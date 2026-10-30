@@ -2,7 +2,7 @@
   "name": "@educateos/mobile",
   "version": "0.1.0",
   "private": true,
-  "main": "index.ts",
+  "main": "expo-router/entry",
   "packageManager": "pnpm@11.17.0",
   "scripts": {
     "start": "expo start --dev-client",
@@ -20,21 +20,30 @@
     "@noble/ciphers": "^2.0.0",
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.0.0",
+    "@preeternal/react-native-cookie-manager": "7.0.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@scure/base": "^2.0.0",
     "expo": "58.0.19",
+    "expo-application": "~58.1.2",
+    "expo-camera": "58.0.12",
+    "expo-constants": "~58.0.13",
     "expo-crypto": "~58.0.7",
     "expo-dev-client": "58.0.15",
+    "expo-device": "~58.0.5",
     "expo-linking": "~58.0.15",
+    "expo-local-authentication": "~58.0.2",
+    "expo-notifications": "~58.1.6",
+    "expo-router": "58.0.26",
     "expo-secure-store": "~58.0.2",
+    "expo-status-bar": "~58.0.4",
     "expo-web-browser": "58.0.6",
     "lucide-react-native": "0.577.0",
     "react": "19.3.0",
     "react-native": "0.88.1",
     "react-native-safe-area-context": "~5.10.1",
+    "react-native-screens": "~4.30.0",
     "react-native-svg": "15.16.0",
-    "react-native-webview": "14.0.1",
-    "@preeternal/react-native-cookie-manager": "7.0.0"
+    "react-native-webview": "14.0.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",
@@ -45,7 +54,9 @@
     "install": {
       "exclude": [
         "expo",
+        "expo-camera",
         "expo-dev-client",
+        "expo-router",
         "expo-web-browser"
       ]
     }

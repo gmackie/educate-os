@@ -4,6 +4,11 @@ import { GadgetAssessmentBinding } from "./gadget-assessment.ts";
 // The server validates requests with these schemas and the typed client (`@educateos/api-client`)
 // is written against the same table, so the two cannot drift.
 import { z } from "zod";
+// Devices (SCHO-261)
+import { DeviceId, DevicePlatform, DeviceRevocationReason, DeviceStatus } from "./devices.ts";
+// Operations (SCHO-263)
+import { KeyId } from "@educateos/fleet/ops";
+import { EnrollOpsKeyInput, GrantedOpsScopes, OpsAuditBody, OpsKeyBody } from "./ops.ts";
 import {
   AcademicTerm,
   ActivityDefinitionId,
@@ -134,6 +139,7 @@ import type { IntegrationHealth, oneroster } from "@educateos/integrations";
 import { GuardianRelationship, GuardianRelationshipId, OpaqueCode, PrincipalStatus } from "@educateos/contracts";
 import { GuardianRelationshipAuditEvent, GuardianRelationshipScope } from "@educateos/policy";
 import { GuardianInvitationId, GuardianInvitationRedemption, IdentityRequestId, NewGuardianInvitation } from "@educateos/identity-links";
+import { WorkshopUserKey, WorkshopUserLink } from "@educateos/identity";
 // Communication (SCHO-189). Imported from the model alone, which this browser-safe module can carry.
 import {
   Announcement,
@@ -727,6 +733,29 @@ export const PreferencesBody = z.strictObject({ email: EmailPreferences, hasEmai
 /** Email preferences in a response. */
 export type PreferencesBody = z.infer<typeof PreferencesBody>;
 
+// Devices (SCHO-261)
+/**
+ * One of a person's signed-in phones, as Your devices lists it. Never its key, its push token or
+ * its refresh tokens.
+ */
+export const DeviceBody = z.strictObject({
+  id: DeviceId,
+  label: z.string(),
+  platform: DevicePlatform,
+  model: z.string(),
+  appVersion: z.string(),
+  createdAt: z.iso.datetime(),
+  lastSeenAt: z.iso.datetime(),
+  lastCountry: z.string().nullable(),
+  /** Whether the device registered for push notifications. */
+  push: z.boolean(),
+  status: DeviceStatus,
+  revokedAt: z.iso.datetime().nullable(),
+  revokedReason: DeviceRevocationReason.nullable(),
+});
+/** A device in a response. */
+export type DeviceBody = z.infer<typeof DeviceBody>;
+
 /** A guardian's digest for the coming week, as it would be emailed. */
 export const DigestPreviewBody = z.strictObject({
   digest: declared<GuardianDigest>(),
@@ -1143,6 +1172,14 @@ export const ROUTES = {
   "admin.health": route({ method: "GET", path: "/api/admin/health", surface: "admin", response: DistrictHealthBody }),
   "admin.listOfferings": route({ method: "GET", path: "/api/admin/offerings", surface: "admin", response: z.array(AdminOfferingBody) }),
   "admin.directoryNames": route({ method: "GET", path: "/api/admin/directory-names", surface: "admin", response: DirectoryNamesBody }),
+  // Workshop user links (SCHO-283): which Workshop accounts are which people, for the AI call guard.
+  "admin.workshopUserLinks": route({
+    method: "GET", path: "/api/admin/workshop-user-links", surface: "admin", response: z.array(WorkshopUserLink),
+  }),
+  "admin.linkWorkshopUser": route({
+    method: "POST", path: "/api/admin/workshop-user-links", surface: "admin", status: 201,
+    body: z.strictObject({ workshopUser: WorkshopUserKey, principalId: PrincipalId }), response: WorkshopUserLink,
+  }),
   // Learning standards (SCHO-220)
   "admin.listStandards": route({ method: "GET", path: "/api/admin/standards", surface: "admin", response: z.array(StandardsReleaseBody) }),
   "admin.approveStandards": route({
@@ -1522,6 +1559,21 @@ export const ROUTES = {
     body: z.strictObject({ email: EmailPreferences.partial() }).refine((body) => Object.keys(body.email).length > 0, "change at least one preference"),
     response: PreferencesBody,
   }),
+  // Devices (SCHO-261): Your devices. Reachable from a phone too, as /api/m/me/devices.
+  "me.devices": route({
+    method: "GET", path: "/api/me/devices", surface: "me",
+    /** The caller's devices, newest first, revoked ones included. */
+    response: z.strictObject({ devices: z.array(DeviceBody) }),
+  }),
+  "me.revokeDevice": route({
+    method: "POST", path: "/api/me/devices/:deviceId/revoke", surface: "me",
+    params: params({ deviceId: DeviceId }), body: NoBody, response: DeviceBody,
+  }),
+  "me.revokeAllDevices": route({
+    method: "POST", path: "/api/me/devices/revoke-all", surface: "me", body: NoBody,
+    /** Sign out everywhere: how many active devices were signed out. */
+    response: z.strictObject({ revoked: z.int().nonnegative() }),
+  }),
   "admin.previewDigest": route({
     method: "GET", path: "/api/admin/guardians/:guardianPrincipalId/digest-preview", surface: "admin",
     params: params({ guardianPrincipalId: PrincipalId }), response: DigestPreviewBody,
@@ -1669,6 +1721,30 @@ export const ROUTES = {
   "teacher.gradeQuizItem": route({
     method: "POST", path: "/api/teacher/offerings/:offeringId/quiz-attempts/:attemptId/items/:itemId/grade", surface: "teacher",
     params: params({ offeringId: OfferingId, attemptId: QuizAttemptId, itemId: QuizItemId }), body: ItemGradeInput, response: StaffAttemptBody,
+  }),
+
+  // Operations (SCHO-263): district /admin → Operations, where a district administrator enrolls an
+  // admin edition's ops key, chooses its scopes, removes it, and reads the district's ops audit log.
+  // Kept in one block, apart from the routes above.
+  "admin.opsKeys": route({
+    method: "GET", path: "/api/admin/ops/keys", surface: "admin",
+    response: z.strictObject({ keys: z.array(OpsKeyBody) }),
+  }),
+  "admin.enrollOpsKey": route({
+    method: "POST", path: "/api/admin/ops/keys", surface: "admin", status: 201,
+    body: EnrollOpsKeyInput, response: OpsKeyBody,
+  }),
+  "admin.setOpsKeyScopes": route({
+    method: "POST", path: "/api/admin/ops/keys/:keyId/scopes", surface: "admin",
+    params: params({ keyId: KeyId }), body: z.strictObject({ scopes: GrantedOpsScopes }), response: OpsKeyBody,
+  }),
+  "admin.removeOpsKey": route({
+    method: "POST", path: "/api/admin/ops/keys/:keyId/remove", surface: "admin",
+    params: params({ keyId: KeyId }), body: NoBody, response: OpsKeyBody,
+  }),
+  "admin.opsAudit": route({
+    method: "GET", path: "/api/admin/ops/audit", surface: "admin",
+    response: z.strictObject({ entries: z.array(OpsAuditBody) }),
   }),
 } as const satisfies Record<string, RouteSpec>;
 

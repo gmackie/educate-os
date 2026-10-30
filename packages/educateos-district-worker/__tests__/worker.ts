@@ -40,6 +40,36 @@ export class DistrictObject extends DeployedDistrictObject {
     return outcome.ran ? { ran: true } : { ran: false, reason: outcome.reason };
   }
 
+  /** What the analytics proxy asked Cloudflare's API, since this instance started (SCHO-263). */
+  readonly #analyticsRequests: { url: string; redirect: string; authorization: string | null }[] = [];
+
+  /** A recorded Cloudflare API: one Worker's invocations, and an empty Access log. */
+  protected override async analyticsFetch(request: Request): Promise<Response> {
+    this.#analyticsRequests.push({ url: request.url, redirect: request.redirect, authorization: request.headers.get("authorization") });
+    await request.body?.cancel();
+    if (request.url === "https://api.cloudflare.com/client/v4/graphql") {
+      return Response.json({
+        data: {
+          viewer: {
+            accounts: [{
+              workers: [{ sum: { requests: 120, errors: 1 }, quantiles: { cpuTimeP50: 1500, cpuTimeP99: 9000 }, avg: { sampleInterval: 1 }, dimensions: { scriptName: "educateos-district-worker" } }],
+              series: [{ sum: { requests: 120, errors: 1 }, dimensions: { datetimeHour: "2026-10-28T11:00:00Z" } }],
+              durableObjects: [{ sum: { requests: 80 } }],
+              durableObjectStorage: [{ max: { storedBytes: 4096 }, dimensions: { date: "2026-10-28" } }],
+            }],
+          },
+        },
+        errors: null,
+      });
+    }
+    return Response.json({ success: true, result: [] });
+  }
+
+  /** The analytics proxy's requests so far. */
+  async analyticsRequests(): Promise<{ url: string; redirect: string; authorization: string | null }[]> {
+    return structuredClone(this.#analyticsRequests);
+  }
+
   /** The email recorded so far. */
   async sentEmail(): Promise<Parameters<SendEmailBinding["send"]>[0][]> {
     return structuredClone(this.#sent);

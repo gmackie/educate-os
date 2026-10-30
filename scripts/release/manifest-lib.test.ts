@@ -14,8 +14,8 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { collectAssets, collectModules, stableStringify } from "./hash-lib.ts";
 import {
-  generateManifest, readD1Migrations, readDeployablePackages, readDeployInputs, releaseShortName,
-  type WorkerBuild,
+  ADMIN_PACKAGE, ASSET_VARIANTS, releaseAssetVariants, COMPONENT_ASSET_VARIANT, DISTRICT_ORIGIN, generateManifest, readD1Migrations,
+  readDeployablePackages, readDeployInputs, readReleaseComponents, releaseShortName, type WorkerBuild,
 } from "./manifest-lib.ts";
 
 const RELEASE = dirname(fileURLToPath(import.meta.url));
@@ -27,19 +27,25 @@ const GOLDEN_PATH = join(TESTDATA, "golden-manifest.json");
 const PLACEHOLDER_RE =
     /^\$(ACCOUNT_ID|PUBLIC_BASE_URL|KV_[A-Z0-9_]+_ID|R2_[A-Z0-9_]+_NAME|D1_[A-Z0-9_]+_ID|WORKER_NAME\([a-z0-9-]+\)|SECRET\([A-Z0-9_]+\))/;
 
-function readTestWorkerBuilds() {
-  return readDeployablePackages(join(ROOT, "packages")).map((pkg) => {
+// Release components (the OSS admin) as build-release.ts assembles them: from their config template,
+// with their real D1 migrations and a fixture standing in for their own SPA build.
+function readTestWorkerBuilds(): WorkerBuild[] {
+  const packages = join(ROOT, "packages");
+  return [...readDeployablePackages(packages), ...readReleaseComponents(packages)].map((pkg) => {
     const bundleDir = join(TESTDATA, "fixture-bundles", pkg.name);
     assert.ok(existsSync(bundleDir),
         `missing fixture bundle for new deployable package: add scripts/release/testdata/` +
         `fixture-bundles/${pkg.name}/ with a single .js module`);
     const { mainModule, modules } = collectModules(bundleDir);
+    const d1Migrations = readD1Migrations(pkg);
     return {
       pkgName: pkg.name,
       config: pkg.config,
       mainModule,
       modules,
       deployInputs: readDeployInputs(pkg.dir),
+      ...(d1Migrations.length > 0 ? { d1Migrations } : {}),
+      ...(pkg.component ? { ownAssets: collectAssets(join(TESTDATA, "fixture-assets", pkg.name)) } : {}),
     };
   });
 }
@@ -52,9 +58,9 @@ function buildTestManifest(workers: WorkerBuild[] = readTestWorkerBuilds(), prof
     createdAt: "2026-01-01T00:00:00.000Z",
     wranglerVersion: "0.0.0-fixture",
     workers,
-    assetVariants: {
-      access: collectAssets(join(TESTDATA, "fixture-assets", "access")),
-    },
+    // One fixture build stands for both variants: only the build env differs between them.
+    assetVariants: Object.fromEntries(Object.keys(releaseAssetVariants({ EDUCATEOS_SCHOOL_BUILD: String(profile === "school") }))
+      .map(name => [name, collectAssets(join(TESTDATA, "fixture-assets", "access"))])),
   });
 }
 
@@ -131,7 +137,20 @@ test("worker entries carry the deploy contract", () => {
   assert.ok(router.assetsConfig);
   assert.ok(router.assetsConfig.run_worker_first?.includes("/gatekeeper/*"));
   assert.equal(router.assetsConfig.not_found_handling, "single-page-application");
-  assert.deepEqual(Object.keys(router.assetsConfig.variants), ["access"]);
+  assert.deepEqual(Object.keys(router.assetsConfig.variants), ["access", "access-ai"]);
+  assert.deepEqual(router.assetsConfig.variants.access?.buildEnv, { VITE_CF_ACCESS_MODE: "true" });
+  assert.deepEqual(router.assetsConfig.variants["access-ai"]?.buildEnv,
+      { VITE_CF_ACCESS_MODE: "true", VITE_WORKSHOP_BASE_PATH: "/ai/" });
+  // ADR-0014: the one-origin wiring rides on the router, and no wrangler config binds DISTRICT.
+  assert.deepEqual(router.districtOrigin, {
+    binding: { type: "service", name: "DISTRICT", service: "$WORKER_NAME(educateos-district-worker)" },
+    assetVariant: "access-ai",
+    basePath: "/ai",
+  });
+  assert.ok(!router.bindings.some((b) => b.name === "DISTRICT"));
+  for (const [name, entry] of Object.entries(workers)) {
+    if (name !== "router") assert.equal(entry.districtOrigin, undefined, name);
+  }
   for (const variant of Object.values(router.assetsConfig.variants)) {
     for (const { hash } of Object.values(variant.manifest)) {
       assert.ok(manifest.assets[hash], `asset blob ${hash} missing from release index`);
@@ -302,7 +321,7 @@ test("generateManifest rejects gatekeepers whose folded shortNames collide", () 
 
 test("per-package deploy-inputs.json files are well-formed when present", () => {
   const KINDS = new Set(["secret", "var", "workerName"]);
-  for (const pkg of readDeployablePackages(join(ROOT, "packages"))) {
+  for (const pkg of [...readDeployablePackages(join(ROOT, "packages")), ...readReleaseComponents(join(ROOT, "packages"))]) {
     const inputs = readDeployInputs(pkg.dir);
     if (inputs === undefined) continue;
     assert.ok(Array.isArray(inputs), `${pkg.name}/deploy-inputs.json must be an array`);
@@ -313,7 +332,11 @@ test("per-package deploy-inputs.json files are well-formed when present", () => 
       assert.equal(typeof input.label, "string", `${pkg.name}: input.label`);
       for (const key of Object.keys(input)) {
         assert.ok(["name", "kind", "label", "help", "consoleUrl", "setupSteps",
-          "redirectUriTemplate"].includes(key), `${pkg.name}: unknown input key ${key}`);
+          "redirectUriTemplate", "generated"].includes(key), `${pkg.name}: unknown input key ${key}`);
+      }
+      if (input.generated !== undefined) {
+        assert.equal(input.generated, true, `${pkg.name}: generated must be true`);
+        assert.equal(input.kind, "secret", `${pkg.name}: only a secret can be generated`);
       }
       if (input.setupSteps !== undefined) {
         assert.ok(Array.isArray(input.setupSteps) &&
@@ -367,14 +390,18 @@ test("the district service declares no D1 or R2, sends email through Email Servi
   assert.ok(!district.bindings.some((b) => b.type === "d1" || b.type === "r2_bucket"));
   // SCHO-189: its email leaves through Email Service in the installing account, and its
   // notification and digest jobs run on Cron Triggers.
-  assert.deepEqual(district.bindings, [{ type: "send_email", name: "SEND_EMAIL" }]);
+  assert.deepEqual(district.bindings.filter((b) => b.type !== "secret_text"), [{ type: "send_email", name: "SEND_EMAIL" }]);
   assert.deepEqual(district.crons, ["7 * * * *", "0 14 * * SUN"]);
   assert.deepEqual(district.migrations, [{ tag: "v1", new_sqlite_classes: ["DistrictObject"] }]);
   assert.deepEqual(district.inputs?.map((input) => [input.name, input.kind]),
-      [["DISTRICT_CONFIG", "var"], ["CF_ACCESS_ISS", "var"], ["CF_ACCESS_AUD", "var"]]);
+      [["DISTRICT_CONFIG", "var"], ["CF_ACCESS_ISS", "var"], ["CF_ACCESS_AUD", "var"], ["DEVICE_TOKEN_SECRET", "secret"]]);
+  // SCHO-261: the device token key is generated by the deploy service, never asked for.
+  assert.equal(district.inputs?.find((input) => input.name === "DEVICE_TOKEN_SECRET")?.generated, true);
+  assert.deepEqual(district.bindings.find((b) => b.name === "DEVICE_TOKEN_SECRET"),
+      { type: "secret_text", name: "DEVICE_TOKEN_SECRET", text: "$SECRET(DEVICE_TOKEN_SECRET)" });
 });
 
-// No deployable package declares D1 yet, so the golden file cannot show it. These pin the shape
+// Only the OSS admin, a release component, declares D1 (see its own test below). These pin the shape
 // @educateos/installer accepts (its D1Migration and `d1` binding schemas), which its own suite
 // checks against a manifest generated here.
 function d1Package(files: Record<string, string>, d1: Record<string, unknown> = {}) {
@@ -421,6 +448,7 @@ test("a D1 database becomes a $D1_<B>_ID binding and its migrations content-addr
 
 test("workers without D1 carry no d1Migrations field, so existing manifests are unchanged", () => {
   for (const [name, entry] of Object.entries(buildTestManifest().workers)) {
+    if (name === ADMIN_PACKAGE) continue;
     assert.equal("d1Migrations" in entry, false, `${name}: unexpected d1Migrations`);
   }
 });
@@ -460,4 +488,81 @@ test("school release requires district principal resolution while generic stays 
     type: "service", name: "PRINCIPAL_RESOLVER", service: "$WORKER_NAME(educateos-district-worker)", entrypoint: "DistrictPrincipalResolver",
   });
   assert.throws(() => buildTestManifest(readTestWorkerBuilds().filter(w => w.pkgName !== "educateos-district-worker"), "school"), /require/);
+});
+
+// ADR-0014: a district's one origin needs the Workshop built for /ai, so every release carries that
+// variant; the router's wiring names it, and a release missing it fails the build.
+test("the asset variants are the declared ones, and the one-origin variant is required", () => {
+  assert.deepEqual(Object.keys(ASSET_VARIANTS), ["access", "access-ai"]);
+  assert.equal(ASSET_VARIANTS[DISTRICT_ORIGIN.assetVariant]?.VITE_WORKSHOP_BASE_PATH, `${DISTRICT_ORIGIN.basePath}/`);
+  const builds = readTestWorkerBuilds();
+  const assets = collectAssets(join(TESTDATA, "fixture-assets", "access"));
+  const generate = (assetVariants: Record<string, typeof assets>) => generateManifest({
+    releaseId: "r", commit: "0".repeat(40), createdAt: "2026-01-01T00:00:00.000Z", wranglerVersion: "0", workers: builds, assetVariants,
+  });
+  assert.throws(() => generate({ access: assets }), /no access-ai asset variant/);
+  assert.throws(() => generate({ access: assets, "access-ai": assets, other: assets }), /unknown asset variant other/);
+});
+
+test("a router config that binds DISTRICT itself, or a generated input that is not a secret, fails the build", () => {
+  const builds = readTestWorkerBuilds();
+  const withDistrict = builds.map((w) => w.pkgName !== "router" ? w : {
+    ...w, config: { ...w.config, services: [...w.config.services ?? [], { binding: "DISTRICT", service: "educateos-district-worker" }] },
+  });
+  assert.throws(() => buildTestManifest(withDistrict), /binds DISTRICT/);
+  const generatedVar = builds.map((w) => w.pkgName !== "educateos-district-worker" ? w : {
+    ...w, deployInputs: [{ name: "X", kind: "var" as const, label: "X", generated: true as const }],
+  });
+  assert.throws(() => buildTestManifest(generatedVar), /X is marked generated, which only a secret can be/);
+});
+
+// SCHO-263: the OSS admin ships in every release as a component built from its config template,
+// never through release discovery (it has no wrangler.jsonc), with its own SPA, its D1 migrations
+// as content-addressed blobs and a generated key encryption key as its only input.
+test("the OSS admin is a release component with its own SPA, its D1 migrations and a generated key", () => {
+  const manifest = buildTestManifest();
+  const admin = manifest.workers[ADMIN_PACKAGE];
+  assert.ok(admin, "expected the OSS admin in the release");
+  assert.ok(!readDeployablePackages(join(ROOT, "packages")).some((pkg) => pkg.name === ADMIN_PACKAGE),
+      "release discovery must not find the admin");
+  assert.equal(admin.kind, "admin");
+  assert.equal(admin.installable, true);
+  assert.equal(admin.singleton, true);
+  assert.equal(admin.shortName, undefined);
+  assert.equal(admin.backendBinding, undefined);
+  assert.equal(admin.districtOrigin, undefined);
+  assert.deepEqual(admin.vars, { EDITION: "oss" });
+  assert.deepEqual(admin.bindings, [
+    { type: "d1", name: "DB", id: "$D1_DB_ID" },
+    { type: "assets", name: "ASSETS" },
+    { type: "secret_text", name: "ADMIN_KEY_ENCRYPTION_KEY", text: "$SECRET(ADMIN_KEY_ENCRYPTION_KEY)" },
+  ]);
+  assert.deepEqual(admin.inputs?.map((input) => [input.name, input.kind, input.generated]),
+      [["ADMIN_KEY_ENCRYPTION_KEY", "secret", true]]);
+  assert.deepEqual(admin.d1Migrations?.map((m) => [m.binding, m.id]), [["DB", "0001_initial"], ["DB", "0002_control_plane"]]);
+  for (const migration of admin.d1Migrations ?? []) {
+    const sql = readFileSync(join(ROOT, "packages", ADMIN_PACKAGE, "migrations", `${migration.id}.sql`));
+    assert.equal(migration.size, sql.byteLength);
+  }
+  // Its own SPA, not the Workshop frontend's variants; every blob is in the release index.
+  assert.deepEqual(Object.keys(admin.assetsConfig?.variants ?? {}), [COMPONENT_ASSET_VARIANT]);
+  assert.deepEqual(admin.assetsConfig?.run_worker_first, ["/api/*", "/healthz"]);
+  assert.equal(admin.assetsConfig?.not_found_handling, "single-page-application");
+  const spa = admin.assetsConfig!.variants[COMPONENT_ASSET_VARIANT]!;
+  assert.deepEqual(spa.buildEnv, {});
+  assert.deepEqual(Object.keys(spa.manifest), ["/index.html"]);
+  for (const { hash } of Object.values(spa.manifest)) assert.ok(manifest.assets[hash], `asset blob ${hash} missing`);
+  // The local development config's example values never reach a release.
+  assert.doesNotMatch(JSON.stringify(admin), /northfield|local-development|educateos-admin-local|0{8}-0{4}/);
+});
+
+test("the OSS admin may take only generated secrets, and its own assets need an assets config", () => {
+  const builds = readTestWorkerBuilds();
+  const admin = builds.find((w) => w.pkgName === ADMIN_PACKAGE)!;
+  const others = builds.filter((w) => w !== admin);
+  const asked = { ...admin, deployInputs: [{ name: "ADMINS", kind: "var" as const, label: "Admins" }] };
+  assert.throws(() => buildTestManifest([...others, asked]), /ADMINS would have to be asked for/);
+  const { assets: _assets, ...withoutAssets } = admin.config;
+  assert.throws(() => buildTestManifest([...others, { ...admin, config: withoutAssets }]),
+      /has its own assets but its config declares no assets/);
 });

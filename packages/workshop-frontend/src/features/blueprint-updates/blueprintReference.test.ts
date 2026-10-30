@@ -12,6 +12,11 @@ describe('parseBlueprintReference', () => {
     expect(parseBlueprintReference(`  https://gadgets.example/blueprint/${ID}/?ref=chat#top \n`)).toBe(ID)
   })
 
+  it('reads a link copied from a Workshop mounted under a base path', () => {
+    expect(parseBlueprintReference(`https://district.example/ai/blueprint/${ID}`)).toBe(ID)
+    expect(parseBlueprintReference(`https://district.example/ai/blueprint/${ID}/edit`)).toBeNull()
+  })
+
   it('takes a bare id as it is', () => {
     expect(parseBlueprintReference(` ${ID}\n`)).toBe(ID)
   })

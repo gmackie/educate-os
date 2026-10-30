@@ -94,12 +94,18 @@
       "new_sqlite_classes": [
         "GoogleClassroomGatekeeperImpl"
       ]
+    },
+    {
+      "tag": "v10",
+      "new_sqlite_classes": [
+        "GoogleClassroomStudentGatekeeperImpl"
+      ]
     }
   ],
   "account_id": "c07a7e704db1808e1fff91bed2b1cd49",
   "workers_dev": false,
   "preview_urls": false,
   "vars": {
-    "BASE_URL": "https://schoolos.gmac.io/gatekeeper/google"
+    "BASE_URL": "https://northfield.educateos.io/gatekeeper/google"
   }
 }

@@ -111,7 +111,8 @@ describe("roles and labels", () => {
     await user.click(screen.getByRole("link", { name: /English 9/ }));
     await onScreen(/^Roster/);
     for (const { section, heading } of screens) {
-      await user.click(screen.getByRole("link", { name: section }));
+      // The class's own sections, not the shell's entries of the same name (Gradebook, SCHO-260).
+      await user.click(within(screen.getByRole("navigation", { name: "Class sections" })).getByRole("link", { name: section }));
       await onScreen(heading);
       await waitFor(() => expect(screen.queryAllByRole("status").filter((s) => s.textContent?.startsWith("Loading") || s.textContent?.startsWith("Getting"))).toHaveLength(0));
       expectWellFormed();

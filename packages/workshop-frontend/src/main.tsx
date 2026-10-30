@@ -5,16 +5,19 @@ import { RpcPromise, RpcStub, newWebSocketRpcSession } from 'capnweb'
 import { PublicApi, ServerConfig } from '@gadgets/workshop-shared/api'
 import { RpcContext } from './RpcContext'
 import { ServerConfigContext, ServerConfigErrorContext } from './ServerConfigContext'
-import { ThemeProvider } from './ThemeContext'
+import { ThemeProvider } from '@gadgets/ui/theme'
 import { createRouter } from './router'
 import AnnouncementBanner from './components/AnnouncementBanner'
-import { applyAccentColor, applyStoredThemeMode } from './theme'
+import { applyAccentColor, workshopThemeSource } from './theme'
 import './styles.css'
 import FrontendErrorBoundary from './FrontendErrorBoundary'
 import { installWorkshopErrorReporting, reportIssue } from './errorReporting'
 import { applySiteFavicon, cacheBustSiteLogoUrl } from './siteLogoUtils'
 import { getBackendHost } from './connectHandoff';
 import { useStaleBackendReconnect } from './features/stale-session/useStaleBackendReconnect'
+import { WORKSHOP_BASE, workshopPath } from './workshopPath';
+import { takeSchoolContextFromUrl } from './features/school-context/schoolContext';
+import { startDistrictFrame, useDistrictFrame } from './features/district-frame/districtFrame';
 
 // ---------------------------------------------------------------------------
 // Dev auto-login: if VITE_DEV_AUTO_LOGIN=true, automatically create/login
@@ -87,7 +90,7 @@ const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
 function startConnection(): RpcStub<PublicApi> {
   lastConnectTime = Date.now();
   const apiHost = getBackendHost();
-  const wsUrl = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + apiHost + '/api';
+  const wsUrl = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + apiHost + workshopPath('/api');
   const stub = newWebSocketRpcSession<PublicApi>(wsUrl);
   stub.onRpcBroken(handleBroken);
   return stub;
@@ -181,8 +184,13 @@ function reconnectNow() {
 installWorkshopErrorReporting()
 let currentStub = startConnection();
 
+// Read before React or the router touch the document: the theme source notes any `data-mode` the
+// host injected (the phone app's WebView), and an "Ask AI about this" `?context=` is taken off the
+// URL before the router first reads it (SCHO-260).
+const themeSource = workshopThemeSource(WORKSHOP_BASE)
+takeSchoolContextFromUrl(WORKSHOP_BASE)
+startDistrictFrame(WORKSHOP_BASE)
 const router = createRouter()
-applyStoredThemeMode()
 
 function AppWithConnection() {
   const [rpcState, setRpcState] = useState<{stub: RpcStub<PublicApi>; connectionLost: boolean}>({
@@ -244,10 +252,12 @@ function AppWithConnection() {
     return () => { cancelled = true; };
   }, [rpcState.stub]);
 
-  // Apply the deployment's admin-chosen accent color (overrides brand CSS vars at runtime).
+  // Apply the deployment's admin-chosen accent color (overrides brand CSS vars at runtime). In the
+  // district frame the school shell applies the school's accent instead (districtFrame.tsx).
+  const framed = useDistrictFrame().status === 'framed';
   useEffect(() => {
-    applyAccentColor(serverConfig?.accentColor ?? '');
-  }, [serverConfig?.accentColor]);
+    if (!framed) applyAccentColor(serverConfig?.accentColor ?? '');
+  }, [framed, serverConfig?.accentColor]);
 
   useEffect(() => {
     return applySiteFavicon(serverConfig?.siteLogo?.url);
@@ -257,7 +267,7 @@ function AppWithConnection() {
       socketVersion?.stub === rpcState.stub ? socketVersion.version : undefined, reconnectNow);
 
   return (
-    <ThemeProvider>
+    <ThemeProvider source={themeSource}>
       <RpcContext.Provider value={rpcState}>
         <ServerConfigErrorContext.Provider value={serverConfigError}>
           <ServerConfigContext.Provider value={serverConfig}>

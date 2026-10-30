@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { frontendProfile, releaseProfile } from "./frontend-profile.ts";
 import { collectAssets } from "./hash-lib.ts";
-import { generateManifest, readDeployablePackages } from "./manifest-lib.ts";
+import { generateManifest, readDeployablePackages, releaseAssetVariants } from "./manifest-lib.ts";
 import { join } from "node:path";
 
 test("generic releases default off, including inherited UI flags", () => {
@@ -23,16 +23,17 @@ test("school builds opt in explicitly and reject misspelled selectors", () => {
 
 test("the release manifest records the selected variant and its content hashes", () => {
   const root = new URL("../../", import.meta.url).pathname;
-  const router = readDeployablePackages(join(root, "packages")).find((pkg) => pkg.name === "router")!;
+  const packages = readDeployablePackages(join(root, "packages")).filter(pkg => ["router", "workshop-backend", "educateos-district-worker"].includes(pkg.name));
   const assets = collectAssets(join(root, "scripts/release/testdata/fixture-assets/access"));
   for (const value of ["false", "true"]) {
     const profile = frontendProfile({ EDUCATEOS_SCHOOL_BUILD: value });
     const manifest = generateManifest({
       releaseId: "profile-test", commit: "0".repeat(40), createdAt: "2026-10-30T00:00:00Z", wranglerVersion: "test",
-      workers: [{ pkgName: "router", config: router.config, mainModule: "index.js", modules: [] }],
-      assetVariants: { [profile.variant]: assets },
+      profile: value === "true" ? "school" : "generic",
+      workers: packages.map(pkg => ({ pkgName: pkg.name, config: pkg.config, mainModule: "index.js", modules: [] })),
+      assetVariants: Object.fromEntries(Object.keys(releaseAssetVariants({ EDUCATEOS_SCHOOL_BUILD: value })).map(name => [name, assets])),
     });
-    assert.deepEqual(Object.keys(manifest.workers.router.assetsConfig!.variants), [profile.variant]);
+    assert.deepEqual(Object.keys(manifest.workers.router.assetsConfig!.variants), Object.keys(releaseAssetVariants({ EDUCATEOS_SCHOOL_BUILD: value })));
     assert.deepEqual(manifest.workers.router.assetsConfig!.variants[profile.variant].manifest, assets.manifest);
     assert.ok(Object.keys(manifest.assets).length > 0);
   }

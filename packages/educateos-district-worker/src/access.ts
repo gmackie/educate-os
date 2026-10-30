@@ -12,6 +12,26 @@ import { identityFromAccessPayload, type CleverSsoConfig } from "@educateos/iden
 /** The request header Access puts its signed assertion in. */
 export const ACCESS_ASSERTION_HEADER = "cf-access-jwt-assertion";
 
+/** The cookie Access keeps the same signed assertion in, on the application's hostname. */
+export const ACCESS_COOKIE = "CF_Authorization";
+
+/**
+ * The paths whose sign-in may come from the Access cookie when the header is absent: the pairing
+ * relay (SCHO-261). `/api/pair/*` is an Access bypass path (ADR-0014), so Access adds no header
+ * there, but the signed-in browser still sends its cookie. The relay refuses cross-site POSTs, so
+ * the cookie cannot be ridden from another site.
+ */
+export const ACCESS_COOKIE_PATH_PREFIX = "/api/pair/";
+
+/** The value of the Access cookie, if the request carries one. */
+function accessCookie(request: Request): string | undefined {
+  for (const part of (request.headers.get("cookie") ?? "").split(";")) {
+    const separator = part.indexOf("=");
+    if (separator !== -1 && part.slice(0, separator).trim() === ACCESS_COOKIE) return part.slice(separator + 1).trim();
+  }
+  return undefined;
+}
+
 /** What an {@link accessRequestVerifier} checks assertions against. */
 export interface AccessVerifierOptions {
   /** The Access team domain, `https://<team>.cloudflareaccess.com`: the kernel's `CF_ACCESS_ISS`. */
@@ -64,7 +84,10 @@ export function accessRequestVerifier(options: AccessVerifierOptions): RequestVe
   }
   const keys = options.keys ?? teamKeys(issuer);
   return async (request: Request): Promise<VerifiedIdentity | undefined> => {
-    const token = request.headers.get(ACCESS_ASSERTION_HEADER);
+    let token = request.headers.get(ACCESS_ASSERTION_HEADER);
+    if ((token === null || token === "") && new URL(request.url).pathname.startsWith(ACCESS_COOKIE_PATH_PREFIX)) {
+      token = accessCookie(request) ?? null;
+    }
     if (token === null || token === "") return undefined;
     let payload;
     try {

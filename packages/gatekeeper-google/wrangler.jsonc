@@ -94,6 +94,12 @@
       "new_sqlite_classes": [
         "GoogleClassroomGatekeeperImpl"
       ]
+    },
+    {
+      "tag": "v10",
+      "new_sqlite_classes": [
+        "GoogleClassroomStudentGatekeeperImpl"
+      ]
     }
   ]
 }

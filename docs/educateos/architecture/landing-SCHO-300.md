@@ -1,17 +1,42 @@
 # SCHO-300 PR batch integration
 
-Integration of GitHub PRs #5–#26, preserving every original head commit in merge history.
-GitHub delivery only; no ForgeGraph credential changes or manual deployments.
-Production acceptance and mobile physical-device verification remain separate from code landing.
+Integration of GitHub PRs #5–#26, #28 and #29, preserving all 24 original feature heads,
+GitHub main's upstream sync and canonical Forgejo history with merge commits.
 
-## Landing hold
+## Canonical production landing
 
-The user paused all EducateOS merges while selecting the landing destination. GitHub and Forgejo
-main have diverged; the user's reported Forgejo head is `c7810e4f`, while GitHub remains
-`b4157a24`. `.forgegraph.yaml` declares Forgejo as the PR/CI host and its main merge deploys
-production. This integration was prepared against GitHub main and must not be treated as validated
-against Forgejo main. Passing CI does not lift the hold. No merge, deployment, mirror sync or
-credential refresh is authorized pending the user's next instruction.
+The user selected Forgejo main as the canonical destination. GitHub main is only a mirror;
+never merge a GitHub PR into it. Forgejo main `c7810e4f` has been merged into this branch.
+The batch must land LAST, after Forgejo #167, #183, #208, #210, #214, #215, #217, #218,
+#223, #224 and #233 have merged or been explicitly deferred. Fetch and merge latest canonical
+main again after that train; all three checks (`CI / ci`, `CI / mobile`, `CI / workshop-tests`)
+must pass for that exact head before approval and merge. Pending, stale, cancelled and failed
+checks do not qualify. Use `forge pr approve`, then a merge commit, never squash or rebase.
+
+A canonical main merge automatically deploys production. Record the merge SHA, ForgeGraph
+deployment ID and health evidence before completing SCHO-300. Only then fast-forward GitHub
+main without force and reconcile GitHub PRs #5–#29 with a canonical merge link.
+
+## Canonical conflict decisions
+
+- Preserve the canonical mobile router, device credentials, one-origin pairing, themes and
+  platform links. The older native entrypoints were superseded by canonical's Expo router;
+  remove the obsolete copies. Retain validated linking/RN version corrections.
+- Keep both immutable Gadget assessment storage and canonical device/pairing/ops stores.
+- Share one fresh-directory principal resolver and its separate explicit migration matcher.
+  Corrupt/revoked links refuse sign-in without exposing directory records. Keep both test suites.
+- Keep production's staged `PRINCIPAL_MIGRATION` cutover; do not auto-enable principal identity
+  for existing email-keyed accounts. Explicit school release profiles require principal/policy
+  authority. Canonical migration uses upstream's `listWorkspaces`/`newWorkspace` API.
+- Preserve canonical `/ai` routing, public-path links and district frame/context validation.
+  Add the external MCP route only for its exact allowlisted paths.
+- Generic releases retain `access` and `access-ai`; school releases carry `access-school` and
+  `access-school-ai` with explicit school flags. The installer selects the matching mount and
+  retains optional OSS admin resources. Regenerate the release golden from composed config.
+- Keep Cloudflare upstream's unified Drive picker and Forgejo's Classroom student connector.
+- PR #28 intentionally disables policy-bound execution; raw descendant capability revocation
+  is still unavailable. Required-but-missing policy also refuses retained execution paths.
+- PR #29's Google bridge is draft-only and validated against offline fake HTTP, never live Google.
 
 ## Kernel review
 
@@ -139,3 +164,28 @@ and React Native to 0.88.1 with the isolated lockfile regenerated. Mobile frozen
 20 security tests, public config validation and both iOS/Android source exports passed. The four
 environment-contract checks passed. CLA Assistant still lacks its signatures branch; Bonk setup
 aborts before review. Neither failure is represented as passing or disabled. Merge hold remains.
+
+
+## Canonical integration validation
+
+Local validation after merging `c7810e4f`:
+
+- Frozen root and isolated mobile installs; `pnpm lint`, generated development/production config
+  checks, and all 181 workspace build tasks pass.
+- 81 release/config/environment tests and 159 installer tests pass, covering generic/school
+  assets, root and `/ai` mounts, optional OSS admin and authority requirements.
+- District Worker: all 132 real-workerd tests pass, including device/pairing, current directory
+  sign-in, roster sync, policy and immutable Gadget assessment behavior.
+- Backend: 73 focused policy, callback, restore and agent tests pass; six canonical migration
+  tests pass after adapting to upstream workspace API and expiring synthetic assertions.
+  Another 74 canonical guard/mount/context/handoff/directory tests pass.
+- Router: 100 tests pass. Mobile: typecheck, 60 tests and both iOS/Android Hermes exports pass.
+- Operations: 56 offline tests pass, including Google draft-only bridge adversarial cases.
+- Video: ten safety/unit tests, all 82 synthetic scene smoke checks and the full narrated V01
+  MP4 end-to-end test pass; browser escape attempts fail closed. Publication remains disabled.
+- Architecture inventory is bound to reviewed blob fingerprints; zero unreviewed kernel changes.
+  Both histories' source/shotlist bytes remain identical to `feat/launch-factory-20261030`.
+
+These local results do not substitute for the three exact-head canonical CI jobs, latest-main
+refresh after the other PR train, or verified production deployment. No GitHub main update,
+production merge, live Google operation, paid model call or outreach send has occurred here.

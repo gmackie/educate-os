@@ -24,6 +24,7 @@ import {
 } from '../features/native-app/DeviceSessionHandoff'
 import { NativeAppBridge } from '../features/native-app/NativeAppBridge'
 import { PageUpdateNotice } from '../features/stale-session/PageUpdateNotice'
+import { DistrictFrame, useDistrictFrame } from '../features/district-frame/districtFrame'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -159,6 +160,7 @@ function AuthenticatedShell({
 }) {
   // null = still checking, true = needs onboarding, false = onboarding done
   const [onboardingNeeded, setOnboardingNeeded] = useState<boolean | null>(SCHOOL_MODE ? false : null)
+  const frame = useDistrictFrame()
 
   useEffect(() => {
     if (SCHOOL_MODE) return
@@ -173,8 +175,8 @@ function AuthenticatedShell({
     return () => { cancelled = true }
   }, [authenticatedApi])
 
-  // Still checking onboarding status
-  if (onboardingNeeded === null) {
+  // Still checking onboarding status, or (on a district origin) whether to draw the school's frame
+  if (onboardingNeeded === null || frame.status === 'pending') {
     return (
       <div className="flex min-h-full items-center justify-center flex-col gap-4 bg-kumo-base">
         <div className="w-8 h-8 border-2 border-kumo-brand border-t-transparent rounded-full animate-spin" />
@@ -200,6 +202,13 @@ function AuthenticatedShell({
         <main className="h-full min-h-0">
           <Outlet />
         </main>
+      ) : frame.status === 'framed' ? (
+        // School navigation and branding live in the Workshop's existing AI sidebar.
+        <DistrictFrame manifest={frame.manifest}>
+          <AppShell>
+            <Outlet />
+          </AppShell>
+        </DistrictFrame>
       ) : (
         <AppShell>
           <Outlet />

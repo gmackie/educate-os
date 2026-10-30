@@ -31,12 +31,14 @@ import chatAccountConfigurator from "../src/configurator/chat-account-configurat
 import chatSpaceConfigurator from "../src/configurator/chat-space-configurator-ui";
 import chatThreadConfigurator from "../src/configurator/chat-thread-configurator-ui";
 import classroomCourseConfigurator from "../src/configurator/classroom-course-configurator-ui";
+import classroomStudentCourseConfigurator from "../src/configurator/classroom-student-course-configurator-ui";
 import googleDocConfigurator from "../src/configurator/google-doc-configurator-ui";
 import googleSheetsConfigurator from "../src/configurator/google-sheets-configurator-ui";
 import googleSlidesConfigurator from "../src/configurator/google-slides-configurator-ui";
 import {
   GMAIL_RESOURCE, GOOGLE_CALENDAR_RESOURCE, GOOGLE_CHAT_RESOURCE, GOOGLE_CHAT_SPACE_RESOURCE,
   GOOGLE_CHAT_THREAD_RESOURCE, GOOGLE_CLASSROOM_COURSE_RESOURCE,
+  GOOGLE_CLASSROOM_STUDENT_RESOURCE,
   GOOGLE_DOC_RESOURCE, GOOGLE_DRIVE_FILE_RESOURCE, GOOGLE_DRIVE_FOLDER_RESOURCE,
   GOOGLE_DRIVE_RESOURCE, GOOGLE_SHEETS_RESOURCE, GOOGLE_SLIDES_RESOURCE,
   parseResourceUrl,
@@ -324,6 +326,25 @@ describe("Classroom course configurator URLs", () => {
   it("encodes an ID the server then refuses", () => {
     let url = configurableUrl(classroomCourseConfigurator, { courseId: "1/students" });
     expect(url).toBe("https://classroom.googleapis.com/courses/1%2Fstudents");
+    expect(() => parseResourceUrl(url)).toThrow(/Invalid Google Classroom course ID/);
+  });
+});
+
+describe("Classroom student course configurator URLs", () => {
+  it("mints only the separate private student resource path and parses it back", () => {
+    let values = { courseId: "123456789" };
+    let url = configurableUrl(classroomStudentCourseConfigurator, values);
+    expect(url).toBe(GOOGLE_CLASSROOM_STUDENT_RESOURCE.urlPattern.replace(":courseId", "123456789"));
+    expect(parseResourceUrl(url)).toEqual({ kind: "classroomStudentCourse", courseId: "123456789" });
+    expect(classroomStudentCourseConfigurator.initialValuesFromResourceUrl!({
+      resourceUrl: url, resourceUrlPattern: GOOGLE_CLASSROOM_STUDENT_RESOURCE.urlPattern, ui: noUi,
+    }))
+      .toEqual(values);
+    expect(classroomStudentCourseConfigurator.isReady!({ values })).toBe(true);
+  });
+
+  it("rejects IDs that cannot safely name a course", () => {
+    let url = configurableUrl(classroomStudentCourseConfigurator, { courseId: "123/students" });
     expect(() => parseResourceUrl(url)).toThrow(/Invalid Google Classroom course ID/);
   });
 });

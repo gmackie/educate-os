@@ -1,6 +1,6 @@
 # ADR-0013: EducateOS, open core with an optional paid control plane at educateos.io
 
-- Status: Accepted
+- Status: Accepted; addendum A1 amended by [ADR-0014](0014-one-origin-per-district.md) (2026-10-28)
 - Date: 2026-10-25
 - Issues: SCHO-199 (umbrella SCHO-198). Amends [ADR-0011](0011-open-source-charter-and-module-ownership.md)
   decisions 1, 3 and 6.

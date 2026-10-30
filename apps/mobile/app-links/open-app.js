@@ -1,4 +1,4 @@
-const kind = location.pathname === '/pair-phone' ? 'pair' : 'enroll';
+const kind = location.pathname === '/pair-phone' ? 'pair' : location.pathname === '/j' ? 'j' : 'enroll';
 const link = document.getElementById('open-app');
 if (location.hash && !location.search) {
   link.href = 'educateos://' + kind + '?' + location.hash.slice(1);

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Badge, Text } from "@cloudflare/kumo";
 import { DistrictApiError } from "@educateos/api-client";
+import { AskAi } from "../AskAi.tsx";
 import { Loading } from "../Loading.tsx";
 import { PageHeading } from "../PageHeading.tsx";
 import { Problem } from "../Problem.tsx";
@@ -91,6 +92,7 @@ export const SubmissionReviewPage = ({ teaching, assignmentId, submissionId }: {
         <Text as="span">{`Attempt ${submission.attempt}, turned in ${formatDateTime(submission.submittedAt)}`}</Text>
         {submission.timing === "late" ? <Badge variant="warning">Late</Badge> : <Badge variant="success">On time</Badge>}
       </p>
+      <AskAi context={{ kind: "submission", id: submissionId }} />
 
       <section aria-labelledby="work-heading" className="flex flex-col gap-3">
         <h2 id="work-heading"><Text variant="heading" as="span">Submitted work</Text></h2>

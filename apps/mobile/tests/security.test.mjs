@@ -60,3 +60,31 @@ test('HTTPS QR fragments open enrollment and pairing without accepting foreign h
   assert.throws(() => parsePairingLink(pair.replace('mobile.educateos.io', 'evil.example')));
   assert.throws(() => parsePairingLink(pair.replace('/pair-phone#', '/pair-phone?secret=other#')));
 });
+
+test('the one-origin pairing QR (/j) accepts one exact HTTPS school origin and nothing else', async () => {
+  const { parseJoinLink } = await import('../src/security.ts');
+  const params = { o: 'https://northfield.educateos.io', r: 'room_' + 'A'.repeat(20), s: 'x'.repeat(43) };
+  const qr = 'https://mobile.educateos.io/j#' + new URLSearchParams(params);
+  assert.deepEqual(parseJoinLink(qr), { origin: params.o, room: params.r, secret: params.s });
+  assert.deepEqual(parseJoinLink('educateos://j?' + new URLSearchParams(params)), parseJoinLink(qr));
+  const fragment = (over) => 'https://mobile.educateos.io/j#' + new URLSearchParams({ ...params, ...over });
+  for (const bad of [
+    qr.replace('mobile.educateos.io', 'evil.example'),                 // foreign QR host
+    qr.replace('mobile.educateos.io', 'mobile.educateos.io.evil.example'),
+    qr.replace('https://', 'http://'),
+    qr.replace('https://', 'https://user:pass@'),                      // credentials on the QR host
+    qr.replace('/j#', '/j?s=other#'),                                  // a query alongside the fragment
+    qr.replace('/j#', '/join#'),
+    'https://mobile.educateos.io/j',
+    fragment({ o: 'http://northfield.educateos.io' }),                 // the school must be HTTPS
+    fragment({ o: 'https://admin:pw@northfield.educateos.io' }),       // and carry no credentials
+    fragment({ o: 'https://northfield.educateos.io/login' }),          // and be an origin, not a path
+    fragment({ o: 'https://northfield.educateos.io:8443' }),
+    fragment({ o: 'http://localhost:4801' }),
+    fragment({ r: 'short' }), fragment({ s: 'tiny' }), fragment({ r: 'has spaces in it' }),
+    qr + '&token=credential', qr + '&s=' + 'y'.repeat(43),
+    'educateos://j?' + new URLSearchParams(params) + '#x',
+    'educateos://pair?' + new URLSearchParams(params),
+    'not a url',
+  ]) assert.throws(() => parseJoinLink(bad), bad);
+});

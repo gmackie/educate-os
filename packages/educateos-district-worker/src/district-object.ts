@@ -25,8 +25,9 @@ import type { WorkshopCapabilityDescriptor, WorkshopCapabilityDecision } from "@
 import { DurableObject } from "cloudflare:workers";
 import type { JWTVerifyGetKey } from "jose";
 import { createLogger } from "@gadgets/observability/logger";
-import type { DistrictDirectorySnapshot, VerifiedPrincipal } from "@educateos/contracts";
-import type { DistrictApp } from "@educateos/district-app";
+import type { DistrictDirectorySnapshot, PrincipalId, VerifiedPrincipal } from "@educateos/contracts";
+import type { DeviceId, DeviceRegistration, DeviceRevocation, DeviceTokens, DistrictApp } from "@educateos/district-app";
+import type { AccessSignInResolution, EmailKeyedUserMatch } from "@educateos/identity";
 import type { AdmittedSubjectRequest, GuardSubject, GuardSubjectRequest } from "@educateos/district-app/guard-directory";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
 import { startDistrict, type District } from "./district.ts";
@@ -34,6 +35,7 @@ import type { SendEmailBinding } from "./mail.ts";
 import { jobForCron } from "./schedule.ts";
 import { onLegacyTableMigrated, type LegacyTableReport } from "@educateos/contracts/legacy-tables";
 import { LTI_API_PREFIX } from "./lti.ts";
+import { readSchoolManifestSettings } from "./school-manifest.ts";
 
 // Each table recovered from before the rename (SCHO-232), with its counts, so the migration's
 // outcome in production can be read from the logs.
@@ -96,6 +98,26 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return fetch(input, init);
   }
 
+  /**
+   * The fetch the analytics proxy reaches Cloudflare's API with (SCHO-263). Bound to `globalThis`,
+   * as workerd requires of a fetch kept on an object. Tests replace it with recorded responses.
+   */
+  protected analyticsFetch(request: Request): Promise<Response> {
+    return fetch.bind(globalThis)(request);
+  }
+
+  /** The release this district runs: what `SCHOOL_MANIFEST` says, else the Worker's version tag (SCHO-263). */
+  #releaseVersion(): string | undefined {
+    let release: string | undefined;
+    try {
+      release = readSchoolManifestSettings(this.env.SCHOOL_MANIFEST).release;
+    } catch {
+      release = undefined;
+    }
+    const tag = this.env.CF_VERSION_METADATA?.tag;
+    return release ?? (typeof tag === "string" && tag !== "" ? tag : undefined);
+  }
+
   /** The running application, for subclasses that drive it directly (the tests). */
   protected async districtApp(): Promise<DistrictApp> {
     return (await this.#boot()).app;
@@ -119,11 +141,6 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
   /** Checks a mint against current district state, never request roles. */
   async authorizeCapability(request: WorkshopCapabilityDescriptor): Promise<WorkshopCapabilityDecision> {
     return authorizeWorkshopCapability((await this.#boot()).app, readDistrictWorkerConfig(this.env.DISTRICT_CONFIG).workshopPolicy, request);
-  }
-
-  /** Resolves a verified Workshop sign-in against the current district directory. */
-  async resolveAccessSignIn(signIn: unknown) {
-    return (await this.#boot()).principalResolver.resolveAccessSignIn(signIn);
   }
 
   /** What the district says about a Workshop user, for the AI call guard. */
@@ -179,6 +196,37 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
   /** Serves one `/api` request as `principal`'s own, for the EducateOS connector's school pages (SCHO-218). */
   async serveAs(principal: VerifiedPrincipal, request: Request): Promise<Response> {
     return (await this.#boot()).tools.serveAs(principal, request);
+  }
+
+  // Devices (SCHO-261)
+
+  /**
+   * Registers a phone for `principalId` and issues its first tokens. The caller has already
+   * established who the person is: the pairing relay, once the person approves on a signed-in
+   * computer, or the browser sign-in path. Refused unless the principal is active here.
+   */
+  async registerDevice(principalId: PrincipalId, registration: DeviceRegistration): Promise<DeviceTokens> {
+    return (await this.#boot()).app.devices.registerDevice(principalId, registration);
+  }
+
+  /** Revokes one device, for administrators and operators. Returns whether it was active. */
+  async revokeDevice(deviceId: DeviceId, revocation: DeviceRevocation): Promise<boolean> {
+    return (await this.#boot()).app.devices.revoke(deviceId, revocation);
+  }
+
+  /** Revokes every active device of a principal, for administrators and operators. Returns how many. */
+  async revokePrincipalDevices(principalId: PrincipalId, revocation: DeviceRevocation): Promise<number> {
+    return (await this.#boot()).app.devices.revokePrincipal(principalId, revocation);
+  }
+
+  /** Who a verified Access sign-in is, for the Workshop's principal resolver (SCHO-259). */
+  async resolveAccessSignIn(signIn: unknown): Promise<AccessSignInResolution> {
+    return (await this.#boot()).principals.resolveAccessSignIn(signIn);
+  }
+
+  /** Matches the Workshop's email-keyed users to the district's people (SCHO-259). */
+  async matchEmailKeyedUsers(users: unknown): Promise<EmailKeyedUserMatch[]> {
+    return (await this.#boot()).principals.matchEmailKeyedUsers(users);
   }
 
   /**
@@ -251,6 +299,14 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         accessAudiences: this.env.CF_ACCESS_AUD,
         ltiToolOrigin: this.env.LTI_TOOL_ORIGIN,
         cleverDistrictToken: this.env.CLEVER_DISTRICT_TOKEN,
+        classroomServiceAccountKey: this.env.GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY,
+        deviceTokenSecret: this.env.DEVICE_TOKEN_SECRET,
+        // Operations (SCHO-263)
+        analyticsToken: this.env.CF_ANALYTICS_TOKEN,
+        analyticsAccountId: this.env.CF_ACCOUNT_ID,
+        analyticsScripts: this.env.ANALYTICS_SCRIPTS,
+        analyticsZoneTag: this.env.ANALYTICS_ZONE_TAG,
+        releaseVersion: this.#releaseVersion(),
       },
       {
         importFetch: (url, init) => this.importFetch(url, init),
@@ -261,6 +317,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         }),
         platformFetch: (input, init) => this.platformFetch(input, init),
         rosterFetch: (input, init) => this.rosterFetch(input, init),
+        analyticsFetch: (request) => this.analyticsFetch(request),
         ...(keys === undefined ? {} : { accessKeys: keys }),
         ...(sendEmail === undefined ? {} : { sendEmail }),
       },

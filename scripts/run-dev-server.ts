@@ -523,6 +523,7 @@ const SHARED_GATEKEEPER_CREDS: Record<string, { id: string; secret: string }> = 
   "gatekeeper-linear": { id: "LINEAR_CLIENT_ID", secret: "LINEAR_CLIENT_SECRET" },
   "gatekeeper-spotify": { id: "SPOTIFY_CLIENT_ID", secret: "SPOTIFY_CLIENT_SECRET" },
   "gatekeeper-x": { id: "X_CLIENT_ID", secret: "X_CLIENT_SECRET" },
+  "gatekeeper-clever": { id: "CLEVER_CLIENT_ID", secret: "CLEVER_CLIENT_SECRET" },
 };
 
 // Deployment-configured vars a gatekeeper reads that its committed `wrangler.jsonc` deliberately
@@ -545,6 +546,10 @@ const PASSTHROUGH_GATEKEEPER_VARS: Record<string, string[]> = {
   "gatekeeper-gitlab": ["GITLAB_URL", "GITLAB_API_URL", "CF_ACCESS_CLIENT_ID", "CF_ACCESS_CLIENT_SECRET"],
   // Each connection's daily read limit; unset, the in-code default.
   "gatekeeper-x": ["X_DAILY_READ_LIMIT"],
+  // The districts' district-app tokens (a JSON map of Clever district ID to token), and where Clever
+  // is: unset, it talks to clever.com and api.clever.com, with no district connected. Point both
+  // bases at a demo district's fakes, with the login-hint form on, to try it without a Clever app.
+  "gatekeeper-clever": ["CLEVER_DISTRICT_TOKENS", "CLEVER_API_BASE", "CLEVER_OAUTH_BASE", "CLEVER_LOGIN_HINT_FORM"],
 };
 
 for (const gk of gatekeepers) {

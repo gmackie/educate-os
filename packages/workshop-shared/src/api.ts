@@ -29,6 +29,7 @@ import { AccountDescription, ActionKind, ActionDescription, AgentCatalog, Avatar
 import type { CodeChange } from "./code-change.js";
 import type { GitOid } from "./gatekeeper.js";
 import type { UiFeatureFlags } from "./feature-flags.js";
+import type { SchoolContextResolution } from "./school-context.js";
 
 export const SERVICE_SALT = new Uint8Array([
   0xd9, 0x4e, 0x54, 0x1d, 0x29, 0xc1, 0x03, 0x74, 0x73, 0x7e, 0xb3, 0xe3, 0x34, 0x6d, 0x8f, 0x21
@@ -446,7 +447,10 @@ export type AuthErrorCode = typeof AUTH_ERROR_CODES[keyof typeof AUTH_ERROR_CODE
 export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   [AUTH_ERROR_CODES.invalidSessionToken]: "invalid session token",
   [AUTH_ERROR_CODES.notAuthenticatedWithAccess]: "Not authenticated with Access.",
-  [AUTH_ERROR_CODES.principalUnresolved]: "This sign-in is not linked to an account here.",
+  // A district resolver refuses a sign-in it has no person for (ADR-0003), so the message tells
+  // the user who can fix it.
+  [AUTH_ERROR_CODES.principalUnresolved]:
+      "Your school hasn't set up your account here yet. Ask your school's administrator to add you.",
   [AUTH_ERROR_CODES.principalAdoptionPending]:
       "This sign-in is waiting for an administrator to confirm your existing account.",
 };
@@ -496,6 +500,14 @@ export interface AuthenticatedApi extends RpcTarget {
    */
   beginDeviceSessionHandoff(publicKey: string, state: string)
     : Promise<DeviceSessionHandoffStart>;
+
+  /**
+   * Checks an "Ask AI about this" reference (`assignment:<id>` or `submission:<id>`, see
+   * `school-context.ts`) with the district: whether the signed-in person may read it, and its
+   * title. A reference the district refuses or doesn't know is `refused`, with nothing about which;
+   * a deployment with no district to ask answers `unsupported`.
+   */
+  resolveSchoolContext(ref: string): Promise<SchoolContextResolution>;
 
   /** Set the user's own display name, seen in chats, etc. */
   setOwnDisplayName(name: string): Promise<void>;
@@ -5432,9 +5444,14 @@ export type BlueprintScreenshotUpload = {
 export const BLUEPRINT_SCREENSHOT_R2_PREFIX = 'screenshots/';
 export const BLUEPRINT_SCREENSHOT_PATH_PREFIX = '/blueprint-screenshot/';
 
-export function blueprintScreenshotUrl(id: string, metadata: { screenshot?: true, lastUpdated: Date }): string | undefined {
+/**
+ * The browser URL of a blueprint's screenshot. `basePath` is where the Workshop is mounted on its
+ * origin: `""` at the root (the default), `/ai` on a district origin.
+ */
+export function blueprintScreenshotUrl(
+    id: string, metadata: { screenshot?: true, lastUpdated: Date }, basePath = ""): string | undefined {
   return metadata.screenshot ?
-      `${BLUEPRINT_SCREENSHOT_PATH_PREFIX}${id}?v=${metadata.lastUpdated.valueOf()}` : undefined;
+      `${basePath}${BLUEPRINT_SCREENSHOT_PATH_PREFIX}${id}?v=${metadata.lastUpdated.valueOf()}` : undefined;
 }
 
 /**

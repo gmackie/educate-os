@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // The Worker and its workerd suite, against the Workers runtime's types (ADR-0009).
+    "types": ["@cloudflare/workers-types"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["src/worker", "src/shared", "__tests__"],
+  "exclude": ["node_modules", "dist"]
+}

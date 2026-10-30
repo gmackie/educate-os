@@ -13,6 +13,7 @@
     "@gadgets/ui": "workspace:*",
     "@phosphor-icons/react": "^2.1.10",
     "@educateos/api-client": "workspace:*",
+    "@educateos/shell": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

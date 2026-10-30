@@ -111,6 +111,7 @@ instead (see ADR-0013).
 | `DistrictGuardDirectory` | the AI call guard's `EDUCATEOS_DISTRICT` | `GuardDirectoryPort` (`guardSubject`, `admittedSubject`, `ledgerDirectory`) over `DistrictApp.guardDirectory` |
 | `DistrictSchoolTools` | the EducateOS gatekeeper's `EDUCATEOS_DISTRICT` | `SchoolToolService` over the directory's operations; every agent call waits for a person in the object's approval queue. Its `serveAs` serves the `/api` surface for a principal the gatekeeper verified, for its school pages (SCHO-218) |
 | `DistrictApi` | the release's backend binding, `EDUCATEOS_DISTRICT_API` | the same `/api` surface; holding it grants nothing |
+| `DistrictPrincipalResolver` | the Workshop backend's `PRINCIPAL_RESOLVER` and `PRINCIPAL_MIGRATION` (SCHO-259), unbound until a cutover | the kernel's `PrincipalResolver` (`resolveAccessSignIn`: a verified Access `iss` and `sub` to the linked principal, else `unauthenticated`) and `PrincipalMigrationDirectory` (`matchEmailKeyedUsers`, over `planEmailKeyedMigration`). It trusts the caller's verification, so only the Workshop backend may hold it. A Clever district resolves no sign-in through it, since the seam carries no Clever claims |
 
 ## LTI 1.3 Tool (SCHO-177)
 
@@ -135,6 +136,13 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   `authority`, `fundingPools`, `aiMonthlyDistrictCapUsdNano`, `cloudflareAccount`, `modelCatalog`,
   `approvedExternalHosts` and `retention`. Workers vars are limited in size, so the seed should be
   small. The roster arrives through `admin.applyRoster`.
+- `additionalTrustedIssuers` adds explicitly configured HTTPS issuers to the stored directory at
+  startup, including after initial seeding. Use this when enabling a new roster provider such as
+  Classroom (`https://accounts.google.com`). It preserves all existing trust, people, roles and
+  records, including trust added through LTI registration. Repeated starts are idempotent. Removing
+  the setting does not revoke persisted trust. It creates no identity links and does not change
+  Access JWT issuer, signature or audience verification. Only the deployment operator can set it;
+  it is absent from district configuration revisions and browser inputs.
 - `authority` names who owns the directory: `"oneroster"` (the default), `"clever"` or `"local"`, or a full
   `AuthorityMap` for a mixed district. A district with no roster, such as a homeschool co-op, sets
   `"local"`: its administrators then create schools, terms, courses, sections and students and enroll
@@ -152,6 +160,18 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   deployment's secret sync. With it, `DISTRICT_CONFIG.authority` should be `"clever"` (the Clever
   roster owns every record type, as `external:clever`) and `DISTRICT_CONFIG.rosterServicePrincipalId`
   names the `service` principal, granted district administration, that the sync acts as.
+- `DEVICE_TOKEN_SECRET` (optional secret, SCHO-261): at least 32 random characters, the key device
+  access tokens are MACed with. Without it device sign-in is off and `/api/m/*` answers 503
+  `device-auth-unavailable`. It is not yet a deploy input; production sets it at the one-origin
+  cutover. The device credential protocol is in
+  [docs/educateos/mobile.md](../../docs/educateos/mobile.md#device-credentials-scho-261).
+- `CF_ANALYTICS_TOKEN` (optional secret, SCHO-263), with the vars `CF_ACCOUNT_ID`,
+  `ANALYTICS_SCRIPTS` (the district's Worker names, comma-separated) and `ANALYTICS_ZONE_TAG`
+  (optional): a read-only Cloudflare API token (Account Analytics Read, Access: Audit Logs Read,
+  Workers Scripts Read) that `GET /api/ops/analytics` reads Cloudflare's GraphQL Analytics API and
+  Access authentication logs with. Without the token or account, that route answers 501
+  `analytics-not-configured`. Not yet a deploy input. See
+  [docs/educateos/admin.md](../../docs/educateos/admin.md#the-district-side).
 - `LTI_TOOL_ORIGIN` (optional): the LTI Tool's public origin (see [LTI 1.3 Tool](#lti-13-tool-scho-177)).
   It is not yet a deploy input, so the installer does not offer it; the schoolos.gmac.io production
   config sets it from the district hostname.

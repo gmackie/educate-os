@@ -41,6 +41,12 @@ import { InMemoryGuardianInvitationStore, InMemoryIdentityLinkStore, type Guardi
 import type { FundingAllocationRevision } from "./routes.ts";
 // Communication (SCHO-189)
 import { inMemoryCommunicationStores, type CommunicationStores } from "./communication/stores.ts";
+// Devices (SCHO-261)
+import { InMemoryDeviceStore, type DeviceStore } from "./devices.ts";
+// Pairing (SCHO-261)
+import { InMemoryPairRoomStore, type PairRoomStore } from "./pairing.ts";
+// Operations (SCHO-263)
+import { InMemoryOpsStore, type OpsStore } from "./ops.ts";
 
 /**
  * A district's configuration revisions, oldest first. Only applied revisions are kept: a draft or
@@ -284,6 +290,15 @@ export interface DistrictAppStores {
   // Quizzes (SCHO-191)
   /** Each offering's quizzes, attempts and score releases. */
   quizzes: QuizStorage;
+  // Devices (SCHO-261)
+  /** Registered phones, their refresh tokens and recently seen proof IDs. */
+  devices: DeviceStore;
+  // Pairing (SCHO-261)
+  /** Phone pairing rooms, open and recently finished. */
+  pairRooms: PairRoomStore;
+  // Operations (SCHO-263)
+  /** Enrolled admin ops keys, the ops nonces seen recently, and the ops audit log. */
+  ops: OpsStore;
 }
 
 /** In-memory stores for one district, seeded with its directory. */
@@ -321,5 +336,11 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     discussions: new InMemoryDiscussionStorage(),
     // Quizzes (SCHO-191)
     quizzes: new InMemoryQuizStorage(),
+    // Devices (SCHO-261)
+    devices: new InMemoryDeviceStore(),
+    // Pairing (SCHO-261)
+    pairRooms: new InMemoryPairRoomStore(),
+    // Operations (SCHO-263)
+    ops: new InMemoryOpsStore(),
   };
 }

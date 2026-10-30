@@ -23,6 +23,9 @@ import {
 import { useDocumentTitle } from "../useDocumentTitle";
 import { homePromptFromSearch } from "../homePrompt";
 import { composerDraftStorageKey } from "../features/chat/composer/draft/composerDraft";
+import { SchoolContextChip } from "../features/school-context/SchoolContextChip";
+import { useSchoolContextLink } from "../features/school-context/schoolContext";
+import { schoolContextPreamble } from "@gadgets/workshop-shared/school-context";
 
 type HomeSearch = {
   prompt?: string;
@@ -59,6 +62,20 @@ export function HomePageContent({ prompt }: HomeSearch) {
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   // Bumped each time a task suggestion is picked; the composer re-seeds its text off the nonce.
   const [seed, setSeed] = useState<{ text: string; nonce: number } | null>(null);
+  // "Ask AI about this" (SCHO-260): a context the district confirmed, attached to the new chat.
+  const [schoolContext, dismissSchoolContext] = useSchoolContextLink(authenticatedApi);
+  const attachedContext = schoolContext.status === "attached" ? schoolContext.context : undefined;
+
+  useEffect(() => {
+    if (schoolContext.status !== "refused") return;
+    // Nothing about why: an unknown ID and someone else's look the same.
+    toasts.add({
+      title: "Couldn't open that in the AI workspace",
+      description: "It isn't available to you here. Start a new chat instead.",
+      variant: "error",
+    });
+    dismissSchoolContext();
+  }, [schoolContext.status, dismissSchoolContext, toasts]);
 
   useEffect(() => {
     if (!prompt) return;
@@ -118,6 +135,10 @@ export function HomePageContent({ prompt }: HomeSearch) {
       attachments?: ChatAttachmentHandle[],
       formats?: MessageFormatRef[],
     ) => {
+      // The attached context leads the first message, so the model knows what "this" is.
+      if (attachedContext !== undefined && typeof message === "string") {
+        message = `${schoolContextPreamble(attachedContext)}\n\n${message}`;
+      }
       try {
         ensureProvisionalGadget();
         const overseer = provisionalOverseerRef.current!.stub;
@@ -148,7 +169,7 @@ export function HomePageContent({ prompt }: HomeSearch) {
         throw err;
       }
     },
-    [ensureProvisionalGadget, navigate, toasts],
+    [attachedContext, ensureProvisionalGadget, navigate, toasts],
   );
 
   const getOverseer = useCallback((): RpcStub<Overseer> => {
@@ -193,6 +214,10 @@ export function HomePageContent({ prompt }: HomeSearch) {
             Ask a question, create an output, or create an app that works with your tools and data.
           </p>
         </header>
+
+        {attachedContext === undefined ? null : (
+          <SchoolContextChip context={attachedContext} onRemove={dismissSchoolContext} />
+        )}
 
         {/* Composer */}
         <ChatComposer

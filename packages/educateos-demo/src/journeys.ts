@@ -1,7 +1,7 @@
 // The guided journeys: what to try as each persona. A step is done when the persona's UI makes the
 // district request that doing it takes, so the checklist follows the real apps rather than
 // duplicating their screens.
-import type { PersonaId } from "./demoDistrict.ts";
+import type { PersonaId } from "./districts/index.ts";
 
 /** One thing to try. */
 export interface JourneyStep {
@@ -58,13 +58,21 @@ const matches = (pattern: string, path: string): boolean => {
 };
 
 /**
+ * Whether `request`, answered with `status`, is one that `done` names: a success of its method on
+ * one of its paths. The Clever tour (`src/tour/`) follows its steps' requests the same way.
+ */
+export function requestDoes(done: JourneyStep["done"], request: Pick<Request, "method" | "url">, status: number): boolean {
+  if (status < 200 || status > 299 || done.method !== request.method) return false;
+  const path = new URL(request.url).pathname;
+  return done.paths.some((pattern) => matches(pattern, path));
+}
+
+/**
  * The steps of `persona`'s journey that `request`, answered with `status`, completes, made from the
  * app screen whose hash route is `screen`.
  */
 export function stepsDoneBy(persona: PersonaId, request: Pick<Request, "method" | "url">, status: number, screen: string): string[] {
-  if (status < 200 || status > 299) return [];
-  const path = new URL(request.url).pathname;
   return JOURNEYS[persona]
-    .filter(({ done, on }) => done.method === request.method && done.paths.some((pattern) => matches(pattern, path)) && (on === undefined || on.test(screen)))
+    .filter(({ done, on }) => requestDoes(done, request, status) && (on === undefined || on.test(screen)))
     .map((step) => step.id);
 }

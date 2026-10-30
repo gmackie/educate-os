@@ -40,6 +40,8 @@ export type WorkshopObservabilityFields = {
   outcome: "ok" | "error" | "usage_limit" | "ai_call_denied" | "no_email" | "signups_disabled";
   path: string;
   pauseEnd: "turn" | "left" | "revert" | "deleted";
+  /** The principal migration's counts (auth/principal-aliases.ts). Never names anyone. */
+  principalMigration: { applied: boolean; users: number; threads: number } & Record<string, number | boolean>;
   recordedType: string;
   resourceTitle: string;
   resendCostUsd: number;

@@ -14,6 +14,9 @@ import type { ControlPlaneEnv } from "../../packages/educateos-control-plane/src
 import { siteWorker } from "../../packages/educateos-control-plane/src/worker.ts";
 
 export { ControlPlane } from "../../packages/educateos-control-plane/src/worker.ts";
+// The read-only export the admin Worker (admin.educateos.io) binds to import operators,
+// installations and slug reservations (SCHO-263). An RPC entrypoint: it has no URL.
+export { ControlPlaneExporter } from "../../packages/educateos-control-plane/src/worker.ts";
 
 export { InterestIntake } from "./intake/worker.ts";
 

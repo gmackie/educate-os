@@ -4,16 +4,19 @@ import { Bell, CheckCheck } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Detail, Notification } from '../types';
 import { useLoad } from '../hooks/useLoad';
-import { palette } from '../theme';
+import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Item, Page, QueryState, Title } from '../ui/Primitives';
 
-export function Inbox({ client, navigate }: { client: DistrictClient; navigate: (detail: Detail) => void }) {
+export function Inbox({ client, navigate, onChange }: {
+  client: DistrictClient; navigate: (detail: Detail) => void; onChange?: () => void;
+}) {
+  const palette = usePalette();
   const [list, reload] = useLoad('inbox', () => client.notifications());
   const [saving, setSaving] = useState(false);
   const mark = async (ids: string[] | 'all') => {
     if (saving) return;
     setSaving(true);
-    try { await client.markRead(ids); reload(); }
+    try { await client.markRead(ids); reload(); onChange?.(); }
     catch (e) { Alert.alert("Couldn't update messages", e instanceof Error ? e.message : 'Try again.'); }
     finally { setSaving(false); }
   };

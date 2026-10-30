@@ -22,6 +22,18 @@
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
     },
     {
+      "path": "packages/router/__tests__/legacy-hosts.test.ts",
+      "fingerprint": "79786d650c035cb8986384c88b19573741d709290bce5302b2162864c5cd1530",
+      "rationale": "SCHO-300 canonical integration: Canonical SCHO-259 legacy-host redirect regression tests: methods, same-host loops and malformed deployment configuration.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/router/__tests__/one-origin.test.ts",
+      "fingerprint": "dfde0c4b2f390a94819e748141ffd02af81a545283a8d3e0ae23573982523a69",
+      "rationale": "SCHO-300 canonical integration: Canonical SCHO-259 district path table tests; 100 combined router tests pass, preserving exact MCP paths separately.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
       "path": "packages/router/__tests__/router.test.ts",
       "fingerprint": "f904394eb869f75b7d5463f38d0fc4ca21cbb0139d7a46b462b281a3b67e7a5d",
       "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
@@ -29,15 +41,27 @@
     },
     {
       "path": "packages/router/cloudflare.config.ts",
-      "fingerprint": "3425a8277897e7fd08fa4acf47c3f5346c3ba929e1156eccc20d8b19e9bb514d",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "368b90e054ad96b1fb6b3ddd7118e867bfef6adaa32f3e9d6ca0a014f0fc7ae5",
+      "rationale": "SCHO-300 canonical integration: Canonical SCHO-259 documents optional district binding; no checked-in district activation.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/router/src/index.ts",
-      "fingerprint": "5707fb3697404055c7b340168f1a6ae1affffccb0cf903914040cb1dba78f389",
-      "rationale": "SCHO-301 / PR #24: optional MCP binding forwards only exact MCP/token/discovery paths; generic router behavior is unchanged.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "f81907a3c67798bc5f1b61598301261b2c3bc2d541e6749955e732d924a7613d",
+      "rationale": "SCHO-300 canonical integration: Preserve canonical optional backend/district routing and legacy redirects; add only exact allowlisted school MCP routes from SCHO-301. Router suite passes.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/router/src/legacy-hosts.ts",
+      "fingerprint": "12e7260e4379856340ea428e3e021248d6515a24ebdda5b6468132b75616169c",
+      "rationale": "SCHO-300 canonical integration: Canonical SCHO-259 config-only redirect map validates HTTPS, no credentials/query/hash or self redirect; preserves methods for non-GET.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/router/src/one-origin.ts",
+      "fingerprint": "7f83e490606413d5539f7c24ef941d56e8968f865f39d3f2e8c761642c1445ed",
+      "rationale": "SCHO-300 canonical integration: Canonical SCHO-259 routes district paths and /ai explicitly, keeps gatekeeper callbacks at root; static fallback stays under /ai, unconfigured AI refuses.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/router/wrangler.jsonc",
@@ -47,9 +71,9 @@
     },
     {
       "path": "packages/router/wrangler.production.jsonc",
-      "fingerprint": "1f0c4e458432973378d2a198f083457900b75bae0eb9e0ca29964b4f04003517",
-      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "18ae5088b2738ca810ca49f8976f0dbf53f76954f3100f95fa394b57b1281a93",
+      "rationale": "SCHO-300 canonical integration: Generated canonical router config; production generator/check passes; no manual generated-file edit.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/typed-storage/__tests__/index.test.ts",
@@ -88,10 +112,16 @@
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
     },
     {
+      "path": "packages/workshop-backend/__tests__/agent-retry.test.ts",
+      "fingerprint": "d8f9404ee3828e2ad55f4a52443f47859479a14f7962131796f42216a24e6a4a",
+      "rationale": "SCHO-300 canonical integration: PR #28 retained-agent fail-closed model/tool tests and generic retries.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
       "path": "packages/workshop-backend/__tests__/ai-call-guard.test.ts",
-      "fingerprint": "da2fc160c753c4ed7adcc2f22820fedf988e9335a6581311f3e60e36b0d05b5e",
-      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "1ac62e5a8780d733becec288762900ed01c547dba237d4dcae8475843357957d",
+      "rationale": "SCHO-300 canonical integration: Canonical input-screening deadline and feature cached provider payload bypass regressions.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/__tests__/ai-call-ingress.test.ts",
@@ -131,15 +161,21 @@
     },
     {
       "path": "packages/workshop-backend/__tests__/capability-policy.test.ts",
-      "fingerprint": "8f59bedb4ba2cd5215970d3907c0b3245581ef4e3c5c4c2ebd1f4af02a10a431",
-      "rationale": "SCHO-292/SCHO-301 / PR #14/#20/#24/#26: preserve required-policy tests and add read-only discovery tests; persisted identity and independent mutation authorization.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "6a430b9a8024a374c56d9933bc15a03dfa1857ce7f6840827c9d88aacedf27a6",
+      "rationale": "SCHO-300 canonical integration: Required authority and fresh authorization tests, including retained execution with missing/invalid mandatory binding.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/connect-handoff.test.ts",
+      "fingerprint": "bb356fc0263fd227f17a235e14000099c67d552fbbc6467f59734e3e4ceb8d04",
+      "rationale": "SCHO-300 canonical integration: Canonical deployment mount and original nonce/ticket ownership assertions.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/__tests__/device-session-callback.test.ts",
-      "fingerprint": "f993ac0dc595ed1da0c7679a184b6a4abefa32dceffdbd16dd602114fd5c3329",
-      "rationale": "SCHO-254 / PR #5: canonical configured HTTPS app callback with exact origin validation; one-use, principal-bound encrypted handoff retained and desktop loopback unchanged.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "e4e26506b634732d8307738ee0164470c58feec4e4b5240d0430031a8538430e",
+      "rationale": "SCHO-300 canonical integration: Both /api and /ai/api handoffs plus configurable HTTPS native origin and one-use redemption.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/__tests__/durable-decision-resume.test.ts",
@@ -149,9 +185,9 @@
     },
     {
       "path": "packages/workshop-backend/__tests__/gadget-restore.test.ts",
-      "fingerprint": "dc4b8f23dc7539d5722f3395df015e0fabd6baa139f6b3c2dd750002ed4867c6",
-      "rationale": "SCHO-292 / PR #20: real workerd outbound-fetch regression requires existing globalOutbound:null internet denial using synthetic records.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "20534fe7c53dfac9fbba87134332a9d825745c56857a3adb0ca4772181872e87",
+      "rationale": "SCHO-300 canonical integration: PR #28 real-workerd policy-bound worker/restored callback restriction and documented raw descendant gap.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/__tests__/gatekeeper-app-nav.test.ts",
@@ -166,16 +202,46 @@
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
     },
     {
+      "path": "packages/workshop-backend/__tests__/principal-migration.test.ts",
+      "fingerprint": "90e19af96eebf33c98981fbc2850724f29529772baa68667394748f03ad99d91",
+      "rationale": "SCHO-300 canonical integration: Canonical migration route and actual user/directory DOs, upstream workspace names and finite-exp synthetic JWT; six pass.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
       "path": "packages/workshop-backend/__tests__/principal-sign-in.test.ts",
-      "fingerprint": "55b69783466531a88e934c7f02f665bcef498a16379e8cdec996b743cbf3b390",
-      "rationale": "SCHO-291/SCHO-304 / PR #11/#24/#25: finite assertions, missing required principal/policy bindings and disabled auth fallbacks; both merged test groups retained.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "7aca88c703eb07c357c31fa88354009bd013ea55d0a8e3b124880e454df06ee0",
+      "rationale": "SCHO-300 canonical integration: Canonical unavailable error handling plus expiring subject assertions and cross-user callback denial.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/public-path.test.ts",
+      "fingerprint": "bba58d04b8777f31384eca4d3f81e793e6d48de210b14bbfeda9b414d34228c4",
+      "rationale": "SCHO-300 canonical integration: Canonical owned-path stripping and same-origin checks under /ai, malformed mount refusal.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/school-context.test.ts",
+      "fingerprint": "c3024b1cd3632aeb32d44f6d80375040d1eaf97c3cf5081162a6a5416813aba9",
+      "rationale": "SCHO-300 canonical integration: Canonical exact ID, denied/unsupported context, malformed payload and safe title tests with fake district HTTP.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/spawned-agent-tools.test.ts",
+      "fingerprint": "10a6106128a514f7f5368df6f0a0811f5625f72e80a4d2557ec552d28996ae83",
+      "rationale": "SCHO-300 canonical integration: PR #28 rejects retained queue/binding execution when policy is configured and preserves no-policy spawns.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/__tests__/test-worker.ts",
       "fingerprint": "b3a952d62f45c65b28e4d4ca2b633fdbcdbf45879633be42bb690a5de89f4b66",
       "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/user-directory.test.ts",
+      "fingerprint": "8c39af29c60516c58ab8d952c5ddea3bf36b52ab6cfa756c3e65b710c6703441",
+      "rationale": "SCHO-300 canonical integration: Canonical unique aliases/idempotence/conflict behavior, original user discovery remains unchanged.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/__tests__/user-models.test.ts",
@@ -197,9 +263,9 @@
     },
     {
       "path": "packages/workshop-backend/src/admin-settings.ts",
-      "fingerprint": "0c07596b6dcbd52fc2b4be77602839831d3f4da10498e28fb85588059e181c3f",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "6ee50125b294b6b84d50ae62e4ee415e4bd6455bf864f731da185142304f239a",
+      "rationale": "SCHO-300 canonical integration: Canonical SCHO-259 prefixes logo URLs with deployment-owned PUBLIC_BASE_PATH; no authorization change.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/src/agent-tracing.ts",
@@ -209,15 +275,15 @@
     },
     {
       "path": "packages/workshop-backend/src/agent.ts",
-      "fingerprint": "4f4592a27bfdfbd3a875ac24a84e53334a6748045ed630e5d329356f01eedacb",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "d73f45f73aa7c8dc59535326b63bee9508d16348abdcc3d2c311258650126851",
+      "rationale": "SCHO-300 canonical integration: PR #28 adds fail-closed execution checks before steps and tools; preserves upstream agent-spawner support and guard admission. No-policy behavior retained.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/src/ai-call-guard.ts",
-      "fingerprint": "7ef9634202615f018b0cb2f6eb5d3697a49e03eeb5baddfda455bec87e0a5a8e",
-      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "d2d729ab071270cb941f5e8bd2d11f0617f6722b44f0f62c58f8555364e8b080",
+      "rationale": "SCHO-300 canonical integration: Canonical longer bounded input-screening deadline retained alongside PR #16 cached-resend suppression; denial still prevents provider use. Fake-provider guard tests cover both.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/src/ai-gateway.ts",
@@ -244,6 +310,12 @@
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
     },
     {
+      "path": "packages/workshop-backend/src/auth/admins.ts",
+      "fingerprint": "94a2645318440ef563c9c63863e6e04a2d5fd9dfe96a6f89b75a7d1233d5110e",
+      "rationale": "SCHO-300 canonical integration: Canonical administrator predicate extracted without broadening ADMINS; aliases retain original authoritative user DO names.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
       "path": "packages/workshop-backend/src/auth/config.ts",
       "fingerprint": "de9631cc42b843cbe5d69831bdefd877225620a8cdcac213f0415a0312d64da4",
       "rationale": "SCHO-304 / PR #25: required principal mode disables password and gatekeeper fallbacks even when the resolver binding is absent.",
@@ -256,10 +328,22 @@
       "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
+      "path": "packages/workshop-backend/src/auth/login-flow.ts",
+      "fingerprint": "fbfd317a51a7368ef854462fa6d823fa918c15666f0b37ee8a043d8afd3bd7e7",
+      "rationale": "SCHO-300 canonical integration: Canonical handoff completion adds deployment-owned /ai mount to existing origin+ticket; nonce and ticket checks unchanged.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/workshop-backend/src/auth/principal-aliases.ts",
+      "fingerprint": "ffd827c63102ddc1dfbf126af8c37cfa20563a6b53de2d20ff7a5b30dd4ca58b",
+      "rationale": "SCHO-300 canonical integration: Canonical explicit admin Access-only dry-run/apply migration preserves existing DOs using unique aliases; derive directory stub from actual RPC type, use upstream listWorkspaces, retain subject-based sign-in. Six migration tests pass.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
       "path": "packages/workshop-backend/src/auth/principal-sign-in.ts",
-      "fingerprint": "0407437eca7b3b50f97c44aa65b3bb3dde8eb87944e056ebca566f0c8c925793",
-      "rationale": "SCHO-291 / PR #11: require finite unexpired principal assertions and fail closed during callback authentication; regression tests retain issuer/subject identity and reject missing Access configuration.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "6b679d8b6fd2ba6db3a29b5870aa7876f8f9a367bc5cffc1301e1866f9a6e0a1",
+      "rationale": "SCHO-300 canonical integration: Combine canonical sanitized unavailable response with feature finite unexpired assertion check; never fall back to email on resolver error.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/src/blueprint-archive.ts",
@@ -269,39 +353,69 @@
     },
     {
       "path": "packages/workshop-backend/src/capability-policy.ts",
-      "fingerprint": "791a85eec976b1a9073dffa64da6cba744a23bf7840cc9f5e3bd4d9ddc4554df",
-      "rationale": "SCHO-301 / PR #24: explicit mandatory-policy setting validates configuration and refuses missing authority; generic defaults retained.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "028e749973f715f0845d7d91edb5cf4fedd37fdd47d347729cc03b76ff4f9bdb",
+      "rationale": "SCHO-300 canonical integration: PR #28 refuses all policy-bound execution until transitive revocation exists; mandatory missing/invalid policy also refuses. No policy retains generic execution.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/workshop-backend/src/connect-handoff.ts",
+      "fingerprint": "43b14d3bfa59d0b363b71f2625fd1dcd2f81e74f182a50d8ff3e36490e248d11",
+      "rationale": "SCHO-300 canonical integration: Canonical deployment-owned targetBasePath accompanies validated origin and single-use ticket, without taking authority from URL input.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/workshop-backend/src/deployment-config.ts",
+      "fingerprint": "6eefa18088ee00ae01182d85da042cbf3ecb30246acb866c2027c654edfec02c",
+      "rationale": "SCHO-300 canonical integration: Canonical public-path logo projection retained with upstream backend-version response; no identity or policy activation.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/src/env.d.ts",
-      "fingerprint": "ed2f11951e2b3786285ea23e4104dfdbd9f3aa34573c59dc819bf98020b98daf",
-      "rationale": "SCHO-300: combined principal resolver and capability-policy requirement flags, optional typed bindings and canonical native callback; source configuration only, no deployment.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "7d8be4a258c09e3e906c7df656b85e1c6faa4913264ce1feee068f4b6cf4ae42",
+      "rationale": "SCHO-300 canonical integration: Retain canonical migration/public-path bindings and feature required resolver/policy settings, typed against the shared contracts. Config is backend-owned.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/src/notification-service.ts",
-      "fingerprint": "b4ddc000f020b0e6dc0006d526c5f5ea5ab3153ec437e76c1cfd7ad165c99bbb",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "a919c21c798685d2d7a99922c0c473e90beeaacd66633e53adfa1c2b49a3ee6c",
+      "rationale": "SCHO-300 canonical integration: Keep canonical public-path notification links and upstream WebPush registration with fixed signed endpoint, field reconstruction, redirect refusal and bounded registration.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/src/observability.ts",
-      "fingerprint": "7a1c18acabad93def85acf60f217b94cb4b2077e572ea2e7fb98988d6e3b757e",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "fbc4a78536f1fc1eb9be4375d0452c47783acd997f56eebb5ec58fac4e1e5c85",
+      "rationale": "SCHO-300 canonical integration: Combine upstream pauseEnd with canonical migration numeric/boolean counts; no names, email mapping, token or records in added fields.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/src/overseer.ts",
-      "fingerprint": "0ff2fe5d705c4d2049c3996567066fee2ece4dd6129ff6265d68ea701fe07bce",
-      "rationale": "SCHO-292/SCHO-301 / PR #20/#24: protected retained RPC boundaries require authority when configured mandatory; raw stubs/running turns remain documented blockers.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "61f0306724ee2faf7e73979e495e392cb1ed15aa4be7544fd5af9a68eb2dec9b",
+      "rationale": "SCHO-300 canonical integration: PR #28 execution restriction combined with existing fresh policy checks; canonical public-path external-chat and screenshot links preserved. Restore/spawn/retry tests cover denial and no-policy paths.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/workshop-backend/src/public-path.ts",
+      "fingerprint": "313785c773bbb684c6c05a02eeaa0d329bce8561ef5618a2a267293050e5a824",
+      "rationale": "SCHO-300 canonical integration: Canonical SCHO-259 validates configured mount and strips it only for owned backend paths, keeping same-origin checks on original request.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/workshop-backend/src/school-context.ts",
+      "fingerprint": "beaa3c03139b543d645ac6630b49f0149ac5157e14542d808a69c3052a75e4a3",
+      "rationale": "SCHO-300 canonical integration: Canonical SCHO-260 context references are discovery only: authenticate each district read with caller Access assertion, exact ID checks, bounded requests, generic refusal and sanitized title.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/src/server.ts",
-      "fingerprint": "ab07815600b0bfa85edea273424d1c2f899cdbca4e614b2d78a9cffce9df286c",
-      "rationale": "SCHO-300: preserve native callback, exact public release reads, optional capability checks and both mandatory-authority HTTP guards; read-only authoring discovery grants no mutation authority.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "b2b834603ba7f920adacfc2f74e0e6cb12ad7e403d144850e630bb0513c8dec1",
+      "rationale": "SCHO-300 canonical integration: Combine required authority checks with canonical subject/alias sign-in and /ai mounts; preserve device callback ownership before one-use redemption and no-email fallback.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/workshop-backend/src/site-logo.ts",
+      "fingerprint": "28fe3331f84f809a7a085f301bb9686d2a061848cd2283ea436a47bb51e51fed",
+      "rationale": "SCHO-300 canonical integration: Canonical public-path URL projection only; uploaded PNG validation unchanged.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/src/storage-schema/overseer-storage.ts",
@@ -316,22 +430,28 @@
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
     },
     {
+      "path": "packages/workshop-backend/src/user-directory.ts",
+      "fingerprint": "7d15c6184f08229b00f9d65aade8fcd1b11395c96945764516b24c698f118a75",
+      "rationale": "SCHO-300 canonical integration: Canonical unique principal/user alias table is additive; conflicts write nothing and aliases preserve existing user Durable Objects. Alias suite covers idempotence/conflicts.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
       "path": "packages/workshop-backend/src/user.ts",
-      "fingerprint": "94b7f978bea79844785c432cde5763fb8cca242672b56c9f4c6bd05cc1398e64",
-      "rationale": "SCHO-292/SCHO-301 / PR #14/#20/#24/#26: current persisted principal authorizes protected operations; advisory discovery defaults closed and projects only operation/Blueprint.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "ca9746f5360c70ff8a58e40ae0e2e7a5a5886ea2a2aad6b6a19f034070978a13",
+      "rationale": "SCHO-300 canonical integration: Retain feature policy checks and canonical deployment-owned handoff targetBasePath; resource-enabled mints remain authoritative.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-backend/wrangler.production.jsonc",
-      "fingerprint": "9f63b4fc55cbb425682b7e7b080a0472051af46a04c9892be96ec18c42fc2e59",
-      "rationale": "SCHO-304 / PR #25: regenerated production source config binds district principal resolver and requires it for district instances; no deployment executed.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "e6804beb24bb62642707141c321a76dc14f6938656d58a0f81ec50241959ce06",
+      "rationale": "SCHO-300 canonical integration: Generated canonical staged PRINCIPAL_MIGRATION binding retained; do not enable principal cutover or policy execution on existing production accounts.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-shared/package.json",
-      "fingerprint": "d3d0a4c155a044c53eb091445e16978d6beb3c4f1e726a44c6373612b5241d8e",
-      "rationale": "SCHO-292 / PR #14: optional explicit-deny capability policy at existing authority mints; persisted identity only, unchanged disabled-binding behavior, no ambient grants or deployment configuration.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "53c155ff82936b0ced35d6bc049a2348a051a045d21aea972814a4ff4a47e91e",
+      "rationale": "SCHO-300 canonical integration: Canonical exports principal migration/school-context seams plus feature assessment/capability contracts; no runtime authority.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-shared/src/ai-call-guard.ts",
@@ -341,9 +461,9 @@
     },
     {
       "path": "packages/workshop-shared/src/api.ts",
-      "fingerprint": "54b999d7f7e38d7e59e940a8c62d27606ad191fd7fd75ed0f147a025c648174f",
-      "rationale": "SCHO-288/SCHO-292 / PR #18/#20/#26: documented exact public release source and read-only authoring discovery; no runtime state, roles or credential fields.",
-      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+      "fingerprint": "7e63fcda2736ecda37b9ea93c63e1ee8851653d1189aad923dbe5383684edc38",
+      "rationale": "SCHO-300 canonical integration: Retain upstream workspace API names and feature contracts, canonical documented context resolution and base-path screenshot helper. No new ambient resource.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-shared/src/capability-policy.ts",
@@ -353,15 +473,21 @@
     },
     {
       "path": "packages/workshop-shared/src/gatekeeper.ts",
-      "fingerprint": "94b2493196c24efed36b191485796761b4d5819abad1d6a6e5085868a83eba6d",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "c4e8fbdb11f81bccc27159a9e40af58de52d7ee9bf9a6ef98bea655b6f25ec1a",
+      "rationale": "SCHO-300 canonical integration: Canonical optional deployment-owned handoff base path accompanies existing origin and ticket; root consumers unchanged.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     },
     {
       "path": "packages/workshop-shared/src/principal-resolver.ts",
-      "fingerprint": "f51ecc382644041e17cba6842162a4c94ee80f13750b33480afc5d42fd0f212a",
-      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "8a224a68c983a0d80fa395095c7cd4e768faa68ab9ae1987792fcc2928519e81",
+      "rationale": "SCHO-300 canonical integration: Canonical migration contract proposes exact-single matches only; explicit administrator apply owns linking, subject resolver remains separate and mandatory when configured.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
+    },
+    {
+      "path": "packages/workshop-shared/src/school-context.ts",
+      "fingerprint": "5543b9e929b04512e95e6d18218f0154e4dbe9ba2832422a40f7ad8d82862f92",
+      "rationale": "SCHO-300 canonical integration: Canonical documented context parser restricts exact assignment/submission ID grammar; type carries no authority until district verifies it.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#canonical-conflict-decisions"
     }
   ]
 }

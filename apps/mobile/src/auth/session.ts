@@ -30,7 +30,8 @@ export async function restoreSession(district: District): Promise<Session | null
     const value: unknown = JSON.parse(raw);
     if (!value || typeof value !== 'object') return null;
     const s = value as Session;
-    if (s.district?.id !== district.id || !s.credential?.token || !sessionActive(s)) {
+    if (s.district?.id !== district.id || !s.credential || s.credential.kind === 'device' || !s.credential.token ||
+        !sessionActive(s)) {
       await SecureStore.deleteItemAsync(await keyFor(district));
       return null;
     }
@@ -41,8 +42,9 @@ export async function restoreSession(district: District): Promise<Session | null
 /** A per-origin HttpOnly cookie for deployments protected by Cloudflare Access. */
 export async function prepareWebView(session: Session): Promise<void> {
   if (session.credential.kind !== 'cloudflare-access') return;
-  const host = new URL(session.district.workshop).hostname;
-  const ok = await CookieManager.set(session.district.workshop, {
+  const workshop = new URL(session.district.workshop);
+  const host = workshop.hostname;
+  const ok = await CookieManager.set(workshop.origin, {
     name: 'CF_Authorization',
     value: session.credential.token,
     domain: host,

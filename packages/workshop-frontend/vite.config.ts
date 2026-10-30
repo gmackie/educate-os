@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import { vitestTask } from '@gadgets/scripts/vitest-task'
+import { joinWorkshopPath, normalizeWorkshopBase } from './src/workshopBase'
 
 // `dist/` is this package's own build output, excluded from the inputs of the bundle and test
 // tasks: vp declines to cache a task that reads a path it also wrote. Package-relative rather than
@@ -70,7 +71,13 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd())
   const backendHost = env.VITE_BACKEND_HOST?.trim() || 'localhost:8787'
   const frontendErrorReporting = env.VITE_FRONTEND_ERROR_REPORTING === 'true'
+  // Where the Workshop is mounted: `/` (today's deployments) or `/ai/` on a district origin, where
+  // the router serves the LMS at the root (SCHO-259). The app reads it back as
+  // `import.meta.env.BASE_URL` (src/workshopPath.ts); `/gatekeeper/*` stays at the root regardless.
+  const base = normalizeWorkshopBase(env.VITE_WORKSHOP_BASE_PATH)
+  const backend = `http://${backendHost}`
   return {
+    base,
     // Spread, not a literal `run: {...}`: `run` is Vite+'s field and vite's own `defineConfig` has
     // no such property, but the excess-property check doesn't reach spreads.
     ...runConfig,
@@ -83,12 +90,14 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: true,
-      proxy: {
-        '/api/client-errors': `http://${backendHost}`,
-        '/api/device-session/callback': `http://${backendHost}`,
-        '/blueprint-screenshot': `http://${backendHost}`,
-        '/api/site-logo': `http://${backendHost}`,
-      },
+      // The backend accepts both `/api` and `/ai/api` (and likewise for screenshots), so the
+      // proxied path is forwarded unchanged.
+      proxy: Object.fromEntries([
+        '/api/client-errors',
+        '/api/device-session/callback',
+        '/blueprint-screenshot',
+        '/api/site-logo',
+      ].map(path => [joinWorkshopPath(base, path), backend])),
     },
     test: {
       // Chromium's, under vitest.browser.config.ts.

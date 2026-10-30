@@ -187,6 +187,10 @@ async function main(): Promise<number> {
   }
   if (report.registration) console.log(`fleet registration: ${report.registration.status}`);
   console.log(report.status === "applied" ? `applied release ${manifest.releaseId}` : "plan only; nothing was changed");
+  if (report.nextSteps) {
+    console.log(report.status === "applied" ? "next steps:" : "after applying:");
+    report.nextSteps.forEach((step, i) => console.log(`  ${i + 1}. ${step}`));
+  }
   return 0;
 }
 

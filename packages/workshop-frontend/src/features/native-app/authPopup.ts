@@ -1,4 +1,5 @@
 import { nativeApp } from './nativeApp'
+import { workshopPath } from '../../workshopPath'
 
 export const NATIVE_AUTH_EVENT = 'cloudflare-os:auth-popup'
 export const NATIVE_AUTH_KEY = 'gadgets.nativeAuthPopup'
@@ -32,7 +33,7 @@ const gatekeeperUrl = (value: string): URL => {
 /** A browser relay carries only correlation state; the flow nonce and app session stay in-app. */
 export const nativeAuthStartUrl = (url: string, id: string): string => {
   gatekeeperUrl(url)
-  return `${window.location.origin}/connect/handoff${START_PREFIX}${encodeURIComponent(JSON.stringify({ id, url }))}`
+  return `${window.location.origin}${workshopPath('/connect/handoff')}${START_PREFIX}${encodeURIComponent(JSON.stringify({ id, url }))}`
 }
 
 /** Returns null in ordinary browsers or older native apps, preserving the desktop popup flow. */
