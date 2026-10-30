@@ -259,15 +259,17 @@ describe("the district Worker", () => {
   });
 
   it("persists an admin-confirmed student Workshop link and exposes it only through the guard", async () => {
-    const workshopUser = `principal:${NF.amara}`;
+    // An email-keyed account the principal migration aliased; a `principal:` key needs no link.
+    const workshopUser = "amara-migrated@example.com";
     const student = await signIn(NF.amara);
-    expect((await fetchWorker(request(student, "admin.listWorkshopUserLinks"))).status).toBe(403);
+    expect(await env.GUARD.guardSubject({ workshopUser })).toBeNull();
+    expect((await fetchWorker(request(student, "admin.workshopUserLinks"))).status).toBe(403);
     const admin = await signIn(NF.admin);
-    const link = await ok(admin, "admin.confirmWorkshopUserLink", { body: { workshopUser, principalId: NF.amara } });
+    const link = await ok(admin, "admin.linkWorkshopUser", { body: { workshopUser, principalId: NF.amara } });
     expect(link.confirmedBy).toBe(NF.admin);
-    expect((await fetchWorker(request(admin, "admin.confirmWorkshopUserLink", { body: { workshopUser, principalId: NF.amara } }))).status).toBe(409);
+    expect((await fetchWorker(request(admin, "admin.linkWorkshopUser", { body: { workshopUser, principalId: NF.amara } }))).status).toBe(409);
     await evictDurableObject(env.DISTRICT.getByName(NORTHFIELD.district.id));
-    expect(await ok(admin, "admin.listWorkshopUserLinks")).toContainEqual(link);
+    expect(await ok(admin, "admin.workshopUserLinks")).toContainEqual(link);
     expect(await env.GUARD.guardSubject({ workshopUser })).toMatchObject({ kind: "student", roles: [], principal: { principalId: NF.amara } });
   });
 
