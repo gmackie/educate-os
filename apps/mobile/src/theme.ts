@@ -1,5 +1,4 @@
-// The native screens have one light palette until the redesign adds dark mode (SCHO-262). Web content
-// (the AI workspace) is told to use this mode, so the app never mixes light and dark.
+/** Keep native screens and embedded web content in the same light color mode. */
 export const colorMode = 'light' as const;
 
 export const palette = {

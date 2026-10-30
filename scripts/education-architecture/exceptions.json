@@ -64,6 +64,12 @@
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
     },
     {
+      "path": "packages/workshop-backend/AGENTS.md",
+      "fingerprint": "44c85b3d6ff4a372dfa9cd4649cd97655ff77df73ea4a7662fb4ea262ab48485",
+      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
+      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
       "path": "packages/workshop-backend/__integration__/external-workspace-rpc.test.ts",
       "fingerprint": "5c39b40b1e19706ac8fb85e0aa5ee2193384d85343e2432c7312abb728faaf48",
       "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
@@ -112,6 +118,18 @@
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
     },
     {
+      "path": "packages/workshop-backend/__tests__/capability-policy.test.ts",
+      "fingerprint": "6db678065ae8272e7a4770cb7481e9d8dc851a6540ae9525d7bfd6e6a60e4e60",
+      "rationale": "SCHO-292 / PR #14: optional explicit-deny capability policy at existing authority mints; persisted identity only, unchanged disabled-binding behavior, no ambient grants or deployment configuration.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+    },
+    {
+      "path": "packages/workshop-backend/__tests__/device-session-callback.test.ts",
+      "fingerprint": "f993ac0dc595ed1da0c7679a184b6a4abefa32dceffdbd16dd602114fd5c3329",
+      "rationale": "SCHO-254 / PR #5: canonical configured HTTPS app callback with exact origin validation; one-use, principal-bound encrypted handoff retained and desktop loopback unchanged.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+    },
+    {
       "path": "packages/workshop-backend/__tests__/durable-decision-resume.test.ts",
       "fingerprint": "ab61dcb83df2925f4ca2e186c46165c19be4384c6d2468823dbfa10bb18225bf",
       "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
@@ -131,9 +149,9 @@
     },
     {
       "path": "packages/workshop-backend/__tests__/principal-sign-in.test.ts",
-      "fingerprint": "8a41448c48a534b6cdc28a2ab48d8a6e3b30a73795a7be5ef62ab8867ffc1a7e",
-      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "408ce1863e6b0c21eaa43ece8912b819517ed7aa9631a8d3560f9739e151f311",
+      "rationale": "SCHO-291 / PR #11: require finite unexpired principal assertions and fail closed during callback authentication; regression tests retain issuer/subject identity and reject missing Access configuration.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-backend/__tests__/test-worker.ts",
@@ -144,12 +162,6 @@
     {
       "path": "packages/workshop-backend/__tests__/user-models.test.ts",
       "fingerprint": "fb04156272a6ba05cb9ed53c392e78ce3d7e8d6606e8c59cb794641f3770fff4",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
-    },
-    {
-      "path": "packages/workshop-backend/AGENTS.md",
-      "fingerprint": "44c85b3d6ff4a372dfa9cd4649cd97655ff77df73ea4a7662fb4ea262ab48485",
       "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
     },
@@ -220,16 +232,28 @@
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
     },
     {
+      "path": "packages/workshop-backend/src/auth/device-session-callback.ts",
+      "fingerprint": "c1900cb551c012d4b37e5a138742c224d6b272f996deb1cce35389763f864e13",
+      "rationale": "SCHO-254 / PR #5: canonical configured HTTPS app callback with exact origin validation; one-use, principal-bound encrypted handoff retained and desktop loopback unchanged.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+    },
+    {
       "path": "packages/workshop-backend/src/auth/principal-sign-in.ts",
-      "fingerprint": "0a6ac202806061be482687f1a408b6765d1fa592bd60269605e450545f4e2e8e",
-      "rationale": "Retain existing A delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "0407437eca7b3b50f97c44aa65b3bb3dde8eb87944e056ebca566f0c8c925793",
+      "rationale": "SCHO-291 / PR #11: require finite unexpired principal assertions and fail closed during callback authentication; regression tests retain issuer/subject identity and reject missing Access configuration.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
+    },
+    {
+      "path": "packages/workshop-backend/src/capability-policy.ts",
+      "fingerprint": "e753e1f183dbf5150eed05fcf3d9fa006eb11f51199d7450e615df1932620255",
+      "rationale": "SCHO-292 / PR #14: optional explicit-deny capability policy at existing authority mints; persisted identity only, unchanged disabled-binding behavior, no ambient grants or deployment configuration.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-backend/src/env.d.ts",
-      "fingerprint": "886ab7261e2d1d99fd1ffc6f780f64b508b3f9c51273217956e3403406cf94f7",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "db0d456f9f95b0effcddb9766c67c04f84be6dc0c13ba992f9cccfa68187ce76",
+      "rationale": "SCHO-300: combined PR #5/#11/#14 integration of optional capability binding, canonical native callback and fail-closed principal authentication; no deployment or trust-policy enablement.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-backend/src/notification-service.ts",
@@ -251,9 +275,9 @@
     },
     {
       "path": "packages/workshop-backend/src/server.ts",
-      "fingerprint": "567eb617ee51885ffb0780fd80d105daef3d3bca78d238c9aabea0ab658828d1",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "7e7da7f0f06df0d9da0cb369b69b06a3750b1ebc79acfaeea4f49f5f6ed1a91a",
+      "rationale": "SCHO-300: combined PR #5/#11/#14 integration of optional capability binding, canonical native callback and fail-closed principal authentication; no deployment or trust-policy enablement.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-backend/src/storage-schema/overseer-storage.ts",
@@ -269,9 +293,9 @@
     },
     {
       "path": "packages/workshop-backend/src/user.ts",
-      "fingerprint": "b6ea8ad61ae78c42fc3695c64ec12d04e45ef440a3b981f7e529d9c3b05cde2c",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "c918afb1427e98c47623cdd3bea7ef6ce96ba3fbe5aa5864405e2f065065ab30",
+      "rationale": "SCHO-292 / PR #14: optional explicit-deny capability policy at existing authority mints; persisted identity only, unchanged disabled-binding behavior, no ambient grants or deployment configuration.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-backend/wrangler.production.jsonc",
@@ -281,9 +305,9 @@
     },
     {
       "path": "packages/workshop-shared/package.json",
-      "fingerprint": "4544c6b3aeeade3aa9e4649f7748a17a9e1305a4871018218e1d7a825acb36e5",
-      "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
-      "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+      "fingerprint": "d3d0a4c155a044c53eb091445e16978d6beb3c4f1e726a44c6373612b5241d8e",
+      "rationale": "SCHO-292 / PR #14: optional explicit-deny capability policy at existing authority mints; persisted identity only, unchanged disabled-binding behavior, no ambient grants or deployment configuration.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-shared/src/ai-call-guard.ts",
@@ -296,6 +320,12 @@
       "fingerprint": "235a3ccb75863f0a7b5bbd439cfdbc594e2b3acc20a7a7f88b9f6dcc99da3eac",
       "rationale": "Retain existing M delta at migration baseline; no runtime change authorized. Reassess this file during contract extraction.",
       "review": "docs/educateos/architecture/0001-thin-product-fork.md#baseline-disposition"
+    },
+    {
+      "path": "packages/workshop-shared/src/capability-policy.ts",
+      "fingerprint": "f27e63784e7254e8580a1ad218f7db22b9117a73f43d47b38bc639491b03e8cc",
+      "rationale": "SCHO-292 / PR #14: optional explicit-deny capability policy at existing authority mints; persisted identity only, unchanged disabled-binding behavior, no ambient grants or deployment configuration.",
+      "review": "docs/educateos/architecture/landing-SCHO-300.md#kernel-review"
     },
     {
       "path": "packages/workshop-shared/src/gatekeeper.ts",

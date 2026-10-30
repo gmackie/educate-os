@@ -84,6 +84,7 @@ const EXPECTED: Record<string, ExpectedArea> = {
       "VITE_DEV_AUTO_LOGIN",
       "VITE_DEV_PASSWORD",
       "VITE_DEV_USERNAME",
+      "VITE_EDUCATEOS_SCHOOL_MODE",
       "VITE_FRONTEND_ERROR_REPORTING",
       "VITE_NATIVE_APP_CALLBACK_ORIGIN",
     ],

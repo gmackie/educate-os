@@ -28,7 +28,7 @@ export function importContacts(state, input) {
   const contacts = rows.map(r => ({
     name: safe(r.name, 'name', 120), email: email(r.email), organization: safe(r.organization, 'organization', 160),
     role: safe(r.role, 'professional role', 160), sourceUrl: sourceUrl(r.sourceUrl),
-    tags: [...new Set((check(Array.isArray(r.tags), 'Tags must be an array'), r.tags).map(t => oneOf(t, TAGS, 'sourced role tag')))].sort(),
+    tags: [...new Set((check(Array.isArray(r.tags), 'Tags must be an array'), r.tags).map(t => oneOf(t, TAGS, 'sourced role tag')))].toSorted(),
   }));
   let added = 0; let duplicates = 0;
   for (const c of contacts) {
@@ -45,7 +45,7 @@ export function rankContacts(state, councilName) {
   return state.contacts.filter(c => !c.suppressed).map(c => {
     const matched = FIT[councilName].filter(t => c.tags.includes(t));
     return { ...c, score: matched.length * 10, reasons: matched.map(t => `Public professional role tag: ${t}`), basis: 'Advisory role fit only; no purchase intent or budget inference' };
-  }).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+  }).toSorted((a, b) => b.score - a.score || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 export function seatMember(state, input) {
   const name = council(input.council); const c = find(state, 'contacts', input.contactId);
