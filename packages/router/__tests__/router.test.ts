@@ -88,6 +88,16 @@ describe('router fetch', () => {
     expect(await route(env, '/')).toBe('backend');
     expect(await route(env, '/blueprints/123')).toBe('backend');
   });
+
+  // A school release binds the district's external MCP Worker; only its exact paths reach it.
+  it('routes school MCP and protected-resource discovery only with the explicit binding', async () => {
+    const school = makeEnv({ ASSETS: stubFetcher('assets'), EDUCATEOS_EXTERNAL_MCP: stubFetcher('mcp') });
+    for (const path of ['/mcp', '/token', '/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/mcp']) {
+      expect(await route(school, path)).toBe('mcp');
+      expect(await route(makeEnv({ ASSETS: stubFetcher('assets') }), path)).toBe('assets');
+    }
+    expect(await route(school, '/mcp/not-a-route')).toBe('assets');
+  });
 });
 
 /** A backend stub that records each request it receives, after reading its body. */

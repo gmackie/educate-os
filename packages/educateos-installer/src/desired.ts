@@ -446,12 +446,14 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   const schoolBuild = Boolean(variants?.["access-school"]);
   if (schoolBuild && variants?.access) invalid("ambiguous Access asset variants");
   if (schoolBuild) {
-    const policy = backend[0]![1].bindings.find(binding => binding.type === "service" &&
-      binding.name === "WORKSHOP_CAPABILITY_POLICY");
-    if (!policy || policy.type !== "service" ||
-        policy.service !== "$WORKER_NAME(educateos-district-worker)" ||
-        policy.entrypoint !== "DistrictWorkshopCapabilityPolicy") {
-      invalid("school release requires a district WORKSHOP_CAPABILITY_POLICY binding");
+    // Both district authorities, policy and principal resolution, must be bound to the district Worker.
+    for (const [name, entrypoint] of [["PRINCIPAL_RESOLVER", "DistrictPrincipalResolver"],
+        ["WORKSHOP_CAPABILITY_POLICY", "DistrictWorkshopCapabilityPolicy"]]) {
+      const authority = backend[0]![1].bindings.find(binding => binding.type === "service" && binding.name === name);
+      if (!authority || authority.type !== "service" ||
+          authority.service !== "$WORKER_NAME(educateos-district-worker)" || authority.entrypoint !== entrypoint) {
+        invalid(`school release requires a district ${name} binding`);
+      }
     }
   }
   if (schoolBuild) {
@@ -651,7 +653,10 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     };
     if (entry.kind === "backend") {
       // The instance-state vars the hosted deploy service would inject (see manifest-lib).
-      if (schoolBuild) vars.REQUIRE_WORKSHOP_CAPABILITY_POLICY = "true";
+      if (schoolBuild) {
+        vars.REQUIRE_WORKSHOP_CAPABILITY_POLICY = "true";
+        vars.REQUIRE_PRINCIPAL_RESOLVER = "true";
+      }
       vars.ADMINS = config.admins;
       vars.CF_ACCESS_ISS = `https://${config.access.teamName}.cloudflareaccess.com`;
       dependsOn.add(accessApplication.key);
