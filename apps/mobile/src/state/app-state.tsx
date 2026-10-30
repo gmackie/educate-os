@@ -157,6 +157,15 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const openSchool = useCallback(async (district: District) => {
     let restored = await restore(district, onRevokedFor(district));
     if (!restored && district.legacy) {
+      // A school saved before the one-origin redesign that now publishes a manifest is moved to
+      // the phone sign-in: the old Workshop handoff is not how it signs phones in any more. False
+      // sends the person to Connect for it.
+      const manifest = await fetchSchoolManifest(district.origin).catch(() => null);
+      if (manifest) {
+        await removeDistrict(district.id);
+        setDistricts(await saveDistrict(districtFromManifest(manifest)));
+        return false;
+      }
       const signedIn = await signIn(district);
       await prepareWebView(signedIn);
       restored = { session: signedIn };

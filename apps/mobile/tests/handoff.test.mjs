@@ -50,7 +50,7 @@ test('a sign-in the person takes a while to finish still decrypts', async () => 
 test('a transfer claiming to outlive the two-minute handoff is refused', async () => {
   const request = attempt();
   const sealed = await sealDeviceSessionHandoff(request.publicKey, request.state, credential(), Date.now() + 10 * 60_000);
-  assert.throws(() => unseal(sealed, request), /could not be verified/);
+  assert.throws(() => unseal(sealed, request), /expired before it reached the app/);
 });
 
 test('state substitution, tampering and expired transfers cannot authenticate', async () => {
@@ -63,9 +63,16 @@ test('state substitution, tampering and expired transfers cannot authenticate', 
       const bytes = base64urlnopad.decode(sealed.ciphertext); bytes[0] ^= 1;
       sealed.ciphertext = base64urlnopad.encode(bytes);
     }
-    assert.throws(() => unseal(sealed, request), /could not be verified/);
+    // Tampering and a substituted state fail decryption; an expired transfer says so.
+    assert.throws(() => unseal(sealed, request), mode === 'expired' ? /expired before it reached the app/ : /could not be verified/);
     assert.ok(request.privateKey.every(b => b === 0));
   }
+});
+
+test('a credential this version cannot use asks for an update, not a retry', async () => {
+  const request = attempt();
+  const sealed = await sealDeviceSessionHandoff(request.publicKey, request.state, { kind: 'device', token: 'x' });
+  assert.throws(() => unseal(sealed, request), /can't use/);
 });
 
 test('callback rejects another attempt, duplicate state, and expired attempt', async () => {
