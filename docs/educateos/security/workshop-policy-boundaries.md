@@ -38,6 +38,12 @@ Decisions are never cached. A retained Workshop/Gadget client must pass a fresh 
 its next protected call, so revocation applies without reconnecting that client. There is
 no policy-controlled session kill or claim of transitive revocation.
 
+## Execution restriction in the next stacked slice
+
+See [live capability revocation](live-capability-revocation.md): configured-policy execution
+is unconditionally disabled at runtime boundaries. This supersedes the allowed-execution
+behavior described above for the next slice, but does not revoke every descendant stub.
+
 ## BLOCKING for school rollout: retained execution and data capabilities
 
 This PR is not sufficient to enable the Workshop for students. Resolve and test all of the

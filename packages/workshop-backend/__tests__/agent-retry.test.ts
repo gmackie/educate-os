@@ -167,3 +167,37 @@ describe("the request a turn leaves to keep cached", () => {
     expect(kept).toBe(fits ? requests[0] : undefined);
   }));
 });
+
+
+describe("policy execution quarantine during an agent turn", () => {
+  it("stops the next tool and model request after a response already started",
+      () => withImpl(async impl => {
+    seedChat(impl);
+    const runtimeEnv = Reflect.get(impl, "env");
+    const previous = runtimeEnv.WORKSHOP_CAPABILITY_POLICY;
+    let executions = 0;
+    const execute = impl.executeCodeMode;
+    impl.executeCodeMode = async () => { ++executions; return "must not run"; };
+    let requests = 0;
+    const faux = createFauxCore({ models: [{ id: "faux-model" }] });
+    faux.setResponses([() => {
+      ++requests;
+      // Configure policy while the first model request is in flight.
+      runtimeEnv.WORKSHOP_CAPABILITY_POLICY = {
+        authorizeCapability: async () => ({ outcome: "deny" }),
+      };
+      return fauxAssistantMessage(fauxToolCall("executeCode", { code: "return 123" }));
+    }]);
+    try {
+      await expect(runAgent(impl, { model: faux.getModel(), stream: faux.stream }, CHAT_ID,
+          { type: "agent", id: "faux-model", name: "Faux" }, new AbortController().signal, OWNER,
+          { provider: "cloudflare", model: "faux-model", apiToken: "" }))
+        .rejects.toThrow("transitive revocation");
+      expect(requests).toBe(1);
+      expect(executions).toBe(0);
+    } finally {
+      runtimeEnv.WORKSHOP_CAPABILITY_POLICY = previous;
+      impl.executeCodeMode = execute;
+    }
+  }));
+});
