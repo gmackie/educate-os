@@ -1,6 +1,6 @@
 import type {
   Activity, Announcement, Assignment, CalendarEvent, ClassItem, Credential, DeviceSummary, GradeSummary,
-  CourseOutline, DiscussionPost, Gradebook, GradeProposal, ModerationQueue, QuizResults, StaffAttempt, StaffQuizSummary, DiscussionThread, GuardianChild, GuardianCourse, Notifications, Principal,
+  CourseOutline, DiscussionPost, EmailPreferences, Gradebook, GradeProposal, ModerationQueue, QuizResults, StaffAttempt, StaffQuizSummary, DiscussionThread, GuardianChild, GuardianCourse, Notifications, Principal,
   QuizAnswer, QuizAttempt, QuizResult, QuizSummary, Submission, TopicListing,
 } from '../types';
 import type { DeviceSession } from './device.ts';
@@ -260,6 +260,15 @@ export class DistrictClient {
   guardianClass(studentId: string, offeringId: string): Promise<GuardianCourse> {
     return this.call('GET', '/api/guardian/children/' + this.id(studentId) + '/offerings/' + this.id(offeringId));
   }
+  preferences(): Promise<EmailPreferences> { return this.call('GET', '/api/me/preferences'); }
+  updatePreferences(email: Partial<EmailPreferences['email']>): Promise<EmailPreferences> {
+    return this.call('POST', '/api/me/preferences', { email });
+  }
+  calendarFeed(): Promise<{ active: boolean; createdAt?: string }> { return this.call('GET', '/api/me/calendar-feed'); }
+  /** A new private feed address, shown once; any earlier one stops working. */
+  rotateCalendarFeed(): Promise<{ token: string; path: string }> { return this.call('POST', '/api/me/calendar-feed/rotate'); }
+  revokeCalendarFeed(): Promise<unknown> { return this.call('POST', '/api/me/calendar-feed/revoke'); }
+  revokeAllDevices(): Promise<{ revoked: number }> { return this.call('POST', '/api/me/devices/revoke-all'); }
   /** Your devices (SCHO-261). Device credentials only: these are `/api/m/me/devices…`. */
   myDevices(): Promise<{ devices: DeviceSummary[] }> { return this.call('GET', '/api/me/devices'); }
   revokeDevice(deviceId: string): Promise<DeviceSummary> {

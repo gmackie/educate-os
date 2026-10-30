@@ -60,7 +60,7 @@ export function StudentClass({ client, offeringId, navigate }: {
   useReloadOnFocus(reload);
   return <Page refresh={reload}>
     <QueryState state={state} retry={reload}>{(data) => <>
-      <Title subtitle={data.course?.offering.sectionName}> {data.course?.course.title || 'Class'} </Title>
+      <Title subtitle={data.course?.offering.sectionName}>{data.course?.course.title || 'Class'}</Title>
       <View style={{ gap: 12, flexDirection: 'row', marginBottom: 26 }}>
         <Card style={{ flex: 1, alignItems: 'center', gap: 6 }}>
           <Text style={{ fontSize: 24, fontWeight: '800', color: palette.primary }}>{data.activities.length}</Text>
@@ -106,7 +106,7 @@ export function TeacherClass({ client, offeringId, navigate }: {
   });
   return <Page refresh={reload}>
     <QueryState state={state} retry={reload}>{(data) => <>
-      <Title subtitle={data.course?.offering.sectionName}> {data.course?.course.title || 'Classroom'} </Title>
+      <Title subtitle={data.course?.offering.sectionName}>{data.course?.course.title || 'Classroom'}</Title>
       <View style={{ marginBottom: 22 }}><Segmented value={screen} onChange={setScreen} options={[
         { value: 'assignments', label: 'Class' }, { value: 'grades', label: 'Grades' }, { value: 'roster', label: 'Roster' },
       ]}/></View>

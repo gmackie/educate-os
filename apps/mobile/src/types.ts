@@ -131,6 +131,10 @@ export type StaffAttempt = {
 export type ModerationQueue = { settings: { premoderation: boolean }; pending: DiscussionPost[]; flagged: DiscussionPost[] };
 export type GradeProposal = { id: string; studentPrincipalId: string; submissionId: string; score: QuizScore; proposedAt: string;
   approvedAsVersion?: number; declined?: unknown; expired?: unknown };
+export type EmailPreferences = {
+  email: { announcements: boolean; assignments: boolean; feedback: boolean; grades: boolean; digest: boolean };
+  hasEmailAddress: boolean; emailEnabled: boolean;
+};
 export type RouteErrorCode = 'unauthenticated' | 'forbidden' | 'not-found' | 'conflict' | 'validation-failed' | 'unavailable';
 export type Tab = 'today' | 'classes' | 'review' | 'ai' | 'inbox' | 'family' | 'agenda' | 'me';
 export type Role = 'student' | 'teacher' | 'guardian';

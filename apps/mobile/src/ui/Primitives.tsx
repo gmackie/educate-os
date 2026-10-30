@@ -122,8 +122,10 @@ export function Item({ title, detail, onPress, leading, trailing }: {
 }) {
   const palette = usePalette();
   const styles = useStyles();
-  return <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : 'text'}
-    accessibilityLabel={title + (detail ? '. ' + detail : '')} style={({ pressed }) => [styles.item, { opacity: pressed && onPress ? 0.6 : 1 }]}>
+  // A tappable row is one button; otherwise its parts stay separate, so a trailing switch is reachable.
+  return <Pressable onPress={onPress} disabled={!onPress} accessible={!!onPress} accessibilityRole={onPress ? 'button' : undefined}
+    accessibilityLabel={onPress ? title + (detail ? '. ' + detail : '') : undefined}
+    style={({ pressed }) => [styles.item, { opacity: pressed && onPress ? 0.6 : 1 }]}>
     {leading && <View style={styles.leading}>{leading}</View>}
     <View style={{ flex: 1, gap: 4 }}><Text style={styles.itemTitle}>{title}</Text>
       {detail && <Text style={styles.itemDetail}>{detail}</Text>}</View>
