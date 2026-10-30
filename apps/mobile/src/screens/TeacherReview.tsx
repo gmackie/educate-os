@@ -1,0 +1,177 @@
+import { useState } from 'react';
+import { Alert, Text, View } from 'react-native';
+import { FileText, MessageSquareText } from 'lucide-react-native';
+import type { DistrictClient } from '../api/client';
+import type { Detail } from '../types';
+import { useLoad } from '../hooks/useLoad';
+import { palette } from '../theme';
+import { Button, Card, Chip, dateLabel, Field, Item, Page, Placeholder, QueryState, Section, Title } from '../ui/Primitives';
+
+export function TeacherAssignment({ client, assignmentId, offeringId, navigate }: {
+  client: DistrictClient; assignmentId: string; offeringId: string; navigate: (d: Detail) => void;
+}) {
+  const [data, reload] = useLoad('teacher-assignment:' + assignmentId, async () => {
+    const [assignment, submissions, students] = await Promise.all([
+      client.teacherAssignment(assignmentId),
+      client.teacherSubmissions(assignmentId),
+      client.teacherRoster(offeringId).catch(() => []),
+    ]);
+    const names = new Map(students.map((s) => [s.enrollment.principalId, s.displayName]));
+    return { assignment, submissions, names };
+  });
+  return <Page refresh={reload}>
+    <QueryState state={data} retry={reload}>{({ assignment, submissions, names }) => <>
+      <Title subtitle={'Due ' + dateLabel(assignment.assignment.dueAt, true)}>
+        {assignment.assignment.title}
+      </Title>
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 26 }}>
+        <Card style={{ flex: 1, alignItems: 'center', gap: 6 }}>
+          <Text style={{ fontSize: 27, fontWeight: '800', color: palette.primary }}>{submissions.length}</Text>
+          <Text style={{ fontSize: 12, color: palette.muted }}>Submissions</Text>
+        </Card>
+        <Card style={{ flex: 1, alignItems: 'center', gap: 6 }}>
+          <Text style={{ fontSize: 27, fontWeight: '800', color: palette.ink }}>{names.size}</Text>
+          <Text style={{ fontSize: 12, color: palette.muted }}>Enrolled</Text>
+        </Card>
+      </View>
+      <Section title="Review student work">
+        {submissions.length === 0 ? <Placeholder title="No submissions yet"
+          message="Student submissions will appear here when they turn in their work."/> :
+          <Card>{submissions.filter((s) => !s.withdrawnAt).map((submission) => <Item key={submission.id}
+            title={names.get(submission.studentPrincipalId) ?? 'Student'}
+            detail={'Attempt ' + submission.attempt + ' · ' + dateLabel(submission.submittedAt, true)}
+            leading={<FileText color={palette.primary} size={20}/>}
+            onPress={() => navigate({
+              type: 'teacher-review', id: submission.id, assignmentId,
+              studentName: names.get(submission.studentPrincipalId) ?? 'Student',
+              artifacts: submission.items.map((item) => ({ artifactId: item.artifactId, type: item.artifactType })),
+            })}/>)}</Card>}
+      </Section>
+      <Card style={{ gap: 10, marginBottom: 25 }}>
+        <Chip label="Staff only"/>
+        <Text style={{ color: palette.muted, lineHeight: 20 }}>
+          Comments and grades are visible to students only according to your school's release and approval policies.
+        </Text>
+      </Card>
+    </>}</QueryState>
+  </Page>;
+}
+
+export function TeacherReview({ client, submissionId, studentName, artifacts }: {
+  client: DistrictClient; submissionId: string; studentName: string;
+  artifacts: { artifactId: string; type: string }[];
+}) {
+  const [comment, setComment] = useState('');
+  const [points, setPoints] = useState('');
+  const [maxPoints, setMaxPoints] = useState('100');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [data, reload] = useLoad('teacher-review:' + submissionId, async () => {
+    const [feedback, content] = await Promise.all([
+      client.teacherFeedback(submissionId),
+      Promise.all(artifacts.map((a) => client.teacherSubmittedContent(submissionId, a.artifactId)
+        .then((item) => ({ ...item, type: a.type }))
+        .catch(() => ({ title: a.type, type: a.type, content: { kind: 'unavailable' } as { kind: string; text?: string } })))),
+    ]);
+    return { feedback, content };
+  });
+
+  const save = async (job: 'comment' | 'grade' | 'release') => {
+    if (busy) return;
+    if (job === 'comment' && comment.trim().length < 1) return;
+    if (job === 'grade') {
+      const score = Number(points), max = Number(maxPoints);
+      if (!Number.isFinite(score) || !Number.isFinite(max) || score < 0 || max <= 0 ||
+          score > max || max > 100000) {
+        Alert.alert('Check score', 'Enter a valid score between zero and the maximum.');
+        return;
+      }
+    }
+    setBusy(true); setMessage(null);
+    try {
+      if (job === 'comment') {
+        await client.teacherComment(submissionId, comment.trim());
+        setComment(''); setMessage('Comment saved for staff review.');
+      } else if (job === 'grade') {
+        const result = await client.teacherRecordGrade(submissionId, Number(points), Number(maxPoints));
+        setMessage(result.status === 'pending-approval' ? 'Grade proposed. It is awaiting approval.' :
+          'Official grade recorded.');
+      } else {
+        await client.teacherReleaseFeedback(submissionId, 'shared-with-student');
+        setMessage('Feedback released to the student.');
+      }
+      reload();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'The school could not save this action.');
+    } finally { setBusy(false); }
+  };
+  return <Page refresh={reload}>
+    <Title subtitle="Only actions allowed by your school's assessment policies will complete.">
+      Review: {studentName}
+    </Title>
+    {message && <Card style={{ marginBottom: 18 }}>
+      <Text accessibilityRole="alert" style={{ color: palette.ink, lineHeight: 21 }}>{message}</Text>
+    </Card>}
+    <QueryState state={data} retry={reload}>{({ feedback, content }) => <>
+      <Section title="Submitted work">
+        <Card style={{ gap: 15 }}>
+          {content.length === 0 ? <Text style={{ color: palette.muted }}>No readable artifacts attached.</Text> :
+            content.map((item, index) => <View key={index} style={{ gap: 9 }}>
+              <Text style={{ fontSize: 14, color: palette.primary, fontWeight: '800' }}>
+                {item.title || 'Submitted ' + item.type}
+              </Text>
+              {item.content.kind === 'text' && typeof item.content.text === 'string' ?
+                <Text selectable style={{ fontSize: 15, color: palette.ink, lineHeight: 24 }}>{item.content.text}</Text> :
+                <Text style={{ color: palette.muted, lineHeight: 20 }}>
+                  This file type needs the full Teacher Studio document viewer.
+                </Text>}
+            </View>)}
+        </Card>
+      </Section>
+      <View style={{ marginBottom: 20 }}><Chip label={feedback.state ?? 'Not released'}
+        tone={feedback.state === 'final' ? 'green' : 'amber'}/></View>
+      <Section title="Existing comments">
+        <Card>{feedback.comments.length === 0 ? <Text style={{ color: palette.muted }}>No comments yet.</Text> :
+          feedback.comments.map((item, index) => <Text key={index}
+            style={{ color: palette.ink, marginBottom: 10, lineHeight: 22 }}>{item.body}</Text>)}
+        </Card>
+      </Section>
+      <Section title="Add feedback">
+        <Card style={{ gap: 13 }}>
+          <Field label="Your comment" value={comment} onChangeText={setComment}
+            placeholder="Give clear, specific feedback…" multiline/>
+          <Button label={busy ? 'Saving…' : 'Save comment'} disabled={busy || !comment.trim()}
+            icon={<MessageSquareText color={palette.white} size={17}/>}
+            onPress={() => void save('comment')}/>
+        </Card>
+      </Section>
+      <Section title="Record official grade">
+        <Card style={{ gap: 14 }}>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Field label="Points" value={points} onChangeText={setPoints}
+                keyboardType="numeric" placeholder="0"/>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Field label="Out of" value={maxPoints} onChangeText={setMaxPoints}
+                keyboardType="numeric" placeholder="100"/>
+            </View>
+          </View>
+          <Text style={{ color: palette.muted, fontSize: 12, lineHeight: 19 }}>
+            Your district may require approval before the grade becomes official.
+          </Text>
+          <Button label="Record grade" variant="outline" disabled={busy || !points.trim()}
+            onPress={() => Alert.alert('Record grade?', 'This may become a permanent official grade.', [
+              { text: 'Cancel', style: 'cancel' }, { text: 'Record', onPress: () => { void save('grade'); } },
+            ])}/>
+        </Card>
+      </Section>
+      <Section title="Share feedback">
+        <Button label="Release comments to student" disabled={busy || feedback.state === 'final'}
+          onPress={() => Alert.alert('Release feedback?', 'Your comments will become visible to this student, subject to district policy.', [
+            { text: 'Cancel', style: 'cancel' }, { text: 'Release', onPress: () => { void save('release'); } },
+          ])}/>
+      </Section>
+    </>}</QueryState>
+  </Page>;
+}

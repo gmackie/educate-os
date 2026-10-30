@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { createExecutionContext } from "cloudflare:test";
 import { describe, expect, it, vi } from "vitest";
 import type { DeviceSessionHandoff } from "../src/auth/device-session-handoff";
-import { deviceSessionCallback } from "../src/auth/device-session-callback";
+import { deviceSessionCallback, nativeCallbackOrigin } from "../src/auth/device-session-callback";
 import server from "../src/server";
 
 const origin = "https://install.example.test";
@@ -74,7 +74,7 @@ describe("device session callback", () => {
   });
 
   it.each([
-    ["mobile", state, "https://os.cloudflare.app/oauthredirect"],
+    ["mobile", state, "https://mobile.educateos.io/oauthredirect"],
     ["desktop", `desktop-v1.49152.${"a".repeat(43)}`, "http://127.0.0.1:49152/oauthredirect"],
   ])("redeems a %s transfer through the Worker route exactly once", async (_kind, attemptState, destination) => {
     const user = env.TEST_USER.getByName(`device-session-route-${crypto.randomUUID()}`);
@@ -107,7 +107,7 @@ describe("device session callback", () => {
     expect(consume).toHaveBeenCalledWith(userDoId, state, ticket);
     expect(response.status).toBe(303);
     const callback = new URL(response.headers.get("Location")!);
-    expect(callback.origin + callback.pathname).toBe("https://os.cloudflare.app/oauthredirect");
+    expect(callback.origin + callback.pathname).toBe("https://mobile.educateos.io/oauthredirect");
     expect(Object.fromEntries(callback.searchParams)).toEqual({
       cfos_callback: "install-connected",
       state,
@@ -171,4 +171,14 @@ describe("device session callback", () => {
       vi.fn().mockRejectedValue(new Error("storage unavailable")),
     )).rejects.toThrow("storage unavailable");
   });
+});
+
+
+it("rejects invalid configured native callback origins before use", () => {
+  expect(nativeCallbackOrigin()).toBe("https://mobile.educateos.io");
+  expect(nativeCallbackOrigin("https://native.example")).toBe("https://native.example");
+  for (const origin of ["http://native.example", "https://native.example/evil",
+    "https://user@native.example", "https://native.example?to=evil", "https://native.example:444"]) {
+    expect(() => nativeCallbackOrigin(origin)).toThrow();
+  }
 });

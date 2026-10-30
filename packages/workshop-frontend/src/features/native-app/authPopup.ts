@@ -5,7 +5,16 @@ export const NATIVE_AUTH_KEY = 'gadgets.nativeAuthPopup'
 const START_PREFIX = '#native-auth='
 // App-owned return endpoint, not an install URL. Other native clients must register their own
 // callback with their shell and domain associations as well as changing this protocol constant.
-const CALLBACK = 'https://os.cloudflare.app/authpopup'
+// The iOS Associated Domain and Android verified App Link must claim this origin.
+const APP_ORIGIN = import.meta.env.VITE_NATIVE_APP_CALLBACK_ORIGIN || 'https://mobile.educateos.io'
+const CALLBACK = (() => {
+  const url = new URL(APP_ORIGIN)
+  if (url.protocol !== 'https:' || url.username || url.password ||
+      url.search || url.hash || url.pathname !== '/' || url.port) {
+    throw new Error('VITE_NATIVE_APP_CALLBACK_ORIGIN must be a canonical HTTPS origin.')
+  }
+  return url.origin + '/authpopup'
+})()
 const HEX = /^[0-9a-f]{64}$/
 const LIFETIME = 30 * 60 * 1000
 

@@ -1,0 +1,30 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "P4SWQXAB5H.io.educateos.mobile"
+        ],
+        "components": [
+          {
+            "/": "/oauthredirect"
+          },
+          {
+            "/": "/authpopup"
+          },
+          {
+            "/": "/enroll"
+          },
+          {
+            "/": "/pair-phone"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "P4SWQXAB5H.io.educateos.mobile"
+    ]
+  }
+}
