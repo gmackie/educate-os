@@ -113,3 +113,35 @@ an append-only log, held by the district's control Durable Object (`DurableObjec
   on the intent is separate work.
 - **No email** reaches the log: links and adoptions carry identifiers only, and their schemas are
   strict.
+
+## Migrating email-keyed Workshop users (SCHO-259)
+
+The district Worker implements the seam as `DistrictPrincipalResolver`, over
+`createAccessSignInResolver` with no adoption flow: a sign-in resolves to the principal its Access
+`(iss, sub)` is linked to, or is refused with "Your school hasn't set up your account here yet". A
+district that cannot answer refuses every sign-in with a retryable message; nothing falls back to
+email.
+
+Existing users move by **alias**, not by copy. `matchEmailKeyedUsers` (over
+`planEmailKeyedMigration`, so only `exact-single` emails) proposes a principal for each email-keyed
+user; a Workshop administrator reviews a dry run and applies it. Applying records
+`principal:<id>` → `<email>` in the Workshop's user directory, and sign-in then addresses the
+existing email-named Durable Object. That object stays authoritative and keeps its name and ID, so
+its workspaces, shares, connected accounts, sessions and every other object's reference to it keep
+working, and nothing is moved or deleted.
+
+- **Why not copy.** A user Durable Object is referenced by its ID from overseers, shares and
+  pending handoffs, and holds state (connected accounts, notification devices) that other objects
+  call back into. Copying it would mean rewriting those references while users are signed in, and
+  a partial copy would split one person in two. An alias is one row, and a run can stop at any
+  point.
+- **Idempotent and conservative.** Each principal and each user is aliased at most once. A run
+  skips, as a `conflict`, a principal that already has its own account (aliasing would hide it), so
+  run the migration before `PRINCIPAL_RESOLVER` is bound (`PRINCIPAL_MIGRATION` binds the same
+  entrypoint without changing sign-in).
+- **What stays email-named.** An aliased user's ID (`AiChatAuthorInfo.id`, what the AI call guard
+  sees, and what `ADMINS` lists) is still its email. Only users created after the cutover are named
+  `principal:<id>`.
+
+The procedure is in [the production instance runbook](../runbooks/production-instance.md#principal-identity-cutover-scho-259).
+

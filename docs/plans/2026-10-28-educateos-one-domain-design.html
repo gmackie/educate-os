@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EducateOS: one domain per district, admin.educateos.io, web and mobile design</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--foreground, #202124); font: 14px/1.55 var(--font-sans, system-ui, sans-serif); }
+  main { width: 100%; min-width: 0; }
+  h1 { font-size: 1.25rem; margin: 0 0 .25rem; line-height: 1.3; }
+  h2 { font-size: 1.05rem; margin: 2rem 0 .5rem; padding-top: .5rem; border-top: 1px solid var(--border, #d8dce2); }
+  h3 { font-size: .92rem; margin: 0 0 .3rem; }
+  h4 { font-size: .85rem; margin: .8rem 0 .3rem; }
+  p { max-width: 78ch; margin: .45rem 0; }
+  ul, ol { margin: .35rem 0; padding-left: 1.2rem; }
+  li { margin: .15rem 0; }
+  a { color: var(--accent-surface-foreground, #2458ac); }
+  .meta, .muted { color: var(--muted-foreground, #606773); }
+  .small { font-size: .8rem; }
+  :focus-visible { outline: 2px solid var(--ring, #2458ac); outline-offset: 3px; }
+  code, pre { font-family: var(--font-mono, Menlo, Consolas, monospace); font-size: .82em; background: var(--code-background, #f1f3f5); color: var(--code-foreground, #202124); border-radius: 4px; }
+  code { padding: .05rem .25rem; }
+  pre { padding: .6rem .75rem; overflow-x: auto; }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+  th, td { text-align: left; vertical-align: top; padding: .4rem .5rem; border-bottom: 1px solid var(--border, #d8dce2); }
+  th { font-weight: 600; color: var(--muted-foreground, #606773); font-size: .76rem; text-transform: uppercase; letter-spacing: .03em; }
+
+  .badge, .chip { display: inline-block; border-radius: 999px; padding: .08rem .5rem; font-size: .7rem; font-weight: 600; white-space: nowrap; vertical-align: middle; }
+  .badge { background: var(--accent-surface, #eaf0ff); color: var(--accent-surface-foreground, #2458ac); }
+  .chip.done { background: color-mix(in srgb, var(--success, #1e8e3e) 18%, transparent); color: var(--success, #1e8e3e); }
+  .chip.active { background: var(--accent-surface, #eaf0ff); color: var(--accent-surface-foreground, #2458ac); }
+  .chip.todo { background: var(--muted, #f1f3f5); color: var(--muted-foreground, #606773); }
+  .chip.risk { background: var(--warning-surface, #fff4d6); color: var(--warning-foreground, #7a5200); }
+  .chip.bad { background: var(--destructive-surface, #fde7e7); color: var(--destructive, #b3261e); }
+
+  .callout { border-left: 3px solid var(--accent, #2458ac); background: var(--accent-surface, #eaf0ff); color: var(--accent-surface-foreground, #1a2b4d); border-radius: 0 var(--radius, .625rem) var(--radius, .625rem) 0; padding: .65rem .85rem; margin: .75rem 0; }
+  .callout.warn { border-left-color: var(--warning, #b06d00); background: var(--warning-surface, #fff4d6); color: var(--warning-foreground, #5c3d00); }
+  .callout p { margin: .25rem 0; }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: .75rem; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: .75rem; }
+  .card { border: 1px solid var(--border, #d8dce2); border-radius: var(--radius, .625rem); background: var(--card, #f7f8fa); color: var(--card-foreground, #202124); padding: .75rem .85rem; min-width: 0; }
+  .card.recommended { border-color: var(--accent, #2458ac); box-shadow: 0 0 0 1px var(--accent, #2458ac); }
+  .card.before { border-style: dashed; }
+  .card ul { margin: .35rem 0 0; }
+  .card h3 { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+
+  .goals li { list-style: none; position: relative; padding-left: 1.2rem; margin-left: -1.2rem; }
+  .goals li::before { content: "✓"; position: absolute; left: 0; color: var(--success, #1e8e3e); font-weight: 700; }
+  .nongoals li { list-style: none; position: relative; padding-left: 1.2rem; margin-left: -1.2rem; }
+  .nongoals li::before { content: "✕"; position: absolute; left: 0; color: var(--muted-foreground, #606773); font-weight: 700; }
+
+  /* Route table */
+  .routes { display: grid; grid-template-columns: minmax(0, 1.1fr) 24px minmax(0, 1fr); gap: 4px 6px; align-items: center; font-size: .82rem; }
+  .routes .p { font-family: var(--font-mono, monospace); background: var(--code-background, #f1f3f5); padding: .25rem .45rem; border-radius: 4px; overflow-wrap: anywhere; }
+  .routes .arrow { text-align: center; color: var(--muted-foreground, #606773); }
+  .routes .t { padding: .25rem .45rem; border-radius: 4px; border: 1px solid var(--border, #d8dce2); }
+  .t.lms { border-left: 4px solid var(--chart-1, #2458ac); }
+  .t.ai { border-left: 4px solid var(--chart-2, #8e44ad); }
+  .t.edge { border-left: 4px solid var(--chart-3, #1e8e3e); }
+  .t.pub { border-left: 4px solid var(--chart-4, #b06d00); }
+
+  /* Timeline */
+  .timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+  .timeline::before { content: ""; position: absolute; left: 7px; top: 6px; bottom: 6px; width: 2px; background: var(--border, #d8dce2); }
+  .timeline > li { position: relative; padding: 0 0 1.1rem 1.8rem; margin: 0; }
+  .timeline > li::before { content: ""; position: absolute; left: 0; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--background, #fff); border: 2px solid var(--border, #d8dce2); }
+  .timeline > li.active::before { background: var(--accent, #2458ac); border-color: var(--accent, #2458ac); }
+  .timeline .head { display: flex; gap: .5rem; align-items: baseline; flex-wrap: wrap; }
+
+  details { border: 1px solid var(--border, #d8dce2); border-radius: var(--radius, .625rem); background: var(--card, #f7f8fa); padding: .55rem .75rem; margin: .6rem 0; }
+  summary { cursor: pointer; font-weight: 600; }
+  details[open] > summary { margin-bottom: .4rem; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: .5rem 0 .75rem; border-bottom: 1px solid var(--border, #d8dce2); }
+  .tabs button { font: inherit; font-size: .84rem; font-weight: 600; background: none; border: 0; border-bottom: 2px solid transparent; padding: .45rem .7rem; color: var(--muted-foreground, #606773); cursor: pointer; }
+  .tabs button[aria-selected="true"] { color: var(--foreground, #202124); border-bottom-color: var(--accent, #2458ac); }
+  .tabpanel[hidden] { display: none; }
+
+  /* Mockups */
+  .mock { --m-bg: var(--background, #fff); --m-line: var(--border, #d8dce2); --m-soft: var(--muted, #f1f3f5); border: 1px solid var(--m-line); border-radius: 10px; background: var(--m-bg); overflow: hidden; font-size: .74rem; }
+  .mock .bar { display: flex; align-items: center; gap: .5rem; padding: .4rem .6rem; border-bottom: 1px solid var(--m-line); background: var(--card, #f7f8fa); }
+  .mock .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--m-line); }
+  .mock .url { flex: 1; background: var(--m-soft); border-radius: 999px; padding: .1rem .6rem; font-family: var(--font-mono, monospace); font-size: .7rem; color: var(--muted-foreground, #606773); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .shell { display: grid; grid-template-columns: 150px minmax(0, 1fr); min-height: 300px; }
+  .side { border-right: 1px solid var(--m-line); padding: .5rem; display: flex; flex-direction: column; gap: 2px; background: var(--card, #f7f8fa); }
+  .side .brand { display: flex; align-items: center; gap: .4rem; font-weight: 700; padding: .25rem .3rem .55rem; }
+  .logo { width: 18px; height: 18px; border-radius: 5px; background: var(--accent, #2458ac); flex: none; }
+  .side .nav { padding: .28rem .45rem; border-radius: 6px; color: var(--muted-foreground, #606773); }
+  .side .nav.on { background: var(--accent-surface, #eaf0ff); color: var(--accent-surface-foreground, #2458ac); font-weight: 600; }
+  .side .grp { margin-top: .5rem; font-size: .64rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-foreground, #606773); padding: 0 .45rem; }
+  .side .foot { margin-top: auto; border-top: 1px solid var(--m-line); padding-top: .4rem; }
+  .content { padding: .7rem .8rem; display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+  .row { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .box { border: 1px solid var(--m-line); border-radius: 8px; padding: .45rem .55rem; flex: 1; min-width: 110px; background: var(--card, #f7f8fa); }
+  .box b { display: block; font-size: .8rem; }
+  .line { height: 7px; border-radius: 4px; background: var(--m-soft); margin: .3rem 0; }
+  .line.s { width: 55%; } .line.m { width: 75%; }
+  .kpi { font-size: 1rem; font-weight: 700; }
+  .spark { height: 34px; width: 100%; }
+  .btnm { display: inline-block; border-radius: 6px; padding: .2rem .55rem; background: var(--primary, #202124); color: var(--primary-foreground, #fff); font-weight: 600; font-size: .7rem; }
+  .btnm.ghost { background: transparent; color: var(--foreground, #202124); border: 1px solid var(--m-line); }
+
+  .phones { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; }
+  .phone { border: 2px solid var(--m-line, var(--border, #d8dce2)); border-radius: 22px; padding: .55rem .5rem .7rem; background: var(--background, #fff); display: flex; flex-direction: column; gap: .35rem; min-height: 290px; font-size: .7rem; position: relative; }
+  .phone .notch { width: 46px; height: 6px; border-radius: 6px; background: var(--border, #d8dce2); margin: 0 auto .3rem; }
+  .phone .ttl { font-weight: 700; font-size: .85rem; }
+  .phone .qr { width: 86px; height: 86px; margin: .3rem auto; background:
+      conic-gradient(from 90deg at 2px 2px, transparent 90deg, var(--foreground, #202124) 0) 0 0/12px 12px;
+      border-radius: 6px; opacity: .75; position: relative; }
+  .phone .scan { width: 100%; height: 100px; border-radius: 10px; background: var(--muted, #f1f3f5); position: relative; overflow: hidden; }
+  .phone .scan::after { content: ""; position: absolute; left: 22%; right: 22%; top: 16%; bottom: 16%; border: 2px solid var(--accent, #2458ac); border-radius: 8px; }
+  .phone .tabbar { margin-top: auto; display: flex; justify-content: space-around; border-top: 1px solid var(--border, #d8dce2); padding-top: .35rem; font-size: .58rem; color: var(--muted-foreground, #606773); }
+  .phone .tabbar .on { color: var(--accent-surface-foreground, #2458ac); font-weight: 700; }
+  .phone .code { font-family: var(--font-mono, monospace); font-size: 1rem; font-weight: 700; letter-spacing: .12em; text-align: center; background: var(--muted, #f1f3f5); border-radius: 6px; padding: .3rem; }
+  .phone .stepn { position: absolute; top: -9px; left: -6px; background: var(--accent, #2458ac); color: var(--accent-foreground, #fff); width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .7rem; }
+  .cap { font-size: .74rem; margin-top: .3rem; }
+
+  /* Risk grid */
+  .riskgrid { display: grid; grid-template-columns: 70px repeat(3, minmax(0, 1fr)); gap: 3px; font-size: .74rem; }
+  .riskgrid .cell { min-height: 58px; border-radius: 6px; padding: .3rem; display: flex; flex-wrap: wrap; gap: 3px; align-content: flex-start; background: var(--muted, #f1f3f5); }
+  .riskgrid .cell.h { background: color-mix(in srgb, var(--destructive, #b3261e) 14%, transparent); }
+  .riskgrid .cell.m { background: color-mix(in srgb, var(--warning, #b06d00) 14%, transparent); }
+  .riskgrid .lab { display: grid; place-items: center; color: var(--muted-foreground, #606773); font-weight: 600; text-align: center; }
+  .rk { background: var(--card, #fff); border: 1px solid var(--border, #d8dce2); border-radius: 999px; padding: 0 .4rem; font-weight: 600; }
+
+  figure.diagram { margin: .5rem 0; padding: .5rem; border: 1px solid var(--border, #d8dce2); border-radius: var(--radius, .625rem); overflow-x: auto; }
+  figure.diagram .mermaid-out { min-height: 60px; text-align: center; }
+  figure.diagram figcaption { font-size: .76rem; color: var(--muted-foreground, #606773); margin-top: .3rem; }
+  details.mermaid-source { background: transparent; border-style: dashed; font-size: .78rem; }
+  .fallback { font-size: .78rem; }
+
+  .arch { display: flex; flex-direction: column; gap: .45rem; font-size: .78rem; }
+  .arch .lane { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: .45rem; }
+  .arch .node { border: 1px solid var(--border, #d8dce2); border-radius: 8px; padding: .4rem .55rem; background: var(--card, #f7f8fa); font-weight: 600; text-align: center; }
+  .arch .node .muted { font-weight: 400; }
+  .arch .host { border-color: var(--accent, #2458ac); background: var(--accent-surface, #eaf0ff); color: var(--accent-surface-foreground, #1a2b4d); }
+  .arch .host.bad { border-color: var(--destructive, #b3261e); background: var(--destructive-surface, #fde7e7); color: var(--foreground, #202124); }
+  .arch .lmsn { border-left: 4px solid var(--chart-1, #2458ac); }
+  .arch .ain { border-left: 4px solid var(--chart-2, #8e44ad); }
+  .arch .dash { border-style: dashed; font-weight: 500; }
+  .arch .down { text-align: center; color: var(--muted-foreground, #606773); font-size: .74rem; }
+  .arch .acct { border: 1px dashed var(--border, #d8dce2); border-radius: 10px; padding: .55rem; display: flex; flex-direction: column; gap: .45rem; position: relative; }
+  .arch .acct-l { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-foreground, #606773); }
+  .decision { border: 1px solid var(--border, #d8dce2); border-left: 3px solid var(--warning, #b06d00); border-radius: 0 var(--radius, .625rem) var(--radius, .625rem) 0; padding: .55rem .75rem; background: var(--card, #f7f8fa); }
+  .decision .rec { color: var(--success, #1e8e3e); font-weight: 600; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal { animation: rise .45s cubic-bezier(.2,.7,.3,1) both; animation-delay: calc(var(--i, 0) * 60ms); }
+    .timeline > li.active::before { animation: pulse 1.8s ease-in-out infinite; }
+    .routes > * { animation: rise .35s ease-out both; animation-delay: calc(var(--i, 0) * 40ms); }
+    .phones .phone { animation: rise .4s ease-out both; animation-delay: calc(var(--i, 0) * 90ms); }
+    .phone .scan::before { content: ""; position: absolute; left: 22%; right: 22%; height: 2px; background: var(--accent, #2458ac); top: 18%; animation: scan 2.2s ease-in-out infinite; }
+    @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+    @keyframes pulse { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent, #2458ac) 25%, transparent); } }
+    @keyframes scan { 50% { top: 80%; } }
+  }
+  @media (max-width: 520px) {
+    .shell { grid-template-columns: 1fr; }
+    .side { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--m-line); }
+    .side .grp, .side .foot { display: none; }
+    .routes { grid-template-columns: 1fr; }
+    .routes .arrow { display: none; }
+    .routes .t { margin-bottom: 6px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1 class="reveal">EducateOS: one domain per district, admin.educateos.io, and the web + mobile design <span class="badge">Approved 2026-10-28</span></h1>
+  <p class="meta reveal" style="--i:1">2026-10-28 · gmackie/educate-os · branch <code>SCHO-254-mobile-working</code> · follows SCHO-254 / SCHO-256</p>
+
+  <div class="callout reveal" style="--i:2">
+    <p><strong>Recommendation:</strong> each district gets <strong>one hostname</strong> (<code>&lt;slug&gt;.educateos.io</code> or its own domain). That host serves the LMS at <code>/</code> and the AI workspace at <code>/ai</code>, behind <strong>one Cloudflare Access app</strong> and one identity keyed by Access <code>sub</code>. Separately, <strong>admin.educateos.io</strong> is the operations console for the districts that opt in. It is built from the same <code>educateos-admin</code> package (Worker + D1) that the open-source edition deploys into the district's own account.</p>
+    <p>The phone error you saw comes straight from today's split. The phone holds an Access token for <code>schoolos.gmac.io</code> and sends it to the district host. Access in front of that host doesn't accept it and answers with a 302 to its login page, which the app's <code>redirect: 'error'</code> turns into "fetch failed". Once there is one host and one Access app, that class of bug can't happen.</p>
+  </div>
+
+  <h2 class="reveal" style="--i:3">1 · What's broken today, and why</h2>
+  <div class="grid2">
+    <section class="card before">
+      <h3>"fetch failed: Redirect is not allowed…" <span class="chip bad">Root cause found</span></h3>
+      <ul>
+        <li>Sign-in on the phone goes through the <em>Workshop</em> (<code>schoolos.gmac.io</code>). The Workshop gives the phone its own Access JWT, so <code>aud</code> is the Workshop app (<code>workshop-backend/src/server.ts:1050</code>).</li>
+        <li><code>DistrictClient</code> then calls the <em>district</em> host (<code>district.schoolos.gmac.io</code> / <code>northfield.educateos.io</code>), sending that JWT as a header and as a <code>CF_Authorization</code> cookie (<code>apps/mobile/src/api/client.ts:27-35</code>).</li>
+        <li>The district <em>Worker</em> would accept the token, because its <code>CF_ACCESS_AUD</code> lists both audiences. The request never gets there: the district host's own <strong>Access edge</strong> checks the cookie against its own AUD and sends a 302 to the login page.</li>
+        <li>Expo's native fetch throws <code>FetchRedirectException</code> on any 3xx when <code>redirect: 'error'</code> is set, and the raw text reaches the screen.</li>
+      </ul>
+      <p class="small muted">About 85% confident, from the code and the runbook; I haven't reproduced it against the live host yet. Step 0 below confirms it with one <code>curl</code>.</p>
+    </section>
+    <section class="card before">
+      <h3>AI tab dark, the rest light <span class="chip bad">Root cause found</span></h3>
+      <ul>
+        <li>The mobile app has <strong>one hard-coded light palette</strong> (<code>apps/mobile/src/theme.ts</code>), even though <code>app.config.ts</code> sets <code>userInterfaceStyle: 'automatic'</code>.</li>
+        <li>The AI tab is a WebView of the Workshop (<code>screens/Workspace.tsx:111</code>). The Workshop follows the OS, so on a dark-mode phone it renders dark.</li>
+        <li>On the web the theme drifts too. The Workshop uses its own theme code and the key <code>gadgets:theme-mode</code>; the LMS UIs use <code>@gadgets/ui/theme</code> with <code>educateos:theme-mode</code>, on a different origin. The admin UI's CSS is missing the <code>@custom-variant dark</code> line.</li>
+      </ul>
+    </section>
+  </div>
+  <details>
+    <summary>The underlying design problem: two products on two hosts with two identities</summary>
+    <ul>
+      <li><strong>Hostnames today:</strong> the Workshop's <code>router</code> serves <code>schoolos.gmac.io</code>. The district Worker serves <code>district.schoolos.gmac.io</code> plus the alias <code>northfield.educateos.io</code>. The five demo districts are district Workers only, with no AI workspace. The router never sends anything to the district (<code>packages/router/src/index.ts:47-80</code>).</li>
+      <li><strong>Identity:</strong> the Workshop keys users by Access <code>email</code> (no <code>PRINCIPAL_RESOLVER</code> is bound). The district keys them by Access <code>sub</code> (ADR-0003). Each host has its own Access app and AUD.</li>
+      <li><strong>Links between them:</strong> the Workshop reaches the district only through the <code>gatekeeper-educateos</code> "School" iframe. The district UIs never link to the Workshop. The web LMS has no AI entry point; the student <code>aiHelp</code> flag is a placeholder.</li>
+      <li><strong>Installer:</strong> it already attaches <code>&lt;slug&gt;.educateos.io</code> to the <em>router</em> and binds the district as an optional service ("nothing in the instance routes to it yet", <code>district-worker/src/worker.ts:94-98</code>). The installer is already halfway to the one-host model; the demo deployments aren't.</li>
+      <li><strong>Phone setup:</strong> the QR codes are typed in by hand on <code>mobile.educateos.io/pair</code>, and no web app links to that page. Manual setup asks for two raw URLs (portal and workshop). The app has no QR scanner of its own. Access JWTs can't be refreshed and can't be revoked per device. Android app links aren't verified.</li>
+      <li><strong>Admin:</strong> <code>educateos.io/app</code> is a read-only installations list with health probes and a guided install. It has no users, devices, Cloudflare analytics or release management. No deployed Worker uses D1, and nothing calls the Cloudflare GraphQL Analytics API.</li>
+    </ul>
+  </details>
+
+  <h2 class="reveal" style="--i:4">2 · Goals and non-goals</h2>
+  <div class="grid2">
+    <section class="card"><h3>Goals</h3><ul class="goals">
+      <li>One district = one origin = one Access app = one identity (<code>sub</code>). The LMS and the AI workspace share sign-in, theme, navigation and the user menu.</li>
+      <li>A custom domain works the same as <code>&lt;slug&gt;.educateos.io</code>.</li>
+      <li>Setting up a phone takes a scan from the web app: no typed URLs, no second password.</li>
+      <li>Phones carry district-issued, device-bound credentials that refresh on their own and that an admin can revoke one by one.</li>
+      <li><strong>admin.educateos.io</strong> manages workspaces (health, Cloudflare stats, releases, domains), users and devices for the districts that opt in.</li>
+      <li>The open-source edition ships the same admin as its own Worker + D1 in the district's account and needs nothing from educateos.io.</li>
+      <li>One design system (Kumo + <code>@gadgets/ui</code>) and one theme preference across web, the AI workspace and mobile.</li>
+    </ul></section>
+    <section class="card"><h3>Non-goals (this plan)</h3><ul class="nongoals">
+      <li>Rewriting the AI workspace as native mobile screens. It stays a themed WebView.</li>
+      <li>Merging the Workshop and district Workers into one Worker. They stay separate Workers behind one router.</li>
+      <li>Moving district data into educateos.io. The hosted admin stores metadata only (ADR-0001).</li>
+      <li>Billing UI and the marketplace (SCHO-208 owns those).</li>
+      <li>Replacing Cloudflare Access as the web sign-in front door.</li>
+    </ul></section>
+  </div>
+
+  <h2 class="reveal" style="--i:5">3 · Target architecture</h2>
+  <div class="tabs" role="tablist" aria-label="Architecture view">
+    <button role="tab" aria-selected="true" aria-controls="arch-after" id="tab-after">Proposed</button>
+    <button role="tab" aria-selected="false" aria-controls="arch-before" id="tab-before">Today</button>
+  </div>
+  <div class="tabpanel" id="arch-after" role="tabpanel" aria-labelledby="tab-after">
+    <figure class="diagram"><div class="arch" aria-label="Proposed architecture">
+      <div class="lane"><div class="node">Browser<br><span class="muted">Access sign-in</span></div><div class="node">EducateOS app<br><span class="muted">native LMS · /api/m device token<br>AI tab = WebView of /ai</span></div></div>
+      <div class="down">↓ one origin · one Access app · one identity (sub)</div>
+      <div class="acct"><div class="acct-l">District Cloudflare account</div>
+        <div class="node host">northfield.educateos.io <span class="muted">or learn.district.org</span></div>
+        <div class="down">↓ router (path table below)</div>
+        <div class="lane three"><div class="node lmsn">district Worker<br><span class="muted">/ · /teach · /family · /admin · /api/* · /lti/*<br>SQLite DO</span></div><div class="node ain">Workshop<br><span class="muted">/ai · /ai/api<br>service-binds district</span></div><div class="node">gatekeepers<br><span class="muted">/gatekeeper/*</span></div></div>
+        <div class="node dash">OSS edition: admin Worker + D1 → signed /api/ops</div>
+      </div>
+      <div class="lane"><div class="node dash">admin.educateos.io (Worker + D1)<br><span class="muted">signed /api/ops · stores metadata only</span></div><div class="node dash">mobile.educateos.io<br><span class="muted">app links + get-the-app only</span></div></div>
+    </div>
+      <figcaption>One district host, one Access app. The router splits it by path. Both admin editions use the same signed ops API.</figcaption></figure>
+    <details class="mermaid-source"><summary>Diagram source (Mermaid)</summary><pre id="m-after">flowchart LR
+  subgraph phone[EducateOS app]
+    P[Native LMS screens]
+    PW[AI tab · WebView /ai]
+  end
+  B[Browser] --&gt;|Access sign-in| H
+  P --&gt;|device token · /api/m/*| H
+  PW --&gt; H
+  subgraph acct[District Cloudflare account]
+    H{{&quot;northfield.educateos.io&lt;br/&gt;or learn.district.org&lt;br/&gt;one Access app&quot;}} --&gt; R[router]
+    R --&gt;|/ , /teach, /family, /admin, /api/*, /lti/*| D[district Worker&lt;br/&gt;SQLite DO]
+    R --&gt;|/ai, /ai/*| W[Workshop backend + SPA]
+    R --&gt;|/gatekeeper/*| G[gatekeepers]
+    W -.service binding.-&gt; D
+    OA[(OSS edition:&lt;br/&gt;admin Worker + D1)] -.ops API.-&gt; D
+  end
+  ADM[admin.educateos.io&lt;br/&gt;admin Worker + D1] -.signed ops API&lt;br/&gt;metadata only.-&gt; D
+  ML[mobile.educateos.io&lt;br/&gt;app links only] -.universal link.-&gt; phone</pre></details>
+  </div>
+  <div class="tabpanel" id="arch-before" role="tabpanel" aria-labelledby="tab-before" hidden>
+    <figure class="diagram"><div class="arch" aria-label="Current architecture">
+      <div class="lane"><div class="node">Browser</div><div class="node">Phone<br><span class="muted">holds the Workshop JWT</span></div></div>
+      <div class="lane"><div class="node host">schoolos.gmac.io<br><span class="muted">Access app A → router → Workshop<br>users keyed by email</span></div><div class="node host bad">district.schoolos.gmac.io / northfield.educateos.io<br><span class="muted">Access app B → district Worker<br>users keyed by sub · phone gets ✗ 302</span></div></div>
+      <div class="lane"><div class="node dash">gatekeeper-educateos "School" iframe is the only bridge</div><div class="node dash">educateos.io/app: read-only installs · mobile.educateos.io/pair: hand-typed QR</div></div>
+    </div>
+      <figcaption>Today: two hosts, two Access apps, and identities keyed differently.</figcaption></figure>
+    <details class="mermaid-source"><summary>Diagram source (Mermaid)</summary><pre id="m-before">flowchart LR
+  Ph[Phone] --&gt;|Workshop JWT| WS
+  Ph --&gt;|Workshop JWT as cookie ✗ 302| DS
+  B[Browser] --&gt; WS{{schoolos.gmac.io&lt;br/&gt;Access app A}}
+  B --&gt; DS{{district.schoolos.gmac.io&lt;br/&gt;northfield.educateos.io&lt;br/&gt;Access app B}}
+  WS --&gt; R[router] --&gt; W[Workshop · users keyed by email]
+  R --&gt; GE[gatekeeper-educateos] -.School iframe.-&gt; D
+  DS --&gt; D[district Worker · users keyed by sub]
+  CP[educateos.io/app&lt;br/&gt;read-only installs] -.healthz probe.-&gt; DS
+  MP[mobile.educateos.io/pair&lt;br/&gt;hand-typed QR] -.-&gt; Ph</pre></details>
+  </div>
+
+  <h3 style="margin-top:1rem">Path table on the district host</h3>
+  <p class="muted small">The district already owns <code>/api/{student,teacher,admin,guardian,me,calendar,onboarding,lti}</code>. The Workshop's HTTP surface is small: the <code>/api</code> RPC socket plus about eight named endpoints. So the Workshop moves under <code>/ai</code>. Gatekeepers stay at the root so registered OAuth redirect URIs don't change.</p>
+  <div class="routes" role="table" aria-label="Router path table">
+    <div class="p" style="--i:0">/healthz</div><div class="arrow">→</div><div class="t edge" style="--i:0">router (Access bypass)</div>
+    <div class="p" style="--i:1">/.well-known/educateos.json</div><div class="arrow">→</div><div class="t pub" style="--i:1">district: public school manifest (bypass)</div>
+    <div class="p" style="--i:2">/ · /classes · /calendar · /inbox · /family · /teach/* · /admin/*</div><div class="arrow">→</div><div class="t lms" style="--i:2">district assets: unified LMS shell</div>
+    <div class="p" style="--i:3">/api/* (all except /api/m and /api/pair)</div><div class="arrow">→</div><div class="t lms" style="--i:3">district Worker (Access JWT)</div>
+    <div class="p" style="--i:4">/api/m/*</div><div class="arrow">→</div><div class="t lms" style="--i:4">district Worker: device-token API for phones (Access bypass, Worker-enforced)</div>
+    <div class="p" style="--i:5">/api/pair/*</div><div class="arrow">→</div><div class="t lms" style="--i:5">district Worker: pairing relay (bypass; room-secret auth)</div>
+    <div class="p" style="--i:6">/api/ops/*</div><div class="arrow">→</div><div class="t lms" style="--i:6">district Worker: signed admin ops API (bypass; Ed25519 request signatures)</div>
+    <div class="p" style="--i:7">/lti/*</div><div class="arrow">→</div><div class="t lms" style="--i:7">district Worker (LTI bypass, as today)</div>
+    <div class="p" style="--i:8">/ai · /ai/* · /ai/api</div><div class="arrow">→</div><div class="t ai" style="--i:8">Workshop SPA + RPC (Vite <code>base: '/ai/'</code>)</div>
+    <div class="p" style="--i:9">/gatekeeper/*</div><div class="arrow">→</div><div class="t ai" style="--i:9">gatekeepers (unchanged)</div>
+  </div>
+  <p class="small muted">Old hosts get a 301: <code>schoolos.gmac.io/*</code> → <code>northfield.educateos.io/ai/*</code>, and <code>district.schoolos.gmac.io/*</code> → <code>northfield.educateos.io/*</code>. For one release the router also answers the Workshop's old <code>/api/{device-session,client-errors,site-logo,version,…}</code> paths, so older builds and phones keep working.</p>
+
+  <details>
+    <summary>Identity: one principal per person</summary>
+    <ul>
+      <li>One Access app per district host, so one AUD. Both Workers verify the same JWT. The district's dual-AUD allowance (<code>access.ts:19-23</code>) is removed.</li>
+      <li>The Workshop binds <code>PRINCIPAL_RESOLVER</code> to the district (the seam from ADR-0003 already exists), so its user Durable Object is keyed <code>principal:&lt;id&gt;</code> and no longer by email.
+        <br><span class="muted">Migration: a one-time map from email-keyed DOs to principal-keyed ones, done for Northfield's existing users. The demo districts have no Workshop users yet.</span></li>
+      <li>The AI workspace knows the user's role and classes from the district principal. "Ask AI about this assignment" passes context through a link (<code>/ai/new?context=assignment:&lt;id&gt;</code>). It's checked again on the server, never trusted from the URL.</li>
+      <li>Workshop password tokens remain only for open-source installs that run without Access. Phones never use them.</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Public school manifest: <code>/.well-known/educateos.json</code></summary>
+    <p>The phone, admin.educateos.io and the educateos.io directory read this one file, so nobody types two URLs again. It's public and contains no personal data.</p>
+<pre>{
+  "v": 1,
+  "name": "Northfield Public Schools",
+  "origin": "https://northfield.educateos.io",
+  "brand": { "logo": "https://northfield.educateos.io/brand/logo.svg", "accent": "#2458ac" },
+  "signIn": [{ "id": "google", "label": "Google" }, { "id": "clever", "label": "Clever" }],
+  "features": { "ai": true, "mobile": true, "family": true },
+  "mobileApi": { "min": 1, "max": 1 },
+  "release": "r000042-ade9299"
+}</pre>
+  </details>
+
+  <h2 class="reveal" style="--i:6">4 · Web UI design (district host)</h2>
+  <p>A single shell wraps the LMS and the AI workspace: the same sidebar, school branding, user menu and theme. The two halves stay separate SPAs. A shared package, <code>@educateos/shell</code> (React + Kumo), draws the frame, and each SPA mounts its content inside it. Moving between Learn and AI is then just a link on the same origin, with nothing to sign in to again.</p>
+  <div class="mock reveal" style="--i:7" role="img" aria-label="Wireframe: student home on the district host with a sidebar showing Home, Classes, Calendar, Inbox, Grades, AI, and a user menu with Connect phone">
+    <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">northfield.educateos.io/</span></div>
+    <div class="shell">
+      <div class="side">
+        <div class="brand"><span class="logo"></span>Northfield</div>
+        <div class="nav on">⌂ Home</div><div class="nav">▦ Classes</div><div class="nav">◷ Calendar</div><div class="nav">✉ Inbox <span class="chip active">3</span></div><div class="nav">✓ Grades</div>
+        <div class="grp">Workspace</div><div class="nav">✦ AI workspace</div><div class="nav">◫ My Space</div>
+        <div class="foot"><div class="nav">◐ Theme · System</div><div class="nav">📱 Connect phone</div><div class="nav">Ava Chen · Student</div></div>
+      </div>
+      <div class="content">
+        <div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:.9rem">Good morning, Ava</b><span class="btnm ghost">⌘K Search</span></div>
+        <div class="row"><div class="box"><b>Due today</b><div class="line m"></div><div class="line s"></div></div><div class="box"><b>Next class</b><div class="line m"></div><div class="line s"></div></div><div class="box"><b>Announcements</b><div class="line"></div><div class="line s"></div></div></div>
+        <div class="box"><b>Lab report: Photosynthesis · Biology 9</b><div class="line"></div><div class="line m"></div><div class="row" style="margin-top:.35rem"><span class="btnm">Open</span><span class="btnm ghost">✦ Ask AI about this</span></div></div>
+        <div class="box" style="border-style:dashed"><b>📱 Get Northfield on your phone</b><span class="muted">Scan once and you're signed in. No password on the phone.</span> <span class="btnm" style="margin-left:.3rem">Show code</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="grid3" style="margin-top:.75rem">
+    <section class="card"><h3>Navigation by role</h3>
+      <ul class="small">
+        <li><b>Student:</b> Home, Classes, Calendar, Inbox, Grades · AI workspace, My Space</li>
+        <li><b>Teacher:</b> Today, Classes (/teach), Gradebook, Calendar, Inbox · AI workspace, Content studio</li>
+        <li><b>Guardian:</b> Family, Calendar, Inbox. AI only if district policy allows.</li>
+        <li><b>School admin:</b> adds an <b>Admin</b> group (roster, classes, policies, AI budgets, the existing <code>/admin</code> screens) plus an "Operations ↗" link to whichever admin edition is installed.</li>
+      </ul></section>
+    <section class="card"><h3>AI workspace at /ai</h3>
+      <ul class="small">
+        <li>Same sidebar. The Workshop's own <code>AppShell</code> sidebar becomes the right-hand area (threads and tools).</li>
+        <li>Openings that carry context: from an assignment, a class or a submission (teacher).</li>
+        <li>When <code>features.ai</code> is off, <code>/ai</code> shows an "AI isn't enabled at your school" page rather than a 404.</li>
+        <li>The AI budget meter from the guard ledger shows in the header for staff.</li>
+      </ul></section>
+    <section class="card"><h3>One theme system</h3>
+      <ul class="small">
+        <li>Use <code>@gadgets/ui/theme</code> everywhere. Remove the Workshop's own <code>theme.ts</code>/<code>ThemeContext</code> and keep only its accent override.</li>
+        <li>One key, <code>educateos:theme-mode</code>, on one origin, so a change applies everywhere at once.</li>
+        <li>The district brand accent comes from the manifest, through <code>applyAccentColor</code>.</li>
+        <li>Fix the missing admin-ui <code>@custom-variant dark</code>. The Workshop's violet dark palette becomes a set of Kumo tokens.</li>
+      </ul></section>
+  </div>
+  <details>
+    <summary>Web "Connect phone" page (user menu → Connect phone, plus a one-time banner after first sign-in)</summary>
+    <ol>
+      <li>The page creates a pairing room on the <em>district</em>: <code>POST /api/pair/rooms</code>, signed in with Access. The room lasts 2 minutes and holds one phone.</li>
+      <li>It shows a QR code for <code>https://mobile.educateos.io/j#o=&lt;district origin&gt;&amp;r=&lt;room&gt;&amp;s=&lt;secret&gt;</code>, plus App Store and Play links for people without the app.</li>
+      <li>The phone scans it, claims the room with its P-256 public key, and both screens show the same 8-character code.</li>
+      <li>The user checks the codes and clicks <b>Approve</b>. The district registers the device, mints its credential, seals it to the phone's key, and leaves it in the room.</li>
+      <li>The phone collects and decrypts it. The page then shows "Ava's iPhone 16 is connected" and a link to <b>Your devices</b>, where the user can rename or sign out each phone.</li>
+    </ol>
+    <p class="muted small">This is the existing SCHO-256 protocol (ECDH + HKDF + AES-GCM, code comparison) moved from <code>mobile.educateos.io</code> onto the district itself, so the runtime keeps working with educateos.io offline. <code>mobile.educateos.io</code> keeps only what can't move: AASA/assetlinks, the universal-link landing page, and a "get the app" page.</p>
+  </details>
+
+  <h2 class="reveal" style="--i:8">5 · Mobile app design</h2>
+  <h3>Onboarding (new)</h3>
+  <div class="phones" aria-label="Mobile onboarding storyboard">
+    <div class="phone" style="--i:0"><span class="stepn">1</span><div class="notch"></div><div class="ttl">Welcome to EducateOS</div><span class="muted">Your school's classes, calendar and AI workspace.</span>
+      <div style="margin-top:auto;display:flex;flex-direction:column;gap:.3rem"><span class="btnm" style="text-align:center">Scan school code</span><span class="btnm ghost" style="text-align:center">Find my school</span><span class="muted" style="text-align:center">I have a web address</span></div></div>
+    <div class="phone" style="--i:1"><span class="stepn">2</span><div class="notch"></div><div class="ttl">Scan the code</div><div class="scan" aria-hidden="true"></div><span class="muted">On a computer, open your school site → <b>Connect phone</b>.</span></div>
+    <div class="phone" style="--i:2"><span class="stepn">3</span><div class="notch"></div><div class="ttl">Northfield Public Schools</div><span class="muted">northfield.educateos.io ✓</span>
+      <span>Check this matches your computer:</span><div class="code">K7Q4·M2XD</div><span class="muted">Waiting for approval on the computer…</span></div>
+    <div class="phone" style="--i:3"><span class="stepn">4</span><div class="notch"></div><div class="ttl">Stay in the loop</div><span class="muted">Notifications for due work and messages. They never include grades or names.</span>
+      <div style="margin-top:auto;display:flex;flex-direction:column;gap:.3rem"><span class="btnm" style="text-align:center">Allow notifications</span><span class="btnm ghost" style="text-align:center">Lock with Face ID</span></div></div>
+    <div class="phone" style="--i:4"><span class="stepn">5</span><div class="notch"></div><div class="ttl">Today</div><div class="box" style="min-width:0"><b>Due today</b><div class="line m"></div></div><div class="box" style="min-width:0"><b>Next: Biology 9 · 10:05</b><div class="line s"></div></div>
+      <div class="tabbar"><span class="on">Today</span><span>Classes</span><span>AI</span><span>Inbox</span><span>Me</span></div></div>
+  </div>
+  <p class="cap muted"><b>The three ways in all reach step 3.</b> <b>Scan</b> uses the in-app scanner (<code>expo-camera</code>); the system Camera app works too, through the universal link. <b>Find my school</b> searches the optional educateos.io directory by name or email domain, and is hidden when the directory is unreachable. <b>Web address</b> takes one URL and reads <code>/.well-known/educateos.json</code>. Without a computer to pair with, step 3 becomes "Sign in with Google / Clever / ClassLink" in the system browser (Access), followed by the same device registration.</p>
+
+  <div class="grid3">
+    <section class="card"><h3>Tabs (5, role-aware)</h3>
+      <ul class="small">
+        <li><b>Student:</b> Today · Classes · AI · Inbox · Me</li>
+        <li><b>Teacher:</b> Today · Classes · Review · AI · Me</li>
+        <li><b>Guardian:</b> Family · Calendar · Inbox · Me</li>
+        <li>The calendar moves into Today (agenda) and Me for students and teachers. Six tabs today, five after.</li>
+        <li>Me: profile, devices, theme, notifications, switch school, sign out, delete account (App Store guideline 5.1.1(v)).</li>
+      </ul></section>
+    <section class="card"><h3>Look and feel</h3>
+      <ul class="small">
+        <li><code>theme.ts</code> gets light and dark palettes generated from the shared Kumo tokens; <code>useColorScheme()</code> follows the system unless the user overrides it under Me.</li>
+        <li>The AI WebView is injected with <code>data-mode</code> and the accent before load (<code>injectedJavaScriptBeforeContentLoaded</code>), and updated live when the theme changes.</li>
+        <li>School branding (logo, accent) comes from the manifest.</li>
+        <li>Replace the hand-rolled stack with <code>expo-router</code> to get native back gestures and deep links (<code>/class/:id</code>, <code>/assignment/:id</code>).</li>
+      </ul></section>
+    <section class="card"><h3>Reliability</h3>
+      <ul class="small">
+        <li>Every API call goes to <code>/api/m/*</code> with a device token. A 401 refreshes silently; a revoked device goes to a "This phone was signed out by your school" screen.</li>
+        <li><code>redirect: 'manual'</code>. Any 3xx becomes a typed <code>needs-sign-in</code> error with a friendly message; raw fetch text never reaches users.</li>
+        <li>Push: content-free alerts ("You have 2 updates"), sent by the district through APNs/FCM. The phone fetches the details itself.</li>
+        <li>Android <code>assetlinks.json</code> published; <code>autoVerify</code> passes.</li>
+      </ul></section>
+  </div>
+
+  <details>
+    <summary>Device credential design (district-issued, device-bound)</summary>
+    <ul>
+      <li><b>Registry</b> (district DO, new table <code>devices</code>): id, principal, label, platform, model, app version, P-256 public key (JWK thumbprint), created, last seen, last country, push token, status (<code>active | revoked</code>), revoked by.</li>
+      <li><b>Tokens:</b> a 15-minute access token, plus a refresh token that rotates on every use (if a refresh token is reused, the device is revoked). Both are bound to the device key: each request carries a short-lived ES256 proof over <code>method · path · ts · token hash</code>, in the style of DPoP.</li>
+      <li><b>Access:</b> <code>/api/m/*</code> is an Access <em>bypass</em> path. The Worker enforces device auth on every route under it and shares the authorisation code with the web API, so the policy floors from ADR-0004/0010 apply the same way.</li>
+      <li><b>Revocation:</b> takes effect immediately, because every request checks the registry. "Sign out everywhere" revokes all of a principal's devices, and suspending a user does too.</li>
+      <li><b>Private key:</b> stored in SecureStore (<code>WHEN_UNLOCKED_THIS_DEVICE_ONLY</code>). Moving to the Secure Enclave / StrongBox through a small native module comes later.</li>
+    </ul>
+  </details>
+
+  <h2 class="reveal" style="--i:9">6 · admin.educateos.io (and the open-source admin)</h2>
+  <div class="grid2">
+    <section class="card recommended"><h3>One package, two editions <span class="badge">Recommended</span></h3>
+      <ul class="small">
+        <li>New package <code>packages/educateos-admin</code>: a Worker with D1, a Kumo SPA and Access sign-in.</li>
+        <li><b>Hosted:</b> <code>admin.educateos.io</code> in the EducateOS account. It manages many workspaces from districts that opt in. It replaces <code>educateos.io/app</code>, which then redirects; <code>/clever/launch</code> and <code>/registry/v1/*</code> stay on educateos.io.</li>
+        <li><b>OSS:</b> the installer adds <code>admin</code> as its own Worker + D1 in the district's account (default <code>admin.&lt;district domain&gt;</code>), managing one or more workspaces in that account.</li>
+        <li>Both editions talk to districts <em>only</em> through the signed <code>/api/ops/*</code> API, so they share one code path and one test suite.</li>
+      </ul></section>
+    <section class="card"><h3>What lives where</h3>
+      <ul class="small">
+        <li><b>District <code>/admin</code> (in the LMS):</b> academic administration: roster, classes, guardians, curriculum, policies, AI budgets, term rollover. Used by school staff every day.</li>
+        <li><b>admin (either edition):</b> operations: workspaces, health, Cloudflare stats, releases, domains, sign-in methods, users and devices, audit.</li>
+        <li><b>D1 holds:</b> operators, workspace registry, ops-key pairs, cached analytics snapshots, and an audit log of admin actions. It holds no student records.</li>
+        <li><b>Data the hosted edition never stores:</b> user lists and device details pass through live from the district. Only counts and aggregates are cached.</li>
+      </ul></section>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Admin screens" style="margin-top:1rem">
+    <button role="tab" aria-selected="true" aria-controls="adm-ws" id="t-ws">Workspace detail</button>
+    <button role="tab" aria-selected="false" aria-controls="adm-users" id="t-users">Users</button>
+    <button role="tab" aria-selected="false" aria-controls="adm-dev" id="t-dev">Devices</button>
+  </div>
+  <div class="tabpanel" id="adm-ws" role="tabpanel" aria-labelledby="t-ws">
+    <div class="mock" role="img" aria-label="Wireframe: admin.educateos.io workspace detail for Northfield, with KPIs for requests, errors, p95 latency and AI spend, plus tabs Overview, Traffic, AI, Storage, Sign-ins, Domains, Releases, Settings, Audit">
+      <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">admin.educateos.io/workspaces/northfield</span></div>
+      <div class="shell">
+        <div class="side"><div class="brand"><span class="logo"></span>EducateOS Admin</div>
+          <div class="nav">◳ Workspaces</div><div class="nav on" style="padding-left:1rem">Northfield</div><div class="nav" style="padding-left:1rem">Riverbend</div><div class="nav">👥 Users</div><div class="nav">📱 Devices</div><div class="nav">⇪ Releases</div><div class="nav">☰ Audit log</div>
+          <div class="foot"><div class="nav">⚙ Settings</div></div></div>
+        <div class="content">
+          <div class="row" style="align-items:center;justify-content:space-between"><b style="font-size:.9rem">Northfield <span class="chip done">Healthy</span> <span class="chip todo">r000042 · update available</span></b><span class="muted">northfield.educateos.io</span></div>
+          <div class="row small muted"><u>Overview</u> · Traffic · AI · Storage · Sign-ins · Domains · Releases · Settings · Audit</div>
+          <div class="row">
+            <div class="box"><span class="muted">Requests · 24h</span><div class="kpi">—</div><svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="var(--chart-1,#2458ac)" stroke-width="2" points="0,22 15,18 30,20 45,10 60,14 75,6 100,9"/></svg></div>
+            <div class="box"><span class="muted">Error rate</span><div class="kpi">—</div><svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="var(--chart-4,#b06d00)" stroke-width="2" points="0,26 20,25 40,27 55,18 70,26 100,25"/></svg></div>
+            <div class="box"><span class="muted">p95 latency</span><div class="kpi">—</div></div>
+            <div class="box"><span class="muted">AI spend · month</span><div class="kpi">— / budget</div></div>
+          </div>
+          <div class="row"><div class="box"><b>Workers</b><span class="muted">router · district · workshop-backend · gatekeepers: invocations, errors, CPU p50/p99</span></div><div class="box"><b>Active people · 7d</b><span class="muted">students / staff / families, counts only</span></div></div>
+        </div>
+      </div>
+    </div>
+    <p class="small muted">The dashes are deliberate: these values come from live Cloudflare data, so the mockup leaves them out rather than inventing them.</p>
+  </div>
+  <div class="tabpanel" id="adm-users" role="tabpanel" aria-labelledby="t-users" hidden>
+    <ul>
+      <li><b>List:</b> search by name or email. Filter by role (student, staff, guardian, admin), school, status (active, suspended, never signed in) and sign-in method (Google, Clever, ClassLink, PIN).</li>
+      <li><b>Detail:</b> linked identities (Access <code>sub</code> plus IdP), roles and schools, last sign-in, devices, AI access level and usage this month, recent admin actions.</li>
+      <li><b>Actions:</b> suspend or restore, sign out everywhere, grant or revoke staff/admin roles, change AI access, re-send a guardian invitation. Each action is a signed ops command the district enforces and records in its own audit log; the admin's D1 audit records who asked.</li>
+      <li><b>Rostered users:</b> people from Clever/OneRoster are read-only apart from status and role overrides. Changes to the roster itself belong in the SIS, and the UI says so.</li>
+    </ul>
+  </div>
+  <div class="tabpanel" id="adm-dev" role="tabpanel" aria-labelledby="t-dev" hidden>
+    <ul>
+      <li><b>Table:</b> device label, owner, role, platform and model, app version, registered, last seen, last country, push on/off, status.</li>
+      <li><b>Actions:</b> revoke one device, revoke all of a user's devices, revoke everything below an app version (forced update).</li>
+      <li><b>Policy (per workspace):</b> which roles can use the mobile app, maximum devices per person, whether pairing requires approval on the computer (on by default), and whether biometric lock is required.</li>
+      <li><b>School enrollment poster:</b> a printable QR that only <em>identifies the school</em> and carries no credential, for classroom walls and parent nights.</li>
+    </ul>
+  </div>
+
+  <details>
+    <summary>Cloudflare stats: which numbers, from where, and with which token</summary>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Panel</th><th>Source</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Requests, errors, CPU p50/p99 per Worker</td><td>GraphQL <code>workersInvocationsAdaptive</code></td><td>Filtered by script name for the workspace's Workers.</td></tr>
+        <tr><td>Traffic by status, country, cache</td><td>GraphQL <code>httpRequestsAdaptiveGroups</code></td><td>Same-account zones only. On a cross-account (SaaS) hostname, the district's own zone is used.</td></tr>
+        <tr><td>Durable Object requests and storage</td><td>GraphQL <code>durableObjectsInvocationsAdaptiveGroups</code>, <code>durableObjectsStorageGroups</code></td><td>Shows district data growth.</td></tr>
+        <tr><td>R2 and D1</td><td>GraphQL <code>r2StorageAdaptiveGroups</code>, <code>d1AnalyticsAdaptiveGroups</code></td><td>Blueprint content, releases, admin D1.</td></tr>
+        <tr><td>AI requests, tokens, cost, cache hits</td><td>AI Gateway analytics, cross-checked against the district AI guard ledger</td><td>The ledger is authoritative for budgets (ADR-0008, USD nanos).</td></tr>
+        <tr><td>Sign-ins by method, failures</td><td>Access authentication logs</td><td>Needs <em>Access: Audit Logs Read</em>.</td></tr>
+        <tr><td>Health and version</td><td><code>/healthz</code> plus fleet heartbeat (<code>educateos-fleet</code>)</td><td>The heartbeat finally gets a sender: the district Worker's cron.</td></tr>
+      </tbody></table></div>
+    <p><b>Token:</b> the <em>district</em> holds a read-only token (Account Analytics Read, Access Audit Logs Read, Workers Scripts Read) as a secret. <code>/api/ops/analytics</code> runs the queries, caches them for 5 minutes and returns aggregates. The hosted admin never holds a district's Cloudflare credentials. The guided install asks for this token through a prefilled token-creation link.</p>
+  </details>
+
+  <details>
+    <summary>Signed ops API: how an admin edition talks to a district</summary>
+    <ul>
+      <li>When a workspace is enrolled (an opt-in step in district <code>/admin</code> → Operations), the admin edition's Ed25519 public key is registered with the district under scopes such as <code>health</code>, <code>analytics</code>, <code>directory:read</code>, <code>directory:write</code>, <code>devices</code> and <code>releases</code>. This reuses the <code>educateos-fleet</code> registration and rekey protocol.</li>
+      <li>Each request is signed over <code>method · path · body-hash · ts · nonce</code> and carries the acting operator's identity. The district checks scope, nonce and age (±60 s), and records the request in its own audit log.</li>
+      <li>The district can drop any scope or remove the admin altogether, at any time, from its own <code>/admin</code>. Opting out leaves a working district.</li>
+    </ul>
+  </details>
+
+  <h2 class="reveal" style="--i:10">7 · Delivery phases</h2>
+  <p class="muted small">Each phase ships and gets verified on its own. Phase 0 can start straight away; phase 1 is the structural change everything else depends on. I've left out time estimates on purpose; issues are sized when they're created in Kanbanger.</p>
+  <ol class="timeline">
+    <li class="active reveal" style="--i:11"><div class="head"><h3>Phase 0: Stop the bleeding</h3><span class="chip active">Next</span></div>
+      <p class="muted">Confirm the root cause, make the error humane, and make the mobile theme consistent. No structural change yet.</p>
+      <details><summary>Tasks</summary><div class="table-scroll"><table>
+        <thead><tr><th>Task</th><th>Files</th><th>Verification</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Confirm the 302: send the Workshop JWT as a cookie to <code>northfield.educateos.io/api/me</code></td><td>(live check)</td><td><code>curl -I</code> shows a 302 to <code>gmacko.cloudflareaccess.com</code></td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td><code>redirect: 'manual'</code>; turn a 3xx into <code>needs-sign-in</code>; friendly copy</td><td><code>apps/mobile/src/api/client.ts</code>, <code>App.tsx:201</code></td><td>Unit test with a mocked 302; no raw text reaches the UI</td><td><span class="chip todo">Todo</span></td></tr>
+                    <tr><td>Mobile light and dark palettes, <code>useColorScheme</code>, StatusBar following the theme</td><td><code>apps/mobile/src/theme.ts</code>, <code>App.tsx</code></td><td>Simulator screenshots in both modes</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Inject the theme into the AI WebView</td><td><code>screens/Workspace.tsx</code></td><td>AI tab matches the native tabs in both modes</td><td><span class="chip todo">Todo</span></td></tr>
+                  </tbody></table></div></details></li>
+    <li class="reveal" style="--i:12"><div class="head"><h3>Phase 1: One host per district</h3><span class="chip todo">Todo</span></div>
+      <p class="muted">The router owns the district host. The Workshop moves to <code>/ai</code>. One Access app. Identity keyed by principal.</p>
+      <details><summary>Tasks</summary><div class="table-scroll"><table>
+        <thead><tr><th>Task</th><th>Files</th><th>Verification</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>ADR-0014 "One origin per district", amending ADR-0013 A1 and <code>production-instance.md</code></td><td><code>docs/educateos/adr/</code></td><td>Reviewed</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Router path table plus a <code>DISTRICT</code> service binding; serve district assets</td><td><code>packages/router/src/index.ts</code>, wrangler configs</td><td>Route table unit tests; workerd integration test</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Workshop under <code>/ai</code>: Vite base, RPC at <code>/ai/api</code>, legacy path aliases for one release</td><td><code>workshop-frontend</code>, <code>workshop-backend/src/server.ts</code></td><td>Workshop e2e on the new base; old paths still answer</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Bind <code>PRINCIPAL_RESOLVER</code>; migrate email-keyed user DOs</td><td><code>workshop-backend</code>, migration script</td><td>Northfield users keep their threads (counts before and after)</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Drop the district's dual-AUD allowance once all hosts are on one app</td><td><code>district-worker/src/access.ts</code></td><td>The old Workshop AUD is rejected</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td><code>/.well-known/educateos.json</code></td><td><code>district-worker</code></td><td>Schema test; public with no auth</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Installer and release manifest: router binds the district; Access bypass paths</td><td><code>educateos-installer/src/desired.ts</code>, <code>scripts/release/manifest-lib.ts</code></td><td>Plan diff test; <code>manifest-lib.test.ts</code> golden updated</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Production cutover for Northfield; 301 the old hosts</td><td><code>scripts/production/schoolos-gmac-io.ts</code>, <code>.forgegraph.yaml</code></td><td>Deploy receipts plus health; browser sign-in once, LMS ↔ AI with no new prompt</td><td><span class="chip todo">Todo</span></td></tr>
+        </tbody></table></div></details></li>
+    <li class="reveal" style="--i:13"><div class="head"><h3>Phase 2: Unified web shell and design system</h3><span class="chip todo">Todo</span></div>
+      <p class="muted"><code>@educateos/shell</code>, one theme, role navigation, an AI entry point in the LMS, and the Connect phone page.</p>
+      <details><summary>Tasks</summary><div class="table-scroll"><table>
+        <thead><tr><th>Task</th><th>Files</th><th>Verification</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Create <code>@educateos/shell</code> (sidebar, user menu, theme, brand, ⌘K)</td><td><code>packages/educateos-shell</code> (new)</td><td>Storybook in light and dark; a11y checks</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Student, teacher and admin UIs adopt the shell</td><td><code>educateos-{student,teacher,admin}-ui</code></td><td>Visual review per role</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Workshop adopts <code>@gadgets/ui/theme</code> and the shell frame</td><td><code>workshop-frontend/src/{theme.ts,ThemeContext.tsx,components/AppShell}</code></td><td>The theme toggle in LMS and AI stays in sync</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>"Ask AI about this" deep links, with context checked on the server</td><td>student and teacher UIs, workshop-backend</td><td>Context can't be forged from the URL (test)</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Connect phone page and Your devices page</td><td>student UI (shared), district API</td><td>Pairs a simulator end to end</td><td><span class="chip todo">Todo</span></td></tr>
+        </tbody></table></div></details></li>
+    <li class="reveal" style="--i:14"><div class="head"><h3>Phase 3: Device identity and pairing v2</h3><span class="chip todo">Todo</span></div>
+      <p class="muted">District-issued device credentials, the relay on the district, and the <code>/api/m/*</code> surface.</p>
+      <details><summary>Tasks</summary><div class="table-scroll"><table>
+        <thead><tr><th>Task</th><th>Files</th><th>Verification</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><code>devices</code> table, token minting, rotation, proof verification</td><td><code>educateos-district-app</code>, <code>district-worker</code></td><td>Unit tests: replay, reuse, expiry, revocation</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Pairing relay on the district (port <code>sites/educateos-mobile-links/relay.ts</code>)</td><td>district-worker (new DO class or table)</td><td>Protocol tests carried over from SCHO-256</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Access bypass for <code>/api/m</code>, <code>/api/pair</code>, <code>/api/ops</code>, <code>/.well-known</code>; a route-enforcement test</td><td>installer, district-worker</td><td>Every route under a bypass path rejects requests with no credential (generated test)</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Shrink <code>mobile.educateos.io</code> to app links plus a get-the-app page; publish <code>assetlinks.json</code></td><td><code>sites/educateos-mobile-links</code></td><td>Apple and Google link validators pass</td><td><span class="chip todo">Todo</span></td></tr>
+        </tbody></table></div></details></li>
+    <li class="reveal" style="--i:15"><div class="head"><h3>Phase 4: Mobile app redesign</h3><span class="chip todo">Todo</span></div>
+      <p class="muted">The onboarding storyboard, five role-aware tabs, <code>expo-router</code>, dark mode, push, account deletion.</p>
+      <details><summary>Tasks</summary><div class="table-scroll"><table>
+        <thead><tr><th>Task</th><th>Files</th><th>Verification</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Move to <code>expo-router</code>; deep link routes</td><td><code>apps/mobile/app/</code> (new), <code>App.tsx</code></td><td>Links open the right screen, cold and warm</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Onboarding: scanner, directory search, manifest-based single URL, pairing UI</td><td><code>screens/Onboarding.tsx</code>, <code>security.ts</code>, <code>district.ts</code></td><td>On-device run on iPhone and Android, recorded</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Device-token client with silent refresh and a revoked screen</td><td><code>api/client.ts</code>, <code>auth/*</code></td><td>Revoke from admin → phone signs out within one request</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Role tab sets; Me screen; delete account</td><td><code>screens/*</code></td><td><code>app-store-review</code> skill pass</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Content-free push through APNs/FCM from the district</td><td>district-worker, <code>expo-notifications</code></td><td>Push arrives; payload contains no personal data</td><td><span class="chip todo">Todo</span></td></tr>
+        </tbody></table></div></details></li>
+    <li class="reveal" style="--i:16"><div class="head"><h3>Phase 5: admin.educateos.io and the OSS admin</h3><span class="chip todo">Todo</span></div>
+      <p class="muted"><code>educateos-admin</code> (Worker + D1), the signed ops API, Cloudflare stats, users and devices, releases.</p>
+      <details><summary>Tasks</summary><div class="table-scroll"><table>
+        <thead><tr><th>Task</th><th>Files</th><th>Verification</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><code>/api/ops/*</code> on the district: signature verification, scopes, audit</td><td>district-worker, <code>educateos-fleet</code></td><td>Signature, nonce and scope tests; opt-out removes access</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Analytics proxy using the district's read-only token</td><td>district-worker</td><td>Recorded GraphQL fixtures; live check on the demo account</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td><code>packages/educateos-admin</code>: D1 schema and migrations, Access sign-in, Kumo SPA</td><td>new package</td><td>Miniflare D1 tests; Storybook</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Screens: Workspaces, Users, Devices, Releases, Audit, Settings</td><td><code>educateos-admin</code></td><td>Browser QA against a demo district</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>Move the operator data and guided install from the control plane; redirect <code>educateos.io/app</code></td><td><code>educateos-control-plane</code>, <code>sites/educateos-io</code></td><td>Existing installs show up in the new admin</td><td><span class="chip todo">Todo</span></td></tr>
+          <tr><td>The installer adds the OSS admin Worker + D1</td><td><code>educateos-installer/src/desired.ts</code></td><td>Fresh install on the BYOA rig shows the admin</td><td><span class="chip todo">Todo</span></td></tr>
+        </tbody></table></div></details></li>
+    <li class="reveal" style="--i:17"><div class="head"><h3>Phase 6: Roll out</h3><span class="chip todo">Todo</span></div>
+      <p class="muted">Northfield first, then the five demo districts (once D7 is decided), then TestFlight and the Play internal track; the educateos.io demo and docs updated.</p></li>
+  </ol>
+
+  <h2 class="reveal" style="--i:18">8 · Risks</h2>
+  <div class="riskgrid" role="table" aria-label="Risks by likelihood and impact">
+    <div class="lab"></div><div class="lab">Low impact</div><div class="lab">Medium impact</div><div class="lab">High impact</div>
+    <div class="lab">Likely</div><div class="cell m"><span class="rk">R5</span></div><div class="cell m"><span class="rk">R2</span></div><div class="cell h"><span class="rk">R3</span></div>
+    <div class="lab">Possible</div><div class="cell"></div><div class="cell m"><span class="rk">R4</span><span class="rk">R6</span></div><div class="cell h"><span class="rk">R1</span></div>
+    <div class="lab">Unlikely</div><div class="cell"></div><div class="cell"></div><div class="cell m"><span class="rk">R7</span></div>
+  </div>
+  <details open><summary>Risks and mitigations</summary>
+    <ul>
+      <li><b>R1: an Access bypass path leaves an endpoint unauthenticated.</b> Every route under <code>/api/m</code>, <code>/api/pair</code> and <code>/api/ops</code> must pass a credential check before its handler runs (one middleware), and a generated test calls every route with no credential and expects 401.</li>
+      <li><b>R2: moving the Workshop to <code>/ai</code> breaks absolute paths</b> (RPC URL, assets, service worker, gatekeeper return URLs). Aliases for one release, an e2e run on the new base, and gatekeepers left at the root.</li>
+      <li><b>R3: migrating email-keyed Workshop DOs to principals loses threads.</b> Dry run with counts, keep the old DOs read-only, and run it for Northfield only (the demo districts have no Workshop data).</li>
+      <li><b>R4: App Store review</b> (login-required apps need a demo account; account deletion; camera purpose text). Run the <code>app-store-review</code> skill before submitting, and update the camera text to mention QR scanning.</li>
+      <li><b>R5: Cloudflare GraphQL quirks</b> (dataset limits, adaptive sampling, plan restrictions on the free educateos.io zone). Label sampled numbers as estimates in the UI and keep recorded fixtures.</li>
+      <li><b>R6: the hosted admin creeps toward storing PII.</b> A lint rule plus review: the admin D1 schema holds no names or emails beyond operators; directory responses are streamed through, never written.</li>
+      <li><b>R7: <code>override_scope</code> drops custom domains during cutover.</b> Add the Access destinations first and list every hostname in config (already a known trap, see <code>educateos-managed-hostnames</code>).</li>
+    </ul>
+  </details>
+
+  <h2 class="reveal" style="--i:19">9 · Decisions I need from you</h2>
+  <div class="grid2">
+    <div class="decision"><b>D1 · Path split.</b> Workshop under <code>/ai</code>, LMS at the root. <span class="rec">Approved.</span> <span class="muted">The alternative moves 180+ district <code>/api</code> call sites and the mobile client, and LMS-first fits a district domain.</span></div>
+    <div class="decision"><b>D2 · Phone credential.</b> District-issued, device-bound tokens on <code>/api/m</code> behind an Access bypass. <span class="rec">Approved.</span> <span class="muted">The alternative is to keep Access JWTs and bounce through the browser when they expire, but that can't be revoked per device and doesn't refresh.</span></div>
+    <div class="decision"><b>D3 · Hosted admin and personal data.</b> Live pass-through of user and device lists, with only aggregates cached. <span class="rec">Approved.</span> <span class="muted">The alternatives are deep links into district <code>/admin</code> only (weaker), or a stored mirror (conflicts with ADR-0001).</span></div>
+    <div class="decision"><b>D4 · Admin split.</b> Academic admin stays at district <code>/admin</code>; operations live in admin.educateos.io (or the OSS admin). <span class="rec">Approved.</span> <span class="muted">The other option is to move everything into admin.</span></div>
+    <div class="decision"><b>D5 · Analytics token.</b> A read-only token held by the district and queried through <code>/api/ops/analytics</code>. <span class="rec">Approved.</span> <span class="muted">The alternative is for the hosted admin to store each district's Cloudflare token.</span></div>
+    <div class="decision"><b>D6 · Admin storage.</b> D1 for both editions, replacing the <code>ControlPlane</code> Durable Object. <span class="rec">Approved.</span> <span class="muted">It needs an addendum to <code>control-plane.md</code>, which chose a DO earlier.</span></div>
+    <div class="decision"><b>D7 · Demo districts.</b> Only one demo district has AI (Northfield). The others show "AI not enabled here" and link to it. <span class="rec">Decided.</span></div>
+    <div class="decision"><b>D8 · Interim Access fix.</b> Not doing it. The phone sign-in fix waits for the phase 1 domain alignment. <span class="rec">Decided.</span></div>
+  </div>
+
+  <h2>Tracking</h2><p>Epic SCHO-257. Phases 0–5 are SCHO-258 to SCHO-263. The admin-ui dark-variant fix moved to phase 2.</p><h2>Next steps</h2>
+  <ol>
+    <li>You confirm D1 to D8, or change them.</li>
+    <li>I create an epic plus one issue per phase in Kanbanger (SCHO), with the tasks above as acceptance criteria.</li>
+    <li>Phase 0 starts on a new branch from <code>main</code>. The 302 confirmation comes first, then the error mapping and theme fixes.</li>
+  </ol>
+</main>
+
+<script type="module">
+  // Tabs: keyboard-operable, default view is the proposed design.
+  document.querySelectorAll('[role="tablist"]').forEach((list) => {
+    const tabs = [...list.querySelectorAll('[role="tab"]')];
+    const select = (tab) => {
+      tabs.forEach((t) => {
+        const on = t === tab;
+        t.setAttribute('aria-selected', String(on));
+        t.tabIndex = on ? 0 : -1;
+        document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+      });
+    };
+    tabs.forEach((t, i) => {
+      t.tabIndex = t.getAttribute('aria-selected') === 'true' ? 0 : -1;
+      t.addEventListener('click', () => select(t));
+      t.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+        next.focus(); select(next);
+      });
+    });
+  });
+
+</script>
+</body>
+</html>

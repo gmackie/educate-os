@@ -141,6 +141,17 @@ export const GOOGLE_CLASSROOM_COURSE_RESOURCE: SupportedResource = {
   grantable: true,
 };
 
+/** One course as the signed-in student's own Classroom workspace. */
+export const GOOGLE_CLASSROOM_STUDENT_RESOURCE: SupportedResource = {
+  urlPattern: `https://${CLASSROOM_HOST}/student-courses/:courseId`,
+  title: "Google Classroom Student Course",
+  description:
+    "Read published coursework and your own submissions in one course, and turn in your own " +
+    "work with approval. This connection cannot read a roster, classmates' work, or teacher-only " +
+    "grades, and cannot be shared with collaborators.",
+  grantable: true,
+};
+
 /** A BigQuery project, optionally narrowed to a dataset or table. */
 export const BIGQUERY_RESOURCE: SupportedResource = {
   urlPattern: `https://${BIGQUERY_HOST}/:projectId/*`,
@@ -336,12 +347,19 @@ export const RESOURCE_SCOPES: {resource: SupportedResource, scopes: string[]}[] 
   {
     resource: GOOGLE_CLASSROOM_COURSE_RESOURCE,
     scopes: [
-      // The course picker and the bound course's details; its teachers and students.
-      "https://www.googleapis.com/auth/classroom.courses.readonly",
+      // Course discovery/details and approved grading-period configuration; no general course mutation API.
+      "https://www.googleapis.com/auth/classroom.courses",
       "https://www.googleapis.com/auth/classroom.rosters.readonly",
       // Creating, reading and grading this project's coursework. Email addresses and photos
       // (`classroom.profile.*`) are deliberately not requested.
       "https://www.googleapis.com/auth/classroom.coursework.students",
+    ],
+  },
+  {
+    resource: GOOGLE_CLASSROOM_STUDENT_RESOURCE,
+    scopes: [
+      "https://www.googleapis.com/auth/classroom.courses.readonly",
+      "https://www.googleapis.com/auth/classroom.coursework.me",
     ],
   },
 ];
@@ -563,7 +581,8 @@ export type ResourceTarget =
   | { kind: "chatAccount" }
   | { kind: "chatSpace"; spaceId: string }
   | { kind: "chatThread"; spaceId: string; threadId: string }
-  | { kind: "classroomCourse"; courseId: string };
+  | { kind: "classroomCourse"; courseId: string }
+  | { kind: "classroomStudentCourse"; courseId: string };
 
 /** The grantable resource each {@link ResourceTarget} kind belongs to. */
 export const RESOURCE_BY_KIND: Record<ResourceTarget["kind"], SupportedResource> = {
@@ -580,6 +599,7 @@ export const RESOURCE_BY_KIND: Record<ResourceTarget["kind"], SupportedResource>
   chatSpace: GOOGLE_CHAT_SPACE_RESOURCE,
   chatThread: GOOGLE_CHAT_THREAD_RESOURCE,
   classroomCourse: GOOGLE_CLASSROOM_COURSE_RESOURCE,
+  classroomStudentCourse: GOOGLE_CLASSROOM_STUDENT_RESOURCE,
 };
 
 /** The resource kinds createResource() can make: Google's native editor files. */
@@ -761,6 +781,13 @@ function parseChatUrl(parsed: URL): ResourceTarget {
 }
 
 function parseClassroomUrl(parsed: URL): ResourceTarget {
+  let studentCourse = /^\/student-courses\/([^/]+)$/.exec(parsed.pathname);
+  if (studentCourse && !parsed.search && !parsed.hash) {
+    return {
+      kind: "classroomStudentCourse",
+      courseId: validateClassroomCourseId(decodeURIComponent(studentCourse[1])),
+    };
+  }
   let course = /^\/courses\/([^/]+)$/.exec(parsed.pathname);
   if (!course || parsed.search || parsed.hash) {
     throw new Error(

@@ -5,6 +5,8 @@
 // (UserDurableObject.completeConnectHandoff) together with the nonce the Workshop tab put into the
 // popup's sessionStorage when the flow started, and only then is the staged grant activated.
 
+import { publicBasePath } from "./public-path.js";
+
 /**
  * How long a staged connect / reconnect waits for its ticket. The handoff page delivers the ticket
  * the instant it loads, so anything not redeemed within this window was opened somewhere the
@@ -31,6 +33,17 @@ export function handoffTargetOrigin(env: Cloudflare.Env): string {
     throw new Error("PUBLIC_BASE_URL is not configured, so account connections cannot complete.");
   }
   return new URL(env.PUBLIC_BASE_URL).origin;
+}
+
+/**
+ * Where the completion page sends the ticket: `handoffTargetOrigin(env)`, plus `targetBasePath`
+ * when the Workshop is mounted under `PUBLIC_BASE_PATH` (e.g. `/ai` on a district origin). Like the
+ * origin, it comes from deployment configuration only.
+ */
+export function handoffTarget(env: Cloudflare.Env): { targetOrigin: string; targetBasePath?: string } {
+  let targetOrigin = handoffTargetOrigin(env);
+  let basePath = publicBasePath(env);
+  return basePath === "" ? { targetOrigin } : { targetOrigin, targetBasePath: basePath };
 }
 
 /**

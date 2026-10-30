@@ -48,6 +48,50 @@ export const Installation = z.strictObject({
 /** An installation an operator made through educateos.io. */
 export type Installation = z.infer<typeof Installation>;
 
+/** A slug held for the guided install, as the export reports it. */
+export const ExportedReservation = z.strictObject({
+  slug: z.string().min(3).max(32),
+  /** The operator holding it (their Access subject). */
+  operatorSubject: z.string().min(1).max(256),
+  /** The Cloudflare account the install goes into. */
+  accountId: z.string().regex(/^[0-9a-f]{32}$/),
+  /** The instance ID a run of this slug installs as. */
+  instanceId: z.string().regex(/^ins_[a-z0-9][a-z0-9-]{0,19}$/),
+  /** Until when a run holds it, ISO 8601, or null between runs. */
+  leaseUntil: z.iso.datetime().nullable(),
+});
+/** A reserved slug. */
+export type ExportedReservation = z.infer<typeof ExportedReservation>;
+
+/** The export's format version. A change that an importer couldn't read bumps it. */
+export const CONTROL_PLANE_EXPORT_VERSION = 1;
+
+/**
+ * Everything the store holds about operators, installations and slug reservations, for the one-time
+ * move into the admin's D1 (SCHO-263). Read-only, and served only over the site Worker's RPC
+ * entrypoint (`ControlPlaneExporter`), never over HTTP. The registry and Clever tables stay here:
+ * /clever/launch and /registry/v1 are still answered by this Worker.
+ */
+export const ControlPlaneExport = z.strictObject({
+  version: z.literal(CONTROL_PLANE_EXPORT_VERSION),
+  exportedAt: z.iso.datetime(),
+  operators: z.array(z.strictObject({
+    subject: z.string().min(1).max(256),
+    accountId: CommercialAccountId,
+    email: z.string().min(1).max(320),
+    firstSeenAt: z.iso.datetime(),
+    lastSeenAt: z.iso.datetime(),
+  })),
+  installations: z.array(z.strictObject({
+    /** Who installed it (their Access subject). */
+    operatorSubject: z.string().min(1).max(256),
+    installation: Installation,
+  })),
+  reservations: z.array(ExportedReservation),
+});
+/** The control plane's export. */
+export type ControlPlaneExport = z.infer<typeof ControlPlaneExport>;
+
 /** The tables, exported so tests and later migrations can name them. */
 export const TABLES = {
   operators: "control_plane_operators",
@@ -243,6 +287,33 @@ export class ControlPlaneStore {
         instanceId, String(operator.subject)).toArray();
       return owned.length === 0 ? { outcome: "refused", reason: "instance-not-confirmed" } as const : { outcome: "verified" } as const;
     });
+  }
+
+  /**
+   * A read-only snapshot of every operator, installation and slug reservation, in one transaction,
+   * for the admin's import (SCHO-263). Nothing is written.
+   */
+  exportSnapshot(): ControlPlaneExport {
+    const exportedAt = this.#now().toISOString();
+    return this.#tables.transact((sql) => ControlPlaneExport.parse({
+      version: CONTROL_PLANE_EXPORT_VERSION,
+      exportedAt,
+      operators: sql.exec(`SELECT ${OPERATOR_COLUMNS} FROM ${TABLES.operators} ORDER BY subject`).toArray().map((row) => {
+        const parsed = OperatorRow.parse(row);
+        return { subject: parsed.subject, accountId: parsed.account_id, email: parsed.email, firstSeenAt: parsed.first_seen_at, lastSeenAt: parsed.last_seen_at };
+      }),
+      installations: sql.exec(`SELECT instance_id, operator_subject, record FROM ${TABLES.installations} ORDER BY instance_id`).toArray().map((row) => ({
+        operatorSubject: String(row.operator_subject),
+        installation: parseStoredJson(Installation, row.record, `installation ${String(row.instance_id)}`),
+      })),
+      reservations: sql.exec(`SELECT slug, operator_subject, account_id, instance_id, lease_until FROM ${TABLES.reservations} ORDER BY slug`).toArray().map((row) => ({
+        slug: String(row.slug),
+        operatorSubject: String(row.operator_subject),
+        accountId: String(row.account_id),
+        instanceId: String(row.instance_id),
+        leaseUntil: typeof row.lease_until === "string" ? row.lease_until : null,
+      })),
+    }));
   }
 
   /** Answers once the store can read and write, for the site's health check. */

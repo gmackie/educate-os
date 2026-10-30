@@ -96,7 +96,7 @@ describe("guardians", () => {
     const { clientFor, student } = await northfield();
     renderConsole(await clientFor(student.externalIdentities[0]!.subject), "guardians");
     expect(await screen.findByRole("heading", { level: 2, name: "You're not an administrator of this school" })).toBeTruthy();
-    expect(screen.queryByRole("navigation", { name: "Admin sections" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Admin" })).toBeNull();
   });
 
   it("shows a sign-in the district has not added the ID the district reports for it", async () => {

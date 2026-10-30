@@ -2,7 +2,8 @@
 // every request that matches a file, and `run_worker_first` sends only these paths here first.
 //
 //   /healthz       the site's health check (ForgeGraph's healthCheckUrl): the store answers
-//   /app, /app/*   the operator console, behind Cloudflare Access, on educateos.io only
+//   /app, /app/*   the operator console, behind Cloudflare Access, on educateos.io only. With
+//                  ADMIN_URL set, a 302 to the hosted admin (SCHO-263), except the guided install
 //   /registry/*    the opt-in instance registry's heartbeats: signed by installations, no sign-in
 //   /clever/launch Clever portal launches, sent on to the registered district (SCHO-249), no sign-in
 //   /stripe/webhook Stripe's webhook deliveries for billing (SCHO-208): signed by Stripe, no sign-in
@@ -96,13 +97,27 @@ export interface ControlPlaneDeps {
    * installations (`CLEVER_LAUNCH_DISTRICTS`). Consulted only when the registry has no match.
    */
   cleverLaunchDistricts?: ReadonlyMap<string, string>;
+  /** Where a Clever user in no district is sent (`CLEVER_LAUNCH_UNAFFILIATED`). Unset refuses them. */
+  cleverLaunchUnaffiliated?: string;
   /** The guided install's release source and pinned trust. Without them, installing is unavailable. */
   releases?: { bucket: ReleaseBucket; trust: unknown };
   /** Keeps a streamed install running if the browser goes away mid-run. */
   waitUntil?: (promise: Promise<unknown>) => void;
   /** The Cloudflare API the guided install drives. Defaults to api.cloudflare.com. */
   cloudflareApi?: GuidedInstallDeps["cloudflareApi"];
+  /**
+   * Where the operator console moved (`ADMIN_URL`, SCHO-263). When set, every console path except
+   * {@link STAYS_ON_CONSOLE} answers a 302 here. Undefined keeps the console on educateos.io.
+   */
+  adminUrl?: string;
 }
+
+/**
+ * The console paths that stay on educateos.io when the console moves to the admin: the guided
+ * install, which runs inside this Worker with its release bucket and the Durable Object's slug
+ * reservations, and is linked to from the admin's Workspaces page.
+ */
+export const STAYS_ON_CONSOLE: readonly string[] = ["/app/install"];
 
 function respond(body: string, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(body, { status, headers: { ...PAGE_HEADERS, ...headers } });
@@ -147,6 +162,7 @@ async function route(request: Request, deps: ControlPlaneDeps): Promise<Response
       credentials: deps.clever,
       hostnameFor: async (cleverDistrictId) =>
         (await deps.store().cleverLaunchHostname(cleverDistrictId)) ?? deps.cleverLaunchDistricts?.get(cleverDistrictId),
+      ...(deps.cleverLaunchUnaffiliated === undefined ? {} : { unaffiliatedHostname: deps.cleverLaunchUnaffiliated }),
       fetch: deps.cleverFetch ?? ((input, init) => fetch(input, init)),
     });
   }
@@ -162,6 +178,11 @@ async function route(request: Request, deps: ControlPlaneDeps): Promise<Response
     }
   }
   if (pathname !== "/app" && !pathname.startsWith("/app/")) return deps.assets(request);
+  if (deps.adminUrl !== undefined && !STAYS_ON_CONSOLE.includes(pathname)) {
+    // A 302 for now, not a 308: the move can still be undone by unsetting ADMIN_URL, and browsers
+    // would keep a permanent redirect.
+    return new Response(null, { status: 302, headers: { location: deps.adminUrl, "cache-control": "no-store" } });
+  }
   if (url.origin !== CONSOLE_ORIGIN) {
     return new Response(null, { status: 308, headers: { location: `${CONSOLE_ORIGIN}${pathname}${url.search}` } });
   }

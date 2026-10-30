@@ -15,7 +15,7 @@ import {
   type VerifiedIdentity,
   type VerifiedPrincipal,
 } from "@educateos/contracts";
-import { createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@educateos/identity";
+import { confirmWorkshopUserLink, createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@educateos/identity";
 import { AcademicDirectory, assertSyncWritable, DIRECTORY_ENTITY_KINDS, isDistrictAdmin } from "@educateos/academics";
 import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule } from "@educateos/policy";
 import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@educateos/workspaces";
@@ -51,6 +51,13 @@ import { DiscussionService, studentPostView, type DiscussionScreening } from "@e
 // Quizzes (SCHO-191)
 import { QuizService } from "@educateos/quizzes";
 import { quizGrading } from "./quizzes.ts";
+// Devices (SCHO-261)
+import { DeviceCredentials, isDeviceApiPath, serveDeviceApi, type DeviceRecord } from "./devices.ts";
+import type { DeviceBody } from "./routes.ts";
+// Pairing (SCHO-261)
+import { CONNECT_PHONE_PATH, isPairApiPath, PairingRelay, type WebPrincipal } from "./pairing.ts";
+// Operations (SCHO-263)
+import { DistrictOps, isOpsApiPath, type OpsAiUsage, type OpsAnalyticsSource, type OpsReleaseInfo } from "./ops.ts";
 
 /**
  * Verifies a request's credential (a bearer token, a Cloudflare Access assertion) and returns the
@@ -161,6 +168,23 @@ export interface DistrictAppOptions {
    * unscreened, and teachers moderate them after (or approve each first, under pre-moderation).
    */
   discussionScreening?: DiscussionScreening;
+
+  // Devices (SCHO-261)
+  /**
+   * `DEVICE_TOKEN_SECRET`: the key the district MACs device access tokens with. Without it (or with
+   * one shorter than 32 characters) device sign-in is off, and `/api/m/*` answers 503.
+   */
+  deviceTokenSecret?: string;
+
+  // Operations (SCHO-263)
+  /** What the district says about the release it runs, on `/api/ops/health` and `/api/ops/releases`. */
+  release?: OpsReleaseInfo;
+  /**
+   * The Cloudflare analytics proxy behind `/api/ops/analytics` (`cloudflareAnalytics`), when the
+   * district holds a read-only analytics token. Without it that route answers 501
+   * `analytics-not-configured`.
+   */
+  opsAnalytics?: OpsAnalyticsSource;
 }
 
 /** Builds a roster source for a configured `rostering`, or says why there is none. */
@@ -184,7 +208,10 @@ export interface CommunicationJobs {
 export interface DistrictApp {
   /** The district. */
   readonly districtId: DistrictId;
-  /** Handles one HTTP request. Paths outside `/api/` answer `not-found`. */
+  /**
+   * Handles one HTTP request. Paths outside `/api/` answer `not-found`, except the pairing relay's
+   * `/connect-phone` page (SCHO-261).
+   */
   fetch(request: Request): Promise<Response>;
   /**
    * Handles one `/api` request as `principal`, whom the caller has already verified, instead of as
@@ -217,6 +244,16 @@ export interface DistrictApp {
   readonly communication: CommunicationJobs;
   /** The roster sync job (SCHO-203). Not on the `/api` surface. */
   readonly rostering: RosterJobs;
+  /**
+   * The device token service (SCHO-261): device registration for the pairing relay and the browser
+   * sign-in path, and revocation for administrators and operators. Not on the `/api` surface itself.
+   */
+  readonly devices: DeviceCredentials;
+  /**
+   * The signed operations API and its keyring (SCHO-263): `/api/ops/*` is served by `fetch`, the
+   * keyring by the `admin.*Ops*` routes.
+   */
+  readonly ops: DistrictOps;
 }
 
 /** The default `DistrictAppOptions.authority`: the OneRoster roster owns every directory record type. */
@@ -326,6 +363,52 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     ? undefined
     : new ArtifactsGitBackend({ plan: options.projects.plan, ledger: new InMemoryCredentialLedger() });
   const resolverFor = options.resolverFor ?? createDirectoryPrincipalResolver;
+  // Devices (SCHO-261)
+  const devices = new DeviceCredentials({
+    districtId,
+    store: stores.devices,
+    secret: options.deviceTokenSecret,
+    now,
+    isActivePrincipal: async (principalId) =>
+      (await stores.directory.load()).snapshot.principals.some((p) => p.id === principalId && p.status === "active"),
+  });
+
+  // Operations (SCHO-263): AI figures come from the district's own ledger, authoritative for budgets.
+  const aiUsage: OpsAiUsage = {
+    async month() {
+      const period = now().toISOString().slice(0, 7);
+      const events = (await ledger.usageEvents()).filter((event) => event.occurredAt.startsWith(period));
+      const report = await ledger.fundingReport();
+      let cost = 0n;
+      for (const event of events) cost += BigInt(event.chargedUsdNano);
+      return {
+        requests: events.length,
+        tokensIn: events.reduce((total, e) => total + e.inputTokens + e.cacheReadTokens + e.cacheWriteTokens, 0),
+        tokensOut: events.reduce((total, e) => total + e.outputTokens, 0),
+        cacheHits: events.filter((e) => e.cacheReadTokens > 0).length,
+        costUsdNanos: Number(cost),
+        ...(report.pools.length === 0 ? {} : { budgetUsdNanos: Number(BigInt(report.generativeAllocationUsdNano)) }),
+      };
+    },
+    async principalMonth(principalId) {
+      const period = now().toISOString().slice(0, 7);
+      let cost = 0n;
+      for (const event of await ledger.usageEvents()) {
+        if (event.principalId === principalId && event.occurredAt.startsWith(period)) cost += BigInt(event.chargedUsdNano);
+      }
+      return Number(cost);
+    },
+  };
+  const ops = new DistrictOps({
+    store: stores.ops,
+    directory: stores.directory,
+    devices,
+    authority,
+    release: options.release ?? {},
+    analytics: options.opsAnalytics,
+    ai: aiUsage,
+    now,
+  });
 
   /** The roster sync the head configuration revision sets up: its provider, settings and source, or why it cannot run. */
   async function rosterSyncSetup(): Promise<{ provider: string; settings?: RosterSyncSettings; source?: oneroster.RosterSource; reason?: string }> {
@@ -922,6 +1005,21 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       };
     },
     // Learning standards (SCHO-220)
+    "admin.workshopUserLinks": async (ctx) => {
+      await ctx.requireDistrict("read", "district");
+      return stores.workshopUserLinks.list();
+    },
+    // An administrator confirms that a Workshop account is a person (ADR-0003: never by email
+    // match). `confirmWorkshopUserLink` refuses anyone but a district administrator.
+    "admin.linkWorkshopUser": async (ctx, { body }) => {
+      await ctx.requireDistrict("read", "district");
+      const link = confirmWorkshopUserLink(ctx.snapshot, await stores.workshopUserLinks.list(), {
+        workshopUser: body.workshopUser, principalId: body.principalId,
+        confirmedBy: ctx.principal.principalId, confirmedAt: now().toISOString(),
+      });
+      await stores.workshopUserLinks.add(link);
+      return link;
+    },
     "admin.listStandards": async (ctx) => {
       await ctx.requireDistrict("list", "standards-release");
       return listStandards(catalog);
@@ -1169,6 +1267,9 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         grantsRevoked = (await services.workspaces.reconcileCourseGrants(ctx.caller)).revoked;
       } else {
         ({ principal, grantsRevoked } = await transitionPrincipal(services, ctx.caller, params.principalId, body.status));
+        // Devices (SCHO-261): leaving signs out their phones too. A roster sync that deactivates
+        // someone does not pass here; their devices are revoked on their next request instead.
+        await devices.revokePrincipal(params.principalId, { by: ctx.subject.principalId, reason: "principal-inactive" });
       }
       return { principal: authoringPrincipal((await stores.directory.load()).snapshot, principal, now()), grantsRevoked };
     },
@@ -1222,6 +1323,38 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "me.markNotificationsRead": (ctx, { body }) => communicationFor(ctx.decider).markRead(ctx.caller, body),
     "me.preferences": (ctx) => communicationFor(ctx.decider).preferences(ctx.caller),
     "me.updatePreferences": (ctx, { body }) => communicationFor(ctx.decider).setPreferences(ctx.caller, body.email),
+    // Devices (SCHO-261): a person's own devices only. Another's is not-found, as if it did not exist.
+    "me.devices": async (ctx) => ({ devices: (await devices.store.list(ctx.subject.principalId)).map(deviceBody) }),
+    "me.revokeDevice": async (ctx, { params }) => {
+      const device = await devices.store.get(params.deviceId);
+      if (device === undefined || device.principalId !== ctx.subject.principalId) throw new EducateOsError("not-found", "No such device.");
+      await devices.revoke(device.id, { by: ctx.subject.principalId, reason: "signed-out" });
+      return deviceBody((await devices.store.get(device.id))!);
+    },
+    "me.revokeAllDevices": async (ctx) => ({
+      revoked: await devices.revokePrincipal(ctx.subject.principalId, { by: ctx.subject.principalId, reason: "signed-out-everywhere" }),
+    }),
+    // Operations (SCHO-263): only a district administrator decides who may operate the district.
+    "admin.opsKeys": async (ctx) => {
+      await ctx.requireDistrict("configure", "capability-config");
+      return { keys: await ops.keys(ctx.snapshot) };
+    },
+    "admin.enrollOpsKey": async (ctx, { body }) => {
+      await ctx.requireDistrict("configure", "capability-config");
+      return ops.enroll(body, ctx.subject.principalId, ctx.snapshot);
+    },
+    "admin.setOpsKeyScopes": async (ctx, { params, body }) => {
+      await ctx.requireDistrict("configure", "capability-config");
+      return ops.setScopes(params.keyId, body.scopes, ctx.snapshot);
+    },
+    "admin.removeOpsKey": async (ctx, { params }) => {
+      await ctx.requireDistrict("configure", "capability-config");
+      return ops.remove(params.keyId, ctx.subject.principalId, ctx.snapshot);
+    },
+    "admin.opsAudit": async (ctx) => {
+      await ctx.requireDistrict("configure", "capability-config");
+      return { entries: await ops.audit() };
+    },
     "admin.previewDigest": async (ctx, { params }) => {
       // The preview shows what a guardian would be told about a child, so it is the decision of the
       // one who decides guardian relationships: a district administrator.
@@ -1322,6 +1455,23 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     },
   };
 
+  // Pairing (SCHO-261): the browser side resolves its caller exactly as `handle` does for `/api/me`.
+  const pairing = new PairingRelay({
+    store: stores.pairRooms,
+    devices,
+    now,
+    async resolveWeb(request): Promise<WebPrincipal | undefined> {
+      const identity = await options.verifyRequest(request);
+      if (identity === undefined) return undefined;
+      const { snapshot } = await stores.directory.load();
+      const resolved = await resolverFor(snapshot).resolve(identity).catch(async (error: unknown) => {
+        throw await withLinkRequest(error);
+      });
+      const displayName = snapshot.principals.find((p) => p.id === resolved.principalId)?.displayName ?? "";
+      return { principalId: resolved.principalId, kind: resolved.kind, displayName };
+    },
+  });
+
   // Guardians (ADR-0012, SCHO-188)
   const guardianRoutes = guardianHandlers<RequestContext>({ stores, invitationPage: options.guardianInvitationPage, now });
 
@@ -1374,6 +1524,16 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     const ctx = new RequestContext(correlationId, principal, snapshot, url.origin);
     const handler = (handlers[matched.name as keyof Handlers] ?? guardianRoutes[matched.name as GuardianRouteName]) as (ctx: RequestContext, input: unknown) => Promise<unknown>;
     return jsonResponse(await handler(ctx, input), spec.status ?? 200, correlationId);
+  }
+
+  async function serveAs(principal: VerifiedPrincipal, request: Request): Promise<Response> {
+    try {
+      return await respond(request, (correlationId) => handle(request, correlationId, principal));
+    } finally {
+      // A request refused before its body is read still holds the body open, and one that came
+      // over RPC (as the connector's does) keeps its stream, and the caller, waiting until it closes.
+      if (!request.bodyUsed) await request.body?.cancel();
+    }
   }
 
   /** Runs `serve` under a fresh correlation ID, answering whatever it throws as an error response. */
@@ -1432,18 +1592,22 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         );
       },
     },
+    devices,
+    ops,
     fetch(request) {
+      // Devices (SCHO-261): the device API answers only device credentials, never the request's own sign-in.
+      const { pathname } = new URL(request.url);
+      if (isDeviceApiPath(pathname)) {
+        return respond(request, () => serveDeviceApi(request, { credentials: devices, serveAs }));
+      }
+      // Pairing (SCHO-261): the relay checks its own credentials, the room secret or the web sign-in.
+      if (isPairApiPath(pathname)) return respond(request, () => pairing.serve(request));
+      // Operations (SCHO-263): the ops API answers only a signature from an enrolled admin key.
+      if (isOpsApiPath(pathname)) return respond(request, () => ops.serve(request));
+      if (pathname === CONNECT_PHONE_PATH) return pairing.connectPhone(request);
       return respond(request, async (correlationId) => await serveCalendarFeed(request, correlationId) ?? await handle(request, correlationId));
     },
-    async serveAs(principal, request) {
-      try {
-        return await respond(request, (correlationId) => handle(request, correlationId, principal));
-      } finally {
-        // A request refused before its body is read still holds the body open, and one that came
-        // over RPC (as the connector's does) keeps its stream, and the caller, waiting until it closes.
-        if (!request.bodyUsed) await request.body?.cancel();
-      }
-    },
+    serveAs,
   };
 }
 
@@ -1464,4 +1628,22 @@ function authoringPrincipalById(snapshot: DistrictDirectorySnapshot, principalId
 async function assignmentView(assessment: AssessmentService, caller: Caller, assignmentId: AssignmentId): Promise<AssignmentViewBody> {
   const { assignment, starterMaterials } = await assessment.getAssignment(caller, assignmentId);
   return { assignment, starterMaterials: starterMaterials.map(({ content: _stored, ...material }) => material) };
+}
+
+/** A device as Your devices shows it (SCHO-261): never its key or push token. */
+function deviceBody(device: DeviceRecord): DeviceBody {
+  return {
+    id: device.id,
+    label: device.label,
+    platform: device.platform,
+    model: device.model,
+    appVersion: device.appVersion,
+    createdAt: device.createdAt,
+    lastSeenAt: device.lastSeenAt,
+    lastCountry: device.lastCountry,
+    push: device.pushToken !== null,
+    status: device.status,
+    revokedAt: device.revokedAt,
+    revokedReason: device.revokedReason,
+  };
 }

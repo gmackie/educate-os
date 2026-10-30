@@ -1,0 +1,13 @@
+node_modules/
+.expo/
+dist/
+web-build/
+ios/
+android/
+*.jks
+*.p12
+*.mobileprovision
+credentials.json
+.env
+.env.*
+!*.example

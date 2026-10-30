@@ -22,8 +22,9 @@ function request(body: URLSearchParams, options?: {
   method?: string;
   mode?: string;
   destination?: string;
+  path?: string;
 }): Request {
-  return new Request(`${origin}/api/device-session/callback`, {
+  return new Request(`${origin}${options?.path ?? "/api/device-session/callback"}`, {
     method: options?.method ?? "POST",
     headers: {
       Origin: options?.origin ?? origin,
@@ -74,9 +75,13 @@ describe("device session callback", () => {
   });
 
   it.each([
-    ["mobile", state, "https://os.cloudflare.app/oauthredirect"],
-    ["desktop", `desktop-v1.49152.${"a".repeat(43)}`, "http://127.0.0.1:49152/oauthredirect"],
-  ])("redeems a %s transfer through the Worker route exactly once", async (_kind, attemptState, destination) => {
+    ["mobile", state, "https://mobile.educateos.io/oauthredirect", "/api/device-session/callback"],
+    ["desktop", `desktop-v1.49152.${"a".repeat(43)}`, "http://127.0.0.1:49152/oauthredirect",
+      "/api/device-session/callback"],
+    // A district origin mounts the Workshop under /ai, and the router forwards the prefix intact.
+    ["mobile (under /ai)", state, "https://mobile.educateos.io/oauthredirect",
+      "/ai/api/device-session/callback"],
+  ])("redeems a %s transfer through the Worker route exactly once", async (_kind, attemptState, destination, path) => {
     const user = env.TEST_USER.getByName(`device-session-route-${crypto.randomUUID()}`);
     await user.authenticateFromCfAccess("route-user@example.com", true);
     const key = await crypto.subtle.generateKey(
@@ -87,14 +92,14 @@ describe("device session callback", () => {
     const start = await user.stageDeviceSessionHandoff(publicKey, attemptState);
     const body = new URLSearchParams({ ...start, state: attemptState });
 
-    const response = await server.fetch(request(body), env, createExecutionContext());
+    const response = await server.fetch(request(body, { path }), env, createExecutionContext());
     expect(response.status).toBe(303);
     const callback = new URL(response.headers.get("Location")!);
     expect(callback.origin + callback.pathname).toBe(destination);
     expect(callback.searchParams.get("state")).toBe(attemptState);
     expect(callback.searchParams.get("ciphertext")).toBeTruthy();
 
-    const replay = await server.fetch(request(body), env, createExecutionContext());
+    const replay = await server.fetch(request(body, { path }), env, createExecutionContext());
     expect(replay.status).toBe(410);
   });
 
@@ -107,7 +112,7 @@ describe("device session callback", () => {
     expect(consume).toHaveBeenCalledWith(userDoId, state, ticket);
     expect(response.status).toBe(303);
     const callback = new URL(response.headers.get("Location")!);
-    expect(callback.origin + callback.pathname).toBe("https://os.cloudflare.app/oauthredirect");
+    expect(callback.origin + callback.pathname).toBe("https://mobile.educateos.io/oauthredirect");
     expect(Object.fromEntries(callback.searchParams)).toEqual({
       cfos_callback: "install-connected",
       state,

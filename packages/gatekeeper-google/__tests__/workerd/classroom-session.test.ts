@@ -2,12 +2,15 @@ import { RpcStub, RpcTarget } from "cloudflare:workers";
 import { ActionJournal } from "@gadgets/gatekeeper-kit/actions";
 import type {
   ActionDescription, ApprovalQueue, GitCache, HookController, HookDescription,
-  ObservationDescription,
+  GatekeeperUserVerifier, ObservationDescription,
 } from "@gadgets/workshop-shared/gatekeeper";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CLASSROOM_ACTIONS, type ClassroomAction } from "../../src/classroom-actions";
+import {
+  CLASSROOM_ACTIONS, CLASSROOM_STUDENT_ACTIONS, type ClassroomAction, type ClassroomStudentAction,
+} from "../../src/classroom-actions";
 import { ClassroomApi } from "../../src/classroom-api";
 import { GoogleClassroomCourseSessionImpl } from "../../src/classroom";
+import { GoogleClassroomStudentGatekeeperImpl, GoogleClassroomStudentSessionImpl } from "../../src/classroom-student";
 import { FakeClassroom } from "../classroom-fixture";
 import { FakeKv } from "../fake-kv";
 
@@ -92,7 +95,14 @@ describe("Google Classroom course session", () => {
     expect((await session.listCourseWork()).map(({ id }) => id)).toEqual(["201", "203", "500"]);
   });
 
+  it("returns no submissions for a committed draft without asking Google's submissions endpoint", async () => {
+    expect(await session.listSubmissions("203")).toEqual([]);
+    expect(classroom.requests.some(r => r.path.endsWith("/studentSubmissions"))).toBe(false);
+    expect(queue.observations).toHaveLength(1);
+  });
+
   it("refuses coursework another project created, without asking Google to change it", async () => {
+    classroom.courseWork.find(work => work.id === "202")!.state = "DRAFT";
     await expect(session.getCourseWork("202")).rejects.toThrow(/only the coursework it created/);
     await expect(session.listSubmissions("202")).rejects.toThrow(/only the coursework it created/);
     await expect(session.setGrade("202", "Cg4Isub9", 90)).rejects.toThrow(/only the coursework it created/);
@@ -130,4 +140,102 @@ describe("Google Classroom course session", () => {
       assignedGrade: 88.75,
     }]);
   });
+});
+
+describe("Google Classroom student session", () => {
+  it("lists published coursework and returns only the connected student's result", async () => {
+    let studentJournal = new ActionJournal<ClassroomStudentAction>(new FakeKv(), { namespace: "classroom-student" });
+    let studentActions = CLASSROOM_STUDENT_ACTIONS.bind(studentJournal, { api: new ClassroomApi(async () => "token"), courseId: "101" });
+    let studentQueue = new TestApprovalQueue();
+    let studentApi = new ClassroomApi(async () => "token");
+    let session = new GoogleClassroomStudentSessionImpl(
+      studentApi, "101", new RpcStub<ApprovalQueue>(studentQueue), studentActions);
+
+    expect((await session.listCourseWork()).map(({ id, state }) => ({ id, state })))
+      .toEqual([{ id: "201", state: "PUBLISHED" }, { id: "202", state: "PUBLISHED" }]);
+    classroom.submissions[0].assignedGrade = 85;
+    let own = await session.getMySubmission("201");
+    expect(own).toMatchObject({ courseWorkId: "201", state: "TURNED_IN" });
+    expect(JSON.stringify(own)).not.toMatch(/userId|assignedGrade|draftGrade|Classmate response/);
+    expect(studentQueue.observations).toHaveLength(2);
+  });
+
+  it("submits an approval-backed turn-in only for a created own submission", async () => {
+    classroom.submissions[0].state = "CREATED";
+    let studentApi = new ClassroomApi(async () => "token");
+    let studentJournal = new ActionJournal<ClassroomStudentAction>(new FakeKv(), { namespace: "classroom-student" });
+    let studentQueue = new TestApprovalQueue();
+    let queueStub = new RpcStub<ApprovalQueue>(studentQueue);
+    let studentActions = CLASSROOM_STUDENT_ACTIONS.bind(studentJournal, { api: studentApi, courseId: "101" });
+    let session = new GoogleClassroomStudentSessionImpl(studentApi, "101", queueStub, studentActions);
+
+    await session.turnIn("201");
+    expect(studentQueue.submitted).toHaveLength(1);
+    expect(classroom.requests.some(request => request.method === "POST")).toBe(false);
+    await studentActions.apply(1);
+    expect(classroom.submissions[0].state).toBe("TURNED_IN");
+    expect(classroom.requests.at(-1)).toMatchObject({
+      method: "POST", path: "/courses/101/courseWork/201/studentSubmissions/Cg4Isub1:turnIn",
+    });
+  });
+
+  it("does not let a teacher use the student capability or share a student's private session", async () => {
+    classroom.authenticatedStudentId = "1001";
+    let studentApi = new ClassroomApi(async () => "token");
+    let studentJournal = new ActionJournal<ClassroomStudentAction>(new FakeKv(), { namespace: "classroom-student" });
+    let studentQueue = new TestApprovalQueue();
+    let queueStub = new RpcStub<ApprovalQueue>(studentQueue);
+    let studentActions = CLASSROOM_STUDENT_ACTIONS.bind(studentJournal, { api: studentApi, courseId: "101" });
+    let session = new GoogleClassroomStudentSessionImpl(studentApi, "101", queueStub, studentActions);
+    await expect(session.listCourseWork()).rejects.toThrow(/not a student/);
+    await expect(GoogleClassroomStudentGatekeeperImpl.prototype.addObserver(
+      "collaborator", new RpcStub(new TestApprovalQueue()) as unknown as Fetcher<GatekeeperUserVerifier>))
+      .rejects.toThrow(/cannot be shared/);
+    expect(classroom.requests.some(request => request.path.endsWith("/courseWork"))).toBe(false);
+  });
+});
+
+describe("Classroom Plus session", () => {
+  it("audits reads and queues rubric creation before any write", async () => {
+    expect(await session.getGradingPeriodSettings()).toEqual({ gradingPeriods: [] });
+    expect(await session.listRubrics("201")).toEqual([]);
+    expect(queue.observations.map(o => o.title)).toEqual(["Read Classroom grading periods", "Read Classroom rubrics"]);
+    await session.createRubric("201", { criteria: [{ title: "Evidence", levels: [{ title: "Supported", points: 10 }] }] });
+    expect(writes()).toEqual([]);
+    expect(queue.submitted.at(-1)?.title).toBe("Create Google Classroom rubric");
+    await actions.apply(journal.listPending()[0].id);
+    expect(await session.listRubrics("201")).toHaveLength(1);
+  });
+
+  it("refuses foreign-project rubrics and invalid IDs before submission", async () => {
+    const draft = { criteria: [{ title: "Evidence", levels: [{ title: "Supported", points: 10 }] }] };
+    await expect(session.createRubric("202", draft)).rejects.toThrow(/not created/);
+    await expect(session.listRubrics("../201")).rejects.toThrow(/Invalid/);
+    expect(queue.submitted).toEqual([]);
+    expect(writes()).toEqual([]);
+  });
+});
+
+it("queues Plus replacements in the bound course and applies only the selected decision", async () => {
+  const update = { criteria: [{ id: "c1", title: "Evidence", levels: [{ id: "l1", title: "Supported", points: 10 }] }] };
+  classroom.rubrics = [{ id: "901", courseWorkId: "201", ...update }];
+  await session.updateRubric("201", "901", update);
+  await session.updateGradingPeriodSettings({ gradingPeriods: [], applyToExistingCoursework: false });
+  expect(writes()).toEqual([]);
+  expect(queue.submitted.map(s => s.title)).toEqual(["Replace Google Classroom rubric criteria", "Replace Google Classroom grading periods"]);
+  await actions.apply(journal.listPending()[0].id);
+  expect(writes().map(r => r.path)).toEqual(["/courses/101/courseWork/201/rubrics/901"]);
+  expect(journal.listPending()).toHaveLength(1);
+  await session.deleteRubric("201", "901");
+  expect(classroom.rubrics).toHaveLength(1);
+});
+
+it("refuses foreign rubric mutations, path injection and malformed period ranges before queueing", async () => {
+  const update = { criteria: [{ title: "Evidence", levels: [{ title: "Supported", points: 10 }] }] };
+  await expect(session.updateRubric("202", "901", update)).rejects.toThrow(/not created/);
+  await expect(session.deleteRubric("202", "901")).rejects.toThrow(/not created/);
+  await expect(session.deleteRubric("201", "../901")).rejects.toThrow(/Invalid/);
+  await expect(session.updateGradingPeriodSettings({ gradingPeriods: [{ title: "Invalid", startDate: { year: 2026, month: 12, day: 1 }, endDate: { year: 2026, month: 9, day: 1 } }], applyToExistingCoursework: false })).rejects.toThrow(/chronological/);
+  expect(queue.submitted).toEqual([]);
+  expect(writes()).toEqual([]);
 });

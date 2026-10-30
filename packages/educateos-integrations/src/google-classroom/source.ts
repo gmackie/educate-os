@@ -52,6 +52,12 @@ export const ClassroomRosterConfig = z.strictObject({
   term: z.strictObject({ sourcedId: SourcedId, title: z.string().min(1).max(200), startDate: IsoDate, endDate: IsoDate }),
   /** The schools, at least one. */
   schools: z.array(ClassroomSchool).min(1).max(500),
+  /**
+   * Whether to read every active course or only courses explicitly listed under a school.
+   * Use `listed` when several districts share a Workspace domain. Unlisted courses and their
+   * rosters are excluded, including when a default school is configured.
+   */
+  courseSelection: z.enum(["all", "listed"]).default("all"),
   /** The school of a course no school lists. Without one, such a course is an error that blocks apply. */
   defaultSchool: SourcedId.optional(),
   /**
@@ -122,6 +128,7 @@ async function readClassroom(client: GoogleClassroomClient, config: ClassroomRos
   const wantsAliases = config.schools.some((s) => s.courses.some((key) => key.includes(":")));
   const schoolOf = new Map<string, string | undefined>();
   const conflicting = new Set<string>();
+  const selected = new Set<string>();
   for (const course of sorted) {
     const named = new Set<string>();
     const byId = schoolOfKey.get(course.id);
@@ -132,6 +139,7 @@ async function readClassroom(client: GoogleClassroomClient, config: ClassroomRos
         if (school !== undefined) named.add(school);
       }
     }
+    if (named.size > 0) selected.add(course.id);
     if (named.size > 1) conflicting.add(course.id);
     schoolOf.set(course.id, named.size === 1 ? [...named][0] : named.size === 0 ? config.defaultSchool : undefined);
   }
@@ -148,6 +156,7 @@ async function readClassroom(client: GoogleClassroomClient, config: ClassroomRos
   };
 
   for (const course of sorted) {
+    if (config.courseSelection === "listed" && !selected.has(course.id)) continue;
     const school = schoolOf.get(course.id);
     const courseSourcedId = await catalogCourseId(school ?? "", course.name);
     if (school === undefined) {

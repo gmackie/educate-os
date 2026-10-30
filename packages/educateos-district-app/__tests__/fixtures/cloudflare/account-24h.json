@@ -1,0 +1,44 @@
+{
+  "data": {
+    "viewer": {
+      "accounts": [
+        {
+          "workers": [
+            {
+              "sum": { "requests": 18342, "errors": 27 },
+              "quantiles": { "cpuTimeP50": 1840.5, "cpuTimeP99": 23110 },
+              "avg": { "sampleInterval": 1 },
+              "dimensions": { "scriptName": "northfield-district" }
+            },
+            {
+              "sum": { "requests": 9210, "errors": 3 },
+              "quantiles": { "cpuTimeP50": 912, "cpuTimeP99": 8800 },
+              "avg": { "sampleInterval": 10 },
+              "dimensions": { "scriptName": "northfield-router" }
+            },
+            {
+              "sum": { "requests": 412, "errors": 0 },
+              "quantiles": { "cpuTimeP50": 3100, "cpuTimeP99": 41000 },
+              "avg": { "sampleInterval": 1 },
+              "dimensions": { "scriptName": "northfield-ai-guard" }
+            }
+          ],
+          "series": [
+            { "sum": { "requests": 610, "errors": 1 }, "dimensions": { "datetimeHour": "2026-10-28T10:00:00Z" } },
+            { "sum": { "requests": 402, "errors": 0 }, "dimensions": { "datetimeHour": "2026-10-28T10:00:00Z" } },
+            { "sum": { "requests": 1288, "errors": 4 }, "dimensions": { "datetimeHour": "2026-10-28T11:00:00Z" } },
+            { "sum": { "requests": 977, "errors": 2 }, "dimensions": { "datetimeHour": "2026-10-28T09:00:00Z" } }
+          ],
+          "durableObjects": [
+            { "sum": { "requests": 15502 } },
+            { "sum": { "requests": 301 } }
+          ],
+          "durableObjectStorage": [
+            { "max": { "storedBytes": 48213504 }, "dimensions": { "date": "2026-10-28" } }
+          ]
+        }
+      ]
+    }
+  },
+  "errors": null
+}

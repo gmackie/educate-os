@@ -174,6 +174,22 @@ message.addAttachment(file);
     expect(compileAgentTypes(source("classroom-types.txt"))).toEqual([]);
   });
 
+  it("keeps the student Classroom capability free of teacher-only methods", () => {
+    const studentTypes = source("classroom-student-types.txt");
+    expect(compileAgentTypes(studentTypes + `
+declare const student: GoogleClassroomStudentSession;
+student.listCourseWork();
+student.getMySubmission("123");
+student.turnIn("123");
+// @ts-expect-error A student connection cannot read the course roster.
+student.getRoster();
+// @ts-expect-error A student connection cannot read classmates' submissions.
+student.listSubmissions("123");
+// @ts-expect-error A student connection cannot read or manage teacher grades.
+student.setGrade("123", "456", 10);
+`)).toEqual([]);
+  });
+
   it.each([
     ["vendor", vendorBundle, sheetsBundle],
     ["Drive", driveBundle, () => source("sheets-read-types.txt")],

@@ -117,11 +117,16 @@ async function describeContext(context: Context): Promise<AiCallMessage[]> {
 
 /** How long a guard may take to decide before the call is denied or its response withheld. */
 const GUARD_DECISION_TIMEOUT_MS = 15_000;
+// A cold isolate sends the full conversation again. Input screening may check many messages in
+// sequence; the output check sees only one response. Keep both bounded, without skipping checks.
+const GUARD_INPUT_TIMEOUT_MS = 60_000;
 
 // Settles with the guard's decision, or rejects once the call is aborted or the guard takes longer
-// than GUARD_DECISION_TIMEOUT_MS, so a hung guard can neither stall a turn nor outlive its Stop.
-function decisionWithin<T>(decision: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
-  let deadline = AbortSignal.timeout(GUARD_DECISION_TIMEOUT_MS);
+// than its deadline, so a hung guard can neither stall a turn nor outlive its Stop.
+function decisionWithin<T>(
+    decision: Promise<T>, signal: AbortSignal | undefined,
+    timeoutMs = GUARD_DECISION_TIMEOUT_MS): Promise<T> {
+  let deadline = AbortSignal.timeout(timeoutMs);
   let stop = signal ? AbortSignal.any([signal, deadline]) : deadline;
   return new Promise((resolve, reject) => {
     if (stop.aborted) return reject(stop.reason);
@@ -150,7 +155,7 @@ async function admit(
   let decision: AiCallDecision;
   try {
     decision = await decisionWithin(guard.beforeModelCall(
-        { ...scope, ...call, callId, logicalRequestId, newMessages }), signal);
+        { ...scope, ...call, callId, logicalRequestId, newMessages }), signal, GUARD_INPUT_TIMEOUT_MS);
   } catch (error) {
     logger.error("AI call guard failed; denying the call", {
       event: "ai_call_guard.before.failed", callId, callSite: scope.callSite, error,

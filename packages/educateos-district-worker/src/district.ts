@@ -4,15 +4,22 @@
 // Durable Object shell around it.
 import type { JWTVerifyGetKey } from "jose";
 import { AcademicDirectory } from "@educateos/academics";
+import { checkDirectoryIntegrity, DistrictDirectorySnapshot } from "@educateos/contracts";
 import type { ImportFetch } from "@educateos/content-studio";
-import { createDirectoryPrincipalResolver } from "@educateos/identity";
+import {
+  createAccessSignInResolver,
+  createDirectoryPrincipalResolver,
+  matchEmailKeyedUsers,
+  type AccessSignInResolution,
+  type EmailKeyedUserMatch,
+} from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
-import { authorityFor, createDistrictApp, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
-import { clever } from "@educateos/integrations";
+import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
+import { clever, googleclassroom } from "@educateos/integrations";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
 import { accessAudiences, accessRequestVerifier } from "./access.ts";
-import { readDistrictWorkerConfig } from "./config.ts";
+import { readDistrictWorkerConfig, type DistrictWorkerConfig } from "./config.ts";
 // Communication (SCHO-189)
 import { cloudflareEmailSender, type SendEmailBinding } from "./mail.ts";
 // LTI 1.3 Tool (SCHO-177)
@@ -26,6 +33,24 @@ export interface District {
   tools: SchoolToolService;
   /** The district's LTI 1.3 Tool, when the deployment names its origin (SCHO-177). */
   lti: DistrictLti | undefined;
+  /** Who a Workshop sign-in is, for the Workshop's `PRINCIPAL_RESOLVER` (SCHO-259). */
+  principals: DistrictPrincipals;
+}
+
+/**
+ * The Workshop's principal resolver seam over the district directory as it stands (SCHO-259), so
+ * the Workshop on the district's origin names each person exactly as the district does: by their
+ * Access identity's link, never by email.
+ */
+export interface DistrictPrincipals {
+  /**
+   * The principal a verified Access sign-in (`issuer`, `subject`, and `email`, which is ignored) is
+   * linked to, or `unauthenticated`: the school has not set this person up. Rejects only when the
+   * directory cannot answer (it fails its integrity checks).
+   */
+  resolveAccessSignIn(signIn: unknown): Promise<AccessSignInResolution>;
+  /** Matches the Workshop's email-keyed users to the district's people, for its one-time migration. */
+  matchEmailKeyedUsers(users: unknown): Promise<EmailKeyedUserMatch[]>;
 }
 
 /** The Worker's settings a district starts from: its vars, as text. */
@@ -40,6 +65,21 @@ export interface DistrictSettings {
   ltiToolOrigin?: string | undefined;
   /** `CLEVER_DISTRICT_TOKEN`, the district-app token Clever issued for the district (SCHO-203). Without it no Clever roster syncs. */
   cleverDistrictToken?: string | undefined;
+  /** `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY`, a JSON service-account key with district-authorized DWD. */
+  classroomServiceAccountKey?: string | undefined;
+  /** `DEVICE_TOKEN_SECRET`, the key device access tokens are MACed with (SCHO-261). Without it no device signs in. */
+  deviceTokenSecret?: string | undefined;
+  // Operations (SCHO-263)
+  /** `CF_ANALYTICS_TOKEN`, the read-only Cloudflare token `/api/ops/analytics` reads with. Without it analytics is 501. */
+  analyticsToken?: string | undefined;
+  /** `CF_ACCOUNT_ID`, the account the analytics token reads. */
+  analyticsAccountId?: string | undefined;
+  /** `ANALYTICS_SCRIPTS`, the district's Worker names, comma-separated. */
+  analyticsScripts?: string | undefined;
+  /** `ANALYTICS_ZONE_TAG`, the district's zone. Optional. */
+  analyticsZoneTag?: string | undefined;
+  /** The release the district runs: `SCHOOL_MANIFEST`'s `release`, else the Worker's version tag. */
+  releaseVersion?: string | undefined;
 }
 
 /** What a district reaches outside its storage. */
@@ -56,11 +96,44 @@ export interface DistrictSeams {
   platformFetch?: typeof fetch;
   /** The fetch roster syncs reach their provider with (SCHO-203). Defaults to the global fetch. */
   rosterFetch?: typeof fetch;
+  /** The fetch the analytics proxy reaches Cloudflare's API with (SCHO-263). Defaults to the global fetch. */
+  analyticsFetch?: (request: Request) => Promise<Response>;
 }
 
 /** The district ID `DISTRICT_CONFIG` names, which its Durable Object is named by. */
 export function configuredDistrictId(config: string | undefined): string {
   return readDistrictWorkerConfig(config).directory.district.id;
+}
+
+/**
+ * Builds a Clever or Classroom roster source using deployment credentials. Other providers
+ * return an explicit unavailable reason; credentials never come from configuration revisions.
+ */
+export function workerRosterSource(
+  token: string | undefined,
+  rosterFetch: typeof fetch,
+  classroom?: { config: NonNullable<DistrictWorkerConfig["classroom"]>; key: string | undefined },
+): RosterSourceFactory {
+  return (rostering) => {
+    if (rostering.provider === "google-classroom") {
+      if (classroom === undefined) return { reason: "no Classroom connection is configured" };
+      if (!classroom.key) return { reason: "no GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY secret is set" };
+      const tokens = googleclassroom.serviceAccountTokens({
+        key: classroom.key,
+        scopes: classroom.config.rosterScopes === "read-write"
+          ? googleclassroom.CLASSROOM_ROSTER_SCOPES_READ_WRITE
+          : googleclassroom.CLASSROOM_ROSTER_SCOPES,
+        fetch: rosterFetch,
+      });
+      return { source: googleclassroom.classroomRosterSource(new googleclassroom.GoogleClassroomClient({
+        tokens, admin: classroom.config.admin, fetch: rosterFetch,
+      }), classroom.config.roster) };
+    }
+    if (rostering.provider !== "clever") return { reason: `the district Worker has no roster source for ${rostering.provider}` };
+    if (rostering.clever === undefined) return { reason: "the roster names no Clever district" };
+    if (token === undefined || token === "") return { reason: "no CLEVER_DISTRICT_TOKEN secret is set" };
+    return { source: clever.cleverRosterSource(new clever.CleverDataClient({ connection: rostering.clever, token, fetch: rosterFetch })) };
+  };
 }
 
 /**
@@ -70,22 +143,20 @@ export function configuredDistrictId(config: string | undefined): string {
  * surface and the gatekeeper's `authenticate` sign in through Cloudflare Access and resolve the
  * identity through the directory as it stands, so they cannot disagree about who a caller is.
  */
-/**
- * The roster sources the district Worker can build (SCHO-203): a Clever roster read with the
- * district's token. OneRoster REST is not wired into the Worker yet, so any other provider says so.
- */
-export function workerRosterSource(token: string | undefined, rosterFetch: typeof fetch): RosterSourceFactory {
-  return (rostering) => {
-    if (rostering.provider !== "clever") return { reason: `the district Worker syncs a Clever roster only, not ${rostering.provider}` };
-    if (rostering.clever === undefined) return { reason: "the roster names no Clever district" };
-    if (token === undefined || token === "") return { reason: "no CLEVER_DISTRICT_TOKEN secret is set" };
-    return { source: clever.cleverRosterSource(new clever.CleverDataClient({ connection: rostering.clever, token, fetch: rosterFetch })) };
-  };
-}
-
 export async function startDistrict(storage: DistrictSqlStorage, settings: DistrictSettings, seams: DistrictSeams): Promise<District> {
   const config = readDistrictWorkerConfig(settings.config);
   const stores = durableDistrictStores(storage, config.directory);
+  if (config.additionalTrustedIssuers !== undefined) {
+    const { snapshot, version } = await stores.directory.load();
+    const trustedIssuers = [...new Set([...snapshot.district.trustedIssuers, ...config.additionalTrustedIssuers])];
+    if (JSON.stringify(snapshot.district.trustedIssuers) !== JSON.stringify(trustedIssuers)) {
+      const next = DistrictDirectorySnapshot.parse({ ...snapshot, district: { ...snapshot.district, trustedIssuers } });
+      if (checkDirectoryIntegrity(next).length > 0) {
+        throw new Error("Deployment issuer trust would invalidate existing district identity links.");
+      }
+      await stores.directory.commit(next, version);
+    }
+  }
   const verifyRequest = accessRequestVerifier({
     issuer: settings.accessIssuer ?? "",
     audiences: accessAudiences(settings.accessAudiences),
@@ -93,6 +164,12 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }),
   });
   const authority = authorityFor(config.authority);
+  const analytics = analyticsSettings({
+    CF_ANALYTICS_TOKEN: settings.analyticsToken,
+    CF_ACCOUNT_ID: settings.analyticsAccountId,
+    ANALYTICS_SCRIPTS: settings.analyticsScripts,
+    ANALYTICS_ZONE_TAG: settings.analyticsZoneTag,
+  });
   const app = await createDistrictApp({
     stores,
     verifyRequest,
@@ -100,7 +177,8 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(seams.onUnreadableConfigRevision === undefined ? {} : { onUnreadableConfigRevision: seams.onUnreadableConfigRevision }),
     authority,
     // Scheduled roster sync (SCHO-203)
-    rosterSource: workerRosterSource(settings.cleverDistrictToken, seams.rosterFetch ?? ((input, init) => fetch(input, init))),
+    rosterSource: workerRosterSource(settings.cleverDistrictToken, seams.rosterFetch ?? ((input, init) => fetch(input, init)),
+      config.classroom === undefined ? undefined : { config: config.classroom, key: settings.classroomServiceAccountKey }),
     ...(config.rosterServicePrincipalId === undefined ? {} : { rosterServicePrincipalId: config.rosterServicePrincipalId }),
     ...(config.fundingPools === undefined ? {} : { fundingPools: config.fundingPools }),
     ...(config.aiMonthlyDistrictCapUsdNano === undefined ? {} : { aiMonthlyDistrictCapUsdNano: config.aiMonthlyDistrictCapUsdNano }),
@@ -114,6 +192,13 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       ? {}
       : { mail: cloudflareEmailSender(seams.sendEmail, { from: config.email.from, fromName: config.email.fromName }) }),
     ...(config.email?.appUrl === undefined ? {} : { appUrl: config.email.appUrl }),
+    // Devices (SCHO-261)
+    ...(settings.deviceTokenSecret === undefined ? {} : { deviceTokenSecret: settings.deviceTokenSecret }),
+    // Operations (SCHO-263): analytics only with a token. The global fetch is bound, as workerd requires.
+    release: { version: settings.releaseVersion },
+    ...(analytics === undefined ? {} : {
+      opsAnalytics: cloudflareAnalytics(analytics, { fetch: seams.analyticsFetch ?? fetch.bind(globalThis), now: () => new Date() }),
+    }),
   });
 
   const directory = new AcademicDirectory({ store: stores.directory, authority, authorizer: app.engine });
@@ -147,5 +232,17 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       toolOrigin: settings.ltiToolOrigin,
       platformFetch: seams.platformFetch ?? ((input, init) => fetch(input, init)),
     });
-  return { app, tools, lti };
+  // The same issuer and Clever setting the district's own sign-in reads, so the two agree. The
+  // seam carries no Clever claims, so a Clever district resolves no Workshop sign-in this way.
+  const access = { issuer: settings.accessIssuer ?? "", ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }) };
+  const principals: DistrictPrincipals = {
+    async resolveAccessSignIn(signIn) {
+      const directory = (await stores.directory.load()).snapshot;
+      return createAccessSignInResolver({ directory, access }).resolveAccessSignIn(signIn);
+    },
+    async matchEmailKeyedUsers(users) {
+      return matchEmailKeyedUsers((await stores.directory.load()).snapshot, users);
+    },
+  };
+  return { app, tools, lti, principals };
 }

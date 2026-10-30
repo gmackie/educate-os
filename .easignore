@@ -1,0 +1,21 @@
+# EAS builds only the standalone native app, not the Workers monorepo.
+/*
+!/apps
+/apps/*
+!/apps/mobile
+/apps/mobile/node_modules
+/apps/mobile/.expo
+/apps/mobile/dist
+/apps/mobile/web-build
+/apps/mobile/ios
+/apps/mobile/android
+/apps/mobile/.env
+/apps/mobile/.env.*
+/apps/mobile/credentials.json
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.p8
+**/*.mobileprovision
+
+/apps/mobile/app-links

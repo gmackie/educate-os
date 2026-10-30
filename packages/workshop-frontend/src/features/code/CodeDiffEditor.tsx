@@ -16,7 +16,7 @@ import { codeEditorTheme, monoFont } from './codeTheme'
 import { buildDiffModel, type DiffStatus } from './diff/diffModel'
 import { diffRenderExtension, setDiffRender } from './diff/diffRenderer'
 import { getLanguage } from './getLanguage'
-import { useTheme } from '../../ThemeContext'
+import { useTheme } from '@gadgets/ui/theme'
 import './CodeDiffEditor.css'
 
 /**

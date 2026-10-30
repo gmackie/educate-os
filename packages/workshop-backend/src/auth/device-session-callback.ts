@@ -1,6 +1,6 @@
 import { isDeviceHandoffState, type DeviceSessionHandoff } from "./device-session-handoff.js";
 
-const CALLBACK_URL = "https://os.cloudflare.app/oauthredirect";
+const CALLBACK_URL = "https://mobile.educateos.io/oauthredirect";
 const LOWER_HEX_64 = /^[0-9a-f]{64}$/;
 
 type ConsumeDeviceHandoff = (

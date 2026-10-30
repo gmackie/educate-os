@@ -4,6 +4,7 @@
 // stores. Everything administrators change later (configuration, funding allocations, the roster)
 // is stored in the district's Durable Object, not here.
 import { z } from "zod";
+import { googleclassroom } from "@educateos/integrations";
 import { DistrictDirectorySnapshot, PrincipalId } from "@educateos/contracts";
 import { AuthoritySetting } from "@educateos/district-app";
 import { CloudflareAccountFacts, FundingPoolSet, GovernedModel, UsdNano } from "@educateos/ai-governance";
@@ -17,6 +18,12 @@ export const DistrictWorkerConfig = z.strictObject({
    * directory this is ignored, apart from the district's ID, which must still match it.
    */
   directory: DistrictDirectorySnapshot,
+  /**
+   * Deployment-controlled issuers to add to an existing directory at startup. Existing trust
+   * and identity links are preserved; removing this setting does not revoke persisted trust.
+   * This does not change Access JWT verification or create identity links.
+   */
+  additionalTrustedIssuers: z.array(z.url({ protocol: /^https$/ })).min(1).max(100).optional(),
   /**
    * Which system owns each directory record type: `"oneroster"` (the default: the roster owns
    * every type), `"local"` (EducateOS owns every type, for a district with no roster, such as a
@@ -43,6 +50,15 @@ export const DistrictWorkerConfig = z.strictObject({
    * grant. Without it the hourly roster sync does not run; an administrator can still run one.
    */
   rosterServicePrincipalId: PrincipalId.optional(),
+  /** Classroom DWD connection. The private key is a Worker secret, never configuration. */
+  classroom: z.strictObject({
+    /** Workspace administrator the roster reads act as. */
+    admin: z.email(),
+    /** Course selection, schools, term and allowed domains for this district. */
+    roster: googleclassroom.ClassroomRosterConfig,
+    /** Match the exact scopes delegated by the Workspace administrator. */
+    rosterScopes: z.enum(["readonly", "read-write"]).default("readonly"),
+  }).optional(),
   /** The district's AI funding pools. Defaults to none, so no AI request is funded. */
   fundingPools: FundingPoolSet.optional(),
   /** The district's monthly cap on its course and personal pools' allocations together. */

@@ -14,7 +14,7 @@ import type {
   GatekeeperAppThemeReceiver,
 } from '@gadgets/workshop-shared/theme'
 import { createRateLimitedCapability } from './rateLimitedCapability'
-import { useTheme } from './ThemeContext'
+import { useTheme } from '@gadgets/ui/theme'
 import { useServerConfig } from './ServerConfigContext'
 import { forwardTrustedFrameError } from './errorReporting'
 import { useAuthenticatedApi } from './AuthContext'

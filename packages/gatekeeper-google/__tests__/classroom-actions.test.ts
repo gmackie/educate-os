@@ -89,6 +89,7 @@ describe("Classroom grade passback", () => {
     await actions.apply(id);
 
     expect(classroom.requests.map(({ method, path }) => `${method} ${path}`)).toEqual([
+      "GET /courses/101/courseWork/201/studentSubmissions/Cg4Isub1",
       "PATCH /courses/101/courseWork/201/studentSubmissions/Cg4Isub1",
       "POST /courses/101/courseWork/201/studentSubmissions/Cg4Isub1:return",
     ]);
@@ -122,4 +123,54 @@ describe("Classroom grade passback", () => {
     await actions.apply(id);
     expect(classroom.submissions[0]).toMatchObject({ assignedGrade: 92.5, state: "RETURNED" });
   });
+});
+
+
+describe("Classroom rubric approval", () => {
+  const draft = { criteria: [{ title: "Evidence", levels: [{ title: "Supported", points: 10 }] }] };
+  it("writes only after approval, and never repeats an uncertain creation", async () => {
+    const id = await actions.submit(queue, "createRubric", { courseWorkId: "201", draft });
+    expect(classroom.requests).toEqual([]);
+    expect(submitted[0].title).toBe("Create Google Classroom rubric");
+    classroom.intercept = request => request.method === "POST" ? googleError(503, "UNAVAILABLE") : undefined;
+    await expect(actions.apply(id)).rejects.toThrow(APPLY_OUTCOME_UNKNOWN_MESSAGE);
+    await expect(actions.apply(id)).rejects.toThrow();
+    expect(classroom.requests.filter(r => r.method === "POST")).toHaveLength(1);
+  });
+  it("creates an approved rubric on the bound course", async () => {
+    const id = await actions.submit(queue, "createRubric", { courseWorkId: "201", draft });
+    await actions.apply(id);
+    expect(classroom.rubrics).toHaveLength(1);
+    expect(classroom.requests.filter(r => r.method === "POST").map(r => r.path)).toEqual(["/courses/101/courseWork/201/rubrics"]);
+  });
+});
+
+it("holds rubric replacement until approval and does not resend an uncertain mutation", async () => {
+  const draft = { criteria: [{ title: "Evidence", levels: [{ title: "Supported", points: 10 }] }] };
+  classroom.rubrics = [{ id: "901", courseWorkId: "201", ...draft }];
+  const id = await actions.submit(queue, "updateRubric", { courseWorkId: "201", rubricId: "901", update: draft });
+  expect(classroom.requests).toEqual([]);
+  expect(submitted[0].title).toMatch(/Replace.*rubric/);
+  classroom.intercept = r => r.method === "PATCH" ? googleError(503, "UNAVAILABLE") : undefined;
+  await expect(actions.apply(id)).rejects.toThrow(APPLY_OUTCOME_UNKNOWN_MESSAGE);
+  await expect(actions.apply(id)).rejects.toThrow();
+  expect(classroom.requests.filter(r => r.method === "PATCH")).toHaveLength(1);
+});
+
+it("keeps grading-period replacement behind approval and surfaces an eligibility refusal", async () => {
+  const id = await actions.submit(queue, "updateGradingPeriodSettings", { settings: { gradingPeriods: [], applyToExistingCoursework: false } });
+  expect(classroom.requests).toEqual([]);
+  classroom.intercept = r => r.method === "PATCH" ? googleError(403, "PERMISSION_DENIED", "UserIneligibleToUpdateGradingPeriodSettings") : undefined;
+  await expect(actions.apply(id)).rejects.toThrow();
+  expect(journal.get(id)).toMatchObject({ state: "failed" });
+  expect(classroom.gradingPeriodSettings).toEqual({});
+});
+
+it("deletes a rubric only after approval", async () => {
+  classroom.rubrics = [{ id: "901", courseWorkId: "201", criteria: [] }];
+  const id = await actions.submit(queue, "deleteRubric", { courseWorkId: "201", rubricId: "901" });
+  expect(classroom.rubrics).toHaveLength(1);
+  expect(classroom.requests).toEqual([]);
+  await actions.apply(id);
+  expect(classroom.rubrics).toEqual([]);
 });

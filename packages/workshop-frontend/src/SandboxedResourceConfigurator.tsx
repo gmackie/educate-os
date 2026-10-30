@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { RpcStub, RpcTarget, newMessagePortRpcSession } from 'capnweb'
 import { ResourceConfiguratorFrame, ResourceConfiguratorHost, ResourceConfiguratorIframe } from '@gadgets/workshop-shared/gatekeeper'
 import { createRateLimitedCapability } from './rateLimitedCapability'
-import { useTheme } from './ThemeContext'
+import { useTheme } from '@gadgets/ui/theme'
 import { forwardTrustedFrameError } from './errorReporting'
 
 // Upper bound on iframe height. Sized to leave room for a typical configurator form plus an open

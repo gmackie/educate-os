@@ -30,7 +30,7 @@ describe("a school's page", () => {
     await user.click(await screen.findByRole("link", { name: "Fake Middle School" }));
     expect(await screen.findByRole("heading", { name: "Fake Middle School" })).toBeTruthy();
     expect(window.location.hash).toBe("#/schools/sch_fk-middle");
-    const sections = screen.getByRole("navigation", { name: "Admin sections" });
+    const sections = screen.getByRole("list", { name: "Admin" });
     expect(within(sections).queryByRole("link", { current: "page" })).toBeNull();
   });
 

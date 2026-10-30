@@ -98,3 +98,18 @@ describe("a Clever roster in a configuration revision", () => {
     if (!result.ok) expect(result.problems).toContainEqual(expect.objectContaining({ code: "secret-in-config", path: "/rostering/clever/districtToken" }));
   });
 });
+
+
+describe("Classroom roster identity", () => {
+  it("requires the stable Google user ID mapping", () => {
+    const document = withMapping("https://accounts.google.com");
+    document.rostering.provider = "google-classroom";
+    document.rostering.identityMapping.subject = { field: "username" };
+    expect(compileDistrictConfig(document, SHIPPED_REGISTRY).ok).toBe(true);
+    document.rostering.identityMapping.issuer = "https://idp.northfield.example";
+    expect(compileDistrictConfig(document, SHIPPED_REGISTRY).ok).toBe(false);
+    document.rostering.identityMapping.issuer = "https://accounts.google.com";
+    document.rostering.identityMapping.subject = { field: "userIds", type: "idp" };
+    expect(compileDistrictConfig(document, SHIPPED_REGISTRY).ok).toBe(false);
+  });
+});

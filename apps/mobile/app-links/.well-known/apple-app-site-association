@@ -1,0 +1,38 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "P4SWQXAB5H.io.educateos.mobile",
+          "P4SWQXAB5H.com.gmacko.educateos.preview",
+          "P4SWQXAB5H.com.gmacko.educateos.dev"
+        ],
+        "components": [
+          {
+            "/": "/oauthredirect"
+          },
+          {
+            "/": "/authpopup"
+          },
+          {
+            "/": "/enroll"
+          },
+          {
+            "/": "/pair-phone"
+          },
+          {
+            "/": "/j",
+            "comment": "One-origin pairing QR: /j#o=<school origin>&r=<room>&s=<secret>"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "P4SWQXAB5H.io.educateos.mobile",
+      "P4SWQXAB5H.com.gmacko.educateos.preview",
+      "P4SWQXAB5H.com.gmacko.educateos.dev"
+    ]
+  }
+}

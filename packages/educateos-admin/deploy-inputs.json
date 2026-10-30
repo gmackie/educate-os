@@ -1,0 +1,9 @@
+[
+  {
+    "name": "ADMIN_KEY_ENCRYPTION_KEY",
+    "kind": "secret",
+    "label": "Key encryption key for the admin's ops keys",
+    "help": "32 random bytes, base64url. Seals each workspace's ops private key in the admin's D1 database. The installer generates it and never rotates it.",
+    "generated": true
+  }
+]

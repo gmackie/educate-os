@@ -6,8 +6,9 @@
   research below was read from Google's public documentation on 2026-10-21, and every claim cites it.
 - Issue: SCHO-77 (follow-up of SCHO-27, roadmap I02).
 - Code: `packages/educateos-integrations/src/google-classroom` (the `googleclassroom` namespace),
-  behind `ClassroomProvider` in `packages/educateos-lti/src/classroom.ts`. The teacher-scoped
-  Workshop connector (`packages/gatekeeper-google`, SCHO-213) is separate and unchanged.
+  behind `ClassroomProvider` in `packages/educateos-lti/src/classroom.ts`. The Workshop connector
+  (`packages/gatekeeper-google`, SCHO-213/SCHO-255) has separate teacher and student course
+  capabilities; student connections are bound to the connecting account and one enrolled course.
 
 ## Where EducateOS stands
 
@@ -71,8 +72,9 @@ interface ClassroomProvider {
   The docs don't say which tier Classroom falls in, so plan for the district marking the EducateOS
   client **Trusted**.
 
-EducateOS needs no student token for the planned scope, because every call is a teacher's. Even so,
-the client must be configured for the domain.
+District sync and grade passback use delegated teacher/admin tokens. The Workshop student capability
+uses the signed-in student's OAuth token and is bound to that account and one active enrolled course;
+it does not use domain-wide delegation.
 
 ## OAuth scopes
 
@@ -84,7 +86,8 @@ The provider needs only these, all under `https://www.googleapis.com/auth/`
 | --- | --- | --- |
 | `classroom.rosters.readonly` | `courses.teachers.list` and `courses.students.list` | `listRoster` |
 | `classroom.coursework.students` | Create the coursework EducateOS grades. List it. Patch `assignedGrade`. Return submissions. | `listCourseWork`, `setAssignedGrade`, and a new `createCourseWork` |
-| `classroom.courses.readonly` | Let the teacher pick a course when connecting an offering | the connect flow, not the provider |
+| `classroom.courses.readonly` | Let teachers or students pick an eligible course | the connect flow |
+| `classroom.coursework.me` | Read the signed-in student's published work and own submission; turn in that work | student `listCourseWork`, `getMySubmission`, and approval-backed `turnIn` |
 | `openid` | Link a teacher's Google identity, using the OIDC `sub` | the identity-linking flow |
 
 **Not requested:**
@@ -93,6 +96,12 @@ The provider needs only these, all under `https://www.googleapis.com/auth/`
   needs only user IDs.
 - `classroom.profile.photos`, guardian, announcement and topic scopes.
 - The add-on scopes.
+
+The Workshop teacher course asks for the teacher course, roster and coursework scopes. A student
+course asks only for `classroom.courses.readonly` and `classroom.coursework.me`. Its separate
+capability exposes no roster, classmate submissions, teacher grades, or teacher configuration, and
+cannot be shared with collaborators. `turnIn` resolves the submission for `userId=me` inside the
+gatekeeper and queues that submission for approval; callers cannot supply a student or submission ID.
 
 **Sensitivity.** Google's pages label only the add-on scopes as sensitive
 (<https://developers.google.com/workspace/classroom/add-ons/developer-guides/review-process-overview>).
@@ -320,6 +329,40 @@ When the seed completes, the next live run should sync Harbor as classroom-sync,
 with the Harbor fixture, check the `sub` by signing in as a test account, and run Cedar Valley's
 link plan over all 4 courses.
 
+### Demo tenant approval and follow-up, 2026-10-27
+
+Google approved the demo domain and provisioned ten Education Plus seats. All 18 synthetic
+accounts, six organizational units and eight active courses (four per district) now exist;
+`seed-google-demo.ts --verify` passed with exact owners and rosters. Plus is assigned to Whitaker,
+Ferreira, Asante and Delaney (six seats remain). Both Staff OUs are 18+, both Students OUs retain
+under-18 access, Classroom API data access is on, and the existing Internal EducateOS OAuth client
+is Trusted for this synthetic tenant. License effects may take up to 24 hours.
+
+A live Harbor read exposed the shared-domain boundary: the source sees Cedar Valley's active
+courses too. With the default `courseSelection: "all"`, unmapped courses block import. Set
+`courseSelection: "listed"` and explicitly list Harbor's four `d:off_hb-*` aliases under their
+schools when a domain holds several districts. This excludes unlisted courses and their rosters,
+even with `defaultSchool`; conflicting ID/alias school mappings still block apply. Without the
+option, existing whole-domain behavior is preserved.
+
+Using `classroom-sync` and the shipped sync pipeline with this configuration, an **in-memory**
+Harbor import succeeded: two schools, one term, four catalog courses, four offerings, eight people,
+14 enrollments and four teaching-role assignments. Active enrollment names, courses, sections and
+roles matched the Harbor fixture exactly; no issues were reported. This did not apply a roster
+to the deployed Harbor installation. Cedar Valley's link plan matched all four offerings by alias
+and its eight roster principals by name; Harbor's courses remained unresolved in that directory.
+
+Grade passback also passed against an actual seeded student in Earth Science 8, replacing the
+previous admin-student test. Coursework `896162560763`, created at `2026-10-27T17:52:08.671Z`, was
+app-owned. An approved 8.5/10 posted, a retry was `already-posted`, and an unapproved version was
+refused as `policy-violation`. Owner read-back of submission `Cg4I8ZmlsYoaEPv1zbuKGg` returned
+`assignedGrade=8.5`, `draftGrade=8.5`. The runner used existing fixture principals rather than
+injecting a principal named from the live roster.
+
+Still pending: interactive OpenID `sub` comparison, deployed district sync configuration/apply,
+and Google's own refusal of teacher-created coursework. This evidence does not establish complete
+external conformance or production delivery; do not raise the connector's maturity on that basis.
+
 ## Implementation plan (2026-10-21, superseded by District sync above)
 
 The steps go in order. Steps 1-4 can be built and tested now against a fake Google HTTP surface. Steps
@@ -377,3 +420,27 @@ The steps go in order. Steps 1-4 can be built and tested now against a fake Goog
    (b) is the better fit for ADR-0001. (a) is easier to onboard.
 2. **Whether to accept the deployment's one-project-forever constraint** at install, with a refusal
    to change it while any Classroom grade routes exist.
+
+
+## District Worker connection (SCHO-255)
+
+The district Worker can build the Classroom roster source through its existing administrator and
+scheduled sync paths. Configure `rostering.provider: google-classroom` in the district revision,
+with `identityMapping: { issuer: "https://accounts.google.com", subject: { field: "username" } }`.
+The directory must already trust that issuer. The source uses the existing OneRoster import
+pipeline and `external:oneroster` authority; do not change a live directory's authority implicitly.
+
+Set `DISTRICT_CONFIG.classroom` to `{ admin, roster, rosterScopes }`, where `roster` is the
+`ClassroomRosterConfig` above and `admin` is the Workspace administrator's primary email. Use
+`courseSelection: "listed"` for shared demo domains. `rosterScopes` defaults to `readonly`; use
+`read-write` only when the domain delegated the broader course/roster scopes instead. The source
+still makes only roster reads, and never requests coursework scopes.
+
+Keep the service-account JSON key in `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY`, a Worker secret.
+Missing connection settings or credentials report why sync cannot run. Existing sync history,
+removal holds, scheduling and administrator authorization remain the authority for applying it.
+This wiring does not implement Google sign-in or establish a person's identity link: deployed
+Access sign-ins still require an administrator-confirmed link to the rostered principal.
+
+Production verification remains open in SCHO-255. Library tests and Worker tests are not evidence
+that a demo district has been configured, synced, or used successfully by a teacher or learner.

@@ -346,11 +346,19 @@ describe("the Stripe webhook", () => {
 describe("a deploy without billing's secrets", () => {
   it("builds no billing unless every secret is set", async () => {
     const storage = {} as DurableObjectStorage; // Never reached: a missing secret returns first.
-    const all = { STRIPE_SECRET_KEY: "sk", STRIPE_WEBHOOK_SECRET: "whsec", COMMERCE_SIGNING_KEY: env.COMMERCE_SIGNING_KEY };
+    const all = { STRIPE_SECRET_KEY: "sk_test_x", STRIPE_WEBHOOK_SECRET: "whsec", COMMERCE_SIGNING_KEY: env.COMMERCE_SIGNING_KEY };
     for (const missing of Object.keys(all)) {
       await expect(configuredBilling(storage, { ...env, ...all, [missing]: undefined })).resolves.toBeUndefined();
     }
     await expect(configuredBilling(storage, { ...env, ...all, COMMERCE_SIGNING_KEY: "{not a key" })).resolves.toBeUndefined();
+  });
+
+  it("builds no billing with a live-mode Stripe key, since billing runs in test mode only", async () => {
+    const storage = {} as DurableObjectStorage; // Never reached: a live key returns first.
+    const all = { STRIPE_WEBHOOK_SECRET: "whsec", COMMERCE_SIGNING_KEY: env.COMMERCE_SIGNING_KEY };
+    for (const key of ["sk_live_x", "rk_live_x", "pk_test_x"]) {
+      await expect(configuredBilling(storage, { ...env, ...all, STRIPE_SECRET_KEY: key })).resolves.toBeUndefined();
+    }
   });
 
   it("answers the billing page and the webhook with 503, and leaves the rest of the console alone", async () => {

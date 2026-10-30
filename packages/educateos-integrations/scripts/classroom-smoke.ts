@@ -18,7 +18,7 @@
 // titled with the run's time, as evidence.
 import { execFileSync } from "node:child_process";
 import { DistrictDirectorySnapshot } from "@educateos/contracts";
-import type { OfferingId, PrincipalId } from "@educateos/contracts";
+import type { OfferingId } from "@educateos/contracts";
 import { demoDistrict } from "@educateos/fixtures";
 import { googleclassroom } from "../src/index.ts";
 import {
@@ -81,19 +81,11 @@ async function main(): Promise<number> {
   const student = students.records[0];
   if (student === undefined) throw new Error("the course has no student");
 
-  // 2. Cedar Valley's directory, plus a runtime-only student for the admin account enrolled in the
-  // offering under the name Classroom gives it, then the live link plan.
+  // 2. Match a real synthetic learner already in the fixture's active offering roster.
   const cv = demoDistrict("cedarvalley").directory;
-  const studentName = student.profile?.name?.fullName ?? "Smoke Student";
-  const smokeStudent = "prn_cv-smoke-student" as PrincipalId;
   const directory = DistrictDirectorySnapshot.parse({
     ...cv,
-    district: { ...cv.district, trustedIssuers: [...cv.district.trustedIssuers, CLASSROOM_ISSUER] },
-    principals: [...cv.principals, {
-      id: smokeStudent, districtId: cv.district.id, kind: "student", status: "active", displayName: studentName,
-      externalIdentities: [{ districtId: cv.district.id, issuer: cv.district.trustedIssuers[0]!, subject: "smoke-student-0001" }],
-    }],
-    enrollments: [...cv.enrollments, { id: "enr_cv-smoke-01", districtId: cv.district.id, offeringId, principalId: smokeStudent, role: "student", status: "active" }],
+    district: { ...cv.district, trustedIssuers: [...new Set([...cv.district.trustedIssuers, CLASSROOM_ISSUER])] },
   });
   const plan = await googleclassroom.planClassroomLinks({ directory, client });
   const courseLinks = plan.courses.filter((c) => c.courseId === courseId);
@@ -105,6 +97,10 @@ async function main(): Promise<number> {
   // confirms these two, printed above.
   const linked = googleclassroom.applyClassroomLinks({ directory, courses: courseLinks, identities: identityLinks, authority: "lms:cv-classroom", acceptNameMatches: true });
   const teacher = linked.directory.principals.find((p) => p.id === "prn_cv-teacher-whitaker")!;
+  const learner = linked.directory.principals.find((p) =>
+    p.kind === "student" && p.externalIdentities.some((i) => i.issuer === CLASSROOM_ISSUER && i.subject === student.userId) &&
+    linked.directory.enrollments.some((e) => e.principalId === p.id && e.offeringId === offeringId && e.status === "active"));
+  if (learner === undefined) throw new Error("the live learner is not an active synthetic fixture student in this offering");
   if (!teacher.externalIdentities.some((i) => i.issuer === CLASSROOM_ISSUER)) throw new Error("the teacher was not linked to a Google account");
 
   // 3. Coursework created by the app, as the course owner.
@@ -119,7 +115,7 @@ async function main(): Promise<number> {
 
   // 4. A teacher-approved grade through the passback gate.
   const approval = {
-    offeringId, studentId: smokeStudent, column: column.id, gradeVersion: 1, scoreGiven: 8.5, scoreMaximum: 10,
+    offeringId, studentId: learner.id, column: column.id, gradeVersion: 1, scoreGiven: 8.5, scoreMaximum: 10,
     approverId: teacher.id, approvedAt: new Date(Date.now() - 1000).toISOString(),
   };
   const passback = new GradePassback({
@@ -127,8 +123,10 @@ async function main(): Promise<number> {
     approvals: new InMemoryGradeApprovalStore([approval]), ledger: new InMemoryPassbackLedger(), sinks: [new ClassroomGradeSink(provider)],
   });
   const { approverId: _approver, approvedAt: _at, ...request } = approval;
-  step("passback (approved 8.5/10)", JSON.stringify(await passback.publish(request)));
-  step("passback again", JSON.stringify(await passback.publish(request)));
+  const first = await passback.publish(request);
+  const repeated = await passback.publish(request);
+  step("passback (approved 8.5/10)", JSON.stringify(first));
+  step("passback again", JSON.stringify(repeated));
   const unapproved = await passback.publish({ ...request, gradeVersion: 2, scoreGiven: 10 }).then(() => "POSTED", (e: { code?: string }) => `refused: ${e.code}`);
   step("passback without approval", unapproved);
 
@@ -136,7 +134,9 @@ async function main(): Promise<number> {
   const owner = (await client.getTeacher(courseId, course.ownerId)).profile?.emailAddress ?? "";
   const submissions = await client.listSubmissions(courseId, column.id, student.userId, owner);
   for (const s of submissions.records) step("read back", `submission ${s.id} ${s.state} assignedGrade=${s.assignedGrade} draftGrade=${s.draftGrade}`);
-  const ok = submissions.records.length === 1 && submissions.records[0]!.assignedGrade === 8.5;
+  const ok = submissions.records.length === 1 && submissions.records[0]!.assignedGrade === 8.5 &&
+    submissions.records[0]!.draftGrade === 8.5 && first.status === "posted" && repeated.status === "already-posted" && unapproved === "refused: policy-violation";
+  // This provider-level smoke deliberately does not claim deployed user-flow or return coverage.
   console.log(ok ? "\nSMOKE PASSED" : "\nSMOKE FAILED");
   return ok ? 0 : 1;
 }
