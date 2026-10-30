@@ -50,6 +50,14 @@
   },
   "vars": {
     "LTI_TOOL_ORIGIN": "https://district.schoolos.gmac.io",
-    "SCHOOL_MANIFEST": "{\"origin\":\"https://northfield.educateos.io\",\"signIn\":[{\"id\":\"google\",\"label\":\"Google\"}],\"features\":{\"ai\":true}}"
-  }
+    "SCHOOL_MANIFEST": "{\"origin\":\"https://northfield.educateos.io\",\"signIn\":[{\"id\":\"google\",\"label\":\"Google\"}],\"features\":{\"ai\":true}}",
+    "HALL_MONITOR_ISSUER": "educateos",
+    "HALL_MONITOR_AUDIENCE": "hall-monitor"
+  },
+  "services": [
+    {
+      "binding": "HALL_MONITOR",
+      "service": "hall-monitor"
+    }
+  ]
 }

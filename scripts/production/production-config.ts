@@ -467,7 +467,7 @@ export function buildProductionConfigs({
         (binding, bucket_name) => ({ binding, bucket_name }));
     if (r2) config.r2_buckets = r2;
 
-    const vars = instance.vars[pkgName] ?? {};
+    let vars = instance.vars[pkgName] ?? {};
     if (isGatekeeperPackage(pkgName)) {
       if (pkgName === EDUCATEOS_GATEKEEPER_PACKAGE) {
         // Its district binding is injected by the deployment (see its README); without one the
@@ -519,6 +519,13 @@ export function buildProductionConfigs({
       withVars(pkgName, config, vars);
     } else if (pkgName === DISTRICT_PACKAGE && instance.district) {
       const hostnames = [instance.district.hostname, ...instance.district.aliases ?? []];
+      // Students' discussion posts are screened by the Hall Monitor the guard reaches (SCHO-308):
+      // over the same binding, which the district prefers over HALL_MONITOR_URL, with tokens signed
+      // as the guard's are (the district app's HALL_MONITOR_SIGNING_KEY secret is the guard's key).
+      const guardVars = instance.vars[AI_GUARD_PACKAGE] ?? {};
+      const hallMonitorVars = Object.fromEntries(["HALL_MONITOR_ISSUER", "HALL_MONITOR_AUDIENCE"]
+        .flatMap((name) => guardVars[name] === undefined ? [] : [[name, guardVars[name]]]));
+      vars = { ...hallMonitorVars, ...vars };
       if (oneOrigin) {
         // Behind the router, at no hostname of its own. Its LTI Tool keeps the origin platforms
         // registered, which the router redirects to the one origin with method and body kept.
@@ -526,6 +533,7 @@ export function buildProductionConfigs({
       } else {
         asDistrict(config, hostnames, vars);
       }
+      config.services = [{ binding: "HALL_MONITOR", service: instance.aiGuard.hallMonitorService }];
     } else {
       throw new Error(`cannot build a production config for package: ${pkgName}`);
     }
