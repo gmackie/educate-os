@@ -28,6 +28,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: '11.17.0'
+          package_json_file: tools/launch-ops/package.json
           run_install: false
       - name: Lint isolated local tool
         run: pnpm --config.store-dir=/tmp/launch-ops-pnpm --config.cache-dir=/tmp/launch-ops-cache dlx oxlint@1.90.0 --deny-warnings tools/launch-ops/src tools/launch-ops/web/app.js tools/launch-ops/test
