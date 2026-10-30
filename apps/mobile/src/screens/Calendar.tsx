@@ -4,6 +4,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Clock } from 'lucide-react-nat
 import type { DistrictClient } from '../api/client';
 import type { CalendarEvent, Detail } from '../types';
 import { useLoad } from '../hooks/useLoad';
+import { useAppState } from '../state/app-state';
 import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Item, Page, QueryState, Section, Title } from '../ui/Primitives';
 
@@ -29,6 +30,7 @@ export function CalendarScreen({ client, navigate }: { client: DistrictClient; n
   const palette = usePalette();
   const [start, setStart] = useState(() => beginningOfWeek(new Date()));
   const end = addDays(start, 28);
+  const staff = useAppState().role === 'teacher';
   const [cal, reload] = useLoad('calendar:' + start.toISOString(), () => client.calendar(start, end));
   const nextWeek = (n: number) => setStart((d) => addDays(d, n * 7));
   return <Page refresh={reload}>
@@ -56,8 +58,8 @@ export function CalendarScreen({ client, navigate }: { client: DistrictClient; n
             ? <Clock size={20} color={palette.amber}/> : <CalendarDays size={20} color={palette.primary}/>}
           trailing={<Chip label={event.kind.replaceAll('-', ' ')} tone="neutral"/>}
           onPress={event.assignmentId && event.offeringId ?
-            () => navigate({ type: 'assignment', id: event.assignmentId!, offeringId: event.offeringId! })
-            : event.offeringId ? () => navigate({ type: 'class', id: event.offeringId! }) : undefined}/>)}</Card>
+            () => navigate({ type: staff ? 'teacher-assignment' : 'assignment', id: event.assignmentId!, offeringId: event.offeringId! })
+            : event.offeringId ? () => navigate({ type: staff ? 'teacher-class' : 'class', id: event.offeringId! }) : undefined}/>)}</Card>
       </Section>)}
     </QueryState>
     <Button label="Return to current week" variant="outline" onPress={() => setStart(beginningOfWeek(new Date()))}/>

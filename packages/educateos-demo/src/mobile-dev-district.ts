@@ -6,12 +6,14 @@
 //   pnpm educateos:mobile-district     serve on http://localhost:4810 until interrupted
 //
 // In the app, choose "I have a web address", enter http://localhost:4810, then "Sign in with a demo
-// person": the /connect-phone page asks which persona you are and approves the phone. Development
+// person": the /connect-phone page asks which persona you are and approves the phone. English 9 also
+// gets a module, an announcement, a discussion and a quiz, so every native screen has something. Development
 // builds accept loopback school addresses (apps/mobile/src/security.ts); release builds never do.
 // Nothing is persisted: restarting the server signs every phone out.
 //
 // EDUCATEOS_MOBILE_DISTRICT_PORT changes the port. This is development tooling, never deployed.
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import type { DistrictApiClient } from "@educateos/api-client";
 import { bootNorthfield, NORTHFIELD_PERSONAS as PERSONAS } from "./districts/northfield.ts";
 
 const PORT = Number(process.env.EDUCATEOS_MOBILE_DISTRICT_PORT ?? 4810);
@@ -54,6 +56,61 @@ h1{font-size:24px;margin:0 0 6px}p{color:#5b6475;margin:0 0 20px}
 ${rows}</body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 }
 
+/** Sam Rivera, who teaches the demo's English 9, and Elena Sato, Amara's classmate there. */
+const TEACHER = "nf-0101";
+const CLASSMATE = "nf-s-2004";
+
+/**
+ * What the browser demo leaves out but the phone shows: a published module with a page and the
+ * open assignment, an announcement, a discussion with a classmate's post, and a quiz. All in
+ * English 9, made through the district API as Sam would make them.
+ */
+async function seedCourseContent(teacher: DistrictApiClient, classmate: DistrictApiClient): Promise<void> {
+  const english = (await teacher.call("teacher.listOfferings")).find(({ course }) => course.title === "English 9");
+  if (english === undefined) throw new Error("the demo has no English 9");
+  const params = { offeringId: english.offering.id };
+  const assignments = await teacher.call("teacher.listAssignments", { params });
+  const reflection = assignments.find((a) => a.title === "Reading reflection") ?? assignments[0]!;
+
+  const unit = await teacher.call("teacher.createModule", { params, body: { title: "Unit 2: Making an argument" } });
+  const moduleParams = { ...params, moduleId: unit.id };
+  await teacher.call("teacher.addPage", {
+    params: moduleParams,
+    body: {
+      title: "Claims, evidence and counterclaims",
+      body: "## Build the argument\n\nA strong argument makes a **claim**, supports it with **evidence**, and answers the best **counterclaim**.\n\n- State your claim in one sentence.\n- Give two pieces of evidence.\n- Name one objection and answer it.",
+    },
+  });
+  await teacher.call("teacher.placeActivity", { params: moduleParams, body: { activityId: reflection.activityId } });
+  await teacher.call("teacher.updateModule", { params: moduleParams, body: { published: true } });
+
+  await teacher.call("teacher.createAnnouncement", {
+    params,
+    body: { title: "Library visit on Friday", body: "We meet in the library on Friday. Bring the book you are reading for your reflection." },
+  });
+
+  const topic = await teacher.call("teacher.createTopic", {
+    params,
+    body: { title: "Should homework be banned?", prompt: "Take a side and give **one** reason. Reply to a classmate you disagree with." },
+  });
+  await classmate.call("student.createPost", { params: { ...params, topicId: topic.id }, body: { body: "No. Practice at home is how I get better at math." } });
+
+  const quiz = await teacher.call("teacher.createQuiz", {
+    params,
+    body: {
+      title: "Argument terms",
+      assignmentId: reflection.id,
+      items: [
+        { type: "multiple-choice", prompt: "What answers the best objection to your position?", points: 2, choices: [{ id: "a", text: "A claim" }, { id: "b", text: "A rebuttal" }, { id: "c", text: "A hook" }], correctChoiceId: "b" },
+        { type: "short-answer", prompt: "One word for the facts and quotations that support a claim.", points: 1, acceptedAnswers: ["evidence"] },
+        { type: "essay", prompt: "In two or three sentences, state a claim about school start times and support it.", points: 5 },
+      ],
+      settings: { attemptsAllowed: 2, shuffleQuestions: false, shuffleChoices: false, showAnswers: "after-release", scorePolicy: "best" },
+    },
+  });
+  await teacher.call("teacher.publishQuiz", { params: { ...params, quizId: quiz.id }, body: { published: true } });
+}
+
 async function handle(request: Request, district: { fetch(request: Request): Promise<Response> }): Promise<Response> {
   const url = new URL(request.url);
   if (url.pathname === "/.well-known/educateos.json") return Response.json(MANIFEST, { headers: { "cache-control": "no-store" } });
@@ -94,6 +151,7 @@ async function main(): Promise<void> {
     deviceTokenSecret: crypto.randomUUID() + crypto.randomUUID(),
     subjectOf: cookieSubject,
   });
+  await seedCourseContent(district.clientFor(TEACHER), district.clientFor(CLASSMATE));
   const listener = (req: IncomingMessage, res: ServerResponse) => {
     toRequest(req)
       .then((request) => handle(request, district))

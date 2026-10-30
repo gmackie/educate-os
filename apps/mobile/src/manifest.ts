@@ -10,7 +10,7 @@ import { strictOrigin } from './security.ts';
 export const MOBILE_API_VERSION = 1;
 /**
  * The first device API version whose districts let a phone sign in in the system browser (no
- * computer needed) and register itself. No district speaks it yet, so that path shows "coming soon".
+ * computer needed) and register itself. A district offers it when its manifest also lists sign-in methods.
  */
 export const PHONE_SIGN_IN_API_VERSION = 2;
 export const MANIFEST_PATH = '/.well-known/educateos.json';

@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Alert, Text, TextInput, View } from 'react-native';
-import { BookOpen, FilePenLine, GraduationCap, Send } from 'lucide-react-native';
+import { GraduationCap, Send } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Detail } from '../types';
-import { useLoad } from '../hooks/useLoad';
+import { useLoad, useReloadOnFocus } from '../hooks/useLoad';
+import { useAppState } from '../state/app-state';
+import { Markdown } from '../ui/Markdown';
+import { AssignmentActions, StarterMaterials } from './AssignmentWork';
 import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Field, Item, Page, QueryState, Section, Title } from '../ui/Primitives';
 
@@ -18,12 +21,28 @@ export function AssignmentScreen({ client, assignmentId, offeringId, navigate }:
       client.studentAssignment(assignmentId), client.studentSubmissions(assignmentId),
       client.studentOfficialGrades(assignmentId).catch(() => []),
     ]);
-    const activity = await client.studentActivity(details.assignment.activityId).catch(() => null);
-    const feedback = await client.studentAssignmentFeedback(assignmentId).catch(() => []);
-    return { details, submissions, grades, activity, feedback };
+    const offering = offeringId || details.assignment.offeringId;
+    const [activity, feedback, quizzes] = await Promise.all([
+      client.studentActivity(details.assignment.activityId).catch(() => null),
+      client.studentAssignmentFeedback(assignmentId).catch(() => []),
+      client.studentQuizzes(offering).catch(() => []),
+    ]);
+    return { details, submissions, grades, activity, feedback, offering, quiz: quizzes.find((q) => q.assignmentId === assignmentId) ?? null };
   });
+  useReloadOnFocus(reload);
+  const { session } = useAppState();
+  const [withdrawing, setWithdrawing] = useState(false);
+  const withdraw = (submissionId: string) => Alert.alert('Withdraw this submission?',
+    'Your teacher will no longer see it as submitted. You can submit again if attempts remain.', [
+      { text: 'Keep it', style: 'cancel' },
+      { text: 'Withdraw', style: 'destructive', onPress: () => {
+        setWithdrawing(true);
+        client.withdrawSubmission(submissionId).then(reload, (e: unknown) =>
+          Alert.alert("Couldn't withdraw", e instanceof Error ? e.message : 'Try again.')).finally(() => setWithdrawing(false));
+      } },
+    ]);
   return <Page refresh={reload}>
-    <QueryState state={result} retry={reload}>{({ details, submissions, grades, activity, feedback }) => <>
+    <QueryState state={result} retry={reload}>{({ details, submissions, grades, activity, feedback, offering, quiz }) => <>
       <Title subtitle={'Due ' + dateLabel(details.assignment.dueAt, true)}>{details.assignment.title}</Title>
       <View style={{ gap: 11, flexDirection: 'row', marginBottom: 24 }}>
         <Chip label={submissions.some((s) => !s.withdrawnAt) ? 'Submitted' : 'Not submitted'}
@@ -32,21 +51,18 @@ export function AssignmentScreen({ client, assignmentId, offeringId, navigate }:
       </View>
       {activity && <Section title="Instructions">
         <Card style={{ gap: 14 }}>
-          <Text style={{ color: palette.ink, fontSize: 15, lineHeight: 23 }}>
-            {activity.content.overview}</Text>
+          <Markdown source={activity.content.overview}/>
           {activity.content.steps.map((step, i) => <View key={step.id} style={{ gap: 6,
             borderTopColor: palette.line, borderTopWidth: 1, paddingTop: 12 }}>
             <Text style={{ color: palette.primary, fontSize: 12, fontWeight: '800' }}>
               STEP {i + 1} · {step.title}
             </Text>
-            <Text style={{ color: palette.ink, fontSize: 14, lineHeight: 22 }}>{step.prompt}</Text>
+            <Markdown source={step.prompt} size={14}/>
           </View>)}
         </Card>
       </Section>}
-      {details.starterMaterials && details.starterMaterials.length > 0 && <Section title="Starter materials">
-        <Card>{details.starterMaterials.map((item) => <Item key={item.id} title={item.title}
-          detail="Reference from your teacher" leading={<BookOpen size={19} color={palette.primary}/>}/>)}</Card>
-      </Section>}
+      {details.starterMaterials && details.starterMaterials.length > 0 &&
+        <StarterMaterials client={client} assignmentId={assignmentId} materials={details.starterMaterials}/>}
       <Section title="My submission">
         <Card style={{ gap: 12 }}>
           {submissions.length === 0 ? <Text style={{ color: palette.muted }}>No work submitted yet.</Text> :
@@ -66,17 +82,22 @@ export function AssignmentScreen({ client, assignmentId, offeringId, navigate }:
       </Section>
       {feedback.length > 0 && <Section title="Teacher feedback">
         <Card style={{ gap: 14 }}>{feedback.flatMap((record) => record.comments).map((comment, i) =>
-          <Text key={i} style={{ color: palette.ink, lineHeight: 23 }}>{comment.body}</Text>)}
+          <Markdown key={i} source={comment.body}/>)}
         </Card>
       </Section>}
-      {details.assignment.permittedArtifactTypes?.includes('document') ?
-        <Button label="Write a response" icon={<FilePenLine size={19} color={palette.onPrimary}/>}
-          onPress={() => navigate({ type: 'write', id: assignmentId, offeringId: offeringId || details.assignment.offeringId })}/> :
-        <Card style={{ marginBottom: 18 }}>
-          <Text style={{ color: palette.muted, lineHeight: 21 }}>
-            This assignment uses a quiz or another type of learning artifact. Open your school's complete learning experience in the AI Workspace.
-          </Text>
-        </Card>}
+      {(() => {
+        const active = submissions.filter((x) => !x.withdrawnAt);
+        const used = submissions.length >= details.assignment.attemptsAllowed;
+        return <>
+          {!used && <AssignmentActions client={client} assignmentId={assignmentId} offeringId={offering}
+            permitted={details.assignment.permittedArtifactTypes ?? []} quiz={quiz}
+            ai={session?.district.features?.ai !== false} schoolHost={session ? new URL(session.district.origin).host : 'your school'}
+            navigate={navigate} onSubmitted={reload}/>}
+          {used && <Card style={{ marginBottom: 18 }}><Text style={{ color: palette.muted }}>You have used all {details.assignment.attemptsAllowed} attempts.</Text></Card>}
+          {active.length > 0 && <Button label={withdrawing ? 'Withdrawing…' : 'Withdraw my submission'} variant="danger"
+            disabled={withdrawing} onPress={() => withdraw(active.at(-1)!.id)}/>}
+        </>;
+      })()}
       <View style={{ height: 24 }}/>
     </>}</QueryState>
   </Page>;
@@ -203,7 +224,7 @@ export function Announcements({ client }: { client: DistrictClient }) {
           <Text style={{ color: palette.primary, fontSize: 12, fontWeight: '700' }}>{courseLabel}</Text>
           <Text style={{ color: palette.ink, fontSize: 18, fontWeight: '800' }}>{announcement.title}</Text>
           <Text style={{ color: palette.muted, fontSize: 12 }}>{dateLabel(announcement.publishAt, true)}</Text>
-          <Text style={{ color: palette.ink, lineHeight: 23 }}>{announcement.body}</Text>
+          <Markdown source={announcement.body}/>
         </Card>)}</View>}
     </QueryState>
   </Page>;

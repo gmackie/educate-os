@@ -72,6 +72,12 @@ export const appConfig = (variant: AppVariant): ExpoConfig => ({
       cameraPermission: "Scan your school's QR code to connect this phone, and attach photos of your own schoolwork when you choose to.",
       microphonePermission: false, recordAudioAndroid: false,
     }],
+    // Photos of schoolwork for evidence and image assignments (SCHO-272). Never the microphone.
+    ['expo-image-picker', {
+      photosPermission: 'Choose photos to attach to your work.',
+      cameraPermission: "Scan your school's QR code to connect this phone, and attach photos of your own schoolwork when you choose to.",
+      microphonePermission: false,
+    }],
     ['expo-local-authentication', { faceIDPermission: 'Confirm access to your EducateOS school account.' }],
     ['expo-notifications', { icon: './assets/notification-icon.png', color: '#0035D3' }],
   ],

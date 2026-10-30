@@ -40,7 +40,10 @@ function Navigator() {
         <Stack.Screen name="delete-account" options={{ title: 'Delete account' }}/>
         <Stack.Screen name="devices" options={{ title: 'Your devices' }}/>
         <Stack.Screen name="calendar" options={{ title: 'Calendar' }}/>
-        <Stack.Screen name="class/[id]" options={{ title: 'Class' }}/>
+        <Stack.Screen name="class/[id]/index" options={{ title: 'Class' }}/>
+        <Stack.Screen name="class/[id]/page/[pageId]" options={{ title: 'Page' }}/>
+        <Stack.Screen name="class/[id]/discussion/[topicId]" options={{ title: 'Discussion' }}/>
+        <Stack.Screen name="class/[id]/quiz/[quizId]" options={{ title: 'Quiz' }}/>
         <Stack.Screen name="assignment/[id]/index" options={{ title: 'Assignment' }}/>
         <Stack.Screen name="assignment/[id]/write" options={{ title: 'Write a response' }}/>
         <Stack.Screen name="review/[id]" options={{ title: 'Review' }}/>

@@ -1,6 +1,7 @@
 import type {
   Activity, Announcement, Assignment, CalendarEvent, ClassItem, Credential, DeviceSummary, GradeSummary,
-  GuardianChild, GuardianCourse, Notifications, Principal, Submission,
+  CourseOutline, DiscussionPost, DiscussionThread, GuardianChild, GuardianCourse, Notifications, Principal,
+  QuizAnswer, QuizAttempt, QuizResult, QuizSummary, Submission, TopicListing,
 } from '../types';
 import type { DeviceSession } from './device.ts';
 import { DistrictApiError, MESSAGES, errorFrom, isRedirect } from './errors.ts';
@@ -114,6 +115,21 @@ export class DistrictClient {
       content: { kind: 'text', text }, aiAssistance: { level: 'none' },
     });
   }
+  /** An uploaded photo or PDF (`bytes` content; the district checks the type and the 5 MiB limit). */
+  createUpload(workspaceId: string, title: string, type: 'image' | 'evidence', mediaType: 'image/jpeg' | 'image/png' | 'application/pdf',
+    base64: string): Promise<{ artifact: { id: string }; head: { id: string } }> {
+    return this.call('POST', '/api/student/artifacts', {
+      workspaceId, title, type, content: { kind: 'bytes', mediaType, base64 }, aiAssistance: { level: 'none' },
+    });
+  }
+  withdrawSubmission(submissionId: string): Promise<unknown> {
+    return this.call('POST', '/api/student/submissions/' + this.id(submissionId) + '/withdraw');
+  }
+  starterMaterial(assignmentId: string, materialId: string): Promise<{
+    material: { id: string; title: string }; content: { kind: 'text'; text: string } | { kind: 'bytes'; base64: string } | { kind: 'external'; url: string };
+  }> {
+    return this.call('GET', '/api/student/assignments/' + this.id(assignmentId) + '/starter-materials/' + this.id(materialId));
+  }
   submitDocument(assignmentId: string, revision: { artifactId: string; revisionId: string }): Promise<{ submissionId: string }> {
     return this.call('POST', '/api/student/assignments/' + this.id(assignmentId) + '/submissions',
       { revisions: [revision] });
@@ -142,6 +158,50 @@ export class DistrictClient {
   }
   teacherReleaseFeedback(submissionId: string, state: 'shared-with-student' | 'final'): Promise<unknown> {
     return this.call('POST', '/api/teacher/submissions/' + this.id(submissionId) + '/feedback/release', { state });
+  }
+  // Course content (SCHO-186, 189, 190, 191): modules and pages, announcements, discussions, quizzes.
+  studentModules(offeringId: string): Promise<CourseOutline> {
+    return this.call('GET', '/api/student/offerings/' + this.id(offeringId) + '/modules');
+  }
+  teacherModules(offeringId: string): Promise<CourseOutline> {
+    return this.call('GET', '/api/teacher/offerings/' + this.id(offeringId) + '/modules');
+  }
+  studentCourseAnnouncements(offeringId: string): Promise<Announcement[]> {
+    return this.call('GET', '/api/student/offerings/' + this.id(offeringId) + '/announcements');
+  }
+  discussions(role: 'student' | 'teacher', offeringId: string): Promise<TopicListing> {
+    return this.call('GET', '/api/' + role + '/offerings/' + this.id(offeringId) + '/discussions');
+  }
+  discussionThread(role: 'student' | 'teacher', offeringId: string, topicId: string): Promise<DiscussionThread> {
+    return this.call('GET', '/api/' + role + '/offerings/' + this.id(offeringId) + '/discussions/' + this.id(topicId));
+  }
+  createPost(role: 'student' | 'teacher', offeringId: string, topicId: string, body: string, parentId?: string): Promise<DiscussionPost> {
+    return this.call('POST', '/api/' + role + '/offerings/' + this.id(offeringId) + '/discussions/' + this.id(topicId) + '/posts',
+      parentId ? { body, parentId } : { body });
+  }
+  reportPost(offeringId: string, postId: string, reason: 'unkind' | 'unsafe' | 'off-topic' | 'other'): Promise<unknown> {
+    return this.call('POST', '/api/student/offerings/' + this.id(offeringId) + '/posts/' + this.id(postId) + '/report', { reason });
+  }
+  studentQuizzes(offeringId: string): Promise<QuizSummary[]> {
+    return this.call('GET', '/api/student/offerings/' + this.id(offeringId) + '/quizzes');
+  }
+  studentQuiz(offeringId: string, quizId: string): Promise<QuizSummary> {
+    return this.call('GET', '/api/student/offerings/' + this.id(offeringId) + '/quizzes/' + this.id(quizId));
+  }
+  startQuizAttempt(offeringId: string, quizId: string): Promise<QuizAttempt> {
+    return this.call('POST', '/api/student/offerings/' + this.id(offeringId) + '/quizzes/' + this.id(quizId) + '/attempts');
+  }
+  quizAttempt(offeringId: string, attemptId: string): Promise<QuizAttempt> {
+    return this.call('GET', '/api/student/offerings/' + this.id(offeringId) + '/quiz-attempts/' + this.id(attemptId));
+  }
+  saveQuizAnswers(offeringId: string, attemptId: string, answers: QuizAnswer[]): Promise<unknown> {
+    return this.call('POST', '/api/student/offerings/' + this.id(offeringId) + '/quiz-attempts/' + this.id(attemptId) + '/answers', { answers });
+  }
+  submitQuizAttempt(offeringId: string, attemptId: string, answers: QuizAnswer[]): Promise<QuizResult> {
+    return this.call('POST', '/api/student/offerings/' + this.id(offeringId) + '/quiz-attempts/' + this.id(attemptId) + '/submit', { answers });
+  }
+  quizResult(offeringId: string, attemptId: string): Promise<QuizResult> {
+    return this.call('GET', '/api/student/offerings/' + this.id(offeringId) + '/quiz-attempts/' + this.id(attemptId) + '/result');
   }
   guardianChildren(): Promise<GuardianChild[]> { return this.call('GET', '/api/guardian/children'); }
   guardianClasses(studentId: string): Promise<ClassItem[]> {
