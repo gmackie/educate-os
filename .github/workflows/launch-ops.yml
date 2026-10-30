@@ -1,0 +1,32 @@
+name: Launch operations (isolated)
+on:
+  pull_request:
+    paths:
+      - 'tools/launch-ops/**'
+      - '.forgejo/workflows/launch-ops.yml'
+      - '.github/workflows/launch-ops.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/launch-ops/**'
+      - '.forgejo/workflows/launch-ops.yml'
+      - '.github/workflows/launch-ops.yml'
+jobs:
+  local-tool:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Check JavaScript syntax
+        run: |
+          for file in tools/launch-ops/src/*.mjs tools/launch-ops/web/app.js tools/launch-ops/test/*.mjs; do
+            node --check "$file"
+          done
+      - name: Run offline safety and workflow tests
+        run: node --test tools/launch-ops/test/*.test.mjs
