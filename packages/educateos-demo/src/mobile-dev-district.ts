@@ -7,7 +7,8 @@
 //
 // In the app, choose "I have a web address", enter http://localhost:4810, then "Sign in with a demo
 // person": the /connect-phone page asks which persona you are and approves the phone. English 9 also
-// gets a module, an announcement, a discussion and a quiz, so every native screen has something. Development
+// gets a module, an announcement, a discussion and a quiz (which Elena has taken), so every native
+// screen has something. Development
 // builds accept loopback school addresses (apps/mobile/src/security.ts); release builds never do.
 // Nothing is persisted: restarting the server signs every phone out.
 //
@@ -109,6 +110,16 @@ async function seedCourseContent(teacher: DistrictApiClient, classmate: District
     },
   });
   await teacher.call("teacher.publishQuiz", { params: { ...params, quizId: quiz.id }, body: { published: true } });
+
+  // Elena takes the quiz, so the teacher has an essay to grade and scores to release.
+  const attempt = await classmate.call("student.startQuizAttempt", { params: { ...params, quizId: quiz.id } });
+  const answers = attempt.questions.map((question) => ({
+    itemId: question.id,
+    response: question.type === "multiple-choice" ? { type: "multiple-choice" as const, choiceId: "b" }
+      : question.type === "short-answer" ? { type: "short-answer" as const, text: "evidence" }
+      : { type: "essay" as const, text: "School should start later. Teenagers fall asleep later, so a 9 a.m. start means more sleep and better attention." },
+  }));
+  await classmate.call("student.submitQuizAttempt", { params: { ...params, attemptId: attempt.attemptId }, body: { answers } });
 }
 
 async function handle(request: Request, district: { fetch(request: Request): Promise<Response> }): Promise<Response> {

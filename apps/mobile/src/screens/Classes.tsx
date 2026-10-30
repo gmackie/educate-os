@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { BookOpen, ClipboardCheck, ClipboardList, FileText, GraduationCap, Megaphone, Users } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
-import type { Assignment, ClassItem, Detail, GuardianChild, Principal } from '../types';
+import type { Assignment, ClassItem, Detail, Gradebook, GuardianChild, Principal } from '../types';
 import { useLoad, useReloadOnFocus } from '../hooks/useLoad';
 import { CourseSections, loadStudentExtras } from './Course';
+import { GradebookView, TeacherClassHub } from './Teaching';
 import { Markdown } from '../ui/Markdown';
 import { usePalette } from '../ui/theme-context';
-import { Button, Card, Chip, dateLabel, Item, Page, Placeholder, QueryState, Section, Title } from '../ui/Primitives';
+import { Button, Card, Chip, dateLabel, Item, Page, Placeholder, QueryState, Section, Segmented, Title } from '../ui/Primitives';
 
 export function Classes({ client, me, navigate }: {
   client: DistrictClient; me: Principal; navigate: (d: Detail) => void;
@@ -59,7 +60,7 @@ export function StudentClass({ client, offeringId, navigate }: {
   useReloadOnFocus(reload);
   return <Page refresh={reload}>
     <QueryState state={state} retry={reload}>{(data) => <>
-      <Title subtitle={data.course?.offering.sectionName}> {data.course?.course.title || 'Class'} </Title>
+      <Title subtitle={data.course?.offering.sectionName}>{data.course?.course.title || 'Class'}</Title>
       <View style={{ gap: 12, flexDirection: 'row', marginBottom: 26 }}>
         <Card style={{ flex: 1, alignItems: 'center', gap: 6 }}>
           <Text style={{ fontSize: 24, fontWeight: '800', color: palette.primary }}>{data.activities.length}</Text>
@@ -94,30 +95,30 @@ export function TeacherClass({ client, offeringId, navigate }: {
   client: DistrictClient; offeringId: string; navigate: (d: Detail) => void;
 }) {
   const palette = usePalette();
-  const [screen, setScreen] = useState<'assignments' | 'roster'>('assignments');
+  const [screen, setScreen] = useState<'assignments' | 'grades' | 'roster'>('assignments');
   const [state, reload] = useLoad('teacher-class:' + offeringId + ':' + screen, async () => {
     const [offerings, records] = await Promise.all([
       client.teacherClasses(),
-      screen === 'assignments' ? client.teacherAssignments(offeringId) : client.teacherRoster(offeringId),
+      screen === 'assignments' ? client.teacherAssignments(offeringId)
+        : screen === 'grades' ? client.teacherGradebook(offeringId) : client.teacherRoster(offeringId),
     ]);
     return { course: offerings.find((c) => c.offering.id === offeringId), records };
   });
   return <Page refresh={reload}>
     <QueryState state={state} retry={reload}>{(data) => <>
-      <Title subtitle={data.course?.offering.sectionName}> {data.course?.course.title || 'Classroom'} </Title>
-      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 22 }}>
-        <View style={{ flex: 1 }}><Button label="Assignments" variant={screen === 'assignments' ? 'primary' : 'outline'}
-          onPress={() => setScreen('assignments')}/></View>
-        <View style={{ flex: 1 }}><Button label="Roster" variant={screen === 'roster' ? 'primary' : 'outline'}
-          onPress={() => setScreen('roster')}/></View>
-      </View>
+      <Title subtitle={data.course?.offering.sectionName}>{data.course?.course.title || 'Classroom'}</Title>
+      <View style={{ marginBottom: 22 }}><Segmented value={screen} onChange={setScreen} options={[
+        { value: 'assignments', label: 'Class' }, { value: 'grades', label: 'Grades' }, { value: 'roster', label: 'Roster' },
+      ]}/></View>
       {screen === 'assignments' ? <Section title="Published assignments">
         {(data.records as Assignment[]).length === 0 ?
-          <Placeholder title="Nothing published" message="Open Teacher Studio in your AI workspace to author assignments."/> :
+          <Placeholder title="Nothing published" message="Create assignments in EducateOS on a computer; they appear here to review and grade."/> :
           <Card>{(data.records as Assignment[]).map((assignment) => <Item key={assignment.id}
             title={assignment.title} detail={'Due ' + dateLabel(assignment.dueAt, true)}
             leading={<ClipboardCheck size={21} color={palette.primary}/>}
             onPress={() => navigate({ type: 'teacher-assignment', id: assignment.id, offeringId })}/>)}</Card>}
+      </Section> : screen === 'grades' ? <Section title="Gradebook">
+        <GradebookView gradebook={data.records as Gradebook}/>
       </Section> : <Section title="Class roster">
         {(data.records as { enrollment: { principalId: string }; displayName: string }[]).length === 0 ?
           <Placeholder title="No students" message="Your roster will appear once your district enrolls students."/> :
@@ -125,13 +126,7 @@ export function TeacherClass({ client, offeringId, navigate }: {
             .map((member) => <Item key={member.enrollment.principalId} title={member.displayName}
               detail="Enrolled student" leading={<Users color={palette.teal} size={20}/>}/>)}</Card>}
       </Section>}
-      <Card style={{ gap: 9, marginBottom: 24 }}>
-        <Text style={{ color: palette.ink, fontWeight: '800' }}>More teaching tools</Text>
-        <Text style={{ color: palette.muted, lineHeight: 20, fontSize: 13 }}>
-          Course authoring, rubrics, quizzes, moderation, and advanced gradebook settings remain available
-          in the full EducateOS Teacher Studio through your workspace.
-        </Text>
-      </Card>
+      {screen === 'assignments' && <TeacherClassHub client={client} offeringId={offeringId} navigate={navigate}/>}
     </>}</QueryState>
   </Page>;
 }

@@ -75,9 +75,10 @@ export type DiscussionTopic = {
   settings: { allowReplies: boolean }; createdAt: string;
 };
 export type TopicListing = { canModerate: boolean; topics: { topic: DiscussionTopic; posts: number; needsAttention: number }[] };
+/** A post as a student sees it, or (with `flags` and the hidden/removed/deleted states) as staff do. */
 export type DiscussionPost =
-  | { status: 'visible' | 'pending'; id: string; parentId?: string; authorId: string; authorRole: 'student' | 'staff';
-    body: string; createdAt: string; editedAt?: string; mine: boolean }
+  | { status: 'visible' | 'pending' | 'hidden' | 'removed' | 'deleted'; id: string; parentId?: string; authorId: string;
+    authorRole: 'student' | 'staff'; body: string; createdAt: string; editedAt?: string; mine?: boolean; flags?: { reason: string }[] }
   | { status: 'withdrawn'; id: string; parentId?: string; createdAt: string };
 export type DiscussionThread = { topic: DiscussionTopic; posts: DiscussionPost[]; authors: { principalId: string; displayName: string }[] };
 export type QuizScore = { points: number; maxPoints: number };
@@ -106,6 +107,33 @@ export type QuizResult = {
   submittedAt?: string; answersShown: boolean; released: boolean; releasedScore?: QuizScore;
   items: { question: QuizQuestion; response?: QuizResponse; points?: number | null; correct?: boolean;
     correctResponse?: QuizResponse; acceptedAnswers?: string[]; feedback?: string; comment?: string }[];
+};
+export type GradebookCell = { assignmentId: string; score?: QuizScore; percent: number | null; counted?: boolean; dropped?: boolean; marker?: string };
+export type Gradebook = {
+  columns: { assignmentId: string; title: string; dueAt: string; pointsPossible: number | null }[];
+  rows: { studentPrincipalId: string; displayName: string; cells: GradebookCell[];
+    totals: { final: number | null; letter: string | null; points?: { earned: number; possible: number } } }[];
+};
+export type StaffQuizSummary = { quiz: { id: string; title: string; status: string; assignmentId?: string };
+  started: number; submitted: number; needsGrading: number; lastReleasedAt?: string };
+export type QuizResults = {
+  quiz: { id: string; title: string; items: (QuizQuestion & { correctChoiceId?: string; acceptedAnswers?: string[] })[] };
+  students: { studentId: string; needsGrading: boolean;
+    attempts: { id: string; number: number; status: string; submittedAt?: string; points: number | null; maxPoints: number }[] }[];
+  items: { itemId: string; responses: number; correct: number; graded: number; percentCorrect: number | null; meanPoints: number | null }[];
+  releasable: number; names: { principalId: string; displayName: string }[];
+};
+export type StaffAttempt = {
+  quiz: QuizResults['quiz']; studentName: string;
+  attempt: { id: string; number: number; status: string; submittedAt?: string; answers: QuizAnswer[];
+    itemScores?: { itemId: string; points: number | null; maxPoints: number; source: 'auto' | 'teacher'; comment?: string }[] };
+};
+export type ModerationQueue = { settings: { premoderation: boolean }; pending: DiscussionPost[]; flagged: DiscussionPost[] };
+export type GradeProposal = { id: string; studentPrincipalId: string; submissionId: string; score: QuizScore; proposedAt: string;
+  approvedAsVersion?: number; declined?: unknown; expired?: unknown };
+export type EmailPreferences = {
+  email: { announcements: boolean; assignments: boolean; feedback: boolean; grades: boolean; digest: boolean };
+  hasEmailAddress: boolean; emailEnabled: boolean;
 };
 export type RouteErrorCode = 'unauthenticated' | 'forbidden' | 'not-found' | 'conflict' | 'validation-failed' | 'unavailable';
 export type Tab = 'today' | 'classes' | 'review' | 'ai' | 'inbox' | 'family' | 'agenda' | 'me';
