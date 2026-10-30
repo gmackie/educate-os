@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { Plus } from '@phosphor-icons/react'
 import GadgetList from '../components/GadgetList'
 import { useDocumentTitle } from '../useDocumentTitle'
+import { useLibraryCopy } from '../features/district-frame/libraryCopy'
 
 /**
  * Full workspace listing. The sidebar surfaces Favorites + a handful of Recent workspaces; this is
@@ -13,13 +14,14 @@ export const Route = createFileRoute('/workspaces')({
 
 function WorkspacesPage() {
   useDocumentTitle('Workspaces')
+  const { description } = useLibraryCopy('workspaces')
   return (
     <div className="mx-auto flex h-full w-full max-w-4xl flex-col px-3 sm:px-10">
       <header className="flex flex-col items-stretch gap-4 px-3 pb-3 pt-6 sm:flex-row sm:items-end sm:justify-between sm:pt-10">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-kumo-default">Workspaces</h1>
           <p className="mt-1 text-[13px] leading-[18px] tracking-[-0.25px] text-kumo-subtle">
-            Each workspace is an isolated environment with its own conversations, gatekeepers, and outputs.
+            {description}
           </p>
         </div>
         {/* "Create" just routes to Home (the new-workspace launcher) for now. */}

@@ -259,3 +259,18 @@ source declarations, and makes no live-provider or deployment claim. No gate is 
 Inventory repair validation: all five teaching-demo checks and all 479 repository script tests
 pass; root lint/config/build passes 181 tasks. Require new-head Workshop completion, not the
 aggregate alone. Eight preceding train PRs were still open when this alert was investigated.
+
+## Canonical UI refresh after PRs 215 and 214
+
+Merged canonical main `fbcba099` (school library copy/empty states and educational AI UI)
+without rewriting either history. Resolve the Home route extraction by using the canonical
+`pages/home/HomePage` and keeping the integrated `newWorkspace()` RPC name in both the page
+and its submission tests. Preserve prompt validation, native sign-in state/key search parameters,
+school-context attachment/refusal behavior, district role-specific starters, and generic Workshop
+Home behavior. No kernel, deployment, or provider integration changed in this refresh.
+
+Validation: all 1,609 frontend unit/DOM tests (128 files), including context submission, delayed
+district role resolution, prompt draft preservation and school library empty states, pass. Fresh
+frontend build/typechecks pass (4 tasks). Root lint/config/workspace build also passes (181 tasks).
+Seven preceding train PRs remain open: 167, 183, 210, 217, 218, 223 and 224. The batch still lands
+last, after a further latest-main merge if needed and completed exact-head canonical CI gates.

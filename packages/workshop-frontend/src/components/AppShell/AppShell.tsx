@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouterState } from '@tanstack/react-router'
-import { List, X } from '@phosphor-icons/react'
+import { Breadcrumbs, Button } from '@cloudflare/kumo'
+import { List, Sparkle, X } from '@phosphor-icons/react'
 import TopBarNotice from '../../TopBarNotice'
 import ReconnectingChip from '../ReconnectingChip'
 import { useConnectionLost } from '../../RpcContext'
 import Sidebar from './Sidebar'
 import CommandPalette from './CommandPalette'
 import { OPEN_COMMAND_PALETTE_EVENT } from './commandPaletteBus'
+import { useDistrictSidebar } from '../../features/district-frame/districtFrame'
 
 const STORAGE_KEY_COLLAPSED = 'gadgets:sidebar-collapsed'
 
@@ -35,6 +37,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const drawerRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const connectionLost = useConnectionLost()
+  const district = useDistrictSidebar()
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
@@ -132,6 +135,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             aria-hidden="true"
           />
           <div
+            id="workshop-navigation"
             ref={drawerRef}
             role="dialog"
             aria-modal="true"
@@ -150,19 +154,33 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         inert={mobileOpen ? true : undefined}
         aria-hidden={mobileOpen ? true : undefined}
       >
-        {/* Top bar. Same height as the sidebar's brand row (h-14) so they read as one continuous
-            chrome strip across the top. Mostly empty — carries the mobile hamburger on the left,
-            any admin TopBarNotice centered, and the reconnecting chip on the right. */}
+        {/* School context stays visible when the sidebar is collapsed or behind the mobile drawer. */}
         <div className="relative flex h-14 shrink-0 items-center justify-between border-b border-kumo-line bg-kumo-base px-3">
-          <button
+          <Button
+            variant="ghost"
+            shape="square"
             type="button"
             ref={menuButtonRef}
             onClick={() => setMobileOpen((o) => !o)}
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-            className="flex h-11 w-11 items-center justify-center rounded-md text-kumo-default transition-colors hover:bg-kumo-tint md:hidden"
+            aria-expanded={mobileOpen}
+            aria-controls={mobileOpen ? 'workshop-navigation' : undefined}
+            className="h-11 w-11 shrink-0 md:hidden"
           >
             {mobileOpen ? <X size={16} /> : <List size={16} />}
-          </button>
+          </Button>
+          {district && (
+            <>
+              <Breadcrumbs className="hidden min-w-0 sm:flex">
+                <Breadcrumbs.Link href={district.navigation[0]?.items[0]?.href ?? '/'}>
+                  <span className="block max-w-48 truncate">{district.school.name}</span>
+                </Breadcrumbs.Link>
+                <Breadcrumbs.Separator />
+                <Breadcrumbs.Current icon={<Sparkle size={16} aria-hidden="true" />}>AI workspace</Breadcrumbs.Current>
+              </Breadcrumbs>
+              <span className="truncate text-sm font-medium text-kumo-default sm:hidden">AI workspace</span>
+            </>
+          )}
           <TopBarNotice />
           {/* `ml-auto` rather than the container's `justify-between`: on desktop the hamburger is
               hidden, leaving this the only in-flow child, which `justify-between` would park on the

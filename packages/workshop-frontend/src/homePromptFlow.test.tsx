@@ -25,7 +25,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
   useNavigate: () => testState.navigate,
 }));
 
-vi.mock("@cloudflare/kumo", () => ({
+vi.mock("@cloudflare/kumo", async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@cloudflare/kumo')>()),
   useKumoToastManager: () => ({ add: testState.addToast }),
 }));
 
@@ -48,12 +49,12 @@ vi.mock("./features/chat/composer/ChatComposer", () => ({
   },
 }));
 
-vi.mock("./components/MeshBackground", () => ({ default: () => null }));
-vi.mock("./components/AppShell/HomeTaskSuggestions", () => ({ default: () => null }));
+vi.mock("./pages/home/MeshBackground", () => ({ default: () => null }));
+vi.mock("./pages/home/HomeTaskSuggestions", () => ({ default: () => null }));
 vi.mock("./features/deployment-updates/UpdateAvailableNotice", () => ({ UpdateAvailableNotice: () => null }));
 vi.mock("./useDocumentTitle", () => ({ useDocumentTitle: () => {} }));
 
-import { HomePageContent } from "./routes/index";
+import { HomePage } from "./pages/home/HomePage";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -74,7 +75,7 @@ describe("Home prompt route flow", () => {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
-    await act(async () => root!.render(<HomePageContent prompt="Create a daily brief." />));
+    await act(async () => root!.render(<HomePage prompt="Create a daily brief." />));
 
     expect(container.querySelector<HTMLTextAreaElement>('[aria-label="Prompt"]')?.value).toBe(
       "Create a daily brief.",
