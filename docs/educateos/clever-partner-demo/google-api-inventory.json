@@ -1,6 +1,6 @@
 {
-  "revision": "a5f9a104417498af796f3f37709d8b54b4d07038",
-  "description": "Current static declarations at the audited source revision; inherited methods are referenced through extends. This inventory is not live acceptance.",
+  "productionEvidenceRevision": "a5f9a104417498af796f3f37709d8b54b4d07038",
+  "description": "Static declarations from the checked-out source; inherited methods are referenced through extends. productionEvidenceRevision identifies separate historical deployment evidence, not the source revision or live acceptance of this inventory.",
   "resources": [
     {
       "urlPattern": "https://mail.google.com/*",
@@ -52,16 +52,17 @@
       "grantable": true,
       "oauthScopes": [
         "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
-        "https://www.googleapis.com/auth/calendar.events"
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.freebusy"
       ]
     },
     {
       "urlPattern": "https://drive.google.com/drive/my-drive",
-      "title": "Google Drive Account",
-      "description": "Find files and folders anywhere this Google account can read in Drive, including shared drives. Full-text search examines indexed file content, descriptions, and OCR text; search results contain metadata only, while native Google Docs, Sheets and Slides can be opened read-only.",
+      "title": "Google Drive",
+      "description": "Find files and folders anywhere this Google account can read in Drive, including shared drives. Full-text search examines indexed file content, descriptions, and OCR text; search results contain metadata only, while native Google Docs, Sheets and Slides can be opened read-only, and PDFs can be read as text.",
       "grantable": true,
       "oauthScopes": [
-        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.readonly",
         "https://www.googleapis.com/auth/documents.readonly",
         "https://www.googleapis.com/auth/spreadsheets.readonly",
         "https://www.googleapis.com/auth/presentations.readonly"
@@ -70,10 +71,11 @@
     {
       "urlPattern": "https://drive.google.com/drive/folders/:folderId",
       "title": "Google Drive Folder",
-      "description": "Browse a selected folder or shared drive, search its direct children, and read native Google Docs, Sheets and Slides.",
+      "description": "Browse a selected folder or shared drive, search its direct children, and read native Google Docs, Sheets and Slides, and PDFs as text.",
       "grantable": true,
+      "groupedWith": "https://drive.google.com/drive/my-drive",
       "oauthScopes": [
-        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.readonly",
         "https://www.googleapis.com/auth/documents.readonly",
         "https://www.googleapis.com/auth/spreadsheets.readonly",
         "https://www.googleapis.com/auth/presentations.readonly"
@@ -82,10 +84,11 @@
     {
       "urlPattern": "https://drive.google.com/file/d/:fileId/view",
       "title": "Google Drive File",
-      "description": "Read metadata and, for a native Google Doc, Sheet or Slides presentation, content from one Drive file.",
+      "description": "Read metadata and, for a native Google Doc, Sheet or Slides presentation, content from one Drive file, or its text when it is a PDF.",
       "grantable": true,
+      "groupedWith": "https://drive.google.com/drive/my-drive",
       "oauthScopes": [
-        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.readonly",
         "https://www.googleapis.com/auth/documents.readonly",
         "https://www.googleapis.com/auth/spreadsheets.readonly",
         "https://www.googleapis.com/auth/presentations.readonly"
@@ -353,7 +356,8 @@
         "getEntry(fileId: string): Promise<DriveEntry>;",
         "openGoogleDoc(fileId: string): Promise<GoogleDocReadSession>;",
         "openGoogleSheet(fileId: string): Promise<GoogleSpreadsheetReadSession>;",
-        "openGoogleSlides(fileId: string): Promise<GooglePresentationReadSession>;"
+        "openGoogleSlides(fileId: string): Promise<GooglePresentationReadSession>;",
+        "readPdf(fileId: string): Promise<DrivePdfText>;"
       ]
     },
     {
@@ -369,6 +373,7 @@
         "openGoogleDoc(fileId: string): Promise<GoogleDocReadSession>;",
         "openGoogleSheet(fileId: string): Promise<GoogleSpreadsheetReadSession>;",
         "openGoogleSlides(fileId: string): Promise<GooglePresentationReadSession>;",
+        "readPdf(fileId: string): Promise<DrivePdfText>;",
         "openFolder(folderId: string): Promise<GoogleDriveFolderSession>;"
       ]
     },
@@ -549,6 +554,6 @@
   "counts": {
     "resources": 14,
     "interfaces": 29,
-    "declaredMethods": 159
+    "declaredMethods": 161
   }
 }

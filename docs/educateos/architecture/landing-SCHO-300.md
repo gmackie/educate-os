@@ -246,3 +246,16 @@ The run's mobile/Workshop jobs were skipped and do not qualify as completed gree
 MCP repair validation passes: 21 Node tests, three real-workerd tests, fresh external MCP
 typecheck, 166 shared policy tests, final four-test registry rerun, and root lint/build (181 tasks).
 Await all completed canonical checks on the new revision; no main merge or deployment occurred.
+
+The “all checks passed” aggregate on `8646f717` did not include Workshop success: the real
+`CI / workshop-tests` job failed. Main CI, mobile, Linux V01 video and operations jobs completed
+successfully. Workshop's script suite reproduced an inventory-parser error on the upstream Drive
+resource grouping reference (`GOOGLE_DRIVE_RESOURCE.urlPattern`). Add static own-property reads
+of already-parsed constants, without importing/executing provider code; regenerate the checked
+inventory. All 14 resource identities remain; the inventory reflects 161 current declared methods.
+Its historical production evidence revision is now explicitly named separately from checked-out
+source declarations, and makes no live-provider or deployment claim. No gate is bypassed.
+
+Inventory repair validation: all five teaching-demo checks and all 479 repository script tests
+pass; root lint/config/build passes 181 tasks. Require new-head Workshop completion, not the
+aggregate alone. Eight preceding train PRs were still open when this alert was investigated.
