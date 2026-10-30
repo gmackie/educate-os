@@ -8,8 +8,14 @@ describe("release manifest", () => {
     const school = await deriveRelease(base, "r000003-school", (manifest) => {
       const variants = manifest.workers.router!.assetsConfig!.variants;
       variants["access-school"] = variants.access!;
+      variants["access-school-ai"] = variants["access-ai"]!;
       delete variants.access;
+      delete variants["access-ai"];
     });
+    expect(() => compileDesiredState(school.manifest, configFor(NORTHFIELD, school)))
+      .toThrow("school release requires a district PRINCIPAL_RESOLVER binding");
+    school.manifest.workers["workshop-backend"]!.bindings.push({ type: "service",
+      name: "PRINCIPAL_RESOLVER", service: "$WORKER_NAME(educateos-district-worker)", entrypoint: "DistrictPrincipalResolver" });
     expect(() => compileDesiredState(school.manifest, configFor(NORTHFIELD, school)))
       .toThrow("school release requires a district WORKSHOP_CAPABILITY_POLICY binding");
     // A binding to an uninstalled authority must fail placeholder resolution as well.
@@ -18,6 +24,21 @@ describe("release manifest", () => {
       entrypoint: "DistrictWorkshopCapabilityPolicy" });
     expect(() => compileDesiredState(school.manifest, configFor(NORTHFIELD, school)))
       .toThrow("school release requires enabled service");
+    // With both authorities enabled, the backend is required to use them.
+    const enabled = compileDesiredState(school.manifest, configFor(NORTHFIELD, school, { services: {
+      "educateos-district-worker": { enabled: true, vars: { DISTRICT_CONFIG: "{}" } },
+      "educateos-external-mcp": { enabled: true, vars: { MCP_CONFIG: "{}" } },
+    } }));
+    const backend = enabled.resources.find(resource => resource.kind === "worker_script" && resource.role === "backend");
+    if (backend?.kind !== "worker_script") throw new Error("Missing backend");
+    expect(backend.bindings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "REQUIRE_WORKSHOP_CAPABILITY_POLICY", text: "true" }),
+      expect.objectContaining({ name: "REQUIRE_PRINCIPAL_RESOLVER", text: "true" }),
+      expect.objectContaining({ name: "WORKSHOP_CAPABILITY_POLICY", entrypoint: "DistrictWorkshopCapabilityPolicy" }),
+      expect.objectContaining({ name: "PRINCIPAL_RESOLVER", entrypoint: "DistrictPrincipalResolver" }),
+    ]));
+    expect(backend.dependsOn).toContain("worker:educateos-district-worker");
+    school.manifest.workers["workshop-backend"]!.bindings.pop();
     school.manifest.workers["workshop-backend"]!.bindings.pop();
     // Validate assets independently of activation, which is intentionally blocked above.
     delete school.manifest.workers.router!.assetsConfig!.variants["access-school"];
