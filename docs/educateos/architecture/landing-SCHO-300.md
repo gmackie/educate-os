@@ -1,6 +1,6 @@
 # SCHO-300 PR batch integration
 
-Integration of GitHub PRs #5–#16, preserving every original head commit in merge history.
+Integration of GitHub PRs #5–#23, preserving every original head commit in merge history.
 GitHub delivery only; no ForgeGraph credential changes or manual deployments.
 Production acceptance and mobile physical-device verification remain separate from code landing.
 
@@ -18,18 +18,32 @@ when either Access or a principal resolver is configured; absent Access config d
 The native redirect origin is deployment configuration, restricted to canonical HTTPS and kept separate
 from request input. Single-use encrypted transfer and principal ownership checks remain intact.
 
+The stacked assessment bridge reads only exact public stored Git packs, checks the commit and hashes
+sorted source files. Its public RPC contract is documented and exposes no Gadget runtime state.
+The extended optional policy checks retained RPC clients before publication, sharing, execution and
+agent entrypoints; its creation query is advisory and mutations still authorize independently.
+Existing raw stubs, running/resumed turns and legacy initiator attribution remain school-rollout
+blockers. The district policy adapter conservatively denies the new operation scopes it does not
+recognize; binding enablement requires a separate reviewed rollout.
+
 Fingerprints updated only for these reviewed kernel paths:
 
+- `packages/workshop-backend/__tests__/assessment-blueprint.test.ts`
+- `packages/workshop-backend/__tests__/capability-boundaries.test.ts`
 - `packages/workshop-backend/__tests__/capability-policy.test.ts`
+- `packages/workshop-backend/__tests__/gadget-restore.test.ts`
 - `packages/workshop-backend/__tests__/device-session-callback.test.ts`
 - `packages/workshop-backend/__tests__/principal-sign-in.test.ts`
 - `packages/workshop-backend/src/auth/device-session-callback.ts`
 - `packages/workshop-backend/src/auth/principal-sign-in.ts`
+- `packages/workshop-backend/src/blueprint-archive.ts`
 - `packages/workshop-backend/src/capability-policy.ts`
+- `packages/workshop-backend/src/overseer.ts`
 - `packages/workshop-backend/src/env.d.ts`
 - `packages/workshop-backend/src/server.ts`
 - `packages/workshop-backend/src/user.ts`
 - `packages/workshop-shared/package.json`
+- `packages/workshop-shared/src/api.ts`
 - `packages/workshop-shared/src/capability-policy.ts`
 
 ## Integration repairs
@@ -53,11 +67,26 @@ Fingerprints updated only for these reviewed kernel paths:
 - [PR #15](https://github.com/gmackie/educate-os/pull/15): `1290bef7639184e74c370e97ae488488bd608479`
 - [PR #16](https://github.com/gmackie/educate-os/pull/16): `b75c0a9e02691a21b1d894d26c9ed5da3f0b9bfa`
 
+- [PR #17](https://github.com/gmackie/educate-os/pull/17): `45c82639d66e96e3af7bc892f2b1ca7f035cbf4c`
+- [PR #18](https://github.com/gmackie/educate-os/pull/18): `17472c2f64b22e40894a2f086eef2d057402c96f`
+- [PR #19](https://github.com/gmackie/educate-os/pull/19): `b4f56537d1a736fd35d70fe6cd5156bf8c6abee8`
+- [PR #20](https://github.com/gmackie/educate-os/pull/20): `84b104ebca7fb76f5560b977b5cc674112250beb`
+- [PR #21](https://github.com/gmackie/educate-os/pull/21): `5a4b4d1aff3db73a874c4b8f9027b03b0d1ac96c`
+- [PR #22](https://github.com/gmackie/educate-os/pull/22): `bf6febdda61ab4f1c32a6e136ba2c841322f1c0e`
+- [PR #23](https://github.com/gmackie/educate-os/pull/23): `e5e9aac6fcd88be594e706824eee7dcc87a5aceb`
+
 ## Validation and delivery
 
-Before merging, the integrated branch runs frozen dependency installs, full repository lint/build,
-workspace tests, focused architecture/environment tests, local operations tests and mobile type/security
-tests. CI validates the same combined branch before GitHub main is updated.
+The initial 12-PR integration passed frozen dependency installation, full repository lint/build
+(172 tasks), 27 focused architecture/environment/operations tests, 13 district course tests, mobile
+typecheck and 20 mobile security tests. The real local relay security test passed independently.
+Workspace attempts stopped on a 60-second relay startup timeout under load, then on the historical
+upgrade fixture build's 60-second idle watchdog; neither attempt is claimed green.
+
+After adding the seven newly opened PRs, the full 19-PR integration passed frozen installation,
+`pnpm lint` (172/172 build tasks), 71 focused offline/loopback tests and the kernel inventory gate
+with zero unreviewed deltas. The final PR records combined-head CI results; GitHub main is updated only after code
+checks pass. The Launch Factory's original CI includes 82-scene smoke capture and a full V01 draft.
 Inherited Cloudflare CLA storage and Bonk service failures are not fabricated as passing checks;
 this fork has no configured branch-protection rules or repository webhooks at integration time.
 
@@ -65,3 +94,6 @@ The Launch Factory remains a labeled synthetic storyboard engine with publicatio
 Launch Operations remains draft-only with local exports; no communications are sent.
 The new MCP/Blueprint/assessment components retain their documented host authentication/persistence
 and approval requirements. Code landing does not assert production readiness or completed mobile sign-in.
+
+Public website intake and opt-out collection remain disabled by default. The persistent catalog and
+MCP resource Worker require their documented trusted-host/installer wiring; no live route is enabled.

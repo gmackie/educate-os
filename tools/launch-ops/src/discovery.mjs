@@ -51,7 +51,7 @@ export function robotsAllows(raw, path) {
     const matches = group.rules.filter(r => {
       const pattern = r.value.endsWith('$') ? r.value.slice(0, -1) : r.value + '*';
       return glob(pattern, path) || glob(pattern, decodeURI(path)) || glob(decodeURI(pattern), decodeURI(path));
-    }).sort((a, b) => b.value.replace(/[*$]/g, '').length - a.value.replace(/[*$]/g, '').length || Number(b.allow) - Number(a.allow));
+    }).toSorted((a, b) => b.value.replace(/[*$]/g, '').length - a.value.replace(/[*$]/g, '').length || Number(b.allow) - Number(a.allow));
     if (matches.length && !matches[0].allow) return { allowed: false, waitSeconds };
   }
   return { allowed: true, waitSeconds };

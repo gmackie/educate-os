@@ -19,8 +19,8 @@ export function recordDelivery(s, input) {
   audit(s, 'funnel.external-delivery-recorded', d.id, reviewer); return d;
 }
 export function dailyWorkflow(s, input) {
-  const day = now().slice(0, 10); const key = hash({ day, sourceImports: s.sourceImports.map(x => x.contentHash).sort(), evidence: s.candidates.map(c => [c.id, candidateHash(c), c.verification, c.stage]), outreach: s.outreach.map(o => [o.id, outreachHash(s, o), o.approval]),
-    responses: s.responses.map(r => [r.id, responseHash(r), r.review]), feedback: s.staffFeedback.map(f => [f.id, interestHash(f), f.review]), suppressions: s.suppressions.map(x => x.fingerprint).sort() });
+  const day = now().slice(0, 10); const key = hash({ day, sourceImports: s.sourceImports.map(x => x.contentHash).toSorted(), evidence: s.candidates.map(c => [c.id, candidateHash(c), c.verification, c.stage]), outreach: s.outreach.map(o => [o.id, outreachHash(s, o), o.approval]),
+    responses: s.responses.map(r => [r.id, responseHash(r), r.review]), feedback: s.staffFeedback.map(f => [f.id, interestHash(f), f.review]), suppressions: s.suppressions.map(x => x.fingerprint).toSorted() });
   const old = s.runs.find(x => x.key === key); if (old) return { ...old, replay: true };
   const queues = {
     quarantine: s.candidates.filter(c => !c.verification).map(c => c.id),
@@ -40,7 +40,7 @@ export function metrics(s) {
   const sentIds = new Set(s.deliveries.filter(d => ['sent', 'delivered'].includes(d.status)).map(d => d.handoffId));
   const repliedInvitations = new Set();
   for (const r of s.responses) {
-    const preceding = exported.filter(h => h.candidateId === r.candidateId && sentIds.has(h.id) && s.deliveries.some(d => d.handoffId === h.id && d.at <= r.receivedAt)).sort((a, b) => b.at.localeCompare(a.at));
+    const preceding = exported.filter(h => h.candidateId === r.candidateId && sentIds.has(h.id) && s.deliveries.some(d => d.handoffId === h.id && d.at <= r.receivedAt)).toSorted((a, b) => b.at.localeCompare(a.at));
     if (preceding[0]) repliedInvitations.add(preceding[0].id);
   }
   const denominator = sentIds.size;
