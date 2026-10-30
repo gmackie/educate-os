@@ -5,6 +5,7 @@ import { defineConfig } from 'vitest/config'
 import { cloudflareTest } from '@cloudflare/vitest-plugin'
 import { COMPATIBILITY_DATE } from '@gadgets/scripts/worker-config'
 import capnwebValidate from 'capnweb-validate/vite'
+import { kCurrentWorker } from 'miniflare'
 
 // Wrangler ships `*.txt` imports as Text modules (its default module rules; see
 // src/text-modules.d.ts), but this config drives the pool from inline miniflare settings, and
@@ -88,7 +89,10 @@ export default defineConfig({
         // `allow_irrevocable_stub_storage` as in cloudflare.config.ts: the user DO persists account stubs.
         compatibilityFlags: ['experimental', 'nodejs_compat', 'allow_irrevocable_stub_storage'],
         streamingTails: ['span-recorder'],
-        serviceBindings: { SPAN_RECORDER: { name: 'span-recorder', entrypoint: 'SpanRecorder' } },
+        serviceBindings: {
+          SPAN_RECORDER: { name: 'span-recorder', entrypoint: 'SpanRecorder' },
+          ASSESSMENT_RELEASES: { name: kCurrentWorker, entrypoint: 'WorkshopAssessmentReleases' },
+        },
         workers: [{
           name: 'span-recorder',
           modules: true,
@@ -101,6 +105,7 @@ export default defineConfig({
         workerLoaders: { LOADER: {} },
         // Where a blueprint's content is published to and read back from.
         r2Buckets: ['BLUEPRINT_CONTENT'],
+        kvNamespaces: ['BLUEPRINTS'],
         durableObjects: {
           TEST_OVERSEER: { className: 'OverseerDurableObject', useSQLite: true },
           TEST_USER: { className: 'UserDurableObject', useSQLite: true },

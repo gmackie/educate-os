@@ -7,7 +7,8 @@ import { Overseer, WorkspaceMetadata, UiBundle, WorkpieceId, WorkpieceSummary, W
 import { applyCodeChange, changedGadgets, codeChangeSerializedSize, composeCodeChange,
   MAX_CODE_CHANGE_SIZE, transformCodeChange, validateCodeChangeContent, validateCodeChangeSchema,
   requireTextFiles, type FileContent, type CodeContent, type CodeChange } from "@gadgets/workshop-shared/code-change";
-import { type AgentCatalog, Gatekeeper, GatekeeperUserVerifier, HookInitiator, ResourceDescription, ApprovalQueue, ActionDescription, ObservationAuthorizer, ObservationDescription, VendorDescription, SupportedResource, resolveRequestedResource, HookController, HookDescription, ActionKind, GitCache, GitPullHints } from "@gadgets/workshop-shared/gatekeeper";
+import { type AgentCatalog, type GadgetSourceCheckpoint, Gatekeeper, GatekeeperUserVerifier, HookInitiator, ResourceDescription, ApprovalQueue, ActionDescription, ObservationAuthorizer, ObservationDescription, VendorDescription, SupportedResource, resolveRequestedResource, HookController, HookDescription, ActionKind, GitCache, GitPullHints } from "@gadgets/workshop-shared/gatekeeper";
+import { createGadgetSourceCheckpoint } from "./gadget-source-checkpoint";
 import {
   DurableObject, WorkerEntrypoint, RpcStub as NativeRpcStub,
   RpcTarget as NativeRpcTarget, restore,
@@ -4578,6 +4579,7 @@ class OverseerImpl implements AgentHooks {
       // the old fail-on-deleted-chat behavior (don't cache a load for a chat deleted mid-load).
       if (chatId !== undefined) this.getChatMetaOrThrow(chatId);
       let files: ReadonlyMap<string, string>;
+      let sourceCommitId: string | undefined;
       // An unpinned committed gadget tracks mainline head live, in chat context and out (see
       // chatDocOwnsGadget). Head movement invalidates the cached load either way: every merge
       // bumps the codeVersion counter in the cache key.
@@ -4588,6 +4590,7 @@ class OverseerImpl implements AgentHooks {
         files = requireTextFiles((await this.buildChatContent(chatId!, sequence! - 1)).get(gadgetId) ?? new Map());
       } else {
         let commitId = this.getGadgetHead(gadgetId);
+        if (chatId === undefined) sourceCommitId = commitId;
         files = commitId !== undefined
             ? await this.gitStore.readCommitFiles(commitId)
             : new Map();
@@ -4615,7 +4618,7 @@ class OverseerImpl implements AgentHooks {
         ],
         mainModule: "server.js",
         modules,
-        env: this.getEnvForLoader(gadgetId, {from: "gadget", chatId, gadgetId}, chatId),
+        env: this.getEnvForLoader(gadgetId, {from: "gadget", chatId, gadgetId, sourceCommitId}, chatId),
         globalOutbound: null,
 
         // TODO: Switch to streaming tails when the workerd log spam issue is fixed.
@@ -6513,6 +6516,41 @@ class OverseerImpl implements AgentHooks {
         ? new AgentSpawnerQueueImpl(this, id, caller) : new ApprovalQueueImpl(this, id, caller);
     // @ts-expect-error TODO: Remove annotation when Cap'n Web fixes cyclic type issues
     return facet.startSession(queue);
+  }
+
+  // Only the configured school's owner-account singleton may request source. Generic gatekeepers
+  // do not acquire a source-reading capability merely because they have an approval queue.
+  async getCurrentGadgetCheckpoint(gatekeeperId: number, caller: GatekeeperCaller)
+      : Promise<GadgetSourceCheckpoint> {
+    const assertCurrent = () => {
+      this.assertGatekeeperUsable(gatekeeperId);
+      const spec = this.storage.gatekeepers.get(gatekeeperId)?.creationSpec;
+      if (!this.ownerId || spec?.type !== "ambient" || spec.vendorId !== "educateos" ||
+          caller.from !== "gadget" || caller.chatId !== undefined || caller.gadgetId === undefined ||
+          !caller.sourceCommitId || Array.from(this.storage.collaborators.list({limit: 1})).length > 0 ||
+          Array.from(this.storage.shareKeys.list({limit: 1})).length > 0) {
+        throw new Error("Checkpoint export requires a private owner's committed school Gadget.");
+      }
+      const gadget = this.getGadgetRecord(caller.gadgetId);
+      if (gadget.commitId !== caller.sourceCommitId ||
+          !Object.values(gadget.bindings).some(edge => edge.target === gatekeeperId && !edge.pending) ||
+          !gadget.upstream?.blueprintId || !gadget.upstream.commitId) {
+        throw new Error("Checkpoint source or school binding changed; reopen the committed Gadget.");
+      }
+      return { gadget, commitId: caller.sourceCommitId,
+        blueprint: {id: gadget.upstream.blueprintId, commitId: gadget.upstream.commitId} };
+    };
+    const {gadget, commitId, blueprint} = assertCurrent();
+    const files = await this.gitStore.readCommitFiles(commitId);
+    const checkpoint = await createGadgetSourceCheckpoint({
+      workspaceId: this.ctx.id.toString(), gadgetId: gadget.id, commitId, blueprint,
+    }, files);
+    // Async Git/hash work must not let deletion, sharing, or a new source/origin race export.
+    const current = assertCurrent();
+    if (current.blueprint.id !== blueprint.id || current.blueprint.commitId !== blueprint.commitId) {
+      throw new Error("Checkpoint Blueprint changed; reopen the committed Gadget.");
+    }
+    return checkpoint;
   }
 
   // Sessions are authorized and verified only at open(), so widening what a live session's holder
@@ -13755,6 +13793,10 @@ class ApprovalQueueImpl extends RpcTarget implements ApprovalQueue {
   async getGitCache(): Promise<GitCache> {
     if (hasCapabilityPolicy(this.impl.env)) this.impl.assertExecutionRevocable();
     return new GitCacheImpl(this.impl.gitCache, this.gatekeeperId);
+  }
+
+  getCurrentGadgetCheckpoint(): Promise<GadgetSourceCheckpoint> {
+    return this.impl.getCurrentGadgetCheckpoint(this.gatekeeperId, this.caller);
   }
 
   submitAction(action: number, description: ActionDescription): Promise<void> {

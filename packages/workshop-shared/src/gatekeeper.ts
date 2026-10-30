@@ -1383,6 +1383,31 @@ export interface SlashCommandProvider extends RpcTarget {
   ): Promise<SlashCommandResult>;
 }
 
+/** Immutable source-only snapshot of one owner's committed Gadget; never an authorship claim. */
+export interface GadgetSourceCheckpoint {
+  /** Version of the source exchange representation. */
+  format: "workshop.gadget-source.v1";
+  /** Version of the bounded, source-only export policy. */
+  policy: "educateos-source-v1";
+  /** Owner-scoped workspace namespace, assigned by the Workshop. */
+  workspaceId: string;
+  /** Gadget workpiece that actually made the call. */
+  gadgetId: number;
+  /** Exact Git commit loaded into the calling executable. */
+  commitId: string;
+  /** SHA-256 of the JSON-encoded, path-sorted file tuples. */
+  sourceDigest: string;
+  /** Complete text source tree; no environment, bindings, chat or runtime storage. */
+  files: [string, string][];
+  /** Most recently adopted Blueprint release, taken from the trusted Gadget record. */
+  blueprint: {
+    /** Workshop Blueprint ID. */
+    id: string;
+    /** Exact adopted release commit. */
+    commitId: string;
+  };
+}
+
 /**
  * Used by a gatekeeper to request an action that has side effects (is not read-only). Any such
  * action may be subject to human-in-the-loop approval and audit logging. Whether or not review is
@@ -1390,6 +1415,14 @@ export interface SlashCommandProvider extends RpcTarget {
  * called before applying them.
  */
 export interface ApprovalQueue extends ObservationAuthorizer {
+  /**
+   * Read the calling Gadget's complete committed source for an explicitly approved assessment
+   * submission. Only the configured EducateOS connector's owner-account singleton may use this
+   * capability. No Gadget ID, revision, URL or source is accepted from the caller. Draft/chat,
+   * shared, unknown-origin and stale executions fail closed. Optional for older Workshops.
+   * The connector must preview the source and obtain explicit consent before district transfer.
+   */
+  getCurrentGadgetCheckpoint?(): Promise<GadgetSourceCheckpoint>;
   // TODO: Method to indicate that the gadget tried to perform an action that the gatekeeper itself
   //   hasn't been authorized to do (e.g. the user hasn't authorized the right OAuth scopes). The
   //   system should direct the user to the right UI to authorize the action.
