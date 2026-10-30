@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { frontendProfile } from "./frontend-profile.ts";
 
 // Builds an immutable release: every deployable worker bundled exactly as `wrangler deploy`
 // would upload it (dry-run + outdir, with the repo's pinned wrangler), plus the Access-mode
@@ -240,7 +241,7 @@ function pinnedWranglerVersion(): string {
 // miss rather than a stale replay. Based on `vpRunEnv()` so the run gets the machine-aware
 // concurrency limit (vp/concurrency.ts); the limit is not a task input, so it never affects the hash.
 async function buildFrontend(signal: AbortSignal): Promise<CollectedAssets> {
-  const env = { ...vpRunEnv(), VITE_CF_ACCESS_MODE: "true" };
+  const { env } = frontendProfile(vpRunEnv());
   await run("frontend (access mode)", "pnpm",
       ["exec", "vp", "run", "-F", "@gadgets/workshop-frontend", "build"], { env, signal });
   return collectAssets(join(FRONTEND_DIR, "dist"));
@@ -364,6 +365,7 @@ async function buildAll(packages: DeployablePackage[], concurrency: number): Pro
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  const profile = frontendProfile(process.env);
   // Read and checked before anything is built, so a bad key or missing flag fails in seconds.
   const signingKey = await releaseSigningKey(process.env);
   const signing = signingKey ? requireSigningOptions(args.signing) : undefined;
@@ -384,7 +386,7 @@ async function main() {
 
   // 2. Everything below is ordered by package, so the release bytes do not depend on which build
   //    finished first.
-  const assetVariants = { access: assets };
+  const assetVariants = { [profile.variant]: assets };
   for (const { blobs } of Object.values(assetVariants)) {
     for (const [hash, blob] of blobs) {
       writeFileSync(join(args.out, "assets", hash), blob.bytes);
