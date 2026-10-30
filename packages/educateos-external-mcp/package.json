@@ -7,19 +7,26 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test:run": "vitest run"
+    "test:run": "vitest run && vitest run --config vitest.worker.config.ts",
+    "configs:generate": "node scripts/generate-config.ts",
+    "deploy": "wrangler deploy --config deploy/wrangler.jsonc"
   },
   "dependencies": {
     "@educateos/contracts": "workspace:*",
     "@educateos/identity": "workspace:*",
     "@educateos/policy": "workspace:*",
     "jose": "^6.2.12",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@educateos/academics": "workspace:*",
+    "@educateos/district-app": "workspace:*"
   },
   "devDependencies": {
-    "@educateos/academics": "workspace:*",
     "@educateos/fixtures": "workspace:*",
     "@gadgets/scripts": "workspace:*",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@cloudflare/vitest-plugin": "catalog:",
+    "miniflare": "catalog:",
+    "wrangler": "catalog:",
+    "@types/node": "26.1.0"
   }
 }
