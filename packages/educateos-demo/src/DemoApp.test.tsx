@@ -114,7 +114,7 @@ describe("the demo's districts", () => {
     expect(await findByRole(container, "heading", { name: "My classes" }, BOOT)).toBeDefined();
     expect(await findByText(container, "Earth Science 8 · Earth Science 8 - Whitaker", {}, BOOT)).toBeDefined();
     // Cedar Valley passes approved grades back to a gradebook, and shows the teacher where they landed.
-    expect(getByRole(container, "button", { name: /^Where grades land/ })).toBeDefined();
+    expect(await findByRole(container, "button", { name: /^Where grades land/ }, BOOT)).toBeDefined();
 
     await switchPersona();
     await choose("Grade 8 student");
