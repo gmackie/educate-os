@@ -5,6 +5,7 @@
 // - `DistrictGuardDirectory`, the AI call guard's read model (`GuardDirectoryPort` in
 //   `@educateos/ai-guard`, SCHO-132/SCHO-147). Given to the guard alone, never on `/api`.
 // - `DistrictSchoolTools`, the EducateOS gatekeeper's `SchoolToolService` (SCHO-57).
+// - `DistrictWorkshopCapabilityPolicy`, Workshop's backend-only mint policy (SCHO-299).
 //
 // and `DistrictApi`, the `/api` surface as a service, which is what the release binds to the
 // backend (`EDUCATEOS_DISTRICT_API`). It carries no authority of its own: every request must bring
@@ -13,6 +14,7 @@
 // Every call reaches the district's one `DistrictObject` through `ctx.exports`, named by the
 // district ID in `DISTRICT_CONFIG`. README.md explains the design and the deployment. Like
 // district-object.ts, this module is checked by running it (ADR-0009, see tsconfig.json).
+import type { WorkshopCapabilityPolicy, WorkshopCapabilityDescriptor, WorkshopCapabilityDecision } from "@gadgets/workshop-shared/capability-policy";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { skipRpcValidation, validateRpc } from "capnweb-validate";
 import type { DistrictDirectorySnapshot, VerifiedPrincipal } from "@educateos/contracts";
@@ -26,6 +28,15 @@ export { DistrictObject } from "./district-object.ts";
 /** The district's object. */
 function districtObject(env: Cloudflare.Env, exports: Cloudflare.Exports) {
   return exports.DistrictObject.getByName(configuredDistrictId(env.DISTRICT_CONFIG));
+}
+
+/** Backend-only WORKSHOP_CAPABILITY_POLICY target; never expose this binding to gadgets. */
+@validateRpc()
+export class DistrictWorkshopCapabilityPolicy extends WorkerEntrypoint<Cloudflare.Env> implements WorkshopCapabilityPolicy {
+  /** Resolves current district facts before authorizing a capability mint. */
+  async authorizeCapability(request: WorkshopCapabilityDescriptor): Promise<WorkshopCapabilityDecision> {
+    return districtObject(this.env, this.ctx.exports).authorizeCapability(request);
+  }
 }
 
 /** The `EDUCATEOS_DISTRICT` entrypoint for the AI call guard: the district's guard read model. */

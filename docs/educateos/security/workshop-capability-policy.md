@@ -42,6 +42,6 @@ A policy cannot yet authorize based on workspace context for resource mints made
 DO. Policies needing that distinction must deny the action until those descriptors and checks are implemented. A policy should allow only
 explicitly recognized actions; adding future action types must not silently grant authority.
 
-No EducateOS role adapter is included: that domain service needs the district's authoritative grant
+The district adapter is documented in [district-workshop-capability-policy.md](district-workshop-capability-policy.md). The original enforcement slice includes no domain adapter: that domain service needs the district's authoritative grant
 model (`packages/educateos-policy`) and a trusted mapping from these Workshop scopes. Tests use a
 deny-by-default fixture policy to exercise scoped teacher grants, student denial, revocation, and injection attempts without inventing a client role.

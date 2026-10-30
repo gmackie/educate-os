@@ -18,6 +18,9 @@
 //
 // Like the other Workers-only modules, this shell is checked by running it (`__tests__/`): the
 // Workers runtime's typings reject the web-standard sources it composes (ADR-0009).
+import { authorizeWorkshopCapability } from "./workshop-policy.ts";
+import { readDistrictWorkerConfig } from "./config.ts";
+import type { WorkshopCapabilityDescriptor, WorkshopCapabilityDecision } from "@gadgets/workshop-shared/capability-policy";
 import { DurableObject } from "cloudflare:workers";
 import type { JWTVerifyGetKey } from "jose";
 import { createLogger } from "@gadgets/observability/logger";
@@ -110,6 +113,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
       return (await lti.serveTool(request))!;
     }
     return app.fetch(request);
+  }
+
+  /** Checks a mint against current district state, never request roles. */
+  async authorizeCapability(request: WorkshopCapabilityDescriptor): Promise<WorkshopCapabilityDecision> {
+    return authorizeWorkshopCapability((await this.#boot()).app, readDistrictWorkerConfig(this.env.DISTRICT_CONFIG).workshopPolicy, request);
   }
 
   /** What the district says about a Workshop user, for the AI call guard. */
