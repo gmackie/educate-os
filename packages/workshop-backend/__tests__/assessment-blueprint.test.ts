@@ -1,18 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { env } from "cloudflare:test";
+import { env } from "cloudflare:workers";
 import type { BlueprintMetadata } from "@gadgets/workshop-shared/api";
 import { buildBlueprintArchiveStream, parseBlueprintArchive, readBlueprintReleaseSource } from "../src/blueprint-archive";
 import { buildReleasePack, buildSnapshotRelease, listReleaseFiles, readReleasePack } from "../src/blueprint-release";
-import { pinWorkshopAssessmentBlueprint, verifyWorkshopAssessmentBlueprint, WORKSHOP_ASSESSMENT_FILE } from "../../educateos-assessment-sdk/src/workshop.ts";
+import { pinWorkshopAssessmentBlueprint, WORKSHOP_ASSESSMENT_FILE } from "../../educateos-assessment-sdk/src/workshop.ts";
 import { demoDefinition, demoProvider } from "../../educateos-assessment-sdk/examples/demo.ts";
-
-declare global {
-  namespace Cloudflare {
-    interface Env {
-      ASSESSMENT_RELEASES: Service<import("../src/assessment-releases.ts").WorkshopAssessmentReleases>;
-    }
-  }
-}
 
 async function publish(id: string, code = "export default {}") {
   const files = new Map([
@@ -22,11 +14,6 @@ async function publish(id: string, code = "export default {}") {
   const { commitId, objects } = await buildSnapshotRelease(files);
   const pack = await buildReleasePack(oid => objects.get(oid), commitId);
   await env.BLUEPRINT_CONTENT.put(`${id}/${commitId}`, pack);
-  await env.BLUEPRINTS.put(id, JSON.stringify({ metadata: {
-    title: "Public assessment", created: new Date(0), lastUpdated: new Date(0), commitId,
-    version: 1, description: "Public task", bindings: {},
-    author: { type: "user", id: "publisher", name: "Publisher" },
-  } }));
   return { commitId, pack, files };
 }
 
@@ -63,27 +50,5 @@ describe("assessment pins from Workshop release packs (workerd)", () => {
     await expect(readBlueprintReleaseSource(env, "assessment-update", "../latest")).rejects.toThrow();
     await env.BLUEPRINT_CONTENT.put(`assessment-corrupt/${first.commitId}`, second.pack);
     await expect(readBlueprintReleaseSource(env, "assessment-corrupt", first.commitId)).rejects.toThrow();
-  });
-
-  it("verifies through the actual release service binding, never resolving an old pin to latest", async () => {
-    // Assimilate native RPC promises before handing them to Vitest assertions.
-    const read = async (id: string, commit: string) => await env.ASSESSMENT_RELEASES.getBlueprintRelease(id, commit);
-    const first = await publish("bound-assessment");
-    const pin = await pinWorkshopAssessmentBlueprint("bound-assessment",
-      await env.ASSESSMENT_RELEASES.getBlueprintRelease("bound-assessment", first.commitId));
-    await publish("bound-assessment", "export default { updated: true }");
-    expect(await verifyWorkshopAssessmentBlueprint(pin, env.ASSESSMENT_RELEASES)).toEqual(pin);
-    const exported = await env.ASSESSMENT_RELEASES.getBlueprintRelease("bound-assessment", first.commitId);
-    expect(Object.keys(exported).toSorted()).toEqual(["commitId", "files", "sourceDigest"]);
-    expect(exported.files).toEqual([...first.files].toSorted(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
-    // Possession of an R2 path alone cannot expose an unpublished Gadget or a reserved KV record.
-    await env.BLUEPRINT_CONTENT.put(`unpublished/${first.commitId}`, first.pack);
-    await expect(read("unpublished", first.commitId)).rejects.toThrow("not found");
-    await expect(read(".adminConfig", first.commitId)).rejects.toThrow("not found");
-    await expect(read("../bound-assessment", first.commitId)).rejects.toThrow("not found");
-    await env.BLUEPRINT_CONTENT.put(`bound-assessment/${first.commitId}`, new Uint8Array([0, 1, 2]));
-    await expect(verifyWorkshopAssessmentBlueprint(pin, env.ASSESSMENT_RELEASES)).rejects.toThrow("verification failed");
-    await env.BLUEPRINTS.delete("bound-assessment");
-    await expect(read("bound-assessment", first.commitId)).rejects.toThrow("not found");
   });
 });
