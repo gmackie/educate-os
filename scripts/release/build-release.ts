@@ -1,5 +1,5 @@
-import { applySchoolProfile } from "./school-profile.ts";
 #!/usr/bin/env node
+import { applySchoolProfile } from "./school-profile.ts";
 import { frontendProfile } from "./frontend-profile.ts";
 
 // Builds an immutable release: every deployable worker bundled exactly as `wrangler deploy`

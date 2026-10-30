@@ -267,3 +267,12 @@ describe("device session callback with a principal resolver", () => {
     expect(delivered.status).toBe(303);
   });
 });
+
+
+it("rejects HTTP activation when the backend requires an absent school policy", async () => {
+  const testEnv = accessEnv();
+  testEnv.REQUIRE_WORKSHOP_CAPABILITY_POLICY = "true";
+  const response = await server.fetch(new Request(`${ORIGIN}/api`), testEnv, executionContext());
+  expect(response.status).toBe(503);
+  expect(response.headers.get("Cache-Control")).toBe("no-store");
+});

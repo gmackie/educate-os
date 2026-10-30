@@ -17,7 +17,7 @@ describe("release manifest", () => {
       name: "WORKSHOP_CAPABILITY_POLICY", service: "$WORKER_NAME(educateos-district-worker)",
       entrypoint: "DistrictWorkshopCapabilityPolicy" });
     expect(() => compileDesiredState(school.manifest, configFor(NORTHFIELD, school)))
-      .toThrow("which this install does not include");
+      .toThrow("school release requires enabled service");
     school.manifest.workers["workshop-backend"]!.bindings.pop();
     // Validate assets independently of activation, which is intentionally blocked above.
     delete school.manifest.workers.router!.assetsConfig!.variants["access-school"];

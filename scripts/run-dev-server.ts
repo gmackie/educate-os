@@ -1,5 +1,5 @@
-import { frontendProfile } from "./release/frontend-profile.ts";
 #!/usr/bin/env node
+import { frontendProfile } from "./release/frontend-profile.ts";
 
 // Generates dev-only wrangler.dev.jsonc files for dynamic service bindings,
 // then launches `wrangler dev` with all discovered workers.

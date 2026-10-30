@@ -328,11 +328,17 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     services.push(name);
   }
   // The signed asset variant selects a school deployment, but enforcement is backend-owned.
-  const schoolBuild = Boolean(router[0]![1].assetsConfig?.variants["access-school"]);
+  const variants = router[0]![1].assetsConfig?.variants;
+  const schoolBuild = Boolean(variants?.["access-school"]);
+  if (schoolBuild && variants?.access) invalid("ambiguous Access asset variants");
   if (schoolBuild) {
     const policy = backend[0]![1].bindings.find(binding => binding.type === "service" &&
       binding.name === "WORKSHOP_CAPABILITY_POLICY");
-    if (!policy) invalid("school release requires a district WORKSHOP_CAPABILITY_POLICY binding");
+    if (!policy || policy.type !== "service" ||
+        policy.service !== "$WORKER_NAME(educateos-district-worker)" ||
+        policy.entrypoint !== "DistrictWorkshopCapabilityPolicy") {
+      invalid("school release requires a district WORKSHOP_CAPABILITY_POLICY binding");
+    }
   }
   if (schoolBuild) {
     for (const name of ["educateos-district-worker", "educateos-external-mcp"]) {
@@ -438,17 +444,6 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       bindings.push(resolveDeep(binding) as DesiredBinding);
     }
 
-    if (schoolBuild && pkgName === backendPkg) {
-      const requirement = bindings.find(binding => binding.name === "REQUIRE_WORKSHOP_CAPABILITY_POLICY");
-      if (requirement) {
-        if (requirement.type !== "plain_text" || requirement.text !== "true") {
-          invalid("school release must require Workshop capability policy");
-        }
-      } else {
-        bindings.push({ type: "plain_text", name: "REQUIRE_WORKSHOP_CAPABILITY_POLICY", text: "true" });
-      }
-    }
-
     // Gatekeepers are reached through GATEKEEPER_<SLUG> service bindings on the backend and router.
     if (entry.gatekeeperBindingExpansion) {
       const { entrypoint, propsByPackage } = entry.gatekeeperBindingExpansion;
@@ -487,6 +482,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     };
     if (entry.kind === "backend") {
       // The instance-state vars the hosted deploy service would inject (see manifest-lib).
+      if (schoolBuild) vars.REQUIRE_WORKSHOP_CAPABILITY_POLICY = "true";
       vars.ADMINS = config.admins;
       vars.CF_ACCESS_ISS = `https://${config.access.teamName}.cloudflareaccess.com`;
       dependsOn.add(accessApplication.key);
