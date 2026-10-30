@@ -38,3 +38,59 @@ snapshots for administrative review. Strict nested schemas reject extra fields.
 Artifacts must be served separately by a host that enforces current review status;
 this SDK cannot recall a manifest already copied by a third party. Capability IDs
 are declarations only: this SDK neither grants capabilities nor changes policy.
+
+## Persistent district adapter (stacked follow-up)
+
+`PersistentBlueprintCatalog(storage, districtId)` wraps the unchanged in-memory SDK in a
+SQLite `transactionSync` journal. Pass a district DO's `ctx.storage` directly. The storage
+is pinned to one district. Every write checks the catalog revision and atomically records the
+command, server time, trusted actor/role snapshot and new revision. The journal is append-only;
+reconstruction revalidates every command and runs the SDK again. Failed commands and revision
+conflicts roll back. Exact retries do not add events, including approval retries after revocation.
+An exact retry returns the current revision; a different write with a stale revision gets 409.
+This initial adapter replays the full journal: suitable for a bounded district review catalog,
+with compaction/pagination needed before high-volume deployment. Audit storage is district-private
+and contains identities; never copy the SQLite journal into marketplace exports.
+
+The create command additionally requires all four explicit human attestations: license rights,
+no credentials, no learner data, and no source chat. They apply to the immutable artifact digest.
+A missing license or missing/false attestation fails closed. These are human attestations, not
+an automated scan of artifact bytes. The API accepts no artifact bytes or source code.
+
+`blueprintCatalogApi(catalog, resolveActor, now)` is a fetch adapter with these exact routes:
+
+- `GET /api/blueprints`: `{revision, entries}` for currently approved public manifests.
+- `POST /api/blueprints/commands`: `{expectedRevision, command}`; commands are strict
+  `{operation:"create", metadata, attestation}` or
+  `{operation:"transition", id, version, action, requestId}`.
+- `GET /api/blueprints/download?id=...&version=...`: current approved manifest only;
+  revoked/unapproved versions fail. Responses carry `Cache-Control: no-store`.
+- `GET /api/blueprints/review?id=...&version=...`: private snapshot and current revision,
+  restricted to the author or a current scoped staff reviewer.
+- `GET /api/blueprints/audit`: private journal for current district-wide curriculum/district admins.
+- `POST /api/blueprints/imports`: array of strict public manifests, admins only. The import
+  table preserves first importer/time and immutable manifest identity; retries do not replace it.
+  Imports are quarantined references, **never local approvals or downloadable local versions**.
+  The public manifest carries no cryptographic assertion of remote approval. Obtain it from a
+  trusted source's live export; copied manifests cannot prove ongoing remote approval/revocation.
+  To publish locally, author a new local draft with local metadata/attestations and complete review.
+
+Integration captain seam: construct this adapter inside the district Durable Object with its
+existing SQLite storage. Mount the six routes above in the district Worker before its generic
+route dispatcher. `resolveActor(request)` must call the existing Access JWT verifier (signature,
+issuer, audience, expiry), then the current district directory principal resolver and current
+role assignments, returning `{principal, assignments}`; it must never read identity/roles from
+JSON, query parameters, or unverified headers. Forward verified identity through a private service
+binding only if the Worker and DO are separated. Use bearer credentials, with no cookie fallback;
+a cookie-based UI needs its existing CSRF protection before mounting writes. No new public Worker,
+service binding, route registration, UI, or deploy config is installed by this library PR.
+
+Any future artifact byte service must perform the same live `download` eligibility check against
+the requested exact id/version/digest before serving bytes and must not mint long-lived download
+URLs. This PR deliberately exposes only closed metadata manifests, so source chat, credentials,
+learner payloads and private evidence cannot enter its import/export format. Revocation cannot
+recall manifests already copied by another district.
+
+Focused checks: `pnpm exec vp run -F @educateos/registry test` runs both Node and real workerd
+SQLite tests, including DO eviction/reconstruction, optimistic concurrency, rollback, retry,
+revocation, self-review denial, district isolation, strict input and quarantined imports.

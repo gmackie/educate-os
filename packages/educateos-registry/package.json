@@ -13,6 +13,8 @@
   },
   "devDependencies": {
     "@gadgets/scripts": "workspace:*",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:"
   }
 }
