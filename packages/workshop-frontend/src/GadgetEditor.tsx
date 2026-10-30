@@ -2096,6 +2096,7 @@ export default function GadgetEditor() {
                   onConsoleLog={handleClientConsoleLog}
                   onIframeEscape={isGadgetFullscreen ? exitGadgetFullscreen : undefined}
                   onNoUiChange={handleNoUiChange}
+                  restricted={metadata?.containsRestrictedData === true}
                 />
               ) : !previewMode && (
                 <NoGadgetPlaceholder height="100%" />
@@ -2191,6 +2192,7 @@ export default function GadgetEditor() {
               isVisible={true}
               chatId={previewChatId}
               onConsoleLog={handleClientConsoleLog}
+              restricted={metadata?.containsRestrictedData === true}
             />
           )}
         </div>
