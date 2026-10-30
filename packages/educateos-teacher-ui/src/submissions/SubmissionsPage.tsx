@@ -8,6 +8,7 @@ import { Problem } from "../Problem.tsx";
 import { routeHref } from "../route.ts";
 import type { Assignment, TeachingOffering } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
+import { GadgetAssessmentPanel } from "./GadgetAssessmentPanel.tsx";
 import { DueDateEditor } from "./DueDateEditor.tsx";
 import { formatDateTime } from "../dates.ts";
 
@@ -64,6 +65,7 @@ export const SubmissionsPage = ({ teaching, assignmentId }: { teaching: Teaching
                     <DueDateEditor key={chosen.id} assignment={chosen} onChanged={(updated) => setEdited((previous) => ({ ...previous, [updated.id]: updated }))} />
                   </LayerCard>
                 )}
+                {chosen !== undefined && <GadgetAssessmentPanel key={chosen.id} assignment={chosen} />}
                 <SubmissionList offeringId={offeringId} assignmentId={assignmentId} title={chosen?.title ?? "This activity"} />
               </div>
             )}

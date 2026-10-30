@@ -5,7 +5,7 @@ import { useAnnounce } from "../Announcer.tsx";
 import { useDistrictApi } from "../DistrictApi.tsx";
 import { Problem } from "../Problem.tsx";
 import type { Feedback } from "../types.ts";
-import { sourceBadge, sourceLabel } from "./feedbackSource.ts";
+import { sourceBadge, sourceDetail, sourceLabel } from "./feedbackSource.ts";
 
 const STATE_LABEL = { draft: "Not shared yet", "shared-with-student": "Shared with the student", final: "Final" } as const;
 
@@ -50,6 +50,7 @@ export const FeedbackSharing = ({ submissionId, feedback, excerpt, onShared }: {
               <li key={comment.id} className="flex flex-col gap-1 rounded border border-kumo-line p-3">
                 <span><Badge variant={sourceBadge(comment.source)}>{sourceLabel(comment.source)}</Badge></span>
                 {quoted !== undefined && <blockquote className="border-l-2 border-kumo-line pl-3"><Text variant="secondary" size="sm">{`“${quoted}”`}</Text></blockquote>}
+                <Text variant="secondary" size="sm">{sourceDetail(comment.source)}</Text>
                 <Text>{comment.body}</Text>
               </li>
             );

@@ -98,7 +98,7 @@ const ClassSection = ({ route, teaching }: { route: ClassRoute; teaching: Teachi
     case "submissions":
       return <SubmissionsPage teaching={teaching} {...(route.assignmentId === undefined ? {} : { assignmentId: route.assignmentId })} />;
     case "review":
-      return <SubmissionReviewPage teaching={teaching} assignmentId={route.assignmentId} submissionId={route.submissionId} />;
+      return <SubmissionReviewPage key={route.submissionId} teaching={teaching} assignmentId={route.assignmentId} submissionId={route.submissionId} />;
     // Gradebook (SCHO-187)
     case "gradebook":
       return <GradebookPage teaching={teaching} />;

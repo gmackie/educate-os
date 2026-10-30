@@ -1,3 +1,4 @@
+import type { GadgetAssessmentResponse } from "@educateos/district-app";
 // The district's Durable Object: one per district, named by its district ID, holding every store
 // of the district application in its SQLite storage and running the application itself
 // (`startDistrict` in district.ts). The Worker's `/api` requests and both service entrypoints reach
@@ -130,6 +131,16 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
   /** The principal a browser request is signed in as, for the EducateOS gatekeeper. */
   async authenticate(request: Request): Promise<VerifiedPrincipal | null> {
     return (await this.#boot()).tools.authenticate(request);
+  }
+
+  /** Reads only the connected student's configured assessment and own submissions. */
+  async gadgetAssessmentRead(principal: VerifiedPrincipal, assignmentId: string): Promise<GadgetAssessmentResponse> {
+    return (await this.#boot()).app.gadgetAssessmentRead(principal, assignmentId);
+  }
+
+  /** Applies a queued evidence submission after rechecking current ownership and policy. */
+  async gadgetAssessmentSubmit(principal: VerifiedPrincipal, assignmentId: string, request: unknown): Promise<GadgetAssessmentResponse> {
+    return (await this.#boot()).app.gadgetAssessmentSubmit(principal, assignmentId, request);
   }
 
   /** The district's school tools. */

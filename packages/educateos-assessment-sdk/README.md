@@ -152,8 +152,44 @@ Workshop import mechanism. A hash does not prove an archive contains no secrets.
 `createGadgetAssessment(runtime)` exposes only `submit(request)`; district, learner, release and
 review authority remain host-bound. For real Gadgets this capability must be exposed through the
 existing EducateOS Gatekeeper's authenticated session and observation/action approval paths.
-No Gatekeeper RPC, ambient resource, Workshop kernel or bundled blueprint is changed in this MVP.
-The two-district example demonstrates data isolation in memory, not a real district deployment.
+This portable in-process adapter alone grants no Gatekeeper RPC or ambient resource. The
+two-district example demonstrates data isolation in memory, not a real district deployment.
+
+### Immutable Workshop releases
+
+The next-milestone bridge uses real Workshop release packs. Put only a public
+`AssessmentDefinition` in the Gadget source file `educateos.assessment.json`, then publish the
+Gadget as a Blueprint normally. The file survives `.gadget` export/import, following and updates
+because it is an ordinary file in the release tree. Keep private rubric configuration, answer
+keys, hidden tests, credentials and student records out of every published source file. The SDK's
+strict public definition rejects extra fields; it cannot discover private information written
+into arbitrary source code or prose.
+
+On the trusted host, use the configured Workshop's real `PublicApi`:
+
+```ts
+const metadata = await workshop.getBlueprint(blueprintId);
+if (!metadata?.metadata.commitId) throw new Error("Publish a commit-backed release first");
+const source = await workshop.getBlueprintRelease(blueprintId, metadata.metadata.commitId);
+const assessment = await pinWorkshopAssessmentBlueprint(blueprintId, source);
+const publicExport = await exportWorkshopAssessmentBlueprint(assessment);
+```
+
+`getBlueprintRelease` reads the exact R2 key and validates the Git pack and commit, without
+following a moving version. The SDK independently checks the SHA-256 of the sorted path/text
+tuples and pins the public definition, rubric and evaluator references. Historical pins survive
+later publication; deleting the Blueprint can make its source unavailable and causes a closed
+failure. Legacy snapshot archives still import through Workshop, but must be republished as a
+commit-backed release before this API can pin them.
+
+`WorkshopAssessmentBlueprint` is a public-only envelope with the Blueprint ID, immutable commit,
+source digest and assessment digest. It contains no local assignment, student evidence, Gadget
+storage or connected capability. `importWorkshopAssessmentBlueprint` verifies the definition
+digest, but does **not** authenticate a publisher or prove the claimed commit exists: obtain the
+source over the configured Workshop API, or have the teacher explicitly review the imported
+archive. An ID is local to that Workshop's namespace. Never accept a student's asserted envelope
+as a verified source. Assignment installation records the teacher's reviewed pin; following or
+updating the Gadget must not silently replace it or expand its permissions.
 
 ## Teacher views and standards seams
 
@@ -206,3 +242,13 @@ produce the same report. Durable queues, retention, cancellation, rate limits, a
 publisher registries, isolated execution and multi-process transactional review persistence are
 host responsibilities and next implementation priorities. Review persistence should enforce its
 own idempotency. This is a tested SDK MVP, not a production sandbox or district deployment.
+
+## Connected EducateOS milestone
+
+The existing Teacher Studio now imports and pins reviewed Workshop assessment releases and shows
+submitted revision evidence, evaluator findings, provenance and existing teacher approval controls
+through the live district API. The `SCHOOL.assessment(assignmentId)` Gatekeeper capability queues
+owned district artifact revisions for submission through AssessmentService. See
+[the educator/developer/admin workflow](../../docs/educateos/assessment-gadget-workflow.md) for
+the exact rubric mapping, setup, security boundaries and remaining integration gaps. The portable
+React components above remain optional; Teacher Studio uses its established Kumo components.

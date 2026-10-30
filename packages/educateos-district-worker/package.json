@@ -38,6 +38,7 @@
     "miniflare": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
-    "wrangler": "catalog:"
+    "wrangler": "catalog:",
+    "@educateos/assessment-sdk": "workspace:*"
   }
 }

@@ -5,7 +5,7 @@ import { useAnnounce } from "../Announcer.tsx";
 import { useDistrictApi } from "../DistrictApi.tsx";
 import { Problem } from "../Problem.tsx";
 import type { CriterionScore } from "../types.ts";
-import { sourceBadge, sourceLabel } from "./feedbackSource.ts";
+import { sourceBadge, sourceDetail, sourceLabel } from "./feedbackSource.ts";
 import { teacherScore, type ReviewCriterion } from "./rubricCriteria.ts";
 
 /**
@@ -77,6 +77,7 @@ const CriterionRow = ({ submissionId, criterion, scores, onSaved }: {
       {suggestions.map((suggestion, index) => (
         <span key={index} className="flex flex-wrap items-center gap-2">
           <Badge variant={sourceBadge(suggestion.source)}>{sourceLabel(suggestion.source)}</Badge>
+          <Text variant="secondary" size="sm" as="span">{sourceDetail(suggestion.source)}</Text>
           <Text as="span">
             {`Suggests ${suggestion.points}${suggestion.maxPoints === undefined ? "" : ` of ${suggestion.maxPoints}`}${levelFor(suggestion.points) === undefined ? "" : ` (${levelFor(suggestion.points)})`}. Not your score until you save it.`}
           </Text>
