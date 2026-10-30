@@ -83,6 +83,24 @@ export function Button({ label, onPress, variant = 'primary', disabled = false, 
     {variant === 'primary' && <ArrowRight size={16} color={palette.onPrimary}/>}
   </Pressable>;
 }
+/** A row of mutually exclusive choices, such as a class's Assignments · Grades · Roster. */
+export function Segmented<T extends string>({ options, value, onChange }: {
+  options: { value: T; label: string }[]; value: T; onChange: (value: T) => void;
+}) {
+  const palette = usePalette();
+  return <View accessibilityRole="tablist" style={{ flexDirection: 'row', backgroundColor: palette.background, borderRadius: 14,
+    borderWidth: 1, borderColor: palette.line, padding: 4, gap: 4 }}>
+    {options.map((option) => {
+      const selected = option.value === value;
+      return <Pressable key={option.value} accessibilityRole="tab" accessibilityState={{ selected }} accessibilityLabel={option.label}
+        onPress={() => onChange(option.value)} style={{ flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center',
+          backgroundColor: selected ? palette.raised : 'transparent' }}>
+        <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: selected ? '800' : '600', color: selected ? palette.primary : palette.muted }}>
+          {option.label}</Text>
+      </Pressable>;
+    })}
+  </View>;
+}
 export function Field({ label, value, onChangeText, placeholder, multiline = false,
   keyboardType = 'default', secureTextEntry = false }: {
   label: string; value: string; onChangeText: (s: string) => void; placeholder?: string; multiline?: boolean;
@@ -104,8 +122,10 @@ export function Item({ title, detail, onPress, leading, trailing }: {
 }) {
   const palette = usePalette();
   const styles = useStyles();
-  return <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : 'text'}
-    accessibilityLabel={title + (detail ? '. ' + detail : '')} style={({ pressed }) => [styles.item, { opacity: pressed && onPress ? 0.6 : 1 }]}>
+  // A tappable row is one button; otherwise its parts stay separate, so a trailing switch is reachable.
+  return <Pressable onPress={onPress} disabled={!onPress} accessible={!!onPress} accessibilityRole={onPress ? 'button' : undefined}
+    accessibilityLabel={onPress ? title + (detail ? '. ' + detail : '') : undefined}
+    style={({ pressed }) => [styles.item, { opacity: pressed && onPress ? 0.6 : 1 }]}>
     {leading && <View style={styles.leading}>{leading}</View>}
     <View style={{ flex: 1, gap: 4 }}><Text style={styles.itemTitle}>{title}</Text>
       {detail && <Text style={styles.itemDetail}>{detail}</Text>}</View>

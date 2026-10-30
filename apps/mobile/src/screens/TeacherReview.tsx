@@ -5,7 +5,8 @@ import type { DistrictClient } from '../api/client';
 import type { Detail } from '../types';
 import { Markdown } from '../ui/Markdown';
 import { imageType } from '../media.ts';
-import { useLoad } from '../hooks/useLoad';
+import { useLoad, useReloadOnFocus } from '../hooks/useLoad';
+import { AssignmentSettings } from './Teaching';
 import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Field, Item, Page, Placeholder, QueryState, Section, Title } from '../ui/Primitives';
 
@@ -14,20 +15,33 @@ export function TeacherAssignment({ client, assignmentId, offeringId, navigate }
 }) {
   const palette = usePalette();
   const [data, reload] = useLoad('teacher-assignment:' + assignmentId, async () => {
-    const [assignment, submissions] = await Promise.all([
+    const [assignment, submissions, proposals] = await Promise.all([
       client.teacherAssignment(assignmentId),
       client.teacherSubmissions(assignmentId),
+      client.gradeProposals(assignmentId).catch(() => []),
     ]);
     // A deep link may not name the class; the assignment does.
     const students = await client.teacherRoster(offeringId || assignment.assignment.offeringId).catch(() => []);
     const names = new Map(students.map((s) => [s.enrollment.principalId, s.displayName]));
-    return { assignment, submissions, names };
+    return { assignment, submissions, names, proposals: proposals.filter((p) => !p.approvedAsVersion && !p.declined && !p.expired) };
   });
+  useReloadOnFocus(reload);
+  const decide = (proposalId: string, approve: boolean) => {
+    const done = () => reload();
+    const fail = (e: unknown) => Alert.alert("Couldn't save", e instanceof Error ? e.message : 'Try again.');
+    if (approve) { client.approveGrade(proposalId).then(done, fail); return; }
+    Alert.alert('Decline this grade?', 'The person who proposed it sees your reason.', [
+      { text: 'Cancel', style: 'cancel' },
+      ...['The score needs another look', 'It is for the wrong submission'].map((reason) => ({
+        text: reason, onPress: () => { client.declineGrade(proposalId, reason).then(done, fail); },
+      })),
+    ]);
+  };
   return <Page refresh={reload}>
-    <QueryState state={data} retry={reload}>{({ assignment, submissions, names }) => <>
-      <Title subtitle={'Due ' + dateLabel(assignment.assignment.dueAt, true)}>
-        {assignment.assignment.title}
-      </Title>
+    <QueryState state={data} retry={reload}>{({ assignment, submissions, names, proposals }) => <>
+      <Title>{assignment.assignment.title}</Title>
+      <AssignmentSettings client={client} assignmentId={assignmentId} dueAt={assignment.assignment.dueAt}
+        attemptsAllowed={assignment.assignment.attemptsAllowed} onSaved={reload}/>
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 26 }}>
         <Card style={{ flex: 1, alignItems: 'center', gap: 6 }}>
           <Text style={{ fontSize: 27, fontWeight: '800', color: palette.primary }}>{submissions.length}</Text>
@@ -38,6 +52,15 @@ export function TeacherAssignment({ client, assignmentId, offeringId, navigate }
           <Text style={{ fontSize: 12, color: palette.muted }}>Enrolled</Text>
         </Card>
       </View>
+      {proposals.length > 0 && <Section title="Grades waiting for approval">
+        <Card>{proposals.map((p) => <View key={p.id} style={{ gap: 8, paddingVertical: 8 }}>
+          <Text style={{ color: palette.ink, fontWeight: '700' }}>{(names.get(p.studentPrincipalId) ?? 'Student') + ': ' + p.score.points + ' / ' + p.score.maxPoints}</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}><Button label="Approve" variant="outline" onPress={() => decide(p.id, true)}/></View>
+            <View style={{ flex: 1 }}><Button label="Decline" variant="quiet" onPress={() => decide(p.id, false)}/></View>
+          </View>
+        </View>)}</Card>
+      </Section>}
       <Section title="Review student work">
         {submissions.length === 0 ? <Placeholder title="No submissions yet"
           message="Student submissions will appear here when they turn in their work."/> :
