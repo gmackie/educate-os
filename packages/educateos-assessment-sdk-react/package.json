@@ -1,0 +1,38 @@
+{
+  "name": "@educateos/assessment-sdk-react",
+  "version": "0.1.0",
+  "description": "Optional teacher-readable React views for portable EducateOS assessments, with no hosting or design-system dependency.",
+  "type": "module",
+  "files": ["dist", "README.md"],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+    }
+  },
+  "scripts": {
+    "test:run": "vitest run",
+    "build:dist": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm build:dist"
+  },
+  "peerDependencies": {
+    "react": "^19.2.8"
+  },
+  "dependencies": {
+    "@educateos/assessment-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "@testing-library/dom": "10.4.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "jsdom": "^26.1.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}
