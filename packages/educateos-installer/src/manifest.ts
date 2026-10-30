@@ -37,13 +37,16 @@ export const ManifestModule = z.strictObject({
 export type ManifestModule = z.infer<typeof ManifestModule>;
 
 /**
- * One Durable Object migration step, verbatim from wrangler.jsonc. Loose on purpose, like
- * manifest-lib's `DurableObjectMigration`: the installer replays the steps, it does not interpret
- * them, so a step kind it has not seen still passes through.
+ * Reviewed Durable Object migration operations. Unknown upstream operations require an
+ * installer update before district approval can make them executable.
  */
-export const DurableObjectMigration = z.looseObject({
+export const DurableObjectMigration = z.strictObject({
   tag: z.string().min(1).max(64),
   new_sqlite_classes: z.array(z.string().min(1)).optional(),
+  new_classes: z.array(z.string().min(1)).optional(),
+  deleted_classes: z.array(z.string().min(1)).optional(),
+  renamed_classes: z.array(z.strictObject({ from: z.string().min(1), to: z.string().min(1) })).optional(),
+  transferred_classes: z.array(z.strictObject({ from: z.string().min(1), from_script: z.string().min(1), to: z.string().min(1) })).optional(),
 });
 /** A Durable Object migration step. */
 export type DurableObjectMigration = z.infer<typeof DurableObjectMigration>;
