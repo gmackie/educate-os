@@ -44,6 +44,8 @@ export interface DistrictSettings {
 
 /** What a district reaches outside its storage. */
 export interface DistrictSeams {
+  /** Installer-provided release verification binding; no caller-supplied URL or publisher. */
+  workshopReleases?: NonNullable<Parameters<typeof createDistrictApp>[0]["workshopReleases"]>;
   /** The fetch the Content Studio imports URLs with, after its own URL checks. */
   importFetch: ImportFetch;
   /** The keys Access assertions are verified with. Defaults to the team's published certs. */
@@ -96,6 +98,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
   const app = await createDistrictApp({
     stores,
     verifyRequest,
+    ...(seams.workshopReleases === undefined ? {} : { workshopReleases: seams.workshopReleases }),
     importFetch: seams.importFetch,
     ...(seams.onUnreadableConfigRevision === undefined ? {} : { onUnreadableConfigRevision: seams.onUnreadableConfigRevision }),
     authority,

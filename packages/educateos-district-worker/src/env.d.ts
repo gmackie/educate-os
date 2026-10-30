@@ -3,6 +3,8 @@
 
 declare namespace Cloudflare {
   interface Env {
+    /** Optional installer binding to the configured Workshop's WorkshopAssessmentReleases entrypoint. */
+    WORKSHOP_ASSESSMENT_RELEASES?: import("./district.ts").DistrictSeams["workshopReleases"];
     /** The district's configuration as JSON (see `DistrictWorkerConfig` in config.ts). */
     DISTRICT_CONFIG: string;
     /** The Access team domain assertions are verified against, as the kernel's `CF_ACCESS_ISS`. */

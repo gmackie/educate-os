@@ -49,6 +49,22 @@ export interface SchoolAssessmentSession {
   read(): Promise<string>;
   /** Submit your existing district artifact revisions. No student, role, model or grade can be chosen. */
   submit(revisions: { artifactId: string; revisionId: string }[]): Promise<void>;
+  /**
+   * Stage and return the exact source to show the student before submission, as a JSON document
+   * containing assignmentId, requestId, blueprint, and checkpoint (files, commitId, sourceDigest,
+   * workspaceId, gadgetId, blueprint, format and policy). This sends no source to the district.
+   * Keep this session open until submitCurrentGadget(); a new preview replaces the staged one.
+   */
+  previewCurrentGadget(): Promise<string>;
+  /**
+   * Submit the exact staged preview of this Gadget's saved executable source. Call
+   * previewCurrentGadget() first and show its source to the student. Available only in
+   * the owner's running Gadget, based on the assignment's reviewed Blueprint release. The student
+   * reviews the exact source before sending it. Chat, storage and bindings are never included.
+   * Pass the preview document's requestId; a replaced or already-submitted preview is refused.
+   * This records code provenance, not independent human authorship or an explanation of the work.
+   */
+  submitCurrentGadget(previewId: string): Promise<void>;
 }
 
 export interface SchoolToolsSession {

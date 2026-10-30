@@ -47,6 +47,8 @@ export default defineConfig({
         serviceBindings: {
           GUARD: { name: kCurrentWorker, entrypoint: "DistrictGuardDirectory" },
           TOOLS: { name: kCurrentWorker, entrypoint: "DistrictSchoolTools" },
+          WORKSHOP_ASSESSMENT_RELEASES: { name: kCurrentWorker, entrypoint: "TestWorkshopReleases" },
+          TEST_WORKSHOP_RELEASES: { name: kCurrentWorker, entrypoint: "TestWorkshopReleases" },
         },
       },
     }),

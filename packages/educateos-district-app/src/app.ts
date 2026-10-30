@@ -1,5 +1,5 @@
-import { importWorkshopAssessmentBlueprint } from "@educateos/assessment-sdk";
-import { GadgetAssessmentSubmission } from "./gadget-assessment.ts";
+import { importWorkshopAssessmentBlueprint, verifyWorkshopAssessmentBlueprint, type WorkshopAssessmentReleaseSource } from "@educateos/assessment-sdk";
+import { GadgetAssessmentSubmission, GadgetCheckpointSubmission, checkpointContent, GADGET_CHECKPOINT_MEDIA_TYPE } from "./gadget-assessment.ts";
 import {
   AuthorizationRequest,
   EducateOsError,
@@ -63,6 +63,8 @@ export type RequestVerifier = (request: Request) => Promise<VerifiedIdentity | u
 
 /** What a district application is built from. */
 export interface DistrictAppOptions {
+  /** Installer-provided Workshop release capability. Assessment pins fail closed without it. */
+  workshopReleases?: WorkshopAssessmentReleaseSource;
   /** Where the district's state is kept. See `inMemoryDistrictStores`. */
   stores: DistrictAppStores;
   /** Verifies each request's credential. */
@@ -210,6 +212,8 @@ export interface DistrictApp {
   gadgetAssessmentRead(principal: VerifiedPrincipal, assignmentId: string): Promise<GadgetAssessmentResponse>;
   /** Applies a student-approved submission; no grade, role, model or other student can be selected. */
   gadgetAssessmentSubmit(principal: VerifiedPrincipal, assignmentId: string, request: unknown): Promise<GadgetAssessmentResponse>;
+  /** Applies an approved source checkpoint obtained by the Gatekeeper from Workshop itself. */
+  gadgetAssessmentSubmitCheckpoint(principal: VerifiedPrincipal, assignmentId: string, request: unknown): Promise<GadgetAssessmentResponse>;
   /** The one policy engine every service decides through. */
   readonly engine: PolicyEngine;
   /** The AI spend ledger. */
@@ -829,6 +833,9 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       if (blueprint.definition.rubric.id !== rubric.rubricId || blueprint.definition.rubric.version !== `${rubric.version}.0.0` || blueprint.definition.rubric.digest !== rubric.signature.digest) {
         throw new EducateOsError("conflict", "The public assessment must pin this assignment's signed rubric ID, version (N.0.0), and digest.");
       }
+      await verifyWorkshopAssessmentBlueprint(blueprint, options.workshopReleases).catch(() => {
+        throw new EducateOsError("unavailable", "The configured Workshop could not verify this exact release. No pin was saved.");
+      });
       const current = await stores.gadgetAssessments.get(assignment.id);
       if (current === undefined && (await assessment.listSubmissions(ctx.caller, assignment.id)).length !== 0) {
         throw new EducateOsError("conflict", "Configure the Gadget assessment before students submit work.");
@@ -838,7 +845,12 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "teacher.getGadgetAssessment": async (ctx, { params }) => {
       const { assignment } = await ctx.assessment().getAssignment(ctx.caller, params.assignmentId);
       await ctx.require("read", { kind: "rubric", scope: ctx.offeringScope(assignment.offeringId), classification: "teacher-only" }, "Only the class's teachers can read its Gadget assessment configuration.");
-      return await stores.gadgetAssessments.get(assignment.id) ?? null;
+      const binding = await stores.gadgetAssessments.get(assignment.id);
+      if (binding === undefined) return null;
+      await verifyWorkshopAssessmentBlueprint(binding.blueprint, options.workshopReleases).catch(() => {
+        throw new EducateOsError("unavailable", "The pinned release could not be verified with the configured Workshop. Submissions are blocked.");
+      });
+      return binding;
     },
     "teacher.listAssignments": (ctx, { params }) => ctx.assessment().listAssignments(ctx.caller, params.offeringId),
     "teacher.getAssignment": (ctx, { params }) => assignmentView(ctx.assessment(), ctx.caller, params.assignmentId),
@@ -1431,7 +1443,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
 
   // The gatekeeper alone supplies the verified principal. Resolve active membership and policy
   // afresh for each call, including after its approval queue delays a submission.
-  async function gadgetAssessment(principal: VerifiedPrincipal, rawId: string, request?: unknown): Promise<GadgetAssessmentResponse> {
+  async function gadgetAssessment(principal: VerifiedPrincipal, rawId: string, request?: unknown, checkpoint = false): Promise<GadgetAssessmentResponse> {
     const response = await respond(new Request("https://district.invalid/api/gadget-assessment"), async (correlationId) => {
       const assignmentId = parsePart("assignmentId", AssignmentId, rawId);
       const { snapshot } = await stores.directory.load();
@@ -1448,6 +1460,26 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       await verifyRubricRelease(rubric);
       await assertRubricAuthority(rubric, assignment.offeringId, undefined);
       if (rubric.signature.digest !== binding.blueprint.definition.rubric.digest) throw new EducateOsError("conflict", "The configured rubric digest changed.");
+      await verifyWorkshopAssessmentBlueprint(binding.blueprint, options.workshopReleases).catch(() => {
+        throw new EducateOsError("unavailable", "The configured Workshop could not verify the pinned release.");
+      });
+      if (checkpoint) {
+        const input = parsePart("checkpoint", GadgetCheckpointSubmission, request);
+        const text = await checkpointContent(input, binding.blueprint);
+        if (!assignment.permittedArtifactTypes.includes("interactive")) throw new EducateOsError("validation-failed", "This assignment does not accept Gadget source work.");
+        await assessment.assertSubmissionOpen(ctx.caller, assignmentId, `gadget-checkpoint:${input.requestId}`);
+        const workspace = await ctx.workspaces().ensureCourseWorkspace(ctx.caller, assignment.offeringId);
+        const artifact = await ctx.artifacts().createArtifact(ctx.caller, {
+          workspaceId: workspace.id, type: "interactive", title: "Workshop Gadget source checkpoint",
+          content: { kind: "text", mediaType: GADGET_CHECKPOINT_MEDIA_TYPE, text },
+          aiAssistance: { level: "undisclosed" },
+        }, { idempotencyKey: `gadget-checkpoint:${assignmentId}:${input.requestId}`, sourceCheckpoint: {
+          policy: input.checkpoint.policy, commitId: input.checkpoint.commitId,
+          sourceDigest: input.checkpoint.sourceDigest, blueprint: input.checkpoint.blueprint,
+        } });
+        return jsonResponse(await assessment.submit(ctx.caller, assignmentId,
+          [{ artifactId: artifact.artifact.id, revisionId: artifact.head.id }], `gadget-checkpoint:${input.requestId}`), 200, correlationId);
+      }
       if (request === undefined) {
         return jsonResponse({ assignmentId, blueprint: binding.blueprint, rubric: binding.rubric, submissions: await assessment.listSubmissions(ctx.caller, assignmentId) }, 200, correlationId);
       }
@@ -1507,6 +1539,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     fetch(request) {
       return respond(request, async (correlationId) => await serveCalendarFeed(request, correlationId) ?? await handle(request, correlationId));
     },
+    gadgetAssessmentSubmitCheckpoint: (principal, assignmentId, request) => gadgetAssessment(principal, assignmentId, request, true),
     gadgetAssessmentRead: (principal, assignmentId) => gadgetAssessment(principal, assignmentId),
     gadgetAssessmentSubmit: (principal, assignmentId, request) => gadgetAssessment(principal, assignmentId, request),
     async serveAs(principal, request) {

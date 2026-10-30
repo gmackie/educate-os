@@ -1,115 +1,145 @@
-# Gadget assessment and teacher evidence workflow
+# Gadget source checkpoint and teacher evidence workflow
 
-This milestone is a local, tested bridge on top of the Assessment SDK MVP. It does not deploy a
-district, provide an untrusted-code sandbox, or claim QTI/1EdTech certification.
+SCHO-288, stacked after PR #18. This is a narrow, local harness-tested integration. It adds no
+untrusted-code executor, grade automation, surveillance, deployment or conformance claim.
 
 ## Educators
 
-1. Publish and install a class activity with a signed Assessment CI rubric. Before any submission,
-   open its assignment in Teacher Studio and find **Gadget assessment**.
-2. Obtain a public Workshop assessment JSON export from your configured Workshop using the SDK
-   procedure below. Review the Blueprint source and its public instructions. Import it, inspect the
-   release commit, and choose **Pin reviewed release to assignment**. The backend requires the
-   public rubric reference to match the assignment's verified signed rubric: its ID, integer release
-   version represented as `N.0.0`, and signature digest. A pin cannot be replaced on that assignment.
-3. Students connect their school accounts and submit their own immutable district artifact revisions
-   through the Gadget capability. Workshop approval confirms that submission; it is not teacher
-   approval of a score. A changed membership, revoked account, wrong release, or foreign artifact
-   causes refusal when the queued submission is applied.
-4. In the existing submission review screen, inspect the submitted work, revision/digest, declared
-   AI provenance, evaluator findings and cited passages. Run the existing assessment checks, review
-   suggestions, and use the existing feedback and grade approval controls. Findings do not become
-   official grades automatically. Unmatched excerpts are visibly refused rather than quoted from
-   another revision. The screen displays recorded provenance, never invented model reasoning.
+1. Publish/install an activity with a signed district rubric and `interactive` among its permitted
+   artifact types (the existing activity template's `additionalArtifactTypes` supports this).
+2. Its Workshop Blueprint must contain a public `educateos.assessment.json` definition with a
+   `gadget` or `programming` task accepting `text/vnd.educateos.gadget-source+json` evidence and an
+   appropriate `maxBytes` (up to 262144 for the encoded envelope). The rubric reference must match
+   the local signed release's ID, `N.0.0` version and signature digest. Keep all private grader
+   configuration, answer keys and hidden tests in the district rubric, never the Blueprint.
+3. In Teacher Studio's **Gadget assessment**, import the public assessment export and review its
+   source before **Pin reviewed release to assignment**. The district now fetches the exact release
+   from its configured Workshop service before saving anything. Arbitrary imported JSON, a digest
+   or an asserted publisher identity cannot authenticate a release.
+4. Teacher Studio shows **Release verified with the configured Workshop** only after a successful
+   server verification during that read. Loading, retry and unavailable states use the existing
+   controls. Missing, deleted, corrupt or unavailable releases block new submissions too.
+5. Students use a private Gadget created from that exact reviewed Blueprint release, with their
+   own connected school binding. They preview the committed source and explicitly approve
+   **Submit current Gadget** in Workshop. Nothing reaches district artifact storage before approval.
+6. The ordinary submission review displays the exact stored source envelope, revision and hash.
+   Source provenance proves which bytes were captured, not independent human authorship. This
+   export records AI assistance as **undisclosed**; explanations and AI-use declarations remain
+   separate evidence through the existing artifact workflow. It copies no chat or model reasoning.
+   Check required explanations/disclosures separately before grading. The ordinary teacher-only
+   rubric, released-feedback and official-grade approval controls remain authoritative.
 
-An updated or followed Blueprint does not update a class's assessment pin. Install a new assignment
-and explicitly review a new export when adopting a new release. Old evidence and reviews remain
-attached to the old assignment. Importing a JSON pin checks its structure and assessment digest;
-it is a teacher attestation, not cryptographic publisher authentication.
+A new Blueprint release requires a new explicitly reviewed assignment pin. Existing assignments
+never follow a moving release. Source checkpoints are evidence for review; they are not execution
+results or proof that every assessment requirement is satisfied.
 
-## Gadget and Blueprint developers
+## Gadget developer API
 
-Put a strictly valid public SDK `AssessmentDefinition` in `educateos.assessment.json` alongside the
-Blueprint's code. This ordinary source file travels through existing publish, `.gadget` export/import,
-follow and update mechanisms. Never place student records, answer keys, hidden tests, credentials,
-or private evaluator configuration in this file or any other shared Blueprint source.
-
-On a trusted host holding the configured Workshop's `PublicApi`:
-
-```ts
-import {
-  pinWorkshopAssessmentBlueprint,
-  exportWorkshopAssessmentBlueprint,
-} from "@educateos/assessment-sdk";
-
-const release = await publicApi.getBlueprintRelease(blueprintId, commitId);
-const assessment = await pinWorkshopAssessmentBlueprint(blueprintId, release);
-const json = await exportWorkshopAssessmentBlueprint(assessment);
-```
-
-`getBlueprintRelease` verifies the actual R2 Git pack and requested commit, enumerates source files,
-and hashes sorted path/text pairs with SHA-256. The SDK checks that digest before extracting the
-public definition. It never falls forward to the latest release. Missing, corrupt or deleted source
-fails closed. Legacy snapshots must be republished as commit-backed releases. Review exports from
-the school's configured Workshop: Blueprint IDs alone do not authenticate an origin.
-
-A Gadget with the user-granted `SCHOOL` binding can obtain a capability scoped to one assignment:
+Obtain the assignment-scoped capability from the real `SCHOOL` binding in the committed Gadget's
+runtime. There is deliberately no caller-provided source blob, URL, student, role or target workspace.
+The same live capability must be retained between preview and submit and disposed on page teardown:
 
 ```ts
-using assessment = await env.SCHOOL.assessment(assignmentId);
-const publicView = JSON.parse(await assessment.read());
-await assessment.submit([{ artifactId, revisionId }]);
+const assessment = await env.SCHOOL.assessment(assignmentId);
+const preview = JSON.parse(await assessment.previewCurrentGadget());
+// Render preview.checkpoint.files as escaped text for the student to review, alongside the
+// destination assignment, commit and fingerprint. Require a user click labelled "Submit current
+// Gadget". On that click (not on page load or an agent schedule):
+await assessment.submitCurrentGadget(preview.requestId);
+// Workshop presents its explicit approval action; the call finishes after the decision.
+// In the owning UI/runtime cleanup:
+assessment[Symbol.dispose]();
 ```
 
-Use real immutable artifact/revision IDs previously created through the district artifact service.
-The capability accepts no principal, role, class override, release override, model, score or rubric.
-It reads the teacher's release pin itself and queues the request in the existing durable action
-journal. Reads are observations; writes require the Workshop user's decision and show the exact
-assignment/artifact/revision references. Rejected actions never write. Applied action retries use
-the journal, while identical current submission revisions reuse AssessmentService's submission.
-Dispose the returned RPC stub when finished.
+This is the implemented RPC contract, not a provided generic Gadget UI component. Each assessment
+Gadget must implement its own source-preview/user-click UI. The Workshop approval is a real,
+non-auto-approvable action; its summary shows assignment, commit, hash and filenames and says it is
+incomplete. Raw source is kept in the private durable action journal, not the action description or
+server logs. A refreshed preview invalidates the earlier preview ID; concurrent/double clicks
+cannot silently submit a different preview. Preview itself writes no district artifact. Rejection
+never submits; account revocation or changed district permissions refuse application.
 
-This is a real Gatekeeper RPC path, but it does **not** automatically serialize a running Workshop
-Gadget's code or storage into district artifacts, attest which Gadget executable produced evidence,
-or add an in-Gadget assignment picker. Those need an authenticated checkpoint/export seam and
-explicit content selection. A student must currently create the district artifact through the
-existing district workflow. Do not treat the release pin as proof that student code is unchanged.
+The previous `assessment.submit([{artifactId, revisionId}])` remains available for separate owned
+explanations and other district evidence. It does not give caller-supplied bytes checkpoint provenance.
 
-## Administrators and ownership
+## Source and submission trust boundary
 
-The existing `EDUCATEOS_DISTRICT` service binding targets `DistrictSchoolTools`. It alone receives
-the principal established by the school account connect flow. The district rereads its persisted
-directory, membership and policy on each operation. No client-supplied role becomes authority.
-The account principal is reread on each observation and action apply; revocation stops open
-capabilities. Assessment methods fail closed if the binding, implementation, or assignment pin is
-absent. School-data workspaces continue to refuse collaborators.
+Workshop stamps the actual loaded Git commit into its internal Gadget caller. Its approval queue
+reads that commit's complete Git tree only for the owner's configured EducateOS singleton, through
+a non-pending direct binding. Other gatekeepers, foreign/borrowed bindings, agent/chat-preview/hook
+contexts, shared workspaces, stale executable commits and missing Blueprint origins are refused.
+It checks again after the asynchronous Git read/hash so a changed head, deletion or sharing cannot
+race the export. No credential, environment, storage, binding, chat or unrelated Gadget tree is read.
 
-The district Durable Object stores assignment pins in SQLite. The first-pin check and ordinary
-submission storage are separate transactions: finish configuration before opening submissions;
-concurrent ordinary submissions are not transactionally excluded by the setup check. AssessmentService owns submissions,
-artifact integrity and grades; AssessmentCi owns execution and report projection. The public SDK
-rubric reference must map to the verified local rubric. The public evaluator reference remains
-portable authoring metadata; district execution uses the evaluator releases inside that signed
-local rubric. This bridge neither installs evaluators nor calls a model. Existing model governance,
-hidden-test projections, teacher-only rubric access and human grade approvals stay authoritative.
+`workshop.gadget-source.v1`, policy `educateos-source-v1`, includes workspace/Gadget identifiers,
+commit, source SHA-256, exact upstream Blueprint commit and sorted path/text tuples. The source
+hash covers UTF-8 `JSON.stringify(sortedFiles)`, including significant Unicode and line endings.
+The complete tree is accepted or refused; no file is silently omitted:
 
-There is no reverse district-to-Workshop source binding in this milestone. The teacher imports an
-export obtained from the verified Workshop API; the district verifies the public definition and
-rubric mapping but cannot independently refetch the source commit. An installer-managed origin
-binding and publisher verification remain future work. No permission is inferred from a Blueprint,
-and no gatekeeper declares itself ambient.
+- Requires `server.js`; at most 32 files and 128 KiB of serialized source tuples.
+- Allows JS/JSX/TS/TSX/CSS/HTML and `educateos.assessment.json` only.
+- Refuses sensitive/private/test/fixture/chat/binding filenames, traversal, binary content and
+  recognizable embedded credentials. Refusals omit the offending path/content.
 
-## Validation and maturity
+These conservative checks cannot recognize every secret or private fact written inside otherwise
+valid code. Exact source review and explicit consent are required; do not put secrets into source.
+The Gadget-rendered preview is not trusted browser chrome. The trusted Workshop approval warns
+that it is a summary; a universal trusted source-preview viewer remains a follow-up. A Gadget whose
+source cannot safely be reviewed/exported must use separate ordinary district evidence instead.
 
-Tests cover actual stored Blueprint packs and archive roundtrips; district installation, pinned
-rubrics, owned artifact submission, deterministic CI and teacher review; foreign student/class/
-district access; pin tampering; and durable district pins. Workerd separately exercises the actual
-Gatekeeper RPC capability, approval queue and account revocation, and the district service binding.
-The gatekeeper workerd fixture substitutes the district response; the district suite uses the real
-application. These are local harness results, not one deployed browser-to-Workshop-to-district run.
+The Gatekeeper journals the preview under an opaque request ID. Only its configured district service
+binding receives the connected account's verified principal. The district rereads active membership,
+assignment, policy, signed rubric and the remote release on every apply, including delayed approval.
+It verifies checkpoint digest, upstream pin, unchanged public manifest, accepted format and byte limit.
+The destination is the verified student's own course workspace, derived from the installed assignment.
+There is no new public HTTP source-import endpoint.
 
-This supports the RFP's teacher control and student vibe-coding goals by allowing student-authored
-Gadgets to submit bounded evidence while leaving review and official grading with teachers. It does
-not claim execution isolation, anti-cheating attestation, surveillance, automatic AI grading, or
-external standards conformance. Existing pilot gates are unchanged; this feature does not turn any
-unmet production gate into a met gate.
+LearningArtifacts stores a content-addressed immutable revision with server-owned source provenance.
+Only that provenance, copied into the SubmissionSnapshot, drives the teacher verification badge.
+Student-authored lookalike JSON/MIME types and later edited revisions cannot acquire the badge. The ASCII-escaped JSON envelope
+preserves original source code points despite the artifact service's text normalization; parsing it
+recovers the exact path/text pairs. Its artifact digest covers the whole stored envelope, separately
+from the source-tree digest. AssessmentService creates and pins the existing SubmissionSnapshot.
+Host request keys make artifact creation and submission replay durable, even after a Worker restart
+or a newer attempt. Changed request content and withdrawn submission replay are refused.
+
+Artifact creation and submission remain separate existing service transactions. A preflight checks
+submission policy, deadline and attempts before saving bytes; submission checks them again. A change
+between these operations or an interruption after save can leave a course artifact without a
+submission; retry reuses it. No automatic cleanup deletes evidence. Term/policy restrictions are
+rechecked by both services. The export performs no grading and never executes downloaded code.
+
+## Trusted reverse release verification and setup
+
+See [district Worker setup](../../packages/educateos-district-worker/README.md#optional-workshop-assessment-release-binding)
+for exact Cloudflare binding configuration, deployment sequence and offboarding.
+
+The installer provides `WORKSHOP_ASSESSMENT_RELEASES`, targeting the configured Workshop backend's
+`WorkshopAssessmentReleases` named entrypoint. Cloudflare's service-binding capability authenticates
+access: it is not a public HTTP endpoint or caller-selected hostname. It exposes only exact published
+Blueprint releases. Workshop validates the actual R2 Git pack and requested release commit using the
+existing archive implementation. The SDK independently recomputes the returned source digest and
+public assessment, compares them with the district pin, then the district verifies its signed rubric.
+Only Blueprint ID and commit cross this reverse binding; no student records, source or credentials
+are sent to the publisher. No callback, executable import or remote URL is taken from the manifest.
+
+All published Blueprint IDs (including unlisted IDs) already have public-read semantics in Workshop.
+This does not add private-Blueprint tenant ACLs or expose unpublished Gadget trees. Use only a
+school-approved Workshop publisher; the binding authenticates the service, not an independently
+certified human publisher. A wrong publisher with different bytes cannot satisfy a previously pinned
+SHA-256. There is no fallback to teacher attestation, cached success or latest release on failure.
+
+The optional binding is absent by default, so the feature fails closed until installed. Bootstrap the
+district without it, deploy Gatekeeper/Workshop, then add it and regenerate Worker configs. This avoids
+a cold-start circular service dependency without an unauthenticated HTTP alternative. No deployment
+was performed for this PR.
+
+## Validation boundary
+
+Tests cover actual stored Git packs, exact-commit runtime source capture, source refusals, separate
+real Gatekeeper approval/durable journal and district SQLite service paths, replay and revocation,
+pin/hash/public-manifest corruption, unavailable verification, student/class/district denial, and
+existing CI/teacher grading regression paths. The district's remote publisher test is synthetic;
+Workshop's actual release service is exercised separately. There is no claim of one deployed
+browser-to-Gadget-to-Gatekeeper-to-district end-to-end run. Exact commands, results and exceptions
+are recorded in [checkpoint validation](assessment-checkpoint-validation.md).

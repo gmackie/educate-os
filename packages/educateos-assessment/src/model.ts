@@ -1,3 +1,4 @@
+import { SourceCheckpointProvenance } from "@educateos/learning-artifacts";
 import { z } from "zod";
 import {
   ActivityId,
@@ -170,6 +171,8 @@ export const SubmissionItem = z.strictObject({
   sizeBytes: z.int().nonnegative(),
   /** The AI-assistance the author declared on the revision, carried verbatim. */
   aiAssistance: AiAssistance,
+  /** Host-verified source metadata, copied from the immutable revision rather than its content. */
+  sourceCheckpoint: SourceCheckpointProvenance.optional(),
 });
 /** A submission item. */
 export type SubmissionItem = z.infer<typeof SubmissionItem>;
@@ -203,6 +206,8 @@ export const SubmissionSnapshot = z.strictObject({
   timing: SubmissionTiming,
   channel: RequestChannel,
   withdrawnAt: z.iso.datetime().optional(),
+  /** Optional host request key, scoped to this assignment and student, for durable replay. */
+  requestKey: z.string().min(1).max(512).optional(),
 });
 /** A submission snapshot. */
 export type SubmissionSnapshot = z.infer<typeof SubmissionSnapshot>;

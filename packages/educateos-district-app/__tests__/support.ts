@@ -89,7 +89,7 @@ export interface TestDistrict {
  */
 export async function bootDistrict(
   directory: DistrictDirectorySnapshot = NORTHFIELD,
-  { standards = ["ccss-ela", "ccss-math"], ...options }: Partial<Pick<DistrictAppOptions, "projects" | "fundingPools" | "modelCatalog" | "aiMonthlyDistrictCapUsdNano" | "cloudflareAccount" | "now" | "authority"
+  { standards = ["ccss-ela", "ccss-math"], ...options }: Partial<Pick<DistrictAppOptions, "workshopReleases" | "projects" | "fundingPools" | "modelCatalog" | "aiMonthlyDistrictCapUsdNano" | "cloudflareAccount" | "now" | "authority"
     // Scheduled roster sync (SCHO-203)
     | "rosterSource" | "rosterServicePrincipalId"
     // Communication (SCHO-189)
@@ -235,7 +235,7 @@ export const ESSAY_RUBRIC: RubricDraft = {
 };
 
 /** Imports, approves, signs a rubric, creates, publishes and installs an essay in English 9 as Rivera, with a rubric. */
-export async function teacherSetsUpEssay(district: TestDistrict, teacher: string = district.tokenFor(NF.rivera)) {
+export async function teacherSetsUpEssay(district: TestDistrict, teacher: string = district.tokenFor(NF.rivera), gadget = false) {
   const item = await district.ok(teacher, "teacher.importResource", { params: { offeringId: NF.eng9 }, body: { url: PAGES.essay } }) as { id: string };
   const release = await district.ok(teacher, "teacher.approveResource", { params: { itemId: item.id }, body: { alignments: [] } }) as {
     descriptor: { id: string; release: { version: string } };
@@ -244,7 +244,7 @@ export async function teacherSetsUpEssay(district: TestDistrict, teacher: string
   const rubric = await district.ok(teacher, "teacher.signRubric", { params: { offeringId: NF.eng9 }, body: { rubric: ESSAY_RUBRIC } });
   const draft = await district.ok(teacher, "teacher.createActivity", {
     params: { offeringId: NF.eng9 },
-    body: { activity: essayActivity(resource, await competencyOf("ccss-ela")) },
+    body: { activity: { ...essayActivity(resource, await competencyOf("ccss-ela")), ...(gadget ? { additionalArtifactTypes: ["interactive"] } : {}) } },
   });
   await district.ok(teacher, "teacher.publishActivity", { params: { definitionId: draft.id } });
   const installed = await district.ok(teacher, "teacher.installActivity", {

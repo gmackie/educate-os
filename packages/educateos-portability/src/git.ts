@@ -54,6 +54,7 @@ function text(value: string): Uint8Array<ArrayBuffer> {
 
 function commitMessage(number: number, origin: ArchivedRevision["origin"], ai: ArchivedRevision["aiAssistance"]): string {
   const subject = origin === "baseline" ? `Revision ${number} (baseline)` : `Revision ${number}`;
+  if (ai.level === "undisclosed") return `${subject}\n\nAI assistance: undisclosed\n`;
   return ai.level === "none" ? `${subject}\n` : `${subject}\n\nAI assistance: ${ai.level} (${ai.modelId})\n`;
 }
 

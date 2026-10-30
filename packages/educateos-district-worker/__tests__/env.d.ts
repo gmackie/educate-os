@@ -5,6 +5,8 @@
 
 declare namespace Cloudflare {
   interface Env {
+    /** Test-only fixture writer, unavailable to the production district or students. */
+    TEST_WORKSHOP_RELEASES: Service<import("./worker.ts").TestWorkshopReleases>;
     /** The district objects, so a test can restart one. */
     DISTRICT: DurableObjectNamespace<import("./worker.ts").DistrictObject>;
     /** The guard entrypoint, over a real service binding. */

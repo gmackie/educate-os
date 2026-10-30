@@ -71,6 +71,11 @@ export class DistrictSchoolTools extends WorkerEntrypoint<Cloudflare.Env> implem
     return districtObject(this.env, this.ctx.exports).gadgetAssessmentSubmit(principal, assignmentId, request);
   }
 
+  /** Stores approved Workshop source through immutable district artifacts and assessment. */
+  async gadgetAssessmentSubmitCheckpoint(principal: VerifiedPrincipal, assignmentId: string, request: unknown): Promise<GadgetAssessmentResponse> {
+    return districtObject(this.env, this.ctx.exports).gadgetAssessmentSubmitCheckpoint(principal, assignmentId, request);
+  }
+
   /** The district's school tools. */
   async listTools(): Promise<SchoolToolListing[]> {
     return districtObject(this.env, this.ctx.exports).listTools();

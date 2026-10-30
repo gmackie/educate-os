@@ -3,7 +3,7 @@
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { BIO, P } from "../district.ts";
-import { assessmentWrites, completions, district } from "./worker.ts";
+import { assessmentWrites, checkpointWrites, checkpointPolicy, completions, district } from "./worker.ts";
 
 const hooks = () => env.TEST_HOOKS.getByName("hooks");
 
@@ -124,6 +124,49 @@ describe("the EducateOS gatekeeper Worker", () => {
     await hooks().revoke(accountObjectId);
     expect(await hooks().apply(accountObjectId, result.actionId)).toContain("not connected");
     expect(assessmentWrites).toHaveLength(before);
+  });
+
+  it("previews exact source, keeps source out of approval logs, and submits once across a Worker restart", async () => {
+    const { accountObjectId } = await connect(P.amara.principalId);
+    const before = checkpointWrites.length;
+    const { preview, action, observations } = await hooks().submitCheckpoint(accountObjectId);
+    expect(observations).toBe(1);
+    expect(checkpointWrites).toHaveLength(before);
+    const staged = JSON.parse(preview);
+    expect(staged.checkpoint.files).toEqual([["main.ts", "export default { answer: 42 };"]]);
+    expect(action.description).toMatchObject({ title: "Submit current Gadget", awaitDecision: true });
+    expect(action.description.descriptionIsComplete).not.toBe(true);
+    expect(action.description.autoApprovable).not.toBe(true);
+    expect(JSON.stringify(action.description)).not.toContain("answer: 42");
+    expect(JSON.stringify(action.description)).toContain(staged.checkpoint.sourceDigest);
+    await hooks().restart(accountObjectId);
+    expect(await hooks().apply(accountObjectId, action.id)).toBeNull();
+    await hooks().restart(accountObjectId);
+    expect(await hooks().apply(accountObjectId, action.id)).toBeNull();
+    expect(checkpointWrites).toHaveLength(before + 1);
+    const { assignmentId, ...request } = staged;
+    expect(checkpointWrites.at(-1)).toEqual({ principal: P.amara, assignmentId, request });
+  });
+
+  it("does not send rejected source, and rechecks revoked accounts and district policy on approval", async () => {
+    const { accountObjectId } = await connect(P.amara.principalId);
+    const before = checkpointWrites.length;
+    const rejected = await hooks().submitCheckpoint(accountObjectId);
+    await hooks().reject(accountObjectId, rejected.action.id);
+    await hooks().apply(accountObjectId, rejected.action.id);
+    expect(checkpointWrites).toHaveLength(before);
+
+    const denied = await hooks().submitCheckpoint(accountObjectId);
+    checkpointPolicy.allowed = false;
+    try {
+      expect(await hooks().apply(accountObjectId, denied.action.id)).toContain("no longer permitted");
+    } finally {
+      checkpointPolicy.allowed = true;
+    }
+    const revoked = await hooks().submitCheckpoint(accountObjectId);
+    await hooks().revoke(accountObjectId);
+    expect(await hooks().apply(accountObjectId, revoked.action.id)).toContain("not connected");
+    expect(checkpointWrites).toHaveLength(before);
   });
 
   it("admits no collaborator to a workspace that reads school records", async () => {

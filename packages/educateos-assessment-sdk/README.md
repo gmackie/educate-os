@@ -191,6 +191,17 @@ archive. An ID is local to that Workshop's namespace. Never accept a student's a
 as a verified source. Assignment installation records the teacher's reviewed pin; following or
 updating the Gadget must not silently replace it or expand its permissions.
 
+Hosts that have an installer-controlled Workshop capability can call
+`verifyWorkshopAssessmentBlueprint(pin, releases)`, where `releases.getBlueprintRelease(id,
+commitId)` calls the trusted Workshop release API. This independently recomputes the returned source
+SHA-256 and public assessment digest, and requires both to match the exact reviewed commit and pin.
+It refuses an absent/unavailable service, changed bytes, a substituted commit or manifest. Construct
+this port from trusted deployment configuration, never a client URL or caller-asserted publisher.
+The EducateOS district Worker implements this with the named `WorkshopAssessmentReleases` service
+binding; see its [setup and trust model](../educateos-district-worker/README.md#optional-workshop-assessment-release-binding).
+The source API verifies the real Git pack; this portable helper verifies its result and does not
+claim to parse Git packs itself. Only a Blueprint ID and commit leave the district for verification.
+
 ## Teacher views and standards seams
 
 `@educateos/assessment-sdk-react` provides IntentCard, EvidenceViewer, RubricReview,
@@ -248,7 +259,9 @@ own idempotency. This is a tested SDK MVP, not a production sandbox or district 
 The existing Teacher Studio now imports and pins reviewed Workshop assessment releases and shows
 submitted revision evidence, evaluator findings, provenance and existing teacher approval controls
 through the live district API. The `SCHOOL.assessment(assignmentId)` Gatekeeper capability queues
-owned district artifact revisions for submission through AssessmentService. See
+owned district artifact revisions or a trusted current-Gadget source checkpoint for submission
+through AssessmentService, following preview and explicit approval. The district independently
+verifies its pin through an installer-configured Workshop release service binding. See
 [the educator/developer/admin workflow](../../docs/educateos/assessment-gadget-workflow.md) for
 the exact rubric mapping, setup, security boundaries and remaining integration gaps. The portable
 React components above remain optional; Teacher Studio uses its established Kumo components.
