@@ -6,6 +6,7 @@ import { bootNorthfield, NORTHFIELD_PERSONAS } from "./northfield.ts";
 import type { DemoDistrict, DistrictKey, Persona } from "./shared.ts";
 
 export type { DemoDistrict, DemoRoster, DistrictKey, Persona, PersonaId, RosterSyncResult } from "./shared.ts";
+export { ROSTER_SYNC_ROUTE } from "./shared.ts";
 
 /** A district a visitor can open, as the demo describes it before it boots. */
 export interface DistrictInfo {

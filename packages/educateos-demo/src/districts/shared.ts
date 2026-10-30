@@ -31,6 +31,9 @@ export type ResponseListener = (request: Request, response: Response) => void;
 /** What running a roster sync did, as the district answers `admin.runRosterSync`. */
 export type RosterSyncResult = RouteResponse<"admin.runRosterSync">;
 
+/** The admin console's Roster sync screen, as a hash route: where the visitor runs a district's syncs. */
+export const ROSTER_SYNC_ROUTE = "#/roster-sync";
+
 /** A district's roster sync, for a district whose people arrive through one the visitor runs. */
 export interface DemoRoster {
   /** The roster's provider, as the district's configuration names it. */
@@ -39,6 +42,11 @@ export interface DemoRoster {
   synced(): boolean;
   /** Runs a sync now as the district's administrator, as the admin console's "sync now" would. */
   sync(): Promise<RosterSyncResult>;
+  /**
+   * Calls `listener` with what each sync did, however it was run (the admin console's Roster sync
+   * screen or {@link sync}), once the district has applied it. Returns the unsubscribe.
+   */
+  onSync(listener: (result: RosterSyncResult) => void): () => void;
 }
 
 /** A booted, seeded demo district. */
