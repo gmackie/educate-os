@@ -137,12 +137,17 @@ export function confirmWorkshopUserLink(
     && roleAssignmentInForce(a, new Date(link.confirmedAt)));
   if (!isAdmin) throw new EducateOsError("forbidden", "Only a district administrator can link Workshop accounts.");
   if (linkablePrincipal(directory, link.principalId) === undefined) throw new EducateOsError("not-found", "No such person in this district.");
-  const local = existing.filter((other) => other.districtId === districtId);
+  assertWorkshopUserLinkAvailable(existing, link);
+  return link;
+}
+
+/** Refuses a duplicate account or principal; stores repeat this check atomically when appending. */
+export function assertWorkshopUserLinkAvailable(existing: readonly WorkshopUserLink[], link: WorkshopUserLink): void {
+  const local = existing.filter((other) => other.districtId === link.districtId);
   if (local.some((other) => other.workshopUser === link.workshopUser)) {
     throw new EducateOsError("conflict", "This Workshop account is already linked.");
   }
   if (local.some((other) => other.principalId === link.principalId)) {
     throw new EducateOsError("conflict", "This principal is already linked to a Workshop account.");
   }
-  return link;
 }

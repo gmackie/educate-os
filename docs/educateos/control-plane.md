@@ -1,9 +1,9 @@
 # The educateos.io control plane
 
 - Status: operator sign-in, the store, the opt-in registry, the installation dashboard, Clever
-  portal launches (SCHO-249) and the guided install. Billing (SCHO-208) and the marketplace
-  (SCHO-209) build on this.
-- Issue: SCHO-206. Decision record: [ADR-0013](adr/0013-educateos-open-core-control-plane.md).
+  portal launches (SCHO-249), the guided install, and billing for managed services in Stripe test
+  mode with placeholder prices (SCHO-208). The marketplace (SCHO-209) builds on this.
+- Issue: SCHO-206; billing SCHO-208. Decision record: [ADR-0013](adr/0013-educateos-open-core-control-plane.md).
 - Code: `packages/educateos-control-plane`, served by the site Worker in `sites/educateos-io`.
 
 educateos.io is optional. An installation runs in its district's own Cloudflare account and never
@@ -24,6 +24,8 @@ before any script runs. Only the paths in `assets.run_worker_first` reach the Wo
 | `/app/install` | The guided install: the form (GET) and the run (POST), inside the console. It stays when the console moves. |
 | `/app`, `/app/*` | The operator console, behind Cloudflare Access, on educateos.io only. The other hostnames redirect there, since the Access application covers only `educateos.io/app`. With `ADMIN_URL` set, a 302 to the hosted admin ([below](#moving-to-the-admin-scho-263)). |
 | `/clever/launch` | Clever portal launches, sent on to the registered installation for the user's Clever district (SCHO-249). No sign-in. See [Clever portal launches](#clever-portal-launches). |
+| `/app/billing`, `/app/billing/*` | Billing for managed services, inside the console (SCHO-208). See [Billing](#billing). |
+| `/stripe/webhook` | Stripe's webhook deliveries for billing: verified by Stripe's signature, no sign-in. Outside `/app`, so the Access application doesn't cover it and needs no bypass. |
 
 Anything else that reaches the script goes back to the assets binding and its 404 page. The paths
 live under `/app` on the apex rather than at `app.educateos.io`. `app` is a reserved slug either
@@ -89,7 +91,9 @@ each sign-in in the account's Access logs. The privacy policy says all of this.
 ## Storage: one SQLite Durable Object
 
 `ControlPlane` (binding `CONTROL_PLANE`, one instance named `educateos.io`) holds two tables:
-operators, and the installations each one made through educateos.io. A Durable Object rather than D1
+operators, and the installations each one made through educateos.io. It also holds the registry's
+tables and, for billing, commerce's (`educateos_commerce_*`, `@educateos/commerce`'s Durable
+Object store), so an operator's account and its billing have one writer. A Durable Object rather than D1
 because:
 
 - the repository's other stores are SQLite Durable Objects built on `@educateos/fleet`'s
@@ -129,6 +133,108 @@ registration, single-use keys and sequence numbers.
   registration and installed version, and reports appear once a heartbeat sender exists.
 - **Before traffic grows,** add a rate limit on `/registry/*`. The one Durable Object also serves
   sign-in and the dashboard.
+
+## Billing
+
+Billing (SCHO-208) charges for what educateos.io itself does for an operator: the managed hostname,
+guided updates and support. It never reaches an installation: nothing in a district checks it, and
+an installation whose operator stops paying keeps running and keeps its data (ADR-0013).
+
+**Who keeps what.** Commerce (`@educateos/commerce`) keeps the subscriptions, the invoices and the
+hash-chained finance audit, as it does for the root's other billing. Stripe keeps only the card.
+So Checkout runs in **setup** mode, which saves a card for later off-session charges and charges
+nothing, and the Customer Portal is where the operator manages their saved cards. Cancelling is
+the operator's own button on `/app/billing`: the portal's cancel works only on subscriptions Stripe
+runs, and Stripe runs none here.
+
+**The flow.**
+
+1. `GET /app/billing` offers the plans (`src/billing.ts` `MANAGED_PLANS`). Every price is marked
+   "Placeholder price: pricing isn't decided yet" until the owner sets pricing.
+2. `POST /app/billing/subscribe` (plan, organization billed) opens the operator's commercial
+   account if need be (their `acct_…`, the organization as its label), starts a trialing card
+   subscription for one 30-day term, creates the Stripe customer (carrying only the account ID),
+   and answers 303 to a Checkout Session in setup mode. The session's metadata
+   `educateos_reference` names the subscription.
+3. Stripe sends the operator back to `GET /app/billing/return?subscription=…&setup=<session>`. The
+   Worker reads the session back and refuses (404) one for another customer or made for another
+   subscription, so a setup page left from an earlier subscription can't start a later one. It
+   makes the saved card the customer's default, which activates the subscription; the term starts
+   then. It issues the term's invoice (due in 7 days) if it has none, and charges it off-session
+   only if it has never had a charge. One paid, on its way, declined or reopened by a refund
+   waits for an explicit Pay now, so reopening an old return address never charges. So coming back again charges nothing
+   more, but does make a charge an earlier return couldn't (Stripe unreachable, or the object
+   restarted between the steps). The notice says what actually happened to the invoice.
+4. Stripe's `payment_intent.succeeded` (or `payment_failed`) webhook at `/stripe/webhook` marks the
+   invoice paid (or the subscription past due), once per event ID, unless the charge's reply
+   already recorded that outcome. Its signature is checked against `STRIPE_WEBHOOK_SECRET` before
+   anything in it is read. An event about a charge commerce never heard back about is matched in
+   the same step: the Worker reads the PaymentIntent, and if its `educateos_invoice` names an
+   invoice this store holds, reconciles that invoice and applies the event, answering 200. A
+   paying customer whose charge reply was lost is never left past due waiting for a retry.
+   Anything still unmatched is logged as `stripe webhook unmatched` with Stripe's event and
+   PaymentIntent IDs. Only one of EducateOS's own charges that reconciling couldn't find yet is
+   answered 503, so Stripe redelivers it; what EducateOS will never record (a Dashboard refund, a
+   Payment Link, another product or a preview deploy on the same Stripe account) gets 200
+   `{"outcome":"unmatched"}`, so Stripe neither retries it for days nor disables the endpoint.
+5. `POST /app/billing/pay` (**Pay now**, shown while the invoice is uncharged or declined) charges
+   it again; it is refused while a charge is on its way. `POST /app/billing/portal` answers 303 to
+   a Customer Portal session; `POST /app/billing/card` reopens Checkout for a subscription left
+   waiting for a card; `POST /app/billing/cancel` cancels. Billing's operations run one at a
+   time, so a cancel can't land between activation and the first invoice, and commerce refuses to
+   invoice a cancelled subscription anyway.
+
+The operator acts as a commerce `customer` actor, never as finance staff, so the console can't
+approve purchase orders, record manual payments or refund. The billing page's CSP also admits
+`https://checkout.stripe.com` and `https://billing.stripe.com` as form targets, since its forms
+answer with redirects there; every other console page keeps `form-action 'self'`.
+
+**Charging.** Each charge is a PaymentIntent whose metadata `educateos_invoice` names the
+invoice, made under the idempotency key `<invoice>:<attempt>`. Commerce (`chargeInvoice`) never
+trusts that a missing reply means no charge:
+
+- Before charging it reconciles the invoice with Stripe: it lists the customer's PaymentIntents
+  (the list endpoint, which sees a PaymentIntent at once, unlike search), page by page from when
+  the invoice was issued less an hour (`created[gte]`, `starting_after`), and records any made
+  for the invoice that it never heard back about, with Stripe's current status. A charge whose reply
+  was lost is found, not made again, however long ago; it is pending until it settles, and its
+  redelivered webhook then matches it.
+- Stripe's reply records the charge's status at once: `succeeded` pays the invoice, a decline
+  (`requires_payment_method`, or `requires_action`, which an off-session charge can't take) is
+  `failed`, `processing` stays pending for the webhook. So a replayed PaymentIntent reports its
+  outcome immediately.
+- A declined attempt is cancelled at Stripe before the next one is made, so it can never also
+  succeed. If cancelling finds it succeeded after all, that is recorded and nothing new is charged.
+- While a charge is pending nothing new is charged, and Pay now is refused.
+
+An invoice's charge is `paid`, `pending` (a charge awaits its outcome), `declined` (every charge
+for it was declined), `uncharged` (never charged) or `reopened` (paid, then reopened by a refund).
+
+Known gaps: a refund whose reply was lost isn't reconciled the same way, so a refund retried
+after Stripe's 24-hour idempotency window could be made twice; and a 4xx Stripe stores under an
+attempt's idempotency key blocks that attempt for 24 hours.
+
+**Setup.** Secrets on the site Worker (`wrangler secret put`, never `wrangler.jsonc`):
+
+| Secret | What |
+| --- | --- |
+| `STRIPE_SECRET_KEY` | The EducateOS Stripe account's secret key. Test mode (the EducateOS sandbox) until pricing is decided. |
+| `STRIPE_WEBHOOK_SECRET` | The signing secret (`whsec_…`) of the webhook endpoint `https://educateos.io/stripe/webhook`, subscribed to `payment_intent.succeeded`, `payment_intent.payment_failed`, `refund.created` and `refund.updated`. |
+| `COMMERCE_SIGNING_KEY` | The root's entitlement signing key, an Ed25519 private JWK. Commerce requires one; billing issues no entitlements yet. |
+
+Without all three, `/app/billing` says billing is unavailable and the webhook answers 503; the rest
+of the site is unaffected. The var `STRIPE_PORTAL_CONFIGURATION` names the Customer Portal configuration
+(`bpc_…`, the sandbox's, payment methods only); without it Stripe uses the account's default,
+which must have been saved once. [The sandbox runbook](runbooks/billing-sandbox.md) sets all of this up and runs the flow end
+to end.
+
+**Not yet.**
+
+- Renewal: a term ends after 30 days, and nothing yet issues the next term's invoice. That needs a
+  scheduled job (a Durable Object alarm) before billing goes live.
+- Pricing: the plans and prices are placeholders, and live mode waits on the owner's pricing
+  decision and the live account's activation.
+- The finance audit and reconciliation report are commerce's; no staff console shows them yet.
 
 ## Clever portal launches
 

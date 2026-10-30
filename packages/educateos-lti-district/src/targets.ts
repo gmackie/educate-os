@@ -30,6 +30,12 @@ export interface DirectoryRegistrationTargetsOptions {
   /** The district directory, read on every check. */
   readonly directory: () => Promise<DistrictDirectorySnapshot>;
   readonly activities: ActivityCatalog;
+  /**
+   * The issuers the district signs people in with (its Access team domain, Clever), which no LTI
+   * platform may use: identity links are keyed by issuer and subject, so a platform registered
+   * under a sign-in issuer could launch as anyone linked to it (SCHO-306).
+   */
+  readonly reservedIssuers?: readonly string[];
 }
 
 /**
@@ -51,6 +57,9 @@ export function directoryRegistrationTargets(options: DirectoryRegistrationTarge
       const directory = await options.directory();
       if (registration.districtId !== options.districtId || directory.district.id !== options.districtId) {
         throw new EducateOsError("forbidden", "That registration belongs to another district.");
+      }
+      if (options.reservedIssuers?.includes(registration.issuer)) {
+        throw new EducateOsError("forbidden", "That issuer signs people in to the district, so no LTI platform may use it.");
       }
       if (!directory.district.trustedIssuers.includes(registration.issuer)) {
         throw new EducateOsError("conflict", "The district does not trust this platform's issuer yet; add it to the trusted issuers first.");

@@ -103,6 +103,8 @@ export interface LtiAdvantageServiceOptions {
   readonly toolKeys: TableToolKeyStore;
   /** Records a pending identity link for an administrator to decide (`recordPendingIdentityLink`). */
   readonly requestIdentityLink: (link: PendingIdentityLink) => Promise<string>;
+  /** The district's sign-in issuers, which no platform may be trusted under (SCHO-306). */
+  readonly reservedIssuers?: readonly string[];
   readonly now?: () => Date;
 }
 
@@ -139,6 +141,9 @@ export class LtiAdvantageService {
     await this.#authorizeDistrict(caller);
     const issuer = HttpsIssuer.safeParse(rawIssuer);
     if (!issuer.success) throw new EducateOsError("validation-failed", "The issuer must be an https URL.");
+    if (this.#options.reservedIssuers?.includes(issuer.data)) {
+      throw new EducateOsError("forbidden", "That issuer signs people in to the district, so no LTI platform may use it.");
+    }
     const named = [...(await this.#options.registrations.list()), ...(await this.#options.pending.list())];
     if (!named.some((registration) => registration.issuer === issuer.data)) throw new EducateOsError("not-found", "No registration names that platform.");
     const { version, snapshot } = await this.#options.directory.load();

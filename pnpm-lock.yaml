@@ -866,6 +866,9 @@ importers:
 
   packages/educateos-control-plane:
     dependencies:
+      '@educateos/commerce':
+        specifier: workspace:*
+        version: link:../educateos-commerce
       '@educateos/contracts':
         specifier: workspace:*
         version: link:../educateos-contracts
