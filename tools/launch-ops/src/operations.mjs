@@ -84,6 +84,9 @@ export function erasePersonalData(s, input) {
   s.contacts = s.contacts.filter(c => !contactIds.has(c.id)); s.invitations = s.invitations.filter(x => !contactIds.has(x.contactId)); s.memberships = s.memberships.filter(x => !contactIds.has(x.contactId));
   s.candidates = s.candidates.filter(c => !ids.has(c.id)); s.staffFeedback = s.staffFeedback.filter(f => f.record.workEmail !== address);
   s.responses = s.responses.filter(r => !ids.has(r.candidateId)); s.outreach = s.outreach.filter(o => !ids.has(o.candidateId)); s.handoffs = s.handoffs.filter(h => !ids.has(h.candidateId)); s.triage = s.triage.filter(t => !ids.has(t.candidateId)); s.deliveries = s.deliveries.filter(d => !handoffIds.has(d.handoffId));
+  for (const collection of ['googleDrafts', 'googleQuarantine', 'meetingRequests', 'calendarHolds']) s[collection] = s[collection].filter(r => !ids.has(r.candidateId));
+  s.meetings = s.meetings.filter(m => !ids.has(m.candidateId));
+  const retainedMeetings = new Set(s.meetings.map(m => m.id)); s.feedback = s.feedback.filter(f => retainedMeetings.has(f.meetingId));
   // Run queues contain IDs, never PII; clear old queues to remove dangling records.
   s.runs = []; audit(s, 'funnel.personal-data-erased-suppression-retained', id(), reviewer);
   return { erased: true, cleanup, note: 'Suppression and import receipts retained. Independently remove copies/backups and manually entered meeting notes under the same retention policy.' };

@@ -1,3 +1,7 @@
+## Google bridge milestone (SCHO-302)
+
+Draft-only Gmail creation, exact SENT reconciliation, redacted reply review and separately approved private Calendar holds now have a dependency-free CLI and fully synthetic HTTP lifecycle. Start with `node tools/launch-ops/src/cli.mjs simulate-google`. No live Google calls occur in that command. See [GOOGLE.md](GOOGLE.md) for approvals, uncertainty recovery, restricted scopes, input formats, retention and outstanding live configuration. The original 38 tests remain; the new adversarial suite exercises the bridge on Node 22.
+
 # EducateOS Foundation Launch Operations
 
 A runnable **local operator tool** for sourced institutional contacts, approved unsent drafts, staff interest, advisory councils and synthetic pilot planning. Node 22+, no runtime dependencies, no install required. It is independent of `tools/launch-factory`, the Workshop, and production services. It contains no email sender, direct Gmail/Calendar connector, deployment, or external-ticket action. Public-site intake is a separate feature; this branch imports authenticated downloads only.
@@ -77,7 +81,7 @@ pnpm --config.store-dir=/private/tmp/educateos-interest-pnpm --config.cache-dir=
 
 38 tests pass on Node 22, including a real loopback HTTP end-to-end workflow, approval/cap/consent/suppression/deletion threats, and mocked DNS-pinning/robots/crawler transport. Existing foundation tests remain intact. No live discovery or network smoke test was run. Scoped Oxlint passes. Workspace `pnpm lint` was attempted but could not start because this checkout has no dependencies and pnpm's protected shared-store project symlink returns EPERM; repository-wide tooling is unchanged. Isolated Node 22/24 CI runs syntax, scoped lint and offline tests without building production packages.
 
-Single trusted local operator; plaintext state, self-attested authority and heuristic sensitive-text guards are unchanged limits. Hashes detect stale content, not a malicious filesystem owner. Human/legal/source review is essential. Browser interaction/accessibility needs human review. Export creation and state commit are separate filesystem operations: an interrupted export may need manual reconciliation. Gmail/Calendar connectors, remote scheduling, real delivery verification, broad page adapters and multi-user authentication are future work. No actual outreach, public intake publishing, paid API call, merge or deployment occurred.
+Single trusted local operator; plaintext state, self-attested authority and heuristic sensitive-text guards are unchanged limits. Hashes detect stale content, not a malicious filesystem owner. Human/legal/source review is essential. Browser interaction/accessibility needs human review. Export creation and state commit are separate filesystem operations: an interrupted export may need manual reconciliation. The approval-gated Gmail/Calendar bridge and complete offline lifecycle are documented in [GOOGLE.md](GOOGLE.md); broad page adapters and multi-user authentication remain future work. No actual outreach, public intake publishing, paid API call, merge or deployment occurred.
 
 ## Workflows
 

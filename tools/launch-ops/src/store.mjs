@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { check, id, now } from './safety.mjs';
 
 export const PRIVATE_ROOT = fileURLToPath(new URL('../.private/', import.meta.url));
-export const FUNNEL_COLLECTIONS = ['organizations', 'sourceImports', 'candidates', 'domainApprovals', 'campaigns', 'outreach', 'responses', 'staffFeedback', 'triage', 'suppressions', 'runs', 'operatorConfigs', 'privacyKeys', 'handoffs', 'importReceipts', 'crawlUsage', 'deliveries'];
+export const FUNNEL_COLLECTIONS = ['organizations', 'sourceImports', 'candidates', 'domainApprovals', 'campaigns', 'outreach', 'responses', 'staffFeedback', 'triage', 'suppressions', 'runs', 'operatorConfigs', 'privacyKeys', 'handoffs', 'importReceipts', 'crawlUsage', 'deliveries', 'googleDrafts', 'googleQuarantine', 'meetingRequests', 'calendarHolds'];
 export function emptyState() {
   return { version: 1, contacts: [], invitations: [], memberships: [], meetings: [], feedback: [], pilots: [], evidence: [], tickets: [], audit: [], ...Object.fromEntries(FUNNEL_COLLECTIONS.map(k => [k, []])) };
 }
