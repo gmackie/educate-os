@@ -3,7 +3,8 @@
 // production-config.ts generates. Everything here is non-secret: resource ids and names, the
 // origin, and plain-text vars. Secrets (the backend's ADMINS and Cloudflare Access pair, the guard's
 // Hall Monitor signing key, the district's DISTRICT_CONFIG and Access pair, whose CF_ACCESS_AUD lists
-// both the district's and the instance's Access audiences, the Google connector's OAuth client) are
+// both the district's and the instance's Access audiences, the Google connector's OAuth client, the
+// Clever connector's OAuth client and district tokens) are
 // delivered by ForgeGraph and never written down here; see
 // docs/educateos/runbooks/production-instance.md.
 
@@ -16,10 +17,12 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
   // The three auto-provisioned gatekeepers, which need no OAuth app; the Google connector
   // (SCHO-214), whose OAuth client is its CLIENT_ID and CLIENT_SECRET secrets; and the EducateOS
   // connector (SCHO-218), which needs no client: it is bound to the district below and verifies
-  // people by the district's sign-in.
+  // people by the district's sign-in; and the Clever connector (SCHO-282), pointed at the demo's
+  // Clever fake for Cedar Valley, whose OAuth client and district token are its CLIENT_ID,
+  // CLIENT_SECRET and CLEVER_DISTRICT_TOKENS secrets.
   gatekeepers: [
-    "gatekeeper-context", "gatekeeper-google", "gatekeeper-scheduler", "gatekeeper-educateos",
-    "gatekeeper-websearch",
+    "gatekeeper-clever", "gatekeeper-context", "gatekeeper-google", "gatekeeper-scheduler",
+    "gatekeeper-educateos", "gatekeeper-websearch",
   ],
   kvNamespaces: {
     "workshop-backend": {
@@ -45,6 +48,13 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
     },
     "gatekeeper-websearch": {
       CF_AI_GATEWAY: "default",
+    },
+    // The demo's Clever is the provider fake's Cedar Valley district (sites/educateos-demo-fakes),
+    // which has no sign-in page, so the connector asks who to sign in as and passes it as login_hint.
+    "gatekeeper-clever": {
+      CLEVER_API_BASE: "https://fakes.demo.educateos.io/cedarvalley/clever",
+      CLEVER_OAUTH_BASE: "https://fakes.demo.educateos.io/cedarvalley/clever",
+      CLEVER_LOGIN_HINT_FORM: "true",
     },
     "educateos-ai-guard": {
       HALL_MONITOR_ISSUER: "educateos",
