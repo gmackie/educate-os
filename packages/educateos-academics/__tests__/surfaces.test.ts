@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { EducateOsErrorBody, type Caller, type VerifiedPrincipal } from "@educateos/contracts";
 import { NORTHFIELD } from "@educateos/fixtures";
 import {
@@ -7,6 +7,7 @@ import {
   createAcademicsHandler,
   createAcademicTools,
   ERROR_STATUS,
+  InMemoryAcademicStore,
   invokeOperation,
   RoleTableAuthorizer,
   storePrincipalFacts,
@@ -120,13 +121,15 @@ describe("the HTTP handler and the tools", () => {
       "admin lists active terms": "ok",
       "illegal term transition": "conflict",
       "write to an externally owned type": "conflict",
-      "student deactivates own enrollment": "forbidden",
+      // A write to a roster-owned type is routed away before anyone's authority is decided: the
+      // refusal names only the district's source of record, never a record.
+      "student deactivates own enrollment": "conflict",
       "school admin creates a term": "forbidden",
       "cross-district admin reads a term": "not-found",
       "unknown field is rejected": "validation-failed",
       "admin graduates a roster-owned principal": "conflict",
       "admin renames a roster-owned principal": "conflict",
-      "student reactivates themself": "not-found",
+      "student reactivates themself": "conflict",
       "malformed ID is rejected": "validation-failed",
     });
   });
@@ -160,6 +163,26 @@ describe("the operation descriptors", () => {
     }
   });
 
+  it("route every write by its domain's binding before it runs, and let reads through", async () => {
+    const roles = new RoleTableAuthorizer(storePrincipalFacts(InMemoryAcademicStore.seeded(NORTHFIELD)));
+    const authorize = vi.fn((request: Parameters<typeof roles.authorize>[0]) => roles.authorize(request));
+    const { directory, store } = directoryFor(NORTHFIELD, { authority: ROSTER_EXTERNAL, authorizer: { authorize } });
+    const before = (await store.load()).snapshot;
+    const outcome = await invokeOperation(ACADEMIC_OPERATIONS.update_offering, directory, NF.admin, { offeringId: "off_nf-bio-fall-p2", sectionName: "P9" });
+    expect(outcome).toEqual({
+      ok: false,
+      error: {
+        code: "conflict",
+        message: "Course offerings are owned by external:oneroster; change them there and let its sync update EducateOS.",
+        correlationId: expect.any(String),
+      },
+    });
+    // Refused by routing, so nobody's authority was asked about and nothing changed.
+    expect(authorize).not.toHaveBeenCalled();
+    expect((await store.load()).snapshot).toEqual(before);
+    expect(await invokeOperation(ACADEMIC_OPERATIONS.get_offering, directory, NF.admin, { offeringId: "off_nf-bio-fall-p2" })).toMatchObject({ ok: true });
+  });
+
   it("classify every operation: reads are list or read actions and need no approval", () => {
     for (const operation of Object.values(ACADEMIC_OPERATIONS)) {
       expect(operation.version).toBe(1);
@@ -168,7 +191,7 @@ describe("the operation descriptors", () => {
         expect(operation).toMatchObject({ idempotency: "inherent", approval: "none" });
       } else {
         expect(["create", "update"]).toContain(operation.action);
-        expect(operation).toMatchObject({ effect: "publish", approval: "confirm-agent" });
+        expect(operation).toMatchObject({ effect: "write", approval: "confirm-agent" });
       }
     }
   });

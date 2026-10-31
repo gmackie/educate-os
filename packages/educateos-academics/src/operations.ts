@@ -22,7 +22,7 @@ import {
   type OperationChannel,
   type OperationDescriptorFields,
 } from "@educateos/contracts";
-import type { DirectoryEntityKind } from "./authority.ts";
+import { assertOperationRoutable, type DirectoryEntityKind } from "./authority.ts";
 import type { AcademicDirectory } from "./directory.ts";
 import {
   CoursePatch,
@@ -79,8 +79,8 @@ function defineOperation<S extends z.ZodType, O extends z.ZodType>(
 const EVERYWHERE = ["ui", "rest", "mcp-agent"] as const satisfies readonly OperationChannel[];
 /** A read: changes nothing, so it repeats harmlessly and no call waits for anyone. */
 const READ = { version: 1, effect: "read", idempotency: "inherent", approval: "none", channels: EVERYWHERE } as const;
-/** A write to a directory record: an agent's call waits for the requester to confirm it. */
-const WRITE = { version: 1, effect: "publish", approval: "confirm-agent", channels: EVERYWHERE } as const;
+/** A direct write to a directory record: an agent's call waits for the requester to confirm it. */
+const WRITE = { version: 1, effect: "write", approval: "confirm-agent", channels: EVERYWHERE } as const;
 
 const none = z.strictObject({});
 const withSchool = z.strictObject({ schoolId: SchoolId });
@@ -413,7 +413,9 @@ export type OperationOutcome = { ok: true; value: unknown } | { ok: false; error
 
 /**
  * Parses `input` and runs the operation, converting failures to error bodies. An operation not
- * exposed on the caller's channel is refused with `forbidden` before anything else happens. Every decision the
+ * exposed on the caller's channel is refused with `forbidden` before anything else happens. One
+ * whose effect writes is then routed by its domain's authority binding, so a write to a domain
+ * another system owns is refused with a `conflict` naming that system before it runs. Every decision the
  * operation makes is audited under one correlation ID, the caller's if it brings one, and every
  * error body names it, so a refusal a user reports leads straight to the audit entries behind it.
  * Unexpected errors become `unavailable` with a generic message, so internal detail never reaches
@@ -437,6 +439,7 @@ export async function invokeOperation(
   try {
     const parsed = operation.input.safeParse(input);
     if (!parsed.success) throw new DirectoryValidationError("the request is invalid", zodIssues(parsed.error));
+    assertOperationRoutable(directory.authorityBindings, operation.authority, { name: operation.name, writes: operation.effect !== "read" });
     return { ok: true, value: await operation.run(directory, { ...caller, correlationId }, parsed.data) };
   } catch (error) {
     if (error instanceof EducateOsError) return { ok: false, error: { ...error.toBody(), correlationId } };

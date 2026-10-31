@@ -25,12 +25,14 @@ export type OperationChannel = z.infer<typeof OperationChannel>;
  *
  * - `read`: changes nothing.
  * - `draft`: a change only its author and reviewers see until it is published.
- * - `publish`: a change others see or rely on, including any direct write to a record of record.
+ * - `write`: a direct change to a record that is neither a draft nor a publication, such as
+ *   correcting a school's name or enrolling a student.
+ * - `publish`: makes a draft or a result visible to others, who may then rely on it.
  * - `approve`: a person's decision that makes something official, such as a grade.
  * - `export`: copies records out of EducateOS.
  * - `delete`: removes records.
  */
-export const OperationEffect = z.enum(["read", "draft", "publish", "approve", "export", "delete"]);
+export const OperationEffect = z.enum(["read", "draft", "write", "publish", "approve", "export", "delete"]);
 /** An operation effect. */
 export type OperationEffect = z.infer<typeof OperationEffect>;
 
@@ -97,6 +99,8 @@ export type OperationDescriptorFields = Omit<z.infer<typeof OperationDescriptorF
  * - a `read` repeats harmlessly and needs nobody's approval;
  * - an `approve` or `delete` is never exposed to `mcp-agent` (RFC 0002 §2's curated-MCP
  *   exclusions): a person makes those decisions through a separately authenticated surface;
+ * - a `write` is exposed to `mcp-agent` only if a person agrees to each call (`confirm-agent` or
+ *   `approver`): an agent never changes a record of record on its own;
  * - a channel is listed once.
  */
 export function assertOperationDescriptor(name: string, fields: OperationDescriptorFields): void {
@@ -107,6 +111,9 @@ export function assertOperationDescriptor(name: string, fields: OperationDescrip
   }
   if ((fields.effect === "approve" || fields.effect === "delete") && fields.channels.includes("mcp-agent")) {
     throw new Error(`operation ${name} is an ${fields.effect}, which is never exposed to mcp-agent`);
+  }
+  if (fields.effect === "write" && fields.approval === "none" && fields.channels.includes("mcp-agent")) {
+    throw new Error(`operation ${name} writes, so mcp-agent calls of it need confirm-agent or approver`);
   }
   if (new Set(fields.channels).size !== fields.channels.length) {
     throw new Error(`operation ${name} lists a channel twice`);

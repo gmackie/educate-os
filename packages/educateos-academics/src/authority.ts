@@ -5,6 +5,7 @@ import {
   type Authority,
   type AuthorityBinding,
   type AuthorityMap,
+  type GradeAuthority,
 } from "@educateos/contracts";
 
 /** The record types an `AuthorityMap` assigns a source of record to. */
@@ -103,5 +104,31 @@ export function assertOperationRoutable(
     binding.writeMode === "provider-only"
       ? `${DOMAIN_PLURALS[domain]} are owned by ${binding.source}; change them there and let its sync update EducateOS.`
       : `${DOMAIN_PLURALS[domain]} are owned by ${binding.source} and are read-only in EducateOS.`,
+  );
+}
+
+/**
+ * The binding one offering's official grades are held under: the district's `grade` binding,
+ * refined by the offering's own grade authority. The offering's setting only ever narrows what the
+ * district allows, so it never makes grades locally writable where the district does not:
+ *
+ * - where EducateOS holds the district's grades, a class may keep them too (`local`), or hold
+ *   them in an LMS (`lms:<provider>`), which EducateOS then publishes teacher-approved grades to:
+ *   the same binding, syncing `outbound`. Who may write EducateOS's records is unchanged;
+ * - where an external system holds them, a class may name only that system (`lms:<provider>` for
+ *   `external:<provider>`), and its binding is the district's as it stands. A class that would keep
+ *   its grades locally, or in another system, is refused with a `conflict` naming the owner.
+ */
+export function gradeBindingForOffering(district: AuthorityBinding, offering: GradeAuthority): AuthorityBinding {
+  if (district.source === "local") {
+    if (offering === "local") return district;
+    return { ...district, syncDirection: district.syncDirection === "none" ? "outbound" : district.syncDirection };
+  }
+  if (offering === `lms:${district.source.slice("external:".length)}`) return district;
+  throw new EducateOsError(
+    "conflict",
+    offering === "local"
+      ? `Official grades are owned by ${district.source} for the whole district, so a class cannot keep them in EducateOS.`
+      : `Official grades are owned by ${district.source} for the whole district, so a class cannot keep them in ${offering}.`,
   );
 }

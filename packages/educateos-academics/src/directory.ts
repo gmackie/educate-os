@@ -5,6 +5,7 @@ import {
   EducateOsError,
   type AcademicTerm,
   type Action,
+  type AuthorityBindings,
   type AuthorityMap,
   type AuthorizationRequest,
   type Authorizer,
@@ -27,7 +28,7 @@ import {
   type TermId,
   type TermState,
 } from "@educateos/contracts";
-import { assertLocallyWritable } from "./authority.ts";
+import { assertLocallyWritable, bindingsFromAuthorityMap } from "./authority.ts";
 import {
   CoursePatch,
   DepartedStatus,
@@ -225,10 +226,13 @@ export class AcademicDirectory {
   readonly #authority: AuthorityMap;
   readonly #authorizer: Authorizer;
   readonly #now: () => Date;
+  /** The directory's authority as versioned bindings, which operations are routed by. */
+  readonly authorityBindings: AuthorityBindings;
 
   constructor(options: AcademicDirectoryOptions) {
     this.#store = options.store;
     this.#authority = options.authority;
+    this.authorityBindings = bindingsFromAuthorityMap(options.authority);
     this.#authorizer = options.authorizer;
     this.#now = options.now ?? (() => new Date());
   }

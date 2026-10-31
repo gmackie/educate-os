@@ -21,11 +21,20 @@ describe("operation descriptors", () => {
     }
   });
 
+  it("expose a direct write to agents only if a person agrees to each call", () => {
+    const write = { ...read, effect: "write", idempotency: "none" } as const;
+    expect(() => assertOperationDescriptor("w", { ...write, approval: "none" })).toThrow(/confirm-agent or approver/);
+    expect(() => assertOperationDescriptor("w", { ...write, approval: "confirm-agent" })).not.toThrow();
+    expect(() => assertOperationDescriptor("w", { ...write, approval: "approver" })).not.toThrow();
+    // Off the agent channel, a write needs nobody's agreement unless its descriptor asks for it.
+    expect(() => assertOperationDescriptor("w", { ...write, approval: "none", channels: ["ui", "rest"] })).not.toThrow();
+  });
+
   it("refuse an empty, unknown or repeated channel and an unknown effect", () => {
     expect(() => assertOperationDescriptor("x", { ...read, channels: [] })).toThrow();
     expect(() => assertOperationDescriptor("x", { ...read, channels: ["rest", "rest"] })).toThrow(/twice/);
     expect(() => assertOperationDescriptor("x", { ...read, channels: ["http" as never] })).toThrow();
-    expect(() => assertOperationDescriptor("x", { ...read, effect: "write" as never })).toThrow();
+    expect(() => assertOperationDescriptor("x", { ...read, effect: "erase" as never })).toThrow();
   });
 
   it("map each request channel to the operation channel it arrives through", () => {
