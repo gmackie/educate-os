@@ -17,3 +17,4 @@ export * from "./launch.ts";
 export * from "./admin.ts";
 export * from "./authorize.ts";
 export * from "./advantage.ts";
+export * from "./platform-tools.ts";

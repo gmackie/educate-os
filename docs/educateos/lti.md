@@ -322,6 +322,38 @@ offering whose route is a Clever route. `CleverLmsConnectGradeSink` publishes th
 - Clever errors become `EducateOsError`s: 400 `validation-failed`, 401 and 403 `forbidden`, 404
   `not-found` (or `forbidden` for an assignment outside the section), anything else `unavailable`.
 
+# Platform tools and deployments (SCHO-179, IF-10)
+
+When EducateOS is the LTI **Platform**, hosting third-party tools (RFC 0002 §5 and §7), a district
+administrator registers each tool and deploys it to specific offerings. The schemas are in
+`@educateos/lti` (`platform-tools.ts`); the store and the administrator's service are in
+`@educateos/lti-district` (`platform-tools.ts`). Harness-tested only; no launch uses them yet, and
+the district Worker does not serve them yet.
+
+- **A tool** (`PlatformTool`) is registered with its name, OIDC login initiation URL, redirect URIs,
+  default target link URI and JWKS URL. Every URL is https on the login initiation URL's origin,
+  the tool's trusted host, and redirect URIs are matched exactly (`redirectUriAllowed`). EducateOS
+  assigns the tool's ID (`ltt_…`), which is its `client_id`; a tool never chooses it.
+- **A deployment** (`PlatformDeployment`, `ltd_…`, the launch's `deployment_id`) names the only
+  offerings the tool may launch in, and turns on each LTI Advantage service on its own: NRPS,
+  AGS line items, AGS scores and Deep Linking. All are off unless asked, and so are the person's
+  name and email (`privacy`): by default a tool learns an opaque subject and a role, nothing more.
+- `deploymentAllows(tool, deployment, offering, service?)` is the check every later launch and
+  service call starts with: both active, same district, an offering the deployment names, and the
+  service, if one is named, turned on.
+
+`TablePlatformToolStore` keeps them in the district's record table (`lti.platform-tool`,
+`lti.platform-deployment`). A deployment is stored only while its tool is active and cannot move
+to another tool; a revoked deployment stays revoked; revoking a tool revokes every deployment of it
+in the same atomic step. Nothing is deleted, so a revoked record remains the record of what the tool
+was allowed.
+
+`LtiPlatformToolService` decides every call with the policy engine: registering, deploying,
+changing and revoking need `update` on the district, and listing needs `read`, which by the default
+rules only a district admin has. A refusal is `forbidden` and is in the policy audit trail; each
+record also keeps who changed it last, and when. A deployment naming an offering that is not the
+district's is refused as `validation-failed`.
+
 # District wiring (SCHO-60, SCHO-76)
 
 `@educateos/lti-district` (`packages/educateos-lti-district`) is what a district Worker hosts around
