@@ -26,7 +26,8 @@ function sessionFor(account: VerifiedPrincipal, district = northfieldDistrict(),
     submit: async (change) => void submitted.push(change),
   });
   // What the Workshop does when a person approves or rejects a submitted change.
-  const approve = async (change: SchoolChange) => decisionResult(await service.approveChange(account, change.approvalId));
+  const approve = async (change: SchoolChange) =>
+    decisionResult(await service.approveChange(account, change.approvalId, change.digest === undefined ? {} : { digest: change.digest }));
   const reject = async (change: SchoolChange) => decisionResult(await service.declineChange(account, change.approvalId, "Declined in the Workshop."));
   return { session, observed, submitted, approve, reject, ...district };
 }
@@ -117,6 +118,23 @@ describe("the EducateOS gatekeeper session", () => {
     expect(district.ran).toEqual([{ tool: "record_grade", subject: P.morgan }]);
     const decision = district.audit.findLast((e) => e.action === "approve");
     expect(decision).toMatchObject({ principalId: P.morgan.principalId, channel: "http", effect: "allow", ruleId: "grade.official.teacher-direct" });
+  });
+
+  it("shows the pinned target and digest, and approves only the change the person reviewed", async () => {
+    const { session, submitted, approve, approvals, ran } = sessionFor(P.amara);
+    await session.callTool("edit_artifact", { artifactId: "art_amara-lab", text: "v2" });
+    await session.callTool("edit_artifact", { artifactId: "art_amara-lab", text: "v3" });
+    const [reviewed, other] = submitted;
+    const queued = (await approvals.get(reviewed!.approvalId as never))!;
+    expect(reviewed).toMatchObject({ target: { kind: "artifact", id: "art_amara-lab" }, digest: queued.digest });
+    expect(reviewed!.digest).toMatch(/^[0-9a-f]{64}$/);
+
+    // A decision carrying one change's digest does not run another change.
+    expect(await approve({ ...other!, digest: reviewed!.digest! })).toMatchObject({ kind: "refused", message: "This is not the request you reviewed. Review it again." });
+    expect(await approvals.get(other!.approvalId as never)).toMatchObject({ state: "pending" });
+    expect(ran).toEqual([]);
+    expect(await approve(other!)).toEqual({ kind: "done" });
+    expect(ran).toEqual([{ tool: "edit_artifact", subject: P.amara }]);
   });
 
   it("declines a change the person rejects, and it never runs", async () => {

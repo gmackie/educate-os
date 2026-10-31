@@ -170,13 +170,21 @@ export interface SchoolToolListing {
 
 /**
  * The outcome of one invocation. `approval-required` means the call did nothing yet: a person must
- * decide it first. With an approval queue configured it names the queued action and why it waits.
- * Neither it nor an error says why the engine refused; that is in the audit entry the correlation
- * ID names.
+ * decide it first. With an approval queue configured it names the queued action, why it waits, and
+ * the target, version and digest it is pinned to: show those to whoever decides it, and pass the
+ * digest back to {@link SchoolToolRunner.approve} so only the reviewed call runs. Neither it nor
+ * an error says why the engine refused; that is in the audit entry the correlation ID names.
  */
 export type SchoolToolOutcome =
   | { status: "ok"; value: unknown; correlationId: string }
-  | { status: "approval-required"; correlationId: string; approvalId?: ToolApprovalId; needs?: ToolApprovalNeed }
+  | {
+    status: "approval-required";
+    correlationId: string;
+    approvalId?: ToolApprovalId;
+    needs?: ToolApprovalNeed;
+    target?: PinnedToolTarget;
+    digest?: string;
+  }
   | { status: "error"; error: EducateOsErrorBody };
 
 /** How a {@link SchoolToolRunner} queues calls that wait for a person (SCHO-55). */
@@ -451,7 +459,14 @@ export class SchoolToolRunner {
       await this.#expire(stored);
       stored = await approvals.store.insertUnlessOpen(candidate);
     }
-    return { status: "approval-required", correlationId: context.correlationId, approvalId: stored.id, needs: stored.needs };
+    return {
+      status: "approval-required",
+      correlationId: context.correlationId,
+      approvalId: stored.id,
+      needs: stored.needs,
+      ...(stored.target === undefined ? {} : { target: stored.target }),
+      ...(stored.digest === undefined ? {} : { digest: stored.digest }),
+    };
   }
 
   /**

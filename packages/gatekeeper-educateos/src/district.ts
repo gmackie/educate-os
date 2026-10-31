@@ -28,8 +28,11 @@ export interface SchoolToolService {
   listTools(): Promise<SchoolToolListing[]>;
   /** Runs one tool call for `subject` as an agent's: reads answer at once, writes are queued. */
   callTool(subject: VerifiedPrincipal, name: string, args: unknown): Promise<SchoolToolOutcome>;
-  /** Approves a queued change as `approver`'s own decision. */
-  approveChange(approver: VerifiedPrincipal, approvalId: string): Promise<ToolDecisionOutcome>;
+  /**
+   * Approves a queued change as `approver`'s own decision. Given the `digest` the person reviewed,
+   * it runs only if the queued change is still exactly that one.
+   */
+  approveChange(approver: VerifiedPrincipal, approvalId: string, options?: { digest?: string }): Promise<ToolDecisionOutcome>;
   /** Declines a queued change as `decider`'s own decision, with a reason the requester sees. */
   declineChange(decider: VerifiedPrincipal, approvalId: string, reason: string): Promise<ToolDecisionOutcome>;
   /**
@@ -95,9 +98,9 @@ export function createSchoolToolService(options: SchoolToolServiceOptions): Scho
       if (outsider(subject)) return refused;
       return runner.invoke({ principal: subject, channel: "agent" }, name, args, { confirmWrites: true });
     },
-    async approveChange(approver, approvalId) {
+    async approveChange(approver, approvalId, options) {
       if (outsider(approver)) return refused;
-      return runner.approve({ principal: approver, channel: "http" }, approvalId);
+      return runner.approve({ principal: approver, channel: "http" }, approvalId, options?.digest === undefined ? {} : { digest: options.digest });
     },
     async declineChange(decider, approvalId, reason) {
       if (outsider(decider)) return refused;

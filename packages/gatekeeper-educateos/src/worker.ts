@@ -251,7 +251,8 @@ const changes = defineActions<ChangeHost, { change: SchoolChange; assessment: As
     // The district's own queue runs a change at most once, so a retried apply is harmless.
     describe: (change) => describeChange(change),
     apply: async (change, host) => {
-      const result = decisionResult(await host.district().approveChange(await host.decider(), change.approvalId));
+      // The digest the person reviewed goes back, so an altered change is declined rather than run.
+      const result = decisionResult(await host.district().approveChange(await host.decider(), change.approvalId, change.digest === undefined ? {} : { digest: change.digest }));
       if (result.kind === "refused") throw new ActionApplyError(result.message);
       if (result.kind === "retry") throw new Error(result.message);
     },

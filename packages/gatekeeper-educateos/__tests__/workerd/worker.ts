@@ -28,6 +28,9 @@ export { GatekeeperVendor, EducateOsAccount, EducateOsAccountObject, EducateOsGa
 /** Northfield, shared by every test in this isolate. */
 export const district = northfieldDistrict();
 
+/** The digest each approval the district received carried. */
+export const approvedDigests: (string | undefined)[] = [];
+
 /** Northfield's district service, as the district deployment would expose it. */
 export class FakeDistrict extends WorkerEntrypoint implements SchoolToolService {
   authenticate(request: Request) {
@@ -39,8 +42,9 @@ export class FakeDistrict extends WorkerEntrypoint implements SchoolToolService 
   callTool(subject: VerifiedPrincipal, name: string, args: unknown) {
     return district.service.callTool(subject, name, args);
   }
-  approveChange(approver: VerifiedPrincipal, approvalId: string) {
-    return district.service.approveChange(approver, approvalId);
+  approveChange(approver: VerifiedPrincipal, approvalId: string, options?: { digest?: string }) {
+    approvedDigests.push(options?.digest);
+    return district.service.approveChange(approver, approvalId, options);
   }
   declineChange(decider: VerifiedPrincipal, approvalId: string, reason: string) {
     return district.service.declineChange(decider, approvalId, reason);

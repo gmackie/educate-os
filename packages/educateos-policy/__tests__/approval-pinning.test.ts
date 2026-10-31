@@ -68,10 +68,13 @@ function approvalIdOf(outcome: SchoolToolOutcome): string {
 describe("an approval as a transaction", () => {
   it("pins the call's target and version, and runs only the digest the person reviewed", async () => {
     const { runner, store, ran } = runnerFor();
-    const id = approvalIdOf(await runner.invoke(agent(P.amara), "edit_artifact", { artifactId: "art_amara-lab", text: "v2" }, { confirmWrites: true }));
+    const outcome = await runner.invoke(agent(P.amara), "edit_artifact", { artifactId: "art_amara-lab", text: "v2" }, { confirmWrites: true });
+    const id = approvalIdOf(outcome);
     const queued = (await store.get(id as never))!;
     expect(queued.target).toMatchObject({ resource: { kind: "artifact", id: "art_amara-lab" }, version: "1" });
     expect(queued.digest).toMatch(/^[0-9a-f]{64}$/);
+    // The outcome names the pin, for whoever decides it to review.
+    expect(outcome).toMatchObject({ target: queued.target, digest: queued.digest });
 
     // An approval naming another digest runs nothing and leaves the request waiting.
     expect(await runner.approve(person(P.amara), id, { digest: "0".repeat(64) })).toMatchObject({ status: "error", error: { code: "conflict" } });
