@@ -77,9 +77,15 @@ export interface SchoolToolDefinition<S extends z.ZodObject, R> {
    */
   approval?: ApprovalPolicy;
   /**
-   * Checks what must still hold when the call runs besides authorization, such as that its
-   * domain's source of record still accepts the write. Runs before the handler, both when the call
-   * is made and when a queued call is approved. Throws an `EducateOsError` to refuse.
+   * Checks what must still hold when a queued call runs besides authorization, such as that its
+   * domain's source of record still accepts the write. Throws an `EducateOsError` to refuse, and
+   * the action is declined. It runs before the handler when an approver approves the call, and
+   * after the handler fails when the requester confirms it.
+   *
+   * It is never run when a call is made, nor before a requester's own confirmation: its refusal may
+   * name what only an authorized caller should learn, such as the source of record. The handler
+   * must refuse such a call itself once it has authorized the caller for the record, as
+   * `AcademicDirectory` does.
    */
   recheck?(input: z.output<S>, context: SchoolToolContext): Promise<void>;
   /**
@@ -294,7 +300,6 @@ export class SchoolToolRunner {
         return await this.#enqueue(context, tool, parsed.data, "approval", target);
       }
       if (decision.effect === "deny") return await this.#refusal(context, tool.action, target);
-      await tool.recheck?.(parsed.data, context);
       // An operation whose every call needs an approver waits for one, however the engine decided.
       if (tool.approval === "approver") {
         if (this.#approvals === undefined) return { status: "approval-required", correlationId };
@@ -320,7 +325,9 @@ export class SchoolToolRunner {
    *
    * The action runs only against the target it was queued for: one that now resolves to another
    * record or version is declined. Passing the `digest` the decider reviewed runs it only if it is
-   * still that action, and the tool's `recheck` (such as its source of record) must still pass.
+   * still that action. For an approver, the tool's `recheck` (such as its source of record) must
+   * still pass before it runs; a requester confirming their own call learns only what the handler
+   * tells them, and the recheck then decides whether a failed call is declined.
    */
   async approve(session: DecisionSession, approvalId: unknown, options: { digest?: string } = {}): Promise<ToolDecisionOutcome> {
     const correlationId = crypto.randomUUID();
@@ -333,13 +340,14 @@ export class SchoolToolRunner {
     if (options.digest !== undefined && options.digest !== action.digest) {
       return failure("conflict", "This is not the request you reviewed. Review it again.", correlationId);
     }
-    const requester: SchoolToolContext = { principal: action.subject, channel: action.channel, correlationId: action.correlationId };
-    try {
-      await tool.recheck?.(input, requester);
-    } catch (error) {
-      if (!(error instanceof EducateOsError)) throw error;
-      await this.#declineAutomatically(action, "The change can no longer be made here.");
-      return { status: "error", error: { ...error.toBody(), correlationId } };
+    const context: SchoolToolContext = { principal: action.subject, channel: action.channel, correlationId: action.correlationId };
+    // Only an approver, who has authority over the target, is told why the change cannot be made here.
+    if (action.needs === "approval") {
+      const refusal = await this.#recheckRefusal(tool, input, context);
+      if (refusal !== undefined) {
+        await this.#declineAutomatically(action, "The change can no longer be made here.");
+        return { status: "error", error: { ...refusal.toBody(), correlationId } };
+      }
     }
 
     const approvals = this.#queue();
@@ -347,13 +355,16 @@ export class SchoolToolRunner {
     if (!(await approvals.store.transition(action.id, "pending", claimed))) {
       return await this.#settled(action.id, correlationId);
     }
-    const context: SchoolToolContext = { principal: action.subject, channel: action.channel, correlationId: action.correlationId };
     let value: unknown;
     try {
       value = await tool.handler(input, context);
     } catch (error) {
-      // As in gatekeeper-kit, a handler that throws is retryable: the action waits again.
-      await approvals.store.transition(action.id, "claimed", action);
+      // As in gatekeeper-kit, a handler that throws is retryable: the action waits again, unless
+      // the recheck says it can no longer be made here at all.
+      const settled = (await this.#recheckRefusal(tool, input, context)) === undefined
+        ? action
+        : { ...action, state: "declined" as const, decidedAt: approvals.now().toISOString(), declineReason: "The change can no longer be made here." };
+      await approvals.store.transition(action.id, "claimed", settled);
       if (error instanceof EducateOsError) return { status: "error", error: { ...error.toBody(), correlationId } };
       console.error("approved school tool failed", { tool: tool.name, correlationId, error });
       return failure("unavailable", "The change could not be applied. It is still waiting for a decision.", correlationId);
@@ -557,6 +568,17 @@ export class SchoolToolRunner {
   async #expire(action: PendingToolAction): Promise<boolean> {
     const expired: PendingToolAction = { ...action, state: "expired", decidedAt: this.#queue().now().toISOString() };
     return await this.#queue().store.transition(action.id, "pending", expired);
+  }
+
+  /** The tool's recheck's refusal, if it refuses. */
+  async #recheckRefusal(tool: SchoolTool, input: unknown, context: SchoolToolContext): Promise<EducateOsError | undefined> {
+    try {
+      await tool.recheck?.(input, context);
+      return undefined;
+    } catch (error) {
+      if (error instanceof EducateOsError) return error;
+      throw error;
+    }
   }
 
   async #declineAutomatically(action: PendingToolAction, reason: string): Promise<void> {
