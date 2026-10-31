@@ -402,12 +402,13 @@ export class FakeCloudflare {
     upload: (name: string, upload: WorkerUpload) => this.#upload(name, upload),
     deleteScript: (name: string) => {
       this.#script(name, "deleteWorkerScript");
-      // Cloudflare refuses to delete a Worker another Worker's deployed version binds, or that a
-      // custom domain routes to, unless forced. The exact error codes are unverified.
+      // Without force, Cloudflare refuses to delete a Worker another Worker's deployed version binds
+      // (HTTP 400, code 10142), but deletes one a custom domain routes to, and the domain with it
+      // (both seen live on 2026-10-31, SCHO-66).
       const boundBy = [...this.#scripts].some(([other, script]) =>
         other !== name && activeVersion(script).bindings.some((b) => b.type === "service" && b.service === name));
-      if (boundBy) throw new CloudflareApiError("deleteWorkerScript", 400, [10064]);
-      if ([...this.#domains.values()].some((d) => d.service === name)) throw new CloudflareApiError("deleteWorkerScript", 400, [10065]);
+      if (boundBy) throw new CloudflareApiError("deleteWorkerScript", 400, [10142]);
+      for (const [hostname, domain] of this.#domains) if (domain.service === name) this.#domains.delete(hostname);
       this.#scripts.delete(name);
     },
     assetsSession: (manifest: Record<string, { hash: string; size: number }>) => {
