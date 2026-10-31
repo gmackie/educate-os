@@ -180,6 +180,37 @@ browsers with no Access session. `/api/lti/*` stays behind Access. The routes, w
 as, and why each Tool path is safe without sign-in are in
 [docs/educateos/lti.md](../../docs/educateos/lti.md#the-district-workers-tool-scho-177).
 
+## Organization MCP endpoint (SCHO-174)
+
+`DISTRICT_CONFIG.mcp` turns on the district's `/mcp` endpoint for external MCP clients. It is
+absent by default, and then `/mcp` and `/.well-known/oauth-protected-resource[/mcp]` are 404. It
+stays off in every `scripts/production/*` config until the district's authorization server (Nathan)
+issues tokens for it (NATH-6). With it set, the fetch handler passes those three paths to the
+district's object. The object serves them with `@educateos/external-mcp`, which provides:
+
+- `createSchoolMcpApi`: MCP 2026-07-28 and 2025-11-25 through the pinned SDK, plus RFC 9728 metadata;
+- `DelegatedResourceAuthority`: verifies tokens against `mcp.jwksUri` and resolves `(iss, sub)`
+  through the live identity links;
+- the curated `externalSchoolTools`.
+
+`mcp` holds four settings:
+
+- `origin`: the resource is `<origin>/mcp`, and that is every token's only audience;
+- `issuer`: listed in the directory's `trustedIssuers`, with each teacher's subject linked under it;
+- `jwksUri`: on the issuer's origin;
+- `algorithms`.
+
+Every call acts under the one delegation in force (IF-06) from the token's person to its
+`client_id`, read from this object's delegation store. The call is bounded by that delegation's
+ceiling and by the teacher's roster standing as it is now. Writes wait in the same approval queue
+as the gatekeeper's. Revoking the delegation, deactivating the teacher or removing the link stops
+the next call. With no delegation the endpoint answers 403; with a bad token it answers 401,
+challenging with the metadata URL.
+
+The three paths must be exempt from Access, because MCP clients bring their own bearer tokens. That
+is a deployment step that comes with enabling the endpoint, not before. `__tests__/mcp.test.ts`
+drives the endpoint end to end with the official client and a synthetic issuer.
+
 ## Configuration and release
 
 The deploy inputs are in `deploy-inputs.json`. They are all vars:

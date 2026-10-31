@@ -12,6 +12,30 @@ import { CloudflareAccountFacts, FundingPoolSet, GovernedModel, UsdNano } from "
 import { RetentionPolicy } from "@educateos/workspaces";
 import { DiscussionScreeningSettings } from "@educateos/discussions";
 
+const HttpsOrigin = z.url({ protocol: /^https$/ }).refine((value) => new URL(value).origin === value, "expected a bare https origin");
+
+/**
+ * The district's organization MCP endpoint (SCHO-174): `/mcp` as an OAuth protected resource for
+ * one authorization server, with RFC 9728 metadata. Absent, the district serves neither.
+ */
+export const DistrictMcpSettings = z.strictObject({
+  /** The district's public origin. The resource, and every token's only audience, is `<origin>/mcp`. */
+  origin: HttpsOrigin,
+  /**
+   * The authorization server's issuer (Nathan, NATH-6), compared exactly with each token's `iss`.
+   * The district must list it in `trustedIssuers` and link people's subjects under it.
+   */
+  issuer: z.url({ protocol: /^https$/ }).max(2048),
+  /** Its JWKS URL, on the issuer's origin. Keys are fetched from here only, never from a token. */
+  jwksUri: z.url({ protocol: /^https$/ }).max(2048),
+  /** The asymmetric algorithms it signs access tokens with. */
+  algorithms: z.array(z.enum(["RS256", "PS256", "ES256", "EdDSA"])).min(1),
+  /** Exact browser origins allowed to call `/mcp`. Absent, only clients that send no Origin. */
+  allowedOrigins: z.array(HttpsOrigin).max(30).optional(),
+}).refine((mcp) => new URL(mcp.jwksUri).origin === new URL(mcp.issuer).origin, { message: "jwksUri must be on the issuer's origin", path: ["jwksUri"] });
+/** The district's MCP endpoint settings. */
+export type DistrictMcpSettings = z.infer<typeof DistrictMcpSettings>;
+
 /** The district Worker's configuration. */
 export const DistrictWorkerConfig = z.strictObject({
   /**
@@ -100,6 +124,12 @@ export const DistrictWorkerConfig = z.strictObject({
    * keeps each for a teacher's approval; `"publish"` is for synthetic demo districts only.
    */
   unscreenedStudentPosts: z.enum(["hold", "publish"]).optional(),
+  /**
+   * The organization MCP endpoint (SCHO-174). Absent (the default), `/mcp` and its metadata are
+   * 404. Turn it on only once the district's authorization server issues tokens for it (NATH-6)
+   * and the Access application exempts `/mcp` and `/.well-known/oauth-protected-resource*`.
+   */
+  mcp: DistrictMcpSettings.optional(),
 });
 /** The district Worker's configuration. */
 export type DistrictWorkerConfig = z.infer<typeof DistrictWorkerConfig>;

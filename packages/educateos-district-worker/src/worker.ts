@@ -25,7 +25,8 @@ import type { DistrictDirectorySnapshot, VerifiedPrincipal } from "@educateos/co
 import type { AdmittedSubjectRequest, GuardDirectory, GuardSubject, GuardSubjectRequest } from "@educateos/district-app/guard-directory";
 import type { SchoolToolService } from "@educateos/gatekeeper";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
-import { configuredDistrictId } from "./district.ts";
+import { configuredDistrictId, MCP_PATHS } from "./district.ts";
+import { readDistrictWorkerConfig } from "./config.ts";
 import { SCHOOL_MANIFEST_PATH, serveSchoolManifest } from "./school-manifest.ts";
 import { aiDisabledResponse, isAiPath } from "./ai-disabled.ts";
 
@@ -208,7 +209,8 @@ export default {
    * The district's `/api` surface; `/healthz`, a liveness probe that reads nothing and needs no
    * sign-in (a deployment exempts it from Access); and the LTI Tool's `/lti/*` endpoints (SCHO-177),
    * which platform users reach from their LMS, so a deployment exempts exactly those paths from
-   * Access too; and the pairing relay's `/connect-phone` page (SCHO-261). Nothing else is served; a deployment that serves the district's UIs does so as
+   * Access too; the pairing relay's `/connect-phone` page (SCHO-261); and, when configured, the
+   * organization MCP endpoint and its metadata (SCHO-174), exempt from Access too. Nothing else is served; a deployment that serves the district's UIs does so as
    * static assets in front of this handler.
    */
   async fetch(request, env, ctx): Promise<Response> {
@@ -221,6 +223,12 @@ export default {
     if (pathname.startsWith("/lti/")) return districtObject(env, ctx.exports).fetch(request);
     // The pairing relay's connect page (SCHO-261). Its API, `/api/pair/*`, is under `/api/` below.
     if (pathname === CONNECT_PHONE_PATH) return districtObject(env, ctx.exports).fetch(request);
+    // The organization MCP endpoint (SCHO-174): an OAuth protected resource whose callers bring
+    // their own bearer tokens, so a deployment exempts these paths from Access. Off unless configured.
+    if (MCP_PATHS.includes(pathname)) {
+      if (readDistrictWorkerConfig(env.DISTRICT_CONFIG).mcp === undefined) return new Response(null, { status: 404 });
+      return districtObject(env, ctx.exports).fetch(request);
+    }
     if (isAiPath(pathname)) return aiDisabledResponse(request, env.AI_DEMO_URL);
     return serveApi(request, env, ctx.exports);
   },

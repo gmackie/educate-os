@@ -196,6 +196,10 @@ Revoking the delegation, deactivating the principal or unlinking the identity re
 request, even while the token is unexpired. A cached tool listing carries no authority, and each
 request is authenticated again.
 
+The district Worker composes this authority with `createSchoolMcpApi` and `externalSchoolTools`
+over its own delegation store, behind `DISTRICT_CONFIG.mcp`, which is off by default (see that
+package's README).
+
 What NATH-6 must issue for a district resource:
 
 - a JWT with `typ: at+jwt`, signed with an asymmetric key published at the configured JWKS URL;

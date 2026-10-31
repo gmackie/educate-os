@@ -2,7 +2,10 @@
 // tools. This module imports nothing Workers-only, so it is type-checked on the web-standard surface
 // with the rest of the EducateOS libraries it composes (ADR-0009); `district-object.ts` is the
 // Durable Object shell around it.
-import type { JWTVerifyGetKey } from "jose";
+import { createRemoteJWKSet, type JWTVerifyGetKey } from "jose";
+import { createSchoolMcpApi } from "@educateos/external-mcp";
+import { externalSchoolTools } from "@educateos/external-mcp/registry";
+import { DelegatedResourceAuthority } from "@educateos/external-mcp/resource-auth";
 import { AcademicDirectory } from "@educateos/academics";
 import { checkDirectoryIntegrity, DistrictDirectorySnapshot, EducateOsError, PrincipalId } from "@educateos/contracts";
 import type { ImportFetch } from "@educateos/content-studio";
@@ -39,7 +42,15 @@ export interface District {
   lti: DistrictLti | undefined;
   /** Who a Workshop sign-in is, for the Workshop's `PRINCIPAL_RESOLVER` (SCHO-259). */
   principals: DistrictPrincipals;
+  /** The organization MCP endpoint and its RFC 9728 metadata, when `DISTRICT_CONFIG.mcp` turns it on (SCHO-174). */
+  mcp: { fetch(request: Request): Promise<Response> } | undefined;
 }
+
+/** The paths the organization MCP endpoint answers (SCHO-174). */
+export const MCP_PATHS: readonly string[] = ["/mcp", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"];
+
+/** The scope every MCP access token must carry. It opens the transport; the delegation and policy decide the rest. */
+export const MCP_SCOPE = "mcp:tools";
 
 /**
  * The Workshop's principal resolver seam over the district directory as it stands (SCHO-259), so
@@ -105,6 +116,8 @@ export interface DistrictSeams {
   importFetch: ImportFetch;
   /** The keys Access assertions are verified with. Defaults to the team's published certs. */
   accessKeys?: JWTVerifyGetKey;
+  /** The keys MCP access tokens are verified with (SCHO-174). Defaults to the configured `mcp.jwksUri`. */
+  mcpKeys?: JWTVerifyGetKey;
   /** The Worker's Cloudflare Email Service binding (`SEND_EMAIL`), if it has one (SCHO-189). */
   sendEmail?: SendEmailBinding;
   /** Told the ID of a configuration revision policy cannot read and passes over (SCHO-232), to log it. */
@@ -320,5 +333,47 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       return { outcome: active ? "active" : "inactive" };
     },
   };
-  return { app, tools, lti, principals };
+  return { app, tools, lti, principals, mcp: startDistrictMcp(storage, config, stores, app, directory, seams.mcpKeys) };
+}
+
+/**
+ * The organization MCP endpoint (SCHO-174), or `undefined` when the configuration does not turn it
+ * on. It is an OAuth protected resource for the one configured issuer: each request's token is
+ * verified against that issuer's keys, its `(iss, sub)` resolved through the directory as it
+ * stands, and its `client_id` matched to the one delegation in force from that person, which then
+ * bounds every call. Its curated tools queue writes in the same approval store as the district's
+ * own, for a person to approve through the district.
+ */
+function startDistrictMcp(
+  storage: DistrictSqlStorage,
+  config: DistrictWorkerConfig,
+  stores: ReturnType<typeof durableDistrictStores>,
+  app: DistrictApp,
+  directory: AcademicDirectory,
+  keys: JWTVerifyGetKey | undefined,
+): District["mcp"] {
+  const settings = config.mcp;
+  if (settings === undefined) return undefined;
+  const tokens = new DelegatedResourceAuthority({
+    resource: `${settings.origin}/mcp`,
+    issuer: {
+      issuer: settings.issuer,
+      keys: keys ?? createRemoteJWKSet(new URL(settings.jwksUri), { timeoutDuration: 5000, cooldownDuration: 30_000 }),
+      algorithms: settings.algorithms,
+    },
+    requiredScopes: [MCP_SCOPE],
+    resolver: async () => createDirectoryPrincipalResolver((await stores.directory.load()).snapshot),
+    delegations: stores.delegations,
+  });
+  return createSchoolMcpApi({
+    districtId: app.districtId,
+    runner: new SchoolToolRunner({
+      engine: app.engine,
+      tools: externalSchoolTools(stores.directory, directory),
+      approvals: { store: new DurableObjectToolApprovalStore(storage) },
+    }),
+    tokens,
+    allowedOrigins: settings.allowedOrigins ?? [],
+    resource: { origin: settings.origin, authorizationServers: [settings.issuer], scopes: [MCP_SCOPE] },
+  });
 }
