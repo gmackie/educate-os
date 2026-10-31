@@ -36,7 +36,7 @@ import { InMemoryDiscussionStorage, type DiscussionStorage } from "@educateos/di
 // Quizzes (SCHO-191)
 import { InMemoryQuizStorage, type QuizStorage } from "@educateos/quizzes";
 import { assertWorkshopUserLinkAvailable, type WorkshopUserLink } from "@educateos/identity";
-import { InMemoryGuardianRelationshipStore, type GuardianRelationshipStore } from "@educateos/policy";
+import { InMemoryDelegationStore, InMemoryGuardianRelationshipStore, type DelegationStore, type GuardianRelationshipStore } from "@educateos/policy";
 import { InMemoryGuardianInvitationStore, InMemoryIdentityLinkStore, type GuardianInvitationStore, type IdentityLinkStore } from "@educateos/identity-links";
 import type { FundingAllocationRevision } from "./routes.ts";
 // Communication (SCHO-189)
@@ -305,6 +305,9 @@ export interface DistrictAppStores {
   // Marketplace (SCHO-209)
   /** Curriculum packs installed from signed marketplace listings. */
   marketplacePacks: MarketplacePackStore;
+  // Delegations (SCHO-175)
+  /** Staff members' delegations to registered clients, which bound every request a client makes for them. */
+  delegations: DelegationStore;
 }
 
 /** In-memory stores for one district, seeded with its directory. */
@@ -350,5 +353,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     ops: new InMemoryOpsStore(),
     // Marketplace (SCHO-209)
     marketplacePacks: new InMemoryMarketplacePackStore(),
+    // Delegations (SCHO-175)
+    delegations: new InMemoryDelegationStore(),
   };
 }

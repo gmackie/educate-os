@@ -64,3 +64,26 @@ found that a teacher could approve an imported item carrying a `blocking` flag.
   through the district app; the district app's previous table allowed it.
 - `teacher.approveResource` must accept `acknowledgedFlags` before a teacher can approve a
   flagged item over HTTP. Until then such items can only be rejected there.
+
+## Addendum (2026-10-31, SCHO-175): delegations
+
+A delegation lets one registered client act for its grantor within a scope ceiling until it
+expires (RFC 0002 §6). It is record-backed like the grants in decision 3, but it is deliberately
+not a `RelationshipSource`:
+
+- **A relationship can only widen; a delegation must narrow.** A `RelationshipSource` supplies
+  facts that let a rule allow something, and it never sees the action. A delegation has to bound
+  every rule, including ones that need no relationship at all, by action, resource kind,
+  classification and scope. Feeding it through the relationship path could only ever add an
+  allow.
+- **So it is checked before the rule table, then decided as the grantor.** `PolicyEngine` loads
+  the delegation the subject names (`PolicyInformationPoint.delegation`) and denies the request
+  under a `delegation.*` pseudo-rule unless the delegation is the grantor's, in force, covers the
+  request, and the grantor still holds a staff role over its scope. Otherwise the rule table
+  decides as the grantor, so the client gets only what both the grantor and the ceiling allow,
+  judged against the live roster on every decision.
+- **It stays audited and record-backed.** Every decision for a delegated subject, allow or deny,
+  is audited with the delegation's ID (`PolicyAuditEvent.delegationId`), as a grant-backed
+  decision names its `grantId`. The delegation itself is stored durably (`DelegationStore`, a
+  table in the district's Durable Object), and issuing, reading and revoking one are decided and
+  audited as actions on a `restricted` `delegation` resource, which no delegation can cover.

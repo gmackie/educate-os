@@ -33,6 +33,7 @@ export const ID_PREFIXES = {
   instance: "ins",
   commercialAccount: "acct",
   guardianRelationship: "grl",
+  delegation: "dlg",
 } as const;
 
 /** The entity kinds that have their own identifier type. */
@@ -195,3 +196,11 @@ export type CommercialAccountId = z.infer<typeof CommercialAccountId>;
 export const GuardianRelationshipId = idSchema("guardianRelationship");
 /** A guardian relationship identifier. */
 export type GuardianRelationshipId = z.infer<typeof GuardianRelationshipId>;
+
+/**
+ * Identifies a delegation: a principal's grant letting one registered client act for them within
+ * a scope ceiling until it expires (RFC 0002 §6).
+ */
+export const DelegationId = idSchema("delegation");
+/** A delegation identifier. */
+export type DelegationId = z.infer<typeof DelegationId>;

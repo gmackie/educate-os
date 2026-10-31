@@ -575,6 +575,25 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     effect: { effect: "allow" },
   },
   {
+    id: "delegation.grantor.manage",
+    description: "A staff member, as a person over http, delegates to a registered client within a class or school they hold a staff role in, and reads and revokes their own delegations.",
+    when: {
+      kinds: ["delegation"],
+      ownership: ["own"],
+      roles: ["district-admin", "school-admin", "curriculum-admin", "teacher", "co-teacher"],
+      classifications: ["restricted"],
+      channels: ["http"],
+      actions: ["create", "read", "update"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "admin.delegations.manage",
+    description: "A district admin, as a person over http, reads and revokes any delegation in the district.",
+    when: { kinds: ["delegation"], roles: ["district-admin"], classifications: ["restricted"], channels: ["http"], actions: ["read", "update"] },
+    effect: { effect: "allow" },
+  },
+  {
     id: "admin.governance",
     description: "Administrators read and configure capability settings and AI budgets in their scope.",
     when: { kinds: ["capability-config", "ai-budget"], roles: [...ADMINS], actions: [...READS, "configure"] },

@@ -43,7 +43,7 @@ import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
 import { exportCourseCartridge, importCourseCartridge, previewCourseCartridge } from "./course-authoring.ts";
 // Guardians (ADR-0012, SCHO-188)
-import { guardianRelationships, GuardianRelationships } from "@educateos/policy";
+import { Delegations, guardianRelationships, GuardianRelationships } from "@educateos/policy";
 import { GuardianInvitations, IdentityLinkAdminService } from "@educateos/identity-links";
 import { guardianHandlers, type GuardianRouteName } from "./guardians.ts";
 // Communication (SCHO-189)
@@ -357,6 +357,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const policySource = configPolicySource(stores.config, options.defaultPolicy ?? DEFAULT_POLICY_FLOOR, options.onUnreadableConfigRevision);
   const information = directoryPolicyInformation(stores.directory, policySource, {
     relationships: [guardianRelationships(stores.guardianRelationships, stores.directory, now)],
+    delegations: stores.delegations,
     now,
   });
   const rules = options.rules ?? DISTRICT_APP_RULES;
@@ -1393,6 +1394,11 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       const week = body.week ?? digestWeekOf(now());
       return { week, note: await communicationFor(ctx.decider, ctx.assessment()).setWeeklyNote(ctx.caller, params.offeringId, week, body.text) };
     },
+    // Delegations (SCHO-175)
+    "teacher.listDelegations": (ctx) => new Delegations({ store: stores.delegations, policy: ctx.decider, now }).list(ctx.caller),
+    "teacher.issueDelegation": (ctx, { body }) => new Delegations({ store: stores.delegations, policy: ctx.decider, now }).issue(ctx.caller, body),
+    "teacher.revokeDelegation": (ctx, { params }) =>
+      new Delegations({ store: stores.delegations, policy: ctx.decider, now }).revoke(ctx.caller, params.delegationId),
     "me.calendar": async (ctx, { query }) => {
       const at = now().getTime();
       const from = new Date(query.from ?? at - 7 * 86_400_000);

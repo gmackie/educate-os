@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import {
   Action,
+  DelegationId,
   DistrictId,
   precheckAuthorization,
   PrincipalId,
@@ -15,6 +16,7 @@ import {
   type PolicySettings,
 } from "@educateos/contracts";
 import { PolicyAuditEvent, type PolicyAuditSink } from "./audit.ts";
+import { delegationRefusal } from "./delegations.ts";
 import type { PolicyInformationPoint, RelationshipFact, SubjectFacts } from "./information.ts";
 import { DEFAULT_DENY_RULE_ID, DEFAULT_POLICY_RULES, PolicyRuleTable, type Ownership, type PolicyRule, type RuleCondition } from "./rules.ts";
 
@@ -28,6 +30,8 @@ export interface PolicyDecision {
   correlationId: string;
   /** The record whose relationship the deciding rule relied on, such as an appeal grant. */
   grantId?: string;
+  /** The delegation that bounded the request, when its subject named one. */
+  delegationId?: string;
 }
 
 /** Decides requests and reports which rule decided. {@link PolicyEngine} is the implementation. */
@@ -71,6 +75,12 @@ export const PSEUDO_RULE_IDS = {
  * A dated role assignment counts only while it is in force when the decision is made, whatever
  * the information point returned, so an expired assignment grants nothing even through a cached or
  * hand-built set of facts (ADR-0012).
+ *
+ * A subject that names a delegation is a client acting for its grantor (SCHO-175). Before the rule
+ * table, the delegation must be the grantor's, in force, and cover the request, and the grantor
+ * must still hold a staff role over its scope; otherwise the request is denied under a
+ * `delegation.*` pseudo-rule. The table then decides as the grantor, so the client gets only what
+ * both allow. Every such decision is audited with the delegation's ID.
  */
 export class PolicyEngine implements Authorizer, PolicyDecider {
   readonly #information: PolicyInformationPoint;
@@ -92,8 +102,15 @@ export class PolicyEngine implements Authorizer, PolicyDecider {
   async decide(request: unknown, options: { correlationId?: string } = {}): Promise<PolicyDecision> {
     const correlationId = options.correlationId ?? crypto.randomUUID();
     const { decision, ruleId, grantId } = await this.#evaluate(request);
-    await this.#audit.record(auditEvent(request, decision, ruleId, correlationId, grantId));
-    return { decision, ruleId, correlationId, ...(grantId === undefined ? {} : { grantId }) };
+    const delegationId = delegationOf(request);
+    await this.#audit.record(auditEvent(request, decision, ruleId, correlationId, grantId, delegationId));
+    return {
+      decision,
+      ruleId,
+      correlationId,
+      ...(grantId === undefined ? {} : { grantId }),
+      ...(delegationId === undefined ? {} : { delegationId }),
+    };
   }
 
   async #evaluate(input: unknown): Promise<{ decision: Decision; ruleId: string; grantId?: string }> {
@@ -113,6 +130,12 @@ export class PolicyEngine implements Authorizer, PolicyDecider {
     const facts: SubjectFacts = { ...found, roles: found.roles.filter((role) => roleAssignmentInForce(role, at)) };
     if (!(await this.#information.scopeExists(request.resource.scope))) {
       return { decision: { effect: "deny", reason: "no-matching-grant" }, ruleId: PSEUDO_RULE_IDS.unknownScope };
+    }
+    const { delegationId } = request.subject;
+    if (delegationId !== undefined) {
+      const delegation = await this.#information.delegation?.(delegationId);
+      const refusal = delegationRefusal(delegation, request, facts, at);
+      if (refusal !== undefined) return { decision: { effect: "deny", reason: "no-matching-grant" }, ruleId: refusal };
     }
 
     let policy: PolicySettings | undefined;
@@ -195,7 +218,20 @@ function field<S extends z.ZodType>(schema: S, value: unknown): z.output<S> | un
 /** An identifier: no spaces or punctuation that prose would need, so free text is never copied as an ID. */
 const RESOURCE_ID_SHAPE = /^[A-Za-z0-9_.:-]{1,128}$/;
 
-function auditEvent(input: unknown, decision: Decision, ruleId: string, correlationId: string, grantId: string | undefined): PolicyAuditEvent {
+/** The delegation a request's subject names, if it parses as one: what the audit entry records. */
+function delegationOf(input: unknown): string | undefined {
+  const raw = (input as { subject?: { delegationId?: unknown } } | null | undefined)?.subject?.delegationId;
+  return field(DelegationId, raw);
+}
+
+function auditEvent(
+  input: unknown,
+  decision: Decision,
+  ruleId: string,
+  correlationId: string,
+  grantId: string | undefined,
+  delegationId: string | undefined,
+): PolicyAuditEvent {
   // Read through optional chaining only: the input may be anything, and only identifiers and
   // vocabulary that parse are copied, so no content can reach the trail.
   const raw = input as
@@ -218,5 +254,6 @@ function auditEvent(input: unknown, decision: Decision, ruleId: string, correlat
     reason: decision.effect === "allow" ? undefined : decision.reason,
     ruleId,
     grantId,
+    delegationId,
   });
 }

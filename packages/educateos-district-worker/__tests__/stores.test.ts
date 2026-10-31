@@ -10,6 +10,7 @@ import {
   DurableObjectArtifactRecordStore,
   DurableObjectBlobBucket,
   DurableObjectCourseContentStorage,
+  DurableObjectDelegationStore,
   DISTRICT_TABLES,
   DurableObjectDiscussionStorage,
   DurableObjectQuizStorage,
@@ -192,6 +193,48 @@ describe("DurableObjectToolApprovalStore", () => {
       expect(await store.transition("apr_one" as never, "claimed", declined)).toBe(true);
       expect(await store.insertUnlessOpen(action("apr_two"))).toMatchObject({ id: "apr_two", state: "pending" });
       expect((await store.list()).map((a) => a.id)).toEqual(["apr_one", "apr_two"]);
+    });
+  });
+});
+
+describe("DurableObjectDelegationStore", () => {
+  const delegation = {
+    id: "dlg_7d0f6a52-3f43-4d55-9a3c-2f9f0d5b1c11",
+    districtId: "dst_northfield",
+    grantorPrincipalId: "prn_nf-morgan-lee",
+    client: { issuer: "https://auth.northfield.example", clientId: "lesson-planner" },
+    ceiling: {
+      scope: { level: "offering", districtId: "dst_northfield", schoolId: "sch_nf-high", offeringId: "off_nf-bio-fall-p2" },
+      actions: ["read", "list"],
+      kinds: ["rubric"],
+      classifications: ["course"],
+    },
+    issuedAt: "2026-10-21T09:00:00.000Z",
+    expiresAt: "2026-10-22T09:00:00.000Z",
+  } as const;
+
+  it("keeps a delegation and its revocation in place across a restart", async () => {
+    const object = fresh();
+    const revoked = { ...delegation, revoked: { by: "prn_nf-district-admin", at: "2026-10-21T10:00:00.000Z" } };
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectDelegationStore(state.storage);
+      await store.put(delegation as never);
+      await store.put(revoked as never);
+      expect(await store.list()).toEqual([revoked]);
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      const store = new DurableObjectDelegationStore(state.storage);
+      expect(await store.get(delegation.id as never)).toEqual(revoked);
+      expect(await store.get("dlg_00000000-0000-4000-8000-000000000000" as never)).toBeUndefined();
+    });
+  });
+
+  it("refuses a delegation that does not match its schema, and stores nothing of it", async () => {
+    await runInDurableObject(fresh(), async (_instance, state) => {
+      const store = new DurableObjectDelegationStore(state.storage);
+      await expect(store.put({ ...delegation, ceiling: { ...delegation.ceiling, classifications: ["personal-private"] } } as never)).rejects.toThrow();
+      expect(await store.list()).toEqual([]);
     });
   });
 });

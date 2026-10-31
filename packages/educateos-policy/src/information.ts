@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   roleAssignmentInForce,
+  type DelegationId,
   type DistrictDirectorySnapshot,
   type PolicySettings,
   type PrincipalFacts,
@@ -9,6 +10,7 @@ import {
   type Scope,
 } from "@educateos/contracts";
 import type { AcademicStore } from "@educateos/academics";
+import type { Delegation, DelegationStore } from "./delegations.ts";
 
 /**
  * What the engine knows about a subject. It comes from the directory, never from the request. The
@@ -76,6 +78,11 @@ export interface PolicyInformationPoint {
   scopeExists(scope: Scope): Promise<boolean>;
   /** The relationships `subject` holds to one resource. */
   relationships(subject: PrincipalId, resource: ResourceRef): Promise<readonly RelationshipFact[]>;
+  /**
+   * The delegation a delegated subject names, read fresh from its store, or `undefined`. An
+   * information point with no delegations answers `undefined`, so every delegated request is denied.
+   */
+  delegation?(id: DelegationId): Promise<Delegation | undefined>;
 }
 
 /** Where the effective policy floor for a scope comes from (the F03 configuration compiler). */
@@ -143,6 +150,8 @@ export function scopeExistsIn(snapshot: DistrictDirectorySnapshot, scope: Scope)
 export interface DirectoryPolicyInformationOptions {
   /** The services whose records establish relationships, such as artifact shares, appeal and guardian grants. */
   relationships?: readonly RelationshipSource[];
+  /** Where delegations are kept. Without it, every delegated request is denied. */
+  delegations?: Pick<DelegationStore, "get">;
   /** The clock dated role assignments are judged by. Defaults to the system clock. */
   now?: () => Date;
 }
@@ -170,5 +179,6 @@ export function directoryPolicyInformation(
     async relationships(subject, resource) {
       return (await Promise.all(sources.map((source) => source.relationships(subject, resource)))).flat();
     },
+    delegation: async (id) => options.delegations?.get(id),
   };
 }
