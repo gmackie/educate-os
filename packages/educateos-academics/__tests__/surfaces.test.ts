@@ -120,6 +120,8 @@ describe("the HTTP handler and the tools", () => {
       "admin lists active terms": "ok",
       "illegal term transition": "conflict",
       "write to an externally owned type": "conflict",
+      // Routing a write names the district's source of record, so it waits until the caller is
+      // authorized: a caller who may not make the change learns nothing about who owns it.
       "student deactivates own enrollment": "forbidden",
       "school admin creates a term": "forbidden",
       "cross-district admin reads a term": "not-found",
@@ -160,6 +162,43 @@ describe("the operation descriptors", () => {
     }
   });
 
+  it("route a write by its domain's binding only once the caller is authorized for it", async () => {
+    const { directory, store } = directoryFor(NORTHFIELD, { authority: ROSTER_EXTERNAL });
+    const before = (await store.load()).snapshot;
+    const update = { offeringId: "off_nf-bio-fall-p2", sectionName: "P9" };
+    const refusal = async (caller: Caller) => {
+      const outcome = await invokeOperation(ACADEMIC_OPERATIONS.update_offering, directory, caller, update);
+      if (outcome.ok) throw new Error("expected a refusal");
+      return outcome.error;
+    };
+    // The district admin may edit the offering, so they learn where to make the change instead.
+    expect(await refusal(NF.admin)).toEqual({
+      code: "conflict",
+      message: "Course offerings are owned by external:oneroster; change them there and let its sync update EducateOS.",
+      correlationId: expect.any(String),
+    });
+    // A student outside the class and an admin from another district learn nothing about its owner.
+    for (const caller of [NF.amara, RB_ADMIN]) {
+      const error = await refusal(caller);
+      expect(error.code).toBe("not-found");
+      expect(error.message).not.toMatch(/oneroster|owned/);
+    }
+    expect((await store.load()).snapshot).toEqual(before);
+    expect(await invokeOperation(ACADEMIC_OPERATIONS.get_offering, directory, NF.admin, { offeringId: "off_nf-bio-fall-p2" })).toMatchObject({ ok: true });
+  });
+
+  it("route a roster-owned write by owner only for a caller who may make it", async () => {
+    const { directory } = directoryFor(NORTHFIELD, { authority: ROSTER_EXTERNAL });
+    const deactivate = (caller: Caller) => invokeOperation(ACADEMIC_OPERATIONS.deactivate_enrollment, directory, caller, { enrollmentId: "enr_nf-02" });
+    const student = await deactivate(NF.amara);
+    expect(student).toMatchObject({ ok: false, error: { code: "forbidden" } });
+    expect(JSON.stringify(student)).not.toMatch(/oneroster|owned/);
+    expect(await deactivate(NF.admin)).toMatchObject({
+      ok: false,
+      error: { code: "conflict", message: "Enrollments are owned by external:oneroster; change them there and let its sync update EducateOS." },
+    });
+  });
+
   it("classify every operation: reads are list or read actions and need no approval", () => {
     for (const operation of Object.values(ACADEMIC_OPERATIONS)) {
       expect(operation.version).toBe(1);
@@ -168,7 +207,7 @@ describe("the operation descriptors", () => {
         expect(operation).toMatchObject({ idempotency: "inherent", approval: "none" });
       } else {
         expect(["create", "update"]).toContain(operation.action);
-        expect(operation).toMatchObject({ effect: "publish", approval: "confirm-agent" });
+        expect(operation).toMatchObject({ effect: "write", approval: "confirm-agent" });
       }
     }
   });
