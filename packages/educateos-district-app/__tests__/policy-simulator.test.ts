@@ -42,4 +42,36 @@ describe("the policy simulator", () => {
       body: { principalId: NF.rivera, action: "read", resource: grade(NF.eng9, NF.amara), channel: "http" },
     } as never), 403, "forbidden");
   });
+
+  it("explains a delegated decision as the live engine would, including its delegation refusals", async () => {
+    const district = await bootDistrict();
+    const simulate = (body: object) => district.ok(district.tokenFor(NF.admin), "admin.simulatePolicy", { body } as never);
+    const rubric = (offeringId: string) => ({ kind: "rubric", scope: offering(offeringId), classification: "course" });
+    const client = { issuer: "https://auth.northfield.example", clientId: "lesson-planner" };
+    const delegation = await district.ok(district.tokenFor(NF.morgan), "teacher.issueDelegation", {
+      body: { client, ceiling: { scope: offering(NF.bio), actions: ["read", "list"], kinds: ["rubric"], classifications: ["course"] }, durationHours: 24 },
+    });
+    const read = (offeringId: string, principalId: string = NF.morgan, delegationId: string = delegation.id) =>
+      simulate({ principalId, action: "read", resource: rubric(offeringId), channel: "mcp-tool", termState: "active", delegationId });
+
+    // Within the ceiling the rules decide as the grantor, exactly as the live engine does.
+    const live = await district.app.engine.decide({
+      subject: { principalId: NF.morgan, districtId: NORTHFIELD.district.id, delegationId: delegation.id } as never,
+      action: "read",
+      resource: rubric(NF.bio) as never,
+      context: { channel: "mcp-tool", termState: "active" },
+    });
+    expect(await read(NF.bio)).toEqual({ verdict: "allow", ruleId: live.ruleId, ...(live.grantId === undefined ? {} : { grantId: live.grantId }) });
+    // Morgan may read Biology P4's rubric herself, but not under a delegation for P2.
+    expect(await simulate({ principalId: NF.morgan, action: "read", resource: rubric(NF.bioSpring), channel: "mcp-tool", termState: "active" }))
+      .toMatchObject({ verdict: "allow" });
+    expect(await read(NF.bioSpring)).toMatchObject({ verdict: "deny", ruleId: "delegation.ceiling" });
+    // A delegation names its grantor only, and one that was never issued decides nothing.
+    expect(await read(NF.bio, NF.rivera)).toMatchObject({ verdict: "deny", ruleId: expect.stringMatching(/^delegation\./) });
+    expect(await read(NF.bio, NF.morgan, "dlg_00000000-0000-4000-8000-000000000000")).toMatchObject({ verdict: "deny", ruleId: "delegation.unknown" });
+
+    // Revoked, it stops.
+    await district.ok(district.tokenFor(NF.morgan), "teacher.revokeDelegation", { params: { delegationId: delegation.id }, body: {} });
+    expect(await read(NF.bio)).toMatchObject({ verdict: "deny", ruleId: "delegation.not-in-force" });
+  });
 });

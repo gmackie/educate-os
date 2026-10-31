@@ -1828,6 +1828,11 @@ export const ROUTES = {
       channel: RequestChannel,
       /** The state of the term the resource belongs to, when it belongs to one. */
       termState: TermState.optional(),
+      /**
+       * A delegation the principal would act under, as a client's verified session carries it. The
+       * decision is bounded by it exactly as live, including its `delegation.*` refusals.
+       */
+      delegationId: DelegationId.optional(),
     }),
     response: z.strictObject({
       /** What the engine would decide. */
