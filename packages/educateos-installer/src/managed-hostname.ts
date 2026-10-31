@@ -186,6 +186,12 @@ async function planAttach(
     return { action: "create", reason: "custom domain not attached", ops: [{ op: "attach-domain", hostname, zoneId: managedZone.id }] };
   }
 
+  if (resource.zoneName === null) {
+    // A managed-only install: the cross-account path needs a zone of the district's own to hold the
+    // custom hostname, and there is none (SCHO-243).
+    return refuse(`${hostname} is this install's only hostname, and ${MANAGED_ZONE} is not an active zone in this account: ` +
+      `a district in another account needs a domain of its own (set baseDomain)`);
+  }
   if (!context.zone) return { action: "needs-input", reason: `add the zone ${resource.zoneName} to the account`, ops: [] };
   const zoneId = context.zone.id;
   const fallback = await guarded(() => api.getFallbackOrigin(zoneId));
