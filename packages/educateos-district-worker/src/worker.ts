@@ -106,9 +106,9 @@ export class DistrictSchoolTools extends WorkerEntrypoint<Cloudflare.Env> implem
     return districtObject(this.env, this.ctx.exports).callTool(subject, name, args);
   }
 
-  /** Approves a queued change as `approver`'s own decision. */
-  async approveChange(approver: VerifiedPrincipal, approvalId: string): Promise<ToolDecisionOutcome> {
-    return districtObject(this.env, this.ctx.exports).approveChange(approver, approvalId);
+  /** Approves a queued change as `approver`'s own decision, only as reviewed when given its `digest`. */
+  async approveChange(approver: VerifiedPrincipal, approvalId: string, options?: { digest?: string }): Promise<ToolDecisionOutcome> {
+    return districtObject(this.env, this.ctx.exports).approveChange(approver, approvalId, options);
   }
 
   /** Declines a queued change as `decider`'s own decision, with a reason the requester sees. */

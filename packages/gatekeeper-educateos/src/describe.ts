@@ -25,7 +25,16 @@ export function describeChange(change: SchoolChange): ActionPresentation {
       + "of the class to approve this change. Approving it here approves it as you: if you may not, "
       + "it waits in EducateOS for someone who may."
     : "Changes school records through the district's school tools, with your access.";
-  return { title: `Change school records (${change.tool})`, ...withCall(buildDescription(intro), change).finish(), implementsRevert: false };
+  return { title: `Change school records (${change.tool})`, ...withPin(withCall(buildDescription(intro), change), change).finish(), implementsRevert: false };
+}
+
+/** The record, version and digest the district pinned the change to: approving runs only that. */
+function withPin(builder: ActionDescriptionBuilder, change: SchoolChange): ActionDescriptionBuilder {
+  const { target, digest } = change;
+  if (target !== undefined) builder.inline("Target", target.id === undefined ? target.kind : `${target.kind} ${target.id}`);
+  if (target?.version !== undefined) builder.inline("Version", target.version);
+  if (digest !== undefined) builder.inline("Digest", digest);
+  return builder;
 }
 
 function withCall(builder: ActionDescriptionBuilder, call: SchoolRead): ActionDescriptionBuilder {

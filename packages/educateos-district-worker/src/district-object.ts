@@ -199,9 +199,9 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
     return (await this.#boot()).tools.callTool(subject, name, args);
   }
 
-  /** Approves a queued change as `approver`'s own decision. */
-  async approveChange(approver: VerifiedPrincipal, approvalId: string): Promise<ToolDecisionOutcome> {
-    return (await this.#boot()).tools.approveChange(approver, approvalId);
+  /** Approves a queued change as `approver`'s own decision, only as reviewed when given its `digest`. */
+  async approveChange(approver: VerifiedPrincipal, approvalId: string, options?: { digest?: string }): Promise<ToolDecisionOutcome> {
+    return (await this.#boot()).tools.approveChange(approver, approvalId, options);
   }
 
   /** Declines a queued change as `decider`'s own decision. */
