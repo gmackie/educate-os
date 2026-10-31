@@ -152,6 +152,21 @@ describe("Cloudflare HTTP client", () => {
     }]);
   });
 
+  it("reads a Worker's Cron Triggers and replaces them with the whole list", async () => {
+    // The documented shapes (Workers Scripts > Schedules); not yet exercised against a live account.
+    const { fetchImpl, requests } = stubFetch((request) => request.method === "GET"
+      ? ok({ schedules: [{ cron: "7 * * * *", created_on: "2026-10-31T00:00:00Z", modified_on: "2026-10-31T00:00:00Z" }] })
+      : ok({ schedules: [{ cron: "7 * * * *" }, { cron: "0 14 * * SUN" }] }));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+
+    expect(await api.getWorkerSchedules(ACCOUNT, "educateos-northfield-educateos-district-worker")).toEqual(["7 * * * *"]);
+    await api.putWorkerSchedules(ACCOUNT, "educateos-northfield-educateos-district-worker", ["7 * * * *", "0 14 * * SUN"]);
+
+    const path = `/client/v4/accounts/${ACCOUNT}/workers/scripts/educateos-northfield-educateos-district-worker/schedules`;
+    expect(requests.map((r) => [r.method, new URL(r.url).pathname])).toEqual([["GET", path], ["PUT", path]]);
+    expect(await requests[1]!.json()).toEqual([{ cron: "7 * * * *" }, { cron: "0 14 * * SUN" }]);
+  });
+
   it("reads the empty 200 that DELETE /workers/domains answers as a detach, but not elsewhere", async () => {
     // Seen live on 2026-10-31 (SCHO-66): HTTP 200 with no body at all.
     const { fetchImpl, requests } = stubFetch(() => new Response("", { status: 200 }));

@@ -98,6 +98,8 @@ const INVALID_TOKEN = "eos-sandbox-probe-invalid-token";
 const PROBE_WORKER_SOURCE = 'export default { fetch() { return new Response("educateos probe"); } };\n';
 const PROBE_VAR = "EDUCATEOS_PROBE_VAR";
 const PROBE_VAR_VALUE = "eos-sandbox-probe-plain-text";
+/** A Cron Trigger the probe Worker never runs long enough to fire: once a year. */
+const PROBE_CRON = "0 0 1 1 *";
 
 /**
  * Runs every probe and returns the report. Throws {@link SandboxGuardError} before touching
@@ -285,24 +287,38 @@ export async function verifyAccount(options: VerificationOptions): Promise<Verif
       id: "write.workerScript",
       checks: "Workers Scripts: Edit covers upload, secrets and versions; version detail exposes plain-text vars",
       run: async () => {
+        const upload = () => api.uploadWorkerScript(account, name, {
+          metadata: {
+            main_module: "probe.mjs",
+            compatibility_date: "2026-10-01",
+            compatibility_flags: [],
+            bindings: [{ type: "plain_text", name: PROBE_VAR, text: PROBE_VAR_VALUE }],
+            keep_bindings: [],
+            observability: { enabled: false },
+          },
+          modules: [{ name: "probe.mjs", type: "esm", bytes: new TextEncoder().encode(PROBE_WORKER_SOURCE) }],
+        });
         const uploaded = await probe("write.workerScript", "Workers Scripts: Edit covers uploadWorkerScript", "create-delete", () =>
-          api.uploadWorkerScript(account, name, {
-            metadata: {
-              main_module: "probe.mjs",
-              compatibility_date: "2026-10-01",
-              compatibility_flags: [],
-              bindings: [{ type: "plain_text", name: PROBE_VAR, text: PROBE_VAR_VALUE }],
-              keep_bindings: [],
-              observability: { enabled: false },
-            },
-            modules: [{ name: "probe.mjs", type: "esm", bytes: new TextEncoder().encode(PROBE_WORKER_SOURCE) }],
-          }).then(() => true));
+          upload().then(() => true));
         if (!uploaded) return;
         onCleanup(`worker:${name}`, () => raw("DELETE", `/accounts/${seg(account)}/workers/scripts/${seg(name)}?force=true`));
         await probe("write.workerSecret", "Workers Scripts: Edit covers putWorkerSecret and listWorkerSecrets", "create-delete", async () => {
           await api.putWorkerSecret(account, name, "EDUCATEOS_PROBE_SECRET", crypto.randomUUID());
           return await api.listWorkerSecrets(account, name);
         }, (names) => ({ secretListed: names.includes("EDUCATEOS_PROBE_SECRET") }));
+        // Cron Triggers (SCHO-148): the installer sets them once and relies on an upload keeping them.
+        await probe("write.workerSchedules", "Workers Scripts: Edit covers the schedules endpoint; a script upload keeps the schedules", "create-delete", async () => {
+          await api.putWorkerSchedules(account, name, [PROBE_CRON]);
+          const set = await api.getWorkerSchedules(account, name);
+          await upload();
+          const afterUpload = await api.getWorkerSchedules(account, name);
+          await api.putWorkerSchedules(account, name, []);
+          return { set, afterUpload, cleared: await api.getWorkerSchedules(account, name) };
+        }, (r) => ({
+          schedulesSet: r.set.includes(PROBE_CRON),
+          schedulesKeptAcrossUpload: r.afterUpload.includes(PROBE_CRON),
+          schedulesCleared: r.cleared.length === 0,
+        }));
         await probe("write.workerVersions", "Version detail responses expose plain-text binding values (rollback depends on it)", "create-delete",
           () => api.listWorkerVersions(account, name),
           (versions) => ({ versions: versions.length, plainTextVarsExposed: versions.some((v) => v.vars[PROBE_VAR] === PROBE_VAR_VALUE) }));

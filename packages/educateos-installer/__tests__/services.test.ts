@@ -80,6 +80,7 @@ describe("optional backend services", () => {
     const guard = fake.worker(GUARD_SCRIPT)!;
     expect(guard.secretNames).toEqual(["HALL_MONITOR_SIGNING_KEY"]);
     expect(guard.migrationTag).toBe("v1");
+    expect(guard.schedules).toEqual(["17 3 * * *"]);
     const byName = new Map(guard.bindings.map((b) => [b.name, b]));
     expect(byName.get("AI_GUARD_CONFIG")).toEqual({ type: "plain_text", name: "AI_GUARD_CONFIG", text: GUARD_VARS.AI_GUARD_CONFIG });
     expect(byName.get("HALL_MONITOR_URL")?.text).toBe(GUARD_VARS.HALL_MONITOR_URL);
@@ -127,6 +128,7 @@ describe("optional backend services", () => {
         action: "update",
         reason: expect.stringContaining(`binds AI_CALL_GUARD to ${GUARD_SCRIPT} (EducateOsAiCallGuard)`),
       }),
+      expect.objectContaining({ resource: `schedules:${GUARD}`, action: "create", reason: "sets Cron Triggers 17 3 * * *" }),
     ]);
     expect(mutations(fake)).toHaveLength(before);
 
