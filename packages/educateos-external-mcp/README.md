@@ -151,3 +151,46 @@ pnpm --filter @educateos/external-mcp exec wrangler deploy --config deploy/wrang
 
 No merge or deployment is part of this draft follow-up. This is a deployable resource-server
 component with explicit integration handoffs, not a claim of a production-ready district installation.
+
+## Protected resource for the district's authorization server (SCHO-174)
+
+`@educateos/external-mcp/resource-auth` exports `DelegatedResourceAuthority`, which lets the
+district `/mcp` act as an OAuth protected resource for the district's configured authorization
+server. That server is Nathan (NATH-6); EducateOS builds no authorization server. The authority
+trusts exactly one issuer, whose JWKS URL comes from deployment configuration. On **every**
+request it checks:
+
+- the JWS signature, using a configured key with an allowed asymmetric algorithm (the `jku`,
+  `x5u` and `kid` URLs a token names are never fetched);
+- `typ: at+jwt` (RFC 9068);
+- `iss` exactly;
+- `aud`, which must be exactly the district's `https://<origin>/mcp` and its only audience (RFC 8707);
+- `exp`, `nbf` and `iat`, with a lifetime of at most ten minutes;
+- the required `scope` (`mcp:tools`).
+
+After the token checks it resolves `(iss, sub)` through the district's current identity links.
+Token claims never name a role, principal, district or delegation.
+
+**Client and delegation.** The token's `client_id` (RFC 9068), which is a Client ID Metadata
+Document URL or an assigned ID, names the client. The authority then looks for the one IF-06
+delegation in force whose grantor is the resolved principal and whose client is
+`(iss, client_id)`. It sets that delegation as `subject.delegationId`, so the policy engine bounds
+every call by the delegation's ceiling and the grantor's live roster standing. The two refusals
+are distinct errors:
+
+- `unauthenticated` (401): a token, link or principal that is not accepted;
+- `forbidden` (403): no delegation in force, or more than one, from that person to that client.
+
+Revoking the delegation, deactivating the principal or unlinking the identity refuses the next
+request, even while the token is unexpired. A cached tool listing carries no authority, and each
+request is authenticated again.
+
+What NATH-6 must issue for a district resource:
+
+- a JWT with `typ: at+jwt`, signed with an asymmetric key published at the configured JWKS URL;
+- `iss`: the district's Nathan issuer, which the district lists in `trustedIssuers`;
+- `aud`: exactly `https://<district>/mcp`, the RFC 8707 `resource` the client requested;
+- `sub`: the Nathan user ID, linked to the teacher's principal;
+- `client_id`;
+- `scope`, including `mcp:tools`;
+- `iat` and `exp`, ten minutes apart at most.
