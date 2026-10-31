@@ -15,7 +15,8 @@ function runnerFor() {
   const artifacts = new Map([["art_amara-lab", { offeringId: BIO, owner: "prn_nf-student-amara", text: "v1", revision: 1 }]]);
   const resources = new Map([["rsc_cells", { offeringId: BIO, title: "Cells" }]]);
   const ran: string[] = [];
-  const roster = { ownsArtifacts: false };
+  const roster = { ownsArtifacts: false, ownsResources: false };
+  const artifactsOwned = () => new EducateOsError("conflict", "Artifacts are owned by external:oneroster; change them there and let its sync update EducateOS.");
 
   const editArtifact = defineSchoolTool({
     name: "edit_artifact",
@@ -28,9 +29,11 @@ function runnerFor() {
       return { ...courseResource(artifact.offeringId, "artifact", "course", { id: artifactId, owner: artifact.owner }), version: String(artifact.revision) };
     },
     recheck: async () => {
-      if (roster.ownsArtifacts) throw new EducateOsError("conflict", "Artifacts are owned by external:oneroster; change them there and let its sync update EducateOS.");
+      if (roster.ownsArtifacts) throw artifactsOwned();
     },
     handler: async ({ artifactId, text }) => {
+      // As a directory operation does, once the runner has authorized the caller for the record.
+      if (roster.ownsArtifacts) throw artifactsOwned();
       ran.push(`edit ${artifactId}`);
       const artifact = artifacts.get(artifactId)!;
       artifacts.set(artifactId, { ...artifact, text, revision: artifact.revision + 1 });
@@ -43,6 +46,9 @@ function runnerFor() {
     inputSchema: z.strictObject({ resourceId: z.string().regex(/^rsc_[a-z-]+$/), title: z.string().max(100) }),
     action: "update",
     approval: "approver",
+    recheck: async () => {
+      if (roster.ownsResources) throw new EducateOsError("conflict", "Learning resources are owned by lms:canvas.");
+    },
     resource: async ({ resourceId }) => {
       const resource = resources.get(resourceId);
       return resource && courseResource(resource.offeringId, "learning-resource", "teacher-only", { id: resourceId });
@@ -103,7 +109,35 @@ describe("an approval as a transaction", () => {
     expect(ran).toEqual([]);
   });
 
-  it("rechecks the source of record when it runs, refusing a write the roster has since taken over", async () => {
+  it("rechecks the source of record for an approver before it runs, declining a write the source has since taken over", async () => {
+    const { runner, store, roster, ran } = runnerFor();
+    const id = approvalIdOf(await runner.invoke(agent(P.morgan), "retitle_resource", { resourceId: "rsc_cells", title: "Cell biology" }));
+    roster.ownsResources = true;
+    expect(await runner.approve(person(P.morgan), id)).toMatchObject({
+      status: "error",
+      error: { code: "conflict", message: "Learning resources are owned by lms:canvas." },
+    });
+    expect((await store.get(id as never))!.state).toBe("declined");
+    expect(ran).toEqual([]);
+  });
+
+  it("never runs the recheck when a call is made, leaving the source of record to the handler", async () => {
+    const { runner, roster, ran } = runnerFor();
+    roster.ownsResources = true;
+    // An approver operation still queues: nothing about its source of record is said to the caller.
+    expect(await runner.invoke(agent(P.morgan), "retitle_resource", { resourceId: "rsc_cells", title: "Cell biology" }))
+      .toMatchObject({ status: "approval-required", needs: "approval" });
+    roster.ownsArtifacts = true;
+    // A caller the engine refuses is told nothing more than that.
+    expect(await runner.invoke(agent(P.chidi), "edit_artifact", { artifactId: "art_amara-lab", text: "v2" }))
+      .toMatchObject({ status: "error", error: { code: "not-found" } });
+    // An authorized one hears it from the handler.
+    expect(await runner.invoke(agent(P.amara), "edit_artifact", { artifactId: "art_amara-lab", text: "v2" }))
+      .toMatchObject({ status: "error", error: { code: "conflict", message: expect.stringContaining("owned by external:oneroster") } });
+    expect(ran).toEqual([]);
+  });
+
+  it("declines a confirmed call the handler refuses once the recheck says it can no longer be made here", async () => {
     const { runner, store, roster, ran } = runnerFor();
     const id = approvalIdOf(await runner.invoke(agent(P.amara), "edit_artifact", { artifactId: "art_amara-lab", text: "v2" }, { confirmWrites: true }));
     roster.ownsArtifacts = true;
@@ -111,10 +145,7 @@ describe("an approval as a transaction", () => {
       status: "error",
       error: { code: "conflict", message: expect.stringContaining("owned by external:oneroster") },
     });
-    expect((await store.get(id as never))!.state).toBe("declined");
-    // And a new call is refused before it is queued.
-    expect(await runner.invoke(agent(P.amara), "edit_artifact", { artifactId: "art_amara-lab", text: "v3" }, { confirmWrites: true }))
-      .toMatchObject({ status: "error", error: { code: "conflict" } });
+    expect((await store.get(id as never))!).toMatchObject({ state: "declined", declineReason: "The change can no longer be made here." });
     expect(ran).toEqual([]);
   });
 

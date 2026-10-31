@@ -262,7 +262,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
   const directory = new AcademicDirectory({ store: stores.directory, authority, authorizer: app.engine });
   const runner = new SchoolToolRunner({
     engine: app.engine,
-    tools: academicSchoolTools(stores.directory, directory, authority),
+    tools: academicSchoolTools(stores.directory, directory),
     approvals: { store: new DurableObjectToolApprovalStore(storage) },
   });
   const tools = createSchoolToolService({

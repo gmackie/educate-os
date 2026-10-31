@@ -166,15 +166,22 @@ describe("the academic tools through the school tool runner", () => {
 });
 
 describe("academic school tools and the approval transaction (SCHO-175)", () => {
-  it("carry each operation's approval policy, and recheck a write's source of record before it runs", async () => {
+  it("carry each operation's approval policy, and name a write's source of record only to an authorized caller", async () => {
     const store = InMemoryAcademicStore.seeded(NORTHFIELD);
     const roster: AuthorityMap = { ...ALL_LOCAL, enrollment: "external:oneroster" };
-    const { tools } = createAcademicsWithPolicy({ store, authority: roster, policy: { effectivePolicy: async () => SHARING_FLOOR }, audit: new InMemoryPolicyAuditSink() });
-    const outcome = await tools.invoke(mcp(P.nfAdmin), "create_enrollment", { offeringId: "off_nf-bio-fall-p2", principalId: "prn_nf-student-chidi", role: "student" });
-    expect(outcome).toMatchObject({
+    const { tools, directory } = createAcademicsWithPolicy({ store, authority: roster, policy: { effectivePolicy: async () => SHARING_FLOOR }, audit: new InMemoryPolicyAuditSink() });
+    // The tools' recheck routes by the directory's own bindings.
+    expect(() => directory.assertRoutableWrite("create_enrollment", "enrollment")).toThrow("owned by external:oneroster");
+    expect(() => directory.assertRoutableWrite("create_school", "school")).not.toThrow();
+    const enrol = { offeringId: "off_nf-bio-fall-p2", principalId: "prn_nf-student-chidi", role: "student" };
+    expect(await tools.invoke(mcp(P.nfAdmin), "create_enrollment", enrol)).toMatchObject({
       status: "error",
       error: { code: "conflict", message: "Enrollments are owned by external:oneroster; change them there and let its sync update EducateOS." },
     });
+    // A same-district student may invoke tools, but not enrol anyone: the owner is not named to them.
+    const student = await tools.invoke(mcp(P.amara), "create_enrollment", enrol);
+    expect(student).toMatchObject({ status: "error", error: { code: expect.stringMatching(/^(forbidden|not-found)$/) } });
+    expect(JSON.stringify(student)).not.toContain("oneroster");
     // A read is never rechecked: it answers from EducateOS's projection.
     expect(await tools.invoke(mcp(P.nfAdmin), "get_roster", { offeringId: "off_nf-bio-fall-p2" })).toMatchObject({ status: "ok" });
   });

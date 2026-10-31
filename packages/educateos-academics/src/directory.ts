@@ -235,6 +235,17 @@ export class AcademicDirectory {
     this.#now = options.now ?? (() => new Date());
   }
 
+  /**
+   * Refuses a write by `operation` to `kind` that the directory's binding does not route, naming
+   * the source of record, exactly as the directory's own writes do once they have authorized their
+   * caller. Call it only for someone already authorized for the change, such as an approver
+   * deciding a queued call: a caller who would get `forbidden` or `not-found` must not learn the
+   * owner.
+   */
+  assertRoutableWrite(operation: string, kind: DirectoryEntityKind): void {
+    assertOperationRoutable(this.#bindings, kind, { name: operation, writes: true });
+  }
+
   // Schools
 
   /** The schools the caller may read. */
