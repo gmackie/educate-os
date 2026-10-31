@@ -13,21 +13,23 @@
     "deploy": "wrangler deploy --config deploy/wrangler.jsonc"
   },
   "dependencies": {
+    "@educateos/academics": "workspace:*",
     "@educateos/contracts": "workspace:*",
+    "@educateos/district-app": "workspace:*",
     "@educateos/identity": "workspace:*",
     "@educateos/policy": "workspace:*",
+    "@modelcontextprotocol/server": "2.4.0",
     "jose": "^6.2.12",
-    "zod": "catalog:",
-    "@educateos/academics": "workspace:*",
-    "@educateos/district-app": "workspace:*"
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
     "@educateos/fixtures": "workspace:*",
     "@gadgets/scripts": "workspace:*",
-    "vitest": "catalog:",
-    "@cloudflare/vitest-plugin": "catalog:",
+    "@modelcontextprotocol/client": "2.4.0",
+    "@types/node": "26.1.0",
     "miniflare": "catalog:",
-    "wrangler": "catalog:",
-    "@types/node": "26.1.0"
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
   }
 }

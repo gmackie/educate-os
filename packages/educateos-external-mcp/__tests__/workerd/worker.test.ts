@@ -1,6 +1,10 @@
 import { env, SELF, runInDurableObject } from "cloudflare:test";
 import { expect, it } from "vitest";
+import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import { SignJWT } from "jose";
 import { DurableTokenStore } from "../../src/token-store.ts";
+import { CONFIG } from "../config.ts";
+import { testIssuerKeys } from "./worker.ts";
 
 it("serves health and RFC9728 metadata without exposing school records", async () => {
   const health = await SELF.fetch("https://school.example/healthz");
@@ -34,4 +38,21 @@ it("uses transactional durable replay and grants across separate object invocati
     await store.revokeAccess("digest");
     expect(await store.getAccess("digest")).toBeUndefined();
   });
+});
+it("serves a 2026-07-28 exchange from the pinned SDK on workerd", async () => {
+  const { privateKey } = await testIssuerKeys();
+  const morgan = CONFIG.directory.principals.find((p) => p.id === "prn_nf-morgan-lee")!;
+  const now = Math.floor(Date.now() / 1000);
+  const bearer = await new SignJWT({ scope: "mcp:tools" }).setProtectedHeader({ alg: "RS256", typ: "at+jwt" })
+    .setIssuer(CONFIG.issuer.issuer).setSubject(morgan.externalIdentities[0]!.subject).setAudience("https://school.example/mcp")
+    .setIssuedAt(now).setExpirationTime(now + 120).sign(privateKey);
+  const transport = new StreamableHTTPClientTransport(new URL("https://school.example/mcp"), {
+    requestInit: { headers: { authorization: `Bearer ${bearer}` } },
+    fetch: (url, init) => SELF.fetch(new Request(url, init)),
+  });
+  const client = new Client({ name: "workerd", version: "1" }, { versionNegotiation: { mode: "auto" } });
+  await client.connect(transport);
+  expect(client.getNegotiatedProtocolVersion()).toBe("2026-07-28");
+  expect((await client.listTools()).tools.map((t) => t.name)).toContain("get_roster");
+  await client.close();
 });
