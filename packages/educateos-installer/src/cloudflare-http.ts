@@ -132,6 +132,11 @@ interface CallOptions {
   form?: FormData;
   /** Overrides the provider's token, for the assets upload, which authenticates with a session JWT. */
   bearer?: string;
+  /**
+   * Reads a 2xx with an empty body as success. `DELETE /workers/domains/{id}` answers that way: HTTP
+   * 200 and no envelope (seen live on 2026-10-31, SCHO-66).
+   */
+  emptyBodyIsSuccess?: boolean;
 }
 
 /** The {@link CloudflareApi} port implemented against the real Cloudflare API. */
@@ -347,7 +352,9 @@ export class CloudflareHttpApi implements CloudflareApi {
   }
 
   async detachWorkerDomain(accountId: string, domainId: string) {
-    await this.#result("detachWorkerDomain", "DELETE", `/accounts/${seg(accountId)}/workers/domains/${seg(domainId)}`);
+    await this.#result("detachWorkerDomain", "DELETE", `/accounts/${seg(accountId)}/workers/domains/${seg(domainId)}`, {
+      emptyBodyIsSuccess: true,
+    });
   }
 
   async listKvNamespaces(accountId: string) {
@@ -502,11 +509,21 @@ export class CloudflareHttpApi implements CloudflareApi {
     } catch {
       throw new CloudflareApiError(operation, 0, []);
     }
-    const parsed = Envelope.safeParse(await response.json().catch(() => undefined));
+    const text = await response.text().catch(() => "");
+    if (response.ok && options.emptyBodyIsSuccess && text.trim() === "") return { success: true, errors: [], result: undefined };
+    const parsed = Envelope.safeParse(parseJson(text));
     if (!response.ok || !parsed.success || !parsed.data.success) {
       throw new CloudflareApiError(operation, response.status, parsed.success ? parsed.data.errors.map((e) => e.code) : []);
     }
     return parsed.data;
+  }
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
   }
 }
 
