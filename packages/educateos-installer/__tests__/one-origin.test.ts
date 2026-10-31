@@ -117,6 +117,28 @@ describe("one-origin desired state", () => {
       .toEqual([["DISTRICT_CONFIG", false], ["DEVICE_TOKEN_SECRET", true]]);
   });
 
+  it("serves the LTI Tool from the public origin, or keeps an origin LMS platforms already registered", async () => {
+    const release = await goldenRelease();
+    expect(binding(compile(release).worker(DISTRICT), "LTI_TOOL_ORIGIN"))
+      .toEqual({ type: "plain_text", name: "LTI_TOOL_ORIGIN", text: `https://${HOST}` });
+    // The managed alias is not the public origin, so it doesn't move the Tool.
+    expect(binding(compile(release, { managedHostname: { slug: "northfield" } }).worker(DISTRICT), "LTI_TOOL_ORIGIN"))
+      .toMatchObject({ text: `https://${HOST}` });
+    expect(binding(compile(release, { ltiToolOrigin: "https://district.schoolos.gmac.io" }).worker(DISTRICT), "LTI_TOOL_ORIGIN"))
+      .toMatchObject({ text: "https://district.schoolos.gmac.io" });
+  });
+
+  it("refuses an LTI origin that isn't a bare https origin, one without one origin, and one in the district's vars", async () => {
+    const release = await goldenRelease();
+    for (const ltiToolOrigin of ["https://district.example/", "https://district.example/lti", "http://district.example", "district.example"]) {
+      expect(() => compile(release, { ltiToolOrigin }), ltiToolOrigin).toThrow();
+    }
+    expect(() => compileDesiredState(release.manifest, configFor(NORTHFIELD, release, { ltiToolOrigin: "https://district.example" })))
+      .toThrow(/ltiToolOrigin is for the district's LTI Tool, which only a one-origin install serves/);
+    expect(() => compile(release, { services: { [DISTRICT]: { enabled: true, vars: { ...DISTRICT_VARS, LTI_TOOL_ORIGIN: "https://district.example" } } } }))
+      .toThrow(/the installer sets LTI_TOOL_ORIGIN on a one-origin install; remove it from the config \(set ltiToolOrigin/);
+  });
+
   it("exempts the self-authenticating paths from Access and keeps the pairing browser endpoints behind it, on every hostname", async () => {
     const release = await goldenRelease();
     const { app, policy, order } = compile(release, { managedHostname: { slug: "northfield" } });
@@ -205,6 +227,7 @@ describe("one-origin install", () => {
     expect(key).toMatch(/^[A-Za-z0-9_-]{43}$/);
     // The district accepts exactly the one application's audience.
     expect(binding(district, "CF_ACCESS_AUD")).toMatchObject({ text: fake.accessApplication("educateos-northfield")!.aud });
+    expect(binding(district, "LTI_TOOL_ORIGIN")).toMatchObject({ text: `https://${HOST}` });
     expect(fake.accessApplication("educateos-northfield-bypass")?.destinations).toContain(`${HOST}/api/m/*`);
     // No plan or report carries the generated value.
     expect(JSON.stringify(report)).not.toContain(key);
@@ -213,6 +236,20 @@ describe("one-origin install", () => {
     expect(again.status).toBe("applied");
     expect(again.plan!.steps.filter((s) => s.action !== "noop")).toEqual([]);
     expect(fake.secretValue(SCRIPTS.district, "DEVICE_TOKEN_SECRET")).toBe(key);
+  });
+
+  it("moves the LTI Tool to a registered origin and back with a district update only", async () => {
+    const release = await goldenRelease();
+    const { fake, options, run } = setup();
+    await run(release);
+
+    const drift = await dryRunDrift(options(release, { ltiToolOrigin: "https://district.schoolos.gmac.io" }), release.sha256);
+    expect(drift.changes).toEqual([expect.objectContaining({ resource: `worker:${DISTRICT}`, action: "update" })]);
+    await run(release, { ltiToolOrigin: "https://district.schoolos.gmac.io" });
+    expect(binding(fake.worker(SCRIPTS.district), "LTI_TOOL_ORIGIN")).toMatchObject({ text: "https://district.schoolos.gmac.io" });
+
+    await run(release);
+    expect(binding(fake.worker(SCRIPTS.district), "LTI_TOOL_ORIGIN")).toMatchObject({ text: `https://${HOST}` });
   });
 
   it("uses a supplied device key instead of generating one", async () => {
