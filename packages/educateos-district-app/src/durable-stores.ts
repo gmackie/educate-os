@@ -127,6 +127,8 @@ import { PairRoom, type PairRoomStore } from "./pairing.ts";
 // Operations (SCHO-263)
 import { OpsPublicJwk, type OpsAuditRecord, type OpsKeyRecord, type OpsStore } from "./ops.ts";
 import { KeyId, OpsScope } from "@educateos/fleet/ops";
+// Marketplace (SCHO-209)
+import { InstalledPack, sameRelease, type MarketplacePackStore } from "./marketplace.ts";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, RosterSyncStore, WorkshopUserLinkStore } from "./stores.ts";
 // Communication (SCHO-189)
 import {
@@ -213,6 +215,8 @@ export const DISTRICT_TABLES = {
   opsKeys: "educateos_ops_keys",
   opsNonces: "educateos_ops_nonces",
   opsAudit: "educateos_ops_audit",
+  // Marketplace (SCHO-209)
+  marketplacePacks: "educateos_marketplace_packs",
 } as const;
 
 /** Thrown when a stored row cannot be read. Nothing is decided on state that cannot be read. */
@@ -1191,6 +1195,8 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     pairRooms: new DurableObjectPairRoomStore(storage),
     // Operations (SCHO-263)
     ops: new DurableObjectOpsStore(storage),
+    // Marketplace (SCHO-209)
+    marketplacePacks: new DurableObjectMarketplacePackStore(storage),
   };
 }
 
@@ -2186,5 +2192,46 @@ export class DurableObjectOpsStore implements OpsStore {
       const r = parsed.data;
       return { id: r.id, keyId: r.key_id, operator: r.operator, route: r.route, target: r.target, result: r.result, at: r.at };
     });
+  }
+}
+
+// Marketplace (SCHO-209)
+
+/**
+ * A {@link MarketplacePackStore} in a Durable Object's SQLite: append-only, one row per installed
+ * version of a listing, which the unique key keeps to one.
+ */
+export class DurableObjectMarketplacePackStore implements MarketplacePackStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.marketplacePacks} (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, publisher_id TEXT NOT NULL, listing_id TEXT NOT NULL, version TEXT NOT NULL,
+        pack_json TEXT NOT NULL, UNIQUE (publisher_id, listing_id, version)
+      )`,
+    ], []);
+  }
+
+  async list(): Promise<InstalledPack[]> {
+    return this.#tables.transaction((sql) => this.#all(sql));
+  }
+
+  async add(pack: InstalledPack): Promise<InstalledPack> {
+    const parsed = InstalledPack.parse(pack);
+    return this.#tables.transaction((sql) => {
+      const existing = this.#all(sql).find((p) => sameRelease(p, parsed));
+      if (existing !== undefined) return existing;
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.marketplacePacks} (publisher_id, listing_id, version, pack_json) VALUES (?, ?, ?, ?)`,
+        parsed.publisher.publisherId, parsed.listing.listingId, parsed.listing.version, JSON.stringify(parsed),
+      );
+      return parsed;
+    });
+  }
+
+  #all(sql: DistrictSqlStorage["sql"]): InstalledPack[] {
+    return sql.exec(`SELECT pack_json FROM ${DISTRICT_TABLES.marketplacePacks} ORDER BY seq`).toArray()
+      .map((row) => parseStored(InstalledPack, row.pack_json, "an installed marketplace pack"));
   }
 }

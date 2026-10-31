@@ -26,6 +26,7 @@ import { AssessmentService, GradebookService, AssignmentId } from "@educateos/as
 import { catalogAlignmentSource, ContentStudio, type AlignmentSource, type ContentReviewer, type ImportFetch } from "@educateos/content-studio";
 import { contentStudioReleases, CourseContentService, CurriculumService, type AiHelpPolicySource, type OfferingScope } from "@educateos/curriculum";
 import { CatalogMirror, catalogSeedRelease, type VerifyRelease } from "@educateos/catalog";
+import type { ReleaseTrust } from "@educateos/releases";
 import { approveStandards, learningGoalsFor, listStandards, withdrawStandards } from "./standards.ts";
 import { AiLedger, ledgerGovernor, type AiRequestGovernor, type CloudflareAccountFacts, type FundingPool, type GovernedModel, type UsdNano } from "@educateos/ai-governance";
 import { createDraftRevision, DesiredState, planConfigurationChange, SHIPPED_REGISTRY, type CapabilityRegistry } from "@educateos/config";
@@ -58,6 +59,8 @@ import { DeviceCredentials, isDeviceApiPath, serveDeviceApi, type DeviceRecord }
 import type { DeviceBody } from "./routes.ts";
 // Pairing (SCHO-261)
 import { CONNECT_PHONE_PATH, isPairApiPath, PairingRelay, type WebPrincipal } from "./pairing.ts";
+// Marketplace (SCHO-209)
+import { installListing, packBody, packTemplates } from "./marketplace.ts";
 // Operations (SCHO-263)
 import { DistrictOps, isOpsApiPath, type OpsAiUsage, type OpsAnalyticsSource, type OpsReleaseInfo } from "./ops.ts";
 
@@ -130,6 +133,11 @@ export interface DistrictAppOptions {
   aiHelp?: AiHelpPolicySource;
   /** Verifies framework releases before the catalog mirror installs them. Defaults to the catalog's own seed releases only. */
   verifyCatalogRelease?: VerifyRelease;
+  /**
+   * The release keys marketplace publisher credentials are checked against (SCHO-209): the
+   * deployment's pin, never anything a request carries. Without it no marketplace listing installs.
+   */
+  marketplaceTrust?: ReleaseTrust;
   /** Resolves resource and activity alignments. Defaults to the district's approved catalog releases. */
   alignments?: AlignmentSource;
   /** The Content Studio's optional AI reviewer. */
@@ -890,6 +898,12 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       if (course === undefined) throw new EducateOsError("not-found", `offering ${params.offeringId} has no course.`);
       return learningGoalsFor(catalog, course);
     },
+    "teacher.marketplacePacks": async (ctx, { params }) => {
+      // Offered to whoever may author the class's activities, which is what the templates are for.
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" }, "Only the class's teachers can create its activities.");
+      return packTemplates(await stores.marketplacePacks.list());
+    },
     "teacher.publishActivity": (ctx, { params }) => ctx.curriculum().publish(ctx.subject, params.definitionId),
     "teacher.installActivity": (ctx, { params, body }) =>
       installAndAssign({
@@ -1094,6 +1108,15 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "admin.withdrawStandards": async (ctx, { params }) => {
       await ctx.requireDistrict("approve", "standards-release");
       return withdrawStandards(catalog, params.frameworkKey, { by: ctx.principal.principalId, at: now().toISOString() });
+    },
+    // Marketplace packs (SCHO-209)
+    "admin.listMarketplacePacks": async (ctx) => {
+      await ctx.requireDistrict("list", "marketplace-pack");
+      return (await stores.marketplacePacks.list()).map(packBody);
+    },
+    "admin.installMarketplacePack": async (ctx, { body }) => {
+      await ctx.requireDistrict("create", "marketplace-pack");
+      return packBody(await installListing(stores.marketplacePacks, options.marketplaceTrust, body, { by: ctx.principal.principalId, at: now().toISOString() }));
     },
     "admin.previewRoster": async (ctx, { body }) => {
       await ctx.requireDistrict("update", "enrollment");

@@ -99,7 +99,9 @@ export async function bootDistrict(
     // Devices (SCHO-261)
     | "deviceTokenSecret"
     // Operations (SCHO-263)
-    | "release" | "opsAnalytics">> & { standards?: readonly string[] } = {},
+    | "release" | "opsAnalytics"
+    // Marketplace (SCHO-209)
+    | "marketplaceTrust">> & { standards?: readonly string[] } = {},
 ): Promise<TestDistrict> {
   const idp = new TestIdentityProvider(directory.district.trustedIssuers[0]!);
   const stores = inMemoryDistrictStores(directory);
