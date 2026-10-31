@@ -42,7 +42,6 @@ function runnerFor() {
     description: "Retitle a learning resource.",
     inputSchema: z.strictObject({ resourceId: z.string().regex(/^rsc_[a-z-]+$/), title: z.string().max(100) }),
     action: "update",
-    effect: "write",
     approval: "approver",
     resource: async ({ resourceId }) => {
       const resource = resources.get(resourceId);
