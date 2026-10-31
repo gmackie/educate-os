@@ -4,7 +4,7 @@
 // installer's request shapes and response parsing are what get verified.
 //
 // Read probes always run and change nothing. Create/delete probes run only with `apply`, name
-// every resource `educateos-probe-<runId>…`, register its deletion the moment it exists, and delete
+// every resource `eos-sandbox-probe-<runId>…`, register its deletion the moment it exists, and delete
 // everything they made in reverse order even when a later probe fails. The report holds HTTP
 // statuses, Cloudflare's numeric codes and booleans, never a token, a response body or free text
 // from Cloudflare.
@@ -13,7 +13,7 @@ import { CloudflareHttpApi, CLOUDFLARE_API_BASE, R2_NOT_ENABLED_CODE } from "../
 import { staticTokenProvider } from "../src/token.ts";
 
 /** Every probe resource name starts with this, so leftovers are recognisable and sweepable. */
-export const PROBE_PREFIX = "educateos-probe-";
+export const PROBE_PREFIX = "eos-sandbox-probe-";
 
 /** What a probe established. */
 export type ProbeResult = "ok" | "denied" | "error" | "skipped" | "planned";
@@ -92,12 +92,12 @@ interface RawResponse {
 }
 
 /** A deliberately invalid bearer, to observe the codes Cloudflare returns for a bad credential. */
-const INVALID_TOKEN = "educateos-probe-invalid-token";
+const INVALID_TOKEN = "eos-sandbox-probe-invalid-token";
 
 /** A minimal module Worker for the upload probe. It serves nothing useful. */
 const PROBE_WORKER_SOURCE = 'export default { fetch() { return new Response("educateos probe"); } };\n';
 const PROBE_VAR = "EDUCATEOS_PROBE_VAR";
-const PROBE_VAR_VALUE = "educateos-probe-plain-text";
+const PROBE_VAR_VALUE = "eos-sandbox-probe-plain-text";
 
 /**
  * Runs every probe and returns the report. Throws {@link SandboxGuardError} before touching
@@ -126,7 +126,8 @@ export async function verifyAccount(options: VerificationOptions): Promise<Verif
     const envelope = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
     const errors = Array.isArray(envelope["errors"]) ? envelope["errors"] : [];
     const codes = errors.flatMap((e) => (typeof e === "object" && e !== null && typeof (e as { code?: unknown }).code === "number" ? [(e as { code: number }).code] : []));
-    return { status: response.status, ok: response.ok && envelope["success"] === true, codes, result: envelope["result"] };
+    // DELETE /workers/domains/{id} answers a success with HTTP 200 and no body at all.
+    return { status: response.status, ok: response.ok && (body === undefined || envelope["success"] === true), codes, result: envelope["result"] };
   };
 
   /** Runs one installer operation and records it; returns its value, or undefined on failure. */

@@ -89,7 +89,7 @@ function fakeCloudflare(options: FakeOptions = {}) {
     if (path === `${a}/workers/scripts/${PROBE}/secrets`) return ok([{ name: "EDUCATEOS_PROBE_SECRET" }]);
     if (path === `${a}/workers/scripts/${PROBE}/versions`) return ok({ items: [{ id: "v1", metadata: { created_on: "2026-10-21T00:00:00Z" } }] });
     if (path === `${a}/workers/scripts/${PROBE}/versions/v1`) {
-      return ok({ resources: { bindings: [{ type: "plain_text", name: "EDUCATEOS_PROBE_VAR", text: "educateos-probe-plain-text" }] } });
+      return ok({ resources: { bindings: [{ type: "plain_text", name: "EDUCATEOS_PROBE_VAR", text: "eos-sandbox-probe-plain-text" }] } });
     }
     if (path === `${a}/access/organizations`) return ok({ auth_domain: "sandbox.cloudflareaccess.com" });
     if (path === `${a}/access/identity_providers`) return ok([{ id: "idp-1", name: "Test OIDC", type: "oidc" }]);
