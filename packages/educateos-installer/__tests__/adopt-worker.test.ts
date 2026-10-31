@@ -52,9 +52,11 @@ describe("adopting a deployed Worker", () => {
       deleteSecrets: ["CF_ACCESS_AUD", "CF_ACCESS_ISS", "DISTRICT_CONFIG"],
     });
     expect(steps.get("domain:managed")).toMatchObject({ action: "update", reason: `moves ${HOST} from Worker ${DEPLOYED} to the router` });
-    // Everything else is new: the router, backend, gatekeepers, storage and Access.
-    expect(report.plan!.steps.filter((s) => s.action !== "create" && s.action !== "noop").map((s) => s.key).toSorted())
-      .toEqual([`worker:${DISTRICT}`, "domain:managed"].toSorted());
+    // Nothing is refused or deleted, and no other existing resource changes: the router, backend,
+    // gatekeepers, storage and Access are new. (Settings of the adopted Worker itself, such as its
+    // Cron Triggers, may also be brought to the release's.)
+    expect(report.plan!.steps.filter((s) => s.action === "refuse" || s.action === "delete" || s.action === "needs-input")).toEqual([]);
+    expect(report.plan!.steps.filter((s) => s.action === "update" && !s.key.endsWith(`:${DISTRICT}`)).map((s) => s.key)).toEqual(["domain:managed"]);
     expect(mutations(fake)).toHaveLength(0);
 
     const desired = compileDesiredState(release.manifest, adoptConfig(release));
