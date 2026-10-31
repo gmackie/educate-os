@@ -20,6 +20,12 @@ declare namespace Cloudflare {
      */
     LTI_TOOL_ORIGIN?: string;
     /**
+     * `on` runs the district's LTI 1.3 Platform (SCHO-179) beside its Tool, at the same origin,
+     * hosting third-party tools. Anything else, or unset, leaves it off; no production
+     * configuration sets it yet. It needs `LTI_TOOL_ORIGIN`.
+     */
+    LTI_PLATFORM?: string;
+    /**
      * The district-app bearer token Clever issued for the district (SCHO-203), a Worker secret.
      * Unset, no Clever roster syncs.
      */

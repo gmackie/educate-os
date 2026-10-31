@@ -319,6 +319,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         accessIssuer: this.env.CF_ACCESS_ISS,
         accessAudiences: this.env.CF_ACCESS_AUD,
         ltiToolOrigin: this.env.LTI_TOOL_ORIGIN,
+        ltiPlatform: this.env.LTI_PLATFORM,
         cleverDistrictToken: this.env.CLEVER_DISTRICT_TOKEN,
         classroomServiceAccountKey: this.env.GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY,
         deviceTokenSecret: this.env.DEVICE_TOKEN_SECRET,
