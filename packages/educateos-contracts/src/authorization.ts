@@ -129,8 +129,12 @@ export const Classification = z.enum([
 /** A classification. */
 export type Classification = z.infer<typeof Classification>;
 
-/** The surface a request arrived through. Every surface is authorized identically (roadmap §6.3). */
-export const RequestChannel = z.enum(["http", "mcp-tool", "agent", "system"]);
+/**
+ * The surface a request arrived through. Every surface is authorized identically (roadmap §6.3).
+ * `lti-service` is a registered third-party LTI tool calling EducateOS's LTI Platform services
+ * (NRPS, AGS, Deep Linking) with a service token (SCHO-179): never a person acting directly.
+ */
+export const RequestChannel = z.enum(["http", "mcp-tool", "agent", "system", "lti-service"]);
 /** A request channel. */
 export type RequestChannel = z.infer<typeof RequestChannel>;
 
