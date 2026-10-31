@@ -386,7 +386,10 @@ each launch.
 ## The district Worker's Tool (SCHO-177)
 
 `@educateos/district-worker` serves the Tool when its `LTI_TOOL_ORIGIN` var names the district's
-public https origin (production sets it from the district hostname). Its LTI records share the
+public https origin. Production sets it from the district hostname; the installer sets it on a
+one-origin install from the public origin, or from the install config's `ltiToolOrigin` when LMS
+platforms already registered the Tool at another origin (SCHO-243; the installer neither attaches
+nor protects that hostname). Its LTI records share the
 district's Durable Object with the application's, in the `educateos_lti_records` table.
 
 | Path | Who calls it | Sign-in |

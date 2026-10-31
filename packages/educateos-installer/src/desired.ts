@@ -275,10 +275,11 @@ export const RESOURCE_KEYS = {
 } as const;
 
 /**
- * The district's deploy inputs a one-origin install sets itself (ADR-0014): one Access application
- * fronts the whole origin, so the district accepts exactly its issuer and audience.
+ * The district's vars a one-origin install sets itself (ADR-0014): one Access application fronts the
+ * whole origin, so the district accepts exactly its issuer and audience, and the LTI Tool is served
+ * at `/lti/*` on that origin (or the config's `ltiToolOrigin`).
  */
-export const DISTRICT_INSTALLER_VARS: readonly string[] = ["CF_ACCESS_ISS", "CF_ACCESS_AUD"];
+export const DISTRICT_INSTALLER_VARS: readonly string[] = ["CF_ACCESS_ISS", "CF_ACCESS_AUD", "LTI_TOOL_ORIGIN"];
 
 /** The resource key of a release package's Worker. */
 export function workerKey(pkgName: string): ResourceKey {
@@ -385,6 +386,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   if (!oneOrigin && !config.ai.enabled) {
     invalid("AI can be turned off only on a one-origin install: enable the district service, with a release that wires it (ADR-0014)");
   }
+  if (!oneOrigin && config.ltiToolOrigin) {
+    invalid("ltiToolOrigin is for the district's LTI Tool, which only a one-origin install serves: enable the district service, with a release that wires it (ADR-0014)");
+  }
   // Inputs of the district that a one-origin install sets itself, from the one Access application.
   const installerSet = new Set(oneOrigin ? DISTRICT_INSTALLER_VARS : []);
 
@@ -436,7 +440,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
         : { pkgName: name, name: input.name, label: input.label, kind: "secret", generated: input.generated === true });
     }
     for (const varName of Object.keys(wanted.vars)) {
-      if (setHere.has(varName)) invalid(`${name}: the installer sets ${varName} on a one-origin install; remove it from the config`);
+      if (setHere.has(varName)) {
+        invalid(`${name}: the installer sets ${varName} on a one-origin install; remove it from the config${varName === "LTI_TOOL_ORIGIN" ? " (set ltiToolOrigin to keep a registered origin)" : ""}`);
+      }
       if (declared.get(varName)?.kind !== "var") invalid(`${name} has no var input ${varName}`);
     }
     services.push(name);
@@ -681,6 +687,8 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       // One Access application in front of the whole origin, so one issuer and one audience.
       vars.CF_ACCESS_ISS = `https://${config.access.teamName}.cloudflareaccess.com`;
       vars.SCHOOL_MANIFEST = JSON.stringify({ origin: publicBaseUrl, features: { ai: config.ai.enabled } });
+      // The router serves /lti/* on the public origin, behind the Access bypass.
+      vars.LTI_TOOL_ORIGIN = config.ltiToolOrigin ?? publicBaseUrl;
       dependsOn.add(accessApplication.key);
     }
     if (isAdmin) {

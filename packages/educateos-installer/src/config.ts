@@ -138,6 +138,16 @@ export const DistrictInstallConfig = z.strictObject({
     hostname: DomainName.optional(),
   }).default({ enabled: false }),
   /**
+   * The LTI Tool's origin, written to the district Worker's `LTI_TOOL_ORIGIN` on a one-origin
+   * install. Unset, it is the public origin, where the router serves `/lti/*` behind the Access
+   * bypass. Set it only to keep an origin LMS platforms already registered the Tool at, as Northfield
+   * keeps `https://district.schoolos.gmac.io`: the installer neither attaches nor protects that
+   * hostname, so it must still route to this install's district by other means.
+   */
+  ltiToolOrigin: z.url({ protocol: /^https$/ })
+    .refine((url) => URL.canParse(url) && new URL(url).origin === url, "expected an https origin: no path, query or trailing slash")
+    .optional(),
+  /**
    * The managed default hostname, `<slug>.educateos.io` (ADR-0013 addendum A1). It is an alias of
    * the public hostname, which stays the instance's identity, so removing it moves no data: an
    * apply without it releases any managed hostname that routes to this instance.
