@@ -18,9 +18,11 @@ import { z } from "zod";
  * protocol's context instead (kind `release-offer`), and because the contexts and kinds differ, no
  * signature made for one ever verifies as another. `catalog-release` is a framework catalog release
  * statement (`@educateos/catalog`), signed by a release key: the kind is part of the signed bytes, so
- * a catalog signature can never pass as a manifest's, or the reverse.
+ * a catalog signature can never pass as a manifest's, or the reverse. `marketplace-publisher` is a
+ * marketplace publisher credential (`@educateos/marketplace`, SCHO-209): a release key vouching for
+ * the key a publisher signs its listings with.
  */
-export const ReleaseMessageKind = z.enum(["release-manifest", "release-key-set", "catalog-release"]);
+export const ReleaseMessageKind = z.enum(["release-manifest", "release-key-set", "catalog-release", "marketplace-publisher"]);
 /** A release message kind. */
 export type ReleaseMessageKind = z.infer<typeof ReleaseMessageKind>;
 
