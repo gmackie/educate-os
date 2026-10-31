@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DistrictId, PrincipalId, UtcTimestamp } from "@educateos/contracts";
+import { DistrictId, PrincipalId, ResourceRef, UtcTimestamp } from "@educateos/contracts";
 import type { ToolChannel } from "./tools.ts";
 
 /** The ID of a queued tool action: `apr_` and an opaque body. It may belong in contracts later. */
@@ -39,6 +39,20 @@ export const QueuedToolChannel = z.enum(["mcp-tool", "agent"]) satisfies z.ZodTy
 export const DeclineReason = z.string().trim().min(1).max(500);
 
 /**
+ * The target a queued call resolved to when it was queued, and the version of it the tool reported,
+ * if any. Before the call runs it is resolved again and must be the same, so an approval never
+ * applies to a record other than the one the person reviewed.
+ */
+export const PinnedToolTarget = z.strictObject({
+  /** The resource, as built from stored records. */
+  resource: ResourceRef,
+  /** The version of it the tool reported, such as a revision number. */
+  version: z.string().min(1).max(128).optional(),
+});
+/** A pinned tool target. */
+export type PinnedToolTarget = z.infer<typeof PinnedToolTarget>;
+
+/**
  * One tool call waiting for a person. It holds the call exactly as it will run: the tool, the
  * input as the tool's schema produced it, the verified subject it runs for and the channel and
  * correlation ID of the call that queued it.
@@ -63,6 +77,16 @@ export const PendingToolAction = z.strictObject({
    * a call that is already open returns the open action instead of a second one.
    */
   idempotencyKey: z.string().regex(/^[0-9a-f]{64}$/),
+  /**
+   * The target the call resolved to when it was queued. Absent on actions queued before targets
+   * were pinned (SCHO-175), which run against the target as it resolves then.
+   */
+  target: PinnedToolTarget.optional(),
+  /**
+   * A SHA-256 over the idempotency key and the pinned target: what a person reviewed. An approval
+   * that names a digest runs only if it is this one.
+   */
+  digest: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   /** When it was queued. */
   createdAt: UtcTimestamp,
   /** When it stops being approvable. */
@@ -140,6 +164,20 @@ export class InMemoryToolApprovalStore implements ToolApprovalStore {
 export async function toolCallKey(call: Pick<PendingToolAction, "subject" | "channel" | "tool" | "input">): Promise<string> {
   const canonical = canonicalJson([call.subject.districtId, call.subject.principalId, call.channel, call.tool, call.input]);
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * The digest of a queued call: a SHA-256 over its idempotency key and its pinned target. Two
+ * actions share one only when they would run the same call against the same version of the same
+ * record.
+ */
+export async function toolActionDigest(action: Pick<PendingToolAction, "idempotencyKey"> & { target: PinnedToolTarget }): Promise<string> {
+  return sha256Hex(canonicalJson([action.idempotencyKey, action.target]));
+}
+
+async function sha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
