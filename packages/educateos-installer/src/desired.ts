@@ -11,6 +11,7 @@ import type { AccessPolicySpec } from "./cloudflare-api.ts";
 import {
   adminHostname,
   type DistrictInstallConfig,
+  isManagedOnly,
   publicHostname,
   resourcePrefix,
   workerScriptName,
@@ -117,6 +118,11 @@ export interface DesiredWorker extends ResourceBase {
     manifest: Record<string, AssetManifestEntry>;
     config: Record<string, unknown>;
   };
+  /**
+   * The config named this Worker (`services[pkg].scriptName`), so planning may adopt it when it
+   * exists without the installer's marker (SCHO-243).
+   */
+  adoptable?: true;
 }
 
 /** A secret on one Worker. Its value comes from the secret source at apply time, never the plan. */
@@ -131,6 +137,19 @@ export interface DesiredWorkerSecret extends ResourceBase {
    * Never rotated once set.
    */
   generated: boolean;
+}
+
+/**
+ * A Worker's Cron Triggers, from the release's `crons` (SCHO-148). They are set after the Worker and
+ * its secrets exist, since a trigger can fire as soon as it is set. Only a Worker whose release
+ * entry declares crons has one: the installer leaves the schedules of any other Worker alone.
+ */
+export interface DesiredWorkerSchedules extends ResourceBase {
+  kind: "worker_schedules";
+  pkgName: string;
+  scriptName: string;
+  /** The cron expressions, as the release lists them. The Worker's schedules are exactly these. */
+  crons: string[];
 }
 
 /**
@@ -156,7 +175,7 @@ export interface DesiredCustomDomain extends ResourceBase {
 
 /**
  * The managed default hostname, `<slug>.educateos.io`, an alias routed to the router (ADR-0013
- * addendum A1). Planning picks the path from observation: a Workers custom domain when the managed
+ * addendum A1), or on a managed-only install the public hostname itself (SCHO-243). Planning picks the path from observation: a Workers custom domain when the managed
  * zone is in the district's account, otherwise a Cloudflare for SaaS custom hostname on the
  * district's own zone, whose validation records the managed zone publishes (managed-zone.ts).
  *
@@ -167,11 +186,14 @@ export interface DesiredCustomDomain extends ResourceBase {
 export interface DesiredManagedHostname extends ResourceBase {
   kind: "managed_hostname";
   phase: "release" | "attach";
-  /** The alias the config wants, or null for none. */
+  /** The managed hostname the config wants, or null for none. */
   hostname: string | null;
   scriptName: string;
-  /** The district's own zone, which holds the custom hostname on the cross-account path. */
-  zoneName: string;
+  /**
+   * The district's own zone, which holds the custom hostname on the cross-account path. Null on a
+   * managed-only install, which has no zone: only the same-account path can serve it.
+   */
+  zoneName: string | null;
 }
 
 /** One node of the desired resource graph. */
@@ -184,6 +206,7 @@ export type DesiredResource =
   | DesiredAccessApplication
   | DesiredWorker
   | DesiredWorkerSecret
+  | DesiredWorkerSchedules
   | DesiredRetiredWorker
   | DesiredCustomDomain
   | DesiredManagedHostname;
@@ -275,14 +298,20 @@ export const RESOURCE_KEYS = {
 } as const;
 
 /**
- * The district's deploy inputs a one-origin install sets itself (ADR-0014): one Access application
- * fronts the whole origin, so the district accepts exactly its issuer and audience.
+ * The district's vars a one-origin install sets itself (ADR-0014): one Access application fronts the
+ * whole origin, so the district accepts exactly its issuer and audience, and the LTI Tool is served
+ * at `/lti/*` on that origin (or the config's `ltiToolOrigin`).
  */
-export const DISTRICT_INSTALLER_VARS: readonly string[] = ["CF_ACCESS_ISS", "CF_ACCESS_AUD"];
+export const DISTRICT_INSTALLER_VARS: readonly string[] = ["CF_ACCESS_ISS", "CF_ACCESS_AUD", "LTI_TOOL_ORIGIN"];
 
 /** The resource key of a release package's Worker. */
 export function workerKey(pkgName: string): ResourceKey {
   return `worker:${pkgName}`;
+}
+
+/** The resource key of a Worker's Cron Triggers. */
+export function schedulesKey(pkgName: string): ResourceKey {
+  return `schedules:${pkgName}`;
 }
 
 /** The resource key of a disabled service's Worker, which must not exist. */
@@ -354,7 +383,10 @@ function gatekeeperInputVars(pkgName: string, entry: WorkerEntry, config: Distri
 export function compileDesiredState(manifest: ReleaseManifest, config: DistrictInstallConfig): DesiredState {
   if (manifest.releaseId !== config.release.releaseId) invalid("manifest and config pin different releases");
   const hostname = publicHostname(config);
-  const alias = config.managedHostname ? managedHostname(config.managedHostname.slug) : null;
+  const managedOnly = isManagedOnly(config);
+  const managedHost = config.managedHostname ? managedHostname(config.managedHostname.slug) : null;
+  // On a managed-only install the managed hostname is the public one, not an alias of it.
+  const alias = managedOnly ? null : managedHost;
   const publicBaseUrl = `https://${hostname}`;
   const prefix = resourcePrefix(config);
 
@@ -385,6 +417,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   if (!oneOrigin && !config.ai.enabled) {
     invalid("AI can be turned off only on a one-origin install: enable the district service, with a release that wires it (ADR-0014)");
   }
+  if (!oneOrigin && config.ltiToolOrigin) {
+    invalid("ltiToolOrigin is for the district's LTI Tool, which only a one-origin install serves: enable the district service, with a release that wires it (ADR-0014)");
+  }
   // Inputs of the district that a one-origin install sets itself, from the one Access application.
   const installerSet = new Set(oneOrigin ? DISTRICT_INSTALLER_VARS : []);
 
@@ -393,6 +428,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   let adminHost: string | undefined;
   const adminInputs: DesiredInput[] = [];
   if (config.admin.enabled) {
+    if (managedOnly) {
+      invalid("the OSS admin needs a hostname in a zone of the district's own: a managed-only install (no baseDomain) can't have it yet");
+    }
     const admins = entries.filter(([, w]) => w.kind === "admin");
     if (admins.length !== 1) invalid("admin.enabled needs a release that carries the OSS admin");
     if (!oneOrigin) {
@@ -401,7 +439,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     const [name, entry] = admins[0]!;
     if (!entry.installable) invalid(`${name} is not installable on district instances`);
     adminPkg = name;
-    adminHost = adminHostname(config);
+    adminHost = adminHostname(config)!;
     if (!adminHost.endsWith(`.${config.baseDomain}`)) {
       invalid(`admin.hostname must be under ${config.baseDomain}, the zone the installer attaches it in`);
     }
@@ -419,7 +457,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   for (const [name, wanted] of Object.entries(config.services).toSorted(([a], [b]) => a.localeCompare(b))) {
     if (!wanted.enabled) {
       // Removal needs only the Worker's name, so it works with a release that no longer ships it.
-      retired.push({ kind: "worker_retired", key: retiredWorkerKey(name), dependsOn: [workerKey(backendPkg)], pkgName: name, scriptName: workerScriptName(config, name) });
+      retired.push({ kind: "worker_retired", key: retiredWorkerKey(name), dependsOn: [workerKey(backendPkg)], pkgName: name, scriptName: wanted.scriptName ?? workerScriptName(config, name) });
       continue;
     }
     const entry = manifest.workers[name];
@@ -436,7 +474,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
         : { pkgName: name, name: input.name, label: input.label, kind: "secret", generated: input.generated === true });
     }
     for (const varName of Object.keys(wanted.vars)) {
-      if (setHere.has(varName)) invalid(`${name}: the installer sets ${varName} on a one-origin install; remove it from the config`);
+      if (setHere.has(varName)) {
+        invalid(`${name}: the installer sets ${varName} on a one-origin install; remove it from the config${varName === "LTI_TOOL_ORIGIN" ? " (set ltiToolOrigin to keep a registered origin)" : ""}`);
+      }
       if (declared.get(varName)?.kind !== "var") invalid(`${name} has no var input ${varName}`);
     }
     services.push(name);
@@ -463,11 +503,18 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   }
   inputs.push(...adminInputs);
   const scriptNames = new Map([backendPkg, routerPkg, ...installed, ...services, ...adminPkg ? [adminPkg] : []]
-    .map((pkg) => [pkg, workerScriptName(config, pkg)]));
+    .map((pkg) => [pkg, config.services[pkg]?.scriptName ?? workerScriptName(config, pkg)]));
+  const named = new Map<string, string>();
+  for (const [pkg, scriptName] of scriptNames) {
+    const other = named.get(scriptName);
+    if (other) invalid(`${pkg} and ${other} would both be the Worker ${scriptName}`);
+    named.set(scriptName, pkg);
+  }
 
   const storage = new Map<ResourceKey, DesiredResource>();
   const workers: DesiredResource[] = [];
   const secrets: DesiredResource[] = [];
+  const schedules: DesiredWorkerSchedules[] = [];
 
   const accessPolicy: DesiredAccessPolicy = {
     kind: "access_policy",
@@ -681,6 +728,8 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       // One Access application in front of the whole origin, so one issuer and one audience.
       vars.CF_ACCESS_ISS = `https://${config.access.teamName}.cloudflareaccess.com`;
       vars.SCHOOL_MANIFEST = JSON.stringify({ origin: publicBaseUrl, features: { ai: config.ai.enabled } });
+      // The router serves /lti/* on the public origin, behind the Access bypass.
+      vars.LTI_TOOL_ORIGIN = config.ltiToolOrigin ?? publicBaseUrl;
       dependsOn.add(accessApplication.key);
     }
     if (isAdmin) {
@@ -750,7 +799,18 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       migrations: entry.migrations,
       bindings,
       ...(assets ? { assets } : {}),
+      ...(config.services[pkgName]?.scriptName ? { adoptable: true as const } : {}),
     });
+    if (entry.crons && entry.crons.length > 0) {
+      schedules.push({
+        kind: "worker_schedules",
+        key: schedulesKey(pkgName),
+        dependsOn: [workerKey(pkgName), ...secrets.flatMap((s) => (s.kind === "worker_secret" && s.pkgName === pkgName ? [s.key] : []))],
+        pkgName,
+        scriptName: scriptNames.get(pkgName)!,
+        crons: [...entry.crons],
+      });
+    }
   }
 
   for (const resource of storage.values()) {
@@ -761,7 +821,8 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     }
   }
 
-  const customDomain: DesiredCustomDomain = {
+  // A managed-only install has no zone of its own: the router is reached only at the managed hostname.
+  const customDomain: DesiredCustomDomain | undefined = config.baseDomain === undefined ? undefined : {
     kind: "custom_domain",
     key: RESOURCE_KEYS.customDomain,
     // On a one-origin install the bypass is in place before the hostname serves, so the paths that
@@ -779,15 +840,15 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       key: RESOURCE_KEYS.adminDomain,
       dependsOn: [workerKey(adminPkg), adminAccess.application.key, adminAccess.bypass.key],
       hostname: adminHost,
-      zoneName: config.baseDomain,
+      zoneName: config.baseDomain!,
       scriptName: scriptNames.get(adminPkg)!,
     }
     : undefined;
 
-  const managed = { kind: "managed_hostname" as const, hostname: alias, scriptName: scriptNames.get(routerPkg)!, zoneName: config.baseDomain };
+  const managed = { kind: "managed_hostname" as const, hostname: managedHost, scriptName: scriptNames.get(routerPkg)!, zoneName: config.baseDomain ?? null };
   const releaseManaged: DesiredManagedHostname = { ...managed, key: RESOURCE_KEYS.managedHostnameRelease, dependsOn: [], phase: "release" };
   // Attaching waits for the router and for the application that protects the alias.
-  const attachManaged: DesiredManagedHostname | undefined = alias
+  const attachManaged: DesiredManagedHostname | undefined = managedHost
     ? {
       ...managed,
       key: RESOURCE_KEYS.managedHostname,
@@ -806,8 +867,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     ...adminAccess ? [adminAccess.application, adminAccess.bypass] : [],
     ...workers,
     ...secrets,
+    ...schedules,
     ...retired,
-    customDomain,
+    ...customDomain ? [customDomain] : [],
     ...adminDomain ? [adminDomain] : [],
     releaseManaged,
     ...(attachManaged ? [attachManaged] : []),

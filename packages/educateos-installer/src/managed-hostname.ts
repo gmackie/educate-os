@@ -46,6 +46,12 @@ export interface ManagedHostnameContext {
   domains: WorkerDomain[];
   /** The district's own zone, if it is in the account. */
   zone: Zone | undefined;
+  /**
+   * The Worker names of this install other than the router. A managed hostname attached to one of
+   * them, as an adopted district Worker's is, moves to the router rather than reading as taken. The
+   * plan is blocked anyway unless each of them is owned or adopted.
+   */
+  instanceScripts: ReadonlySet<string>;
 }
 
 /**
@@ -164,16 +170,28 @@ async function planAttach(
   const managedZone = await sameAccountZone(api, context.accountId);
   if (managedZone) {
     const found = context.domains.find((d) => d.hostname === hostname);
-    if (found) {
-      return found.service === scriptName
-        ? { action: "noop", reason: "custom domain attached", ops: [] }
-        : refuse(`${hostname} routes to Worker ${found.service}: the slug is taken`);
+    if (found?.service === scriptName) return { action: "noop", reason: "custom domain attached", ops: [] };
+    if (found && context.instanceScripts.has(found.service)) {
+      // Detach, then attach: the hostname is unreachable between the two calls. Attaching it over
+      // another Worker's domain is refused (assumed, code unverified), so there is no atomic move.
+      return {
+        action: "update",
+        reason: `moves ${hostname} from Worker ${found.service} to the router`,
+        ops: [{ op: "detach-domain", hostname, domainId: found.id }, { op: "attach-domain", hostname, zoneId: managedZone.id }],
+      };
     }
+    if (found) return refuse(`${hostname} routes to Worker ${found.service}: the slug is taken`);
     const records = await guarded(() => api.listDnsRecords(managedZone.id, hostname));
     if (records.length > 0) return refuse(`${hostname} already has DNS records (${records.map((r) => r.type).join(", ")}): the slug is taken`);
     return { action: "create", reason: "custom domain not attached", ops: [{ op: "attach-domain", hostname, zoneId: managedZone.id }] };
   }
 
+  if (resource.zoneName === null) {
+    // A managed-only install: the cross-account path needs a zone of the district's own to hold the
+    // custom hostname, and there is none (SCHO-243).
+    return refuse(`${hostname} is this install's only hostname, and ${MANAGED_ZONE} is not an active zone in this account: ` +
+      `a district in another account needs a domain of its own (set baseDomain)`);
+  }
   if (!context.zone) return { action: "needs-input", reason: `add the zone ${resource.zoneName} to the account`, ops: [] };
   const zoneId = context.zone.id;
   const fallback = await guarded(() => api.getFallbackOrigin(zoneId));

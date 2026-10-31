@@ -96,6 +96,15 @@ export async function applyPlan(plan: InstallPlan, context: ApplyContext): Promi
         break;
       }
       case "worker_script":
+        // Adopting: a secret named like a var the release sets goes first. A 404 means a run that
+        // was interrupted after deleting it.
+        for (const name of step.deleteSecrets ?? []) {
+          try {
+            await guarded(() => api.deleteWorkerSecret(account, resource.scriptName, name));
+          } catch (error) {
+            if (!(error instanceof CloudflareApiError && error.status === 404)) throw error;
+          }
+        }
         await uploadWorker(context, account, resource, step.observedMigrationTag, outputs);
         break;
       case "worker_secret": {
@@ -106,6 +115,9 @@ export async function applyPlan(plan: InstallPlan, context: ApplyContext): Promi
         await guarded(() => api.putWorkerSecret(account, resource.scriptName, resource.secretName, value));
         break;
       }
+      case "worker_schedules":
+        await guarded(() => api.putWorkerSchedules(account, resource.scriptName, resource.crons));
+        break;
       case "worker_retired":
         try {
           await guarded(() => api.deleteWorkerScript(account, resource.scriptName));

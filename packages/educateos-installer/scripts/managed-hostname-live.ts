@@ -58,7 +58,8 @@ if (!zone) throw new Error(`zone ${zoneName} is not in account ${accountId}`);
 const managedZone = await managed.findZone(managedAccount, MANAGED_ZONE);
 if (!managedZone) throw new Error(`the managed-zone token cannot see ${MANAGED_ZONE}`);
 
-const context = { accountId, instanceId, domains: await district.listWorkerDomains(accountId), zone };
+// The script names only the router, so no other Worker's hostname is moved to it.
+const context = { accountId, instanceId, domains: await district.listWorkerDomains(accountId), zone, instanceScripts: new Set<string>() };
 const resource = (phase: "release" | "attach"): DesiredManagedHostname => ({
   kind: "managed_hostname",
   key: phase === "release" ? "domain:managed:release" : "domain:managed",

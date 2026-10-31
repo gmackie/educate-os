@@ -41,6 +41,11 @@ export interface PlanStep {
   pendingMigrations?: string[];
   /** The managed hostname only: the operations applying runs, in order. */
   managedOps?: ManagedHostnameOp[];
+  /**
+   * An adopted Worker only: secrets to delete before the upload, because the release sets a
+   * plain-text var of the same name (a ForgeGraph-deployed district keeps CF_ACCESS_AUD as a secret).
+   */
+  deleteSecrets?: string[];
 }
 
 /** Billable products the plan touches, for the operator's cost review. */
@@ -62,7 +67,7 @@ export interface InstallPlan {
   blocked: PlanStep[];
   /** Outputs already known from observation. */
   outputs: ResourceOutputs;
-  /** The zone ID of the base domain, if the zone exists. */
+  /** The zone ID of the base domain, if the install has one and the zone exists. */
   zoneId?: string;
   cost: CostLine[];
 }
@@ -84,6 +89,7 @@ export async function guarded<T>(call: () => Promise<T>): Promise<T> {
 export async function planInstall(api: CloudflareApi, desired: DesiredState, secrets: SecretSource): Promise<InstallPlan> {
   const account = desired.accountId;
   const kinds = new Set(desired.resources.map((r) => r.kind));
+  const zoneName = zoneNameOf(desired);
   const list = <T>(needed: boolean, call: () => Promise<T[]>) => (needed ? guarded(call) : Promise.resolve([] as T[]));
 
   const [scripts, kv, r2, d1, policies, apps, gateways, domains, zone] = await Promise.all([
@@ -95,9 +101,10 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
     guarded(() => api.listAccessApplications(account)),
     list(kinds.has("ai_gateway"), () => api.listAiGateways(account)),
     guarded(() => api.listWorkerDomains(account)),
-    guarded(() => api.findZone(account, zoneNameOf(desired))),
+    zoneName === undefined ? Promise.resolve(undefined) : guarded(() => api.findZone(account, zoneName)),
   ]);
 
+  const instanceScripts = new Set(desired.resources.flatMap((r) => (r.kind === "worker_script" && r.role !== "router" ? [r.scriptName] : [])));
   const outputs: ResourceOutputs = new Map();
   const steps: PlanStep[] = [];
   const workerOwned = new Map<ResourceKey, boolean>();
@@ -178,6 +185,16 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
         }
         const settings = await guarded(() => api.getWorkerSettings(account, resource.scriptName));
         const marker = settings.bindings.find((b) => b.type === "plain_text" && b.name === MARKER_VARS.instance)?.text;
+        if (marker === undefined && resource.adoptable) {
+          const refusal = adoptionRefusal(resource, found.migrationTag);
+          if (refusal) {
+            step("refuse", refusal);
+            break;
+          }
+          workerOwned.set(resource.key, true);
+          steps.push(await planAdoption(resource, found.migrationTag, settings.bindings));
+          break;
+        }
         if (marker !== desired.instanceId) {
           step("refuse", marker
             ? `Worker ${resource.scriptName} belongs to instance ${marker}`
@@ -197,6 +214,16 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
         else if (hasValue) step("create", "secret not set");
         else if (resource.generated) step("create", "secret not set; the installer generates it");
         else step("needs-input", `supply ${resource.secretName} for ${resource.pkgName}`);
+        break;
+      }
+      case "worker_schedules": {
+        if (!workerOwned.get(workerKeyOf(resource))) {
+          step("create", `sets Cron Triggers ${resource.crons.join(", ")}`);
+          break;
+        }
+        const observed = await guarded(() => api.getWorkerSchedules(account, resource.scriptName));
+        const changes = scheduleChanges(resource.crons, observed);
+        step(changes.length > 0 ? "update" : "noop", changes.length > 0 ? `Cron Triggers differ: ${changes.join("; ")}` : "Cron Triggers match");
         break;
       }
       case "worker_retired": {
@@ -227,7 +254,7 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
         break;
       }
       case "managed_hostname": {
-        const managed = await planManagedHostname(api, resource, { accountId: account, instanceId: desired.instanceId, domains, zone });
+        const managed = await planManagedHostname(api, resource, { accountId: account, instanceId: desired.instanceId, domains, zone, instanceScripts });
         step(managed.action, managed.reason, { managedOps: managed.ops });
         break;
       }
@@ -266,6 +293,46 @@ async function planWorker(
 }
 
 /**
+ * Why a Worker deployed outside the installer can't be adopted, or undefined if it can. Its Durable
+ * Objects hold the district's data, so the upload must continue them: the Worker's migration tag
+ * must be in the release's history. A release with migrations needs a tag, since a Worker without
+ * one has no objects to keep and is not this package's deployment.
+ */
+function adoptionRefusal(worker: DesiredWorker, migrationTag: string | undefined): string | undefined {
+  const tags = worker.migrations.map((m) => m.tag);
+  if (tags.length > 0 && migrationTag === undefined) {
+    return `Worker ${worker.scriptName} has no Durable Object migration tag, so it holds none of ${worker.pkgName}'s objects: not adopted`;
+  }
+  if (migrationTag !== undefined && !tags.includes(migrationTag)) {
+    return `Worker ${worker.scriptName} is at Durable Object migration tag ${migrationTag}, which this release's ${worker.pkgName} does not know: not adopted`;
+  }
+  return undefined;
+}
+
+/**
+ * The plan for adopting a Worker deployed outside the installer: one upload of the release over it,
+ * which adds the installer's markers, continues its Durable Object migrations, and keeps its secrets,
+ * except any the release now sets as plain-text vars, which are deleted first.
+ */
+async function planAdoption(worker: DesiredWorker, migrationTag: string | undefined, observed: ObservedBinding[]): Promise<PlanStep> {
+  const plain = new Set(worker.bindings.filter((b) => b.type === "plain_text" || b.type === "json").map((b) => b.name));
+  const deleteSecrets = observed.filter((b) => b.type === "secret_text" && plain.has(b.name)).map((b) => b.name).toSorted();
+  const kept = migrationTag ? `keeps its Durable Objects at migration tag ${migrationTag}` : "has no Durable Objects";
+  const deleting = deleteSecrets.length > 0 ? `; deletes secret(s) ${deleteSecrets.join(", ")}, which the release sets as vars` : "";
+  const serviceChanges = serviceBindingChanges(worker, observed);
+  return {
+    key: worker.key,
+    kind: worker.kind,
+    resource: worker,
+    action: "update",
+    reason: `adopts Worker ${worker.scriptName}, deployed outside the installer: ${kept}${deleting}` +
+      (serviceChanges.length > 0 ? `; ${serviceChanges.join("; ")}` : ""),
+    ...(migrationTag ? { observedMigrationTag: migrationTag } : {}),
+    ...(deleteSecrets.length > 0 ? { deleteSecrets } : {}),
+  };
+}
+
+/**
  * How a Worker's deployed service bindings differ from the desired ones, in operator terms, e.g.
  * `binds AI_CALL_GUARD to educateos-x-educateos-ai-guard (EducateOsAiCallGuard)`. Service binding
  * targets are literal Worker names, so this needs no outputs.
@@ -287,6 +354,20 @@ function describeServiceTarget(binding: Record<string, unknown>): string {
   return `${String(binding.service)}${typeof binding.entrypoint === "string" ? ` (${binding.entrypoint})` : ""}`;
 }
 
+/**
+ * How a Worker's observed Cron Triggers differ from the desired ones, e.g. `adds 0 14 * * SUN`.
+ * Order doesn't matter, and expressions compare as written: an equivalent expression spelled
+ * differently (`0 14 * * 0` for Sundays) reads as a change, which an apply turns into the release's.
+ */
+export function scheduleChanges(desired: readonly string[], observed: readonly string[]): string[] {
+  const want = new Set(desired);
+  const have = new Set(observed);
+  return [
+    ...[...want].filter((cron) => !have.has(cron)).map((cron) => `adds ${cron}`),
+    ...[...have].filter((cron) => !want.has(cron)).map((cron) => `removes ${cron}`),
+  ];
+}
+
 /** The D1 migration ledger table. Holds migration IDs only, never district data. */
 export const D1_LEDGER_TABLE = "_educateos_migrations";
 
@@ -298,10 +379,10 @@ async function appliedD1Migrations(api: CloudflareApi, account: string, database
   return new Set(rows.map((row) => String(row.id)));
 }
 
-function zoneNameOf(desired: DesiredState): string {
+/** The base domain's zone name, or undefined on a managed-only install, which has none. */
+function zoneNameOf(desired: DesiredState): string | undefined {
   const domain = desired.resources.find((r) => r.key === RESOURCE_KEYS.customDomain);
-  if (domain?.kind !== "custom_domain") throw new EducateOsError("validation-failed", "desired state has no custom domain");
-  return domain.zoneName;
+  return domain?.kind === "custom_domain" ? domain.zoneName : undefined;
 }
 
 function workerKeyOf(secret: { dependsOn: ResourceKey[] }): ResourceKey {

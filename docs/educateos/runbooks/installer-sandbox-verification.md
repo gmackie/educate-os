@@ -27,6 +27,7 @@ installer's request shapes and response parsing are checked too.
 | `write.kvNamespace`, `write.r2Bucket`, `write.aiGateway` | create, then delete | The Edit permissions; R2 code 10042 on create. |
 | `write.d1Database`, `write.d1Batch` | create, then delete | Whether a multi-statement `/query` with `params` runs, and whether a failing statement rolls back the earlier ones (`atomic`). The migration ledger depends on both. |
 | `write.workerScript`, `write.workerSecret`, `write.workerVersions` | create, then delete | Upload, secrets, and whether version detail exposes plain-text var values (`plainTextVarsExposed`). Rollback depends on that. |
+| `write.workerSchedules` | set, read, re-upload, clear | Cron Triggers (SCHO-148): the schedules endpoint answers, and a script upload keeps the schedules (`schedulesKeptAcrossUpload`). The installer sets them once and depends on that. |
 | `write.workerDomain` | create, then delete (needs `--zone`) | Whether `PUT /workers/domains` accepts the `environment` field, and the zone permission it needs. |
 | `write.accessPolicy`, `write.accessApplication` | create, then delete (the app needs `--zone`) | Access: Apps and Policies: Edit. |
 

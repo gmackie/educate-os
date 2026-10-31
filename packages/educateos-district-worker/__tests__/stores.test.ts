@@ -164,6 +164,22 @@ describe("DurableObjectWorkshopUserLinkStore", () => {
 });
 
 describe("DurableObjectToolApprovalStore", () => {
+  it("keeps a queued action, its pinned target and digest across a restart", async () => {
+    const object = fresh();
+    const pinned = {
+      ...(action("apr_pinned") as object),
+      target: { resource: { kind: "term", scope: { level: "district", districtId: "dst_northfield" }, classification: "district-internal" }, version: "3" },
+      digest: "b".repeat(64),
+    } as never;
+    await runInDurableObject(object, async (_instance, state) => {
+      expect(await new DurableObjectToolApprovalStore(state.storage).insertUnlessOpen(pinned)).toEqual(pinned);
+    });
+    await evictDurableObject(object);
+    await runInDurableObject(object, async (_instance, state) => {
+      expect(await new DurableObjectToolApprovalStore(state.storage).get("apr_pinned" as never)).toEqual(pinned);
+    });
+  });
+
   it("returns the open action for a repeated call, and lets one of two transitions win", async () => {
     await runInDurableObject(fresh(), async (_instance, state) => {
       const store = new DurableObjectToolApprovalStore(state.storage);

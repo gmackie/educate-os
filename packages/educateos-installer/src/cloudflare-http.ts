@@ -65,6 +65,7 @@ const ScriptWire = z.object({ id: z.string(), migration_tag: z.string().optional
 const BindingWire = z.looseObject({ type: z.string(), name: z.string(), text: z.string().optional() });
 const SettingsWire = z.object({ bindings: z.array(BindingWire).default([]) });
 const SecretWire = z.object({ name: z.string() });
+const SchedulesWire = z.object({ schedules: z.array(z.object({ cron: z.string() })).default([]) });
 const VersionSummary = z.object({ id: z.string(), metadata: z.object({ created_on: z.string() }) });
 const VersionDetail = z.object({ resources: z.object({ bindings: z.array(BindingWire).default([]) }) });
 const DomainWire = z.object({ id: z.string(), hostname: z.string(), service: z.string(), zone_id: z.string() });
@@ -298,6 +299,10 @@ export class CloudflareHttpApi implements CloudflareApi {
     return result?.jwt;
   }
 
+  async deleteWorkerSecret(accountId: string, scriptName: string, name: string) {
+    await this.#result("deleteWorkerSecret", "DELETE", `${scriptPath(accountId, scriptName)}/secrets/${seg(name)}`);
+  }
+
   async listWorkerSecrets(accountId: string, scriptName: string) {
     const secrets = z.array(SecretWire).parse(
       await this.#result("listWorkerSecrets", "GET", `${scriptPath(accountId, scriptName)}/secrets`),
@@ -308,6 +313,20 @@ export class CloudflareHttpApi implements CloudflareApi {
   async putWorkerSecret(accountId: string, scriptName: string, name: string, value: string) {
     await this.#result("putWorkerSecret", "PUT", `${scriptPath(accountId, scriptName)}/secrets`, {
       json: { name, text: value, type: "secret_text" },
+    });
+  }
+
+  async getWorkerSchedules(accountId: string, scriptName: string) {
+    const result = SchedulesWire.parse(
+      await this.#result("getWorkerSchedules", "GET", `${scriptPath(accountId, scriptName)}/schedules`),
+    );
+    return result.schedules.map((s) => s.cron);
+  }
+
+  async putWorkerSchedules(accountId: string, scriptName: string, crons: string[]) {
+    // The body is the whole list, which replaces the Worker's schedules (as `wrangler deploy` does).
+    await this.#result("putWorkerSchedules", "PUT", `${scriptPath(accountId, scriptName)}/schedules`, {
+      json: crons.map((cron) => ({ cron })),
     });
   }
 

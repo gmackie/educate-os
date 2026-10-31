@@ -65,14 +65,16 @@ interface Script {
   migrationTag?: string;
   secrets: Map<string, string>;
   assetsConfig?: Record<string, unknown>;
+  /** Cron Triggers. Not versioned: an upload or a rollback leaves them as they are. */
+  schedules: string[];
 }
 
 const MUTATIONS = new Set([
-  "uploadWorkerScript", "deleteWorkerScript", "createAssetsUploadSession", "uploadAssets", "putWorkerSecret", "deployWorkerVersion",
+  "uploadWorkerScript", "deleteWorkerScript", "createAssetsUploadSession", "uploadAssets", "putWorkerSecret", "putWorkerSchedules", "deployWorkerVersion",
   "attachWorkerDomain", "createKvNamespace", "createR2Bucket", "createD1Database", "createAccessPolicy",
   "updateAccessPolicy", "createAccessApplication", "updateAccessApplication", "createAiGateway",
   "createDnsRecord", "updateDnsRecord", "deleteDnsRecord", "setFallbackOrigin", "createCustomHostname",
-  "deleteCustomHostname", "createWorkerRoute", "deleteWorkerRoute", "detachWorkerDomain",
+  "deleteCustomHostname", "createWorkerRoute", "deleteWorkerRoute", "detachWorkerDomain", "deleteWorkerSecret",
 ]);
 
 const LEDGER_INSERT = /INSERT INTO _educateos_migrations \(id, sha256\) VALUES \(\?, \?\)\s*$/;
@@ -205,6 +207,7 @@ export class FakeCloudflare {
       migrationTag: script.migrationTag,
       versions: script.versions.length,
       bindings: active.bindings,
+      schedules: [...script.schedules],
       /** The static-assets config of the last upload that carried assets. */
       assetsConfig: script.assetsConfig,
     };
@@ -224,7 +227,14 @@ export class FakeCloudflare {
   seedWorker(name: string, vars: Record<string, string> = {}): void {
     const bindings = Object.entries(vars).map(([k, text]) => ({ type: "plain_text", name: k, text }));
     const version = { id: this.#id(), createdOn: this.#timestamp(), bindings };
-    this.#scripts.set(name, { versions: [version], activeVersionId: version.id, secrets: new Map() });
+    this.#scripts.set(name, { versions: [version], activeVersionId: version.id, secrets: new Map(), schedules: [] });
+  }
+
+  /** Replaces a Worker's Cron Triggers, as a dashboard edit would. */
+  editWorkerSchedules(name: string, crons: string[]): void {
+    const script = this.#scripts.get(name);
+    if (!script) throw new Error(`no Worker ${name}`);
+    script.schedules = [...crons];
   }
 
   /**
@@ -235,6 +245,20 @@ export class FakeCloudflare {
     const script = this.#scripts.get(name);
     if (!script) throw new Error(`no Worker ${name}`);
     this.#addVersion(script, edit(activeVersion(script).bindings.map((b) => ({ ...b }))), script.migrationTag);
+  }
+
+  /**
+   * Adds a Worker deployed outside the installer, as a Wrangler deploy leaves one: its secrets, and
+   * the Durable Object migration tag it reached.
+   */
+  seedDeployedWorker(name: string, options: { vars?: Record<string, string>; secrets?: Record<string, string>; migrationTag?: string }): void {
+    this.seedWorker(name, options.vars);
+    const script = this.#scripts.get(name)!;
+    for (const [secret, value] of Object.entries(options.secrets ?? {})) script.secrets.set(secret, value);
+    if (options.migrationTag) {
+      script.migrationTag = options.migrationTag;
+      activeVersion(script).migrationTag = options.migrationTag;
+    }
   }
 
   /** Adds an Access application the installer did not create. */
@@ -430,11 +454,25 @@ export class FakeCloudflare {
       this.#completions.add(completion);
       return completion;
     },
+    deleteSecret: (name: string, secret: string) => {
+      const script = this.#script(name, "deleteWorkerSecret");
+      // A missing secret answers 404; its error code is unverified, so the fake reports none.
+      if (!script.secrets.delete(secret)) throw new CloudflareApiError("deleteWorkerSecret", 404, []);
+      this.#addVersion(script, activeVersion(script).bindings, script.migrationTag);
+    },
     secrets: (name: string) => [...this.#script(name, "listWorkerSecrets").secrets.keys()],
     putSecret: (name: string, secret: string, value: string) => {
       const script = this.#script(name, "putWorkerSecret");
       script.secrets.set(secret, value);
       this.#addVersion(script, activeVersion(script).bindings, script.migrationTag);
+    },
+    schedules: (name: string) => [...this.#script(name, "getWorkerSchedules").schedules],
+    putSchedules: (name: string, crons: string[]) => {
+      const script = this.#script(name, "putWorkerSchedules");
+      // Cloudflare refuses an expression it can't parse with HTTP 400; its error code is unverified,
+      // so the fake checks only the field count and reports no code.
+      if (crons.some((cron) => cron.trim().split(/\s+/).length !== 5)) throw new CloudflareApiError("putWorkerSchedules", 400, []);
+      script.schedules = [...crons];
     },
     versions: (name: string) =>
       this.#script(name, "listWorkerVersions").versions.map((v) => ({
@@ -543,6 +581,11 @@ export class FakeCloudflare {
     if (!upload.modules.some((m) => m.name === metadata.main_module)) throw new CloudflareApiError("uploadWorkerScript", 400, [10021]);
 
     const existing = this.#scripts.get(name);
+    // A binding named like a secret the upload keeps is assumed refused, as two bindings of one name
+    // (unverified: the installer deletes such a secret first, so it never depends on this either way).
+    if (existing && metadata.keep_bindings.includes("secret_text") && metadata.bindings.some((b) => existing.secrets.has(b.name))) {
+      throw new CloudflareApiError("uploadWorkerScript", 400, []);
+    }
     const migrations = metadata.migrations;
     if (migrations) {
       // Durable Object migrations must chain from the script's current tag.
@@ -552,7 +595,7 @@ export class FakeCloudflare {
     const bindings = metadata.bindings.map((b) => ({ ...b }) as ObservedBinding);
     if (!existing) {
       const script: Script = {
-        versions: [], activeVersionId: "", secrets: new Map(), ...(migrationTag ? { migrationTag } : {}),
+        versions: [], activeVersionId: "", secrets: new Map(), schedules: [], ...(migrationTag ? { migrationTag } : {}),
         ...(metadata.assets ? { assetsConfig: structuredClone(metadata.assets.config) } : {}),
       };
       this.#addVersion(script, bindings, migrationTag);
@@ -675,8 +718,11 @@ class FakeCloudflareApi implements CloudflareApi {
   uploadAssets(a: string, jwt: string, files: Map<string, Uint8Array<ArrayBuffer>>) {
     return this.#call(a, "uploadAssets", () => this.#fake.op.uploadAssets(jwt, files));
   }
+  deleteWorkerSecret(a: string, s: string, n: string) { return this.#call(a, "deleteWorkerSecret", () => this.#fake.op.deleteSecret(s, n)); }
   listWorkerSecrets(a: string, s: string) { return this.#call(a, "listWorkerSecrets", () => this.#fake.op.secrets(s)); }
   putWorkerSecret(a: string, s: string, n: string, v: string) { return this.#call(a, "putWorkerSecret", () => this.#fake.op.putSecret(s, n, v)); }
+  getWorkerSchedules(a: string, s: string) { return this.#call(a, "getWorkerSchedules", () => this.#fake.op.schedules(s)); }
+  putWorkerSchedules(a: string, s: string, c: string[]) { return this.#call(a, "putWorkerSchedules", () => this.#fake.op.putSchedules(s, c)); }
   listWorkerVersions(a: string, s: string) { return this.#call(a, "listWorkerVersions", () => this.#fake.op.versions(s)); }
   deployWorkerVersion(a: string, s: string, v: string) { return this.#call(a, "deployWorkerVersion", () => this.#fake.op.deploy(s, v)); }
   listWorkerDomains(a: string) { return this.#call(a, "listWorkerDomains", () => this.#fake.op.domains()); }

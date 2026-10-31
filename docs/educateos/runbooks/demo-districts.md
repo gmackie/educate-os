@@ -36,6 +36,9 @@ They were not installed with the installer. `@educateos/installer` installs a wh
 hostname aliases the router, and it needs a district-owned `baseDomain` outside educateos.io. SCHO-243
 is the follow-up to make it install a district Worker at a managed hostname. When
 that and the guided flow (SCHO-206) land, re-run one demo district through the guided flow.
+The installer adopts the deployed Worker under its own name with `services["educateos-district-worker"].scriptName`
+(see [installer-permissions.md](../installer-permissions.md#adopting-a-worker-deployed-outside-the-installer)).
+It does not adopt the Access applications below, and the ForgeGraph target must go first.
 
 cedarvalley offers the "Clever (EducateOS demo)" login method at Access, but the district resolves
 every sign-in as an Access subject: Clever SSO in the district (`DISTRICT_CONFIG.cleverSso`, SCHO-203)

@@ -25,6 +25,8 @@ function fakeCloudflare(options: FakeOptions = {}) {
   const requests: { method: string; path: string; bearer: string }[] = [];
   const live = new Set<string>();
   const tables = new Map<string, number>();
+  // Schedules survive a re-upload here, as the installer assumes; the live probe checks it.
+  let schedules: { cron: string }[] = [];
   let nextId = 1;
   const create = (kind: string, id: string) => {
     live.add(`${kind}:${id}`);
@@ -85,6 +87,11 @@ function fakeCloudflare(options: FakeOptions = {}) {
     if (path.startsWith(`${a}/d1/database/`) && method === "DELETE") return remove("d1", path.split("/").pop()!);
     if (path === `${a}/workers/scripts/${PROBE}` && method === "PUT") return ok(create("worker", PROBE));
     if (path === `${a}/workers/scripts/${PROBE}` && method === "DELETE") return remove("worker", PROBE);
+    if (path === `${a}/workers/scripts/${PROBE}/schedules` && method === "PUT") {
+      schedules = JSON.parse(String(init!.body)) as { cron: string }[];
+      return ok({ schedules });
+    }
+    if (path === `${a}/workers/scripts/${PROBE}/schedules`) return ok({ schedules });
     if (path === `${a}/workers/scripts/${PROBE}/secrets` && method === "PUT") return ok(null);
     if (path === `${a}/workers/scripts/${PROBE}/secrets`) return ok([{ name: "EDUCATEOS_PROBE_SECRET" }]);
     if (path === `${a}/workers/scripts/${PROBE}/versions`) return ok({ items: [{ id: "v1", metadata: { created_on: "2026-10-21T00:00:00Z" } }] });
@@ -145,6 +152,8 @@ describe("verifyAccount", () => {
     expect(report.cleanup.map((c) => c.resource)).toEqual(expect.arrayContaining([`worker:${PROBE}`, `r2:${PROBE}`, `ai-gateway:${PROBE}`, `domain:${PROBE}.sandbox.example`]));
     expect(report.probes.find((p) => p.id === "write.d1Batch")?.observation).toMatchObject({ multiStatementWithParamsAccepted: true, atomic: true });
     expect(report.probes.find((p) => p.id === "write.workerVersions")?.observation).toMatchObject({ plainTextVarsExposed: true });
+    expect(report.probes.find((p) => p.id === "write.workerSchedules")?.observation)
+      .toEqual({ schedulesSet: true, schedulesKeptAcrossUpload: true, schedulesCleared: true });
   });
 
   it("detects a D1 batch that is not atomic", async () => {
