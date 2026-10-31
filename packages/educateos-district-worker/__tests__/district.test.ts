@@ -357,7 +357,7 @@ describe("the district Worker", () => {
     expect(await env.GUARD.guardSubject({ workshopUser })).toMatchObject({ kind: "student", roles: [], principal: { principalId: NF.amara } });
   });
 
-  it("queues a school tool's write for a person, and decides it after a restart", async () => {
+  it("answers a school tool's read at once, and refuses a write the roster owns before queueing it", async () => {
     const tools = await env.TOOLS.listTools();
     expect(tools.map((t) => t.name)).toContain("create_term");
 
@@ -373,15 +373,12 @@ describe("the district Worker", () => {
     expect(JSON.stringify((mine as { value: unknown }).value)).toContain(NF.eng9);
     expect(await env.TOOLS.callTool(admin!, "list_terms", {})).toMatchObject({ status: "ok" });
 
-    // Every directory change waits for a person.
-    const queued = await env.TOOLS.callTool(admin!, "create_term", { name: "Spring 2027", startsOn: "2027-01-25", endsOn: "2027-06-11" });
-    expect(queued).toMatchObject({ status: "approval-required" });
-    const approvalId = (queued as { approvalId: string }).approvalId;
-
-    // The queue is in the district's storage, so the decision survives a restart, and is final.
-    await evictDurableObject(district());
-    expect(await env.TOOLS.declineChange(admin!, approvalId, "Terms come from the roster.")).toMatchObject({ status: "declined", approvalId });
-    expect(await env.TOOLS.approveChange(admin!, approvalId)).toMatchObject({ status: "error" });
+    // This district's roster owns its directory, so an agent's directory change is refused naming the
+    // owner before anything is queued for a person (SCHO-175).
+    expect(await env.TOOLS.callTool(admin!, "create_term", { name: "Spring 2027", startsOn: "2027-01-25", endsOn: "2027-06-11" })).toMatchObject({
+      status: "error",
+      error: { code: "conflict", message: expect.stringContaining("owned by external:oneroster") },
+    });
   });
 
   it("serves the /api surface to the gatekeeper's verified principal, over its entrypoint", async () => {

@@ -3,6 +3,8 @@ import { EducateOsError, type AuthorityMap } from "@educateos/contracts";
 import {
   ACADEMIC_OPERATIONS,
   AcademicDirectory,
+  assertOperationRoutable,
+  bindingsFromAuthorityMap,
   invokeOperation,
   type AcademicStore,
 } from "@educateos/academics";
@@ -42,15 +44,21 @@ export function createAcademicsWithPolicy(options: AcademicsWithPolicyOptions): 
     ...(options.rules === undefined ? {} : { rules: options.rules }),
   });
   const directory = new AcademicDirectory({ store: options.store, authority: options.authority, authorizer: engine });
-  return { engine, directory, tools: new SchoolToolRunner({ tools: academicSchoolTools(options.store, directory), engine }) };
+  return { engine, directory, tools: new SchoolToolRunner({ tools: academicSchoolTools(options.store, directory, options.authority), engine }) };
 }
 
 /**
  * Each academic directory operation exposed to `mcp-agent` as a school tool, the rest left out. The runner authorizes `invoke-tool` on the
  * directory's district, so a principal from anywhere else is refused before the operation runs;
  * the operation then authorizes the record it touches through the directory's own authorizer.
+ *
+ * Each tool carries its operation's approval policy. Given the directory's `authority`, a tool
+ * whose operation writes also rechecks its domain's source of record before it runs, including
+ * when a queued call is approved, so a write the roster has since taken over is refused naming
+ * the owner rather than applied.
  */
-export function academicSchoolTools(store: AcademicStore, directory: AcademicDirectory): SchoolTool[] {
+export function academicSchoolTools(store: AcademicStore, directory: AcademicDirectory, authority?: AuthorityMap): SchoolTool[] {
+  const bindings = authority === undefined ? undefined : bindingsFromAuthorityMap(authority);
   return Object.values(ACADEMIC_OPERATIONS).filter((operation) => operation.channels.includes("mcp-agent")).map((operation) => {
     if (!(operation.input instanceof z.ZodObject)) throw new Error(`operation ${operation.name} input is not an object`);
     return defineSchoolTool({
@@ -60,6 +68,10 @@ export function academicSchoolTools(store: AcademicStore, directory: AcademicDir
       action: "invoke-tool",
       // A read changes nothing, so an agent's call of it is not queued for confirmation (SCHO-285).
       effect: operation.effect,
+      approval: operation.approval,
+      ...(bindings === undefined || operation.effect === "read" ? {} : {
+        recheck: async () => assertOperationRoutable(bindings, operation.authority, { name: operation.name, writes: true }),
+      }),
       resource: async () => {
         const { district } = (await store.load()).snapshot;
         return {

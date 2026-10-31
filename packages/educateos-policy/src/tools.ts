@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   EducateOsError,
   type Action,
+  type ApprovalPolicy,
   type AuthorizationRequest,
   type RequestChannel,
   type ResourceRef,
@@ -13,8 +14,10 @@ import {
 import {
   DeclineReason,
   ToolApprovalId,
+  toolActionDigest,
   toolCallKey,
   type PendingToolAction,
+  type PinnedToolTarget,
   type ToolApprovalNeed,
   type ToolApprovalStore,
 } from "./approvals.ts";
@@ -39,6 +42,11 @@ export interface ToolTarget {
   resource: ResourceRef;
   /** The state of the term it belongs to. */
   termState?: TermState;
+  /**
+   * The version of the resource, such as a revision number, when the tool can tell. A queued call
+   * pins it, and runs only against the same version.
+   */
+  version?: string;
 }
 
 /** The definition {@link defineSchoolTool} accepts. */
@@ -62,6 +70,18 @@ export interface SchoolToolDefinition<S extends z.ZodObject, R> {
    * still decided by the engine like any other, and an approval the engine requires still applies.
    */
   readOnly?: boolean;
+  /**
+   * Who must agree before an allowed call runs, from its operation descriptor. `approver` queues
+   * every call for someone the policy lets `approve` the target, even one the engine allows
+   * outright. Other values change nothing here: `confirm-agent` is what `confirmWrites` does.
+   */
+  approval?: ApprovalPolicy;
+  /**
+   * Checks what must still hold when the call runs besides authorization, such as that its
+   * domain's source of record still accepts the write. Runs before the handler, both when the call
+   * is made and when a queued call is approved. Throws an `EducateOsError` to refuse.
+   */
+  recheck?(input: z.output<S>, context: SchoolToolContext): Promise<void>;
   /**
    * Resolves the target from validated input and the trusted context, by looking up stored
    * records. Returns `undefined` when there is no such resource, which the caller sees exactly as
@@ -91,6 +111,10 @@ export interface SchoolTool {
   readonly effect?: OperationEffect;
   /** Only reads: never queued for confirmation (see {@link SchoolToolDefinition.readOnly}). */
   readonly readOnly: boolean;
+  /** Who must agree before an allowed call runs (see {@link SchoolToolDefinition.approval}). */
+  readonly approval?: ApprovalPolicy;
+  /** Checks what must still hold when the call runs (see {@link SchoolToolDefinition.recheck}). */
+  recheck?(input: unknown, context: SchoolToolContext): Promise<void>;
   /** Resolves the target. */
   resource(input: unknown, context: SchoolToolContext): Promise<ToolTarget | undefined>;
   /** Does the work. */
@@ -114,13 +138,16 @@ export function defineSchoolTool<S extends z.ZodObject, R>(definition: SchoolToo
   if (definition.effect !== undefined && definition.readOnly !== undefined) {
     throw new Error(`tool ${definition.name} must give readOnly or effect, not both`);
   }
-  const { name, description, inputSchema, action, effect, annotations } = definition;
+  const { name, description, inputSchema, action, effect, approval, annotations } = definition;
+  const { recheck } = definition;
   return {
     name,
     description,
     inputSchema,
     action,
     ...(effect === undefined ? {} : { effect }),
+    ...(approval === undefined ? {} : { approval }),
+    ...(recheck === undefined ? {} : { recheck: (input: unknown, context: SchoolToolContext) => recheck(input as z.output<S>, context) }),
     readOnly: effect === undefined ? definition.readOnly === true : effect === "read",
     ...(annotations === undefined ? {} : { annotations }),
     // The runner passes only what `inputSchema` produced.
@@ -264,11 +291,17 @@ export class SchoolToolRunner {
       const { decision } = await this.#engine.decide(requestFor(context, tool.action, target), { correlationId });
       if (decision.effect === "require-approval") {
         if (this.#approvals === undefined) return { status: "approval-required", correlationId };
-        return await this.#enqueue(context, tool, parsed.data, "approval");
+        return await this.#enqueue(context, tool, parsed.data, "approval", target);
       }
       if (decision.effect === "deny") return await this.#refusal(context, tool.action, target);
+      await tool.recheck?.(parsed.data, context);
+      // An operation whose every call needs an approver waits for one, however the engine decided.
+      if (tool.approval === "approver") {
+        if (this.#approvals === undefined) return { status: "approval-required", correlationId };
+        return await this.#enqueue(context, tool, parsed.data, "approval", target);
+      }
       if (options.confirmWrites === true && !READ_LIKE.has(tool.action) && !tool.readOnly) {
-        return await this.#enqueue(context, tool, parsed.data, "confirmation");
+        return await this.#enqueue(context, tool, parsed.data, "confirmation", target);
       }
       return { status: "ok", value: await tool.handler(parsed.data, context), correlationId };
     } catch (error) {
@@ -284,14 +317,29 @@ export class SchoolToolRunner {
    * runs, the requester's own call is decided again against current facts, so a change the
    * requester may no longer make is declined rather than applied. A `confirmation` is decided by
    * the requester; an `approval` by someone the engine lets `approve` the resource.
+   *
+   * The action runs only against the target it was queued for: one that now resolves to another
+   * record or version is declined. Passing the `digest` the decider reviewed runs it only if it is
+   * still that action, and the tool's `recheck` (such as its source of record) must still pass.
    */
-  async approve(session: DecisionSession, approvalId: unknown): Promise<ToolDecisionOutcome> {
+  async approve(session: DecisionSession, approvalId: unknown, options: { digest?: string } = {}): Promise<ToolDecisionOutcome> {
     const correlationId = crypto.randomUUID();
     const found = await this.#openForDecision(session, approvalId, correlationId);
     if ("outcome" in found) return found.outcome;
     const { action, tool, input, target } = found;
     if (!(await this.#mayDecide(session, action, target, correlationId))) {
       return this.#deciderRefusal(session, action, correlationId);
+    }
+    if (options.digest !== undefined && options.digest !== action.digest) {
+      return failure("conflict", "This is not the request you reviewed. Review it again.", correlationId);
+    }
+    const requester: SchoolToolContext = { principal: action.subject, channel: action.channel, correlationId: action.correlationId };
+    try {
+      await tool.recheck?.(input, requester);
+    } catch (error) {
+      if (!(error instanceof EducateOsError)) throw error;
+      await this.#declineAutomatically(action, "The change can no longer be made here.");
+      return { status: "error", error: { ...error.toBody(), correlationId } };
     }
 
     const approvals = this.#queue();
@@ -379,16 +427,20 @@ export class SchoolToolRunner {
     return this.#approvals;
   }
 
-  async #enqueue(context: SchoolToolContext, tool: SchoolTool, input: unknown, needs: ToolApprovalNeed): Promise<SchoolToolOutcome> {
+  async #enqueue(context: SchoolToolContext, tool: SchoolTool, input: unknown, needs: ToolApprovalNeed, target: ToolTarget): Promise<SchoolToolOutcome> {
     const approvals = this.#queue();
     const now = approvals.now();
     const call = { subject: context.principal, channel: context.channel, tool: tool.name, input: input as PendingToolAction["input"] };
+    const idempotencyKey = await toolCallKey(call);
+    const pinned = pin(target);
     const candidate: PendingToolAction = {
       ...call,
       id: ToolApprovalId.parse(`apr_${crypto.randomUUID()}`),
       correlationId: context.correlationId,
       needs,
-      idempotencyKey: await toolCallKey(call),
+      idempotencyKey,
+      target: pinned,
+      digest: await toolActionDigest({ idempotencyKey, target: pinned }),
       createdAt: now.toISOString(),
       expiresAt: new Date(now.getTime() + approvals.ttlMs).toISOString(),
       state: "pending",
@@ -432,6 +484,13 @@ export class SchoolToolRunner {
       // The tool, its schema or the resource has gone since the call was queued: it cannot run.
       await this.#declineAutomatically(action, "The request can no longer be carried out.");
       return isRequester(session, action) ? { outcome: failure("conflict", "The request can no longer be carried out.", correlationId) } : notFound;
+    }
+    // It runs only against the record, and the version of it, that it was queued for and reviewed against.
+    if (!(await pinHolds(action, resolved.target))) {
+      await this.#declineAutomatically(action, "What the request would change has changed since it was made.");
+      return isRequester(session, action)
+        ? { outcome: failure("conflict", "What the request would change has changed since it was made.", correlationId) }
+        : notFound;
     }
     // The requester's call, decided again now: a change they may no longer make is not applied.
     const requester: SchoolToolContext = { principal: action.subject, channel: action.channel, correlationId };
@@ -516,6 +575,23 @@ export class SchoolToolRunner {
     const { decision } = await this.#engine.decide(requestFor(context, "read", target), { correlationId: context.correlationId });
     return decision.effect === "allow";
   }
+}
+
+/** The target a queued call pins: its resource and version, as JSON would store them. */
+function pin(target: ToolTarget): PinnedToolTarget {
+  return JSON.parse(JSON.stringify({ resource: target.resource, ...(target.version === undefined ? {} : { version: target.version }) })) as PinnedToolTarget;
+}
+
+/**
+ * Whether a queued action still names what it was queued for: its stored call still has its key,
+ * and that key with the target as it resolves now gives the stored digest. An action queued
+ * before pinning has neither target nor digest, and holds.
+ */
+async function pinHolds(action: PendingToolAction, target: ToolTarget): Promise<boolean> {
+  if (action.target === undefined && action.digest === undefined) return true;
+  if (action.target === undefined || action.digest === undefined) return false;
+  const key = await toolCallKey(action);
+  return key === action.idempotencyKey && (await toolActionDigest({ idempotencyKey: key, target: pin(target) })) === action.digest;
 }
 
 function requestFor(context: SchoolToolContext, action: Action, target: ToolTarget): AuthorizationRequest {
