@@ -75,6 +75,8 @@ export interface TestDistrict {
   idp: TestIdentityProvider;
   audit: InMemoryPolicyAuditLog;
   directory: DistrictDirectorySnapshot;
+  /** The district's in-memory stores, for tests that compose other surfaces over the same records. */
+  stores: ReturnType<typeof inMemoryDistrictStores>;
   /** A token for the principal with this ID. */
   tokenFor(principalId: string): string;
   /** Calls a route as `token` and expects success, returning the schema-checked body. */
@@ -168,7 +170,7 @@ export async function bootDistrict(
     return ROUTES[name].response.parse(result.body) as RouteResponse<N>;
   };
 
-  return { app, idp, audit, directory, tokenFor, ok, call };
+  return { app, idp, audit, directory, stores, tokenFor, ok, call };
 }
 
 /** Expects a call to have failed with `status` and error `code`. */

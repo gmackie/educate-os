@@ -129,6 +129,7 @@ import {
   StudentAttemptView,
   StudentQuizView,
 } from "@educateos/quizzes";
+import type { AcademicOperationName } from "@educateos/academics";
 import { CoursePatch, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, PrincipalPatch, SchoolPatch, TermPatch } from "@educateos/academics";
 import { EvidenceContract } from "@educateos/registry";
 import { AssessmentReport, IdempotencyKey, RubricDraft, RubricRelease, RunError, RunState } from "@educateos/assessment-ci";
@@ -180,6 +181,12 @@ export interface RouteSpec {
   readonly response: z.ZodType;
   /** The success status. Defaults to 200. */
   readonly status?: 200 | 201;
+  /**
+   * The academic operation the route runs (SCHO-173). Its path parameters and body together are
+   * the operation's input, its response is the operation's output, and the server runs it through
+   * `invokeOperation` exactly as an agent's tool call runs it, with no handler of its own.
+   */
+  readonly operation?: AcademicOperationName;
 }
 
 /** A response type the domain package declares as an interface rather than a schema. */
@@ -1380,33 +1387,33 @@ export const ROUTES = {
     params: params({ offeringId: OfferingId }), response: CartridgeExportBody,
   }),
   "admin.authoring": route({ method: "GET", path: "/api/admin/authoring", surface: "admin", response: AuthoringDirectoryBody }),
-  "admin.createSchool": route({ method: "POST", path: "/api/admin/schools", surface: "admin", status: 201, body: NewSchool, response: School }),
+  "admin.createSchool": route({ operation: "create_school", method: "POST", path: "/api/admin/schools", surface: "admin", status: 201, body: NewSchool, response: School }),
   "admin.updateSchool": route({
-    method: "POST", path: "/api/admin/schools/:schoolId", surface: "admin", params: params({ schoolId: SchoolId }), body: SchoolPatch, response: School,
+    operation: "update_school", method: "POST", path: "/api/admin/schools/:schoolId", surface: "admin", params: params({ schoolId: SchoolId }), body: SchoolPatch, response: School,
   }),
-  "admin.createTerm": route({ method: "POST", path: "/api/admin/terms", surface: "admin", status: 201, body: NewTerm, response: AcademicTerm }),
+  "admin.createTerm": route({ operation: "create_term", method: "POST", path: "/api/admin/terms", surface: "admin", status: 201, body: NewTerm, response: AcademicTerm }),
   "admin.updateTerm": route({
-    method: "POST", path: "/api/admin/terms/:termId", surface: "admin", params: params({ termId: TermId }), body: TermPatch, response: AcademicTerm,
+    operation: "update_term", method: "POST", path: "/api/admin/terms/:termId", surface: "admin", params: params({ termId: TermId }), body: TermPatch, response: AcademicTerm,
   }),
   "admin.transitionTerm": route({
-    method: "POST", path: "/api/admin/terms/:termId/transition", surface: "admin",
+    operation: "transition_term", method: "POST", path: "/api/admin/terms/:termId/transition", surface: "admin",
     params: params({ termId: TermId }), body: z.strictObject({ to: TermState }), response: AcademicTerm,
   }),
-  "admin.createCourse": route({ method: "POST", path: "/api/admin/courses", surface: "admin", status: 201, body: NewCourse, response: CatalogCourse }),
+  "admin.createCourse": route({ operation: "create_course", method: "POST", path: "/api/admin/courses", surface: "admin", status: 201, body: NewCourse, response: CatalogCourse }),
   "admin.updateCourse": route({
-    method: "POST", path: "/api/admin/courses/:courseId", surface: "admin", params: params({ courseId: CourseId }), body: CoursePatch, response: CatalogCourse,
+    operation: "update_course", method: "POST", path: "/api/admin/courses/:courseId", surface: "admin", params: params({ courseId: CourseId }), body: CoursePatch, response: CatalogCourse,
   }),
   "admin.archiveCourse": route({
-    method: "POST", path: "/api/admin/courses/:courseId/archived", surface: "admin",
+    operation: "set_course_archived", method: "POST", path: "/api/admin/courses/:courseId/archived", surface: "admin",
     params: params({ courseId: CourseId }), body: z.strictObject({ archived: z.boolean() }), response: CatalogCourse,
   }),
-  "admin.createOffering": route({ method: "POST", path: "/api/admin/offerings", surface: "admin", status: 201, body: NewOffering, response: CourseOffering }),
+  "admin.createOffering": route({ operation: "create_offering", method: "POST", path: "/api/admin/offerings", surface: "admin", status: 201, body: NewOffering, response: CourseOffering }),
   "admin.updateOffering": route({
-    method: "POST", path: "/api/admin/offerings/:offeringId", surface: "admin",
+    operation: "update_offering", method: "POST", path: "/api/admin/offerings/:offeringId", surface: "admin",
     params: params({ offeringId: OfferingId }), body: OfferingPatch, response: CourseOffering,
   }),
   "admin.archiveOffering": route({
-    method: "POST", path: "/api/admin/offerings/:offeringId/archived", surface: "admin",
+    operation: "set_offering_archived", method: "POST", path: "/api/admin/offerings/:offeringId/archived", surface: "admin",
     params: params({ offeringId: OfferingId }), body: z.strictObject({ archived: z.boolean() }), response: CourseOffering,
   }),
   "admin.offeringRoster": route({
@@ -1414,7 +1421,7 @@ export const ROUTES = {
     params: params({ offeringId: OfferingId }), response: z.array(RosterEntryBody),
   }),
   "admin.enroll": route({
-    method: "POST", path: "/api/admin/offerings/:offeringId/enrollments", surface: "admin", status: 201,
+    operation: "create_enrollment", method: "POST", path: "/api/admin/offerings/:offeringId/enrollments", surface: "admin", status: 201,
     params: params({ offeringId: OfferingId }), body: NewEnrollment.omit({ offeringId: true }), response: Enrollment,
   }),
   "admin.unenroll": route({
@@ -1804,6 +1811,8 @@ export const ROUTES = {
 export type Routes = typeof ROUTES;
 /** A route name. */
 export type RouteName = keyof Routes;
+/** The routes that run an academic operation and have no handler of their own (SCHO-173). */
+export type OperationRouteName = { [N in RouteName]: Routes[N] extends { operation: AcademicOperationName } ? N : never }[RouteName];
 
 type SchemaOutput<S> = S extends z.ZodType ? z.output<S> : undefined;
 /** A part the caller may omit when every one of its fields is optional. */
