@@ -1,0 +1,69 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+.mp{font-family:var(--font-sans);color:var(--foreground,#202124);line-height:1.5;font-size:14px}
+.mp h2{font-size:16px;margin:22px 0 8px}
+.mp .meta{color:var(--muted-foreground,#666);font-size:12px;margin-bottom:10px}
+.mp .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--info,#2563eb);color:var(--info-foreground,#fff);margin-right:6px}
+.mp .lead{background:var(--accent-surface,#eef);color:var(--accent-surface-foreground,inherit);border-left:3px solid var(--accent,#2563eb);padding:10px 14px;border-radius:var(--radius,8px)}
+.mp .tl{list-style:none;padding:0;margin:0;position:relative}
+.mp .tl:before{content:"";position:absolute;left:11px;top:6px;bottom:6px;width:2px;background:var(--border,#ddd)}
+.mp .tl li{position:relative;padding:0 0 14px 34px}
+.mp .dot{position:absolute;left:4px;top:4px;width:16px;height:16px;border-radius:50%;background:var(--card,#fff);border:3px solid var(--border,#ccc)}
+.mp li.now .dot{border-color:var(--accent,#2563eb)}
+.mp .ph{font-weight:700}
+.mp .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.mp .chip{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--secondary,#f1f1f1);color:var(--secondary-foreground,inherit)}
+.mp .p0{background:var(--destructive-surface,#fde8e8)}
+.mp .done{background:var(--success,#16a34a);color:var(--success-foreground,#fff)}
+.mp .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.mp .card{border:1px solid var(--border,#ddd);border-radius:var(--radius,8px);padding:10px 12px;background:var(--card,#fff)}
+.mp .rec{border:2px solid var(--accent,#2563eb)}
+.mp table{border-collapse:collapse;width:100%;font-size:12.5px}
+.mp td,.mp th{border-bottom:1px solid var(--border,#ddd);padding:5px 6px;text-align:left;vertical-align:top}
+.mp .wrap{overflow-x:auto}
+@media (prefers-reduced-motion:no-preference){
+ .mp .tl li{animation:mpin .4s ease-out both}
+ .mp .tl li:nth-child(2){animation-delay:.07s}.mp .tl li:nth-child(3){animation-delay:.14s}.mp .tl li:nth-child(4){animation-delay:.21s}.mp .tl li:nth-child(5){animation-delay:.28s}
+ .mp li.now .dot{animation:mppulse 1.8s ease-in-out infinite}
+}
+@keyframes mpin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes mppulse{50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--accent,#2563eb) 25%,transparent)}}
+</style></head><body><div class="mp">
+<div><span class="badge">In progress</span><strong>SCHO-272 · Finish the EducateOS mobile UI and test it in the iOS Simulator</strong></div>
+<div class="meta">2026-10-29 · gmackie/educate-os · branch SCHO-272-mobile-full-ui · apps/mobile</div>
+
+<p class="lead"><strong>Recommendation:</strong> first build a local "dev district" that the Simulator can sign in to as a student, teacher or family member, with seeded data. Then fix the three dead ends and fill in the features the district API already supports, role by role. Each phase is checked in the Simulator and gets its own PR.</p>
+
+<h2>Where it stands</h2>
+<div class="cols">
+ <div class="card"><strong>Works now</strong><div class="chips"><span class="chip done">Dev build runs in Simulator</span><span class="chip done">New mark in app</span><span class="chip done">60/60 tests</span></div></div>
+ <div class="card"><strong>Blocker for testing</strong><br>No way to sign in from the Simulator with real data. The demo districts seed only the admin. The harness has seeded people but no device pairing, no manifest and no HTTPS.</div>
+ <div class="card"><strong>Gaps found</strong><br>3 dead ends in primary flows, about 10 smaller bugs, 11 features with existing API support, 4 that need new API.</div>
+</div>
+
+<h2>Getting data into the Simulator</h2>
+<div class="cols">
+ <div class="card rec"><span class="chip done">Recommended</span><br><strong>Local dev district</strong><br>A dev server built on <code>@educateos/harness</code>: seeded districts, <code>deviceTokenSecret</code> set, a manifest served, and a persona picker on <code>/connect-phone</code>. Dev builds accept <code>http://localhost</code> as a school address, which the Simulator can reach. No real accounts, nothing deployed.</div>
+ <div class="card"><strong>Deployed demo district</strong><br>Real HTTPS, but only the operator's admin account exists, so there's no student or family data. It would need seeding and Google sign-ins.</div>
+ <div class="card"><strong>Demo mode inside the app</strong><br>Run <code>@educateos/demo</code> inside the app. It's browser-only today and would skip the real pairing and device-proof path.</div>
+</div>
+
+<h2>Phases</h2>
+<ol class="tl">
+ <li class="now"><span class="dot"></span><span class="ph">1 · Simulator dev district</span><div>A <code>pnpm mobile:dev-district</code> script (harness + device secret + manifest + persona pairing). Dev builds allow loopback addresses. A README section explains it.</div><div class="chips"><span class="chip">pairing works on localhost</span><span class="chip">student / teacher / family personas</span></div></li>
+ <li><span class="dot"></span><span class="ph">2 · Dead ends and bugs</span><div class="chips"><span class="chip p0">Family inbox and agenda taps hit student screens (403)</span><span class="chip p0">Quiz/file/project assignments only say "Open in AI Workspace"</span><span class="chip">Starter materials can't be opened</span><span class="chip">Announcement notifications open the wrong screen</span><span class="chip">Teacher "Coming up" opens the class</span><span class="chip">Family "Coming due" always 0</span><span class="chip">Review deep link shows "Student"</span><span class="chip">Feedback can't be released as final</span><span class="chip">AI tab "return" goes to /welcome</span><span class="chip">Stale "coming soon" text</span></div></li>
+ <li><span class="dot"></span><span class="ph">3 · Student features</span><div class="chips"><span class="chip">Modules &amp; pages</span><span class="chip">Quizzes: take and see results</span><span class="chip">Discussions</span><span class="chip">Course announcements</span><span class="chip">Photo/file upload, withdraw, history</span><span class="chip">Per-assignment grades</span></div></li>
+ <li><span class="dot"></span><span class="ph">4 · Teacher features</span><div class="chips"><span class="chip">Post announcements and the weekly note</span><span class="chip">Gradebook</span><span class="chip">Rubric scoring and grade approval</span><span class="chip">Due-date edits</span><span class="chip">Discussion moderation</span><span class="chip">Quiz results and grading</span><span class="chip">Viewer for non-text work</span></div></li>
+ <li><span class="dot"></span><span class="ph">5 · Me, family, polish</span><div class="chips"><span class="chip">Email preferences</span><span class="chip">Calendar feed</span><span class="chip">Sign out all devices</span><span class="chip">iPad layout check</span><span class="chip">Light/dark check</span></div></li>
+</ol>
+
+<h2>Not in scope (follow-up issues)</h2>
+<p>Messaging between people, attendance, push notification preferences, and accepting a family invitation from the phone. Each needs new district API, so each gets its own issue.</p>
+
+<h2>Verification</h2>
+<div class="wrap"><table><tr><th>Check</th><th>How</th></tr>
+<tr><td>Types and unit tests</td><td><code>pnpm typecheck</code>, <code>pnpm test</code> in apps/mobile, plus tests for new route and navigation logic</td></tr>
+<tr><td>Each role end to end</td><td>Pair the Simulator with the dev district as each persona, walk every tab and detail screen, and attach screenshots to SCHO-272</td></tr>
+<tr><td>Server unchanged for production</td><td>The dev district is a dev-only script; the loopback allowance is gated on <code>__DEV__</code></td></tr>
+<tr><td>CI</td><td>Green on each PR head before approval</td></tr></table></div>
+</div></body></html>
