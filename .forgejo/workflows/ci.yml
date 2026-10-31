@@ -11,6 +11,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Nightly full run, including the upstream Workshop suites (FORGE-279).
+  schedule:
+    - cron: "17 7 * * *"
 
 # A newer push to the same pull request supersedes the run in progress; stacked branches are
 # re-pushed often, and stale runs only add load to the shared runners.
@@ -145,10 +148,15 @@ jobs:
         run: pnpm exec expo export --platform all --output-dir /tmp/mobile-export --max-workers 2
 
   # Not part of the reported gate: upstream's own suites, which EducateOS changes should not break.
+  # Main pushes and the nightly run only (FORGE-279). On every PR push it held a shared runner
+  # slot for ~11 min and was ~40% of this repo's runner time, while every repo's required checks
+  # queued for the same five Linux slots. A Workshop regression still shows on main right after
+  # merge.
   workshop-tests:
     # After the gate rather than beside it: both jobs start workerd test fleets, and running them at
     # once on a shared runner host starved each other's tests into timeouts.
     needs: ci
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     continue-on-error: true
