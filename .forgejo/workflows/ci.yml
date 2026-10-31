@@ -54,6 +54,26 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Vite Task's cache (FORGE-279, SCHO-312). The build and test steps below already run with
+      # `--cache`, but every job starts in a fresh container, so without this nothing replays.
+      # Restored after install, which could otherwise recreate node_modules. The key leaves task
+      # inputs out on purpose: Vite Task fingerprints each task's files, env and arguments itself
+      # and re-runs whatever changed, so a stale or missing cache costs time, never a skipped test.
+      # Only successful tasks are ever stored. The ref is followed by `:`, which a branch name
+      # cannot contain, so a branch called `main-x` never matches main's prefix: a pull request
+      # falls back from its own latest cache to main's, and main restores only its own. Each runner
+      # keeps its own cache store, so the cache warms per runner.
+      - name: Restore Vite Task cache
+        id: vite-task-cache
+        continue-on-error: true
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules/.vite/task-cache
+          key: vite-task-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.head_ref || github.ref_name }}:${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            vite-task-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.head_ref || github.ref_name }}:
+            vite-task-v1-${{ runner.os }}-${{ runner.arch }}-main:
+
       - name: Lint and build
         run: pnpm lint
 
@@ -65,6 +85,18 @@ jobs:
 
       - name: Test EducateOS packages
         run: node scripts/vp/run.ts --cache --fail-if-no-match --filter='@educateos/*' test
+
+      # Saved after a failed step too: Vite Task stores only the tasks that passed, so the fix push
+      # still replays everything the failure did not touch. Not after a cancel, which can stop vp
+      # mid-write. The cache holds about one entry per task, replaced when the task re-runs, so it
+      # stays near its first size (~65 MB on disk, ~14 MB compressed) rather than adding a copy per run.
+      - name: Save Vite Task cache
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: node_modules/.vite/task-cache
+          key: ${{ steps.vite-task-cache.outputs.cache-primary-key }}
 
       # The district validation suite (SCHO-205, docs/educateos/district-validation.md): six demo
       # districts × integration scenarios, in process against the provider fakes. A step in this
