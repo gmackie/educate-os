@@ -113,6 +113,20 @@ Free admits 50 users, and every student and teacher who signs in takes a seat. I
 (`product.worker-loader`) that Worker Loader availability can't be checked through the API, and
 (`service.var-size`) when a service var is over the documented 5 KB variable limit.
 
+## Managed-only installs
+
+With `managedHostname` set and no `baseDomain` (SCHO-243), `<slug>.educateos.io` is the install's
+public hostname and identity: the Access applications, the school manifest's `origin` and
+`$PUBLIC_BASE_URL` all use it, and the router gets it as a Workers custom domain on educateos.io
+(the managed hostname's same-account path) instead of a custom domain on a district zone. This
+works only where educateos.io is a zone in the district's account, which means the owner's hosted
+districts. A district in another account would need the Cloudflare for SaaS path, which puts the
+custom hostname on the district's own zone, and a managed-only district has none, so preflight
+blocks it (`dns.managed-only-cross-account`) and the plan refuses it. The OSS admin needs a
+hostname in a zone of the district's own, so `admin.enabled` is refused on a managed-only install
+for now. The token needs Zone: Read on educateos.io, DNS: Read on it (the slug check) and Workers
+Routes: Edit on it (the custom domain), besides the Workers Scripts rows.
+
 ## Optional services
 
 A release worker of kind `service` (today only `educateos-ai-guard`) is installed only when the
@@ -129,20 +143,6 @@ because a dashboard edit keeps the installer's digest marker; a removed or retar
 `AI_CALL_GUARD` is reported and repaired by the next apply. Rollback refuses to redeploy a version
 whose service binding targets a Worker that no longer exists, and notes when it returns the
 backend to a version without a binding.
-
-## Managed-only installs
-
-With `managedHostname` set and no `baseDomain` (SCHO-243), `<slug>.educateos.io` is the install's
-public hostname and identity: the Access applications, the school manifest's `origin` and
-`$PUBLIC_BASE_URL` all use it, and the router gets it as a Workers custom domain on educateos.io
-(the managed hostname's same-account path) instead of a custom domain on a district zone. This
-works only where educateos.io is a zone in the district's account, which means the owner's hosted
-districts. A district in another account would need the Cloudflare for SaaS path, which puts the
-custom hostname on the district's own zone, and a managed-only district has none, so preflight
-blocks it (`dns.managed-only-cross-account`) and the plan refuses it. The OSS admin needs a
-hostname in a zone of the district's own, so `admin.enabled` is refused on a managed-only install
-for now. The token needs Zone: Read on educateos.io, DNS: Read on it (the slug check) and Workers
-Routes: Edit on it (the custom domain), besides the Workers Scripts rows.
 
 ## What the credential can reach, and what the installer touches
 
