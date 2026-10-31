@@ -293,6 +293,11 @@ export interface CloudflareApi {
   ): Promise<AssetsUploadSession>;
   /** Uploads one bucket of assets with a session JWT. Returns the completion JWT after the last. */
   uploadAssets(accountId: string, sessionJwt: string, files: Map<string, Uint8Array<ArrayBuffer>>): Promise<string | undefined>;
+  /**
+   * Removes one secret. Used only when adopting a Worker deployed outside the installer, for a secret
+   * the release sets as a plain-text var instead.
+   */
+  deleteWorkerSecret(accountId: string, scriptName: string, name: string): Promise<void>;
   listWorkerSecrets(accountId: string, scriptName: string): Promise<string[]>;
   putWorkerSecret(accountId: string, scriptName: string, name: string, value: string): Promise<void>;
   /** The Worker's Cron Trigger expressions. */

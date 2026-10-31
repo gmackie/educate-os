@@ -178,6 +178,15 @@ describe("Cloudflare HTTP client", () => {
     await expect(api.deleteWorkerScript(ACCOUNT, "w1")).rejects.toThrow("deleteWorkerScript: HTTP 200");
   });
 
+  it("deletes one secret by name", async () => {
+    const { fetchImpl, requests } = stubFetch(() => ok(null));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+
+    await api.deleteWorkerSecret(ACCOUNT, "educateos-prairie-district", "CF_ACCESS_AUD");
+    expect(requests.map((r) => [r.method, new URL(r.url).pathname]))
+      .toEqual([["DELETE", `/client/v4/accounts/${ACCOUNT}/workers/scripts/educateos-prairie-district/secrets/CF_ACCESS_AUD`]]);
+  });
+
   it("authenticates asset uploads with the session JWT, not the account token", async () => {
     const { fetchImpl, requests } = stubFetch(() => ok({ jwt: "completion-jwt" }));
     const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });

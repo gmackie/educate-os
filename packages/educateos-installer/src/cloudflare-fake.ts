@@ -74,7 +74,7 @@ const MUTATIONS = new Set([
   "attachWorkerDomain", "createKvNamespace", "createR2Bucket", "createD1Database", "createAccessPolicy",
   "updateAccessPolicy", "createAccessApplication", "updateAccessApplication", "createAiGateway",
   "createDnsRecord", "updateDnsRecord", "deleteDnsRecord", "setFallbackOrigin", "createCustomHostname",
-  "deleteCustomHostname", "createWorkerRoute", "deleteWorkerRoute", "detachWorkerDomain",
+  "deleteCustomHostname", "createWorkerRoute", "deleteWorkerRoute", "detachWorkerDomain", "deleteWorkerSecret",
 ]);
 
 const LEDGER_INSERT = /INSERT INTO _educateos_migrations \(id, sha256\) VALUES \(\?, \?\)\s*$/;
@@ -245,6 +245,20 @@ export class FakeCloudflare {
     const script = this.#scripts.get(name);
     if (!script) throw new Error(`no Worker ${name}`);
     this.#addVersion(script, edit(activeVersion(script).bindings.map((b) => ({ ...b }))), script.migrationTag);
+  }
+
+  /**
+   * Adds a Worker deployed outside the installer, as a Wrangler deploy leaves one: its secrets, and
+   * the Durable Object migration tag it reached.
+   */
+  seedDeployedWorker(name: string, options: { vars?: Record<string, string>; secrets?: Record<string, string>; migrationTag?: string }): void {
+    this.seedWorker(name, options.vars);
+    const script = this.#scripts.get(name)!;
+    for (const [secret, value] of Object.entries(options.secrets ?? {})) script.secrets.set(secret, value);
+    if (options.migrationTag) {
+      script.migrationTag = options.migrationTag;
+      activeVersion(script).migrationTag = options.migrationTag;
+    }
   }
 
   /** Adds an Access application the installer did not create. */
@@ -440,6 +454,12 @@ export class FakeCloudflare {
       this.#completions.add(completion);
       return completion;
     },
+    deleteSecret: (name: string, secret: string) => {
+      const script = this.#script(name, "deleteWorkerSecret");
+      // A missing secret answers 404; its error code is unverified, so the fake reports none.
+      if (!script.secrets.delete(secret)) throw new CloudflareApiError("deleteWorkerSecret", 404, []);
+      this.#addVersion(script, activeVersion(script).bindings, script.migrationTag);
+    },
     secrets: (name: string) => [...this.#script(name, "listWorkerSecrets").secrets.keys()],
     putSecret: (name: string, secret: string, value: string) => {
       const script = this.#script(name, "putWorkerSecret");
@@ -561,6 +581,11 @@ export class FakeCloudflare {
     if (!upload.modules.some((m) => m.name === metadata.main_module)) throw new CloudflareApiError("uploadWorkerScript", 400, [10021]);
 
     const existing = this.#scripts.get(name);
+    // A binding named like a secret the upload keeps is assumed refused, as two bindings of one name
+    // (unverified: the installer deletes such a secret first, so it never depends on this either way).
+    if (existing && metadata.keep_bindings.includes("secret_text") && metadata.bindings.some((b) => existing.secrets.has(b.name))) {
+      throw new CloudflareApiError("uploadWorkerScript", 400, []);
+    }
     const migrations = metadata.migrations;
     if (migrations) {
       // Durable Object migrations must chain from the script's current tag.
@@ -693,6 +718,7 @@ class FakeCloudflareApi implements CloudflareApi {
   uploadAssets(a: string, jwt: string, files: Map<string, Uint8Array<ArrayBuffer>>) {
     return this.#call(a, "uploadAssets", () => this.#fake.op.uploadAssets(jwt, files));
   }
+  deleteWorkerSecret(a: string, s: string, n: string) { return this.#call(a, "deleteWorkerSecret", () => this.#fake.op.deleteSecret(s, n)); }
   listWorkerSecrets(a: string, s: string) { return this.#call(a, "listWorkerSecrets", () => this.#fake.op.secrets(s)); }
   putWorkerSecret(a: string, s: string, n: string, v: string) { return this.#call(a, "putWorkerSecret", () => this.#fake.op.putSecret(s, n, v)); }
   getWorkerSchedules(a: string, s: string) { return this.#call(a, "getWorkerSchedules", () => this.#fake.op.schedules(s)); }
