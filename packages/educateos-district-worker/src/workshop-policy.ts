@@ -21,13 +21,21 @@ export const WorkshopPolicySettings = z.strictObject({
   classBlueprints: z.array(z.strictObject({ blueprintId: identifier, offeringId: OfferingId })),
   /** Exact provider/model pairs administrators may configure. */
   models: z.array(z.strictObject({ provider: identifier, modelId: identifier })),
-  /** Exact connector grants. An omitted account permits only initial account creation. */
-  connectors: z.array(z.strictObject({
-    vendorId: identifier,
-    accountId: z.number().int().nonnegative().optional(),
-    resourceUrlPatterns: z.array(z.string().min(1).max(2048)),
-    resources: z.array(z.string().min(1).max(2048)),
-  })),
+  /**
+   * Connector grants. An exact grant names one account (omitted permits only initial account
+   * creation), its whole set of resource URL patterns and its acquirable resources. A vendor-wide
+   * grant (`access: "all"`) admits any account, pattern set and resource of that one connector,
+   * since accounts and resources are minted at runtime; district-admin authority is still required.
+   */
+  connectors: z.array(z.union([
+    z.strictObject({
+      vendorId: identifier,
+      accountId: z.number().int().nonnegative().optional(),
+      resourceUrlPatterns: z.array(z.string().min(1).max(2048)),
+      resources: z.array(z.string().min(1).max(2048)),
+    }),
+    z.strictObject({ vendorId: identifier, access: z.literal("all") }),
+  ])),
   /**
    * Which active kinds may perform which workspace actions. Absent or empty denies them all, so
    * every Gadget, agent turn and share is refused (SCHO-309). Executing grants are only safe because
@@ -113,9 +121,12 @@ export async function authorizeWorkshopCapability(
     if (request.action === "model.configure") {
       if (!settings.models.some((m) => m.provider === request.provider && m.modelId === request.modelId)) return denied;
     } else {
-      const grant = settings.connectors.find((g) => g.vendorId === request.vendorId && g.accountId === request.accountId);
+      const grant = settings.connectors.find((g) => g.vendorId === request.vendorId && !("access" in g) && g.accountId === request.accountId) ??
+        settings.connectors.find((g) => g.vendorId === request.vendorId && "access" in g);
       if (grant === undefined) return denied;
-      if (request.action === "gatekeeper.connect") {
+      if ("access" in grant) {
+        // Vendor-wide: the connector itself is approved, whatever account or resource it reaches.
+      } else if (request.action === "gatekeeper.connect") {
         // An omitted list may mean unrestricted access to a provider. Require the entire
         // approved set, including emptiness, rather than treating omission as a safe subset.
         const requested = new Set(request.resourceUrlPatterns ?? []);
