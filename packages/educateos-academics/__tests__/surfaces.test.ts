@@ -7,6 +7,7 @@ import {
   createAcademicsHandler,
   createAcademicTools,
   ERROR_STATUS,
+  invokeOperation,
   RoleTableAuthorizer,
   storePrincipalFacts,
 } from "../src/index.ts";
@@ -81,6 +82,8 @@ describe("the HTTP handler and the tools", () => {
     if (outcome.ok) {
       expect(http.status).toBeLessThan(300);
       expect(http.body).toEqual(outcome.value);
+      // What both return is what the descriptor declares.
+      expect(ACADEMIC_OPERATIONS[testCase.tool[0]].output.safeParse(outcome.value).success).toBe(true);
     } else {
       // Each invocation has its own correlation ID; everything else is identical.
       const { correlationId: httpId, ...httpError } = EducateOsErrorBody.parse(http.body);
@@ -93,10 +96,11 @@ describe("the HTTP handler and the tools", () => {
     expect((await viaHttp.store.load()).snapshot).toEqual((await viaTool.store.load()).snapshot);
   });
 
-  it("cover every operation with both a route and a tool", () => {
+  it("cover every operation exposed to agents with both a route and a tool", () => {
     const { directory } = directoryFor();
     const tools = createAcademicTools(directory);
-    expect(tools.map((t) => t.name).toSorted()).toEqual(Object.keys(ACADEMIC_OPERATIONS).toSorted());
+    const exposed = Object.values(ACADEMIC_OPERATIONS).filter((o) => o.channels.includes("mcp-agent")).map((o) => o.name);
+    expect(tools.map((t) => t.name).toSorted()).toEqual(exposed.toSorted());
     for (const tool of tools) expect(tool.inputSchema).toMatchObject({ type: "object", additionalProperties: false });
   });
 
@@ -125,6 +129,48 @@ describe("the HTTP handler and the tools", () => {
       "student reactivates themself": "not-found",
       "malformed ID is rejected": "validation-failed",
     });
+  });
+});
+
+describe("the operation descriptors", () => {
+  it("keep identity links away from agents: create_principal is not a tool and its call is refused", async () => {
+    const { directory, store } = directoryFor(NORTHFIELD, { authority: ALL_LOCAL });
+    expect(ACADEMIC_OPERATIONS.create_principal.channels).not.toContain("mcp-agent");
+    expect(createAcademicTools(directory).map((t) => t.name)).not.toContain("create_principal");
+
+    const before = (await store.load()).snapshot;
+    const input = { kind: "student", displayName: "Robin Park", identity: { issuer: NORTHFIELD.district.trustedIssuers[0]!, subject: "robin" } };
+    for (const channel of ["mcp-tool", "agent"] as const) {
+      const outcome = await invokeOperation(ACADEMIC_OPERATIONS.create_principal, directory, { ...NF.admin, channel }, input);
+      expect(outcome).toEqual({
+        ok: false,
+        error: { code: "forbidden", message: "create_principal is not available through mcp-agent.", correlationId: expect.any(String) },
+      });
+    }
+    expect((await store.load()).snapshot).toEqual(before);
+  });
+
+  it("refuse a channel before reading the input, so an unexposed call learns nothing from validation", async () => {
+    const { directory } = directoryFor();
+    // No academic operation is exposed to trusted jobs: a system caller is refused even with junk input.
+    for (const operation of Object.values(ACADEMIC_OPERATIONS)) {
+      expect(operation.channels).not.toContain("internal-job");
+      const outcome = await invokeOperation(operation, directory, { ...NF.admin, channel: "system" }, { junk: true });
+      expect(outcome).toMatchObject({ ok: false, error: { code: "forbidden" } });
+    }
+  });
+
+  it("classify every operation: reads are list or read actions and need no approval", () => {
+    for (const operation of Object.values(ACADEMIC_OPERATIONS)) {
+      expect(operation.version).toBe(1);
+      if (operation.effect === "read") {
+        expect(["list", "read"]).toContain(operation.action);
+        expect(operation).toMatchObject({ idempotency: "inherent", approval: "none" });
+      } else {
+        expect(["create", "update"]).toContain(operation.action);
+        expect(operation).toMatchObject({ effect: "publish", approval: "confirm-agent" });
+      }
+    }
   });
 });
 

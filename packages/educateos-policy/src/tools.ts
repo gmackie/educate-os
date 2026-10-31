@@ -6,6 +6,7 @@ import {
   type RequestChannel,
   type ResourceRef,
   type EducateOsErrorBody,
+  type OperationEffect,
   type TermState,
   type VerifiedPrincipal,
 } from "@educateos/contracts";
@@ -51,6 +52,11 @@ export interface SchoolToolDefinition<S extends z.ZodObject, R> {
   /** The action every call is authorized as. */
   action: Action;
   /**
+   * What the tool does to records, from its operation descriptor. A `read` effect makes the tool
+   * {@link readOnly}; give one or the other, not both.
+   */
+  effect?: OperationEffect;
+  /**
    * True for a tool that only reads, whatever action it is authorized as. A read-only tool is never
    * queued for the requester to confirm (`confirmWrites`): it changes nothing to confirm. It is
    * still decided by the engine like any other, and an approval the engine requires still applies.
@@ -81,6 +87,8 @@ export interface SchoolTool {
   readonly inputSchema: z.ZodObject;
   /** The action every call is authorized as. */
   readonly action: Action;
+  /** What the tool does to records, when its definition states it. */
+  readonly effect?: OperationEffect;
   /** Only reads: never queued for confirmation (see {@link SchoolToolDefinition.readOnly}). */
   readonly readOnly: boolean;
   /** Resolves the target. */
@@ -95,20 +103,25 @@ const TOOL_NAME = /^[a-z][a-z0-9_]{0,63}$/;
 
 /**
  * Defines a tool every call of which is validated and re-authorized by a {@link SchoolToolRunner}.
- * Throws if the name is malformed or the input schema would accept unknown fields.
+ * Throws if the name is malformed, the input schema would accept unknown fields, or `readOnly` and
+ * `effect` are both given.
  */
 export function defineSchoolTool<S extends z.ZodObject, R>(definition: SchoolToolDefinition<S, R>): SchoolTool {
   if (!TOOL_NAME.test(definition.name)) throw new Error(`invalid tool name ${definition.name}`);
   if (definition.inputSchema.def.catchall?._zod.def.type !== "never") {
     throw new Error(`tool ${definition.name} must use z.strictObject for its input`);
   }
-  const { name, description, inputSchema, action, annotations } = definition;
+  if (definition.effect !== undefined && definition.readOnly !== undefined) {
+    throw new Error(`tool ${definition.name} must give readOnly or effect, not both`);
+  }
+  const { name, description, inputSchema, action, effect, annotations } = definition;
   return {
     name,
     description,
     inputSchema,
     action,
-    readOnly: definition.readOnly === true,
+    ...(effect === undefined ? {} : { effect }),
+    readOnly: effect === undefined ? definition.readOnly === true : effect === "read",
     ...(annotations === undefined ? {} : { annotations }),
     // The runner passes only what `inputSchema` produced.
     resource: (input, context) => definition.resource(input as z.output<S>, context),

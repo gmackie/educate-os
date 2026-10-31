@@ -46,12 +46,12 @@ export function createAcademicsWithPolicy(options: AcademicsWithPolicyOptions): 
 }
 
 /**
- * Each academic directory operation as a school tool. The runner authorizes `invoke-tool` on the
+ * Each academic directory operation exposed to `mcp-agent` as a school tool, the rest left out. The runner authorizes `invoke-tool` on the
  * directory's district, so a principal from anywhere else is refused before the operation runs;
  * the operation then authorizes the record it touches through the directory's own authorizer.
  */
 export function academicSchoolTools(store: AcademicStore, directory: AcademicDirectory): SchoolTool[] {
-  return Object.values(ACADEMIC_OPERATIONS).map((operation) => {
+  return Object.values(ACADEMIC_OPERATIONS).filter((operation) => operation.channels.includes("mcp-agent")).map((operation) => {
     if (!(operation.input instanceof z.ZodObject)) throw new Error(`operation ${operation.name} input is not an object`);
     return defineSchoolTool({
       name: operation.name,
@@ -59,7 +59,7 @@ export function academicSchoolTools(store: AcademicStore, directory: AcademicDir
       inputSchema: operation.input,
       action: "invoke-tool",
       // A read changes nothing, so an agent's call of it is not queued for confirmation (SCHO-285).
-      readOnly: operation.reads === true,
+      effect: operation.effect,
       resource: async () => {
         const { district } = (await store.load()).snapshot;
         return {

@@ -102,6 +102,17 @@ describe("the academic directory with the policy engine", () => {
 });
 
 describe("the academic tools through the school tool runner", () => {
+  it("offers only operations exposed to agents, so create_principal is no tool (SCHO-173)", async () => {
+    const { tools, store } = academics();
+    const names = tools.list().map((t) => t.name);
+    expect(names).toContain("update_principal");
+    expect(names).not.toContain("create_principal");
+    const before = (await store.load()).snapshot;
+    const input = { kind: "student", displayName: "Robin", identity: { issuer: NORTHFIELD.district.trustedIssuers[0]!, subject: "robin" } };
+    expect(await tools.invoke(mcp(P.nfAdmin), "create_principal", input)).toMatchObject({ status: "error", error: { code: "not-found", message: "There is no such tool." } });
+    expect((await store.load()).snapshot).toEqual(before);
+  });
+
   it("treats a principal named in the input only as a selector", async () => {
     const { tools } = academics();
     const others = await tools.invoke(mcp(P.amara), "list_enrollments", { principalId: "prn_nf-student-elena" });

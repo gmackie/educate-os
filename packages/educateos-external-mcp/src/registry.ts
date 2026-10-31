@@ -1,19 +1,20 @@
-import type { AcademicStore, AcademicDirectory } from "@educateos/academics";
+import { ACADEMIC_OPERATIONS, type AcademicStore, type AcademicDirectory } from "@educateos/academics";
 import type { Action } from "@educateos/contracts";
 import { academicSchoolTools, type SchoolTool, type ToolTarget } from "@educateos/policy";
 import { z } from "zod";
 
-// Only server-owned definitions enter this registry. No annotation, prefix heuristic or body
-// field decides an action. A missing classification is conservative and requires confirmation.
-const REGISTRY: Readonly<Record<string, Action | undefined>> = Object.freeze({
-  list_schools: "list", get_school: "read", list_terms: "list", get_term: "read",
-  list_courses: "list", get_course: "read", list_offerings: "list", get_offering: "read",
-  my_enrollments: "list", get_enrollment: "read", get_roster: "list", update_course: "update",
-});
+// The operations an external client may call, by name. Each one's action comes from its operation
+// descriptor (SCHO-173), never from an annotation, prefix heuristic or body field. A name with no
+// descriptor is conservative and requires confirmation.
+const CURATED: ReadonlySet<string> = new Set([
+  "list_schools", "get_school", "list_terms", "get_term", "list_courses", "get_course", "list_offerings", "get_offering",
+  "my_enrollments", "get_enrollment", "get_roster", "update_course",
+]);
 
-/** Trusted classification only. An unmapped server operation must wait for human confirmation. */
+/** Trusted classification only. An operation outside the curated set must wait for human confirmation. */
 export function externalOperationAction(name: string): Action {
-  return Object.hasOwn(REGISTRY, name) ? REGISTRY[name] ?? "invoke-tool" : "invoke-tool";
+  if (!CURATED.has(name) || !Object.hasOwn(ACADEMIC_OPERATIONS, name)) return "invoke-tool";
+  return ACADEMIC_OPERATIONS[name as keyof typeof ACADEMIC_OPERATIONS].action;
 }
 
 /**
@@ -22,7 +23,7 @@ export function externalOperationAction(name: string): Action {
  * here never authorize their individual contents. No client metadata participates in this mapping.
  */
 export function externalSchoolTools(store: AcademicStore, directory: AcademicDirectory): SchoolTool[] {
-  return academicSchoolTools(store, directory).filter((tool) => Object.hasOwn(REGISTRY, tool.name)).map((tool) => ({
+  return academicSchoolTools(store, directory).filter((tool) => CURATED.has(tool.name)).map((tool) => ({
     ...tool,
     action: externalOperationAction(tool.name),
     // External calls use this registry's read/list actions, never an inherited district bypass.

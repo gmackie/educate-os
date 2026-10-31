@@ -19,9 +19,12 @@ export interface AcademicTool {
   handler(principal: VerifiedPrincipal, args: unknown): Promise<OperationOutcome>;
 }
 
-/** One tool per entry in `ACADEMIC_OPERATIONS`, all calling the given directory. */
+/**
+ * One tool per entry in `ACADEMIC_OPERATIONS` exposed to `mcp-agent`, all calling the given
+ * directory. An operation not exposed there is not listed, and `invokeOperation` refuses it anyway.
+ */
 export function createAcademicTools(directory: AcademicDirectory): AcademicTool[] {
-  return Object.values(ACADEMIC_OPERATIONS).map((operation) => ({
+  return Object.values(ACADEMIC_OPERATIONS).filter((operation) => operation.channels.includes("mcp-agent")).map((operation) => ({
     name: operation.name,
     description: operation.description,
     inputSchema: z.toJSONSchema(operation.input) as Record<string, unknown>,
