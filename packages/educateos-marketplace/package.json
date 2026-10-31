@@ -1,0 +1,21 @@
+{
+  "name": "@educateos/marketplace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EducateOS marketplace listings (SCHO-209): publisher credentials signed by a release key, listings each publisher signs with its own key, and the curriculum packs they deliver, verified by the district offline against the release keys it pins. Free listings only; the pricing union leaves room for paid ones. A library, not a deployable Worker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@educateos/contracts": "workspace:*",
+    "@educateos/curriculum": "workspace:*",
+    "@educateos/fleet": "workspace:*",
+    "@educateos/releases": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gadgets/scripts": "workspace:*",
+    "vitest": "catalog:"
+  }
+}
