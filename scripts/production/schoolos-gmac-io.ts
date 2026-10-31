@@ -82,7 +82,8 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
   // users the migration aliased keep their email-keyed accounts.
   principalBinding: "resolver",
   // Workshop mints and execution are the district's to allow, and a principal who loses standing
-  // loses what they hold (SCHO-309). DISTRICT_CONFIG.workshopPolicy grants the demo's staff.
+  // loses what they hold (SCHO-309). DISTRICT_CONFIG.workshopPolicy explicitly grants the demo's
+  // staff and student execution; it does not give students configuration or publication powers.
   capabilityPolicyBinding: true,
   // Deployed before the EducateOS rename (SCHO-200), and pinned so it is never deployed under its
   // package's new name (SCHO-231). Its Durable Object holds the demo district's data, a Worker's
