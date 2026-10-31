@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marketplace · EducateOS</title>
+<meta name="description" content="Free curriculum packs for EducateOS, signed by their publishers. A district verifies each one offline against keys it pins before installing it.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/#platform">Platform</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+    <div class="right">
+      <a class="btn hide-sm" href="/demo/">Try the demo</a>
+      <a class="btn primary" href="/interest/">Share your interest</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/demo/">Try the demo</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+  <section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">Marketplace</div>
+      <h1 class="rise" style="--d:1">Curriculum packs, signed by their publishers.</h1>
+      <p class="lede rise" style="--d:2">A <b class="strong">curriculum pack</b> is a set of ready-to-edit activities. Your district checks each one's signatures against keys it already holds before it installs it, and never asks educateos.io anything. Every listing here is free.</p>
+      <div class="legend rise" style="--d:3">
+        <span class="status dev">In development</span>
+        <span>Districts install packs through their own API today; a console page comes next. Signed blueprints and capability packs are planned.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight band" id="listings">
+    <div class="wrap">
+      <div class="eyebrow">Listings</div>
+      <h2>Free curriculum packs.</h2>
+      <div class="gallery">
+<!-- marketplace:listings -->
+<article class="card listing" id="middle-school-starter-pack">
+  <h3>Middle school starter pack</h3>
+  <p class="muted">EducateOS · version 1.0.0 · Free · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></p>
+  <p>Three ready-to-assign activities for grades 6 to 8: an argument essay, a plant-growth investigation and a ratios problem set. A teacher adds any of them to a class as a draft, then edits it before publishing.</p>
+  <ul><li>Should phones be allowed in class? <span class="muted">(Writing task)</span></li><li>How does light affect plant growth? <span class="muted">(Science investigation)</span></li><li>Ratios in recipes <span class="muted">(Problem set)</span></li></ul>
+  <p><a class="btn" href="/marketplace/listings/middle-school-starter-pack/1.0.0.json" download>Download the signed listing</a></p>
+  <p class="muted small">Content digest <code>sha256:5bc71f6015c5a504fb7e476611ff15f830fd74975d1a90810b61f65ee9839ee0</code></p>
+</article>
+<!-- /marketplace:listings -->
+      </div>
+    </div>
+  </section>
+
+  <section class="tight" id="how-it-works">
+    <div class="wrap split">
+      <div class="copy">
+        <div class="eyebrow">How installing works</div>
+        <h2>Checked in your district, offline.</h2>
+        <ul class="checks">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>A district administrator downloads a signed listing and installs it into the district. The district Worker never fetches it from educateos.io.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>The district checks three signatures before installing: an EducateOS release key it pins vouches for the publisher's key, the publisher's key signs the listing, and the listing names the exact content by its SHA-256 digest. If any check fails, the district installs nothing.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Teachers then add a pack's activities to their own classes as drafts and edit them before publishing. A pack names nothing from the publisher's own district: no resources, rubrics or learning goals.</span></li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg><span>Once installed, a pack keeps working even if its publisher's credential expires or educateos.io is unreachable. Nothing at runtime checks a licence or a subscription.</span></li>
+        </ul>
+      </div>
+      <div class="copy">
+        <div class="eyebrow">For publishers and self-hosters</div>
+        <h2>An open format.</h2>
+        <p>A listing is one JSON file in the <code>educateos.marketplace.listing/v1</code> format: the publisher's credential, the signed listing and the pack. The format and the verifier are open source, in <a href="https://github.com/gmackie/educate-os/tree/main/packages/educateos-marketplace"><code>@educateos/marketplace</code></a>. A district that runs its own release keys can admit its own publishers with them.</p>
+        <p class="muted">Paid listings are not offered. If they are added, each purchase will be delivered as its own signed file that the district verifies the same way.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/demo/">Demo</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

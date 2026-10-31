@@ -2,7 +2,8 @@
 
 - Status: operator sign-in, the store, the opt-in registry, the installation dashboard, Clever
   portal launches (SCHO-249), the guided install, and billing for managed services in Stripe test
-  mode with placeholder prices (SCHO-208). The marketplace (SCHO-209) builds on this.
+  mode with placeholder prices (SCHO-208). The marketplace (SCHO-209) is static signed files on the
+  same site, verified by each district offline: [marketplace.md](marketplace.md).
 - Issue: SCHO-206; billing SCHO-208. Decision record: [ADR-0013](adr/0013-educateos-open-core-control-plane.md).
 - Code: `packages/educateos-control-plane`, served by the site Worker in `sites/educateos-io`.
 

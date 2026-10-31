@@ -1,0 +1,17 @@
+{
+  "payload": {
+    "expiresAt": "2027-10-31T17:25:02.604Z",
+    "issuedAt": "2026-10-31T17:25:02.604Z",
+    "publisher": {
+      "displayName": "EducateOS",
+      "key": {
+        "keyId": "ed25519-71yD_H7OvXca1DCaK5pp8PV-vIbDw9K2H3ZARqsNiWo",
+        "publicKey": "7TQKh8xhmsc6yI2MUmIiuntUli4NyGU4Sr2v10P-dPk"
+      },
+      "publisherId": "educateos",
+      "website": "https://educateos.io"
+    }
+  },
+  "signature": "io_fKYNkVqCDP4egyBzSx7QJt13ThYE2pjisVdmZkAl5iN7-u113Wjsnrj3GQZkGM7yUqrwoqQHtE1DpgVDyDQ",
+  "keyId": "ed25519-Y5ayv_OFgjE5j_YaqCuiuNvx-H7_d6AVfSjTnQlIc58"
+}

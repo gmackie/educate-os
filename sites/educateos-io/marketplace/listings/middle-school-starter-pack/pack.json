@@ -1,0 +1,74 @@
+{
+  "title": "Middle school starter pack",
+  "description": "Three activities that each work in a single class period or a short unit, written to be edited: change the prompt, the due date or the AI-help level before you publish.",
+  "subjects": ["english-language-arts", "science", "mathematics"],
+  "gradeBands": ["6-8"],
+  "activities": [
+    {
+      "key": "phones-in-school",
+      "template": {
+        "template": "writing-task",
+        "title": "Should phones be allowed in class?",
+        "subject": "english-language-arts",
+        "gradeBand": "6-8",
+        "overview": "Students take a position on whether phones should be allowed in class and support it with reasons and evidence, then answer the strongest point on the other side.",
+        "prompt": "Should students be allowed to use phones in class? Write an argument that states your claim, gives at least two reasons with evidence, and responds to one counterargument.",
+        "genre": "argument",
+        "minWords": 300,
+        "minimumCitations": 0,
+        "aiHelp": "hints-only",
+        "due": { "kind": "after-install", "days": 7 },
+        "codex": [
+          {
+            "kind": "note",
+            "id": "argument-checklist",
+            "title": "Argument checklist",
+            "body": "1. State your claim in the first paragraph.\n2. Give each reason its own paragraph, with evidence.\n3. Name a counterargument and explain why your claim still holds.\n4. End by restating your claim in new words.",
+            "purpose": "context",
+            "visibility": "students"
+          }
+        ]
+      }
+    },
+    {
+      "key": "plant-light",
+      "template": {
+        "template": "science-investigation",
+        "title": "How does light affect plant growth?",
+        "subject": "science",
+        "gradeBand": "6-8",
+        "overview": "Students grow bean seedlings under different amounts of light for two weeks, measure them, and explain what their data shows.",
+        "question": "How does the amount of light a bean seedling gets each day affect how tall it grows in two weeks?",
+        "methodPrompt": "Describe your setup: how many seedlings, how much light each group gets, and what you kept the same for every group (water, soil, pot size, temperature).",
+        "dataColumns": [
+          { "name": "Day" },
+          { "name": "Hours of light" },
+          { "name": "Height", "unit": "cm" }
+        ],
+        "analysisPrompt": "What pattern do you see between hours of light and height? Use numbers from your table, and name one thing that could have affected your results.",
+        "aiHelp": "hints-only",
+        "due": { "kind": "after-install", "days": 14 },
+        "collaboration": "group"
+      }
+    },
+    {
+      "key": "ratio-recipes",
+      "template": {
+        "template": "problem-set",
+        "title": "Ratios in recipes",
+        "subject": "mathematics",
+        "gradeBand": "6-8",
+        "overview": "Students scale recipes up and down using equivalent ratios and unit rates.",
+        "problems": [
+          { "prompt": "A pancake recipe uses 2 cups of flour for every 3 eggs. How many eggs do you need for 8 cups of flour?", "answer": "12 eggs" },
+          { "prompt": "Lemonade is made with 1 cup of lemon juice for every 5 cups of water. How much water goes with 3.5 cups of lemon juice?", "answer": "17.5 cups" },
+          { "prompt": "A recipe for 4 people uses 300 g of rice. How much rice do you need for 10 people?", "answer": "750 g" },
+          { "prompt": "Store A sells 6 granola bars for $4.50. Store B sells 10 for $7.00. Which is the better deal per bar? Explain.", "answer": "Store B: $0.70 a bar against $0.75" }
+        ],
+        "showWork": true,
+        "aiHelp": "hints-only",
+        "due": { "kind": "after-install", "days": 3 }
+      }
+    }
+  ]
+}

@@ -25,3 +25,8 @@
   Referrer-Policy: no-referrer
   X-Content-Type-Options: nosniff
   Content-Security-Policy: default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+
+# Marketplace listings (SCHO-209) are public, signed files a district verifies itself, so any
+# origin may read them, such as a district's own console fetching one for its administrator.
+/marketplace/*
+  Access-Control-Allow-Origin: *
