@@ -51,6 +51,15 @@ export const ServiceInstallConfig = z.strictObject({
    * they come from the {@link SecretSource}, like gatekeeper secrets.
    */
   vars: z.record(InputName, z.string()).default({}),
+  /**
+   * The service's Worker name, instead of `<resourcePrefix>-<pkg>` (SCHO-243). Set it to adopt a
+   * Worker deployed outside the installer, such as a ForgeGraph-deployed demo district
+   * (`educateos-prairie-district`), whose name must stay because its Durable Objects hold the
+   * district's data. Planning adopts such a Worker only if it carries no other instance's marker
+   * and its Durable Object migration tag is in the release's history, so the upload continues its
+   * objects rather than starting new ones.
+   */
+  scriptName: WorkerScriptName.optional(),
 });
 /** A service install config, as parsed. */
 export type ServiceInstallConfig = z.infer<typeof ServiceInstallConfig>;

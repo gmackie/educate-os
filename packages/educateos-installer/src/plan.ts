@@ -41,6 +41,11 @@ export interface PlanStep {
   pendingMigrations?: string[];
   /** The managed hostname only: the operations applying runs, in order. */
   managedOps?: ManagedHostnameOp[];
+  /**
+   * An adopted Worker only: secrets to delete before the upload, because the release sets a
+   * plain-text var of the same name (a ForgeGraph-deployed district keeps CF_ACCESS_AUD as a secret).
+   */
+  deleteSecrets?: string[];
 }
 
 /** Billable products the plan touches, for the operator's cost review. */
@@ -98,6 +103,7 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
     guarded(() => api.findZone(account, zoneNameOf(desired))),
   ]);
 
+  const instanceScripts = new Set(desired.resources.flatMap((r) => (r.kind === "worker_script" && r.role !== "router" ? [r.scriptName] : [])));
   const outputs: ResourceOutputs = new Map();
   const steps: PlanStep[] = [];
   const workerOwned = new Map<ResourceKey, boolean>();
@@ -178,6 +184,16 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
         }
         const settings = await guarded(() => api.getWorkerSettings(account, resource.scriptName));
         const marker = settings.bindings.find((b) => b.type === "plain_text" && b.name === MARKER_VARS.instance)?.text;
+        if (marker === undefined && resource.adoptable) {
+          const refusal = adoptionRefusal(resource, found.migrationTag);
+          if (refusal) {
+            step("refuse", refusal);
+            break;
+          }
+          workerOwned.set(resource.key, true);
+          steps.push(await planAdoption(resource, found.migrationTag, settings.bindings));
+          break;
+        }
         if (marker !== desired.instanceId) {
           step("refuse", marker
             ? `Worker ${resource.scriptName} belongs to instance ${marker}`
@@ -227,7 +243,7 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
         break;
       }
       case "managed_hostname": {
-        const managed = await planManagedHostname(api, resource, { accountId: account, instanceId: desired.instanceId, domains, zone });
+        const managed = await planManagedHostname(api, resource, { accountId: account, instanceId: desired.instanceId, domains, zone, instanceScripts });
         step(managed.action, managed.reason, { managedOps: managed.ops });
         break;
       }
@@ -263,6 +279,46 @@ async function planWorker(
   return serviceChanges.length > 0
     ? { ...base, action: "update", reason: `drift: ${serviceChanges.join("; ")}` }
     : { ...base, action: "noop", reason: "deployed version matches the release" };
+}
+
+/**
+ * Why a Worker deployed outside the installer can't be adopted, or undefined if it can. Its Durable
+ * Objects hold the district's data, so the upload must continue them: the Worker's migration tag
+ * must be in the release's history. A release with migrations needs a tag, since a Worker without
+ * one has no objects to keep and is not this package's deployment.
+ */
+function adoptionRefusal(worker: DesiredWorker, migrationTag: string | undefined): string | undefined {
+  const tags = worker.migrations.map((m) => m.tag);
+  if (tags.length > 0 && migrationTag === undefined) {
+    return `Worker ${worker.scriptName} has no Durable Object migration tag, so it holds none of ${worker.pkgName}'s objects: not adopted`;
+  }
+  if (migrationTag !== undefined && !tags.includes(migrationTag)) {
+    return `Worker ${worker.scriptName} is at Durable Object migration tag ${migrationTag}, which this release's ${worker.pkgName} does not know: not adopted`;
+  }
+  return undefined;
+}
+
+/**
+ * The plan for adopting a Worker deployed outside the installer: one upload of the release over it,
+ * which adds the installer's markers, continues its Durable Object migrations, and keeps its secrets,
+ * except any the release now sets as plain-text vars, which are deleted first.
+ */
+async function planAdoption(worker: DesiredWorker, migrationTag: string | undefined, observed: ObservedBinding[]): Promise<PlanStep> {
+  const plain = new Set(worker.bindings.filter((b) => b.type === "plain_text" || b.type === "json").map((b) => b.name));
+  const deleteSecrets = observed.filter((b) => b.type === "secret_text" && plain.has(b.name)).map((b) => b.name).toSorted();
+  const kept = migrationTag ? `keeps its Durable Objects at migration tag ${migrationTag}` : "has no Durable Objects";
+  const deleting = deleteSecrets.length > 0 ? `; deletes secret(s) ${deleteSecrets.join(", ")}, which the release sets as vars` : "";
+  const serviceChanges = serviceBindingChanges(worker, observed);
+  return {
+    key: worker.key,
+    kind: worker.kind,
+    resource: worker,
+    action: "update",
+    reason: `adopts Worker ${worker.scriptName}, deployed outside the installer: ${kept}${deleting}` +
+      (serviceChanges.length > 0 ? `; ${serviceChanges.join("; ")}` : ""),
+    ...(migrationTag ? { observedMigrationTag: migrationTag } : {}),
+    ...(deleteSecrets.length > 0 ? { deleteSecrets } : {}),
+  };
 }
 
 /**

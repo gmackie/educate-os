@@ -46,6 +46,7 @@ guess.
 | `deleteWorkerScript` (disabling a service) | `DELETE /accounts/{id}/workers/scripts/{name}` (never `force`) | Workers Scripts: Edit (verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
 | `createAssetsUploadSession`, `uploadAssets` | `.../assets-upload-session`, `/workers/assets/upload` (session JWT) | Workers Scripts: Edit | `workers_scripts:write` | wrangler-requested |
 | `listWorkerSecrets`, `putWorkerSecret` | `.../scripts/{name}/secrets` | Workers Scripts: Edit (verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
+| `deleteWorkerSecret` (adopting a Worker deployed outside the installer, SCHO-243) | `DELETE /accounts/{id}/workers/scripts/{name}/secrets/{secret}` | Workers Scripts: Edit (**unverified**: never yet called against a live account) | `workers_scripts:write` | wrangler-requested |
 | `listWorkerVersions`, `deployWorkerVersion` (rollback) | `.../versions`, `.../deployments` | Workers Scripts: Edit (`listWorkerVersions` verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
 | `listWorkerDomains`, `attachWorkerDomain` | `/accounts/{id}/workers/domains` | Workers Scripts: Edit, plus Workers Routes: Edit on the zone (verified 2026-10-31, SCHO-66) | `workers_routes:write` | wrangler-requested |
 | `detachWorkerDomain` (releasing a managed hostname) | `DELETE /accounts/{id}/workers/domains/{domain}` | Workers Scripts: Edit, plus Workers Routes: Edit on the zone (verified 2026-10-31, SCHO-66; it answers HTTP 200 with an empty body) | `workers_routes:write` | unverified |
@@ -128,6 +129,40 @@ because a dashboard edit keeps the installer's digest marker; a removed or retar
 `AI_CALL_GUARD` is reported and repaired by the next apply. Rollback refuses to redeploy a version
 whose service binding targets a Worker that no longer exists, and notes when it returns the
 backend to a version without a binding.
+
+## Adopting a Worker deployed outside the installer
+
+A service's Worker is normally `<resourcePrefix>-<pkg>`. `services["<pkg>"].scriptName` names it
+instead (SCHO-243), so the installer can adopt a Worker that must keep its name because its
+Durable Objects hold data, such as a ForgeGraph-deployed demo district (`educateos-prairie-district`,
+SCHO-231). The installer adopts a Worker without its instance marker only when the config names it
+this way, and only when the Worker:
+
+- carries no other instance's marker, and
+- is at a Durable Object migration tag in the release's history. A release with migrations needs a
+  tag: a Worker without one holds none of the package's objects.
+
+The adoption is one upload of the release over the Worker. That adds the markers, continues its
+migrations from the observed tag (none replayed when it is already at the last), and keeps its
+secrets (`keep_bindings`). It first deletes any secret the release sets as a plain-text var instead.
+A demo district keeps `DISTRICT_CONFIG`, `CF_ACCESS_ISS` and `CF_ACCESS_AUD` as secrets, and an
+upload with a var of the same name is assumed to be refused. That is **unverified**; deleting first
+works either way. Between those deletes and the upload, the Worker briefly runs without them.
+
+A managed hostname attached to one of the install's own Workers, as the adopted district's is,
+moves to the router with a detach and then an attach, after the Access applications cover it. The
+hostname is unreachable between the two calls. A base-domain custom domain on such a Worker is not
+moved; it reads as taken.
+
+What adoption does not do:
+
+- It does not adopt Access applications. A demo district's own application, and the shared health
+  and LTI bypass applications, already protect its hostname, so the plan is blocked
+  (`access:application ... already protects`) until the owner takes the hostname out of them. That
+  is a step to plan around: the hostname must not serve without Access in between.
+- It does not stop the old deployer. A ForgeGraph target that still deploys the Worker with Wrangler
+  would overwrite the installer's upload and reattach the custom domain to it, so remove the target
+  first.
 
 ## What the credential can reach, and what the installer touches
 

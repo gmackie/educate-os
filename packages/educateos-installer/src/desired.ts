@@ -117,6 +117,11 @@ export interface DesiredWorker extends ResourceBase {
     manifest: Record<string, AssetManifestEntry>;
     config: Record<string, unknown>;
   };
+  /**
+   * The config named this Worker (`services[pkg].scriptName`), so planning may adopt it when it
+   * exists without the installer's marker (SCHO-243).
+   */
+  adoptable?: true;
 }
 
 /** A secret on one Worker. Its value comes from the secret source at apply time, never the plan. */
@@ -419,7 +424,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   for (const [name, wanted] of Object.entries(config.services).toSorted(([a], [b]) => a.localeCompare(b))) {
     if (!wanted.enabled) {
       // Removal needs only the Worker's name, so it works with a release that no longer ships it.
-      retired.push({ kind: "worker_retired", key: retiredWorkerKey(name), dependsOn: [workerKey(backendPkg)], pkgName: name, scriptName: workerScriptName(config, name) });
+      retired.push({ kind: "worker_retired", key: retiredWorkerKey(name), dependsOn: [workerKey(backendPkg)], pkgName: name, scriptName: wanted.scriptName ?? workerScriptName(config, name) });
       continue;
     }
     const entry = manifest.workers[name];
@@ -463,7 +468,13 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   }
   inputs.push(...adminInputs);
   const scriptNames = new Map([backendPkg, routerPkg, ...installed, ...services, ...adminPkg ? [adminPkg] : []]
-    .map((pkg) => [pkg, workerScriptName(config, pkg)]));
+    .map((pkg) => [pkg, config.services[pkg]?.scriptName ?? workerScriptName(config, pkg)]));
+  const named = new Map<string, string>();
+  for (const [pkg, scriptName] of scriptNames) {
+    const other = named.get(scriptName);
+    if (other) invalid(`${pkg} and ${other} would both be the Worker ${scriptName}`);
+    named.set(scriptName, pkg);
+  }
 
   const storage = new Map<ResourceKey, DesiredResource>();
   const workers: DesiredResource[] = [];
@@ -750,6 +761,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       migrations: entry.migrations,
       bindings,
       ...(assets ? { assets } : {}),
+      ...(config.services[pkgName]?.scriptName ? { adoptable: true as const } : {}),
     });
   }
 

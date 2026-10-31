@@ -68,7 +68,7 @@ interface Script {
 }
 
 const MUTATIONS = new Set([
-  "uploadWorkerScript", "deleteWorkerScript", "createAssetsUploadSession", "uploadAssets", "putWorkerSecret", "deployWorkerVersion",
+  "uploadWorkerScript", "deleteWorkerScript", "createAssetsUploadSession", "uploadAssets", "putWorkerSecret", "deleteWorkerSecret", "deployWorkerVersion",
   "attachWorkerDomain", "createKvNamespace", "createR2Bucket", "createD1Database", "createAccessPolicy",
   "updateAccessPolicy", "createAccessApplication", "updateAccessApplication", "createAiGateway",
   "createDnsRecord", "updateDnsRecord", "deleteDnsRecord", "setFallbackOrigin", "createCustomHostname",
@@ -220,11 +220,15 @@ export class FakeCloudflare {
     return [...(this.#d1.get(name)?.statements ?? [])];
   }
 
-  /** Adds a Worker the installer did not create, with the given plain-text vars. */
-  seedWorker(name: string, vars: Record<string, string> = {}): void {
+  /**
+   * Adds a Worker the installer did not create, with the given plain-text vars, and optionally
+   * secrets and a Durable Object migration tag, as a Wrangler deploy leaves them.
+   */
+  seedWorker(name: string, vars: Record<string, string> = {}, options: { secrets?: Record<string, string>; migrationTag?: string } = {}): void {
     const bindings = Object.entries(vars).map(([k, text]) => ({ type: "plain_text", name: k, text }));
-    const version = { id: this.#id(), createdOn: this.#timestamp(), bindings };
-    this.#scripts.set(name, { versions: [version], activeVersionId: version.id, secrets: new Map() });
+    const tag = options.migrationTag ? { migrationTag: options.migrationTag } : {};
+    const version = { id: this.#id(), createdOn: this.#timestamp(), bindings, ...tag };
+    this.#scripts.set(name, { versions: [version], activeVersionId: version.id, secrets: new Map(Object.entries(options.secrets ?? {})), ...tag });
   }
 
   /**
@@ -436,6 +440,12 @@ export class FakeCloudflare {
       script.secrets.set(secret, value);
       this.#addVersion(script, activeVersion(script).bindings, script.migrationTag);
     },
+    deleteSecret: (name: string, secret: string) => {
+      const script = this.#script(name, "deleteWorkerSecret");
+      // A missing secret answers 404; its error code is unverified, so the fake reports none.
+      if (!script.secrets.delete(secret)) throw new CloudflareApiError("deleteWorkerSecret", 404, []);
+      this.#addVersion(script, activeVersion(script).bindings, script.migrationTag);
+    },
     versions: (name: string) =>
       this.#script(name, "listWorkerVersions").versions.map((v) => ({
         id: v.id,
@@ -543,6 +553,11 @@ export class FakeCloudflare {
     if (!upload.modules.some((m) => m.name === metadata.main_module)) throw new CloudflareApiError("uploadWorkerScript", 400, [10021]);
 
     const existing = this.#scripts.get(name);
+    // A binding named like a secret the upload keeps is assumed refused, as two bindings of one name
+    // (unverified: the installer deletes such a secret first, so it never depends on this either way).
+    if (existing && metadata.keep_bindings.includes("secret_text") && metadata.bindings.some((b) => existing.secrets.has(b.name))) {
+      throw new CloudflareApiError("uploadWorkerScript", 400, []);
+    }
     const migrations = metadata.migrations;
     if (migrations) {
       // Durable Object migrations must chain from the script's current tag.
@@ -677,6 +692,7 @@ class FakeCloudflareApi implements CloudflareApi {
   }
   listWorkerSecrets(a: string, s: string) { return this.#call(a, "listWorkerSecrets", () => this.#fake.op.secrets(s)); }
   putWorkerSecret(a: string, s: string, n: string, v: string) { return this.#call(a, "putWorkerSecret", () => this.#fake.op.putSecret(s, n, v)); }
+  deleteWorkerSecret(a: string, s: string, n: string) { return this.#call(a, "deleteWorkerSecret", () => this.#fake.op.deleteSecret(s, n)); }
   listWorkerVersions(a: string, s: string) { return this.#call(a, "listWorkerVersions", () => this.#fake.op.versions(s)); }
   deployWorkerVersion(a: string, s: string, v: string) { return this.#call(a, "deployWorkerVersion", () => this.#fake.op.deploy(s, v)); }
   listWorkerDomains(a: string) { return this.#call(a, "listWorkerDomains", () => this.#fake.op.domains()); }

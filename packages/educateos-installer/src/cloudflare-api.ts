@@ -295,6 +295,11 @@ export interface CloudflareApi {
   uploadAssets(accountId: string, sessionJwt: string, files: Map<string, Uint8Array<ArrayBuffer>>): Promise<string | undefined>;
   listWorkerSecrets(accountId: string, scriptName: string): Promise<string[]>;
   putWorkerSecret(accountId: string, scriptName: string, name: string, value: string): Promise<void>;
+  /**
+   * Removes one secret. Used only when adopting a Worker deployed outside the installer, for a secret
+   * the release sets as a plain-text var instead.
+   */
+  deleteWorkerSecret(accountId: string, scriptName: string, name: string): Promise<void>;
   listWorkerVersions(accountId: string, scriptName: string): Promise<WorkerVersion[]>;
   deployWorkerVersion(accountId: string, scriptName: string, versionId: string): Promise<void>;
 

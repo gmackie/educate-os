@@ -311,6 +311,10 @@ export class CloudflareHttpApi implements CloudflareApi {
     });
   }
 
+  async deleteWorkerSecret(accountId: string, scriptName: string, name: string) {
+    await this.#result("deleteWorkerSecret", "DELETE", `${scriptPath(accountId, scriptName)}/secrets/${seg(name)}`);
+  }
+
   async listWorkerVersions(accountId: string, scriptName: string) {
     const list = z.object({ items: z.array(VersionSummary) }).parse(
       await this.#result("listWorkerVersions", "GET", `${scriptPath(accountId, scriptName)}/versions`),
