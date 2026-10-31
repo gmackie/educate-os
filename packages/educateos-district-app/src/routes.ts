@@ -137,7 +137,7 @@ import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type 
 import type { ConfigProblem, ConfigurationPlan } from "@educateos/config";
 import type { IntegrationHealth, oneroster } from "@educateos/integrations";
 // Guardians (ADR-0012, SCHO-188)
-import { GuardianRelationship, GuardianRelationshipId, OpaqueCode, PrincipalStatus } from "@educateos/contracts";
+import { Action, DecisionReason, GuardianRelationship, GuardianRelationshipId, OpaqueCode, PrincipalStatus, RequestChannel, ResourceRef } from "@educateos/contracts";
 import { GuardianRelationshipAuditEvent, GuardianRelationshipScope } from "@educateos/policy";
 import { GuardianInvitationId, GuardianInvitationRedemption, IdentityRequestId, NewGuardianInvitation } from "@educateos/identity-links";
 import { WorkshopUserKey, WorkshopUserLink } from "@educateos/identity";
@@ -1804,6 +1804,31 @@ export const ROUTES = {
   "admin.opsAudit": route({
     method: "GET", path: "/api/admin/ops/audit", surface: "admin",
     response: z.strictObject({ entries: z.array(OpsAuditBody) }),
+  }),
+  // Explain and simulate (SCHO-175): what the policy engine would decide for a principal of this
+  // district, and why, without recording a decision or changing anything.
+  "admin.simulatePolicy": route({
+    method: "POST", path: "/api/admin/policy/simulate", surface: "admin",
+    body: z.strictObject({
+      /** The principal to decide for, in this district. */
+      principalId: PrincipalId,
+      action: Action,
+      resource: ResourceRef,
+      /** The surface the request would arrive through. */
+      channel: RequestChannel,
+      /** The state of the term the resource belongs to, when it belongs to one. */
+      termState: TermState.optional(),
+    }),
+    response: z.strictObject({
+      /** What the engine would decide. */
+      verdict: z.enum(["allow", "deny", "approval-required"]),
+      /** Why it would not simply allow. */
+      reason: DecisionReason.optional(),
+      /** The rule that would decide, or a `precheck.*` / `subject.*` / `scope.*` / `default.*` pseudo-rule. */
+      ruleId: z.string(),
+      /** The record the deciding rule would rely on, such as a guardian relationship. */
+      grantId: z.string().optional(),
+    }),
   }),
 } as const satisfies Record<string, RouteSpec>;
 
