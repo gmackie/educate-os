@@ -45,8 +45,8 @@ guess.
 | `listWorkerScripts`, `getWorkerSettings`, `uploadWorkerScript` | `/accounts/{id}/workers/scripts[/{name}[/settings]]` | Workers Scripts: Edit (verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
 | `deleteWorkerScript` (disabling a service) | `DELETE /accounts/{id}/workers/scripts/{name}` (never `force`) | Workers Scripts: Edit (verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
 | `createAssetsUploadSession`, `uploadAssets` | `.../assets-upload-session`, `/workers/assets/upload` (session JWT) | Workers Scripts: Edit | `workers_scripts:write` | wrangler-requested |
-| `listWorkerSecrets`, `putWorkerSecret` | `.../scripts/{name}/secrets` | Workers Scripts: Edit (verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
 | `deleteWorkerSecret` (adopting a Worker deployed outside the installer, SCHO-243) | `DELETE /accounts/{id}/workers/scripts/{name}/secrets/{secret}` | Workers Scripts: Edit (**unverified**: never yet called against a live account) | `workers_scripts:write` | wrangler-requested |
+| `listWorkerSecrets`, `putWorkerSecret` | `.../scripts/{name}/secrets` | Workers Scripts: Edit (verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
 | `listWorkerVersions`, `deployWorkerVersion` (rollback) | `.../versions`, `.../deployments` | Workers Scripts: Edit (`listWorkerVersions` verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
 | `listWorkerDomains`, `attachWorkerDomain` | `/accounts/{id}/workers/domains` | Workers Scripts: Edit, plus Workers Routes: Edit on the zone (verified 2026-10-31, SCHO-66) | `workers_routes:write` | wrangler-requested |
 | `detachWorkerDomain` (releasing a managed hostname) | `DELETE /accounts/{id}/workers/domains/{domain}` | Workers Scripts: Edit, plus Workers Routes: Edit on the zone (verified 2026-10-31, SCHO-66; it answers HTTP 200 with an empty body) | `workers_routes:write` | unverified |
@@ -130,6 +130,21 @@ because a dashboard edit keeps the installer's digest marker; a removed or retar
 whose service binding targets a Worker that no longer exists, and notes when it returns the
 backend to a version without a binding.
 
+## What the credential can reach, and what the installer touches
+
+Cloudflare's permission groups are coarser than the installer's needs. Workers KV Storage: Edit
+can read KV values. Workers R2 Storage: Edit can read objects. D1: Edit can query any table. So
+ADR-0001's rule that the installer never holds data access rests on three things, not on scopes:
+
+- The `CloudflareApi` port has no KV value, R2 object or Worker tail operation. `queryD1` runs only
+  the release's migration SQL and reads only the `_educateos_migrations` ledger, which holds
+  migration IDs.
+- OAuth grants are for the install session. The district revokes them when it is done, and a
+  revoked grant stops the installer at its next call (tested). The deployed district keeps serving.
+- With optional instance registration only, the district agent's private key and the registry's
+  ownership token go straight into backend Worker secrets, which cannot be read back. The installer
+  never stores them. An install without registration creates neither.
+
 ## Adopting a Worker deployed outside the installer
 
 A service's Worker is normally `<resourcePrefix>-<pkg>`. `services["<pkg>"].scriptName` names it
@@ -163,21 +178,6 @@ What adoption does not do:
 - It does not stop the old deployer. A ForgeGraph target that still deploys the Worker with Wrangler
   would overwrite the installer's upload and reattach the custom domain to it, so remove the target
   first.
-
-## What the credential can reach, and what the installer touches
-
-Cloudflare's permission groups are coarser than the installer's needs. Workers KV Storage: Edit
-can read KV values. Workers R2 Storage: Edit can read objects. D1: Edit can query any table. So
-ADR-0001's rule that the installer never holds data access rests on three things, not on scopes:
-
-- The `CloudflareApi` port has no KV value, R2 object or Worker tail operation. `queryD1` runs only
-  the release's migration SQL and reads only the `_educateos_migrations` ledger, which holds
-  migration IDs.
-- OAuth grants are for the install session. The district revokes them when it is done, and a
-  revoked grant stops the installer at its next call (tested). The deployed district keeps serving.
-- With optional instance registration only, the district agent's private key and the registry's
-  ownership token go straight into backend Worker secrets, which cannot be read back. The installer
-  never stores them. An install without registration creates neither.
 
 ## Behaviour on credential failure
 

@@ -26,7 +26,7 @@ function adoptConfig(release: TestRelease, service: Record<string, unknown> = {}
 function deployedAccount(seed: { vars?: Record<string, string>; migrationTag?: string | null } = {}) {
   const fake = accountFor(NORTHFIELD, { zones: [{ name: "northfield.example" }, { name: "educateos.io" }] });
   const migrationTag = seed.migrationTag === null ? {} : { migrationTag: seed.migrationTag ?? "v1" };
-  fake.seedWorker(DEPLOYED, seed.vars ?? {}, { secrets: DEPLOYED_SECRETS, ...migrationTag });
+  fake.seedDeployedWorker(DEPLOYED, { vars: seed.vars ?? {}, secrets: DEPLOYED_SECRETS, ...migrationTag });
   fake.seedWorkerDomain(HOST, DEPLOYED);
   return { fake, api: fake.api(tokenFor(fake, "district-run").tokens) };
 }
@@ -122,7 +122,7 @@ describe("adopting a deployed Worker", () => {
     // Without the config naming it, a Worker of that name is still not the installer's.
     const unnamed = configFor(NORTHFIELD, release, { services: { [DISTRICT]: { enabled: true, vars: DISTRICT_VARS } } });
     const { fake, api } = deployedAccount();
-    fake.seedWorker("educateos-northfield-educateos-district-worker", {}, { migrationTag: "v1" });
+    fake.seedDeployedWorker("educateos-northfield-educateos-district-worker", { migrationTag: "v1" });
     const report = await run(api, release, unnamed);
     expect(report.plan!.blocked.find((s) => s.key === `worker:${DISTRICT}`)?.reason)
       .toBe("Worker educateos-northfield-educateos-district-worker exists but was not created by the EducateOS installer");

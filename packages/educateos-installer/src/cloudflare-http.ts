@@ -298,6 +298,10 @@ export class CloudflareHttpApi implements CloudflareApi {
     return result?.jwt;
   }
 
+  async deleteWorkerSecret(accountId: string, scriptName: string, name: string) {
+    await this.#result("deleteWorkerSecret", "DELETE", `${scriptPath(accountId, scriptName)}/secrets/${seg(name)}`);
+  }
+
   async listWorkerSecrets(accountId: string, scriptName: string) {
     const secrets = z.array(SecretWire).parse(
       await this.#result("listWorkerSecrets", "GET", `${scriptPath(accountId, scriptName)}/secrets`),
@@ -309,10 +313,6 @@ export class CloudflareHttpApi implements CloudflareApi {
     await this.#result("putWorkerSecret", "PUT", `${scriptPath(accountId, scriptName)}/secrets`, {
       json: { name, text: value, type: "secret_text" },
     });
-  }
-
-  async deleteWorkerSecret(accountId: string, scriptName: string, name: string) {
-    await this.#result("deleteWorkerSecret", "DELETE", `${scriptPath(accountId, scriptName)}/secrets/${seg(name)}`);
   }
 
   async listWorkerVersions(accountId: string, scriptName: string) {

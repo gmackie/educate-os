@@ -152,15 +152,6 @@ describe("Cloudflare HTTP client", () => {
     }]);
   });
 
-  it("deletes one secret by name", async () => {
-    const { fetchImpl, requests } = stubFetch(() => ok(null));
-    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
-
-    await api.deleteWorkerSecret(ACCOUNT, "educateos-prairie-district", "CF_ACCESS_AUD");
-    expect(requests.map((r) => [r.method, new URL(r.url).pathname]))
-      .toEqual([["DELETE", `/client/v4/accounts/${ACCOUNT}/workers/scripts/educateos-prairie-district/secrets/CF_ACCESS_AUD`]]);
-  });
-
   it("reads the empty 200 that DELETE /workers/domains answers as a detach, but not elsewhere", async () => {
     // Seen live on 2026-10-31 (SCHO-66): HTTP 200 with no body at all.
     const { fetchImpl, requests } = stubFetch(() => new Response("", { status: 200 }));
@@ -170,6 +161,15 @@ describe("Cloudflare HTTP client", () => {
     expect(requests[0]!.method).toBe("DELETE");
     expect(new URL(requests[0]!.url).pathname).toBe(`/client/v4/accounts/${ACCOUNT}/workers/domains/d1`);
     await expect(api.deleteWorkerScript(ACCOUNT, "w1")).rejects.toThrow("deleteWorkerScript: HTTP 200");
+  });
+
+  it("deletes one secret by name", async () => {
+    const { fetchImpl, requests } = stubFetch(() => ok(null));
+    const api = new CloudflareHttpApi({ tokens: staticTokenProvider("district-run", TOKEN), fetch: fetchImpl });
+
+    await api.deleteWorkerSecret(ACCOUNT, "educateos-prairie-district", "CF_ACCESS_AUD");
+    expect(requests.map((r) => [r.method, new URL(r.url).pathname]))
+      .toEqual([["DELETE", `/client/v4/accounts/${ACCOUNT}/workers/scripts/educateos-prairie-district/secrets/CF_ACCESS_AUD`]]);
   });
 
   it("authenticates asset uploads with the session JWT, not the account token", async () => {

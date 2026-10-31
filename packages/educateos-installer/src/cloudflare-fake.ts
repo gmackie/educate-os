@@ -68,11 +68,11 @@ interface Script {
 }
 
 const MUTATIONS = new Set([
-  "uploadWorkerScript", "deleteWorkerScript", "createAssetsUploadSession", "uploadAssets", "putWorkerSecret", "deleteWorkerSecret", "deployWorkerVersion",
+  "uploadWorkerScript", "deleteWorkerScript", "createAssetsUploadSession", "uploadAssets", "putWorkerSecret", "deployWorkerVersion",
   "attachWorkerDomain", "createKvNamespace", "createR2Bucket", "createD1Database", "createAccessPolicy",
   "updateAccessPolicy", "createAccessApplication", "updateAccessApplication", "createAiGateway",
   "createDnsRecord", "updateDnsRecord", "deleteDnsRecord", "setFallbackOrigin", "createCustomHostname",
-  "deleteCustomHostname", "createWorkerRoute", "deleteWorkerRoute", "detachWorkerDomain",
+  "deleteCustomHostname", "createWorkerRoute", "deleteWorkerRoute", "detachWorkerDomain", "deleteWorkerSecret",
 ]);
 
 const LEDGER_INSERT = /INSERT INTO _educateos_migrations \(id, sha256\) VALUES \(\?, \?\)\s*$/;
@@ -220,15 +220,11 @@ export class FakeCloudflare {
     return [...(this.#d1.get(name)?.statements ?? [])];
   }
 
-  /**
-   * Adds a Worker the installer did not create, with the given plain-text vars, and optionally
-   * secrets and a Durable Object migration tag, as a Wrangler deploy leaves them.
-   */
-  seedWorker(name: string, vars: Record<string, string> = {}, options: { secrets?: Record<string, string>; migrationTag?: string } = {}): void {
+  /** Adds a Worker the installer did not create, with the given plain-text vars. */
+  seedWorker(name: string, vars: Record<string, string> = {}): void {
     const bindings = Object.entries(vars).map(([k, text]) => ({ type: "plain_text", name: k, text }));
-    const tag = options.migrationTag ? { migrationTag: options.migrationTag } : {};
-    const version = { id: this.#id(), createdOn: this.#timestamp(), bindings, ...tag };
-    this.#scripts.set(name, { versions: [version], activeVersionId: version.id, secrets: new Map(Object.entries(options.secrets ?? {})), ...tag });
+    const version = { id: this.#id(), createdOn: this.#timestamp(), bindings };
+    this.#scripts.set(name, { versions: [version], activeVersionId: version.id, secrets: new Map() });
   }
 
   /**
@@ -239,6 +235,20 @@ export class FakeCloudflare {
     const script = this.#scripts.get(name);
     if (!script) throw new Error(`no Worker ${name}`);
     this.#addVersion(script, edit(activeVersion(script).bindings.map((b) => ({ ...b }))), script.migrationTag);
+  }
+
+  /**
+   * Adds a Worker deployed outside the installer, as a Wrangler deploy leaves one: its secrets, and
+   * the Durable Object migration tag it reached.
+   */
+  seedDeployedWorker(name: string, options: { vars?: Record<string, string>; secrets?: Record<string, string>; migrationTag?: string }): void {
+    this.seedWorker(name, options.vars);
+    const script = this.#scripts.get(name)!;
+    for (const [secret, value] of Object.entries(options.secrets ?? {})) script.secrets.set(secret, value);
+    if (options.migrationTag) {
+      script.migrationTag = options.migrationTag;
+      activeVersion(script).migrationTag = options.migrationTag;
+    }
   }
 
   /** Adds an Access application the installer did not create. */
@@ -434,16 +444,16 @@ export class FakeCloudflare {
       this.#completions.add(completion);
       return completion;
     },
-    secrets: (name: string) => [...this.#script(name, "listWorkerSecrets").secrets.keys()],
-    putSecret: (name: string, secret: string, value: string) => {
-      const script = this.#script(name, "putWorkerSecret");
-      script.secrets.set(secret, value);
-      this.#addVersion(script, activeVersion(script).bindings, script.migrationTag);
-    },
     deleteSecret: (name: string, secret: string) => {
       const script = this.#script(name, "deleteWorkerSecret");
       // A missing secret answers 404; its error code is unverified, so the fake reports none.
       if (!script.secrets.delete(secret)) throw new CloudflareApiError("deleteWorkerSecret", 404, []);
+      this.#addVersion(script, activeVersion(script).bindings, script.migrationTag);
+    },
+    secrets: (name: string) => [...this.#script(name, "listWorkerSecrets").secrets.keys()],
+    putSecret: (name: string, secret: string, value: string) => {
+      const script = this.#script(name, "putWorkerSecret");
+      script.secrets.set(secret, value);
       this.#addVersion(script, activeVersion(script).bindings, script.migrationTag);
     },
     versions: (name: string) =>
@@ -690,9 +700,9 @@ class FakeCloudflareApi implements CloudflareApi {
   uploadAssets(a: string, jwt: string, files: Map<string, Uint8Array<ArrayBuffer>>) {
     return this.#call(a, "uploadAssets", () => this.#fake.op.uploadAssets(jwt, files));
   }
+  deleteWorkerSecret(a: string, s: string, n: string) { return this.#call(a, "deleteWorkerSecret", () => this.#fake.op.deleteSecret(s, n)); }
   listWorkerSecrets(a: string, s: string) { return this.#call(a, "listWorkerSecrets", () => this.#fake.op.secrets(s)); }
   putWorkerSecret(a: string, s: string, n: string, v: string) { return this.#call(a, "putWorkerSecret", () => this.#fake.op.putSecret(s, n, v)); }
-  deleteWorkerSecret(a: string, s: string, n: string) { return this.#call(a, "deleteWorkerSecret", () => this.#fake.op.deleteSecret(s, n)); }
   listWorkerVersions(a: string, s: string) { return this.#call(a, "listWorkerVersions", () => this.#fake.op.versions(s)); }
   deployWorkerVersion(a: string, s: string, v: string) { return this.#call(a, "deployWorkerVersion", () => this.#fake.op.deploy(s, v)); }
   listWorkerDomains(a: string) { return this.#call(a, "listWorkerDomains", () => this.#fake.op.domains()); }
