@@ -1,0 +1,52 @@
+{
+  "listings": [
+    {
+      "listingId": "middle-school-starter-pack",
+      "version": "1.0.0",
+      "title": "Middle school starter pack",
+      "summary": "Three ready-to-assign activities for grades 6 to 8: an argument essay, a plant-growth investigation and a ratios problem set. A teacher adds any of them to a class as a draft, then edits it before publishing.",
+      "kind": "curriculum-pack",
+      "pricing": {
+        "model": "free"
+      },
+      "license": {
+        "name": "CC BY 4.0",
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+        "attribution": "EducateOS contributors"
+      },
+      "releasedAt": "2026-10-31T00:00:00.000Z",
+      "contentDigest": "sha256:5bc71f6015c5a504fb7e476611ff15f830fd74975d1a90810b61f65ee9839ee0",
+      "publisher": {
+        "publisherId": "educateos",
+        "displayName": "EducateOS",
+        "website": "https://educateos.io"
+      },
+      "subjects": [
+        "english-language-arts",
+        "science",
+        "mathematics"
+      ],
+      "gradeBands": [
+        "6-8"
+      ],
+      "activities": [
+        {
+          "key": "phones-in-school",
+          "title": "Should phones be allowed in class?",
+          "template": "writing-task"
+        },
+        {
+          "key": "plant-light",
+          "title": "How does light affect plant growth?",
+          "template": "science-investigation"
+        },
+        {
+          "key": "ratio-recipes",
+          "title": "Ratios in recipes",
+          "template": "problem-set"
+        }
+      ],
+      "bundle": "/marketplace/listings/middle-school-starter-pack/1.0.0.json"
+    }
+  ]
+}

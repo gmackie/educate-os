@@ -1,0 +1,163 @@
+{
+  "format": "educateos.marketplace.listing/v1",
+  "credential": {
+    "payload": {
+      "expiresAt": "2027-10-31T17:25:02.604Z",
+      "issuedAt": "2026-10-31T17:25:02.604Z",
+      "publisher": {
+        "displayName": "EducateOS",
+        "key": {
+          "keyId": "ed25519-71yD_H7OvXca1DCaK5pp8PV-vIbDw9K2H3ZARqsNiWo",
+          "publicKey": "7TQKh8xhmsc6yI2MUmIiuntUli4NyGU4Sr2v10P-dPk"
+        },
+        "publisherId": "educateos",
+        "website": "https://educateos.io"
+      }
+    },
+    "signature": "io_fKYNkVqCDP4egyBzSx7QJt13ThYE2pjisVdmZkAl5iN7-u113Wjsnrj3GQZkGM7yUqrwoqQHtE1DpgVDyDQ",
+    "keyId": "ed25519-Y5ayv_OFgjE5j_YaqCuiuNvx-H7_d6AVfSjTnQlIc58"
+  },
+  "listing": {
+    "payload": {
+      "contentDigest": "sha256:5bc71f6015c5a504fb7e476611ff15f830fd74975d1a90810b61f65ee9839ee0",
+      "kind": "curriculum-pack",
+      "license": {
+        "attribution": "EducateOS contributors",
+        "name": "CC BY 4.0",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      "listingId": "middle-school-starter-pack",
+      "pricing": {
+        "model": "free"
+      },
+      "publisherId": "educateos",
+      "releasedAt": "2026-10-31T00:00:00.000Z",
+      "summary": "Three ready-to-assign activities for grades 6 to 8: an argument essay, a plant-growth investigation and a ratios problem set. A teacher adds any of them to a class as a draft, then edits it before publishing.",
+      "title": "Middle school starter pack",
+      "version": "1.0.0"
+    },
+    "signature": "EVWBJAnGvpzmiZqHDnr_96lx4TshwKkONhZlQ5lVv43wLNFteFUBfEGIYLwYz-VGy_eHbxBU5YSiCHcXyDjQBw",
+    "keyId": "ed25519-71yD_H7OvXca1DCaK5pp8PV-vIbDw9K2H3ZARqsNiWo"
+  },
+  "content": {
+    "activities": [
+      {
+        "key": "phones-in-school",
+        "template": {
+          "additionalArtifactTypes": [],
+          "aiHelp": "hints-only",
+          "alignments": [],
+          "codex": [
+            {
+              "body": "1. State your claim in the first paragraph.\n2. Give each reason its own paragraph, with evidence.\n3. Name a counterargument and explain why your claim still holds.\n4. End by restating your claim in new words.",
+              "id": "argument-checklist",
+              "kind": "note",
+              "purpose": "context",
+              "title": "Argument checklist",
+              "visibility": "students"
+            }
+          ],
+          "collaboration": "individual",
+          "due": {
+            "days": 7,
+            "kind": "after-install"
+          },
+          "genre": "argument",
+          "gradeBand": "6-8",
+          "minWords": 300,
+          "minimumCitations": 0,
+          "overview": "Students take a position on whether phones should be allowed in class and support it with reasons and evidence, then answer the strongest point on the other side.",
+          "prompt": "Should students be allowed to use phones in class? Write an argument that states your claim, gives at least two reasons with evidence, and responds to one counterargument.",
+          "resources": [],
+          "subject": "english-language-arts",
+          "template": "writing-task",
+          "title": "Should phones be allowed in class?"
+        }
+      },
+      {
+        "key": "plant-light",
+        "template": {
+          "additionalArtifactTypes": [],
+          "aiHelp": "hints-only",
+          "alignments": [],
+          "analysisPrompt": "What pattern do you see between hours of light and height? Use numbers from your table, and name one thing that could have affected your results.",
+          "codex": [],
+          "collaboration": "group",
+          "dataColumns": [
+            {
+              "name": "Day"
+            },
+            {
+              "name": "Hours of light"
+            },
+            {
+              "name": "Height",
+              "unit": "cm"
+            }
+          ],
+          "due": {
+            "days": 14,
+            "kind": "after-install"
+          },
+          "gradeBand": "6-8",
+          "methodPrompt": "Describe your setup: how many seedlings, how much light each group gets, and what you kept the same for every group (water, soil, pot size, temperature).",
+          "overview": "Students grow bean seedlings under different amounts of light for two weeks, measure them, and explain what their data shows.",
+          "question": "How does the amount of light a bean seedling gets each day affect how tall it grows in two weeks?",
+          "resources": [],
+          "subject": "science",
+          "template": "science-investigation",
+          "title": "How does light affect plant growth?"
+        }
+      },
+      {
+        "key": "ratio-recipes",
+        "template": {
+          "additionalArtifactTypes": [],
+          "aiHelp": "hints-only",
+          "alignments": [],
+          "codex": [],
+          "collaboration": "individual",
+          "due": {
+            "days": 3,
+            "kind": "after-install"
+          },
+          "gradeBand": "6-8",
+          "overview": "Students scale recipes up and down using equivalent ratios and unit rates.",
+          "problems": [
+            {
+              "answer": "12 eggs",
+              "prompt": "A pancake recipe uses 2 cups of flour for every 3 eggs. How many eggs do you need for 8 cups of flour?"
+            },
+            {
+              "answer": "17.5 cups",
+              "prompt": "Lemonade is made with 1 cup of lemon juice for every 5 cups of water. How much water goes with 3.5 cups of lemon juice?"
+            },
+            {
+              "answer": "750 g",
+              "prompt": "A recipe for 4 people uses 300 g of rice. How much rice do you need for 10 people?"
+            },
+            {
+              "answer": "Store B: $0.70 a bar against $0.75",
+              "prompt": "Store A sells 6 granola bars for $4.50. Store B sells 10 for $7.00. Which is the better deal per bar? Explain."
+            }
+          ],
+          "resources": [],
+          "showWork": true,
+          "subject": "mathematics",
+          "template": "problem-set",
+          "title": "Ratios in recipes"
+        }
+      }
+    ],
+    "description": "Three activities that each work in a single class period or a short unit, written to be edited: change the prompt, the due date or the AI-help level before you publish.",
+    "gradeBands": [
+      "6-8"
+    ],
+    "subjects": [
+      "english-language-arts",
+      "science",
+      "mathematics"
+    ],
+    "title": "Middle school starter pack"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "listingId": "middle-school-starter-pack",
+  "publisherId": "educateos",
+  "kind": "curriculum-pack",
+  "version": "1.0.0",
+  "releasedAt": "2026-10-31T00:00:00.000Z",
+  "title": "Middle school starter pack",
+  "summary": "Three ready-to-assign activities for grades 6 to 8: an argument essay, a plant-growth investigation and a ratios problem set. A teacher adds any of them to a class as a draft, then edits it before publishing.",
+  "license": { "name": "CC BY 4.0", "url": "https://creativecommons.org/licenses/by/4.0/", "attribution": "EducateOS contributors" },
+  "pricing": { "model": "free" }
+}
