@@ -225,6 +225,14 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   Access authentication logs with. Without the token or account, that route answers 501
   `analytics-not-configured`. Not yet a deploy input. See
   [docs/educateos/admin.md](../../docs/educateos/admin.md#the-district-side).
+- `MARKETPLACE_TRUST` (optional var, SCHO-209): the release keys, public halves only, that
+  marketplace listings are verified against, as `ReleaseTrust` JSON from `@educateos/releases`. An
+  administrator installs a curriculum pack by posting the listing bundle they downloaded to
+  `admin.installMarketplacePack`; the district checks its publisher credential against these keys,
+  the listing against the publisher's key and the content against its digest, all offline, and
+  never fetches anything from educateos.io. Unset, every install answers 503 `unavailable`; a
+  malformed value fails the start. The demo districts pin the project's demo release keys
+  (`DEMO_MARKETPLACE_TRUST` in `scripts/production/demo-districts.ts`). Not yet a deploy input.
 - `LTI_TOOL_ORIGIN` (optional): the LTI Tool's public origin (see [LTI 1.3 Tool](#lti-13-tool-scho-177)).
   It is not yet a deploy input, so the installer does not offer it; the schoolos.gmac.io production
   config sets it from the district hostname.

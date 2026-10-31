@@ -1208,6 +1208,9 @@ importers:
       '@educateos/learning-artifacts':
         specifier: workspace:*
         version: link:../educateos-learning-artifacts
+      '@educateos/marketplace':
+        specifier: workspace:*
+        version: link:../educateos-marketplace
       '@educateos/policy':
         specifier: workspace:*
         version: link:../educateos-policy
@@ -1217,6 +1220,9 @@ importers:
       '@educateos/registry':
         specifier: workspace:*
         version: link:../educateos-registry
+      '@educateos/releases':
+        specifier: workspace:*
+        version: link:../educateos-releases
       '@educateos/workspaces':
         specifier: workspace:*
         version: link:../educateos-workspaces
@@ -1284,6 +1290,9 @@ importers:
       '@educateos/policy':
         specifier: workspace:*
         version: link:../educateos-policy
+      '@educateos/releases':
+        specifier: workspace:*
+        version: link:../educateos-releases
       '@educateos/workspaces':
         specifier: workspace:*
         version: link:../educateos-workspaces
@@ -1333,6 +1342,9 @@ importers:
       '@educateos/fleet':
         specifier: workspace:*
         version: link:../educateos-fleet
+      '@educateos/marketplace':
+        specifier: workspace:*
+        version: link:../educateos-marketplace
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts

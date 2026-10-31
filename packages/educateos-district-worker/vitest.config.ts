@@ -1,4 +1,4 @@
-import { generateKeyPairSync } from "node:crypto";
+import { createHash, generateKeyPairSync, type KeyObject } from "node:crypto";
 import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import capnwebValidate from "capnweb-validate/vite";
 import { kCurrentWorker } from "miniflare";
@@ -18,6 +18,18 @@ const platform = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const PLATFORM_KID = "test-platform-key";
 // The key the district signs Hall Monitor service tokens with (SCHO-305), for this run only.
 const hallMonitorKey = generateKeyPairSync("ed25519");
+// The release key marketplace publisher credentials are signed with (SCHO-209), for this run only:
+// the district pins its public half in MARKETPLACE_TRUST, and the tests sign with its private half.
+const marketplaceKey = generateKeyPairSync("ed25519");
+const pinned = (key: KeyObject) => {
+  const x = key.export({ format: "jwk" }).x!;
+  return { keyId: `ed25519-${createHash("sha256").update(Buffer.from(x, "base64url")).digest("base64url")}`, publicKey: x };
+};
+const MARKETPLACE_TRUST = JSON.stringify({
+  root: { threshold: 1, keys: [pinned(generateKeyPairSync("ed25519").publicKey)] },
+  keySetVersion: 0,
+  keys: [pinned(marketplaceKey.publicKey)],
+});
 
 /**
  * The Worker runs in workerd: the district is a real SQLite Durable Object, reached through the
@@ -51,6 +63,9 @@ export default defineConfig({
           HALL_MONITOR_ISSUER: "educateos",
           TEST_PLATFORM_PRIVATE_JWK: JSON.stringify({ ...platform.privateKey.export({ format: "jwk" }), kid: PLATFORM_KID, alg: "RS256" }),
           TEST_PLATFORM_PUBLIC_JWK: JSON.stringify({ ...platform.publicKey.export({ format: "jwk" }), kid: PLATFORM_KID, alg: "RS256", use: "sig" }),
+          // Marketplace installs (SCHO-209).
+          MARKETPLACE_TRUST,
+          TEST_MARKETPLACE_RELEASE_JWK: JSON.stringify(marketplaceKey.privateKey.export({ format: "jwk" })),
         },
         durableObjects: {
           // The Worker reaches the district through ctx.exports; the tests restart it through this binding.

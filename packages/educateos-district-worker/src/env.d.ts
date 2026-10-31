@@ -74,5 +74,10 @@ declare namespace Cloudflare {
     HALL_MONITOR_ISSUER?: string;
     /** Their audience. Defaults to `hall-monitor`. */
     HALL_MONITOR_AUDIENCE?: string;
+    /**
+     * The release keys marketplace publisher credentials are verified against (SCHO-209), as JSON (a
+     * `ReleaseTrust` from `@educateos/releases`, public keys only). Unset, no marketplace listing installs.
+     */
+    MARKETPLACE_TRUST?: string;
   }
 }

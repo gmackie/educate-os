@@ -47,6 +47,8 @@ import { InMemoryDeviceStore, type DeviceStore } from "./devices.ts";
 import { InMemoryPairRoomStore, type PairRoomStore } from "./pairing.ts";
 // Operations (SCHO-263)
 import { InMemoryOpsStore, type OpsStore } from "./ops.ts";
+// Marketplace (SCHO-209)
+import { InMemoryMarketplacePackStore, type MarketplacePackStore } from "./marketplace.ts";
 
 /**
  * A district's configuration revisions, oldest first. Only applied revisions are kept: a draft or
@@ -300,6 +302,9 @@ export interface DistrictAppStores {
   // Operations (SCHO-263)
   /** Enrolled admin ops keys, the ops nonces seen recently, and the ops audit log. */
   ops: OpsStore;
+  // Marketplace (SCHO-209)
+  /** Curriculum packs installed from signed marketplace listings. */
+  marketplacePacks: MarketplacePackStore;
 }
 
 /** In-memory stores for one district, seeded with its directory. */
@@ -343,5 +348,7 @@ export function inMemoryDistrictStores(directory: DistrictDirectorySnapshot): Di
     pairRooms: new InMemoryPairRoomStore(),
     // Operations (SCHO-263)
     ops: new InMemoryOpsStore(),
+    // Marketplace (SCHO-209)
+    marketplacePacks: new InMemoryMarketplacePackStore(),
   };
 }

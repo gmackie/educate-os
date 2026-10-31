@@ -16,7 +16,7 @@ import {
   demoDistrictConfigName, demoDistrictWorkerName, generateProductionConfigs, productionBuildEnv, productionPackageNames,
   productionWorkerName, renderProductionConfig, type DemoDistrictDeployment, type ProductionConfig, type ProductionInstance,
 } from "./production-config.ts";
-import { AI_DEMO_URL, DEMO_DISTRICT_DEPLOYMENTS, DEMO_DISTRICTS_ONE_ORIGIN } from "./demo-districts.ts";
+import { AI_DEMO_URL, DEMO_DISTRICT_DEPLOYMENTS, DEMO_DISTRICTS_ONE_ORIGIN, DEMO_MARKETPLACE_TRUST } from "./demo-districts.ts";
 import { SCHOOLOS_GMAC_IO } from "./schoolos-gmac-io.ts";
 
 const PACKAGES = readDeployablePackages(PACKAGES_DIR);
@@ -359,11 +359,13 @@ test("deploys five demo districts beside northfield, each its own Worker at its 
     // Only its own hostname: Wrangler detaches any custom domain a deploy does not list, so a demo
     // must never list northfield's (or another demo's).
     assert.deepEqual(config.routes, [{ pattern: `${slug}.educateos.io`, custom_domain: true }]);
-    // On one origin (DEMO_DISTRICTS_ONE_ORIGIN): its manifest, without AI, and Northfield's /ai to link to.
+    // On one origin (DEMO_DISTRICTS_ONE_ORIGIN): its manifest, without AI, and Northfield's /ai to
+    // link to; and the demo release keys it verifies marketplace listings against (SCHO-209).
     assert.deepEqual(config.vars, {
       LTI_TOOL_ORIGIN: `https://${slug}.educateos.io`,
       AI_DEMO_URL: AI_DEMO_URL,
       SCHOOL_MANIFEST: JSON.stringify({ origin: `https://${slug}.educateos.io`, features: { ai: false } }),
+      MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST,
     });
     // The district's assets, with /ai run through the Worker for its "AI isn't enabled" page.
     assert.deepEqual(config.assets, { ...district.assets, run_worker_first: [
@@ -522,6 +524,7 @@ test("one origin: a demo district answers /ai itself, linking to Northfield, and
       LTI_TOOL_ORIGIN: `https://${slug}.educateos.io`,
       AI_DEMO_URL,
       SCHOOL_MANIFEST: JSON.stringify({ origin: `https://${slug}.educateos.io`, features: { ai: false } }),
+      MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST,
     });
     const { assets: _a, vars: _v, ...rest } = config;
     const { assets: _b, vars: _w, ...restBefore } = before;

@@ -28,9 +28,11 @@
     "@educateos/identity-links": "workspace:*",
     "@educateos/integrations": "workspace:*",
     "@educateos/learning-artifacts": "workspace:*",
+    "@educateos/marketplace": "workspace:*",
     "@educateos/policy": "workspace:*",
     "@educateos/quizzes": "workspace:*",
     "@educateos/registry": "workspace:*",
+    "@educateos/releases": "workspace:*",
     "@educateos/workspaces": "workspace:*",
     "zod": "catalog:",
     "@educateos/assessment-sdk": "workspace:*"

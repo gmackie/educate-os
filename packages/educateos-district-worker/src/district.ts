@@ -21,6 +21,7 @@ import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSql
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
 import { accessAudiences, accessRequestVerifier } from "./access.ts";
 import { readDistrictWorkerConfig, type DistrictWorkerConfig } from "./config.ts";
+import { ReleaseTrust } from "@educateos/releases";
 // Communication (SCHO-189)
 import { cloudflareEmailSender, type SendEmailBinding } from "./mail.ts";
 import type { DiscussionScreening, DiscussionScreeningSettings } from "@educateos/discussions";
@@ -88,6 +89,9 @@ export interface DistrictSettings {
   analyticsZoneTag?: string | undefined;
   /** The release the district runs: `SCHOOL_MANIFEST`'s `release`, else the Worker's version tag. */
   releaseVersion?: string | undefined;
+  // Marketplace (SCHO-209)
+  /** `MARKETPLACE_TRUST`, the release keys marketplace listings are verified against, as JSON. Without it none installs. */
+  marketplaceTrust?: string | undefined;
 }
 
 /** What a district reaches outside its storage. */
@@ -122,6 +126,24 @@ const UNREACHABLE_HALL_MONITOR: DiscussionScreening["hallMonitor"] = {
     throw new Error("Hall Monitor is not configured for discussion screening");
   },
 };
+
+/**
+ * Parses `MARKETPLACE_TRUST` (SCHO-209): a `ReleaseTrust` of public keys only. Unset or empty means
+ * the district installs no marketplace listings; anything else malformed fails the start, so a
+ * misconfigured pin is never mistaken for none. The error never quotes the value.
+ */
+export function readMarketplaceTrust(text: string | undefined): ReleaseTrust | undefined {
+  if (text === undefined || text === "") return undefined;
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error("MARKETPLACE_TRUST is not JSON");
+  }
+  const parsed = ReleaseTrust.safeParse(json);
+  if (!parsed.success) throw new Error("MARKETPLACE_TRUST is not a release trust");
+  return parsed.data;
+}
 
 /** The district ID `DISTRICT_CONFIG` names, which its Durable Object is named by. */
 export function configuredDistrictId(config: string | undefined): string {
@@ -187,6 +209,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(config.cleverSso === undefined ? {} : { clever: config.cleverSso }),
   });
   const authority = authorityFor(config.authority);
+  const marketplaceTrust = readMarketplaceTrust(settings.marketplaceTrust);
   const analytics = analyticsSettings({
     CF_ANALYTICS_TOKEN: settings.analyticsToken,
     CF_ACCOUNT_ID: settings.analyticsAccountId,
@@ -229,6 +252,8 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ...(config.unscreenedStudentPosts === undefined ? {} : { unscreenedStudentPosts: config.unscreenedStudentPosts }),
     // Operations (SCHO-263): analytics only with a token. The global fetch is bound, as workerd requires.
     release: { version: settings.releaseVersion },
+    // Marketplace (SCHO-209): listings are verified offline against the deployment's pin.
+    ...(marketplaceTrust === undefined ? {} : { marketplaceTrust }),
     ...(analytics === undefined ? {} : {
       opsAnalytics: cloudflareAnalytics(analytics, { fetch: seams.analyticsFetch ?? fetch.bind(globalThis), now: () => new Date() }),
     }),

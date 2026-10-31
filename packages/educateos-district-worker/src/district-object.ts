@@ -328,6 +328,8 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         analyticsScripts: this.env.ANALYTICS_SCRIPTS,
         analyticsZoneTag: this.env.ANALYTICS_ZONE_TAG,
         releaseVersion: this.#releaseVersion(),
+        // Marketplace (SCHO-209)
+        marketplaceTrust: this.env.MARKETPLACE_TRUST,
       },
       {
         importFetch: (url, init) => this.importFetch(url, init),

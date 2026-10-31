@@ -877,6 +877,47 @@ export const LearningGoalsBody = z.strictObject({ goals: z.array(LearningGoalBod
 /** Learning goals for a class. */
 export type LearningGoalsBody = z.infer<typeof LearningGoalsBody>;
 
+// Marketplace packs (SCHO-209). Plain schemas, so the browser bundle never carries the verifier.
+const MarketplaceLicense = z.strictObject({ name: z.string(), url: z.string().optional(), attribution: z.string().optional() });
+
+/** A curriculum pack the district installed from a marketplace listing, as the admin console lists it. */
+export const MarketplacePackBody = z.strictObject({
+  publisher: z.strictObject({ publisherId: z.string(), displayName: z.string(), website: z.string().optional() }),
+  listingId: z.string(),
+  version: z.string(),
+  title: z.string(),
+  summary: z.string(),
+  license: MarketplaceLicense,
+  /** Always `free` today: a district refuses any other pricing. */
+  pricing: z.strictObject({ model: z.literal("free") }),
+  /** The digest the publisher signed, naming the exact content installed. */
+  contentDigest: z.string(),
+  subjects: z.array(z.string()),
+  gradeBands: z.array(z.string()),
+  activities: z.array(z.strictObject({ key: z.string(), template: z.string(), title: z.string() })),
+  installed: z.strictObject({ by: PrincipalId, at: z.string() }),
+});
+/** An installed marketplace pack. */
+export type MarketplacePackBody = z.infer<typeof MarketplacePackBody>;
+
+/**
+ * An installed pack's activity templates, as a teacher sees them: each is a `TemplateInput` the
+ * teacher may pass, as it is or edited, to `teacher.createActivity` for one of their classes.
+ */
+export const MarketplacePackTemplatesBody = z.strictObject({
+  publisher: z.strictObject({ publisherId: z.string(), displayName: z.string() }),
+  listingId: z.string(),
+  version: z.string(),
+  title: z.string(),
+  license: MarketplaceLicense,
+  activities: z.array(z.strictObject({ key: z.string(), template: TemplateInput })),
+});
+/** An installed pack's templates. */
+export type MarketplacePackTemplatesBody = z.infer<typeof MarketplacePackTemplatesBody>;
+
+/** A listing bundle as downloaded from the marketplace. Only its shape is checked here; the district verifies it. */
+const MarketplaceBundleInput = z.record(z.string(), z.json());
+
 /** Defines a route, keeping its literal types. */
 function route<const S extends RouteSpec>(spec: S): S {
   return spec;
@@ -1050,6 +1091,10 @@ export const ROUTES = {
     method: "GET", path: "/api/teacher/offerings/:offeringId/learning-goals", surface: "teacher",
     params: params({ offeringId: OfferingId }), response: LearningGoalsBody,
   }),
+  "teacher.marketplacePacks": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/marketplace-packs", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: z.array(MarketplacePackTemplatesBody),
+  }),
   "teacher.publishActivity": route({
     method: "POST", path: "/api/teacher/activity-definitions/:definitionId/publish", surface: "teacher",
     params: params({ definitionId: ActivityDefinitionId }), body: NoBody, response: ActivityDefinition,
@@ -1189,6 +1234,13 @@ export const ROUTES = {
   "admin.withdrawStandards": route({
     method: "POST", path: "/api/admin/standards/:frameworkKey/withdraw", surface: "admin",
     params: params({ frameworkKey: StandardsKey }), body: NoBody, response: StandardsReleaseBody,
+  }),
+  // Marketplace packs (SCHO-209)
+  "admin.listMarketplacePacks": route({
+    method: "GET", path: "/api/admin/marketplace/packs", surface: "admin", response: z.array(MarketplacePackBody),
+  }),
+  "admin.installMarketplacePack": route({
+    method: "POST", path: "/api/admin/marketplace/packs", surface: "admin", body: MarketplaceBundleInput, response: MarketplacePackBody,
   }),
   "admin.previewRoster": route({
     method: "POST", path: "/api/admin/roster/preview", surface: "admin", body: RosterFilesInput, response: declared<oneroster.OneRosterPreview>(),
