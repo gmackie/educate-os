@@ -66,3 +66,13 @@ needed; cached tasks forward it without changing the result fingerprint.
 Do not remove `scripts/assert-workerd.ts` from suites that require workerd: it prevents a failed
 pool from appearing to pass under Node. On a Mac, prevent idle sleep for the duration of a benchmark
 (`caffeinate -is <command>`) before interpreting wall-clock timeout results.
+
+## Cached results in CI
+
+CI restores Vite Task's cache (`node_modules/.vite/task-cache`) before the build and saves it after
+the tests (SCHO-312), so a pull request re-runs only the build and test tasks whose inputs changed
+and replays the rest. In the log a replayed task prints `cache hit, replaying` and a re-run task
+prints the input that missed (`cache miss: '<file>' modified`). A task only caches when it passes, and when it reads a path it
+also wrote it never caches at all, so keep each task's scratch paths excluded (see
+[build-system guidance](build-system.md)). To force a full run, push with a changed input or bump
+the `vite-task-v1` key prefix in `.forgejo/workflows/ci.yml`.
