@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DistrictId, PrincipalId } from "./ids.ts";
+import { DelegationId, DistrictId, PrincipalId } from "./ids.ts";
 import { Scope } from "./scope.ts";
 import { TermState } from "./academic.ts";
 import type { PrincipalKind, RoleAssignment } from "./identity.ts";
@@ -104,6 +104,11 @@ export const ResourceKind = z.enum([
   "identity-link",
   /** A record that lets one guardian read one student's course records (ADR-0012). */
   "guardian-relationship",
+  /**
+   * A principal's grant letting one registered client act for them within a scope ceiling until
+   * it expires (RFC 0002 §6): `restricted`, at the ceiling's scope, owned by its grantor.
+   */
+  "delegation",
 ]);
 /** A resource kind. */
 export type ResourceKind = z.infer<typeof ResourceKind>;
@@ -148,7 +153,16 @@ export type ResourceRef = z.infer<typeof ResourceRef>;
  * appears here or influences the decision.
  */
 export const AuthorizationRequest = z.strictObject({
-  subject: z.strictObject({ principalId: PrincipalId, districtId: DistrictId }),
+  subject: z.strictObject({
+    principalId: PrincipalId,
+    districtId: DistrictId,
+    /**
+     * Set when a registered client acts for the principal under a delegation. The transport sets
+     * it after verifying the client's token, never from anything the client sends. A delegated
+     * subject may do only what both the principal and the delegation's ceiling allow.
+     */
+    delegationId: DelegationId.optional(),
+  }),
   action: Action,
   resource: ResourceRef,
   context: z.strictObject({

@@ -24,6 +24,7 @@ import {
   type ActivityDefinitionId,
   type ActivityId,
   type ConfigRevisionId,
+  type DelegationId,
   type DistrictDirectorySnapshot,
   type GuardianRelationshipId,
   type OfferingId,
@@ -75,11 +76,13 @@ import { DurableObjectCatalogMirrorStorage } from "@educateos/catalog/durable-ob
 import { DurableObjectLedgerStore } from "@educateos/ai-governance/durable-object-store";
 import {
   checkGuardianRelationshipCommit,
+  Delegation,
   GUARDIAN_RELATIONSHIP_CONFLICT,
   GuardianRelationshipAuditEvent,
   OPEN_APPROVAL_STATES,
   PendingToolAction,
   sameGuardianRelationship,
+  type DelegationStore,
   type GuardianRelationshipStore,
   type ToolApprovalId,
   type ToolApprovalState,
@@ -217,6 +220,8 @@ export const DISTRICT_TABLES = {
   opsAudit: "educateos_ops_audit",
   // Marketplace (SCHO-209)
   marketplacePacks: "educateos_marketplace_packs",
+  // Delegations (SCHO-175)
+  delegations: "educateos_delegations",
 } as const;
 
 /** Thrown when a stored row cannot be read. Nothing is decided on state that cannot be read. */
@@ -1197,6 +1202,8 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     ops: new DurableObjectOpsStore(storage),
     // Marketplace (SCHO-209)
     marketplacePacks: new DurableObjectMarketplacePackStore(storage),
+    // Delegations (SCHO-175)
+    delegations: new DurableObjectDelegationStore(storage),
   };
 }
 
@@ -2233,5 +2240,49 @@ export class DurableObjectMarketplacePackStore implements MarketplacePackStore {
   #all(sql: DistrictSqlStorage["sql"]): InstalledPack[] {
     return sql.exec(`SELECT pack_json FROM ${DISTRICT_TABLES.marketplacePacks} ORDER BY seq`).toArray()
       .map((row) => parseStored(InstalledPack, row.pack_json, "an installed marketplace pack"));
+  }
+}
+
+// Delegations (SCHO-175)
+
+/**
+ * A {@link DelegationStore} in a Durable Object's SQLite: one row per delegation, replaced in place
+ * when it is revoked. Rows are never deleted, so a revoked delegation stays on record.
+ */
+export class DurableObjectDelegationStore implements DelegationStore {
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.delegations} (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, delegation_json TEXT NOT NULL
+      )`,
+    ], []);
+  }
+
+  async get(id: DelegationId): Promise<Delegation | undefined> {
+    return this.#tables.transaction((sql) => {
+      const [row] = sql.exec(`SELECT delegation_json FROM ${DISTRICT_TABLES.delegations} WHERE id = ?`, id).toArray();
+      return row === undefined ? undefined : parseStored(Delegation, row.delegation_json, "a delegation");
+    });
+  }
+
+  async list(): Promise<Delegation[]> {
+    return this.#tables.transaction((sql) =>
+      sql.exec(`SELECT delegation_json FROM ${DISTRICT_TABLES.delegations} ORDER BY seq`).toArray()
+        .map((row) => parseStored(Delegation, row.delegation_json, "a delegation"))
+    );
+  }
+
+  async put(delegation: Delegation): Promise<void> {
+    const parsed = Delegation.parse(delegation);
+    this.#tables.transaction((sql) => {
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.delegations} (id, delegation_json) VALUES (?, ?)
+          ON CONFLICT (id) DO UPDATE SET delegation_json = excluded.delegation_json`,
+        parsed.id,
+        JSON.stringify(parsed),
+      );
+    });
   }
 }

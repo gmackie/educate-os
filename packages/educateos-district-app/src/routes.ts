@@ -137,8 +137,8 @@ import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type 
 import type { ConfigProblem, ConfigurationPlan } from "@educateos/config";
 import type { IntegrationHealth, oneroster } from "@educateos/integrations";
 // Guardians (ADR-0012, SCHO-188)
-import { GuardianRelationship, GuardianRelationshipId, OpaqueCode, PrincipalStatus } from "@educateos/contracts";
-import { GuardianRelationshipAuditEvent, GuardianRelationshipScope } from "@educateos/policy";
+import { DelegationId, GuardianRelationship, GuardianRelationshipId, OpaqueCode, PrincipalStatus } from "@educateos/contracts";
+import { Delegation, GuardianRelationshipAuditEvent, GuardianRelationshipScope, NewDelegation } from "@educateos/policy";
 import { GuardianInvitationId, GuardianInvitationRedemption, IdentityRequestId, NewGuardianInvitation } from "@educateos/identity-links";
 import { WorkshopUserKey, WorkshopUserLink } from "@educateos/identity";
 // Communication (SCHO-189). Imported from the model alone, which this browser-safe module can carry.
@@ -1586,6 +1586,16 @@ export const ROUTES = {
     /** Empty text removes the note. `week` defaults to the week the next family digest covers. */
     body: z.strictObject({ week: IsoWeek.optional(), text: z.string().max(2_000) }),
     response: WeeklyNoteBody,
+  }),
+  // Delegations (SCHO-175). A staff member lets a registered client act for them within a ceiling;
+  // the list is their own, or the district's for a district admin.
+  "teacher.listDelegations": route({ method: "GET", path: "/api/teacher/delegations", surface: "teacher", response: z.array(Delegation) }),
+  "teacher.issueDelegation": route({
+    method: "POST", path: "/api/teacher/delegations", surface: "teacher", status: 201, body: NewDelegation, response: Delegation,
+  }),
+  "teacher.revokeDelegation": route({
+    method: "POST", path: "/api/teacher/delegations/:delegationId/revoke", surface: "teacher",
+    params: params({ delegationId: DelegationId }), body: NoBody, response: Delegation,
   }),
   "me.calendar": route({
     method: "GET", path: "/api/me/calendar", surface: "me",

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DistrictId, PrincipalId, UtcTimestamp } from "@educateos/contracts";
+import { AuthorizationRequest, PrincipalId, UtcTimestamp } from "@educateos/contracts";
 import type { ToolChannel } from "./tools.ts";
 
 /** The ID of a queued tool action: `apr_` and an opaque body. It may belong in contracts later. */
@@ -50,8 +50,8 @@ export const PendingToolAction = z.strictObject({
   tool: z.string().min(1).max(64),
   /** The validated input. It is parsed again with the tool's schema before it runs. */
   input: z.json(),
-  /** The verified principal the call runs for. */
-  subject: z.strictObject({ principalId: PrincipalId, districtId: DistrictId }),
+  /** The verified principal the call runs for, with the delegation it acted under, if any. */
+  subject: AuthorizationRequest.shape.subject,
   /** The channel the call arrived through. */
   channel: QueuedToolChannel,
   /** The correlation ID of the call that queued it, which its decisions were audited under. */
@@ -134,11 +134,14 @@ export class InMemoryToolApprovalStore implements ToolApprovalStore {
 }
 
 /**
- * The idempotency key of a call: a SHA-256 over its subject, channel, tool and input, with object
- * keys sorted so the same input in another key order gives the same key.
+ * The idempotency key of a call: a SHA-256 over its subject (with its delegation, if any),
+ * channel, tool and input, with object keys sorted so the same input in another key order gives
+ * the same key.
  */
 export async function toolCallKey(call: Pick<PendingToolAction, "subject" | "channel" | "tool" | "input">): Promise<string> {
-  const canonical = canonicalJson([call.subject.districtId, call.subject.principalId, call.channel, call.tool, call.input]);
+  const { districtId, principalId, delegationId } = call.subject;
+  const subject = delegationId === undefined ? [districtId, principalId] : [districtId, principalId, delegationId];
+  const canonical = canonicalJson([...subject, call.channel, call.tool, call.input]);
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }

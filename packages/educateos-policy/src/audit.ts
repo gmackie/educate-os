@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Action, DecisionReason, DistrictId, PrincipalId, RequestChannel, ResourceKind } from "@educateos/contracts";
+import { Action, DecisionReason, DelegationId, DistrictId, PrincipalId, RequestChannel, ResourceKind } from "@educateos/contracts";
 
 /**
  * One authorization decision as written to the audit trail (`policy_audit_event`, roadmap §10).
@@ -32,6 +32,8 @@ export const PolicyAuditEvent = z.strictObject({
   ruleId: z.string().min(1),
   /** The record the deciding rule relied on, such as the appeal grant or share that allowed a read. */
   grantId: z.string().min(1).max(128).optional(),
+  /** The delegation that bounded the request, when a client acted for the subject (SCHO-175). */
+  delegationId: DelegationId.optional(),
 });
 /** A policy audit event. */
 export type PolicyAuditEvent = z.infer<typeof PolicyAuditEvent>;
