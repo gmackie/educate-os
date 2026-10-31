@@ -27,6 +27,17 @@ export const DEMO_DISTRICTS_ONE_ORIGIN = true;
 /** Northfield's Workshop, on its one origin: where the other demo districts' `/ai` page points. */
 export const AI_DEMO_URL = "https://northfield.educateos.io/ai/";
 
+/**
+ * The release keys the demo districts verify marketplace listings against (SCHO-209): the project's
+ * demo release keys, the same public halves the educateos.io guided install pins as `RELEASE_TRUST`
+ * (sites/educateos-io/wrangler.jsonc). A marketplace publisher credential is signed by this release key.
+ */
+export const DEMO_MARKETPLACE_TRUST = JSON.stringify({
+  root: { threshold: 1, keys: [{ keyId: "ed25519-ZcqIp-xFaMyAdLm9A_VLfM9gzi-04hir2JmHXqornqc", publicKey: "mUuoDdWb6ERTjC_o3SI4hYf6pdb7tElPlkoVqPxx24k" }] },
+  keySetVersion: 0,
+  keys: [{ keyId: "ed25519-Y5ayv_OFgjE5j_YaqCuiuNvx-H7_d6AVfSjTnQlIc58", publicKey: "LVFy9O5qtmgvCGs0uhfjF9Q3aJZ4cQhrYYyouuF6YKg" }],
+});
+
 /** The demo districts deployed as their own district Workers, in fixture order. */
 export const DEMO_DISTRICT_DEPLOYMENTS: readonly DemoDistrictDeployment[] = [
   "riverbend", "prairie", "cedarvalley", "lakeshore", "harbor",
@@ -35,4 +46,5 @@ export const DEMO_DISTRICT_DEPLOYMENTS: readonly DemoDistrictDeployment[] = [
   accountId: OWNER_ACCOUNT,
   hostname: `${slug}.educateos.io`,
   oneOrigin: { enabled: DEMO_DISTRICTS_ONE_ORIGIN, aiDemoUrl: AI_DEMO_URL },
+  marketplaceTrust: DEMO_MARKETPLACE_TRUST,
 }));

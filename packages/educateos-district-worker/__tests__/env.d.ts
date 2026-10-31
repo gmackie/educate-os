@@ -24,5 +24,7 @@ declare namespace Cloudflare {
     TEST_PLATFORM_PRIVATE_JWK: string;
     /** The public half of the synthetic LMS's signing key, as a JWK (SCHO-177). */
     TEST_PLATFORM_PUBLIC_JWK: string;
+    /** The private half of this run's marketplace release key, as a JWK (SCHO-209). `MARKETPLACE_TRUST` pins its public half. */
+    TEST_MARKETPLACE_RELEASE_JWK: string;
   }
 }

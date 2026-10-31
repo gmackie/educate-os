@@ -348,6 +348,11 @@ export interface DemoDistrictDeployment {
     /** The AI-enabled demo district's Workshop, which the page links to. */
     aiDemoUrl: string;
   };
+  /**
+   * `MARKETPLACE_TRUST` (SCHO-209): the release keys, public halves only, that the district verifies
+   * marketplace listings against, as `ReleaseTrust` JSON. Absent, it installs none.
+   */
+  marketplaceTrust?: string;
 }
 
 /** A demo district's Worker name: its own, so its own Durable Object namespace. */
@@ -397,14 +402,16 @@ export function buildDemoDistrictConfigs({
       workers_dev: false,
       preview_urls: false,
     };
+    const marketplace: Record<string, string> = district.marketplaceTrust === undefined ? {} : { MARKETPLACE_TRUST: district.marketplaceTrust };
     if (district.oneOrigin?.enabled) {
       // No router in front: the district answers /ai itself, so the Worker runs first for it.
       asDistrict(config, [district.hostname], {
         AI_DEMO_URL: district.oneOrigin.aiDemoUrl,
         SCHOOL_MANIFEST: schoolManifestVar(`https://${district.hostname}`, false),
+        ...marketplace,
       }, { extraRoutes: AI_DISABLED_ROUTES });
     } else {
-      asDistrict(config, [district.hostname], {});
+      asDistrict(config, [district.hostname], marketplace);
     }
     configs.set(district.slug, config);
   }

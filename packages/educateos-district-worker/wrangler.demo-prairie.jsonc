@@ -59,6 +59,7 @@
   "vars": {
     "LTI_TOOL_ORIGIN": "https://prairie.educateos.io",
     "AI_DEMO_URL": "https://northfield.educateos.io/ai/",
-    "SCHOOL_MANIFEST": "{\"origin\":\"https://prairie.educateos.io\",\"features\":{\"ai\":false}}"
+    "SCHOOL_MANIFEST": "{\"origin\":\"https://prairie.educateos.io\",\"features\":{\"ai\":false}}",
+    "MARKETPLACE_TRUST": "{\"root\":{\"threshold\":1,\"keys\":[{\"keyId\":\"ed25519-ZcqIp-xFaMyAdLm9A_VLfM9gzi-04hir2JmHXqornqc\",\"publicKey\":\"mUuoDdWb6ERTjC_o3SI4hYf6pdb7tElPlkoVqPxx24k\"}]},\"keySetVersion\":0,\"keys\":[{\"keyId\":\"ed25519-Y5ayv_OFgjE5j_YaqCuiuNvx-H7_d6AVfSjTnQlIc58\",\"publicKey\":\"LVFy9O5qtmgvCGs0uhfjF9Q3aJZ4cQhrYYyouuF6YKg\"}]}"
   }
 }
