@@ -51,6 +51,8 @@ export default defineConfig({
           TEST_ACCESS_PRIVATE_JWK: JSON.stringify({ ...privateKey.export({ format: "jwk" }), kid: KID, alg: "RS256" }),
           TEST_ACCESS_PUBLIC_JWK: JSON.stringify({ ...publicKey.export({ format: "jwk" }), kid: KID, alg: "RS256" }),
           LTI_TOOL_ORIGIN: LTI_TOOL_ORIGIN,
+          // The LTI Platform (SCHO-179) is on here; every production configuration leaves it off.
+          LTI_PLATFORM: "on",
           // Device sign-in (SCHO-261): a test-only key; production sets none until the cutover.
           DEVICE_TOKEN_SECRET: DEVICE_TOKEN_SECRET,
           // The ops analytics proxy (SCHO-263): test-only values; the test object answers Cloudflare's API.

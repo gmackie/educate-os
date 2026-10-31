@@ -427,3 +427,30 @@ administrator's Access session:
 Platform calls (JWKS, tokens, AGS, NRPS, registration) use `redirect: "manual"` and refuse any
 redirect: the Workers runtime rejects `redirect: "error"` outright.
 
+# EducateOS as an LTI Platform (SCHO-179, IF-10)
+
+EducateOS can also be the **Platform**, hosting vetted third-party tools for a district or co-op
+with no LMS (RFC 0002 §5). This is being built in slices; what exists so far is harness-tested only,
+against no real tool, and claims no 1EdTech conformance.
+
+The district Worker serves the platform only when `LTI_PLATFORM` is exactly `on` (it also needs
+`LTI_TOOL_ORIGIN`, whose origin is the platform's issuer). Unset, or any other value, every
+`/lti/platform/` path is 404 and the platform's `/api/lti/` routes do not exist. No configuration
+in `scripts/production/` sets it, so it is off on every production and demo district.
+
+## Platform keys
+
+The platform signs its launches with its own RS256 key set, kept by a `TableToolKeyStore` in the
+`lti.platform-keys` collection (`PLATFORM_KEYS_COLLECTION`) of the district's Durable Object,
+beside the tool keys but never shared with them: a key that signs EducateOS's messages as a Tool
+never signs a launch as a Platform, and rotating one set leaves the other alone. Like the tool keys,
+the first read generates the key (the first stored wins a race), and a rotation keeps one retired
+public key published. `LtiPlatformKeyService` (`@educateos/lti-district`) decides the
+administrators' calls with the policy engine.
+
+| Path | Who calls it | Decided as | Does |
+| --- | --- | --- | --- |
+| `GET /lti/platform/jwks` | tools, from their servers | public, exempt from Access as all of `/lti/*` | The platform JWKS: public halves only, `cache-control: public, max-age=300`. |
+| `GET /api/lti/platform-keys` | district administrators | `read` district | The published key IDs, signing key first. |
+| `POST /api/lti/platform-keys/rotate` | district administrators | `update` district | Rotates the platform key; the previous one stays published. |
+

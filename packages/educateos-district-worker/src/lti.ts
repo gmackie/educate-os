@@ -45,6 +45,7 @@ import {
   type ActivityCatalog,
 } from "@educateos/lti-district";
 import { DurableObjectRecordTable, type LtiSqlStorage } from "@educateos/lti-district/durable-object";
+import { LTI_PLATFORM_PREFIX, NO_PLATFORM, startDistrictLtiPlatform, type LtiAdminRoute } from "./lti-platform.ts";
 
 /** The name platforms show for the tool when it registers itself. */
 export const LTI_TOOL_NAME = "EducateOS";
@@ -66,6 +67,11 @@ export interface DistrictLtiOptions {
    * may register, be trusted or launch under one (SCHO-306).
    */
   reservedIssuers: readonly string[];
+  /**
+   * Whether the district also runs the LTI Platform (SCHO-179), from `LTI_PLATFORM`. Off, its
+   * `/lti/platform/` paths are 404 and its administrators' routes do not exist.
+   */
+  platform?: boolean;
 }
 
 /** The district's LTI Tool and its administrators' surface. */
@@ -89,6 +95,8 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
   const lti = createLtiDistrictStores(new DurableObjectRecordTable(options.storage), {
     targets: directoryRegistrationTargets({ districtId, directory, activities, reservedIssuers: options.reservedIssuers }),
   });
+
+  const platform = options.platform === true ? startDistrictLtiPlatform({ districtId, authorizer: app.engine, stores: lti }) : undefined;
 
   // The broker and the service client read keys synchronously; each request first loads the
   // stored set (an imported copy is cached until the stored key IDs change), so a rotation made
@@ -201,8 +209,7 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
     ].join("");
   }
 
-  type AdminRoute = (caller: Caller, request: Request, params: Record<string, string>) => Promise<unknown>;
-  const adminRoutes: { method: "GET" | "POST"; path: string; run: AdminRoute }[] = [
+  const adminRoutes: LtiAdminRoute[] = [
     { method: "POST", path: "invitations", run: (caller) => admin.inviteRegistration(caller) },
     {
       method: "GET", path: "registrations", run: async (caller) => ({
@@ -232,6 +239,7 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
     { method: "POST", path: "passback", run: async (caller, request) => advantage.publishGrade(caller, await jsonBody(request)) },
     { method: "GET", path: "tool-keys", run: async (caller) => ({ kids: await advantage.toolKeyIds(caller) }) },
     { method: "POST", path: "tool-keys/rotate", run: (caller) => advantage.rotateToolKeys(caller) },
+    ...platform?.adminRoutes ?? [],
   ];
 
   async function callerOf(request: Request): Promise<Caller> {
@@ -243,7 +251,16 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
 
   return {
     async serveTool(request) {
-      if (!new URL(request.url).pathname.startsWith("/lti/")) return undefined;
+      const { pathname } = new URL(request.url);
+      if (!pathname.startsWith("/lti/")) return undefined;
+      if (pathname.startsWith(LTI_PLATFORM_PREFIX)) {
+        try {
+          if (platform === undefined) throw NO_PLATFORM();
+          return (await platform.serve(request)) ?? errorResponse(new EducateOsError("not-found", "No such LTI Platform endpoint."));
+        } catch (error) {
+          return errorResponse(error);
+        }
+      }
       try {
         await loadKeys();
       } catch (error) {

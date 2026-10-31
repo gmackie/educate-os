@@ -11,7 +11,7 @@ import { LoginState, toolJwks, type PassbackClaim, type PlatformRegistration } f
 import { DurableObjectRecordTable } from "../../src/durable-object.ts";
 import { LTI_COLLECTIONS, TablePassbackLedger, TableRegistrationStore, TableSingleUseStore } from "../../src/stores.ts";
 import { directoryRegistrationTargets } from "../../src/targets.ts";
-import { TableToolKeyStore, type ToolKeyRotation } from "../../src/tool-keys.ts";
+import { PLATFORM_KEYS_COLLECTION, TableToolKeyStore, type ToolKeyRotation } from "../../src/tool-keys.ts";
 
 const NF = DistrictId.parse("dst_northfield");
 const NF_CANVAS = "https://canvas.northfield.example";
@@ -44,6 +44,7 @@ export class TestLtiDistrict extends DurableObject {
     passbackLedger: TablePassbackLedger;
     registrations: TableRegistrationStore;
     toolKeys: TableToolKeyStore;
+    platformKeys: TableToolKeyStore;
   };
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
@@ -64,6 +65,7 @@ export class TestLtiDistrict extends DurableObject {
       passbackLedger: new TablePassbackLedger(table),
       registrations: new TableRegistrationStore(table, targets),
       toolKeys: new TableToolKeyStore(table),
+      platformKeys: new TableToolKeyStore(table, Date.now, PLATFORM_KEYS_COLLECTION),
     };
   }
 
@@ -110,6 +112,15 @@ export class TestLtiDistrict extends DurableObject {
 
   async rotateToolKeys(): Promise<ToolKeyRotation> {
     return this.#stores.toolKeys.rotate();
+  }
+
+  /** The published LTI Platform key IDs (SCHO-179), signing key first. */
+  async platformKeyIds(): Promise<string[]> {
+    return toolJwks(await this.#stores.platformKeys.keySet()).keys.map((key) => key.kid);
+  }
+
+  async rotatePlatformKeys(): Promise<ToolKeyRotation> {
+    return this.#stores.platformKeys.rotate();
   }
 }
 

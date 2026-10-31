@@ -27,6 +27,7 @@ import { cloudflareEmailSender, type SendEmailBinding } from "./mail.ts";
 import type { DiscussionScreening, DiscussionScreeningSettings } from "@educateos/discussions";
 // LTI 1.3 Tool (SCHO-177)
 import { startDistrictLti, type DistrictLti } from "./lti.ts";
+import { ltiPlatformEnabled } from "./lti-platform.ts";
 
 /** The district application and its school tools. */
 export interface District {
@@ -72,6 +73,8 @@ export interface DistrictSettings {
   accessAudiences: string | undefined;
   /** `LTI_TOOL_ORIGIN`, the LTI Tool's public https origin. Without it the district serves no LTI routes. */
   ltiToolOrigin?: string | undefined;
+  /** `LTI_PLATFORM`: `on` runs the LTI Platform beside the Tool (SCHO-179); anything else, or unset, does not. */
+  ltiPlatform?: string | undefined;
   /** `CLEVER_DISTRICT_TOKEN`, the district-app token Clever issued for the district (SCHO-203). Without it no Clever roster syncs. */
   cleverDistrictToken?: string | undefined;
   /** `GOOGLE_CLASSROOM_SERVICE_ACCOUNT_KEY`, a JSON service-account key with district-authorized DWD. */
@@ -290,6 +293,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       stores,
       verifyRequest,
       toolOrigin: settings.ltiToolOrigin,
+      platform: ltiPlatformEnabled(settings.ltiPlatform),
       platformFetch: seams.platformFetch ?? ((input, init) => fetch(input, init)),
       // The issuers people sign in with are never an LMS's (SCHO-306).
       reservedIssuers: [...(settings.accessIssuer ? [settings.accessIssuer] : []), CLEVER_ISSUER],
