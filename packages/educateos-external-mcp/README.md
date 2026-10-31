@@ -35,13 +35,25 @@ No tool output, access token or private record is logged by this package.
 
 ## Wire profile
 
-Implemented: MCP **2025-11-25** Streamable HTTP, POST `/mcp`, JSON responses, initialize,
-notifications/initialized, ping, tools/list and tools/call. Stateless operation requires no
-session ID; GET/SSE and DELETE are unsupported (405). Clients send both `application/json`
-and `text/event-stream` in Accept, and `MCP-Protocol-Version: 2025-11-25` after initialization.
-An unsupported initialize version negotiates 2025-11-25. Batch requests and unknown fields
-are rejected. Bodies are bounded to 64 KiB. No CORS headers are emitted; browser hosting must
-use the same origin. Requests with an unapproved Origin are refused.
+POST `/mcp` serves two protocol revisions through the pinned official SDK
+(`@modelcontextprotocol/server` **2.4.0**, `createMcpHandler`):
+
+- **2026-07-28 (modern), stateless.** It supports `server/discover`. The required
+  `Mcp-Method`/`Mcp-Name` headers are checked against the body, and a mismatch is a 400. Each
+  request carries the `_meta` envelope, and there is no `initialize` and no session. Responses
+  are JSON.
+- **2025-11-25 (legacy), stateless.** It supports initialize, notifications/initialized, ping,
+  tools/list and tools/call. Responses are JSON (`enableJsonResponse`), with no session ID.
+
+The server pins exactly these two revisions with `supportedProtocolVersions`. GET/SSE and DELETE
+answer 405. Bodies are bounded to 64 KiB (413). Requests with an unapproved Origin are refused,
+and only exact allowed origins get CORS headers.
+
+Authorization happens per request, before the SDK reads the body, and covers listings too.
+`tools/list` carries `ttlMs: 0` and `cacheScope: private`, so a listing a client obtained earlier
+never stands in for a token, link or delegation that has since been revoked. The tests drive the
+API with the official client (`@modelcontextprotocol/client` 2.4.0) in both modes, on Node and on
+workerd.
 
 POST `/token` accepts a strict JSON token-exchange request:
 
@@ -62,9 +74,9 @@ not an MCP access token. Existing LTI broker validation and principal mapping re
 Opaque access grants expire no later than their assertion and are resolved against current
 identity links on each request. Every response carrying tokens, tool data or errors is no-store.
 
-Protocol 2026-07-28, authorization code/PKCE, protected-resource metadata, authorization-server
-discovery, and public routing are outside this narrowly scoped package. Do not advertise those
-capabilities until their separate integration is complete.
+Authorization code/PKCE and authorization-server discovery belong to the district's
+authorization server (Nathan, NATH-6), never to this package. Public routing on the district
+origin is a separate SCHO-174 change.
 
 ## Checks
 
@@ -83,8 +95,7 @@ policy, durable directory stores and durable human approval storage. There is no
 credential authority. It exposes `/mcp`, the existing narrow JSON `/token` exchange, public
 `/.well-known/oauth-protected-resource/mcp` (and root alias), and GET `/healthz`. Health checks
 configuration and routing only; it does not assert issuer availability or database readiness.
-The wire protocol remains the tested 2025-11-25 stateless JSON profile. No 2026-07-28 support
-is claimed. The sections above describe the parent library; the Worker adds discovery and CORS.
+It serves the same wire profile as the library: 2026-07-28 and 2025-11-25 (see above). The sections above describe the parent library; the Worker adds discovery and CORS.
 
 Configure **private** `MCP_CONFIG` as JSON with these fields (do not commit real student records):
 
