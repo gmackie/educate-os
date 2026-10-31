@@ -77,6 +77,29 @@ Worker. Role/status revocation needs no deploy.
   server-owned endpoint and capability design. An account bound to an unapproved endpoint must
   never be added just because it has an approved-looking resource name.
 
+### Northfield student demo
+
+The hosted demo keeps `capabilityPolicyBinding: true` and `REQUIRE_WORKSHOP_CAPABILITY_POLICY=true`.
+Its deployment-owned `DISTRICT_CONFIG.workshopPolicy.workspaceActions` retains the staff grant and
+explicitly adds this student grant (SCHO-309):
+
+```json
+{
+  "kind": "student",
+  "actions": ["workspace.create.query", "workshop.authoring.query", "gadget.create",
+              "gadget.execute", "agent.execute"]
+}
+```
+
+This lets active demo students author and execute in their own or otherwise admitted workspaces.
+It grants no workspace sharing, blueprint import/publication, model configuration, connector account
+or resource minting powers. Workshop ownership and sharing checks, School tools data-observation
+checks and live principal revocation still apply. A denied shared school-data workspace must not be
+used as a reason to disable the policy. Student-owned synthetic gadgets provide the production
+execution smoke without exposing staff school records. Verify actual student gadget execution,
+staff execution and the retained negative boundaries after syncing the district secret; do not
+reuse the earlier staff-only student-refusal suite as proof of this changed configuration.
+
 Unknown actions and malformed inputs deny (or generated RPC validation rejects them). Store/engine
 failures reject the call and the Workshop kernel fails closed. Denials contain no district records.
 

@@ -178,6 +178,37 @@ describe("district workspace action grants", () => {
     });
   });
 
+  it("admits the demo student's explicit execution grants without publication or configuration powers", async () => {
+    await runInDurableObject(env.DISTRICT.getByName("policy-student-demo"), async (instance) => {
+      const app = await instance.districtApp();
+      const settings: WorkshopPolicySettings = { ...TEST_CONFIG.workshopPolicy!, workspaceActions: [staffGrant, {
+        kind: "student",
+        actions: ["workspace.create.query", "workshop.authoring.query", "gadget.create", "gadget.execute", "agent.execute"],
+      }] };
+      const check = async (request: WorkshopCapabilityDescriptor) =>
+        (await authorizeWorkshopCapability(app, settings, request)).outcome;
+      for (const request of [
+        { action: "workspace.create.query" },
+        { action: "workshop.authoring.query", operation: "create" },
+        { action: "gadget.create", workspaceId: "workspace" }, execute, agent,
+      ] as const) expect(await check({ ...request, userId: student })).toBe("allow");
+      for (const request of [
+        { action: "workspace.share", workspaceId: "workspace" },
+        { action: "blueprint.publish", workspaceId: "workspace" },
+        { action: "blueprint.import" }, model, connector, resource,
+      ] as const) expect(await check({ ...request, userId: student })).toBe("deny");
+      for (const userId of ["principal:missing", "principal:prn_rb-district-admin"]) {
+        expect(await check({ ...execute, userId })).toBe("deny");
+      }
+      expect((await authorizeWorkshopCapability(app, { ...settings, workspaceActions: [staffGrant] }, { ...agent, userId: student })).outcome).toBe("deny");
+      const { snapshot, version } = await app.stores.directory.load();
+      await app.stores.directory.commit({ ...snapshot,
+        principals: snapshot.principals.map((p) => p.id === "prn_nf-student-amara" ? { ...p, status: "inactive" as const } : p),
+      }, version);
+      for (const request of [execute, agent]) expect(await check({ ...request, userId: student })).toBe("deny");
+    });
+  });
+
   it("validates grants strictly", () => {
     const base = TEST_CONFIG.workshopPolicy!;
     expect(WorkshopPolicySettings.safeParse({ ...base, workspaceActions: [staffGrant] }).success).toBe(true);
