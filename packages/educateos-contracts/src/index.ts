@@ -7,6 +7,7 @@ export * from "./guardians.ts";
 export * from "./academic.ts";
 export * from "./authority.ts";
 export * from "./authorization.ts";
+export * from "./operations.ts";
 export * from "./audit.ts";
 export * from "./artifacts.ts";
 export * from "./sync.ts";

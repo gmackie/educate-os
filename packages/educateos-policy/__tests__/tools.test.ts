@@ -213,6 +213,14 @@ describe("defineSchoolTool", () => {
     expect(() => defineSchoolTool({ ...base, name: "passthrough", inputSchema: z.looseObject({ a: z.string() }) })).toThrow(/strictObject/);
   });
 
+  it("takes read-only from the descriptor's effect, and refuses both effect and readOnly", () => {
+    const schema = z.strictObject({});
+    expect(defineSchoolTool({ ...base, name: "reads", inputSchema: schema, effect: "read" })).toMatchObject({ effect: "read", readOnly: true });
+    expect(defineSchoolTool({ ...base, name: "drafts", inputSchema: schema, effect: "draft" })).toMatchObject({ effect: "draft", readOnly: false });
+    expect(defineSchoolTool({ ...base, name: "legacy", inputSchema: schema, readOnly: true }).readOnly).toBe(true);
+    expect(() => defineSchoolTool({ ...base, name: "both", inputSchema: schema, effect: "publish", readOnly: true })).toThrow(/not both/);
+  });
+
   it("refuses malformed names and duplicates", () => {
     expect(() => defineSchoolTool({ ...base, name: "Bad Name", inputSchema: z.strictObject({}) })).toThrow();
     const tool = defineSchoolTool({ ...base, name: "same", inputSchema: z.strictObject({}) });
