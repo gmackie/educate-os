@@ -533,11 +533,9 @@ test("the capability policy binding reaches the district's policy by its pinned 
   const backend = (instance: ProductionInstance) => configFor(build(instance), "workshop-backend");
   const policy = (instance: ProductionInstance) => backend(instance).services
       ?.filter(({ binding }) => binding === "WORKSHOP_CAPABILITY_POLICY");
-  // Production turns it on once the district's DISTRICT_CONFIG grants its staff (SCHO-309); bound,
-  // it is required, so losing it refuses rather than opens.
-  assert.equal(SCHOOLOS_GMAC_IO.capabilityPolicyBinding, false);
-  assert.deepEqual(policy(SCHOOLOS_GMAC_IO), []);
-  const bound = { ...SCHOOLOS_GMAC_IO, capabilityPolicyBinding: true };
+  // Production binds it (SCHO-309), and requires it, so losing it refuses rather than opens.
+  assert.equal(SCHOOLOS_GMAC_IO.capabilityPolicyBinding, true);
+  const bound = SCHOOLOS_GMAC_IO;
   assert.deepEqual(policy(bound), [
     { binding: "WORKSHOP_CAPABILITY_POLICY", service: "schoolos-district-worker", entrypoint: "DistrictWorkshopCapabilityPolicy" },
   ]);
