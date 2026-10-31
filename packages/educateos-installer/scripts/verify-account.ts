@@ -6,7 +6,7 @@
 //     [--zone <sandbox zone>] [--apply] [--out verify-account-report.json]
 //
 // Without --apply it is a dry run: read-only probes only, and the create/delete probes are listed
-// as planned. With --apply it creates and deletes `educateos-probe-<runId>` resources. Never point
+// as planned. With --apply it creates and deletes `eos-sandbox-probe-<runId>` resources. Never point
 // it at a district's or any production account. The token is read from its own variable, not
 // CLOUDFLARE_API_TOKEN, so a shell already holding a real installer token cannot run it by
 // accident, and the run stops before any other call unless the account's name matches.

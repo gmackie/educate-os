@@ -1,6 +1,7 @@
 # Runbook: verify installer permissions on a sandbox account
 
-- Status: Ready to run. Not yet run against any account.
+- Status: Partly run. The 2026-10-31 run on the gmacko account settled the Workers, zone and Access
+  probes; KV, R2, D1, Billing and AI Gateway wait on a token that holds them (see [Runs](#runs)).
 - Issue: SCHO-66 (G2). Verifies: [installer-permissions.md](../installer-permissions.md).
 - Tool: `packages/educateos-installer/scripts/verify-account.ts`
 - Who runs it: someone with Super Administrator on a **sandbox** Cloudflare account made for this.
@@ -47,7 +48,7 @@ Two kinds of item are **not** probed:
 - **Dry run is the default.** Without `--apply`, only read probes run, and the create/delete probes
   are listed as `planned`.
 - With `--apply`:
-  - Every resource is named `educateos-probe-<runId>`, plus `.<zone>` for hostnames, where `runId`
+  - Every resource is named `eos-sandbox-probe-<runId>`, plus `.<zone>` for hostnames, where `runId`
     is 8 random hex characters.
   - Each resource's deletion is registered as soon as the resource exists.
   - Everything is deleted in reverse order, even when a later probe fails.
@@ -110,7 +111,7 @@ unset EDUCATEOS_SANDBOX_CF_API_TOKEN
 After each apply run:
 
 - Check that `leftovers` is empty.
-- In the dashboard, search Workers, KV, R2, D1, AI Gateway, Access and DNS for `educateos-probe-`.
+- In the dashboard, search Workers, KV, R2, D1, AI Gateway, Access and DNS for `eos-sandbox-probe-`.
   Nothing should be found.
 - If something is, delete it by hand. The `leftovers` entry names its kind and ID.
 
@@ -142,3 +143,42 @@ After each apply run:
    `read.invalidCredentialCodes` observed. Do the same with any `denied` codes a step-4 run showed.
 6. **The rate plan IDs** from `read.listSubscriptions` settle preflight's qualifying-plan list.
 7. Attach the three report files to a comment on SCHO-66. They contain only the sandbox account ID.
+
+## Runs
+
+### 2026-10-31, gmacko account (SCHO-66)
+
+- Account `f84fe0441a84562a6abce4f921f0496a` (name `gmacko`), zone `hbtply.com`, user-owned API
+  token from SCHO-241 (Keychain `educateos-cf-byoa-gmacko-token`). Runs `f3711681` (dry run),
+  `4e1efdc0` and `6849c282` (apply). `leftovers` was empty after `6849c282`; `4e1efdc0` reported
+  the probe domain as a leftover only because of the empty-body bug below, and it was gone.
+- The account already holds the SCHO-241 BYOA proof rig (Worker `byoa-proof-district`, two Access
+  apps, the SaaS fallback origin). The probes touch none of it.
+
+| Probe | Result |
+| --- | --- |
+| `read.getAccount`, `read.findZone`, `read.listDnsRecords`, `read.listWorkerScripts`, `read.listWorkerDomains` | ok |
+| `read.getAccessOrganization`, `read.listAccessIdentityProviders`, `read.listAccessPolicies`, `read.listAccessApplications` | ok; the only IdP is `onetimepin` |
+| `read.tokenVerify` | user-owned token (`/user/tokens/verify` ok, the account endpoint not) |
+| `read.invalidCredentialCodes` | HTTP 400, code 6003; the installer treats it as a credential failure |
+| `read.listSubscriptions`, `read.listR2Buckets`, `read.listAiGateways` | denied: HTTP 403, code 10000 |
+| `read.listKvNamespaces`, `read.listD1Databases` | denied: HTTP 401, code 10000 |
+| `write.workerScript`, `write.workerSecret` | ok |
+| `write.workerVersions` | ok, `plainTextVarsExposed: true` |
+| `write.workerDomain` | ok: the `environment` field is accepted |
+| `write.accessPolicy`, `write.accessApplication` | ok |
+| `write.kvNamespace`, `write.d1Database` | denied: HTTP 401, code 10000 (so `write.d1Batch` skipped) |
+| `write.r2Bucket`, `write.aiGateway` | denied: HTTP 403, code 10000 |
+
+Checked by hand in the same session, through `CloudflareHttpApi`:
+
+- `DELETE /workers/domains/{id}` answers HTTP 200 with an empty body. `detachWorkerDomain` threw
+  on it (`HTTP 200`); fixed, then re-run live: ok.
+- Deleting a Worker that another Worker's deployed version binds, without `force`: HTTP 400, code
+  10142. Deleting a Worker with a custom domain attached, without `force`: ok, and the domain is
+  removed with it. The fake now models both.
+
+To finish the run, the token also needs, at account scope: **Billing: Read, Workers KV Storage:
+Edit, Workers R2 Storage: Edit, D1: Edit, AI Gateway: Edit**. Then repeat steps 2 to 4 (R2 may
+already be enabled on this account, in which case 10042 needs an account with R2 off), and add a
+non-PIN identity provider before a full install.
