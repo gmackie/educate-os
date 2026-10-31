@@ -134,6 +134,19 @@ export interface DesiredWorkerSecret extends ResourceBase {
 }
 
 /**
+ * A Worker's Cron Triggers, from the release's `crons` (SCHO-148). They are set after the Worker and
+ * its secrets exist, since a trigger can fire as soon as it is set. Only a Worker whose release
+ * entry declares crons has one: the installer leaves the schedules of any other Worker alone.
+ */
+export interface DesiredWorkerSchedules extends ResourceBase {
+  kind: "worker_schedules";
+  pkgName: string;
+  scriptName: string;
+  /** The cron expressions, as the release lists them. The Worker's schedules are exactly these. */
+  crons: string[];
+}
+
+/**
  * A service the config disabled: its Worker must not exist. It runs after the backend, so the
  * backend's binding to it is gone before the Worker is deleted.
  */
@@ -184,6 +197,7 @@ export type DesiredResource =
   | DesiredAccessApplication
   | DesiredWorker
   | DesiredWorkerSecret
+  | DesiredWorkerSchedules
   | DesiredRetiredWorker
   | DesiredCustomDomain
   | DesiredManagedHostname;
@@ -283,6 +297,11 @@ export const DISTRICT_INSTALLER_VARS: readonly string[] = ["CF_ACCESS_ISS", "CF_
 /** The resource key of a release package's Worker. */
 export function workerKey(pkgName: string): ResourceKey {
   return `worker:${pkgName}`;
+}
+
+/** The resource key of a Worker's Cron Triggers. */
+export function schedulesKey(pkgName: string): ResourceKey {
+  return `schedules:${pkgName}`;
 }
 
 /** The resource key of a disabled service's Worker, which must not exist. */
@@ -468,6 +487,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   const storage = new Map<ResourceKey, DesiredResource>();
   const workers: DesiredResource[] = [];
   const secrets: DesiredResource[] = [];
+  const schedules: DesiredWorkerSchedules[] = [];
 
   const accessPolicy: DesiredAccessPolicy = {
     kind: "access_policy",
@@ -751,6 +771,16 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       bindings,
       ...(assets ? { assets } : {}),
     });
+    if (entry.crons && entry.crons.length > 0) {
+      schedules.push({
+        kind: "worker_schedules",
+        key: schedulesKey(pkgName),
+        dependsOn: [workerKey(pkgName), ...secrets.flatMap((s) => (s.kind === "worker_secret" && s.pkgName === pkgName ? [s.key] : []))],
+        pkgName,
+        scriptName: scriptNames.get(pkgName)!,
+        crons: [...entry.crons],
+      });
+    }
   }
 
   for (const resource of storage.values()) {
@@ -806,6 +836,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     ...adminAccess ? [adminAccess.application, adminAccess.bypass] : [],
     ...workers,
     ...secrets,
+    ...schedules,
     ...retired,
     customDomain,
     ...adminDomain ? [adminDomain] : [],

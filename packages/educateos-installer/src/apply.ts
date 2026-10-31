@@ -106,6 +106,9 @@ export async function applyPlan(plan: InstallPlan, context: ApplyContext): Promi
         await guarded(() => api.putWorkerSecret(account, resource.scriptName, resource.secretName, value));
         break;
       }
+      case "worker_schedules":
+        await guarded(() => api.putWorkerSchedules(account, resource.scriptName, resource.crons));
+        break;
       case "worker_retired":
         try {
           await guarded(() => api.deleteWorkerScript(account, resource.scriptName));

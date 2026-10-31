@@ -46,6 +46,7 @@ guess.
 | `deleteWorkerScript` (disabling a service) | `DELETE /accounts/{id}/workers/scripts/{name}` (never `force`) | Workers Scripts: Edit (verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
 | `createAssetsUploadSession`, `uploadAssets` | `.../assets-upload-session`, `/workers/assets/upload` (session JWT) | Workers Scripts: Edit | `workers_scripts:write` | wrangler-requested |
 | `listWorkerSecrets`, `putWorkerSecret` | `.../scripts/{name}/secrets` | Workers Scripts: Edit (verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
+| `getWorkerSchedules`, `putWorkerSchedules` (Cron Triggers, SCHO-148) | `GET`/`PUT /accounts/{id}/workers/scripts/{name}/schedules` | Workers Scripts: Edit (**unverified**: never yet called against a live account) | `workers_scripts:write` | wrangler-requested (Wrangler sets crons with it) |
 | `listWorkerVersions`, `deployWorkerVersion` (rollback) | `.../versions`, `.../deployments` | Workers Scripts: Edit (`listWorkerVersions` verified 2026-10-31, SCHO-66) | `workers_scripts:write` | wrangler-requested |
 | `listWorkerDomains`, `attachWorkerDomain` | `/accounts/{id}/workers/domains` | Workers Scripts: Edit, plus Workers Routes: Edit on the zone (verified 2026-10-31, SCHO-66) | `workers_routes:write` | wrangler-requested |
 | `detachWorkerDomain` (releasing a managed hostname) | `DELETE /accounts/{id}/workers/domains/{domain}` | Workers Scripts: Edit, plus Workers Routes: Edit on the zone (verified 2026-10-31, SCHO-66; it answers HTTP 200 with an empty body) | `workers_routes:write` | unverified |
@@ -129,6 +130,26 @@ because a dashboard edit keeps the installer's digest marker; a removed or retar
 whose service binding targets a Worker that no longer exists, and notes when it returns the
 backend to a version without a binding.
 
+## Cron Triggers
+
+A Worker whose release entry declares `crons` (the AI call guard's nightly reconciliation, the
+district Worker's notification and digest runs) gets them as its whole schedule list, with
+`PUT .../schedules`, once the Worker and its secrets exist (SCHO-148, SCHO-243). Planning reads the
+schedules back and compares them as a set of expressions written as the release writes them, so
+a dashboard edit is reported as drift (`Cron Triggers differ: adds …; removes …`) and the next
+apply restores the release's list. The installer leaves alone the schedules of a Worker whose
+release entry declares none, so a release that drops a Worker's last cron leaves that schedule in
+place until it is removed by hand.
+
+Rollback redeploys Worker versions and does not touch schedules. A rollback to a release with
+different crons leaves the newer release's schedules; the next forward apply sets them again.
+
+**Unverified** until a live run: that a script upload leaves the schedules as they are (the fake
+assumes so, as `wrangler deploy` re-sending them on each deploy suggests but doesn't prove), that
+deleting a Worker deletes its schedules, the error code Cloudflare answers an unparseable
+expression with (the fake answers HTTP 400 with no code), and the per-Worker and per-account
+Cron Trigger limits. A plan never needs more than Workers Scripts: Edit for them.
+
 ## What the credential can reach, and what the installer touches
 
 Cloudflare's permission groups are coarser than the installer's needs. Workers KV Storage: Edit
@@ -192,3 +213,5 @@ Edit, D1: Edit and AI Gateway: Edit (account scope); the 2026-10-31 token did no
   Wrangler OAuth token, saw it rejected (SCHO-163). Re-probe with a D1 token before changing the
   ledger.
 - R2's not-enabled code 10042, and the qualifying Workers Paid rate plan IDs.
+- The schedules endpoint ([Cron Triggers](#cron-triggers)): read, replace, that an upload keeps
+  the schedules, and its error code for a bad expression.

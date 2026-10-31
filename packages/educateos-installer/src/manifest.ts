@@ -145,8 +145,8 @@ export const WorkerEntry = z.strictObject({
   vars: z.record(z.string(), z.unknown()),
   observability: ObservabilityConfig,
   /**
-   * Cron Trigger schedules the worker runs on (today only the AI call guard's, a service). The
-   * district installer does not install services yet (SCHO-131); it accepts and ignores them.
+   * Cron Trigger schedules the worker runs on (the AI call guard's and the district Worker's). The
+   * installer sets them on the installed Worker as its whole schedule list (SCHO-148).
    */
   crons: z.array(z.string().min(1).max(100)).optional(),
   gatekeeperBindingExpansion: z.strictObject({

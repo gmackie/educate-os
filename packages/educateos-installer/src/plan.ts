@@ -199,6 +199,16 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
         else step("needs-input", `supply ${resource.secretName} for ${resource.pkgName}`);
         break;
       }
+      case "worker_schedules": {
+        if (!workerOwned.get(workerKeyOf(resource))) {
+          step("create", `sets Cron Triggers ${resource.crons.join(", ")}`);
+          break;
+        }
+        const observed = await guarded(() => api.getWorkerSchedules(account, resource.scriptName));
+        const changes = scheduleChanges(resource.crons, observed);
+        step(changes.length > 0 ? "update" : "noop", changes.length > 0 ? `Cron Triggers differ: ${changes.join("; ")}` : "Cron Triggers match");
+        break;
+      }
       case "worker_retired": {
         const found = scripts.find((s) => s.name === resource.scriptName);
         if (!found) {
@@ -285,6 +295,20 @@ export function serviceBindingChanges(worker: DesiredWorker, observed: ObservedB
 
 function describeServiceTarget(binding: Record<string, unknown>): string {
   return `${String(binding.service)}${typeof binding.entrypoint === "string" ? ` (${binding.entrypoint})` : ""}`;
+}
+
+/**
+ * How a Worker's observed Cron Triggers differ from the desired ones, e.g. `adds 0 14 * * SUN`.
+ * Order doesn't matter, and expressions compare as written: an equivalent expression spelled
+ * differently (`0 14 * * 0` for Sundays) reads as a change, which an apply turns into the release's.
+ */
+export function scheduleChanges(desired: readonly string[], observed: readonly string[]): string[] {
+  const want = new Set(desired);
+  const have = new Set(observed);
+  return [
+    ...[...want].filter((cron) => !have.has(cron)).map((cron) => `adds ${cron}`),
+    ...[...have].filter((cron) => !want.has(cron)).map((cron) => `removes ${cron}`),
+  ];
 }
 
 /** The D1 migration ledger table. Holds migration IDs only, never district data. */

@@ -295,6 +295,10 @@ export interface CloudflareApi {
   uploadAssets(accountId: string, sessionJwt: string, files: Map<string, Uint8Array<ArrayBuffer>>): Promise<string | undefined>;
   listWorkerSecrets(accountId: string, scriptName: string): Promise<string[]>;
   putWorkerSecret(accountId: string, scriptName: string, name: string, value: string): Promise<void>;
+  /** The Worker's Cron Trigger expressions. */
+  getWorkerSchedules(accountId: string, scriptName: string): Promise<string[]>;
+  /** Replaces the Worker's Cron Triggers with exactly `crons`; an empty list removes them all. */
+  putWorkerSchedules(accountId: string, scriptName: string, crons: string[]): Promise<void>;
   listWorkerVersions(accountId: string, scriptName: string): Promise<WorkerVersion[]>;
   deployWorkerVersion(accountId: string, scriptName: string, versionId: string): Promise<void>;
 
