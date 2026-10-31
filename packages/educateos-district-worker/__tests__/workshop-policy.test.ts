@@ -135,6 +135,49 @@ describe("district policy domain adapter", () => {
     expect(WorkshopPolicySettings.safeParse({ ...TEST_CONFIG.workshopPolicy, requestedRole: "admin" }).success).toBe(false);
     expect(WorkshopPolicySettings.safeParse({}).success).toBe(false);
   });
+
+  it("admits any account and resource of a vendor-wide connector, to district administration only", async () => {
+    await runInDurableObject(env.DISTRICT.getByName("policy-vendor-connectors"), async (instance) => {
+      const app = await instance.districtApp();
+      const settings = { ...TEST_CONFIG.workshopPolicy!, connectors: [{ vendorId: "google", access: "all" as const }] };
+      const check = async (request: WorkshopCapabilityDescriptor) => (await authorizeWorkshopCapability(app, settings, request)).outcome;
+      for (const request of [
+        { action: "gatekeeper.connect", vendorId: "google" },
+        { action: "gatekeeper.connect", vendorId: "google", resourceUrlPatterns: ["https://docs.google.com/*", "https://classroom.google.com/*"] },
+        { action: "gatekeeper.connect", vendorId: "google", accountId: 3, resourceUrlPatterns: [] },
+        { action: "resource.acquire", vendorId: "google", accountId: 12, resource: "https://docs.google.com/document/d/abc" },
+        { action: "resource.acquire", vendorId: "google", resource: "https://classroom.google.com/*" },
+      ] as const) {
+        expect(await check({ ...request, userId: admin })).toBe("allow");
+        for (const userId of [student, teacher, "principal:prn_nf-principal-high"]) expect(await check({ ...request, userId })).toBe("deny");
+      }
+      // Another connector is not covered, and the vendor ID is matched exactly.
+      for (const vendorId of ["clever", "google:mcp", "Google"]) {
+        expect(await check({ action: "gatekeeper.connect", vendorId, userId: admin })).toBe("deny");
+      }
+    });
+  });
+
+  it("keeps an exact grant exact when a vendor-wide grant covers another connector", async () => {
+    await runInDurableObject(env.DISTRICT.getByName("policy-mixed-connectors"), async (instance) => {
+      const app = await instance.districtApp();
+      const settings = { ...TEST_CONFIG.workshopPolicy!, connectors: [...TEST_CONFIG.workshopPolicy!.connectors, { vendorId: "google", access: "all" as const }] };
+      const check = async (request: WorkshopCapabilityDescriptor) => (await authorizeWorkshopCapability(app, settings, request)).outcome;
+      expect(await check({ ...connector, userId: admin })).toBe("allow");
+      expect(await check({ ...connector, accountId: 8, userId: admin })).toBe("deny");
+      expect(await check({ ...resource, resource: "https://external.example/mcp", userId: admin })).toBe("deny");
+    });
+  });
+
+  it("validates connector grants strictly", () => {
+    const base = TEST_CONFIG.workshopPolicy!;
+    expect(WorkshopPolicySettings.safeParse({ ...base, connectors: [{ vendorId: "google", access: "all" }] }).success).toBe(true);
+    for (const grant of [
+      { vendorId: "google", access: "some" }, { vendorId: "", access: "all" }, { access: "all" },
+      { vendorId: "google", access: "all", accountId: 1 }, { vendorId: "google", access: "all", resources: [] },
+      { vendorId: "google" },
+    ]) expect(WorkshopPolicySettings.safeParse({ ...base, connectors: [grant] }).success).toBe(false);
+  });
 });
 
 // SCHO-309: execution and other in-workspace actions are granted by active principal kind only.

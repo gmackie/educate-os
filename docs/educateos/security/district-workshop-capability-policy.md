@@ -41,7 +41,7 @@ Worker. Role/status revocation needs no deploy.
   "connectors": [{
     "vendorId": "educateos", "accountId": 7,
     "resourceUrlPatterns": ["school://approved"], "resources": ["SchoolTools"]
-  }],
+  }, {"vendorId": "google", "access": "all"}],
   "workspaceActions": [{
     "kind": "staff",
     "actions": ["workspace.create.query", "workshop.authoring.query", "gadget.create",
@@ -66,7 +66,7 @@ Worker. Role/status revocation needs no deploy.
   course-workspace in that offering, in an active term. ABAC recognizes scoped teachers/co-teachers
   and course administrators. Duplicate mappings or personal/class ambiguity deny. This authorizes
   the mint only; it does not associate the new Workshop workspace with a district course record.
-- Configuration: exact provider/model pair, or exact vendor/account and pattern/resource grant,
+- Configuration: exact provider/model pair, or a vendor/account and pattern/resource grant,
   followed by `update` on the district through `admin.district.directory`. School administrators,
   teachers and students have no district configuration authority. No credentials cross this service.
 - Connector accounts match exactly, including absence: a grant without accountId is for initial
@@ -76,6 +76,11 @@ Worker. Role/status revocation needs no deploy.
   grants nothing. Do not configure generic external MCP vendors here without a separate audited
   server-owned endpoint and capability design. An account bound to an unapproved endpoint must
   never be added just because it has an approved-looking resource name.
+- Vendor-wide connector grants (`{"vendorId": "...", "access": "all"}`) approve the connector
+  itself: any account, pattern set and resource it reaches, since accounts and resources are minted
+  at runtime and cannot be listed ahead of time. The vendor ID still matches exactly, an exact grant
+  for the same account takes precedence, and district-admin authority is still required. Use it
+  only for connectors the deployment itself installs (its `gatekeepers`), never a generic MCP vendor.
 
 Unknown actions and malformed inputs deny (or generated RPC validation rejects them). Store/engine
 failures reject the call and the Workshop kernel fails closed. Denials contain no district records.
