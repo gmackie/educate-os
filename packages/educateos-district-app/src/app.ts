@@ -18,7 +18,7 @@ import {
   type VerifiedPrincipal,
 } from "@educateos/contracts";
 import { confirmWorkshopUserLink, createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@educateos/identity";
-import { AcademicDirectory, assertSyncWritable, DIRECTORY_ENTITY_KINDS, isDistrictAdmin } from "@educateos/academics";
+import { ACADEMIC_OPERATIONS, AcademicDirectory, assertSyncWritable, DIRECTORY_ENTITY_KINDS, invokeOperation, isDistrictAdmin, type AcademicOperationName } from "@educateos/academics";
 import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule } from "@educateos/policy";
 import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@educateos/workspaces";
 import { LearningArtifacts } from "@educateos/learning-artifacts";
@@ -37,7 +37,7 @@ import { changeAllocations, effectivePools } from "./funding.ts";
 import { applyRosterImport, runRosterSyncOver, type RosterSyncOutcome, type RosterSyncSettings, contentBody, installAndAssign, keepArtifact, publishStarterMaterial, runCiAndSuggest, termClosedEvents } from "./adapters.ts";
 import { CORRELATION_HEADER, errorResponse, jsonResponse, matchRoute, parsePart, readJsonBody } from "./http.ts";
 import { configPolicySource, DEFAULT_POLICY_FLOOR, DISTRICT_APP_RULES } from "./policy.ts";
-import { type AssignmentViewBody, type ParsedRouteInput, type RouteName, type RouteResponse, type Surface } from "./routes.ts";
+import { type AssignmentViewBody, type OperationRouteName, type ParsedRouteInput, type RouteName, type RouteResponse, type RouteSpec, type Surface } from "./routes.ts";
 import type { DistrictAppStores } from "./stores.ts";
 import { guardDirectoryOver, type GuardDirectory } from "./guard-directory.ts";
 import { authorityFor, ONEROSTER_AUTHORITY, type AuthoritySetting } from "./authority.ts";
@@ -783,7 +783,20 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     });
   }
 
-  type Handlers = { [N in Exclude<RouteName, GuardianRouteName | OnboardingRouteName>]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
+  type Handlers = { [N in Exclude<RouteName, GuardianRouteName | OnboardingRouteName | OperationRouteName>]: (ctx: RequestContext, input: ParsedRouteInput<N>) => Promise<RouteResponse<N>> };
+
+  /**
+   * Runs a route bound to an academic operation (SCHO-173): its path parameters and body are the
+   * operation's input, run through `invokeOperation` on the request's `rest` channel, the same
+   * handler and decisions an agent's tool call gets. A body cannot name a different record than
+   * the path, because the route's body schemas never carry the path's fields.
+   */
+  async function runOperation(ctx: RequestContext, operation: AcademicOperationName, input: { params?: object; body?: object }): Promise<unknown> {
+    const caller = { ...ctx.caller, correlationId: ctx.correlationId };
+    const outcome = await invokeOperation(ACADEMIC_OPERATIONS[operation], ctx.academics(), caller, { ...input.body, ...input.params });
+    if (!outcome.ok) throw new EducateOsError(outcome.error.code, outcome.error.message);
+    return outcome.value;
+  }
 
   const handlers: Handlers = {
     "me.get": async (ctx) => {
@@ -1316,19 +1329,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         .map((p) => authoringPrincipal(ctx.snapshot, p, now()));
       return { authority, trustedIssuers: ctx.snapshot.district.trustedIssuers, schools, terms, courses, offerings, principals };
     },
-    "admin.createSchool": (ctx, { body }) => ctx.academics().createSchool(ctx.caller, body),
-    "admin.updateSchool": (ctx, { params, body }) => ctx.academics().updateSchool(ctx.caller, params.schoolId, body),
-    "admin.createTerm": (ctx, { body }) => ctx.academics().createTerm(ctx.caller, body),
-    "admin.updateTerm": (ctx, { params, body }) => ctx.academics().updateTerm(ctx.caller, params.termId, body),
-    "admin.transitionTerm": (ctx, { params, body }) => ctx.academics().transitionTerm(ctx.caller, params.termId, body.to),
-    "admin.createCourse": (ctx, { body }) => ctx.academics().createCourse(ctx.caller, body),
-    "admin.updateCourse": (ctx, { params, body }) => ctx.academics().updateCourse(ctx.caller, params.courseId, body),
-    "admin.archiveCourse": (ctx, { params, body }) => ctx.academics().setCourseArchived(ctx.caller, params.courseId, body.archived),
-    "admin.createOffering": (ctx, { body }) => ctx.academics().createOffering(ctx.caller, body),
-    "admin.updateOffering": (ctx, { params, body }) => ctx.academics().updateOffering(ctx.caller, params.offeringId, body),
-    "admin.archiveOffering": (ctx, { params, body }) => ctx.academics().setOfferingArchived(ctx.caller, params.offeringId, body.archived),
     "admin.offeringRoster": (ctx, { params }) => ctx.rosterWithNames(params.offeringId),
-    "admin.enroll": (ctx, { params, body }) => ctx.academics().createEnrollment(ctx.caller, { ...body, offeringId: params.offeringId }),
     "admin.unenroll": async (ctx, { params }) => {
       const enrollment = await ctx.academics().deactivateEnrollment(ctx.caller, params.enrollmentId);
       // A dropped student keeps their course workspace and work, but not live access to it.
@@ -1615,6 +1616,10 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
 
     const input = await parseInput();
     const ctx = new RequestContext(correlationId, principal, snapshot, url.origin);
+    const { operation } = spec as RouteSpec;
+    if (operation !== undefined) {
+      return jsonResponse(await runOperation(ctx, operation, input as { params?: object; body?: object }), spec.status ?? 200, correlationId);
+    }
     const handler = (handlers[matched.name as keyof Handlers] ?? guardianRoutes[matched.name as GuardianRouteName]) as (ctx: RequestContext, input: unknown) => Promise<unknown>;
     return jsonResponse(await handler(ctx, input), spec.status ?? 200, correlationId);
   }
