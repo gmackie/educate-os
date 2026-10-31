@@ -355,16 +355,16 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const retention = RetentionPolicy.parse(options.retention ?? { courseWorkspaceRetentionDays: 365 });
   const registry = options.registry ?? SHIPPED_REGISTRY;
   const policySource = configPolicySource(stores.config, options.defaultPolicy ?? DEFAULT_POLICY_FLOOR, options.onUnreadableConfigRevision);
-  const engine = new PolicyEngine({
-    information: directoryPolicyInformation(stores.directory, policySource, {
-      relationships: [guardianRelationships(stores.guardianRelationships, stores.directory, now)],
-      delegations: stores.delegations,
-      now,
-    }),
-    audit: stores.audit,
-    rules: options.rules ?? DISTRICT_APP_RULES,
+  const information = directoryPolicyInformation(stores.directory, policySource, {
+    relationships: [guardianRelationships(stores.guardianRelationships, stores.directory, now)],
+    delegations: stores.delegations,
     now,
   });
+  const rules = options.rules ?? DISTRICT_APP_RULES;
+  const engine = new PolicyEngine({ information, audit: stores.audit, rules, now });
+  // The same engine for explaining decisions (SCHO-175), except that it records nothing: the audit
+  // trail holds only decisions that took effect.
+  const simulator = new PolicyEngine({ information, audit: { record: async () => {} }, rules, now });
   const catalog = new CatalogMirror({ storage: stores.catalog, verifyRelease: options.verifyCatalogRelease ?? seedReleasesOnly });
   const alignments = options.alignments ?? catalogAlignmentSource(catalog);
   const fundingPools = async () => effectivePools(options.fundingPools ?? [], (await stores.fundingAllocations.list()).at(-1));
@@ -1447,6 +1447,22 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "admin.opsAudit": async (ctx) => {
       await ctx.requireDistrict("configure", "capability-config");
       return { entries: await ops.audit() };
+    },
+    "admin.simulatePolicy": async (ctx, { body }) => {
+      // Explaining any principal's access reads what the audit trail would: a district administrator's.
+      await ctx.require("read", { kind: "audit-event", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can simulate decisions.");
+      const { decision, ruleId, grantId } = await simulator.decide({
+        subject: { principalId: body.principalId, districtId },
+        action: body.action,
+        resource: body.resource,
+        context: { channel: body.channel, ...(body.termState === undefined ? {} : { termState: body.termState }) },
+      });
+      return {
+        verdict: decision.effect === "require-approval" ? "approval-required" as const : decision.effect,
+        ...(decision.effect === "allow" ? {} : { reason: decision.reason }),
+        ruleId,
+        ...(grantId === undefined ? {} : { grantId }),
+      };
     },
     "admin.previewDigest": async (ctx, { params }) => {
       // The preview shows what a guardian would be told about a child, so it is the decision of the
