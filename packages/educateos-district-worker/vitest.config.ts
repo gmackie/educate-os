@@ -18,6 +18,8 @@ const platform = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const PLATFORM_KID = "test-platform-key";
 // The key the district signs Hall Monitor service tokens with (SCHO-305), for this run only.
 const hallMonitorKey = generateKeyPairSync("ed25519");
+// The synthetic authorization server's access-token key (SCHO-174), for this run only.
+const mcpIssuerKey = generateKeyPairSync("ec", { namedCurve: "P-256" });
 // The release key marketplace publisher credentials are signed with (SCHO-209), for this run only:
 // the district pins its public half in MARKETPLACE_TRUST, and the tests sign with its private half.
 const marketplaceKey = generateKeyPairSync("ed25519");
@@ -63,6 +65,9 @@ export default defineConfig({
           HALL_MONITOR_ISSUER: "educateos",
           TEST_PLATFORM_PRIVATE_JWK: JSON.stringify({ ...platform.privateKey.export({ format: "jwk" }), kid: PLATFORM_KID, alg: "RS256" }),
           TEST_PLATFORM_PUBLIC_JWK: JSON.stringify({ ...platform.publicKey.export({ format: "jwk" }), kid: PLATFORM_KID, alg: "RS256", use: "sig" }),
+          // The organization MCP endpoint (SCHO-174): the test object trusts the public half.
+          TEST_MCP_ISSUER_PRIVATE_JWK: JSON.stringify({ ...mcpIssuerKey.privateKey.export({ format: "jwk" }), kid: "test-mcp-key", alg: "ES256" }),
+          TEST_MCP_ISSUER_PUBLIC_JWK: JSON.stringify({ ...mcpIssuerKey.publicKey.export({ format: "jwk" }), kid: "test-mcp-key", alg: "ES256" }),
           // Marketplace installs (SCHO-209).
           MARKETPLACE_TRUST,
           TEST_MARKETPLACE_RELEASE_JWK: JSON.stringify(marketplaceKey.privateKey.export({ format: "jwk" })),

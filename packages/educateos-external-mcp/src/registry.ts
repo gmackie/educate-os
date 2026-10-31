@@ -1,5 +1,5 @@
 import { ACADEMIC_OPERATIONS, type AcademicStore, type AcademicDirectory } from "@educateos/academics";
-import type { Action } from "@educateos/contracts";
+import type { Action, AuthorityMap } from "@educateos/contracts";
 import { academicSchoolTools, type SchoolTool, type ToolTarget } from "@educateos/policy";
 import { z } from "zod";
 
@@ -21,9 +21,11 @@ export function externalOperationAction(name: string): Action {
  * Curated academic definitions with trusted actions and record targets loaded from storage.
  * Existing academic handlers still authorize every returned/changed record; collection checks
  * here never authorize their individual contents. No client metadata participates in this mapping.
+ * Given the directory's `authority`, a curated write rechecks its domain's source of record, as the
+ * district's own tools do.
  */
-export function externalSchoolTools(store: AcademicStore, directory: AcademicDirectory): SchoolTool[] {
-  return academicSchoolTools(store, directory).filter((tool) => CURATED.has(tool.name)).map((tool) => ({
+export function externalSchoolTools(store: AcademicStore, directory: AcademicDirectory, authority?: AuthorityMap): SchoolTool[] {
+  return academicSchoolTools(store, directory, authority).filter((tool) => CURATED.has(tool.name)).map((tool) => ({
     ...tool,
     action: externalOperationAction(tool.name),
     // External calls use this registry's read/list actions, never an inherited district bypass.

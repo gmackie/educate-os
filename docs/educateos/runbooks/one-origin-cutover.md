@@ -51,6 +51,11 @@ most specific matching path.
 | `EducateOS Northfield (bypass)` (new) | `northfield.educateos.io` + `/healthz`, `/.well-known/educateos.json`, `/lti/*`, `/api/m/*`, `/api/pair/*`, `/api/pair/rooms/*`, `/api/ops/*` | bypass, everyone |
 | `EducateOS legacy hostnames (bypass)` (new, in step 6) | `schoolos.gmac.io`, `district.schoolos.gmac.io` | bypass, everyone |
 
+The organization MCP endpoint (SCHO-174) is off in this cutover. Enabling it later (after NATH-6)
+adds `/mcp`, `/.well-known/oauth-protected-resource` and `/.well-known/oauth-protected-resource/mcp`
+to the bypass application, together with `DISTRICT_CONFIG.mcp`. Its callers authenticate with the
+district authorization server's bearer tokens, never an Access session.
+
 Why `/api/pair/*` is bypassed while four paths under it are listed on the main application: the
 phone's pairing endpoints (`POST /api/pair/self-rooms`, `POST /api/pair/rooms/<room>/claim`, and the
 poll `GET /api/pair/rooms/<room>`) carry no Access session and are authenticated by the room secret.

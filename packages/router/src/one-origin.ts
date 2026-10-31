@@ -11,8 +11,9 @@
 //                                    index.html as the fallback
 //   LEGACY_WORKSHOP_PATHS            the Workshop backend, for one release, so older Workshop builds and
 //                                    phones keep working
-//   everything else                  the district Worker: `/`, `/api/*`, `/lti/*`, `/.well-known/*`
-//                                    and the district's UI assets
+//   everything else                  the district Worker: `/`, `/api/*`, `/lti/*`, `/.well-known/*`,
+//                                    `/mcp` (SCHO-174, when the district turns it on) and the
+//                                    district's UI assets
 //
 // A district with no Workshop (`AI_ENABLED` = "false", or no WORKSHOP_BACKEND bound) answers `/ai`
 // with a small "AI isn't enabled at your school" page, and the legacy Workshop paths go to the

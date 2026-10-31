@@ -30,7 +30,7 @@ import type { DeviceId, DeviceRegistration, DeviceRevocation, DeviceTokens, Dist
 import type { AccessSignInResolution, EmailKeyedUserMatch } from "@educateos/identity";
 import type { AdmittedSubjectRequest, GuardSubject, GuardSubjectRequest } from "@educateos/district-app/guard-directory";
 import type { SchoolToolListing, SchoolToolOutcome, ToolDecisionOutcome } from "@educateos/policy";
-import { startDistrict, type District } from "./district.ts";
+import { MCP_PATHS, startDistrict, type District } from "./district.ts";
 import { discussionHallMonitor } from "./hall-monitor.ts";
 import type { SendEmailBinding } from "./mail.ts";
 import { jobForCron } from "./schedule.ts";
@@ -67,6 +67,14 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
    * certs; the tests override it with a local key set.
    */
   protected accessKeys(): JWTVerifyGetKey | undefined {
+    return undefined;
+  }
+
+  /**
+   * The keys MCP access tokens are verified with (SCHO-174). Undefined uses the configured issuer's
+   * JWKS URL; the tests override it with a synthetic issuer's key set.
+   */
+  protected mcpIssuerKeys(): JWTVerifyGetKey | undefined {
     return undefined;
   }
 
@@ -139,8 +147,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
    * the LTI Tool's `/lti/` routes (SCHO-177), which are 404 when the deployment runs no LTI Tool.
    */
   override async fetch(request: Request): Promise<Response> {
-    const { app, lti } = await this.#boot();
+    const { app, lti, mcp } = await this.#boot();
     const { pathname } = new URL(request.url);
+    if (MCP_PATHS.includes(pathname)) {
+      return mcp === undefined ? new Response(null, { status: 404 }) : mcp.fetch(request);
+    }
     if (pathname.startsWith(LTI_API_PREFIX) || pathname.startsWith("/lti/")) {
       if (lti === undefined) return Response.json({ code: "not-found", message: "This district runs no LTI Tool." }, { status: 404 });
       if (pathname.startsWith(LTI_API_PREFIX)) return lti.serveAdmin(request);
@@ -311,6 +322,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
 
   async #start(): Promise<District> {
     const keys = this.accessKeys();
+    const mcpKeys = this.mcpIssuerKeys();
     const sendEmail = this.sendEmail();
     const district = await startDistrict(
       this.ctx.storage,
@@ -353,6 +365,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         }, screening),
         analyticsFetch: (request) => this.analyticsFetch(request),
         ...(keys === undefined ? {} : { accessKeys: keys }),
+        ...(mcpKeys === undefined ? {} : { mcpKeys }),
         ...(sendEmail === undefined ? {} : { sendEmail }),
       },
     );

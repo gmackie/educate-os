@@ -18,9 +18,26 @@ export const DEVICE_TOKEN_SECRET = "test-device-token-secret-0123456789-abcdef";
 /** The synthetic LMS the LTI tests register (SCHO-177). Not one of Northfield's trusted issuers. */
 export const LMS_ISSUER = "https://lms.northfield.example";
 
+/** The district's synthetic OAuth authorization server for its MCP endpoint (SCHO-174), standing in for Nathan. */
+export const MCP_ISSUER = "https://id.northfield.example";
+/** The district's public origin as the MCP tests deploy it; the resource is `<origin>/mcp`. */
+export const MCP_ORIGIN = "https://district.example";
+/** Each staff member's subject at {@link MCP_ISSUER}: a link of its own, beside their Access one. */
+export const mcpSubject = (principalId: string) => `nathan-${principalId}`;
+
+/** Northfield with an identity link at {@link MCP_ISSUER} for each staff member, after their Access link. */
+const NORTHFIELD_WITH_MCP_LINKS = {
+  ...NORTHFIELD,
+  district: { ...NORTHFIELD.district, trustedIssuers: [...NORTHFIELD.district.trustedIssuers, MCP_ISSUER] },
+  principals: NORTHFIELD.principals.map((p) => p.kind !== "staff" ? p : {
+    ...p,
+    externalIdentities: [...p.externalIdentities, { districtId: p.districtId, issuer: MCP_ISSUER, subject: mcpSubject(p.id) }],
+  }),
+};
+
 /** Northfield as the district's seed, its records owned by the roster, funded for one synthetic model. */
 export const TEST_CONFIG: DistrictWorkerConfig = {
-  directory: NORTHFIELD,
+  directory: NORTHFIELD_WITH_MCP_LINKS,
   workshopPolicy: {
     personalCreation: true,
     personalBlueprints: ["personal-notebook"],
@@ -41,6 +58,8 @@ export const TEST_CONFIG: DistrictWorkerConfig = {
   email: { from: "educateos@northfield.example", fromName: "Northfield EducateOS", appUrl: "https://learn.northfield.example" },
   // SCHO-305: student posts are screened by the (fake) Hall Monitor the test object answers with.
   discussionScreening: { tenantId: "northfield", profileId: "discussion-posts", revision: "r1", costCenterId: "cc-discussions" },
+  // SCHO-174: the organization MCP endpoint, for the synthetic issuer the test object trusts.
+  mcp: { origin: MCP_ORIGIN, issuer: MCP_ISSUER, jwksUri: `${MCP_ISSUER}/jwks`, algorithms: ["ES256"] },
 };
 
 /** Where the test district reaches Hall Monitor; the test object answers it with the fake. */

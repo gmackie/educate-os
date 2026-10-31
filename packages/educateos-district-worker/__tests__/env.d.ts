@@ -26,5 +26,9 @@ declare namespace Cloudflare {
     TEST_PLATFORM_PUBLIC_JWK: string;
     /** The private half of this run's marketplace release key, as a JWK (SCHO-209). `MARKETPLACE_TRUST` pins its public half. */
     TEST_MARKETPLACE_RELEASE_JWK: string;
+    /** The private half of the synthetic MCP authorization server's key, as a JWK (SCHO-174). */
+    TEST_MCP_ISSUER_PRIVATE_JWK: string;
+    /** The public half of the synthetic MCP authorization server's key, as a JWK (SCHO-174). */
+    TEST_MCP_ISSUER_PUBLIC_JWK: string;
   }
 }
