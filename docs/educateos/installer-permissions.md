@@ -102,6 +102,7 @@ install still has no known scope for the origin record.
 | `access.idp-missing` | A district IdP besides one-time PIN | Add the district's SAML or OIDC provider. |
 | `dns.zone-missing`, `dns.zone-pending` | The base domain is an active zone in the account | Add the zone and delegate its nameservers. |
 | `dns.record-conflict` | The EducateOS hostname, and the OSS admin's when `admin.enabled`, has no existing DNS records | Remove them, or pick another subdomain or `admin.hostname`. |
+| `dns.managed-only-cross-account` | A managed-only install (no `baseDomain`, SCHO-243) needs educateos.io as an active zone in the account. It replaces `dns.zone-*` and `dns.record-conflict`, which only apply to a base domain | Set `baseDomain` to a zone of the district's own, or install into the account that holds educateos.io. |
 | `quota.*` | Room under documented per-account limits (Workers 500, KV 1,000, D1 50,000, R2 1,000,000; **unverified** per account) | Free up resources or request a raise. |
 | `service.input-missing` | Every `var` input of an enabled service is in the config | Set `services["<pkg>"].vars.<NAME>`. |
 | `service.secret-missing` | Every secret input of an enabled service is supplied, or already set on its Worker | Supply it through the secret source (`EDUCATEOS_SECRET_<PKG>__<NAME>` for the CLI). |
@@ -128,6 +129,20 @@ because a dashboard edit keeps the installer's digest marker; a removed or retar
 `AI_CALL_GUARD` is reported and repaired by the next apply. Rollback refuses to redeploy a version
 whose service binding targets a Worker that no longer exists, and notes when it returns the
 backend to a version without a binding.
+
+## Managed-only installs
+
+With `managedHostname` set and no `baseDomain` (SCHO-243), `<slug>.educateos.io` is the install's
+public hostname and identity: the Access applications, the school manifest's `origin` and
+`$PUBLIC_BASE_URL` all use it, and the router gets it as a Workers custom domain on educateos.io
+(the managed hostname's same-account path) instead of a custom domain on a district zone. This
+works only where educateos.io is a zone in the district's account, which means the owner's hosted
+districts. A district in another account would need the Cloudflare for SaaS path, which puts the
+custom hostname on the district's own zone, and a managed-only district has none, so preflight
+blocks it (`dns.managed-only-cross-account`) and the plan refuses it. The OSS admin needs a
+hostname in a zone of the district's own, so `admin.enabled` is refused on a managed-only install
+for now. The token needs Zone: Read on educateos.io, DNS: Read on it (the slug check) and Workers
+Routes: Edit on it (the custom domain), besides the Workers Scripts rows.
 
 ## What the credential can reach, and what the installer touches
 

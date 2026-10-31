@@ -2,7 +2,7 @@ import { CapabilityId, CommercialAccountId, InstanceId } from "@educateos/contra
 import { ContactRole } from "@educateos/fleet";
 import { z } from "zod";
 import { ReleasePin } from "./manifest.ts";
-import { DistrictSlug, MANAGED_ZONE } from "./slug.ts";
+import { DistrictSlug, MANAGED_ZONE, managedHostname } from "./slug.ts";
 
 const DnsLabel = z.string().regex(/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/, "expected a DNS label");
 const DomainName = z
@@ -72,12 +72,18 @@ export const DistrictInstallConfig = z.strictObject({
   /**
    * The district-owned zone EducateOS is served under, e.g. `northfield.example`. Never the managed
    * zone: a public hostname there would look like a managed hostname, which the installer releases.
+   *
+   * Optional when {@link DistrictInstallConfig.managedHostname} is set: a managed-only install
+   * (SCHO-243) is served at `<slug>.educateos.io` alone, which is then its public hostname and
+   * identity. That works only where educateos.io is a zone in the district's own account (the
+   * owner's hosted districts): with no zone of its own, a district in another account has nowhere to
+   * hold the Cloudflare for SaaS custom hostname, so planning refuses it.
    */
   baseDomain: DomainName.refine(
     (domain) => domain !== MANAGED_ZONE && !domain.endsWith(`.${MANAGED_ZONE}`),
     `the district's own domain, not one under ${MANAGED_ZONE}`,
-  ),
-  /** The label under {@link DistrictInstallConfig.baseDomain} EducateOS is served on. */
+  ).optional(),
+  /** The label under {@link DistrictInstallConfig.baseDomain} EducateOS is served on. Unused on a managed-only install. */
   subdomain: DnsLabel.default("educateos"),
   access: z.strictObject({
     /** The Zero Trust team name, i.e. `<team>.cloudflareaccess.com`. */
@@ -133,7 +139,8 @@ export const DistrictInstallConfig = z.strictObject({
     enabled: z.boolean(),
     /**
      * The admin's hostname, under {@link DistrictInstallConfig.baseDomain} (the zone it is attached
-     * in). Defaults to `admin.<baseDomain>`, beside the public hostname.
+     * in). Defaults to `admin.<baseDomain>`, beside the public hostname. A managed-only install has
+     * no zone to attach it in, so it can't have the admin yet.
      */
     hostname: DomainName.optional(),
   }).default({ enabled: false }),
@@ -153,6 +160,9 @@ export const DistrictInstallConfig = z.strictObject({
     contactRole: ContactRole,
     capabilityIds: z.array(CapabilityId).max(64),
   }).optional(),
+}).refine((config) => config.baseDomain !== undefined || config.managedHostname !== undefined, {
+  message: "set baseDomain, managedHostname, or both",
+  path: ["baseDomain"],
 });
 /** A district install config, as parsed (defaults applied). */
 export type DistrictInstallConfig = z.infer<typeof DistrictInstallConfig>;
@@ -171,17 +181,27 @@ export function resourcePrefix(config: Pick<DistrictInstallConfig, "instanceId">
   return `educateos-${instanceSlug(config)}`;
 }
 
-/** The hostname EducateOS is served on. */
-export function publicHostname(config: Pick<DistrictInstallConfig, "subdomain" | "baseDomain">): string {
-  return `${config.subdomain}.${config.baseDomain}`;
+/**
+ * The hostname EducateOS is served on, its identity: `<subdomain>.<baseDomain>`, or on a managed-only
+ * install the managed hostname.
+ */
+export function publicHostname(config: Pick<DistrictInstallConfig, "subdomain" | "baseDomain" | "managedHostname">): string {
+  if (config.baseDomain !== undefined) return `${config.subdomain}.${config.baseDomain}`;
+  if (config.managedHostname === undefined) throw new Error("an install config has baseDomain, managedHostname, or both");
+  return managedHostname(config.managedHostname.slug);
+}
+
+/** Whether the install has no zone of its own and is served only at its managed hostname. */
+export function isManagedOnly(config: Pick<DistrictInstallConfig, "baseDomain">): boolean {
+  return config.baseDomain === undefined;
 }
 
 /**
  * The OSS admin's hostname: the configured one, or `admin.` and the public hostname's parent (the
- * base domain).
+ * base domain). Undefined on a managed-only install with none configured.
  */
-export function adminHostname(config: Pick<DistrictInstallConfig, "admin" | "baseDomain">): string {
-  return config.admin.hostname ?? `admin.${config.baseDomain}`;
+export function adminHostname(config: Pick<DistrictInstallConfig, "admin" | "baseDomain">): string | undefined {
+  return config.admin.hostname ?? (config.baseDomain === undefined ? undefined : `admin.${config.baseDomain}`);
 }
 
 /** The Cloudflare Worker name of one release package for this instance. */

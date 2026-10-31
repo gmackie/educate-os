@@ -62,7 +62,7 @@ export interface InstallPlan {
   blocked: PlanStep[];
   /** Outputs already known from observation. */
   outputs: ResourceOutputs;
-  /** The zone ID of the base domain, if the zone exists. */
+  /** The zone ID of the base domain, if the install has one and the zone exists. */
   zoneId?: string;
   cost: CostLine[];
 }
@@ -84,6 +84,7 @@ export async function guarded<T>(call: () => Promise<T>): Promise<T> {
 export async function planInstall(api: CloudflareApi, desired: DesiredState, secrets: SecretSource): Promise<InstallPlan> {
   const account = desired.accountId;
   const kinds = new Set(desired.resources.map((r) => r.kind));
+  const zoneName = zoneNameOf(desired);
   const list = <T>(needed: boolean, call: () => Promise<T[]>) => (needed ? guarded(call) : Promise.resolve([] as T[]));
 
   const [scripts, kv, r2, d1, policies, apps, gateways, domains, zone] = await Promise.all([
@@ -95,7 +96,7 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
     guarded(() => api.listAccessApplications(account)),
     list(kinds.has("ai_gateway"), () => api.listAiGateways(account)),
     guarded(() => api.listWorkerDomains(account)),
-    guarded(() => api.findZone(account, zoneNameOf(desired))),
+    zoneName === undefined ? Promise.resolve(undefined) : guarded(() => api.findZone(account, zoneName)),
   ]);
 
   const outputs: ResourceOutputs = new Map();
@@ -298,10 +299,10 @@ async function appliedD1Migrations(api: CloudflareApi, account: string, database
   return new Set(rows.map((row) => String(row.id)));
 }
 
-function zoneNameOf(desired: DesiredState): string {
+/** The base domain's zone name, or undefined on a managed-only install, which has none. */
+function zoneNameOf(desired: DesiredState): string | undefined {
   const domain = desired.resources.find((r) => r.key === RESOURCE_KEYS.customDomain);
-  if (domain?.kind !== "custom_domain") throw new EducateOsError("validation-failed", "desired state has no custom domain");
-  return domain.zoneName;
+  return domain?.kind === "custom_domain" ? domain.zoneName : undefined;
 }
 
 function workerKeyOf(secret: { dependsOn: ResourceKey[] }): ResourceKey {

@@ -6,6 +6,7 @@ import type { CloudflareApi } from "./cloudflare-api.ts";
 import { R2_NOT_ENABLED_CODE } from "./cloudflare-http.ts";
 import type { DistrictInstallConfig, SecretSource } from "./config.ts";
 import type { DesiredState, DesiredWorker } from "./desired.ts";
+import { MANAGED_ZONE } from "./slug.ts";
 import { CloudflareApiError, isCredentialFailure } from "./errors.ts";
 
 /** One finding. `code` is stable for programs; `message` is for the operator. */
@@ -145,7 +146,8 @@ export async function preflight(
   await checkAccess(probe, api, config, blocking);
   // The public hostname, and the OSS admin's when the install has one; both in the base domain's zone.
   const others = desired.resources.flatMap((r) => (r.kind === "custom_domain" && r.hostname !== desired.hostname ? [r.hostname] : []));
-  await checkDns(probe, api, config, [desired.hostname, ...others], blocking);
+  if (config.baseDomain === undefined) await checkManagedZone(probe, api, config, desired.hostname, blocking);
+  else await checkDns(probe, api, config, config.baseDomain, [desired.hostname, ...others], blocking);
 
   if (config.aiGateway) {
     // Optional product: a failure here is a warning, and the install still tries to create it.
@@ -243,24 +245,43 @@ async function checkAccess(probe: Probe, api: CloudflareApi, config: DistrictIns
   }
 }
 
+/**
+ * A managed-only install (SCHO-243) has no zone of its own to check, so `dns.zone-*` and
+ * `dns.record-conflict` don't apply. It needs the managed zone in the account instead: the custom
+ * domain on it is its only way in. Whether the slug is free there is the managed hostname plan's
+ * check, which also knows the hostname this install already holds.
+ */
+async function checkManagedZone(probe: Probe, api: CloudflareApi, config: DistrictInstallConfig, hostname: string, blocking: PreflightItem[]) {
+  const found = await probe("reading zones", "Zone: Read", () => api.findZone(config.accountId, MANAGED_ZONE));
+  if (found.failed) return;
+  if (found.value?.status !== "active") {
+    blocking.push({
+      code: "dns.managed-only-cross-account",
+      message: `${hostname} would be this install's only hostname, but ${MANAGED_ZONE} is not an active zone in this account. ` +
+        `A district in another account has no zone to hold its managed hostname.`,
+      operatorAction: `Set baseDomain to a zone of the district's own in this account (${hostname} then stays as an alias), or install into the account that holds ${MANAGED_ZONE}.`,
+    });
+  }
+}
+
 // `hostnames`: the public hostname first, then any other the install attaches (the OSS admin's).
-async function checkDns(probe: Probe, api: CloudflareApi, config: DistrictInstallConfig, hostnames: string[], blocking: PreflightItem[]) {
-  const found = await probe("reading zones", "Zone: Read", () => api.findZone(config.accountId, config.baseDomain));
+async function checkDns(probe: Probe, api: CloudflareApi, config: DistrictInstallConfig, baseDomain: string, hostnames: string[], blocking: PreflightItem[]) {
+  const found = await probe("reading zones", "Zone: Read", () => api.findZone(config.accountId, baseDomain));
   if (found.failed) return;
   const zone = found.value;
   if (zone === undefined) {
     blocking.push({
       code: "dns.zone-missing",
-      message: `The zone ${config.baseDomain} is not in this Cloudflare account.`,
-      operatorAction: `Add ${config.baseDomain} to the account and change its nameservers at the registrar to the ones Cloudflare assigns.`,
+      message: `The zone ${baseDomain} is not in this Cloudflare account.`,
+      operatorAction: `Add ${baseDomain} to the account and change its nameservers at the registrar to the ones Cloudflare assigns.`,
     });
     return;
   }
   if (zone.status !== "active") {
     blocking.push({
       code: "dns.zone-pending",
-      message: `The zone ${config.baseDomain} is ${zone.status}: its nameservers do not point at Cloudflare yet.`,
-      operatorAction: `Finish the nameserver change for ${config.baseDomain} at the registrar and wait for Cloudflare to mark the zone active.`,
+      message: `The zone ${baseDomain} is ${zone.status}: its nameservers do not point at Cloudflare yet.`,
+      operatorAction: `Finish the nameserver change for ${baseDomain} at the registrar and wait for Cloudflare to mark the zone active.`,
     });
   }
   let domains: ProbeResult<Awaited<ReturnType<CloudflareApi["listWorkerDomains"]>>> | undefined;

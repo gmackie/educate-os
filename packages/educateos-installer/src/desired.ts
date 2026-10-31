@@ -11,6 +11,7 @@ import type { AccessPolicySpec } from "./cloudflare-api.ts";
 import {
   adminHostname,
   type DistrictInstallConfig,
+  isManagedOnly,
   publicHostname,
   resourcePrefix,
   workerScriptName,
@@ -156,7 +157,7 @@ export interface DesiredCustomDomain extends ResourceBase {
 
 /**
  * The managed default hostname, `<slug>.educateos.io`, an alias routed to the router (ADR-0013
- * addendum A1). Planning picks the path from observation: a Workers custom domain when the managed
+ * addendum A1), or on a managed-only install the public hostname itself (SCHO-243). Planning picks the path from observation: a Workers custom domain when the managed
  * zone is in the district's account, otherwise a Cloudflare for SaaS custom hostname on the
  * district's own zone, whose validation records the managed zone publishes (managed-zone.ts).
  *
@@ -167,11 +168,14 @@ export interface DesiredCustomDomain extends ResourceBase {
 export interface DesiredManagedHostname extends ResourceBase {
   kind: "managed_hostname";
   phase: "release" | "attach";
-  /** The alias the config wants, or null for none. */
+  /** The managed hostname the config wants, or null for none. */
   hostname: string | null;
   scriptName: string;
-  /** The district's own zone, which holds the custom hostname on the cross-account path. */
-  zoneName: string;
+  /**
+   * The district's own zone, which holds the custom hostname on the cross-account path. Null on a
+   * managed-only install, which has no zone: only the same-account path can serve it.
+   */
+  zoneName: string | null;
 }
 
 /** One node of the desired resource graph. */
@@ -354,7 +358,10 @@ function gatekeeperInputVars(pkgName: string, entry: WorkerEntry, config: Distri
 export function compileDesiredState(manifest: ReleaseManifest, config: DistrictInstallConfig): DesiredState {
   if (manifest.releaseId !== config.release.releaseId) invalid("manifest and config pin different releases");
   const hostname = publicHostname(config);
-  const alias = config.managedHostname ? managedHostname(config.managedHostname.slug) : null;
+  const managedOnly = isManagedOnly(config);
+  const managedHost = config.managedHostname ? managedHostname(config.managedHostname.slug) : null;
+  // On a managed-only install the managed hostname is the public one, not an alias of it.
+  const alias = managedOnly ? null : managedHost;
   const publicBaseUrl = `https://${hostname}`;
   const prefix = resourcePrefix(config);
 
@@ -393,6 +400,9 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
   let adminHost: string | undefined;
   const adminInputs: DesiredInput[] = [];
   if (config.admin.enabled) {
+    if (managedOnly) {
+      invalid("the OSS admin needs a hostname in a zone of the district's own: a managed-only install (no baseDomain) can't have it yet");
+    }
     const admins = entries.filter(([, w]) => w.kind === "admin");
     if (admins.length !== 1) invalid("admin.enabled needs a release that carries the OSS admin");
     if (!oneOrigin) {
@@ -401,7 +411,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     const [name, entry] = admins[0]!;
     if (!entry.installable) invalid(`${name} is not installable on district instances`);
     adminPkg = name;
-    adminHost = adminHostname(config);
+    adminHost = adminHostname(config)!;
     if (!adminHost.endsWith(`.${config.baseDomain}`)) {
       invalid(`admin.hostname must be under ${config.baseDomain}, the zone the installer attaches it in`);
     }
@@ -761,7 +771,8 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     }
   }
 
-  const customDomain: DesiredCustomDomain = {
+  // A managed-only install has no zone of its own: the router is reached only at the managed hostname.
+  const customDomain: DesiredCustomDomain | undefined = config.baseDomain === undefined ? undefined : {
     kind: "custom_domain",
     key: RESOURCE_KEYS.customDomain,
     // On a one-origin install the bypass is in place before the hostname serves, so the paths that
@@ -779,15 +790,15 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       key: RESOURCE_KEYS.adminDomain,
       dependsOn: [workerKey(adminPkg), adminAccess.application.key, adminAccess.bypass.key],
       hostname: adminHost,
-      zoneName: config.baseDomain,
+      zoneName: config.baseDomain!,
       scriptName: scriptNames.get(adminPkg)!,
     }
     : undefined;
 
-  const managed = { kind: "managed_hostname" as const, hostname: alias, scriptName: scriptNames.get(routerPkg)!, zoneName: config.baseDomain };
+  const managed = { kind: "managed_hostname" as const, hostname: managedHost, scriptName: scriptNames.get(routerPkg)!, zoneName: config.baseDomain ?? null };
   const releaseManaged: DesiredManagedHostname = { ...managed, key: RESOURCE_KEYS.managedHostnameRelease, dependsOn: [], phase: "release" };
   // Attaching waits for the router and for the application that protects the alias.
-  const attachManaged: DesiredManagedHostname | undefined = alias
+  const attachManaged: DesiredManagedHostname | undefined = managedHost
     ? {
       ...managed,
       key: RESOURCE_KEYS.managedHostname,
@@ -807,7 +818,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     ...workers,
     ...secrets,
     ...retired,
-    customDomain,
+    ...customDomain ? [customDomain] : [],
     ...adminDomain ? [adminDomain] : [],
     releaseManaged,
     ...(attachManaged ? [attachManaged] : []),
