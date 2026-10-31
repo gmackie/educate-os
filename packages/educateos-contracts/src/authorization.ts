@@ -192,6 +192,13 @@ export interface Caller {
    * correlation ID. Absent, each decision gets its own.
    */
   correlationId?: string;
+  /**
+   * The operation this invocation runs, set by the operation layer. A write is routed by its
+   * domain's authority binding, whose `allowedOperations` it is checked against, only after the
+   * caller is authorized for the target. Absent, only a binding that allows every operation
+   * admits the write.
+   */
+  operation?: string;
 }
 
 /**

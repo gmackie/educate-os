@@ -56,7 +56,7 @@ const CASES: Case[] = [
 const withoutId = (value: unknown) => (typeof value === "object" && value !== null ? { ...value, id: undefined } : value);
 
 describe("routes bound to academic operations", () => {
-  it("cover the first migrated group, each declaring exactly its operation's input", () => {
+  it("cover the first migrated group, each declaring exactly its operation's input and output", () => {
     expect(OPERATION_ROUTES.map(([name]) => name).toSorted()).toEqual([
       "admin.archiveCourse", "admin.archiveOffering", "admin.createCourse", "admin.createOffering", "admin.createSchool",
       "admin.createTerm", "admin.enroll", "admin.transitionTerm", "admin.updateCourse", "admin.updateOffering",
@@ -68,6 +68,8 @@ describe("routes bound to academic operations", () => {
       expect(routeFields.toSorted(), name).toEqual(Object.keys((operation.input as z.ZodObject).shape).toSorted());
       // A path parameter never also arrives in the body, where it could name another record.
       expect(new Set(routeFields).size, name).toBe(routeFields.length);
+      // What the route says it answers is what the operation returns.
+      expect(z.toJSONSchema(spec.response), name).toEqual(z.toJSONSchema(operation.output));
     }
   });
 
@@ -83,6 +85,7 @@ describe("routes bound to academic operations", () => {
     if (agent.status === "ok") {
       expect(rest.status).toBeLessThan(300);
       expect(withoutId(rest.body)).toEqual(withoutId(agent.value));
+      expect(ACADEMIC_OPERATIONS[operation].output.safeParse(rest.body).success).toBe(true);
     } else {
       expect(agent.status).toBe("error");
       const { correlationId: _rest, ...restError } = EducateOsErrorBody.parse(rest.body);
