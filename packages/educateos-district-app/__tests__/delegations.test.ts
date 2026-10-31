@@ -3,19 +3,20 @@
 // a roster change ends it on the next decision.
 import { describe, expect, it } from "vitest";
 import { DelegationId, DistrictId, PrincipalId } from "@educateos/contracts";
+import type { DelegationCeiling } from "@educateos/policy";
 import { bootDistrict, expectError, NF, NORTHFIELD, type TestDistrict } from "./support.ts";
 
 const CLIENT = { issuer: "https://auth.northfield.example", clientId: "lesson-planner" };
 const offering = (offeringId: string) => {
   const found = NORTHFIELD.offerings.find((o) => o.id === offeringId)!;
-  return { level: "offering", districtId: found.districtId, schoolId: found.schoolId, offeringId } as const;
+  return { level: "offering", districtId: found.districtId, schoolId: found.schoolId, offeringId: found.id } as const;
 };
-const ceiling = (offeringId: string) => ({
+const ceiling = (offeringId: string): DelegationCeiling => ({
   scope: offering(offeringId),
   actions: ["read", "list"],
   kinds: ["rubric", "submission"],
   classifications: ["course"],
-}) as const;
+});
 
 /** A read of an offering's unowned course rubric, as `principalId` acting under `delegationId`. */
 function readRubric(district: TestDistrict, principalId: string, offeringId: string, delegationId?: string) {
