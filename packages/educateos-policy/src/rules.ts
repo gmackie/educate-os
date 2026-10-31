@@ -607,6 +607,12 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     effect: { effect: "allow" },
   },
   {
+    id: "curriculum.marketplace.install",
+    description: "A district admin or district curriculum admin lists the curriculum packs the district installed from the marketplace and, as a person rather than an agent, installs one.",
+    when: { kinds: ["marketplace-pack"], roles: ["district-admin", "curriculum-admin"], classifications: ["district-internal"], actions: [...READS, "create"], channels: ["http"] },
+    effect: { effect: "allow" },
+  },
+  {
     id: "curriculum.admin.manage",
     description: "A curriculum admin authors, reviews, approves and publishes learning resources in their scope.",
     when: {

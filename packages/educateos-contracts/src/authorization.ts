@@ -90,6 +90,11 @@ export const ResourceKind = z.enum([
    * activities may align to. District-level and `district-internal`.
    */
   "standards-release",
+  /**
+   * A curriculum pack a district installed from a signed marketplace listing (SCHO-209):
+   * district-level and `district-internal`.
+   */
+  "marketplace-pack",
   "capability-config",
   "ai-budget",
   "audit-event",
