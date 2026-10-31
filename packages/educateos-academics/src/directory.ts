@@ -28,7 +28,7 @@ import {
   type TermId,
   type TermState,
 } from "@educateos/contracts";
-import { assertLocallyWritable, bindingsFromAuthorityMap } from "./authority.ts";
+import { assertOperationRoutable, bindingsFromAuthorityMap, type DirectoryEntityKind } from "./authority.ts";
 import {
   CoursePatch,
   DepartedStatus,
@@ -223,16 +223,14 @@ class Targets {
  */
 export class AcademicDirectory {
   readonly #store: AcademicStore;
-  readonly #authority: AuthorityMap;
   readonly #authorizer: Authorizer;
   readonly #now: () => Date;
-  /** The directory's authority as versioned bindings, which operations are routed by. */
-  readonly authorityBindings: AuthorityBindings;
+  /** The directory's authority as versioned bindings, which writes are routed by once authorized. */
+  readonly #bindings: AuthorityBindings;
 
   constructor(options: AcademicDirectoryOptions) {
     this.#store = options.store;
-    this.#authority = options.authority;
-    this.authorityBindings = bindingsFromAuthorityMap(options.authority);
+    this.#bindings = bindingsFromAuthorityMap(options.authority);
     this.#authorizer = options.authorizer;
     this.#now = options.now ?? (() => new Date());
   }
@@ -260,7 +258,7 @@ export class AcademicDirectory {
     const input = parseInput(NewSchool, rawInput);
     const { snapshot, version } = await this.#store.load();
     await this.#require(caller, "create", new Targets(snapshot).district("school"));
-    assertLocallyWritable(this.#authority, "school");
+    this.#assertWritable(caller, "school");
     const school: School = { id: newId("school") as SchoolId, districtId: snapshot.district.id, ...input };
     await this.#commit({ ...snapshot, schools: [...snapshot.schools, school] }, version);
     return school;
@@ -273,7 +271,7 @@ export class AcademicDirectory {
     const school = snapshot.schools.find((s) => s.id === schoolId);
     if (school === undefined) throw notFound("school", schoolId);
     await this.#requireWrite(caller, "update", new Targets(snapshot).school(school), "school", schoolId);
-    assertLocallyWritable(this.#authority, "school");
+    this.#assertWritable(caller, "school");
     const updated: School = { ...school, ...patch };
     await this.#commit({ ...snapshot, schools: replace(snapshot.schools, updated) }, version);
     return updated;
@@ -303,7 +301,7 @@ export class AcademicDirectory {
     const input = parseInput(NewTerm, rawInput);
     const { snapshot, version } = await this.#store.load();
     await this.#require(caller, "create", new Targets(snapshot).district("term"));
-    assertLocallyWritable(this.#authority, "term");
+    this.#assertWritable(caller, "term");
     const term: AcademicTerm = { id: newId("term") as TermId, districtId: snapshot.district.id, ...input, state: "planned" };
     await this.#commit({ ...snapshot, terms: [...snapshot.terms, term] }, version);
     return term;
@@ -316,7 +314,7 @@ export class AcademicDirectory {
     const term = snapshot.terms.find((t) => t.id === termId);
     if (term === undefined) throw notFound("term", termId);
     await this.#requireWrite(caller, "update", new Targets(snapshot).term(term), "term", termId);
-    assertLocallyWritable(this.#authority, "term");
+    this.#assertWritable(caller, "term");
     const updated: AcademicTerm = { ...term, ...patch };
     await this.#commit({ ...snapshot, terms: replace(snapshot.terms, updated) }, version);
     return updated;
@@ -331,7 +329,7 @@ export class AcademicDirectory {
     const term = snapshot.terms.find((t) => t.id === termId);
     if (term === undefined) throw notFound("term", termId);
     await this.#requireWrite(caller, "update", new Targets(snapshot).term(term), "term", termId);
-    assertLocallyWritable(this.#authority, "term");
+    this.#assertWritable(caller, "term");
     assertTermTransition(term.state, to);
     const updated: AcademicTerm = { ...term, state: to };
     await this.#commit({ ...snapshot, terms: replace(snapshot.terms, updated) }, version);
@@ -361,7 +359,7 @@ export class AcademicDirectory {
     const input = parseInput(NewCourse, rawInput);
     const { snapshot, version } = await this.#store.load();
     await this.#require(caller, "create", new Targets(snapshot).district("course"));
-    assertLocallyWritable(this.#authority, "course");
+    this.#assertWritable(caller, "course");
     const course: CatalogCourse = { id: newId("course") as CourseId, districtId: snapshot.district.id, ...input };
     await this.#commit({ ...snapshot, courses: [...snapshot.courses, course] }, version);
     return course;
@@ -374,7 +372,7 @@ export class AcademicDirectory {
     const course = snapshot.courses.find((c) => c.id === courseId);
     if (course === undefined) throw notFound("course", courseId);
     await this.#requireWrite(caller, "update", new Targets(snapshot).course(course), "course", courseId);
-    assertLocallyWritable(this.#authority, "course");
+    this.#assertWritable(caller, "course");
     const updated: CatalogCourse = { ...course, ...patch };
     await this.#commit({ ...snapshot, courses: replace(snapshot.courses, updated) }, version);
     return updated;
@@ -390,7 +388,7 @@ export class AcademicDirectory {
     const course = snapshot.courses.find((c) => c.id === courseId);
     if (course === undefined) throw notFound("course", courseId);
     await this.#requireWrite(caller, "update", new Targets(snapshot).course(course), "course", courseId);
-    assertLocallyWritable(this.#authority, "course");
+    this.#assertWritable(caller, "course");
     if ((course.archivedAt !== undefined) === archived) return course;
     const { archivedAt: _, ...current } = course;
     const updated: CatalogCourse = archived ? { ...current, archivedAt: this.#now().toISOString() } : current;
@@ -440,7 +438,7 @@ export class AcademicDirectory {
     if (school === undefined) throw notFound("school", input.schoolId);
     const targets = new Targets(snapshot);
     await this.#requireWrite(caller, "create", targets.inSchool("offering", school, input.termId), "school", school.id, targets.school(school));
-    assertLocallyWritable(this.#authority, "offering");
+    this.#assertWritable(caller, "offering");
     if (snapshot.courses.find((c) => c.id === input.courseId)?.archivedAt !== undefined) {
       throw new EducateOsError("conflict", `${input.courseId} is archived; restore it before adding an offering.`);
     }
@@ -456,7 +454,7 @@ export class AcademicDirectory {
     const offering = snapshot.offerings.find((o) => o.id === offeringId);
     if (offering === undefined) throw notFound("offering", offeringId);
     await this.#requireWrite(caller, "update", new Targets(snapshot).offering(offering), "offering", offeringId);
-    assertLocallyWritable(this.#authority, "offering");
+    this.#assertWritable(caller, "offering");
     const updated: CourseOffering = { ...offering, ...patch };
     await this.#commit({ ...snapshot, offerings: replace(snapshot.offerings, updated) }, version);
     return updated;
@@ -472,7 +470,7 @@ export class AcademicDirectory {
     const offering = snapshot.offerings.find((o) => o.id === offeringId);
     if (offering === undefined) throw notFound("offering", offeringId);
     await this.#requireWrite(caller, "update", new Targets(snapshot).offering(offering), "offering", offeringId);
-    assertLocallyWritable(this.#authority, "offering");
+    this.#assertWritable(caller, "offering");
     if ((offering.archivedAt !== undefined) === archived) return offering;
     const { archivedAt: _, ...current } = offering;
     const updated: CourseOffering = archived ? { ...current, archivedAt: this.#now().toISOString() } : current;
@@ -528,7 +526,7 @@ export class AcademicDirectory {
       offering.id,
       targets.offering(offering),
     );
-    assertLocallyWritable(this.#authority, "enrollment");
+    this.#assertWritable(caller, "enrollment");
     if (offering.archivedAt !== undefined) {
       throw new EducateOsError("conflict", `${offering.id} is archived; restore it before enrolling anyone.`);
     }
@@ -559,7 +557,7 @@ export class AcademicDirectory {
     const target = enrollment && new Targets(snapshot).enrollment(enrollment);
     if (enrollment === undefined || target === undefined) throw notFound("enrollment", enrollmentId);
     await this.#requireWrite(caller, "update", target, "enrollment", enrollmentId);
-    assertLocallyWritable(this.#authority, "enrollment");
+    this.#assertWritable(caller, "enrollment");
     if (enrollment.status === "inactive") return enrollment;
     const updated: Enrollment = { ...enrollment, status: "inactive" };
     await this.#commit({ ...snapshot, enrollments: replace(snapshot.enrollments, updated) }, version);
@@ -578,7 +576,7 @@ export class AcademicDirectory {
     const input = parseInput(NewPrincipal, rawInput);
     const { snapshot, version } = await this.#store.load();
     await this.#require(caller, "create", new Targets(snapshot).district("principal"));
-    assertLocallyWritable(this.#authority, "principal");
+    this.#assertWritable(caller, "principal");
     const principal: Principal = {
       id: newId("principal") as PrincipalId,
       districtId: snapshot.district.id,
@@ -608,7 +606,7 @@ export class AcademicDirectory {
     const principal = snapshot.principals.find((p) => p.id === principalId);
     if (principal === undefined) throw notFound("principal", principalId);
     await this.#requireWrite(caller, "update", new Targets(snapshot).principal(principal), "principal", principalId);
-    assertLocallyWritable(this.#authority, "principal");
+    this.#assertWritable(caller, "principal");
     if (principal.status === status) return principal;
     this.#assertKeepsAnAdmin(snapshot, caller, principalId, "deactivate");
     const updated: Principal = { ...principal, status };
@@ -629,7 +627,7 @@ export class AcademicDirectory {
     const principal = snapshot.principals.find((p) => p.id === principalId);
     if (principal === undefined || principal.kind === "guardian" || principal.kind === "service") throw notFound("principal", principalId);
     await this.#requireWrite(caller, "update", new Targets(snapshot).principal(principal), "principal", principalId);
-    assertLocallyWritable(this.#authority, "principal");
+    this.#assertWritable(caller, "principal");
     if (patch.kind !== undefined && patch.kind !== principal.kind) {
       const enrolled = snapshot.enrollments.some((e) => e.principalId === principalId);
       const roles = snapshot.roleAssignments.some((a) => a.principalId === principalId);
@@ -663,7 +661,7 @@ export class AcademicDirectory {
     const principal = snapshot.principals.find((p) => p.id === principalId);
     if (principal === undefined) throw notFound("principal", principalId);
     await this.#requireWrite(caller, "update", new Targets(snapshot).principal(principal), "principal", principalId);
-    assertLocallyWritable(this.#authority, "principal");
+    this.#assertWritable(caller, "principal");
     if (principal.status === "active") return principal;
     const updated: Principal = { ...principal, status: "active" };
     await this.#commit({ ...snapshot, principals: replace(snapshot.principals, updated) }, version);
@@ -753,6 +751,16 @@ export class AcademicDirectory {
     // precheck refuses, such as a caller from another district.
     const precheck = precheckAuthorization(request);
     return precheck.ok ? decision : precheck.decision;
+  }
+
+  /**
+   * Refuses a write the directory's binding for `kind` does not route, naming the source of
+   * record, including an operation outside the binding's `allowedOperations`. Called only after
+   * the caller is authorized for the target, so the owner is never named to a caller who would
+   * otherwise get `forbidden` or `not-found`.
+   */
+  #assertWritable(caller: Caller, kind: DirectoryEntityKind): void {
+    assertOperationRoutable(this.#bindings, kind, { name: caller.operation, writes: true });
   }
 
   /** Requires an allow, answering `forbidden` otherwise. For actions on the district itself. */

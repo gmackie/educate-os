@@ -22,7 +22,7 @@ import {
   type OperationChannel,
   type OperationDescriptorFields,
 } from "@educateos/contracts";
-import { assertOperationRoutable, type DirectoryEntityKind } from "./authority.ts";
+import type { DirectoryEntityKind } from "./authority.ts";
 import type { AcademicDirectory } from "./directory.ts";
 import {
   CoursePatch,
@@ -413,9 +413,10 @@ export type OperationOutcome = { ok: true; value: unknown } | { ok: false; error
 
 /**
  * Parses `input` and runs the operation, converting failures to error bodies. An operation not
- * exposed on the caller's channel is refused with `forbidden` before anything else happens. One
- * whose effect writes is then routed by its domain's authority binding, so a write to a domain
- * another system owns is refused with a `conflict` naming that system before it runs. Every decision the
+ * exposed on the caller's channel is refused with `forbidden` before anything else happens. The
+ * caller carries the operation's name, so once the directory has authorized a write it routes it
+ * by its domain's authority binding: a write to a domain another system owns, or one the binding
+ * does not route, is refused with a `conflict` naming that system. Every decision the
  * operation makes is audited under one correlation ID, the caller's if it brings one, and every
  * error body names it, so a refusal a user reports leads straight to the audit entries behind it.
  * Unexpected errors become `unavailable` with a generic message, so internal detail never reaches
@@ -439,8 +440,7 @@ export async function invokeOperation(
   try {
     const parsed = operation.input.safeParse(input);
     if (!parsed.success) throw new DirectoryValidationError("the request is invalid", zodIssues(parsed.error));
-    assertOperationRoutable(directory.authorityBindings, operation.authority, { name: operation.name, writes: operation.effect !== "read" });
-    return { ok: true, value: await operation.run(directory, { ...caller, correlationId }, parsed.data) };
+    return { ok: true, value: await operation.run(directory, { ...caller, correlationId, operation: operation.name }, parsed.data) };
   } catch (error) {
     if (error instanceof EducateOsError) return { ok: false, error: { ...error.toBody(), correlationId } };
     // The caller gets nothing internal, so this log line is the only record of what went wrong.

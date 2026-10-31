@@ -23,19 +23,6 @@ const PLURALS: Record<DirectoryEntityKind, string> = {
   principal: "Principals",
 };
 
-/**
- * Refuses a user-initiated write to a record type an external system owns, naming that system so
- * the caller knows where to make the change instead.
- */
-export function assertLocallyWritable(authority: AuthorityMap, kind: DirectoryEntityKind): void {
-  const owner = authority[kind];
-  if (owner === "local") return;
-  throw new EducateOsError(
-    "conflict",
-    `${PLURALS[kind]} are owned by ${owner}; change them there and let its sync update EducateOS.`,
-  );
-}
-
 /** Refuses a sync write from a provider that does not own the record type. */
 export function assertSyncWritable(authority: AuthorityMap, kind: DirectoryEntityKind, provider: string): void {
   const owner = authority[kind];
@@ -80,22 +67,26 @@ export function bindingsFromAuthorityMap(
 }
 
 /**
- * Refuses an operation its domain's binding does not route, before it runs. An operation outside
- * the binding's `allowedOperations` is refused whether it reads or writes. A write to a domain
- * EducateOS does not hold as `read-write` is refused naming the owner, so the caller knows where
- * to make the change instead; reads of such a domain answer from EducateOS's projection. The
- * refusal is a `conflict`: the request is valid, but EducateOS is not where it can happen.
+ * Refuses an operation its domain's binding does not route. An operation outside the binding's
+ * `allowedOperations` is refused whether it reads or writes; one with no name is admitted only by
+ * a binding that allows every operation. A write to a domain EducateOS does not hold as
+ * `read-write` is refused naming the owner, so the caller knows where to make the change instead;
+ * reads of such a domain answer from EducateOS's projection. The refusal is a `conflict`: the
+ * request is valid, but EducateOS is not where it can happen.
+ *
+ * The refusal names the domain's source of record, so call this only once the caller has been
+ * authorized for the target: an unauthorized caller gets `forbidden` or `not-found` instead.
  */
 export function assertOperationRoutable(
   bindings: AuthorityBindings,
   domain: AuthorityDomain,
-  operation: { name: string; writes: boolean },
+  operation: { name: string | undefined; writes: boolean },
 ): void {
   const binding = bindings.domains[domain];
-  if (binding.allowedOperations !== "all" && !binding.allowedOperations.includes(operation.name)) {
+  if (binding.allowedOperations !== "all" && (operation.name === undefined || !binding.allowedOperations.includes(operation.name))) {
     throw new EducateOsError(
       "conflict",
-      `${operation.name} is not routed to ${binding.source} for ${DOMAIN_PLURALS[domain].toLowerCase()}.`,
+      `${operation.name ?? "This operation"} is not routed to ${binding.source} for ${DOMAIN_PLURALS[domain].toLowerCase()}.`,
     );
   }
   if (!operation.writes || binding.writeMode === "read-write") return;
@@ -113,16 +104,20 @@ export function assertOperationRoutable(
  * district allows, so it never makes grades locally writable where the district does not:
  *
  * - where EducateOS holds the district's grades, a class may keep them too (`local`), or hold
- *   them in an LMS (`lms:<provider>`), which EducateOS then publishes teacher-approved grades to:
- *   the same binding, syncing `outbound`. Who may write EducateOS's records is unchanged;
+ *   them in an LMS (`lms:<provider>`), which EducateOS then publishes teacher-approved grades to,
+ *   but only if the district's binding already syncs grades out (`outbound` or `bidirectional`);
+ *   otherwise the class is refused with a `conflict`. Either way the binding is the district's;
  * - where an external system holds them, a class may name only that system (`lms:<provider>` for
  *   `external:<provider>`), and its binding is the district's as it stands. A class that would keep
  *   its grades locally, or in another system, is refused with a `conflict` naming the owner.
  */
 export function gradeBindingForOffering(district: AuthorityBinding, offering: GradeAuthority): AuthorityBinding {
   if (district.source === "local") {
-    if (offering === "local") return district;
-    return { ...district, syncDirection: district.syncDirection === "none" ? "outbound" : district.syncDirection };
+    if (offering === "local" || district.syncDirection === "outbound" || district.syncDirection === "bidirectional") return district;
+    throw new EducateOsError(
+      "conflict",
+      `Official grades are kept in EducateOS and the district's grade binding does not allow outbound grade sync, so a class cannot send them to ${offering}.`,
+    );
   }
   if (offering === `lms:${district.source.slice("external:".length)}`) return district;
   throw new EducateOsError(
