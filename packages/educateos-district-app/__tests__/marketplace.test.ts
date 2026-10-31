@@ -2,7 +2,7 @@
 // verified offline against the keys the district pins, and a teacher creates an activity from it.
 import { beforeAll, describe, expect, it } from "vitest";
 import { SigningIdentity } from "@educateos/fleet";
-import { buildListingBundle, signPublisherCredential, type CurriculumPackContent, type ListingBundle } from "@educateos/marketplace";
+import { buildListingBundle, signPublisherCredential, type CurriculumPackContent, type ListingBundle, type ListingStatement } from "@educateos/marketplace";
 import { pinReleaseKeys, type ReleaseTrust } from "@educateos/releases";
 import { bootDistrict, expectError, NF } from "./support.ts";
 
@@ -27,7 +27,7 @@ const PACK = {
   }],
 } as CurriculumPackContent;
 
-const LISTING = {
+const LISTING: Omit<ListingStatement, "contentDigest"> = {
   listingId: "argument-writing-starter",
   publisherId: "educateos",
   kind: "curriculum-pack",
@@ -37,7 +37,7 @@ const LISTING = {
   summary: "A ready-to-assign argument essay for grade 9.",
   license: { name: "CC BY 4.0", url: "https://creativecommons.org/licenses/by/4.0/" },
   pricing: { model: "free" },
-} as const;
+};
 
 let trust: ReleaseTrust;
 let bundle: ListingBundle;
