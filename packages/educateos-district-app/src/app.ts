@@ -1452,7 +1452,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       // Explaining any principal's access reads what the audit trail would: a district administrator's.
       await ctx.require("read", { kind: "audit-event", scope: { level: "district", districtId }, classification: "restricted" }, "Only a district administrator can simulate decisions.");
       const { decision, ruleId, grantId } = await simulator.decide({
-        subject: { principalId: body.principalId, districtId },
+        subject: { principalId: body.principalId, districtId, ...(body.delegationId === undefined ? {} : { delegationId: body.delegationId }) },
         action: body.action,
         resource: body.resource,
         context: { channel: body.channel, ...(body.termState === undefined ? {} : { termState: body.termState }) },
