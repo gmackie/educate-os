@@ -4,10 +4,11 @@
 // administrators' routes do not exist. Like lti.ts it imports nothing Workers-only (ADR-0009).
 //
 // So far it publishes the platform's signing keys: `GET /lti/platform/jwks` is public (tools fetch
-// it from their own servers, so it is under the Access-exempt `/lti/` paths), and the key IDs and
-// rotation are administrators' routes behind Access, decided by the policy engine.
-import { EducateOsError, type Caller, type DistrictId, type Authorizer } from "@educateos/contracts";
-import { LtiPlatformKeyService, type LtiDistrictStores } from "@educateos/lti-district";
+// it from their own servers, so it is under the Access-exempt `/lti/` paths). Its administrators'
+// routes, behind Access and decided by the policy engine, rotate those keys and register, deploy
+// and revoke third-party tools.
+import { EducateOsError, type Caller, type DistrictDirectorySnapshot, type DistrictId, type Authorizer } from "@educateos/contracts";
+import { LtiPlatformKeyService, LtiPlatformToolService, type LtiDistrictStores } from "@educateos/lti-district";
 
 /** The path prefix of the platform's public endpoints. */
 export const LTI_PLATFORM_PREFIX = "/lti/platform/";
@@ -36,9 +37,22 @@ export interface DistrictLtiPlatform {
   readonly adminRoutes: readonly LtiAdminRoute[];
 }
 
+/** What the district's LTI Platform is built from. */
+export interface DistrictLtiPlatformOptions {
+  readonly districtId: DistrictId;
+  readonly authorizer: Authorizer;
+  readonly stores: LtiDistrictStores;
+  /** The district directory, which a deployment's offerings are checked against. */
+  readonly directory: () => Promise<DistrictDirectorySnapshot>;
+  /** Reads a request's JSON body, refusing anything but `application/json` (lti.ts's `jsonBody`). */
+  readonly jsonBody: (request: Request) => Promise<unknown>;
+}
+
 /** Starts the district's LTI Platform over its LTI stores. */
-export function startDistrictLtiPlatform(options: { districtId: DistrictId; authorizer: Authorizer; stores: LtiDistrictStores }): DistrictLtiPlatform {
-  const keys = new LtiPlatformKeyService({ districtId: options.districtId, authorizer: options.authorizer, keys: options.stores.platformKeys });
+export function startDistrictLtiPlatform(options: DistrictLtiPlatformOptions): DistrictLtiPlatform {
+  const { districtId, authorizer, jsonBody } = options;
+  const keys = new LtiPlatformKeyService({ districtId, authorizer, keys: options.stores.platformKeys });
+  const tools = new LtiPlatformToolService({ districtId, authorizer, directory: options.directory, store: options.stores.platformTools });
   return {
     async serve(request) {
       const path = new URL(request.url).pathname.slice(LTI_PLATFORM_PREFIX.length);
@@ -52,6 +66,12 @@ export function startDistrictLtiPlatform(options: { districtId: DistrictId; auth
     adminRoutes: [
       { method: "GET", path: "platform-keys", run: async (caller) => ({ kids: await keys.keyIds(caller) }) },
       { method: "POST", path: "platform-keys/rotate", run: (caller) => keys.rotate(caller) },
+      { method: "GET", path: "platform-tools", run: (caller) => tools.list(caller) },
+      { method: "POST", path: "platform-tools", run: async (caller, request) => tools.registerTool(caller, await jsonBody(request)) },
+      { method: "POST", path: "platform-tools/:id/revoke", run: (caller, _request, { id }) => tools.revokeTool(caller, id) },
+      { method: "POST", path: "platform-deployments", run: async (caller, request) => tools.deploy(caller, await jsonBody(request)) },
+      { method: "POST", path: "platform-deployments/:id", run: async (caller, request, { id }) => tools.changeDeployment(caller, id, await jsonBody(request)) },
+      { method: "POST", path: "platform-deployments/:id/revoke", run: (caller, _request, { id }) => tools.revokeDeployment(caller, id) },
     ],
   };
 }

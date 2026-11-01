@@ -96,7 +96,7 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
     targets: directoryRegistrationTargets({ districtId, directory, activities, reservedIssuers: options.reservedIssuers }),
   });
 
-  const platform = options.platform === true ? startDistrictLtiPlatform({ districtId, authorizer: app.engine, stores: lti }) : undefined;
+  const platform = options.platform === true ? startDistrictLtiPlatform({ districtId, authorizer: app.engine, stores: lti, directory, jsonBody }) : undefined;
 
   // The broker and the service client read keys synchronously; each request first loads the
   // stored set (an imported copy is cached until the stored key IDs change), so a rotation made
