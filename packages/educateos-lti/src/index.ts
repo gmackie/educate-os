@@ -1,7 +1,7 @@
 // EducateOS LTI 1.3 broker (roadmap I01) and LTI Advantage services, grade passback and the Google
 // Classroom adapter shell (I02), and Clever LMS Connect grade passback (SCHO-278, built to Clever's
 // published v3.1 spec, not tested against Clever), and the third-party tools and deployments
-// EducateOS hosts as an LTI Platform (SCHO-179). See docs/educateos/lti.md.
+// EducateOS hosts as an LTI Platform (SCHO-179) and the access tokens it issues them. See docs/educateos/lti.md.
 export * from "./claims.ts";
 export * from "./registration.ts";
 export * from "./tool-registration.ts";
@@ -21,3 +21,4 @@ export * from "./passback.ts";
 export * from "./classroom.ts";
 export * from "./clever-lms-connect.ts";
 export * from "./platform-tools.ts";
+export * from "./platform-service-tokens.ts";

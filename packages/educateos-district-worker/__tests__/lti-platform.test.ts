@@ -1,15 +1,17 @@
 // The district's LTI Platform in workerd (SCHO-179), over the district's real SQLite Durable Object:
 // its signing keys are published at `/lti/platform/jwks` with public halves only, kept apart from the
 // Tool's, rotated by a district admin alone, and kept across restarts; its third-party tools and
-// their deployments are registered, changed and revoked by a district admin alone, durably. The
-// switch that turns it on accepts only `on`.
+// their deployments are registered, changed and revoked by a district admin alone, durably; its
+// token endpoint issues a tool an access token for its deployment's services only, with a
+// single-use client assertion, and the token dies with the tool. The switch that turns it on
+// accepts only `on`.
 
 import { env, evictDurableObject, SELF } from "cloudflare:test";
 import { importJWK, SignJWT, type JWK } from "jose";
 import { describe, expect, it } from "vitest";
 import { NORTHFIELD } from "@educateos/fixtures";
 import { ltiPlatformEnabled } from "../src/lti-platform.ts";
-import { ACCESS_AUDIENCE, ACCESS_ISSUER, LTI_TOOL_ORIGIN } from "./fixtures.ts";
+import { ACCESS_AUDIENCE, ACCESS_ISSUER, LTI_TOOL_ORIGIN, PLATFORM_TOOL_JWKS_URL } from "./fixtures.ts";
 
 const ADMIN = "prn_nf-district-admin";
 const RIVERA = "prn_nf-teacher-rivera";
@@ -132,6 +134,54 @@ describe("the district's LTI Platform keys", () => {
     expect(after.body.deployments.find((d: { id: string }) => d.id === deploymentId).status).toBe("revoked");
     expect((await api(ADMIN, "POST", "/api/lti/platform-deployments", { toolId, offerings: ["off_nf-bio-fall-p2"] })).status).toBe(409);
     expect((await api(ADMIN, "POST", `/api/lti/platform-deployments/${deploymentId}`, { services: { nrps: false } })).status).toBe(409);
+  });
+
+  it("issues a deployed tool a service token, once per assertion, that dies with the tool", async () => {
+    const tool = {
+      name: "Quiz Garden",
+      loginInitiationUrl: "https://quiz-tool.example/lti/login",
+      redirectUris: ["https://quiz-tool.example/lti/launch"],
+      targetLinkUri: "https://quiz-tool.example/lti/launch",
+      jwksUrl: PLATFORM_TOOL_JWKS_URL,
+    };
+    const toolId = (await api(ADMIN, "POST", "/api/lti/platform-tools", tool)).body.id as string;
+    const deployed = await api(ADMIN, "POST", "/api/lti/platform-deployments", { toolId, offerings: ["off_nf-bio-fall-p2"], services: { nrps: true } });
+    expect(deployed.status).toBe(200);
+
+    const tokenUrl = `${LTI_TOOL_ORIGIN}/lti/platform/token`;
+    const jwk = JSON.parse(env.TEST_PLATFORM_PRIVATE_JWK) as JWK;
+    const now = Math.floor(Date.now() / 1000);
+    const assertion = await new SignJWT({ jti: crypto.randomUUID() })
+      .setProtectedHeader({ alg: "RS256", kid: jwk.kid! })
+      .setIssuer(toolId).setSubject(toolId).setAudience(tokenUrl).setIssuedAt(now).setExpirationTime(now + 60)
+      .sign(await importJWK(jwk, "RS256"));
+    const request = (scope: string) => fetchWorker(tokenUrl, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+        client_assertion: assertion,
+        scope,
+      }).toString(),
+    });
+
+    // No Access session: tools call the endpoint from their own servers.
+    const issued = await request("https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly");
+    expect(issued.status).toBe(200);
+    expect(issued.headers.get("cache-control")).toBe("no-store");
+    const token = (await issued.json()) as { access_token: string; expires_in: number; scope: string };
+    expect(token.expires_in).toBeLessThanOrEqual(3600);
+    const replay = await request("https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly");
+    expect(replay.status).toBe(401);
+    expect(await replay.json()).toMatchObject({ error: "invalid_client" });
+
+    const verify = () => district().verifyLtiServiceToken(token.access_token);
+    await evictDurableObject(district());
+    expect(await verify()).toEqual({ toolId, scopes: ["https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly"] });
+    await api(ADMIN, "POST", `/api/lti/platform-tools/${toolId}/revoke`);
+    expect(await verify()).toBeUndefined();
+    expect((await fetchWorker(tokenUrl)).status).toBe(404);
   });
 
   it("is on only for the exact setting `on`", () => {

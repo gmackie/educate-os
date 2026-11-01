@@ -35,7 +35,7 @@ import { discussionHallMonitor } from "./hall-monitor.ts";
 import type { SendEmailBinding } from "./mail.ts";
 import { jobForCron } from "./schedule.ts";
 import { onLegacyTableMigrated, type LegacyTableReport } from "@educateos/contracts/legacy-tables";
-import { LTI_API_PREFIX } from "./lti.ts";
+import { LTI_API_PREFIX, type DistrictLti } from "./lti.ts";
 import { readSchoolManifestSettings } from "./school-manifest.ts";
 
 // Each table recovered from before the rename (SCHO-232), with its counts, so the migration's
@@ -140,6 +140,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
   /** The running application, for subclasses that drive it directly (the tests). */
   protected async districtApp(): Promise<DistrictApp> {
     return (await this.#boot()).app;
+  }
+
+  /** The district's LTI Tool and Platform, if it runs one, for subclasses that drive it directly (the tests). */
+  protected async districtLti(): Promise<DistrictLti | undefined> {
+    return (await this.#boot()).lti;
   }
 
   /**

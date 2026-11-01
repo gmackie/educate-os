@@ -5,11 +5,12 @@
 import { DurableObject } from "cloudflare:workers";
 import { ActivityId, DistrictId, OfferingId, type DistrictDirectorySnapshot } from "@educateos/contracts";
 import { NORTHFIELD } from "@educateos/fixtures";
-import { LoginState, toolJwks, type PassbackClaim, type PlatformRegistration } from "@educateos/lti";
+import { LoginState, toolJwks, type PassbackClaim, type PlatformRegistration, type PlatformToolId } from "@educateos/lti";
 // Imported module by module, not through the package index: these are the stores the Durable
 // Object hosts, and the index also re-exports modules over E01 and the curriculum service.
 import { DurableObjectRecordTable } from "../../src/durable-object.ts";
 import { LTI_COLLECTIONS, TablePassbackLedger, TableRegistrationStore, TableSingleUseStore } from "../../src/stores.ts";
+import { TablePlatformServiceTokenStore } from "../../src/platform-service-tokens.ts";
 import { directoryRegistrationTargets } from "../../src/targets.ts";
 import { PLATFORM_KEYS_COLLECTION, TableToolKeyStore, type ToolKeyRotation } from "../../src/tool-keys.ts";
 
@@ -45,6 +46,7 @@ export class TestLtiDistrict extends DurableObject {
     registrations: TableRegistrationStore;
     toolKeys: TableToolKeyStore;
     platformKeys: TableToolKeyStore;
+    platformServiceTokens: TablePlatformServiceTokenStore;
   };
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
@@ -66,6 +68,7 @@ export class TestLtiDistrict extends DurableObject {
       registrations: new TableRegistrationStore(table, targets),
       toolKeys: new TableToolKeyStore(table),
       platformKeys: new TableToolKeyStore(table, Date.now, PLATFORM_KEYS_COLLECTION),
+      platformServiceTokens: new TablePlatformServiceTokenStore(table),
     };
   }
 
@@ -121,6 +124,11 @@ export class TestLtiDistrict extends DurableObject {
 
   async rotatePlatformKeys(): Promise<ToolKeyRotation> {
     return this.#stores.platformKeys.rotate();
+  }
+
+  /** Records a client assertion's `jti` for the LTI Platform's token endpoint (SCHO-179). */
+  async claimAssertion(toolId: PlatformToolId, jti: string, ttlMs: number): Promise<boolean> {
+    return this.#stores.platformServiceTokens.claimAssertion(toolId, jti, Date.now() + ttlMs);
   }
 }
 

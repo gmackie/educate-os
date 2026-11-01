@@ -11,6 +11,7 @@ import {
   type RegistrationTargets,
 } from "./stores.ts";
 import { TableGradeColumnStore } from "./columns.ts";
+import { TablePlatformServiceTokenStore } from "./platform-service-tokens.ts";
 import { TablePlatformToolStore } from "./platform-tools.ts";
 import { PLATFORM_KEYS_COLLECTION, TableToolKeyStore } from "./tool-keys.ts";
 import type { RecordTable } from "./table.ts";
@@ -36,6 +37,8 @@ export interface LtiDistrictStores {
   readonly platformKeys: TableToolKeyStore;
   /** The LTI Platform's registered tools and their deployments (SCHO-179). */
   readonly platformTools: TablePlatformToolStore;
+  /** The LTI Platform's used client assertions and issued service access tokens (SCHO-179). */
+  readonly platformServiceTokens: TablePlatformServiceTokenStore;
 }
 
 /**
@@ -59,5 +62,6 @@ export function createLtiDistrictStores(table: RecordTable, options: { targets: 
     toolKeys: new TableToolKeyStore(table, now),
     platformKeys: new TableToolKeyStore(table, now, PLATFORM_KEYS_COLLECTION),
     platformTools: new TablePlatformToolStore(table),
+    platformServiceTokens: new TablePlatformServiceTokenStore(table, now),
   };
 }

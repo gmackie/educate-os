@@ -3,12 +3,25 @@
 // deployment turns it on (`LTI_PLATFORM=on`); off, every platform path is 404 and its
 // administrators' routes do not exist. Like lti.ts it imports nothing Workers-only (ADR-0009).
 //
-// So far it publishes the platform's signing keys: `GET /lti/platform/jwks` is public (tools fetch
-// it from their own servers, so it is under the Access-exempt `/lti/` paths). Its administrators'
-// routes, behind Access and decided by the policy engine, rotate those keys and register, deploy
-// and revoke third-party tools.
+// So far it publishes the platform's signing keys and issues LTI Advantage access tokens: `GET
+// /lti/platform/jwks` and `POST /lti/platform/token` are public (tools call them from their own
+// servers, so they are under the Access-exempt `/lti/` paths). The token endpoint authenticates a
+// tool by a client assertion signed with its registered keys. Its administrators' routes, behind
+// Access and decided by the policy engine, rotate those keys and register, deploy and revoke
+// third-party tools.
+import { createLogger } from "@gadgets/observability/logger";
 import { EducateOsError, type Caller, type DistrictDirectorySnapshot, type DistrictId, type Authorizer } from "@educateos/contracts";
+import { PlatformJwksCache, PlatformTokenEndpoint, type PlatformServiceGrant } from "@educateos/lti";
 import { LtiPlatformKeyService, LtiPlatformToolService, type LtiDistrictStores } from "@educateos/lti-district";
+
+interface LtiPlatformLogFields {
+  districtId: string;
+  toolId?: string;
+  oauthError?: string;
+  scopes?: number;
+}
+
+const logger = createLogger<LtiPlatformLogFields>({ component: "educateos.lti-platform" });
 
 /** The path prefix of the platform's public endpoints. */
 export const LTI_PLATFORM_PREFIX = "/lti/platform/";
@@ -35,6 +48,11 @@ export interface DistrictLtiPlatform {
   serve(request: Request): Promise<Response | undefined>;
   /** The administrators' routes, relative to `/api/lti/`. */
   readonly adminRoutes: readonly LtiAdminRoute[];
+  /**
+   * What the request's `Authorization: Bearer` access token lets its tool do, or `undefined` if it
+   * carries none that is current: the check every LTI Advantage service call starts with.
+   */
+  verifyServiceRequest(request: Request): Promise<PlatformServiceGrant | undefined>;
 }
 
 /** What the district's LTI Platform is built from. */
@@ -46,6 +64,10 @@ export interface DistrictLtiPlatformOptions {
   readonly directory: () => Promise<DistrictDirectorySnapshot>;
   /** Reads a request's JSON body, refusing anything but `application/json` (lti.ts's `jsonBody`). */
   readonly jsonBody: (request: Request) => Promise<unknown>;
+  /** The district's origin (`LTI_TOOL_ORIGIN`), which is also the platform's issuer. */
+  readonly origin: string;
+  /** The fetch tools' key sets are read with. */
+  readonly fetch: typeof fetch;
 }
 
 /** Starts the district's LTI Platform over its LTI stores. */
@@ -53,6 +75,12 @@ export function startDistrictLtiPlatform(options: DistrictLtiPlatformOptions): D
   const { districtId, authorizer, jsonBody } = options;
   const keys = new LtiPlatformKeyService({ districtId, authorizer, keys: options.stores.platformKeys });
   const tools = new LtiPlatformToolService({ districtId, authorizer, directory: options.directory, store: options.stores.platformTools });
+  const tokens = new PlatformTokenEndpoint({
+    tokenUrl: `${options.origin}${LTI_PLATFORM_PREFIX}token`,
+    tools: options.stores.platformTools,
+    store: options.stores.platformServiceTokens,
+    keys: new PlatformJwksCache({ fetch: options.fetch }),
+  });
   return {
     async serve(request) {
       const path = new URL(request.url).pathname.slice(LTI_PLATFORM_PREFIX.length);
@@ -61,8 +89,16 @@ export function startDistrictLtiPlatform(options: DistrictLtiPlatformOptions): D
         // few minutes ago still verifies, and one that sees an unknown key ID refetches.
         return Response.json(await keys.jwks(), { headers: { "cache-control": "public, max-age=300" } });
       }
+      if (path === "token" && request.method === "POST") {
+        const { response, outcome } = await tokens.handle(request);
+        // Only the outcome: never the assertion, the token or the request body.
+        if (outcome.issued) logger.info("issued an LTI service token", { event: "lti.platform.token.issued", districtId, toolId: outcome.toolId, scopes: outcome.scopes.length });
+        else logger.info("refused an LTI service token", { event: "lti.platform.token.refused", districtId, toolId: outcome.toolId, oauthError: outcome.error });
+        return response;
+      }
       return undefined;
     },
+    verifyServiceRequest: (request) => tokens.verifyRequest(request),
     adminRoutes: [
       { method: "GET", path: "platform-keys", run: async (caller) => ({ kids: await keys.keyIds(caller) }) },
       { method: "POST", path: "platform-keys/rotate", run: (caller) => keys.rotate(caller) },
