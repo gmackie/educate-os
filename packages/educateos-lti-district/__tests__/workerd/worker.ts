@@ -3,13 +3,14 @@
 // arrive as separate requests to one object.
 
 import { DurableObject } from "cloudflare:workers";
-import { ActivityId, DistrictId, OfferingId, type DistrictDirectorySnapshot } from "@educateos/contracts";
+import { ActivityId, DistrictId, OfferingId, PrincipalId, type DistrictDirectorySnapshot } from "@educateos/contracts";
 import { NORTHFIELD } from "@educateos/fixtures";
-import { LoginState, toolJwks, type PassbackClaim, type PlatformRegistration } from "@educateos/lti";
+import { LoginState, PlatformLaunchTicket, toolJwks, type PassbackClaim, type PlatformRegistration, type PlatformToolId } from "@educateos/lti";
 // Imported module by module, not through the package index: these are the stores the Durable
 // Object hosts, and the index also re-exports modules over E01 and the curriculum service.
 import { DurableObjectRecordTable } from "../../src/durable-object.ts";
 import { LTI_COLLECTIONS, TablePassbackLedger, TableRegistrationStore, TableSingleUseStore } from "../../src/stores.ts";
+import { PLATFORM_LAUNCH_COLLECTIONS, TablePlatformSubjectStore } from "../../src/platform-launch.ts";
 import { directoryRegistrationTargets } from "../../src/targets.ts";
 import { PLATFORM_KEYS_COLLECTION, TableToolKeyStore, type ToolKeyRotation } from "../../src/tool-keys.ts";
 
@@ -17,6 +18,21 @@ const NF = DistrictId.parse("dst_northfield");
 const NF_CANVAS = "https://canvas.northfield.example";
 const BIO = OfferingId.parse("off_nf-bio-fall-p2");
 const CELL_LAB = ActivityId.parse("act_cell-lab");
+const AMARA = PrincipalId.parse("prn_nf-student-amara");
+
+/** A launch ticket for Amara in Biology (SCHO-179). */
+export const LAUNCH_TICKET: PlatformLaunchTicket = {
+  districtId: NF,
+  toolId: "ltt_notebook00000000000000",
+  deploymentId: "ltd_notebook00000000000000",
+  offeringId: BIO,
+  principalId: AMARA,
+  subject: "subject-amara",
+  roles: ["http://purl.imsglobal.org/vocab/lis/v2/membership#Learner"],
+  resourceLinkId: "resource-link-1",
+  targetLinkUri: "https://notebook.example/lti/launch",
+  bindingHash: "binding-hash",
+};
 
 const DIRECTORY: DistrictDirectorySnapshot = {
   ...NORTHFIELD,
@@ -45,6 +61,8 @@ export class TestLtiDistrict extends DurableObject {
     registrations: TableRegistrationStore;
     toolKeys: TableToolKeyStore;
     platformKeys: TableToolKeyStore;
+    launchTickets: TableSingleUseStore<PlatformLaunchTicket>;
+    platformSubjects: TablePlatformSubjectStore;
   };
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
@@ -66,6 +84,8 @@ export class TestLtiDistrict extends DurableObject {
       registrations: new TableRegistrationStore(table, targets),
       toolKeys: new TableToolKeyStore(table),
       platformKeys: new TableToolKeyStore(table, Date.now, PLATFORM_KEYS_COLLECTION),
+      launchTickets: new TableSingleUseStore(table, PLATFORM_LAUNCH_COLLECTIONS.tickets, PlatformLaunchTicket),
+      platformSubjects: new TablePlatformSubjectStore(table),
     };
   }
 
@@ -121,6 +141,24 @@ export class TestLtiDistrict extends DurableObject {
 
   async rotatePlatformKeys(): Promise<ToolKeyRotation> {
     return this.#stores.platformKeys.rotate();
+  }
+
+  /** Stores {@link LAUNCH_TICKET} under `hint`, the launch's `lti_message_hint` (SCHO-179). */
+  async putLaunchTicket(hint: string, ttlMs: number): Promise<void> {
+    await this.#stores.launchTickets.put(hint, LAUNCH_TICKET, Date.now() + ttlMs);
+  }
+
+  async takeLaunchTicket(hint: string): Promise<PlatformLaunchTicket | undefined> {
+    return this.#stores.launchTickets.take(hint);
+  }
+
+  /** Amara's subject for `toolId`, made on first use. */
+  async subjectFor(toolId: PlatformToolId): Promise<string> {
+    return this.#stores.platformSubjects.subjectFor(toolId, AMARA);
+  }
+
+  async principalFor(toolId: PlatformToolId, subject: string): Promise<string | undefined> {
+    return this.#stores.platformSubjects.principalFor(toolId, subject);
   }
 }
 
