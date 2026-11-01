@@ -1,7 +1,8 @@
 // The district's LTI Platform in workerd (SCHO-179), over the district's real SQLite Durable Object:
 // its signing keys are published at `/lti/platform/jwks` with public halves only, kept apart from the
-// Tool's, rotated by a district admin alone, and kept across restarts. The switch that turns it on
-// accepts only `on`.
+// Tool's, rotated by a district admin alone, and kept across restarts; its third-party tools and
+// their deployments are registered, changed and revoked by a district admin alone, durably. The
+// switch that turns it on accepts only `on`.
 
 import { env, evictDurableObject, SELF } from "cloudflare:test";
 import { importJWK, SignJWT, type JWK } from "jose";
@@ -32,11 +33,11 @@ async function signIn(principalId: string): Promise<string> {
     .sign(key);
 }
 
-async function api(principalId: string, method: "GET" | "POST", path: string): Promise<{ status: number; body: any }> {
+async function api(principalId: string, method: "GET" | "POST", path: string, body: unknown = {}): Promise<{ status: number; body: any }> {
   const response = await fetchWorker(`${LTI_TOOL_ORIGIN}${path}`, {
     method,
     headers: { "cf-access-jwt-assertion": await signIn(principalId), "content-type": "application/json" },
-    ...(method === "POST" ? { body: "{}" } : {}),
+    ...(method === "POST" ? { body: JSON.stringify(body) } : {}),
   });
   return { status: response.status, body: await response.json() };
 }
@@ -78,6 +79,59 @@ describe("the district's LTI Platform keys", () => {
     expect((await api(ADMIN, "GET", "/api/lti/platform-keys")).body.kids).toEqual([rotation.body.signingKid, first!.kid]);
     // The Tool's keys are untouched by the platform's rotation.
     expect(await jwks("/lti/jwks")).toEqual(toolBefore);
+  });
+
+  it("registers, deploys, changes and revokes tools for a district admin only, durably", async () => {
+    const tool = {
+      name: "Lab Notebook",
+      loginInitiationUrl: "https://tool.example/lti/login",
+      redirectUris: ["https://tool.example/lti/launch"],
+      targetLinkUri: "https://tool.example/lti/launch",
+      jwksUrl: "https://tool.example/.well-known/jwks.json",
+    };
+    expect((await api(RIVERA, "POST", "/api/lti/platform-tools", tool)).status).toBe(403);
+    expect((await api(RIVERA, "GET", "/api/lti/platform-tools")).status).toBe(403);
+    expect((await api(ADMIN, "POST", "/api/lti/platform-tools", { ...tool, jwksUrl: "https://elsewhere.example/jwks" })).status).toBe(400);
+    // A cross-site form cannot register a tool with an administrator's session.
+    const form = await fetchWorker(`${LTI_TOOL_ORIGIN}/api/lti/platform-tools`, {
+      method: "POST",
+      headers: { "cf-access-jwt-assertion": await signIn(ADMIN), "content-type": "application/x-www-form-urlencoded" },
+      body: "name=x",
+    });
+    expect(form.status).toBe(400);
+
+    const registered = await api(ADMIN, "POST", "/api/lti/platform-tools", tool);
+    expect(registered.status).toBe(200);
+    expect(registered.body.id).toMatch(/^ltt_/);
+    const toolId = registered.body.id as string;
+
+    expect((await api(ADMIN, "POST", "/api/lti/platform-deployments", { toolId, offerings: ["off_lk-elsewhere"] })).status).toBe(400);
+    expect((await api(RIVERA, "POST", "/api/lti/platform-deployments", { toolId, offerings: ["off_nf-bio-fall-p2"] })).status).toBe(403);
+    const deployed = await api(ADMIN, "POST", "/api/lti/platform-deployments", { toolId, offerings: ["off_nf-bio-fall-p2"] });
+    expect(deployed.status).toBe(200);
+    expect(deployed.body.services).toEqual({ nrps: false, agsLineItems: false, agsScores: false, deepLinking: false });
+    expect(deployed.body.privacy).toEqual({ name: false, email: false });
+    const deploymentId = deployed.body.id as string;
+
+    const changed = await api(ADMIN, "POST", `/api/lti/platform-deployments/${deploymentId}`, { services: { nrps: true } });
+    expect(changed.status).toBe(200);
+    expect(changed.body.services.nrps).toBe(true);
+    expect((await api(ADMIN, "POST", "/api/lti/platform-deployments/ltd_nosuchdeploymentxxxxxx", { services: {} })).status).toBe(404);
+
+    await evictDurableObject(district());
+    const listed = await api(ADMIN, "GET", "/api/lti/platform-tools");
+    expect(listed.body.tools.map((t: { id: string }) => t.id)).toContain(toolId);
+    expect(listed.body.deployments.find((d: { id: string }) => d.id === deploymentId).services.nrps).toBe(true);
+
+    expect((await api(RIVERA, "POST", `/api/lti/platform-tools/${toolId}/revoke`)).status).toBe(403);
+    const revoked = await api(ADMIN, "POST", `/api/lti/platform-tools/${toolId}/revoke`);
+    expect(revoked.body.status).toBe("revoked");
+    await evictDurableObject(district());
+    const after = await api(ADMIN, "GET", "/api/lti/platform-tools");
+    // Revoking the tool revoked its deployment too, and a revoked tool gets no new deployment.
+    expect(after.body.deployments.find((d: { id: string }) => d.id === deploymentId).status).toBe("revoked");
+    expect((await api(ADMIN, "POST", "/api/lti/platform-deployments", { toolId, offerings: ["off_nf-bio-fall-p2"] })).status).toBe(409);
+    expect((await api(ADMIN, "POST", `/api/lti/platform-deployments/${deploymentId}`, { services: { nrps: false } })).status).toBe(409);
   });
 
   it("is on only for the exact setting `on`", () => {

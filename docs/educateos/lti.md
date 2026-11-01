@@ -327,8 +327,9 @@ offering whose route is a Clever route. `CleverLmsConnectGradeSink` publishes th
 When EducateOS is the LTI **Platform**, hosting third-party tools (RFC 0002 §5 and §7), a district
 administrator registers each tool and deploys it to specific offerings. The schemas are in
 `@educateos/lti` (`platform-tools.ts`); the store and the administrator's service are in
-`@educateos/lti-district` (`platform-tools.ts`). Harness-tested only; no launch uses them yet, and
-the district Worker does not serve them yet.
+`@educateos/lti-district` (`platform-tools.ts`). Harness-tested only; no launch uses them yet. The
+district Worker serves them to administrators under `/api/lti/` when the platform is on (see
+[Platform tools in the district Worker](#platform-tools-in-the-district-worker)).
 
 - **A tool** (`PlatformTool`) is registered with its name, OIDC login initiation URL, redirect URIs,
   default target link URI and JWKS URL. Every URL is https on the login initiation URL's origin,
@@ -486,3 +487,20 @@ administrators' calls with the policy engine.
 | `GET /api/lti/platform-keys` | district administrators | `read` district | The published key IDs, signing key first. |
 | `POST /api/lti/platform-keys/rotate` | district administrators | `update` district | Rotates the platform key; the previous one stays published. |
 
+## Platform tools in the district Worker
+
+`createLtiDistrictStores` includes the tool and deployment store (`platformTools`), and the district
+Worker serves `LtiPlatformToolService` to administrators beside the key routes, behind Access, and
+only when the platform is on. Like every `/api/lti/` POST, each must be `application/json`, so a
+cross-site form cannot use an administrator's session. Workerd tests cover a teacher's refusal,
+an off-origin tool URL and an offering outside the district refused, durability across restarts,
+and revoking a tool revoking its deployments.
+
+| Path | Decided as | Does |
+| --- | --- | --- |
+| `GET /api/lti/platform-tools` | `read` district | Every tool and deployment, active and revoked: `{ tools, deployments }`. |
+| `POST /api/lti/platform-tools` | `update` district | Registers `{ name, loginInitiationUrl, redirectUris, targetLinkUri, jwksUrl }`; returns the tool with its assigned `ltt_…` ID. |
+| `POST /api/lti/platform-tools/:id/revoke` | `update` district | Revokes the tool and every deployment of it. |
+| `POST /api/lti/platform-deployments` | `update` district | Deploys `{ toolId, offerings, services?, privacy? }`; every service and personal field is off unless given. |
+| `POST /api/lti/platform-deployments/:id` | `update` district | Changes any of `{ offerings, services, privacy }`; a revoked deployment cannot change (409). |
+| `POST /api/lti/platform-deployments/:id/revoke` | `update` district | Revokes one deployment. |
