@@ -109,6 +109,11 @@ export class DistrictObject extends DeployedDistrictObject {
     return createLocalJWKSet({ keys: [JSON.parse(this.env.TEST_ACCESS_PUBLIC_JWK) as JWK] });
   }
 
+  /** The synthetic MCP authorization server's key (SCHO-174), in place of its JWKS URL. */
+  protected override mcpIssuerKeys(): JWTVerifyGetKey {
+    return createLocalJWKSet({ keys: [JSON.parse(this.env.TEST_MCP_ISSUER_PUBLIC_JWK) as JWK] });
+  }
+
   /**
    * A synthetic LMS (SCHO-177): its OpenID configuration, a registration endpoint that assigns a
    * client and deployment, and the JWKS of the key the tests sign launches with.

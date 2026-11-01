@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./resource-auth": "./src/resource-auth.ts"
+    "./resource-auth": "./src/resource-auth.ts",
+    "./registry": "./src/registry.ts"
   },
   "scripts": {
     "test:run": "vitest run && vitest run --config vitest.worker.config.ts",

@@ -1269,6 +1269,9 @@ importers:
       '@educateos/district-app':
         specifier: workspace:*
         version: link:../educateos-district-app
+      '@educateos/external-mcp':
+        specifier: workspace:*
+        version: link:../educateos-external-mcp
       '@educateos/gatekeeper':
         specifier: workspace:*
         version: link:../gatekeeper-educateos
@@ -1348,6 +1351,9 @@ importers:
       '@gadgets/scripts':
         specifier: workspace:*
         version: link:../../scripts
+      '@modelcontextprotocol/client':
+        specifier: 2.4.0
+        version: 2.4.0
       miniflare:
         specifier: 'catalog:'
         version: 5.20261001.0-alpha(@types/node@26.1.0)
