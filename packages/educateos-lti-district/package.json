@@ -23,6 +23,7 @@
     "@gadgets/scripts": "workspace:*",
     "@educateos/fixtures": "workspace:*",
     "@educateos/policy": "workspace:*",
+    "@educateos/provider-fakes": "workspace:*",
     "@types/node": "26.1.0",
     "vitest": "catalog:"
   }

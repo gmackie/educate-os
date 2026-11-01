@@ -354,6 +354,51 @@ rules only a district admin has. A refusal is `forbidden` and is in the policy a
 record also keeps who changed it last, and when. A deployment naming an offering that is not the
 district's is refused as `validation-failed`.
 
+## Platform launches
+
+A deployed tool is launched from EducateOS in two halves (`platform-launch.ts` in both packages),
+following the OIDC third-party-initiated login of LTI Core 1.3 §5.1.1 and the LTI Security
+Framework 1.0 §5.1.1. Harness-tested only, against the tool fake (`FakeLtiTool` in
+`@educateos/provider-fakes`); the district Worker does not serve it yet.
+
+1. **Start.** `LtiPlatformLaunchService.start` takes a signed-in caller, a deployment and an
+   offering. The policy engine must allow the caller to `read` the offering, the caller must hold an
+   active enrollment there, and the deployment and its tool must be active and name the offering
+   (`deploymentAllows`); every refusal is `forbidden`, alike. It stores a single-use launch ticket
+   (`lti.platform-launch-ticket`, five minutes) under a random key that becomes the
+   `lti_message_hint`, holding the SHA-256 of a second random value, the browser binding, which the
+   Worker will keep in a cookie. It returns the tool's login initiation URL with `iss` (the
+   district's origin, `LTI_TOOL_ORIGIN`), `login_hint`, `lti_message_hint`, `target_link_uri`,
+   `client_id` and `lti_deployment_id`.
+2. **Authorize.** `LtiPlatformLaunchService.authorize` answers the tool's authentication request.
+   `scope`, `response_type`, `response_mode` and `prompt` must be `openid`, `id_token`, `form_post`
+   and `none`, and `nonce` is required (`PlatformAuthRequest`), or it is `validation-failed`. The
+   ticket is taken first, so it is used up by the first attempt, valid or not. Then the browser
+   binding must match, `client_id` must be the ticket's tool, `login_hint` the ticket's subject,
+   `redirect_uri` exactly a registered one, and the tool and deployment must still allow the
+   offering; otherwise it is `forbidden` and nothing is posted to the tool. The answer is a form
+   for the browser to post to `redirect_uri`: the id_token and the tool's `state`.
+
+The id_token is RS256-signed with the platform key (its `kid` in the header), with `iss` the
+district's origin, `aud` and `azp` the tool's client ID, a five-minute `exp`, and the tool's
+`nonce`. Its `sub` is the person's subject for that tool (`TablePlatformSubjectStore`,
+`lti.platform-subject`): a random value made on their first launch of the tool and kept, so two
+tools cannot match people by it, and a later service call naming a `sub` can be traced back. It
+carries `LtiResourceLinkRequest`, version `1.3.0`, the `deployment_id`, the `target_link_uri`, a
+resource link per deployment and offering, the LIS role (`Instructor` for a teacher or co-teacher,
+`Learner` for a student) and the offering as the only context (its ID, the course title as label,
+and course and section as title). `name`, `given_name` and `family_name` are added only when the
+deployment allows the name, and `email` only when it allows the email.
+
+Tests: a student's and a teacher's launch verified by the tool fake; a stable per-tool subject that
+differs between tools; name and email only as allowed; refusals for a teacher of another offering,
+an administrator who is not enrolled, an offering without the deployment, an inactive enrollment,
+an unknown or revoked deployment; a ticket redeemed once and only with its browser binding; an
+unregistered redirect URI, another tool's client ID, another subject and malformed requests
+refused; an expired ticket and a tool revoked mid-launch refused; and, in workerd, a ticket redeemed
+by exactly one of 50 concurrent requests, tickets kept across restarts until they expire, and one
+subject per person and tool under concurrent launches, kept across restarts.
+
 # District wiring (SCHO-60, SCHO-76)
 
 `@educateos/lti-district` (`packages/educateos-lti-district`) is what a district Worker hosts around
