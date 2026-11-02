@@ -7,7 +7,8 @@
 // `POST /lti/platform/token`, which tools call from their own servers (the token endpoint
 // authenticates a tool by a client assertion signed with its registered keys), and
 // `/lti/platform/auth`, the OIDC authorization endpoint a tool sends the browser back to during a
-// launch. Its `/api/lti/` routes, behind Access and decided
+// launch, and the LTI Advantage services tools call with a service token: the membership service
+// (NRPS, lti-platform-nrps.ts). Its `/api/lti/` routes, behind Access and decided
 // by the policy engine, rotate the platform's keys, register, deploy and revoke third-party tools,
 // and start a launch for a signed-in person in an offering they are enrolled in.
 //
@@ -28,6 +29,7 @@ import {
   type PlatformLaunchForm,
 } from "@educateos/lti-district";
 import { createLogger } from "@gadgets/observability/logger";
+import { startPlatformNrps } from "./lti-platform-nrps.ts";
 
 /** What the platform logs beside each event: never a token, ticket, cookie or body. */
 interface PlatformLogFields {
@@ -106,6 +108,20 @@ export function startDistrictLtiPlatform(options: DistrictLtiPlatformOptions): D
   const log = logger.with({ districtId });
   const keys = new LtiPlatformKeyService({ districtId, authorizer, keys: stores.platformKeys });
   const tools = new LtiPlatformToolService({ districtId, authorizer, directory: options.directory, store: stores.platformTools });
+  const tokens = new PlatformTokenEndpoint({
+    tokenUrl: `${options.origin}${LTI_PLATFORM_PREFIX}token`,
+    tools: stores.platformTools,
+    store: stores.platformServiceTokens,
+    keys: new PlatformJwksCache({ fetch: options.fetch }),
+  });
+  const nrps = startPlatformNrps({
+    districtId,
+    authorizer,
+    stores,
+    directory: options.directory,
+    baseUrl: `${options.origin}${LTI_PLATFORM_PREFIX}`,
+    verifyServiceRequest: (request) => tokens.verifyRequest(request),
+  });
   const launches = new LtiPlatformLaunchService({
     districtId,
     issuer: options.origin,
@@ -115,12 +131,7 @@ export function startDistrictLtiPlatform(options: DistrictLtiPlatformOptions): D
     keys: stores.platformKeys,
     tickets: stores.platformLaunchTickets,
     subjects: stores.platformSubjects,
-  });
-  const tokens = new PlatformTokenEndpoint({
-    tokenUrl: `${options.origin}${LTI_PLATFORM_PREFIX}token`,
-    tools: stores.platformTools,
-    store: stores.platformServiceTokens,
-    keys: new PlatformJwksCache({ fetch: options.fetch }),
+    membershipsUrl: nrps.membershipsUrl,
   });
 
   /** Starts a launch for the caller and binds it to their browser with {@link LTI_LAUNCH_COOKIE}. */
@@ -171,7 +182,7 @@ export function startDistrictLtiPlatform(options: DistrictLtiPlatformOptions): D
         return response;
       }
       if (path === "auth" && (request.method === "GET" || request.method === "POST")) return authorizeLaunch(request);
-      return undefined;
+      return nrps.serve(request, path);
     },
     verifyServiceRequest: (request) => tokens.verifyRequest(request),
     adminRoutes: [
