@@ -29,6 +29,10 @@
 # repository's 18 Worker targets build on hetzner-master and half on hetzner-fg, balanced by how
 # often they deploy (SCHO-316): every push used to queue them all on hetzner-fg, which also runs
 # Forgejo. The runbook lists the separate apps' placement.
+#
+# The separate apps' targets skip a push that changes nothing they build (`watchPathsFile:
+# deploy/watch-paths.json`, SCHO-316). These targets set no list and deploy on every push, because
+# Kanbanger closes an issue only on a fresh healthy receipt from each of them.
 
 app: educate-os
 server: https://forgegraf.com
