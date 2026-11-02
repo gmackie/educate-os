@@ -422,6 +422,7 @@ one SQLite table in the district's Durable Object; `InMemoryRecordTable` is for 
 | `TableGradeRouteStore`, `TableGradeColumnStore` | A column bound to one assignment cannot be moved to another. |
 | `TableRosterSourceStore` | A projection no newer than the last applied is refused. |
 | `TableToolKeyStore` (SCHO-177) | One record holds the whole key set, so a rotation is one write. The first read generates the key; of racing first reads, the key stored first wins, so every isolate signs with the same key. |
+| `TablePlatformServiceTokenStore` (SCHO-179) | A client assertion's `jti` is checked and recorded in one atomic step, after purging expired ones, so of 50 concurrent redemptions one wins; access tokens are kept by digest only, and an expired one never verifies. |
 
 A stored record that does not match its schema is an error (`LtiStoredRecordError`), never a
 default. The workerd suite (`__tests__/workerd/`) runs the stores against real Durable Object
@@ -549,3 +550,65 @@ and revoking a tool revoking its deployments.
 | `POST /api/lti/platform-deployments` | `update` district | Deploys `{ toolId, offerings, services?, privacy? }`; every service and personal field is off unless given. |
 | `POST /api/lti/platform-deployments/:id` | `update` district | Changes any of `{ offerings, services, privacy }`; a revoked deployment cannot change (409). |
 | `POST /api/lti/platform-deployments/:id/revoke` | `update` district | Revokes one deployment. |
+
+## Service tokens
+
+Tools reach the platform's LTI Advantage services (NRPS and AGS, in later slices) with OAuth 2
+access tokens from `POST /lti/platform/token`: the client credentials grant, with the tool
+authenticated by a `private_key_jwt` client assertion (RFC 7523, LTI Security Framework §4.1).
+`PlatformTokenEndpoint` (`@educateos/lti`, `platform-service-tokens.ts`) implements it, over
+`TablePlatformServiceTokenStore` (`@educateos/lti-district`) in the district's Durable Object. The
+endpoint is public, exempt from Access as all of `/lti/*` is, and served only when the platform is
+on. Harness-tested only; no service accepts its tokens yet, and no real tool has called it.
+
+An assertion is accepted only if:
+
+- it is RS256 (never a symmetric or unsigned algorithm), names its `kid`, and verifies against that
+  key in the JWKS the tool registered (`jwksUrl`, fetched through `PlatformJwksCache`, so RSA keys
+  of 2048 bits or more, refetched for an unknown `kid` at most every 30 seconds);
+- its `iss` and `sub` are an active tool's client ID (`ltt_…`), and a `client_id` parameter, if
+  sent, is the same;
+- its `aud` is exactly the endpoint's URL, `<LTI_TOOL_ORIGIN>/lti/platform/token`, alone;
+- it carries `iat`, `exp` and `jti`, lives at most five minutes from `iat` to `exp`, and is neither
+  expired nor issued in the future, with 30 seconds of clock skew allowed either way;
+- its `jti` has not been used by that tool. Each accepted `jti` is recorded in the
+  `lti.platform-assertion` collection until the assertion could no longer be accepted, in one
+  atomic check-and-write, so of any number of concurrent requests with one assertion exactly one
+  succeeds, and a replay after a restart still fails. The `jti` is used up once the signature
+  verifies, even if the scope is then refused.
+
+The requested `scope` must name only LTI Advantage scopes, each allowed by a service some active
+deployment of the tool has turned on (`PLATFORM_SCOPE_SERVICES`):
+
+| Scope | Deployment service |
+| --- | --- |
+| `https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly` | `nrps` |
+| `https://purl.imsglobal.org/spec/lti-ags/scope/lineitem`, `…/lineitem.readonly`, `…/result.readonly` | `agsLineItems` |
+| `https://purl.imsglobal.org/spec/lti-ags/scope/score` | `agsScores` |
+
+The answer is `{ access_token, token_type: "Bearer", expires_in: 900, scope }`. The token is
+opaque (`lst_…`, 256 random bits) and kept only as its SHA-256 digest in the
+`lti.platform-access-token` collection, with the tool and its granted scopes, for 15 minutes.
+`PlatformTokenEndpoint.verify` (and `verifyRequest`, for an `Authorization: Bearer` header; the
+district Worker's `DistrictLtiPlatform.verifyServiceRequest`) re-reads the tool and its deployments
+on every call: it refuses an unknown or expired token and one whose tool is revoked, and returns
+only the granted scopes some active deployment still allows, with the tool's active deployments, so
+the service can then check the offering with `deploymentAllows`. Revoking a tool, a deployment or a
+service therefore ends a token's use at its next call.
+
+Refusals are RFC 6749 §5.2 errors with `cache-control: no-store`: `invalid_request` (not a form
+post, a repeated parameter, an `Authorization` header, a body over 16 KiB), `unsupported_grant_type`,
+`invalid_client` with status 401 for every assertion failure (RFC 7523 §3.2, replay included) and for
+a revoked or unknown tool, `unauthorized_client` for a tool with no deployment allowing any
+service, and `invalid_scope`. The Worker logs only the outcome (`lti.platform.token.issued` or
+`.refused`, with the tool ID, error code and number of scopes); never the assertion, the token or
+the body.
+
+Tests: unit tests in `packages/educateos-lti` cover a wrong audience, issuer, subject or
+`client_id`, HS256 and `alg: none`, an unpublished key and a forged signature under a published
+`kid`, expired, future-dated and over-long assertions, replay, a revoked tool, unknown and excess
+scopes, malformed requests, and EducateOS's own `LtiServiceClient` obtaining a token as a tool
+would. Workerd tests in `packages/educateos-lti-district` cover 50 concurrent redemptions of one
+`jti`, its record across a restart, and a token verifying across a restart until its tool is
+revoked or it expires; the district Worker's test covers the endpoint without an Access session,
+replay refusal, and verification across a restart until the tool is revoked.

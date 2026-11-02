@@ -17,6 +17,11 @@ export const LTI_TOOL_ORIGIN = "https://district.example";
 export const DEVICE_TOKEN_SECRET = "test-device-token-secret-0123456789-abcdef";
 /** The synthetic LMS the LTI tests register (SCHO-177). Not one of Northfield's trusted issuers. */
 export const LMS_ISSUER = "https://lms.northfield.example";
+/**
+ * Where a synthetic third-party tool of the district's LTI Platform publishes its keys (SCHO-179).
+ * It publishes the synthetic LMS's public key, so the tests sign its client assertions with that.
+ */
+export const PLATFORM_TOOL_JWKS_URL = "https://quiz-tool.example/.well-known/jwks.json";
 
 /** The district's synthetic OAuth authorization server for its MCP endpoint (SCHO-174), standing in for Nathan. */
 export const MCP_ISSUER = "https://id.northfield.example";
