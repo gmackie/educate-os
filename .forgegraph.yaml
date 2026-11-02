@@ -24,6 +24,11 @@
 # gatekeeper-clever and gatekeeper-educateos included; gatekeeper-educateos binds the district Worker) and the guard, then
 # the backend, then the router, since a service binding to a Worker that does not exist yet is
 # rejected. Afterwards every target deploys in place.
+#
+# `nodeId` is where a target builds and runs `wrangler deploy`, not where it serves. Half the
+# repository's 18 Worker targets build on hetzner-master and half on hetzner-fg, balanced by how
+# often they deploy (SCHO-316): every push used to queue them all on hetzner-fg, which also runs
+# Forgejo. The runbook lists the separate apps' placement.
 
 app: educate-os
 server: https://forgegraf.com
@@ -41,7 +46,7 @@ stages:
     targets:
       - name: gatekeeper-context
         platform: cloudflare-workers
-        nodeId: bf11e7b1-b9de-45be-a89d-ae08049c7598  # hetzner-fg
+        nodeId: e147e01c-158c-4162-aeb1-646ab00bda17  # hetzner-master
         config:
           workerName: gatekeeper-context
           appDir: packages/gatekeeper-context
@@ -51,7 +56,7 @@ stages:
           healthCheckUrl: https://schoolos.gmac.io/healthz
       - name: gatekeeper-scheduler
         platform: cloudflare-workers
-        nodeId: bf11e7b1-b9de-45be-a89d-ae08049c7598  # hetzner-fg
+        nodeId: e147e01c-158c-4162-aeb1-646ab00bda17  # hetzner-master
         config:
           workerName: gatekeeper-scheduler
           appDir: packages/gatekeeper-scheduler
@@ -61,7 +66,7 @@ stages:
           healthCheckUrl: https://schoolos.gmac.io/healthz
       - name: gatekeeper-websearch
         platform: cloudflare-workers
-        nodeId: bf11e7b1-b9de-45be-a89d-ae08049c7598  # hetzner-fg
+        nodeId: e147e01c-158c-4162-aeb1-646ab00bda17  # hetzner-master
         config:
           workerName: gatekeeper-websearch
           appDir: packages/gatekeeper-websearch
