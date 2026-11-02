@@ -12,6 +12,7 @@ import {
 } from "./stores.ts";
 import { TableGradeColumnStore } from "./columns.ts";
 import { PLATFORM_LAUNCH_COLLECTIONS, TablePlatformSubjectStore } from "./platform-launch.ts";
+import { TablePlatformServiceTokenStore } from "./platform-service-tokens.ts";
 import { TablePlatformToolStore } from "./platform-tools.ts";
 import { PLATFORM_KEYS_COLLECTION, TableToolKeyStore } from "./tool-keys.ts";
 import type { RecordTable } from "./table.ts";
@@ -41,6 +42,8 @@ export interface LtiDistrictStores {
   readonly platformLaunchTickets: TableSingleUseStore<PlatformLaunchTicket>;
   /** Each person's opaque subject for each of the LTI Platform's tools (SCHO-179). */
   readonly platformSubjects: TablePlatformSubjectStore;
+  /** The LTI Platform's used client assertions and issued service access tokens (SCHO-179). */
+  readonly platformServiceTokens: TablePlatformServiceTokenStore;
 }
 
 /**
@@ -66,5 +69,6 @@ export function createLtiDistrictStores(table: RecordTable, options: { targets: 
     platformTools: new TablePlatformToolStore(table),
     platformLaunchTickets: new TableSingleUseStore(table, PLATFORM_LAUNCH_COLLECTIONS.tickets, PlatformLaunchTicket, now),
     platformSubjects: new TablePlatformSubjectStore(table),
+    platformServiceTokens: new TablePlatformServiceTokenStore(table, now),
   };
 }

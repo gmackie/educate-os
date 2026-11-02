@@ -1,7 +1,7 @@
 // The district side of EducateOS's LTI integration (SCHO-58, SCHO-59, SCHO-60, SCHO-76, SCHO-177):
 // the broker's durable stores and tool keys, NRPS rosters applied through AcademicSync, teacher
 // approvals read from E01 official grade versions, the administrator's registration and grade-route
-// service, and the LTI Platform's signing keys (SCHO-179). The Durable Object record table is the
+// service, and the LTI Platform's signing keys, tools and service tokens (SCHO-179). The Durable Object record table is the
 // separate `./durable-object` entry point. See docs/educateos/lti.md.
 export * from "./table.ts";
 export * from "./stores.ts";
@@ -18,4 +18,5 @@ export * from "./admin.ts";
 export * from "./authorize.ts";
 export * from "./advantage.ts";
 export * from "./platform-tools.ts";
+export * from "./platform-service-tokens.ts";
 export * from "./platform-launch.ts";

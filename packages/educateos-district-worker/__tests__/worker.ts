@@ -9,7 +9,7 @@ import type { PrincipalId } from "@educateos/contracts";
 import { DistrictObject as DeployedDistrictObject } from "../src/district-object.ts";
 import type { SendEmailBinding } from "../src/mail.ts";
 import { fakeHallMonitor } from "@educateos/ai-guard/src/fake-hall-monitor.ts";
-import { LMS_ISSUER } from "./fixtures.ts";
+import { LMS_ISSUER, PLATFORM_TOOL_JWKS_URL } from "./fixtures.ts";
 import { WorkerEntrypoint } from "cloudflare:workers";
 
 /** Synthetic upstream release service. Its fixtures persist across district object restarts. */
@@ -132,7 +132,7 @@ export class DistrictObject extends DeployedDistrictObject {
     if (request.url === `${LMS_ISSUER}/api/lti/registrations` && request.method === "POST") {
       return Response.json({ client_id: "lms-client-1", "https://purl.imsglobal.org/spec/lti-tool-configuration": { deployment_id: "lms-deploy-1" } });
     }
-    if (request.url === `${LMS_ISSUER}/api/lti/security/jwks`) return Response.json({ keys: [JSON.parse(this.env.TEST_PLATFORM_PUBLIC_JWK) as JWK] });
+    if (request.url === `${LMS_ISSUER}/api/lti/security/jwks` || request.url === PLATFORM_TOOL_JWKS_URL) return Response.json({ keys: [JSON.parse(this.env.TEST_PLATFORM_PUBLIC_JWK) as JWK] });
     return new Response("not found", { status: 404 });
   }
 
@@ -143,6 +143,13 @@ export class DistrictObject extends DeployedDistrictObject {
       status: 200,
       headers: { "content-type": "text/html; charset=utf-8" },
     });
+  }
+
+  /** What an LTI Platform access token lets its tool do now (SCHO-179): its tool and scopes, or `undefined`. */
+  async verifyLtiServiceToken(token: string): Promise<{ toolId: string; scopes: readonly string[] } | undefined> {
+    const request = new Request("https://district.example/", { headers: { authorization: `Bearer ${token}` } });
+    const grant = await (await this.districtLti())?.platform?.verifyServiceRequest(request);
+    return grant === undefined ? undefined : { toolId: grant.tool.id, scopes: grant.scopes };
   }
 
   /**

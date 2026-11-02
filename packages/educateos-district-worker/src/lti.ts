@@ -45,7 +45,7 @@ import {
   type ActivityCatalog,
 } from "@educateos/lti-district";
 import { DurableObjectRecordTable, type LtiSqlStorage } from "@educateos/lti-district/durable-object";
-import { LTI_PLATFORM_PREFIX, NO_PLATFORM, startDistrictLtiPlatform, type LtiAdminRoute } from "./lti-platform.ts";
+import { LTI_PLATFORM_PREFIX, NO_PLATFORM, startDistrictLtiPlatform, type DistrictLtiPlatform, type LtiAdminRoute } from "./lti-platform.ts";
 
 /** The name platforms show for the tool when it registers itself. */
 export const LTI_TOOL_NAME = "EducateOS";
@@ -80,6 +80,8 @@ export interface DistrictLti {
   serveTool(request: Request): Promise<Response | undefined>;
   /** Serves `/api/lti/*` for an Access-verified district principal. */
   serveAdmin(request: Request): Promise<Response>;
+  /** The district's LTI Platform (SCHO-179), or `undefined` when `LTI_PLATFORM` leaves it off. */
+  readonly platform: DistrictLtiPlatform | undefined;
 }
 
 /** The prefix of the administrators' LTI surface. */
@@ -96,7 +98,7 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
     targets: directoryRegistrationTargets({ districtId, directory, activities, reservedIssuers: options.reservedIssuers }),
   });
 
-  const platform = options.platform === true ? startDistrictLtiPlatform({ districtId, issuer: toolOrigin, authorizer: app.engine, stores: lti, directory, jsonBody }) : undefined;
+  const platform = options.platform === true ? startDistrictLtiPlatform({ districtId, authorizer: app.engine, stores: lti, directory, jsonBody, origin: toolOrigin, fetch }) : undefined;
 
   // The broker and the service client read keys synchronously; each request first loads the
   // stored set (an imported copy is cached until the stored key IDs change), so a rotation made
@@ -250,6 +252,8 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
   }
 
   return {
+    platform,
+
     async serveTool(request) {
       const { pathname } = new URL(request.url);
       if (!pathname.startsWith("/lti/")) return undefined;
