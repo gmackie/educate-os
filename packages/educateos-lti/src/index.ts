@@ -22,3 +22,4 @@ export * from "./classroom.ts";
 export * from "./clever-lms-connect.ts";
 export * from "./platform-tools.ts";
 export * from "./platform-service-tokens.ts";
+export * from "./platform-launch.ts";

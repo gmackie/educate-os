@@ -108,7 +108,7 @@ describe("the district /mcp as a protected resource (SCHO-174)", () => {
       "untrusted key": w.token({}, {}, w.rogue.privateKey),
       "key URL in header": w.token({}, { jku: "https://evil.example/jwks", kid: "evil" }, w.rogue.privateKey),
       "id token type": w.token({}, { typ: "JWT" }),
-      expired: w.token({ iat: iat - 600, exp: iat - 1 }),
+      expired: w.token({ iat: iat - 600, exp: iat - 31 }),
       "not yet valid": w.token({ nbf: iat + 60 }),
       "issued in the future": w.token({ iat: iat + 60, exp: iat + 120 }),
       "too long-lived": w.token({ exp: iat + 3600 }),
@@ -117,6 +117,15 @@ describe("the district /mcp as a protected resource (SCHO-174)", () => {
       "unlinked subject": w.token({ sub: "nobody" }),
     };
     for (const [name, bearer] of Object.entries(cases)) expect([name, await w.refusal(bearer)]).toEqual([name, "unauthenticated"]);
+  });
+
+  it("tolerates up to 30 seconds of clock skew with the issuer", async () => {
+    const w = await world();
+    const delegation = await w.issue();
+    const iat = Math.floor(w.clock.now.getTime() / 1000);
+    for (const claims of [{ iat: iat + 30, nbf: iat + 30, exp: iat + 300 }, { iat: iat - 300, exp: iat - 29 }]) {
+      expect(await w.authority.authenticate(await w.token(claims))).toEqual({ ...MORGAN, delegationId: delegation.id });
+    }
   });
 
   it("refuses a client the person has not delegated to, or another person's delegation, as forbidden", async () => {

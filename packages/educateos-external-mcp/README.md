@@ -176,7 +176,7 @@ request it checks:
 - `typ: at+jwt` (RFC 9068);
 - `iss` exactly;
 - `aud`, which must be exactly the district's `https://<origin>/mcp` and its only audience (RFC 8707);
-- `exp`, `nbf` and `iat`, with a lifetime of at most ten minutes;
+- `exp`, `nbf` and `iat`, with a lifetime of at most ten minutes, allowing 30 seconds of clock skew with the issuer;
 - the required `scope` (`mcp:tools`).
 
 After the token checks it resolves `(iss, sub)` through the district's current identity links.

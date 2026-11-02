@@ -39,6 +39,9 @@ export interface DelegatedResourceAuthorityOptions {
 /** The longest access-token lifetime accepted by default: ten minutes. */
 export const MAX_ACCESS_TOKEN_SECONDS = 600;
 
+/** How far the issuer's clock may run ahead of or behind the district's, for `iat`, `nbf` and `exp`. */
+const CLOCK_SKEW_SECONDS = 30;
+
 const CLIENT_ID = /^[\x21-\x7e]{1,255}$/;
 
 /** A caller the transport must refuse with 401: no usable token, or no linked active principal. */
@@ -90,6 +93,7 @@ export class DelegatedResourceAuthority {
         typ: "at+jwt",
         requiredClaims: ["sub", "iat", "exp", "client_id", "scope"],
         currentDate: new Date(now()),
+        clockTolerance: CLOCK_SKEW_SECONDS,
       }));
     } catch {
       throw unauthenticated();
@@ -99,7 +103,7 @@ export class DelegatedResourceAuthority {
     if (
       typeof sub !== "string" || sub === "" ||
       typeof iat !== "number" || typeof exp !== "number" ||
-      iat > nowSeconds || exp - iat > this.#options.maxLifetimeSeconds ||
+      iat > nowSeconds + CLOCK_SKEW_SECONDS || exp - iat > this.#options.maxLifetimeSeconds ||
       // One audience only: a token minted for several resources is replayable at each of them.
       (Array.isArray(aud) && aud.length !== 1) ||
       typeof clientId !== "string" || !CLIENT_ID.test(clientId) ||
