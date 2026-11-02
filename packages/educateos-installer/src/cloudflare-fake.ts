@@ -65,6 +65,8 @@ interface Script {
   migrationTag?: string;
   secrets: Map<string, string>;
   assetsConfig?: Record<string, unknown>;
+  /** The paths of the static assets the last upload that carried assets serves, sorted. */
+  assetPaths?: string[];
   /** Cron Triggers. Not versioned: an upload or a rollback leaves them as they are. */
   schedules: string[];
 }
@@ -97,8 +99,9 @@ export class FakeCloudflare {
   readonly #apps = new Map<string, AccessApplication>();
   readonly #gateways = new Set<string>();
   readonly #assets = new Set<string>();
-  readonly #assetSessions = new Map<string, { pending: Set<string> }>();
-  readonly #completions = new Set<string>();
+  readonly #assetSessions = new Map<string, { pending: Set<string>; paths: string[] }>();
+  /** Completion tokens an upload may carry, each with the asset paths its session was for. */
+  readonly #completions = new Map<string, string[]>();
   readonly #dns = new Map<string, DnsRecord & { zoneId: string }>();
   readonly #fallbackOrigins = new Map<string, string>();
   readonly #customHostnames = new Map<string, CustomHostname & { zoneId: string }>();
@@ -210,7 +213,27 @@ export class FakeCloudflare {
       schedules: [...script.schedules],
       /** The static-assets config of the last upload that carried assets. */
       assetsConfig: script.assetsConfig,
+      /** The paths of the static assets that upload serves. */
+      assetPaths: script.assetPaths,
     };
+  }
+
+  /**
+   * What a Worker's static assets answer for `path`, as Cloudflare routes it: the asset's path, or
+   * undefined when the Worker runs instead (a `run_worker_first` pattern, or no asset and no
+   * single-page fallback). `/dir/` serves `/dir/index.html`, and a single-page app's fallback is its
+   * root `/index.html`. Patterns are exact or end in `*`, the only forms the installer sends.
+   */
+  assetFor(name: string, path: string): string | undefined {
+    const script = this.#scripts.get(name);
+    if (!script?.assetPaths) return undefined;
+    const config = script.assetsConfig as { not_found_handling?: string; run_worker_first?: string[] | boolean } | undefined;
+    const first = config?.run_worker_first;
+    if (first === true) return undefined;
+    if (Array.isArray(first) && first.some((p) => p.endsWith("*") ? path.startsWith(p.slice(0, -1)) : p === path)) return undefined;
+    const candidate = path.endsWith("/") ? `${path}index.html` : path;
+    if (script.assetPaths.includes(candidate)) return candidate;
+    return config?.not_found_handling === "single-page-application" && script.assetPaths.includes("/index.html") ? "/index.html" : undefined;
   }
 
   /** A Worker secret's value, for assertions about generated secrets. Cloudflare never returns one. */
@@ -438,8 +461,9 @@ export class FakeCloudflare {
     assetsSession: (manifest: Record<string, { hash: string; size: number }>) => {
       const pending = new Set(Object.values(manifest).map((e) => e.hash).filter((h) => !this.#assets.has(h)));
       const jwt = `assets-session-${this.#id()}`;
-      this.#assetSessions.set(jwt, { pending });
-      if (pending.size === 0) this.#completions.add(jwt);
+      const paths = Object.keys(manifest).toSorted();
+      this.#assetSessions.set(jwt, { pending, paths });
+      if (pending.size === 0) this.#completions.set(jwt, paths);
       return { jwt, buckets: pending.size > 0 ? [[...pending].toSorted()] : [] };
     },
     uploadAssets: (jwt: string, files: Map<string, Uint8Array<ArrayBuffer>>) => {
@@ -451,7 +475,7 @@ export class FakeCloudflare {
       }
       if (session.pending.size > 0) return undefined;
       const completion = `assets-complete-${this.#id()}`;
-      this.#completions.add(completion);
+      this.#completions.set(completion, session.paths);
       return completion;
     },
     deleteSecret: (name: string, secret: string) => {
@@ -596,14 +620,17 @@ export class FakeCloudflare {
     if (!existing) {
       const script: Script = {
         versions: [], activeVersionId: "", secrets: new Map(), schedules: [], ...(migrationTag ? { migrationTag } : {}),
-        ...(metadata.assets ? { assetsConfig: structuredClone(metadata.assets.config) } : {}),
+        ...(metadata.assets ? { assetsConfig: structuredClone(metadata.assets.config), assetPaths: this.#completions.get(metadata.assets.jwt)! } : {}),
       };
       this.#addVersion(script, bindings, migrationTag);
       this.#scripts.set(name, script);
       return;
     }
     if (migrationTag) existing.migrationTag = migrationTag;
-    if (metadata.assets) existing.assetsConfig = structuredClone(metadata.assets.config);
+    if (metadata.assets) {
+      existing.assetsConfig = structuredClone(metadata.assets.config);
+      existing.assetPaths = this.#completions.get(metadata.assets.jwt)!;
+    }
     this.#addVersion(existing, bindings, migrationTag);
   }
 

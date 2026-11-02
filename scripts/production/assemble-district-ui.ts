@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // Lays the district's three UIs out as the district Worker's static assets (DISTRICT_UI_DIR in
-// production-config.ts), at deploy time, from their already-built `dist/` directories:
+// scripts/release/manifest-lib.ts), at deploy time, from their already-built `dist/` directories:
 //
 //   /         the student Learning Home (path-routed: the assets' single-page fallback is its)
 //   /admin/   the admin console, built with EDUCATEOS_UI_BASE=/admin/
@@ -17,7 +17,7 @@ import { cpSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { PACKAGES_DIR } from "../preview/staging-config.ts";
-import { DISTRICT_PACKAGE, DISTRICT_UI_DIR } from "./production-config.ts";
+import { DISTRICT_SERVICE_PACKAGE, DISTRICT_UI_DIR } from "../release/manifest-lib.ts";
 
 /** One UI and the path prefix it is served under. */
 export interface DistrictUi {
@@ -61,7 +61,7 @@ export function assembleDistrictUi(packagesDir: string, outDir: string, uis: rea
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const outDir = join(PACKAGES_DIR, DISTRICT_PACKAGE, DISTRICT_UI_DIR);
+  const outDir = join(PACKAGES_DIR, DISTRICT_SERVICE_PACKAGE, DISTRICT_UI_DIR);
   assembleDistrictUi(PACKAGES_DIR, outDir);
   console.log(`assembled ${DISTRICT_UIS.map(({ pkg, base }) => `${pkg} at ${base}`).join(", ")} into ${outDir}`);
 }

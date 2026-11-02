@@ -8,9 +8,21 @@
       "r2Key": "blobs/assets/490f32db0b32a3f0b175f04fe7ef431a",
       "size": 88
     },
+    "676fcaffbdd7a19b75bcf67fe770f2e7": {
+      "r2Key": "blobs/assets/676fcaffbdd7a19b75bcf67fe770f2e7",
+      "size": 113
+    },
+    "8281321e630a2341f826f0ce9cf4d3ec": {
+      "r2Key": "blobs/assets/8281321e630a2341f826f0ce9cf4d3ec",
+      "size": 125
+    },
     "8d2e76555a7166d0e6b7da22cabfa055": {
       "r2Key": "blobs/assets/8d2e76555a7166d0e6b7da22cabfa055",
       "size": 28
+    },
+    "9207d57394885aab09ced06dd51d48f0": {
+      "r2Key": "blobs/assets/9207d57394885aab09ced06dd51d48f0",
+      "size": 109
     },
     "924064d945426fd30c24d0d24235610d": {
       "r2Key": "blobs/assets/924064d945426fd30c24d0d24235610d",
@@ -183,6 +195,35 @@
       "vars": {}
     },
     "educateos-district-worker": {
+      "assetsConfig": {
+        "not_found_handling": "single-page-application",
+        "run_worker_first": [
+          "/api/*",
+          "/healthz",
+          "/lti/*",
+          "/.well-known/educateos.json",
+          "/connect-phone"
+        ],
+        "variants": {
+          "spa": {
+            "buildEnv": {},
+            "manifest": {
+              "/admin/index.html": {
+                "hash": "8281321e630a2341f826f0ce9cf4d3ec",
+                "size": 125
+              },
+              "/index.html": {
+                "hash": "9207d57394885aab09ced06dd51d48f0",
+                "size": 109
+              },
+              "/teach/index.html": {
+                "hash": "676fcaffbdd7a19b75bcf67fe770f2e7",
+                "size": 113
+              }
+            }
+          }
+        }
+      },
       "backendBinding": {
         "entrypoint": "DistrictApi",
         "name": "EDUCATEOS_DISTRICT_API"
@@ -191,6 +232,10 @@
         {
           "name": "SEND_EMAIL",
           "type": "send_email"
+        },
+        {
+          "name": "ASSETS",
+          "type": "assets"
         },
         {
           "name": "DEVICE_TOKEN_SECRET",

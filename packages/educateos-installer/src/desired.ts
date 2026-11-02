@@ -244,7 +244,10 @@ export const MARKER_VARS = {
 /** The asset variant the router serves. EducateOS always sits behind Access. */
 export const ASSET_VARIANT = "access";
 
-/** The OSS admin's one asset variant, its own SPA (manifest-lib's `COMPONENT_ASSET_VARIANT`). */
+/**
+ * The one asset variant of a Worker that serves its own assets (manifest-lib's
+ * `COMPONENT_ASSET_VARIANT`): the OSS admin's SPA, and the district Worker's UIs (SCHO-318).
+ */
 export const ADMIN_ASSET_VARIANT = "spa";
 
 /** The OSS admin's Access bypass: only its liveness probe, which carries nothing private. */
@@ -773,9 +776,11 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     if (entry.assetsConfig) {
       // The router of a one-origin install serves the Workshop built for /ai, and runs first for
       // every path: the Workshop's assets would otherwise answer `/` and shadow the district's.
-      // The admin serves its own SPA.
+      // A Worker with its own variant serves that: the admin its SPA, the district its UIs (which a
+      // release before SCHO-318 does not carry, so its district serves no pages).
       const routerOfOrigin = entry.kind === "router" && oneOrigin;
-      const variantName = routerOfOrigin ? (schoolBuild ? "access-school-ai" : wiring!.assetVariant) : isAdmin ? ADMIN_ASSET_VARIANT : schoolBuild ? "access-school" : ASSET_VARIANT;
+      const ownAssets = entry.kind !== "router" && Object.hasOwn(entry.assetsConfig.variants, ADMIN_ASSET_VARIANT);
+      const variantName = routerOfOrigin ? (schoolBuild ? "access-school-ai" : wiring!.assetVariant) : ownAssets ? ADMIN_ASSET_VARIANT : schoolBuild ? "access-school" : ASSET_VARIANT;
       const variant = entry.assetsConfig.variants[variantName];
       if (!variant) invalid(`${pkgName} has no "${variantName}" asset variant`);
       const runWorkerFirst = routerOfOrigin ? true : entry.assetsConfig.run_worker_first;

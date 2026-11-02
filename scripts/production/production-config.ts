@@ -48,7 +48,7 @@ import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 import { AI_GUARD_DEV_MAIN, AI_GUARD_PACKAGE, backendAiGuardBinding } from "../ai-guard-dev.ts";
 import {
-  isGatekeeperPackage, readDeployablePackages, type DeployablePackage, type ServiceBinding,
+  districtUiAssets, isGatekeeperPackage, readDeployablePackages, type DeployablePackage, type ServiceBinding,
 } from "../release/manifest-lib.ts";
 import {
   PACKAGES_DIR, ROOT, backendGatekeeperServices, gatekeeperBaseUrl, routerServices,
@@ -88,24 +88,11 @@ export const ONE_ORIGIN_BASE_PATH = "/ai";
  */
 export const ONE_ORIGIN_BUILD_ENV: Readonly<Record<string, string>> = { VITE_WORKSHOP_BASE_PATH: `${ONE_ORIGIN_BASE_PATH}/` };
 
-/** The demo districts' own routes besides {@link DISTRICT_WORKER_ROUTES} once they serve `/ai` themselves. */
+/** The demo districts' own routes besides manifest-lib's `DISTRICT_WORKER_ROUTES` once they serve `/ai` themselves. */
 export const AI_DISABLED_ROUTES = ["/ai", "/ai/*"];
 
 /** The district Worker's package (and worker) name. */
 export const DISTRICT_PACKAGE = "educateos-district-worker";
-
-/**
- * Where the district Worker's static assets are, relative to its package: the three UIs as
- * assemble-district-ui.ts lays them out (student at `/`, admin at `/admin/`, teacher at `/teach/`).
- */
-export const DISTRICT_UI_DIR = "./dist/ui";
-
-/**
- * The district Worker's own routes, which run before its assets: the API (the pairing relay's
- * `/api/pair/*` among it), the liveness probe, the LTI Tool's endpoints (SCHO-177), the public school
- * manifest (ADR-0014) and the pairing relay's `/connect-phone` page (SCHO-261).
- */
-export const DISTRICT_WORKER_ROUTES = ["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone"];
 
 /** The EducateOS connector's package: the one gatekeeper bound to the district Worker (SCHO-218). */
 export const EDUCATEOS_GATEKEEPER_PACKAGE = "gatekeeper-educateos";
@@ -305,11 +292,8 @@ function asDistrict(
   // Wrangler replaces a Worker's custom domains with exactly these, so every alias is listed. Behind
   // a one-origin router the district has none: the router reaches it by service binding.
   if (routed) config.routes = hostnames.map((pattern) => ({ pattern, custom_domain: true as const }));
-  config.assets = {
-    directory: DISTRICT_UI_DIR,
-    not_found_handling: "single-page-application",
-    run_worker_first: [...DISTRICT_WORKER_ROUTES, ...extraRoutes],
-  };
+  const assets = districtUiAssets();
+  config.assets = { ...assets, run_worker_first: [...assets.run_worker_first!, ...extraRoutes] };
   // The LTI Tool (SCHO-177) is served at the district's own hostname, the origin its platform
   // registrations name.
   withVars(DISTRICT_PACKAGE, config, { LTI_TOOL_ORIGIN: `https://${hostnames[0]}`, ...vars });

@@ -102,6 +102,21 @@ describe("one-origin desired state", () => {
     expect(order.indexOf(`worker:${DISTRICT}`)).toBeLessThan(order.indexOf("worker:router"));
   });
 
+  it("serves the district's own UIs from the district, running it first only on its own routes", async () => {
+    const release = await goldenRelease();
+    const ui = release.manifest.workers[DISTRICT]!.assetsConfig!;
+    expect(compile(release).worker(DISTRICT).assets).toEqual({
+      manifest: ui.variants.spa!.manifest,
+      config: { not_found_handling: "single-page-application", run_worker_first: ui.run_worker_first },
+    });
+    expect(ui.run_worker_first).toEqual(["/api/*", "/healthz", "/lti/*", "/.well-known/educateos.json", "/connect-phone"]);
+    // A release from before the district carried its UIs installs it without assets, as before.
+    const old = await deriveRelease(release, "r000002-noui", (manifest) => {
+      delete manifest.workers[DISTRICT]!.assetsConfig;
+    });
+    expect(compile(old).worker(DISTRICT).assets).toBeUndefined();
+  });
+
   it("gives the district the one application's issuer and audience, its school manifest and a generated device key", async () => {
     const release = await goldenRelease();
     const { worker, secret, desired } = compile(release);
@@ -248,6 +263,16 @@ describe("one-origin install", () => {
     // The district accepts exactly the one application's audience.
     expect(binding(district, "CF_ACCESS_AUD")).toMatchObject({ text: fake.accessApplication("educateos-northfield")!.aud });
     expect(binding(district, "LTI_TOOL_ORIGIN")).toMatchObject({ text: `https://${HOST}` });
+    // Its pages: the student app at the root (and as the single-page fallback), the admin console
+    // and Teacher Studio under their prefixes, and its own routes left to the Worker (SCHO-318).
+    expect(district.assetPaths).toEqual(["/admin/index.html", "/index.html", "/teach/index.html"]);
+    expect(fake.assetFor(SCRIPTS.district, "/")).toBe("/index.html");
+    expect(fake.assetFor(SCRIPTS.district, "/classes/7")).toBe("/index.html");
+    expect(fake.assetFor(SCRIPTS.district, "/admin/")).toBe("/admin/index.html");
+    expect(fake.assetFor(SCRIPTS.district, "/teach/")).toBe("/teach/index.html");
+    for (const path of ["/api/me", "/healthz", "/lti/launch", "/.well-known/educateos.json", "/connect-phone"]) {
+      expect(fake.assetFor(SCRIPTS.district, path), path).toBeUndefined();
+    }
     expect(fake.accessApplication("educateos-northfield-bypass")?.destinations).toContain(`${HOST}/api/m/*`);
     // No plan or report carries the generated value.
     expect(JSON.stringify(report)).not.toContain(key);
