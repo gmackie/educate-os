@@ -624,7 +624,8 @@ deployment of the tool has turned on (`PLATFORM_SCOPE_SERVICES`):
 | Scope | Deployment service |
 | --- | --- |
 | `https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly` | `nrps` |
-| `https://purl.imsglobal.org/spec/lti-ags/scope/lineitem`, `…/lineitem.readonly`, `…/result.readonly` | `agsLineItems` |
+| `https://purl.imsglobal.org/spec/lti-ags/scope/lineitem`, `…/lineitem.readonly` | `agsLineItems` |
+| `https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly` | `agsResults` |
 | `https://purl.imsglobal.org/spec/lti-ags/scope/score` | `agsScores` |
 
 The answer is `{ access_token, token_type: "Bearer", expires_in: 900, scope }`. The token is
@@ -694,7 +695,8 @@ principal can have. The district passes `platformToolPolicySources(store)` to th
   resource's offering that allows the service the resource and action need, recorded as the
   decision's `grantId`. The engine tells relationship sources the action, so one deployment can
   allow reading a resource and not writing it. An offering's enrollments (`list`) need `nrps`; its
-  AGS line items (`gradebook`) and their results (`list` official grades) need `agsLineItems`; a
+  AGS line items (`gradebook`) need `agsLineItems`; their results (`list` official grades), which
+  are students' grades, need their own `agsResults`; a
   score (`grade` an official grade) needs `agsScores` (see [Assignment and Grade
   Services](#assignment-and-grade-services)).
 
@@ -747,7 +749,7 @@ stores and `LtiPlatformAgsService`, and `src/lti-platform-ags.ts` in the distric
 HTTP surface). Harness-tested only, against `FakeLtiTool`; no real tool has used it, and it claims
 no AGS conformance.
 
-**The launch claim.** When the deployment allows `agsLineItems` or `agsScores`, the id_token carries
+**The launch claim.** When the deployment allows `agsLineItems`, `agsResults` or `agsScores`, the id_token carries
 `https://purl.imsglobal.org/spec/lti-ags/claim/endpoint` with only the scopes those services grant,
 `lineitems` (only with `agsLineItems`) set to the container of exactly that deployment and
 offering, and `lineitem` when exactly one line item of that container was created for the launch's
@@ -762,7 +764,7 @@ from `/lti/platform/token` (`Authorization: Bearer`), answered with `Cache-Contr
 | `POST <deployment>/<offering>/lineitems` | `lineitem` | `agsLineItems` | `create` gradebook: `lti.tool.line-items.write` | Creates a line item (`201`). The platform assigns its ID; other members, extensions included, are dropped. |
 | `GET`, `PUT`, `DELETE …/lineitems/<id>` | `lineitem` (or `lineitem.readonly` to read) | `agsLineItems` | `read` / `update` / `delete` gradebook: `lti.tool.line-items`, `…write` | Reads, replaces (the next revision) or removes it. One with an official result is kept (`409`). |
 | `POST …/lineitems/<id>/scores` | `score` | `agsScores` | `grade` the learner's official grade: `lti.tool.score`, `require-approval` | Takes a score (`204`); see below. |
-| `GET …/lineitems/<id>/results` | `result.readonly` | `agsLineItems` | `list` official grades: `lti.tool.results` | Approved results only, by `user_id` if given. |
+| `GET …/lineitems/<id>/results` | `result.readonly` | `agsResults` | `list` official grades: `lti.tool.results` | Approved results only, by `user_id` if given. |
 
 Bodies are JSON of at most 16 KiB, sent as the AGS media type or `application/json`. A deployment
 or offering the token's tool cannot reach (another tool's, another offering, a revoked deployment's
@@ -774,7 +776,8 @@ or a policy refusal is `403` with `error="insufficient_scope"`.
 on the `lti-service` channel with the tool's principal (`platformToolPrincipalId`, a `service`
 subject with no role), as for NRPS above. Its only authority is the `lti-deployment` relationship
 (`platformToolPolicySources`, given the AGS store as well as the tool store). For a line item, or
-the official grades in it, only the deployment that created the line item counts; for an
+the official grades in it, only the deployment that created the line item counts (and reading
+those grades needs that deployment's `agsResults`); for an
 offering's gradebook columns as a whole, any active deployment of the tool there with
 `agsLineItems`. Four rules, placed before `guard.lti-service.tool-rules-only`, use it:
 

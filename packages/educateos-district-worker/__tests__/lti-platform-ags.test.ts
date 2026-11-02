@@ -57,9 +57,9 @@ async function api(principalId: string, method: "GET" | "POST", path: string, bo
 /**
  * A fake tool whose server signs its client assertions with the key the test district's platform
  * fetch publishes at {@link PLATFORM_TOOL_JWKS_URL}, registered by the district admin and deployed to
- * {@link OFFERING} with both AGS services.
+ * {@link OFFERING} with all three AGS services.
  */
-async function deployedTool(services: Record<string, boolean> = { agsLineItems: true, agsScores: true }): Promise<{ tool: FakeLtiTool; deploymentId: string }> {
+async function deployedTool(services: Record<string, boolean> = { agsLineItems: true, agsResults: true, agsScores: true }): Promise<{ tool: FakeLtiTool; deploymentId: string }> {
   const jwk = JSON.parse(env.TEST_PLATFORM_PRIVATE_JWK) as JWK;
   const keys = new PlatformKeyRing({
     kid: jwk.kid!,
@@ -291,7 +291,7 @@ describe("the district's LTI Platform Assignment and Grade Services", () => {
     expect((await tool.results(lineItem, readOnly)).status).toBe(403);
 
     // The deployment loses the scores service: the token no longer sends scores, and no new one can.
-    expect((await api(ADMIN, "POST", `/api/lti/platform-deployments/${deploymentId}`, { services: { agsLineItems: true, agsScores: false } })).status).toBe(200);
+    expect((await api(ADMIN, "POST", `/api/lti/platform-deployments/${deploymentId}`, { services: { agsLineItems: true, agsResults: true, agsScores: false } })).status).toBe(200);
     expect((await tool.postScore(lineItem, token, score(amara, 2))).status).toBe(403);
     await expect(tool.serviceToken([LTI_SCOPES.score])).rejects.toThrow(/invalid_scope/);
     expect((await tool.listLineItems(container, token)).status).toBe(200);
@@ -301,11 +301,12 @@ describe("the district's LTI Platform Assignment and Grade Services", () => {
     expect((await tool.listLineItems(container, token)).status).toBe(401);
   });
 
-  it("refuses scores for a deployment without the scores service", async () => {
+  it("refuses scores, and reading results, for a deployment with only the line items service", async () => {
     const { tool, deploymentId } = await deployedTool({ agsLineItems: true });
     const learner = await launch(tool, AMARA, deploymentId);
-    expect(learner.ags!.scope).toEqual([LTI_SCOPES.lineItem, LTI_SCOPES.lineItemReadonly, LTI_SCOPES.resultReadonly]);
+    expect(learner.ags!.scope).toEqual([LTI_SCOPES.lineItem, LTI_SCOPES.lineItemReadonly]);
     await expect(tool.serviceToken([LTI_SCOPES.score])).rejects.toThrow(/invalid_scope/);
+    await expect(tool.serviceToken([LTI_SCOPES.resultReadonly])).rejects.toThrow(/invalid_scope/);
     const token = await tool.serviceToken([LTI_SCOPES.lineItem]);
     const lineItem = ((await (await tool.createLineItem(learner.ags!.lineitems!, token, { label: "Quiz", scoreMaximum: 5 })).json()) as { id: string }).id;
     expect((await tool.postScore(lineItem, token, score(learner.claims.sub!, 5))).status).toBe(403);

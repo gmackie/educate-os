@@ -19,14 +19,14 @@ import { randomToken, sha256Base64Url, type Clock } from "./stores.ts";
 export const CLIENT_ASSERTION_TYPE_JWT_BEARER = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
 
 /**
- * The deployment service each LTI Advantage scope needs. Reading a line item's results is part of
- * the line items service; posting scores is its own. Deep Linking needs no token.
+ * The deployment service each LTI Advantage scope needs. Reading a line item's results, which are
+ * students' grades, is its own service, apart from managing line items; so is posting scores. Deep Linking needs no token.
  */
 export const PLATFORM_SCOPE_SERVICES: Readonly<Record<LtiScope, PlatformToolService>> = {
   [LTI_SCOPES.contextMembershipReadonly]: "nrps",
   [LTI_SCOPES.lineItem]: "agsLineItems",
   [LTI_SCOPES.lineItemReadonly]: "agsLineItems",
-  [LTI_SCOPES.resultReadonly]: "agsLineItems",
+  [LTI_SCOPES.resultReadonly]: "agsResults",
   [LTI_SCOPES.score]: "agsScores",
 };
 

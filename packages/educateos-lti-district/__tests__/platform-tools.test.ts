@@ -33,7 +33,7 @@ describe("LtiPlatformToolService", () => {
     expect(deployment).toMatchObject({
       toolId: tool.id,
       offerings: [BIO],
-      services: { nrps: false, agsLineItems: false, agsScores: false, deepLinking: false },
+      services: { nrps: false, agsLineItems: false, agsResults: false, agsScores: false, deepLinking: false },
       privacy: { name: false, email: false },
       status: "active",
       createdBy: ADMIN,
@@ -68,7 +68,7 @@ describe("LtiPlatformToolService", () => {
     district.clock.ms += 60_000;
     const changed = await service.changeDeployment(as(ADMIN), deployment.id, {
       offerings: [BIO, ENG9],
-      services: { nrps: true, agsLineItems: true, agsScores: true, deepLinking: false },
+      services: { nrps: true, agsLineItems: true, agsResults: false, agsScores: true, deepLinking: false },
     });
     expect(changed).toMatchObject({ offerings: [BIO, ENG9], services: { nrps: true, agsScores: true }, privacy: { name: false }, updatedBy: ADMIN });
     expect(changed.updatedAt).not.toBe(deployment.updatedAt);
