@@ -27,7 +27,7 @@ function toolEngine(state: { deployed: boolean; active: boolean; services?: read
   };
   const relationships: RelationshipSource = {
     async relationships(subject, resource: ResourceRef, action) {
-      const service = resource.kind === "enrollment" ? "nrps" : resource.kind === "official-grade" && action === "grade" ? "agsScores" : "agsLineItems";
+      const service = resource.kind === "enrollment" ? "nrps" : resource.kind === "official-grade" ? (action === "grade" ? "agsScores" : "agsResults") : "agsLineItems";
       const inBio = resource.scope.level === "offering" && resource.scope.offeringId === BIO.offeringId;
       return subject === TOOL && state.deployed && inBio && (state.services ?? ["nrps"]).includes(service) ? [{ relationship: "lti-deployment", grantId: "ltd_deployment" }] : [];
     },
@@ -75,7 +75,7 @@ describe("an LTI tool as a policy subject (SCHO-179)", () => {
     const column = ags("update", "gradebook", "teacher-only", { id: "lli_column" });
     const results = ags("list", "official-grade", "course", { id: "lli_column" });
     const score = ags("grade", "official-grade", "course", { id: "lli_column", ownerPrincipalId: P.amara.principalId });
-    const { engine: both } = toolEngine({ deployed: true, active: true, services: ["agsLineItems", "agsScores"] });
+    const { engine: both } = toolEngine({ deployed: true, active: true, services: ["agsLineItems", "agsResults", "agsScores"] });
     expect(await both.decide(column)).toMatchObject({ decision: { effect: "allow" }, ruleId: "lti.tool.line-items.write", grantId: "ltd_deployment" });
     expect(await both.decide(ags("list", "gradebook", "teacher-only"))).toMatchObject({ ruleId: "lti.tool.line-items" });
     expect(await both.decide(results)).toMatchObject({ decision: { effect: "allow" }, ruleId: "lti.tool.results" });
@@ -92,6 +92,7 @@ describe("an LTI tool as a policy subject (SCHO-179)", () => {
     expect((await scoresOnly.decide(score)).decision.effect).toBe("require-approval");
     const { engine: lineItemsOnly } = toolEngine({ deployed: true, active: true, services: ["agsLineItems"] });
     expect((await lineItemsOnly.decide(score)).ruleId).toBe("guard.lti-service.tool-rules-only");
+    expect((await lineItemsOnly.decide(results)).ruleId).toBe("guard.lti-service.tool-rules-only");
     expect((await toolEngine({ deployed: true, active: false, services: ["agsLineItems", "agsScores"] }).engine.decide(score)).decision.effect).toBe("deny");
   });
 });

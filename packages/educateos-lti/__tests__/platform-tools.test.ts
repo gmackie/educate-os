@@ -37,7 +37,7 @@ function tool(overrides: Partial<PlatformTool> = {}): PlatformTool {
 function deployment(of: PlatformTool, overrides: Partial<PlatformDeployment> = {}): PlatformDeployment {
   return PlatformDeployment.parse({
     id: newPlatformDeploymentId(), districtId: of.districtId, toolId: of.id, offerings: [BIO],
-    services: { nrps: true, agsLineItems: false, agsScores: false, deepLinking: false }, privacy: { name: false, email: false },
+    services: { nrps: true, agsLineItems: false, agsResults: false, agsScores: false, deepLinking: false }, privacy: { name: false, email: false },
     status: "active", createdBy: "prn_nf-district-admin", createdAt: AT, updatedBy: "prn_nf-district-admin", updatedAt: AT, ...overrides,
   });
 }
@@ -68,7 +68,7 @@ describe("platform tool registrations", () => {
 describe("platform deployments", () => {
   it("turns on no service and no personal data unless asked", () => {
     const input = PlatformDeploymentInput.parse({ toolId: newPlatformToolId(), offerings: [BIO] });
-    expect(input.services).toEqual({ nrps: false, agsLineItems: false, agsScores: false, deepLinking: false });
+    expect(input.services).toEqual({ nrps: false, agsLineItems: false, agsResults: false, agsScores: false, deepLinking: false });
     expect(input.privacy).toEqual({ name: false, email: false });
   });
 

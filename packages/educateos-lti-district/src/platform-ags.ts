@@ -475,7 +475,7 @@ export class LtiPlatformAgsService {
    * their subject for this tool, optionally for one subject.
    */
   async results(grant: PlatformServiceGrant, deploymentId: string, offeringId: string, rawId: string, filter: { userId?: string | undefined }): Promise<Record<string, unknown>[]> {
-    const at = await this.#context(grant, deploymentId, offeringId, [LTI_SCOPES.resultReadonly], "agsLineItems");
+    const at = await this.#context(grant, deploymentId, offeringId, [LTI_SCOPES.resultReadonly], "agsResults");
     const item = await this.#ownLineItem(at, rawId);
     await this.#authorize(at, "list", { kind: "official-grade", id: item.id, scope: at.scope, classification: "course" });
     const url = `${this.lineItemsUrl(at.deployment.id, at.offeringId)}/${item.id}`;

@@ -111,7 +111,7 @@ describe("the district's LTI Platform keys", () => {
     expect((await api(RIVERA, "POST", "/api/lti/platform-deployments", { toolId, offerings: ["off_nf-bio-fall-p2"] })).status).toBe(403);
     const deployed = await api(ADMIN, "POST", "/api/lti/platform-deployments", { toolId, offerings: ["off_nf-bio-fall-p2"] });
     expect(deployed.status).toBe(200);
-    expect(deployed.body.services).toEqual({ nrps: false, agsLineItems: false, agsScores: false, deepLinking: false });
+    expect(deployed.body.services).toEqual({ nrps: false, agsLineItems: false, agsResults: false, agsScores: false, deepLinking: false });
     expect(deployed.body.privacy).toEqual({ name: false, email: false });
     const deploymentId = deployed.body.id as string;
 

@@ -104,7 +104,7 @@ describe("LTI Platform service tokens in a Durable Object", () => {
       await tools.addTool(tool);
       await tools.putDeployment({
         id: newPlatformDeploymentId(), districtId: NF, toolId: tool.id, offerings: [OfferingId.parse("off_nf-bio-fall-p2")],
-        services: { nrps: true, agsLineItems: false, agsScores: false, deepLinking: false }, privacy: { name: false, email: false },
+        services: { nrps: true, agsLineItems: false, agsResults: false, agsScores: false, deepLinking: false }, privacy: { name: false, email: false },
         status: "active", createdBy: ADMIN, createdAt: AT, updatedBy: ADMIN, updatedAt: AT,
       });
       return client.accessToken(registration, [LTI_SCOPES.contextMembershipReadonly]);
@@ -126,7 +126,7 @@ describe("LTI Platform service tokens in a Durable Object", () => {
       await tools.addTool(tool);
       await tools.putDeployment({
         id: newPlatformDeploymentId(), districtId: NF, toolId: tool.id, offerings: [OfferingId.parse("off_nf-bio-fall-p2")],
-        services: { nrps: false, agsLineItems: false, agsScores: true, deepLinking: false }, privacy: { name: false, email: false },
+        services: { nrps: false, agsLineItems: false, agsResults: false, agsScores: true, deepLinking: false }, privacy: { name: false, email: false },
         status: "active", createdBy: ADMIN, createdAt: AT, updatedBy: ADMIN, updatedAt: AT,
       });
       return client.accessToken(registration, [LTI_SCOPES.score]);

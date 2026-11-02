@@ -33,7 +33,7 @@ const AT = "2026-10-31T12:00:00.000Z";
 const ADMIN = "prn_nf-district-admin";
 const NRPS = LTI_SCOPES.contextMembershipReadonly;
 const SCORE = LTI_SCOPES.score;
-const NO_SERVICES: PlatformToolServices = { nrps: false, agsLineItems: false, agsScores: false, deepLinking: false };
+const NO_SERVICES: PlatformToolServices = { nrps: false, agsLineItems: false, agsResults: false, agsScores: false, deepLinking: false };
 
 /** One registered tool, its deployments, its signing key, and the endpoint, on a test clock. */
 async function world(services: Partial<PlatformToolServices> = { nrps: true }) {
@@ -113,7 +113,7 @@ async function requestToken(w: World, jwt: string, scope: string = NRPS, extra: 
 
 describe("the LTI Platform token endpoint", () => {
   it("issues a short-lived bearer token for the scopes the deployment allows, uncached", async () => {
-    const w = await world({ nrps: true, agsLineItems: true });
+    const w = await world({ nrps: true, agsLineItems: true, agsResults: true });
     const result = await requestToken(w, await assertion(w), `${NRPS} ${LTI_SCOPES.lineItem} ${LTI_SCOPES.resultReadonly}`);
     expect(result.status).toBe(200);
     expect(result.cacheControl).toBe("no-store");
@@ -226,6 +226,15 @@ describe("the LTI Platform token endpoint", () => {
       expect(result.status, scope).toBe(400);
       expect(result.body.error, scope).toBe("invalid_scope");
     }
+  });
+
+  it("grants reading results, which are students' grades, only with the results service", async () => {
+    const lineItemsOnly = await world({ agsLineItems: true });
+    expect((await requestToken(lineItemsOnly, await assertion(lineItemsOnly), `${LTI_SCOPES.lineItem} ${LTI_SCOPES.resultReadonly}`)).body.error).toBe("invalid_scope");
+    const scoresOnly = await world({ agsScores: true });
+    expect((await requestToken(scoresOnly, await assertion(scoresOnly), `${SCORE} ${LTI_SCOPES.resultReadonly}`)).body.error).toBe("invalid_scope");
+    const results = await world({ agsResults: true });
+    expect((await requestToken(results, await assertion(results), LTI_SCOPES.resultReadonly)).body).toMatchObject({ scope: LTI_SCOPES.resultReadonly });
   });
 
   it("answers malformed requests with RFC 6749 errors", async () => {

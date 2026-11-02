@@ -56,8 +56,8 @@ export function platformToolForPrincipal(principalId: string): PlatformToolId | 
 /**
  * The deployment service a tool needs for `action` on a resource of `kind`, or `undefined` if no
  * service reaches it: an offering's enrollments are its roster (NRPS); its gradebook columns are AGS
- * line items, whose approved results are read with the same service; and an official grade written
- * (`grade`) is an AGS score.
+ * line items; the approved grades in them (`list` official grades) are AGS results; and an
+ * official grade written (`grade`) is an AGS score.
  */
 function serviceFor(kind: ResourceRef["kind"], action: Action): PlatformToolService | undefined {
   switch (kind) {
@@ -66,7 +66,7 @@ function serviceFor(kind: ResourceRef["kind"], action: Action): PlatformToolServ
     case "gradebook":
       return "agsLineItems";
     case "official-grade":
-      return action === "grade" ? "agsScores" : action === "list" ? "agsLineItems" : undefined;
+      return action === "grade" ? "agsScores" : action === "list" ? "agsResults" : undefined;
     default:
       return undefined;
   }

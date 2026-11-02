@@ -78,12 +78,13 @@ export type PlatformTool = z.infer<typeof PlatformTool>;
 /**
  * The LTI Advantage services a deployment may use, each approved on its own. All are off unless an
  * administrator turns them on: NRPS reads the offering's roster, AGS line items manage gradebook
- * columns, AGS scores send scores (which only ever become pending grade changes for a teacher to
- * approve), and Deep Linking lets a teacher add the tool's content to the offering as a draft.
+ * columns, AGS results read the approved grades in those columns, AGS scores send scores (which
+ * only ever become pending grade changes for a teacher to approve), and Deep Linking lets a teacher add the tool's content to the offering as a draft.
  */
 export const PlatformToolServices = z.strictObject({
   nrps: z.boolean().default(false),
   agsLineItems: z.boolean().default(false),
+  agsResults: z.boolean().default(false),
   agsScores: z.boolean().default(false),
   deepLinking: z.boolean().default(false),
 });
@@ -110,7 +111,7 @@ export const PlatformDeploymentInput = z.strictObject({
   toolId: PlatformToolId,
   /** The only offerings the tool may launch in, and whose rosters and gradebooks it may reach. */
   offerings: Offerings,
-  services: PlatformToolServices.default({ nrps: false, agsLineItems: false, agsScores: false, deepLinking: false }),
+  services: PlatformToolServices.default({ nrps: false, agsLineItems: false, agsResults: false, agsScores: false, deepLinking: false }),
   privacy: PlatformToolPrivacy.default({ name: false, email: false }),
 });
 /** A deployment request. */

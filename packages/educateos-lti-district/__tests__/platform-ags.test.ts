@@ -32,7 +32,7 @@ async function platform() {
     targetLinkUri: "https://quiz.example/lti/launch",
     jwksUrl: "https://quiz.example/jwks",
   });
-  const deployment = await admin.deploy(as(ADMIN), { toolId: tool.id, offerings: [BIO], services: { agsLineItems: true, agsScores: true } });
+  const deployment = await admin.deploy(as(ADMIN), { toolId: tool.id, offerings: [BIO], services: { agsLineItems: true, agsResults: true, agsScores: true } });
   const ags = new LtiPlatformAgsService({
     districtId: NF,
     policy: district.engine,
@@ -142,10 +142,14 @@ describe("LtiPlatformAgsService", () => {
     expect((await p.decide("create", gradebook)).ruleId).toBe("lti.tool.line-items.write");
     expect((await p.decide("grade", { ...official, ownerPrincipalId: AMARA })).decision.effect).toBe("require-approval");
 
-    await p.admin.changeDeployment(as(ADMIN), p.deployment.id, { services: { agsLineItems: true, agsScores: false } });
+    await p.admin.changeDeployment(as(ADMIN), p.deployment.id, { services: { agsLineItems: true, agsResults: true, agsScores: false } });
     expect(await p.decide("grade", { ...official, ownerPrincipalId: AMARA })).toMatchObject({ decision: { effect: "deny" }, ruleId: "guard.lti-service.tool-rules-only" });
     expect((await p.decide("list", official)).ruleId).toBe("lti.tool.results");
-    await p.admin.changeDeployment(as(ADMIN), p.deployment.id, { services: { agsLineItems: false, agsScores: true } });
+    // Managing the gradebook's columns does not reach the grades in them.
+    await p.admin.changeDeployment(as(ADMIN), p.deployment.id, { services: { agsLineItems: true, agsResults: false, agsScores: false } });
+    expect(await p.decide("list", official)).toMatchObject({ decision: { effect: "deny" }, ruleId: "guard.lti-service.tool-rules-only" });
+    expect((await p.decide("list", gradebook)).ruleId).toBe("lti.tool.line-items");
+    await p.admin.changeDeployment(as(ADMIN), p.deployment.id, { services: { agsLineItems: false, agsResults: false, agsScores: true } });
     for (const [action, resource] of [["create", gradebook], ["list", gradebook], ["update", { ...gradebook, id: p.lineItemId }], ["list", official]] as const) {
       expect(await p.decide(action, resource)).toMatchObject({ decision: { effect: "deny" }, ruleId: "guard.lti-service.tool-rules-only" });
     }
@@ -219,7 +223,7 @@ describe("LtiPlatformAgsService", () => {
     const p = await platform();
     const claims = await p.ags.launchClaims({ deployment: p.deployment, offeringId: BIO, resourceLinkId: "link-1" });
     expect(claims).toEqual({ "https://purl.imsglobal.org/spec/lti-ags/claim/endpoint": { scope: ALL_SCOPES, lineitems: `${AGS}/${p.deployment.id}/${BIO}/lineitems` } });
-    expect(await p.ags.launchClaims({ deployment: { ...p.deployment, services: { ...p.deployment.services, agsLineItems: false, agsScores: false } }, offeringId: BIO, resourceLinkId: "link-1" })).toEqual({});
+    expect(await p.ags.launchClaims({ deployment: { ...p.deployment, services: { ...p.deployment.services, agsLineItems: false, agsResults: false, agsScores: false } }, offeringId: BIO, resourceLinkId: "link-1" })).toEqual({});
   });
 });
 

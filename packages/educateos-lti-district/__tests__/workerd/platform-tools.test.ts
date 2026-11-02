@@ -38,7 +38,7 @@ const deployment = (): PlatformDeployment => ({
   districtId: NF,
   toolId: tool.id,
   offerings: [BIO],
-  services: { nrps: true, agsLineItems: false, agsScores: false, deepLinking: false },
+  services: { nrps: true, agsLineItems: false, agsResults: false, agsScores: false, deepLinking: false },
   privacy: { name: false, email: false },
   status: "active",
   createdBy: ADMIN,
