@@ -107,7 +107,7 @@ export class FakeActivityCatalog implements ActivityCatalog {
   }
 }
 
-const FLOOR: PolicySettings = {
+export const FLOOR: PolicySettings = {
   aiSpending: "capped",
   promptsInGatewayLogs: "prohibited",
   studentPersonalConversations: "shared-by-student",

@@ -5,9 +5,10 @@
 // login initiation with an authentication request carrying a fresh `state` and `nonce`, and
 // verifies the launch it receives against the platform's JWKS, its issuer, its own client ID, the
 // nonce, the state, and the LTI message claims. It holds its own RS256 keys and publishes them.
-// As a tool's server does, it gets an LTI Advantage access token with a `private_key_jwt` client
-// assertion (LTI Security Framework 1.0 §4.1, RFC 7523) and calls the platform's Assignment and
-// Grade Services (AGS 2.0 §3.2–3.4) with it. Everything is in memory.
+// From its own server it then calls the platform's LTI Advantage services: it gets a service token
+// with a `private_key_jwt` client assertion (LTI Security Framework 1.0 §4.1, RFC 7523), reads the
+// offering's roster through the membership URL a launch advertised (NRPS 2.0 §2, §3.6.1), and calls
+// the Assignment and Grade Services (AGS 2.0 §3.2–3.4). Everything but those calls is in memory.
 import { createLocalJWKSet, jwtVerify, type JWK, type JWTPayload } from "jose";
 import { LTI_CLAIMS, LTI_MEDIA_TYPES, LTI_VERSION } from "./claims.ts";
 import { PlatformKeyRing } from "./keys.ts";
@@ -25,10 +26,12 @@ export interface FakeLtiToolOptions {
   readonly name?: string;
   /** Milliseconds since the epoch, for verifying `exp` and `iat`. */
   readonly now?: () => number;
-  /** The platform's OAuth 2 token endpoint, which service tokens come from. */
+  /** The platform's OAuth 2 token endpoint, the only `aud` of the tool's client assertions. */
   readonly platformTokenUrl?: string;
-  /** How the tool's server reaches the platform's token endpoint and services. */
-  readonly fetch?: (url: string, init?: RequestInit) => Promise<Response>;
+  /** The fetch the tool's server calls the platform's token endpoint and services with. */
+  readonly fetch?: (input: string, init?: RequestInit) => Promise<Response>;
+  /** The keys the tool signs and publishes. Defaults to a freshly generated one. */
+  readonly keys?: PlatformKeyRing;
 }
 
 /** The AGS endpoint claim of a launch (AGS 2.0 §3.1). */
@@ -67,6 +70,29 @@ export interface FakeLtiToolLaunch {
   readonly roles: readonly string[];
   /** The launch's AGS endpoint claim, if it carried one. */
   readonly ags: FakeLtiToolAgsEndpoint | undefined;
+  /** The membership URL the launch advertised (its NRPS claim), if any. */
+  readonly membershipsUrl: string | undefined;
+}
+
+/** One member of a roster the tool read: what the platform sent, unchanged. */
+export interface FakeLtiToolMember {
+  readonly user_id: string;
+  readonly roles: readonly string[];
+  readonly status?: string;
+  readonly name?: string;
+  readonly given_name?: string;
+  readonly family_name?: string;
+  readonly email?: string;
+  readonly [field: string]: unknown;
+}
+
+/** One page of a roster the tool read, and where the next page is. */
+export interface FakeLtiToolRoster {
+  readonly id: string;
+  readonly context: { readonly id: string; readonly label?: string; readonly title?: string };
+  readonly members: readonly FakeLtiToolMember[];
+  /** The `Link: rel="next"` URL, if the platform sent one. */
+  readonly next: string | undefined;
 }
 
 /**
@@ -91,9 +117,9 @@ export class FakeLtiTool {
     this.keys = keys;
   }
 
-  /** A tool fake with `keys`, or a freshly generated signing key. */
-  static async create(options: FakeLtiToolOptions, keys?: PlatformKeyRing): Promise<FakeLtiTool> {
-    return new FakeLtiTool(options, keys ?? await PlatformKeyRing.create());
+  /** A tool fake, with a freshly generated signing key unless `options.keys` is given. */
+  static async create(options: FakeLtiToolOptions): Promise<FakeLtiTool> {
+    return new FakeLtiTool(options, options.keys ?? await PlatformKeyRing.create());
   }
 
   /** The URL that receives third-party-initiated logins. */
@@ -192,40 +218,70 @@ export class FakeLtiTool {
     const context = claims[LTI_CLAIMS.context] as { id?: unknown } | undefined;
     const roles = claims[LTI_CLAIMS.roles];
     const ags = claims[LTI_CLAIMS.agsEndpoint] as FakeLtiToolAgsEndpoint | undefined;
+    const nrps = claims[LTI_CLAIMS.nrpsService] as { context_memberships_url?: unknown; service_versions?: unknown } | undefined;
+    if (nrps !== undefined && (typeof nrps.context_memberships_url !== "string" || !Array.isArray(nrps.service_versions) || !nrps.service_versions.includes("2.0"))) {
+      throw new FakeLtiToolError("malformed names and role service claim");
+    }
     const launch: FakeLtiToolLaunch = {
       claims,
       deploymentId,
       contextId: typeof context?.id === "string" ? context.id : undefined,
       roles: Array.isArray(roles) ? roles.filter((role): role is string => typeof role === "string") : [],
       ags,
+      membershipsUrl: nrps?.context_memberships_url as string | undefined,
     };
     this.launches.push(launch);
     return launch;
   }
 
   /**
-   * Gets an access token for `scopes` from the platform's token endpoint: the client credentials
-   * grant, authenticated by a fresh, single-use client assertion signed with the tool's key. Throws
-   * if the platform refuses.
+   * A client assertion (RFC 7523 §3) for the platform's token endpoint: signed with the tool's
+   * key, `iss` and `sub` its client ID, `aud` the token endpoint, a fresh `jti`, valid one minute.
+   */
+  async clientAssertion(): Promise<string> {
+    if (this.clientId === undefined || this.#options.platformTokenUrl === undefined) throw new FakeLtiToolError("no client ID or token endpoint");
+    const now = Math.floor((this.#options.now?.() ?? Date.now()) / 1000);
+    return this.keys.sign({ iss: this.clientId, sub: this.clientId, aud: this.#options.platformTokenUrl, iat: now, exp: now + 60, jti: crypto.randomUUID() });
+  }
+
+  /**
+   * Gets a service token for `scopes` with the client credentials grant and a fresh client
+   * assertion. A refusal throws, its reason the OAuth error.
    */
   async serviceToken(scopes: readonly string[]): Promise<string> {
-    const tokenUrl = this.#options.platformTokenUrl;
-    if (tokenUrl === undefined || this.clientId === undefined) throw new FakeLtiToolError("no token endpoint or client ID");
-    const now = Math.floor((this.#options.now?.() ?? Date.now()) / 1000);
-    const assertion = await this.keys.sign({ iss: this.clientId, sub: this.clientId, aud: tokenUrl, iat: now, exp: now + 60, jti: crypto.randomUUID() });
-    const response = await this.#fetch(tokenUrl, {
+    const response = await this.#fetch(this.#options.platformTokenUrl!, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "client_credentials",
         client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-        client_assertion: assertion,
+        client_assertion: await this.clientAssertion(),
         scope: scopes.join(" "),
       }).toString(),
     });
     const body = (await response.json()) as { access_token?: unknown; error?: unknown };
-    if (!response.ok || typeof body.access_token !== "string") throw new FakeLtiToolError(`token refused (${response.status} ${String(body.error)})`);
+    if (response.status !== 200 || typeof body.access_token !== "string") throw new FakeLtiToolError(`token refused (${String(body.error)})`);
     return body.access_token;
+  }
+
+  /**
+   * Reads one page of a roster from `membershipsUrl` with `accessToken` (NRPS 2.0 §2). A refusal
+   * throws, its reason the status and the bearer error, if the platform sent one.
+   */
+  async memberships(membershipsUrl: string, accessToken: string): Promise<FakeLtiToolRoster> {
+    const response = await this.#fetch(membershipsUrl, {
+      headers: { authorization: `Bearer ${accessToken}`, accept: LTI_MEDIA_TYPES.membershipContainer },
+    });
+    if (response.status !== 200) {
+      const challenge = /error="([^"]+)"/.exec(response.headers.get("www-authenticate") ?? "")?.[1];
+      await response.body?.cancel();
+      throw new FakeLtiToolError(`memberships refused (${response.status}${challenge === undefined ? "" : ` ${challenge}`})`);
+    }
+    if (response.headers.get("content-type") !== LTI_MEDIA_TYPES.membershipContainer) throw new FakeLtiToolError("not a membership container");
+    const body = (await response.json()) as Omit<FakeLtiToolRoster, "next">;
+    if (typeof body.context?.id !== "string" || !Array.isArray(body.members)) throw new FakeLtiToolError("malformed membership container");
+    const next = /<([^>]+)>;\s*rel="next"/.exec(response.headers.get("link") ?? "")?.[1];
+    return { ...body, next };
   }
 
   /** Lists a line items container (AGS 2.0 §3.2.4). */
@@ -260,9 +316,8 @@ export class FakeLtiTool {
     });
   }
 
-  #fetch(url: string, init: RequestInit): Promise<Response> {
-    if (this.#options.fetch === undefined) throw new FakeLtiToolError("no fetch for the platform's services");
-    return this.#options.fetch(url, init);
+  #fetch(input: string, init?: RequestInit): Promise<Response> {
+    return (this.#options.fetch ?? ((url, options) => fetch(url, options)))(input, init);
   }
 }
 

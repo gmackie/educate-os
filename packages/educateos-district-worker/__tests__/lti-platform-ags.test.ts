@@ -70,7 +70,8 @@ async function deployedTool(services: Record<string, boolean> = { agsLineItems: 
     platformJwks: async () => (await fetchWorker(`${LTI_TOOL_ORIGIN}/lti/platform/jwks`)).json() as Promise<{ keys: JWK[] }>,
     platformTokenUrl: `${LTI_TOOL_ORIGIN}/lti/platform/token`,
     fetch: fetchWorker,
-  }, keys);
+    keys,
+  });
   const registered = await api(ADMIN, "POST", "/api/lti/platform-tools", tool.registration());
   expect(registered.status).toBe(200);
   tool.clientId = registered.body.id as string;

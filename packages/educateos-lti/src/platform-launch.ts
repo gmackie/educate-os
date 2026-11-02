@@ -25,6 +25,17 @@ export type PlatformLaunchRole = (typeof PLATFORM_LAUNCH_ROLE)[keyof typeof PLAT
 /** The context type of an offering (LTI Core 1.3 Appendix A.1). */
 export const COURSE_OFFERING_CONTEXT_TYPE = `${LIS}course#CourseOffering`;
 
+/** The NRPS versions the platform serves, as its launch claim lists them. */
+export const PLATFORM_NRPS_SERVICE_VERSIONS = ["2.0"] as const;
+
+/**
+ * The launch claim that tells a tool where the offering's roster is (NRPS 2.0 §3.6.1): the
+ * membership URL of the launch's deployment and offering (`platformMembershipsPath`).
+ */
+export function platformNamesRoleServiceClaim(membershipsUrl: string): Record<string, unknown> {
+  return { [LTI_CLAIM.nrpsService]: { context_memberships_url: membershipsUrl, service_versions: [...PLATFORM_NRPS_SERVICE_VERSIONS] } };
+}
+
 /** How long a signed platform id_token is valid, in seconds. */
 export const PLATFORM_ID_TOKEN_TTL_SECONDS = 300;
 
@@ -93,15 +104,20 @@ export interface PlatformLaunchContext {
   readonly offeringLabel: string;
   readonly person: { readonly displayName: string; readonly email?: string | undefined };
   readonly privacy: PlatformToolPrivacy;
+  /**
+   * The offering's membership service URL, when the deployment allows NRPS: advertised to the
+   * tool with the NRPS claim.
+   */
+  readonly membershipsUrl?: string;
 }
 
 /**
  * The claims of a resource link launch (LTI Core 1.3 §5.3) for `ticket`, answering `request`. The
  * subject is the person's opaque per-tool subject and the context is the offering alone; the
- * person's name and email are added only when the deployment's privacy settings allow each.
+ * person's name and email are added only when the deployment's privacy settings allow each, and the
+ * membership service only when the deployment allows NRPS.
  */
 export function platformLaunchClaims(ticket: PlatformLaunchTicket, request: PlatformAuthRequest, context: PlatformLaunchContext): Record<string, unknown> {
-  const [givenName, ...rest] = context.person.displayName.split(" ");
   return {
     sub: ticket.subject,
     azp: ticket.toolId,
@@ -113,10 +129,23 @@ export function platformLaunchClaims(ticket: PlatformLaunchTicket, request: Plat
     [LTI_CLAIM.resourceLink]: { id: ticket.resourceLinkId },
     [LTI_CLAIM.roles]: ticket.roles,
     [LTI_CLAIM.context]: { id: ticket.offeringId, label: context.offeringLabel, title: context.offeringTitle, type: [COURSE_OFFERING_CONTEXT_TYPE] },
-    ...context.privacy.name
-      ? { name: context.person.displayName, given_name: givenName, ...rest.length > 0 ? { family_name: rest.join(" ") } : {} }
-      : {},
-    ...context.privacy.email && context.person.email !== undefined ? { email: context.person.email } : {},
+    ...platformPersonClaims(context.person, context.privacy),
+    ...context.membershipsUrl === undefined ? {} : platformNamesRoleServiceClaim(context.membershipsUrl),
+  };
+}
+
+/**
+ * What a launch, or an NRPS member, says about a person beyond their subject and role: their name
+ * only if the deployment allows names, their email only if it allows emails.
+ */
+export function platformPersonClaims(
+  person: { readonly displayName: string; readonly email?: string | undefined },
+  privacy: PlatformToolPrivacy,
+): { name?: string; given_name?: string; family_name?: string; email?: string } {
+  const [givenName = "", ...rest] = person.displayName.split(" ");
+  return {
+    ...privacy.name ? { name: person.displayName, given_name: givenName, ...rest.length > 0 ? { family_name: rest.join(" ") } : {} } : {},
+    ...privacy.email && person.email !== undefined ? { email: person.email } : {},
   };
 }
 

@@ -192,6 +192,9 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   teacher imports and approves for the classes they teach; a curriculum admin works at any scope
  *   their grant covers, reviews items a teacher may not approve alone, and alone widens rights
  *   (SCHO-87, from C03's local rules).
+ * - **Third-party LTI tools** (SCHO-179) act only on the `lti-service` channel, as themselves:
+ *   a tool lists an offering's enrollments only through an active deployment to that offering that
+ *   allows the roster service (NRPS). Nothing else in the table reaches that channel.
  * - **Guardians** read, and only read, their child's offerings, course assignments, released
  *   feedback, official grades and announcements, through a confirmed guardian relationship that is
  *   in force (ADR-0012). Their two rules come first, so no other rule (a district-wide reference
@@ -243,6 +246,29 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     id: "guard.guardian.child-records-only",
     description: "A guardian may do nothing else: no writes, no personal spaces or conversations, no submissions, no other children, no tools or directory.",
     when: { principalKinds: ["guardian"] },
+    effect: { effect: "deny", reason: "no-matching-grant" },
+  },
+
+  // Third-party LTI tools (SCHO-179). A tool is never a person: on the `lti-service` channel its
+  // subject is the tool itself, and its only authority is an active deployment to the offering
+  // that allows the service the resource needs. The guard keeps every other rule off the channel.
+  {
+    id: "lti.tool.roster",
+    description: "A registered LTI tool lists an offering's enrollments (NRPS) through an active deployment to that offering that allows the roster service; each read is audited with the deployment.",
+    when: {
+      principalKinds: ["service"],
+      channels: ["lti-service"],
+      kinds: ["enrollment"],
+      classifications: ["course"],
+      relationships: ["lti-deployment"],
+      actions: ["list"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "guard.lti-service.tool-rules-only",
+    description: "A call on the LTI service channel may do only what the LTI tool rules above allow.",
+    when: { channels: ["lti-service"] },
     effect: { effect: "deny", reason: "no-matching-grant" },
   },
 

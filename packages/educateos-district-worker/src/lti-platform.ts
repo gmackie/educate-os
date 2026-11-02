@@ -7,7 +7,8 @@
 // `POST /lti/platform/token`, which tools call from their own servers (the token endpoint
 // authenticates a tool by a client assertion signed with its registered keys), and
 // `/lti/platform/auth`, the OIDC authorization endpoint a tool sends the browser back to during a
-// launch. The Assignment and Grade Services a tool calls with a token are under `/lti/platform/ags/`
+// launch, and the LTI Advantage services tools call with a service token: the membership service
+// (NRPS, lti-platform-nrps.ts) and the Assignment and Grade Services under `/lti/platform/ags/`
 // (lti-platform-ags.ts). Its `/api/lti/` routes, behind Access and decided
 // by the policy engine, rotate the platform's keys, register, deploy and revoke third-party tools,
 // start a launch for a signed-in person in an offering they are enrolled in, and let a teacher
@@ -32,6 +33,7 @@ import {
 import type { PolicyDecider } from "@educateos/policy";
 import { createLogger } from "@gadgets/observability/logger";
 import { startPlatformAgs } from "./lti-platform-ags.ts";
+import { startPlatformNrps } from "./lti-platform-nrps.ts";
 
 /** What the platform logs beside each event: never a token, ticket, cookie or body. */
 interface PlatformLogFields {
@@ -126,6 +128,14 @@ export function startDistrictLtiPlatform(options: DistrictLtiPlatformOptions): D
     agsUrl: `${options.origin}${LTI_PLATFORM_PREFIX}ags`,
     verify: (request) => tokens.verifyRequest(request),
   });
+  const nrps = startPlatformNrps({
+    districtId,
+    authorizer,
+    stores,
+    directory: options.directory,
+    baseUrl: `${options.origin}${LTI_PLATFORM_PREFIX}`,
+    verifyServiceRequest: (request) => tokens.verifyRequest(request),
+  });
   const launches = new LtiPlatformLaunchService({
     districtId,
     issuer: options.origin,
@@ -135,6 +145,7 @@ export function startDistrictLtiPlatform(options: DistrictLtiPlatformOptions): D
     keys: stores.platformKeys,
     tickets: stores.platformLaunchTickets,
     subjects: stores.platformSubjects,
+    membershipsUrl: nrps.membershipsUrl,
     serviceClaims: (launch) => ags.service.launchClaims(launch),
   });
 
@@ -187,7 +198,7 @@ export function startDistrictLtiPlatform(options: DistrictLtiPlatformOptions): D
       }
       if (path === "auth" && (request.method === "GET" || request.method === "POST")) return authorizeLaunch(request);
       if (path.startsWith("ags/")) return ags.serve(request, path.slice("ags/".length));
-      return undefined;
+      return nrps.serve(request, path);
     },
     verifyServiceRequest: (request) => tokens.verifyRequest(request),
     adminRoutes: [
