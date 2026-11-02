@@ -327,8 +327,8 @@ offering whose route is a Clever route. `CleverLmsConnectGradeSink` publishes th
 When EducateOS is the LTI **Platform**, hosting third-party tools (RFC 0002 §5 and §7), a district
 administrator registers each tool and deploys it to specific offerings. The schemas are in
 `@educateos/lti` (`platform-tools.ts`); the store and the administrator's service are in
-`@educateos/lti-district` (`platform-tools.ts`). Harness-tested only; no launch uses them yet. The
-district Worker serves them to administrators under `/api/lti/` when the platform is on (see
+`@educateos/lti-district` (`platform-tools.ts`). Harness-tested only; no real tool has used them.
+The district Worker serves them to administrators under `/api/lti/` when the platform is on (see
 [Platform tools in the district Worker](#platform-tools-in-the-district-worker)).
 
 - **A tool** (`PlatformTool`) is registered with its name, OIDC login initiation URL, redirect URIs,
@@ -360,7 +360,8 @@ district's is refused as `validation-failed`.
 A deployed tool is launched from EducateOS in two halves (`platform-launch.ts` in both packages),
 following the OIDC third-party-initiated login of LTI Core 1.3 §5.1.1 and the LTI Security
 Framework 1.0 §5.1.1. Harness-tested only, against the tool fake (`FakeLtiTool` in
-`@educateos/provider-fakes`); the district Worker does not serve it yet.
+`@educateos/provider-fakes`); the district Worker serves it when the platform is on (see
+[Platform launches in the district Worker](#platform-launches-in-the-district-worker)).
 
 1. **Start.** `LtiPlatformLaunchService.start` takes a signed-in caller, a deployment and an
    offering. The policy engine must allow the caller to `read` the offering, the caller must hold an
@@ -549,3 +550,38 @@ and revoking a tool revoking its deployments.
 | `POST /api/lti/platform-deployments` | `update` district | Deploys `{ toolId, offerings, services?, privacy? }`; every service and personal field is off unless given. |
 | `POST /api/lti/platform-deployments/:id` | `update` district | Changes any of `{ offerings, services, privacy }`; a revoked deployment cannot change (409). |
 | `POST /api/lti/platform-deployments/:id/revoke` | `update` district | Revokes one deployment. |
+
+## Platform launches in the district Worker
+
+`createLtiDistrictStores` includes the launch tickets (`platformLaunchTickets`) and the per-tool
+subjects (`platformSubjects`), in the district's Durable Object, and the district Worker serves
+both halves of a launch (`src/lti-platform.ts`), only when the platform is on:
+
+| Path | Sign-in | Does |
+| --- | --- | --- |
+| `POST /api/lti/platform-launches` | Access; `read` on the offering, decided by `LtiPlatformLaunchService.start` | Starts a launch of `{ deploymentId, offeringId }` for the caller. Must be `application/json`. Returns `{ loginUrl, expiresAt }` (`no-store`) and sets the browser-binding cookie; the page sends the browser to `loginUrl`, the tool's login initiation URL. |
+| `GET` or `POST /lti/platform/auth` | None (under the Access-exempt `/lti/`); the cookie and the ticket | The OIDC authorization endpoint. Takes the tool's authentication request as a query or an urlencoded form (a repeated parameter is malformed), calls `authorize` with the cookie, and answers with a page that posts `id_token` and `state` to the matched `redirect_uri`. |
+
+- **The cookie**, `__Secure-educateos-lti-launch`, holds the browser binding: `Path=/lti/platform/;
+  Secure; HttpOnly; SameSite=None`, `Max-Age` five minutes like the ticket. `SameSite=None` because
+  the tool's authentication request arrives cross-site, as a redirect or a form post. A request
+  with no launch cookie, or with two, has no binding. Every answer of `/lti/platform/auth` clears it.
+- **The form page** escapes every value, sends `Cache-Control: no-store`, `Referrer-Policy:
+  no-referrer` and a CSP of `default-src 'none'`, `form-action` the redirect URI's origin only,
+  `base-uri 'none'`, `frame-ancestors 'self'` and a script allowed by a per-response nonce, which
+  submits the form; without scripts the person presses a button.
+- **A refused request** is answered on EducateOS with a page (400 for a malformed request, 403
+  otherwise) and the same headers; nothing is redirected or posted to the tool. The ticket is spent
+  by the first attempt, so a refusal cannot be retried.
+- **Logs** (`educateos.lti.platform`) record starts, answers and refusals with the error code, never
+  a token, ticket, cookie or body.
+
+Workerd tests drive `FakeLtiTool` through the Worker: a student's launch (by redirect) and a
+teacher's (by form post) verified by the tool, with `Learner` and `Instructor`, the offering as
+context, no name or email by default, and the same subject on a later launch; refusals to start for
+a teacher not enrolled in the offering, an offering outside the deployment, an unknown deployment,
+no sign-in and a form-encoded body; and at `/lti/platform/auth`, a missing, wrong or doubled
+cookie, a replayed ticket (by redirect and by form post), a wrong `client_id`, an unregistered
+`redirect_uri` (not echoed in the refusal), a missing nonce, a repeated parameter and a JSON body,
+each refused with the cookie cleared and nothing posted. With `LTI_PLATFORM` unset both paths are
+404.

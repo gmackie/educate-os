@@ -1,4 +1,4 @@
-import { DeepLinkSession, LoginState, RegistrationInvitation, type Clock } from "@educateos/lti";
+import { DeepLinkSession, LoginState, PlatformLaunchTicket, RegistrationInvitation, type Clock } from "@educateos/lti";
 import {
   LTI_COLLECTIONS,
   TableContextServicesStore,
@@ -11,6 +11,7 @@ import {
   type RegistrationTargets,
 } from "./stores.ts";
 import { TableGradeColumnStore } from "./columns.ts";
+import { PLATFORM_LAUNCH_COLLECTIONS, TablePlatformSubjectStore } from "./platform-launch.ts";
 import { TablePlatformToolStore } from "./platform-tools.ts";
 import { PLATFORM_KEYS_COLLECTION, TableToolKeyStore } from "./tool-keys.ts";
 import type { RecordTable } from "./table.ts";
@@ -36,6 +37,10 @@ export interface LtiDistrictStores {
   readonly platformKeys: TableToolKeyStore;
   /** The LTI Platform's registered tools and their deployments (SCHO-179). */
   readonly platformTools: TablePlatformToolStore;
+  /** The LTI Platform's single-use launch tickets (SCHO-179), each a launch's `lti_message_hint`. */
+  readonly platformLaunchTickets: TableSingleUseStore<PlatformLaunchTicket>;
+  /** Each person's opaque subject for each of the LTI Platform's tools (SCHO-179). */
+  readonly platformSubjects: TablePlatformSubjectStore;
 }
 
 /**
@@ -59,5 +64,7 @@ export function createLtiDistrictStores(table: RecordTable, options: { targets: 
     toolKeys: new TableToolKeyStore(table, now),
     platformKeys: new TableToolKeyStore(table, now, PLATFORM_KEYS_COLLECTION),
     platformTools: new TablePlatformToolStore(table),
+    platformLaunchTickets: new TableSingleUseStore(table, PLATFORM_LAUNCH_COLLECTIONS.tickets, PlatformLaunchTicket, now),
+    platformSubjects: new TablePlatformSubjectStore(table),
   };
 }

@@ -96,7 +96,7 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
     targets: directoryRegistrationTargets({ districtId, directory, activities, reservedIssuers: options.reservedIssuers }),
   });
 
-  const platform = options.platform === true ? startDistrictLtiPlatform({ districtId, authorizer: app.engine, stores: lti, directory, jsonBody }) : undefined;
+  const platform = options.platform === true ? startDistrictLtiPlatform({ districtId, issuer: toolOrigin, authorizer: app.engine, stores: lti, directory, jsonBody }) : undefined;
 
   // The broker and the service client read keys synchronously; each request first loads the
   // stored set (an imported copy is cached until the stored key IDs change), so a rotation made
@@ -280,7 +280,8 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
         // elsewhere cannot use an administrator's Access session to rotate keys or reject a platform.
         if (request.method === "POST" && !isJson(request)) throw new EducateOsError("validation-failed", "Send the request as application/json.");
         const caller = await callerOf(request);
-        return Response.json(await matched.route.run(caller, request, matched.params), { headers: { "cache-control": "no-store" } });
+        const result = await matched.route.run(caller, request, matched.params);
+        return result instanceof Response ? result : Response.json(result, { headers: { "cache-control": "no-store" } });
       } catch (error) {
         return errorResponse(error);
       }
