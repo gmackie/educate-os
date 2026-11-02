@@ -154,7 +154,7 @@ export async function planInstall(api: CloudflareApi, desired: DesiredState, sec
         }
         outputs.set(resource.key, { id: found.id });
         const same = found.decision === resource.spec.decision && sameRules(found.include, resource.spec.include);
-        step(same ? "noop" : "update", same ? "policy matches" : resource.spec.decision === "allow" ? "admitted email domains differ" : "policy differs");
+        step(same ? "noop" : "update", same ? "policy matches" : resource.spec.decision === "allow" ? "admitted email domains or people differ" : "policy differs");
         break;
       }
       case "access_application": {

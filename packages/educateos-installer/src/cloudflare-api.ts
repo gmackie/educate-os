@@ -194,13 +194,18 @@ export interface EmailDomainRule {
   email_domain: { domain: string };
 }
 
+/** An `include` rule admitting one user by their verified email. */
+export interface EmailRule {
+  email: { email: string };
+}
+
 /** An `include` rule matching every request, for a bypass policy. */
 export interface EveryoneRule {
   everyone: Record<string, never>;
 }
 
 /** An `include` rule the installer writes or reads back. */
-export type AccessRule = EmailDomainRule | EveryoneRule;
+export type AccessRule = EmailDomainRule | EmailRule | EveryoneRule;
 
 /** A reusable Access policy. */
 export interface AccessPolicy {
@@ -212,11 +217,12 @@ export interface AccessPolicy {
 }
 
 /**
- * What the installer writes to an Access policy: `allow` for the district's email domains, or
+ * What the installer writes to an Access policy: `allow` for the district's email domains and listed
+ * people, or
  * `bypass` for everyone on the paths that check their own credential (ADR-0014).
  */
 export type AccessPolicySpec =
-  | { name: string; decision: "allow"; include: EmailDomainRule[] }
+  | { name: string; decision: "allow"; include: (EmailDomainRule | EmailRule)[] }
   | { name: string; decision: "bypass"; include: EveryoneRule[] };
 
 /** A self-hosted Access application. */
