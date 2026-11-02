@@ -5,6 +5,7 @@ import {
   type Caller,
   type DistrictDirectorySnapshot,
   type DistrictId,
+  type OfferingId,
   type PrincipalId,
 } from "@educateos/contracts";
 import {
@@ -97,6 +98,11 @@ export interface LtiPlatformLaunchServiceOptions {
   /** Atomic single-use storage for launch tickets ({@link PLATFORM_LAUNCH_COLLECTIONS}). */
   readonly tickets: SingleUseStore<PlatformLaunchTicket>;
   readonly subjects: TablePlatformSubjectStore;
+  /**
+   * The membership service URL of a deployment and offering. A launch through a deployment that
+   * allows NRPS advertises it; without it, no launch does.
+   */
+  readonly membershipsUrl?: (deploymentId: PlatformDeploymentId, offeringId: OfferingId) => string;
   readonly now?: Clock;
 }
 
@@ -219,6 +225,9 @@ export class LtiPlatformLaunchService {
       offeringLabel: course.title,
       person: { displayName: person.displayName, email: person.email },
       privacy: deployment.privacy,
+      ...deployment.services.nrps && this.#options.membershipsUrl !== undefined
+        ? { membershipsUrl: this.#options.membershipsUrl(deployment.id, ticket.offeringId) }
+        : {},
     });
     const idToken = await signPlatformIdToken(await this.#options.keys.keySet(), claims, {
       issuer: this.#options.issuer,

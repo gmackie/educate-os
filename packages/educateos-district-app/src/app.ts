@@ -19,7 +19,7 @@ import {
 } from "@educateos/contracts";
 import { confirmWorkshopUserLink, createDirectoryPrincipalResolver, type PrincipalResolver, type ResolvedPrincipal } from "@educateos/identity";
 import { ACADEMIC_OPERATIONS, AcademicDirectory, assertSyncWritable, DIRECTORY_ENTITY_KINDS, invokeOperation, isDistrictAdmin, type AcademicOperationName } from "@educateos/academics";
-import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule } from "@educateos/policy";
+import { directoryPolicyInformation, PolicyEngine, subjectFactsFrom, type PolicyDecider, type PolicyRule, type RelationshipSource, type SubjectSource } from "@educateos/policy";
 import { RetentionPolicy, transitionPrincipal, WorkspaceDirectory } from "@educateos/workspaces";
 import { LearningArtifacts } from "@educateos/learning-artifacts";
 import { AssessmentService, GradebookService, AssignmentId } from "@educateos/assessment";
@@ -157,6 +157,12 @@ export interface DistrictAppOptions {
   onUnreadableConfigRevision?: (revisionId: string) => void;
   /** The policy rule table. Defaults to `DISTRICT_APP_RULES`. */
   rules?: readonly PolicyRule[];
+  /**
+   * Policy facts the district's other services keep: subjects that are not directory principals
+   * and the relationships their records establish, such as a registered LTI tool and its
+   * deployments (SCHO-179). The engine reads them beside the directory's.
+   */
+  policySources?: { subjects?: readonly SubjectSource[]; relationships?: readonly RelationshipSource[] };
   /** The clock. Defaults to the system clock. */
   now?: () => Date;
   /**
@@ -356,7 +362,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const registry = options.registry ?? SHIPPED_REGISTRY;
   const policySource = configPolicySource(stores.config, options.defaultPolicy ?? DEFAULT_POLICY_FLOOR, options.onUnreadableConfigRevision);
   const information = directoryPolicyInformation(stores.directory, policySource, {
-    relationships: [guardianRelationships(stores.guardianRelationships, stores.directory, now)],
+    relationships: [guardianRelationships(stores.guardianRelationships, stores.directory, now), ...options.policySources?.relationships ?? []],
+    subjects: options.policySources?.subjects ?? [],
     delegations: stores.delegations,
     now,
   });

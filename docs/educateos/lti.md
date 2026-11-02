@@ -589,13 +589,13 @@ each refused with the cookie cleared and nothing posted. With `LTI_PLATFORM` uns
 
 ## Service tokens
 
-Tools reach the platform's LTI Advantage services (NRPS and AGS, in later slices) with OAuth 2
+Tools reach the platform's LTI Advantage services ([NRPS](#names-and-role-provisioning-nrps); AGS in a later slice) with OAuth 2
 access tokens from `POST /lti/platform/token`: the client credentials grant, with the tool
 authenticated by a `private_key_jwt` client assertion (RFC 7523, LTI Security Framework §4.1).
 `PlatformTokenEndpoint` (`@educateos/lti`, `platform-service-tokens.ts`) implements it, over
 `TablePlatformServiceTokenStore` (`@educateos/lti-district`) in the district's Durable Object. The
 endpoint is public, exempt from Access as all of `/lti/*` is, and served only when the platform is
-on. Harness-tested only; no service accepts its tokens yet, and no real tool has called it.
+on. Harness-tested only; no real tool has called it.
 
 An assertion is accepted only if:
 
@@ -648,3 +648,82 @@ would. Workerd tests in `packages/educateos-lti-district` cover 50 concurrent re
 `jti`, its record across a restart, and a token verifying across a restart until its tool is
 revoked or it expires; the district Worker's test covers the endpoint without an Access session,
 replay refusal, and verification across a restart until the tool is revoked.
+
+## Names and Role Provisioning (NRPS)
+
+A deployed tool reads the roster of an offering it is deployed to through the platform's Names and
+Role Provisioning Service (NRPS 2.0). The wire parts are in `@educateos/lti` (`platform-nrps.ts`),
+the decision and the roster in `@educateos/lti-district` (`LtiPlatformNrpsService`,
+`platform-nrps.ts`), and the route in the district Worker (`src/lti-platform-nrps.ts`), served only
+when the platform is on. Harness-tested only, with `FakeLtiTool`; no real tool has called it, and
+no conformance is claimed.
+
+**Advertised by the launch.** A launch through a deployment that allows `nrps` carries the
+`https://purl.imsglobal.org/spec/lti-nrps/claim/namesroleservice` claim, with `service_versions:
+["2.0"]` and `context_memberships_url`
+`<LTI_TOOL_ORIGIN>/lti/platform/nrps/<deploymentId>/<offeringId>/memberships`: one URL per
+deployment and offering, and nothing else reaches the same roster. A deployment without `nrps`
+advertises nothing, and its tool cannot get the scope (`invalid_scope` at the token endpoint).
+
+**Who may read it.** `GET` on that URL, with `Authorization: Bearer` and a service token:
+
+1. The token must verify (`verifyServiceRequest`): unknown, expired, a revoked tool, or no scope its
+   deployments still allow is `401` with `WWW-Authenticate: Bearer error="invalid_token"`.
+2. It must carry `contextmembership.readonly`, or it is `403` with `Bearer
+   error="insufficient_scope", scope="…"`.
+3. The URL's deployment must be one of the token's tool's active deployments, include the URL's
+   offering, and allow `nrps` (`deploymentAllows`). Then the policy engine decides, on the
+   `lti-service` channel, with the tool as the subject: `list` on the offering's `enrollment`
+   resources (`course`). Anything else, such as another offering, another tool's deployment, a
+   deployment without `nrps` or a revoked one, is a plain `403 { "error": "forbidden" }`.
+
+**The tool as a policy subject.** A tool is never a person. It is decided as the principal
+`platformToolPrincipalId(toolId)` (`prn_lti-tool-<hex of the client ID>`), which no directory
+principal can have. The district passes `platformToolPolicySources(store)` to the application's
+`policySources`, so the engine reads, beside the directory:
+
+- a **subject source** (`SubjectSource`, `@educateos/policy`), asked only for IDs the directory does
+  not hold: the tool as a `service` subject, active while the tool is, and never with a role
+  (`directoryPolicyInformation` drops any role a source returns);
+- a **relationship source**: `lti-deployment`, held to an offering's enrollments by every active
+  deployment of the tool there that allows `nrps`, recorded as the decision's `grantId`.
+
+Two rules use them, after the guardian rules: `lti.tool.roster` allows a `service` subject on the
+`lti-service` channel to `list` `enrollment` (`course`) through `lti-deployment`, and
+`guard.lti-service.tool-rules-only` denies everything else on that channel, so no other rule (a
+reference read, a person's own grants) can be reached through it. Each read is audited with the
+deployment's ID; the store is re-read on every decision, so a revocation applies to the next call.
+
+**What it returns.** `200`, `Content-Type: application/vnd.ims.lti-nrps.v2.membershipcontainer+json`,
+`Cache-Control: no-store`, and `{ id, context: { id, label, title }, members }`: `id` is the URL read
+(with its query), the context is the offering as in the launch, and the members are the offering's
+active enrollments of active people, each with:
+
+- `user_id`, the person's subject for that tool, the same value as the `sub` of their launches,
+  made on first use if they have not launched yet;
+- `roles`, `Instructor` for a teacher or co-teacher, `Learner` for a student, as in the launch;
+- `status: "Active"`;
+- `name`, `given_name` and `family_name` only if the deployment allows the name, and `email` only if
+  it allows the email and one is on record.
+
+Nothing else: no principal or enrollment ID, no inactive or dropped member, no grade, no other
+offering.
+
+**Query.** `role` filters by an LIS membership role, its full URI or short name (`Learner`,
+`Instructor`); any other role matches nobody. `limit` (1 to 1,000) pages the roster in a stable
+order (by enrollment), with `page` counting from 1, and a `Link: <…>; rel="next"` header while more
+remain. A malformed `limit` or `page`, or a `page` without `limit`, is `400 invalid_request`.
+`since` (membership differences) and the resource link `rlid` query are not implemented.
+
+**Logs** (`educateos.lti.platform`): `lti.platform.nrps.read` with the tool, the deployment and the
+number of members, and `lti.platform.nrps.refused` with the refusal; never a token, a subject, a
+member or a body.
+
+Tests: unit tests for the path, the role filter, the refusals and the launch claim
+(`packages/educateos-lti`); the engine's tool subject and rules (`packages/educateos-policy`); the
+policy sources and the service against the real engine, including another tool's subjects,
+revocation and paging (`packages/educateos-lti-district`); and workerd tests in the district Worker
+driving `FakeLtiTool` through launch, token and memberships, showing the class under the launch's
+`sub` values, with another offering, another tool's deployment, a deployment without `nrps`, a token
+without the scope, missing or unknown tokens and revoked deployments refused, names and emails only
+as allowed, and the route 404 with `LTI_PLATFORM` unset.
