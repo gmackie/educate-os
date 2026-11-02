@@ -22,6 +22,7 @@ import {
   mutations,
   NORTHFIELD,
   replaceModule,
+  ROOT_TRUST,
   SECRETS,
   type TestRelease,
   tokenFor,
@@ -163,6 +164,25 @@ describe("one-origin desired state", () => {
     // The bypass is in place before either hostname serves.
     expect(order.indexOf("access:application:bypass")).toBeLessThan(order.indexOf("domain:public"));
     expect(order.indexOf("access:application:bypass")).toBeLessThan(order.indexOf("domain:managed"));
+  });
+
+  it("admits listed people beside or instead of whole domains, and refuses a policy admitting nobody", async () => {
+    const release = await goldenRelease();
+    const people = ["owner@example.com", "teacher@agents.example"];
+    const { policy } = compile(release, { access: { teamName: "northfield", allowedEmails: people } });
+    expect(policy("access:policy")?.spec).toEqual({
+      name: "educateos-northfield-members", decision: "allow", include: people.map((email) => ({ email: { email } })),
+    });
+    const both = compile(release, { access: { teamName: "northfield", allowedEmailDomains: ["northfield.example"], allowedEmails: [people[0]] } });
+    expect(both.policy("access:policy")?.spec.include).toEqual([{ email_domain: { domain: "northfield.example" } }, { email: { email: people[0] } }]);
+    expect(() => compile(release, { access: { teamName: "northfield" } })).toThrow();
+  });
+
+  it("gives the district the marketplace release keys it verifies listings against, only when configured", async () => {
+    const release = await goldenRelease();
+    expect(binding(compile(release).worker(DISTRICT), "MARKETPLACE_TRUST")).toBeUndefined();
+    const { worker } = compile(release, { marketplaceTrust: ROOT_TRUST });
+    expect(jsonVar(worker(DISTRICT), "MARKETPLACE_TRUST")).toEqual(JSON.parse(JSON.stringify(ROOT_TRUST)));
   });
 
   it("turns AI off: the router serves the not-enabled page linking to the demo, and the manifest says so", async () => {

@@ -76,6 +76,7 @@ const D1QueryWire = z.array(z.object({ results: z.array(z.record(z.string(), z.u
 const OrganizationWire = z.object({ auth_domain: z.string() });
 const IdpWire = z.object({ id: z.string(), name: z.string(), type: z.string() });
 const EmailDomainRuleWire = z.object({ email_domain: z.object({ domain: z.string() }) });
+const EmailRuleWire = z.object({ email: z.object({ email: z.string() }) });
 const EveryoneRuleWire = z.object({ everyone: z.object({}) });
 const PolicyWire = z.object({
   id: z.string(),
@@ -585,6 +586,8 @@ function toPolicy(wire: z.infer<typeof PolicyWire>): AccessPolicy {
   const include = wire.include.flatMap((rule): AccessRule[] => {
     const parsed = EmailDomainRuleWire.safeParse(rule);
     if (parsed.success) return [{ email_domain: { domain: parsed.data.email_domain.domain } }];
+    const email = EmailRuleWire.safeParse(rule);
+    if (email.success) return [{ email: { email: email.data.email.email } }];
     return EveryoneRuleWire.safeParse(rule).success ? [{ everyone: {} }] : [];
   });
   return { id: wire.id, name: wire.name, decision: wire.decision, include };

@@ -523,7 +523,10 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
     spec: {
       name: `${prefix}-members`,
       decision: "allow",
-      include: config.access.allowedEmailDomains.map((domain) => ({ email_domain: { domain } })),
+      include: [
+        ...config.access.allowedEmailDomains.map((domain) => ({ email_domain: { domain } })),
+        ...config.access.allowedEmails.map((email) => ({ email: { email } })),
+      ],
     },
   };
   const hosts = alias ? [hostname, alias] : [hostname];
@@ -730,6 +733,7 @@ export function compileDesiredState(manifest: ReleaseManifest, config: DistrictI
       vars.SCHOOL_MANIFEST = JSON.stringify({ origin: publicBaseUrl, features: { ai: config.ai.enabled } });
       // The router serves /lti/* on the public origin, behind the Access bypass.
       vars.LTI_TOOL_ORIGIN = config.ltiToolOrigin ?? publicBaseUrl;
+      if (config.marketplaceTrust) vars.MARKETPLACE_TRUST = JSON.stringify(config.marketplaceTrust);
       dependsOn.add(accessApplication.key);
     }
     if (isAdmin) {
