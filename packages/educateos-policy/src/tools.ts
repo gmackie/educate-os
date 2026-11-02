@@ -25,7 +25,7 @@ import type { PolicyDecider } from "./engine.ts";
 
 /**
  * The channels a school tool is invoked through. `lti-service` is a third-party LTI tool's service
- * call (SCHO-179), such as an AGS score, made as the administrator who deployed the tool.
+ * call (SCHO-179), such as an AGS score, made as the tool itself (never as a person).
  */
 export type ToolChannel = "mcp-tool" | "agent" | "lti-service";
 

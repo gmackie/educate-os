@@ -20,6 +20,7 @@ import {
   directoryRegistrationTargets,
   InMemoryRecordTable,
   LtiAdminService,
+  platformToolPolicySources,
   type ActivityCatalog,
   type CatalogActivity,
 } from "../src/index.ts";
@@ -129,16 +130,17 @@ export const as = (principalId: PrincipalId): Caller => ({ principal: { principa
 export function createDistrict(directory: DistrictDirectorySnapshot = NORTHFIELD_CANVAS) {
   const clock = new TestClock();
   const academics = InMemoryAcademicStore.seeded(directory);
-  const audit: PolicyAuditEvent[] = [];
-  const engine = new PolicyEngine({
-    information: directoryPolicyInformation(academics, { effectivePolicy: async () => FLOOR }),
-    audit: { record: async (event) => void audit.push(event) },
-  });
   const activities = new FakeActivityCatalog();
   const loadDirectory = async () => (await academics.load()).snapshot;
   const targets = directoryRegistrationTargets({ districtId: NF, directory: loadDirectory, activities });
   const table = new InMemoryRecordTable();
   const stores = createLtiDistrictStores(table, { targets, now: clock.now });
+  const audit: PolicyAuditEvent[] = [];
+  // Registered LTI Platform tools are subjects too, as in the district Worker with the platform on.
+  const engine = new PolicyEngine({
+    information: directoryPolicyInformation(academics, { effectivePolicy: async () => FLOOR }, platformToolPolicySources(stores.platformTools, stores.platformAgs)),
+    audit: { record: async (event) => void audit.push(event) },
+  });
   const assessments = new InMemoryAssessmentRecordStore();
   const platformFetch: { handler: (request: Request) => Promise<Response> } = { handler: async () => new Response(null, { status: 404 }) };
   const dynamicRegistration = new DynamicRegistration({

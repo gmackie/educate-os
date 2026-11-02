@@ -141,6 +141,8 @@ export const COURSE_RESOURCE_KINDS = [
 ] as const satisfies ResourceKind[];
 
 const OFFICIAL_GRADE_WRITES = ["create", "update", "grade"] as const satisfies Action[];
+/** The term states an LTI tool's writes are taken in: not a completed term. */
+const LTI_TOOL_WRITE_TERMS = ["planned", "active", "grading"] as const satisfies TermState[];
 const ADMINS = ["district-admin", "school-admin"] as const satisfies z.infer<typeof SchoolRole>[];
 /** The kinds an appeal grant may name: one student's submitted work and the feedback on it. */
 export const APPEAL_RESOURCE_KINDS = ["submission", "artifact", "feedback"] as const satisfies ResourceKind[];
@@ -174,10 +176,6 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   rubrics, the shared course workspace, official grades). They do not see student-authored work
  *   or any conversation, with one audited exception: an appeal grant (SCHO-56) lets a named
  *   administrator read one named piece of a student's `course` work until it expires.
- * - **Third-party LTI tools** (SCHO-179) call EducateOS's LTI Platform services on the
- *   `lti-service` channel as the administrator who deployed them, so every rule above bounds them
- *   too. That channel alone adds one grant: managing the offering's gradebook columns (AGS line
- *   items). A tool's score is an official-grade write, so it waits for a teacher's approval.
  * - **`personal-private` content is its owner's**, with two exceptions placed above the guard that
  *   protects it. A district admin may list personal workspace *records* for retention, never read
  *   one. And a principal the owner shared an artifact with reads it, but only while the policy
@@ -192,9 +190,12 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   teacher imports and approves for the classes they teach; a curriculum admin works at any scope
  *   their grant covers, reviews items a teacher may not approve alone, and alone widens rights
  *   (SCHO-87, from C03's local rules).
- * - **Third-party LTI tools** (SCHO-179) act only on the `lti-service` channel, as themselves:
- *   a tool lists an offering's enrollments only through an active deployment to that offering that
- *   allows the roster service (NRPS). Nothing else in the table reaches that channel.
+ * - **Third-party LTI tools** (SCHO-179) act only on the `lti-service` channel, as themselves,
+ *   never as the person who deployed them. Each grant needs an active deployment to the offering
+ *   that allows the service the call needs: a tool lists the offering's enrollments (NRPS); manages
+ *   its gradebook columns (AGS line items) and reads their approved results; and sends scores,
+ *   which only ever wait for a teacher's approval (AGS scores). Writes stop when the term is
+ *   completed. Nothing else in the table reaches that channel.
  * - **Guardians** read, and only read, their child's offerings, course assignments, released
  *   feedback, official grades and announcements, through a confirmed guardian relationship that is
  *   in force (ADR-0012). Their two rules come first, so no other rule (a district-wide reference
@@ -264,6 +265,64 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
       actions: ["list"],
     },
     effect: { effect: "allow" },
+  },
+  {
+    id: "lti.tool.line-items",
+    description: "A registered LTI tool lists and reads an offering's gradebook columns (AGS line items) through an active deployment to that offering that allows the line items service; each read is audited with the deployment.",
+    when: {
+      principalKinds: ["service"],
+      channels: ["lti-service"],
+      kinds: ["gradebook"],
+      ownership: ["unowned"],
+      classifications: ["teacher-only"],
+      relationships: ["lti-deployment"],
+      actions: [...READS],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "lti.tool.line-items.write",
+    description: "A registered LTI tool adds, changes and removes an offering's gradebook columns (AGS line items) through an active deployment to that offering that allows the line items service, while the term is not completed; each call is audited with the deployment.",
+    when: {
+      principalKinds: ["service"],
+      channels: ["lti-service"],
+      kinds: ["gradebook"],
+      ownership: ["unowned"],
+      classifications: ["teacher-only"],
+      relationships: ["lti-deployment"],
+      termStates: [...LTI_TOOL_WRITE_TERMS],
+      actions: ["create", "update", "delete"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "lti.tool.results",
+    description: "A registered LTI tool lists a line item's official results (AGS results, approved scores only) through an active deployment to that offering that allows the line items service; each read is audited with the deployment.",
+    when: {
+      principalKinds: ["service"],
+      channels: ["lti-service"],
+      kinds: ["official-grade"],
+      ownership: ["unowned"],
+      classifications: ["course"],
+      relationships: ["lti-deployment"],
+      actions: ["list"],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "lti.tool.score",
+    description: "A registered LTI tool's score for a learner, through an active deployment to the offering that allows the scores service, waits for a teacher's approval while the term is not completed; it never becomes official by itself.",
+    when: {
+      principalKinds: ["service"],
+      channels: ["lti-service"],
+      kinds: ["official-grade"],
+      ownership: ["others"],
+      classifications: ["course"],
+      relationships: ["lti-deployment"],
+      termStates: [...LTI_TOOL_WRITE_TERMS],
+      actions: ["grade"],
+    },
+    effect: { effect: "require-approval", reason: "requires-teacher-review" },
   },
   {
     id: "guard.lti-service.tool-rules-only",
@@ -582,19 +641,6 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
       roles: [...ADMINS],
       classifications: [...STAFF_VISIBLE],
       actions: [...READS],
-    },
-    effect: { effect: "allow" },
-  },
-  {
-    id: "lti-service.line-items",
-    description: "A third-party LTI tool, through a deployment an administrator over the offering gave the AGS line items service, adds, changes and removes the offering's gradebook columns (line items); its scores only ever wait for a teacher's approval (SCHO-179).",
-    when: {
-      kinds: ["gradebook"],
-      ownership: ["unowned"],
-      roles: [...ADMINS],
-      channels: ["lti-service"],
-      classifications: ["teacher-only"],
-      actions: ["create", "update", "delete"],
     },
     effect: { effect: "allow" },
   },

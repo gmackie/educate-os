@@ -1,16 +1,19 @@
 // The district's LTI Platform Assignment and Grade Services in workerd (SCHO-179), end to end over the
 // district's real SQLite Durable Object, with `FakeLtiTool` playing the third-party tool's server:
 // a launch advertises the AGS endpoint, the tool gets a service token with a client assertion,
-// creates a line item and posts scores. A score only ever waits for a teacher of the offering, who
-// approves it (then, and only then, it is a result the tool can read) or declines it. Everyone else,
-// every other offering, tool or learner, a deployment without the service and a revoked one are
-// refused. With `LTI_PLATFORM` unset none of it exists.
+// creates a line item and posts scores. Every call is decided with the tool itself as the subject,
+// through its deployment, so it keeps working when the administrator who deployed it leaves. A score
+// only ever waits for a teacher of the offering, who approves it (then, and only then, it is a
+// result the tool can read) or declines it. Everyone else, every other offering, tool or learner, a
+// deployment without the service and a revoked one are refused. With `LTI_PLATFORM` unset none of it
+// exists.
 
 import { env, evictDurableObject, runInDurableObject, SELF } from "cloudflare:test";
 import { importJWK, SignJWT, type JWK } from "jose";
 import { describe, expect, it } from "vitest";
 import { NORTHFIELD } from "@educateos/fixtures";
 import { FakeLtiTool, LTI_SCOPES, PlatformKeyRing, type FakeLtiToolScore } from "@educateos/provider-fakes";
+import { POLICY_AUDIT_TABLE } from "@educateos/policy/durable-object-audit-sink";
 import { startDistrict } from "../src/district.ts";
 import { ACCESS_AUDIENCE, ACCESS_AUDIENCES, ACCESS_ISSUER, LTI_TOOL_ORIGIN, PLATFORM_TOOL_JWKS_URL, TEST_CONFIG } from "./fixtures.ts";
 
@@ -96,6 +99,20 @@ async function launch(tool: FakeLtiTool, principalId: string, deploymentId: stri
   const fields: Record<string, string> = {};
   for (const [, name, value] of html.matchAll(/<input type="hidden" name="([^"]*)" value="([^"]*)">/g)) fields[name!] = value!;
   return tool.receiveLaunch(fields);
+}
+
+/** Sets a person's status in the district's directory, as a roster sync would. */
+async function setStatus(principalId: string, status: "active" | "inactive") {
+  await runInDurableObject(district(), (_instance, state) => {
+    const row = state.storage.sql.exec<{ record_json: string }>("SELECT record_json FROM academic_principals WHERE id = ?", principalId).one();
+    state.storage.sql.exec("UPDATE academic_principals SET record_json = ? WHERE id = ?", JSON.stringify({ ...JSON.parse(row.record_json), status }), principalId);
+  });
+}
+
+/** The district's policy decisions so far, from its audit table. */
+async function auditEvents(): Promise<{ principalId?: string; channel?: string; ruleId: string; grantId?: string }[]> {
+  return runInDurableObject(district(), (_instance, state) =>
+    state.storage.sql.exec<{ event_json: string }>(`SELECT event_json FROM ${POLICY_AUDIT_TABLE}`).toArray().map((row) => JSON.parse(row.event_json)));
 }
 
 let clock = Date.parse("2026-11-01T10:00:00Z");
@@ -184,9 +201,9 @@ describe("the district's LTI Platform Assignment and Grade Services", () => {
       expect((await api(principal, "GET", "/api/lti/platform-scores")).body.scores).toEqual([]);
       expect((await api(principal, "POST", `/api/lti/platform-scores/${pending.approvalId}/approve`, { digest: pending.digest })).status).toBe(404);
     }
-    // The administrator the tool acts as sees the score as their deployment's request, but cannot approve it.
-    expect((await api(ADMIN, "GET", "/api/lti/platform-scores")).body.scores.map((s: { approvalId: string }) => s.approvalId)).toContain(pending.approvalId);
-    expect((await api(ADMIN, "POST", `/api/lti/platform-scores/${pending.approvalId}/approve`, { digest: pending.digest })).status).toBe(403);
+    // Nor can the administrator who deployed the tool: the tool, not they, requested it.
+    expect((await api(ADMIN, "GET", "/api/lti/platform-scores")).body.scores).toEqual([]);
+    expect((await api(ADMIN, "POST", `/api/lti/platform-scores/${pending.approvalId}/approve`, { digest: pending.digest })).status).toBe(404);
     expect(await results(tool, lineItem, token)).toEqual([]);
 
     // Only the score reviewed is applied.
@@ -205,6 +222,26 @@ describe("the district's LTI Platform Assignment and Grade Services", () => {
     }]);
     // A line item with an official result stays.
     expect((await fetchWorker(lineItem, { method: "DELETE", headers: { authorization: `Bearer ${token}` } })).status).toBe(409);
+  });
+
+  it("decides each call as the tool through its deployment, and keeps working after its administrator leaves", async () => {
+    const { tool, deploymentId, token, lineItem, amara } = await withLineItem();
+    await setStatus(ADMIN, "inactive");
+    try {
+      expect((await tool.listLineItems(lineItem.slice(0, lineItem.lastIndexOf("/")), token)).status).toBe(200);
+      expect((await tool.postScore(lineItem, token, score(amara, 7))).status).toBe(204);
+      const pending = (await api(MORGAN, "GET", "/api/lti/platform-scores")).body.scores.find((s: { lineItem: { id: string } }) => lineItem.endsWith(s.lineItem.id));
+      expect((await api(MORGAN, "POST", `/api/lti/platform-scores/${pending.approvalId}/approve`, { digest: pending.digest })).body).toEqual({ status: "applied" });
+      expect(await results(tool, lineItem, token)).toEqual([expect.objectContaining({ userId: amara, resultScore: 7 })]);
+    } finally {
+      await setStatus(ADMIN, "active");
+    }
+
+    // The district's policy audit shows the tool as the subject and the deployment as the grant.
+    const decisions = (await auditEvents()).filter((event) => event.channel === "lti-service" && event.grantId === deploymentId);
+    expect(new Set(decisions.map((event) => event.principalId))).toEqual(new Set([expect.stringMatching(/^prn_lti-tool-[0-9a-f]+$/)]));
+    expect(new Set(decisions.map((event) => event.ruleId))).toEqual(new Set(["lti.tool.line-items.write", "lti.tool.line-items", "lti.tool.score", "lti.tool.results"]));
+    expect((await auditEvents()).some((event) => event.channel === "lti-service" && event.principalId === ADMIN)).toBe(false);
   });
 
   it("leaves nothing official when the teacher declines a score", async () => {

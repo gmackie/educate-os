@@ -1,15 +1,19 @@
 // The LTI Platform's Assignment and Grade Services (SCHO-179) over the district's record table and
-// real policy engine: a tool's score is only ever an IF-06 approval a teacher of the offering
-// decides, pinned to the line item's revision; an approval applies the score reviewed, at most once,
-// and never over a later official one; a deployment that loses the service, a learner who leaves and
-// a changed line item all stop a queued score. The approval queue's writes are compare-and-set.
+// real policy engine: every call is decided with the tool itself as the subject, through its
+// deployment, never as the administrator who deployed it; a tool's score is only ever an IF-06
+// approval a teacher of the offering decides, pinned to the line item's revision; an approval
+// applies the score reviewed, at most once, and never over a later official one; a deployment that
+// loses the service, a learner who leaves and a changed line item all stop a queued score. The
+// approval queue's writes are compare-and-set.
 import { describe, expect, it } from "vitest";
 import { LTI_SCOPES, type PlatformServiceGrant } from "@educateos/lti";
+import type { AuthorizationRequest, PrincipalId } from "@educateos/contracts";
 import { OPEN_APPROVAL_STATES, type PendingToolAction } from "@educateos/policy";
 import {
   LtiPlatformAgsService,
   LtiPlatformToolService,
   PLATFORM_AGS_SCORE_TOOL,
+  platformToolPrincipalId,
   TablePlatformScoreApprovalStore,
 } from "../src/index.ts";
 import { ADMIN, AMARA, as, BIO, createDistrict, DMITRI, ENG9, MORGAN, NF, rejection, RIVERA, TOOL } from "./setup.ts";
@@ -61,7 +65,20 @@ async function platform() {
   });
   const post = async (principal: typeof AMARA, scoreGiven: number) => ags.postScore(await grant(), deployment.id, BIO, lineItemId, await score(principal, scoreGiven));
   const pending = async () => ags.pendingScores(as(MORGAN));
-  return { district, admin, tool, deployment, ags, grant, lineItemId, created, subject, score, post, pending };
+  const toolPrincipal = platformToolPrincipalId(tool.id);
+  /** Sets a person's status in the directory, as a roster sync would. */
+  const setStatus = async (principalId: PrincipalId, status: "active" | "inactive") => {
+    const { snapshot, version } = await district.academics.load();
+    await district.academics.commit({ ...snapshot, principals: snapshot.principals.map((person) => (person.id === principalId ? { ...person, status } : person)) }, version);
+  };
+  /** The engine's decision for the tool, on the `lti-service` channel, of `action` on `resource` in Biology. */
+  const decide = async (action: AuthorizationRequest["action"], resource: Omit<AuthorizationRequest["resource"], "scope">) => district.engine.decide({
+    subject: { principalId: toolPrincipal, districtId: NF },
+    action,
+    resource: { ...resource, scope: { level: "offering", districtId: NF, schoolId: "sch_nf-high", offeringId: BIO } } as AuthorizationRequest["resource"],
+    context: { channel: "lti-service", termState: "active" },
+  });
+  return { district, admin, tool, deployment, ags, grant, lineItemId, created, subject, score, post, pending, toolPrincipal, setStatus, decide };
 }
 
 describe("LtiPlatformAgsService", () => {
@@ -71,13 +88,15 @@ describe("LtiPlatformAgsService", () => {
     const [queued] = await p.pending();
     expect(queued).toMatchObject({ studentId: AMARA, scoreGiven: 7, offeringId: BIO, toolName: "Quiz Garden" });
     const [action] = await p.district.stores.platformScoreApprovals.list();
-    expect(action).toMatchObject({ tool: PLATFORM_AGS_SCORE_TOOL, channel: "lti-service", needs: "approval", state: "pending", subject: { principalId: ADMIN } });
+    expect(action).toMatchObject({ tool: PLATFORM_AGS_SCORE_TOOL, channel: "lti-service", needs: "approval", state: "pending", subject: { principalId: p.toolPrincipal } });
     expect(action!.target).toMatchObject({ resource: { kind: "official-grade", ownerPrincipalId: AMARA }, version: "1" });
     expect(await p.ags.results(await p.grant(), p.deployment.id, BIO, p.lineItemId, {})).toEqual([]);
 
     expect(await rejection(p.ags.approveScore(as(AMARA), queued!.approvalId, {}))).toBe("not-found");
     expect(await rejection(p.ags.approveScore(as(RIVERA), queued!.approvalId, {}))).toBe("not-found");
-    expect(await rejection(p.ags.approveScore(as(ADMIN), queued!.approvalId, {}))).toBe("forbidden");
+    // The administrator who deployed the tool has no part in its scores: not its requester, nor a teacher.
+    expect(await rejection(p.ags.approveScore(as(ADMIN), queued!.approvalId, {}))).toBe("not-found");
+    expect(await p.ags.pendingScores(as(ADMIN))).toEqual([]);
     // Over an agent or tool channel, even the offering's teacher cannot decide it.
     expect(await rejection(p.ags.approveScore({ ...as(MORGAN), channel: "agent" }, queued!.approvalId, {}))).toBe("not-found");
 
@@ -86,6 +105,61 @@ describe("LtiPlatformAgsService", () => {
     expect(results).toEqual([expect.objectContaining({ userId: await p.subject(AMARA), resultScore: 7, resultMaximum: 10 })]);
     expect(await p.ags.results(await p.grant(), p.deployment.id, BIO, p.lineItemId, { userId: await p.subject(DMITRI) })).toEqual([]);
     expect(await p.district.stores.platformAgs.result(p.lineItemId, AMARA)).toMatchObject({ version: 1, correlationId: action!.correlationId });
+  });
+
+  it("decides every call as the tool through its deployment, audited with both", async () => {
+    const p = await platform();
+    await p.ags.listLineItems(await p.grant(), p.deployment.id, BIO, {});
+    await p.post(AMARA, 7);
+    await p.ags.results(await p.grant(), p.deployment.id, BIO, p.lineItemId, {});
+    const tool = p.district.audit.filter((event) => event.principalId === p.toolPrincipal);
+    expect(tool.map((event) => [event.action, event.ruleId, event.grantId])).toEqual([
+      ["create", "lti.tool.line-items.write", p.deployment.id],
+      ["list", "lti.tool.line-items", p.deployment.id],
+      ["grade", "lti.tool.score", p.deployment.id],
+      ["list", "lti.tool.results", p.deployment.id],
+    ]);
+    expect(tool.every((event) => event.channel === "lti-service")).toBe(true);
+    // No call was decided as the administrator who deployed the tool.
+    expect(p.district.audit.some((event) => event.principalId === ADMIN && event.channel === "lti-service")).toBe(false);
+  });
+
+  it("keeps working after the administrator who deployed it is deactivated", async () => {
+    const p = await platform();
+    await p.setStatus(ADMIN, "inactive");
+    const created = await p.ags.createLineItem(await p.grant(), p.deployment.id, BIO, { label: "Quiz 2", scoreMaximum: 5 });
+    expect(created).toMatchObject({ label: "Quiz 2" });
+    expect(await p.post(AMARA, 9)).toEqual({ queued: true });
+    const [queued] = await p.pending();
+    expect(await p.ags.approveScore(as(MORGAN), queued!.approvalId, { digest: queued!.digest })).toEqual({ status: "applied" });
+    expect(await p.ags.results(await p.grant(), p.deployment.id, BIO, p.lineItemId, {})).toHaveLength(1);
+  });
+
+  it("is refused by the policy itself without the deployment's service, or for anything else on the channel", async () => {
+    const p = await platform();
+    const gradebook = { kind: "gradebook", classification: "teacher-only" } as const;
+    const official = { kind: "official-grade", id: p.lineItemId, classification: "course" } as const;
+    expect((await p.decide("create", gradebook)).ruleId).toBe("lti.tool.line-items.write");
+    expect((await p.decide("grade", { ...official, ownerPrincipalId: AMARA })).decision.effect).toBe("require-approval");
+
+    await p.admin.changeDeployment(as(ADMIN), p.deployment.id, { services: { agsLineItems: true, agsScores: false } });
+    expect(await p.decide("grade", { ...official, ownerPrincipalId: AMARA })).toMatchObject({ decision: { effect: "deny" }, ruleId: "guard.lti-service.tool-rules-only" });
+    expect((await p.decide("list", official)).ruleId).toBe("lti.tool.results");
+    await p.admin.changeDeployment(as(ADMIN), p.deployment.id, { services: { agsLineItems: false, agsScores: true } });
+    for (const [action, resource] of [["create", gradebook], ["list", gradebook], ["update", { ...gradebook, id: p.lineItemId }], ["list", official]] as const) {
+      expect(await p.decide(action, resource)).toMatchObject({ decision: { effect: "deny" }, ruleId: "guard.lti-service.tool-rules-only" });
+    }
+    expect((await p.decide("grade", { ...official, ownerPrincipalId: AMARA })).decision.effect).toBe("require-approval");
+
+    // Nothing else reaches the channel: not an official grade read, a submission, another tool's line item.
+    for (const [action, resource] of [
+      ["read", { ...official, ownerPrincipalId: AMARA }],
+      ["approve", { ...official, ownerPrincipalId: AMARA }],
+      ["list", { kind: "submission", classification: "course" }],
+      ["grade", { ...official, id: "lli_aaaaaaaaaaaaaaaaaaaaaa", ownerPrincipalId: AMARA }],
+    ] as const) {
+      expect(await p.decide(action, resource)).toMatchObject({ decision: { effect: "deny" }, ruleId: "guard.lti-service.tool-rules-only" });
+    }
   });
 
   it("never applies an older score over a later official one", async () => {
@@ -110,7 +184,9 @@ describe("LtiPlatformAgsService", () => {
     await p.post(AMARA, 6);
     await p.admin.changeDeployment(as(ADMIN), p.deployment.id, { services: { agsLineItems: true, agsScores: false } });
     const [revoked] = await p.pending();
-    expect(await rejection(p.ags.approveScore(as(MORGAN), revoked!.approvalId, {}))).toBe("conflict");
+    // The tool's own call, decided again at approval, no longer has the deployment's grant.
+    expect(await rejection(p.ags.approveScore(as(MORGAN), revoked!.approvalId, {}))).toBe("not-found");
+    expect(await p.district.stores.platformScoreApprovals.get(revoked!.approvalId)).toMatchObject({ state: "declined", declineReason: "The change is no longer permitted." });
     expect(await p.district.stores.platformAgs.result(p.lineItemId, AMARA)).toBeUndefined();
   });
 
@@ -152,7 +228,7 @@ const action = (id: string): PendingToolAction => ({
   id,
   tool: PLATFORM_AGS_SCORE_TOOL,
   input: {},
-  subject: { principalId: ADMIN, districtId: NF },
+  subject: { principalId: platformToolPrincipalId("ltt_AbC-_09xyzXYZ012345678"), districtId: NF },
   channel: "lti-service",
   correlationId: "c-1",
   needs: "approval",

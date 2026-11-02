@@ -44,6 +44,7 @@ import {
   type ToolDecisionOutcome,
 } from "@educateos/policy";
 import type { TablePlatformSubjectStore } from "./platform-launch.ts";
+import { platformToolForPrincipal, platformToolPrincipalId } from "./platform-nrps.ts";
 import type { TablePlatformToolStore } from "./platform-tools.ts";
 import { LtiStoredRecordError } from "./stores.ts";
 import { tupleKey, type RecordTable } from "./table.ts";
@@ -281,7 +282,10 @@ export interface PendingPlatformScore {
 /** What {@link LtiPlatformAgsService} is built from. */
 export interface LtiPlatformAgsServiceOptions {
   readonly districtId: DistrictId;
-  /** The district's policy engine (A02): every call is decided by it on the `lti-service` channel. */
+  /**
+   * The district's policy engine (A02), built with `platformToolPolicySources` over these stores:
+   * every call is decided by it with the tool as the subject, on the `lti-service` channel.
+   */
   readonly policy: Authorizer & PolicyDecider;
   /** The district directory, read for offerings, terms, enrollments and people. */
   readonly directory: () => Promise<DistrictDirectorySnapshot>;
@@ -305,7 +309,7 @@ interface AgsContext {
   readonly offeringId: OfferingId;
   readonly scope: Scope;
   readonly termState: TermState | undefined;
-  /** Who the call is decided as: the administrator who last set the deployment. */
+  /** Who the call is decided as: the tool itself (`platformToolPrincipalId`), never a person. */
   readonly subject: VerifiedPrincipal;
 }
 
@@ -318,13 +322,16 @@ const insufficientScope = () => new EducateOsError("forbidden", "The access toke
  *
  * - Line items belong to one deployment and one offering; a tool reaches only those of its own
  *   deployments, in offerings they still name, with the scope the call needs and the service on.
- * - A call is decided by the policy engine on the `lti-service` channel as the administrator who
- *   last set the deployment, so it can do no more than they could, and stops when they leave.
+ * - A call is decided by the policy engine on the `lti-service` channel with the tool itself as the
+ *   subject, whose only authority is the `lti-deployment` relationship its deployment establishes
+ *   for the service the call needs (`lti.tool.line-items`, `lti.tool.results`, `lti.tool.score`).
+ *   No person's authority is lent to it, so it keeps working when the person who deployed it
+ *   leaves, and stops when the tool, the deployment or the service is revoked.
  * - A score never becomes an official result by itself. A fully graded score for an active learner
  *   of the offering is queued as an IF-06 approval (the {@link PLATFORM_AGS_SCORE_TOOL} school tool,
- *   approval policy `approver`), pinned to its line item's revision; only a teacher of the offering,
- *   acting directly, can approve it, and only then is it a result. Results answer approved scores
- *   only, with each learner's per-tool subject.
+ *   approval policy `approver`) with the tool as its requester, pinned to its line item's revision;
+ *   only a teacher of the offering, acting directly, can approve it, and only then is it a result.
+ *   Results answer approved scores only, with each learner's per-tool subject.
  */
 export class LtiPlatformAgsService {
   readonly #options: LtiPlatformAgsServiceOptions;
@@ -548,8 +555,8 @@ export class LtiPlatformAgsService {
       action: "grade",
       effect: "write",
       approval: "approver",
-      // Only a tool's own service call queues a score; no agent or MCP client can.
-      resource: async (input, context) => (context.channel === "lti-service" ? this.#scoreTarget(input) : undefined),
+      // Only the tool's own service call queues a score; no agent, MCP client or other tool can.
+      resource: async (input, context) => (context.channel === "lti-service" ? this.#scoreTarget(input, context.principal.principalId) : undefined),
       recheck: async (input) => {
         const item = await this.#options.store.lineItem(input.lineItemId);
         const tool = item === undefined ? undefined : await this.#options.tools.tool(item.toolId);
@@ -571,10 +578,13 @@ export class LtiPlatformAgsService {
     });
   }
 
-  /** A queued score's target: the learner's official grade for the line item, at its revision. */
-  async #scoreTarget(input: ScoreChange): Promise<{ resource: ResourceRef; termState?: TermState; version: string } | undefined> {
+  /**
+   * A queued score's target: the learner's official grade for the line item, at its revision. Only
+   * the tool that owns the line item, as itself, has one.
+   */
+  async #scoreTarget(input: ScoreChange, requester: string): Promise<{ resource: ResourceRef; termState?: TermState; version: string } | undefined> {
     const item = await this.#options.store.lineItem(input.lineItemId);
-    if (item === undefined) return undefined;
+    if (item === undefined || platformToolForPrincipal(requester) !== item.toolId) return undefined;
     const offering = offeringAt(await this.#options.directory(), this.#options.districtId, item.offeringId);
     if (offering === undefined) return undefined;
     return {
@@ -609,7 +619,7 @@ export class LtiPlatformAgsService {
       offeringId: offeringId.data,
       scope: offering.scope,
       termState: offering.termState,
-      subject: { principalId: deployment.updatedBy, districtId: this.#options.districtId },
+      subject: { principalId: platformToolPrincipalId(grant.tool.id), districtId: this.#options.districtId },
     };
   }
 
