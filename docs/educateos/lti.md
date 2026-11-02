@@ -424,6 +424,8 @@ one SQLite table in the district's Durable Object; `InMemoryRecordTable` is for 
 | `TableRosterSourceStore` | A projection no newer than the last applied is refused. |
 | `TableToolKeyStore` (SCHO-177) | One record holds the whole key set, so a rotation is one write. The first read generates the key; of racing first reads, the key stored first wins, so every isolate signs with the same key. |
 | `TablePlatformServiceTokenStore` (SCHO-179) | A client assertion's `jti` is checked and recorded in one atomic step, after purging expired ones, so of 50 concurrent redemptions one wins; access tokens are kept by digest only, and an expired one never verifies. |
+| `TablePlatformAgsStore` (SCHO-179) | A score's timestamp is compared and recorded in one atomic step; a result is recorded only while its line item exists and no later score is official, and a line item with an official result cannot be removed. |
+| `TablePlatformScoreApprovalStore` (SCHO-179) | The IF-06 `ToolApprovalStore` contract: an open action per idempotency key, and every transition a compare-and-set, so two approvals of one score cannot both apply it. |
 
 A stored record that does not match its schema is an error (`LtiStoredRecordError`), never a
 default. The workerd suite (`__tests__/workerd/`) runs the stores against real Durable Object
@@ -595,7 +597,8 @@ authenticated by a `private_key_jwt` client assertion (RFC 7523, LTI Security Fr
 `PlatformTokenEndpoint` (`@educateos/lti`, `platform-service-tokens.ts`) implements it, over
 `TablePlatformServiceTokenStore` (`@educateos/lti-district`) in the district's Durable Object. The
 endpoint is public, exempt from Access as all of `/lti/*` is, and served only when the platform is
-on. Harness-tested only; no service accepts its tokens yet, and no real tool has called it.
+on. Harness-tested only; the AGS endpoints accept its tokens (see [Assignment and Grade
+Services](#assignment-and-grade-services)), and no real tool has called it.
 
 An assertion is accepted only if:
 
@@ -648,3 +651,90 @@ would. Workerd tests in `packages/educateos-lti-district` cover 50 concurrent re
 `jti`, its record across a restart, and a token verifying across a restart until its tool is
 revoked or it expires; the district Worker's test covers the endpoint without an Access session,
 replay refusal, and verification across a restart until the tool is revoked.
+
+## Assignment and Grade Services
+
+A deployed tool reads and writes the offering's gradebook columns with AGS 2.0 (`platform-ags.ts`
+in `@educateos/lti` for the schemas and the launch claim, in `@educateos/lti-district` for the
+stores and `LtiPlatformAgsService`, and `src/lti-platform-ags.ts` in the district Worker for the
+HTTP surface). Harness-tested only, against `FakeLtiTool`; no real tool has used it, and it claims
+no AGS conformance.
+
+**The launch claim.** When the deployment allows `agsLineItems` or `agsScores`, the id_token carries
+`https://purl.imsglobal.org/spec/lti-ags/claim/endpoint` with only the scopes those services grant,
+`lineitems` (only with `agsLineItems`) set to the container of exactly that deployment and
+offering, and `lineitem` when exactly one line item of that container was created for the launch's
+resource link.
+
+**Endpoints**, under the Access-exempt `/lti/platform/ags/`, each needing a current access token
+from `/lti/platform/token` (`Authorization: Bearer`), answered with `Cache-Control: no-store`:
+
+| Path | Scope | Service | Decided as (`lti-service`) | Does |
+| --- | --- | --- | --- | --- |
+| `GET <deployment>/<offering>/lineitems` | `lineitem` or `lineitem.readonly` | `agsLineItems` | `list` gradebook | The container's line items, filtered by `resource_link_id`, `resource_id` or `tag` (no paging). |
+| `POST <deployment>/<offering>/lineitems` | `lineitem` | `agsLineItems` | `create` gradebook | Creates a line item (`201`). The platform assigns its ID; other members, extensions included, are dropped. |
+| `GET`, `PUT`, `DELETE …/lineitems/<id>` | `lineitem` (or `lineitem.readonly` to read) | `agsLineItems` | `read` / `update` / `delete` gradebook | Reads, replaces (the next revision) or removes it. One with an official result is kept (`409`). |
+| `POST …/lineitems/<id>/scores` | `score` | `agsScores` | `grade` the learner's official grade: `require-approval` | Takes a score (`204`); see below. |
+| `GET …/lineitems/<id>/results` | `result.readonly` | `agsLineItems` | `list` official grades | Approved results only, by `user_id` if given. |
+
+Bodies are JSON of at most 16 KiB, sent as the AGS media type or `application/json`. A deployment
+or offering the token's tool cannot reach (another tool's, another offering, a revoked deployment's
+offering) and a line item of another container are `404`, alike; no current token is `401` with
+`WWW-Authenticate: Bearer error="invalid_token"`; a missing scope, a deployment without the service,
+or a policy refusal is `403` with `error="insufficient_scope"`.
+
+**Who a call is decided as.** A tool is not a person, so the policy engine decides each call on the
+`lti-service` channel as the administrator who last set the deployment (`updatedBy`): the tool can
+do no more than they could, and stops when they leave or lose the role. The default rules add one
+grant for that channel alone, `lti-service.line-items`: managing the offering's gradebook columns.
+Reads come from the administrators' oversight rule. A score is an official-grade write, which
+`grade.official.needs-teacher-review` sends for a teacher's approval.
+
+**Scores wait for a teacher.** `postScore` requires the `userId` to be the per-tool subject of an
+active learner (an active student enrollment of an active person) in the offering, a valid score
+(`scoreGiven` at least 0 with a `scoreMaximum`; AGS activity and grading progress; an ISO
+timestamp), and a timestamp later than every score already received for that learner and line item
+(`409` otherwise, AGS 2.0 §3.4.6). A `FullyGraded` score with a `scoreGiven` is then queued through
+IF-06: it is a call of the school tool `lti_ags_score` (approval policy `approver`) on a
+`SchoolToolRunner`, so it becomes a `PendingToolAction` pinned to the learner's official grade for
+the line item at the line item's revision, with its digest. Any other score only records its
+timestamp. Nothing a tool sends is ever official by itself.
+
+The queue is `TablePlatformScoreApprovalStore` (`lti.platform-score-approval`), the
+`ToolApprovalStore` contract over the LTI record table, kept apart from the district's school-tool
+queue so a runner without this tool can never see or decline a score. A teacher decides it behind
+Access:
+
+| Path | Who | Does |
+| --- | --- | --- |
+| `GET /api/lti/platform-scores` | anyone signed in | The scores waiting for the caller's decision (each re-authorized), with the line item, learner, score, `digest` and expiry. The deploying administrator also sees their deployment's as its requester. |
+| `POST /api/lti/platform-scores/:id/approve` | a teacher of the offering, directly (`approve` official grade, `grade.official.teacher-direct`) | `{ digest? }`: applies the reviewed score as the learner's official result (`applied`, then `already-applied`). Anyone else gets `404` (the requester, `403`). |
+| `POST /api/lti/platform-scores/:id/decline` | the same teacher, or the requester withdrawing it | `{ reason }`: the score never becomes official. |
+
+At approval the runner re-decides the tool's call, resolves the target again and declines it if
+the line item has changed since (another revision) or is gone; the score tool's recheck declines
+it if the deployment no longer allows `agsScores`, the learner left the offering, or a later score
+is already official. An approved score is the learner's official result for the line item
+(`PlatformAgsResult` in `lti.platform-ags-result`, versioned, with the queued call's correlation
+ID). These results are the platform's own record of the tool's column: they do not yet appear in
+the EducateOS gradebook, whose official grades (`OfficialGradeVersion`) belong to a submission,
+and `TableGradeColumnStore` binds a column to an EducateOS assignment for passback the other way.
+
+**Logs** (`educateos.lti.platform`) record line items listed, created, replaced and removed, scores
+queued or recorded as progress, results read (with a count), decisions, and refusals with their
+error code; never a token, a score, a grade or a body.
+
+Tests: unit tests in `packages/educateos-lti-district` (over the real policy engine) cover a score
+queued as a pinned approval that only a teacher of the offering applies (not the student, a
+teacher of another offering, the deploying administrator or an agent channel), results showing
+approved scores only, an older score never applied over a later official one, a queued score
+declined after its line item changed or its deployment lost the service, another offering, a
+non-learner, a missing scope, an earlier timestamp, a kept line item, the launch claim, and the
+queue's compare-and-set. Workerd tests in the district Worker drive `FakeLtiTool` (token by client
+assertion, then AGS calls) through the Worker: the launch claim and the resource link's
+`lineitem`, line item create, list, replace and remove, a score pending (not in results) until the
+offering's teacher approves it with the reviewed digest across a restart, a declined score leaving
+nothing, scores for a teacher's or an unknown subject, stale and malformed scores refused, another
+offering and another tool's deployment refused, `401` without a current token, `403` without the
+scope or the service, a revoked deployment's token dead, and no AGS routes with `LTI_PLATFORM`
+unset.

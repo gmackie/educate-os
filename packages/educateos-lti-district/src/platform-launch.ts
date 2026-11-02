@@ -5,6 +5,7 @@ import {
   type Caller,
   type DistrictDirectorySnapshot,
   type DistrictId,
+  type OfferingId,
   type PrincipalId,
 } from "@educateos/contracts";
 import {
@@ -20,6 +21,7 @@ import {
   sha256Base64Url,
   signPlatformIdToken,
   type Clock,
+  type PlatformDeployment,
   type PlatformToolId,
   type SingleUseStore,
 } from "@educateos/lti";
@@ -97,6 +99,11 @@ export interface LtiPlatformLaunchServiceOptions {
   /** Atomic single-use storage for launch tickets ({@link PLATFORM_LAUNCH_COLLECTIONS}). */
   readonly tickets: SingleUseStore<PlatformLaunchTicket>;
   readonly subjects: TablePlatformSubjectStore;
+  /**
+   * The LTI Advantage service claims a launch carries beside its own, such as the AGS endpoint
+   * (`LtiPlatformAgsService.launchClaims`), for the deployment, offering and resource link.
+   */
+  readonly serviceClaims?: (launch: { deployment: PlatformDeployment; offeringId: OfferingId; resourceLinkId: string }) => Promise<Record<string, unknown>>;
   readonly now?: Clock;
 }
 
@@ -220,7 +227,8 @@ export class LtiPlatformLaunchService {
       person: { displayName: person.displayName, email: person.email },
       privacy: deployment.privacy,
     });
-    const idToken = await signPlatformIdToken(await this.#options.keys.keySet(), claims, {
+    const serviceClaims = await this.#options.serviceClaims?.({ deployment, offeringId: ticket.offeringId, resourceLinkId: ticket.resourceLinkId });
+    const idToken = await signPlatformIdToken(await this.#options.keys.keySet(), { ...serviceClaims, ...claims }, {
       issuer: this.#options.issuer,
       audience: tool.id,
       nowMs: this.#now(),

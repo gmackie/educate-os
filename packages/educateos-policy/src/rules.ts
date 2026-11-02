@@ -174,6 +174,10 @@ const STAFF_VISIBLE = [...COURSE_VISIBLE, "teacher-only"] as const satisfies Cla
  *   rubrics, the shared course workspace, official grades). They do not see student-authored work
  *   or any conversation, with one audited exception: an appeal grant (SCHO-56) lets a named
  *   administrator read one named piece of a student's `course` work until it expires.
+ * - **Third-party LTI tools** (SCHO-179) call EducateOS's LTI Platform services on the
+ *   `lti-service` channel as the administrator who deployed them, so every rule above bounds them
+ *   too. That channel alone adds one grant: managing the offering's gradebook columns (AGS line
+ *   items). A tool's score is an official-grade write, so it waits for a teacher's approval.
  * - **`personal-private` content is its owner's**, with two exceptions placed above the guard that
  *   protects it. A district admin may list personal workspace *records* for retention, never read
  *   one. And a principal the owner shared an artifact with reads it, but only while the policy
@@ -552,6 +556,19 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
       roles: [...ADMINS],
       classifications: [...STAFF_VISIBLE],
       actions: [...READS],
+    },
+    effect: { effect: "allow" },
+  },
+  {
+    id: "lti-service.line-items",
+    description: "A third-party LTI tool, through a deployment an administrator over the offering gave the AGS line items service, adds, changes and removes the offering's gradebook columns (line items); its scores only ever wait for a teacher's approval (SCHO-179).",
+    when: {
+      kinds: ["gradebook"],
+      ownership: ["unowned"],
+      roles: [...ADMINS],
+      channels: ["lti-service"],
+      classifications: ["teacher-only"],
+      actions: ["create", "update", "delete"],
     },
     effect: { effect: "allow" },
   },

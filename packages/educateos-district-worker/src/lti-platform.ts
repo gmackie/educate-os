@@ -7,9 +7,11 @@
 // `POST /lti/platform/token`, which tools call from their own servers (the token endpoint
 // authenticates a tool by a client assertion signed with its registered keys), and
 // `/lti/platform/auth`, the OIDC authorization endpoint a tool sends the browser back to during a
-// launch. Its `/api/lti/` routes, behind Access and decided
+// launch. The Assignment and Grade Services a tool calls with a token are under `/lti/platform/ags/`
+// (lti-platform-ags.ts). Its `/api/lti/` routes, behind Access and decided
 // by the policy engine, rotate the platform's keys, register, deploy and revoke third-party tools,
-// and start a launch for a signed-in person in an offering they are enrolled in.
+// start a launch for a signed-in person in an offering they are enrolled in, and let a teacher
+// approve or decline the scores tools send.
 //
 // A launch (see docs/educateos/lti.md): `POST /api/lti/platform-launches` mints a single-use ticket
 // and sets a cookie only the starting browser holds, then the browser goes to the tool's login
@@ -27,7 +29,9 @@ import {
   type LtiDistrictStores,
   type PlatformLaunchForm,
 } from "@educateos/lti-district";
+import type { PolicyDecider } from "@educateos/policy";
 import { createLogger } from "@gadgets/observability/logger";
+import { startPlatformAgs } from "./lti-platform-ags.ts";
 
 /** What the platform logs beside each event: never a token, ticket, cookie or body. */
 interface PlatformLogFields {
@@ -88,7 +92,8 @@ export interface DistrictLtiPlatform {
 /** What the district's LTI Platform is built from. */
 export interface DistrictLtiPlatformOptions {
   readonly districtId: DistrictId;
-  readonly authorizer: Authorizer;
+  /** The district's policy engine, which decides every route and service call. */
+  readonly authorizer: Authorizer & PolicyDecider;
   readonly stores: LtiDistrictStores;
   /** The district directory, which a deployment's offerings are checked against. */
   readonly directory: () => Promise<DistrictDirectorySnapshot>;
@@ -106,6 +111,21 @@ export function startDistrictLtiPlatform(options: DistrictLtiPlatformOptions): D
   const log = logger.with({ districtId });
   const keys = new LtiPlatformKeyService({ districtId, authorizer, keys: stores.platformKeys });
   const tools = new LtiPlatformToolService({ districtId, authorizer, directory: options.directory, store: stores.platformTools });
+  const tokens = new PlatformTokenEndpoint({
+    tokenUrl: `${options.origin}${LTI_PLATFORM_PREFIX}token`,
+    tools: stores.platformTools,
+    store: stores.platformServiceTokens,
+    keys: new PlatformJwksCache({ fetch: options.fetch }),
+  });
+  const ags = startPlatformAgs({
+    districtId,
+    policy: authorizer,
+    stores,
+    directory: options.directory,
+    jsonBody,
+    agsUrl: `${options.origin}${LTI_PLATFORM_PREFIX}ags`,
+    verify: (request) => tokens.verifyRequest(request),
+  });
   const launches = new LtiPlatformLaunchService({
     districtId,
     issuer: options.origin,
@@ -115,12 +135,7 @@ export function startDistrictLtiPlatform(options: DistrictLtiPlatformOptions): D
     keys: stores.platformKeys,
     tickets: stores.platformLaunchTickets,
     subjects: stores.platformSubjects,
-  });
-  const tokens = new PlatformTokenEndpoint({
-    tokenUrl: `${options.origin}${LTI_PLATFORM_PREFIX}token`,
-    tools: stores.platformTools,
-    store: stores.platformServiceTokens,
-    keys: new PlatformJwksCache({ fetch: options.fetch }),
+    serviceClaims: (launch) => ags.service.launchClaims(launch),
   });
 
   /** Starts a launch for the caller and binds it to their browser with {@link LTI_LAUNCH_COOKIE}. */
@@ -171,6 +186,7 @@ export function startDistrictLtiPlatform(options: DistrictLtiPlatformOptions): D
         return response;
       }
       if (path === "auth" && (request.method === "GET" || request.method === "POST")) return authorizeLaunch(request);
+      if (path.startsWith("ags/")) return ags.serve(request, path.slice("ags/".length));
       return undefined;
     },
     verifyServiceRequest: (request) => tokens.verifyRequest(request),
@@ -185,6 +201,7 @@ export function startDistrictLtiPlatform(options: DistrictLtiPlatformOptions): D
       { method: "POST", path: "platform-deployments/:id/revoke", run: (caller, _request, { id }) => tools.revokeDeployment(caller, id) },
       // Any signed-in person may ask; the launch service and the policy engine decide.
       { method: "POST", path: "platform-launches", run: startLaunch },
+      ...ags.adminRoutes,
     ],
   };
 }

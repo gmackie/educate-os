@@ -11,6 +11,7 @@ import {
   type RegistrationTargets,
 } from "./stores.ts";
 import { TableGradeColumnStore } from "./columns.ts";
+import { TablePlatformAgsStore, TablePlatformScoreApprovalStore } from "./platform-ags.ts";
 import { PLATFORM_LAUNCH_COLLECTIONS, TablePlatformSubjectStore } from "./platform-launch.ts";
 import { TablePlatformServiceTokenStore } from "./platform-service-tokens.ts";
 import { TablePlatformToolStore } from "./platform-tools.ts";
@@ -44,6 +45,10 @@ export interface LtiDistrictStores {
   readonly platformSubjects: TablePlatformSubjectStore;
   /** The LTI Platform's used client assertions and issued service access tokens (SCHO-179). */
   readonly platformServiceTokens: TablePlatformServiceTokenStore;
+  /** The LTI Platform's AGS line items, official results and score timestamps (SCHO-179). */
+  readonly platformAgs: TablePlatformAgsStore;
+  /** AGS scores waiting for a teacher's approval (SCHO-179, IF-06). */
+  readonly platformScoreApprovals: TablePlatformScoreApprovalStore;
 }
 
 /**
@@ -70,5 +75,7 @@ export function createLtiDistrictStores(table: RecordTable, options: { targets: 
     platformLaunchTickets: new TableSingleUseStore(table, PLATFORM_LAUNCH_COLLECTIONS.tickets, PlatformLaunchTicket, now),
     platformSubjects: new TablePlatformSubjectStore(table),
     platformServiceTokens: new TablePlatformServiceTokenStore(table, now),
+    platformAgs: new TablePlatformAgsStore(table, now),
+    platformScoreApprovals: new TablePlatformScoreApprovalStore(table),
   };
 }

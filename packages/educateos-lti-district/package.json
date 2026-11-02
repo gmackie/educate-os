@@ -15,6 +15,7 @@
     "@educateos/curriculum": "workspace:*",
     "@educateos/identity": "workspace:*",
     "@educateos/lti": "workspace:*",
+    "@educateos/policy": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -22,7 +23,6 @@
     "@cloudflare/workers-types": "catalog:",
     "@gadgets/scripts": "workspace:*",
     "@educateos/fixtures": "workspace:*",
-    "@educateos/policy": "workspace:*",
     "@educateos/provider-fakes": "workspace:*",
     "@types/node": "26.1.0",
     "vitest": "catalog:"
