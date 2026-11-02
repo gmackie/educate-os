@@ -1,4 +1,4 @@
-import { DeepLinkSession, LoginState, PlatformLaunchTicket, RegistrationInvitation, type Clock } from "@educateos/lti";
+import { DeepLinkSession, LoginState, PlatformDeepLinkFlow, PlatformLaunchTicket, RegistrationInvitation, type Clock } from "@educateos/lti";
 import {
   LTI_COLLECTIONS,
   TableContextServicesStore,
@@ -12,6 +12,7 @@ import {
 } from "./stores.ts";
 import { TableGradeColumnStore } from "./columns.ts";
 import { TablePlatformAgsStore, TablePlatformScoreApprovalStore } from "./platform-ags.ts";
+import { PLATFORM_DEEP_LINKING_COLLECTIONS, TablePlatformResourceLinkStore } from "./platform-deep-linking.ts";
 import { PLATFORM_LAUNCH_COLLECTIONS, TablePlatformSubjectStore } from "./platform-launch.ts";
 import { TablePlatformServiceTokenStore } from "./platform-service-tokens.ts";
 import { TablePlatformToolStore } from "./platform-tools.ts";
@@ -49,6 +50,10 @@ export interface LtiDistrictStores {
   readonly platformAgs: TablePlatformAgsStore;
   /** AGS scores waiting for a teacher's approval (SCHO-179, IF-06). */
   readonly platformScoreApprovals: TablePlatformScoreApprovalStore;
+  /** The LTI Platform's single-use deep linking flows (SCHO-179), each keyed by its return URL's ID. */
+  readonly platformDeepLinkFlows: TableSingleUseStore<PlatformDeepLinkFlow>;
+  /** The resource links teachers added by deep linking, and the response nonces used (SCHO-179). */
+  readonly platformResourceLinks: TablePlatformResourceLinkStore;
 }
 
 /**
@@ -77,5 +82,7 @@ export function createLtiDistrictStores(table: RecordTable, options: { targets: 
     platformServiceTokens: new TablePlatformServiceTokenStore(table, now),
     platformAgs: new TablePlatformAgsStore(table, now),
     platformScoreApprovals: new TablePlatformScoreApprovalStore(table),
+    platformDeepLinkFlows: new TableSingleUseStore(table, PLATFORM_DEEP_LINKING_COLLECTIONS.flows, PlatformDeepLinkFlow, now),
+    platformResourceLinks: new TablePlatformResourceLinkStore(table, now),
   };
 }

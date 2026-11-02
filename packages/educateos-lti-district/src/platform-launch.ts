@@ -10,22 +10,27 @@ import {
 } from "@educateos/contracts";
 import {
   deploymentAllows,
+  PLATFORM_DEEP_LINK_FLOW_TTL_MS,
   PlatformAuthRequest,
+  PlatformDeepLinkFlow,
   PlatformDeploymentId,
   PLATFORM_LAUNCH_ROLE,
   platformLaunchClaims,
   platformLoginInitiationUrl,
   PlatformLaunchTicket,
+  PlatformResourceLinkId,
   redirectUriAllowed,
   randomToken,
   sha256Base64Url,
   signPlatformIdToken,
   type Clock,
   type PlatformDeployment,
+  type PlatformTool,
   type PlatformToolId,
   type SingleUseStore,
 } from "@educateos/lti";
-import { authorizeLtiOffering } from "./authorize.ts";
+import { authorizeLti, authorizeLtiOffering } from "./authorize.ts";
+import { draftActivityResource, type TablePlatformResourceLinkStore } from "./platform-deep-linking.ts";
 import type { TablePlatformToolStore } from "./platform-tools.ts";
 import { LtiStoredRecordError } from "./stores.ts";
 import { tupleKey, type RecordTable } from "./table.ts";
@@ -109,6 +114,16 @@ export interface LtiPlatformLaunchServiceOptions {
    * (`LtiPlatformAgsService.launchClaims`), for the deployment, offering and resource link.
    */
   readonly serviceClaims?: (launch: { deployment: PlatformDeployment; offeringId: OfferingId; resourceLinkId: string }) => Promise<Record<string, unknown>>;
+  /**
+   * Deep linking (Deep Linking 2.0): the resource links teachers added, which a launch may name,
+   * the single-use flows a deep linking request starts, and the return URL of a flow. Without
+   * them, no launch names a resource link and no deep linking request can start.
+   */
+  readonly deepLinking?: {
+    readonly resourceLinks: TablePlatformResourceLinkStore;
+    readonly flows: SingleUseStore<PlatformDeepLinkFlow>;
+    readonly returnUrl: (flowId: string) => string;
+  };
   readonly now?: Clock;
 }
 
@@ -130,6 +145,7 @@ export interface PlatformLaunchForm {
 }
 
 const forbidden = () => new EducateOsError("forbidden", "You may not launch that tool here.");
+const forbiddenDeepLinking = () => new EducateOsError("forbidden", "You may not add content from that tool here.");
 const refused = () => new EducateOsError("forbidden", "That launch cannot be completed.");
 
 /**
@@ -154,28 +170,105 @@ export class LtiPlatformLaunchService {
     this.#now = options.now ?? Date.now;
   }
 
-  /** Starts a launch of the deployment `deploymentId` in the offering `offeringId`. */
+  /**
+   * Starts a launch of the deployment `deploymentId` in the offering `offeringId`. With
+   * `resourceLinkId`, it launches that resource link, which must be one a teacher added to the
+   * offering through the same deployment, and which the caller may `read`: a draft is staff
+   * material, so a student may not launch it. Without, the launch's resource link is the
+   * deployment's own in the offering.
+   */
   async start(caller: Caller, raw: unknown): Promise<StartedPlatformLaunch> {
-    const input = z.object({ deploymentId: z.unknown(), offeringId: z.unknown() }).safeParse(raw);
+    const input = z.object({ deploymentId: z.unknown(), offeringId: z.unknown(), resourceLinkId: z.unknown().optional() }).safeParse(raw);
     if (!input.success) throw new EducateOsError("validation-failed", "A launch names a deployment and an offering.");
+    const { directory, offeringId, tool, deployment, enrollment } = await this.#launchable(caller, input.data, "read", forbidden);
+
+    let resourceLinkId = await sha256Base64Url(tupleKey(deployment.id, offeringId));
+    if (input.data.resourceLinkId !== undefined) {
+      const id = PlatformResourceLinkId.safeParse(input.data.resourceLinkId);
+      const link = id.success ? await this.#options.deepLinking?.resourceLinks.link(id.data) : undefined;
+      if (link === undefined || link.districtId !== this.#options.districtId || link.deploymentId !== deployment.id || link.offeringId !== offeringId) throw forbidden();
+      await authorizeLti(this.#options.authorizer, caller, "read", draftActivityResource(directory, offeringId, link.id), forbidden);
+      resourceLinkId = link.id;
+    }
+    return this.#mint(tool, deployment, offeringId, caller.principal.principalId, enrollment.role === "student" ? PLATFORM_LAUNCH_ROLE.learner : PLATFORM_LAUNCH_ROLE.instructor, resourceLinkId);
+  }
+
+  /**
+   * Starts a deep linking request (Deep Linking 2.0 §4.4) of the deployment `deploymentId` in the
+   * offering `offeringId`, for a teacher to choose content from the tool. The deployment must allow
+   * `deepLinking`, the caller must be actively enrolled and the policy engine must allow them to
+   * `create` a draft activity in the offering: in the default rules, a teacher of the offering. It
+   * mints a launch ticket, as {@link start} does, and a single-use flow bound to the same browser,
+   * whose return URL and `data` the request carries. The launch is always as Instructor.
+   */
+  async startDeepLinking(caller: Caller, raw: unknown): Promise<StartedPlatformLaunch> {
+    const deepLinking = this.#options.deepLinking;
+    const input = z.object({ deploymentId: z.unknown(), offeringId: z.unknown() }).safeParse(raw);
+    if (!input.success) throw new EducateOsError("validation-failed", "A deep linking request names a deployment and an offering.");
+    if (deepLinking === undefined) throw forbiddenDeepLinking();
+    const { directory, offeringId, tool, deployment, enrollment } = await this.#launchable(caller, input.data, "read", forbiddenDeepLinking);
+    if (!deployment.services.deepLinking || enrollment.role === "student") throw forbiddenDeepLinking();
+    await authorizeLti(this.#options.authorizer, caller, "create", draftActivityResource(directory, offeringId), forbiddenDeepLinking);
+
+    const flowId = randomToken();
+    const data = randomToken();
+    const started = await this.#mint(
+      tool,
+      deployment,
+      offeringId,
+      caller.principal.principalId,
+      PLATFORM_LAUNCH_ROLE.instructor,
+      await sha256Base64Url(tupleKey(deployment.id, offeringId)),
+      { returnUrl: deepLinking.returnUrl(flowId), data },
+    );
+    await deepLinking.flows.put(flowId, PlatformDeepLinkFlow.parse({
+      districtId: this.#options.districtId,
+      toolId: tool.id,
+      deploymentId: deployment.id,
+      offeringId,
+      principalId: caller.principal.principalId,
+      data,
+      bindingHash: await sha256Base64Url(started.binding),
+    }), this.#now() + PLATFORM_DEEP_LINK_FLOW_TTL_MS);
+    return started;
+  }
+
+  /**
+   * The offering, an active deployment of an active tool of this district to it, and the caller's
+   * active enrollment in it, once the policy engine allows the caller `action` on the offering.
+   * Anything else is `refusal()`, alike.
+   */
+  async #launchable(caller: Caller, input: { deploymentId: unknown; offeringId: unknown }, action: "read", refusal: () => EducateOsError) {
     const directory = await this.#options.directory();
     const offeringId = await authorizeLtiOffering(
       { authorizer: this.#options.authorizer, districtId: this.#options.districtId, directory },
       caller,
-      "read",
-      input.data.offeringId,
-      forbidden,
+      action,
+      input.offeringId,
+      refusal,
     );
-    const deploymentId = PlatformDeploymentId.safeParse(input.data.deploymentId);
+    const deploymentId = PlatformDeploymentId.safeParse(input.deploymentId);
     const deployment = deploymentId.success ? await this.#options.tools.deployment(deploymentId.data) : undefined;
     const tool = deployment === undefined ? undefined : await this.#options.tools.tool(deployment.toolId);
     if (deployment === undefined || tool === undefined || tool.districtId !== this.#options.districtId || !deploymentAllows(tool, deployment, offeringId)) {
-      throw forbidden();
+      throw refusal();
     }
     const principalId = caller.principal.principalId;
     const enrollment = directory.enrollments.find((e) => e.offeringId === offeringId && e.principalId === principalId && e.status === "active");
-    if (enrollment === undefined) throw forbidden();
+    if (enrollment === undefined) throw refusal();
+    return { directory, offeringId, tool, deployment, enrollment };
+  }
 
+  /** Mints a launch ticket bound to a new browser binding, and the login initiation URL that redeems it. */
+  async #mint(
+    tool: PlatformTool,
+    deployment: PlatformDeployment,
+    offeringId: OfferingId,
+    principalId: PrincipalId,
+    role: (typeof PLATFORM_LAUNCH_ROLE)[keyof typeof PLATFORM_LAUNCH_ROLE],
+    resourceLinkId: string,
+    deepLinking?: PlatformLaunchTicket["deepLinking"],
+  ): Promise<StartedPlatformLaunch> {
     const subject = await this.#options.subjects.subjectFor(tool.id, principalId);
     const binding = randomToken();
     const messageHint = randomToken();
@@ -187,10 +280,11 @@ export class LtiPlatformLaunchService {
       offeringId,
       principalId,
       subject,
-      roles: [enrollment.role === "student" ? PLATFORM_LAUNCH_ROLE.learner : PLATFORM_LAUNCH_ROLE.instructor],
-      resourceLinkId: await sha256Base64Url(tupleKey(deployment.id, offeringId)),
+      roles: [role],
+      resourceLinkId,
       targetLinkUri: tool.targetLinkUri,
       bindingHash: await sha256Base64Url(binding),
+      ...deepLinking === undefined ? {} : { deepLinking },
     }), expiresAt);
     const loginUrl = platformLoginInitiationUrl(tool, {
       issuer: this.#options.issuer,
@@ -216,7 +310,8 @@ export class LtiPlatformLaunchService {
 
     const tool = await this.#options.tools.tool(ticket.toolId);
     const deployment = await this.#options.tools.deployment(ticket.deploymentId);
-    if (tool === undefined || deployment === undefined || !deploymentAllows(tool, deployment, ticket.offeringId) || !redirectUriAllowed(tool, request.data.redirect_uri)) {
+    const service = ticket.deepLinking === undefined ? undefined : "deepLinking" as const;
+    if (tool === undefined || deployment === undefined || !deploymentAllows(tool, deployment, ticket.offeringId, service) || !redirectUriAllowed(tool, request.data.redirect_uri)) {
       throw refused();
     }
 
@@ -235,7 +330,10 @@ export class LtiPlatformLaunchService {
         ? { membershipsUrl: this.#options.membershipsUrl(deployment.id, ticket.offeringId) }
         : {},
     });
-    const serviceClaims = await this.#options.serviceClaims?.({ deployment, offeringId: ticket.offeringId, resourceLinkId: ticket.resourceLinkId });
+    // A deep linking request carries no resource link, so no AGS endpoint of one.
+    const serviceClaims = ticket.deepLinking === undefined
+      ? await this.#options.serviceClaims?.({ deployment, offeringId: ticket.offeringId, resourceLinkId: ticket.resourceLinkId })
+      : undefined;
     const idToken = await signPlatformIdToken(await this.#options.keys.keySet(), { ...serviceClaims, ...claims }, {
       issuer: this.#options.issuer,
       audience: tool.id,

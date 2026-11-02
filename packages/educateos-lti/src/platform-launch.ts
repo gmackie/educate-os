@@ -9,6 +9,7 @@ import { SignJWT } from "jose";
 import { z } from "zod";
 import { DistrictId, OfferingId, PrincipalId } from "@educateos/contracts";
 import { LTI_CLAIM, LTI_VERSION } from "./claims.ts";
+import { platformDeepLinkingSettings } from "./platform-deep-linking.ts";
 import { PlatformDeploymentId, PlatformToolId, type PlatformTool, type PlatformToolPrivacy } from "./platform-tools.ts";
 import type { ToolKeySet } from "./tool-keys.ts";
 
@@ -76,6 +77,12 @@ export const PlatformLaunchTicket = z.strictObject({
   resourceLinkId: z.string().min(1).max(255),
   targetLinkUri: z.url({ protocol: /^https$/ }),
   bindingHash: z.string().min(1),
+  /**
+   * Set when the launch is a deep linking request (Deep Linking 2.0 §4.4) rather than a resource
+   * link launch: where the tool returns the teacher's selection, and the opaque `data` it must
+   * echo, both bound to one deep linking flow (`PlatformDeepLinkFlow`).
+   */
+  deepLinking: z.strictObject({ returnUrl: z.url({ protocol: /^https$/ }), data: z.string().min(1).max(255) }).optional(),
 });
 /** A launch ticket. */
 export type PlatformLaunchTicket = z.infer<typeof PlatformLaunchTicket>;
@@ -112,21 +119,23 @@ export interface PlatformLaunchContext {
 }
 
 /**
- * The claims of a resource link launch (LTI Core 1.3 §5.3) for `ticket`, answering `request`. The
- * subject is the person's opaque per-tool subject and the context is the offering alone; the
- * person's name and email are added only when the deployment's privacy settings allow each, and the
- * membership service only when the deployment allows NRPS.
+ * The claims of a resource link launch (LTI Core 1.3 §5.3) for `ticket`, answering `request`, or of
+ * a deep linking request (Deep Linking 2.0 §4.4) when the ticket is one. The subject is the
+ * person's opaque per-tool subject and the context is the offering alone; the person's name and
+ * email are added only when the deployment's privacy settings allow each, and the membership
+ * service only when the deployment allows NRPS.
  */
 export function platformLaunchClaims(ticket: PlatformLaunchTicket, request: PlatformAuthRequest, context: PlatformLaunchContext): Record<string, unknown> {
   return {
     sub: ticket.subject,
     azp: ticket.toolId,
     nonce: request.nonce,
-    [LTI_CLAIM.messageType]: "LtiResourceLinkRequest",
     [LTI_CLAIM.version]: LTI_VERSION,
     [LTI_CLAIM.deploymentId]: ticket.deploymentId,
     [LTI_CLAIM.targetLinkUri]: ticket.targetLinkUri,
-    [LTI_CLAIM.resourceLink]: { id: ticket.resourceLinkId },
+    ...ticket.deepLinking === undefined
+      ? { [LTI_CLAIM.messageType]: "LtiResourceLinkRequest", [LTI_CLAIM.resourceLink]: { id: ticket.resourceLinkId } }
+      : { [LTI_CLAIM.messageType]: "LtiDeepLinkingRequest", [LTI_CLAIM.deepLinkingSettings]: platformDeepLinkingSettings(ticket.deepLinking) },
     [LTI_CLAIM.roles]: ticket.roles,
     [LTI_CLAIM.context]: { id: ticket.offeringId, label: context.offeringLabel, title: context.offeringTitle, type: [COURSE_OFFERING_CONTEXT_TYPE] },
     ...platformPersonClaims(context.person, context.privacy),

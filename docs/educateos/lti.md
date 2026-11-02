@@ -387,7 +387,8 @@ district's origin, `aud` and `azp` the tool's client ID, a five-minute `exp`, an
 `lti.platform-subject`): a random value made on their first launch of the tool and kept, so two
 tools cannot match people by it, and a later service call naming a `sub` can be traced back. It
 carries `LtiResourceLinkRequest`, version `1.3.0`, the `deployment_id`, the `target_link_uri`, a
-resource link per deployment and offering, the LIS role (`Instructor` for a teacher or co-teacher,
+resource link per deployment and offering (or, when the launch names one, a resource link a
+teacher added by [Deep Linking](#deep-linking)), the LIS role (`Instructor` for a teacher or co-teacher,
 `Learner` for a student) and the offering as the only context (its ID, the course title as label,
 and course and section as title). `name`, `given_name` and `family_name` are added only when the
 deployment allows the name, and `email` only when it allows the email.
@@ -562,7 +563,7 @@ both halves of a launch (`src/lti-platform.ts`), only when the platform is on:
 
 | Path | Sign-in | Does |
 | --- | --- | --- |
-| `POST /api/lti/platform-launches` | Access; `read` on the offering, decided by `LtiPlatformLaunchService.start` | Starts a launch of `{ deploymentId, offeringId }` for the caller. Must be `application/json`. Returns `{ loginUrl, expiresAt }` (`no-store`) and sets the browser-binding cookie; the page sends the browser to `loginUrl`, the tool's login initiation URL. |
+| `POST /api/lti/platform-launches` | Access; `read` on the offering, decided by `LtiPlatformLaunchService.start` | Starts a launch of `{ deploymentId, offeringId, resourceLinkId? }` for the caller (`resourceLinkId`: see [Deep Linking](#deep-linking)). Must be `application/json`. Returns `{ loginUrl, expiresAt }` (`no-store`) and sets the browser-binding cookie; the page sends the browser to `loginUrl`, the tool's login initiation URL. |
 | `GET` or `POST /lti/platform/auth` | None (under the Access-exempt `/lti/`); the cookie and the ticket | The OIDC authorization endpoint. Takes the tool's authentication request as a query or an urlencoded form (a repeated parameter is malformed), calls `authorize` with the cookie, and answers with a page that posts `id_token` and `state` to the matched `redirect_uri`. |
 
 - **The cookie**, `__Secure-educateos-lti-launch`, holds the browser binding: `Path=/lti/platform/;
@@ -591,7 +592,7 @@ each refused with the cookie cleared and nothing posted. With `LTI_PLATFORM` uns
 
 ## Service tokens
 
-Tools reach the platform's LTI Advantage services ([NRPS](#names-and-role-provisioning-nrps); AGS in a later slice) with OAuth 2
+Tools reach the platform's LTI Advantage services ([NRPS](#names-and-role-provisioning-nrps) and [AGS](#assignment-and-grade-services); Deep Linking needs no token) with OAuth 2
 access tokens from `POST /lti/platform/token`: the client credentials grant, with the tool
 authenticated by a `private_key_jwt` client assertion (RFC 7523, LTI Security Framework §4.1).
 `PlatformTokenEndpoint` (`@educateos/lti`, `platform-service-tokens.ts`) implements it, over
@@ -843,3 +844,108 @@ offering and another tool's deployment refused, `401` without a current token, `
 scope or the service, a revoked deployment's token dead, the tool's calls working and a score
 approved while its deploying administrator is inactive, the district's policy audit naming the
 tool and the deployment for every call, and no AGS routes with `LTI_PLATFORM` unset.
+
+## Deep Linking
+
+A teacher adds a deployed tool's content to their offering with Deep Linking 2.0
+(`platform-deep-linking.ts` in `@educateos/lti` for the settings claim, the flow and resource link
+records and the response's verification, in `@educateos/lti-district` for the store and
+`LtiPlatformDeepLinkingService`, and `src/lti-platform.ts` in the district Worker for the HTTP
+surface). Harness-tested only, against `FakeLtiTool`; no real tool has used it, and it claims no
+Deep Linking conformance.
+
+| Path | Sign-in | Does |
+| --- | --- | --- |
+| `POST /api/lti/platform-deep-links` | Access; decided by `LtiPlatformLaunchService.startDeepLinking` | Starts a deep linking request of `{ deploymentId, offeringId }`. Must be `application/json`. Returns `{ loginUrl, expiresAt }` (`no-store`) and sets two cookies: the launch cookie, and the deep linking cookie. |
+| `GET` or `POST /lti/platform/auth` | as for a launch | Answers the tool's authentication request with an `LtiDeepLinkingRequest` id_token. |
+| `POST /lti/platform/deep-links/<flow>` | None (under the Access-exempt `/lti/`); the deep linking cookie and the single-use flow | The flow's `deep_link_return_url`: takes the tool's `LtiDeepLinkingResponse` as the urlencoded `JWT` field, and answers with a page on EducateOS. |
+| `GET /api/lti/platform-resource-links?offeringId=…[&deploymentId=…]` | Access; `read` on the offering, then on each link | The added links the caller may read: every draft for a teacher, none for a student. |
+
+**Starting.** The deployment must be an active deployment of an active tool to the offering with
+`deepLinking` on (an administrator's switch, off by default, set like every other service through
+`/api/lti/platform-deployments`); the caller must be actively enrolled in the offering, not as a
+student, and the policy engine must allow them `read` on the offering and `create` on its
+`teacher-only` activities (`curriculum.activity.teacher-author`: a teacher of the offering). Every
+refusal is `forbidden`, alike, with no cookie set. It mints a launch ticket as for a launch, carrying
+the deep linking settings, and a single-use flow (`lti.platform-deep-link-flow`, thirty minutes, so
+the teacher has time to choose) under a random ID that is the last segment of its return URL. The
+flow holds the tool, deployment, offering, teacher, a random `data` value and the SHA-256 of the
+same browser binding as the ticket.
+
+**The request.** The id_token is a launch's (subject, context, privacy, signature) with
+`LtiDeepLinkingRequest`, the `Instructor` role, no resource link and no AGS claim, and
+`deep_linking_settings` (`platformDeepLinkingSettings`): the flow's `deep_link_return_url`,
+`accept_types: ["ltiResourceLink"]`, `accept_presentation_document_targets: ["iframe", "window"]`,
+`accept_multiple: true`, `accept_lineitem: false`, `auto_create: false` and the flow's `data`. The
+authorization endpoint also refuses a deep linking ticket whose deployment has lost `deepLinking`.
+
+**The cookie**, `__Secure-educateos-lti-deep-link`, holds the binding for the return: `Path=/lti/platform/deep-links/;
+Secure; HttpOnly; SameSite=None` (the response arrives as a cross-site form post), `Max-Age` thirty
+minutes like the flow. It is separate from the launch cookie, which `/lti/platform/auth` clears.
+Every answer of a return URL clears it.
+
+**Receiving.** `LtiPlatformDeepLinkingService.receive` takes the flow first, so the first post uses
+it up, valid or not. Then the browser binding must match, the tool and deployment must still allow
+`deepLinking` in the offering, and the response must verify (`verifyPlatformDeepLinkingResponse`):
+
+- a JWT of at most 64 KiB, RS256 only (never `none` or a symmetric algorithm), with a `kid` the tool
+  publishes at its registered JWKS URL (`PlatformJwksCache`, shared with the token endpoint);
+- `iss` the tool's client ID, `aud` exactly the platform's issuer (one audience), `exp` not passed
+  and `iat` not in the future, each with 30 seconds of skew, and a `nonce`;
+- version `1.3.0`, `LtiDeepLinkingResponse`, the flow's `deployment_id`, and the flow's `data`, exactly;
+- `content_items`, if present, an array of at most 50. Items of any type but `ltiResourceLink` are
+  dropped and counted. Each resource link keeps its `title` (at most 200 characters; the tool's name
+  if empty), `text` (at most 1000) and `url` (https, on the tool's registered origin) and nothing
+  else: custom parameters, `lineItem`, icons, thumbnails, windows and iframes are dropped. A link
+  that does not parse, a URL on another origin, or more than 10 links refuses the whole response.
+
+The `nonce` is recorded per tool (`lti.platform-deep-link-nonce`) until the response could no
+longer be accepted, atomically, so a nonce is accepted once. Last, the teacher must still be an
+active person whom the policy engine allows to `create` a `teacher-only` activity in the offering,
+decided as the teacher on the `http` channel: it is their action, approved by their browser. The
+tool's authority plays no part, and nothing is decided on the `lti-service` channel. Only then is
+every link stored, in one step, as a `PlatformResourceLink` (`lti.platform-resource-link`, an
+`lrl_…` ID): the tool, deployment, offering, title, text, URL, `status: "draft"`, the teacher and
+the time. Any refusal is `forbidden` and creates nothing.
+
+**The page.** An accepted response is answered with a page on EducateOS saying how many drafts were
+added (or that nothing was); a refusal with a page saying nothing was added (400 for a malformed
+post, 403 otherwise), never a redirect. Both send `Cache-Control: no-store`, `Referrer-Policy:
+no-referrer` and a CSP of `default-src 'none'; form-action 'none'; base-uri 'none';
+frame-ancestors 'self'`.
+
+**Drafts.** A resource link is decided as a `teacher-only` activity of the offering
+(`draftActivityResource`): teachers read it (`course.instructor.read`), students are refused it
+(`curriculum.activity.definition-staff-only`). It is not placed in the offering's course content
+modules and cannot yet be published to students.
+
+**Launching a link.** `POST /api/lti/platform-launches` takes an optional `resourceLinkId`: it must
+be a link of the same deployment and offering, and the policy engine must allow the caller to `read`
+it, so a student cannot launch a draft. The launch's `resource_link.id` is then the link's ID
+(otherwise the deployment's own resource link in the offering, as before), and the AGS claim's
+`lineitem` follows it.
+
+**Not implemented.** Line items in content items (`accept_lineitem` is `false`, and a `lineItem` is
+dropped); other content item types; custom parameters; publishing a draft or placing it in a module;
+`lti_msg`/`lti_log` messages on the result page.
+
+**Logs** (`educateos.lti.platform`) record starts, refusals at the start with their error code,
+responses received with the tool, the number of drafts created and of items dropped, and refused
+responses with their error code and reason (`PlatformDeepLinkingError.reason`, such as `data`,
+`audience` or `nonce-replayed`); never a token, JWT, cookie or body.
+
+Tests: unit tests in `packages/educateos-lti` cover the settings claim, item stripping and the title
+default, and refusals for each wrong audience, issuer, data, deployment, message type, missing
+nonce, future `iat`, expiry past the skew (and acceptance within it), foreign and non-https URLs,
+too many links or items, a non-JWT, `none`, `HS256`, a missing `kid` and an oversized JWT. Workerd
+tests in the district Worker (`lti-platform-deep-linking.test.ts`) drive `FakeLtiTool` through the
+Worker: a teacher starts, the tool verifies the `LtiDeepLinkingRequest` and returns two links (and
+an HTML item, dropped), two drafts are created without their custom parameters or line item,
+invisible to a student, who cannot launch one; the teacher's launch of a draft carries its ID, and
+another deployment's or an unknown link is refused; a student, a teacher of another offering and a
+deployment without `deepLinking` cannot start, nor can a form-encoded body; tampered `data`, a wrong
+`aud` or deployment, an unsigned, `HS256`, foreign-key or expired response, a foreign-origin URL,
+eleven links, a missing or another flow's cookie, a replayed response, a replayed nonce on a new
+flow, an unknown flow and a JSON post are each refused on EducateOS with the cookie cleared and
+nothing created; a deployment that loses `deepLinking` mid-flow is refused; and with `LTI_PLATFORM`
+unset the routes are 404.

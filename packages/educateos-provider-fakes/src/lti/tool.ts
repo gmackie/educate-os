@@ -8,7 +8,9 @@
 // From its own server it then calls the platform's LTI Advantage services: it gets a service token
 // with a `private_key_jwt` client assertion (LTI Security Framework 1.0 §4.1, RFC 7523), reads the
 // offering's roster through the membership URL a launch advertised (NRPS 2.0 §2, §3.6.1), and calls
-// the Assignment and Grade Services (AGS 2.0 §3.2–3.4). Everything but those calls is in memory.
+// the Assignment and Grade Services (AGS 2.0 §3.2–3.4). A deep linking request (Deep Linking 2.0
+// §4.4) is verified like a launch, and answered with a signed `LtiDeepLinkingResponse` (§4.5) for
+// the browser to post back to the platform's return URL. Everything but those calls is in memory.
 import { createLocalJWKSet, jwtVerify, type JWK, type JWTPayload } from "jose";
 import { LTI_CLAIMS, LTI_MEDIA_TYPES, LTI_VERSION } from "./claims.ts";
 import { PlatformKeyRing } from "./keys.ts";
@@ -72,6 +74,35 @@ export interface FakeLtiToolLaunch {
   readonly ags: FakeLtiToolAgsEndpoint | undefined;
   /** The membership URL the launch advertised (its NRPS claim), if any. */
   readonly membershipsUrl: string | undefined;
+  /** The launch's resource link ID; a deep linking request has none. */
+  readonly resourceLinkId: string | undefined;
+  /** A deep linking request's settings (Deep Linking 2.0 §4.4.1); a resource link launch has none. */
+  readonly deepLinking: FakeLtiToolDeepLinkingSettings | undefined;
+}
+
+/** The `deep_linking_settings` of a deep linking request (Deep Linking 2.0 §4.4.1). */
+export interface FakeLtiToolDeepLinkingSettings {
+  readonly deep_link_return_url: string;
+  readonly accept_types: readonly string[];
+  readonly accept_presentation_document_targets: readonly string[];
+  readonly accept_multiple?: boolean;
+  readonly accept_lineitem?: boolean;
+  readonly auto_create?: boolean;
+  readonly data?: string;
+}
+
+/**
+ * What a tool's deep linking response may say differently from a well-behaved one, as a
+ * misbehaving or compromised tool would: another `data`, `aud`, `nonce` or deployment, or a key
+ * the tool does not publish.
+ */
+export interface FakeLtiToolDeepLinkingOverrides {
+  readonly data?: string;
+  readonly audience?: string;
+  readonly nonce?: string;
+  readonly deploymentId?: string;
+  readonly issuedAt?: number;
+  readonly sign?: (claims: Record<string, unknown>) => Promise<string>;
 }
 
 /** One member of a roster the tool read: what the platform sent, unchanged. */
@@ -211,7 +242,13 @@ export class FakeLtiTool {
     }
     if (claims.nonce !== pending.nonce) throw new FakeLtiToolError("wrong nonce");
     if (claims[LTI_CLAIMS.version] !== LTI_VERSION) throw new FakeLtiToolError("wrong LTI version");
-    if (claims[LTI_CLAIMS.messageType] !== "LtiResourceLinkRequest") throw new FakeLtiToolError("unexpected message type");
+    const messageType = claims[LTI_CLAIMS.messageType];
+    if (messageType !== "LtiResourceLinkRequest" && messageType !== "LtiDeepLinkingRequest") throw new FakeLtiToolError("unexpected message type");
+    const settings = claims[LTI_CLAIMS.deepLinkingSettings] as FakeLtiToolDeepLinkingSettings | undefined;
+    if (messageType === "LtiDeepLinkingRequest" && (typeof settings?.deep_link_return_url !== "string" || !Array.isArray(settings.accept_types))) {
+      throw new FakeLtiToolError("malformed deep linking settings");
+    }
+    const resourceLink = claims[LTI_CLAIMS.resourceLink] as { id?: unknown } | undefined;
     const deploymentId = claims[LTI_CLAIMS.deploymentId];
     if (typeof deploymentId !== "string" || !this.deploymentIds.includes(deploymentId)) throw new FakeLtiToolError("unknown deployment");
     if (typeof claims.sub !== "string" || claims.sub === "") throw new FakeLtiToolError("no sub");
@@ -229,9 +266,41 @@ export class FakeLtiTool {
       roles: Array.isArray(roles) ? roles.filter((role): role is string => typeof role === "string") : [],
       ags,
       membershipsUrl: nrps?.context_memberships_url as string | undefined,
+      resourceLinkId: typeof resourceLink?.id === "string" ? resourceLink.id : undefined,
+      deepLinking: messageType === "LtiDeepLinkingRequest" ? settings : undefined,
     };
     this.launches.push(launch);
     return launch;
+  }
+
+  /**
+   * Answers the deep linking request `launch` with `items` (Deep Linking 2.0 §4.5): a response
+   * signed with the tool's key, `iss` its client ID, `aud` the platform, a fresh `nonce`, the
+   * request's deployment and its `data` echoed. Returns the form the browser posts back to the
+   * request's return URL.
+   */
+  async deepLinkingResponse(
+    launch: FakeLtiToolLaunch,
+    items: readonly Record<string, unknown>[],
+    overrides: FakeLtiToolDeepLinkingOverrides = {},
+  ): Promise<{ action: string; fields: { JWT: string } }> {
+    if (launch.deepLinking === undefined || this.clientId === undefined) throw new FakeLtiToolError("not a deep linking request");
+    const iat = overrides.issuedAt ?? Math.floor((this.#options.now?.() ?? Date.now()) / 1000);
+    const data = overrides.data ?? launch.deepLinking.data;
+    const claims: Record<string, unknown> = {
+      iss: this.clientId,
+      aud: overrides.audience ?? this.#options.platformIssuer,
+      iat,
+      exp: iat + 300,
+      nonce: overrides.nonce ?? crypto.randomUUID(),
+      [LTI_CLAIMS.messageType]: "LtiDeepLinkingResponse",
+      [LTI_CLAIMS.version]: LTI_VERSION,
+      [LTI_CLAIMS.deploymentId]: overrides.deploymentId ?? launch.deploymentId,
+      [LTI_CLAIMS.contentItems]: items,
+      ...data === undefined ? {} : { [LTI_CLAIMS.data]: data },
+    };
+    const jwt = overrides.sign === undefined ? await this.keys.sign(claims) : await overrides.sign(claims);
+    return { action: launch.deepLinking.deep_link_return_url, fields: { JWT: jwt } };
   }
 
   /**
