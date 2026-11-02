@@ -1,5 +1,6 @@
 import {
   PrincipalId,
+  type Action,
   type Authorizer,
   type Caller,
   type DistrictDirectorySnapshot,
@@ -13,6 +14,7 @@ import {
   LTI_SCOPES,
   PLATFORM_LAUNCH_ROLE,
   PLATFORM_NRPS_MAX_LIMIT,
+  PlatformLineItemId,
   PlatformToolId,
   platformPersonClaims,
   platformRoleFilter,
@@ -21,7 +23,9 @@ import {
   type PlatformMembershipContainer,
   type PlatformServiceGrant,
   type PlatformServiceRefusalCode,
+  type PlatformToolService,
 } from "@educateos/lti";
+import type { TablePlatformAgsStore } from "./platform-ags.ts";
 import type { TablePlatformSubjectStore } from "./platform-launch.ts";
 import type { TablePlatformToolStore } from "./platform-tools.ts";
 
@@ -49,17 +53,36 @@ export function platformToolForPrincipal(principalId: string): PlatformToolId | 
   return id.success ? id.data : undefined;
 }
 
-/** The deployment service each resource kind a tool may reach needs. */
-const SERVICE_FOR_KIND = { enrollment: "nrps" } as const;
+/**
+ * The deployment service a tool needs for `action` on a resource of `kind`, or `undefined` if no
+ * service reaches it: an offering's enrollments are its roster (NRPS); its gradebook columns are AGS
+ * line items, whose approved results are read with the same service; and an official grade written
+ * (`grade`) is an AGS score.
+ */
+function serviceFor(kind: ResourceRef["kind"], action: Action): PlatformToolService | undefined {
+  switch (kind) {
+    case "enrollment":
+      return action === "list" ? "nrps" : undefined;
+    case "gradebook":
+      return "agsLineItems";
+    case "official-grade":
+      return action === "grade" ? "agsScores" : action === "list" ? "agsLineItems" : undefined;
+    default:
+      return undefined;
+  }
+}
 
 /**
  * What the policy engine reads about registered tools (SCHO-179): each tool as a `service`
  * subject, active while the tool is, and the `lti-deployment` relationship an active deployment
- * of the tool establishes to an offering for the resources its services reach (an offering's
- * enrollments, for NRPS). Both read the store on every decision, so a revocation applies to the
- * next one. Pass them to the district application's `policySources`.
+ * of the tool establishes to an offering for the resources and actions its services reach
+ * ({@link serviceFor}). A resource with no ID (an offering's roster, its gradebook columns) is
+ * reached through any such deployment of the tool there; one with an ID is an AGS line item (a
+ * column, or the official grades in it), reached only through the deployment that created it, so
+ * `ags` must be given for AGS. Both read the stores on every decision, so a revocation applies to
+ * the next one. Pass them to the district application's `policySources`.
  */
-export function platformToolPolicySources(store: TablePlatformToolStore) {
+export function platformToolPolicySources(store: TablePlatformToolStore, ags?: Pick<TablePlatformAgsStore, "lineItem">) {
   return {
     subjects: [{
       async subjectFacts(principalId: PrincipalId) {
@@ -70,15 +93,25 @@ export function platformToolPolicySources(store: TablePlatformToolStore) {
       },
     }],
     relationships: [{
-      async relationships(subject: PrincipalId, resource: ResourceRef) {
+      async relationships(subject: PrincipalId, resource: ResourceRef, action?: Action) {
         const toolId = platformToolForPrincipal(subject);
-        const service = (SERVICE_FOR_KIND as Partial<Record<string, "nrps">>)[resource.kind];
-        if (toolId === undefined || service === undefined || resource.id !== undefined || resource.scope.level !== "offering") return [];
+        const service = action === undefined ? undefined : serviceFor(resource.kind, action);
+        if (toolId === undefined || service === undefined || resource.scope.level !== "offering") return [];
+        const offeringId = resource.scope.offeringId;
+        let deploymentId: string | undefined;
+        if (resource.id !== undefined) {
+          if (resource.kind === "enrollment" || ags === undefined) return [];
+          const lineItemId = PlatformLineItemId.safeParse(resource.id);
+          const item = lineItemId.success ? await ags.lineItem(lineItemId.data) : undefined;
+          if (item === undefined || item.toolId !== toolId || item.offeringId !== offeringId) return [];
+          deploymentId = item.deploymentId;
+        } else if (resource.kind === "official-grade") {
+          return [];
+        }
         const tool = await store.tool(toolId);
         if (tool === undefined || tool.districtId !== resource.scope.districtId) return [];
-        const offeringId = resource.scope.offeringId;
         return (await store.deployments())
-          .filter((deployment) => deploymentAllows(tool, deployment, offeringId, service))
+          .filter((deployment) => (deploymentId === undefined || deployment.id === deploymentId) && deploymentAllows(tool, deployment, offeringId, service))
           .map((deployment) => ({ relationship: "lti-deployment" as const, grantId: deployment.id }));
       },
     }],

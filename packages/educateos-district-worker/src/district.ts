@@ -31,7 +31,7 @@ import type { DiscussionScreening, DiscussionScreeningSettings } from "@educateo
 // LTI 1.3 Tool (SCHO-177)
 import { startDistrictLti, type DistrictLti } from "./lti.ts";
 import { ltiPlatformEnabled } from "./lti-platform.ts";
-import { platformToolPolicySources, TablePlatformToolStore } from "@educateos/lti-district";
+import { platformToolPolicySources, TablePlatformAgsStore, TablePlatformToolStore } from "@educateos/lti-district";
 import { DurableObjectRecordTable } from "@educateos/lti-district/durable-object";
 
 /** The district application and its school tools. */
@@ -235,12 +235,15 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     ANALYTICS_ZONE_TAG: settings.analyticsZoneTag,
   });
   // The LTI Platform (SCHO-179): its registered tools are subjects of the district's policy engine
-  // on the `lti-service` channel, with the authority their deployments give them.
+  // on the `lti-service` channel, with the authority their deployments give them (NRPS rosters, AGS
+  // line items, results and scores).
   const ltiPlatform = settings.ltiToolOrigin !== undefined && settings.ltiToolOrigin !== "" && ltiPlatformEnabled(settings.ltiPlatform);
   const app = await createDistrictApp({
     stores,
     verifyRequest,
-    ...(ltiPlatform ? { policySources: platformToolPolicySources(new TablePlatformToolStore(new DurableObjectRecordTable(storage))) } : {}),
+    ...(ltiPlatform
+      ? { policySources: platformToolPolicySources(new TablePlatformToolStore(new DurableObjectRecordTable(storage)), new TablePlatformAgsStore(new DurableObjectRecordTable(storage))) }
+      : {}),
     ...(seams.workshopReleases === undefined ? {} : { workshopReleases: seams.workshopReleases }),
     importFetch: seams.importFetch,
     ...(seams.onUnreadableConfigRevision === undefined ? {} : { onUnreadableConfigRevision: seams.onUnreadableConfigRevision }),

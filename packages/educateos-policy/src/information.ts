@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   roleAssignmentInForce,
+  type Action,
   type DelegationId,
   type DistrictDirectorySnapshot,
   type PolicySettings,
@@ -36,7 +37,7 @@ export interface SubjectFacts extends PrincipalFacts {
  *   student who owns the resource, or who is actively enrolled in the offering an unowned resource
  *   belongs to (ADR-0012, {@link guardianRelationships}).
  * - `lti-deployment`: the subject is a registered LTI tool with an active deployment to the
- *   resource's offering that allows the LTI service the resource needs (SCHO-179).
+ *   resource's offering that allows the LTI service the resource and action need (SCHO-179).
  */
 export const Relationship = z.enum(["share-grantee", "appeal-reviewer", "guardian-of", "lti-deployment"]);
 /** A relationship. */
@@ -55,11 +56,16 @@ export interface RelationshipFact {
  * state only and answer for the exact resource (`kind`, `id`, scope and owner). A source whose
  * records name one resource (a share, an appeal grant) returns nothing for a resource with no
  * `id`; a source whose records relate the subject to a person (a guardian relationship) may also
- * answer for a `list` at a scope, since the request's owner and scope are what it checks.
+ * answer for a `list` at a scope, since the request's owner and scope are what it checks. A source
+ * whose records allow some actions on a resource and not others (an LTI deployment's services)
+ * answers for the request's `action`.
  */
 export interface RelationshipSource {
-  /** The relationships `subject` holds to `resource`. */
-  relationships(subject: PrincipalId, resource: ResourceRef): Promise<readonly RelationshipFact[]>;
+  /**
+   * The relationships `subject` holds to `resource`, for `action` when the engine asks. A source
+   * whose relationships depend on the action holds none when it is not given.
+   */
+  relationships(subject: PrincipalId, resource: ResourceRef, action?: Action): Promise<readonly RelationshipFact[]>;
 }
 
 /**
@@ -78,8 +84,8 @@ export interface PolicyInformationPoint {
    * is not in, and so fall inside that school's grants.
    */
   scopeExists(scope: Scope): Promise<boolean>;
-  /** The relationships `subject` holds to one resource. */
-  relationships(subject: PrincipalId, resource: ResourceRef): Promise<readonly RelationshipFact[]>;
+  /** The relationships `subject` holds to one resource, for `action`. */
+  relationships(subject: PrincipalId, resource: ResourceRef, action: Action): Promise<readonly RelationshipFact[]>;
   /**
    * The delegation a delegated subject names, read fresh from its store, or `undefined`. An
    * information point with no delegations answers `undefined`, so every delegated request is denied.
@@ -199,8 +205,8 @@ export function directoryPolicyInformation(
     async scopeExists(scope) {
       return scopeExistsIn((await store.load()).snapshot, scope);
     },
-    async relationships(subject, resource) {
-      return (await Promise.all(sources.map((source) => source.relationships(subject, resource)))).flat();
+    async relationships(subject, resource, action) {
+      return (await Promise.all(sources.map((source) => source.relationships(subject, resource, action)))).flat();
     },
     delegation: async (id) => options.delegations?.get(id),
   };

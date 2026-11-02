@@ -6,9 +6,9 @@
 // verifies the launch it receives against the platform's JWKS, its issuer, its own client ID, the
 // nonce, the state, and the LTI message claims. It holds its own RS256 keys and publishes them.
 // From its own server it then calls the platform's LTI Advantage services: it gets a service token
-// with a `private_key_jwt` client assertion (LTI Security Framework 1.0 §4.1, RFC 7523) and reads
-// the offering's roster through the membership URL a launch advertised (NRPS 2.0 §2, §3.6.1).
-// Everything but those calls is in memory.
+// with a `private_key_jwt` client assertion (LTI Security Framework 1.0 §4.1, RFC 7523), reads the
+// offering's roster through the membership URL a launch advertised (NRPS 2.0 §2, §3.6.1), and calls
+// the Assignment and Grade Services (AGS 2.0 §3.2–3.4). Everything but those calls is in memory.
 import { createLocalJWKSet, jwtVerify, type JWK, type JWTPayload } from "jose";
 import { LTI_CLAIMS, LTI_MEDIA_TYPES, LTI_VERSION } from "./claims.ts";
 import { PlatformKeyRing } from "./keys.ts";
@@ -34,6 +34,24 @@ export interface FakeLtiToolOptions {
   readonly keys?: PlatformKeyRing;
 }
 
+/** The AGS endpoint claim of a launch (AGS 2.0 §3.1). */
+export interface FakeLtiToolAgsEndpoint {
+  readonly scope: readonly string[];
+  readonly lineitems?: string;
+  readonly lineitem?: string;
+}
+
+/** A score as the tool sends it (AGS 2.0 §3.4). */
+export interface FakeLtiToolScore {
+  readonly userId: string;
+  readonly scoreGiven?: number;
+  readonly scoreMaximum?: number;
+  readonly comment?: string;
+  readonly activityProgress: string;
+  readonly gradingProgress: string;
+  readonly timestamp: string;
+}
+
 /** Why the tool fake refused a login initiation or a launch. */
 export class FakeLtiToolError extends Error {
   readonly reason: string;
@@ -50,6 +68,8 @@ export interface FakeLtiToolLaunch {
   readonly deploymentId: string;
   readonly contextId: string | undefined;
   readonly roles: readonly string[];
+  /** The launch's AGS endpoint claim, if it carried one. */
+  readonly ags: FakeLtiToolAgsEndpoint | undefined;
   /** The membership URL the launch advertised (its NRPS claim), if any. */
   readonly membershipsUrl: string | undefined;
 }
@@ -197,6 +217,7 @@ export class FakeLtiTool {
     if (typeof claims.sub !== "string" || claims.sub === "") throw new FakeLtiToolError("no sub");
     const context = claims[LTI_CLAIMS.context] as { id?: unknown } | undefined;
     const roles = claims[LTI_CLAIMS.roles];
+    const ags = claims[LTI_CLAIMS.agsEndpoint] as FakeLtiToolAgsEndpoint | undefined;
     const nrps = claims[LTI_CLAIMS.nrpsService] as { context_memberships_url?: unknown; service_versions?: unknown } | undefined;
     if (nrps !== undefined && (typeof nrps.context_memberships_url !== "string" || !Array.isArray(nrps.service_versions) || !nrps.service_versions.includes("2.0"))) {
       throw new FakeLtiToolError("malformed names and role service claim");
@@ -206,6 +227,7 @@ export class FakeLtiTool {
       deploymentId,
       contextId: typeof context?.id === "string" ? context.id : undefined,
       roles: Array.isArray(roles) ? roles.filter((role): role is string => typeof role === "string") : [],
+      ags,
       membershipsUrl: nrps?.context_memberships_url as string | undefined,
     };
     this.launches.push(launch);
@@ -262,7 +284,46 @@ export class FakeLtiTool {
     return { ...body, next };
   }
 
+  /** Lists a line items container (AGS 2.0 §3.2.4). */
+  listLineItems(lineItemsUrl: string, token: string): Promise<Response> {
+    return this.#agsCall("GET", lineItemsUrl, token, { accept: LTI_MEDIA_TYPES.lineItemContainer });
+  }
+
+  /** Creates a line item in a container (AGS 2.0 §3.2.5). */
+  createLineItem(lineItemsUrl: string, token: string, item: Record<string, unknown>): Promise<Response> {
+    return this.#agsCall("POST", lineItemsUrl, token, { body: item, contentType: LTI_MEDIA_TYPES.lineItem });
+  }
+
+  /** Posts a score to a line item (AGS 2.0 §3.4). */
+  postScore(lineItemUrl: string, token: string, score: FakeLtiToolScore): Promise<Response> {
+    return this.#agsCall("POST", below(lineItemUrl, "scores"), token, { body: score, contentType: LTI_MEDIA_TYPES.score });
+  }
+
+  /** Reads a line item's results (AGS 2.0 §3.3). */
+  results(lineItemUrl: string, token: string): Promise<Response> {
+    return this.#agsCall("GET", below(lineItemUrl, "results"), token, { accept: LTI_MEDIA_TYPES.resultContainer });
+  }
+
+  #agsCall(method: string, url: string, token: string, options: { body?: unknown; contentType?: string; accept?: string }): Promise<Response> {
+    return this.#fetch(url, {
+      method,
+      headers: {
+        authorization: `Bearer ${token}`,
+        ...options.accept === undefined ? {} : { accept: options.accept },
+        ...options.contentType === undefined ? {} : { "content-type": options.contentType },
+      },
+      ...options.body === undefined ? {} : { body: JSON.stringify(options.body) },
+    });
+  }
+
   #fetch(input: string, init?: RequestInit): Promise<Response> {
     return (this.#options.fetch ?? ((url, options) => fetch(url, options)))(input, init);
   }
+}
+
+/** The URL of `segment` below a line item, keeping any query the platform gave it (AGS 2.0 §3.4.1). */
+function below(lineItemUrl: string, segment: string): string {
+  const url = new URL(lineItemUrl);
+  url.pathname = `${url.pathname.replace(/\/$/, "")}/${segment}`;
+  return url.toString();
 }

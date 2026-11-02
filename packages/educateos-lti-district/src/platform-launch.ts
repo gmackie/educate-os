@@ -21,6 +21,7 @@ import {
   sha256Base64Url,
   signPlatformIdToken,
   type Clock,
+  type PlatformDeployment,
   type PlatformToolId,
   type SingleUseStore,
 } from "@educateos/lti";
@@ -103,6 +104,11 @@ export interface LtiPlatformLaunchServiceOptions {
    * allows NRPS advertises it; without it, no launch does.
    */
   readonly membershipsUrl?: (deploymentId: PlatformDeploymentId, offeringId: OfferingId) => string;
+  /**
+   * The LTI Advantage service claims a launch carries beside its own, such as the AGS endpoint
+   * (`LtiPlatformAgsService.launchClaims`), for the deployment, offering and resource link.
+   */
+  readonly serviceClaims?: (launch: { deployment: PlatformDeployment; offeringId: OfferingId; resourceLinkId: string }) => Promise<Record<string, unknown>>;
   readonly now?: Clock;
 }
 
@@ -229,7 +235,8 @@ export class LtiPlatformLaunchService {
         ? { membershipsUrl: this.#options.membershipsUrl(deployment.id, ticket.offeringId) }
         : {},
     });
-    const idToken = await signPlatformIdToken(await this.#options.keys.keySet(), claims, {
+    const serviceClaims = await this.#options.serviceClaims?.({ deployment, offeringId: ticket.offeringId, resourceLinkId: ticket.resourceLinkId });
+    const idToken = await signPlatformIdToken(await this.#options.keys.keySet(), { ...serviceClaims, ...claims }, {
       issuer: this.#options.issuer,
       audience: tool.id,
       nowMs: this.#now(),
