@@ -77,7 +77,7 @@ const MUTATIONS = new Set([
   "deleteCustomHostname", "createWorkerRoute", "deleteWorkerRoute", "detachWorkerDomain", "deleteWorkerSecret",
 ]);
 
-const LEDGER_INSERT = /INSERT INTO _educateos_migrations \(id, sha256\) VALUES \(\?, \?\)\s*$/;
+const LEDGER_INSERT = /INSERT INTO _educateos_migrations \(id, sha256\) VALUES \('([0-9a-z_]+)', '[0-9a-f]{64}'\)\s*$/;
 
 /** An in-memory Cloudflare account. Hand out an API per credential with {@link FakeCloudflare.api}. */
 export class FakeCloudflare {
@@ -616,6 +616,8 @@ export class FakeCloudflare {
   #queryD1(uuid: string, sql: string, params: string[]): Record<string, unknown>[] {
     const db = [...this.#d1.values()].find((d) => d.uuid === uuid);
     if (!db) throw new CloudflareApiError("queryD1", 404, [7404]);
+    // As D1 does: `params` with more than one statement is refused.
+    if (params.length > 0 && /;\s*\S/.test(sql.trim().replace(/;$/, ""))) throw new CloudflareApiError("queryD1", 400, [7500]);
     if (sql.startsWith("SELECT name FROM sqlite_master")) return db.ledger && params[0] === "_educateos_migrations" ? [{ name: params[0] }] : [];
     if (sql.startsWith("CREATE TABLE IF NOT EXISTS _educateos_migrations")) {
       db.ledger ??= new Set();
@@ -625,11 +627,12 @@ export class FakeCloudflare {
       if (!db.ledger) throw new CloudflareApiError("queryD1", 400, [7500]);
       return [...db.ledger].map((id) => ({ id }));
     }
-    if (LEDGER_INSERT.test(sql)) {
+    const ledgerRow = LEDGER_INSERT.exec(sql);
+    if (ledgerRow) {
       if (!db.ledger) throw new CloudflareApiError("queryD1", 400, [7500]);
-      if (db.ledger.has(params[0]!)) throw new CloudflareApiError("queryD1", 400, [7500]);
+      if (db.ledger.has(ledgerRow[1]!)) throw new CloudflareApiError("queryD1", 400, [7500]);
       db.statements.push(sql.replace(LEDGER_INSERT, "").trim());
-      db.ledger.add(params[0]!);
+      db.ledger.add(ledgerRow[1]!);
       return [];
     }
     db.statements.push(sql);
