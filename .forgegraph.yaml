@@ -24,6 +24,10 @@
 # gatekeeper-clever and gatekeeper-educateos included; gatekeeper-educateos binds the district Worker) and the guard, then
 # the backend, then the router, since a service binding to a Worker that does not exist yet is
 # rejected. Afterwards every target deploys in place.
+#
+# The separate apps' targets skip a push that changes nothing they build (`watchPathsFile:
+# deploy/watch-paths.json`, SCHO-316). These targets set no list and deploy on every push, because
+# Kanbanger closes an issue only on a fresh healthy receipt from each of them.
 
 app: educate-os
 server: https://forgegraf.com

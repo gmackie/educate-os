@@ -207,6 +207,29 @@ instance is a small cold bring-up: the new Worker must be serving before the bac
 deploy with a binding to it. See [The Google connector](#the-google-connector) for how that went for
 `gatekeeper-google`, and [The EducateOS connector](#the-educateos-connector) for `gatekeeper-educateos`.
 
+### Unchanged Workers skip the push deploy
+
+Every target of the separate apps (the district Workers, the demo districts, the connectors, the AI
+call guard, admin, the demo fakes and the site) sets `watchPathsFile: deploy/watch-paths.json`
+(SCHO-316, ForgeGraph FORGE-289). ForgeGraph reads that file at the commit it is deploying, and
+skips the push deploy of a target when nothing it lists changed since the commit the target is
+serving. Any doubt deploys: no serving deployment, a list it cannot read, or a target config or
+stage secret changed after the serving deployment. The app `educate-os` sets no list. Kanbanger
+closes an issue only on a fresh healthy receipt from each of its targets, so those deploy on every
+push.
+
+`pnpm production:watch-paths` regenerates the file, and `pnpm production:check` (in `pnpm lint`)
+fails when it is stale. Each list is the Worker's whole workspace closure: package.json
+dependencies of any kind, relative imports between packages, the packages its `buildCommand`
+builds, the `scripts/` files a build can load, and the lockfile and root configs. A new separate
+app's target goes in `WATCHED_TARGETS` in `scripts/production/watch-paths.ts`, then its config gets
+`watchPathsFile`.
+
+A skipped Worker keeps serving its last deploy, which is identical to what this commit would
+build. To redeploy one anyway, run `forge deploy create production --target <name>` for its app;
+manual deploys are never skipped. `forge secret set` on a stage already makes the next push
+redeploy its targets.
+
 ### Bindings the account must support
 
 The backend declares `LOADER` (Worker Loader, the gadget sandbox) and `BROWSER` (Browser Rendering,
