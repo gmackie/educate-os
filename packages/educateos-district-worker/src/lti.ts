@@ -284,7 +284,8 @@ export function startDistrictLti(options: DistrictLtiOptions): DistrictLti {
         // elsewhere cannot use an administrator's Access session to rotate keys or reject a platform.
         if (request.method === "POST" && !isJson(request)) throw new EducateOsError("validation-failed", "Send the request as application/json.");
         const caller = await callerOf(request);
-        return Response.json(await matched.route.run(caller, request, matched.params), { headers: { "cache-control": "no-store" } });
+        const result = await matched.route.run(caller, request, matched.params);
+        return result instanceof Response ? result : Response.json(result, { headers: { "cache-control": "no-store" } });
       } catch (error) {
         return errorResponse(error);
       }

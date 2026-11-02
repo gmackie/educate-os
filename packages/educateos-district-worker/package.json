@@ -44,6 +44,7 @@
     "@educateos/fixtures": "workspace:*",
     "@educateos/fleet": "workspace:*",
     "@educateos/marketplace": "workspace:*",
+    "@educateos/provider-fakes": "workspace:*",
     "@gadgets/scripts": "workspace:*",
     "@modelcontextprotocol/client": "2.4.0",
     "miniflare": "catalog:",
