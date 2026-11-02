@@ -1,7 +1,8 @@
 // Contract tests of the LTI 1.3 tool fake: it answers a platform's login initiation with an
 // authentication request, and accepts only a launch signed by the platform for it, with the state
 // and nonce it sent, through a deployment it knows; and from its server it gets a service token
-// and reads a roster.
+// and reads a roster; and it answers a deep linking request with a signed response.
+import { createLocalJWKSet, decodeJwt, jwtVerify } from "jose";
 import { describe, expect, it } from "vitest";
 import { FakeLtiTool, FakeLtiToolError, LTI_CLAIMS, LTI_VERSION, PlatformKeyRing } from "../src/lti/index.ts";
 
@@ -61,6 +62,35 @@ describe("FakeLtiTool", () => {
     const launch = await tool.receiveLaunch({ id_token: await idToken(auth.searchParams), state: auth.searchParams.get("state")! });
     expect(launch).toMatchObject({ deploymentId: DEPLOYMENT, contextId: "off_bio", roles: ["http://purl.imsglobal.org/vocab/lis/v2/membership#Learner"] });
     expect(tool.launches).toHaveLength(1);
+  });
+
+  it("answers a deep linking request with a signed response that echoes its data to its return URL", async () => {
+    const { tool, login, idToken } = await setUp();
+    const auth = new URL(tool.initiateLogin(login())).searchParams;
+    const settings = { deep_link_return_url: `${PLATFORM}/lti/platform/deep-links/flow-1`, accept_types: ["ltiResourceLink"], accept_presentation_document_targets: ["window"], data: "opaque" };
+    const launch = await tool.receiveLaunch({
+      id_token: await idToken(auth, { [LTI_CLAIMS.messageType]: "LtiDeepLinkingRequest", [LTI_CLAIMS.deepLinkingSettings]: settings }),
+      state: auth.get("state")!,
+    });
+    expect(launch.deepLinking).toEqual(settings);
+    const items = [{ type: "ltiResourceLink", title: "Cells", url: `${tool.origin}/cells` }];
+    const form = await tool.deepLinkingResponse(launch, items);
+    expect(form.action).toBe(settings.deep_link_return_url);
+    const { payload } = await jwtVerify(form.fields.JWT, createLocalJWKSet(tool.jwks()), { issuer: CLIENT, audience: PLATFORM, algorithms: ["RS256"] });
+    expect(payload).toMatchObject({
+      [LTI_CLAIMS.messageType]: "LtiDeepLinkingResponse",
+      [LTI_CLAIMS.deploymentId]: DEPLOYMENT,
+      [LTI_CLAIMS.data]: "opaque",
+      [LTI_CLAIMS.contentItems]: items,
+    });
+    expect(typeof payload.nonce).toBe("string");
+    // Overrides make the response a misbehaving tool's.
+    const tampered = decodeJwt((await tool.deepLinkingResponse(launch, items, { data: "other", audience: "https://other.example" })).fields.JWT);
+    expect(tampered).toMatchObject({ aud: "https://other.example", [LTI_CLAIMS.data]: "other" });
+    // A resource link launch cannot be answered with one.
+    const plain = new URL(tool.initiateLogin(login())).searchParams;
+    const resourceLaunch = await tool.receiveLaunch({ id_token: await idToken(plain), state: plain.get("state")! });
+    await expect(tool.deepLinkingResponse(resourceLaunch, items)).rejects.toThrow(FakeLtiToolError);
   });
 
   it("refuses a login initiation from another issuer, for another client or deployment, or aimed elsewhere", async () => {

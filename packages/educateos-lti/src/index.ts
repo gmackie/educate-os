@@ -23,5 +23,6 @@ export * from "./clever-lms-connect.ts";
 export * from "./platform-tools.ts";
 export * from "./platform-service-tokens.ts";
 export * from "./platform-launch.ts";
+export * from "./platform-deep-linking.ts";
 export * from "./platform-ags.ts";
 export * from "./platform-nrps.ts";
