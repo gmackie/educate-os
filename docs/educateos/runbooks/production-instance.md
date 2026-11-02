@@ -207,6 +207,24 @@ instance is a small cold bring-up: the new Worker must be serving before the bac
 deploy with a binding to it. See [The Google connector](#the-google-connector) for how that went for
 `gatekeeper-google`, and [The EducateOS connector](#the-educateos-connector) for `gatekeeper-educateos`.
 
+### Build nodes
+
+A target's node is where ForgeGraph builds it and runs `wrangler deploy`, not where the Worker
+serves; moving it changes nothing a browser sees. A node runs one deploy at a time, so the 18
+targets are split by how often they deploy (SCHO-316):
+
+- **hetzner-master:** `gatekeeper-context`, `gatekeeper-scheduler`, `gatekeeper-websearch` (app
+  `educate-os`, in `.forgegraph.yaml`), `gatekeeper-google`, `educateos-riverbend-district`,
+  `educateos-harbor-district`, `educateos-cedarvalley-district`, `educateos-site` and
+  `educateos-demo-fakes`.
+- **hetzner-fg:** `router`, `workshop-backend`, `schoolos-district-worker`,
+  `educateos-prairie-district`, `educateos-lakeshore-district`, `schoolos-ai-guard`,
+  `gatekeeper-educateos`, `educateos-admin` and `gatekeeper-clever`.
+
+Both need `node`, `npx` and `pnpm` on the agent's `PATH`; the agent runs the repository's pinned pnpm
+through `npx`. Change `educate-os`'s placement in `.forgegraph.yaml` and apply it with `forge apply`.
+Change a separate app's with `FG_APP=<app> forge target update <target> --node <node id>`.
+
 ### Unchanged Workers skip the push deploy
 
 Every target of the separate apps (the district Workers, the demo districts, the connectors, the AI
@@ -363,7 +381,7 @@ Sheets, Slides, Calendar, Chat and BigQuery, through each user's own Google acco
   everything else works. Turning them on also needs an Access bypass for
   `/gatekeeper/google/pubsub` (see the package README).
 - **ForgeGraph.** App `educateos-google`, stage `production`, one `cloudflare-workers` target
-  `gatekeeper-google` on hetzner-fg: `workerName` `gatekeeper-google`, `appDir`
+  `gatekeeper-google` on hetzner-master: `workerName` `gatekeeper-google`, `appDir`
   `packages/gatekeeper-google`, `configPath` `packages/gatekeeper-google/wrangler.production.jsonc`,
   the `buildCommand` and `deployCommand` in the table above, `syncSecrets: true`, and
   `healthCheckUrl` `https://schoolos.gmac.io/healthz`.
