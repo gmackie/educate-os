@@ -193,11 +193,14 @@ async function applyD1Migrations(
     `CREATE TABLE IF NOT EXISTS ${D1_LEDGER_TABLE} (id TEXT PRIMARY KEY, sha256 TEXT NOT NULL)`));
   for (const migration of todo) {
     const sql = new TextDecoder().decode(await verifiedBlob(context.artifacts, migration.sha256, migration.size));
-    // The migration and its ledger row go in one request, so an interruption cannot leave a
-    // migration applied but unrecorded. That D1 runs such a request as one batch is unverified;
-    // see docs/educateos/installer-permissions.md.
+    // The migration and its ledger row go in one request, which D1 runs as one batch, so an
+    // interruption cannot leave a migration applied but unrecorded. D1 refuses `params` on a
+    // multi-statement request (SCHO-66 sandbox run, 2026-11-02), so the ledger values are inlined:
+    // the manifest schema limits both to characters that need no quoting, checked again here.
+    if (!/^[0-9]{4}_[a-z0-9_]{1,60}$/.test(migration.id) || !/^[0-9a-f]{64}$/.test(migration.sha256)) {
+      throw new Error(`D1 migration ${migration.id} has an ID or digest the ledger cannot record`);
+    }
     await guarded(() => context.api.queryD1(account, databaseId,
-      `${sql.trim().replace(/;$/, "")};\nINSERT INTO ${D1_LEDGER_TABLE} (id, sha256) VALUES (?, ?)`,
-      [migration.id, migration.sha256]));
+      `${sql.trim().replace(/;$/, "")};\nINSERT INTO ${D1_LEDGER_TABLE} (id, sha256) VALUES ('${migration.id}', '${migration.sha256}')`));
   }
 }
