@@ -113,6 +113,24 @@ describe("the Northfield showcase, seeded through the district API", () => {
     ]);
   }, 60_000);
 
+  it("approves the student posts a premoderated class holds, and finishes a discussion a cut-short run left", async () => {
+    const fresh = await bootNorthfield();
+    const offeringId = "off_nf-eng9-fall-p3";
+    const course = NORTHFIELD_SHOWCASE.courses.find((c) => c.offeringId === offeringId)!;
+    const teacher = await fresh.actAs(course.teacherId);
+    await teacher.call("teacher.discussionSettings", { params: { offeringId }, body: { premoderation: true } });
+    // The cut-short run: the topic and its first post, and nothing more.
+    const [discussion] = course.discussions;
+    const topic = await teacher.call("teacher.createTopic", { params: { offeringId }, body: { title: discussion!.title, prompt: discussion!.prompt } });
+    await (await fresh.actAs(discussion!.posts[0]!.author)).call("student.createPost", { params: { offeringId, topicId: topic.id }, body: { body: discussion!.posts[0]!.body } });
+
+    const summary = await seedShowcase({ showcase: { ...NORTHFIELD_SHOWCASE, courses: [course] }, adminId: ADMIN, actAs: fresh.actAs, resourceUrl: showcaseResourceUrl });
+    expect(summary.bands["9-12"].discussions).toBe(0);
+    expect(summary.bands["9-12"].posts).toBe(discussion!.posts.length - 1);
+    const thread = await teacher.call("teacher.discussionThread", { params: { offeringId, topicId: topic.id } });
+    expect(thread.posts.map((p) => [p.body, p.status])).toStrictEqual(discussion!.posts.map((p) => [p.body, "visible"]));
+  }, 60_000);
+
   it("lists every Northfield class for the administrator, with its teachers and students", async () => {
     const admin = await district.actAs(ADMIN);
     const offerings = await admin.call("admin.listOfferings");

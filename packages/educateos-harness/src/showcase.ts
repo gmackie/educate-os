@@ -262,23 +262,35 @@ async function seedCourse(course: ShowcaseCourse, showcase: Showcase, options: S
 
   const topics = (await teacher.call("teacher.listDiscussions", { params })).topics;
   for (const discussion of course.discussions) {
-    if (topics.some((t) => t.topic.title === discussion.title)) continue;
-    const moduleId = moduleIds.get(`discussion:${discussion.key}`);
-    const topic = await teacher.call("teacher.createTopic", {
-      params,
-      body: { title: discussion.title, prompt: discussion.prompt, ...(moduleId === undefined ? {} : { moduleId }) },
-    });
-    counts.discussions++;
+    let topicId = topics.find((t) => t.topic.title === discussion.title)?.topic.id;
+    if (topicId === undefined) {
+      const moduleId = moduleIds.get(`discussion:${discussion.key}`);
+      topicId = (await teacher.call("teacher.createTopic", {
+        params,
+        body: { title: discussion.title, prompt: discussion.prompt, ...(moduleId === undefined ? {} : { moduleId }) },
+      })).id;
+      counts.discussions++;
+    }
+    const postParams = { ...params, topicId };
+    // A rerun finds the posts already made by their author and text, so a run cut short is finished.
+    const existing = (await teacher.call("teacher.discussionThread", { params: postParams })).posts;
     const postIds: string[] = [];
     for (const post of discussion.posts) {
-      const parent = post.replyTo === undefined ? {} : { parentId: postIds[post.replyTo]! };
-      const postParams = { ...params, topicId: topic.id };
-      const body = { body: post.body, ...parent };
-      const made = post.author === course.teacherId
-        ? await teacher.call("teacher.createPost", { params: postParams, body })
-        : await (await as(post.author)).call("student.createPost", { params: postParams, body });
+      let made = existing.find((p) => p.authorId === post.author && p.body === post.body);
+      if (made === undefined) {
+        const parent = post.replyTo === undefined ? {} : { parentId: postIds[post.replyTo]! };
+        const body = { body: post.body, ...parent };
+        made = post.author === course.teacherId
+          ? await teacher.call("teacher.createPost", { params: postParams, body })
+          : await (await as(post.author)).call("student.createPost", { params: postParams, body });
+        counts.posts++;
+      }
+      // A district that screens discussions may hold a student's post for its teacher. The teacher
+      // approves it, as they would, so the class reads it and its replies have a visible parent.
+      if (made.status === "pending") {
+        await teacher.call("teacher.moderatePost", { params: { offeringId: course.offeringId, postId: made.id }, body: { decision: "approve" } });
+      }
       postIds.push(made.id);
-      counts.posts++;
     }
   }
 
