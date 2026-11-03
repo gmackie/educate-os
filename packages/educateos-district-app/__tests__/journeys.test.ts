@@ -134,7 +134,7 @@ describe("admin journey (roadmap §3.1)", () => {
     const admin = district.tokenFor(NF.admin);
 
     const health = await district.ok(admin, "admin.health");
-    expect(health).toMatchObject({ districtId: "dst_northfield", directory: { schools: 2, students: 5 }, work: { submissions: 0 } });
+    expect(health).toMatchObject({ districtId: "dst_northfield", directory: { schools: 3, students: 22 }, work: { submissions: 0 } });
 
     const preview = await district.ok(admin, "admin.previewRoster", { body: { files: rosterExport() } }) as {
       canApply: boolean;
@@ -144,7 +144,7 @@ describe("admin journey (roadmap §3.1)", () => {
     expect(preview.changes.principals.added).toHaveLength(1);
     expect(preview.linked).toContainEqual({ sourcedId: "u-amara", principalId: NF.amara });
     // A preview changes nothing.
-    expect((await district.ok(admin, "admin.health")).directory.students).toBe(5);
+    expect((await district.ok(admin, "admin.health")).directory.students).toBe(22);
 
     const before = await district.ok(admin, "admin.getConfig");
     expect(before).toMatchObject({ revisions: 0, districtPolicy: { aiMonthlyCapCentsPerPrincipal: 200 } });

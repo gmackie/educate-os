@@ -74,7 +74,7 @@ describe("the class grid", () => {
     const { service } = await env();
     const view = await service.grid(P.morgan, BIO);
     expect(view.columns.map((c) => c.assignmentId)).toStrictEqual([ESSAY, LAB]);
-    expect(view.rows.map((r) => r.displayName)).toStrictEqual(["Amara Okafor", "Dmitri Novak", "Elena Sato"]);
+    expect(view.rows.map((r) => r.displayName)).toStrictEqual(["Amara Okafor", "Dmitri Novak", "Elena Sato", "Lucía Delgado"]);
     const amara = view.rows[0]!;
     expect(amara.cells.map((c) => c.score?.points)).toStrictEqual([8, undefined]);
     expect(amara.totals).toMatchObject({ unweighted: 80, letter: "B" });
@@ -84,7 +84,7 @@ describe("the class grid", () => {
   it("is read by co-teachers and administrators over the offering, and by no one else", async () => {
     const { service } = await env();
     expect((await service.grid(P.chen, ENG9)).rows.map((r) => r.studentPrincipalId)).toStrictEqual([AMARA, ELENA]);
-    expect((await service.grid(P.nfAdmin, BIO)).rows).toHaveLength(3);
+    expect((await service.grid(P.nfAdmin, BIO)).rows).toHaveLength(4);
     await rejectsWith(service.grid(P.rivera, BIO), "not-found"); // another class's teacher
     await rejectsWith(service.grid(P.amara, BIO), "not-found"); // a student never reads the class grid
     await rejectsWith(service.grid(P.morgan, "off_rb-eng10-b" as OfferingId), "not-found"); // another district's offering

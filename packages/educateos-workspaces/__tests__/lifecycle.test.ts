@@ -73,7 +73,7 @@ describe("closing a term", () => {
     const { workspaces, store, amaraBio, elenaBio } = await fallCompleted();
     expect((await workspaces.getWorkspace(P.amara, amaraBio.id)).lifecycle).toBe("completed");
 
-    expect(await workspaces.closeTerm(P.nfAdmin, T.fall)).toEqual({ retained: 2, grantsRevoked: 4, fundingCancellations: 4 });
+    expect(await workspaces.closeTerm(P.nfAdmin, T.fall)).toEqual({ retained: 2, grantsRevoked: 4, fundingCancellations: 12 });
     const { state } = await store.load();
     expect(state.grants.every((g) => g.state === "revoked" && g.reason === "term-closed")).toBe(true);
     expect(state.events.map((e) => [e.offeringId, e.principalIds.toSorted()])).toEqual(

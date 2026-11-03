@@ -3,8 +3,10 @@
 // it, and `fixtures.test.ts` fails if they drift. Every person here is invented, and every domain is
 // a reserved `.example` one.
 //
-// The district mirrors `NORTHFIELD` in @educateos/fixtures: the same schools, terms, courses, classes,
-// people and IdP subjects, so an import can be checked against the hand-written snapshot.
+// The district mirrors the high and middle schools of `NORTHFIELD` in @educateos/fixtures as they were
+// before its elementary school joined: the same schools, terms, courses, classes, people and IdP
+// subjects, so an import can be checked against that part of the hand-written snapshot
+// (`EXPORTED_NORTHFIELD` in `exported-northfield.ts`).
 
 /** The mutation variants, each a complete export. */
 export const VARIANTS = [
