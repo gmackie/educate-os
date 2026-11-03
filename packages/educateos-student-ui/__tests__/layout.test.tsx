@@ -45,6 +45,8 @@ describe("layout, embedded in a host", () => {
     expect(within(screen.getByRole("banner")).queryByRole("navigation")).toBeNull();
     expect(screen.getByRole("main").compareDocumentPosition(screen.getByRole("navigation", { name: "Main" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(outline(layout)).toMatchSnapshot();
+    // A phone's header is too narrow for the name beside its controls (SCHO-321); the page greets them.
+    expect(screen.getByRole("banner").textContent).not.toContain("Amara Okafor");
   });
 
   it("keeps the navigation in the header on a desktop", async () => {
@@ -52,6 +54,7 @@ describe("layout, embedded in a host", () => {
     await screen.findByRole("heading", { level: 1 });
     expect(container.querySelector("[data-layout]")!.getAttribute("data-layout")).toBe("desktop");
     expect(within(screen.getByRole("banner")).getByRole("navigation", { name: "Main" })).toBeTruthy();
+    expect(within(screen.getByRole("banner")).getByText("Amara Okafor")).toBeTruthy();
   });
 
 });

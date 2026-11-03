@@ -23,9 +23,10 @@ const useIsPhone = (): boolean =>
 /** Who the Learning Home is showing: a student, or a guardian's family view (ADR-0012). */
 export type Audience = "student" | "family";
 
-const MainNav = ({ label, audience }: { label: string; audience: Audience }) => (
+/** The main navigation, in the header on a wide screen or along the bottom on a phone, where its entries share the width. */
+const MainNav = ({ label, audience, placement }: { label: string; audience: Audience; placement: "header" | "bottom" }) => (
   <nav aria-label={label}>
-    <ul className="flex items-center gap-6">
+    <ul className={placement === "bottom" ? "flex items-center justify-between gap-2" : "flex items-center gap-6"}>
       {audience === "student" ? (
         <>
           <li>
@@ -88,7 +89,7 @@ export const Layout = ({ studentName, audience, children }: { studentName: strin
               Learning Home
             </span>
           </Text>
-          {isPhone || audience === undefined ? null : <MainNav label="Main" audience={audience} />}
+          {isPhone || audience === undefined ? null : <MainNav label="Main" audience={audience} placement="header" />}
           <div className="flex items-center gap-3">
             {audience === "student" ? <NotificationsLink /> : null}
             {audience === undefined ? null : (
@@ -97,7 +98,8 @@ export const Layout = ({ studentName, audience, children }: { studentName: strin
               </Link>
             )}
             <ThemeModeButton onAnnounce={announce} />
-            {studentName === undefined ? null : <Text variant="secondary">{studentName}</Text>}
+            {/* A phone's header has no room for the name beside the controls. */}
+            {studentName === undefined || isPhone ? null : <Text variant="secondary">{studentName}</Text>}
             {audience === undefined || embedded ? null : <SignOut />}
           </div>
         </div>
@@ -106,8 +108,8 @@ export const Layout = ({ studentName, audience, children }: { studentName: strin
         {children}
       </main>
       {isPhone && audience !== undefined ? (
-        <div className="fixed inset-x-0 bottom-0 border-t border-kumo-hairline bg-kumo-elevated px-6 pb-[env(safe-area-inset-bottom)]">
-          <MainNav label="Main" audience={audience} />
+        <div className="fixed inset-x-0 bottom-0 border-t border-kumo-hairline bg-kumo-elevated px-4 pb-[env(safe-area-inset-bottom)]">
+          <MainNav label="Main" audience={audience} placement="bottom" />
         </div>
       ) : null}
     </div>
