@@ -204,6 +204,8 @@ const TEMPLATE_NAMES: Record<string, string> = {
   "writing-task": "Writing task",
   "science-investigation": "Science investigation",
   "problem-set": "Problem set",
+  "picture-response": "Picture response",
+  "read-and-respond": "Read and respond",
 };
 
 /** The listing cards of the marketplace page, for between its `<!-- marketplace:listings -->` markers. */
