@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge, Button, Input, LayerCard, Radio, Text } from "@cloudflare/kumo";
+import { useSectionRoute } from "../app/useHashRoute.ts";
 import { ActionOutcome } from "./ActionOutcome.tsx";
 import { isLocal, sectionLabel, type AuthoringDirectory } from "./authoring.ts";
 import { SectionRoster } from "./SectionRoster.tsx";
@@ -11,10 +12,17 @@ const choiceOf = (chosen: string, options: readonly { id: string }[]): string =>
 /**
  * Sections: one course taught in one school and term. Each can be archived, and opened to choose
  * its teachers and students. The form asks for all three, starting with any that has one option.
+ * A link from All classes opens one section's people (`#/classes-people/sections/<id>`).
  */
 export const SectionsSection = ({ directory, onChanged }: { directory: AuthoringDirectory; onChanged: () => void }) => {
   const action = useAuthoringAction(onChanged);
-  const [open, setOpen] = useState<string>();
+  const linked = useSectionRoute();
+  const [open, setOpen] = useState<string | undefined>(linked);
+  useEffect(() => {
+    if (linked === undefined) return;
+    setOpen(linked);
+    document.getElementById(`section-${linked}`)?.scrollIntoView?.({ block: "start" });
+  }, [linked]);
   const [section, setSection] = useState({ schoolId: "", termId: "", courseId: "", sectionName: "" });
   const writable = isLocal(directory, "offering");
   const courses = directory.courses.filter((c) => c.archivedAt === undefined);
@@ -32,7 +40,7 @@ export const SectionsSection = ({ directory, onChanged }: { directory: Authoring
             const label = sectionLabel(directory, offering);
             const archived = offering.archivedAt !== undefined;
             return (
-              <li key={offering.id}>
+              <li key={offering.id} id={`section-${offering.id}`}>
                 <LayerCard className="flex flex-col gap-3 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="flex items-center gap-2">

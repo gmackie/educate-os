@@ -21,7 +21,10 @@ export const SCREENS = [
 /** A screen's path. */
 export type ScreenPath = (typeof SCREENS)[number]["path"];
 
+const SECTION_HASH = /^#\/classes-people\/sections\/([^/]+)\/?$/;
+
 const current = (): ScreenPath => {
+  if (SECTION_HASH.test(readHash())) return "classes-people";
   const path = readHash().replace(/^#\/?/, "");
   return SCREENS.find((screen) => screen.path === path)?.path ?? "dashboard";
 };
@@ -38,6 +41,17 @@ const currentSchool = (): string | undefined => {
 
 /** Where one school's page lives. */
 export const schoolHref = (schoolId: string): string => `#/schools/${encodeURIComponent(schoolId)}`;
+
+/** Where one section's people are: Manage classes and people, opened at that section. */
+export const sectionPeopleHref = (offeringId: string): string => `#/classes-people/sections/${encodeURIComponent(offeringId)}`;
+
+const currentSection = (): string | undefined => {
+  const id = SECTION_HASH.exec(readHash())?.[1];
+  return id === undefined ? undefined : decodeURIComponent(id);
+};
+
+/** The section whose people the hash opens, or undefined on any other screen. */
+export const useSectionRoute = (): string | undefined => useSyncExternalStore(subscribeToHash, currentSection, () => undefined);
 
 /** The school whose page the hash names (SCHO-218), or undefined on any other screen. */
 export const useSchoolRoute = (): string | undefined => useSyncExternalStore(subscribeToHash, currentSchool, () => undefined);
