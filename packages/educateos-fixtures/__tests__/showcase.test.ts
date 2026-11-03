@@ -108,12 +108,13 @@ describe("the Northfield showcase", () => {
   });
 });
 
-describe("young learners' scripted drawings and recordings", () => {
-  const ascii = (bytes: Uint8Array, from: number, to: number) => String.fromCharCode(...bytes.subarray(from, to));
+const ascii = (bytes: Uint8Array, from: number, to: number) => String.fromCharCode(...bytes.subarray(from, to));
 
-  /** Inflates a zlib stream, checking its checksum, as a browser's PNG decoder would. */
-  const inflate = async (data: Uint8Array) =>
-    new Uint8Array(await new Response(new Blob([data as Uint8Array<ArrayBuffer>]).stream().pipeThrough(new DecompressionStream("deflate"))).arrayBuffer());
+/** Inflates a zlib stream, checking its checksum, as a browser's PNG decoder would. */
+const inflate = async (data: Uint8Array) =>
+  new Uint8Array(await new Response(new Blob([data as Uint8Array<ArrayBuffer>]).stream().pipeThrough(new DecompressionStream("deflate"))).arrayBuffer());
+
+describe("young learners' scripted drawings and recordings", () => {
 
   it.each(Object.entries(DRAWINGS))("draws %s as a valid 240 by 180 PNG", async (_, drawing) => {
     const png = drawingPng(drawing);
