@@ -37,6 +37,7 @@ import { jobForCron } from "./schedule.ts";
 import { onLegacyTableMigrated, type LegacyTableReport } from "@educateos/contracts/legacy-tables";
 import { LTI_API_PREFIX, type DistrictLti } from "./lti.ts";
 import { readSchoolManifestSettings } from "./school-manifest.ts";
+import { DEMO_API_PREFIX, type ShowcaseEvent } from "./showcase.ts";
 
 // Each table recovered from before the rename (SCHO-232), with its counts, so the migration's
 // outcome in production can be read from the logs.
@@ -55,6 +56,9 @@ interface DistrictLogFields {
   alreadyDone?: number;
   revisionId?: string;
 }
+
+// The demo showcase's routes (SCHO-326): who did what, by counts and IDs.
+const showcaseLogger = createLogger<Omit<ShowcaseEvent, "event" | "error">>({ component: "educateos.district.showcase" });
 
 const logger = createLogger<DistrictLogFields>({ component: "educateos.district" });
 
@@ -152,8 +156,14 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
    * the LTI Tool's `/lti/` routes (SCHO-177), which are 404 when the deployment runs no LTI Tool.
    */
   override async fetch(request: Request): Promise<Response> {
-    const { app, lti, mcp } = await this.#boot();
+    const { app, lti, mcp, showcase } = await this.#boot();
     const { pathname } = new URL(request.url);
+    // The demo showcase (SCHO-326): 404 on every district that is not a demo one.
+    if (pathname.startsWith(DEMO_API_PREFIX)) {
+      if (showcase !== undefined) return showcase.serve(request);
+      await request.body?.cancel();
+      return Response.json({ code: "not-found", message: "This district has no showcase." }, { status: 404 });
+    }
     if (MCP_PATHS.includes(pathname)) {
       return mcp === undefined ? new Response(null, { status: 404 }) : mcp.fetch(request);
     }
@@ -348,6 +358,8 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         releaseVersion: this.#releaseVersion(),
         // Marketplace (SCHO-209)
         marketplaceTrust: this.env.MARKETPLACE_TRUST,
+        // Demo showcase (SCHO-326)
+        demoShowcase: this.env.DEMO_SHOWCASE,
       },
       {
         importFetch: (url, init) => this.importFetch(url, init),
@@ -370,6 +382,10 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
           fetch: (input, init) => this.hallMonitorFetch(input, init),
         }, screening),
         analyticsFetch: (request) => this.analyticsFetch(request),
+        onShowcaseEvent: ({ event, error, ...fields }) => {
+          if (event === "demo.showcase.failed") showcaseLogger.error("a showcase request failed", { event, error, ...fields });
+          else showcaseLogger.info("a showcase request ran", { event, ...fields });
+        },
         ...(keys === undefined ? {} : { accessKeys: keys }),
         ...(mcpKeys === undefined ? {} : { mcpKeys }),
         ...(sendEmail === undefined ? {} : { sendEmail }),

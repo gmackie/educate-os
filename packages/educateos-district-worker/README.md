@@ -156,6 +156,17 @@ redirects to the district registered for the user's Clever district, where Acces
 Clever sign-in. A self-hosted install registers its own landing page as the first redirect URI
 instead (see ADR-0013).
 
+## Demo showcase (SCHO-326)
+
+`src/showcase.ts` lets a district administrator of a demo district seed the K-12 showcase
+(`NORTHFIELD_SHOWCASE`) inside the district and link presenters' Access sign-ins to its personas, at
+`/api/demo/showcase/*`. It is on only when `DISTRICT_CONFIG.demo.showcase` and the `DEMO_SHOWCASE`
+var name the same showcase. Only the generated demo configs in `scripts/production` set that var.
+Everywhere else `/api/demo/*` is 404. Seeding keeps the fixture's IDs under the live district's ID
+and only appends. A persona's sign-in can be linked, moved or freed, but never taken from anyone who
+is not a persona. The routes, the gate and the live procedure are in
+[demo-districts.md](../../docs/educateos/runbooks/demo-districts.md#the-k-12-showcase-scho-326).
+
 ## Entrypoints
 
 | Entrypoint | For | Contract |

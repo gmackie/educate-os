@@ -15,6 +15,10 @@
 // Access team: behind
 // Access, every sign-in (Clever, Google or a one-time PIN) carries the team's issuer and the
 // person's Access subject, never the vendor's.
+//
+// Every demo district may seed the K-12 showcase (SCHO-326), so the config names it in `demo`; its
+// routes are on only where the Worker's generated config sets `DEMO_SHOWCASE` to the same name
+// (scripts/production/demo-districts.ts). Unlike the directory, `demo` is read on every start.
 
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
@@ -31,6 +35,9 @@ export interface DemoDistrictAdmins {
   /** The operator's Access `sub` (`user_uuid` from `/cdn-cgi/access/get-identity`). */
   adminSubject: string;
 }
+
+/** The showcase every demo district may seed (SCHO-326), as `DEMO_SHOWCASE` names it in their generated configs. */
+export const DEMO_SHOWCASE = "northfield";
 
 /** A demo district's `DISTRICT_CONFIG`, as a `DistrictWorkerConfig` document. */
 export function demoDistrictConfig(demo: DemoDistrict, admins: DemoDistrictAdmins): Record<string, unknown> {
@@ -57,6 +64,7 @@ export function demoDistrictConfig(demo: DemoDistrict, admins: DemoDistrictAdmin
     },
     // A district with no roster builds its own classes; every other one is owned by its roster.
     ...demo.profile.roster === "local" ? { authority: "local" } : {},
+    demo: { showcase: DEMO_SHOWCASE },
   };
 }
 

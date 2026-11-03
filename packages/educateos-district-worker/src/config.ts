@@ -130,6 +130,14 @@ export const DistrictWorkerConfig = z.strictObject({
    * and the Access application exempts `/mcp` and `/.well-known/oauth-protected-resource*`.
    */
   mcp: DistrictMcpSettings.optional(),
+  /**
+   * Demo districts only (SCHO-326): the showcase an administrator may seed and present
+   * (`/api/demo/showcase/*`, see showcase.ts). It takes effect only when the Worker's committed
+   * `DEMO_SHOWCASE` var names the same showcase, which only the demo deployments' generated configs
+   * set, so neither this setting nor that var alone turns it on. Absent (every real district), those
+   * routes are 404. Unlike `directory`, it is read on every start.
+   */
+  demo: z.strictObject({ showcase: z.enum(["northfield"]) }).optional(),
 });
 /** The district Worker's configuration. */
 export type DistrictWorkerConfig = z.infer<typeof DistrictWorkerConfig>;

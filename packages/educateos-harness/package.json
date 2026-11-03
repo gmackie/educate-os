@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./pinned-fetch": "./src/pinned-fetch.ts"
+    "./pinned-fetch": "./src/pinned-fetch.ts",
+    "./showcase": "./src/showcase.ts"
   },
   "scripts": {
     "start": "node src/cli.ts"

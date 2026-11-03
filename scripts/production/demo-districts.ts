@@ -38,6 +38,12 @@ export const DEMO_MARKETPLACE_TRUST = JSON.stringify({
   keys: [{ keyId: "ed25519-Y5ayv_OFgjE5j_YaqCuiuNvx-H7_d6AVfSjTnQlIc58", publicKey: "LVFy9O5qtmgvCGs0uhfjF9Q3aJZ4cQhrYYyouuF6YKg" }],
 });
 
+/**
+ * The showcase every demo district may seed (SCHO-326): `DEMO_SHOWCASE`, which their
+ * `DISTRICT_CONFIG.demo.showcase` must name too (demo-district-config.ts). See demo-districts.md.
+ */
+export const DEMO_SHOWCASE = "northfield";
+
 /** The demo districts deployed as their own district Workers, in fixture order. */
 export const DEMO_DISTRICT_DEPLOYMENTS: readonly DemoDistrictDeployment[] = [
   "riverbend", "prairie", "cedarvalley", "lakeshore", "harbor",
@@ -47,4 +53,5 @@ export const DEMO_DISTRICT_DEPLOYMENTS: readonly DemoDistrictDeployment[] = [
   hostname: `${slug}.educateos.io`,
   oneOrigin: { enabled: DEMO_DISTRICTS_ONE_ORIGIN, aiDemoUrl: AI_DEMO_URL },
   marketplaceTrust: DEMO_MARKETPLACE_TRUST,
+  showcase: DEMO_SHOWCASE,
 }));

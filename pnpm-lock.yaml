@@ -1257,6 +1257,9 @@ importers:
       '@educateos/ai-governance':
         specifier: workspace:*
         version: link:../educateos-ai-governance
+      '@educateos/api-client':
+        specifier: workspace:*
+        version: link:../educateos-api-client
       '@educateos/content-studio':
         specifier: workspace:*
         version: link:../educateos-content-studio
@@ -1272,9 +1275,15 @@ importers:
       '@educateos/external-mcp':
         specifier: workspace:*
         version: link:../educateos-external-mcp
+      '@educateos/fixtures':
+        specifier: workspace:*
+        version: link:../educateos-fixtures
       '@educateos/gatekeeper':
         specifier: workspace:*
         version: link:../gatekeeper-educateos
+      '@educateos/harness':
+        specifier: workspace:*
+        version: link:../educateos-harness
       '@educateos/identity':
         specifier: workspace:*
         version: link:../educateos-identity
@@ -1327,21 +1336,18 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 'catalog:'
         version: 1.4.3(@cloudflare/workers-types@5.20261005.1)(@types/node@26.1.0)(vitest@5.0.5)
-      '@educateos/assessment-sdk':
-        specifier: workspace:*
-        version: link:../educateos-assessment-sdk
       '@educateos/ai-guard':
         specifier: workspace:*
         version: link:../educateos-ai-guard
+      '@educateos/assessment-sdk':
+        specifier: workspace:*
+        version: link:../educateos-assessment-sdk
       '@educateos/catalog':
         specifier: workspace:*
         version: link:../educateos-catalog
       '@educateos/config':
         specifier: workspace:*
         version: link:../educateos-config
-      '@educateos/fixtures':
-        specifier: workspace:*
-        version: link:../educateos-fixtures
       '@educateos/fleet':
         specifier: workspace:*
         version: link:../educateos-fleet
@@ -5482,6 +5488,7 @@ packages:
   '@smithy/core@3.34.1':
     resolution: {integrity: sha512-dLcOUxz8YCv1RZUMKq6GbyUf95pLbrqh34bPvpCZ1+CByFF31BEAFewZjsGCnVsZTKdThNENfGyAgk2TJqVwSw==}
     engines: {node: '>=18.0.0'}
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/credential-provider-imds@4.4.16':
     resolution: {integrity: sha512-QfuLWAkLzptffFW980AFeHZFdqds2B64rpEd3uJ6lgs3xVn9QegGMUgUcj+4d7dRrAsya3r58ZKpku97WcFb4w==}

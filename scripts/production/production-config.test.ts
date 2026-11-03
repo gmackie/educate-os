@@ -190,8 +190,9 @@ test("the district Worker has its own custom domains, serves the UIs as assets a
   });
   // Discussion screening reaches the guard's Hall Monitor by the same binding, signing as it does
   // (SCHO-308).
+  // It is Northfield's demo district, so it may seed the showcase (SCHO-326).
   assert.deepEqual(district.vars, {
-    HALL_MONITOR_ISSUER: "educateos", HALL_MONITOR_AUDIENCE: "hall-monitor", LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
+    HALL_MONITOR_ISSUER: "educateos", HALL_MONITOR_AUDIENCE: "hall-monitor", DEMO_SHOWCASE: "northfield", LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
   });
   assert.deepEqual(district.services, [{ binding: "HALL_MONITOR", service: "hall-monitor" }]);
   assert.deepEqual(district.triggers, { crons: ["7 * * * *", "0 14 * * SUN"] });
@@ -366,6 +367,8 @@ test("deploys five demo districts beside northfield, each its own Worker at its 
       AI_DEMO_URL: AI_DEMO_URL,
       SCHOOL_MANIFEST: JSON.stringify({ origin: `https://${slug}.educateos.io`, features: { ai: false } }),
       MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST,
+      // The showcase it may seed (SCHO-326).
+      DEMO_SHOWCASE: "northfield",
     });
     // The district's assets, with /ai run through the Worker for its "AI isn't enabled" page.
     assert.deepEqual(config.assets, { ...district.assets, run_worker_first: [
@@ -479,6 +482,7 @@ test("one origin: the district Worker gives up its hostnames, keeps its name, LT
   assert.deepEqual(district.vars, {
     HALL_MONITOR_ISSUER: "educateos",
     HALL_MONITOR_AUDIENCE: "hall-monitor",
+    DEMO_SHOWCASE: "northfield",
     LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
     // Phones sign in at the district's /connect-phone with Google (SCHO-283).
     SCHOOL_MANIFEST: JSON.stringify({ origin: NORTHFIELD, signIn: [{ id: "google", label: "Google" }], features: { ai: true } }),
@@ -525,6 +529,8 @@ test("one origin: a demo district answers /ai itself, linking to Northfield, and
       AI_DEMO_URL,
       SCHOOL_MANIFEST: JSON.stringify({ origin: `https://${slug}.educateos.io`, features: { ai: false } }),
       MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST,
+      // The showcase it may seed (SCHO-326).
+      DEMO_SHOWCASE: "northfield",
     });
     const { assets: _a, vars: _v, ...rest } = config;
     const { assets: _b, vars: _w, ...restBefore } = before;

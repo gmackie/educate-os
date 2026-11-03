@@ -147,6 +147,11 @@ export interface ProductionInstance {
      * each one as a destination before it is deployed, or it would serve without Access.
      */
     aliases?: string[];
+    /**
+     * `DEMO_SHOWCASE` (SCHO-326): the showcase an administrator may seed into a demo district, which
+     * its `DISTRICT_CONFIG.demo.showcase` must name too. Absent, it has none.
+     */
+    showcase?: "northfield";
   };
   /**
    * One origin per district (ADR-0014): when `enabled`, the router serves the district at the root
@@ -337,6 +342,11 @@ export interface DemoDistrictDeployment {
    * marketplace listings against, as `ReleaseTrust` JSON. Absent, it installs none.
    */
   marketplaceTrust?: string;
+  /**
+   * `DEMO_SHOWCASE` (SCHO-326): the showcase an administrator may seed into the district, which its
+   * `DISTRICT_CONFIG.demo.showcase` must name too. Absent, it has none.
+   */
+  showcase?: "northfield";
 }
 
 /** A demo district's Worker name: its own, so its own Durable Object namespace. */
@@ -386,7 +396,10 @@ export function buildDemoDistrictConfigs({
       workers_dev: false,
       preview_urls: false,
     };
-    const marketplace: Record<string, string> = district.marketplaceTrust === undefined ? {} : { MARKETPLACE_TRUST: district.marketplaceTrust };
+    const marketplace: Record<string, string> = {
+      ...district.marketplaceTrust === undefined ? {} : { MARKETPLACE_TRUST: district.marketplaceTrust },
+      ...district.showcase === undefined ? {} : { DEMO_SHOWCASE: district.showcase },
+    };
     if (district.oneOrigin?.enabled) {
       // No router in front: the district answers /ai itself, so the Worker runs first for it.
       asDistrict(config, [district.hostname], {
@@ -527,7 +540,8 @@ export function buildProductionConfigs({
       const guardVars = instance.vars[AI_GUARD_PACKAGE] ?? {};
       const hallMonitorVars = Object.fromEntries(["HALL_MONITOR_ISSUER", "HALL_MONITOR_AUDIENCE"]
         .flatMap((name) => guardVars[name] === undefined ? [] : [[name, guardVars[name]]]));
-      vars = { ...hallMonitorVars, ...vars };
+      const showcase: Record<string, string> = instance.district.showcase === undefined ? {} : { DEMO_SHOWCASE: instance.district.showcase };
+      vars = { ...hallMonitorVars, ...showcase, ...vars };
       if (oneOrigin) {
         // Behind the router, at no hostname of its own. Its LTI Tool keeps the origin platforms
         // registered, which the router redirects to the one origin with method and body kept.
