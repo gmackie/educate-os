@@ -15,7 +15,7 @@ const ADMIN = "prn_nf-district-admin" as PrincipalId;
 /** The picker's sections: one a grade band, then families and the district office. */
 export const NORTHFIELD_SECTIONS: readonly PersonaSection[] = [
   { key: "K-2", title: "Kindergarten to grade 2", description: "One step at a time, read aloud, answered by drawing and speaking." },
-  { key: "3-5", title: "Grades 3 to 5", description: "Sentence starters, read-aloud on request, and a helper that gives hints, not answers." },
+  { key: "3-5", title: "Grades 3 to 5", description: "Read-aloud on request, and a helper that gives hints and sentence starters, not answers." },
   { key: "6-8", title: "Grades 6 to 8", description: "Primary sources, class discussions and coached drafts." },
   { key: "9-12", title: "Grades 9 to 12", description: "Arguments with evidence, released feedback and official grades." },
   { key: "family", title: "Family", description: "One guardian, two children in two schools." },
@@ -45,7 +45,7 @@ export const NORTHFIELD_PERSONAS: readonly Persona[] = [
     section: "K-2",
     name: "Daniel Yazzie",
     role: "Grade 1 teacher",
-    description: "Listen to Priya's retelling, look at her drawing, and release feedback to Jonah.",
+    description: "Listen to Priya's retelling, look at her drawing, and release Jonah's feedback on his story problems in Grade 1 Mathematics.",
     lookFor: "recordings and drawings in Submissions, and the Grade 1 gradebook",
     subject: "nf-0105",
   },
@@ -57,7 +57,7 @@ export const NORTHFIELD_PERSONAS: readonly Persona[] = [
     name: "Abena Mensah",
     role: "Grade 4 student",
     description: "Finish your opinion piece on a longer recess, and read your teacher's feedback on the kite story.",
-    lookFor: "sentence starters, read-aloud and the Homework Helper (simulated)",
+    lookFor: "read-aloud, and the Homework Helper's hints and sentence starters (simulated)",
     subject: "nf-s-2012",
   },
   {
@@ -134,6 +134,17 @@ export const NORTHFIELD_PERSONAS: readonly Persona[] = [
   },
 ];
 
+/** The district's configuration: rostered from OneRoster files previewed before they apply, with the core modules on for every active class. */
+const config = (district: string): Record<string, unknown> => ({
+  apiVersion: "educateos.io/v1alpha1",
+  district,
+  profile: "us-k12-conservative",
+  identity: { provider: "district-sso" },
+  rostering: { provider: "oneroster-csv", mode: "preview-before-apply" },
+  modules: { "core-learning": "enabled", "learning-registry": "enabled", "content-studio": "enabled" },
+  rollout: { target: "all-active-offerings", requiresAdminActivation: false },
+});
+
 /** How {@link bootNorthfield} serves people other than the demo's own pages. */
 export interface NorthfieldOptions {
   /** Turns on the device API and phone pairing (`/api/m`, `/api/pair`, `/connect-phone`). */
@@ -176,6 +187,9 @@ export async function bootNorthfield(options: NorthfieldOptions = {}): Promise<D
     dueAt: schoolDayDue(options.today ?? new Date()),
   });
   if (seeded.skipped.length > 0) throw new Error(`the showcase left out ${seeded.skipped.join(", ")}`);
+  // A live district runs under a configuration its administrator applied. Without one, the admin
+  // console reads "not set up" on its dashboard, roster integration and policies.
+  await clientFor(person(ADMIN).externalIdentities[0]!.subject).call("admin.applyConfig", { body: { document: config(directory.district.id), acknowledgeApprovals: true } });
 
   for (const persona of NORTHFIELD_PERSONAS) {
     const principal = directory.principals.find((p) => p.externalIdentities.some((i) => i.subject === persona.subject));
