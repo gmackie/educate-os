@@ -276,7 +276,7 @@ async function seedCourse(course: ShowcaseCourse, showcase: Showcase, options: S
     const existing = (await teacher.call("teacher.discussionThread", { params: postParams })).posts;
     const postIds: string[] = [];
     for (const post of discussion.posts) {
-      let made = existing.find((p) => p.authorId === post.author && p.body === post.body);
+      let made: { id: string; status: string } | undefined = existing.find((p) => p.authorId === post.author && p.body === post.body);
       if (made === undefined) {
         const parent = post.replyTo === undefined ? {} : { parentId: postIds[post.replyTo]! };
         const body = { body: post.body, ...parent };
