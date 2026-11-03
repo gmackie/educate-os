@@ -6,7 +6,7 @@ import { messageFor, useApi } from "../api.tsx";
 import { formatDateTime } from "../labels.ts";
 import { useAnnounce } from "../AppContext.tsx";
 import type { QuizAttemptResult, QuizAttemptView, QuizResponse } from "../model.ts";
-import { QuestionField } from "./QuestionField.tsx";
+import { QuestionField, type QuestionPresentation } from "./QuestionField.tsx";
 import { formatClock, isAnswered } from "./quizText.ts";
 import { useAutosave } from "./useAutosave.ts";
 import { useQuizClock } from "./useQuizClock.ts";
@@ -21,7 +21,7 @@ const isTimeUp = (error: unknown) => error instanceof DistrictApiError && error.
  * works, the time left on the district's clock, and submitting after the student confirms. Once
  * time is up the attempt can no longer be changed; the district refuses a late submission too.
  */
-export const QuizTaking = ({ offeringId, attempt, timed, onSubmitted }: {
+export const QuizTaking = ({ offeringId, attempt, timed, presentation = { young: false, readAloud: false }, onSubmitted }: {
   offeringId: string;
   attempt: QuizAttemptView;
   /**
@@ -29,6 +29,8 @@ export const QuizTaking = ({ offeringId, attempt, timed, onSubmitted }: {
    * reads as a date, not as a countdown of hundreds of hours.
    */
   timed: boolean;
+  /** How the questions are shown: larger for young learners, read aloud in elementary classes. */
+  presentation?: QuestionPresentation;
   onSubmitted: (result: QuizAttemptResult) => void;
 }) => {
   const api = useApi();
@@ -113,6 +115,7 @@ export const QuizTaking = ({ offeringId, attempt, timed, onSubmitted }: {
               <QuestionField
                 question={question}
                 number={index + 1}
+                presentation={presentation}
                 response={answers.get(question.id)}
                 numberText={numberTexts.get(question.id) ?? ""}
                 disabled={timeUp || submitting}

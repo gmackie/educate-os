@@ -11,19 +11,36 @@ export type DatasetColumn = Extract<ActivityStep["response"], { kind: "dataset" 
  * - `upload`: a CSV file from the device, saved as its text and shown as a table.
  * - `file`: a file from the device, saved as soon as it is chosen: a text file as text, a PDF or
  *   picture as the file itself.
+ * - `picture`: a picture drawn on the drawing pad or a photo from the device, saved as soon as it
+ *   is done. Offered where young learners draw; elsewhere a picture is a `file`.
+ * - `recording`: the student's voice, recorded in the browser or uploaded, saved when they choose.
  * - `link`: a link to work kept in the school's approved document service.
- * - `unsupported`: a file kind the district API cannot take yet (recordings, notebooks).
+ * - `unsupported`: a file kind the district API cannot take yet (video, notebooks).
  */
 export type WorkMode =
   | { input: "writing"; artifactType: "document"; mediaType: "text/plain" }
   | { input: "dataset"; artifactType: "dataset"; mediaType: "text/csv"; columns: DatasetColumn[] }
   | { input: "upload"; artifactType: ArtifactType; mediaType: "text/csv"; formats: readonly UploadFormat[] }
   | { input: "file"; artifactType: ArtifactType; formats: readonly UploadFormat[] }
+  | { input: "picture"; artifactType: ArtifactType; formats: readonly UploadFormat[] }
+  | { input: "recording"; artifactType: ArtifactType; formats: readonly UploadFormat[] }
   | { input: "link"; artifactType: "external-ref" }
   | { input: "unsupported"; artifactType: ArtifactType };
 
-/** The way a step's work is produced, or undefined for a step that produces nothing. */
-export const workModeFor = (step: ActivityStep): WorkMode | undefined => {
+/** The kinds of work that are saved as soon as they are made, rather than edited and then saved. */
+export type CapturedWorkMode = Extract<WorkMode, { input: "file" | "picture" | "recording" }>;
+
+/** Whether work is made and saved in one go: a file, a picture or a recording. */
+export const isCaptured = (mode: WorkMode): mode is CapturedWorkMode =>
+  mode.input === "file" || mode.input === "picture" || mode.input === "recording";
+
+const RECORDING_FORMATS = [FORMATS.m4a, FORMATS.mp3, FORMATS.wav, FORMATS.webm, FORMATS.ogg];
+
+/**
+ * The way a step's work is produced, or undefined for a step that produces nothing. `drawing`
+ * offers the drawing pad for a picture, which the classes that draw get.
+ */
+export const workModeFor = (step: ActivityStep, { drawing = false }: { drawing?: boolean } = {}): WorkMode | undefined => {
   const response = step.response;
   switch (response.kind) {
     case "none":
@@ -37,7 +54,9 @@ export const workModeFor = (step: ActivityStep): WorkMode | undefined => {
         case "document":
           return { input: "file", artifactType: "document", formats: [FORMATS.pdf, FORMATS.text, FORMATS.markdown] };
         case "image":
-          return { input: "file", artifactType: "image", formats: [FORMATS.png, FORMATS.jpeg] };
+          return { input: drawing ? "picture" : "file", artifactType: "image", formats: [FORMATS.png, FORMATS.jpeg] };
+        case "audio":
+          return { input: "recording", artifactType: "audio", formats: RECORDING_FORMATS };
         case "presentation":
           return { input: "file", artifactType: "presentation", formats: [FORMATS.pdf] };
         case "evidence":
