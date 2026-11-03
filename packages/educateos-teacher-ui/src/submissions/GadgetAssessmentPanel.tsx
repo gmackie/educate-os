@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { Button, Text } from "@cloudflare/kumo";
+import { Button, Collapsible, Text } from "@cloudflare/kumo";
 import { importWorkshopAssessmentBlueprint, type WorkshopAssessmentBlueprint } from "@educateos/assessment-sdk";
 import { useAnnounce } from "../Announcer.tsx";
 import { useDistrictApi } from "../DistrictApi.tsx";
@@ -10,7 +10,11 @@ import type { Assignment } from "../types.ts";
 import { useLoad } from "../useLoad.ts";
 import { formatDateTime } from "../dates.ts";
 
-/** A teacher pins a reviewed Workshop release to this assignment; the district owns the binding. */
+/**
+ * A teacher pins a reviewed Workshop release to this assignment; the district owns the binding.
+ * Teachers call it an automated assessment: "Gadget" is the Workshop's word. Until one is pinned,
+ * the way to attach one stays folded away, since most assignments never have one.
+ */
 export const GadgetAssessmentPanel = ({ assignment }: { assignment: Assignment }) => {
   const client = useDistrictApi();
   const announce = useAnnounce();
@@ -42,7 +46,7 @@ export const GadgetAssessmentPanel = ({ assignment }: { assignment: Assignment }
       await client.call("teacher.bindGadgetAssessment", { params: { assignmentId: assignment.id }, body: { blueprint: upload.blueprint } });
       setUpload({ status: "empty" });
       binding.reload();
-      announce("Gadget assessment release pinned to this assignment.");
+      announce("Automated assessment pinned to this assignment.");
     } catch (failure) {
       setError(failure);
     } finally {
@@ -52,8 +56,8 @@ export const GadgetAssessmentPanel = ({ assignment }: { assignment: Assignment }
 
   return (
     <section aria-labelledby={`${inputId}-heading`} className="flex flex-col gap-3 rounded border border-kumo-line p-4">
-      <h2 id={`${inputId}-heading`}><Text variant="heading" as="span">Gadget assessment</Text></h2>
-      {binding.status === "loading" && <Loading label="Verifying the pinned Gadget assessment…" />}
+      <h2 id={`${inputId}-heading`}><Text variant="heading" as="span">Automated assessment</Text></h2>
+      {binding.status === "loading" && <Loading label="Verifying the pinned automated assessment…" />}
       {binding.status === "error" && <Problem error={binding.error} onRetry={binding.reload} />}
       {binding.status === "ready" && binding.data !== null && (
         <>
@@ -71,18 +75,21 @@ export const GadgetAssessmentPanel = ({ assignment }: { assignment: Assignment }
       )}
       {binding.status === "ready" && binding.data === null && (
         <>
-          <Text variant="secondary">No Gadget assessment is attached to this assignment.</Text>
-          {assignment.rubric === undefined ? <Text>Add a signed rubric before attaching a Gadget assessment.</Text> : (
-            <>
+          <Text variant="secondary">None is attached to this assignment. It's optional: you review and grade the work either way.</Text>
+          {assignment.rubric === undefined ? <Text>Add a signed rubric before attaching an automated assessment.</Text> : (
+            <Collapsible.Root>
+              <Collapsible.DefaultTrigger>Attach one from your school's Workshop</Collapsible.DefaultTrigger>
+              <Collapsible.DefaultPanel>
+              <div className="flex flex-col gap-3 pt-2">
               <Text variant="secondary" size="sm">Choose a public assessment export obtained from your school's Workshop. Review its source before pinning it. The district will fetch the exact release from its configured Workshop and compare source and assessment fingerprints before saving this pin. Pin before any student submits work.</Text>
-              <label htmlFor={inputId} className="text-sm font-medium">Workshop assessment export (.json)</label>
+              <label htmlFor={inputId} className="text-sm font-medium">Assessment file exported from your Workshop (.json)</label>
               <input id={inputId} type="file" accept=".json,application/json" className={FILE_INPUT_CLASS} disabled={saving || upload.status === "reading"} onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file === undefined) setUpload({ status: "empty" });
                 else void read(file);
               }} />
               {upload.status === "reading" && <Loading label="Reading the assessment export…" />}
-              {upload.status === "invalid" && <p role="alert" className="text-kumo-danger">Choose a valid Workshop assessment export of up to 512 KB. Its assessment fingerprint must match and it must contain no private records.</p>}
+              {upload.status === "invalid" && <p role="alert" className="text-kumo-danger">Choose a valid assessment file exported from your Workshop, up to 512 KB. Its assessment fingerprint must match and it must contain no private records.</p>}
               {upload.status === "ready" && (
                 <div className="flex flex-col gap-2">
                   <Text bold>{upload.blueprint.definition.title}</Text>
@@ -91,7 +98,9 @@ export const GadgetAssessmentPanel = ({ assignment }: { assignment: Assignment }
                   <div><Button variant="primary" loading={saving} onClick={() => void bind()}>Pin reviewed release to assignment</Button></div>
                 </div>
               )}
-            </>
+              </div>
+              </Collapsible.DefaultPanel>
+            </Collapsible.Root>
           )}
         </>
       )}

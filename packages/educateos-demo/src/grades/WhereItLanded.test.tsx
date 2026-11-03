@@ -16,7 +16,7 @@ const IN_CLEVER: GradeEvent = {
   ...ATTEMPT, id: "grade-2", scoreGiven: 5, gradeVersion: 2, via: "clever-lms-connect", outcome: "posted",
   landed: { via: "clever-lms-connect", sectionId: "dbfb4edc4327ef69dbfb4ddc", sectionName: "Earth Science 8 - Whitaker", assignmentId: "28be06b684db27fe28be07b6", assignmentTitle: "Where does the rain go?", gradePoints: 5, pointsPossible: 5 },
 };
-const REFUSED: GradeEvent = { ...ATTEMPT, id: "grade-3", scoreGiven: 5, gradeVersion: 3, via: "clever-lms-connect", outcome: "refused", code: "policy-violation", reason: "This grade has not been approved by the offering's teacher." };
+const REFUSED: GradeEvent = { ...ATTEMPT, id: "grade-3", scoreGiven: 5, gradeVersion: 3, via: "clever-lms-connect", outcome: "refused", code: "policy-violation", reason: "This grade has not been approved by the class's teacher." };
 
 /** Gradebooks the view can drive, holding `events` and one class on `route`. */
 function stubGradebooks(events: GradeEvent[], route: GradeRouteKind = "google-classroom") {
@@ -111,8 +111,8 @@ describe("Where it landed", () => {
     expect(grades.tryUnapproved).toHaveBeenCalledWith(EARTH_SCIENCE);
     const item = await findByRole(container, "listitem");
     expect(item.textContent).toContain("Refused");
-    expect(item.textContent).toContain("This grade has not been approved by the offering's teacher. Nothing was written to any gradebook. (policy-violation)");
-    expect(getByRole(container, "status").textContent).toBe("Refused: This grade has not been approved by the offering's teacher.");
+    expect(item.textContent).toContain("This grade has not been approved by the class's teacher. Nothing was written to any gradebook. (policy-violation)");
+    expect(getByRole(container, "status").textContent).toBe("Refused: This grade has not been approved by the class's teacher.");
     expect(getByRole(container, "button", { name: /^Where grades land \(0 sent, 1 refused\)/ })).toBeDefined();
   });
 });

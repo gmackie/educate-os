@@ -84,7 +84,7 @@ describe.each(ROUTES)("an approved grade through %s", (route) => {
   it("refuses a grade no teacher approved, with the gate's reason, writing nothing", async () => {
     const before = writes(district);
     const refused = await district.grades.tryUnapproved(earthScience);
-    expect(refused).toMatchObject({ outcome: "refused", via: route, code: "policy-violation", reason: "This grade has not been approved by the offering's teacher." });
+    expect(refused).toMatchObject({ outcome: "refused", via: route, code: "policy-violation", reason: "This grade has not been approved by the class's teacher." });
     expect(writes(district)).toEqual(before);
   });
 });
