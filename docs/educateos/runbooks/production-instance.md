@@ -57,7 +57,8 @@ var is not set. It signs its service tokens as `iss=educateos`, `aud=hall-monito
 public half of the signing key (`kid` `educateos-1`). The guard config names Hall Monitor's built-in
 profiles at revision `builtin-1`: `educator`, `student-9-12`, and `student-6-8` for both the 6-8 and
 K-5 audience classes (Hall Monitor has no younger profile and moderates younger bands under the
-stricter 6-8 one). The guard's optional AI Gateway log reader (`AI_GATEWAY_ACCOUNT_ID`,
+stricter 6-8 one). `student-k5` is still its own guard profile, with scaffolded answers and the K-2
+or 3-5 grade band sent with each check (SCHO-325; see the guard's README, "The K-5 profile"). The guard's optional AI Gateway log reader (`AI_GATEWAY_ACCOUNT_ID`,
 `AI_GATEWAY_ID`, `AI_GATEWAY_LOGS_TOKEN`) is left unset, so settlements are estimated, and the nightly
 reconciliation only records snapshots.
 

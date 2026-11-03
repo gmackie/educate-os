@@ -9,6 +9,7 @@ import { createHallMonitorClient, serviceBindingTransport } from "@gmacko/hall-m
 import { SCHEMA_VERSION } from "@gmacko/hall-monitor-contracts";
 import { AiLedger, InMemoryLedgerStore } from "@educateos/ai-governance";
 import { readGuardConfig } from "../src/config.ts";
+import { gadgetGradeBand, STUDENT_GRADE_BANDS, studentProfileKey } from "../src/context.ts";
 import { DEV_GUARD_CONFIG, DEV_MODERATOR } from "../src/dev-config.ts";
 import { DevGuardContextResolver, withDevConfig } from "../src/dev-worker.ts";
 import { FAKE_CHECK_COST_USD_NANO, fakeHallMonitor } from "../src/fake-hall-monitor.ts";
@@ -36,6 +37,15 @@ describe("dev guard config", () => {
     expect(generative).toMatchObject({ outcome: "reserved", status: "held" });
     const safety = await ledger.reserve("dev-call-1.m0.c0", context!.principal, context!.workspace, DEV_MODERATOR, "100000", { fundingPurpose: "safety" });
     expect(safety).toMatchObject({ outcome: "reserved", status: "held" });
+  });
+
+  it("moderates a gadget at the younger of its declared band and the dev student's 9-12 (SCHO-325)", async () => {
+    const context = (await new DevGuardContextResolver(config).resolve({ initiator: { type: "gadget", id: "0123abcd-any-dev-user" } }))!;
+    expect(gadgetGradeBand("K-2", context)).toBe("K-2");
+    expect(gadgetGradeBand("9-12", context)).toBe("9-12");
+    for (const band of STUDENT_GRADE_BANDS) {
+      expect(config.profiles[studentProfileKey(band)]).toMatchObject({ moderateInput: true, failureMode: "fail-closed", outputModeration: "required" });
+    }
   });
 
   it("is the default only while AI_GUARD_CONFIG is unset", () => {
