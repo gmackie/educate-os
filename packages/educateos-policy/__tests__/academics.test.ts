@@ -37,7 +37,7 @@ describe("the academic directory with the policy engine", () => {
   it("lets students and teachers read terms, catalog courses and the offerings they are in", async () => {
     const { directory } = academics();
     expect((await directory.listTerms(http(P.amara))).map((t) => t.id)).toEqual(["trm_nf-2026-spring", "trm_nf-2026-fall"]);
-    expect(await directory.listCourses(http(P.chidi))).toHaveLength(4);
+    expect(await directory.listCourses(http(P.chidi))).toHaveLength(12);
     expect((await directory.listOfferings(http(P.amara))).map((o) => o.id).toSorted()).toEqual([
       "off_nf-bio-fall-p2",
       "off_nf-bio-spring-p4",
@@ -49,7 +49,7 @@ describe("the academic directory with the policy engine", () => {
 
   it("keeps rosters from students and gives them to the offering's staff", async () => {
     const { directory } = academics();
-    expect(await directory.roster(http(P.morgan), OfferingId.parse("off_nf-bio-fall-p2"))).toHaveLength(4);
+    expect(await directory.roster(http(P.morgan), OfferingId.parse("off_nf-bio-fall-p2"))).toHaveLength(5);
     await rejectsWith(directory.roster(http(P.amara), OfferingId.parse("off_nf-bio-fall-p2")), "forbidden");
     await rejectsWith(directory.roster(http(P.chidi), OfferingId.parse("off_nf-bio-fall-p2")), "not-found");
   });
@@ -88,7 +88,7 @@ describe("the academic directory with the policy engine", () => {
   it("audits every decision of one call under the caller's correlation ID", async () => {
     const { directory, audit } = academics();
     await directory.listSchools({ ...http(P.highPrincipal), correlationId: "corr-listing-1" });
-    expect(audit.events.map((e) => e.correlationId)).toEqual(["corr-listing-1", "corr-listing-1"]);
+    expect(audit.events.map((e) => e.correlationId)).toEqual(["corr-listing-1", "corr-listing-1", "corr-listing-1"]);
   });
 
   it("audits each decision it is asked for with the deciding rule", async () => {
@@ -97,6 +97,7 @@ describe("the academic directory with the policy engine", () => {
     expect(audit.events.map((e) => [e.resourceId, e.effect, e.ruleId])).toEqual([
       ["sch_nf-high", "allow", "admin.school.directory"],
       ["sch_nf-middle", "deny", "default.deny"],
+      ["sch_nf-elem", "deny", "default.deny"],
     ]);
   });
 });
@@ -148,7 +149,7 @@ describe("the academic tools through the school tool runner", () => {
     const { tools, audit } = academics();
     const outcome = await tools.invoke(mcp(P.highPrincipal), "list_schools", {});
     expect(outcome).toMatchObject({ status: "ok", correlationId: expect.any(String) });
-    expect(audit.events.map((e) => e.ruleId)).toEqual(["tool.invoke.district-member", "admin.school.directory", "default.deny"]);
+    expect(audit.events.map((e) => e.ruleId)).toEqual(["tool.invoke.district-member", "admin.school.directory", "default.deny", "default.deny"]);
     expect(new Set(audit.events.map((e) => e.correlationId))).toEqual(new Set([outcome.status === "ok" ? outcome.correlationId : ""]));
   });
 

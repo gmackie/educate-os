@@ -139,7 +139,7 @@ describe("LtiPlatformNrpsService", () => {
     expect(page.next).toBeUndefined();
     expect(page.container.id).toBe(`https://district.example/lti/platform/nrps/${deployment.id}/${BIO}/memberships`);
     expect(page.container.context).toEqual({ id: BIO, label: "Biology I", title: "Biology I, Period 2" });
-    expect(page.container.members).toHaveLength(4);
+    expect(page.container.members).toHaveLength(5);
     expect(page.container.members).toContainEqual({ user_id: amara, roles: [LEARNER], status: "Active" });
     expect(page.container.members.filter((m) => m.roles[0] === INSTRUCTOR)).toEqual([{ user_id: await subjects.subjectFor(tool.id, MORGAN), roles: [INSTRUCTOR], status: "Active" }]);
     expect(JSON.stringify(page.container)).not.toContain("prn_");
@@ -175,15 +175,18 @@ describe("LtiPlatformNrpsService", () => {
     const g = await grant(tool.id);
 
     const learners = await nrps.memberships(g, target, { role: "Learner", limit: null, page: null });
-    expect(learners.container.members.map((m) => m.name)).toEqual(["Amara Okafor", "Dmitri Novak", "Elena Sato"]);
+    expect(learners.container.members.map((m) => m.name)).toEqual(["Amara Okafor", "Dmitri Novak", "Elena Sato", "Lucía Delgado"]);
     expect(learners.container.id).toMatch(/\?role=Learner$/);
     const first = await nrps.memberships(g, target, { role: null, limit: "2", page: null });
     expect(first.container.members.map((m) => m.name)).toEqual(["Morgan Lee", "Amara Okafor"]);
     expect(first.next).toBe(`https://district.example/lti/platform/nrps/${deployment.id}/${BIO}/memberships?limit=2&page=2`);
     const second = await nrps.memberships(g, target, { role: null, limit: "2", page: "2" });
     expect(second.container.members.map((m) => m.name)).toEqual(["Dmitri Novak", "Elena Sato"]);
-    expect(second.next).toBeUndefined();
-    expect((await nrps.memberships(g, target, { role: null, limit: "2", page: "3" })).container.members).toEqual([]);
+    expect(second.next).toBe(`https://district.example/lti/platform/nrps/${deployment.id}/${BIO}/memberships?limit=2&page=3`);
+    const third = await nrps.memberships(g, target, { role: null, limit: "2", page: "3" });
+    expect(third.container.members.map((m) => m.name)).toEqual(["Lucía Delgado"]);
+    expect(third.next).toBeUndefined();
+    expect((await nrps.memberships(g, target, { role: null, limit: "2", page: "4" })).container.members).toEqual([]);
   });
 
 });

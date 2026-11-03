@@ -2,7 +2,7 @@ import type { DistrictDirectorySnapshot } from "@educateos/contracts";
 import { CEDARVALLEY, CEDARVALLEY_GUARDIANS } from "./cedarvalley.ts";
 import { HARBOR, HARBOR_GUARDIANS } from "./harbor.ts";
 import { LAKESHORE, LAKESHORE_GUARDIANS } from "./lakeshore.ts";
-import { NORTHFIELD } from "./northfield.ts";
+import { NORTHFIELD, NORTHFIELD_GUARDIANS } from "./northfield.ts";
 import { PRAIRIE, PRAIRIE_GUARDIANS } from "./prairie.ts";
 import type { DemoDistrict, DemoDistrictSlug } from "./profile.ts";
 import { RIVERBEND } from "./riverbend.ts";
@@ -15,7 +15,7 @@ import { oneRosterSeed, withStudentsRemoved, type OneRosterSeed } from "./vendor
 export { CEDARVALLEY, CEDARVALLEY_GUARDIANS } from "./cedarvalley.ts";
 export { HARBOR, HARBOR_GUARDIANS } from "./harbor.ts";
 export { LAKESHORE, LAKESHORE_GUARDIANS } from "./lakeshore.ts";
-export { NORTHFIELD } from "./northfield.ts";
+export { NORTHFIELD, NORTHFIELD_GUARDIANS } from "./northfield.ts";
 export { PRAIRIE, PRAIRIE_GUARDIANS } from "./prairie.ts";
 export { RIVERBEND } from "./riverbend.ts";
 export type * from "./profile.ts";
@@ -36,7 +36,7 @@ export const DEMO_DISTRICTS: readonly DemoDistrict[] = [
   {
     slug: "northfield",
     directory: NORTHFIELD,
-    guardians: [],
+    guardians: NORTHFIELD_GUARDIANS,
     profile: { sso: "district-oidc", roster: "oneroster-csv", lms: "canvas-lti", gradeAuthority: "canvas" },
     harnessPort: 4801,
   },
@@ -116,3 +116,25 @@ export function lakeshoreLargeRemoval(): OneRosterSeed {
   const removed = LAKESHORE.enrollments.filter((e) => e.role === "student" && high.has(e.offeringId)).map((e) => e.principalId);
   return withStudentsRemoved(oneRosterSeed(demoDistrict("lakeshore")), [...new Set(removed)]);
 }
+export {
+  NORTHFIELD_SHOWCASE,
+  rubricMaxPoints,
+  SHOWCASE_BANDS,
+  SHOWCASE_RESOURCES,
+  SHOWCASE_STAGES,
+  showcaseResourceHtml,
+  type Showcase,
+  type ShowcaseActivity,
+  type ShowcaseBand,
+  type ShowcaseCourse,
+  type ShowcaseDiscussion,
+  type ShowcaseFramework,
+  type ShowcaseModule,
+  type ShowcaseQuiz,
+  type ShowcaseQuizAnswer,
+  type ShowcaseQuizItem,
+  type ShowcaseResource,
+  type ShowcaseRubric,
+  type ShowcaseStandard,
+  type ShowcaseWork,
+} from "./showcase/index.ts";

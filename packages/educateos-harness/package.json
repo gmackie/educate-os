@@ -2,7 +2,7 @@
   "name": "@educateos/harness",
   "version": "0.1.0",
   "private": true,
-  "description": "Boots the synthetic EducateOS districts locally as isolated instances with fake identity, roster and AI providers, each serving the full district application with demo content. Development tooling, not a deployable Worker.",
+  "description": "Boots the synthetic EducateOS districts locally as isolated instances with fake identity, roster and AI providers, each serving the full district application with demo content, and seeds the K-12 showcase through any district's API (`seedShowcase`). Development tooling, not a deployable Worker.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",

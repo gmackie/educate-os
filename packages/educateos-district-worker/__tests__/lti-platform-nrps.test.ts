@@ -131,18 +131,18 @@ describe("the district's LTI Platform roster service", () => {
     expect(roster.id).toBe(membershipsUrl(deploymentId));
     expect(roster.context).toEqual({ id: OFFERING, label: "Biology I", title: "Biology I, Period 2" });
     expect(roster.next).toBeUndefined();
-    expect(roster.members).toHaveLength(4);
+    expect(roster.members).toHaveLength(5);
     for (const member of roster.members) expect(Object.keys(member).toSorted()).toEqual(["roles", "status", "user_id"]);
     expect(roster.members.find((m) => m.user_id === amara.claims.sub)).toEqual({ user_id: amara.claims.sub, roles: [`${LIS}Learner`], status: "Active" });
     expect(roster.members.find((m) => m.user_id === morgan.claims.sub)).toEqual({ user_id: morgan.claims.sub, roles: [`${LIS}Instructor`], status: "Active" });
-    expect(roster.members.filter((m) => m.roles.includes(`${LIS}Learner`))).toHaveLength(3);
+    expect(roster.members.filter((m) => m.roles.includes(`${LIS}Learner`))).toHaveLength(4);
 
     // A student who has not launched yet gets a subject now, and keeps it.
     const again = await tool.memberships(amara.membershipsUrl!, token);
     expect(again.members.map((m) => m.user_id).toSorted()).toEqual(roster.members.map((m) => m.user_id).toSorted());
 
     // The role filter, by short name or full URI, and paging with Link: rel="next".
-    expect((await tool.memberships(`${amara.membershipsUrl}?role=Learner`, token)).members).toHaveLength(3);
+    expect((await tool.memberships(`${amara.membershipsUrl}?role=Learner`, token)).members).toHaveLength(4);
     expect((await tool.memberships(`${amara.membershipsUrl}?role=${encodeURIComponent(`${LIS}Instructor`)}`, token)).members.map((m) => m.user_id)).toEqual([morgan.claims.sub]);
     expect((await tool.memberships(`${amara.membershipsUrl}?role=Mentor`, token)).members).toEqual([]);
     const first = await tool.memberships(`${amara.membershipsUrl}?limit=3`, token);
@@ -164,7 +164,7 @@ describe("the district's LTI Platform roster service", () => {
     const othersDeployment = await deploy(other, [OFFERING], { nrps: true });
     const token = await tool.serviceToken([NRPS_SCOPE]);
 
-    expect((await tool.memberships(membershipsUrl(deploymentId), token)).members).toHaveLength(4);
+    expect((await tool.memberships(membershipsUrl(deploymentId), token)).members).toHaveLength(5);
     await expectRefused(tool.memberships(membershipsUrl(deploymentId, OTHER_OFFERING), token), "memberships refused (403)");
     await expectRefused(tool.memberships(membershipsUrl(elsewhere, OTHER_OFFERING), token), "memberships refused (403)");
     await expectRefused(tool.memberships(membershipsUrl(othersDeployment), token), "memberships refused (403)");
@@ -199,11 +199,11 @@ describe("the district's LTI Platform roster service", () => {
     const kept = await deploy(tool, [OFFERING], { nrps: true });
     const revoked = await deploy(tool, [OFFERING], { nrps: true });
     const token = await tool.serviceToken([NRPS_SCOPE]);
-    expect((await tool.memberships(membershipsUrl(revoked), token)).members).toHaveLength(4);
+    expect((await tool.memberships(membershipsUrl(revoked), token)).members).toHaveLength(5);
 
     expect((await api(ADMIN, `/api/lti/platform-deployments/${revoked}/revoke`)).status).toBe(200);
     await expectRefused(tool.memberships(membershipsUrl(revoked), token), "memberships refused (403)");
-    expect((await tool.memberships(membershipsUrl(kept), token)).members).toHaveLength(4);
+    expect((await tool.memberships(membershipsUrl(kept), token)).members).toHaveLength(5);
 
     // With no deployment left allowing NRPS, the token itself is no longer good.
     expect((await api(ADMIN, `/api/lti/platform-deployments/${kept}/revoke`)).status).toBe(200);
@@ -223,8 +223,8 @@ describe("the district's LTI Platform roster service", () => {
     const emailed = await tool.memberships(membershipsUrl(deploymentId), token);
     expect(emailed.members.every((m) => m.name === undefined && m.given_name === undefined)).toBe(true);
     expect(emailed.members.find((m) => m.user_id === amaraNamed!.user_id)!.email).toBe("family.okafor@northfield.example");
-    // People with no email on record (Dmitri and Elena) are listed without one.
-    expect(emailed.members.filter((m) => m.email === undefined)).toHaveLength(2);
+    // People with no email on record (Dmitri, Elena and Lucía) are listed without one.
+    expect(emailed.members.filter((m) => m.email === undefined)).toHaveLength(3);
   });
 
   it("has no roster route when LTI_PLATFORM is unset", async () => {

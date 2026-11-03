@@ -3,6 +3,7 @@ import { NORTHFIELD } from "@educateos/fixtures";
 import { describe, expect, it } from "vitest";
 import { oneroster } from "../src/index.ts";
 import type { RosterSource } from "../src/index.ts";
+import { EXPORTED_NORTHFIELD } from "./fixtures/exported-northfield.ts";
 import { loadExport } from "./fixtures/load.ts";
 import { DEMOGRAPHICS_SENTINEL, PASSWORD_SENTINEL } from "./fixtures/northfield-export.ts";
 import type { Variant } from "./fixtures/northfield-export.ts";
@@ -94,7 +95,7 @@ describe.each(SOURCES)("a complete sync from the %s source", (_name, sourceOf) =
     const { state, run } = await synced(EMPTY, sourceOf("northfield"));
     expect(checkDirectoryIntegrity(state.roster.snapshot)).toEqual([]);
     expect(state.roster.snapshot.principals.map((p) => p.displayName).toSorted())
-      .toEqual(NORTHFIELD.principals.map((p) => p.displayName).toSorted());
+      .toEqual(EXPORTED_NORTHFIELD.principals.map((p) => p.displayName).toSorted());
     expect(run).toMatchObject({ mode: "complete", outcome: "succeeded", quarantined: 0 });
     expect(run.counts.principals.added).toBe(11);
     expect(run.counts.enrollments.added).toBe(17);

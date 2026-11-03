@@ -33,12 +33,12 @@ describe("the term rollover preview on Northfield", () => {
       termState: "active",
       alreadyClosed: false,
       canClose: false,
-      offerings: 4,
+      offerings: 12,
       workspaces: { toRetain: 3, onLegalHold: 0 },
       grants: { toRevoke: 6 },
-      // Amara, Dmitri, Elena, Chidi and Felix; Dmitri's dropped English 9 enrollment does not count twice.
-      // Staff: Morgan, Rivera, Chen (teacher and co-teacher) and Patel.
-      principals: { students: 5, staff: 4 },
+      // Twenty-two students across the three schools; Dmitri's dropped English 9 enrollment does not
+      // count twice. Staff: Morgan, Rivera, Chen (teacher and co-teacher), Patel and six more teachers.
+      principals: { students: 22, staff: 10 },
     });
     const { state } = await store.load();
     expect(state.closures).toEqual([]);

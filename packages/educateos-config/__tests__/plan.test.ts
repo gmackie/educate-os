@@ -66,7 +66,7 @@ describe("planConfigurationChange (F03 acceptance)", () => {
 
     // Impact from active enrollments: Dmitri's dropped English 9 enrollment does not count.
     expect(result.offerings.map((o) => [o.offeringId, o.students, o.staff, o.packsExposed])).toEqual([
-      ["off_nf-bio-fall-p2", 3, 1, ["assessment-ci", "learning-artifacts"]],
+      ["off_nf-bio-fall-p2", 4, 1, ["assessment-ci", "learning-artifacts"]],
       ["off_nf-eng9-fall-p3", 2, 2, ["assessment-ci", "learning-artifacts"]],
       ["off_nf-ushist-fall-p5", 2, 1, ["assessment-ci", "core-learning", "learning-artifacts"]],
     ]);
