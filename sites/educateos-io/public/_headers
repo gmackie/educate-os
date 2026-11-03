@@ -1,8 +1,18 @@
 # The in-browser demo (SCHO-224) promises that nothing leaves the visitor's browser beyond its own
 # static files. no-transform keeps Cloudflare's edge from rewriting its HTML, which is how the
 # zone's Web Analytics beacon would otherwise be injected into every page, the demo's included.
-/demo/*
+# It is set on the page alone: it also stops the edge compressing a response, and the demo's
+# script is over 3 MB before compression (SCHO-321).
+/demo
   Cache-Control: no-transform
+/demo/
+  Cache-Control: no-transform
+/demo/index.html
+  Cache-Control: no-transform
+
+# The demo's build names every asset by its content's hash, so a browser may keep one for good.
+/demo/assets/*
+  Cache-Control: public, max-age=31536000, immutable
 
 # Closed intake pages add no tracking. CSP also prevents zone analytics/beacon injection.
 /interest/*
