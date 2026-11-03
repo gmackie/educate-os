@@ -256,7 +256,7 @@ function initialSyncRuns(): SyncRun[] {
 }
 
 /** What a sync of the fake roster reads: one student moved class, one left, one is held for review. */
-function syncPreview(issues: { severity: "error" | "warning"; file?: string; row?: number; column?: string; sourcedId?: string; message: string }[]) {
+function syncPreview(issues: { severity: "error" | "warning"; file?: string; row?: number; column?: string; sourcedId?: string; source?: string; message: string }[]) {
   return { ...rosterPreview(), canApply: !issues.some((issue) => issue.severity === "error"), issues };
 }
 
@@ -686,7 +686,11 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
       syncRuns.push(run);
       return {
         ran: true, run, grantsRevoked: 1,
-        preview: syncPreview([{ severity: "warning", file: "users.csv", row: 12, column: "grades", sourcedId: "u-312", message: "The grade \"13\" is not a grade level; it was left out." }]),
+        preview: syncPreview([
+          { severity: "warning", file: "users.csv", row: 12, column: "grades", sourcedId: "u-312", message: "The grade \"13\" is not a grade level; it was left out." },
+          // A source with records of its own names them, as Clever's does.
+          ...(mode === "delta" ? [{ severity: "warning" as const, file: "users.csv", row: 3, column: "sourcedId", sourcedId: "c-77", source: "Clever user c-77", message: "is a guardian, parent or relative; EducateOS does not import them" }] : []),
+        ]),
       } as never;
     },
     "admin.approveRosterRemoval": (input) => {
