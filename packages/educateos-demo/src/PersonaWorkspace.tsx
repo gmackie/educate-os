@@ -4,11 +4,14 @@ import { createHashHistory } from "@tanstack/react-router";
 import type { DistrictApiClient } from "@educateos/api-client";
 import { AdminApp } from "@educateos/admin-ui/src/App.tsx";
 import { StudentApp } from "@educateos/student-ui/src/App.tsx";
+import type { StudentHost } from "@educateos/student-ui/src/AppContext.tsx";
+import type { AssignedActivity } from "@educateos/student-ui/src/model.ts";
 import { App as TeacherApp } from "@educateos/teacher-ui/src/App.tsx";
 import { DistrictApiProvider } from "@educateos/teacher-ui/src/DistrictApi.tsx";
 import type { DistrictState } from "./DemoApp.tsx";
 import { ROSTER_SYNC_ROUTE, type DemoDistrict, type DistrictInfo, type Persona, type PersonaId } from "./districts/index.ts";
-import { stepsDoneBy } from "./journeys.ts";
+import { stepsDoneBy, stepsDoneByEvent } from "./journeys.ts";
+import { SimulatedTutor } from "./tutor/SimulatedTutor.tsx";
 
 // Only a district that passes grades back has the panel, so it comes in its own chunk.
 const WhereItLanded = lazy(async () => ({ default: (await import("./grades/WhereItLanded.tsx")).WhereItLanded }));
@@ -25,12 +28,14 @@ interface PersonaWorkspaceProps {
   onResponse?: (request: Request, status: number) => void;
   /** Switches to another persona of the same district, opening their app at `route` if given. */
   onChoose: (persona: PersonaId, route?: string) => void;
+  /** Signs the persona out of their app, back to the persona picker. */
+  onSignOut: () => void;
   /** Opens the teacher's "Where grades land" panel each time it changes. */
   gradesRequest?: number;
 }
 
 /** The persona's own app, once the district is up, and its roster has brought the persona in. */
-export const PersonaWorkspace = ({ info, district, persona, bearer, onStepsDone, onResponse, onChoose, gradesRequest }: PersonaWorkspaceProps) => {
+export const PersonaWorkspace = ({ info, district, persona, bearer, onStepsDone, onResponse, onChoose, onSignOut, gradesRequest }: PersonaWorkspaceProps) => {
   if (district.status === "booting") {
     return (
       <div role="status" className="flex flex-col items-center gap-3 px-4 py-16 text-center">
@@ -59,7 +64,7 @@ export const PersonaWorkspace = ({ info, district, persona, bearer, onStepsDone,
       </div>
     );
   }
-  return <PersonaApp district={district.district} persona={persona} bearer={bearer ?? persona.subject} onStepsDone={onStepsDone} {...(onResponse === undefined ? {} : { onResponse })} {...(gradesRequest === undefined ? {} : { gradesRequest })} />;
+  return <PersonaApp district={district.district} persona={persona} bearer={bearer ?? persona.subject} onStepsDone={onStepsDone} onSignOut={onSignOut} {...(onResponse === undefined ? {} : { onResponse })} {...(gradesRequest === undefined ? {} : { gradesRequest })} />;
 };
 
 interface PersonaAppProps {
@@ -67,11 +72,12 @@ interface PersonaAppProps {
   persona: Persona;
   bearer: string;
   onStepsDone: (ids: readonly string[]) => void;
+  onSignOut: () => void;
   onResponse?: (request: Request, status: number) => void;
   gradesRequest?: number;
 }
 
-const PersonaApp = ({ district, persona, bearer, onStepsDone, onResponse, gradesRequest }: PersonaAppProps) => {
+const PersonaApp = ({ district, persona, bearer, onStepsDone, onSignOut, onResponse, gradesRequest }: PersonaAppProps) => {
   // One client for the app's lifetime, as each app's own entry point makes one.
   const [client] = useState(() => district.clientFor(bearer, (request, response) => {
     onResponse?.(request, response.status);
@@ -79,7 +85,8 @@ const PersonaApp = ({ district, persona, bearer, onStepsDone, onResponse, grades
       if (ids.length > 0) onStepsDone(ids);
     });
   }));
-  const learningHome = persona.id === "student" || persona.id === "guardian";
+  const learningHome = persona.kind === "student" || persona.kind === "guardian";
+  const band = persona.band;
 
   useEffect(() => {
     if (!learningHome) return;
@@ -89,10 +96,28 @@ const PersonaApp = ({ district, persona, bearer, onStepsDone, onResponse, grades
     };
   }, [learningHome]);
 
-  switch (persona.id) {
+  switch (persona.kind) {
     case "student":
     case "guardian":
-      return <LearningHome client={client} />;
+      return (
+        <LearningHome
+          client={client}
+          host={{
+            onSignOut,
+            // A student meets their band's tutor, simulated, where an activity allows help.
+            ...(band === undefined ? {} : {
+              aiHelp: ({ assignment }: AssignedActivity) => (
+                <SimulatedTutor
+                  key={assignment.id}
+                  band={band}
+                  activityTitle={assignment.title}
+                  onAsked={() => onStepsDone(stepsDoneByEvent(persona.id, "tutor-asked"))}
+                />
+              ),
+            }),
+          }}
+        />
+      );
     case "teacher":
       return (
         <DistrictApiProvider client={client}>
@@ -109,10 +134,10 @@ const PersonaApp = ({ district, persona, bearer, onStepsDone, onResponse, grades
  * The Learning Home, routed by hash: the demo is served from `/demo/`, and the app's routes start
  * at `/`, as Teacher Studio's and the admin console's hash routes do.
  */
-const LearningHome = ({ client }: { client: DistrictApiClient }) => {
+const LearningHome = ({ client, host }: { client: DistrictApiClient; host: StudentHost }) => {
   const [history] = useState(() => createHashHistory());
-  // The class helper's route is still to come (SCHO-107), and AI is off here regardless.
-  return <StudentApp client={client} features={{ aiHelp: false }} history={history} />;
+  // AI is off here: a student's class helper is the demo's simulated tutor, which the host puts in.
+  return <StudentApp client={client} features={{ aiHelp: false }} history={history} host={host} />;
 };
 
 /**

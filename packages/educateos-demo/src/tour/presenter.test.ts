@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { presenterCommand, presenterFromSearch } from "./presenter.ts";
+import { presenterCommand, presenterFromSearch, storyPresenterKeys } from "./presenter.ts";
 
 const press = (key: string, target: EventTarget = document.body, modifiers: Partial<Record<"altKey" | "ctrlKey" | "metaKey", boolean>> = {}) =>
   presenterCommand({ key, target, altKey: false, ctrlKey: false, metaKey: false, defaultPrevented: false, ...modifiers });
@@ -29,5 +29,15 @@ describe("presenter mode", () => {
     }
     expect(press("1", document.body, { metaKey: true })).toBeUndefined();
     expect(press("2", document.body, { ctrlKey: true })).toBeUndefined();
+  });
+
+  it("drives the K-12 story tour by number and arrow", () => {
+    const keys = storyPresenterKeys([{ title: "One" }, { title: "Two" }]);
+    const story = (key: string) => presenterCommand({ key, target: document.body, altKey: false, ctrlKey: false, metaKey: false, defaultPrevented: false }, keys);
+    expect(story("2")).toEqual({ kind: "step", index: 1 });
+    expect(story("3")).toBeUndefined();
+    expect(story("ArrowRight")).toEqual({ kind: "next" });
+    expect(story("ArrowLeft")).toEqual({ kind: "previous" });
+    expect(story("?")).toEqual({ kind: "help" });
   });
 });

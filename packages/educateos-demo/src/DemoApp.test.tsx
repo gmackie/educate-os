@@ -42,58 +42,107 @@ const openEducateOS = async () => {
 };
 
 describe("the demo", () => {
-  it("opens each persona's own app at its home, over one shared district", async () => {
-    expect(banner().textContent).toContain("Fictional district · everything stays in your browser · AI is off");
+  it("offers Northfield's people by grade band, and opens each persona's own app over one shared district", async () => {
+    expect(banner().textContent).toContain("Fictional district · everything stays in your browser · AI tutors are simulated");
+    for (const band of ["Kindergarten to grade 2", "Grades 3 to 5", "Grades 6 to 8", "Grades 9 to 12", "Family", "District"]) {
+      expect(getByRole(container, "region", { name: band })).toBeDefined();
+    }
+    expect(within(getByRole(container, "region", { name: "Kindergarten to grade 2" })).getByRole("button", { name: /^Grade 1 student/ }).textContent)
+      .toContain("Look for: big type, the story read aloud");
 
-    await choose("Grade 9 student");
-    expect(await findByRole(container, "heading", { name: "Hi, Amara Okafor" }, BOOT)).toBeDefined();
-    expect(getByRole(banner(), "button", { name: /Things to try 0\/3/ })).toBeDefined();
+    await choose("Grade 1 student");
+    expect(await findByRole(container, "heading", { name: "Hi, Mateo Delgado" }, BOOT)).toBeDefined();
+    expect(getByRole(banner(), "button", { name: /Things to try 0\/5/ })).toBeDefined();
 
     await switchPersona();
-    await choose("English 9 teacher");
+    await choose("Grade 1 teacher");
     expect(await findByRole(container, "heading", { name: "My classes" }, BOOT)).toBeDefined();
-    expect(await findByText(container, "English 9 · Period 3")).toBeDefined();
+    expect(await findByText(container, "Grade 1 Reading Foundations · Room 7")).toBeDefined();
     expect(queryByRole(container, "button", { name: /^Where grades land/ })).toBeNull();
 
     await switchPersona();
-    await choose("Amara's guardian");
-    expect(await findByRole(container, "heading", { name: "Amara Okafor's classes" }, BOOT)).toBeDefined();
+    await choose("Guardian of Mateo");
+    expect(await findByRole(container, "link", { name: "Mateo Delgado" }, BOOT)).toBeDefined();
 
     await switchPersona();
     await choose("District administrator");
     expect(await findByRole(container, "heading", { name: "Dashboard" }, BOOT)).toBeDefined();
-    // The seed's two essays are on record, so every persona is reading the same district.
-    expect(await findByText(container, /2 submissions/, {}, BOOT)).toBeDefined();
   });
 
   it("ticks a journey step when its screen shows the thing, not when another screen reads it in passing", async () => {
     await choose("Grade 9 student");
     await userEvent.click(await findByRole(container, "link", { name: "English 9 · Period 3" }, BOOT));
-    expect(await findByRole(banner(), "button", { name: /Things to try 1\/3/ }, BOOT)).toBeDefined();
-    // The seed's teacher has released feedback on the essay, and on nothing else.
-    await userEvent.click(await findByRole(container, "link", { name: "Reading reflection" }, BOOT));
+    // The essay coming next has no feedback yet; the one before has its teacher's, released.
+    await userEvent.click(await findByRole(container, "link", { name: "What Changes a Character?" }, BOOT));
     expect(await findByText(container, "Submit your work to get feedback.", {}, BOOT)).toBeDefined();
-    expect(getByRole(banner(), "button", { name: /Things to try 1\/3/ })).toBeDefined();
-    // Back to the course, which the page links to more than once.
+    expect(getByRole(banner(), "button", { name: /Things to try 0\/3/ })).toBeDefined();
     await userEvent.click(getAllByRole(container, "link", { name: "English 9 · Period 3" })[0]!);
-    await userEvent.click(await findByRole(container, "link", { name: "Should the school day start later?" }, BOOT));
-    expect(await findByRole(banner(), "button", { name: /Things to try 2\/3/ }, BOOT)).toBeDefined();
+    await userEvent.click(await findByRole(container, "link", { name: "Should Community Service Be Required to Graduate?" }, BOOT));
+    expect(await findByRole(banner(), "button", { name: /Things to try 1\/3/ }, BOOT)).toBeDefined();
 
     await switchPersona();
-    await choose("Amara's guardian");
-    expect(await findByRole(container, "heading", { name: "Amara Okafor's classes" }, BOOT)).toBeDefined();
-    // Her page has read each class for its summary, which is not yet looking at one.
+    await choose("Guardian of Mateo");
+    await userEvent.click(await findByRole(container, "link", { name: "Mateo Delgado" }, BOOT));
+    // His page has read each class for its summary, which is not yet looking at one.
     expect(await findByRole(banner(), "button", { name: /Things to try 1\/2/ }, BOOT)).toBeDefined();
-    await userEvent.click(await findByRole(container, "link", { name: "English 9 · Period 3" }, BOOT));
+    await userEvent.click(await findByRole(container, "link", { name: "Grade 1 Reading Foundations · Room 7" }, BOOT));
     expect(await findByRole(banner(), "button", { name: /Things to try 2\/2/ }, BOOT)).toBeDefined();
+  });
+
+  it("offers a student their band's tutor, simulated and screened, which ticks its step", async () => {
+    await choose("Grade 1 student");
+    await userEvent.click(await findByRole(container, "link", { name: "Grade 1 Reading Foundations · Room 7" }, BOOT));
+    await userEvent.click(await findByRole(container, "link", { name: "Retell The Little Seed" }, BOOT));
+    const tutor = await findByRole(container, "complementary", { name: "Reading Buddy (simulated)" }, BOOT);
+    expect(tutor.textContent).toContain("Simulated preview — the live district runs this on real AI with safety screening.");
+    await userEvent.click(within(tutor).getByRole("button", { name: "Ask Reading Buddy" }));
+    const replies = within(tutor).getByRole("group", { name: "Quick replies" });
+    await userEvent.click(within(replies).getByRole("button", { name: "What happened first?" }));
+    expect(await within(tutor).findByText("Something fell from the clouds. It gave the seed a drink. What was it?")).toBeDefined();
+    expect(within(tutor).getByText(/Hall Monitor checked this for grades K–2: allowed/)).toBeDefined();
+    expect(await findByRole(banner(), "button", { name: /Things to try 2\/5/ }, BOOT)).toBeDefined();
+    await waitFor(() => expect((within(replies).getByRole("button", { name: "Tell me a scary story" }) as HTMLButtonElement).disabled).toBe(false));
+    await userEvent.click(within(replies).getByRole("button", { name: "Tell me a scary story" }));
+    expect(await within(tutor).findByText(/Not sent to the AI; Reading Buddy steers back kindly/)).toBeDefined();
+    // A typed address is the tutor library's to catch: neither sent nor kept.
+    await userEvent.type(within(tutor).getByRole("textbox", { name: "Your message" }), "I live at 12 Oak Street{Enter}");
+    expect(await within(tutor).findByText(/Neither sent nor kept/)).toBeDefined();
+  });
+
+  it("signs a student out to the persona picker, not off the site", async () => {
+    await choose("Grade 4 student");
+    await findByRole(container, "heading", { name: "Hi, Abena Mensah" }, BOOT);
+    await userEvent.click(getByRole(container, "button", { name: "Sign out" }));
+    expect(await findByRole(container, "heading", { name: "Try EducateOS" })).toBeDefined();
+    expect(window.location.pathname).toBe("/demo/");
+    expect(getByRole(banner(), "link", { name: "Back to educateos.io" }).getAttribute("href")).toBe("https://educateos.io/");
+  });
+
+  it("walks the K-12 story tour, and in presenter mode the arrows step through it", async () => {
+    act(() => root.unmount());
+    container.remove();
+    await mount("/demo/?presenter");
+    const strip = getByRole(container, "region", { name: "K-12 tour" });
+    const start = within(strip).getByRole("button", { name: "Start the tour" });
+    await waitFor(() => expect((start as HTMLButtonElement).disabled).toBe(false), BOOT);
+    await userEvent.click(start);
+    expect(await findByRole(container, "heading", { name: "Retell The Little Seed" }, BOOT)).toBeDefined();
+    expect(banner().textContent).toContain("You're Mateo Delgado");
+    await userEvent.keyboard("{ArrowRight}");
+    expect(await findByRole(container, "heading", { name: /^Submissions · Grade 1 Reading Foundations/ }, BOOT)).toBeDefined();
+    expect(banner().textContent).toContain("You're Daniel Yazzie");
+    await userEvent.keyboard("8");
+    expect(await findByRole(container, "heading", { name: "All classes" }, BOOT)).toBeDefined();
+    expect(within(strip).getByText("3/8")).toBeDefined();
   });
 
   it("starts over on reset: back to the picker, with the hash route and progress cleared", async () => {
     await choose("Grade 9 student");
     await findByRole(container, "heading", { name: "Hi, Amara Okafor" }, BOOT);
     await userEvent.click(await findByRole(container, "link", { name: "English 9 · Period 3" }, BOOT));
+    await userEvent.click(await findByRole(container, "link", { name: "Should Community Service Be Required to Graduate?" }, BOOT));
     expect(await findByRole(banner(), "button", { name: /Things to try 1\/3/ }, BOOT)).toBeDefined();
-    expect(window.location.hash).toBe("#/courses/off_nf-eng9-fall-p3");
+    expect(window.location.hash).toMatch(/^#\/courses\/off_nf-eng9-fall-p3\/activities\//);
 
     await userEvent.click(getByRole(banner(), "button", { name: "Reset demo" }));
     expect(window.location.hash).toBe("");
@@ -134,7 +183,7 @@ describe("the demo's districts", () => {
     await choose("Earth Science and Algebra teacher");
     await openEducateOS();
     expect(await findByRole(container, "heading", { name: "My classes" }, BOOT)).toBeDefined();
-    expect(await findByText(container, "Earth Science 8 · Earth Science 8 - Whitaker", {}, BOOT)).toBeDefined();
+    expect(await findByText(container, "Earth Science 8 · Whitaker", {}, BOOT)).toBeDefined();
     // Cedar Valley passes approved grades back to a gradebook, and shows the teacher where they landed.
     expect(await findByRole(container, "button", { name: /^Where grades land/ }, BOOT)).toBeDefined();
 

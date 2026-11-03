@@ -10,7 +10,9 @@ import { PersonaWorkspace } from "./PersonaWorkspace.tsx";
 import type { PortalSignIn } from "./clever/Portal.tsx";
 import { CleverTour } from "./tour/CleverTour.tsx";
 import { CleverTourStore, jumpTo, showMe, type TourActions, type TourStepId } from "./tour/cleverTour.ts";
-import { presenterFromSearch, usePresenterKeys } from "./tour/presenter.ts";
+import { presenterFromSearch, storyPresenterKeys, usePresenterKeys, PRESENTER_KEYS } from "./tour/presenter.ts";
+import { StoryTour } from "./tour/StoryTour.tsx";
+import { STORY_STEPS, storyDestination } from "./tour/storyTour.ts";
 
 // Cedar Valley's Clever portal brings the control plane's launch, jose and the Clever sign-in fake,
 // so it loads only when a visitor opens Cedar Valley, like the district itself.
@@ -22,6 +24,11 @@ const signsInThroughPortal = (key: DistrictKey) => key === "cedarvalley";
 
 /** Whether a district has the guided Clever tour (SCHO-279). */
 const hasCleverTour = (key: DistrictKey) => key === "cedarvalley";
+
+/** Whether a district has the K-12 story tour (SCHO-324). */
+const hasStoryTour = (key: DistrictKey) => key === "northfield";
+
+const STORY_KEYS = storyPresenterKeys(STORY_STEPS);
 
 /** A visit to the portal a screen, the tour or a presenter's key sent the visitor on, signed in to it as `persona`. */
 interface PortalVisit {
@@ -81,13 +88,23 @@ export const DemoApp = () => {
   const [sideOpen, setSideOpen] = useState(false);
   // Counts the tour's requests to open the teacher's "Where grades land" panel.
   const [gradesRequest, setGradesRequest] = useState(0);
+  // The K-12 story tour: the step last opened, the steps seen, and whether its list is open.
+  const [storyAt, setStoryAt] = useState<number>();
+  const [storySeen, setStorySeen] = useState<ReadonlySet<number>>(new Set());
+  const [storyOpen, setStoryOpen] = useState(false);
   const info = districtInfo(districtKey);
   const tourOn = hasCleverTour(districtKey);
+  const storyOn = hasStoryTour(districtKey);
 
   useEffect(() => {
     let live = true;
+    performance.mark("educateos:boot-start");
     districtInfo(districtKey).boot().then(
-      (booted) => live && setDistrict({ status: "ready", district: booted }),
+      (booted) => {
+        // How long the district took to boot and seed, for anyone checking the demo's start-up.
+        performance.measure("educateos:boot", "educateos:boot-start");
+        if (live) setDistrict({ status: "ready", district: booted });
+      },
       (error: unknown) => live && setDistrict({ status: "failed", error }),
     );
     return () => {
@@ -142,6 +159,8 @@ export const DemoApp = () => {
     setDone(new Set());
     setDistrict({ status: "booting" });
     setTour(new CleverTourStore());
+    setStoryAt(undefined);
+    setStorySeen(new Set());
   };
   const reset = () => {
     startOver();
@@ -155,7 +174,7 @@ export const DemoApp = () => {
   };
   const markDone = (ids: readonly string[]) => setDone((previous) => new Set([...previous, ...ids]));
   const cleverSide = district.status === "ready" ? cleverSideOf(district.district) : undefined;
-  const admin = info.personas.find((p) => p.id === "admin")!;
+  const admin = info.personas.find((p) => p.kind === "admin")!;
   // As the administrator: straight there if the visitor is them, else through the portal's sign-in.
   // Opens a persona's app at `route`, signing them in through the portal first if they have no
   // session yet, as a click on the portal's EducateOS tile would.
@@ -184,11 +203,24 @@ export const DemoApp = () => {
       if (roster !== undefined && !roster.synced()) await roster.sync();
     },
   };
-  const presenting = presenter && tourOn;
+  /** Opens step `index` of the story tour: its persona's app, at its screen. */
+  const goToStory = async (index: number) => {
+    const step = STORY_STEPS[index];
+    if (step === undefined || district.status !== "ready") return;
+    const { persona: id, route } = await storyDestination(step, district.district);
+    setStoryAt(index);
+    setStorySeen((seen) => new Set([...seen, index]));
+    openApp(id, { route });
+  };
+  const presenting = presenter && (tourOn || storyOn);
   usePresenterKeys(presenting, (command) => {
     if (command.kind === "help") setHelpOpen((open) => !open);
-    else if (district.status === "ready") visitPortal(command.persona, { launch: true });
-  });
+    else if (district.status !== "ready") return;
+    else if (command.kind === "persona") visitPortal(command.persona, { launch: true });
+    else if (command.kind === "step") void goToStory(command.index);
+    else if (command.kind === "next") void goToStory(storyAt === undefined ? 0 : Math.min(storyAt + 1, STORY_STEPS.length - 1));
+    else void goToStory(Math.max((storyAt ?? 0) - 1, 0));
+  }, storyOn ? STORY_KEYS : PRESENTER_KEYS);
 
   return (
     <ThemeProvider source={THEME}>
@@ -209,6 +241,17 @@ export const DemoApp = () => {
             ready={district.status === "ready"}
             onShowMe={(step: TourStepId) => void showMe(step, tourActions)}
             {...(presenting ? { presenter: { onJump: (step: TourStepId) => void jumpTo(step, tourActions), onReset: reset, helpOpen, onHelpOpenChange: setHelpOpen } } : {})}
+          />
+        )}
+        {storyOn && (
+          <StoryTour
+            at={storyAt}
+            visited={storySeen}
+            open={storyOpen}
+            onOpenChange={setStoryOpen}
+            ready={district.status === "ready"}
+            onGo={(index) => void goToStory(index)}
+            {...(presenting ? { presenter: { keys: STORY_KEYS, helpOpen, onHelpOpenChange: setHelpOpen } } : {})}
           />
         )}
         <div className="flex flex-1 max-lg:flex-col">
@@ -253,6 +296,7 @@ export const DemoApp = () => {
                   gradesRequest={gradesRequest}
                   {...(tourOn ? { onResponse: (request: Request, status: number) => tour.responded(persona.id, request, status) } : {})}
                   onChoose={choose}
+                  onSignOut={() => choose(undefined)}
                 />
               </>
             )}
@@ -260,8 +304,8 @@ export const DemoApp = () => {
           {cleverSide !== undefined && (
             <CleverSide
               side={cleverSide}
-              admin={{ name: admin.name, current: personaId === "admin" }}
-              onOpenRosterSync={() => openApp("admin", { route: ROSTER_SYNC_ROUTE })}
+              admin={{ name: admin.name, current: personaId === admin.id }}
+              onOpenRosterSync={() => openApp(admin.id, { route: ROSTER_SYNC_ROUTE })}
               expansion={{ open: sideOpen, onOpenChange: setSideOpen }}
             />
           )}

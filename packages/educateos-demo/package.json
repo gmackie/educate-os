@@ -27,6 +27,7 @@
     "@educateos/provider-fakes": "workspace:*",
     "@educateos/student-ui": "workspace:*",
     "@educateos/teacher-ui": "workspace:*",
+    "@gadgets/bundled-blueprints": "workspace:*",
     "@gadgets/ui": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-router": "^1.170.39",
