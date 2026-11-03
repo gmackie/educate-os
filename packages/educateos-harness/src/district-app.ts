@@ -3,6 +3,7 @@
 // journey has something to show.
 import type { DistrictDirectorySnapshot, Principal, PrincipalId, Subject } from "@educateos/contracts";
 import { catalogSeedRelease } from "@educateos/catalog";
+import { SHOWCASE_RESOURCES, showcaseResourceHtml, type ShowcaseResource } from "@educateos/fixtures";
 import type { ImportFetch } from "@educateos/content-studio";
 import type { TemplateInput } from "@educateos/curriculum";
 import { createDistrictApp, inMemoryDistrictStores, type DistrictApp } from "@educateos/district-app";
@@ -22,8 +23,19 @@ export const DEMO_PAGES: Readonly<Record<string, string>> = {
   "https://open-lessons.example/color-wheel": "The Color Wheel",
 };
 
-/** A synthetic web serving {@link DEMO_PAGES}: the harness's Content Studio fetch. Every other URL is a 404. */
+/** Where the synthetic web serves the showcase's readings (`SHOWCASE_RESOURCES`). */
+const SHOWCASE_ORIGIN = "https://open-lessons.example";
+
+/** A showcase reading's URL on the synthetic web, for `seedShowcase`'s `resourceUrl`. */
+export const showcaseResourceUrl = (resource: ShowcaseResource): string => `${SHOWCASE_ORIGIN}${resource.path}`;
+
+/**
+ * A synthetic web serving {@link DEMO_PAGES} and the showcase's readings: the harness's Content
+ * Studio fetch. Every other URL is a 404.
+ */
 export const demoWeb: ImportFetch = async (url) => {
+  const reading = SHOWCASE_RESOURCES.find((r) => showcaseResourceUrl(r) === url);
+  if (reading !== undefined) return new Response(showcaseResourceHtml(reading), { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
   const title = DEMO_PAGES[url];
   if (title === undefined) return new Response("not found", { status: 404 });
   return new Response(`<!doctype html><html lang="en"><head><title>${title}</title></head><body><p>Synthetic lesson text.</p></body></html>`, {
