@@ -116,3 +116,25 @@ export function lakeshoreLargeRemoval(): OneRosterSeed {
   const removed = LAKESHORE.enrollments.filter((e) => e.role === "student" && high.has(e.offeringId)).map((e) => e.principalId);
   return withStudentsRemoved(oneRosterSeed(demoDistrict("lakeshore")), [...new Set(removed)]);
 }
+export {
+  NORTHFIELD_SHOWCASE,
+  rubricMaxPoints,
+  SHOWCASE_BANDS,
+  SHOWCASE_RESOURCES,
+  SHOWCASE_STAGES,
+  showcaseResourceHtml,
+  type Showcase,
+  type ShowcaseActivity,
+  type ShowcaseBand,
+  type ShowcaseCourse,
+  type ShowcaseDiscussion,
+  type ShowcaseFramework,
+  type ShowcaseModule,
+  type ShowcaseQuiz,
+  type ShowcaseQuizAnswer,
+  type ShowcaseQuizItem,
+  type ShowcaseResource,
+  type ShowcaseRubric,
+  type ShowcaseStandard,
+  type ShowcaseWork,
+} from "./showcase/index.ts";
