@@ -160,7 +160,7 @@ export const G1_READING: ShowcaseCourse = {
       answerBy: "writing",
       sentenceFrames: [],
       standards: [{ framework: "ccss-ela", code: "RF.1.3" }, { framework: "ccss-ela", code: "RF.1.2" }],
-      aiHelp: "none",
+      aiHelp: "hints-only",
       dueInDays: 5,
       rubric: rubric("rbr_sc-g1read-word-builders", "Word builders", [["sounds", "I changed the sound"], ["read", "I read my new word"]], EARLY_LEVELS),
       work: {
@@ -190,7 +190,7 @@ export const G1_READING: ShowcaseCourse = {
       sentenceFrames: ["First, ___.", "Next, ___.", "Last, ___."],
       resources: ["little-seed"],
       standards: [{ framework: "ccss-ela", code: "RL.1.2" }],
-      aiHelp: "none",
+      aiHelp: "hints-only",
       dueInDays: 9,
       rubric: rubric("rbr_sc-g1read-retell", "Retell", [["order", "I told it in order"], ["details", "I told important parts"]], EARLY_LEVELS),
       work: {

@@ -258,7 +258,7 @@ async function seedCourse(course: ShowcaseCourse, showcase: Showcase, options: S
     for (const item of module.items) moduleIds.set(`${item.kind}:${item.key}`, current.id);
   }
 
-  for (const quiz of course.quizzes) await seedQuiz(course, quiz, moduleIds.get(`quiz:${quiz.key}`), teacher, as, counts);
+  for (const quiz of course.quizzes) await seedQuiz(course, quiz, moduleIds.get(`quiz:${quiz.key}`), teacher, as, counts, options.dueAt);
 
   const topics = (await teacher.call("teacher.listDiscussions", { params })).topics;
   for (const discussion of course.discussions) {
@@ -360,6 +360,18 @@ type Step = RouteResponse<"student.listActivities">[number]["activity"]["content
 type Piece = Omit<RouteInput<"student.createArtifact">["body"], "workspaceId">;
 
 /**
+ * The writing a student hands in on any other activity: their text, in its draft step's writing,
+ * or its first writing step's, or as a document titled after the activity where no step asks for
+ * writing.
+ */
+function writingPiece(activity: ShowcaseActivity, work: Extract<ShowcaseWork, { text: string }>, steps: readonly Step[]): Piece[] {
+  const writing = steps.filter((step) => step.response.kind === "writing");
+  const step = writing.find((s) => s.title === "Draft") ?? writing[0];
+  const title = step === undefined ? activity.title : `${activity.title}: ${step.title}`.slice(0, 200);
+  return [{ title, type: "document", content: { kind: "text", mediaType: "text/plain", text: work.text } }];
+}
+
+/**
  * What one student hands in on a stepwise activity: one artifact for each step that asks for
  * something, titled as the Learning Home titles a step's work, so the student finds it on the step.
  */
@@ -400,13 +412,11 @@ async function seedWork(
 ): Promise<void> {
   if (work.stage === "not-started") return;
   const workspace = await student.call("student.openCourseWorkspace", { params: { offeringId: course.offeringId } });
-  // A stepwise activity's work is one artifact a step; any other activity's is one document.
-  const steps = isStepwise(activity)
-    ? (await student.call("student.listActivities", { params: { offeringId: course.offeringId } })).find((a) => a.assignment.id === assignmentId)!.activity.content.steps
-    : undefined;
-  const pieces: Piece[] = steps === undefined
-    ? [{ title: activity.title, type: "document" as const, content: { kind: "text" as const, mediaType: "text/markdown" as const, text: work.text } }]
-    : stepArtifacts(activity, studentId, work, steps);
+  // Work is kept by step, titled as the Learning Home titles a step's work, so the student finds it
+  // on the activity's page: a young learner's one artifact a step, any other student's writing in
+  // the activity's draft step (or its first writing step).
+  const steps = (await student.call("student.listActivities", { params: { offeringId: course.offeringId } })).find((a) => a.assignment.id === assignmentId)!.activity.content.steps;
+  const pieces: Piece[] = isStepwise(activity) ? stepArtifacts(activity, studentId, work, steps) : writingPiece(activity, work, steps);
   const save = async () => {
     const saved = [];
     for (const piece of pieces) saved.push(await student.call("student.createArtifact", { body: { workspaceId: workspace.id, ...piece } }));
@@ -414,7 +424,8 @@ async function seedWork(
   };
   if (work.stage === "draft") {
     const artifacts = await student.call("student.listArtifacts", { params: { workspaceId: workspace.id } });
-    if (artifacts.some((a) => a.artifact.title === pieces[0]!.title)) return;
+    // A district seeded before work was kept by step has the draft under the activity's title.
+    if (artifacts.some((a) => a.artifact.title === pieces[0]!.title || a.artifact.title === activity.title)) return;
     // A draft has its first piece only, as a child part way through would.
     pieces.splice(1);
     await save();
@@ -460,6 +471,9 @@ async function seedWork(
   }
 }
 
+/** When a quiz falls due, in days after seeding, for a host that gives due times. */
+const QUIZ_DUE_IN_DAYS = 4;
+
 /** A quiz, published into its module, taken by the students who took it, graded and (if scripted) released. */
 async function seedQuiz(
   course: ShowcaseCourse,
@@ -468,8 +482,10 @@ async function seedQuiz(
   teacher: DistrictApiClient,
   as: Client,
   counts: ShowcaseBandSummary,
+  dueAt: SeedShowcaseOptions["dueAt"],
 ): Promise<void> {
   const params = { offeringId: course.offeringId };
+  let created = false;
   let made = (await teacher.call("teacher.listQuizzes", { params })).quizzes.find((q) => q.quiz.title === quiz.title)?.quiz;
   if (made === undefined) {
     made = await teacher.call("teacher.createQuiz", {
@@ -483,8 +499,13 @@ async function seedQuiz(
       },
     });
     counts.quizzes++;
+    created = true;
   }
-  if (made.status !== "published") await teacher.call("teacher.publishQuiz", { params: { ...params, quizId: made.id }, body: { published: true } });
+  if (made.status !== "published") made = await teacher.call("teacher.publishQuiz", { params: { ...params, quizId: made.id }, body: { published: true } });
+  // A quiz's gradebook assignment is due when its term ends, unless the host gives quizzes a day.
+  if (created && dueAt !== undefined && made.assignmentId !== undefined) {
+    await teacher.call("teacher.updateAssignment", { params: { assignmentId: made.assignmentId }, body: { dueAt: dueAt(QUIZ_DUE_IN_DAYS) } });
+  }
   const itemIds = made.items.map((i) => i.id);
 
   for (const [studentId, answers] of Object.entries(quiz.attempts)) {

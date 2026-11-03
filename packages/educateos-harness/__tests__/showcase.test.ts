@@ -105,7 +105,12 @@ describe("the Northfield showcase, seeded through the district API", () => {
     await seedShowcase({ showcase, adminId: ADMIN, actAs: fresh.actAs, dueAt: (days) => `2026-11-${String(2 + days).padStart(2, "0")}T15:30:00-05:00` });
     const teacher = await fresh.actAs("prn_nf-teacher-yazzie");
     const due = (await teacher.call("teacher.listAssignments", { params: { offeringId: "off_nf-g1math-fall-r7" } })).map((a) => [a.title, a.dueAt]);
-    expect(due.filter(([title]) => title !== "Count and Compare").toSorted()).toStrictEqual([["Apple Orchard Story Problems", "2026-11-09T20:30:00.000Z"], ["Tens and Ones", "2026-11-16T20:30:00.000Z"]]);
+    // A quiz's gradebook assignment is due on the day the host gives quizzes too.
+    expect(due.toSorted()).toStrictEqual([
+      ["Apple Orchard Story Problems", "2026-11-09T20:30:00.000Z"],
+      ["Count and Compare", "2026-11-06T20:30:00.000Z"],
+      ["Tens and Ones", "2026-11-16T20:30:00.000Z"],
+    ]);
   }, 60_000);
 
   it("lists every Northfield class for the administrator, with its teachers and students", async () => {
@@ -137,6 +142,13 @@ describe("the Northfield showcase, seeded through the district API", () => {
     const workspace = await student.call("student.openCourseWorkspace", { params: { offeringId: course.offeringId } });
     const titles = (await student.call("student.listArtifacts", { params: { workspaceId: workspace.id } })).map((a) => a.artifact.title);
     expect(titles).toEqual(expect.arrayContaining([`${activity.title}: Draw it`, `${activity.title}: Tell about it`]));
+  });
+
+  it("keeps an older student's draft in the activity's Draft step, where their page shows it", async () => {
+    const abena = await district.actAs("prn_nf-student-abena");
+    const workspace = await abena.call("student.openCourseWorkspace", { params: { offeringId: "off_nf-g4ela-fall-r12" } });
+    const titles = (await abena.call("student.listArtifacts", { params: { workspaceId: workspace.id } })).map((a) => a.artifact.title);
+    expect(titles).toContain("Should Recess Be Longer?: Draft");
   });
 
   it("leaves Mateo's retelling for him to do, with a classmate's waiting for the teacher", async () => {
