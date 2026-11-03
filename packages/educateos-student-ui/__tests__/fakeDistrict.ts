@@ -13,12 +13,16 @@ const ME = "prn_nf-student-amara";
 export const ENGLISH = "off_nf-eng9-fall-p3";
 export const SCIENCE = "off_nf-bio-fall-p1";
 export const ART_SPRING = "off_nf-art-spring-p2";
+/** A K-2 class, present only with the `youngClass` option (SCHO-323). */
+export const READING_K2 = "off_nf-k2-reading";
 
 /** Assignments in the fake district. */
 export const ESSAY = "asg_essay-later-start";
 export const OSMOSIS = "asg_osmosis-lab";
 export const COLOR = "asg_color-painting";
 export const LAB_REPORT = "asg_osmosis-report";
+/** The K-2 class's picture response. */
+export const POND = "asg_pond-picture";
 
 const notFound = (what: string) => new DistrictApiError(404, { code: "not-found", message: `${what} not found` });
 
@@ -117,6 +121,8 @@ export function fakeDistrict(options: {
   modules?: Record<string, unknown>;
   /** Whether English has posted its library announcement (SCHO-189). */
   announcements?: boolean;
+  /** Adds a K-2 class whose picture response looks, draws and tells, or the class in another band (SCHO-323). */
+  youngClass?: boolean | { gradeBand: string };
 } = {}): FakeDistrict {
   let counter = 0;
   const next = (prefix: string) => `${prefix}_${(++counter).toString().padStart(4, "0")}`;
@@ -142,6 +148,17 @@ export function fakeDistrict(options: {
       step("essay", "Describe the colors", "How does color shape the mood?", { kind: "writing" }),
     ], options.aiHelp)],
   };
+  const youngBand = options.youngClass === undefined || options.youngClass === false ? undefined : options.youngClass === true ? "K-2" : options.youngClass.gradeBand;
+  if (youngBand !== undefined) {
+    const pond = activity(READING_K2, POND, "Who lives in the pond?", "2026-11-06T21:00:00.000Z", "science", [
+      step("look", "Look and listen", "Look at the pond. What animals do you see?", { kind: "none" }),
+      step("draw", "Draw it", "Draw an animal that lives in a pond.", { kind: "artifact", artifactType: "image" }),
+      { ...step("tell", "Tell about it", "Tell about your picture.", { kind: "artifact", artifactType: "audio" }), sentenceFrames: ["I drew a ___.", "It lives ___."] },
+    ], "none");
+    Object.assign(pond.activity.content, { template: "picture-response", gradeBand: youngBand, overview: "We are learning about pond animals.", permittedArtifactTypes: ["image", "audio"], resources: [], codex: [] });
+    pond.assignment.permittedArtifactTypes = ["image", "audio"];
+    activities[READING_K2] = [pond];
+  }
   const artifacts = new Map<string, StoredArtifact>();
   const submissions: (Record<string, unknown> & { id: string; assignmentId: string; submissionDigest: string; attempt: number })[] = [];
   const feedback = new Map<string, unknown>();
@@ -247,15 +264,16 @@ export function fakeDistrict(options: {
   const term = (id: string, name: string, state: string) => ({ id, districtId: DISTRICT, name, startsOn: "2026-01-12", endsOn: "2027-01-22", state });
   const FALL = term("trm_fall", "Fall 2026", "active");
   const SPRING = term("trm_spring", "Spring 2026", "completed");
-  const offering = (id: string, courseId: string, title: string, subject: string, termValue: typeof FALL, sectionName: string) => ({
+  const offering = (id: string, courseId: string, title: string, subject: string, termValue: typeof FALL, sectionName: string, gradeBand = "9-12") => ({
     offering: { id, districtId: DISTRICT, schoolId: "sch_nf-high", termId: termValue.id, courseId, sectionName },
-    course: { id: courseId, districtId: DISTRICT, title, subject, gradeBand: "9-12" },
+    course: { id: courseId, districtId: DISTRICT, title, subject, gradeBand },
     term: termValue,
   });
   const OFFERINGS = [
     offering(ENGLISH, "crs_nf-english-9", "English 9", "english-language-arts", FALL, "Period 3"),
     offering(SCIENCE, "crs_nf-biology", "Biology", "science", FALL, "Period 1"),
     offering(ART_SPRING, "crs_nf-art", "Art", "arts", SPRING, "Period 2"),
+    ...(youngBand === undefined ? [] : [offering(READING_K2, "crs_nf-k2-science", "Kindergarten Science", "science", FALL, "Room 4", youngBand)]),
   ];
 
   // Your devices (SCHO-260): an iPhone and an iPad signed in, and an old Android phone signed out.
@@ -306,7 +324,7 @@ export function fakeDistrict(options: {
       feed = undefined;
       return { active: false };
     },
-    "me.get": () => ({ principalId: ME, districtId: DISTRICT, kind: "student", displayName: "Amara Okafor", roles: [], enrollments: [{ offeringId: ENGLISH, role: "student" }, { offeringId: SCIENCE, role: "student" }] }),
+    "me.get": () => ({ principalId: ME, districtId: DISTRICT, kind: "student", displayName: "Amara Okafor", roles: [], enrollments: [{ offeringId: ENGLISH, role: "student" }, { offeringId: SCIENCE, role: "student" }, ...(youngBand === undefined ? [] : [{ offeringId: READING_K2, role: "student" }])] }),
     "student.listWorkspaces": () => workspaces,
     "student.openPersonalWorkspace": () => workspaces[0],
     "student.openCourseWorkspace": ({ params }) => {

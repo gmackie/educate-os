@@ -1,11 +1,20 @@
 import type { AiHelpLevel, ClassNote, LearningGoal, ResourceRelease, RubricRef, TemplateInput, TemplateKind } from "../types.ts";
 
-/** The four templates, each in the words a teacher would use. */
+/** The templates, each in the words a teacher would use. */
 export const TEMPLATES: readonly { kind: TemplateKind; label: string; description: string }[] = [
   { kind: "writing-task", label: "Writing task", description: "An essay or written piece, planned, drafted and revised." },
   { kind: "science-investigation", label: "Science investigation", description: "A hypothesis, a method, a data table and an analysis." },
   { kind: "primary-source-analysis", label: "Primary-source analysis", description: "Students source and contextualize documents, then make a claim." },
   { kind: "problem-set", label: "Problem set", description: "Problems with an answer key only you can see." },
+  { kind: "picture-response", label: "Picture response", description: "For K-2: students look and listen, draw or photograph an answer, then tell about it." },
+  { kind: "read-and-respond", label: "Read and respond", description: "For K-2: students hear a short text read aloud, then answer each question by speaking, drawing or writing." },
+];
+
+/** How young learners answer a read-and-respond question, in a teacher's words. */
+export const ANSWER_MODES: readonly { mode: ActivityForm["reading"]["answerBy"]; label: string }[] = [
+  { mode: "speaking", label: "Speaking (a recording)" },
+  { mode: "drawing", label: "Drawing or a photo" },
+  { mode: "writing", label: "Writing" },
 ];
 
 /** The AI help choices, from none to full. The district may allow less than the activity asks. */
@@ -46,6 +55,8 @@ export interface ActivityForm {
   science: { question: string; methodPrompt: string; dataColumns: string; analysisPrompt: string };
   sources: { sourcingQuestions: string; contextualizationQuestions: string; claimPrompt: string; minimumEvidence: string };
   problems: { items: readonly ProblemDraft[]; showWork: boolean };
+  picture: { lookPrompt: string; drawPrompt: string; sentenceFrames: string; tellAboutIt: boolean };
+  reading: { passage: string; questions: string; answerBy: "speaking" | "drawing" | "writing"; sentenceFrames: string };
 }
 
 /** A blank form for a new activity. */
@@ -62,6 +73,8 @@ export const emptyActivityForm = (): ActivityForm => ({
   science: { question: "", methodPrompt: "", dataColumns: "", analysisPrompt: "" },
   sources: { sourcingQuestions: "", contextualizationQuestions: "", claimPrompt: "", minimumEvidence: "1" },
   problems: { items: [{ prompt: "", answer: "" }], showWork: true },
+  picture: { lookPrompt: "", drawPrompt: "", sentenceFrames: "", tellAboutIt: true },
+  reading: { passage: "", questions: "", answerBy: "speaking", sentenceFrames: "" },
 });
 
 /** The key a learning goal is chosen by. */
@@ -184,6 +197,38 @@ export const buildActivity = (form: ActivityForm, context: ActivityContext): { o
         problems: problemsList,
         showWork: form.problems.showWork,
         ...(rubric === undefined ? {} : { solutionRubric: rubric }),
+      };
+      break;
+    }
+    case "picture-response": {
+      const sentenceFrames = lines(form.picture.sentenceFrames);
+      if (sentenceFrames.length > 10) problems.push("Use at most 10 sentence starters.");
+      input = {
+        ...common,
+        template: "picture-response",
+        lookPrompt: need(form.picture.lookPrompt, "Say what students look at or listen to first."),
+        drawPrompt: need(form.picture.drawPrompt, "Say what students draw."),
+        tellAboutIt: form.picture.tellAboutIt,
+        sentenceFrames,
+        ...(rubric === undefined ? {} : { pictureRubric: rubric }),
+      };
+      break;
+    }
+    case "read-and-respond": {
+      const passage = need(form.reading.passage, "Write the text students hear.");
+      const questions = lines(form.reading.questions);
+      if (questions.length === 0) problems.push("Add at least one question.");
+      if (questions.length > 10) problems.push("Use at most 10 questions.");
+      const sentenceFrames = lines(form.reading.sentenceFrames);
+      if (sentenceFrames.length > 10) problems.push("Use at most 10 sentence starters.");
+      input = {
+        ...common,
+        template: "read-and-respond",
+        passage,
+        questions: questions.map((prompt) => ({ prompt })),
+        answerBy: form.reading.answerBy,
+        sentenceFrames,
+        ...(rubric === undefined ? {} : { responseRubric: rubric }),
       };
       break;
     }

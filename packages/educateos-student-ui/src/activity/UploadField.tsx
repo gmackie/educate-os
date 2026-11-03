@@ -7,8 +7,10 @@ import { acceptAttribute, formatList, readUpload, type PickedFile, type UploadFo
  * offered, and anything else, or anything too big, is refused here with a reason rather than at
  * save time. It is a native file input, so it is reached with Tab and opened with Enter or Space.
  */
-export const UploadField = ({ id, formats, disabled, onPicked }: {
+export const UploadField = ({ id, label, formats, disabled, onPicked }: {
   id: string;
+  /** The field's label. Defaults to "Upload a file" and the formats. */
+  label?: string;
   formats: readonly UploadFormat[];
   disabled: boolean;
   onPicked: (file: PickedFile) => void;
@@ -29,7 +31,7 @@ export const UploadField = ({ id, formats, disabled, onPicked }: {
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-sm font-semibold">
-        Upload a file ({formatList(formats)})
+        {label ?? `Upload a file (${formatList(formats)})`}
       </label>
       <input
         id={id}

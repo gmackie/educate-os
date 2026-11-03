@@ -1,6 +1,6 @@
 // The files a student can upload, and how each is read before it is saved. Text files are saved as
-// text, which the district canonicalizes and the editor can show; PDFs and pictures are saved as
-// bytes, which the district checks against the type they claim and keeps in R2.
+// text, which the district canonicalizes and the editor can show; PDFs, pictures and recordings are
+// saved as bytes, which the district checks against the type they claim and keeps in R2.
 import { MAX_UPLOAD_BYTES, type UploadMediaType } from "@educateos/api-client";
 
 /** One kind of file a step accepts. */
@@ -16,6 +16,11 @@ export const FORMATS = {
   pdf: { encoding: "bytes", mediaType: "application/pdf", extensions: [".pdf"], label: "PDF" },
   png: { encoding: "bytes", mediaType: "image/png", extensions: [".png"], label: "PNG" },
   jpeg: { encoding: "bytes", mediaType: "image/jpeg", extensions: [".jpg", ".jpeg"], label: "JPEG" },
+  m4a: { encoding: "bytes", mediaType: "audio/mp4", extensions: [".m4a", ".mp4"], label: "M4A" },
+  mp3: { encoding: "bytes", mediaType: "audio/mpeg", extensions: [".mp3"], label: "MP3" },
+  wav: { encoding: "bytes", mediaType: "audio/wav", extensions: [".wav"], label: "WAV" },
+  webm: { encoding: "bytes", mediaType: "audio/webm", extensions: [".webm"], label: "WebM" },
+  ogg: { encoding: "bytes", mediaType: "audio/ogg", extensions: [".ogg", ".oga", ".opus"], label: "Ogg" },
 } as const satisfies Record<string, UploadFormat>;
 
 /** The largest text file read in, well under the district's text limits. */
@@ -36,9 +41,11 @@ export const formatList = (formats: readonly UploadFormat[]): string => {
   return labels.length <= 1 ? (labels[0] ?? "") : `${labels.slice(0, -1).join(", ")} or ${labels.at(-1)}`;
 };
 
-const megabytes = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} MB`;
+/** A size as a student reads it, such as "5 MB". */
+export const megabytes = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} MB`;
 
-const toBase64 = (bytes: Uint8Array): string => {
+/** Bytes as base64, the way the district API takes a file. */
+export const toBase64 = (bytes: Uint8Array): string => {
   let binary = "";
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(binary);

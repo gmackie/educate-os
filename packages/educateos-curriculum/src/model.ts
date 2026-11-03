@@ -66,6 +66,11 @@ export const ActivityStep = z.strictObject({
   /** Releases the step works from. Each must also be one of the activity's resources. */
   sources: z.array(ResourceReleaseRef).max(50),
   response: StepResponse,
+  /**
+   * Sentence starters shown with the step, such as "I see a ___.", for young learners to say or
+   * write their answer from. A support, never a requirement.
+   */
+  sentenceFrames: z.array(z.string().trim().min(1).max(200)).min(1).max(10).optional(),
 });
 /** An activity step. */
 export type ActivityStep = z.infer<typeof ActivityStep>;
@@ -155,7 +160,14 @@ export const EvidencePlan = z.strictObject({
 export type EvidencePlan = z.infer<typeof EvidencePlan>;
 
 /** The templates that generate activity content. They share the one runtime model below. */
-export const TemplateKind = z.enum(["writing-task", "science-investigation", "primary-source-analysis", "problem-set"]);
+export const TemplateKind = z.enum([
+  "writing-task",
+  "science-investigation",
+  "primary-source-analysis",
+  "problem-set",
+  "picture-response",
+  "read-and-respond",
+]);
 /** A template kind. */
 export type TemplateKind = z.infer<typeof TemplateKind>;
 

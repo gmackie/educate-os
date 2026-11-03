@@ -1,6 +1,6 @@
 import { Button, Checkbox, Input, InputArea, Radio, Text } from "@cloudflare/kumo";
 import { Plus, Trash } from "@phosphor-icons/react";
-import type { ActivityForm } from "./activityForm.ts";
+import { ANSWER_MODES, type ActivityForm } from "./activityForm.ts";
 
 const GENRES = [
   { value: "argument", label: "Argument" },
@@ -84,6 +84,33 @@ export const TemplateFields = ({ form, onChange }: { form: ActivityForm; onChang
             <Button icon={<Plus aria-hidden />} onClick={() => setItems([...problems.items, { prompt: "", answer: "" }])}>Add a problem</Button>
           </div>
           <Checkbox label="Students show their reasoning" checked={problems.showWork} onCheckedChange={(showWork) => onChange({ ...form, problems: { ...problems, showWork: showWork === true } })} />
+        </div>
+      );
+    }
+    case "picture-response": {
+      const picture = form.picture;
+      const set = (change: Partial<ActivityForm["picture"]>) => onChange({ ...form, picture: { ...picture, ...change } });
+      return (
+        <div className="flex flex-col gap-3">
+          <Text variant="secondary">Keep each prompt to a sentence or two: students can have every prompt read aloud to them. Attach a picture to look at as a resource below.</Text>
+          <InputArea label="What students look at or listen to first" value={picture.lookPrompt} onValueChange={(lookPrompt) => set({ lookPrompt })} />
+          <InputArea label="What students draw" description="Such as: Draw an animal that lives in a pond." value={picture.drawPrompt} onValueChange={(drawPrompt) => set({ drawPrompt })} />
+          <Checkbox label="Students record themselves telling about their picture" checked={picture.tellAboutIt} onCheckedChange={(tellAboutIt) => set({ tellAboutIt: tellAboutIt === true })} />
+          <InputArea label="Sentence starters" required={false} description="One per line, such as: I drew a ___." value={picture.sentenceFrames} onValueChange={(sentenceFrames) => set({ sentenceFrames })} />
+        </div>
+      );
+    }
+    case "read-and-respond": {
+      const reading = form.reading;
+      const set = (change: Partial<ActivityForm["reading"]>) => onChange({ ...form, reading: { ...reading, ...change } });
+      return (
+        <div className="flex flex-col gap-3">
+          <InputArea label="The text students hear" description="A few short sentences. Students can have it read aloud." value={reading.passage} onValueChange={(passage) => set({ passage })} />
+          <InputArea label="Questions" description="One per line. Each is its own step." value={reading.questions} onValueChange={(questions) => set({ questions })} />
+          <Radio.Group legend="Students answer by" orientation="horizontal" value={reading.answerBy} onValueChange={(answerBy) => set({ answerBy: answerBy as ActivityForm["reading"]["answerBy"] })}>
+            {ANSWER_MODES.map((mode) => <Radio.Item key={mode.mode} value={mode.mode} label={mode.label} />)}
+          </Radio.Group>
+          <InputArea label="Sentence starters" required={false} description="One per line, such as: The story is about ___." value={reading.sentenceFrames} onValueChange={(sentenceFrames) => set({ sentenceFrames })} />
         </div>
       );
     }

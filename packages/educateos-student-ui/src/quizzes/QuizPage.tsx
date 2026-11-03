@@ -10,7 +10,8 @@ import { PageText } from "../modules/PageText.tsx";
 import { coursePath, quizResultPath } from "../router.tsx";
 import { AttemptResultView } from "./AttemptResultView.tsx";
 import { QuizTaking } from "./QuizTaking.tsx";
-import { useClassTitle } from "../useClassTitle.ts";
+import { useClassGradeBand, useClassTitle } from "../useClassTitle.ts";
+import { isElementaryBand, isYoungLearnerBand } from "../gradeBand.ts";
 import { AVAILABILITY_LABEL, formatPoints, quizFacts } from "./quizText.ts";
 
 const ATTEMPT_STATUS = { "in-progress": "In progress", submitted: "Submitted", expired: "Time ran out" } as const;
@@ -74,6 +75,7 @@ export const QuizPage = ({ offeringId, quizId }: { offeringId: string; quizId: s
   const api = useApi();
   const [quiz, reload] = useQuery(`quiz:${offeringId}:${quizId}`, (client) => client.call("student.getQuiz", { params: { offeringId, quizId } }));
   const classTitle = useClassTitle(offeringId, quiz.status === "ready" && quiz.data.courseTitle !== "" ? quiz.data.courseTitle : "Class");
+  const gradeBand = useClassGradeBand(offeringId);
   const [stage, setStage] = useState<Stage>({ stage: "overview" });
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<unknown>();
@@ -113,6 +115,7 @@ export const QuizPage = ({ offeringId, quizId }: { offeringId: string; quizId: s
           offeringId={offeringId}
           attempt={stage.attempt}
           timed={quiz.data.timeLimitMinutes !== undefined}
+          presentation={{ young: isYoungLearnerBand(gradeBand), readAloud: isElementaryBand(gradeBand) }}
           onSubmitted={(result) => {
             setStage({ stage: "submitted", result });
             reload();
