@@ -65,3 +65,29 @@ test("the console has moved to the hosted admin, and the admin's export entrypoi
   const worker = readFileSync(new URL("worker.ts", import.meta.url), "utf8");
   assert.match(worker, /export \{ ControlPlaneExporter \} from "\.\.\/\.\.\/packages\/educateos-control-plane\/src\/worker\.ts";/);
 });
+
+/** The `_headers` file's rules: each path pattern with the header lines under it. */
+const headerRules = () => {
+  const rules = new Map();
+  let current;
+  for (const line of readFileSync(new URL("public/_headers", import.meta.url), "utf8").split("\n")) {
+    if (line.trim() === "" || line.startsWith("#")) continue;
+    if (!/^\s/.test(line)) rules.set(line.trim(), current = []);
+    else current.push(line.trim());
+  }
+  return rules;
+};
+
+test("the demo's page is kept from the edge's rewriting, and its assets are left to be compressed", () => {
+  const rules = headerRules();
+  // The Web Analytics beacon would be injected into the page's HTML (SCHO-224).
+  for (const page of ["/demo", "/demo/", "/demo/index.html"]) {
+    assert.ok(rules.get(page)?.some((h) => /^Cache-Control:.*no-transform/.test(h)), `${page} keeps no-transform`);
+  }
+  // no-transform also stops compression, and the demo's script is megabytes before it (SCHO-321).
+  const demoAssets = [...rules].filter(([pattern]) => pattern === "/*" || pattern.startsWith("/demo/*") || pattern.startsWith("/demo/assets"));
+  assert.ok(demoAssets.length > 0);
+  for (const [pattern, headers] of demoAssets) {
+    assert.ok(!headers.some((h) => h.includes("no-transform")), `${pattern} would stop the demo's assets being compressed`);
+  }
+});

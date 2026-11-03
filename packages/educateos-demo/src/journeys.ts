@@ -12,6 +12,8 @@ export interface JourneyStep {
   done: { method: "GET" | "POST"; paths: readonly string[] };
   /** The app screen, by hash route, the request must come from, when other screens make it too. */
   on?: RegExp;
+  /** Whether the answer must list something: for a request that answers an empty list when there is nothing to show. */
+  listsSomething?: boolean;
 }
 
 /** What to try as each persona. */
@@ -20,13 +22,15 @@ export const JOURNEYS: Readonly<Record<PersonaId, readonly JourneyStep[]>> = {
     // Only the course page reads its announcements; Home lists every course's activities too.
     { id: "student.open-course", label: "Open a course", done: { method: "GET", paths: ["/api/student/offerings/:x/announcements"] } },
     { id: "student.submit", label: "Work on an assignment and submit it", done: { method: "POST", paths: ["/api/student/assignments/:x/submissions"] } },
-    // Feedback the teacher has not released answers not-found, so a success on an activity's own
-    // page means it was shown; the course page asks too, to badge the activities that have some.
+    // An activity's page lists the feedback released on it, an empty list while there is none, so
+    // only a listing with some on the activity's own page means it was shown; the course page asks
+    // too, to badge the activities that have some.
     {
       id: "student.feedback",
       label: "Read your teacher's released feedback",
-      done: { method: "GET", paths: ["/api/student/submissions/:x/feedback"] },
+      done: { method: "GET", paths: ["/api/student/assignments/:x/feedback"] },
       on: /^#\/courses\/[^/]+\/activities\/[^/]+$/,
+      listsSomething: true,
     },
   ],
   teacher: [
@@ -43,11 +47,17 @@ export const JOURNEYS: Readonly<Record<PersonaId, readonly JourneyStep[]>> = {
   ],
   guardian: [
     { id: "guardian.child", label: "Open your child's page", done: { method: "GET", paths: ["/api/guardian/children/:x/offerings"] } },
-    { id: "guardian.course", label: "Look at one of their classes", done: { method: "GET", paths: ["/api/guardian/children/:x/offerings/:x"] } },
+    // The child's page reads each class too, for its grade summary.
+    {
+      id: "guardian.course",
+      label: "Look at one of their classes",
+      done: { method: "GET", paths: ["/api/guardian/children/:x/offerings/:x"] },
+      on: /^#\/family\/children\/[^/]+\/courses\/[^/]+$/,
+    },
   ],
   admin: [
     { id: "admin.classes", label: "Look over all classes", done: { method: "GET", paths: ["/api/admin/offerings"] } },
-    { id: "admin.roster", label: "Open a class roster", done: { method: "GET", paths: ["/api/admin/offerings/:x/roster"] } },
+    { id: "admin.roster", label: "Open a class's people in Manage classes and people", done: { method: "GET", paths: ["/api/admin/offerings/:x/roster"] } },
   ],
 };
 
@@ -68,11 +78,19 @@ export function requestDoes(done: JourneyStep["done"], request: Pick<Request, "m
 }
 
 /**
- * The steps of `persona`'s journey that `request`, answered with `status`, completes, made from the
- * app screen whose hash route is `screen`.
+ * The steps of `persona`'s journey that `request`, answered with `response`, completes, made from the
+ * app screen whose hash route is `screen`. Call it before the app reads the response: a step that
+ * must list something reads a copy of its body.
  */
-export function stepsDoneBy(persona: PersonaId, request: Pick<Request, "method" | "url">, status: number, screen: string): string[] {
-  return JOURNEYS[persona]
-    .filter(({ done, on }) => requestDoes(done, request, status) && (on === undefined || on.test(screen)))
-    .map((step) => step.id);
+export async function stepsDoneBy(
+  persona: PersonaId,
+  request: Pick<Request, "method" | "url">,
+  response: Pick<Response, "status" | "clone">,
+  screen: string,
+): Promise<string[]> {
+  const steps = JOURNEYS[persona].filter(({ done, on }) => requestDoes(done, request, response.status) && (on === undefined || on.test(screen)));
+  if (!steps.some((step) => step.listsSomething === true)) return steps.map((step) => step.id);
+  const body: unknown = await response.clone().json().catch(() => undefined);
+  const listed = Array.isArray(body) && body.length > 0;
+  return steps.filter((step) => step.listsSomething !== true || listed).map((step) => step.id);
 }

@@ -56,7 +56,7 @@ export const CleverSide = ({ side, admin, onOpenRosterSync, expansion }: CleverS
       {open && (
         <section id={panelId} aria-labelledby={headingId} className="flex flex-col gap-4 px-4 pb-6">
           <div className="flex flex-col gap-1">
-            <Text as="h2" variant="heading3" id={headingId}>Change the district in Clever (simulated)</Text>
+            <Text as="h2" variant="heading" id={headingId}>Change the district in Clever (simulated)</Text>
             <Text size="sm" variant="secondary">
               Make the changes a district's student information system would send to Clever. Cedar Valley picks them up on its next roster sync, as it would from Clever.
             </Text>

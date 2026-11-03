@@ -31,9 +31,18 @@ export const PersonaPicker = ({ info, district, done, onChoose, onSwitchDistrict
   <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 md:py-12">
     <div className="flex flex-col gap-2">
       <Text as="h1" variant="heading" size="lg">Try EducateOS</Text>
-      <div role="group" aria-label="District" className="self-start">
+      {/* Both districts' full labels are wider than a phone, so there each tab names only its district. */}
+      <div role="group" aria-label="District" className="max-w-full self-start">
         <Tabs
-          tabs={DISTRICTS.map((d) => ({ value: d.key, label: `${d.shortName} · ${d.integrations}` }))}
+          tabs={DISTRICTS.map((d) => ({
+            value: d.key,
+            label: (
+              <>
+                {d.shortName}
+                <span className="max-sm:hidden">{` · ${d.integrations}`}</span>
+              </>
+            ),
+          }))}
           value={info.key}
           onValueChange={(key) => onSwitchDistrict(key as DistrictKey)}
         />
