@@ -54,7 +54,7 @@ export const STORY_STEPS: readonly StoryStep[] = [
     id: "g35-student",
     band: "3-5",
     title: "Abena, grade 4, plans an opinion piece with the Homework Helper",
-    say: "Sentence starters, read-aloud on request, and a tutor that gives hints, never answers. The tutor is simulated here; on the live district Hall Monitor screens every message, at grade-4 settings.",
+    say: "Read-aloud on request, and a tutor that gives hints and sentence starters, never answers. The tutor is simulated here; on the live district Hall Monitor screens every message, at grade-4 settings.",
     persona: "g35-student",
     route: activityRoute("off_nf-g4ela-fall-r12", "Should Recess Be Longer?"),
   },

@@ -86,7 +86,7 @@ export const JOURNEYS: Readonly<Record<PersonaId, readonly JourneyStep[]>> = {
       label: "Open Retell The Little Seed in Submissions and play Priya's recording",
       done: { method: "GET", paths: ["/api/teacher/submissions/:x/artifacts/:x"] },
     },
-    release("k2-teacher.release", "Release Jonah's feedback, so he and his family see it"),
+    release("k2-teacher.release", "Release Jonah's feedback on Apple Orchard Story Problems (Grade 1 Mathematics), so he and his family see it"),
     gradebook("k2-teacher.gradebook", "Open the Grade 1 Reading gradebook"),
   ],
   "g35-student": [

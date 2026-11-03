@@ -34,6 +34,11 @@ describe("the demo district", () => {
     expect(submissions.flatMap((s) => s.items.map((i) => i.artifactType)).toSorted()).toEqual(["audio", "audio", "audio", "audio", "image", "image"]);
   });
 
+  it("runs under an applied configuration, so the admin console shows the district set up and rostered", async () => {
+    const { head } = await as("admin").call("admin.getConfig");
+    expect(head?.desired).toMatchObject({ rostering: { provider: "oneroster-csv" }, modules: { "core-learning": { state: "enabled" } } });
+  });
+
   it("gives the guardian both her children, in two schools", async () => {
     const children = await as("guardian").call("guardian.listChildren");
     expect(children.map((c) => c.displayName).toSorted()).toStrictEqual(["Lucía Delgado", "Mateo Delgado"]);
