@@ -6,6 +6,7 @@ import type { PrincipalId } from "@educateos/contracts";
 import { createDistrictApp, inMemoryDistrictStores } from "@educateos/district-app";
 import { NORTHFIELD, NORTHFIELD_GUARDIANS, NORTHFIELD_SHOWCASE } from "@educateos/fixtures";
 import { demoWeb, seedShowcase, showcaseResourceUrl } from "@educateos/harness";
+import { schoolDayDue } from "./schoolDay.ts";
 import { clientsOver, personaVerifier, verifySeedRelease, type DemoDistrict, type Persona, type PersonaSection } from "./shared.ts";
 
 /** The district administrator, who approves standards and confirms guardians. */
@@ -132,18 +133,6 @@ export const NORTHFIELD_PERSONAS: readonly Persona[] = [
     subject: "nf-0001",
   },
 ];
-
-/**
- * When an activity due `days` from `today` falls due: that school day at 3:30 PM in the visitor's
- * own time zone, a weekend moved to the Monday after, as an ISO date-time with its offset.
- */
-export const schoolDayDue = (today: Date) => (days: number): string => {
-  const due = new Date(today.getFullYear(), today.getMonth(), today.getDate() + days, 15, 30);
-  const weekday = due.getDay();
-  if (weekday === 6) due.setDate(due.getDate() + 2);
-  if (weekday === 0) due.setDate(due.getDate() + 1);
-  return due.toISOString();
-};
 
 /** How {@link bootNorthfield} serves people other than the demo's own pages. */
 export interface NorthfieldOptions {
