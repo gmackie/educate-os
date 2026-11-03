@@ -3,7 +3,7 @@ import {
 } from "./capability-policy.js";
 import { RpcCompatible, RpcStub, RpcTarget } from "capnweb";
 import { validateRpc } from "capnweb-validate";
-import { Overseer, WorkspaceMetadata, UiBundle, WorkpieceId, WorkpieceSummary, WorkpiecesSubscriber, GadgetClient, GadgetBindingInfo, GatekeeperClient, ActionLogEntry, ActionsSubscriber, ActionHistoryFilter, ActionHistoryPage, ChatGadgetPinRecord, MainlineMergeGadget, ChatCodeBase, ChatGadgetPinState, CodeChangeSubmission, CommitInfo, FileAtCommit, MAX_READ_FILES_PER_CALL, TreeNode, MergeChangesResult, AiChatMetadata, AiChatMessage, AiChatHistoryPage, AiChatSubscriber, AiChatAuthorInfo, AiModelConfig, AiToolCall, AiChatMessageBody, AgentSpawnerConfig, AGENT_SPAWNER_CONNECTION_ID, ConsoleLogSubscriber, ConsoleLogEvent, CapsuleSpecifier, CollaboratorInfo, CollaboratorRole, AffectedCollaborator, ShareLinkInfo, GatekeeperCreationSpec, ObserverConfigCallback, ObserverBindingNeed, ObserverBindingFailure, BlueprintBindingAnnotation, BlueprintBinding, BlueprintMetadata, BlueprintOutput, BlueprintMerge, ApplyBlueprintResult, GadgetUpstream, MessageFormatRef, isOutputIcon, SpawnerEnvTarget, BlueprintGadgetSummary, AiChatStreamEvent, BlueprintScreenshotUpload, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ChatAttachmentHandle, ChatAttachmentRef, BoundHookInfo, PreApprovableAction, PresenceParticipant, PresenceSubscriber, SlashCommandChoice, SlashCommandRequest, validateBindingName, createOpenWorkspaceError, OPEN_WORKSPACE_ERROR_CODES, resolveSiteName, modelKind } from '@gadgets/workshop-shared/api'
+import { Overseer, WorkspaceMetadata, UiBundle, WorkpieceId, WorkpieceSummary, WorkpiecesSubscriber, GadgetClient, GadgetBindingInfo, GatekeeperClient, ActionLogEntry, ActionsSubscriber, ActionHistoryFilter, ActionHistoryPage, ChatGadgetPinRecord, MainlineMergeGadget, ChatCodeBase, ChatGadgetPinState, CodeChangeSubmission, CommitInfo, FileAtCommit, MAX_READ_FILES_PER_CALL, TreeNode, MergeChangesResult, AiChatMetadata, AiChatMessage, AiChatHistoryPage, AiChatSubscriber, AiChatAuthorInfo, AiModelConfig, AiToolCall, AiChatMessageBody, AgentSpawnerConfig, AGENT_SPAWNER_CONNECTION_ID, ConsoleLogSubscriber, ConsoleLogEvent, CapsuleSpecifier, CollaboratorInfo, CollaboratorRole, AffectedCollaborator, ShareLinkInfo, GatekeeperCreationSpec, ObserverConfigCallback, ObserverBindingNeed, ObserverBindingFailure, BlueprintBindingAnnotation, BlueprintBinding, BlueprintMetadata, BlueprintOutput, BlueprintMerge, ApplyBlueprintResult, GadgetUpstream, MessageFormatRef, isOutputIcon, SpawnerEnvTarget, BlueprintGadgetSummary, AiChatStreamEvent, BlueprintScreenshotUpload, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ChatAttachmentHandle, ChatAttachmentRef, BoundHookInfo, PreApprovableAction, PresenceParticipant, PresenceSubscriber, SlashCommandChoice, SlashCommandRequest, validateBindingName, createOpenWorkspaceError, OPEN_WORKSPACE_ERROR_CODES, resolveSiteName, modelKind, MAX_AI_MODEL_AUDIENCE_LENGTH } from '@gadgets/workshop-shared/api'
 import { applyCodeChange, changedGadgets, codeChangeSerializedSize, composeCodeChange,
   MAX_CODE_CHANGE_SIZE, transformCodeChange, validateCodeChangeContent, validateCodeChangeSchema,
   requireTextFiles, type FileContent, type CodeContent, type CodeChange } from "@gadgets/workshop-shared/code-change";
@@ -106,6 +106,9 @@ import {
 } from "./gadget-export";
 
 const logger = createWorkshopLogger("workshop.overseer");
+
+// What an AI model binding's declared audience may be (see BlueprintBinding): a short label.
+const AI_MODEL_AUDIENCE = new RegExp(`^[A-Za-z0-9._:-]{1,${MAX_AI_MODEL_AUDIENCE_LENGTH}}$`);
 export const AGENT_RUNNING_ERROR_MESSAGE = "Agent is running, wait for it to finish.";
 
 let CODE_MODE_HARNESS =
@@ -8611,6 +8614,8 @@ class OverseerImpl implements AgentHooks {
             : {}),
           ...(modelKind(spec.provider, spec.modelName) === "decision"
               ? {modelKind: "decision"} : {}),
+          // A declaration, not a suggestion: kept whatever the annotation says.
+          ...(spec.audience !== undefined ? {audience: spec.audience} : {}),
         };
       } else if (spec.type === "agentSpawner") {
         // Only the spawner's permanent bindings, like the gadget's own edges above.
@@ -8671,6 +8676,7 @@ class OverseerImpl implements AgentHooks {
                   type: "aiModel",
                   ...(modelKind(targetSpec.provider, targetSpec.modelName) === "decision"
                       ? {modelKind: "decision"} : {}),
+                  ...(targetSpec.audience !== undefined ? {audience: targetSpec.audience} : {}),
                 };
           // Register the synthesized binding so any later env entry (in this or another spawner)
           // targeting the same workpiece references it instead of synthesizing a duplicate.
@@ -11787,7 +11793,10 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
     return result;
   }
 
-  async newAiModelGatekeeper(modelId: string): Promise<GatekeeperClient<any>> {
+  async newAiModelGatekeeper(modelId: string, audience?: string): Promise<GatekeeperClient<any>> {
+    if (audience !== undefined && !AI_MODEL_AUDIENCE.test(audience)) {
+      throw new Error("An AI model binding's audience must be a short label.");
+    }
     let chatMeta = await retryOnDoReset(
         () => this.#clientUser.getChatContext(modelId), this.impl.logger);
     let props: AiModelGatekeeperProps = {
@@ -11795,6 +11804,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
       config: chatMeta.aiModel!.config,
       initiator: this.impl.gadgetAuthorFor(chatMeta.profile),
       metadata: { source: "model-binding", gadgetId: this.impl.ctx.id.toString() },
+      ...(audience !== undefined ? { audience } : {}),
     }
 
     let creationSpec: GatekeeperCreationSpec = {
@@ -11802,6 +11812,7 @@ class OverseerClientInterface extends RpcTarget implements Overseer {
       modelId,
       provider: chatMeta.aiModel!.config.provider,
       modelName: chatMeta.aiModel!.config.model,
+      ...(audience !== undefined ? { audience } : {}),
     };
 
     let result = await this.impl.addGatekeeper(
@@ -13102,7 +13113,8 @@ class UseOverseerInterface extends RpcTarget implements Overseer {
   async getGatekeeperById(_id: number): Promise<GatekeeperClient<any>> { this.#deny(); }
   async newGatekeeper(_accountId: number, _resourceUrl: string)
       : Promise<GatekeeperClient<any> | null> { this.#deny(); }
-  async newAiModelGatekeeper(_modelId: string): Promise<GatekeeperClient<any>> { this.#deny(); }
+  async newAiModelGatekeeper(_modelId: string, _audience?: string)
+      : Promise<GatekeeperClient<any>> { this.#deny(); }
   async newAgentSpawnerGatekeeper(_config: AgentSpawnerConfig): Promise<GatekeeperClient<any>> {
     this.#deny();
   }

@@ -92,6 +92,14 @@ export type AiCallDescriptor = {
   initiator: Pick<AiChatAuthorInfo, "type" | "id">;
   /** The workspace the call belongs to, when it belongs to one. */
   gadgetId?: string;
+  /**
+   * For a call through a gadget's model binding, the audience the binding was declared for, when
+   * it was: the `audience` of the blueprint the gadget was made from (a
+   * grade band such as `"6-8"`, say). Set by the Workshop when the binding is created, never by the
+   * gadget's code. It says whom the blueprint's author meant the gadget for, not who is reading it,
+   * so a guard should let it make moderation stricter only. The Workshop gives it no meaning.
+   */
+  audience?: string;
   /** The chat the call belongs to, when it belongs to one. */
   chatId?: number;
   /** The configured model the call runs. */
@@ -162,6 +170,11 @@ export type AiCallModelOutput = {
    * output is screened for the same reader. A Workshop that predates it omits it.
    */
   initiator?: AiCallDescriptor["initiator"];
+  /**
+   * The admitted call's {@link AiCallDescriptor.audience}, named again so the output is screened
+   * for the same audience. Absent when the call had none, or from a Workshop that predates it.
+   */
+  audience?: string;
 };
 
 /** The guard's answer to {@link AiCallGuard.screenModelOutput}. */

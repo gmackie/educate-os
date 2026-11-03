@@ -590,7 +590,9 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
             throw new Error(`Failed to create gatekeeper for binding "${bindingName}".`);
           }
         } else if (assignment.type === "aiModel") {
-          gk = await overseerResult.newAiModelGatekeeper(assignment.modelId);
+          // The binding is declared for the audience the blueprint's binding names, if any.
+          gk = await overseerResult.newAiModelGatekeeper(assignment.modelId,
+              blueprintBinding.type === "aiModel" ? blueprintBinding.audience : undefined);
         } else {
           return;  // agent spawners are created in phase two
         }

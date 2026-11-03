@@ -1061,6 +1061,45 @@ it.concurrent("a gadget's LLM binding runs on its bound model, and an install us
   await source.deleteSelf();
 });
 
+it.concurrent("an AI model binding's declared audience is published and carried by installs (SCHO-325)",
+    async () => {
+  using publicApi = connect(requireHarness().url);
+  using api = await signUp(publicApi, username("audience"));
+  const model = models.script([]);
+  await api.addModel(model.userModel.profile, model.userModel.config);
+  using ws = await api.newWorkspace();
+  const workpieces = new WorkpieceRecorder();
+  using workpiecesStub = stubFor(workpieces);
+  using _subscription = await ws.subscribeToWorkpieces(workpiecesStub);
+  await workpieces.loaded;
+  using app = ws.createGadget("Coach", undefined, "APP");
+  const gadgetId = await app.getId();
+  await commitText(ws, workpieces, gadgetId, await headOf(workpieces, gadgetId),
+      "server.js", undefined, LLM_SERVER);
+
+  await expect(ws.newAiModelGatekeeper(model.userModel.profile.id, "grades 6 to 8"))
+      .rejects.toThrow("short label");
+  using llm = await ws.newAiModelGatekeeper(model.userModel.profile.id, "6-8");
+  await app.bind("LLM", await llm.getId());
+  const blueprint = await app.createBlueprint("Coach", "Coaches with an LLM");
+  const published = await waitFor("the published blueprint", () => publicApi.getBlueprint(blueprint.id));
+  expect(published.metadata.bindings.LLM).toMatchObject({ type: "aiModel", audience: "6-8" });
+
+  // An install's binding is declared for the same audience, so a blueprint made from it is too.
+  using installed = await api.newWorkspaceFromBlueprint(blueprint.id, {
+    LLM: { type: "aiModel", modelId: model.userModel.profile.id },
+  });
+  const { defaultGadgetId } = await installed.getMetadata();
+  if (defaultGadgetId === undefined) throw new Error("Installed workspace has no default Gadget");
+  using installedApp = await installed.getGadget(defaultGadgetId);
+  const derived = await installedApp.createBlueprint("Coach again", "Coaches with an LLM");
+  const republished = await waitFor("the derived blueprint", () => publicApi.getBlueprint(derived.id));
+  expect(republished.metadata.bindings.LLM).toMatchObject({ type: "aiModel", audience: "6-8" });
+
+  await installed.deleteSelf();
+  await ws.deleteSelf();
+});
+
 it.concurrent("a gadget's decision model binding answers its questions", async () => {
   using publicApi = connect(requireHarness().url);
   using api = await signUp(publicApi, username("decision"));
