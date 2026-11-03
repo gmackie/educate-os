@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { findByRole, findByText, getByRole, queryByRole, waitFor, within } from "@testing-library/dom";
+import { findByRole, findByText, getAllByRole, getByRole, queryByRole, waitFor, within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DemoApp } from "./DemoApp.tsx";
@@ -64,6 +64,28 @@ describe("the demo", () => {
     expect(await findByRole(container, "heading", { name: "Dashboard" }, BOOT)).toBeDefined();
     // The seed's two essays are on record, so every persona is reading the same district.
     expect(await findByText(container, /2 submissions/, {}, BOOT)).toBeDefined();
+  });
+
+  it("ticks a journey step when its screen shows the thing, not when another screen reads it in passing", async () => {
+    await choose("Grade 9 student");
+    await userEvent.click(await findByRole(container, "link", { name: "English 9 · Period 3" }, BOOT));
+    expect(await findByRole(banner(), "button", { name: /Things to try 1\/3/ }, BOOT)).toBeDefined();
+    // The seed's teacher has released feedback on the essay, and on nothing else.
+    await userEvent.click(await findByRole(container, "link", { name: "Reading reflection" }, BOOT));
+    expect(await findByText(container, "Submit your work to get feedback.", {}, BOOT)).toBeDefined();
+    expect(getByRole(banner(), "button", { name: /Things to try 1\/3/ })).toBeDefined();
+    // Back to the course, which the page links to more than once.
+    await userEvent.click(getAllByRole(container, "link", { name: "English 9 · Period 3" })[0]!);
+    await userEvent.click(await findByRole(container, "link", { name: "Should the school day start later?" }, BOOT));
+    expect(await findByRole(banner(), "button", { name: /Things to try 2\/3/ }, BOOT)).toBeDefined();
+
+    await switchPersona();
+    await choose("Amara's guardian");
+    expect(await findByRole(container, "heading", { name: "Amara Okafor's classes" }, BOOT)).toBeDefined();
+    // Her page has read each class for its summary, which is not yet looking at one.
+    expect(await findByRole(banner(), "button", { name: /Things to try 1\/2/ }, BOOT)).toBeDefined();
+    await userEvent.click(await findByRole(container, "link", { name: "English 9 · Period 3" }, BOOT));
+    expect(await findByRole(banner(), "button", { name: /Things to try 2\/2/ }, BOOT)).toBeDefined();
   });
 
   it("starts over on reset: back to the picker, with the hash route and progress cleared", async () => {

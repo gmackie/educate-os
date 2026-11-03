@@ -75,8 +75,9 @@ const PersonaApp = ({ district, persona, bearer, onStepsDone, onResponse, grades
   // One client for the app's lifetime, as each app's own entry point makes one.
   const [client] = useState(() => district.clientFor(bearer, (request, response) => {
     onResponse?.(request, response.status);
-    const ids = stepsDoneBy(persona.id, request, response.status, window.location.hash);
-    if (ids.length > 0) onStepsDone(ids);
+    void stepsDoneBy(persona.id, request, response, window.location.hash).then((ids) => {
+      if (ids.length > 0) onStepsDone(ids);
+    });
   }));
   const learningHome = persona.id === "student" || persona.id === "guardian";
 
