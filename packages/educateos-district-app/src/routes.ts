@@ -194,8 +194,12 @@ const declared = <T>() => z.custom<T>((value) => typeof value === "object" && va
 
 // Shared shapes
 
-/** The file types a JSON client may upload as bytes. Text files are sent as `text` content instead. */
-export const UPLOAD_MEDIA_TYPES = ["application/pdf", "image/png", "image/jpeg"] as const;
+/**
+ * The file types a JSON client may upload as bytes. Text files are sent as `text` content instead.
+ * The audio types are what browsers record (WebM or Ogg Opus, and MP4 on Safari) and the common
+ * files a student might upload instead (SCHO-323).
+ */
+export const UPLOAD_MEDIA_TYPES = ["application/pdf", "image/png", "image/jpeg", "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav"] as const;
 /** An uploadable file type. */
 export type UploadMediaType = (typeof UPLOAD_MEDIA_TYPES)[number];
 
@@ -205,11 +209,23 @@ export type UploadMediaType = (typeof UPLOAD_MEDIA_TYPES)[number];
  */
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
-/** The bytes each uploadable type starts with, so a file is stored only if it is what it claims to be. */
-const UPLOAD_SIGNATURES: Record<UploadMediaType, readonly number[]> = {
-  "application/pdf": [0x25, 0x50, 0x44, 0x46, 0x2d], // %PDF-
-  "image/png": [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
-  "image/jpeg": [0xff, 0xd8, 0xff],
+const ascii = (text: string) => [...text].map((c) => c.charCodeAt(0));
+const at = (bytes: Uint8Array, offset: number, signature: readonly number[]) =>
+  bytes.length >= offset + signature.length && signature.every((byte, i) => bytes[offset + i] === byte);
+
+/** How each uploadable type's bytes begin, so a file is stored only if it is what it claims to be. */
+const UPLOAD_SIGNATURES: Record<UploadMediaType, (bytes: Uint8Array) => boolean> = {
+  "application/pdf": (b) => at(b, 0, ascii("%PDF-")),
+  "image/png": (b) => at(b, 0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  "image/jpeg": (b) => at(b, 0, [0xff, 0xd8, 0xff]),
+  // An EBML header, which every WebM file starts with.
+  "audio/webm": (b) => at(b, 0, [0x1a, 0x45, 0xdf, 0xa3]),
+  "audio/ogg": (b) => at(b, 0, ascii("OggS")),
+  // An ISO media file's `ftyp` box, after its four-byte size.
+  "audio/mp4": (b) => at(b, 4, ascii("ftyp")),
+  // An ID3 tag, or an MPEG audio frame's sync bits.
+  "audio/mpeg": (b) => at(b, 0, ascii("ID3")) || (b.length >= 2 && b[0] === 0xff && (b[1]! & 0xe0) === 0xe0),
+  "audio/wav": (b) => at(b, 0, ascii("RIFF")) && at(b, 8, ascii("WAVE")),
 };
 
 /**
@@ -229,7 +245,7 @@ export const UploadedFileContent = z.strictObject({
     ctx.addIssue({ code: "too_big", origin: "file", maximum: MAX_UPLOAD_BYTES, inclusive: true, path: ["base64"], message: "the file is too large" });
     return z.NEVER;
   }
-  if (!UPLOAD_SIGNATURES[mediaType].every((byte, i) => bytes[i] === byte)) {
+  if (!UPLOAD_SIGNATURES[mediaType](bytes)) {
     ctx.addIssue({ code: "custom", path: ["base64"], message: "the file's contents do not match its media type" });
     return z.NEVER;
   }
