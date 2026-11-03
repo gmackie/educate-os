@@ -72,6 +72,9 @@ test runs against a stub of `cloudflare:workers` that the package's vitest confi
   registry with presence seeding and broadcast, and versioned upserts; on the client a save scheduler
   with retry backoff, a presence roster and a subscribe helper. The Docs, Sheets and Slides
   blueprints build on it.
+- [`tutor`](tutor/README.md) -- the bundled AI tutors' page (read-aloud, one-tap replies, sizes by
+  grade band) and conversation loop (prompt, privacy filter, reply shaping, transcript export), drawn
+  from each tutor's persona. Built on `ui`.
 - `zip` -- a server-only streaming ZIP32 writer shared by the Sheets XLSX exporter and PPTX library.
 - `pptx` -- a server-only PresentationML renderer for block-based slide decks, inlined into each
   importing blueprint's `server.js`, not shipped as a separate `pptx.js`. `deckToPptx(deck, adaptBlock)`

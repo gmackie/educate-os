@@ -1,0 +1,33 @@
+{
+  "$comment": "SCHO-325. bindings.LLM.audience declares the grade band the AI guard screens this tutor's calls at (never older than the learner's own band). blueprintId is the install key: never change it.",
+  "blueprintId": "educateos.tutor-9-12",
+  "title": "Research & Essay Coach (9-12)",
+  "description": "An AI research and essay coach for grades 9 to 12: argument structure, evidence and counterarguments, citation checks, and academic integrity. It coaches; the student writes.",
+  "output": {
+    "id": "tutor",
+    "noun": "Tutor",
+    "plural": "Tutors",
+    "icon": "notebook"
+  },
+  "author": {
+    "type": "user",
+    "name": "EducateOS",
+    "id": "tutors@educateos.io"
+  },
+  "revision": 1,
+  "created": "2026-11-02T00:00:00.000Z",
+  "version": 1,
+  "lastUpdated": "2026-11-02T00:00:00.000Z",
+  "bindings": {
+    "LLM": {
+      "title": "AI model",
+      "description": "The model the tutor talks with. A Workers AI model the district's AI guard prices; @cf/zai-org/glm-5.2 is suggested.",
+      "type": "aiModel",
+      "suggestedModel": {
+        "provider": "cloudflare",
+        "modelName": "@cf/zai-org/glm-5.2"
+      },
+      "audience": "9-12"
+    }
+  }
+}
