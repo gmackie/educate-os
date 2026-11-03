@@ -250,8 +250,22 @@ describe("beforeModelCall", () => {
 
   it("fails closed for a gadget's call when Hall Monitor is down, even for an educator whose profile proceeds (SCHO-307)", async () => {
     const { guard } = setup(null);
-    const gadget = call(USERS.educatorProceeds, ["hello"], { initiator: { type: "gadget", id: USERS.educatorProceeds } });
-    expect(await guard.beforeModelCall(gadget)).toMatchObject({ action: "deny", reason: "moderation_unavailable" });
+    for (const audience of [undefined, "9-12"]) {
+      const gadget = call(USERS.educatorProceeds, ["hello"], { initiator: { type: "gadget", id: USERS.educatorProceeds }, ...(audience === undefined ? {} : { audience }) });
+      expect(await guard.beforeModelCall(gadget)).toMatchObject({ action: "deny", reason: "moderation_unavailable" });
+    }
+  });
+
+  it("moderates a gadget at the band its model binding declares, still as a student's, input and output (SCHO-325)", async () => {
+    const hallMonitor = hallMonitorClient(env, config)!;
+    const evaluate = vi.spyOn(hallMonitor, "evaluate");
+    const { guard } = setup(hallMonitor);
+    const gadget = call(USERS.educatorProceeds, ["Is my thesis arguable?"], { initiator: { type: "gadget", id: USERS.educatorProceeds }, audience: "9-12" });
+    expect(await guard.beforeModelCall(gadget)).toEqual(SCREENED);
+    expect(evaluate.mock.calls.at(-1)![0]).toMatchObject({ policy: { profileId: "k12-high" }, context: { audience: "student", gradeBand: "9-12" } });
+    expect(await guard.screenModelOutput(gadget.callId, { parts: [{ type: "text", text: "A reply [[block]]" }], initiator: gadget.initiator, audience: "9-12" }))
+      .toEqual({ action: "withhold", reason: "moderation_block", message: DEFAULT_GUARD_MESSAGES.outputWithheld });
+    expect(evaluate.mock.calls.at(-1)![0]).toMatchObject({ evaluationKind: "interaction.output", policy: { profileId: "k12-high" }, context: { audience: "student", gradeBand: "9-12" } });
   });
 
   it("refuses unknown initiators, agent initiators and unpriced models before holding anything", async () => {

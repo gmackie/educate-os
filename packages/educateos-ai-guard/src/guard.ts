@@ -27,7 +27,7 @@ import {
 } from "@gmacko/hall-monitor-contracts";
 import { denialErrorCode, type AiDenialReason, type ModelRef } from "@educateos/ai-governance";
 import { guardMessages, type GuardConfig, type GuardMessages } from "./config.ts";
-import type { GuardContext, GuardContextResolver } from "./context.ts";
+import { gadgetGradeBand, studentProfileKey, type GuardContext, type GuardContextResolver } from "./context.ts";
 import { receiptAttempts, type GuardHallMonitorClient } from "./hall-monitor.ts";
 import { sourceEligibility } from "./source-governance.ts";
 import type { DistrictAiLedger } from "./ledger-object.ts";
@@ -158,7 +158,7 @@ export class AiCallGuardService {
       log.error("AI call refused: the district directory could not say who the call is for", { event: "ai_guard.failed", reason: "context_unavailable", error: error instanceof Error ? error.name : "unknown" });
       return deny("context_unavailable", this.#messages.aiUnavailable);
     }
-    if (context !== null && call.initiator.type === "gadget") context = this.#gadgetContext(context);
+    if (context !== null && call.initiator.type === "gadget") context = this.#gadgetContext(context, call.audience);
     if (context === null) {
       log.info("AI call refused: initiator is no principal of this deployment", { event: "ai_guard.denied", reason: "unknown_principal" });
       return deny("unknown_principal", this.#messages.unknownPrincipal);
@@ -241,7 +241,7 @@ export class AiCallGuardService {
       return withhold("unknown_call", this.#messages.notAllowed);
     }
     let context = await this.#resolver.resolveAdmitted({ principalId: reservation.principalId, districtId: reservation.districtId }, reservation.workspace);
-    if (context !== null && output.initiator?.type === "gadget") context = this.#gadgetContext(context);
+    if (context !== null && output.initiator?.type === "gadget") context = this.#gadgetContext(context, output.audience);
     if (context === null) {
       log.warn("AI response withheld: its principal is no longer served", { event: "ai_guard.output.withheld", reason: "unknown_principal" });
       return withhold("unknown_principal", this.#messages.notAllowed);
@@ -317,16 +317,20 @@ export class AiCallGuardService {
   }
 
   /**
-   * The context a gadget's own model call is moderated under (SCHO-307). Its initiator is the
-   * gadget's owner, who pays for it, but whoever the gadget is shown to may be typing: a student
-   * using a teacher's shared gadget, say. The Workshop cannot tell, so the call is moderated as for
-   * the youngest students (`student-k5`, grades K-2). A configuration with no such profile keeps a
-   * student owner's own profile, and refuses anyone else's call.
+   * The context a gadget's own model call is moderated under (SCHO-307, SCHO-325). Its initiator is
+   * the binding's owner, who pays for it, but whoever the gadget is shown to may be typing: a
+   * student using a teacher's shared gadget, say. The Workshop cannot tell, so the call is
+   * moderated as a student's, failing closed, at the band {@link gadgetGradeBand} picks: the
+   * youngest (K-2) unless the gadget's model binding declares an older one, and never older than
+   * the owner's own band. The band's profile is used, else `student-k5`'s; a configuration with
+   * neither keeps a student owner's own profile, and refuses anyone else's call.
    */
-  #gadgetContext(context: GuardContext): GuardContext | null {
-    const profile = this.#config.profiles["student-k5"] ?? (context.audience === "student" ? context.profile : undefined);
+  #gadgetContext(context: GuardContext, declared: string | undefined): GuardContext | null {
+    const gradeBand = gadgetGradeBand(declared, context);
+    const { profiles } = this.#config;
+    const profile = profiles[studentProfileKey(gradeBand)] ?? profiles["student-k5"] ?? (context.audience === "student" ? context.profile : undefined);
     if (profile === undefined) return null;
-    return { ...context, audience: "student", gradeBand: "K-2", profile };
+    return { ...context, audience: "student", gradeBand, profile };
   }
 
   async #moderate(call: AiCallDescriptor, context: GuardContext, log: Logger<GuardLogFields>): Promise<Moderation> {

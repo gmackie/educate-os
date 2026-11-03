@@ -87,6 +87,12 @@ export const DEV_GUARD_CONFIG = {
   contextSource: "static",
   profiles: {
     student: { hallMonitorProfileId: "k12-student", revision: "dev", moderateInput: true, failureMode: "fail-closed", outputModeration: "required" },
+    // The student audience classes, as a district configures them, so a gadget's calls are moderated
+    // at its declared band as in production (SCHO-325). Hall Monitor has no K-5 profile, so K-5
+    // pins its strictest student profile, 6-8, with scaffolded answers.
+    "student-k5": { hallMonitorProfileId: "student-6-8", revision: "builtin-1", moderateInput: true, failureMode: "fail-closed", outputModeration: "required", answerAssistance: "scaffolded" },
+    "student-6-8": { hallMonitorProfileId: "student-6-8", revision: "builtin-1", moderateInput: true, failureMode: "fail-closed", outputModeration: "required", answerAssistance: "scaffolded" },
+    "student-9-12": { hallMonitorProfileId: "student-9-12", revision: "builtin-1", moderateInput: true, failureMode: "fail-closed", outputModeration: "required", answerAssistance: "contextual" },
   },
   principals: [
     // Every dev user is a moderated student, the audience the guard is strictest for.

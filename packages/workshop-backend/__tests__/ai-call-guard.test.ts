@@ -292,6 +292,34 @@ describe("guardModelHandle", () => {
     expect(texts(calls[0])).toEqual(["Name this chat"]);
     await vi.waitFor(() => expect(outcomes).toMatchObject([{ status: "failed" }]));
   });
+
+  it("passes a model binding's declared audience, and keeps each audience's messages apart (SCHO-325)", async () => {
+    let { calls, guard } = fakeGuard();
+    let env = { AI_CALL_GUARD: guard } as unknown as Cloudflare.Env;
+    let gadgetId = `gadget-${++counter}`;
+    let gadget: AiChatAuthorInfo = { type: "gadget", id: OWNER.id, name: "Tutor" };
+    let config = { provider: "anthropic" as const, model: "claude-sonnet-4-5", apiToken: "key" };
+    let fetch = vi.fn(async () =>
+        Response.json({ error: { type: "bad_request", message: "stubbed" } }, { status: 400 }));
+    let ask = (audience?: string) => {
+      let handle = getModel(env, config, gadget,
+          { metadata: { source: "model-binding", gadgetId }, ...(audience ? { audience } : {}) });
+      return handle.stream(handle.model, { systemPrompt: "Be kind.", messages: [user("Hi")] },
+          { fetch, maxRetries: 0 }).result();
+    };
+
+    await ask("9-12");
+    await ask("9-12");
+    await ask("K-2");
+    await ask();
+
+    expect(calls.map(call => [call.callSite, call.audience])).toEqual([
+      ["gadget.llm", "9-12"], ["gadget.llm", "9-12"], ["gadget.llm", "K-2"],
+      ["gadget.llm", undefined],
+    ]);
+    // What a guard was shown for one audience is shown again for another.
+    expect(calls.map(texts)).toEqual([["Be kind.", "Hi"], [], ["Be kind.", "Hi"], ["Be kind.", "Hi"]]);
+  });
 });
 
 describe("output screening", () => {
@@ -402,6 +430,17 @@ describe("output screening", () => {
       initiator: { type: "user", id: OWNER.id },
     } }]);
     await vi.waitFor(() => expect(outcomes).toMatchObject([{ status: "completed" }]));
+  });
+
+  it("screens output for the audience the call was admitted for (SCHO-325)", async () => {
+    let { handle } = fauxHandle([fauxAssistantMessage(fauxText("Good try!"))]);
+    let { calls, guard, screened } = screeningGuard(async () => ({ action: "release" }));
+    guardModelHandle(guard, handle, { ...scope(), audience: "K-2" });
+
+    await handle.stream(handle.model, { messages: [user("Hi")] }).result();
+
+    expect(calls[0].audience).toBe("K-2");
+    expect(screened.map(({ output }) => output.audience)).toEqual(["K-2"]);
   });
 
   it("forwards nothing of a withheld response, and fails as a denial", async () => {

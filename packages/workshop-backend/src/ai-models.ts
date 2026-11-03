@@ -78,6 +78,8 @@ type ModelRoutingOptions = {
   metadata?: GatewayMetadataContext;
   // Where the call comes from, for the AI call guard. Defaults to the one `metadata.source` names.
   callSite?: AiCallSite;
+  // The audience a gadget's model binding was declared for, passed to the AI call guard.
+  audience?: string;
 };
 
 // The AI call guard's call site for each gateway metadata source.
@@ -93,12 +95,13 @@ const CALL_SITES: Record<GatewayMetadataContext["source"], AiCallSite> = {
 
 // What every call through a model resolved for `initiator` has in common, for the AI call guard.
 function guardScope(config: AiModelConfig, initiator: AiChatAuthorInfo, callSite: AiCallSite,
-                    metadata?: GatewayMetadataContext): AiCallScope {
+                    metadata?: GatewayMetadataContext, audience?: string): AiCallScope {
   return {
     callSite,
     initiator: { type: initiator.type, id: initiator.id },
     model: { provider: config.provider, id: config.model },
     ...(metadata?.gadgetId !== undefined ? { gadgetId: metadata.gadgetId } : {}),
+    ...(audience !== undefined ? { audience } : {}),
     ...(metadata?.chatId !== undefined ? { chatId: metadata.chatId } : {}),
   };
 }
@@ -780,7 +783,7 @@ export function getModel(env: Cloudflare.Env, config: AiModelConfig,
   let callSite = options.callSite ??
       (options.metadata ? CALL_SITES[options.metadata.source] : "unattributed");
   return guardModelHandle(aiCallGuardFor(env), routeModel(env, config, initiator, options),
-      guardScope(config, initiator, callSite, options.metadata));
+      guardScope(config, initiator, callSite, options.metadata, options.audience));
 }
 
 function routeModel(env: Cloudflare.Env, config: AiModelConfig, initiator: AiChatAuthorInfo,
@@ -1100,10 +1103,11 @@ function workersAiAccountUrl(config: AiModelConfig): string {
  */
 export function getDecisionModel(env: Cloudflare.Env, config: AiModelConfig,
                                  initiator: AiChatAuthorInfo,
-                                 metadataContext?: GatewayMetadataContext): DecisionModel {
+                                 metadataContext?: GatewayMetadataContext,
+                                 audience?: string): DecisionModel {
   return guardDecisionModel(aiCallGuardFor(env),
       routeDecisionModel(env, config, initiator, metadataContext),
-      guardScope(config, initiator, "gadget.decision", metadataContext));
+      guardScope(config, initiator, "gadget.decision", metadataContext, audience));
 }
 
 function routeDecisionModel(env: Cloudflare.Env, config: AiModelConfig,
@@ -1156,6 +1160,8 @@ export type AiModelGatekeeperProps = {
   config: AiModelConfig,
   initiator: AiChatAuthorInfo,
   metadata?: GatewayMetadataContext,
+  /** The audience the binding was declared for (BlueprintBinding.audience), for the AI call guard. */
+  audience?: string,
 };
 
 /**
@@ -1210,6 +1216,7 @@ export class LanguageModelGatekeeper
     // ai-call-site: gadget.llm
     let model = getModel(this.env, config, this.ctx.props.initiator, {
       metadata: this.ctx.props.metadata,
+      audience: this.ctx.props.audience,
     });
     return new LanguageModelBindingImpl(model);
   }
@@ -1278,10 +1285,11 @@ export class DecisionModelGatekeeper
 
   async startSession(approvalQueue: RpcStub<ApprovalQueue>)
       : Promise<DecisionModelBinding> {
-    let { config, initiator, metadata } = this.ctx.props;
+    let { config, initiator, metadata, audience } = this.ctx.props;
     await refuseRevokedModel(this.env, this.ctx.props);
     // ai-call-site: gadget.decision
-    return new DecisionModelBindingImpl(getDecisionModel(this.env, config, initiator, metadata));
+    return new DecisionModelBindingImpl(
+        getDecisionModel(this.env, config, initiator, metadata, audience));
   }
 
   applyAction(action: number): Promise<void> {

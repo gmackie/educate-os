@@ -57,6 +57,17 @@ describe("schoolos.gmac.io demo guard config", () => {
     expect(config.fundingPools.map((pool) => pool.purpose).toSorted()).toEqual(["personal", "safety"]);
   });
 
+  it("gives K-5 its own profile, on the strictest student profile Hall Monitor has (SCHO-325)", () => {
+    // Hall Monitor v0.3.0 has no K-5 profile, and its overlays only tighten the profiles it has.
+    expect(config.profiles["student-k5"]).toEqual({
+      hallMonitorProfileId: "student-6-8", revision: "builtin-1", moderateInput: true, failureMode: "fail-closed",
+      outputModeration: "required", answerAssistance: "scaffolded",
+    });
+    // Each student profile mirrors its Hall Monitor profile's answer assistance.
+    expect(config.profiles["student-6-8"]?.answerAssistance).toBe("scaffolded");
+    expect(config.profiles["student-9-12"]?.answerAssistance).toBe("contextual");
+  });
+
   it("has a profile for every audience class", () => {
     expect(Object.keys(config.profiles).toSorted()).toEqual(["educator", "student-6-8", "student-9-12", "student-k5"]);
     for (const key of ["student-k5", "student-6-8", "student-9-12"]) {

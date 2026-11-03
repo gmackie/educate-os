@@ -249,13 +249,12 @@ export const GuardConfig = z.strictObject({
   }
   // A student's input and the model's replies to them are always screened (SCHO-307): a profile
   // that students are moderated under may neither skip input moderation nor stream unscreened.
+  // A gadget's calls use the student profiles in either context source (SCHO-325).
   const unsafeForStudents = (profile: GuardProfile) => !profile.moderateInput || profile.outputModeration !== "required";
-  if (config.contextSource === "district") {
-    for (const key of AUDIENCE_PROFILE_KEYS) {
-      const profile = config.profiles[key];
-      if (key !== "educator" && profile !== undefined && unsafeForStudents(profile)) {
-        ctx.addIssue({ code: "custom", message: `student profile ${key} must moderate input and require output moderation`, path: ["profiles", key] });
-      }
+  for (const key of AUDIENCE_PROFILE_KEYS) {
+    const profile = config.profiles[key];
+    if (key !== "educator" && profile !== undefined && unsafeForStudents(profile)) {
+      ctx.addIssue({ code: "custom", message: `student profile ${key} must moderate input and require output moderation`, path: ["profiles", key] });
     }
   }
   for (const [index, binding] of config.principals.entries()) {

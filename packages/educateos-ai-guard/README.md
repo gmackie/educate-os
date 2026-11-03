@@ -100,6 +100,56 @@ workspaces and links.
   before anything is held. Nothing in a call's content, or anything a browser sends, says what
   role or grade a user has.
 
+## Declared grade bands (SCHO-325)
+
+A gadget built for older students (the bundled 9-12 Research & Essay Coach, say) would be
+over-blocked at K-2. So a blueprint's AI model binding may declare an `audience`, which the guard
+reads as a student grade band (`K-2`, `3-5`, `6-8` or `9-12`). The kernel copies it onto each binding
+instantiated from the blueprint when the binding is created and passes it with every call
+(`AiCallDescriptor.audience`) and output check (`AiCallModelOutput.audience`). Gadget code cannot
+set or change it: it lives in the binding's props, not in the gadget's files or its calls.
+
+A gadget's call is moderated at the younger of the declared band and the initiator's own band
+(`gadgetGradeBand` in `src/context.ts`), under that band's profile (`K-2`/`3-5` → `student-k5`,
+`6-8` → `student-6-8`, `9-12` → `student-9-12`):
+
+| Initiator | No declaration, or not a student band | Declares band B |
+|---|---|---|
+| Student in band S | K-2 | the younger of B and S |
+| Student in no known band | K-2 | K-2 |
+| Staff (educator) | K-2 | B |
+
+Why no declaration can loosen screening below what the rules require:
+
+- **A student is never screened at a band older than their own.** The youngest of the two always
+  wins, and a student the directory places nowhere counts as K-2, as `audienceOf` does.
+- **A gadget is never screened as an educator's.** `adult`, `educator`, a typo or anything else
+  that is not one of the four student bands counts as no declaration, which is K-2.
+- **Every band is a student profile.** Each `student-*` profile must moderate input and require
+  output screening, in any context source (the config is refused otherwise), and a gadget's call
+  fails closed when Hall Monitor is down, whatever the profile's `failureMode`.
+- **Output is screened at the admitted band.** An output check that does not name the band again
+  (an older Workshop) is screened at K-2.
+
+The one thing a declaration can do is make a member of staff's gadget less strict than K-2, which
+the owner decided on 2 November 2026: a teacher using or testing a 9-12 tutor is screened as a 9-12
+student would be. The residual risk is a younger student typing into a member of staff's gadget
+declared for an older band. A binding's declaration is whatever the blueprint's author chose (or,
+for a binding made directly, its creator), so who may share which gadget with whom is the
+district's sharing policy, not the guard's. A course workspace's own band is not consulted for
+staff (the directory gives staff no bands); bounding a staff gadget by the course it belongs to is a
+follow-up.
+
+### The K-5 profile
+
+The guard's `student-k5` is its own profile entry, but Hall Monitor v0.3.0 has no K-5 policy profile
+(its built-ins are `educator`, `student-6-8`, `student-9-12` and `published-content`), and its
+per-tenant overlays can only tighten a built-in profile under the same ID. So K-5 pins the strictest
+student profile there is, `student-6-8@builtin-1`, with `answerAssistance: "scaffolded"`. It differs
+from 6-8 in the grade band it sends (`K-2` or `3-5`), which Hall Monitor's readability evaluator and
+Clef prompt read. Thresholds of its own need an upstream Hall Monitor profile (`student-k-5`, say);
+until then a tenant overlay on `student-6-8` would tighten 6-8 too.
+
 ## First Hall Monitor pilot (SCHO-264)
 
 EducateOS is the first selected pilot integration (owner decision, 29 October 2026). The existing
@@ -262,12 +312,14 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   to check this. Hall Monitor error messages aren't logged either, only their codes.
 - **Initiators.** `user` and `gadget` initiators resolve by Workshop user ID; a gadget's calls are
   billed to its owner. An `agent` initiator names a model, not a person, so it is refused.
-- **Gadget calls** (SCHO-307). Whoever a gadget is shown to may be typing into it (a student using
-  a teacher's shared gadget, say), and the Workshop cannot tell who. So a `gadget` initiator's
-  calls are moderated, input and output, as for the youngest students: the `student-k5` profile and
-  grade band `K-2`, failing closed. A config without that profile keeps a student owner's own
-  profile and refuses anyone else's gadget calls. The Workshop names the initiator again when it
-  asks for output screening, so the reply is screened for the same reader.
+- **Gadget calls** (SCHO-307, SCHO-325). Whoever a gadget is shown to may be typing into it (a
+  student using a teacher's shared gadget, say), and the Workshop cannot tell who. So a `gadget`
+  initiator's calls are always moderated as a student's, input and output, failing closed. The
+  band is the youngest, `K-2` (the `student-k5` profile), unless the gadget's model binding
+  declares one: see [Declared grade bands](#declared-grade-bands-scho-325). A config without the
+  band's profile uses `student-k5`'s, and one without that keeps a student owner's own profile and
+  refuses anyone else's gadget calls. The Workshop names the initiator and the declared band again
+  when it asks for output screening, so the reply is screened for the same reader.
 - **Images** (SCHO-307). Hall Monitor screens text only, so a student's message carrying an image
   is denied (`image_unscreened`, with the `imageUnscreened` message) rather than reaching the
   model unread. An educator's image proceeds.

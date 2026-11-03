@@ -205,21 +205,24 @@
       "revision": "builtin-1",
       "moderateInput": true,
       "failureMode": "fail-closed",
-      "outputModeration": "required"
+      "outputModeration": "required",
+      "answerAssistance": "scaffolded"
     },
     "student-6-8": {
       "hallMonitorProfileId": "student-6-8",
       "revision": "builtin-1",
       "moderateInput": true,
       "failureMode": "fail-closed",
-      "outputModeration": "required"
+      "outputModeration": "required",
+      "answerAssistance": "scaffolded"
     },
     "student-9-12": {
       "hallMonitorProfileId": "student-9-12",
       "revision": "builtin-1",
       "moderateInput": true,
       "failureMode": "fail-closed",
-      "outputModeration": "required"
+      "outputModeration": "required",
+      "answerAssistance": "contextual"
     },
     "educator": {
       "hallMonitorProfileId": "educator",

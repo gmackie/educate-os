@@ -2922,8 +2922,12 @@ export interface Overseer extends RpcTarget {
    * Create a new gatekeeper for an AI model binding. The model can be any returned by
    * `AuthenticatedApi.listModels()`. A language model's gatekeeper provides a
    * `LanguageModelBinding`, a decision model's a `DecisionModelBinding`.
+   *
+   * `audience` declares whom the binding's calls are for, as an aiModel `BlueprintBinding` does:
+   * instantiating a blueprint passes its binding's. It is fixed for the binding's lifetime and
+   * passed to the deployment's AI call guard with every call.
    */
-  newAiModelGatekeeper(modelId: string): Promise<GatekeeperClient<any>>;
+  newAiModelGatekeeper(modelId: string, audience?: string): Promise<GatekeeperClient<any>>;
 
   /**
    * Create a new gatekeeper for an agent spawner binding. This allows the gadget to
@@ -5306,6 +5310,8 @@ export type GatekeeperCreationSpec = {
   modelId: string;         // the user's configured model ID
   provider: string;        // provider name (e.g. "anthropic")
   modelName: string;       // model name on the provider's API (e.g. "claude-sonnet-4-6")
+  /** The audience the binding was declared for (see `BlueprintBinding`); absent: none. */
+  audience?: string;
 } | {
   type: "agentSpawner";
   /**
@@ -5373,6 +5379,13 @@ export type SpawnerEnvTarget = {
 };
 
 /**
+ * The longest `audience` an AI model binding may declare (see `BlueprintBinding`), in characters.
+ * A label longer than this, or holding anything but letters, digits and `.`, `_`, `:` or `-`, is
+ * refused when the binding is created.
+ */
+export const MAX_AI_MODEL_AUDIENCE_LENGTH = 64;
+
+/**
  * Describes one binding required by a blueprint. Stored in BlueprintMetadata.bindings as a
  * Record keyed by binding name. Consumers identify bindings by their key (the binding name)
  * while `title` and `description` provide user-facing text.
@@ -5418,6 +5431,14 @@ export type BlueprintBinding = {
 
   /** The source binding's model kind, so installers pick one of that kind; absent: `"language"`. */
   modelKind?: ModelKind;
+
+  /**
+   * The audience the blueprint's author declares the gadget's model calls are for, such as a
+   * grade band, given to every binding instantiated from this one and passed with each call to the
+   * deployment's AI call guard (`AiCallDescriptor.audience`). An opaque label the Workshop gives
+   * no meaning, of at most {@link MAX_AI_MODEL_AUDIENCE_LENGTH} characters; absent: none declared.
+   */
+  audience?: string;
 } | {
   /** An agent spawner binding. */
   type: "agentSpawner";
