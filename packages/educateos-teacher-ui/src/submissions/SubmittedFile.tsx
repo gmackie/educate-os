@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react";
 import { DownloadSimple } from "@phosphor-icons/react";
 
-const EXTENSIONS: Readonly<Record<string, string>> = { "application/pdf": "pdf", "image/png": "png", "image/jpeg": "jpg" };
+const EXTENSIONS: Readonly<Record<string, string>> = {
+  "application/pdf": "pdf",
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "audio/webm": "webm",
+  "audio/ogg": "ogg",
+  "audio/mp4": "m4a",
+  "audio/mpeg": "mp3",
+  "audio/wav": "wav",
+};
 
 /**
  * A `blob:` URL for base64 bytes, revoked when they change or the viewer closes. The file is shown
@@ -25,7 +34,8 @@ const useObjectUrl = (base64: string, mediaType: string): string | undefined => 
 };
 
 /**
- * A file the student turned in, exactly as submitted: a picture shown inline, a PDF in the
+ * A file the student turned in, exactly as submitted: a picture shown inline, a recording in an
+ * audio player, a PDF in the
  * browser's own viewer, and every file with a link to download it.
  */
 export const SubmittedFile = ({ base64, mediaType, label }: { base64: string; mediaType: string; label: string }) => {
@@ -40,6 +50,7 @@ export const SubmittedFile = ({ base64, mediaType, label }: { base64: string; me
   return (
     <div className="flex flex-col gap-2">
       {mediaType.startsWith("image/") && <img src={url} alt={label} className="max-h-[70vh] max-w-full rounded border border-kumo-line" />}
+      {mediaType.startsWith("audio/") && <audio controls src={url} aria-label={label} className="w-full max-w-md" />}
       {mediaType === "application/pdf" && (
         <object data={url} type="application/pdf" aria-label={label} className="h-[70vh] w-full rounded border border-kumo-line">
           This browser can't show the PDF here. Download it below.

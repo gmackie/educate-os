@@ -301,11 +301,18 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
           subject: activity.subject,
           gradeBand: activity.gradeBand,
           overview: activity.overview,
-          // A science investigation asks for its data table; every other template, a written draft.
+          // A science investigation asks for its data table, a picture response for a drawing and a
+          // recording; every other template, a written draft.
           steps: activity.template === "science-investigation"
             ? [
               { id: "method", title: "Method", prompt: String(activity.methodPrompt), sources: [], response: { kind: "writing" } },
               { id: "data", title: "Data", prompt: "Record your observations.", sources: [], response: { kind: "dataset", columns: activity.dataColumns } },
+            ]
+            : activity.template === "picture-response"
+            ? [
+              { id: "look", title: "Look and listen", prompt: String(activity.lookPrompt), sources: [], response: { kind: "none" } },
+              { id: "draw", title: "Draw it", prompt: String(activity.drawPrompt), sources: [], response: { kind: "artifact", artifactType: "image" } },
+              { id: "tell", title: "Tell about it", prompt: "Tell about your picture.", sources: [], response: { kind: "artifact", artifactType: "audio" }, sentenceFrames: activity.sentenceFrames },
             ]
             : [{ id: "draft", title: "Draft", prompt: String(activity.prompt ?? "Do the work."), sources: [], response: { kind: "writing" } }],
           resources: activity.resources,
