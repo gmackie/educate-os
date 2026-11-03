@@ -13,6 +13,7 @@ import { CleverDataFake } from "@educateos/provider-fakes";
 import { createDemoGradebooks, type DemoGradebooksHandle } from "../grades/gradebooks.ts";
 import { CEDARVALLEY_PERSONAS, CEDARVALLEY_PRINCIPALS } from "./cedarvalleyPersonas.ts";
 import { clientsOver, demoSessions, verifySeedRelease, type DemoDistrict, type DemoRoster, type DemoSessions, type RosterSyncResult } from "./shared.ts";
+import { schoolDayDue } from "./schoolDay.ts";
 
 /** The booted Cedar Valley, with the Clever district its roster comes from. */
 export interface CedarValleyDistrict extends DemoDistrict {
@@ -188,7 +189,8 @@ async function seedCoursework(teacher: DistrictApiClient, classmate: DistrictApi
         genre: "informative",
         minimumCitations: 0,
         aiHelp: "none",
-        due: { kind: "after-install", days: 7 },
+        // A week from today at 3:30 PM, never at the minute the demo booted.
+        due: { kind: "fixed", dueAt: schoolDayDue(new Date())(7) },
       },
     },
   });

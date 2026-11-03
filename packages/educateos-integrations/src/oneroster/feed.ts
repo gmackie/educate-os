@@ -19,6 +19,12 @@ export interface OneRosterIssue {
   sourcedId?: string;
   /** The column, when the problem is in one field. */
   column?: string;
+  /**
+   * Where the problem is in the source's own records, for a roster that is not CSV files, such as
+   * "Clever user 26c04a9d…": read it in place of the file, row and column, which there name the
+   * row model the records were mapped into.
+   */
+  source?: string;
   /** What is wrong, safe to show a district administrator. */
   message: string;
 }

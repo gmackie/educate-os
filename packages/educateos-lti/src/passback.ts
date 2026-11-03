@@ -379,7 +379,7 @@ export class GradePassback {
 
     const approval = await this.#options.approvals.find(request);
     if (approval === undefined) {
-      throw new EducateOsError("policy-violation", "This grade has not been approved by the offering's teacher.");
+      throw new EducateOsError("policy-violation", "This grade has not been approved by the class's teacher.");
     }
     if (approval.scoreGiven !== request.scoreGiven || approval.scoreMaximum !== request.scoreMaximum) {
       throw new EducateOsError("policy-violation", "This score differs from the one the teacher approved.");

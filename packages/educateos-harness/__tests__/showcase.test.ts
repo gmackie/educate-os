@@ -99,6 +99,20 @@ describe("the Northfield showcase, seeded through the district API", () => {
     }
   });
 
+  it("dues activities at the time `dueAt` gives, when given one", async () => {
+    const fresh = await bootNorthfield();
+    const showcase = { ...NORTHFIELD_SHOWCASE, courses: NORTHFIELD_SHOWCASE.courses.filter((c) => c.offeringId === "off_nf-g1math-fall-r7") };
+    await seedShowcase({ showcase, adminId: ADMIN, actAs: fresh.actAs, dueAt: (days) => `2026-11-${String(2 + days).padStart(2, "0")}T15:30:00-05:00` });
+    const teacher = await fresh.actAs("prn_nf-teacher-yazzie");
+    const due = (await teacher.call("teacher.listAssignments", { params: { offeringId: "off_nf-g1math-fall-r7" } })).map((a) => [a.title, a.dueAt]);
+    // A quiz's gradebook assignment is due on the day the host gives quizzes too.
+    expect(due.toSorted()).toStrictEqual([
+      ["Apple Orchard Story Problems", "2026-11-09T20:30:00.000Z"],
+      ["Count and Compare", "2026-11-06T20:30:00.000Z"],
+      ["Tens and Ones", "2026-11-16T20:30:00.000Z"],
+    ]);
+  }, 60_000);
+
   it("lists every Northfield class for the administrator, with its teachers and students", async () => {
     const admin = await district.actAs(ADMIN);
     const offerings = await admin.call("admin.listOfferings");
@@ -108,6 +122,42 @@ describe("the Northfield showcase, seeded through the district API", () => {
       expect(row.teachers).toContain(name(course.teacherId));
       expect(row.students).toBeGreaterThanOrEqual(2);
     }
+  });
+
+  it("hands in young learners' drawings and recordings, one a step, for their teacher to see and hear", async () => {
+    const course = NORTHFIELD_SHOWCASE.courses.find((c) => c.offeringId === "off_nf-ksci-fall-r4")!;
+    const activity = course.activities.find((a) => a.template === "picture-response" && a.work["prn_nf-student-noah"]?.stage === "submitted")!;
+    const teacher = await district.actAs(course.teacherId);
+    const assignment = (await teacher.call("teacher.listAssignments", { params: { offeringId: course.offeringId } })).find((a) => a.title === activity.title)!;
+    const submissions = await teacher.call("teacher.listSubmissions", { params: { assignmentId: assignment.id } });
+    const noah = submissions.find((s) => s.studentPrincipalId === "prn_nf-student-noah")!;
+    expect(noah.items.map((i) => `${i.artifactType} ${i.mediaType}`).toSorted()).toStrictEqual(["audio audio/wav", "image image/png"]);
+    for (const item of noah.items) {
+      const read = await teacher.call("teacher.submittedContent", { params: { submissionId: noah.id, artifactId: item.artifactId } });
+      expect(read.content.kind).toBe("bytes");
+    }
+
+    // The student finds each piece on its step, titled as the Learning Home titles a step's work.
+    const student = await district.actAs("prn_nf-student-noah");
+    const workspace = await student.call("student.openCourseWorkspace", { params: { offeringId: course.offeringId } });
+    const titles = (await student.call("student.listArtifacts", { params: { workspaceId: workspace.id } })).map((a) => a.artifact.title);
+    expect(titles).toEqual(expect.arrayContaining([`${activity.title}: Draw it`, `${activity.title}: Tell about it`]));
+  });
+
+  it("keeps an older student's draft in the activity's Draft step, where their page shows it", async () => {
+    const abena = await district.actAs("prn_nf-student-abena");
+    const workspace = await abena.call("student.openCourseWorkspace", { params: { offeringId: "off_nf-g4ela-fall-r12" } });
+    const titles = (await abena.call("student.listArtifacts", { params: { workspaceId: workspace.id } })).map((a) => a.artifact.title);
+    expect(titles).toContain("Should Recess Be Longer?: Draft");
+  });
+
+  it("leaves Mateo's retelling for him to do, with a classmate's waiting for the teacher", async () => {
+    const mateo = await district.actAs("prn_nf-student-mateo");
+    const retell = (await mateo.call("student.listActivities", { params: { offeringId: "off_nf-g1read-fall-r7" } })).find((a) => a.assignment.title === "Retell The Little Seed")!;
+    expect(retell.activity.content.steps.map((s) => s.response.kind === "artifact" ? s.response.artifactType : s.response.kind)).toStrictEqual(["none", "audio", "audio", "image"]);
+    expect(await mateo.call("student.listSubmissions", { params: { assignmentId: retell.assignment.id } })).toStrictEqual([]);
+    const teacher = await district.actAs("prn_nf-teacher-yazzie");
+    expect((await teacher.call("teacher.listSubmissions", { params: { assignmentId: retell.assignment.id } })).length).toBe(2);
   });
 
   it("makes nothing new when run again", async () => {

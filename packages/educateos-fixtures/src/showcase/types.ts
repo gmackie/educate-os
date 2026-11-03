@@ -2,6 +2,7 @@
 // IDs, which `seedShowcase` in `@educateos/harness` turns into district API calls. Nothing here
 // depends on the district application; its template, quiz and rubric fields mirror the district
 // API's inputs, and the seeder's type check is what holds them to it.
+import type { Drawing } from "./media.ts";
 
 /** The four grade bands the showcase covers, as the catalog's vocabulary names them. */
 export type ShowcaseBand = "K-2" | "3-5" | "6-8" | "9-12";
@@ -54,8 +55,20 @@ export interface ShowcaseRubric {
  */
 export type ShowcaseWork =
   | { stage: "not-started" }
-  | { stage: "draft" | "submitted"; text: string }
-  | { stage: "graded" | "released"; text: string; scores: Readonly<Record<string, number>>; comment: string };
+  | ({ stage: "draft" | "submitted"; text: string } & YoungLearnerWork)
+  | ({ stage: "graded" | "released"; text: string; scores: Readonly<Record<string, number>>; comment: string } & YoungLearnerWork);
+
+/**
+ * What a young learner made on a picture-response or read-and-respond activity, one artifact a step:
+ * `text` is what they said or wrote, as their teacher would sum it up. A drawing step hands in
+ * `drawing`, a speaking step a short recording (a hummed stand-in for the child's voice), and a
+ * writing step the matching entry of `answers`, by the step's place among the writing steps (or
+ * `text`, when there is none).
+ */
+export interface YoungLearnerWork {
+  drawing?: Drawing;
+  answers?: readonly string[];
+}
 
 /** The stages of {@link ShowcaseWork}, in the order work moves through them. */
 export const SHOWCASE_STAGES = ["not-started", "draft", "submitted", "graded", "released"] as const;
@@ -82,7 +95,18 @@ export type ShowcaseActivity = ActivityBase & (
   | { template: "science-investigation"; question: string; methodPrompt: string; dataColumns: readonly { name: string; unit?: string }[]; analysisPrompt: string }
   | { template: "primary-source-analysis"; sourcingQuestions: readonly string[]; contextualizationQuestions: readonly string[]; claimPrompt: string; minimumEvidence: number }
   | { template: "problem-set"; problems: readonly { prompt: string; answer?: string }[]; showWork: boolean }
+  | { template: "picture-response"; lookPrompt: string; drawPrompt: string; tellAboutIt: boolean; sentenceFrames: readonly string[] }
+  | {
+    template: "read-and-respond";
+    passage: string;
+    questions: readonly { prompt: string; answerBy?: ShowcaseAnswerMode }[];
+    answerBy: ShowcaseAnswerMode;
+    sentenceFrames: readonly string[];
+  }
 );
+
+/** How a young learner answers a read-and-respond question. */
+export type ShowcaseAnswerMode = "speaking" | "drawing" | "writing";
 
 /** A quiz item, as the district's quiz API takes one (without an ID). */
 export type ShowcaseQuizItem =

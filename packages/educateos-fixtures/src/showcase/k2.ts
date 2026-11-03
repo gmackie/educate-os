@@ -1,9 +1,9 @@
 // K-2: Kindergarten Science (Weather Watchers), Grade 1 Reading Foundations and Grade 1 Math at
-// Northfield Elementary. Prompts are short and concrete, written to be read aloud.
-//
-// These classes use the writing, investigation and problem-set templates for now. When the K-2
-// templates land (SCHO-323: picture choice, drawing, audio response and read-aloud), the activities
-// marked "K-2 template:" below should move to them.
+// Northfield Elementary. Prompts are short and concrete, written to be read aloud. Work a child
+// draws or says uses the young-learner templates (SCHO-323): a picture response (look, draw, tell
+// about it) or read and respond (listen, then answer each question by speaking, drawing or writing),
+// and their scripted work hands in drawings and recordings (SCHO-324).
+import { DRAWINGS } from "./drawings.ts";
 import { EARLY_LEVELS, rubric } from "./rubrics.ts";
 import type { ShowcaseCourse } from "./types.ts";
 
@@ -39,46 +39,58 @@ export const K_SCIENCE: ShowcaseCourse = {
   ],
   activities: [
     {
-      // K-2 template: a picture-choice daily chart once picture templates exist.
       key: "weather-chart",
-      template: "science-investigation",
-      title: "My Weather Chart",
-      overview: "Look outside each day this week. Show the weather on your chart.",
-      question: "What will the weather be this week?",
-      methodPrompt: "Look out the window each morning. Tell a grown-up what you see.",
-      dataColumns: [{ name: "Day" }, { name: "Weather" }, { name: "Warm or cold" }],
-      analysisPrompt: "Which weather did we see the most?",
+      template: "picture-response",
+      title: "My Weather Picture",
+      overview: "Look outside. Draw the weather you see, then tell about it.",
+      lookPrompt: "Look out the window. Is it sunny, rainy, cloudy or snowy today?",
+      drawPrompt: "Draw the weather you see outside.",
+      tellAboutIt: true,
+      sentenceFrames: ["Today it is ___.", "I see ___ in the sky."],
       standards: [],
       aiHelp: "none",
       dueInDays: 7,
-      rubric: rubric("rbr_sc-ksci-weather-chart", "Weather chart", [["observe", "I looked and told what I saw"], ["record", "I filled in my chart"]], EARLY_LEVELS),
+      rubric: rubric("rbr_sc-ksci-weather-chart", "Weather picture", [["observe", "I looked and told what I saw"], ["record", "I drew the weather"]], EARLY_LEVELS),
       work: {
         [SOFIA]: {
           stage: "released",
-          text: "Monday: sunny ☀️, warm. Tuesday: rainy 🌧️, cold. Wednesday: sunny ☀️. Thursday: cloudy ☁️. Friday: sunny ☀️. We saw sunny the most!",
+          text: "Today it is sunny. I see the sun and one white cloud in the sky.",
+          drawing: DRAWINGS.sunnyDay,
           scores: { observe: 3, record: 3 },
-          comment: "Wonderful watching, Sofia! You saw sunny three times. ☀️☀️☀️",
+          comment: "Wonderful watching, Sofia! I love your big yellow sun. ☀️",
         },
-        [NOAH]: { stage: "submitted", text: "Monday: rain 🌧️. Tuesday: rain. Wednesday: wind 🌬️. It was rainy the most." },
-        [AIYANA]: { stage: "draft", text: "Monday: sunny ☀️. Tuesday: cloudy ☁️." },
+        [NOAH]: { stage: "submitted", text: "Today it is rainy. Lots and lots of rain.", drawing: DRAWINGS.rainyDay },
+        [AIYANA]: { stage: "draft", text: "It is cloudy.", drawing: DRAWINGS.cloudyDay },
       },
     },
     {
-      // K-2 template: a drawing with a recorded "tell me about it" once draw and audio templates exist.
       key: "dress-for-weather",
-      template: "writing-task",
+      template: "picture-response",
       title: "Dress for a Rainy Day",
       overview: "Draw yourself ready for a rainy day. Tell what you are wearing.",
-      prompt: "It is raining! 🌧️ What will you wear outside? Draw it, then say or write two things you put on.",
-      genre: "narrative",
-      minimumCitations: 0,
+      lookPrompt: "It is raining! 🌧️ What will you wear outside?",
+      drawPrompt: "Draw yourself ready to go out in the rain.",
+      tellAboutIt: true,
+      sentenceFrames: ["I wear ___.", "I bring ___."],
       standards: [],
       aiHelp: "none",
       dueInDays: 10,
       rubric: rubric("rbr_sc-ksci-dress", "Dress for the weather", [["clothes", "I chose clothes for the weather"], ["tell", "I told about my picture"]], EARLY_LEVELS),
       work: {
-        [SOFIA]: { stage: "graded", text: "I wear my yellow boots and my rain coat. I hold a umbrella.", scores: { clothes: 3, tell: 2 }, comment: "Great choices! Can you tell me why boots help in the rain?" },
-        [NOAH]: { stage: "released", text: "Boots. Coat. My hat with a dinosaur.", scores: { clothes: 3, tell: 3 }, comment: "A dinosaur hat to stay dry, how fun! You picked just the right clothes." },
+        [SOFIA]: {
+          stage: "graded",
+          text: "I wear my yellow boots and my rain coat. I hold a umbrella.",
+          drawing: DRAWINGS.rainBootsAndUmbrella,
+          scores: { clothes: 3, tell: 2 },
+          comment: "Great choices! Can you tell me why boots help in the rain?",
+        },
+        [NOAH]: {
+          stage: "released",
+          text: "Boots. Coat. My hat with a dinosaur.",
+          drawing: DRAWINGS.dinosaurHat,
+          scores: { clothes: 3, tell: 3 },
+          comment: "A dinosaur hat to stay dry, how fun! You picked just the right clothes.",
+        },
         [AIYANA]: { stage: "not-started" },
       },
     },
@@ -135,45 +147,63 @@ export const G1_READING: ShowcaseCourse = {
   ],
   activities: [
     {
-      // K-2 template: picture choice plus an audio "read it to me" response.
       key: "word-builders",
-      template: "problem-set",
+      template: "read-and-respond",
       title: "Word Builders",
       overview: "Change one sound to make a new word.",
-      problems: [
-        { prompt: "Say **cat** 🐱. Change the first sound to /h/. What word did you make?", answer: "hat" },
-        { prompt: "Say **pig** 🐷. Change the first sound to /b/. What word did you make?", answer: "big" },
-        { prompt: "Say **hop**. Change the last sound to /t/. What word did you make?", answer: "hot" },
+      passage: "Let's build words! Say a word. Change one sound. Now you have a new word!",
+      questions: [
+        { prompt: "Say cat 🐱. Change the first sound to /h/. Write your new word." },
+        { prompt: "Say pig 🐷. Change the first sound to /b/. Write your new word." },
+        { prompt: "Say hop. Change the last sound to /t/. Write your new word." },
       ],
-      showWork: false,
+      answerBy: "writing",
+      sentenceFrames: [],
       standards: [{ framework: "ccss-ela", code: "RF.1.3" }, { framework: "ccss-ela", code: "RF.1.2" }],
-      aiHelp: "none",
+      aiHelp: "hints-only",
       dueInDays: 5,
       rubric: rubric("rbr_sc-g1read-word-builders", "Word builders", [["sounds", "I changed the sound"], ["read", "I read my new word"]], EARLY_LEVELS),
       work: {
-        [MATEO]: { stage: "released", text: "1. hat 2. big 3. hot", scores: { sounds: 3, read: 3 }, comment: "You are a word-building star, Mateo! ⭐" },
-        [PRIYA]: { stage: "released", text: "1. hat 2. bag 3. hot", scores: { sounds: 2, read: 3 }, comment: "So close on number 2! Pig becomes b-i-g. Let's tap it out together." },
-        [JONAH]: { stage: "submitted", text: "1. hat 2. big 3. hop" },
+        [MATEO]: { stage: "released", text: "1. hat 2. big 3. hot", answers: ["hat", "big", "hot"], scores: { sounds: 3, read: 3 }, comment: "You are a word-building star, Mateo! ⭐" },
+        [PRIYA]: {
+          stage: "released",
+          text: "1. hat 2. bag 3. hot",
+          answers: ["hat", "bag", "hot"],
+          scores: { sounds: 2, read: 3 },
+          comment: "So close on number 2! Pig becomes b-i-g. Let's tap it out together.",
+        },
+        [JONAH]: { stage: "submitted", text: "1. hat 2. big 3. hop", answers: ["hat", "big", "hop"] },
       },
     },
     {
-      // K-2 template: read-aloud of the story, then an audio retelling.
       key: "retell-seed",
-      template: "writing-task",
+      template: "read-and-respond",
       title: "Retell The Little Seed",
-      overview: "Tell what happened first, next and last.",
-      prompt: "Read \"The Little Seed\" with a grown-up. Tell what happened **first**, **next** and **last**.",
-      genre: "narrative",
-      minimumCitations: 0,
+      overview: "Listen to the story. Tell what happened first, next and last.",
+      passage: "A little seed fell into the dirt. First, the rain came and gave it a drink. Next, the sun came and kept it warm. Last, a tiny green sprout popped up to say hello!",
+      questions: [
+        { prompt: "What happened first? Tell it in your own words." },
+        { prompt: "What happened next?" },
+        { prompt: "Draw what happened last.", answerBy: "drawing" },
+      ],
+      answerBy: "speaking",
+      sentenceFrames: ["First, ___.", "Next, ___.", "Last, ___."],
       resources: ["little-seed"],
       standards: [{ framework: "ccss-ela", code: "RL.1.2" }],
-      aiHelp: "none",
+      aiHelp: "hints-only",
       dueInDays: 9,
       rubric: rubric("rbr_sc-g1read-retell", "Retell", [["order", "I told it in order"], ["details", "I told important parts"]], EARLY_LEVELS),
       work: {
-        [MATEO]: { stage: "graded", text: "First the rain came. Next the sun was warm. Last a sprout popped up!", scores: { order: 3, details: 3 }, comment: "You used first, next and last just like a real storyteller!" },
-        [PRIYA]: { stage: "draft", text: "First the seed fell in the dirt." },
-        [JONAH]: { stage: "not-started" },
+        // Mateo retells it himself in the demo: he listens, records, draws and hands it in.
+        [MATEO]: { stage: "not-started" },
+        [PRIYA]: { stage: "submitted", text: "First the rain gave it a drink. Next the sun kept it warm. Last a sprout said hello!", drawing: DRAWINGS.seedSprout },
+        [JONAH]: {
+          stage: "graded",
+          text: "First the seed fell in the dirt. Next it rained. Last it grew.",
+          drawing: DRAWINGS.seedInDirt,
+          scores: { order: 3, details: 2 },
+          comment: "You told it in order, Jonah! What did the sun do to help the seed?",
+        },
       },
     },
   ],

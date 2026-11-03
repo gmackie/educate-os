@@ -5,10 +5,13 @@ import { RECORD_TYPES, failureReason, modeName, runSummary, type SyncRunResult }
 
 type Preview = NonNullable<SyncRunResult["preview"]>;
 
-/** Where in the feed an issue is: its file, row and column, as far as the issue says. */
+/**
+ * Where in the roster an issue is: the source's own record, such as a Clever user, where the source
+ * has records of its own; else the file, row and column, as far as the issue says.
+ */
 const location = (issue: Preview["issues"][number]) =>
-  [issue.file, issue.row === undefined ? undefined : `row ${issue.row}`, issue.column === undefined ? undefined : `column ${issue.column}`]
-    .filter((part) => part !== undefined).join(", ") || "The whole feed";
+  issue.source ?? ([issue.file, issue.row === undefined ? undefined : `row ${issue.row}`, issue.column === undefined ? undefined : `column ${issue.column}`]
+    .filter((part) => part !== undefined).join(", ") || "The whole feed");
 
 /** The problems a sync found in the feed: errors that stopped it and records it skipped on purpose. */
 const SyncIssues = ({ preview }: { preview: Preview }) => {

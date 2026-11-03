@@ -160,7 +160,7 @@ export const YoungActivityView = ({ offeringId, courseName, entry, work }: {
             </div>
           ) : null}
           <AskAi context={{ kind: "assignment", id: assignment.id }} />
-          <AiHelpSlot level={activity.installation.aiHelp} />
+          <AiHelpSlot assigned={{ assignment, activity }} />
         </Page>
 
         {steps.map((step, index) => {

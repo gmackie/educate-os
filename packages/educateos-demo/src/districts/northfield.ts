@@ -1,48 +1,135 @@
 // Northfield, the demo's first district: the real district application over in-memory stores,
-// rostered by OneRoster and seeded as the harness seeds its districts. Imports read the harness's
-// synthetic web, and no AI is funded or reviewed, so no request ever leaves for a model.
-import type { DistrictApiClient } from "@educateos/api-client";
+// rostered by OneRoster and seeded with the K-12 showcase (SCHO-322) through its API, as the
+// harness seeds a live district. Imports read the harness's synthetic web, and no AI is funded or
+// reviewed, so no request ever leaves for a model.
 import type { PrincipalId } from "@educateos/contracts";
 import { createDistrictApp, inMemoryDistrictStores } from "@educateos/district-app";
-import { NORTHFIELD } from "@educateos/fixtures";
-import { demoWeb, seedDistrict } from "@educateos/harness";
-import { clientsOver, personaVerifier, seedRelease, verifySeedRelease, type DemoDistrict, type Persona, type PersonaId } from "./shared.ts";
+import { NORTHFIELD, NORTHFIELD_GUARDIANS, NORTHFIELD_SHOWCASE } from "@educateos/fixtures";
+import { demoWeb, seedShowcase, showcaseResourceUrl } from "@educateos/harness";
+import { schoolDayDue } from "./schoolDay.ts";
+import { clientsOver, personaVerifier, verifySeedRelease, type DemoDistrict, type Persona, type PersonaSection } from "./shared.ts";
 
-/** The guardian the demo onboards for its student, who is not on the roster. */
-const GUARDIAN = { subject: "nf-g-3001", displayName: "Grace Okafor" } as const;
+/** The district administrator, who approves standards and confirms guardians. */
+const ADMIN = "prn_nf-district-admin" as PrincipalId;
+
+/** The picker's sections: one a grade band, then families and the district office. */
+export const NORTHFIELD_SECTIONS: readonly PersonaSection[] = [
+  { key: "K-2", title: "Kindergarten to grade 2", description: "One step at a time, read aloud, answered by drawing and speaking." },
+  { key: "3-5", title: "Grades 3 to 5", description: "Sentence starters, read-aloud on request, and a helper that gives hints, not answers." },
+  { key: "6-8", title: "Grades 6 to 8", description: "Primary sources, class discussions and coached drafts." },
+  { key: "9-12", title: "Grades 9 to 12", description: "Arguments with evidence, released feedback and official grades." },
+  { key: "family", title: "Family", description: "One guardian, two children in two schools." },
+  { key: "district", title: "District", description: "The whole K-12 district, from one console." },
+];
 
 /**
- * Who a visitor can be in Northfield, in the order the picker offers them. Known before the
- * district boots, so the picker shows at once; {@link bootNorthfield} checks the seed made them
- * the people it seeded work for.
+ * Who a visitor can be in Northfield, in the order the picker offers them: a student and their
+ * teacher in each grade band, a guardian and the administrator. Known before the district boots,
+ * so the picker shows at once; {@link bootNorthfield} checks each is the fixture's person.
  */
 export const NORTHFIELD_PERSONAS: readonly Persona[] = [
   {
-    id: "student",
+    id: "k2-student",
+    kind: "student",
+    section: "K-2",
+    band: "K-2",
+    name: "Mateo Delgado",
+    role: "Grade 1 student",
+    description: "Listen to “The Little Seed”, tell what happened, draw the ending and hand it in.",
+    lookFor: "big type, the story read aloud, the drawing pad and the microphone",
+    subject: "nf-s-2009",
+  },
+  {
+    id: "k2-teacher",
+    kind: "teacher",
+    section: "K-2",
+    name: "Daniel Yazzie",
+    role: "Grade 1 teacher",
+    description: "Listen to Priya's retelling, look at her drawing, and release feedback to Jonah.",
+    lookFor: "recordings and drawings in Submissions, and the Grade 1 gradebook",
+    subject: "nf-0105",
+  },
+  {
+    id: "g35-student",
+    kind: "student",
+    section: "3-5",
+    band: "3-5",
+    name: "Abena Mensah",
+    role: "Grade 4 student",
+    description: "Finish your opinion piece on a longer recess, and read your teacher's feedback on the kite story.",
+    lookFor: "sentence starters, read-aloud and the Homework Helper (simulated)",
+    subject: "nf-s-2012",
+  },
+  {
+    id: "g35-teacher",
+    kind: "teacher",
+    section: "3-5",
+    name: "Fatima Al-Sayed",
+    role: "Grade 4 teacher",
+    description: "Grade Hana's theme essay against the rubric and post an announcement to families.",
+    lookFor: "rubric scoring, the gradebook, and the weekly note families read",
+    subject: "nf-0106",
+  },
+  {
+    id: "g68-student",
+    kind: "student",
+    section: "6-8",
+    band: "6-8",
+    name: "Chidi Okafor",
+    role: "Grade 7 student",
+    description: "Read feedback on Hammurabi's laws, join the class discussion and draft “Ideas on the Move”.",
+    lookFor: "a primary-source analysis, a discussion, and the Study Coach (simulated)",
+    subject: "nf-s-2002",
+  },
+  {
+    id: "g68-teacher",
+    kind: "teacher",
+    section: "6-8",
+    name: "Tomás Ortega",
+    role: "World History 7 teacher",
+    description: "Grade Felix's primary-source analysis and answer your class's discussion.",
+    lookFor: "source-based work, the discussion and the gradebook",
+    subject: "nf-0109",
+  },
+  {
+    id: "g912-student",
+    kind: "student",
+    section: "9-12",
+    band: "9-12",
     name: "Amara Okafor",
     role: "Grade 9 student",
-    description: "Open English 9, write and submit an assignment, and read your teacher's feedback.",
+    description: "Read your teacher's feedback and official grade on your argument essay, then plan the next one.",
+    lookFor: "released feedback, official grades, and the Research & Essay Coach (simulated)",
     subject: "nf-s-2001",
   },
   {
-    id: "teacher",
+    id: "g912-teacher",
+    kind: "teacher",
+    section: "9-12",
     name: "Sam Rivera",
     role: "English 9 teacher",
-    description: "See your students' work, grade it and release feedback, and post an announcement.",
+    description: "Grade Elena's argument essay, release the feedback, and see your class gradebook.",
+    lookFor: "rubric grading, released feedback and official grades",
     subject: "nf-0101",
   },
   {
     id: "guardian",
-    name: GUARDIAN.displayName,
-    role: "Amara's guardian",
-    description: "Follow your child's classes, due dates and released grades.",
-    subject: GUARDIAN.subject,
+    kind: "guardian",
+    section: "family",
+    name: "Rosa Delgado",
+    role: "Guardian of Mateo (grade 1) and Lucía (grade 10)",
+    description: "Follow both children, in two schools, from one place: classes, due dates and released grades.",
+    lookFor: "each child's classes, the teacher's weekly note, and grades once released",
+    subject: "nf-g-3101",
   },
   {
     id: "admin",
+    kind: "admin",
+    section: "district",
     name: "Avery Admin",
     role: "District administrator",
-    description: "Look over the district's people, classes, policies and settings.",
+    description: "Look over every class from kindergarten to grade 12, its people, policies and settings.",
+    lookFor: "All classes, each class's roster, learning standards and policies",
     subject: "nf-0001",
   },
 ];
@@ -56,12 +143,14 @@ export interface NorthfieldOptions {
    * district's sign-in cookie on its `/connect-phone` page.
    */
   subjectOf?: (request: Request) => string | undefined;
+  /** The day the showcase's due dates count from. Today by default. */
+  today?: Date;
 }
 
 /**
- * Boots Northfield and seeds it, without funding pools, a model catalog or a content reviewer: AI
- * is off, and every AI surface reports that it is not set up. `fetch` is the district application
- * itself, for serving it over HTTP (the mobile dev district).
+ * Boots Northfield and seeds the K-12 showcase, without funding pools, a model catalog or a content
+ * reviewer: AI is off, and every AI surface reports that it is not set up. `fetch` is the district
+ * application itself, for serving it over HTTP (the mobile dev district).
  */
 export async function bootNorthfield(options: NorthfieldOptions = {}): Promise<DemoDistrict & { fetch(request: Request): Promise<Response> }> {
   const directory = NORTHFIELD;
@@ -75,128 +164,22 @@ export async function bootNorthfield(options: NorthfieldOptions = {}): Promise<D
     verifyCatalogRelease: verifySeedRelease,
   });
   const clientFor = clientsOver((request) => app.fetch(request));
-  const signInAs = async (subject: string) => clientFor(subject);
+  const person = (id: string) => directory.principals.find((p) => p.id === id)!;
 
-  const seeded = await seedDistrict(directory, app, signInAs);
-  const subjectOf = (id: PrincipalId) => directory.principals.find((p) => p.id === id)!.externalIdentities[0]!.subject;
-  const teacher = clientFor(subjectOf(seeded.teacher.id));
-  const admin = clientFor(subjectOf(seeded.admin.id));
+  const seeded = await seedShowcase({
+    showcase: NORTHFIELD_SHOWCASE,
+    adminId: ADMIN,
+    actAs: (id) => clientFor(person(id).externalIdentities[0]!.subject),
+    guardians: NORTHFIELD_GUARDIANS,
+    guardianNames: Object.fromEntries(NORTHFIELD_GUARDIANS.map((g) => [g.guardianPrincipalId, person(g.guardianPrincipalId).displayName])),
+    resourceUrl: showcaseResourceUrl,
+    dueAt: schoolDayDue(options.today ?? new Date()),
+  });
+  if (seeded.skipped.length > 0) throw new Error(`the showcase left out ${seeded.skipped.join(", ")}`);
 
-  const essay = await reviewSeededEssay(teacher);
-  await submitClassmateEssay(clientFor(CLASSMATE_SUBJECT), essay);
-  await addOpenAssignment(teacher, essay.offeringId);
-  await onboardGuardian(admin, clientFor(GUARDIAN.subject), seeded.student.id);
-
-  const seededAs: Record<Exclude<PersonaId, "guardian">, PrincipalId> = { student: seeded.student.id, teacher: seeded.teacher.id, admin: seeded.admin.id };
   for (const persona of NORTHFIELD_PERSONAS) {
-    if (persona.id !== "guardian" && subjectOf(seededAs[persona.id]) !== persona.subject) {
-      throw new Error(`the demo seed's ${persona.id} is not ${persona.name}`);
-    }
+    const principal = directory.principals.find((p) => p.externalIdentities.some((i) => i.subject === persona.subject));
+    if (principal?.displayName !== persona.name) throw new Error(`the demo's ${persona.id} is not ${persona.name}`);
   }
   return { key: "northfield", clientFor, fetch: (request) => app.fetch(request) };
-}
-
-/**
- * The teacher reads the essay the seed submitted, comments, records a grade and releases both, so
- * the student has feedback to find from the start. Returns the essay's assignment.
- */
-async function reviewSeededEssay(teacher: DistrictApiClient): Promise<{ offeringId: string; assignmentId: string }> {
-  for (const { offering } of await teacher.call("teacher.listOfferings")) {
-    for (const assignment of await teacher.call("teacher.listAssignments", { params: { offeringId: offering.id } })) {
-      const [submission] = await teacher.call("teacher.listSubmissions", { params: { assignmentId: assignment.id } });
-      if (submission === undefined) continue;
-      const submissionId = submission.id;
-      await teacher.call("teacher.addComment", {
-        params: { submissionId },
-        body: { body: "A clear position and a good start on evidence. Add a counterclaim and answer it in your next draft." },
-      });
-      await teacher.call("teacher.recordGrade", { params: { submissionId }, body: { score: { points: 8, maxPoints: 10 } } });
-      await teacher.call("teacher.releaseFeedback", { params: { submissionId }, body: { state: "shared-with-student" } });
-      return { offeringId: offering.id, assignmentId: assignment.id };
-    }
-  }
-  throw new Error("the demo seed submitted no essay");
-}
-
-/** A classmate of the demo student in the essay's class (Elena Sato), whose essay waits for grading. */
-const CLASSMATE_SUBJECT = "nf-s-2004";
-
-/** The classmate submits the essay too, so the teacher has ungraded work from the start. */
-async function submitClassmateEssay(classmate: DistrictApiClient, essay: { offeringId: string; assignmentId: string }): Promise<void> {
-  const workspace = await classmate.call("student.openCourseWorkspace", { params: { offeringId: essay.offeringId } });
-  const { artifact, head } = await classmate.call("student.createArtifact", {
-    body: {
-      workspaceId: workspace.id,
-      type: "document",
-      title: "Later start essay",
-      content: {
-        kind: "text",
-        mediaType: "text/markdown",
-        text: "The school day should not start later. Buses, sports and after-school jobs are built around the current schedule, and moving it would push everything later into the evening.",
-      },
-    },
-  });
-  await classmate.call("student.submit", { params: { assignmentId: essay.assignmentId }, body: { revisions: [{ artifactId: artifact.id, revisionId: head.id }] } });
-}
-
-/** A second writing assignment in the essay's class, still open, for the student to do in the demo. */
-async function addOpenAssignment(teacher: DistrictApiClient, offeringId: string): Promise<void> {
-  const params = { offeringId };
-  const [release] = await teacher.call("teacher.listReleases", { params });
-  const resource = { resourceId: release!.descriptor.id, version: release!.descriptor.release.version };
-  const rubric = await teacher.call("teacher.signRubric", { params, body: { rubric: REFLECTION_RUBRIC } });
-  // The seed approved this framework for the district.
-  const ela = await seedRelease("ccss-ela");
-  const draft = await teacher.call("teacher.createActivity", {
-    params,
-    body: {
-      activity: {
-        template: "writing-task",
-        subject: "english-language-arts",
-        gradeBand: "9",
-        title: "Reading reflection",
-        overview: "Reflect on a book or article you read this month.",
-        prompt: "What did you read, what stayed with you, and why? Write at least a paragraph.",
-        genre: "informative",
-        minimumCitations: 0,
-        resources: [resource],
-        codex: [{ kind: "resource", resource, visibility: "students" }],
-        alignments: [{ frameworkKey: "ccss-ela", competencyUri: ela.content.nodes![0]!.uri }],
-        aiHelp: "none",
-        due: { kind: "after-install", days: 7 },
-      },
-    },
-  });
-  await teacher.call("teacher.publishActivity", { params: { definitionId: draft.id } });
-  await teacher.call("teacher.installActivity", {
-    params: { definitionId: draft.id },
-    body: { offeringId, assignment: { rubric: { rubricId: rubric.rubricId, version: rubric.version } } },
-  });
-}
-
-const REFLECTION_RUBRIC = {
-  rubricId: "rbr_demo-reflection",
-  version: 1,
-  title: "Reflection",
-  criteria: [{
-    id: "reflection",
-    title: "Reflection",
-    levels: [{ id: "beginning", label: "Beginning", points: 1 }, { id: "developing", label: "Developing", points: 3 }, { id: "thoughtful", label: "Thoughtful", points: 5 }],
-    checks: [],
-  }],
-};
-
-/**
- * Onboards the student's guardian the way a district does (ADR-0012): the administrator invites
- * them, they redeem the invitation, and the administrator approves their sign-in and confirms
- * the relationship.
- */
-async function onboardGuardian(admin: DistrictApiClient, guardian: DistrictApiClient, studentId: PrincipalId): Promise<void> {
-  const invited = await admin.call("admin.inviteGuardian", { params: { studentId }, body: { guardianDisplayName: GUARDIAN.displayName } });
-  const token = new URLSearchParams(new URL(invited.invitationUrl).hash.slice(1)).get("invitation")!;
-  await guardian.call("onboarding.redeemGuardianInvitation", { body: { token } });
-  const { pendingSignIns } = await admin.call("admin.studentGuardians", { params: { studentId } });
-  const signIn = pendingSignIns.find((p) => p.invitationId === invited.invitation.id)!;
-  await admin.call("admin.approveIdentityRequest", { params: { requestId: signIn.requestId } });
-  await admin.call("admin.confirmGuardian", { params: { relationshipId: invited.relationship.id } });
 }

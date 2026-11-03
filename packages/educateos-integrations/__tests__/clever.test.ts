@@ -524,6 +524,32 @@ describe("Cedar Valley over Clever, end to end", () => {
     expect(preview!.issues).toContainEqual(expect.objectContaining({ sourcedId: fake.userId("prn_cv-guardian-nguyen"), message: expect.stringMatching(/guardian/) }));
   });
 
+  it("names Clever's own records in its issues, not the row model's files, and the user a skipped role is for", async () => {
+    const { fake, source } = setup(districtSeed(demo));
+    const { preview } = await synced(emptyState(CEDARVALLEY.district), source, "complete", {}, IDP);
+    const guardian = fake.userId("prn_cv-guardian-nguyen");
+    expect(preview!.issues).toContainEqual(expect.objectContaining({ sourcedId: guardian, source: `Clever user ${guardian}`, message: expect.stringMatching(/guardian/) }));
+    const admin = fake.userId("prn_cv-district-admin");
+    expect(preview!.issues).toContainEqual(expect.objectContaining({ sourcedId: admin, source: `Clever user ${admin}, role districtAdministrator`, message: expect.stringMatching(/^is districtAdministrator/) }));
+    expect(preview!.issues.every((issue) => issue.source?.startsWith("Clever ") ?? issue.file === undefined)).toBe(true);
+  });
+
+  it("names each class after its course and the rest of Clever's section name, not the course twice", async () => {
+    const { fake, source } = setup(districtSeed(demo));
+    const { state } = await synced(emptyState(CEDARVALLEY.district), source, "complete", {}, IDP);
+    const snapshot = state.roster.snapshot;
+    const titles = snapshot.offerings.map((o) => `${snapshot.courses.find((c) => c.id === o.courseId)!.title} · ${o.sectionName}`).toSorted();
+    expect(titles).toContain("Earth Science 8 · Whitaker");
+    for (const title of titles) expect(title.split(" · ")[1]!.startsWith(title.split(" · ")[0]!)).toBe(false);
+
+    // A delta that changes only the section keeps its name, the course coming from the baseline.
+    const section = fake.seed.sections.find((s) => s.id === "off_cv-earthsci-p1")!;
+    fake.updateSection(section.id, { studentIds: section.studentIds.slice(1) });
+    const next = await synced(state, source, "delta", {}, IDP);
+    const after = next.state.roster.snapshot;
+    expect(after.offerings.map((o) => `${after.courses.find((c) => c.id === o.courseId)!.title} · ${o.sectionName}`).toSorted()).toEqual(titles);
+  });
+
   it("gives Dana Whitaker a teaching role at both schools", async () => {
     const { fake, source } = setup(districtSeed(demo));
     const { state } = await synced(emptyState(CEDARVALLEY.district), source, "complete", {}, IDP);

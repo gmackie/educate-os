@@ -117,14 +117,19 @@ export function lakeshoreLargeRemoval(): OneRosterSeed {
   return withStudentsRemoved(oneRosterSeed(demoDistrict("lakeshore")), [...new Set(removed)]);
 }
 export {
+  base64Of,
+  drawingPng,
   NORTHFIELD_SHOWCASE,
+  recordingWav,
   rubricMaxPoints,
   SHOWCASE_BANDS,
   SHOWCASE_RESOURCES,
   SHOWCASE_STAGES,
   showcaseResourceHtml,
   type Showcase,
+  type Drawing,
   type ShowcaseActivity,
+  type ShowcaseAnswerMode,
   type ShowcaseBand,
   type ShowcaseCourse,
   type ShowcaseDiscussion,
@@ -137,4 +142,5 @@ export {
   type ShowcaseRubric,
   type ShowcaseStandard,
   type ShowcaseWork,
+  type YoungLearnerWork,
 } from "./showcase/index.ts";

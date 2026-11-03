@@ -36,12 +36,21 @@ const exportFile = async (corrupt = false) => {
 beforeEach(() => vi.stubGlobal("crypto", webcrypto));
 afterEach(() => vi.unstubAllGlobals());
 
-describe("assignment Gadget assessment", () => {
+/** Opens the folded-away way to attach an assessment, and returns its file field. */
+const attachField = async (user: Awaited<ReturnType<typeof renderApp>>) => {
+  await user.click(await screen.findByRole("button", { name: "Attach one from your school's Workshop" }));
+  return screen.findByLabelText(LABEL);
+};
+const LABEL = "Assessment file exported from your Workshop (.json)";
+
+describe("assignment automated (Gadget) assessment", () => {
   it("validates an export, waits for teacher confirmation and reloads the real binding route", async () => {
     const { district, assignmentId, hash } = setup();
     const user = await renderApp(district.client, hash);
     const { file, blueprint } = await exportFile();
-    await user.upload(await screen.findByLabelText("Workshop assessment export (.json)"), file);
+    expect(await screen.findByRole("heading", { name: "Automated assessment" })).toBeTruthy();
+    expect(screen.queryByLabelText(LABEL)).toBeNull();
+    await user.upload(await attachField(user), file);
     expect(await screen.findByText("Argument Gadget")).toBeTruthy();
     expect(district.callsTo("teacher.bindGadgetAssessment")).toHaveLength(0);
     await user.click(screen.getByRole("button", { name: "Pin reviewed release to assignment" }));
@@ -49,15 +58,15 @@ describe("assignment Gadget assessment", () => {
     expect(screen.getByText("rbr_gadget · version 1")).toBeTruthy();
     expect(screen.getByText("Release verified with the configured Workshop.")).toBeTruthy();
     expect(district.callsTo("teacher.bindGadgetAssessment").map((call) => call.input)).toEqual([{ params: { assignmentId }, body: { blueprint } }]);
-    expect(screen.queryByLabelText("Workshop assessment export (.json)")).toBeNull();
+    expect(screen.queryByLabelText(LABEL)).toBeNull();
   });
 
   it("refuses a tampered assessment before calling the district", async () => {
     const { district, hash } = setup();
     const user = await renderApp(district.client, hash);
     const { file } = await exportFile(true);
-    await user.upload(await screen.findByLabelText("Workshop assessment export (.json)"), file);
-    expect(await screen.findByText(/Choose a valid Workshop assessment export/)).toBeTruthy();
+    await user.upload(await attachField(user), file);
+    expect(await screen.findByText(/Choose a valid assessment file exported from your Workshop/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Pin reviewed release to assignment" })).toBeNull();
     expect(district.callsTo("teacher.bindGadgetAssessment")).toHaveLength(0);
   });
@@ -75,6 +84,7 @@ describe("assignment Gadget assessment", () => {
     district.fail("teacher.getGadgetAssessment", { status: 403, body: { code: "forbidden", message: "Class access revoked" } });
     await renderApp(district.client, hash);
     expect(await screen.findByText("You don't have permission to do that in this class.")).toBeTruthy();
-    expect(screen.queryByLabelText("Workshop assessment export (.json)")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Attach one from your school's Workshop" })).toBeNull();
+    expect(screen.queryByLabelText(LABEL)).toBeNull();
   });
 });

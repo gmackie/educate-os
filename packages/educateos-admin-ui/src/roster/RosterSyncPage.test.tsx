@@ -67,7 +67,12 @@ describe("the Roster sync page", () => {
     const { user } = renderConsole(district.client, "roster-sync");
     await history();
     await user.click(screen.getByRole("button", { name: "Run delta sync" }));
-    expect(await screen.findByRole("region", { name: "Delta sync just now" })).toBeTruthy();
+    const result = await screen.findByRole("region", { name: "Delta sync just now" });
+    // An issue in a source with records of its own says which record, not the row model's file and row.
+    const issues = within(result).getByRole("table", { name: "Issues the sync found in the roster" });
+    const clever = within(issues).getByRole("row", { name: /c-77/ });
+    expect(within(clever).getByText("Clever user c-77")).toBeTruthy();
+    expect(clever.textContent).not.toContain("users.csv");
     expect(district.calls.find((c) => c.name === "admin.runRosterSync")?.input).toStrictEqual({ body: { mode: "delta" } });
   });
 

@@ -1,5 +1,7 @@
 // 3-5: Grade 4 English Language Arts, Grade 4 Mathematics and Grade 5 Science at Northfield
-// Elementary.
+// Elementary. The water cycle is a picture response, drawn and explained aloud, as the young-learner
+// templates suit grades 3-5 too.
+import { DRAWINGS } from "./drawings.ts";
 import { rubric } from "./rubrics.ts";
 import type { ShowcaseCourse } from "./types.ts";
 
@@ -248,23 +250,24 @@ export const G5_SCIENCE: ShowcaseCourse = {
     },
     {
       key: "water-cycle",
-      template: "writing-task",
+      template: "picture-response",
       title: "Explain the Water Cycle",
-      overview: "Explain how a drop of water travels through the water cycle.",
-      prompt: "Follow one drop of water through the water cycle. Explain each step (evaporation, condensation, precipitation, collection) and what causes it.",
-      genre: "informative",
-      minWords: 80,
-      minimumCitations: 0,
+      overview: "Draw how a drop of water travels through the water cycle, then explain it out loud.",
+      lookPrompt: "Think about a puddle on a sunny morning. By the afternoon it is gone. Where did the water go?",
+      drawPrompt: "Draw and label the water cycle: evaporation, condensation, precipitation and collection.",
+      tellAboutIt: true,
+      sentenceFrames: ["First the water ___ because ___.", "Then it ___.", "The cycle starts again when ___."],
       standards: [],
       aiHelp: "hints-only",
       dueInDays: 15,
       rubric: rubric("rbr_sc-g5sci-water-cycle", "Water cycle explanation", [["science", "Accurate science ideas"], ["clarity", "Clear explanation"]]),
       work: {
-        [OMAR]: { stage: "draft", text: "My drop starts in Lake Northfield. The sun heats it and it evaporates into water vapor." },
+        [OMAR]: { stage: "draft", text: "My drop starts in Lake Northfield. The sun heats it and it evaporates into water vapor.", drawing: DRAWINGS.waterCycle },
         [TALIA]: { stage: "not-started" },
         [ELIJAH]: {
           stage: "graded",
           text: "A drop of water in the ocean is warmed by the sun and evaporates. It rises and cools, condensing into a cloud with other drops. When the drops get heavy they fall as precipitation, like rain. The rain collects in a river and flows back to the ocean to start again.",
+          drawing: DRAWINGS.waterCycle,
           scores: { science: 4, clarity: 3 },
           comment: "Accurate and complete! Add a sentence about what makes the vapor cool as it rises.",
         },

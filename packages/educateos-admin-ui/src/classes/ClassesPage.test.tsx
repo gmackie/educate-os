@@ -25,6 +25,17 @@ describe("the class list", () => {
     expect(district.calls.some((c) => c.name === "teacher.roster")).toBe(false);
   });
 
+  it("links each class to its roster in Manage classes and people, opened at that class", async () => {
+    const { user } = renderConsole(fakeDistrict().client, "classes");
+    const table = await screen.findByRole("table", { name: "Every class in the district" });
+    await user.click(within(table).getByRole("link", { name: "English 9 · Section B" }));
+    expect(window.location.hash).toBe("#/classes-people/sections/off_fk-eng9-b");
+    expect(await screen.findByRole("heading", { level: 2, name: "Manage classes and people" })).toBeTruthy();
+    const opened = await screen.findByRole("button", { name: "Hide people" });
+    expect(opened.getAttribute("aria-expanded")).toBe("true");
+    expect(opened.closest("li")!.id).toBe("section-off_fk-eng9-b");
+  });
+
   it("narrows to the classes a search matches, by teacher or school", async () => {
     const { user } = renderConsole(fakeDistrict().client, "classes");
     const search = await screen.findByRole("textbox", { name: "Find a class" });

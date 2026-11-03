@@ -235,7 +235,7 @@ export class LtiAdvantageService {
       ownerPrincipalId: input.data.studentId,
     }, forbidden);
     const approval = await this.#options.approvals.find(input.data);
-    if (approval === undefined) throw new EducateOsError("policy-violation", "This grade has not been approved by the offering's teacher.");
+    if (approval === undefined) throw new EducateOsError("policy-violation", "This grade has not been approved by the class's teacher.");
     if (approval.approverId !== caller.principal.principalId) throw forbidden();
     return this.#options.passback.publish({ ...input.data, scoreGiven: approval.scoreGiven, scoreMaximum: approval.scoreMaximum });
   }

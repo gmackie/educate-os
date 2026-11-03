@@ -2,10 +2,10 @@
 // district is its own module; Cedar Valley's is loaded only when a visitor opens it, since it brings
 // a Clever fake and its integration that Northfield's visitors never need.
 import { CEDARVALLEY_PERSONAS } from "./cedarvalleyPersonas.ts";
-import { bootNorthfield, NORTHFIELD_PERSONAS } from "./northfield.ts";
-import type { DemoDistrict, DistrictKey, Persona } from "./shared.ts";
+import { bootNorthfield, NORTHFIELD_PERSONAS, NORTHFIELD_SECTIONS } from "./northfield.ts";
+import type { DemoDistrict, DistrictKey, Persona, PersonaSection } from "./shared.ts";
 
-export type { DemoDistrict, DemoRoster, DistrictKey, Persona, PersonaId, RosterSyncResult } from "./shared.ts";
+export type { DemoDistrict, DemoRoster, DistrictKey, GradeBand, Persona, PersonaId, PersonaKind, PersonaSection, RosterSyncResult } from "./shared.ts";
 export { ROSTER_SYNC_ROUTE } from "./shared.ts";
 
 /** A district a visitor can open, as the demo describes it before it boots. */
@@ -23,6 +23,8 @@ export interface DistrictInfo {
   notice?: string;
   /** Who a visitor can be, in the order the picker offers them. */
   personas: readonly Persona[];
+  /** The picker's sections, in order, when it groups the personas, such as by grade band. */
+  sections?: readonly PersonaSection[];
   /** Boots a fresh copy of the district in the page. */
   boot(): Promise<DemoDistrict>;
 }
@@ -34,8 +36,9 @@ export const DISTRICTS: readonly DistrictInfo[] = [
     name: "Northfield Public Schools",
     shortName: "Northfield",
     integrations: "OneRoster + Canvas",
-    introduction: "is a fictional district, with invented people and classes.",
+    introduction: "is a fictional K-12 district, with invented people and classes in every grade band.",
     personas: NORTHFIELD_PERSONAS,
+    sections: NORTHFIELD_SECTIONS,
     boot: bootNorthfield,
   },
   {

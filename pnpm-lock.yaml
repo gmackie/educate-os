@@ -1056,6 +1056,9 @@ importers:
       '@educateos/teacher-ui':
         specifier: workspace:*
         version: link:../educateos-teacher-ui
+      '@gadgets/bundled-blueprints':
+        specifier: workspace:*
+        version: link:../bundled-blueprints
       '@gadgets/ui':
         specifier: workspace:*
         version: link:../ui
