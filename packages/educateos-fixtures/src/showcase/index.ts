@@ -11,6 +11,7 @@ import type { Showcase } from "./types.ts";
 export { rubricMaxPoints } from "./rubrics.ts";
 export { SHOWCASE_RESOURCES, showcaseResourceHtml } from "./resources.ts";
 export { SHOWCASE_BANDS, SHOWCASE_STAGES } from "./types.ts";
+export { base64Of, drawingPng, recordingWav, type Drawing } from "./media.ts";
 export type * from "./types.ts";
 
 /**

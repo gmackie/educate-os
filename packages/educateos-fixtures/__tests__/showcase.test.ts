@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { NORTHFIELD, NORTHFIELD_GUARDIANS, NORTHFIELD_SHOWCASE, SHOWCASE_BANDS, SHOWCASE_STAGES, rubricMaxPoints } from "../src/index.ts";
+import { drawingPng, NORTHFIELD, NORTHFIELD_GUARDIANS, NORTHFIELD_SHOWCASE, recordingWav, SHOWCASE_BANDS, SHOWCASE_STAGES, rubricMaxPoints } from "../src/index.ts";
+import { DRAWINGS } from "../src/showcase/drawings.ts";
 
 const { courses, resources } = NORTHFIELD_SHOWCASE;
 const active = new Set(NORTHFIELD.terms.filter((t) => t.state === "active").map((t) => t.id));
@@ -103,6 +104,72 @@ describe("the Northfield showcase", () => {
     for (const relationship of NORTHFIELD_GUARDIANS) {
       const theirs = courses.filter((c) => enrolled(c.offeringId, "student").includes(relationship.studentPrincipalId));
       expect(theirs.length, relationship.id).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("young learners' scripted drawings and recordings", () => {
+  const ascii = (bytes: Uint8Array, from: number, to: number) => String.fromCharCode(...bytes.subarray(from, to));
+
+  /** Inflates a zlib stream, checking its checksum, as a browser's PNG decoder would. */
+  const inflate = async (data: Uint8Array) =>
+    new Uint8Array(await new Response(new Blob([data as Uint8Array<ArrayBuffer>]).stream().pipeThrough(new DecompressionStream("deflate"))).arrayBuffer());
+
+  it.each(Object.entries(DRAWINGS))("draws %s as a valid 240 by 180 PNG", async (_, drawing) => {
+    const png = drawingPng(drawing);
+    const view = new DataView(png.buffer, png.byteOffset, png.byteLength);
+    expect([...png.subarray(0, 8)]).toStrictEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const chunks: string[] = [];
+    const idat: Uint8Array[] = [];
+    for (let at = 8; at < png.length;) {
+      const length = view.getUint32(at);
+      const type = ascii(png, at + 4, at + 8);
+      chunks.push(type);
+      if (type === "IDAT") idat.push(png.subarray(at + 8, at + 8 + length));
+      at += 12 + length;
+    }
+    expect(chunks).toStrictEqual(["IHDR", "PLTE", "IDAT", "IEND"]);
+    expect([view.getUint32(16), view.getUint32(20)]).toStrictEqual([240, 180]);
+    // Each row is a filter byte and 120 bytes of pixels, two to a byte.
+    expect(idat).toHaveLength(1);
+    const pixels = await inflate(idat[0]!);
+    expect(pixels.length).toBe(180 * 121);
+    // More than the paper: something was drawn.
+    expect(new Set(pixels).size).toBeGreaterThan(2);
+  });
+
+  it("records a short WAV, different for each child", () => {
+    const wav = recordingWav("prn_nf-student-noah:weather-chart:tell");
+    expect([ascii(wav, 0, 4), ascii(wav, 8, 16), ascii(wav, 36, 40)]).toStrictEqual(["RIFF", "WAVEfmt ", "data"]);
+    const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
+    expect(view.getUint32(4, true)).toBe(wav.length - 8);
+    expect(view.getUint32(40, true) / view.getUint32(28, true)).toBeCloseTo(1.44, 1);
+    expect(recordingWav("prn_nf-student-sofia:weather-chart:tell")).not.toStrictEqual(wav);
+  });
+
+  it("uses the young-learner templates in K-2, and gives every drawing step's handed-in work a drawing", () => {
+    const k2 = courses.filter((c) => c.band === "K-2").flatMap((c) => c.activities);
+    expect(k2.filter((a) => a.template === "picture-response").length).toBeGreaterThanOrEqual(2);
+    expect(k2.filter((a) => a.template === "read-and-respond").length).toBeGreaterThanOrEqual(2);
+    for (const activity of courses.flatMap((c) => c.activities)) {
+      const draws = activity.template === "picture-response"
+        || (activity.template === "read-and-respond" && activity.questions.some((q) => (q.answerBy ?? activity.answerBy) === "drawing"));
+      if (!draws) continue;
+      for (const [student, work] of Object.entries(activity.work)) {
+        if (work.stage === "not-started" || work.stage === "draft" && activity.template === "read-and-respond") continue;
+        expect(work.drawing, `${activity.key} ${student}`).toBeDefined();
+      }
+    }
+  });
+
+  it("answers every writing question of a read-and-respond activity", () => {
+    for (const activity of courses.flatMap((c) => c.activities)) {
+      if (activity.template !== "read-and-respond") continue;
+      const writing = activity.questions.filter((q) => (q.answerBy ?? activity.answerBy) === "writing").length;
+      for (const work of Object.values(activity.work)) {
+        if (work.stage === "not-started" || writing === 0) continue;
+        expect(work.answers?.length, activity.key).toBe(writing);
+      }
     }
   });
 });
