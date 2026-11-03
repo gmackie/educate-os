@@ -85,5 +85,11 @@ declare namespace Cloudflare {
      * `ReleaseTrust` from `@educateos/releases`, public keys only). Unset, no marketplace listing installs.
      */
     MARKETPLACE_TRUST?: string;
+    /**
+     * Demo deployments only (SCHO-326): the showcase this Worker may seed, which
+     * `DISTRICT_CONFIG.demo.showcase` must also name. Set by the generated demo and schoolos.gmac.io
+     * configs (scripts/production), never by the package's own config or a release.
+     */
+    DEMO_SHOWCASE?: string;
   }
 }

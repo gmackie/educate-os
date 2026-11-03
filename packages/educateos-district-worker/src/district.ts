@@ -33,6 +33,8 @@ import { startDistrictLti, type DistrictLti } from "./lti.ts";
 import { ltiPlatformEnabled } from "./lti-platform.ts";
 import { platformToolPolicySources, TablePlatformAgsStore, TablePlatformToolStore } from "@educateos/lti-district";
 import { DurableObjectRecordTable } from "@educateos/lti-district/durable-object";
+// Demo showcase (SCHO-326)
+import { showcaseEnabled, startDistrictShowcase, withShowcaseReadings, type DistrictShowcase, type ShowcaseEvent } from "./showcase.ts";
 
 /** The district application and its school tools. */
 export interface District {
@@ -46,6 +48,8 @@ export interface District {
   principals: DistrictPrincipals;
   /** The organization MCP endpoint and its RFC 9728 metadata, when `DISTRICT_CONFIG.mcp` turns it on (SCHO-174). */
   mcp: { fetch(request: Request): Promise<Response> } | undefined;
+  /** The demo showcase's administrators' routes, on a demo district only (SCHO-326, see showcase.ts). */
+  showcase: DistrictShowcase | undefined;
 }
 
 /** The paths the organization MCP endpoint answers (SCHO-174). */
@@ -108,6 +112,9 @@ export interface DistrictSettings {
   // Marketplace (SCHO-209)
   /** `MARKETPLACE_TRUST`, the release keys marketplace listings are verified against, as JSON. Without it none installs. */
   marketplaceTrust?: string | undefined;
+  // Demo showcase (SCHO-326)
+  /** `DEMO_SHOWCASE`, the showcase a demo deployment may seed; `DISTRICT_CONFIG.demo` must name it too. */
+  demoShowcase?: string | undefined;
 }
 
 /** What a district reaches outside its storage. */
@@ -136,6 +143,8 @@ export interface DistrictSeams {
    * district that configures screening refuses every student post as screening-unavailable.
    */
   discussionHallMonitor?: (settings: DiscussionScreeningSettings) => DiscussionScreening["hallMonitor"];
+  /** Told what each demo showcase route did (SCHO-326), to log it. */
+  onShowcaseEvent?: (event: ShowcaseEvent) => void;
 }
 
 /** The Hall Monitor of a district that configures screening but cannot reach it: it refuses every post. */
@@ -238,6 +247,8 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
   // on the `lti-service` channel, with the authority their deployments give them (NRPS rosters, AGS
   // line items, results and scores).
   const ltiPlatform = settings.ltiToolOrigin !== undefined && settings.ltiToolOrigin !== "" && ltiPlatformEnabled(settings.ltiPlatform);
+  // Demo showcase (SCHO-326): on only where the configuration and the deployment both name it.
+  const showcase = showcaseEnabled(config.demo, settings.demoShowcase);
   const app = await createDistrictApp({
     stores,
     verifyRequest,
@@ -245,7 +256,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       ? { policySources: platformToolPolicySources(new TablePlatformToolStore(new DurableObjectRecordTable(storage)), new TablePlatformAgsStore(new DurableObjectRecordTable(storage))) }
       : {}),
     ...(seams.workshopReleases === undefined ? {} : { workshopReleases: seams.workshopReleases }),
-    importFetch: seams.importFetch,
+    importFetch: showcase === undefined ? seams.importFetch : withShowcaseReadings(seams.importFetch),
     ...(seams.onUnreadableConfigRevision === undefined ? {} : { onUnreadableConfigRevision: seams.onUnreadableConfigRevision }),
     authority,
     // Scheduled roster sync (SCHO-203)
@@ -342,7 +353,20 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       return { outcome: active ? "active" : "inactive" };
     },
   };
-  return { app, tools, lti, principals, mcp: startDistrictMcp(storage, config, stores, app, directory, seams.mcpKeys) };
+  return {
+    app,
+    tools,
+    lti,
+    principals,
+    mcp: startDistrictMcp(storage, config, stores, app, directory, seams.mcpKeys),
+    showcase: showcase === undefined ? undefined : startDistrictShowcase({
+      app,
+      verifyRequest,
+      accessIssuer: settings.accessIssuer,
+      name: showcase,
+      ...(seams.onShowcaseEvent === undefined ? {} : { onEvent: seams.onShowcaseEvent }),
+    }),
+  };
 }
 
 /**

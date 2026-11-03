@@ -401,6 +401,13 @@ district Workers at their own `<slug>.educateos.io`; see [the demo districts run
   `forge secret set DISTRICT_CONFIG --stage production --stdin` for app `educateos-district`.
   `__tests__/demo-config.test.ts` in the package checks that the example parses and fits in a
   secret. The seed is read only on the object's first start.
+- **The K-12 showcase (SCHO-326).** The co-op is Northfield's demo district, so it can seed the
+  showcase. The generated `wrangler.production.jsonc` sets `DEMO_SHOWCASE` to `northfield`
+  (`district.showcase` in `scripts/production/schoolos-gmac-io.ts`). The deployed `DISTRICT_CONFIG`
+  must also carry `"demo": {"showcase": "northfield"}`, as the example does. `demo` is read on every
+  start, so adding it to the deployed secret and redeploying is enough. Until both are set,
+  `/api/demo/*` is 404. The procedure is in
+  [demo-districts.md](demo-districts.md#the-k-12-showcase-scho-326).
 - **Bound by the connector and the guard.** `gatekeeper-educateos` binds `DistrictSchoolTools`
   (SCHO-218). The AI call guard binds `DistrictGuardDirectory` as its `EDUCATEOS_DISTRICT`
   (SCHO-283), and reads it once `AI_GUARD_CONFIG` says `contextSource: "district"` (with the

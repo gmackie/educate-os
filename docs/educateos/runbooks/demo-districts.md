@@ -116,3 +116,170 @@ For each slug: app `educateos-<slug>`, linked to `gmackie/educate-os`, stage `pr
 Create the targets only once the configs are on `main`. Every merge deploys every target, and a
 target whose config file is missing fails each of those deploys. Kanbanger delivery receipts come
 only from the repository's primary app (`educate-os`), not from these.
+
+## The K-12 showcase (SCHO-326)
+
+The showcase (SCHO-322, `NORTHFIELD_SHOWCASE` in `@educateos/fixtures`) is twelve built-out classes,
+three in each grade band (K-2, 3-5, 6-8, 9-12), with work at every stage. A district administrator
+seeds it inside the district Worker itself, then presents it by linking the test identities to its
+personas. The code is `packages/educateos-district-worker/src/showcase.ts`. The operator script is
+`scripts/demo/seed-showcase.ts`.
+
+### The gate
+
+The showcase routes (`/api/demo/showcase/*`) are on only when two settings name the same
+showcase:
+
+- `DISTRICT_CONFIG.demo` is `{"showcase": "northfield"}`. It is a secret the operator sets.
+- The Worker's committed `DEMO_SHOWCASE` var is `northfield`. Only the generated demo configs
+  carry it: `wrangler.demo-<slug>.jsonc` (`showcase` in `scripts/production/demo-districts.ts`) and
+  the schoolos.gmac.io district's `wrangler.production.jsonc` (`district.showcase` in
+  `schoolos-gmac-io.ts`). The package's own `wrangler.jsonc` and releases never carry it.
+
+With either one missing, every `/api/demo/` path is 404. Every route then also needs a district
+administrator. The district's policy engine decides each request, which records it in the audit
+trail. Each route also checks for a district-admin role directly. The Worker logs every run as
+`demo.showcase.*` (component `educateos.district.showcase`). Those logs carry IDs and counts, never a
+sign-in subject.
+
+`demo` is read on every start of the district's object, unlike `directory`, which is read on the
+first start only. Changing the secret and redeploying is therefore enough to turn the showcase on
+or off. `demo-district-config.ts` emits `demo` for all five standalone demo districts.
+
+### What seeding does
+
+- **IDs.** The showcase keeps the fixture's IDs (`sch_nf-*`, `off_nf-*`, `prn_nf-*`, ...). The
+  showcase content is keyed by them. Only the district ID is mapped: every record is written under
+  the live district's own ID. So the co-op (`dst_gmacko-coop`) gets the Northfield schools,
+  classes and people as its own.
+- **Additive only.** The fixture directory is appended to the live one in one commit. A record
+  already present under a fixture ID is kept as it is. The run refuses with `409` and writes
+  nothing if a present record is plainly something else, such as an offering of another course.
+  Nothing is ever changed or deleted. The roster authority is bypassed for this one commit, so it
+  works in roster-owned demo districts too. Its roles are recorded as `local-grant`.
+- **People.** The fixture's district administrator and every district-wide role are left out. The
+  operator who seeds is the administrator: the standards approvals and guardian confirmations are
+  theirs. Each persona starts with a placeholder sign-in, `educateos-showcase:<id>`. No Access
+  subject (a UUID) can match it, so nobody is anyone until linked.
+- **Guardians.** The four `NORTHFIELD_GUARDIANS` relationships are recorded and then confirmed
+  through the district's guardian service, as the caller.
+- **Content.** `seedShowcase` (`@educateos/harness/showcase`) runs in the district's process.
+  Each person acts as themselves through `serveAs`, so every step goes through the routes, the
+  schemas and the policy. The readings are served in-process at `https://open-lessons.example/...`,
+  a reserved name that is never fetched. A rerun makes only what is missing. Each band is one
+  request, which keeps every request well inside its CPU time.
+
+### Routes
+
+| Route | Does |
+|---|---|
+| `GET /api/demo/showcase` | Shows, per band, each class's presence, activity count and student count, plus personas present and linked |
+| `GET /api/demo/showcase/export` | The "before" export (read-only): the whole directory, `admin.health`'s counts, and the status above |
+| `POST /api/demo/showcase/seed` | Seeds. Body `{"dryRun"?: true, "bands"?: ["K-2", ...]}`. A dry run only reports what the directory would gain |
+| `GET /api/demo/showcase/personas` | Lists each persona's bands, classes and linked presenter subjects |
+| `POST /api/demo/showcase/personas` | Links a presenter. Body `{"subject": "<Access user_uuid>", "personaId": "prn_nf-…" \| null}` |
+
+A link moves the sign-in from whichever persona held it. `null` frees the sign-in, and a persona
+left with no sign-in gets its placeholder back. The route refuses (`409`) a sign-in that belongs to
+one of the district's own people. The showcase never takes a sign-in from a real person, and it has
+no way to give one back. Only showcase personas can be targets (`404` otherwise), and never one
+holding a district role.
+
+### Live procedure (northfield, the co-op)
+
+The co-op is `educateos-district` / `schoolos-district-worker` at `northfield.educateos.io`. The
+same steps work for a standalone demo district: use `FG_APP=educateos-<slug>` and
+`https://<slug>.educateos.io`. For a fresh standalone district, set the config with
+`demo-district-config.ts` instead of editing it.
+
+1. **Deploy** this change. A merge deploys the district with `DEMO_SHOWCASE`. Until step 2,
+   `GET https://northfield.educateos.io/api/demo/showcase` is still 404.
+2. **Set the flag.** Read the deployed config, add `demo`, check its size, and set it again. Keep
+   the file out of the repository, since it holds the administrator's subject:
+
+   ```sh
+   FG_APP=educateos-district forge secret get DISTRICT_CONFIG --stage production > /tmp/district-config.json
+   node -e 'const fs=require("fs");const c=JSON.parse(fs.readFileSync("/tmp/district-config.json","utf8"));c.demo={showcase:"northfield"};const t=JSON.stringify(c);if(Buffer.byteLength(t)>=5000)throw new Error("too big");fs.writeFileSync("/tmp/district-config.json",t)'
+   FG_APP=educateos-district forge secret set DISTRICT_CONFIG --stage production --stdin < /tmp/district-config.json
+   rm /tmp/district-config.json
+   forge deploy create production --target <the district target of app educateos-district>
+   ```
+
+   `directory` is ignored after the first start, apart from its district ID, so this changes
+   nothing else.
+3. **Sign in as the administrator**, using the owner's own Access identity (the co-op's district
+   administrator). Take the `CF_Authorization` cookie for `northfield.educateos.io` from the
+   browser.
+4. **Export, dry-run, seed and verify** in one command. The script refuses a host that is not a
+   demo district's unless given `--force`:
+
+   ```sh
+   pbpaste | node scripts/demo/seed-showcase.ts run --url https://northfield.educateos.io --dry-run
+   pbpaste | node scripts/demo/seed-showcase.ts run --url https://northfield.educateos.io --out ~/educateos-exports/northfield-before.json
+   ```
+
+   The first line exports and plans only. The second saves the export (mode 600, never overwriting
+   a file), seeds K-2, 3-5, 6-8 and 9-12 one request each, and verifies: every class is present,
+   listed in the admin console, and has activities and students. It exits non-zero on any problem.
+   Rerun it at any time, since it only adds what is missing. `verify` alone rechecks.
+5. **Link the presenters.** Sign in as each test identity
+   (`node scripts/access-sign-in.ts https://northfield.educateos.io/ <addr>` in agent-inbox) and link
+   it. The script reads the subject from Access's `/cdn-cgi/access/get-identity` with that
+   identity's own cookie:
+
+   ```sh
+   pbpaste | node scripts/demo/seed-showcase.ts personas --url https://northfield.educateos.io
+   pbpaste | node scripts/demo/seed-showcase.ts link --url https://northfield.educateos.io \
+     --persona prn_nf-student-mateo --subject-cookie "$(cd ~/work/agent-inbox && node scripts/access-sign-in.ts https://northfield.educateos.io/ student@agents.gmac.io)"
+   ```
+
+   The admin cookie goes on stdin and the presenter's on `--subject-cookie` (or pass `--subject
+   <user_uuid>`). Suggested personas per band:
+
+   | Band | `teacher@` | `student@` | `guardian@` |
+   |---|---|---|---|
+   | K-2 | `prn_nf-teacher-yazzie` (Grade 1 Reading and Math) | `prn_nf-student-mateo` (grade 1) | `prn_nf-guardian-rosa` (Mateo, grade 1; Lucía, grade 10) |
+   | 3-5 | `prn_nf-teacher-alsayed` (Grade 4 ELA and Math) | `prn_nf-student-abena` (grade 4) | `prn_nf-guardian-kwame` (Abena, grade 4; Kofi, grade 8) |
+   | 6-8 | `prn_nf-teacher-kowalski` (English 8) | `prn_nf-student-kofi` (grade 8) | `prn_nf-guardian-kwame` |
+   | 9-12 | `prn_nf-morgan-lee` (Biology I) | `prn_nf-student-lucia` (grade 10) | `prn_nf-guardian-rosa` |
+
+   The owner's identity stays the administrator, and `admin@` stays whatever it is. To switch
+   bands, link the same identity to the next persona. The district answers as the new persona on
+   its next request. Sign out of the Workshop at `/ai` and back in, so its session follows.
+6. **Check** with `verify`, and sign in as each linked identity to see their Learning Home or
+   Teacher Studio.
+
+If `link` answers `409`, that test identity is already one of the co-op's own people. The showcase
+will not take it. Present with the other identities, or add mailboxes (below).
+
+### More presenter mailboxes (not done)
+
+Four test identities can be one persona each at a time, so presenting several bands at once means
+relinking. To give each band its own identities, gmackie/agent-inbox would need:
+
+- `access.json`: add, for example, `teacher-k2@`, `student-k2@`, `teacher-35@`, `student-35@`,
+  `teacher-68@`, `student-68@`, `teacher-912@`, `student-912@` and `guardian-2@agents.gmac.io` to
+  `emails`. Its `access` CI job syncs the "SchoolOS demo testers" policy from this list.
+- Email Routing on gmac.io: one literal rule per new address to the agent-inbox Worker. The zone
+  catch-all goes to `greenglass` and must stay as it is. The Worker accepts any address on
+  `INBOX_DOMAIN`, so it needs no change.
+- Its README: list the addresses.
+
+Then link each address once, and nothing needs switching during a presentation.
+
+### Reset
+
+Seeding never deletes, and neither does anything else here.
+
+- **Presenters.** Unlink each one: `link --persona none --subject <uuid>`. Every persona then holds
+  only its placeholder, and the test identities are nobody in the district again.
+- **Hiding the showcase in the co-op.** Archive its offerings (`off_nf-*`) under "Manage classes and
+  people" and set the personas inactive there. Records, work and audit history stay.
+- **Turning the routes off.** Remove `demo` from `DISTRICT_CONFIG` and redeploy. The showcase's
+  records stay.
+- **A clean standalone demo district.** Its Durable Object is named by its district ID, so setting a
+  `DISTRICT_CONFIG` with a new `directory.district.id` (and redeploying) starts an empty district.
+  The old object is left untouched. Never do this to northfield, whose object holds the co-op's
+  data.
+- **Going back to the "before" state.** Use the export as the record of what the district held. No
+  route imports it back.

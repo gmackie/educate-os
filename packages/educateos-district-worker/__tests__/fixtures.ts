@@ -65,6 +65,8 @@ export const TEST_CONFIG: DistrictWorkerConfig = {
   discussionScreening: { tenantId: "northfield", profileId: "discussion-posts", revision: "r1", costCenterId: "cc-discussions" },
   // SCHO-174: the organization MCP endpoint, for the synthetic issuer the test object trusts.
   mcp: { origin: MCP_ORIGIN, issuer: MCP_ISSUER, jwksUri: `${MCP_ISSUER}/jwks`, algorithms: ["ES256"] },
+  // SCHO-326: the demo showcase, which the test Worker's DEMO_SHOWCASE var names too.
+  demo: { showcase: "northfield" },
 };
 
 /** Where the test district reaches Hall Monitor; the test object answers it with the fake. */

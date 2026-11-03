@@ -34,6 +34,10 @@ describe("schoolos.gmac.io demo district seed", () => {
     })]);
   });
 
+  it("may seed the K-12 showcase, as the demo co-op is Northfield's demo district (SCHO-326)", () => {
+    expect(config.demo).toEqual({ showcase: "northfield" });
+  });
+
   it("names no email address, since this repository is public", () => {
     expect(text).not.toMatch(/@/);
   });

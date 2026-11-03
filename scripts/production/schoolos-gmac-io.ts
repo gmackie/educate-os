@@ -72,6 +72,9 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
     // Its managed default hostname (SCHO-207). The educateos.io zone is in this account, so it is a
     // plain custom domain; both district Access applications list it as a second destination.
     aliases: ["northfield.educateos.io"],
+    // Northfield's demo district, so it may seed the K-12 showcase (SCHO-326) once its
+    // DISTRICT_CONFIG.demo names it too (docs/educateos/runbooks/demo-districts.md).
+    showcase: "northfield",
   },
   // One origin per district (ADR-0014, SCHO-259), on since the cutover
   // (docs/educateos/runbooks/one-origin-cutover.md): the router serves northfield.educateos.io,

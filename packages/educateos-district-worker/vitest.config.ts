@@ -72,6 +72,8 @@ export default defineConfig({
           TEST_MCP_ISSUER_PUBLIC_JWK: JSON.stringify({ ...mcpIssuerKey.publicKey.export({ format: "jwk" }), kid: "test-mcp-key", alg: "ES256" }),
           // Marketplace installs (SCHO-209).
           MARKETPLACE_TRUST,
+          // The demo showcase (SCHO-326), which TEST_CONFIG.demo names too.
+          DEMO_SHOWCASE: "northfield",
           TEST_MARKETPLACE_RELEASE_JWK: JSON.stringify(marketplaceKey.privateKey.export({ format: "jwk" })),
         },
         durableObjects: {
