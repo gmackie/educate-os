@@ -26,7 +26,7 @@ export type Audience = "student" | "family";
 /** The main navigation, in the header on a wide screen or along the bottom on a phone, where its entries share the width. */
 const MainNav = ({ label, audience, placement }: { label: string; audience: Audience; placement: "header" | "bottom" }) => (
   <nav aria-label={label}>
-    <ul className={placement === "bottom" ? "flex items-center justify-between gap-2" : "flex items-center gap-6"}>
+    <ul className={placement === "bottom" ? "flex items-center justify-between gap-2" : "flex items-center gap-4 whitespace-nowrap lg:gap-6"}>
       {audience === "student" ? (
         <>
           <li>
@@ -82,9 +82,10 @@ export const Layout = ({ studentName, audience, children }: { studentName: strin
         Skip to content
       </a>
       <header className="border-b border-kumo-hairline">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
+        {/* Wider than the page below it, so the navigation and controls keep to one line on a laptop. */}
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <Text variant="heading" as="p">
-            <span className="flex items-center gap-2">
+            <span className="flex items-center gap-2 whitespace-nowrap">
               <BookOpenIcon aria-hidden size={24} />
               Learning Home
             </span>
@@ -98,8 +99,8 @@ export const Layout = ({ studentName, audience, children }: { studentName: strin
               </Link>
             )}
             <ThemeModeButton onAnnounce={announce} />
-            {/* A phone's header has no room for the name beside the controls. */}
-            {studentName === undefined || isPhone ? null : <Text variant="secondary">{studentName}</Text>}
+            {/* A phone's or tablet's header has no room for the name beside the controls; the page greets them by name. */}
+            {studentName === undefined || isPhone ? null : <span className="whitespace-nowrap max-lg:hidden"><Text variant="secondary">{studentName}</Text></span>}
             {audience === undefined || embedded ? null : <SignOut />}
           </div>
         </div>

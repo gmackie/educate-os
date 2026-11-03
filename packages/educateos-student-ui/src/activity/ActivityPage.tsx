@@ -110,7 +110,7 @@ const StandardActivityView = ({ offeringId, courseName, entry, work }: { offerin
         <ResourceList content={content} />
       </Section>
 
-      <AiHelpSlot level={activity.installation.aiHelp} />
+      <AiHelpSlot assigned={{ assignment, activity }} />
 
       <Section id="my-work" title="My work">
         {steps.length === 0 ? <Text variant="secondary">There's nothing to hand in for this activity.</Text> : null}

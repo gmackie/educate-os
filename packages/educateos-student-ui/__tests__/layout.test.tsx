@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { ENGLISH, ESSAY, fakeDistrict } from "./fakeDistrict.ts";
@@ -99,6 +99,15 @@ describe("layout on the district origin", () => {
   });
 });
 
+describe("a host's sign-out", () => {
+  it("signs out the host's way instead of leaving the page", async () => {
+    const onSignOut = vi.fn();
+    await renderApp(fakeDistrict(), "/", undefined, undefined, { school: false, host: { onSignOut } });
+    await userEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+    expect(onSignOut).toHaveBeenCalledOnce();
+  });
+});
+
 describe("the class helper's slot", () => {
   const activity = `/courses/${ENGLISH}/activities/${ESSAY}`;
 
@@ -112,6 +121,19 @@ describe("the class helper's slot", () => {
     await renderApp(fakeDistrict({ aiHelp: "none" }), activity, { aiHelp: true });
     await screen.findByRole("heading", { level: 1 });
     expect(screen.queryByRole("complementary", { name: "Get help" })).toBeNull();
+  });
+
+  it("holds a host's own helper where the activity allows help, whatever the feature says", async () => {
+    const aiHelp = vi.fn(({ assignment }: { assignment: { title: string } }) => <aside aria-label="Host helper">{`Help with ${assignment.title}`}</aside>);
+    await renderApp(fakeDistrict({ aiHelp: "hints-only" }), activity, { aiHelp: false }, undefined, { host: { aiHelp } });
+    expect((await screen.findByRole("complementary", { name: "Host helper" })).textContent).toMatch(/^Help with /);
+    expect(screen.queryByRole("complementary", { name: "Get help" })).toBeNull();
+  });
+
+  it("holds no host helper on an activity that allows no help", async () => {
+    await renderApp(fakeDistrict({ aiHelp: "none" }), activity, { aiHelp: false }, undefined, { host: { aiHelp: () => <aside aria-label="Host helper" /> } });
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByRole("complementary", { name: "Host helper" })).toBeNull();
   });
 
   it("shows the activity's help level when the feature is on and the activity allows help", async () => {
