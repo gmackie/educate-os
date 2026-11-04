@@ -25,6 +25,7 @@
     "@scure/base": "^2.0.0",
     "expo": "58.0.19",
     "expo-application": "~58.1.2",
+    "expo-asset": "58.0.18",
     "expo-audio": "~58.0.11",
     "expo-camera": "58.0.12",
     "expo-constants": "~58.0.13",
@@ -58,6 +59,7 @@
     "install": {
       "exclude": [
         "expo",
+        "expo-asset",
         "expo-camera",
         "expo-dev-client",
         "expo-file-system",
