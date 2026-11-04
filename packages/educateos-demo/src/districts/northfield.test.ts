@@ -37,6 +37,16 @@ describe("the demo district", () => {
     expect(submissions.flatMap((s) => s.items.map((i) => i.artifactType)).toSorted()).toEqual(["audio", "audio", "audio", "audio", "image", "image"]);
   });
 
+  it("seeds World History 7's gradebook so every student has grades, Felix's analysis waiting on his teacher (SCHO-328)", async () => {
+    const book = await as("g68-teacher").call("teacher.gradebook", { params: { offeringId: "off_nf-whist7-fall-p4" } });
+    const column = (title: string) => book.columns.find((c) => c.title === title)!.assignmentId;
+    const graded = (assignmentId: string) => book.rows.filter((r) => r.cells.some((c) => c.assignmentId === assignmentId && c.score !== undefined)).map((r) => r.displayName).toSorted();
+    expect(book.rows).toHaveLength(3);
+    expect(graded(column("Land Between the Rivers Check-In"))).toHaveLength(3);
+    expect(graded(column("What Do Hammurabi's Laws Tell Us?"))).toStrictEqual(book.rows.map((r) => r.displayName).filter((n) => !n.startsWith("Felix")).toSorted());
+    expect(book.rows.every((r) => r.totals.final !== null)).toBe(true);
+  });
+
   it("runs under an applied configuration, so the admin console shows the district set up and rostered", async () => {
     const { head } = await as("admin").call("admin.getConfig");
     expect(head?.desired).toMatchObject({ rostering: { provider: "oneroster-csv" }, modules: { "core-learning": { state: "enabled" } } });

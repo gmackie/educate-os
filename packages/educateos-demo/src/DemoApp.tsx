@@ -12,6 +12,7 @@ import { CleverTour } from "./tour/CleverTour.tsx";
 import { CleverTourStore, jumpTo, showMe, type TourActions, type TourStepId } from "./tour/cleverTour.ts";
 import { presenterFromSearch, storyPresenterKeys, usePresenterKeys, PRESENTER_KEYS } from "./tour/presenter.ts";
 import { StoryTour } from "./tour/StoryTour.tsx";
+import { revealWhenShown } from "./tour/reveal.ts";
 import { STORY_STEPS, storyDestination } from "./tour/storyTour.ts";
 
 // Cedar Valley's Clever portal brings the control plane's launch, jose and the Clever sign-in fake,
@@ -92,6 +93,8 @@ export const DemoApp = () => {
   const [storyAt, setStoryAt] = useState<number>();
   const [storySeen, setStorySeen] = useState<ReadonlySet<number>>(new Set());
   const [storyOpen, setStoryOpen] = useState(false);
+  // Stops waiting to scroll the last step's point of interest into view.
+  const stopRevealing = useRef<() => void>(() => {});
   const info = districtInfo(districtKey);
   const tourOn = hasCleverTour(districtKey);
   const storyOn = hasStoryTour(districtKey);
@@ -111,6 +114,8 @@ export const DemoApp = () => {
       live = false;
     };
   }, [districtKey, generation]);
+
+  useEffect(() => () => stopRevealing.current(), []);
 
   // The tour follows the district's own hooks: its syncs, the Clever side's changes and the
   // passback gate's events. The portal's and the apps' hooks are passed to them below.
@@ -207,10 +212,12 @@ export const DemoApp = () => {
   const goToStory = async (index: number) => {
     const step = STORY_STEPS[index];
     if (step === undefined || district.status !== "ready") return;
-    const { persona: id, route } = await storyDestination(step, district.district);
+    const { persona: id, route, reveal } = await storyDestination(step, district.district);
     setStoryAt(index);
     setStorySeen((seen) => new Set([...seen, index]));
+    stopRevealing.current();
     openApp(id, { route });
+    stopRevealing.current = reveal === undefined ? () => {} : revealWhenShown(reveal, route);
   };
   const presenting = presenter && (tourOn || storyOn);
   usePresenterKeys(presenting, (command) => {

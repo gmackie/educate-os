@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useId, useRef, useState } from "react";
 import { Badge, Button, Input, Surface, Text } from "@cloudflare/kumo";
-import { ArrowBendUpLeftIcon, LockKeyIcon, ShieldCheckIcon, SpeakerHighIcon } from "@phosphor-icons/react";
+import { ArrowBendUpLeftIcon, InfoIcon, LockKeyIcon, ShieldCheckIcon, SpeakerHighIcon } from "@phosphor-icons/react";
 import { canSpeak, speak, stopSpeaking } from "@gadgets/bundled-blueprints/libraries/tutor/client";
 import type { GradeBand } from "../districts/index.ts";
 import type { TutorPersona } from "@gadgets/bundled-blueprints/libraries/tutor/client";
@@ -28,7 +28,10 @@ const ScreeningNote = ({ band, tutorName, screening }: { band: GradeBand; tutorN
     ? [ShieldCheckIcon, `Hall Monitor checked this for ${GRADES[band]}: allowed, sent to ${tutorName}.`]
     : screening.verdict === "redirected"
       ? [ArrowBendUpLeftIcon, `Hall Monitor: ${screening.why}. Not sent to the AI; ${tutorName} steers back kindly.`]
-      : [LockKeyIcon, `Hall Monitor: ${screening.why}. Neither sent nor kept.`];
+      : screening.verdict === "held"
+        ? [LockKeyIcon, `Hall Monitor: ${screening.why}. Neither sent nor kept.`]
+        // Nothing screened this or sent it anywhere; say so rather than claim a check that did not happen.
+        : [InfoIcon, `Not in this preview's script, so it went nowhere. On the live district Hall Monitor checks every message for ${GRADES[band]} before ${tutorName} sees it.`];
   return (
     <p className="flex items-start gap-1.5 text-xs text-kumo-subtle" data-screening={screening.verdict}>
       <Icon aria-hidden size={14} className="mt-0.5 shrink-0" />

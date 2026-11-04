@@ -105,14 +105,14 @@ Ranked by what an investor or teacher would notice. Evidence screenshots are in
 | Major | "Mr. Yazzie listens to Priya's retelling": Priya's recordings are 1.4-second hummed tunes, not a child's voice. | Say so, or record a real retelling as Mateo first and play that one. |
 | Major | The 3-5 copy promised "Sentence starters" on Abena's screen; only K-2 activities show them. The Homework Helper's hints give starters. | Copy fixed in SCHO-327. |
 | Major | K-2 teacher: "release feedback to Jonah" had no pointer, and Jonah's Word Builders work is ungraded, so releasing it shares nothing. His graded, unreleased work is Apple Orchard Story Problems in Grade 1 Mathematics. | Persona and journey copy fixed in SCHO-327. |
-| Minor | Tour steps 4 and 6 ("reads feedback") open at the top of a long activity page; the feedback is at the bottom. Step 3's tutor is below the fold at 1280x800. | Scroll on cue (scripted in the walkthroughs). |
-| Minor | Tour step 5 (World History 7 gradebook) has one graded student of three. | Point at Chidi's row and the "official grades only" line. |
-| Minor | Tour step 7 opens Lucía's page (one class) though the step leads with Mateo; Mateo's page shows the Word Builders comment. | Click "Mateo Delgado" on cue. A one-line route change in `storyTour.ts` would fix it. |
+| Minor | Tour steps 4 and 6 ("reads feedback") open at the top of a long activity page; the feedback is at the bottom. Step 3's tutor is below the fold at 1280x800. | Fixed in SCHO-328 (now steps 4, 5 and 7, after SCHO-334 added the course step): each scrolls to the tutor or the feedback. |
+| Minor | Tour step 5 (World History 7 gradebook) has one graded student of three. | Fixed in SCHO-328: a released check-in quiz graded for all three, and Ana's analysis released; Felix's analysis waits for the teacher's journey. |
+| Minor | Tour step 7 opens Lucía's page (one class) though the step leads with Mateo; Mateo's page shows the Word Builders comment. | Fixed in SCHO-328: the step opens Mateo's page. |
 | Minor | Resources are listed as "Resource 1" (the student API names a resource only by release, `packages/educateos-student-ui/src/activity/ResourceList.tsx:24`). | Fixed in SCHO-328: the activity view carries each release's title. Live after the next demo and district deploys. |
 | Minor | A grade-1 student sees "Course grade: 100.0% · A", a receipt code after handing in, and "You can submit this activity up to 3 times". A grade-4 student can see letter grades (Diego, 6/12, F). | Fixed in SCHO-328: K-2 students see stars and kind words, with no percentage, letter, receipt code or attempt limit; grades 3-5 see no letter grade. Teachers and guardians see the official grade as before. |
 | Minor | The Study Coach's tagline is "Math by asking the right questions" on a history activity; free typing outside the tutor script is marked "allowed, sent to" the tutor while the reply says the preview follows a script. | Copy, left as is. |
 | Minor | Sentence starters "First, Next, Last" appear on the K-2 drawing step too. | Left as is. |
-| Minor | On a phone the demo banner and tour strip take about a quarter of the height. | Present at 1280x800 or larger. |
+| Minor | On a phone the demo banner and tour strip take about a quarter of the height. | Fixed in SCHO-328: each keeps to one line on a phone. |
 | Minor | Dev builds log a React "Cannot update a component while rendering a different component" warning from `NotificationsLink`; production does not show it. | Not visible to visitors. |
 
 Nothing was broken: every journey step for all ten personas and all eight tour steps completed at

@@ -24,18 +24,20 @@ interface DemoBannerProps {
 
 /**
  * The banner on every screen: what this is, who you are, and the way out of it. On a phone it
- * scrolls away with the page and its buttons show only their icons, so the app keeps the screen;
- * the apps' own headers name who is signed in. A district's notice, such as Cedar Valley's that its
- * Clever is simulated, stays in it on every screen and every size.
+ * scrolls away with the page, keeps to one short line and its buttons show only their icons, so the
+ * app keeps the screen; the apps' own headers name who is signed in. A district's notice, such as
+ * Cedar Valley's that its Clever is simulated, stays in it on every screen and every size.
  */
 export const DemoBanner = ({ info, persona, done, onSwitchPersona, onReset, tour }: DemoBannerProps) => (
   <header
     aria-label="Demo"
-    className="z-40 flex items-center gap-x-4 gap-y-2 border-b border-kumo-line bg-kumo-elevated px-4 py-2 sm:sticky sm:top-0 sm:flex-wrap"
+    className="z-40 flex items-center gap-x-4 gap-y-2 border-b border-kumo-line bg-kumo-elevated px-4 py-1 sm:sticky sm:top-0 sm:flex-wrap sm:py-2"
   >
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
       <Badge variant="primary">Demo</Badge>
-      <Text size="sm">Fictional district · everything stays in your browser · AI tutors are simulated</Text>
+      {/* A phone gets the short form, on one line beside the buttons. */}
+      <span className="sm:hidden"><Text size="xs">Fictional · in your browser · AI simulated</Text></span>
+      <span className="max-sm:hidden"><Text size="sm">Fictional district · everything stays in your browser · AI tutors are simulated</Text></span>
       <span className="max-sm:hidden">
         <Text size="sm" variant="secondary">{info.name}</Text>
       </span>

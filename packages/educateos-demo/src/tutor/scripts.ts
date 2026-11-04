@@ -20,7 +20,12 @@ export type Screening =
   /** Not for this tutor or this age: not sent; the tutor steers back kindly. */
   | { verdict: "redirected"; why: string }
   /** Holds contact details or an address: neither sent nor kept. */
-  | { verdict: "held"; why: string };
+  | { verdict: "held"; why: string }
+  /**
+   * Free text the preview's script does not cover. Nothing is screened or sent anywhere: the preview
+   * only says it follows a script (SCHO-328).
+   */
+  | { verdict: "unscripted" };
 
 /** One scripted exchange: what the learner taps or types, and how the tutor answers. */
 export interface Exchange {
@@ -157,7 +162,8 @@ export const scriptFor = (band: GradeBand, activityTitle: string): Script => SCR
 /**
  * How the simulated tutor answers what the learner sent: the scripted exchange it matches, the
  * tutor's own privacy reply to a message holding contact details or an address (which the live
- * tutor neither sends nor keeps), or a note that this preview only follows its script.
+ * tutor neither sends nor keeps), or a note that this preview only follows its script, marked
+ * `unscripted` because nothing screened or sent it.
  */
 export function answer(band: GradeBand, activityTitle: string, message: string): Exchange {
   const tutor = TUTORS[band];
@@ -170,6 +176,6 @@ export function answer(band: GradeBand, activityTitle: string, message: string):
   return {
     ask: message,
     reply: `This preview follows a script, so try one of the buttons. On the AI district, ${tutor.name} answers anything about your work, screened by Hall Monitor first.`,
-    screening: allowed,
+    screening: { verdict: "unscripted" },
   };
 }
