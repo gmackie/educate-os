@@ -70,3 +70,40 @@ describe("class modules", () => {
     expect(screen.queryByRole("heading", { level: 2, name: "Modules" })).toBeNull();
   });
 });
+
+describe("page tables (SCHO-328)", () => {
+  const PUNNETT = {
+    ...OUTLINE,
+    pages: [{
+      id: "cpg_1",
+      title: "Punnett Squares",
+      body: "Each parent passes on **one allele**.\n\n| | **B** | **b** |\n|---|:-:|--:|\n| **B** | BB | Bb |\n| **b** | Bb | bb <script>x</script> |\n\nA **3 : 1** ratio.\n\n| Trait | Allele \\| symbol |\n| --- | --- |\n| Fur | [key](javascript:alert(1)) |",
+    }],
+  };
+
+  it("renders a GFM table as a table with column and row headers", async () => {
+    const { container } = await renderApp(fakeDistrict({ modules: { [ENGLISH]: PUNNETT } }), `/courses/${ENGLISH}`);
+    const section = await screen.findByRole("region", { name: "Week 1: Claims" });
+    const [square, traits] = within(section).getAllByRole("table");
+    expect(within(square!).getAllByRole("columnheader").map((th) => th.textContent)).toStrictEqual(["B", "b"]);
+    expect(within(square!).getAllByRole("rowheader").map((th) => th.textContent)).toStrictEqual(["B", "b"]);
+    expect(within(square!).getByRole("columnheader", { name: "B" }).querySelector("strong")).toBeTruthy();
+    expect(within(square!).getAllByRole("cell").map((td) => td.textContent)).toContain("BB");
+    expect(within(square!).getAllByRole("columnheader")[1]!.className).toContain("text-right");
+    expect(section.textContent).not.toContain("|---|");
+    expect(within(section).getByText("3 : 1").tagName).toBe("STRONG");
+
+    expect(within(traits!).getAllByRole("columnheader").map((th) => th.textContent)).toStrictEqual(["Trait", "Allele | symbol"]);
+    expect(within(traits!).queryByRole("rowheader")).toBeNull();
+    expect(container.querySelector("script")).toBeNull();
+    expect(within(traits!).queryByRole("link")).toBeNull();
+  });
+
+  it("leaves a pipe line without a delimiter row as paragraph text", async () => {
+    const outline = { ...OUTLINE, pages: [{ id: "cpg_1", title: "Odds", body: "Heads | tails\nEither side." }] };
+    await renderApp(fakeDistrict({ modules: { [ENGLISH]: outline } }), `/courses/${ENGLISH}`);
+    const section = await screen.findByRole("region", { name: "Week 1: Claims" });
+    expect(within(section).queryByRole("table")).toBeNull();
+    expect(within(section).getByText("Heads | tails Either side.")).toBeTruthy();
+  });
+});
