@@ -281,7 +281,9 @@ async function checkShowcase(course: CourseDir, pkg: OcsPackage, exports: Valida
       }
       for (const [field, value] of Object.entries(activity)) {
         if (SHOWCASE_LOCAL.has(field)) continue;
-        if (JSON.stringify((match.activity as Record<string, unknown>)[field]) !== JSON.stringify(value)) {
+        // A showcase problem set holds its answers; an export holds the prompts only (README: answers go in the answer key).
+        const expected = field === "problems" ? (value as { prompt: string }[]).map(({ prompt }) => ({ prompt })) : value;
+        if (JSON.stringify((match.activity as Record<string, unknown>)[field]) !== JSON.stringify(expected)) {
           issues.push(error(`${exportFile(match.id)}: activity.${field}`, `must equal the showcase activity "${activity.title}"`));
         }
       }
