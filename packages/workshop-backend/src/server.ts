@@ -3,12 +3,12 @@ import type { WorkshopAuthoringTarget, WorkshopAuthoringCapability } from "@gadg
 import { RpcStub, RpcTarget, newHttpBatchRpcResponse, newWebSocketRpcSession, RpcSessionOptions } from "capnweb";
 import { validateRpc } from "capnweb-validate";
 import type { JWTPayload } from "jose";
-import { PublicApi, ROUTER_TAG_PROBE_PATH, VERSION_PATH, AuthenticatedApi, Overseer, WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, RedactedAiModelConfig, AiGatewayInfo, AiModelProvider, ModelKind, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, ObserverConfigCallback, BlueprintLibrarySummary, BlueprintPublicInfo, BlueprintUserSummary, BlueprintBindingAssignment, AgentSpawnerConfig, WorkpieceId, BLUEPRINT_SCREENSHOT_PATH_PREFIX, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ServerConfig, CloudflareUsageInfo, CloudflareAccountOption, LoginAttempt, GatekeeperAppInfo, AdminApi, GatekeeperVendorInfo, OutputFormatOffer, ListOutputsResult, UserDirectoryRecord, createOpenWorkspaceError, getOpenWorkspaceErrorCode, OPEN_WORKSPACE_ERROR_CODES, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, NotificationSubscriber, NotificationMute, WebPushSubscription, ExternalWorkspaceRequest } from '@gadgets/workshop-shared/api';
+import { PublicApi, ROUTER_TAG_PROBE_PATH, VERSION_PATH, AuthenticatedApi, Overseer, WorkspaceMetadataWithTimestamps, AiChatAuthorInfo, RedactedAiModelConfig, AiGatewayInfo, ModelKind, ConnectedAccountsSubscriber, ConnectedAccountsFilter, GatekeeperVendorFilter, ObserverConfigCallback, BlueprintLibrarySummary, BlueprintPublicInfo, BlueprintUserSummary, BlueprintBindingAssignment, AgentSpawnerConfig, WorkpieceId, BLUEPRINT_SCREENSHOT_PATH_PREFIX, BLUEPRINT_SCREENSHOT_R2_PREFIX, blueprintScreenshotUrl, ServerConfig, CloudflareUsageInfo, CloudflareAccountOption, LoginAttempt, GatekeeperAppInfo, AdminApi, GatekeeperVendorInfo, OutputFormatOffer, ListOutputsResult, UserDirectoryRecord, createOpenWorkspaceError, getOpenWorkspaceErrorCode, OPEN_WORKSPACE_ERROR_CODES, AUTH_ERROR_CODES, createAuthError, ConnectFlowStart, NotificationSubscriber, NotificationMute, WebPushSubscription, ExternalWorkspaceRequest } from '@gadgets/workshop-shared/api';
 import type { UiFeatureFlags } from "@gadgets/workshop-shared/feature-flags";
 import type { BlueprintReleaseSource } from "@gadgets/workshop-shared/api";
 import { readBlueprintReleaseSource } from "./blueprint-archive.js";
 import { backendVersion, getServerConfig } from "./deployment-config.js";
-import { isPasswordAuthEnabled, getAuthGatekeeperAllowlist } from "./auth/config.js";
+import { isDeploymentAdmin, isPasswordAuthEnabled, getAuthGatekeeperAllowlist } from "./auth/config.js";
 import { getAuthVendorBinding } from "./auth/auth-vendors.js";
 import { getUsageInfo } from "./ai-gateway-billing/limits/usage-checker.js";
 import { listConnectedAccounts, selectAccount } from "./ai-gateway-billing/cloudflare/connection-service.js";
@@ -41,7 +41,6 @@ import { createWorkshopLogger } from "./observability";
 import { deployServiceInstall, routerVersionTag } from "./deployment-updates.js";
 import { retryOnDoReset, wrapDoStubForTelemetry } from "./do-retry";
 import { deviceSessionCallback } from "./auth/device-session-callback.js";
-import { isAdminUserName } from "./auth/admins.js";
 import { accessUserName, handlePrincipalMigrationRequest, PRINCIPAL_MIGRATION_PATH } from "./auth/principal-aliases.js";
 
 const logger = createWorkshopLogger("workshop.server");
@@ -151,7 +150,8 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
   }
 
   #isAdmin(): boolean {
-    return isAdminUserName(this.env, this.#userId.name);
+    let name = this.#userId.name;
+    return !!name && isDeploymentAdmin(this.env, name);
   }
 
   whoami(): Promise<AiChatAuthorInfo> {
@@ -214,6 +214,14 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
 
   registerNotificationDevice(registration: string | WebPushSubscription): Promise<void> {
     return this.#user.registerNotificationDevice(registration);
+  }
+
+  registerAuthorizedNotificationDevice(deviceRegistrationId: string): Promise<void> {
+    return this.#user.registerAuthorizedNotificationDevice(deviceRegistrationId);
+  }
+
+  authorizeNotificationDevice(): Promise<string> {
+    return this.#user.authorizeNotificationDevice();
   }
 
   subscribeToNotifications(
@@ -282,7 +290,7 @@ class AuthenticatedApiImpl extends RpcTarget implements AuthenticatedApi {
     if (models) {
       return {
         enabled: true,
-        enabledProviders: [...models.providers] as AiModelProvider[],
+        enabledProviders: models.addableProviders,
         builtInModelIds: models.all.map(model => model.id),
         userModelsEnabled: models.userModels,
       };
