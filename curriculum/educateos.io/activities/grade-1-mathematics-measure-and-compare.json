@@ -1,0 +1,94 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Measure with cubes, compare lengths and put things in order.",
+    "problems": [
+      {
+        "prompt": "A ribbon is 7 cubes long. A string is 4 cubes long. Which is longer? How many cubes longer?"
+      },
+      {
+        "prompt": "The red snake is longer than the blue snake. The blue snake is longer than the green snake. Which snake is the longest? Which is the shortest?"
+      },
+      {
+        "prompt": "Put these in order from shortest to longest: a bus, a pencil, a door."
+      },
+      {
+        "prompt": "Pick something on your desk. Measure it with cubes. Draw it and write how many cubes long it is."
+      },
+      {
+        "prompt": "Lee measured a book and got 9 cubes. Ava measured the same book and got 7 cubes, but she left gaps between her cubes. Whose number is right? Tell why."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Measure and Compare"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-measure-and-compare",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "measure",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I measured with no gaps or overlaps"
+      },
+      {
+        "id": "compare",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I compared and ordered lengths"
+      }
+    ],
+    "title": "Measure and compare"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

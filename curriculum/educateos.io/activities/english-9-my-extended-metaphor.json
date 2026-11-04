@@ -1,0 +1,156 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "genre": "narrative",
+    "gradeBand": "9-12",
+    "minWords": 150,
+    "minimumCitations": 0,
+    "overview": "Write an original poem built on one extended metaphor, then explain your choices.",
+    "prompt": "Write an original poem of at least ten lines that develops one extended metaphor for something you cannot touch: hope, fear, home, growing up, a friendship, a memory. Like Dickinson, carry the comparison all the way through. Use precise, concrete and sensory details, and make deliberate choices about line breaks. After the poem, write a short reflection (about 100 words) that names your metaphor, points to one line break or word choice you made on purpose, and explains its effect.",
+    "resources": [
+      "poetry-toolkit"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "My Extended Metaphor"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.3.D",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.9-10.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-my-extended-metaphor",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Poems say a great deal in a small space. These tools help you see how.\n\nFigurative language\n- Metaphor: speaks of one thing as if it were another. \"Hope is the thing with feathers.\"\n- Extended metaphor: a metaphor carried through several lines or a whole poem.\n- Simile: a comparison using like or as.\n- Personification: gives human qualities to something not human. \"Nature's first green\" belongs to \"Her.\"\n- Paradox: a statement that seems to contradict itself but holds a truth. \"Nature's first green is gold.\"\n- Allusion: a reference to a well-known story, person or text. \"So Eden sank to grief.\"\n\nSound and structure\n- Rhyme scheme: the pattern of end rhymes, labeled with letters (aabb, abaab).\n- Couplet: two lines that rhyme and belong together.\n- Stanza: a group of lines, like a paragraph in prose.\n- Meter: the pattern of stressed and unstressed syllables.\n- Enjambment: a sentence that runs past the end of a line. End-stopped lines pause at the line's end.\n- Tone: the speaker's attitude. Tone can shift within a poem; look for words like \"but,\" \"yet\" and \"then.\"\n- Speaker: the voice in the poem. The speaker is not automatically the poet.\n\nConnotation\nA word's denotation is its dictionary meaning. Its connotation is the feeling it carries. \"Subsides\" and \"sinks\" both mean \"goes down,\" but \"sank\" carries a heavier sense of loss.\n\nReading a poem in four passes\n1. Read it aloud for sound.\n2. Read it for what literally happens.\n3. Mark the figurative language and the shifts.\n4. Ask: what does the poem suggest about life, and how do its choices make me feel that?",
+      "id": "poetry-toolkit",
+      "title": "A Poetry Toolkit"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Sustains one comparison through the whole poem and develops it.",
+        "id": "metaphor",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Extended metaphor"
+      },
+      {
+        "description": "Uses concrete, vivid details and words chosen for their connotations.",
+        "id": "language",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Precise and sensory language"
+      },
+      {
+        "description": "Makes deliberate choices about line breaks, stanzas or sound.",
+        "id": "craft",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Line and structure"
+      },
+      {
+        "description": "Explains the metaphor and the effect of a specific craft choice.",
+        "id": "reflection",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Reflection"
+      }
+    ],
+    "title": "Original poem"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:f56cb8eaff0fc4ca0b43993ad900648a922278fa984122afd0517b5af2500464",
+      "id": "educateos.io/united-states-history-progressive-document-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "progressive-document-check",
+  "role": "assessment",
+  "title": "Progressive Era Document Check"
+}

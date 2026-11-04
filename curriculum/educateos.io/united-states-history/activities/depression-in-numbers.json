@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:4f6a3db687d6245b209cfa5fdd266a2a9a8c93f5b4f7f9740f3cfdfc8422722d",
+      "id": "educateos.io/united-states-history-depression-in-numbers",
+      "version": "1.0.0"
+    }
+  },
+  "id": "depression-in-numbers",
+  "role": "lesson",
+  "title": "Reading the Depression in Numbers"
+}

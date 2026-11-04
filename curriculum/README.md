@@ -318,3 +318,13 @@ district's approved publisher keys (which checks every digest and signature, tru
 bundle), then `planBundleInstall`, then `applyInstallPlan` with its own `CourseInstallTarget`. The
 website can serve the same file. A district's course library does exactly this; see
 [docs/educateos/course-library.md](../docs/educateos/course-library.md).
+
+## On educateos.io
+
+The site's course catalog, [educateos.io/courses/](https://educateos.io/courses/), lists every
+course here with no change to the site: `sites/educateos-io/build.mjs` (which the site's deploy
+runs) renders it from each course's current bundle, after opening it with the keys in
+`publisher.json`, and serves the bundle itself for districts to download. A course shows once its
+bundle is signed and merged. The page shows each unit's student overview, activities, assessments
+and standards, and says only that teacher guides and answer keys exist, never their text
+(`sites/educateos-io/catalog.test.mjs`).

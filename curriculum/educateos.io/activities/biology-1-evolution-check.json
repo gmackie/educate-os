@@ -1,0 +1,166 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "overview": "Show what you know about natural selection and the evidence for evolution. Answer in complete sentences.",
+    "problems": [
+      {
+        "prompt": "List the four conditions needed for natural selection, and show how each applies to one population of your choice."
+      },
+      {
+        "prompt": "An old idea says giraffes got long necks because each giraffe stretched its neck to reach leaves and passed the longer neck to its young. Explain why this idea is wrong, then give the explanation natural selection offers."
+      },
+      {
+        "prompt": "Compare homologous and analogous structures, with one example of each. Which kind is evidence of common ancestry, and why?"
+      },
+      {
+        "prompt": "A gene's DNA sequence differs by 1% between species A and species B, and by 8% between species A and species C. Which species is more closely related to species A? Explain why DNA differences tell us about relatedness."
+      },
+      {
+        "prompt": "Snowshoe hares turn white in winter. Explain how natural selection could have produced this trait, and predict what might happen to the population if winters with snow on the ground become shorter."
+      },
+      {
+        "prompt": "Explain how one species can become two species over time. Use the word isolation in your answer."
+      },
+      {
+        "prompt": "In a bead-bug simulation on green fabric, green bugs went from 20 to 26 to 33 to 39 over three generations, and red bugs went from 20 to 12 to 7 to 4. What do these data show, and how do they support the theory of natural selection?"
+      }
+    ],
+    "showWork": false,
+    "subject": "science",
+    "template": "problem-set",
+    "title": "Evolution Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.8",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-evolution-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Explains natural selection as differential survival and reproduction acting on inherited variation in populations.",
+        "id": "mechanism",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Mechanism of selection"
+      },
+      {
+        "description": "Explains how homologous structures, DNA comparisons and fossils support common ancestry.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Evidence for evolution"
+      },
+      {
+        "description": "Applies natural selection to new examples, including speciation and changing environments.",
+        "id": "application",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Applying the model"
+      },
+      {
+        "description": "Uses data accurately to support a conclusion.",
+        "id": "data",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Interpreting data"
+      }
+    ],
+    "title": "Evolution"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

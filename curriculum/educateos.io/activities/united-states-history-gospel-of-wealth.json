@@ -1,0 +1,181 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "claimPrompt": "On what do Carnegie and the Populists agree about wealth in the Gilded Age, and on what do they most disagree? Explain what each believed should be done, and whether the Sherman Act answered either one. Quote at least two of the sources.",
+    "contextualizationQuestions": [
+      "What changes in the American economy between 1870 and 1890 made great fortunes possible?",
+      "What happened at Carnegie's Homestead works in 1892, and how does that event affect how you read his essay?"
+    ],
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "minimumEvidence": 2,
+    "overview": "Compare how a steel magnate and a farmers' political party saw the great fortunes of the Gilded Age, and what the government first did about them.",
+    "sources": [
+      "carnegie-wealth",
+      "omaha-platform",
+      "sherman-act"
+    ],
+    "sourcingQuestions": [
+      "Who wrote each source, for what audience, and with what purpose?",
+      "How might Carnegie's position as one of the richest men in America shape his view of wealth? How might the Populists' position as indebted farmers shape theirs?",
+      "The Sherman Act is a law, not an opinion. What can a law tell a historian that a speech or essay cannot, and what can it not tell us?"
+    ],
+    "subject": "history-social-studies",
+    "template": "primary-source-analysis",
+    "title": "Gospel of Wealth or Stolen Fruits?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.4.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Eco.4.9-12",
+      "frameworkKey": "c3"
+    }
+  ],
+  "id": "educateos.io/united-states-history-gospel-of-wealth",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Andrew Carnegie, \"Wealth,\" North American Review, June 1889. Public domain.",
+      "body": "\"The problem of our age is the proper administration of wealth, that the ties of brotherhood may still bind together the rich and poor in harmonious relationship.\"\n\n\"The man who dies thus rich dies disgraced.\"\n\nAbout the author: Carnegie emigrated from Scotland as a boy, worked as a telegraph messenger and railroad clerk, and built Carnegie Steel into the largest steel company in the world. He argued that great fortunes were a natural result of competition and that the rich had a duty to give their surplus wealth away during their lifetimes, for libraries, universities, and other public goods. He funded more than 2,500 public libraries. The Homestead strike at his company's works, in which a battle between strikers and Pinkerton guards left at least ten people dead, came three years after this essay.",
+      "id": "carnegie-wealth",
+      "title": "Andrew Carnegie, \"Wealth\" (1889), excerpts"
+    },
+    {
+      "attribution": "Preamble, Platform of the People's Party, adopted at Omaha, Nebraska, July 4, 1892. Public domain.",
+      "body": "\"The fruits of the toil of millions are boldly stolen to build up colossal fortunes for a few, unprecedented in the history of mankind; and the possessors of these, in turn, despise the Republic and endanger liberty.\"\n\nAbout the source: The People's Party, or Populists, was founded mainly by farmers in the South and West, with support from some labor organizations. Its platform called for government ownership of the railroads and telegraph, a graduated income tax, the direct election of United States senators, and an expanded money supply. Its presidential candidate won more than a million votes in 1892.",
+      "id": "omaha-platform",
+      "title": "People's Party Platform (Omaha, 1892), excerpt"
+    },
+    {
+      "attribution": "Sherman Antitrust Act, July 2, 1890, Section 1. Public domain (U.S. government work).",
+      "body": "\"Every contract, combination in the form of trust or otherwise, or conspiracy, in restraint of trade or commerce among the several States, or with foreign nations, is hereby declared to be illegal.\"\n\nAbout the source: Congress passed the act almost unanimously. For its first decade the federal government rarely enforced it against corporations, and courts sometimes applied it to labor unions instead, as in the case that followed the Pullman strike of 1894.",
+      "id": "sherman-act",
+      "title": "Sherman Antitrust Act (1890), Section 1"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Identifies who made each source, when, for whom and why, and explains how that shapes what the source shows and leaves out.",
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sourcing"
+      },
+      {
+        "description": "Places the sources in the events and conditions of their time with accurate, specific historical knowledge.",
+        "id": "context",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Contextualization"
+      },
+      {
+        "description": "Makes a defensible claim that answers the question and supports it with accurately quoted, well-explained evidence.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim and evidence"
+      },
+      {
+        "description": "Compares sources with one another or with other evidence, noting agreement, tension and what further sources would help.",
+        "id": "corroboration",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Corroboration"
+      }
+    ],
+    "title": "Comparing perspectives"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

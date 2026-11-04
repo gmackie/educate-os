@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:1fba6da2ad1ddfe89742af544c6cb64549b29796946448d67034176d72365f01",
+      "id": "educateos.io/grade-4-mathematics-comparing-decimals",
+      "version": "1.0.0"
+    }
+  },
+  "id": "comparing-decimals",
+  "role": "assignment",
+  "title": "Decimals on the Number Line"
+}

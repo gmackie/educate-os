@@ -1,0 +1,97 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to our rain cup numbers. Compare them to find the rainiest day.",
+    "passage": "We put a cup outside to catch rain. The cup has lines with numbers on it. Each morning we looked at the water, then we emptied the cup. On Monday, the rain came up to line 2. On Tuesday, it came up to line 5. On Wednesday, it came up to line 3.",
+    "questions": [
+      {
+        "prompt": "Which day had more rain, Monday or Tuesday?"
+      },
+      {
+        "prompt": "Which day had less rain, Tuesday or Wednesday?"
+      },
+      {
+        "prompt": "Which day had the most rain of all?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw the cup on Tuesday. Show how high the water came."
+      }
+    ],
+    "sentenceFrames": [
+      "___ had more rain.",
+      "5 is more than ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Our Rain Cup"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.CC.C.7",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.MD.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-our-rain-cup",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "compare",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I compared the numbers"
+      },
+      {
+        "id": "most",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told which day had the most rain"
+      }
+    ],
+    "title": "Our rain cup"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

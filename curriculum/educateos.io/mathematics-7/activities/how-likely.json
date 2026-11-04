@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:f90a8eb850a260c4c3bb2cbe421692e5f7146e73e67b5ec3d095900fe22610a7",
+      "id": "educateos.io/mathematics-7-how-likely",
+      "version": "1.0.0"
+    }
+  },
+  "id": "how-likely",
+  "role": "lesson",
+  "title": "How Likely Is It?"
+}

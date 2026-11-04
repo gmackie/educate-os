@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:cd0b3a8ad27180d828731c813521b7783d24754600a4159f2d877c00d1123f2b",
+      "id": "educateos.io/english-8-lighthouse-theme",
+      "version": "1.0.0"
+    }
+  },
+  "id": "lighthouse-theme",
+  "role": "assignment",
+  "title": "Theme in \"The Lighthouse Keeper's Daughter\""
+}

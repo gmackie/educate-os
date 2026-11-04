@@ -1,0 +1,149 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "overview": "Decode genes into proteins with the genetic code, then predict what different kinds of mutation do to a protein.",
+    "problems": [
+      {
+        "prompt": "Write the complementary DNA strand for this strand: ATG CCG TTA."
+      },
+      {
+        "prompt": "A gene's DNA template strand reads TAC GGA CTT ATT. Write the mRNA that is transcribed from it, then use the codon table to write the amino acid sequence."
+      },
+      {
+        "prompt": "Another template strand reads TAC AAA CCG TGG ACT. Write its mRNA and its amino acid sequence."
+      },
+      {
+        "prompt": "In the gene from problem 3, a mutation changes the third mRNA codon from GGC to GGA. What happens to the protein? What is this kind of mutation called, and why is it possible?"
+      },
+      {
+        "prompt": "In the gene from problem 3, an extra T is inserted into the template strand right after the first codon (TAC). Write the new template strand split into codons, the new mRNA, and the new amino acid sequence. What kind of mutation is this?"
+      },
+      {
+        "prompt": "Using your answers to problems 4 and 5, explain why inserting or deleting one base is usually more harmful than substituting one base."
+      },
+      {
+        "prompt": "One chain of human hemoglobin has 146 amino acids. How many mRNA bases code for those amino acids? How many are in the coding sequence if you include the stop codon?"
+      }
+    ],
+    "resources": [
+      "codon-table"
+    ],
+    "showWork": true,
+    "subject": "science",
+    "template": "problem-set",
+    "title": "Transcription and Translation Practice"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-transcription-translation",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Read each mRNA codon (three bases) from left to right, starting at the start codon AUG. These are the codons you need for this unit; the full table has 64.\n\nStart: AUG = Met (methionine), which also begins every protein\nAla (alanine): GCU, GCC, GCA, GCG\nGlu (glutamic acid): GAA, GAG\nGly (glycine): GGU, GGC, GGA, GGG\nHis (histidine): CAU, CAC\nIle (isoleucine): AUU, AUC, AUA\nLeu (leucine): CUU, CUC, CUA, CUG, UUA, UUG\nLys (lysine): AAA, AAG\nPhe (phenylalanine): UUU, UUC\nPro (proline): CCU, CCC, CCA, CCG\nSer (serine): UCU, UCC, UCA, UCG, AGU, AGC\nThr (threonine): ACU, ACC, ACA, ACG\nTrp (tryptophan): UGG\nVal (valine): GUU, GUC, GUA, GUG\nStop (end of the protein): UAA, UAG, UGA\n\nBase-pairing rules. DNA to DNA: A pairs with T, G pairs with C. DNA template to mRNA: A to U, T to A, G to C, C to G.",
+      "id": "codon-table",
+      "title": "The Genetic Code (Selected Codons)"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Writes complementary DNA and mRNA sequences correctly, using U in RNA.",
+        "id": "pairing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Base pairing"
+      },
+      {
+        "description": "Reads mRNA in codons from the start codon and translates each correctly with the codon table.",
+        "id": "decoding",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Decoding"
+      },
+      {
+        "description": "Classifies each mutation and explains its effect on the protein with reasons.",
+        "id": "mutations",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Mutation effects"
+      }
+    ],
+    "title": "Molecular genetics"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

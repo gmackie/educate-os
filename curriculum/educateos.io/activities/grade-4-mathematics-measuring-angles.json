@@ -1,0 +1,135 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 6,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Use a protractor to draw angles, and add and subtract angle measures to find unknown angles.",
+    "problems": [
+      {
+        "prompt": "Use a protractor to draw an angle of 40 degrees. Take a photo of your angle."
+      },
+      {
+        "prompt": "Use a protractor to draw an angle of 125 degrees. Is it acute, right or obtuse?"
+      },
+      {
+        "prompt": "A right angle is split into two smaller angles. One of them measures 35 degrees. What does the other one measure? Write an equation."
+      },
+      {
+        "prompt": "A straight angle (180 degrees) is split into three angles. Two of them measure 60 degrees and 45 degrees. What does the third angle measure?"
+      },
+      {
+        "prompt": "Angle ABC measures 150 degrees. Ray BD splits it into two angles. Angle ABD measures 95 degrees. What does angle DBC measure? Write an equation with a letter for the unknown angle."
+      },
+      {
+        "prompt": "A round pizza is cut into 8 equal slices from the center. What is the angle at the tip of each slice?"
+      },
+      {
+        "prompt": "A protractor has two rows of numbers. Explain how you know which row to read when you measure an angle."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Measuring and Adding Angles"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.C.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.C.7",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-measuring-angles",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows the steps or a model"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains thinking with math words"
+      }
+    ],
+    "title": "Measuring and adding angles"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

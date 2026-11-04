@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:564fa32588cb4c7ffb3158d01b02606e0e992080e537451f95a4069285b12726",
+      "id": "educateos.io/grade-4-mathematics-multiply-divide-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "multiply-divide-check",
+  "role": "assessment",
+  "title": "Multiplication and Division Check"
+}

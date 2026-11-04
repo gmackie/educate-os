@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:74ad83dc49291e387d7a9703a63e97a7d8e1c223ce66b8185273bb66435af689",
+      "id": "educateos.io/grade-4-mathematics-shapes-and-symmetry",
+      "version": "1.0.0"
+    }
+  },
+  "id": "shapes-and-symmetry",
+  "role": "assignment",
+  "title": "Sorting Shapes and Finding Symmetry"
+}

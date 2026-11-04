@@ -1,0 +1,49 @@
+{
+  "id": "cells-and-transport",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u1-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "looking-at-cells"
+    },
+    {
+      "kind": "activity",
+      "ref": "egg-osmosis"
+    },
+    {
+      "kind": "activity",
+      "ref": "cells-and-transport-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Cells as the basic unit of life: organelles and their jobs, the selectively permeable membrane, and how diffusion, osmosis and active transport move materials in and out.",
+  "title": "Unit 1: Cells and Transport"
+}

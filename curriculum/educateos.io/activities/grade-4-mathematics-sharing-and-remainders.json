@@ -1,0 +1,135 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Divide with place value strategies and decide what a remainder means in a story.",
+    "problems": [
+      {
+        "prompt": "Find 96 ÷ 4 by breaking 96 into 80 and 16."
+      },
+      {
+        "prompt": "Find 158 ÷ 6. Write the quotient and the remainder."
+      },
+      {
+        "prompt": "Find 1,236 ÷ 3. Check your answer with multiplication."
+      },
+      {
+        "prompt": "75 students are going on a field trip. Each van holds 8 students. How many vans are needed? Explain what you did with the remainder."
+      },
+      {
+        "prompt": "A ribbon is 50 inches long. It is cut into pieces that are 6 inches long. How many full pieces are there? How much ribbon is left over?"
+      },
+      {
+        "prompt": "4 friends share 30 baseball cards equally. How many cards does each friend get? How many are left over?"
+      },
+      {
+        "prompt": "A library has 6 shelves with 124 books on each shelf. It gives away 94 books, then packs the rest into boxes that hold 9 books each. How many boxes does it need? Estimate first to check that your answer is reasonable."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Sharing and Remainders"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NBT.B.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.OA.A.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-sharing-and-remainders",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows the steps or a model"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains thinking with math words"
+      }
+    ],
+    "title": "Division and remainders"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

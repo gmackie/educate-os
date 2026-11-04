@@ -1,0 +1,176 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "overview": "Show what you know about DNA, protein synthesis and mutations. You may use the codon table.",
+    "problems": [
+      {
+        "prompt": "State the base-pairing rules for DNA with DNA and for DNA with RNA. Then give three differences between DNA and RNA."
+      },
+      {
+        "prompt": "Explain why DNA replication is called semiconservative. If one original strand reads TAGGC, what is the sequence of the new strand built on it?"
+      },
+      {
+        "prompt": "A DNA template strand reads TAC CAT GGG TTT ATC. Write the mRNA and the amino acid sequence."
+      },
+      {
+        "prompt": "In the gene from problem 3, the second template codon changes from CAT to CTT. What happens to the mRNA and the protein? Classify the mutation."
+      },
+      {
+        "prompt": "A muscle cell and a nerve cell from the same person have exactly the same DNA, yet they look and work very differently. Explain how this is possible."
+      },
+      {
+        "prompt": "Put these events of protein synthesis in order and say where each happens: a tRNA anticodon pairs with a codon; mRNA leaves the nucleus; a stop codon is reached; the DNA of a gene unzips; amino acids are joined by a peptide bond; mRNA is built from the template strand."
+      },
+      {
+        "prompt": "A sample of DNA is 30% adenine. What percentage of the bases are thymine, guanine and cytosine? Show your reasoning."
+      }
+    ],
+    "resources": [
+      "codon-table"
+    ],
+    "showWork": true,
+    "subject": "science",
+    "template": "problem-set",
+    "title": "DNA and Proteins Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-dna-and-proteins-check",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Read each mRNA codon (three bases) from left to right, starting at the start codon AUG. These are the codons you need for this unit; the full table has 64.\n\nStart: AUG = Met (methionine), which also begins every protein\nAla (alanine): GCU, GCC, GCA, GCG\nGlu (glutamic acid): GAA, GAG\nGly (glycine): GGU, GGC, GGA, GGG\nHis (histidine): CAU, CAC\nIle (isoleucine): AUU, AUC, AUA\nLeu (leucine): CUU, CUC, CUA, CUG, UUA, UUG\nLys (lysine): AAA, AAG\nPhe (phenylalanine): UUU, UUC\nPro (proline): CCU, CCC, CCA, CCG\nSer (serine): UCU, UCC, UCA, UCG, AGU, AGC\nThr (threonine): ACU, ACC, ACA, ACG\nTrp (tryptophan): UGG\nVal (valine): GUU, GUC, GUA, GUG\nStop (end of the protein): UAA, UAG, UGA\n\nBase-pairing rules. DNA to DNA: A pairs with T, G pairs with C. DNA template to mRNA: A to U, T to A, G to C, C to G.",
+      "id": "codon-table",
+      "title": "The Genetic Code (Selected Codons)"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Applies base-pairing rules and explains semiconservative replication correctly.",
+        "id": "structure",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "DNA structure and replication"
+      },
+      {
+        "description": "Transcribes, translates and sequences the steps of protein synthesis accurately, naming where each happens.",
+        "id": "synthesis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Protein synthesis"
+      },
+      {
+        "description": "Classifies mutations, predicts their effects, and explains how cells with the same DNA differ.",
+        "id": "mutations",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Mutations and gene expression"
+      },
+      {
+        "description": "Calculates base percentages correctly and shows the reasoning.",
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Quantitative reasoning"
+      }
+    ],
+    "title": "DNA and proteins"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

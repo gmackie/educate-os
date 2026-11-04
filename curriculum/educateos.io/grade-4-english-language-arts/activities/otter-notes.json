@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b280a9e090efe10f620f8ba4bc34b3a4e18356eaf0915ffc8655a21510d70315",
+      "id": "educateos.io/grade-4-english-language-arts-otter-notes",
+      "version": "1.0.0"
+    }
+  },
+  "id": "otter-notes",
+  "role": "assignment",
+  "title": "Sea Otter Research Notes"
+}

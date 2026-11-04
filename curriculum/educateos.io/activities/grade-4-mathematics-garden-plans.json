@@ -1,0 +1,135 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 6,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Plan a school garden using area, perimeter, money and time.",
+    "problems": [
+      {
+        "prompt": "A rectangular garden bed is 9 feet long and 6 feet wide. Find its area and its perimeter."
+      },
+      {
+        "prompt": "Another garden bed has an area of 72 square feet. It is 12 feet long. How wide is it?"
+      },
+      {
+        "prompt": "A fence around a rectangular garden has a perimeter of 40 meters. The garden is 14 meters long. How wide is it?"
+      },
+      {
+        "prompt": "Draw two different rectangles that each have a perimeter of 24 feet. Find the area of each. Which has the greater area?"
+      },
+      {
+        "prompt": "Seed packets cost $3 each. Lia buys 7 packets and pays with $25. How much change does she get?"
+      },
+      {
+        "prompt": "Watering the garden takes 25 minutes each morning. How many minutes is that in one week? Write your answer in hours and minutes too."
+      },
+      {
+        "prompt": "Each bag of soil holds 2 kilograms. The garden needs 10,000 grams of soil. How many bags are needed?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Garden Plans: Area and Perimeter"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.A.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-garden-plans",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows the steps or a model"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains thinking with math words"
+      }
+    ],
+    "title": "Area, perimeter and measurement problems"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

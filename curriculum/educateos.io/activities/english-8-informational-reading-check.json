@@ -1,0 +1,169 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 44,
+      "kind": "after-install"
+    },
+    "gradeBand": "8",
+    "overview": "Read an article on your own and show how you find a central idea, word meanings and structure.",
+    "passage": "Why Some Schools Are Digging Up Their Lawns\n\nThis article was written for EducateOS. Its school is invented; the science is real.\n\nWhen it rains on a school, most of the water has nowhere to go. Roofs, parking lots and sidewalks are impervious surfaces: water runs off them instead of soaking in. That runoff rushes into storm drains, carrying oil, litter and fertilizer with it, and in a heavy storm it can overwhelm the drains and flood the streets.\n\nA rain garden is a shallow, bowl-shaped garden planted with native plants that can survive both soggy and dry weeks. It is placed where runoff already flows, such as below a downspout or at the low edge of a parking lot. The water pools in the bowl for a day or two and slowly soaks into the soil, which filters out many pollutants before the water reaches the groundwater below. The deep roots of native plants keep the soil loose so it can keep absorbing water.\n\nAt one middle school, students in a science club measured how much rain fell on their gym roof during one spring and calculated that the roof shed about 90,000 liters of water in a single month. They designed a rain garden to catch part of it. Now, the club says, the puddle that used to cover the bus loop after every storm is gone, and bees and butterflies visit the garden all summer.\n\nRain gardens are not a cure for every flooding problem. They need weeding, and they work best in soil that drains reasonably well. But they are cheap compared with bigger drains, and they turn a problem, too much water in the wrong place, into a habitat.",
+    "questions": [
+      {
+        "prompt": "What does \"impervious\" mean in the first paragraph? Which words in the sentence help you know?"
+      },
+      {
+        "prompt": "State the central idea of the article in one sentence."
+      },
+      {
+        "prompt": "The second paragraph explains how a rain garden works. List the steps of the process in order."
+      },
+      {
+        "prompt": "Why does the writer include the science club's measurements? What do they add to the article?"
+      },
+      {
+        "prompt": "How does the last paragraph change the direction of the article? Why might the writer include it?"
+      },
+      {
+        "prompt": "Write a short objective summary of the article in three or four sentences."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Informational Reading Check: Rain Gardens"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-informational-reading-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "central-idea",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Central idea and summary"
+      },
+      {
+        "id": "vocabulary",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Word meaning from context"
+      },
+      {
+        "id": "structure",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analyzes structure"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Cites strong evidence"
+      }
+    ],
+    "title": "Informational reading"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

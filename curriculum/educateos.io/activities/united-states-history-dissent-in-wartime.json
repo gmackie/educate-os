@@ -1,0 +1,180 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "claimPrompt": "Wilson asked Americans to fight so that the world would be \"safe for democracy.\" Did the government's treatment of dissenters like Debs and Schenck betray that goal, or was it a reasonable wartime measure? Make a claim and support it with at least two of the sources.",
+    "contextualizationQuestions": [
+      "What laws did Congress pass in 1917 and 1918 to limit opposition to the war, and why?",
+      "Why might Americans in 1918 and 1919 have been especially fearful of socialists and radicals?"
+    ],
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "minimumEvidence": 2,
+    "overview": "Analyze a president's call to war, a socialist's antiwar speech and a Supreme Court opinion to decide how far free speech should reach in wartime.",
+    "sources": [
+      "wilson-war-message",
+      "debs-canton",
+      "schenck-opinion"
+    ],
+    "sourcingQuestions": [
+      "Who created each source, in what role, and for what audience?",
+      "How might Debs's position as a socialist leader, and Holmes's position as a justice deciding a case, shape what each says about the war?"
+    ],
+    "subject": "history-social-studies",
+    "template": "primary-source-analysis",
+    "title": "Dissent in Wartime"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.4.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.12.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.6",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/united-states-history-dissent-in-wartime",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Woodrow Wilson, address to a joint session of Congress, April 2, 1917. Public domain (U.S. government work).",
+      "body": "\"The world must be made safe for democracy. Its peace must be planted upon the tested foundations of political liberty.\"",
+      "id": "wilson-war-message",
+      "title": "Woodrow Wilson, War Message to Congress (1917), excerpt"
+    },
+    {
+      "attribution": "Eugene V. Debs, speech at Canton, Ohio, June 16, 1918. Public domain.",
+      "body": "\"The master class has always declared the wars; the subject class has always fought the battles.\"\n\nAbout the source: Debs was the Socialist Party's candidate for president four times between 1900 and 1912. For this speech he was convicted under the Espionage Act, as amended in 1918, and sentenced to ten years in prison. In 1920 he ran for president from his prison cell and received more than 900,000 votes. President Warren Harding commuted his sentence in 1921.",
+      "id": "debs-canton",
+      "title": "Eugene V. Debs, Speech at Canton, Ohio (1918), excerpt"
+    },
+    {
+      "attribution": "Schenck v. United States, 249 U.S. 47 (1919), opinion of the Court by Justice Oliver Wendell Holmes Jr., March 3, 1919. Public domain (U.S. government work).",
+      "body": "\"The most stringent protection of free speech would not protect a man in falsely shouting fire in a theatre and causing a panic.\"\n\n\"The question in every case is whether the words used are used in such circumstances and are of such a nature as to create a clear and present danger that they will bring about the substantive evils that Congress has a right to prevent.\"\n\nAbout the case: Charles Schenck, an official of the Socialist Party in Philadelphia, mailed leaflets urging men drafted into the army to oppose the draft. He was convicted under the Espionage Act, and the Supreme Court unanimously upheld his conviction. A week later the Court upheld Debs's conviction too.",
+      "id": "schenck-opinion",
+      "title": "Schenck v. United States (1919), Justice Holmes for the Court, excerpts"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Identifies who made each source, when, for whom and why, and explains how that shapes what the source shows and leaves out.",
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sourcing"
+      },
+      {
+        "description": "Places the sources in the events and conditions of their time with accurate, specific historical knowledge.",
+        "id": "context",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Contextualization"
+      },
+      {
+        "description": "Makes a defensible claim that answers the question and supports it with accurately quoted, well-explained evidence.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim and evidence"
+      },
+      {
+        "description": "Compares sources with one another or with other evidence, noting agreement, tension and what further sources would help.",
+        "id": "corroboration",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Corroboration"
+      }
+    ],
+    "title": "Source analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

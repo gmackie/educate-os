@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:d2188f4efe22cc7f46303c62d0505d8208113d666f73a5fe466e673734fbf24a",
+      "id": "educateos.io/mathematics-7-circles",
+      "version": "1.0.0"
+    }
+  },
+  "id": "circles",
+  "role": "assignment",
+  "title": "Circles: Circumference and Area"
+}

@@ -1,0 +1,163 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "9-12",
+    "minWords": 400,
+    "minimumCitations": 2,
+    "overview": "Write an argument about whether the Senate should have approved the Treaty of Versailles and American membership in the League of Nations.",
+    "prompt": "Should the Senate have ratified the Treaty of Versailles and brought the United States into the League of Nations in 1919? Argue your position using both readings. Explain what Article X would have required, address the strongest argument on the other side, and consider whether Wilson's own choices contributed to the outcome.",
+    "resources": [
+      "fourteen-points-xiv",
+      "league-debate"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Should America Have Joined the League?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.3.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/united-states-history-league-of-nations",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Woodrow Wilson, address to a joint session of Congress, January 8, 1918. Public domain (U.S. government work).",
+      "body": "\"A general association of nations must be formed under specific covenants for the purpose of affording mutual guarantees of political independence and territorial integrity to great and small states alike.\"",
+      "id": "fourteen-points-xiv",
+      "title": "Woodrow Wilson, The Fourteen Points (1918), Point XIV"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "The Treaty of Versailles needed the votes of two-thirds of the Senate. The Covenant of the League of Nations was part of the treaty, and its Article X committed members to respect and preserve the territory and independence of every member against outside aggression.\n\nSenators divided into three groups. A small group of \"irreconcilables\" opposed the treaty in any form, arguing that the League would drag the United States into foreign wars and that only Congress could declare war. A larger group of \"reservationists,\" led by Senator Henry Cabot Lodge of Massachusetts, would accept the treaty with reservations, the most important stating that the United States took on no obligation under Article X unless Congress agreed. Most Democrats supported the treaty as Wilson wrote it.\n\nWilson refused to accept Lodge's reservations. In September 1919, while touring the country to rally support, he collapsed, and soon after he suffered a severe stroke. He urged Democrats to vote against the treaty with the reservations attached. The Senate rejected the treaty in November 1919 and again in March 1920. The League met without the United States from 1920 until it was replaced by the United Nations after the Second World War.",
+      "id": "league-debate",
+      "title": "The Senate and the League of Nations, 1919-1920"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States a precise, defensible thesis that takes a position on the question and sets up a line of reasoning.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim"
+      },
+      {
+        "description": "Supports the claim with specific, accurate and sufficient evidence, cited from the sources where required.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Historical evidence"
+      },
+      {
+        "description": "Explains how the evidence supports the claim using causation, comparison, or change and continuity.",
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Historical reasoning"
+      },
+      {
+        "description": "Addresses a counterclaim or competing interpretation fairly and explains why the claim still holds.",
+        "id": "alternatives",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Weighs alternatives"
+      }
+    ],
+    "title": "Historical argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

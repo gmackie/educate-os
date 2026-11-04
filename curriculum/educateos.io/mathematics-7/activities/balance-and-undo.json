@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:51824ef2c74d2a8e689596914981d3225c6a794e33b31d5bd68fed96cb2990e6",
+      "id": "educateos.io/mathematics-7-balance-and-undo",
+      "version": "1.0.0"
+    }
+  },
+  "id": "balance-and-undo",
+  "role": "lesson",
+  "title": "Balance and Undo"
+}

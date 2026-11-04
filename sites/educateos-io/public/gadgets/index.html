@@ -33,6 +33,7 @@
       <a href="/#platform">Platform</a>
       <a href="/integrations/">Integrations</a>
       <a href="/gadgets/" aria-current="page">Gadgets</a>
+      <a href="/courses/">Courses</a>
       <a href="/security/">Security</a>
       <a href="/student-privacy/">Student privacy</a>
       <a href="/developers/">Developers</a>
@@ -47,6 +48,7 @@
           <a href="/integrations/">Integrations</a>
           <a href="/connectors/">Connectors</a>
           <a href="/gadgets/" aria-current="page">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
           <a href="/mcp/">MCP</a>
           <a href="/security/">Security</a>
           <a href="/student-privacy/">Student privacy</a>
@@ -72,14 +74,16 @@
       <h1 class="rise" style="--d:1">Ask for an app. Share it as a blueprint.</h1>
       <p class="lede rise" style="--d:2">In Cloudflare OS, a <b class="strong">gadget</b> is a small app the agent builds when you describe it, running in its own sandbox. A <b class="strong">blueprint</b> shares the gadget's code, so another teacher or school can make their own copy and connect it to their own classes. Here are gadgets a school could build today with connectors and MCP servers.</p>
       <nav class="filters rise" style="--d:3" aria-label="Gallery sections">
-        <a class="btn" href="#lms">On your LMS</a><a class="btn" href="#teaching">Teaching</a><a class="btn" href="#families">Families and school life</a><a class="btn" href="#cs">Clubs and CS</a><a class="btn" href="#blueprints">How blueprints work</a>
+        <a class="btn" href="#teacher-starters">Teacher starters</a><a class="btn" href="#lms">On your LMS</a><a class="btn" href="#teaching">Teaching</a><a class="btn" href="#families">Families and school life</a><a class="btn" href="#cs">Clubs and CS</a><a class="btn" href="#blueprints">How blueprints work</a>
       </nav>
       <div class="legend rise" style="--d:3">
         <span class="status avail">Available in Cloudflare OS</span><span class="status dev">In development</span><span class="status planned">Planned</span><span class="status byo">Your MCP server</span>
-        <span>These are examples, not shipped products. Each lists the connections it needs and their status today. "Your MCP server" means the district connects a server it chooses.</span>
+        <span>The teacher starters below are bundled blueprint implementations awaiting live production verification. The other cards are ideas, not shipped products. Each lists its connections and status. "Your MCP server" means the district connects a server it chooses.</span>
       </div>
     </div>
   </section>
+
+  <section class="tight band" id="teacher-starters"><div class="wrap"><div class="eyebrow">Teacher starter collection</div><h2>Three useful starting points. Your connections, your copy.</h2><p class="lede">Built as reusable blueprints, with read-only source access and preparation notes saved in each workspace. These screenshots use fictional data. Live provider and independent-install verification are still in progress.</p><div class="gallery"><article class="gcard"><a href="/assets/teacher-blueprints/teacher-week-ahead.png"><img src="/assets/teacher-blueprints/teacher-week-ahead.png" alt="Fictional Week Ahead example showing source cards and teacher preparation notes" width="1200" height="900" loading="lazy" style="display:block;width:100%;height:auto;border-radius:8px"></a><div class="gtop"><h3>Week Ahead</h3></div><div class="who">Teachers and school teams · <span class="status dev">In development</span></div><p>Start the week with a clear view of your teaching calendar and a preparation checklist.</p><div class="uses"><small>Connection and setup</small><div><b>Google Calendar</b></div><p>Choose a calendar, then refresh a seven-day window in its time zone. No events are changed.</p></div><p><a href="https://git.forgegraf.com/gmackie/educate-os/src/branch/main/packages/bundled-blueprints/blueprints/teacher-week-ahead">Blueprint source and setup ↗</a></p></article><article class="gcard"><a href="/assets/teacher-blueprints/teacher-research-kit.png"><img src="/assets/teacher-blueprints/teacher-research-kit.png" alt="Fictional Research Kit example showing source cards and teacher preparation notes" width="1200" height="900" loading="lazy" style="display:block;width:100%;height:auto;border-radius:8px"></a><div class="gtop"><h3>Research Kit</h3></div><div class="who">Teachers and school teams · <span class="status dev">In development</span></div><p>Find lesson sources, review their original pages and keep your own teaching notes beside them.</p><div class="uses"><small>Connection and setup</small><div><b>Web Search</b></div><p>Enable Web Search and ask the Workshop agent to attach WEB_SEARCH to this gadget. It requires this extra setup step.</p></div><p><a href="https://git.forgegraf.com/gmackie/educate-os/src/branch/main/packages/bundled-blueprints/blueprints/teacher-research-kit">Blueprint source and setup ↗</a></p></article><article class="gcard"><a href="/assets/teacher-blueprints/teacher-assignment-companion.png"><img src="/assets/teacher-blueprints/teacher-assignment-companion.png" alt="Fictional Assignment Companion example showing source cards and teacher preparation notes" width="1200" height="900" loading="lazy" style="display:block;width:100%;height:auto;border-radius:8px"></a><div class="gtop"><h3>Assignment Companion</h3></div><div class="who">Teachers and school teams · <span class="status dev">In development</span></div><p>Prepare for class with app-created coursework and a checklist you control.</p><div class="uses"><small>Connection and setup</small><div><b>Google Classroom</b></div><p>Connect a course you teach. Lists only coursework created through this Google connection; due dates are not exposed.</p></div><p><a href="https://git.forgegraf.com/gmackie/educate-os/src/branch/main/packages/bundled-blueprints/blueprints/teacher-assignment-companion">Blueprint source and setup ↗</a></p></article></div><p class="muted">On an installation that ships this collection, choose Week Ahead, Research Kit or Assignment Companion from Blueprints. Each recipient connects their own resources. Sharing a blueprint copies its code, not stored notes, credentials or source records. No AI model, external writes or active schedule is required.</p></div></section>
 
   <section class="tight band" id="lms">
     <div class="wrap">
@@ -170,6 +174,7 @@
           <li><a href="/integrations/">Integrations</a></li>
           <li><a href="/connectors/">Connectors</a></li>
           <li><a href="/gadgets/" aria-current="page">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
           <li><a href="/mcp/">MCP</a></li>
           <li><a href="/demo/">Demo</a></li>
         </ul>

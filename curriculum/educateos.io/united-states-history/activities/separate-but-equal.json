@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:2ae7d0d5ae8cafa87ac2b48f2d36c0f1676f4aab8a44e0d2280df3df211b501f",
+      "id": "educateos.io/united-states-history-separate-but-equal",
+      "version": "1.0.0"
+    }
+  },
+  "id": "separate-but-equal",
+  "role": "lesson",
+  "title": "Separate but Equal"
+}

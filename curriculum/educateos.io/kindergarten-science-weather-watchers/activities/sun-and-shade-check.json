@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:2231eb9c837374e61b67bbeab958168196b138b1b41885243931b745a752e3e9",
+      "id": "educateos.io/kindergarten-science-weather-watchers-sun-and-shade-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "sun-and-shade-check",
+  "role": "assessment",
+  "title": "Sun and Shade Check"
+}

@@ -1,0 +1,7 @@
+{
+  "body": "In Unit 2 you predicted traits with Punnett squares, but we never asked what an allele actually is. This unit answers that question.\n\nA gene is a stretch of DNA that holds the instructions for one protein. DNA is a double helix: two strands twisted around each other, held together by pairs of bases. A always pairs with T, and G always pairs with C. Because each strand fits the other, a cell can copy its DNA by unzipping it and building a new partner for each strand.\n\nProteins do most of the work in your body: enzymes, hemoglobin, muscle fibers, antibodies. Making one takes two steps:\n1. Transcription (in the nucleus): a gene's DNA is copied into a messenger RNA (mRNA).\n2. Translation (at a ribosome, the organelle from Unit 1): the ribosome reads the mRNA three bases at a time. Each three-base codon calls for one amino acid, and the chain of amino acids folds into a protein.\n\nDNA -> RNA -> protein -> trait.\n\nDifferent alleles are different versions of a gene's base sequence. A change in the sequence, called a mutation, can change the protein, and that can change a trait. You will extract DNA from strawberries, decode genes into proteins, and explain how one changed base causes sickle cell disease.",
+  "id": "u4-overview",
+  "purpose": "context",
+  "title": "From Code to Character",
+  "visibility": "students"
+}

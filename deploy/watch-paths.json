@@ -65,6 +65,7 @@
     "scripts/bin-entry.ts",
     "scripts/build-gatekeeper-configurator.ts",
     "scripts/clean-error-reporting-artifacts.ts",
+    "scripts/curriculum/lib.ts",
     "scripts/generate-worker-configs.ts",
     "scripts/kill-process-tree.ts",
     "scripts/package.json",
@@ -540,6 +541,7 @@
   "educateos-site": [
     ".npmrc",
     "cloudflare.config.ts",
+    "curriculum/",
     "package.json",
     "packages/bundled-blueprints/",
     "packages/configurator-ui/",
@@ -603,6 +605,7 @@
     "scripts/bin-entry.ts",
     "scripts/build-gatekeeper-configurator.ts",
     "scripts/clean-error-reporting-artifacts.ts",
+    "scripts/curriculum/lib.ts",
     "scripts/generate-worker-configs.ts",
     "scripts/kill-process-tree.ts",
     "scripts/package.json",

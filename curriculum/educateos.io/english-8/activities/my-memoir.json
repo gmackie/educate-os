@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:906a7b1be8a3fa9f72e31d26b74114437cd47d609ca32b95fbbbefa7119c435c",
+      "id": "educateos.io/english-8-my-memoir",
+      "version": "1.0.0"
+    }
+  },
+  "id": "my-memoir",
+  "role": "assignment",
+  "title": "My Memoir: A Moment That Changed Me"
+}

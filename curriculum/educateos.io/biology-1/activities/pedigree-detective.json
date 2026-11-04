@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:424d83aa1940f2a5429890ff199c92696f5a03d4b58a005b98710745f69be742",
+      "id": "educateos.io/biology-1-pedigree-detective",
+      "version": "1.0.0"
+    }
+  },
+  "id": "pedigree-detective",
+  "role": "assignment",
+  "title": "Pedigree Detective"
+}

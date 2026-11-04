@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b95d42dc1d52cbc904d9200361ed547dbf3eae25f43e7c3ffa7acd2de20efe32",
+      "id": "educateos.io/grade-4-english-language-arts-two-accounts",
+      "version": "1.0.0"
+    }
+  },
+  "id": "two-accounts",
+  "role": "assignment",
+  "title": "Two Accounts of the Monarch Journey"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:5a6fdc90b891fea74e3f9ff5380b15cf9342a0ac5e4bc8aacbd81b702fc8ece5",
+      "id": "educateos.io/grade-5-science-matter-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "matter-check",
+  "role": "assessment",
+  "title": "Matter Check: The Sealed Bag Test"
+}

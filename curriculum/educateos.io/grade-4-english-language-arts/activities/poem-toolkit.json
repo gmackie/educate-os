@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:368933cdbb65ed17394922848c98b274712f5ed639e2f307ef4f576b2915f079",
+      "id": "educateos.io/grade-4-english-language-arts-poem-toolkit",
+      "version": "1.0.0"
+    }
+  },
+  "id": "poem-toolkit",
+  "role": "lesson",
+  "title": "Poet's Toolkit: \"Thunder Visits\""
+}

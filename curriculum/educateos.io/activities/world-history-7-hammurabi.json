@@ -1,0 +1,143 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "claimPrompt": "What do these laws reveal about the values of Babylonian society? Support your claim with at least two laws.",
+    "contextualizationQuestions": [
+      "What was life like in Babylon at the time?",
+      "Who in Babylonian society do the laws seem to protect, and who do they treat differently?"
+    ],
+    "due": {
+      "days": 9,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "minimumEvidence": 2,
+    "overview": "Analyze excerpts from Hammurabi's laws as a historian would.",
+    "resources": [
+      "hammurabi-laws"
+    ],
+    "sources": [
+      "hammurabi-laws"
+    ],
+    "sourcingQuestions": [
+      "Who created these laws, and when?",
+      "Why might a king have the laws carved on a stone pillar in public?"
+    ],
+    "subject": "history-social-studies",
+    "template": "primary-source-analysis",
+    "title": "What Do Hammurabi's Laws Tell Us?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.3.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-hammurabi",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Excerpts adapted from L. W. King's English translation of the Code of Hammurabi (1910), which is in the public domain. The introduction was written for EducateOS.",
+      "body": "These laws were carved on a stone pillar (a stele) in Babylon around 1750 BCE, during the reign of King Hammurabi. The prologue says the king set them up \"so that the strong should not harm the weak.\"\n\nLaw 53: If anyone is too lazy to keep his dam in good repair, and the dam breaks and floods the fields, he shall pay for the grain he has caused to be ruined.\n\nLaw 196: If a man puts out the eye of another free man, his eye shall be put out.\n\nLaw 198: If he puts out the eye of a commoner, or breaks the bone of a commoner, he shall pay one mina of silver.\n\nLaw 229: If a builder builds a house for someone and does not build it properly, and the house falls and kills its owner, the builder shall be put to death.",
+      "id": "hammurabi-laws",
+      "title": "Laws from the Reign of Hammurabi (excerpts, adapted)"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sourcing"
+      },
+      {
+        "id": "context",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Context"
+      },
+      {
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim and evidence"
+      }
+    ],
+    "title": "Source analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

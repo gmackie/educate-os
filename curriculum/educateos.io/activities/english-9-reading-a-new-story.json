@@ -1,0 +1,164 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 2,
+      "kind": "after-install"
+    },
+    "genre": "literary-analysis",
+    "gradeBand": "9-12",
+    "minWords": 300,
+    "minimumCitations": 2,
+    "overview": "Read a very short story you have not seen before and analyze, in one class period, how its main character changes.",
+    "prompt": "Read \"Night Shift.\" In a focused analysis, explain how Dani changes over the course of the story and what theme her change develops. Then explain how one choice the author made about the story's structure (for example, the time stamps, or the way the story ends) helps show that change. Quote at least two passages and explain each one.",
+    "resources": [
+      "the-night-shift"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Reading a New Story"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-reading-a-new-story",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS. An original very short story.",
+      "body": "At 11:40 p.m. the laundromat on Fifth Street is empty except for Dani and the sound of the dryers. She is sixteen, and it is her first night closing alone.\n\nAt 11:42 she counts the drawer. Eighty-three dollars in quarters and bills. She counts it again, because her aunt, who owns the place, counts everything twice.\n\nAt 11:47 a man comes in with a garbage bag of clothes. He is wearing a uniform from the hospital across the street, and his eyes look like he has not closed them in a day. \"I know you close at midnight,\" he says. \"I'm sorry. It's the only clean thing I have for tomorrow.\"\n\nThe rule is posted on the door: last wash at 11:00. Her aunt wrote it. Her aunt says rules are what keep a small business from becoming a charity.\n\nAt 11:48 Dani says, \"Machine six is the fastest.\"\n\nAt 11:49 she texts her aunt: \"Running late. All fine.\" She deletes it. She types it again. She sends it.\n\nAt 12:15 a.m. the man is asleep in a plastic chair, his head against the window. Dani moves his clothes to a dryer without waking him. She finds, in a shirt pocket, a folded drawing in crayon: a stick figure in a hospital uniform, and the words GOOD JOB DAD.\n\nShe puts it back exactly as she found it.\n\nAt 12:52 a.m. he wakes, embarrassed, and tries to pay her extra. She takes only the price of the wash.\n\nAt 1:05 a.m. she locks the door. Her phone shows one message from her aunt, sent an hour ago: \"Everything ok?\"\n\nAt 1:06 a.m. Dani writes back: \"Yes. Tell you tomorrow. I think I broke a rule the right way.\"\n\nShe walks home under the streetlights, counting nothing.",
+      "id": "the-night-shift",
+      "title": "Night Shift"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Explains where Dani begins, the moment she changes, and where she ends.",
+        "id": "change",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analysis of change"
+      },
+      {
+        "description": "States a theme as a sentence that follows from the change.",
+        "id": "theme",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Theme"
+      },
+      {
+        "description": "Explains how a structural choice creates an effect that reveals the change.",
+        "id": "structure",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Structure"
+      },
+      {
+        "description": "Quotes at least two passages accurately and explains each.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Textual evidence"
+      }
+    ],
+    "title": "On-demand literary analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

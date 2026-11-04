@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:2e1bcab8d0869ab66a82a7af792263847d6ca199e38913a1d3d527bbac5a95b1",
+      "id": "educateos.io/grade-4-english-language-arts-poetry-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "poetry-check",
+  "role": "assessment",
+  "title": "Poetry Check: \"The Old Oak in Winter\""
+}

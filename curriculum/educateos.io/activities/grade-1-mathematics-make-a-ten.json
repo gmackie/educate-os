@@ -1,0 +1,48 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to how making a ten helps you add. Then try it.",
+    "passage": "Ten is a friendly number. To add 9 + 4, take 1 from the 4 and give it to the 9. Now 9 becomes 10, and 4 becomes 3. 10 + 3 = 13. So 9 + 4 = 13. A ten frame helps: fill the ten first, then see how many more.",
+    "questions": [
+      {
+        "prompt": "Make a ten to solve 9 + 6."
+      },
+      {
+        "prompt": "Make a ten to solve 8 + 4."
+      },
+      {
+        "prompt": "Make a ten to solve 7 + 5."
+      },
+      {
+        "answerBy": "speaking",
+        "prompt": "Tell a friend how you made a ten for 8 + 4."
+      }
+    ],
+    "sentenceFrames": [
+      "___ + ___ makes 10, and ___ more is ___."
+    ],
+    "subject": "mathematics",
+    "template": "read-and-respond",
+    "title": "Make a Ten"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.C.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.B.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-make-a-ten",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

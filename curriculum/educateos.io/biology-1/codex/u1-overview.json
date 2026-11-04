@@ -1,0 +1,7 @@
+{
+  "body": "How do things get into a cell?\n\nEvery living thing is made of cells, and every cell is wrapped in a cell membrane. The membrane is selectively permeable: it lets some substances through and keeps others out. That one property keeps you alive. Your cells take in oxygen and glucose, push out carbon dioxide and wastes, and hold on to the proteins and DNA they need.\n\nThree ways across the membrane:\n- Diffusion: particles spread from where they are more concentrated to where they are less concentrated. No energy is needed.\n- Osmosis: the diffusion of water across a membrane. Water moves toward the side with more dissolved solute.\n- Active transport: the cell spends energy (ATP) to pump particles against their concentration gradient, from low to high.\n\nKey words: organelle, nucleus, mitochondrion, chloroplast, ribosome, cell wall, solute, concentration gradient, hypertonic, hypotonic, isotonic.\n\nIn this unit you will look at real cells under a microscope, then use a shell-less egg as a model cell to watch osmosis happen. By the end you should be able to predict what happens to any cell placed in any solution, and explain why.",
+  "id": "u1-overview",
+  "purpose": "context",
+  "title": "Crossing the Membrane",
+  "visibility": "students"
+}

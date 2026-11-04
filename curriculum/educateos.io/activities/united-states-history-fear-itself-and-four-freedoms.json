@@ -1,0 +1,173 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "claimPrompt": "How did Roosevelt redefine freedom and the federal government's responsibilities between 1933 and 1941? Support your claim with at least two quotations, and explain one way a critic of the New Deal might have answered him.",
+    "contextualizationQuestions": [
+      "What was happening to American banks and workers in March 1933?",
+      "What was happening in Europe and Asia in January 1941, and why did Roosevelt speak of freedoms \"everywhere in the world\"?"
+    ],
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "minimumEvidence": 2,
+    "overview": "Analyze two of Franklin Roosevelt's most famous speeches to explain how he redefined freedom and the government's responsibilities.",
+    "sources": [
+      "fdr-first-inaugural",
+      "four-freedoms"
+    ],
+    "sourcingQuestions": [
+      "What did Roosevelt want each audience to feel and to do, in 1933 and in 1941?",
+      "Which of the Four Freedoms appear in the Bill of Rights, and which do not? Why might Roosevelt have added the others?"
+    ],
+    "subject": "history-social-studies",
+    "template": "primary-source-analysis",
+    "title": "Fear Itself and Four Freedoms"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.6.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/united-states-history-fear-itself-and-four-freedoms",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Franklin D. Roosevelt, inaugural address, March 4, 1933. Public domain (U.S. government work).",
+      "body": "\"So, first of all, let me assert my firm belief that the only thing we have to fear is fear itself—nameless, unreasoning, unjustified terror which paralyzes needed efforts to convert retreat into advance.\"\n\n\"This Nation asks for action, and action now.\"\n\n\"Our greatest primary task is to put people to work.\"\n\nContext: When Roosevelt spoke, about one worker in four was unemployed, and banks in many states had closed their doors to stop panicked depositors from withdrawing their money.",
+      "id": "fdr-first-inaugural",
+      "title": "Franklin D. Roosevelt, First Inaugural Address (1933), excerpts"
+    },
+    {
+      "attribution": "Franklin D. Roosevelt, annual message to Congress, January 6, 1941. Public domain (U.S. government work).",
+      "body": "\"In the future days, which we seek to make secure, we look forward to a world founded upon four essential human freedoms.\nThe first is freedom of speech and expression—everywhere in the world.\nThe second is freedom of every person to worship God in his own way—everywhere in the world.\nThe third is freedom from want—which, translated into world terms, means economic understandings which will secure to every nation a healthy peacetime life for its inhabitants—everywhere in the world.\nThe fourth is freedom from fear—which, translated into world terms, means a world-wide reduction of armaments to such a point and in such a thorough fashion that no nation will be in a position to commit an act of physical aggression against any neighbor—anywhere in the world.\"\n\nContext: Roosevelt spoke eleven months before the attack on Pearl Harbor, when the United States was not yet at war but Britain was fighting Germany almost alone.",
+      "id": "four-freedoms",
+      "title": "Franklin D. Roosevelt, Annual Message to Congress (The Four Freedoms, 1941), excerpt"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Identifies who made each source, when, for whom and why, and explains how that shapes what the source shows and leaves out.",
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sourcing"
+      },
+      {
+        "description": "Places the sources in the events and conditions of their time with accurate, specific historical knowledge.",
+        "id": "context",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Contextualization"
+      },
+      {
+        "description": "Makes a defensible claim that answers the question and supports it with accurately quoted, well-explained evidence.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim and evidence"
+      },
+      {
+        "description": "Compares sources with one another or with other evidence, noting agreement, tension and what further sources would help.",
+        "id": "corroboration",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Corroboration"
+      }
+    ],
+    "title": "Source analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

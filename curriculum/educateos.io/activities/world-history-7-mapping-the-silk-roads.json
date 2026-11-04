@@ -1,0 +1,46 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "genre": "informative",
+    "gradeBand": "7",
+    "minWords": 120,
+    "minimumCitations": 1,
+    "overview": "Follow a bolt of silk from Chang'an to the Mediterranean and explain how geography shaped its journey.",
+    "prompt": "Read \"Routes of the Silk Roads\" and trace one route on your map. Then write a short travel log for a bolt of silk leaving Chang'an. Name at least three places it passes through, describe one natural obstacle it meets, and explain why the silk was more expensive when it reached the Mediterranean than when it left China.",
+    "resources": [
+      "routes-of-the-silk-roads"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Mapping the Silk Roads"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.2.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.7.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-mapping-the-silk-roads",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "In about 138 BCE, the Han emperor Wudi sent an official named Zhang Qian west to look for allies against the nomadic Xiongnu. Zhang Qian was captured and held for about ten years, but he finally returned with reports of rich kingdoms in Central Asia and of the strong horses of the Ferghana Valley. His journeys helped open regular contact between China and the lands to its west.\n\nThe Silk Roads were not one road. They were a web of land routes, and later sea routes, that linked China with Central Asia, India, Persia, Arabia and the Mediterranean. A typical land route ran west from the Han capital Chang'an, through the Gansu Corridor to the oasis town of Dunhuang, then split to pass north or south of the Taklamakan Desert before meeting again at Kashgar, crossing the Pamir Mountains, and continuing through cities such as Samarkand and Merv toward Persia and the Mediterranean coast.\n\nVery few people traveled the whole way. Goods usually moved in relays: a merchant carried them from one market town to the next and sold them to another merchant. Each sale raised the price. Caravans of two-humped Bactrian camels crossed the deserts, resting at walled inns called caravanserais and at oasis towns, which grew rich serving travelers.\n\nSilk traveled west. Horses, glassware, silver, wool and grapes traveled east. So did people, and the beliefs, languages, stories and skills they carried with them.",
+      "id": "routes-of-the-silk-roads",
+      "title": "Routes of the Silk Roads"
+    }
+  ],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

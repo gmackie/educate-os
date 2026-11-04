@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:ff404fd3fc722ec9a376ef44975f6657b625eb735a3ac87a513d0d9751f269ff",
+      "id": "educateos.io/grade-1-mathematics-what-makes-a-shape",
+      "version": "1.0.0"
+    }
+  },
+  "id": "what-makes-a-shape",
+  "role": "lesson",
+  "title": "What Makes a Shape?"
+}

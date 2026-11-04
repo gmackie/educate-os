@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:fedcf3d0cec8c28650d44488b2768b3c7d96fa096d4eecb228c2e2520976d96a",
+      "id": "educateos.io/grade-1-mathematics-sams-straws",
+      "version": "1.0.0"
+    }
+  },
+  "id": "sams-straws",
+  "role": "lesson",
+  "title": "Sam's Straws"
+}

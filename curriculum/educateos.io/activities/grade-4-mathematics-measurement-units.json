@@ -1,0 +1,47 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "4",
+    "overview": "Use the size of measurement units to convert bigger units into smaller ones.",
+    "problems": [
+      {
+        "prompt": "1 foot = 12 inches. Make a table that shows how many inches are in 1, 2, 3, 4 and 5 feet."
+      },
+      {
+        "prompt": "1 kilogram = 1,000 grams. How many grams are in 3 kilograms?"
+      },
+      {
+        "prompt": "1 meter = 100 centimeters. How many centimeters are in 4 meters?"
+      },
+      {
+        "prompt": "1 hour = 60 minutes. How many minutes are in 3 hours?"
+      },
+      {
+        "prompt": "1 liter = 1,000 milliliters. Which is more, 2 liters or 1,800 milliliters? Explain."
+      },
+      {
+        "prompt": "1 yard = 3 feet. How many feet are in 7 yards?"
+      },
+      {
+        "prompt": "Choose the best unit for each: the mass of a paper clip (grams or kilograms), the length of a classroom (centimeters or meters), the water in a bathtub (milliliters or liters)."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Measurement Units and Conversions"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-measurement-units",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

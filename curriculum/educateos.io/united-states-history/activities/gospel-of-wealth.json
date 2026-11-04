@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:a513959e8493806c91daddec4121a744c0851fea5ace31f33c207938c7881da0",
+      "id": "educateos.io/united-states-history-gospel-of-wealth",
+      "version": "1.0.0"
+    }
+  },
+  "id": "gospel-of-wealth",
+  "role": "assignment",
+  "title": "Gospel of Wealth or Stolen Fruits?"
+}

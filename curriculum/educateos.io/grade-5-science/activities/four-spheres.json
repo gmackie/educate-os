@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:6a99504d6aaf7dc89840ef268b0ef5afa3a3da6c380c4f52a52612249f5a65dd",
+      "id": "educateos.io/grade-5-science-four-spheres",
+      "version": "1.0.0"
+    }
+  },
+  "id": "four-spheres",
+  "role": "lesson",
+  "title": "Four Spheres That Work Together"
+}

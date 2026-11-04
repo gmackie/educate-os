@@ -1,0 +1,129 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Measure, compare, tell time and read a chart. Show how you know.",
+    "problems": [
+      {
+        "prompt": "A shoe is 8 cubes long. A sock is 6 cubes long. Which is longer?"
+      },
+      {
+        "prompt": "A rope is longer than a stick. The stick is longer than a straw. Is the rope longer or shorter than the straw?"
+      },
+      {
+        "prompt": "A pencil is 5 cubes long. Draw the pencil with 5 cubes under it, with no gaps and no overlaps."
+      },
+      {
+        "prompt": "The short hand points to 10 and the long hand points to 12. What time is it?"
+      },
+      {
+        "prompt": "Draw a clock that shows 2:30."
+      },
+      {
+        "prompt": "Our class voted for a favorite weather. Sunny: 9 votes. Rainy: 4 votes. Snowy: 7 votes. Which weather got the most votes?"
+      },
+      {
+        "prompt": "Use the same votes. How many more votes did sunny get than snowy? How many children voted in all?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Measuring and Time Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.C.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-measuring-and-time-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "length",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can measure and compare lengths"
+      },
+      {
+        "id": "time",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can tell time to the hour and half hour"
+      },
+      {
+        "id": "chart",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can read a chart"
+      }
+    ],
+    "title": "Measuring and time"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

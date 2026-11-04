@@ -1,0 +1,97 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to one week of our weather chart. Count the days and tell which weather came the most.",
+    "passage": "Here is one week of our weather chart. Monday was sunny ☀️. Tuesday was sunny ☀️. Wednesday was rainy 🌧️. Thursday was cloudy ☁️. Friday was sunny ☀️.",
+    "questions": [
+      {
+        "prompt": "How many sunny days were there? Count them."
+      },
+      {
+        "prompt": "How many rainy days were there?"
+      },
+      {
+        "prompt": "Which weather did we have the most?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw the weather on Wednesday."
+      }
+    ],
+    "sentenceFrames": [
+      "There were ___ sunny days.",
+      "We had the most ___ days."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Our Weather Week"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.MD.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.CC.B.5",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-weather-week",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "count",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I counted the days"
+      },
+      {
+        "id": "most",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told which weather came the most"
+      }
+    ],
+    "title": "Our weather week"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}
