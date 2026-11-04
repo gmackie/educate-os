@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:d24ba008232bc4711a879a9ab17619ed658cb19a9b17347acd930c94b2fb2a2d",
+      "id": "educateos.io/grade-5-science-willow-pond-bass",
+      "version": "1.0.0"
+    }
+  },
+  "id": "willow-pond-bass",
+  "role": "assignment",
+  "title": "Should Willow Pond Get Bass?"
+}

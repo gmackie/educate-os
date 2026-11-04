@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b2eb184af9931f0b73f49a3f1841547ce234788a6c45d78489bec52125892e72",
+      "id": "educateos.io/grade-5-science-erosion-on-a-hill",
+      "version": "1.0.0"
+    }
+  },
+  "id": "erosion-on-a-hill",
+  "role": "assignment",
+  "title": "Erosion on a Hill"
+}

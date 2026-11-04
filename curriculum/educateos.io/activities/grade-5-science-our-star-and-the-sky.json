@@ -1,0 +1,59 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "5",
+    "overview": "Read about the sun, Earth's motion and gravity, then answer the questions.",
+    "passage": "Our Star and the Night Sky\n\nOn a clear night you can see thousands of stars. In the daytime you can see only one: the sun. The sun is a star, but it is not the biggest or the brightest star in space. It looks brightest to us because it is so close. The sun is about 150 million kilometers away. The next closest star is so far away that its light takes more than four years to reach us.\n\nEvery day the sun seems to rise in the east, cross the sky and set in the west. But the sun is not moving across our sky. Earth is spinning. It turns once every 24 hours, carrying us from the sunny side into the dark side and back again. That is what makes day and night.\n\nAs Earth turns, the sun's position in our sky changes, and so do shadows. In the early morning the sun is low, and shadows are long and point west. Around noon the sun is highest, and shadows are shortest. In the late afternoon, shadows grow long again and point east.\n\nEarth also travels in a path, or orbit, around the sun. One trip takes a year. At night, our side of Earth faces away from the sun, out into space. As Earth moves along its orbit, the night side faces different parts of space. That is why some groups of stars, like Orion, are easy to see on winter evenings but cannot be seen on summer evenings.\n\nOne more force shapes life on Earth: gravity. Earth's gravity pulls everything toward the center of the planet. That means \"down\" is toward Earth's center, whether you live in Canada, Brazil or Australia.",
+    "questions": [
+      {
+        "prompt": "Why does the sun look brighter than the other stars we see?"
+      },
+      {
+        "prompt": "What causes day and night? Quote the text."
+      },
+      {
+        "prompt": "Why are shadows long in the early morning and short around noon?"
+      },
+      {
+        "prompt": "Why can we see Orion on winter evenings but not on summer evenings?"
+      },
+      {
+        "prompt": "A child in Australia drops a ball. Which way does it fall? Explain using the text."
+      },
+      {
+        "prompt": "Earth turns once every 24 hours. How many minutes is that? Show your work."
+      }
+    ],
+    "sentenceFrames": [
+      "The sun looks brightest because ___.",
+      "Day and night happen because ___.",
+      "Shadows are shortest when ___.",
+      "We see different stars because ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Our Star and the Night Sky"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.5.MD.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-our-star-and-the-sky",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}
