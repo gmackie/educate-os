@@ -70,7 +70,7 @@ export async function preflight(
       if (isCredentialFailure(error)) {
         into.push(error.code === "unauthenticated"
           ? { code: "credential.rejected", message: `Cloudflare rejected the credential while ${what}.`, operatorAction: "Re-authorize the installer or supply a valid API token." }
-          : { code: "permission.missing", message: `The credential may not ${what}.`, operatorAction: `Grant the token the "${scope}" permission.` });
+          : { code: "permission.missing", message: `The credential lacks permission for ${what}.`, operatorAction: `Grant the token the "${scope}" permission.` });
       } else {
         into.push({ code: "cloudflare.unavailable", message: `Could not finish ${what}: ${error instanceof Error ? error.message : "unknown error"}.` });
       }
