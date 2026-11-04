@@ -1,0 +1,107 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Find 10 more and 10 less, and add and subtract tens.",
+    "problems": [
+      {
+        "prompt": "What is 10 more than 35?"
+      },
+      {
+        "prompt": "What is 10 less than 72?"
+      },
+      {
+        "prompt": "What is 10 more than 90?"
+      },
+      {
+        "prompt": "A jar has 54 marbles. 10 marbles are taken out. How many marbles are in the jar now?"
+      },
+      {
+        "prompt": "Add 40 + 30. Think: 4 tens and 3 tens."
+      },
+      {
+        "prompt": "Subtract 60 - 20."
+      },
+      {
+        "prompt": "Add 24 + 5."
+      },
+      {
+        "prompt": "Look at 63, 73, 83. What changes each time? What stays the same?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Jump by Tens"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.NBT.C.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.NBT.C.4",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.NBT.C.6",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-jump-by-tens",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "answer",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I found 10 more, 10 less and added tens"
+      },
+      {
+        "id": "explain",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told what changed and why"
+      }
+    ],
+    "title": "Jump by tens"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

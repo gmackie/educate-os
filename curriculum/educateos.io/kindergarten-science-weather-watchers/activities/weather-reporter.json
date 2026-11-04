@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:ea0bf236ba860df348cd1f09a988a8a5d9d56d7ab19c19da1d86cd2ef26b8523",
+      "id": "educateos.io/kindergarten-science-weather-watchers-weather-reporter",
+      "version": "1.0.0"
+    }
+  },
+  "id": "weather-reporter",
+  "role": "assignment",
+  "title": "Weather Reporter"
+}

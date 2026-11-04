@@ -1,0 +1,99 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to what our class saw on a wind walk. Count each group and compare.",
+    "passage": "On our wind walk, we counted the things the wind moved. We saw 5 leaves blowing 🍂. We saw 2 flags waving. We saw 1 kite flying 🪁.",
+    "questions": [
+      {
+        "prompt": "How many leaves did we see blowing?"
+      },
+      {
+        "prompt": "How many flags did we see waving?"
+      },
+      {
+        "prompt": "Which group had the most?"
+      },
+      {
+        "prompt": "Which group had the fewest?"
+      },
+      {
+        "prompt": "Count them all. How many things did the wind move?"
+      }
+    ],
+    "sentenceFrames": [
+      "We saw ___ leaves.",
+      "The most was ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Wind Walk Count"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.MD.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.K.CC.B.5",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-wind-walk-count",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "count",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I counted each group"
+      },
+      {
+        "id": "compare",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told which group had the most"
+      }
+    ],
+    "title": "Wind walk count"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

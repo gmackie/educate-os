@@ -63,6 +63,8 @@ export const ALIGNABLE_ITEM_TYPES: ReadonlySet<string> = new Set(["Standard", "C
  */
 export const SHOWCASE_ORIGINS: Readonly<Record<string, string>> = {
   "educateos.io/grade-1-reading-foundations": "off_nf-g1read-fall-r7",
+  "educateos.io/kindergarten-science-weather-watchers": "off_nf-ksci-fall-r4",
+  "educateos.io/grade-1-mathematics": "off_nf-g1math-fall-r7",
   "educateos.io/mathematics-7": "off_nf-math7-fall-p1",
   "educateos.io/english-8": "off_nf-eng8-fall-p2",
   "educateos.io/world-history-7": "off_nf-whist7-fall-p4",

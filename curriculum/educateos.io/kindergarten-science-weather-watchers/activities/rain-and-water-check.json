@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:baec45a1b327e785bae5ee15d7623375acfc6e9b47652054703038614194c105",
+      "id": "educateos.io/kindergarten-science-weather-watchers-rain-and-water-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "rain-and-water-check",
+  "role": "assessment",
+  "title": "Rain and Water Check"
+}

@@ -1,0 +1,50 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to how to measure with paper clips. Then measure something yourself.",
+    "passage": "To measure a pencil, line up paper clips from one end of the pencil to the other. Start right at the end. Put each paper clip right next to the last one, with no gaps and no overlaps. Then count the paper clips. If you count 6 paper clips, the pencil is 6 paper clips long.",
+    "questions": [
+      {
+        "answerBy": "speaking",
+        "prompt": "Where do you start when you measure?"
+      },
+      {
+        "answerBy": "speaking",
+        "prompt": "Why should there be no gaps between the paper clips?"
+      },
+      {
+        "prompt": "A crayon is 4 paper clips long. A marker is 6 paper clips long. Which is longer?"
+      },
+      {
+        "prompt": "Measure your shoe with cubes. How many cubes long is it?"
+      }
+    ],
+    "sentenceFrames": [
+      "It is ___ cubes long.",
+      "The ___ is longer."
+    ],
+    "subject": "mathematics",
+    "template": "read-and-respond",
+    "title": "How Long Is It?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-how-long-is-it",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

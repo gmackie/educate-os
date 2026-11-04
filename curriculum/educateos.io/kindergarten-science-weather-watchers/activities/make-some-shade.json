@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:19b8f039bd6fcb77c03e62f39c2a049027b6e65d527b67624378bf6b4a464396",
+      "id": "educateos.io/kindergarten-science-weather-watchers-make-some-shade",
+      "version": "1.0.0"
+    }
+  },
+  "id": "make-some-shade",
+  "role": "assignment",
+  "title": "Make Some Shade"
+}

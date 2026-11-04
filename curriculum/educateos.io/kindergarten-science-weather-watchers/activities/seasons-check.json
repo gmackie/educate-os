@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:96d5be20d5e4a68ec32df204ad43446e3da490f1c95497972c53d3799278dc85",
+      "id": "educateos.io/kindergarten-science-weather-watchers-seasons-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "seasons-check",
+  "role": "assessment",
+  "title": "Seasons Check"
+}

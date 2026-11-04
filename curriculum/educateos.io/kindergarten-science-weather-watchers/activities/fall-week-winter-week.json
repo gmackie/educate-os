@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:02df1c139bba5677178812f15aa917e9c92943a797fc3dd103e729bc78c50520",
+      "id": "educateos.io/kindergarten-science-weather-watchers-fall-week-winter-week",
+      "version": "1.0.0"
+    }
+  },
+  "id": "fall-week-winter-week",
+  "role": "assignment",
+  "title": "Fall Week, Winter Week"
+}

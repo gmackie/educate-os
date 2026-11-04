@@ -1,0 +1,79 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "drawPrompt": "Draw your story. Show how many there are at the start, and how many join or go away.",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "lookPrompt": "A story problem is a little math story. Think of things that can join or go away, like snacks, toys or birds.",
+    "overview": "Draw your own story problem about adding or taking away. Then tell it and solve it.",
+    "sentenceFrames": [
+      "I had ___. Then ___.",
+      "My number sentence is ___."
+    ],
+    "subject": "mathematics",
+    "tellAboutIt": true,
+    "template": "picture-response",
+    "title": "Make Your Own Story Problem"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-make-a-story-problem",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "story",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told a story with numbers"
+      },
+      {
+        "id": "solve",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I solved my story with a number sentence"
+      }
+    ],
+    "title": "My story problem"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

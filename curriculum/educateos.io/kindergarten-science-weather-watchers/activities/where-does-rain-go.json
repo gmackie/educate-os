@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:2cf7a40c85ee66a6f841b73eea933cdf2a802cd10c84ea4fb4758bdd6fe84b5c",
+      "id": "educateos.io/kindergarten-science-weather-watchers-where-does-rain-go",
+      "version": "1.0.0"
+    }
+  },
+  "id": "where-does-rain-go",
+  "role": "lesson",
+  "title": "Where Does Rain Go?"
+}

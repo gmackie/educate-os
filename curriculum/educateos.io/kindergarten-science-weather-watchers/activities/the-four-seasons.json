@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:ea4d75f870b2c80ef7a6fa9df94137b7fe6a4a5b0687dc34bd5af258196cecbe",
+      "id": "educateos.io/kindergarten-science-weather-watchers-the-four-seasons",
+      "version": "1.0.0"
+    }
+  },
+  "id": "the-four-seasons",
+  "role": "lesson",
+  "title": "The Four Seasons"
+}
