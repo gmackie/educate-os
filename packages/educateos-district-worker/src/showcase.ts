@@ -66,6 +66,7 @@ import {
   type ShowcaseResource,
 } from "@educateos/fixtures";
 import { installSampleCourses, loadSampleCourseBundles, SAMPLE_COURSE_IDS, type SampleCoursesSummary } from "@educateos/harness/sample-courses";
+import { schoolDayDue } from "@educateos/harness/school-day";
 import { seedShowcase, type ShowcaseSummary } from "@educateos/harness/showcase";
 import { createDirectoryPrincipalResolver } from "@educateos/identity";
 import { GuardianRelationships } from "@educateos/policy";
@@ -454,6 +455,7 @@ export function startDistrictShowcase(options: DistrictShowcaseOptions): Distric
       origins: content.courses,
       publish: true,
       maxCourses: 1,
+      dueAt: schoolDayDue(new Date(), snapshot.district.timeZone),
     });
     return { dryRun: false as const, ...summary };
   }
@@ -514,6 +516,8 @@ export function startDistrictShowcase(options: DistrictShowcaseOptions): Distric
       adminId: caller.principal.principalId,
       actAs: actAs(origin),
       resourceUrl: readingUrl,
+      // Due on a school day at 3:30 PM in the district's own time zone, not at the moment of seeding.
+      dueAt: schoolDayDue(new Date(), next.district.timeZone),
     });
     return { dryRun: false, directory: added, bands, guardiansConfirmed, showcase };
   }

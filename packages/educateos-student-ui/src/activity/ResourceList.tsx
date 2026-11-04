@@ -1,6 +1,6 @@
 import { Text } from "@cloudflare/kumo";
 import { FileTextIcon, NoteIcon } from "@phosphor-icons/react";
-import type { ActivityContent } from "../model.ts";
+import type { ActivityContent, AssignedActivity } from "../model.ts";
 import { SafeExternalLink } from "../SafeExternalLink.tsx";
 
 /** A resource the activity permits, as the list shows it. */
@@ -14,14 +14,14 @@ export interface PermittedResource {
 }
 
 /**
- * The activity's resources, in the order students meet them. The student API names a resource only
- * by its release for now, so each is listed by position with the steps that use it; a link appears
- * once the district returns one, and opens through {@link SafeExternalLink}.
+ * The activity's resources, in the order students meet them, each named by its release's title with
+ * the steps that use it. A release the district could not name is listed by position. A link
+ * appears once the district returns one, and opens through {@link SafeExternalLink}.
  */
-export const permittedResources = (content: ActivityContent): PermittedResource[] =>
+export const permittedResources = ({ content, resources }: AssignedActivity["activity"]): PermittedResource[] =>
   content.resources.map((ref, i) => ({
     key: `${ref.resourceId}@${ref.version}`,
-    title: `Resource ${i + 1}`,
+    title: resources.find((named) => named.resourceId === ref.resourceId && named.version === ref.version)?.title ?? `Resource ${i + 1}`,
     usedIn: content.steps.filter((step) => step.sources.some((s) => s.resourceId === ref.resourceId && s.version === ref.version)).map((step) => step.title),
   }));
 
@@ -29,9 +29,9 @@ export const permittedResources = (content: ActivityContent): PermittedResource[
 const contextNotes = (content: ActivityContent) => content.codex.flatMap((entry) => (entry.kind === "note" ? [entry] : []));
 
 /** The resources and teacher notes an activity gives students. */
-export const ResourceList = ({ content }: { content: ActivityContent }) => {
-  const resources = permittedResources(content);
-  const notes = contextNotes(content);
+export const ResourceList = ({ activity }: { activity: AssignedActivity["activity"] }) => {
+  const resources = permittedResources(activity);
+  const notes = contextNotes(activity.content);
   if (resources.length === 0 && notes.length === 0) return <Text variant="secondary">This activity has no resources.</Text>;
   return (
     <ul className="flex flex-col gap-2">

@@ -243,9 +243,32 @@ describe("the young-learner activity page", () => {
     await user.click(screen.getByRole("button", { name: "I'm done!" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Hand in your work?")).toBeTruthy();
+    // No attempt limit or receipt code for a five-year-old (SCHO-328).
+    expect(within(dialog).queryByText(/up to \d+ times?/)).toBeNull();
     await user.click(within(dialog).getByRole("button", { name: "Yes, hand it in" }));
     expect(await within(dialog).findByText("You did it!")).toBeTruthy();
+    expect(within(dialog).queryByText("Receipt code")).toBeNull();
     expect(announcement()).toBe("You did it! Your work is handed in.");
+  });
+
+  it("shows the teacher's grade and scores as stars and kind words, never points, receipts or attempts (SCHO-328)", async () => {
+    const district = fakeDistrict({ youngClass: true });
+    const artifactId = district.addArtifact("wsp_amara-personal", "Who lives in the pond?: Draw it", "image", "image/png", { kind: "bytes", mediaType: "image/png", base64: base64(PNG) });
+    const { revision } = await district.call("student.getArtifact", { params: { artifactId } });
+    await district.call("student.submit", { params: { assignmentId: POND }, body: { revisions: [{ artifactId, revisionId: revision.id }] } });
+    district.releaseFeedback(district.submissions[0]!.id, { comments: ["I love your frog!"], scores: [{ criterionId: "ideas", points: 2, maxPoints: 3 }] });
+    district.recordGrade(POND, { points: 3, maxPoints: 3 });
+    const { container, user } = await openPond(district);
+    await user.click(screen.getByRole("button", { name: "Let's start" }));
+    for (let i = 0; i < 3; i++) await user.click(screen.getByRole("button", { name: /^(Next|Finish)$/ }));
+
+    const finish = screen.getByRole("region", { name: "All done?" });
+    expect(await within(finish).findByText("I love your frog!")).toBeTruthy();
+    expect(within(finish).getByRole("img", { name: "3 of 3 stars" })).toBeTruthy();
+    expect(within(finish).getByText("Great work!")).toBeTruthy();
+    expect(within(finish).getByRole("img", { name: "2 of 3 stars" })).toBeTruthy();
+    expect(within(finish).getByText(/You handed this in/)).toBeTruthy();
+    expect(container.textContent).not.toMatch(/Receipt code|Official grade|out of 3|2 of 3\b(?! stars)|Attempt 1/);
   });
 });
 

@@ -115,6 +115,12 @@ export interface InstallSampleCoursesOptions {
    * leaves them unpublished, as a teacher's would.
    */
   publish?: boolean;
+  /**
+   * When an activity due `days` after install falls due, such as `schoolDayDue` (`./school-day.ts`):
+   * a school day at 3:30 PM. Each activity this run installs with a due date is moved to it; without it, an
+   * activity falls due its days after the moment of install, as a teacher's install does.
+   */
+  dueAt?: (days: number) => string;
 }
 
 type InstallPlan = RouteResponse<"teacher.installCourse">;
@@ -132,6 +138,28 @@ function frameworksOf(bundle: unknown): Set<string> {
 }
 
 const settled = (status: string) => status === "exists" || status === "installed";
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Moves each due date of the activities in `modules` to `dueAt`'s time on the same day count. An
+ * install sets an activity due a whole number of days after the moment of install, so the count is
+ * read back from the assignment.
+ */
+async function moveDueDates(
+  teacher: DistrictApiClient,
+  offeringId: string,
+  modules: RouteResponse<"teacher.listModules">["outline"]["modules"],
+  dueAt: (days: number) => string,
+): Promise<void> {
+  const activities = new Set(modules.flatMap((m) => m.items.flatMap((item) => (item.kind === "activity" ? [item.activityId] : []))));
+  for (const assignment of await teacher.call("teacher.listAssignments", { params: { offeringId } })) {
+    if (!activities.has(assignment.activityId) || assignment.dueAt === undefined) continue;
+    const days = Math.round((Date.parse(assignment.dueAt) - Date.parse(assignment.createdAt)) / DAY_MS);
+    if (days < 1) continue;
+    await teacher.call("teacher.updateAssignment", { params: { assignmentId: assignment.id }, body: { dueAt: dueAt(days) } });
+  }
+}
 
 /**
  * Imports and installs the sample courses through the district's API. Idempotent: run it again and
@@ -205,13 +233,20 @@ export async function installSampleCourses(options: InstallSampleCoursesOptions)
       }
     }
     result.done = plan.done;
-    if (options.publish === true) {
+    if (options.publish === true || options.dueAt !== undefined) {
       const installed = new Set(plan.units.flatMap((unit) => (unit.status === "installed" && unit.moduleId !== undefined ? [unit.moduleId] : [])));
-      for (const module of (await teacher.call("teacher.listModules", { params })).outline.modules) {
-        if (!installed.has(module.id) || module.published) continue;
+      const modules = (await teacher.call("teacher.listModules", { params })).outline.modules;
+      for (const module of modules) {
+        if (options.publish !== true || !installed.has(module.id) || module.published) continue;
         await teacher.call("teacher.updateModule", { params: { ...params, moduleId: module.id }, body: { published: true } });
         result.published++;
       }
+      // Only units installed by this run, so a later run never moves a due date a teacher has set.
+      const fresh = new Set(plan.units.flatMap((unit) => {
+        const was = before.units.find((u) => u.key === unit.key)?.status ?? "new";
+        return unit.status === "installed" && !settled(was) && unit.moduleId !== undefined ? [unit.moduleId] : [];
+      }));
+      if (options.dueAt !== undefined && fresh.size > 0) await moveDueDates(teacher, offeringId, modules.filter((m) => fresh.has(m.id)), options.dueAt);
     }
     if (result.imported || result.unitsInstalled > 0 || result.published > 0) worked++;
     summary.courses.push(result);

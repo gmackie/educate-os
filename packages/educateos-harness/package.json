@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./pinned-fetch": "./src/pinned-fetch.ts",
     "./sample-courses": "./src/sample-courses.ts",
+    "./school-day": "./src/school-day.ts",
     "./showcase": "./src/showcase.ts"
   },
   "scripts": {

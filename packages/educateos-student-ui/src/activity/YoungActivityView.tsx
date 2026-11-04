@@ -156,7 +156,7 @@ export const YoungActivityView = ({ offeringId, courseName, entry, work }: {
           {content.resources.length > 0 || content.codex.some((codexEntry) => codexEntry.kind === "note") ? (
             <div className="flex flex-col gap-2">
               <h3 className="text-xl font-semibold">Look at these</h3>
-              <ResourceList content={content} />
+              <ResourceList activity={activity} />
             </div>
           ) : null}
           <AskAi context={{ kind: "assignment", id: assignment.id }} />
@@ -206,7 +206,7 @@ export const YoungActivityView = ({ offeringId, courseName, entry, work }: {
           )}
           <div className="flex flex-col gap-2">
             <h3 className="text-xl font-semibold">What your teacher said</h3>
-            <FeedbackSection assignmentId={assignment.id} refreshKey={work.feedbackKey} />
+            <FeedbackSection assignmentId={assignment.id} refreshKey={work.feedbackKey} display="young" />
           </div>
           <PrivacyNote scope="course" />
         </Page>

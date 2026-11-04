@@ -61,7 +61,7 @@ export type ShowcaseWork =
 /**
  * What a young learner made on a picture-response or read-and-respond activity, one artifact a step:
  * `text` is what they said or wrote, as their teacher would sum it up. A drawing step hands in
- * `drawing`, a speaking step a short recording (a hummed stand-in for the child's voice), and a
+ * `drawing`, a speaking step a short recording of the child's words (`recordingWav`), and a
  * writing step the matching entry of `answers`, by the step's place among the writing steps (or
  * `text`, when there is none).
  */

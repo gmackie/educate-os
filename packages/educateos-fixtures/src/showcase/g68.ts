@@ -208,7 +208,7 @@ export const WORLD_HISTORY_7: ShowcaseCourse = {
         title: "The Land Between the Rivers",
         body: "## Mesopotamia\n\nAround 3500 BCE, cities grew between the **Tigris** and **Euphrates** rivers. People there developed some of the first:\n\n- **writing** (cuneiform on clay tablets),\n- **written laws**,\n- **cities and kingdoms**.\n\nThis week we read laws from the reign of **King Hammurabi of Babylon** (about 1750 BCE) as historians do: who wrote it, why, and what it tells us.",
       },
-      items: [{ kind: "activity", key: "hammurabi" }],
+      items: [{ kind: "quiz", key: "mesopotamia-check" }, { kind: "activity", key: "hammurabi" }],
     },
     {
       title: "The Silk Roads",
@@ -243,7 +243,7 @@ export const WORLD_HISTORY_7: ShowcaseCourse = {
         },
         [FELIX]: { stage: "submitted", text: "Sourcing: Hammurabi wrote them in 1750 BCE.\nContext: Mesopotamia had rivers and farming.\nClaim: Babylonians cared about property. Law 53 says if someone doesn't fix their dam and floods a field they must pay for the grain." },
         [ANA]: {
-          stage: "graded",
+          stage: "released",
           text: "Sourcing: The laws were carved on a stone stele for the public so people knew the rules.\nContext: Babylon traded and farmed and had social classes.\nClaim: Babylonians believed punishments should match the crime, like an eye for an eye in law 196. But the laws were different for rich and poor people.",
           scores: { sourcing: 3, context: 3, claim: 3 },
           comment: "Good start, Ana. Name the second law you are thinking of when you say rich and poor were treated differently.",
@@ -270,7 +270,25 @@ export const WORLD_HISTORY_7: ShowcaseCourse = {
       },
     },
   ],
-  quizzes: [],
+  // Taken and released for all three, so the gradebook's first column is complete (SCHO-328).
+  quizzes: [
+    {
+      key: "mesopotamia-check",
+      title: "Land Between the Rivers Check-In",
+      description: "Five minutes. What made Mesopotamia a place where cities could grow?",
+      items: [
+        { type: "multiple-choice", prompt: "Which two rivers gave Mesopotamia its name?", points: 1, choices: [{ id: "a", text: "The Tigris and the Euphrates" }, { id: "b", text: "The Nile and the Jordan" }, { id: "c", text: "The Indus and the Ganges" }], correctChoiceId: "a" },
+        { type: "true-false", prompt: "Irrigation let Mesopotamian farmers grow more food than they needed, so some people could do other jobs.", points: 1, correct: true },
+        { type: "essay", prompt: "Why did cities need written laws as they grew? Give one reason.", points: 2 },
+      ],
+      attempts: {
+        [CHIDI]: [{ type: "multiple-choice", choiceId: "a" }, { type: "true-false", value: true }, { type: "essay", text: "More people meant more arguments about land and trade, and a written law means everyone follows the same rule.", points: 2 }],
+        [FELIX]: [{ type: "multiple-choice", choiceId: "a" }, { type: "true-false", value: true }, { type: "essay", text: "So people know the rules.", points: 1 }],
+        [ANA]: [{ type: "multiple-choice", choiceId: "b" }, { type: "true-false", value: true }, { type: "essay", text: "Strangers had to trade with each other, so they needed rules they could all read and trust.", points: 2 }],
+      },
+      releaseScores: true,
+    },
+  ],
   discussions: [
     {
       key: "ancient-invention",

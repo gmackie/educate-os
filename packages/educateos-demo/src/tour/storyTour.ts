@@ -18,7 +18,14 @@ export interface StoryStep {
   persona: PersonaId;
   /** Where their app opens, as a hash route, found in the booted district. */
   route: (client: DistrictApiClient) => Promise<string>;
+  /** What to scroll into view once the screen shows it, as a CSS selector, on a long page. */
+  reveal?: string;
 }
+
+/** The activity page's class helper, where the demo's simulated tutor sits. */
+const TUTOR = "[data-slot=\"ai-help\"]";
+/** The activity page's grade and feedback section. */
+const FEEDBACK = "section[aria-labelledby=\"feedback\"]";
 
 const activityRoute = (offeringId: string, title: string) => async (student: DistrictApiClient) => {
   const activity = (await student.call("student.listActivities", { params: { offeringId } })).find((a) => a.assignment.title === title);
@@ -31,6 +38,9 @@ const submissionsRoute = (offeringId: string, title: string) => async (teacher: 
 };
 
 const fixed = (route: string) => async () => route;
+
+/** Mateo Delgado, grade 1, whose page is the family view's fullest. */
+const MATEO = "prn_nf-student-mateo";
 
 /** The story, youngest first, then the family and the district. */
 export const STORY_STEPS: readonly StoryStep[] = [
@@ -65,6 +75,7 @@ export const STORY_STEPS: readonly StoryStep[] = [
     say: "Read-aloud on request, and a tutor that gives hints and sentence starters, never answers. The tutor is simulated here; on the live district Hall Monitor screens every message, at grade-4 settings.",
     persona: "g35-student",
     route: activityRoute("off_nf-g4ela-fall-r12", "Should Recess Be Longer?"),
+    reveal: TUTOR,
   },
   {
     id: "g68-student",
@@ -73,6 +84,7 @@ export const STORY_STEPS: readonly StoryStep[] = [
     say: "Sourcing, context and a claim with evidence from Hammurabi's laws, scored on a four-level rubric, with his teacher's comment released to him and his family.",
     persona: "g68-student",
     route: activityRoute("off_nf-whist7-fall-p4", "What Do Hammurabi's Laws Tell Us?"),
+    reveal: FEEDBACK,
   },
   {
     id: "g68-teacher",
@@ -89,14 +101,15 @@ export const STORY_STEPS: readonly StoryStep[] = [
     say: "Released feedback, rubric scores and the official grade, in one place. The Research & Essay Coach (simulated here) coaches her next essay without writing it.",
     persona: "g912-student",
     route: activityRoute("off_nf-eng9-fall-p3", "Should Community Service Be Required to Graduate?"),
+    reveal: FEEDBACK,
   },
   {
     id: "guardian",
     band: "Family",
     title: "Rosa Delgado follows Mateo (grade 1) and Lucía (grade 10)",
-    say: "Two children in two schools, one sign-in: classes, due dates, teachers' weekly notes and grades once teachers release them. Nothing a teacher hasn't shared.",
+    say: "Two children in two schools, one sign-in: classes, due dates, teachers' weekly notes and grades once teachers release them. Nothing a teacher hasn't shared. Here, Mateo's page.",
     persona: "guardian",
-    route: fixed("#/family"),
+    route: fixed(`#/family/children/${MATEO}`),
   },
   {
     id: "admin",
@@ -108,8 +121,9 @@ export const STORY_STEPS: readonly StoryStep[] = [
   },
 ];
 
-/** Where `step` opens in `district`: its persona's app at its route. */
-export async function storyDestination(step: StoryStep, district: DemoDistrict): Promise<{ persona: PersonaId; route: string }> {
+/** Where `step` opens in `district`: its persona's app at its route, and what to scroll to there. */
+export async function storyDestination(step: StoryStep, district: DemoDistrict): Promise<{ persona: PersonaId; route: string; reveal?: string }> {
   const persona = NORTHFIELD_PERSONAS.find((p) => p.id === step.persona)!;
-  return { persona: persona.id, route: await step.route(district.clientFor(persona.subject)) };
+  const route = await step.route(district.clientFor(persona.subject));
+  return { persona: persona.id, route, ...(step.reveal === undefined ? {} : { reveal: step.reveal }) };
 }

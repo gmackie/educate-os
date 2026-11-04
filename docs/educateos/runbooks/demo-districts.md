@@ -217,6 +217,11 @@ or off. `demo-district-config.ts` emits `demo` for all five standalone demo dist
   activities, and the teacher publishes them. A request does one course and answers `pending` with
   the courses still to reach. A rerun does nothing. Work a course sets due after the term ends is
   due on the term's last day.
+- **Due times (SCHO-328).** The seed and the courses step set each activity due on a school day at
+  3:30 PM in the district's time zone (`schoolDayDue` in `@educateos/harness/school-day`, which
+  the in-browser demo also uses with the visitor's time zone), a weekend moved to the Monday after.
+  Only work they create gets these times: a district seeded before SCHO-328 keeps the due times it
+  was given at seed time, and a rerun does not rewrite them.
 
 ### Routes
 

@@ -9,7 +9,7 @@ import { createDistrictApp, inMemoryDistrictStores, PublisherTrust } from "@educ
 import { NORTHFIELD, NORTHFIELD_COURSE_CLASSES, NORTHFIELD_GUARDIANS, NORTHFIELD_SHOWCASE } from "@educateos/fixtures";
 import { demoWeb, installSampleCourses, loadSampleCourseBundles, seedShowcase, showcaseResourceUrl } from "@educateos/harness";
 import publisher from "../../../../curriculum/educateos.io/publisher.json" with { type: "json" };
-import { schoolDayDue } from "./schoolDay.ts";
+import { schoolDayDue } from "@educateos/harness/school-day";
 import { clientsOver, personaVerifier, verifySeedRelease, type DemoDistrict, type Persona, type PersonaSection } from "./shared.ts";
 
 /** The district administrator, who approves standards and confirms guardians. */
@@ -204,6 +204,7 @@ export async function bootNorthfield(options: NorthfieldOptions = {}): Promise<D
     showcase: NORTHFIELD_SHOWCASE,
     origins: NORTHFIELD_COURSE_CLASSES,
     publish: true,
+    dueAt: schoolDayDue(options.today ?? new Date()),
   });
   if (courses.courses.some((c) => !c.done)) throw new Error("a sample course did not install");
   // A live district runs under a configuration its administrator applied. Without one, the admin

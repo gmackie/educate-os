@@ -35,7 +35,7 @@ describe("the simulated tutors", () => {
 
   it("say they follow a script when asked something off it", () => {
     const off = answer("9-12", "Anything", "What is the meaning of life?");
-    expect(off.screening.verdict).toBe("allowed");
+    expect(off.screening.verdict).toBe("unscripted");
     expect(off.reply).toMatch(/follows a script/);
   });
 });

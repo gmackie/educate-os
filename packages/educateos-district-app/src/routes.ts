@@ -94,6 +94,7 @@ import {
   ModulePatch,
   NewPage,
   PagePatch,
+  ResourceReleaseRef,
   TemplateInput,
 } from "@educateos/curriculum";
 import {
@@ -294,6 +295,8 @@ export const ActivityViewBody = z.strictObject({
   installation: ActivityInstallation,
   content: ActivityContent,
   evidenceContract: EvidenceContract,
+  /** Each resource's release title, in `content.resources` order; one the district cannot resolve is absent. */
+  resources: z.array(z.strictObject({ ...ResourceReleaseRef.shape, title: z.string() })),
 });
 /** An activity view. */
 export type ActivityViewBody = z.infer<typeof ActivityViewBody>;

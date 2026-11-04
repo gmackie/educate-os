@@ -35,8 +35,8 @@ export const StoryTour = ({ at, visited, open, onOpenChange, ready, onGo, presen
   const current = at === undefined ? undefined : STORY_STEPS[at];
 
   return (
-    <section aria-labelledby={headingId} className="border-b border-kumo-line bg-kumo-elevated px-4 py-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <section aria-labelledby={headingId} className="border-b border-kumo-line bg-kumo-elevated px-4 py-1 sm:py-2">
+      <div className="flex items-center gap-2 sm:flex-wrap">
         <Button
           size="sm"
           variant="ghost"
@@ -48,9 +48,9 @@ export const StoryTour = ({ at, visited, open, onOpenChange, ready, onGo, presen
           <span id={headingId}>K-12 tour</span>
         </Button>
         <Badge variant={visited.size === STORY_STEPS.length ? "success" : "secondary"}>{`${visited.size}/${STORY_STEPS.length}`}</Badge>
-        {/* On a phone a step's title takes its own line under the controls, and the intro gives way. */}
-        <span className="min-w-0 flex-1 max-sm:order-last max-sm:basis-full">
-          <span className={current === undefined ? "max-sm:hidden" : ""}><Text size="sm" variant="secondary">
+        {/* On a phone the strip keeps to one line: the step's title is cut short there, and the intro gives way. */}
+        <span className="min-w-0 flex-1">
+          <span className={current === undefined ? "max-sm:hidden" : "max-sm:block max-sm:truncate"}><Text as="span" size="sm" variant="secondary">
             {current === undefined
               ? "Five minutes, kindergarten to the district office: one screen a step."
               : `Step ${at! + 1} · ${current.band}: ${current.title}`}
@@ -61,7 +61,7 @@ export const StoryTour = ({ at, visited, open, onOpenChange, ready, onGo, presen
         )}
         {next < STORY_STEPS.length && (
           <Button size="sm" variant="primary" icon={at === undefined ? <PlayIcon aria-hidden /> : <ArrowRightIcon aria-hidden />} disabled={!ready} onClick={() => onGo(next)}>
-            {at === undefined ? "Start the tour" : "Next step"}
+            {at === undefined ? "Start the tour" : <span className="max-sm:sr-only">Next step</span>}
           </Button>
         )}
         {presenter !== undefined && <PresenterHelp open={presenter.helpOpen} onOpenChange={presenter.onHelpOpenChange} keys={presenter.keys} note={PRESENTER_NOTE} />}
