@@ -11,6 +11,9 @@
 // - `GET  /api/demo/showcase/export`   the "before" export: the whole directory, health counts and
 //                                      that status, read only, for the operator to keep.
 // - `POST /api/demo/showcase/seed`     adds the showcase's directory, guardians and content.
+// - `POST /api/demo/showcase/courses`  imports the educateos.io sample courses into the course
+//                                      library and installs each into the showcase class it
+//                                      continues, one course a request (SCHO-334).
 // - `GET  /api/demo/showcase/personas` the personas a presenter can be, and who is each.
 // - `POST /api/demo/showcase/personas` links a presenter's Access sign-in to a persona, or frees it.
 //
@@ -20,6 +23,13 @@
 // Northfield people and classes as its own. Seeding only adds: a record already there under a
 // fixture ID is kept as it is (and if it is something else entirely, the run stops before writing
 // anything), nothing is changed or deleted, and a rerun adds only what is missing.
+//
+// Courses. The sample courses' committed signed bundles are bundled into the Worker. The calling
+// administrator approves the standards they align to and imports each bundle through the district's
+// own course library route, which checks every signature against the deployment's
+// `COURSE_LIBRARY_TRUST` (without it, nothing imports); each class's teacher then installs their
+// course, which adds the units after the showcase's own modules and publishes them. A request does
+// one course and says which are still to do; run it again until none are. A rerun does nothing.
 //
 // People. The fixture's district administrator is left out, and no showcase record gets a district
 // role: the operator who seeds is the administrator. Each persona is created with a placeholder
@@ -45,6 +55,7 @@ import type { ImportFetch } from "@educateos/content-studio";
 import type { DistrictApp, RequestVerifier } from "@educateos/district-app";
 import {
   NORTHFIELD,
+  NORTHFIELD_COURSE_CLASSES,
   NORTHFIELD_GUARDIANS,
   NORTHFIELD_SHOWCASE,
   SHOWCASE_BANDS,
@@ -54,6 +65,7 @@ import {
   type ShowcaseBand,
   type ShowcaseResource,
 } from "@educateos/fixtures";
+import { installSampleCourses, loadSampleCourseBundles, SAMPLE_COURSE_IDS, type SampleCoursesSummary } from "@educateos/harness/sample-courses";
 import { seedShowcase, type ShowcaseSummary } from "@educateos/harness/showcase";
 import { createDirectoryPrincipalResolver } from "@educateos/identity";
 import { GuardianRelationships } from "@educateos/policy";
@@ -65,15 +77,19 @@ export const DEMO_API_PREFIX = "/api/demo/";
 /** A showcase a demo district can seed. */
 export type ShowcaseName = NonNullable<DistrictWorkerConfig["demo"]>["showcase"];
 
-/** What a showcase is made of: the fixture's directory, its guardian relationships and its content. */
+/**
+ * What a showcase is made of: the fixture's directory, its guardian relationships, its content, and
+ * the class each sample course continues, by course package ID.
+ */
 interface ShowcaseContent {
   directory: DistrictDirectorySnapshot;
   guardians: readonly GuardianRelationship[];
   showcase: Showcase;
+  courses: Readonly<Record<string, string>>;
 }
 
 const CONTENT: Record<ShowcaseName, ShowcaseContent> = {
-  northfield: { directory: NORTHFIELD, guardians: NORTHFIELD_GUARDIANS, showcase: NORTHFIELD_SHOWCASE },
+  northfield: { directory: NORTHFIELD, guardians: NORTHFIELD_GUARDIANS, showcase: NORTHFIELD_SHOWCASE, courses: NORTHFIELD_COURSE_CLASSES },
 };
 
 /**
@@ -249,7 +265,7 @@ export function linkPersona(
 
 /** What the showcase logs: the route's outcome, by counts and IDs. Never a sign-in subject. */
 export interface ShowcaseEvent {
-  event: "demo.showcase.exported" | "demo.showcase.seeded" | "demo.showcase.persona-linked" | "demo.showcase.failed";
+  event: "demo.showcase.exported" | "demo.showcase.seeded" | "demo.showcase.courses-installed" | "demo.showcase.persona-linked" | "demo.showcase.failed";
   districtId: string;
   /** The administrator who called. */
   principalId?: string;
@@ -257,6 +273,8 @@ export interface ShowcaseEvent {
   added?: number;
   created?: number;
   personaId?: string | null;
+  /** The sample course a courses request worked on, by package ID. */
+  packageId?: string;
   error?: unknown;
 }
 
@@ -288,6 +306,25 @@ export const SeedRequest = z.strictObject({
   bands: z.array(z.enum(SHOWCASE_BANDS as [ShowcaseBand, ...ShowcaseBand[]])).min(1).max(4).optional(),
 });
 
+/** The courses route's body. */
+export const CoursesRequest = z.strictObject({
+  /** Only say what the district holds of each course and which would be worked on; write nothing. */
+  dryRun: z.boolean().optional(),
+  /** The sample courses to import and install, by package ID; all of them by default. */
+  courses: z.array(z.enum([...SAMPLE_COURSE_IDS] as [string, ...string[]])).min(1).max(SAMPLE_COURSE_IDS.length).optional(),
+});
+
+/** One sample course, as the district holds it. */
+export interface ShowcaseCourseStatus {
+  packageId: string;
+  /** The showcase class it continues. */
+  offeringId: string;
+  /** Whether the course library holds it. */
+  imported: boolean;
+  /** Whether it is fully installed in its class. */
+  installed: boolean;
+}
+
 /** The persona route's body: an Access subject (`user_uuid`), and the persona to link it to, or null to free it. */
 export const PersonaRequest = z.strictObject({
   subject: z.string().min(1).max(255).refine((subject) => !subject.startsWith(PLACEHOLDER_PREFIX), "a placeholder is no one's sign-in"),
@@ -310,6 +347,8 @@ export interface ShowcaseStatus {
   bands: Record<ShowcaseBand, { offerings: ShowcaseOfferingStatus[]; assignments: number }>;
   /** Showcase personas in the directory, and how many a presenter is linked to. */
   personas: { present: number; linked: number };
+  /** The sample courses, each imported into the library and installed in its class or not yet. */
+  courses: ShowcaseCourseStatus[];
 }
 
 /** One persona a presenter can be. */
@@ -380,7 +419,43 @@ export function startDistrictShowcase(options: DistrictShowcaseOptions): Distric
     }
     const personas = personaIds(snapshot);
     const linked = snapshot.principals.filter((p) => personas.has(p.id) && p.externalIdentities.some((i) => !isPlaceholder(i))).length;
-    return { showcase: options.name, districtId, bands, personas: { present: personas.size, linked } };
+    return { showcase: options.name, districtId, bands, personas: { present: personas.size, linked }, courses: await courseStatus(SAMPLE_COURSE_IDS) };
+  }
+
+  async function courseStatus(packageIds: readonly string[]): Promise<ShowcaseCourseStatus[]> {
+    const library = await app.stores.courseLibrary.listCourses();
+    return Promise.all(packageIds.map(async (packageId) => {
+      const offeringId = content.courses[packageId]!;
+      const installs = await app.stores.courseLibrary.loadInstalls(offeringId);
+      return {
+        packageId,
+        offeringId,
+        imported: library.some((c) => c.packageId === packageId),
+        installed: installs?.courses.some((c) => c.packageId === packageId && c.completedAt !== undefined) ?? false,
+      };
+    }));
+  }
+
+  /**
+   * Imports the sample courses and installs them, as the calling administrator and each class's
+   * teacher: the first course with anything to do, and only it, so one request stays short.
+   */
+  async function installCourses(caller: Caller, origin: string, body: z.infer<typeof CoursesRequest>) {
+    const packageIds = body.courses ?? SAMPLE_COURSE_IDS;
+    const { snapshot } = await app.stores.directory.load();
+    const missing = packageIds.filter((id) => !snapshot.offerings.some((o) => o.id === content.courses[id]));
+    if (missing.length > 0) throw new EducateOsError("conflict", `Seed the showcase first: the district has no class for ${missing.join(", ")}.`);
+    if (body.dryRun === true) return { dryRun: true as const, courses: await courseStatus(packageIds) };
+    const summary: SampleCoursesSummary = await installSampleCourses({
+      bundles: await loadSampleCourseBundles(packageIds),
+      adminId: caller.principal.principalId,
+      actAs: actAs(origin),
+      showcase: content.showcase,
+      origins: content.courses,
+      publish: true,
+      maxCourses: 1,
+    });
+    return { dryRun: false as const, ...summary };
   }
 
   async function listPersonas(): Promise<ShowcasePersona[]> {
@@ -489,6 +564,22 @@ export function startDistrictShowcase(options: DistrictShowcaseOptions): Distric
                 correlationId,
                 added: Object.values(outcome.directory).reduce((a, b) => a + b, 0),
                 ...(outcome.showcase === undefined ? {} : { created: outcome.showcase.created }),
+              });
+            }
+            return json(outcome, correlationId);
+          }
+          case "POST showcase/courses": {
+            caller = await administrator(request, "update", correlationId);
+            const body = parseBody(CoursesRequest, await request.json().catch(() => undefined));
+            const outcome = await installCourses(caller, url.origin, body);
+            if (!outcome.dryRun) {
+              const worked = outcome.courses.find((c) => c.imported || c.unitsInstalled > 0 || c.published > 0);
+              emit({
+                event: "demo.showcase.courses-installed",
+                principalId: caller.principal.principalId,
+                correlationId,
+                created: outcome.created,
+                ...(worked === undefined ? {} : { packageId: worked.packageId }),
               });
             }
             return json(outcome, correlationId);
