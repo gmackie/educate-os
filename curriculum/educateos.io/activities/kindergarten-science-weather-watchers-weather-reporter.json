@@ -1,0 +1,119 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Be a weather reporter! Tell today's weather, what to wear and one way to stay safe.",
+    "passage": "Weather reporters look at the sky. They tell everyone what the weather is like. They say what to wear. They share a tip to stay safe. Now it is your turn to be the weather reporter!",
+    "questions": [
+      {
+        "prompt": "Look outside. What is the weather today?"
+      },
+      {
+        "prompt": "What should people wear today?"
+      },
+      {
+        "prompt": "What is one way to stay safe in today's weather?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw a weather picture for your report."
+      }
+    ],
+    "sentenceFrames": [
+      "Good morning! Today it is ___.",
+      "Wear your ___.",
+      "Stay safe: ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Weather Reporter"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.6",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-weather-reporter",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "report",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told the weather"
+      },
+      {
+        "id": "wear",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told what to wear"
+      },
+      {
+        "id": "safety",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I gave a safety tip"
+      }
+    ],
+    "title": "Weather reporter"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

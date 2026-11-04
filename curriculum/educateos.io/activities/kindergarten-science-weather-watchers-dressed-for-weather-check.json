@@ -1,0 +1,100 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "speaking",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to each question. Tell or draw the clothes for the weather.",
+    "passage": "Every kind of weather needs the right clothes. Clothes can keep us warm. Clothes can keep us dry. Clothes can keep us cool.",
+    "questions": [
+      {
+        "prompt": "It is snowy. Name two things you would wear."
+      },
+      {
+        "prompt": "It is rainy. What keeps your feet dry?"
+      },
+      {
+        "prompt": "It is hot and sunny. What can you wear on your head?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw yourself dressed for a snowy day."
+      },
+      {
+        "prompt": "Tell why you picked those clothes."
+      }
+    ],
+    "sentenceFrames": [
+      "On a snowy day I wear ___.",
+      "I picked ___ because ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Dressed for the Weather Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-dressed-for-weather-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "match",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can pick clothes for the weather"
+      },
+      {
+        "id": "why",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can tell why I picked them"
+      }
+    ],
+    "title": "Dressed for the weather"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

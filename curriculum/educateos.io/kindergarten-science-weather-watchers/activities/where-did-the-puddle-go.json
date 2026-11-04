@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:10c92d11b8e35af8a28275e38da581b4cd09e6e1a29660e654acafb518f27f83",
+      "id": "educateos.io/kindergarten-science-weather-watchers-where-did-the-puddle-go",
+      "version": "1.0.0"
+    }
+  },
+  "id": "where-did-the-puddle-go",
+  "role": "assignment",
+  "title": "Where Did the Puddle Go?"
+}

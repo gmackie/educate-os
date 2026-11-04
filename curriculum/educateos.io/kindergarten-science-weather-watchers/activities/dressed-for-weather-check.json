@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:4a2bedcad5ea17d0f62cefb96f330d26d29e1d836e0a87d77f8fccaed372747d",
+      "id": "educateos.io/kindergarten-science-weather-watchers-dressed-for-weather-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "dressed-for-weather-check",
+  "role": "assessment",
+  "title": "Dressed for the Weather Check"
+}

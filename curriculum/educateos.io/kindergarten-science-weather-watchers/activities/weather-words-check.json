@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:43128f25c195694c32f1487ed0ddebb62e90dcdad3c39af307faf85dc3e96cda",
+      "id": "educateos.io/kindergarten-science-weather-watchers-weather-words-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "weather-words-check",
+  "role": "assessment",
+  "title": "Weather Words Check"
+}

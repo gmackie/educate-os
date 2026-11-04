@@ -1,0 +1,100 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "speaking",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to a story about a pinwheel. Tell or draw your answers.",
+    "passage": "It is a windy day! A gentle wind pushes a pinwheel. It turns slowly. Then a strong wind blows. Now the pinwheel spins fast!",
+    "questions": [
+      {
+        "prompt": "What is wind?"
+      },
+      {
+        "prompt": "Can we see the wind? How do we know it is there?"
+      },
+      {
+        "prompt": "Which wind made the pinwheel spin fast, the gentle wind or the strong wind?"
+      },
+      {
+        "prompt": "Name one thing the wind can push."
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw a windy day. Show something the wind is moving."
+      }
+    ],
+    "sentenceFrames": [
+      "Wind is ___.",
+      "The wind pushes ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Wind Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-wind-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "what",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can tell what wind is"
+      },
+      {
+        "id": "moves",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can tell and draw what wind moves"
+      }
+    ],
+    "title": "Wind"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

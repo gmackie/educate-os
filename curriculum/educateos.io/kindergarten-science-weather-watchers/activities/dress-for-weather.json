@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:be49bcba583b98b1765b292d73ad8dd049aecdc30036205ad9073b4eacfc722b",
+      "id": "educateos.io/kindergarten-science-weather-watchers-dress-for-weather",
+      "version": "1.0.0"
+    }
+  },
+  "id": "dress-for-weather",
+  "role": "assignment",
+  "title": "Dress for a Rainy Day"
+}
