@@ -119,6 +119,7 @@ export function lakeshoreLargeRemoval(): OneRosterSeed {
 export {
   base64Of,
   drawingPng,
+  NORTHFIELD_COURSE_CLASSES,
   NORTHFIELD_SHOWCASE,
   recordingWav,
   rubricMaxPoints,
