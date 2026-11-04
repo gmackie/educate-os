@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { Alert, Text, TextInput, View, type ScrollViewInstance } from 'react-native';
-import { GraduationCap, Send } from 'lucide-react-native';
+import { Alert, Text, View, type ScrollViewInstance } from 'react-native';
+import { GraduationCap } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Detail } from '../types';
 import { useLoad, useReloadOnFocus } from '../hooks/useLoad';
@@ -11,7 +11,7 @@ import { ActivityWork, YoungActivity, loadActivityWork } from './ActivityWork';
 import { workSteps } from '../activity.ts';
 import { isYoungLearnerBand } from '../gradeBand.ts';
 import { usePalette } from '../ui/theme-context';
-import { Button, Card, Chip, dateLabel, Field, Item, Page, QueryState, ScrollLock, Section, Title } from '../ui/Primitives';
+import { Button, Card, Chip, dateLabel, Item, Page, QueryState, ScrollLock, Section, Title } from '../ui/Primitives';
 
 
 /** Never renders staff-only fields or answer keys; the district returns a student-filtered activity view. */
@@ -119,88 +119,6 @@ export function AssignmentScreen({ client, assignmentId, offeringId, navigate }:
       </>;
     }}</QueryState>
   </Page></ScrollLock.Provider>;
-}
-
-/**
- * Native text submission. Writes only on explicit save/submit; no device-side student-work cache.
- * A failed submit leaves a reusable artifact/revision pair, preventing duplicate writes on retry.
- */
-export function WriteResponse({ client, assignmentId, offeringId, onComplete }: {
-  client: DistrictClient; assignmentId: string; offeringId: string; onComplete: () => void;
-}) {
-  const palette = usePalette();
-  const [title, setTitle] = useState('');
-  const [response, setResponse] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState<{ artifactId: string; revisionId: string; text: string; title: string } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [receipt, setReceipt] = useState<string | null>(null);
-  const disabled = saving || response.trim().length < 2 || title.trim().length < 2;
-  const submit = async (final: boolean) => {
-    if (disabled) return;
-    setSaving(true); setError(null);
-    try {
-      let revision = saved;
-      if (!revision) {
-        const { assignment } = await client.studentAssignment(assignmentId);
-        if (!assignment.permittedArtifactTypes?.includes('document')) {
-          throw new Error('This assignment does not accept written documents. Open it in your school workspace.');
-        }
-        // A deep link may not name the class; the assignment does.
-        const offering = offeringId || (await client.studentAssignment(assignmentId)).assignment.offeringId;
-        const workspace = await client.openCourseWorkspace(offering);
-        const created = await client.createDocument(workspace.id, title.trim(), response.trim());
-        revision = { artifactId: created.artifact.id, revisionId: created.head.id, text: response.trim(), title: title.trim() };
-        setSaved(revision);
-      } else if (revision.text !== response.trim()) {
-        const next = await client.saveDocumentRevision(revision.artifactId, response.trim());
-        revision = { ...revision, revisionId: next.head.id, text: response.trim() };
-        setSaved(revision);
-      }
-      if (final) {
-        const submission = await client.submitDocument(assignmentId, revision);
-        setReceipt(submission.submissionId);
-        Alert.alert('Work submitted', 'Your teacher can now review this response.', [
-          { text: 'Done', onPress: onComplete },
-        ]);
-      } else {
-        Alert.alert('Saved to your class', 'Your answer is saved in your school workspace. Submit when ready.');
-      }
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save your work.'); }
-    finally { setSaving(false); }
-  };
-  return <Page>
-    <Title subtitle="Your response stays on your school's server, and is shared only when you submit it.">
-      Written response
-    </Title>
-    <Card style={{ gap: 15, marginBottom: 18 }}>
-      <Field label="Title" value={title} onChangeText={(s) => { if (!saved) setTitle(s); }}
-        placeholder="My response"/>
-      <Text style={{ fontWeight: '700', color: palette.ink }}>Your writing</Text>
-      <TextInput value={response} onChangeText={setResponse}
-        multiline placeholder="Begin writing your response here…" placeholderTextColor={palette.subtle}
-        textAlignVertical="top" maxLength={30000}
-        style={{ minHeight: 235, padding: 14, borderWidth: 1, borderColor: palette.line,
-          borderRadius: 14, backgroundColor: palette.raised, fontSize: 15,
-          lineHeight: 24, color: palette.ink }}/>
-      <Text style={{ color: palette.muted, fontSize: 12 }}>{response.length.toLocaleString()} characters</Text>
-      <Text style={{ color: palette.muted, lineHeight: 20, fontSize: 12 }}>
-        Keep this page open until your work is saved. A saved response can be found later in your school workspace.
-      </Text>
-    </Card>
-    {error && <Text accessibilityRole="alert" style={{ color: palette.red, paddingBottom: 15 }}>{error}</Text>}
-    {receipt ? <Card><Chip label="Submitted" tone="green"/>
-      <Text style={{ color: palette.muted, marginTop: 8 }}>Your school issued a submission receipt.</Text></Card> :
-      <View style={{ gap: 12, paddingBottom: 30 }}>
-        <Button label={saving ? 'Saving…' : 'Save to class'} disabled={disabled} variant="outline"
-          onPress={() => void submit(false)}/>
-        <Button label={saving ? 'Submitting…' : 'Submit response'} disabled={disabled}
-          icon={<Send size={18} color={palette.onPrimary}/>}
-          onPress={() => Alert.alert('Submit this response?', 'Your teacher will receive the saved version of this work.', [
-            { text: 'Cancel', style: 'cancel' }, { text: 'Submit', onPress: () => { void submit(true); } },
-          ])}/>
-      </View>}
-  </Page>;
 }
 
 export function StudentGrades({ client, navigate }: {
