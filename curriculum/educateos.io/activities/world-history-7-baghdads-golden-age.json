@@ -1,0 +1,163 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 14,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "7",
+    "minWords": 220,
+    "minimumCitations": 2,
+    "overview": "Argue whether trade or rulers' support for scholarship did more to make Baghdad a world center of learning.",
+    "prompt": "Between about 800 and 1000 CE, Baghdad became one of the world's great centers of learning. Did trade or the rulers' support for scholars do more to make this happen? Write an argument with a clear claim and at least two pieces of evidence from the readings. Explain why your cause mattered more than the other one, and admit one way the other cause also helped.",
+    "resources": [
+      "faith-and-empire",
+      "house-of-wisdom"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Baghdad's Golden Age"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.15.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.6-8.1.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-baghdads-golden-age",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Islam began in the Arabian Peninsula in the early 600s CE. Muslims believe that, beginning around 610, the prophet Muhammad received revelations from God in and near the trading city of Mecca. These revelations were later gathered in the Quran. In 622, Muhammad and his followers moved to the city of Medina. This journey, the Hijra, marks the first year of the Islamic calendar.\n\nAfter Muhammad's death in 632, his successors, called caliphs, led Arab armies out of Arabia. Within about a hundred years, the caliphate stretched from Spain and North Africa in the west to Central Asia and the Indus River in the east. The Umayyad caliphs ruled from Damascus. In 750, a new family, the Abbasids, took power, and in 762 the caliph al-Mansur founded a new capital: Baghdad, on the Tigris River.\n\nMany people in the conquered lands kept their own religions for generations. Christians and Jews, called \"people of the book,\" could keep their faith if they paid a special tax. Over time, though, more and more people became Muslim, and Arabic, the language of the Quran, became the shared language of government, trade and learning across a huge area.\n\nShared language and shared rules made trade easier. Merchants could travel from Cordoba to Cairo to Baghdad and find markets, mosques, inns and a common law for contracts. Every year, Muslims from distant lands traveled to Mecca for the hajj, the pilgrimage, carrying goods and news along with them.",
+      "id": "faith-and-empire",
+      "title": "A Faith and an Empire Spread"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "By 800 CE, Baghdad was one of the largest cities in the world. Ships and caravans brought goods from China, India, Africa and Europe. Paper-making, learned from Chinese craftspeople, spread to Baghdad by the late 700s, and paper soon replaced more expensive papyrus and parchment for books and records.\n\nThe Abbasid caliphs, especially Harun al-Rashid and his son al-Ma'mun (who ruled from 813 to 833), paid scholars to collect and translate books from Greek, Persian, Syriac and Sanskrit into Arabic. Works on medicine, astronomy, mathematics and philosophy were copied and studied. Scholars of many faiths took part. A royal library known as the House of Wisdom was at the center of some of this work. Historians still debate how large and organized it was, but they agree that Baghdad became a great center of translation and new learning.\n\nScholars did more than translate. The mathematician Muhammad ibn Musa al-Khwarizmi worked in Baghdad in the early 800s. His book on solving equations gave us the word algebra (from the Arabic al-jabr), and his name gave us the word algorithm. He also helped spread the Hindu numerals, including zero, that we now call Hindu-Arabic numerals. Later, the physician Ibn Sina (died 1037) wrote The Canon of Medicine, which was used in European universities for centuries.\n\nBaghdad's power did not last forever. In 1258, Mongol armies captured and destroyed much of the city. But the knowledge preserved and created there had already spread to Cairo, Cordoba, and, through translations into Latin, to Europe.",
+      "id": "house-of-wisdom",
+      "title": "Baghdad and the House of Wisdom"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear, arguable claim"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Accurate evidence from the readings"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Weighs the two causes"
+      },
+      {
+        "id": "conventions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Organization and conventions"
+      }
+    ],
+    "title": "Historical argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,49 @@
+{
+  "id": "proportional-relationships",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u1-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "finding-k"
+    },
+    {
+      "kind": "activity",
+      "ref": "unit-rates"
+    },
+    {
+      "kind": "activity",
+      "ref": "percent-problems"
+    },
+    {
+      "kind": "activity",
+      "ref": "proportional-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.RP.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.RP.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.RP.A.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "summary": "Recognize proportional relationships in tables, graphs, equations and words; find the constant of proportionality; compute unit rates with fractions; and solve percent problems.",
+  "title": "Unit 2: Proportional Relationships"
+}

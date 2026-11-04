@@ -1,0 +1,177 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "claimPrompt": "What does Diaz's account reveal about Tenochtitlan, and how does his point of view shape it? Support your claim with at least two pieces of evidence, including one detail that the secondary reading confirms.",
+    "contextualizationQuestions": [
+      "Why were Diaz and the other Spaniards in the Valley of Mexico in 1519?",
+      "What happened to Tenochtitlan in 1521, and how might that event affect the way Diaz remembered the city?"
+    ],
+    "due": {
+      "days": 9,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "minimumEvidence": 2,
+    "overview": "Analyze a Spanish soldier's memories of the Aztec capital and decide what they reveal, and what they hide.",
+    "resources": [
+      "diaz-tenochtitlan",
+      "three-civilizations"
+    ],
+    "sources": [
+      "diaz-tenochtitlan",
+      "three-civilizations"
+    ],
+    "sourcingQuestions": [
+      "Who wrote this account, when did he write it, and how long after the events?",
+      "Diaz wrote partly to win credit and reward for ordinary soldiers. How might that purpose, and his memory as an old man, shape what he included?"
+    ],
+    "subject": "history-social-studies",
+    "template": "primary-source-analysis",
+    "title": "A Soldier Remembers Tenochtitlan"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.6.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.10.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.9",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-a-soldier-remembers-tenochtitlan",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "The excerpts are adapted into modern English from A. P. Maudslay's translation, The True History of the Conquest of New Spain (1908-1916), which is in the public domain. The introduction and summaries were written for EducateOS.",
+      "body": "Bernal Diaz del Castillo was a Spanish soldier who marched with Hernan Cortes into the Valley of Mexico in November 1519. He wrote his history of the conquest many years later, as an old man living in Guatemala, and finished it around 1568, nearly fifty years after the events. He wrote partly to argue that ordinary soldiers like him, not only Cortes, deserved credit and reward. The book was published in 1632, after his death.\n\nOn first seeing the cities of the valley: When we saw so many cities and villages built in the water, and other great towns on dry land, and that straight and level causeway going toward Mexico, we were amazed. We said it was like the enchanted places told of in the old tales of knights, because of the great towers, temples and buildings rising from the water, all built of stone. Some of our soldiers even asked whether the things we saw were not a dream.\n\nOn the great market at Tlatelolco: We were astounded at the number of people and the quantity of goods in the market, and at the good order and control that was kept, for we had never seen such a thing before. Each kind of goods was kept by itself and had its fixed place: gold, silver and precious stones, feathers, cloth, cotton, cacao, slaves, food of every kind, pottery, wood, and herbs. Some of our soldiers who had been in many parts of the world, in Constantinople, and all over Italy, and in Rome, said that they had never seen a market so large, so well arranged, and so full of people.\n\nOn how the visit ended: The book goes on to describe the Spaniards' seizure of the ruler Moctezuma, the fighting that followed, and the siege that destroyed much of Tenochtitlan in 1521. Diaz wrote that what he had seen was now overthrown and lost, and nothing was left standing.",
+      "id": "diaz-tenochtitlan",
+      "title": "A Spanish Soldier Remembers Tenochtitlan (excerpts, adapted)"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "The Maya: In the tropical forests and lowlands of present-day southern Mexico, Guatemala and Belize, Maya city-states such as Tikal and Calakmul flourished during the Classic period, about 250 to 900 CE. The Maya built stone pyramids and palaces, and they developed the most complete writing system in the Americas, with hundreds of signs. Maya scholars used a number system with a symbol for zero and kept detailed calendars based on watching the sky. In the 800s and 900s, many of the great southern lowland cities were abandoned. Historians and scientists point to several causes, including long droughts, warfare between cities, and too much strain on the land. The Maya people did not disappear: Maya cities continued in the north, and millions of Maya people live in the region today.\n\nThe Aztecs (Mexica): The Mexica people founded their city, Tenochtitlan, about 1325 on an island in Lake Texcoco, in the Valley of Mexico. They built causeways to the shore and canals through the city. To grow food, they built chinampas: long garden plots made of layers of mud and plants piled up in the shallow lake, which produced several harvests a year. In 1428, the Mexica joined two other cities in the Triple Alliance and conquered much of central Mexico, demanding tribute such as cloth, cacao, feathers and food from conquered peoples. By 1519, Tenochtitlan may have held more than 200,000 people, larger than most cities in Europe at the time.\n\nThe Inca: High in the Andes Mountains of South America, the Inca built an empire from their capital, Cusco. From about 1438, under the ruler Pachacuti and those who came after him, it grew to stretch about 4,000 kilometers along the mountains, through parts of present-day Peru, Ecuador, Bolivia, Chile and Argentina. The Inca carved terraces into steep mountainsides to farm and built a road network of roughly 40,000 kilometers, with rope suspension bridges over gorges and storehouses along the way. Runners carried messages in relays. The Inca had no writing system as we know it, but they kept records on a quipu, a set of knotted, colored cords. Instead of taxes in money, subjects owed the state labor, called mit'a.\n\nAll three civilizations changed suddenly in the 1500s, when Spanish soldiers arrived. Hernan Cortes and his Indigenous allies conquered Tenochtitlan in 1521, and Francisco Pizarro began the conquest of the Inca in 1532. European diseases such as smallpox, to which the peoples of the Americas had no immunity, killed millions.",
+      "id": "three-civilizations",
+      "title": "Three Civilizations, Three Environments"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sourcing and point of view"
+      },
+      {
+        "id": "context",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Context"
+      },
+      {
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim and evidence"
+      },
+      {
+        "id": "corroboration",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Compares with the secondary reading"
+      }
+    ],
+    "title": "Source analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

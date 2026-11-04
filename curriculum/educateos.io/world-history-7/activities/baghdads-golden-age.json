@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:c37a827cc1941a9c1d330bacc7689473c53d55aa968e1245cf6c2fadb857b086",
+      "id": "educateos.io/world-history-7-baghdads-golden-age",
+      "version": "1.0.0"
+    }
+  },
+  "id": "baghdads-golden-age",
+  "role": "assessment",
+  "title": "Baghdad's Golden Age"
+}

@@ -1,0 +1,163 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 12,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "7",
+    "minWords": 200,
+    "minimumCitations": 2,
+    "overview": "Argue which Mesopotamian development did the most to make large cities possible.",
+    "prompt": "Irrigation, writing, and written law all helped Mesopotamian cities grow and last. Which of the three did the most to make large cities possible? Write an argument with a clear claim, at least two pieces of evidence from the readings, an explanation of how each piece supports your claim, and a sentence that answers someone who would choose a different development.",
+    "resources": [
+      "land-between-rivers",
+      "hammurabi-laws"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Gifts of Mesopotamia"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.6-8.1.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-gifts-of-mesopotamia",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Mesopotamia means \"the land between the rivers.\" It is the plain between the Tigris and Euphrates rivers, mostly in present-day Iraq. Rain there is scarce, and summers are very hot. Yet the rivers flood every spring and leave behind rich soil.\n\nFarmers learned to dig canals and build earth banks to carry river water to their fields and to hold back floods. This is called irrigation. With irrigation, a farming family could grow more barley than it needed. That surplus fed people who did not farm: priests, potters, metalworkers, merchants and soldiers.\n\nBy about 3500 BCE, Sumerian cities such as Uruk had grown into some of the largest settlements in the world. Each city had a great temple tower called a ziggurat, built for the city's god. Keeping track of grain, workers and trade became complicated, so scribes began pressing marks into wet clay with a reed. Over centuries those marks became cuneiform, one of the first writing systems.\n\nCities often fought over water and land. Around 2334 BCE, Sargon of Akkad united many of them into what is often called the first empire. Later, around 1750 BCE, King Hammurabi made Babylon the center of a large kingdom and had his laws carved in stone for all to see.\n\nIrrigation had a cost. When river water evaporates from fields, it leaves salt behind. Over many centuries, salty soil made some southern fields less fertile, one reason power in Mesopotamia shifted north over time.",
+      "id": "land-between-rivers",
+      "title": "The Land Between the Rivers"
+    },
+    {
+      "attribution": "Excerpts adapted from L. W. King's English translation of the Code of Hammurabi (1910), which is in the public domain. The introduction was written for EducateOS.",
+      "body": "These laws were carved on a stone pillar (a stele) in Babylon around 1750 BCE, during the reign of King Hammurabi. The prologue says the king set them up \"so that the strong should not harm the weak.\"\n\nLaw 53: If anyone is too lazy to keep his dam in good repair, and the dam breaks and floods the fields, he shall pay for the grain he has caused to be ruined.\n\nLaw 196: If a man puts out the eye of another free man, his eye shall be put out.\n\nLaw 198: If he puts out the eye of a commoner, or breaks the bone of a commoner, he shall pay one mina of silver.\n\nLaw 229: If a builder builds a house for someone and does not build it properly, and the house falls and kills its owner, the builder shall be put to death.",
+      "id": "hammurabi-laws",
+      "title": "Laws from the Reign of Hammurabi (excerpts, adapted)"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear, arguable claim"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Accurate evidence from the readings"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains how the evidence supports the claim"
+      },
+      {
+        "id": "counterclaim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Addresses another development fairly"
+      }
+    ],
+    "title": "Historical argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

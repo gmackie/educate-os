@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:571e7418aac68ea70aa20d0d88cf29e7e03bc23e8f2baf8481b40c5a00940aa6",
+      "id": "educateos.io/mathematics-7-good-samples",
+      "version": "1.0.0"
+    }
+  },
+  "id": "good-samples",
+  "role": "lesson",
+  "title": "Good Samples, Fair Conclusions"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:5ba145a678a3e13373f36f4d68c7cfada0be7dd14ae68c58f7eab94c467da77d",
+      "id": "educateos.io/world-history-7-paper-money",
+      "version": "1.0.0"
+    }
+  },
+  "id": "paper-money",
+  "role": "assessment",
+  "title": "Paper Money in the Great Khan's China"
+}

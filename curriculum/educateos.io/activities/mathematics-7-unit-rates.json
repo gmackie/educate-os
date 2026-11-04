@@ -1,0 +1,94 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 6,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Decide whether each relationship is proportional and find the constant.",
+    "problems": [
+      {
+        "prompt": "A recipe uses 3 cups of flour for every 2 eggs. How many cups of flour for 8 eggs?"
+      },
+      {
+        "prompt": "A taxi charges $3 plus $2 per mile. Is cost proportional to miles? Explain."
+      },
+      {
+        "prompt": "A car travels 150 miles in 2.5 hours at a steady speed. Write an equation for distance d after t hours."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Unit Rates and the Constant of Proportionality"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.RP.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-unit-rates",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct solutions"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Justifies with ratios, tables or graphs"
+      }
+    ],
+    "title": "Proportional reasoning"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

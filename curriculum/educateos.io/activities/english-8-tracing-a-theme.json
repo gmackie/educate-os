@@ -1,0 +1,55 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "8",
+    "overview": "Read \"The Second Key\" and trace how its theme grows from the beginning of the story to the end.",
+    "passage": "The Second Key\n\nWhen Marisol's family moved into the apartment above the bakery, her mother handed her a brass key on a red string. \"This is yours,\" she said. \"You're old enough now.\" Marisol hung it around her neck and checked that it was there about forty times a day.\n\nThe key meant she could let herself in after school. It also meant she let herself in to an empty kitchen, a silent hallway, and a refrigerator note that always said the same thing: Snack in the blue bowl. Homework first. Love, Mamá.\n\nIn October, the boy in 3B, Teo, started sitting on the stairs outside his door. Every afternoon he was there with his backpack, staring at his shoes. Marisol walked past him. She had her own key and her own silence to deal with.\n\nOn the fourth day it was raining, and Teo's jacket was soaked through. \"Forgot my key,\" he said, before she could ask. \"My dad gets home at six.\"\n\nMarisol looked at the brass key in her hand. She thought about the empty kitchen. Then she said, \"There's a snack in the blue bowl. It's usually enough for two.\"\n\nThey did homework at the kitchen table, arguing about fractions. Teo was terrible at them, and he made the kitchen loud. When her mother came home at five-thirty, she found two plates in the sink and two pairs of wet sneakers by the door. She raised an eyebrow. Marisol shrugged.\n\nThe next morning there was a new note on the refrigerator: Snack in the blue bowl. Enough for two. Love, Mamá. Beside it, on a hook that hadn't been there before, hung a second key on a green string.\n\nMarisol took it down the hall to 3B and slid it under the door with a note of her own: For days you forget. Or for days you just don't want to sit on the stairs.",
+    "questions": [
+      {
+        "prompt": "At the beginning, what does the key mean to Marisol? Use a detail from the story."
+      },
+      {
+        "prompt": "Why does Marisol walk past Teo at first? What does this show about how she feels?"
+      },
+      {
+        "prompt": "What does Marisol decide on the fourth day, and what in her own life helps her make that choice?"
+      },
+      {
+        "prompt": "The refrigerator note appears twice. How does the second note differ from the first, and why does that change matter?"
+      },
+      {
+        "prompt": "Write a theme of the story as a complete sentence, not a single word."
+      },
+      {
+        "prompt": "Quote the line from the story that best supports your theme, and explain how it supports it."
+      }
+    ],
+    "sentenceFrames": [
+      "At first, Marisol ___.",
+      "By the end, she ___.",
+      "The story suggests that ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Tracing a Theme"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-tracing-a-theme",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}
