@@ -34,12 +34,14 @@ export const HomePage = ({ prompt }: { prompt?: string }) => {
   const district = useDistrictSidebar();
   useDocumentTitle(district ? "AI workspace" : "Home");
 
-  const { authenticatedApi, currentUser } = useAuthenticatedApi();
+  const { authenticatedApi, currentUser, preferredModel } = useAuthenticatedApi();
   const navigate = useNavigate();
   const toasts = useKumoToastManager();
 
   const [models, setModels] = useState<AiChatAuthorInfo[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  // Wrapped, so that a pick of "No agent" (null) is told from no pick at all.
+  const [pickedModel, setPickedModel] = useState<{ modelId: string | null } | null>(null);
+  const selectedModel = pickedModel ? pickedModel.modelId : getStoredSelectedModel(models, preferredModel);
   // Bumped each time a task suggestion is picked; the composer re-seeds its text off the nonce.
   const [seed, setSeed] = useState<{ text: string; nonce: number } | null>(null);
   // "Ask AI about this" (SCHO-260): a context the district confirmed, attached to the new chat.
@@ -69,7 +71,6 @@ export const HomePage = ({ prompt }: { prompt?: string }) => {
       .then((list) => {
         if (cancelled) return;
         setModels(list);
-        setSelectedModel(getStoredSelectedModel(list));
       })
       .catch((err) => {
         logRpcFailure("Failed to fetch models:", err);
@@ -85,7 +86,7 @@ export const HomePage = ({ prompt }: { prompt?: string }) => {
   }, [authenticatedApi]);
 
   const handleModelChange = useCallback((value: string | null) => {
-    setSelectedModel(value);
+    setPickedModel({ modelId: value });
     persistSelectedModel(value);
   }, []);
 

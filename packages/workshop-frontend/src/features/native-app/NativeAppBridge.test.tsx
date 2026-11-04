@@ -27,6 +27,7 @@ const pendingWhoami = () => {
 const apiWithWhoami = (whoami: () => Promise<AiChatAuthorInfo>) => ({
   whoami,
   amIAdmin: async () => false,
+  getPreferredModel: async () => null,
 }) as RpcStub<AuthenticatedApi>
 
 describe('native app bridge', () => {

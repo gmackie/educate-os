@@ -11,6 +11,11 @@ interface AuthContextType {
   isCurrentUserConfirmed: boolean
   /** Whether the current user is a deployment admin. False while loading / for non-admins. */
   isAdmin: boolean
+  /**
+   * The model the user chose at onboarding (`AuthenticatedApi.getPreferredModel`), which a picker
+   * starts on when this browser has no pick of its own. Null while loading or when there is none.
+   */
+  preferredModel: string | null
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -27,6 +32,7 @@ export function AuthProvider({ children, authenticatedApi, onLogout }: AuthProvi
     user: AiChatAuthorInfo
   } | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [preferredModel, setPreferredModel] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -56,10 +62,18 @@ export function AuthProvider({ children, authenticatedApi, onLogout }: AuthProvi
     return () => { cancelled = true }
   }, [authenticatedApi])
 
+  useEffect(() => {
+    let cancelled = false
+    authenticatedApi.getPreferredModel().then((id) => {
+      if (!cancelled) setPreferredModel(id)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [authenticatedApi])
+
   return (
     <AuthContext.Provider value={{
       authenticatedApi, logout: onLogout, currentUser: identity?.user ?? null,
-      isCurrentUserConfirmed: identity?.api === authenticatedApi, isAdmin,
+      isCurrentUserConfirmed: identity?.api === authenticatedApi, isAdmin, preferredModel,
     }}>
       {children}
     </AuthContext.Provider>
