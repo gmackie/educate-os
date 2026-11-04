@@ -1,0 +1,45 @@
+{
+  "id": "adding-fractions",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u2-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u2-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "breaking-fractions-apart"
+    },
+    {
+      "kind": "activity",
+      "ref": "pizza-fractions"
+    },
+    {
+      "kind": "activity",
+      "ref": "mixed-numbers"
+    },
+    {
+      "kind": "activity",
+      "ref": "adding-fractions-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u2-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.B.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "summary": "Add and subtract fractions and mixed numbers with like denominators, decompose fractions, and multiply a fraction by a whole number.",
+  "title": "Adding Fractions"
+}

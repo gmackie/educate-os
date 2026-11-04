@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:1cb50ca4b892b809b7dc9b94cf1457517a09a240cd39ceebc0049c2b79f6b386",
+      "id": "educateos.io/grade-4-mathematics-breaking-fractions-apart",
+      "version": "1.0.0"
+    }
+  },
+  "id": "breaking-fractions-apart",
+  "role": "lesson",
+  "title": "Breaking Fractions Apart"
+}

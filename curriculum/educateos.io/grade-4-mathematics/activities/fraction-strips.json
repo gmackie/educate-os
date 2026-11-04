@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:3bddb5ba7445e5d29dd293118d8c8802db82cf2474bee36528b3b49cf072e4c9",
+      "id": "educateos.io/grade-4-mathematics-fraction-strips",
+      "version": "1.0.0"
+    }
+  },
+  "id": "fraction-strips",
+  "role": "assignment",
+  "title": "Fraction Strips"
+}

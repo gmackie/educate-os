@@ -1,0 +1,135 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 6,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Classify shapes by parallel and perpendicular sides and angles, and find lines of symmetry.",
+    "problems": [
+      {
+        "prompt": "Which of these shapes always have two pairs of parallel sides: square, rectangle, rhombus, trapezoid, parallelogram? Explain."
+      },
+      {
+        "prompt": "Draw a triangle that has a right angle. What is this kind of triangle called?"
+      },
+      {
+        "prompt": "Can a triangle have two right angles? Explain why or why not."
+      },
+      {
+        "prompt": "Name a shape that has perpendicular sides and a shape that has no perpendicular sides."
+      },
+      {
+        "prompt": "How many lines of symmetry does each one have: a square, a rectangle that is not a square, an equilateral triangle, the letter A, the letter H, the letter F?"
+      },
+      {
+        "prompt": "Draw a shape that has exactly one line of symmetry. Draw the line of symmetry and take a photo."
+      },
+      {
+        "prompt": "Is every square a rectangle? Explain using sides and angles."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Sorting Shapes and Finding Symmetry"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.G.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.G.A.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-shapes-and-symmetry",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows the steps or a model"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains thinking with math words"
+      }
+    ],
+    "title": "Classifying shapes and symmetry"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

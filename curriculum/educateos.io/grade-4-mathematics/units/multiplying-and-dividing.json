@@ -1,0 +1,57 @@
+{
+  "id": "multiplying-and-dividing",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u4-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "area-models"
+    },
+    {
+      "kind": "activity",
+      "ref": "times-as-many"
+    },
+    {
+      "kind": "activity",
+      "ref": "sharing-and-remainders"
+    },
+    {
+      "kind": "activity",
+      "ref": "multiply-divide-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NBT.B.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.OA.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.OA.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NBT.B.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.OA.A.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "summary": "Multiply up to four digits by one digit and two digits by two digits with area models and partial products, divide with remainders, and solve comparison and multistep word problems.",
+  "title": "Multiplying and Dividing Bigger Numbers"
+}
