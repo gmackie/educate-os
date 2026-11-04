@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:82ef984877c1cf5f9ee786b56bea1382f5e672c8bdb735e27fea53fc87ed1888",
+      "id": "educateos.io/united-states-history-semester-synthesis",
+      "version": "1.0.0"
+    }
+  },
+  "id": "semester-synthesis",
+  "role": "assessment",
+  "title": "Citizenship and Government, 1840 to Today"
+}

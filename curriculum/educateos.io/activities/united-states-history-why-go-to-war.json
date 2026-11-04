@@ -1,0 +1,63 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "overview": "Use a timeline and a primary source to separate the long-term causes of American expansion and war from the events that triggered them.",
+    "problems": [
+      {
+        "prompt": "Using the timeline, identify one long-term cause and one triggering event of the war with Spain in 1898. Explain the difference between them."
+      },
+      {
+        "prompt": "Read the Anti-Imperialist League platform. Summarize the League's argument against annexing the Philippines, then summarize the other side's argument. Which side's reasoning connects more closely to the Declaration of Independence? Explain."
+      },
+      {
+        "prompt": "Sort these into long-term causes and triggering events of American entry into the First World War: trade and loans with Britain and France; the sinking of the Lusitania; Germany's resumption of unrestricted submarine warfare; the Zimmermann Telegram. Justify one placement you think a classmate might disagree with."
+      },
+      {
+        "prompt": "Wilson won reelection in 1916 with the slogan \"He kept us out of war.\" What does that suggest about public opinion, and what changed it within five months?"
+      },
+      {
+        "prompt": "In two or three sentences, explain which mattered more to American entry into the war in April 1917: the long-term causes or the triggering events."
+      }
+    ],
+    "resources": [
+      "empire-and-war-timeline",
+      "anti-imperialist-platform"
+    ],
+    "showWork": false,
+    "subject": "history-social-studies",
+    "template": "problem-set",
+    "title": "Why Did America Go to War?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.15.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.14.9-12",
+      "frameworkKey": "c3"
+    }
+  ],
+  "id": "educateos.io/united-states-history-why-go-to-war",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "1898: The battleship Maine explodes in Havana harbor in February. In April the United States declares war on Spain over Cuba. The war lasts under four months. In the peace treaty Spain cedes Puerto Rico, Guam and the Philippines to the United States. Congress also annexes Hawaii.\n1899: The Anti-Imperialist League opposes the annexation of the Philippines. Filipino forces who had fought Spain now fight the United States; the Philippine-American War lasts until 1902 and kills hundreds of thousands of Filipinos, most of them civilians.\n1914: War breaks out in Europe in August. President Woodrow Wilson declares the United States neutral. American banks and businesses trade heavily with Britain and France.\n1915: A German submarine sinks the British liner Lusitania in May; nearly 1,200 people die, 128 of them Americans. Germany later promises to limit submarine attacks.\n1916: Wilson wins reelection; supporters use the slogan \"He kept us out of war.\"\n1917: In February Germany resumes unrestricted submarine warfare against all ships, including neutral ones. In March newspapers publish the Zimmermann Telegram, in which Germany's foreign minister proposed that Mexico join Germany in a war against the United States. On April 2 Wilson asks Congress to declare war; Congress declares war on April 6. In June Congress passes the Espionage Act.\n1918: The Sedition Act expands the Espionage Act to punish criticism of the government and the war. More than two million American soldiers reach France. The fighting ends with the armistice of November 11.\n1919-1920: Wilson helps write the Treaty of Versailles, which creates the League of Nations. The Senate twice refuses to ratify it, and the United States never joins the League.",
+      "id": "empire-and-war-timeline",
+      "title": "Empire and War, 1898-1920: A Timeline"
+    },
+    {
+      "attribution": "Platform of the American Anti-Imperialist League, October 1899. Public domain.",
+      "body": "\"We hold that the policy known as imperialism is hostile to liberty and tends toward militarism, an evil from which it has been our glory to be free.\"\n\nAbout the source: The League's members included the industrialist Andrew Carnegie, the writer Mark Twain, the labor leader Samuel Gompers and former president Grover Cleveland. Supporters of annexation answered that the United States needed Pacific naval bases and markets in Asia, that rival empires would take the islands if the United States did not, and, in arguments shaped by the racial ideas of the time, that Filipinos were not ready to govern themselves.",
+      "id": "anti-imperialist-platform",
+      "title": "Platform of the American Anti-Imperialist League (1899), excerpt"
+    }
+  ],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

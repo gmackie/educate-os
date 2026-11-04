@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:3ef61ae53733ce05b41694f9f4036d31171c4ebb687ed8bd8d93bb1bc99489e9",
+      "id": "educateos.io/united-states-history-progressive-reform",
+      "version": "1.0.0"
+    }
+  },
+  "id": "progressive-reform",
+  "role": "assignment",
+  "title": "The Most Important Progressive Reform"
+}

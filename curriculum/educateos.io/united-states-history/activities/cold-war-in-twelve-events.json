@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:6c8d0d44309fe2b41c684cfcd6fba909cbbbbf360f3d2a647a6c65bd604ff67e",
+      "id": "educateos.io/united-states-history-cold-war-in-twelve-events",
+      "version": "1.0.0"
+    }
+  },
+  "id": "cold-war-in-twelve-events",
+  "role": "lesson",
+  "title": "The Cold War in Twelve Events"
+}

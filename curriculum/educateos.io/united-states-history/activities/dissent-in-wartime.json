@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:242f6a9ae9f03c07a46dc4ab1bba59136df69847fd5ed9c2eb0ac6305380132c",
+      "id": "educateos.io/united-states-history-dissent-in-wartime",
+      "version": "1.0.0"
+    }
+  },
+  "id": "dissent-in-wartime",
+  "role": "assignment",
+  "title": "Dissent in Wartime"
+}

@@ -1,0 +1,69 @@
+{
+  "id": "empire-and-the-first-world-war",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u3-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u3-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "why-go-to-war"
+    },
+    {
+      "kind": "activity",
+      "ref": "dissent-in-wartime"
+    },
+    {
+      "kind": "activity",
+      "ref": "league-of-nations"
+    },
+    {
+      "kind": "activity",
+      "ref": "empire-and-war-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u3-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.15.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.14.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.4.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.12.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.3.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "How the United States became a world power in 1898, why it entered the First World War in 1917, what the war did to free speech at home, and why the Senate rejected the League of Nations.",
+  "title": "Unit 5: Empire and the First World War"
+}
