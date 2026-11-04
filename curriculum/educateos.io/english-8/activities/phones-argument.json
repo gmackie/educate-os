@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:24f8c3fe02f190acdd9fa517f1d9fbcc20949913c357f4eaf66fa67b8e7a4a7d",
+      "id": "educateos.io/english-8-phones-argument",
+      "version": "1.0.0"
+    }
+  },
+  "id": "phones-argument",
+  "role": "assignment",
+  "title": "Phones in the Classroom"
+}

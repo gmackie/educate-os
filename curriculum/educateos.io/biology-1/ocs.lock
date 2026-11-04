@@ -1,0 +1,11 @@
+{
+  "lockVersion": 1,
+  "packages": [],
+  "root": {
+    "digest": "sha256:73ef961e9b3255c6f091253334807f4eeb0fb01aa96d164aee20fd09752ba2b0",
+    "id": "educateos.io/biology-1",
+    "modules": [],
+    "version": "1.0.0"
+  },
+  "specVersion": "1.1"
+}

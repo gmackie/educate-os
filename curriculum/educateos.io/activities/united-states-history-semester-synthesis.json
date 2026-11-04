@@ -1,0 +1,150 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "9-12",
+    "minWords": 600,
+    "minimumCitations": 3,
+    "overview": "Write a semester synthesis essay connecting the course's two big questions across every unit.",
+    "prompt": "This semester we followed two questions from the Lowell mills to the present: Who has had to fight for the full rights of citizenship? And how has the federal government's role in the economy changed? Write an argument that answers both questions and explains how they are connected. Use specific evidence from at least three units, citing at least three sources we read, and explain one pattern of change and one of continuity.",
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Citizenship and Government, 1840 to Today"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D4.1.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.2.9-12",
+      "frameworkKey": "c3"
+    }
+  ],
+  "id": "educateos.io/united-states-history-semester-synthesis",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States a precise, defensible thesis that takes a position on the question and sets up a line of reasoning.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim"
+      },
+      {
+        "description": "Supports the claim with specific, accurate and sufficient evidence, cited from the sources where required.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Historical evidence"
+      },
+      {
+        "description": "Explains how the evidence supports the claim using causation, comparison, or change and continuity.",
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Historical reasoning"
+      },
+      {
+        "description": "Addresses a counterclaim or competing interpretation fairly and explains why the claim still holds.",
+        "id": "alternatives",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Weighs alternatives"
+      }
+    ],
+    "title": "Semester synthesis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

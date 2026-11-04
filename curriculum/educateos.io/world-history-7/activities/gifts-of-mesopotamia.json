@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:e7075241a3b325756080bbf4311ac03ecca77aeadba662fca57416b449a54584",
+      "id": "educateos.io/world-history-7-gifts-of-mesopotamia",
+      "version": "1.0.0"
+    }
+  },
+  "id": "gifts-of-mesopotamia",
+  "role": "assessment",
+  "title": "Gifts of Mesopotamia"
+}

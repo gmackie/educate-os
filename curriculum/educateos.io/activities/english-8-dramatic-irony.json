@@ -1,0 +1,156 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 84,
+      "kind": "after-install"
+    },
+    "genre": "literary-analysis",
+    "gradeBand": "8",
+    "minWords": 300,
+    "minimumCitations": 2,
+    "overview": "Explain how the difference between what the audience knows and what Dev knows creates suspense and humor.",
+    "prompt": "In \"The Volcano,\" the audience knows from the first moment something Dev does not. Write an essay that explains how this dramatic irony creates both suspense and humor in the scene. Analyze at least two moments, quoting dialogue or stage directions, and explain how the gap between what the audience knows and what Dev knows makes each moment tense or funny. End by explaining how the gap closes, and why the playwright has Anika reveal the truth herself instead of having Dev discover it.",
+    "resources": [
+      "volcano-scene"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Dramatic Irony in \"The Volcano\""
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-dramatic-irony",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "The Volcano: a scene in one act\n\nWritten for EducateOS.\n\nCHARACTERS: DEV, 13. ANIKA, his sister, 11. MOM, offstage voice.\n\nSETTING: A garage, 7:15 on a school morning. A workbench. Under a beach towel on the floor, out of DEV's sight, is the broken half of a papier-mache volcano.\n\n(Lights up. ANIKA stands alone holding a roll of tape. She looks at the towel, then at the audience.)\n\nANIKA: (To the audience.) I was only trying to see if it really erupts. It did not erupt. It fell.\n\n(DEV bursts in, backpack half on.)\n\nDEV: Have you seen my volcano? The science fair bus leaves at eight.\n\nANIKA: (Too quickly.) What volcano?\n\nDEV: The one I've been building for three weeks. The one on this bench. Yesterday.\n\nANIKA: Maybe Mom moved it.\n\nDEV: (Calling offstage.) Mom! Did you move my volcano?\n\nMOM: (Offstage.) Why would I touch your volcano?\n\n(DEV starts searching. He lifts a box, a bucket. He steps right next to the towel. ANIKA moves to stand on the corner of it.)\n\nDEV: If I don't have it, I have nothing. Ms. Reyes said the project is a third of our grade.\n\nANIKA: You could explain volcanoes. With your hands. Like, very dramatically.\n\nDEV: (Not laughing.) Anika.\n\n(Pause. ANIKA looks at the audience, then at DEV.)\n\nDEV: (Quietly.) You know, last year when I broke Dad's phone, I hid it in the laundry for two days. The hiding was worse than the breaking. I couldn't eat. I kept thinking someone was about to find it.\n\n(ANIKA steps off the towel. She lifts it. The broken volcano sits on the floor. DEV stares at it.)\n\nANIKA: I wanted to see it erupt. I'm sorry.\n\n(Long pause.)\n\nDEV: (Kneeling.) The base is fine. It's just the top. (He picks up the tape.) Hold this side. If we're fast, we can make the bus. And you are explaining to Ms. Reyes why it looks like this.\n\nANIKA: Dramatically?\n\nDEV: Very dramatically.\n\n(They work together as the lights fade.)",
+      "id": "volcano-scene",
+      "title": "The Volcano: a scene in one act"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear claim about dramatic irony"
+      },
+      {
+        "id": "analysis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analyzes suspense and humor"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Quotes dialogue and stage directions"
+      },
+      {
+        "id": "resolution",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains how the gap closes"
+      }
+    ],
+    "title": "Dramatic irony"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

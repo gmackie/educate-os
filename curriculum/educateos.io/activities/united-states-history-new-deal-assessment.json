@@ -1,0 +1,167 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "9-12",
+    "minWords": 450,
+    "minimumCitations": 2,
+    "overview": "Write a timed historical argument about the New Deal's effects on the economy, using the unit's data and sources.",
+    "prompt": "Roosevelt said in 1933 that \"our greatest primary task is to put people to work.\" Did the New Deal accomplish that task and end the Great Depression? Take a clear position. Use at least two specific figures from the data, explain what happened in 1937-1938 and after 1941, and address the strongest argument against your position.",
+    "resources": [
+      "depression-data",
+      "fdr-first-inaugural"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Did the New Deal End the Depression?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Eco.12.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D4.1.9-12",
+      "frameworkKey": "c3"
+    }
+  ],
+  "id": "educateos.io/united-states-history-new-deal-assessment",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Compiled for EducateOS from standard historical estimates. Unemployment rates are the Stanley Lebergott estimates published in Historical Statistics of the United States, rounded to the nearest whole percent. Other figures are rounded; sources differ slightly.",
+      "body": "Unemployment, percent of the civilian labor force:\n1929: 3\n1930: 9\n1931: 16\n1932: 24\n1933: 25\n1934: 22\n1935: 20\n1936: 17\n1937: 14\n1938: 19\n1939: 17\n1940: 15\n1941: 10\n1942: 5\n1943: 2\n1944: 1\n\nOther indicators:\nFrom 1929 to 1933, the economy's real output (real gross domestic product) fell by about one quarter.\nFrom 1930 to 1933, about 9,000 banks failed. Depositors in a failed bank usually lost their savings; there was no federal deposit insurance until 1933.\nThe Dow Jones Industrial Average, a measure of stock prices, peaked at about 381 in September 1929 and fell to about 41 in July 1932, a loss of almost 90 percent.\n\nKey events:\n1929: The stock market crashes in October.\n1932: Franklin D. Roosevelt is elected president.\n1933: Roosevelt takes office in March. The first New Deal creates federal relief programs, the Civilian Conservation Corps, and the Federal Deposit Insurance Corporation (FDIC).\n1935: The Works Progress Administration employs millions; Congress passes the Social Security Act and the National Labor Relations (Wagner) Act, which protects workers' right to join unions.\n1937: Believing recovery was under way, the government cuts spending while the Federal Reserve tightens credit. A sharp recession follows in 1937-1938.\n1941: The United States enters the Second World War in December. Federal spending on the war rises enormously from 1941 to 1945.",
+      "id": "depression-data",
+      "title": "The Great Depression in Numbers"
+    },
+    {
+      "attribution": "Franklin D. Roosevelt, inaugural address, March 4, 1933. Public domain (U.S. government work).",
+      "body": "\"So, first of all, let me assert my firm belief that the only thing we have to fear is fear itself—nameless, unreasoning, unjustified terror which paralyzes needed efforts to convert retreat into advance.\"\n\n\"This Nation asks for action, and action now.\"\n\n\"Our greatest primary task is to put people to work.\"\n\nContext: When Roosevelt spoke, about one worker in four was unemployed, and banks in many states had closed their doors to stop panicked depositors from withdrawing their money.",
+      "id": "fdr-first-inaugural",
+      "title": "Franklin D. Roosevelt, First Inaugural Address (1933), excerpts"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States a precise, defensible thesis that takes a position on the question and sets up a line of reasoning.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim"
+      },
+      {
+        "description": "Supports the claim with specific, accurate and sufficient evidence, cited from the sources where required.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Historical evidence"
+      },
+      {
+        "description": "Explains how the evidence supports the claim using causation, comparison, or change and continuity.",
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Historical reasoning"
+      },
+      {
+        "description": "Addresses a counterclaim or competing interpretation fairly and explains why the claim still holds.",
+        "id": "alternatives",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Weighs alternatives"
+      }
+    ],
+    "title": "Historical argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

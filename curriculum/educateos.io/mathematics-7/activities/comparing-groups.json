@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:8fe862f77580bda8b549a1cb28457a8e631964d86ec90c159e3181e5551056f1",
+      "id": "educateos.io/mathematics-7-comparing-groups",
+      "version": "1.0.0"
+    }
+  },
+  "id": "comparing-groups",
+  "role": "assignment",
+  "title": "Comparing Two Groups"
+}

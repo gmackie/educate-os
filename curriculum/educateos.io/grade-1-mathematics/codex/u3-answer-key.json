@@ -1,0 +1,7 @@
+{
+  "body": "Counting Past 100: 1. 100. 2. 105, 106, 107. 3. 117, 118, 119, 120. 4. 110. 5. After 100 the ones count 1, 2, 3 again (101, 102, 103), just like after 10 and 20; the 120 chart rows repeat the pattern.\nGreater Than, Less Than: 1. 34 < 43. 2. 71 > 17. 3. 58 = 58. 4. 90 > 89. 5. Zoe; 62 has 6 tens and 26 has only 2 tens, so 62 > 26.\nJump by Tens: 1. 45. 2. 62. 3. 100. 4. 44. 5. 70. 6. 40. 7. 29. 8. The tens digit goes up by 1 each time (10 more); the ones digit stays 3.\nNumbers to 120 Check: 1. 109, 110, 111. 2. 112. 3. 47 < 74. 4. 66. 5. 90. 6. 48 (the number is 38).\nScoring tip: a correct comparison written in words (\"34 is less than 43\") is Got it! on comparing if the student cannot yet form the symbol; teach the symbol next. For 10 more and 10 less, a student who counts by ones to get the right answer is Getting there: the goal is to change the tens digit without counting.",
+  "id": "u3-answer-key",
+  "purpose": "answer-key",
+  "title": "Answer key: Numbers to 120",
+  "visibility": "teacher-only"
+}

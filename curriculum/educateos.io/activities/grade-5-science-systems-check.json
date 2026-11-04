@@ -1,0 +1,164 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "5",
+    "overview": "Read a new article on your own and explain how a volcano changed Earth's spheres.",
+    "passage": "When the Mountain Woke Up\n\nFor two hundred years, Mount Ember was quiet. Snow covered its top, and a thick forest grew on its sides. Then one spring morning, the mountain woke up.\n\nFirst, a huge cloud of ash shot high into the sky. Winds carried the ash for hundreds of kilometers. The ash cloud blocked so much sunlight that, for a few days, towns nearby were dark at noon and the air felt cooler.\n\nNext, hot rock and gas poured down the mountain. The heat melted the snow on top in minutes. The meltwater mixed with ash and soil to make thick, fast mudflows. The mud rushed into the rivers, turning them brown and making them flood their banks. When the floods went down, a layer of sediment, the sand, mud and ash carried by the water, was left behind on the valley floor.\n\nThe forest on the mountain was knocked flat and buried. Many animals escaped, but many plants could not.\n\nYet the mountain's story did not end there. Within a few years, tiny plants pushed up through the gray ash. The ash had broken down into soil full of minerals. Insects returned, then birds, then deer. Scientists say a volcano can change every one of Earth's spheres, and Mount Ember is proof.",
+    "questions": [
+      {
+        "prompt": "Which sphere did the ash cloud change first? What happened to it?"
+      },
+      {
+        "prompt": "How did an event in the geosphere change the hydrosphere? Use details from the text."
+      },
+      {
+        "prompt": "How was the biosphere harmed by the eruption, and how was it later helped?"
+      },
+      {
+        "prompt": "Describe a chain of events that links three spheres. Name each sphere."
+      },
+      {
+        "prompt": "What does sediment mean? Quote the words in the text that tell you."
+      },
+      {
+        "prompt": "The author writes that \"a volcano can change every one of Earth's spheres.\" Does the author give enough evidence for this point? Name one detail for each sphere."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Earth's Systems Check: When the Mountain Woke Up"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.8",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-systems-check",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "science",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Accurate science ideas"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses details from the text"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains how and why"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear, complete sentences"
+      }
+    ],
+    "title": "Earth's systems check"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

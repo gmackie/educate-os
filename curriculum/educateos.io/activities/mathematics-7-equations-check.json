@@ -1,0 +1,136 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 14,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Write and solve equations and inequalities, and explain your steps.",
+    "problems": [
+      {
+        "prompt": "Solve 6x + 11 = 47."
+      },
+      {
+        "prompt": "Solve 0.5x + 3 = 10."
+      },
+      {
+        "prompt": "Solve 2(x + 5) = 36."
+      },
+      {
+        "prompt": "A bike rental costs $8 plus $3 per hour. Mira has $26. Write and solve an equation to find how many hours she can rent the bike."
+      },
+      {
+        "prompt": "Jonah has $40. He wants to buy a $12 book and some $4 notebooks. Write and solve an inequality for the number of notebooks, n, he can buy. Describe the solutions that make sense."
+      },
+      {
+        "prompt": "Solve 3x - 5 > 10 and describe the solutions on a number line."
+      },
+      {
+        "prompt": "A student solved 4x + 8 = 32 by dividing by 4 first and wrote x + 8 = 8, so x = 0. Explain the mistake and solve the equation correctly."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Equations and Inequalities Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.EE.B.4",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.EE.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-equations-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "equation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Writes the equation or inequality"
+      },
+      {
+        "id": "solution",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Solves and checks"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains the steps"
+      }
+    ],
+    "title": "Equations and inequalities"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

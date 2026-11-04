@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b3db5424bef0b0352daef797ba7b6ddedd3b1cf025d64b2b12afdc72bf29a833",
+      "id": "educateos.io/english-8-snapshot-and-thoughtshot",
+      "version": "1.0.0"
+    }
+  },
+  "id": "snapshot-and-thoughtshot",
+  "role": "assignment",
+  "title": "Snapshot and Thoughtshot"
+}

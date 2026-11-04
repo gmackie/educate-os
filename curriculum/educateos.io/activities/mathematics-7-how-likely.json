@@ -1,0 +1,46 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "7",
+    "overview": "Describe likelihood with words and numbers, and find theoretical probabilities.",
+    "problems": [
+      {
+        "prompt": "Describe each event as impossible, unlikely, equally likely, likely or certain: (a) rolling a 7 on a standard number cube, (b) flipping a coin and getting heads, (c) picking a red marble from a bag of 9 red marbles and 1 blue marble."
+      },
+      {
+        "prompt": "A spinner has 8 equal sections: 3 green, 4 yellow and 1 purple. Find P(green), P(yellow) and P(purple)."
+      },
+      {
+        "prompt": "A standard number cube is rolled once. What is the probability of rolling a number greater than 4?"
+      },
+      {
+        "prompt": "Which event is more likely: one with probability 0.35 or one with probability 2/5? Explain."
+      },
+      {
+        "prompt": "A bag has 4 red, 6 blue and 10 white tiles. What is the probability of picking a tile that is not white?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "How Likely Is It?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.C.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.C.7",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-how-likely",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

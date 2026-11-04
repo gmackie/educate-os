@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:baf0f7393e54662c01ac42a9ff6a547083ad71b65a2149e1e998786324db7ee4",
+      "id": "educateos.io/grade-4-mathematics-area-models",
+      "version": "1.0.0"
+    }
+  },
+  "id": "area-models",
+  "role": "lesson",
+  "title": "Multiplying with Area Models"
+}

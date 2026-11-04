@@ -1,0 +1,167 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 13,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "7",
+    "minWords": 220,
+    "minimumCitations": 2,
+    "overview": "Argue which cause did the most to make the Mali Empire powerful.",
+    "prompt": "Historians point to several causes of the Mali Empire's power: its control of gold fields, its position on the trade routes between the Sahara and the Niger River, and the choices of its rulers, such as keeping order and supporting Islamic learning. Which cause mattered most? Write an argument with a clear claim and at least two pieces of evidence from the readings. Explain why your cause mattered more than at least one other cause, and when you use a source, say whose point of view it shows.",
+    "resources": [
+      "gold-salt-sahara",
+      "mali-travelers"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "What Made Mali Powerful?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.15.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.11.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.6-8.1.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-what-made-mali-powerful",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "South of the Sahara Desert lies the Sahel, a band of dry grassland, and south of that, wetter savanna and forest. Each region had something the others wanted. Mines in the far south, in areas such as Bambuk and Bure near the upper Senegal and Niger rivers, produced gold. In the middle of the Sahara, at places such as Taghaza, people cut slabs of salt from dry lake beds. People in the hot south needed salt in their diets and to preserve food; traders from the north wanted gold.\n\nAfter camels came into wide use in North Africa, caravans could cross the desert, a journey of about two months. By the 800s, Arab and Berber merchants were crossing regularly. West African kingdoms grew strong by controlling the trade where desert met grassland.\n\nGhana: The first of these great kingdoms was Ghana, called Wagadu by its own people, in what is now southern Mauritania and western Mali (not the modern country of Ghana). Its kings taxed salt coming in and gold going out, and kept the largest gold nuggets for themselves. A Muslim geographer in Spain, al-Bakri, described the king's court in 1068.\n\nMali: Ghana weakened in the 1100s. In the 1200s, a new power rose: Mali, founded, according to the epic told by griots (oral historians), by the hero Sundiata Keita. Mali controlled the gold fields and the trading cities of the Niger River. Its most famous ruler, Mansa Musa, made the pilgrimage to Mecca in 1324. He returned with scholars and an architect, and cities such as Timbuktu became centers of Islamic learning, with mosques and libraries of handwritten books.\n\nSonghai: In the 1400s, the Songhai Empire, centered on the city of Gao, grew larger still under rulers such as Sunni Ali and Askia Muhammad. In 1591, an army from Morocco armed with guns defeated Songhai, and Atlantic sea trade with Europeans slowly drew trade away from the Sahara routes.\n\nMuch of what we know comes from two kinds of sources: books by Arabic-writing visitors and geographers, and the oral traditions of griots, passed down over centuries.",
+      "id": "gold-salt-sahara",
+      "title": "Gold, Salt and the Sahara"
+    },
+    {
+      "attribution": "Source A is paraphrased for EducateOS from the description of Mansa Musa's visit in al-Umari's encyclopedia (written about 1337-1338). Source B is adapted into modern English from H. A. R. Gibb's translation, Ibn Battuta: Travels in Asia and Africa (1929), with a summary written for EducateOS.",
+      "body": "Source A: al-Umari. Ibn Fadl Allah al-Umari was an official and writer in Cairo, Egypt. He did not travel to Mali. About twelve years after Mansa Musa passed through Cairo on his pilgrimage in 1324, al-Umari collected the memories of Cairo officials and merchants who had met him. This is a paraphrase of what they told him.\n\nParaphrase of al-Umari: Mansa Musa arrived with a great company and a huge amount of gold. He gave gifts of gold to the officials of the sultan's court and to almost everyone who held an office, and his people bought goods in the markets without bargaining. So much gold came into Cairo that its value fell, and twelve years later it had still not returned to its old price.\n\nSource B: Ibn Battuta. Ibn Battuta was a scholar and judge from Tangier, in Morocco, who traveled for nearly thirty years across Africa and Asia. He visited Mali in 1352 and 1353, during the reign of Mansa Sulayman, Mansa Musa's brother. Years later, back in Morocco, he told his travels to a writer, Ibn Juzayy, who wrote them down in 1355.\n\nFrom Ibn Battuta's account: The people of this country have some admirable qualities. They are seldom unjust, and they hate injustice more than any other people. Their sultan shows no mercy to anyone guilty of the least act of it. There is complete safety in their country. Neither traveler nor resident has anything to fear from robbers or men of violence. When a foreign merchant dies in their country, they do not take his goods, even if they are of great value, but keep them safe until the rightful heir comes to claim them.\n\nAlso from Ibn Battuta: He praised how carefully people kept their prayers and learned the Quran by heart. He also criticized some local customs that he, as a strict judge from North Africa, thought were wrong, such as how women and girls dressed and spoke freely with men who were not their relatives.",
+      "id": "mali-travelers",
+      "title": "Two Writers Describe Mali (excerpts, adapted)"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear, arguable claim"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Accurate evidence from the readings"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Weighs the causes"
+      },
+      {
+        "id": "sources",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses sources with care for their point of view"
+      }
+    ],
+    "title": "Historical argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

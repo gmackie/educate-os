@@ -1,0 +1,46 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to the clues shape detectives use. Then answer the questions.",
+    "passage": "Shape detectives look for clues. A triangle has 3 straight sides and 3 corners. It is closed, with no gaps. A big triangle and a tiny triangle are both triangles. A red triangle and a blue triangle are both triangles. Color and size do not change the shape. Sides and corners do!",
+    "questions": [
+      {
+        "prompt": "How many sides does a triangle have?"
+      },
+      {
+        "answerBy": "speaking",
+        "prompt": "Does color change what shape it is? Tell why."
+      },
+      {
+        "prompt": "A square has 4 sides that are all the same length. Is a long, skinny rectangle a square? Tell why."
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw a triangle that looks different from your friend's. Is it still a triangle?"
+      }
+    ],
+    "sentenceFrames": [
+      "A ___ has ___ sides.",
+      "It is still a ___ because ___."
+    ],
+    "subject": "mathematics",
+    "template": "read-and-respond",
+    "title": "What Makes a Shape?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.G.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-what-makes-a-shape",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,172 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Show what you know about converting units, area, perimeter, time and line plots.",
+    "problems": [
+      {
+        "prompt": "How many inches are in 6 feet?"
+      },
+      {
+        "prompt": "How many grams are in 5 kilograms?"
+      },
+      {
+        "prompt": "How many minutes are in 2 hours and 15 minutes?"
+      },
+      {
+        "prompt": "A rectangle is 14 centimeters long and 8 centimeters wide. Find its area and its perimeter."
+      },
+      {
+        "prompt": "A rectangle has an area of 63 square meters and a width of 7 meters. How long is it?"
+      },
+      {
+        "prompt": "A movie starts at 3:45 p.m. and lasts 1 hour and 50 minutes. What time does it end?"
+      },
+      {
+        "prompt": "Mr. Reyes has 3 liters of juice. He pours it equally into cups that hold 250 milliliters each. How many cups can he fill?"
+      },
+      {
+        "prompt": "Six ribbons have these lengths in inches: 1/4, 1/2, 1/2, 3/4, 1, 1. Make a line plot. Then find the total length of the two 1/2-inch ribbons, and the difference between the longest and shortest ribbons."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Measurement and Data Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.A.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.B.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-measurement-check",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows the steps or a model"
+      },
+      {
+        "id": "precision",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Labels units and uses symbols correctly"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains thinking with math words"
+      }
+    ],
+    "title": "Measurement and data"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

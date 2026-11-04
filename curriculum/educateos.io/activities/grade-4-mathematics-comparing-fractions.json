@@ -1,0 +1,131 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Compare fractions using benchmarks, common denominators and common numerators.",
+    "problems": [
+      {
+        "prompt": "Compare 3/8 and 1/2. Use 1/2 as a benchmark. Write <, > or =."
+      },
+      {
+        "prompt": "Compare 5/6 and 5/8. Explain how you know without finding a common denominator."
+      },
+      {
+        "prompt": "Compare 2/3 and 3/4 by writing both fractions with a denominator of 12."
+      },
+      {
+        "prompt": "Compare 7/10 and 3/5. Show your work."
+      },
+      {
+        "prompt": "Kai ran 4/5 of a mile. Lena ran 7/10 of a mile. Who ran farther? Explain."
+      },
+      {
+        "prompt": "Order these fractions from least to greatest: 1/3, 5/12, 1/4."
+      },
+      {
+        "prompt": "Mia ate 1/2 of a small pizza. Leo ate 1/4 of a very large pizza. Mia says she ate more because 1/2 > 1/4. Is she sure to be right? Explain."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Which Is Greater?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-comparing-fractions",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows the steps or a model"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains thinking with math words"
+      }
+    ],
+    "title": "Comparing fractions"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

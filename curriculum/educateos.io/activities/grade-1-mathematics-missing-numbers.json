@@ -1,0 +1,101 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Find each missing number. Use addition to help you subtract.",
+    "problems": [
+      {
+        "prompt": "Find the missing number: 8 + ? = 11."
+      },
+      {
+        "prompt": "Find the missing number: ? + 5 = 12."
+      },
+      {
+        "prompt": "Solve 14 - 6. Think: 6 + ? = 14."
+      },
+      {
+        "prompt": "Find the missing number: 15 - ? = 9."
+      },
+      {
+        "prompt": "Write the fact family for 4, 7 and 11: two addition facts and two subtraction facts."
+      },
+      {
+        "prompt": "Jay had some shells. He found 5 more. Now he has 13 shells. How many shells did he have at first?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Fact Families and Missing Numbers"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.B.4",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.D.8",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.OA.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-missing-numbers",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "answer",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I found the missing numbers"
+      },
+      {
+        "id": "show",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I showed how addition helps me subtract"
+      }
+    ],
+    "title": "Missing numbers"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

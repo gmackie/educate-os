@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:4aaad4a6fa6e47c3dd84cf822a340a7c9db3d43fe20de454ec0a168a45923807",
+      "id": "educateos.io/grade-5-science-food-web-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "food-web-check",
+  "role": "assessment",
+  "title": "Food Web Check: Hilltop Meadow"
+}

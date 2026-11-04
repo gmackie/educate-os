@@ -1,0 +1,53 @@
+{
+  "id": "memoir-and-narrative",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u3-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u3-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "how-a-memoir-works"
+    },
+    {
+      "kind": "activity",
+      "ref": "snapshot-and-thoughtshot"
+    },
+    {
+      "kind": "activity",
+      "ref": "my-memoir"
+    },
+    {
+      "kind": "activity",
+      "ref": "reading-a-memoir"
+    },
+    {
+      "kind": "codex",
+      "ref": "u3-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.8.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.8.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.8.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Read memoir for its narrative techniques and the writer's purpose, then write a memoir of a moment that changed you, using dialogue, pacing, sensory detail and reflection.",
+  "title": "Memoir and Personal Narrative"
+}

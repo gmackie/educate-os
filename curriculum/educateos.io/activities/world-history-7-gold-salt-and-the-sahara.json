@@ -1,0 +1,46 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "genre": "informative",
+    "gradeBand": "7",
+    "minWords": 140,
+    "minimumCitations": 1,
+    "overview": "Read how the trans-Saharan trade worked, then explain how environment and trade built West Africa's empires.",
+    "prompt": "Read \"Gold, Salt and the Sahara.\" Explain why people in West Africa traded gold for salt, using what each region's environment did and did not provide. Then explain how the kings of Ghana or Mali grew powerful from this trade. Use at least one detail from the reading.",
+    "resources": [
+      "gold-salt-sahara"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Gold, Salt and the Sahara"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.11.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Eco.1.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-gold-salt-and-the-sahara",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "South of the Sahara Desert lies the Sahel, a band of dry grassland, and south of that, wetter savanna and forest. Each region had something the others wanted. Mines in the far south, in areas such as Bambuk and Bure near the upper Senegal and Niger rivers, produced gold. In the middle of the Sahara, at places such as Taghaza, people cut slabs of salt from dry lake beds. People in the hot south needed salt in their diets and to preserve food; traders from the north wanted gold.\n\nAfter camels came into wide use in North Africa, caravans could cross the desert, a journey of about two months. By the 800s, Arab and Berber merchants were crossing regularly. West African kingdoms grew strong by controlling the trade where desert met grassland.\n\nGhana: The first of these great kingdoms was Ghana, called Wagadu by its own people, in what is now southern Mauritania and western Mali (not the modern country of Ghana). Its kings taxed salt coming in and gold going out, and kept the largest gold nuggets for themselves. A Muslim geographer in Spain, al-Bakri, described the king's court in 1068.\n\nMali: Ghana weakened in the 1100s. In the 1200s, a new power rose: Mali, founded, according to the epic told by griots (oral historians), by the hero Sundiata Keita. Mali controlled the gold fields and the trading cities of the Niger River. Its most famous ruler, Mansa Musa, made the pilgrimage to Mecca in 1324. He returned with scholars and an architect, and cities such as Timbuktu became centers of Islamic learning, with mosques and libraries of handwritten books.\n\nSonghai: In the 1400s, the Songhai Empire, centered on the city of Gao, grew larger still under rulers such as Sunni Ali and Askia Muhammad. In 1591, an army from Morocco armed with guns defeated Songhai, and Atlantic sea trade with Europeans slowly drew trade away from the Sahara routes.\n\nMuch of what we know comes from two kinds of sources: books by Arabic-writing visitors and geographers, and the oral traditions of griots, passed down over centuries.",
+      "id": "gold-salt-sahara",
+      "title": "Gold, Salt and the Sahara"
+    }
+  ],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

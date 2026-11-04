@@ -1,0 +1,41 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "analysisPrompt": "Describe the DNA you collected. For each step, explain what it did, using the cell structures from Unit 1 (cell wall, cell membrane, nucleus). A single DNA molecule is far too thin to see with your eyes. Why could you see this DNA? How did your predictions compare with what happened?",
+    "dataColumns": [
+      {
+        "name": "Step"
+      },
+      {
+        "name": "What I did"
+      },
+      {
+        "name": "What I observed"
+      },
+      {
+        "name": "What this step does to the cell"
+      }
+    ],
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "methodPrompt": "Before you start, predict what each ingredient (dish soap, salt, cold alcohol) will do. Then: seal two or three strawberries in a bag with 10 mL of extraction buffer and mash for two minutes; filter the mash through a coffee filter into a tube; slowly pour an equal volume of ice-cold alcohol down the side of the tube so it forms a layer on top; wait two minutes and lift out the material that forms between the layers with a stick. Describe each step you followed, what you observed, and anything you changed.",
+    "overview": "Extract DNA from strawberries with household materials, and explain what each step does to the cell.",
+    "question": "Can we separate DNA from the other contents of a cell, and what does each step of the procedure do to the cell's structures?",
+    "subject": "science",
+    "template": "science-investigation",
+    "title": "Strawberry DNA Extraction"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-strawberry-dna",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

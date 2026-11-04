@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:18c500b73cf5406eef76decf16c103d6cd742dd3d5c87f20f1bd760a899bd262",
+      "id": "educateos.io/english-9-reading-a-new-poem",
+      "version": "1.0.0"
+    }
+  },
+  "id": "reading-a-new-poem",
+  "role": "assessment",
+  "title": "Reading a New Poem"
+}

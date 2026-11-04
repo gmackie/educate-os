@@ -1,0 +1,11 @@
+{
+  "lockVersion": 1,
+  "packages": [],
+  "root": {
+    "digest": "sha256:fafc4f6c39f6aa07c1b34e5fa8bda8cc6b923a3c8c183750a1ff162c74ef5051",
+    "id": "educateos.io/english-9",
+    "modules": [],
+    "version": "1.0.0"
+  },
+  "specVersion": "1.1"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:59a31f3aad2db79ce9ab820439169cc9d717b2896f007ebfa31af961263ef192",
+      "id": "educateos.io/united-states-history-mill-letter",
+      "version": "1.0.0"
+    }
+  },
+  "id": "mill-letter",
+  "role": "assignment",
+  "title": "A Mill Worker Writes Home"
+}

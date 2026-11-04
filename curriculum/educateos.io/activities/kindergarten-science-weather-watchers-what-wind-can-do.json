@@ -1,0 +1,49 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "K",
+    "overview": "Listen to a short text about wind. Tell what wind is and what it can push.",
+    "passage": "Wind is air that moves. You cannot see the wind, but you can feel it on your face. You can see what it moves. A gentle wind makes leaves wiggle. A strong wind can bend tall trees. Wind pushes kites up high and pushes sailboats across the water.",
+    "questions": [
+      {
+        "prompt": "What is wind?"
+      },
+      {
+        "prompt": "You cannot see the wind. How do you know it is there?"
+      },
+      {
+        "prompt": "What can a strong wind do?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw something the wind is pushing."
+      }
+    ],
+    "sentenceFrames": [
+      "Wind is ___.",
+      "The wind can push ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "What Wind Can Do"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.K.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.K.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/kindergarten-science-weather-watchers-what-wind-can-do",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,45 @@
+{
+  "id": "equivalent-fractions",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u1-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "fraction-models"
+    },
+    {
+      "kind": "activity",
+      "ref": "fraction-strips"
+    },
+    {
+      "kind": "activity",
+      "ref": "comparing-fractions"
+    },
+    {
+      "kind": "activity",
+      "ref": "fraction-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "summary": "Use fraction strips and area models to find equivalent fractions, explain why they are equal, and compare fractions.",
+  "title": "Equivalent Fractions"
+}

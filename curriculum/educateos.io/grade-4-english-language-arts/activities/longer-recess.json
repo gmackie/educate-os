@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:4d3e70a6d6bb5eba3f7606d132c93dd9e40678c8b39bd1fd4622d053366fb2f2",
+      "id": "educateos.io/grade-4-english-language-arts-longer-recess",
+      "version": "1.0.0"
+    }
+  },
+  "id": "longer-recess",
+  "role": "assignment",
+  "title": "Should Recess Be Longer?"
+}

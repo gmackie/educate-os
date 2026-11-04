@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:0232dd09de0ec1d227f46d83f25fe4be8e92518e5b33f17e57de863cdaeb35fb",
+      "id": "educateos.io/world-history-7-a-soldier-remembers-tenochtitlan",
+      "version": "1.0.0"
+    }
+  },
+  "id": "a-soldier-remembers-tenochtitlan",
+  "role": "assignment",
+  "title": "A Soldier Remembers Tenochtitlan"
+}

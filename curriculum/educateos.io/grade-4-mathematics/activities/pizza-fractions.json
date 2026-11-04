@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:15a9cbc0bdac07e2abc96eb91976370fbe677e9d2b68a665f802941863902955",
+      "id": "educateos.io/grade-4-mathematics-pizza-fractions",
+      "version": "1.0.0"
+    }
+  },
+  "id": "pizza-fractions",
+  "role": "assignment",
+  "title": "Pizza Party Fractions"
+}

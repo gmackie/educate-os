@@ -1,0 +1,141 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 11,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Solve problems with scale, circles, angles, area and volume. Use 3.14 for π and label every answer with units.",
+    "problems": [
+      {
+        "prompt": "A map has a scale of 1 cm : 50 m. A rectangular park is 4 cm by 3 cm on the map. Find the park's actual length, width and area."
+      },
+      {
+        "prompt": "A circle has a diameter of 14 cm. Find its circumference and its area."
+      },
+      {
+        "prompt": "Angles A and B are supplementary. Angle A measures 4x + 12 and angle B measures 2x. Find x and the measure of each angle."
+      },
+      {
+        "prompt": "Two lines cross. A pair of vertical angles measure 5x - 10 and 3x + 20. Find x and the measure of the angles."
+      },
+      {
+        "prompt": "A planter box is 4 feet long, 2 feet wide and 1.5 feet deep. Bags of soil hold 1.5 cubic feet each. How many bags fill the planter?"
+      },
+      {
+        "prompt": "A closed box is 10 inches by 6 inches by 4 inches. How many square inches of paper cover its whole outside?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Geometry Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.G.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.G.B.4",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.G.B.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.G.B.6",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-geometry-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct measurements"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows formulas and steps"
+      },
+      {
+        "id": "units",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Labels units"
+      }
+    ],
+    "title": "Geometry check"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

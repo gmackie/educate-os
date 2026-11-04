@@ -1,0 +1,7 @@
+{
+  "body": "Engineers solve problems by designing things.\n\nThe engineering design process:\n1. Define the problem. What must the design do (the criteria)? What limits do you have, like cost, time or materials (the constraints)?\n2. Brainstorm many ideas, then pick one.\n3. Build a model, called a prototype.\n4. Test it fairly and record data.\n5. Improve it, changing one thing at a time, and test again.\n\nA design that fails is not the end. It gives you data about what to change. In this unit we will design something that keeps an ice cube from melting.",
+  "id": "u6-overview",
+  "purpose": "context",
+  "title": "Think Like an Engineer",
+  "visibility": "students"
+}

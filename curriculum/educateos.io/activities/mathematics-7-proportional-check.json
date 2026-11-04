@@ -1,0 +1,140 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Show what you know about proportional relationships, unit rates and percents. Work without a calculator and show your reasoning.",
+    "problems": [
+      {
+        "prompt": "Which equation shows a proportional relationship: y = 6x, y = 6x + 2, or y = x + 6? Explain your choice."
+      },
+      {
+        "prompt": "A pump moves water at a steady rate. Minutes: 3, 5, 10. Liters: 12, 20, 40. Is the relationship proportional? If it is, find k and write an equation."
+      },
+      {
+        "prompt": "True or false: every straight-line graph shows a proportional relationship. Explain."
+      },
+      {
+        "prompt": "Markers cost $0.85 each. Write an equation for the cost, c, of n markers, and find the cost of 14 markers."
+      },
+      {
+        "prompt": "A runner covers 1/2 mile in 1/8 hour. What is her speed in miles per hour?"
+      },
+      {
+        "prompt": "A pair of shoes costs $80. It is 15% off, and then 5% sales tax is added to the sale price. What is the final cost?"
+      },
+      {
+        "prompt": "Give a real-life example of two quantities that are not proportional, and explain why they are not."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Proportional or Not? Unit Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.RP.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.RP.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.RP.A.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-proportional-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct solutions"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains with ratios, tables or graphs"
+      },
+      {
+        "id": "precision",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses units and labels"
+      }
+    ],
+    "title": "Proportional reasoning check"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

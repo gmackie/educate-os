@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:08ad576894091aacf16ac7198adb2894e146f2d78af6e3cce22754c7db1b9e08",
+      "id": "educateos.io/grade-4-mathematics-points-lines-angles",
+      "version": "1.0.0"
+    }
+  },
+  "id": "points-lines-angles",
+  "role": "lesson",
+  "title": "Points, Lines, Rays and Angles"
+}

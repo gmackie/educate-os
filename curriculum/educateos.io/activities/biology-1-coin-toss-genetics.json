@@ -1,0 +1,49 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "analysisPrompt": "Compare your results at 10, 40 and 100 offspring with the expected 25% BB, 50% Bb and 25% bb. Then compare them with the pooled class data. Is the 1:2:1 model consistent with your data? Explain why small samples can stray far from the prediction and large samples usually come closer.",
+    "dataColumns": [
+      {
+        "name": "Number of offspring"
+      },
+      {
+        "name": "BB count"
+      },
+      {
+        "name": "Bb count"
+      },
+      {
+        "name": "bb count"
+      },
+      {
+        "name": "Percent dominant phenotype",
+        "unit": "%"
+      }
+    ],
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "methodPrompt": "Label one side of each coin B and the other side b. Each coin is one parent, and one toss of both coins makes one offspring. Toss both coins 10 times and record each genotype, then continue to 40 and to 100 tosses. Explain why each coin represents one parent's gamete, and why you toss both coins at once.",
+    "overview": "Use two coins as two heterozygous parents and test whether chance really produces a 1:2:1 ratio of genotypes.",
+    "question": "When two heterozygous (Bb) parents have offspring, how closely do the actual results match the 1 BB : 2 Bb : 1 bb ratio predicted by a Punnett square, and how does the number of offspring affect the match?",
+    "subject": "science",
+    "template": "science-investigation",
+    "title": "Coin-Toss Genetics"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.IC.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-coin-toss-genetics",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

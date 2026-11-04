@@ -1,0 +1,107 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Use means, mean absolute deviation and overlap to compare two groups.",
+    "problems": [
+      {
+        "prompt": "Long-jump distances in feet: Team A: 12, 13, 14, 14, 15, 16. Team B: 15, 16, 17, 17, 18, 19. Find the mean of each team."
+      },
+      {
+        "prompt": "Find the mean absolute deviation (MAD) of each team."
+      },
+      {
+        "prompt": "How many MADs apart are the two means?"
+      },
+      {
+        "prompt": "Draw both teams on dot plots on the same scale. Do the distributions overlap a lot or a little? What can you conclude about the two teams?"
+      },
+      {
+        "prompt": "Random samples of 20 students who ride the bus and 20 students who are driven to school give these travel times: bus riders have a median of 25 minutes and an interquartile range of 10 minutes; students who are driven have a median of 15 minutes and an interquartile range of 8 minutes. Compare the two groups."
+      },
+      {
+        "prompt": "Explain why comparing only the means of two groups can be misleading."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Comparing Two Groups"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.B.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-comparing-groups",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct statistics"
+      },
+      {
+        "id": "inference",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Draws supported conclusions"
+      }
+    ],
+    "title": "Comparing groups"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

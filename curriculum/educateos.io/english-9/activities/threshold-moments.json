@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:156d7cdbf822a8b5469ce449d743e4121d9a2465cff5e319449af0c9d7b805a5",
+      "id": "educateos.io/english-9-threshold-moments",
+      "version": "1.0.0"
+    }
+  },
+  "id": "threshold-moments",
+  "role": "lesson",
+  "title": "Threshold Moments"
+}

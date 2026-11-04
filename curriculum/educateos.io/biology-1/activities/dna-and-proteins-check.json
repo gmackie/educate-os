@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:7417e6b6e88d20f8f83eb5d517bce4ccd408356d1fe61537865c0ee195932449",
+      "id": "educateos.io/biology-1-dna-and-proteins-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "dna-and-proteins-check",
+  "role": "assessment",
+  "title": "DNA and Proteins Check"
+}

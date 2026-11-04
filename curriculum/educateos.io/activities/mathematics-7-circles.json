@@ -1,0 +1,103 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Use the circumference and area formulas to solve problems about wheels, rugs, gardens and windows. Use 3.14 for π.",
+    "problems": [
+      {
+        "prompt": "A bike wheel has a diameter of 26 inches. How far does the bike travel in one full turn of the wheel?"
+      },
+      {
+        "prompt": "A circular rug has a radius of 3 feet. What is its area?"
+      },
+      {
+        "prompt": "A circular garden has a circumference of 31.4 meters. Find its radius and its area."
+      },
+      {
+        "prompt": "Which gives more to eat: one round flatbread 12 inches across, or two round flatbreads 8 inches across? Show the areas."
+      },
+      {
+        "prompt": "Explain how cutting a circle into many thin wedges and rearranging them into a shape close to a parallelogram shows that the area of a circle is πr²."
+      },
+      {
+        "prompt": "A window is a semicircle with a diameter of 4 feet. What is its area?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Circles: Circumference and Area"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.G.B.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-circles",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct measurements"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Chooses and explains formulas"
+      }
+    ],
+    "title": "Circles"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

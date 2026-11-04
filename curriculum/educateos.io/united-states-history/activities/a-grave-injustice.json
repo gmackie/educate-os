@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:5d2f16b9a8b5da60b7d92bad2be121fc48cba840c721f0a3b8c097e31550498b",
+      "id": "educateos.io/united-states-history-a-grave-injustice",
+      "version": "1.0.0"
+    }
+  },
+  "id": "a-grave-injustice",
+  "role": "assignment",
+  "title": "A Grave Injustice"
+}

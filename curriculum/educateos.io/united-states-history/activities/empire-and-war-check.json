@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:85869ebe7b763d0ebf0213e2b14c67606d3416da3dd462f5cdadba51ea45f34f",
+      "id": "educateos.io/united-states-history-empire-and-war-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "empire-and-war-check",
+  "role": "assessment",
+  "title": "Empire and War Unit Check"
+}

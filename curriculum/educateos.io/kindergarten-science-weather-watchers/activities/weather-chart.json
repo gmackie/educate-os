@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:ef1f47daac6c1531d44d8aa45cf247bdd3a764568666f4810a3489a91309a426",
+      "id": "educateos.io/kindergarten-science-weather-watchers-weather-chart",
+      "version": "1.0.0"
+    }
+  },
+  "id": "weather-chart",
+  "role": "assignment",
+  "title": "My Weather Picture"
+}

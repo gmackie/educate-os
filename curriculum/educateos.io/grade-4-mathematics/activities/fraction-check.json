@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:203fd8f5770efaa8071293487a35181b19f0d6f9c04f7e0b5934b6390a8c1bb6",
+      "id": "educateos.io/grade-4-mathematics-fraction-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "fraction-check",
+  "role": "assessment",
+  "title": "Fraction Check"
+}

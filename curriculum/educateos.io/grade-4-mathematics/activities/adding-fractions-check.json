@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:8a11b9da3ac645d8979ee142118ae42415c6ef6d8ad96c544043323f43e39c28",
+      "id": "educateos.io/grade-4-mathematics-adding-fractions-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "adding-fractions-check",
+  "role": "assessment",
+  "title": "Adding and Subtracting Fractions Check"
+}

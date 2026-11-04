@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:f46d1906919e64bd1a038478a735750ce485366504e895d93f5e8661889027e8",
+      "id": "educateos.io/grade-4-mathematics-mixed-numbers",
+      "version": "1.0.0"
+    }
+  },
+  "id": "mixed-numbers",
+  "role": "assignment",
+  "title": "Mixed Numbers on the Trail"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b72974de826e4b7ad47d8cde2c2454775dd7cb8c306780635ca1f466829e3c45",
+      "id": "educateos.io/biology-1-wolves-elk-willows",
+      "version": "1.0.0"
+    }
+  },
+  "id": "wolves-elk-willows",
+  "role": "assignment",
+  "title": "Wolves, Elk and Willows"
+}
