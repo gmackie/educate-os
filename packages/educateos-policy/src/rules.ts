@@ -721,6 +721,12 @@ export const DEFAULT_POLICY_RULES: readonly PolicyRule[] = PolicyRuleTable.parse
     effect: { effect: "allow" },
   },
   {
+    id: "curriculum.course-library.import",
+    description: "A district admin or district curriculum admin lists the courses in the district's course library and, as a person rather than an agent, imports a signed course bundle into it.",
+    when: { kinds: ["course-package"], roles: ["district-admin", "curriculum-admin"], classifications: ["district-internal"], actions: [...READS, "create"], channels: ["http"] },
+    effect: { effect: "allow" },
+  },
+  {
     id: "curriculum.admin.manage",
     description: "A curriculum admin authors, reviews, approves and publishes learning resources in their scope.",
     when: {

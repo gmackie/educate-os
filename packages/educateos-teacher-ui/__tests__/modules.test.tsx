@@ -95,4 +95,58 @@ describe("class modules", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("You don't have permission to do that in this class.");
     expect((title as HTMLInputElement).value).toBe("Week 1");
   });
+
+  it("previews a library course, installs it unit by unit as drafts beside what the class has, and shows teacher notes as teachers-only (SCHO-331)", async () => {
+    const district = fakeDistrict({ courseLibrary: {} });
+    const user = await renderApp(district.client, modulesPage);
+    await onScreen(/^Modules/);
+    // The class already has the course's first unit.
+    await user.type(screen.getByRole("textbox", { name: "New module" }), "Week 1: Claims");
+    await user.click(screen.getByRole("button", { name: "Add module" }));
+    await screen.findByRole("heading", { level: 2, name: "Week 1: Claims" });
+
+    const courses = await screen.findByRole("list", { name: "Courses" });
+    expect(within(courses).getByText("Fits this class")).toBeTruthy();
+    expect(within(courses).getByText("3 units · 3 activities · from educateos.io · version 1.0.0")).toBeTruthy();
+    await user.click(within(courses).getByRole("button", { name: "Preview Grade 9 Argument Writing" }));
+    const preview = await screen.findByRole("region", { name: "Course preview" });
+    expect(within(preview).getByText("Grade 9 Argument Writing would add 2 draft modules to this class. Nothing it already has changes.")).toBeTruthy();
+    expect(within(preview).getByText(/Already in this class; left as it is/)).toBeTruthy();
+    expect(district.callsTo("teacher.installCourse")).toHaveLength(0);
+
+    await user.click(within(preview).getByRole("button", { name: "Add 2 modules" }));
+    await screen.findByRole("heading", { level: 2, name: "Counterclaims" });
+    // One unit a request, until done.
+    expect(district.callsTo("teacher.installCourse").map((call) => call.input.body)).toStrictEqual([
+      { packageId: "educateos.io/grade-9-argument", version: "1.0.0", maxUnits: 1 },
+      { packageId: "educateos.io/grade-9-argument", version: "1.0.0", maxUnits: 1 },
+    ]);
+    await waitFor(() => expect(screen.getByRole("status", { name: "" }).textContent).toContain("Added Grade 9 Argument Writing as 2 draft modules, leaving 1 module this class already had."));
+    expect(screen.queryByRole("region", { name: "Course preview" })).toBeNull();
+
+    const unit = screen.getByRole("heading", { level: 2, name: "Reasons and Evidence" }).closest("li")! as HTMLElement;
+    expect(within(unit).getByText("From a course")).toBeTruthy();
+    expect(within(unit).getByText("Teacher note · teachers only")).toBeTruthy();
+    expect(within(unit).getByRole("button", { name: "Edit Reasons and Evidence: teacher guide" })).toBeTruthy();
+    expect(within(unit).getByRole("switch", { name: "Visible to students" }).getAttribute("aria-checked")).toBe("false");
+    await waitFor(() => expect(within(screen.getByRole("list", { name: "Courses" })).getByText("Added")).toBeTruthy());
+  });
+
+  it("says why a library course can't be added, and offers nothing to press (SCHO-331)", async () => {
+    const problem = "The course's activities align to ccss-ela learning goals your district has not approved (W.9-10.1). Ask a district administrator to approve the ccss-ela standards.";
+    const district = fakeDistrict({ courseLibrary: { problems: [problem] } });
+    const user = await renderApp(district.client, modulesPage);
+    await onScreen(/^Modules/);
+    await user.click(await screen.findByRole("button", { name: "Preview Grade 9 Argument Writing" }));
+    const preview = await screen.findByRole("region", { name: "Course preview" });
+    expect(within(preview).getByText("This course can't be added yet")).toBeTruthy();
+    expect(within(preview).getByText(problem)).toBeTruthy();
+    expect((within(preview).getByRole("button", { name: "Add 3 modules" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("tells the teacher when the district's course library is empty (SCHO-331)", async () => {
+    const district = fakeDistrict();
+    await renderApp(district.client, modulesPage);
+    expect(await screen.findByText("Your district hasn't added any courses to its course library yet.")).toBeTruthy();
+  });
 });

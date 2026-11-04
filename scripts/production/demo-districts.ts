@@ -11,6 +11,7 @@
 // (`educateos-<slug>`), since ForgeGraph's `syncSecrets` copies every secret of an app's stage onto
 // each of its targets. See docs/educateos/runbooks/demo-districts.md.
 
+import publisher from "../../curriculum/educateos.io/publisher.json" with { type: "json" };
 import type { DemoDistrictDeployment } from "./production-config.ts";
 
 /** The owner's account, which holds schoolos.gmac.io and the educateos.io zone. */
@@ -39,6 +40,14 @@ export const DEMO_MARKETPLACE_TRUST = JSON.stringify({
 });
 
 /**
+ * The OCS publishers whose signed course bundles the demo districts and schoolos.gmac.io import into
+ * their course libraries (SCHO-331): educateos.io alone, with the public key committed in
+ * curriculum/educateos.io/publisher.json, which signs the reference courses under curriculum/bundles.
+ * Imported from that file, so a key rotation there regenerates every config that pins it.
+ */
+export const EDUCATEOS_COURSE_LIBRARY_TRUST = JSON.stringify({ localDomains: [], publishers: [publisher] });
+
+/**
  * The showcase every demo district may seed (SCHO-326): `DEMO_SHOWCASE`, which their
  * `DISTRICT_CONFIG.demo.showcase` must name too (demo-district-config.ts). See demo-districts.md.
  */
@@ -53,5 +62,6 @@ export const DEMO_DISTRICT_DEPLOYMENTS: readonly DemoDistrictDeployment[] = [
   hostname: `${slug}.educateos.io`,
   oneOrigin: { enabled: DEMO_DISTRICTS_ONE_ORIGIN, aiDemoUrl: AI_DEMO_URL },
   marketplaceTrust: DEMO_MARKETPLACE_TRUST,
+  courseLibraryTrust: EDUCATEOS_COURSE_LIBRARY_TRUST,
   showcase: DEMO_SHOWCASE,
 }));

@@ -316,7 +316,8 @@ package, every package it includes, and every export they name, each with its fi
 its digest and its publisher signature. A district import route passes it to `openBundle` with the
 district's approved publisher keys (which checks every digest and signature, trusting nothing in the
 bundle), then `planBundleInstall`, then `applyInstallPlan` with its own `CourseInstallTarget`. The
-website can serve the same file.
+website can serve the same file. A district's course library does exactly this; see
+[docs/educateos/course-library.md](../docs/educateos/course-library.md).
 
 ## On educateos.io
 

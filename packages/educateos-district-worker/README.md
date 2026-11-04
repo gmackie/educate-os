@@ -275,6 +275,17 @@ The deploy inputs are in `deploy-inputs.json`. They are all vars:
   never fetches anything from educateos.io. Unset, every install answers 503 `unavailable`; a
   malformed value fails the start. The demo districts pin the project's demo release keys
   (`DEMO_MARKETPLACE_TRUST` in `scripts/production/demo-districts.ts`). Not yet a deploy input.
+- `COURSE_LIBRARY_TRUST` (optional var, SCHO-331): the OCS publishers whose signed course bundles
+  the district's course library imports, as `PublisherTrust` JSON from `@educateos/ocs`
+  (`{ "localDomains": [], "publishers": [{ "domain", "keys": [{ "keyId", "publicKey" }] }] }`,
+  public keys only, each publisher's keys pinned to its domain). An administrator imports a
+  course by posting its bundle to `admin.importCourseBundle` (or with the console's Course library
+  screen); every part's digest and signature is checked against this pin, and checked again as the
+  district's library stores it. Unset, every import answers 503 `unavailable`; a malformed value
+  fails the start. The demo districts and schoolos.gmac.io pin the educateos.io key from
+  `curriculum/educateos.io/publisher.json` (`EDUCATEOS_COURSE_LIBRARY_TRUST` in
+  `scripts/production/demo-districts.ts`). Not yet a deploy input. See
+  [docs/educateos/course-library.md](../../docs/educateos/course-library.md).
 - `LTI_TOOL_ORIGIN` (optional): the LTI Tool's public origin (see [LTI 1.3 Tool](#lti-13-tool-scho-177)).
 - `LTI_PLATFORM` (optional): `on` also serves the district as an LTI 1.3 Platform for third-party tools (SCHO-179, `src/lti-platform.ts`), at `LTI_TOOL_ORIGIN`. Any other value, or unset, leaves it off, as every production configuration does. See [docs/educateos/lti.md](../../docs/educateos/lti.md#educateos-as-an-lti-platform-scho-179-if-10).
   It is not yet a deploy input, so the installer does not offer it; the schoolos.gmac.io production

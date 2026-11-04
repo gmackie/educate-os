@@ -6,7 +6,7 @@ import { catalogSeedRelease } from "@educateos/catalog";
 import { SHOWCASE_RESOURCES, showcaseResourceHtml, type ShowcaseResource } from "@educateos/fixtures";
 import type { ImportFetch } from "@educateos/content-studio";
 import type { TemplateInput } from "@educateos/curriculum";
-import { createDistrictApp, inMemoryDistrictStores, type DistrictApp } from "@educateos/district-app";
+import { createDistrictApp, inMemoryDistrictStores, type DistrictApp, type PublisherTrust } from "@educateos/district-app";
 import { createDistrictApiClient, type DistrictApiClient } from "@educateos/api-client";
 import type { HarnessDistrict } from "./harness.ts";
 import { identityFromBearer } from "./sign-in.ts";
@@ -50,9 +50,10 @@ export const demoWeb: ImportFetch = async (url) => {
  * web for imports (or `importFetch`, such as `createPinnedEgressFetch()` from
  * `@educateos/harness/pinned-fetch` for the real web; the demo seed imports synthetic pages, so
  * {@link seedDemo} needs the synthetic web), and one funded district course pool for the synthetic
- * model.
+ * model. `courseLibraryTrust` pins the OCS publishers its course library imports from (SCHO-331),
+ * such as educateos.io's committed key for the reference courses; without it none imports.
  */
-export async function bootDistrictApp(entry: HarnessDistrict, importFetch: ImportFetch = demoWeb): Promise<DistrictApp> {
+export async function bootDistrictApp(entry: HarnessDistrict, importFetch: ImportFetch = demoWeb, options: { courseLibraryTrust?: PublisherTrust } = {}): Promise<DistrictApp> {
   const { directory } = entry.district;
   return createDistrictApp({
     stores: inMemoryDistrictStores(directory),
@@ -70,6 +71,7 @@ export async function bootDistrictApp(entry: HarnessDistrict, importFetch: Impor
       allowedModels: [DEMO_MODEL],
     }],
     modelCatalog: [{ ...DEMO_MODEL, mode: "enabled" }],
+    ...(options.courseLibraryTrust === undefined ? {} : { courseLibraryTrust: options.courseLibraryTrust }),
   });
 }
 

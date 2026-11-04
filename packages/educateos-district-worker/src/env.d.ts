@@ -86,6 +86,12 @@ declare namespace Cloudflare {
      */
     MARKETPLACE_TRUST?: string;
     /**
+     * The OCS publishers whose signed course bundles the district's course library imports
+     * (SCHO-331), as JSON (a `PublisherTrust` from `@educateos/ocs`: publisher domains with their
+     * public keys, and the district's own unsigned domains). Unset, no course bundle imports.
+     */
+    COURSE_LIBRARY_TRUST?: string;
+    /**
      * Demo deployments only (SCHO-326): the showcase this Worker may seed, which
      * `DISTRICT_CONFIG.demo.showcase` must also name. Set by the generated demo and schoolos.gmac.io
      * configs (scripts/production), never by the package's own config or a release.

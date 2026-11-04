@@ -152,6 +152,11 @@ export interface ProductionInstance {
      * its `DISTRICT_CONFIG.demo.showcase` must name too. Absent, it has none.
      */
     showcase?: "northfield";
+    /**
+     * `COURSE_LIBRARY_TRUST` (SCHO-331): the OCS publishers, public keys only, whose signed course
+     * bundles the district's course library imports, as `PublisherTrust` JSON. Absent, it imports none.
+     */
+    courseLibraryTrust?: string;
   };
   /**
    * One origin per district (ADR-0014): when `enabled`, the router serves the district at the root
@@ -343,6 +348,11 @@ export interface DemoDistrictDeployment {
    */
   marketplaceTrust?: string;
   /**
+   * `COURSE_LIBRARY_TRUST` (SCHO-331): the OCS publishers, public keys only, whose signed course
+   * bundles the district's course library imports, as `PublisherTrust` JSON. Absent, it imports none.
+   */
+  courseLibraryTrust?: string;
+  /**
    * `DEMO_SHOWCASE` (SCHO-326): the showcase an administrator may seed into the district, which its
    * `DISTRICT_CONFIG.demo.showcase` must name too. Absent, it has none.
    */
@@ -398,6 +408,7 @@ export function buildDemoDistrictConfigs({
     };
     const marketplace: Record<string, string> = {
       ...district.marketplaceTrust === undefined ? {} : { MARKETPLACE_TRUST: district.marketplaceTrust },
+      ...district.courseLibraryTrust === undefined ? {} : { COURSE_LIBRARY_TRUST: district.courseLibraryTrust },
       ...district.showcase === undefined ? {} : { DEMO_SHOWCASE: district.showcase },
     };
     if (district.oneOrigin?.enabled) {
@@ -540,7 +551,10 @@ export function buildProductionConfigs({
       const guardVars = instance.vars[AI_GUARD_PACKAGE] ?? {};
       const hallMonitorVars = Object.fromEntries(["HALL_MONITOR_ISSUER", "HALL_MONITOR_AUDIENCE"]
         .flatMap((name) => guardVars[name] === undefined ? [] : [[name, guardVars[name]]]));
-      const showcase: Record<string, string> = instance.district.showcase === undefined ? {} : { DEMO_SHOWCASE: instance.district.showcase };
+      const showcase: Record<string, string> = {
+        ...instance.district.showcase === undefined ? {} : { DEMO_SHOWCASE: instance.district.showcase },
+        ...instance.district.courseLibraryTrust === undefined ? {} : { COURSE_LIBRARY_TRUST: instance.district.courseLibraryTrust },
+      };
       vars = { ...hallMonitorVars, ...showcase, ...vars };
       if (oneOrigin) {
         // Behind the router, at no hostname of its own. Its LTI Tool keeps the origin platforms

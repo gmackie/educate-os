@@ -529,6 +529,7 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
   const syncRuns = options.rosterSync === "not-runnable" ? [] : initialSyncRuns();
   let approvedRemoval: string | undefined;
   const HELD_FINGERPRINT = "a".repeat(64);
+  const libraryCourses: { packageId: string; version: string }[] = [];
   const handlers: { [N in RouteName]?: (input: Record<string, unknown>) => RouteResponse<N> } = {
     // Loosely typed, like the other handlers' `as never` answers.
     ...(fakeAuthoring(options.authority ?? "oneroster") as object),
@@ -721,6 +722,24 @@ export function fakeDistrict(options: FakeDistrictOptions = {}): FakeDistrict {
     "admin.listStandards": () => standards as never,
     "admin.approveStandards": (input) => Object.assign(standardsFor(input), { status: "approved", decided: { by: "prn_fk-admin", at: "2026-10-25T15:00:00.000Z" } }) as never,
     "admin.withdrawStandards": (input) => Object.assign(standardsFor(input), { status: "not-approved", decided: { by: "prn_fk-admin", at: "2026-10-25T15:05:00.000Z" } }) as never,
+    // Course library (SCHO-331): bundles are "verified" by their format field alone.
+    "admin.listLibraryCourses": () => libraryCourses as never,
+    "admin.importCourseBundle": (input) => {
+      const bundle = input.body as { format?: string; course?: { id: string; version: string } };
+      if (bundle.format !== "educateos.ocs-bundle.v1" || bundle.course === undefined) {
+        throw new DistrictApiError(400, { code: "validation-failed", message: "The bundle is not an OCS course bundle." });
+      }
+      const existing = libraryCourses.find((c) => c.packageId === bundle.course!.id && c.version === bundle.course!.version);
+      if (existing !== undefined) return existing as never;
+      const course = {
+        packageId: bundle.course.id, version: bundle.course.version, digest: `sha256:${"b".repeat(64)}`, title: "Grade 1 Reading Foundations",
+        subject: "english-language-arts", gradeBand: "1", language: "en", publisher: { domain: "educateos.io", signed: true }, standards: [],
+        units: ["Short Vowel Sounds", "Stories We Love"].map((title, i) => ({ key: `u${i}`, title, standards: [], activities: 3, pages: 1, teacherNotes: 2, resources: 0 })),
+        activities: 6, imported: { by: "prn_fk-admin", at: "2026-11-04T12:00:00.000Z" },
+      };
+      libraryCourses.push(course);
+      return course as never;
+    },
     // Operations (SCHO-263): the enrolled admin keys and the district's ops log, kept in memory.
     "admin.opsKeys": () => ({ keys: opsKeys }) as never,
     "admin.enrollOpsKey": (input) => {

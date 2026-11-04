@@ -18,7 +18,7 @@ import {
   type EmailKeyedUserMatch,
 } from "@educateos/identity";
 import { academicSchoolTools, SchoolToolRunner } from "@educateos/policy";
-import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
+import { analyticsSettings, authorityFor, cloudflareAnalytics, createDistrictApp, PublisherTrust, type DistrictApp, type RosterSourceFactory } from "@educateos/district-app";
 import { clever, googleclassroom } from "@educateos/integrations";
 import { durableDistrictStores, DurableObjectToolApprovalStore, type DistrictSqlStorage } from "@educateos/district-app/durable-stores";
 import { createSchoolToolService, type SchoolToolService } from "@educateos/gatekeeper";
@@ -112,6 +112,9 @@ export interface DistrictSettings {
   // Marketplace (SCHO-209)
   /** `MARKETPLACE_TRUST`, the release keys marketplace listings are verified against, as JSON. Without it none installs. */
   marketplaceTrust?: string | undefined;
+  // Course library (SCHO-331)
+  /** `COURSE_LIBRARY_TRUST`, the OCS publishers whose signed course bundles the library imports, as JSON. Without it none imports. */
+  courseLibraryTrust?: string | undefined;
   // Demo showcase (SCHO-326)
   /** `DEMO_SHOWCASE`, the showcase a demo deployment may seed; `DISTRICT_CONFIG.demo` must name it too. */
   demoShowcase?: string | undefined;
@@ -169,6 +172,24 @@ export function readMarketplaceTrust(text: string | undefined): ReleaseTrust | u
   }
   const parsed = ReleaseTrust.safeParse(json);
   if (!parsed.success) throw new Error("MARKETPLACE_TRUST is not a release trust");
+  return parsed.data;
+}
+
+/**
+ * Parses `COURSE_LIBRARY_TRUST` (SCHO-331): a `PublisherTrust` of OCS publisher domains and their
+ * public keys. Unset or empty means the district imports no course bundles; anything else malformed
+ * fails the start, so a misconfigured pin is never mistaken for none. The error never quotes the value.
+ */
+export function readCourseLibraryTrust(text: string | undefined): PublisherTrust | undefined {
+  if (text === undefined || text === "") return undefined;
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error("COURSE_LIBRARY_TRUST is not JSON");
+  }
+  const parsed = PublisherTrust.safeParse(json);
+  if (!parsed.success) throw new Error("COURSE_LIBRARY_TRUST is not a publisher trust");
   return parsed.data;
 }
 
@@ -237,6 +258,7 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
   });
   const authority = authorityFor(config.authority);
   const marketplaceTrust = readMarketplaceTrust(settings.marketplaceTrust);
+  const courseLibraryTrust = readCourseLibraryTrust(settings.courseLibraryTrust);
   const analytics = analyticsSettings({
     CF_ANALYTICS_TOKEN: settings.analyticsToken,
     CF_ACCOUNT_ID: settings.analyticsAccountId,
@@ -290,6 +312,8 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
     release: { version: settings.releaseVersion },
     // Marketplace (SCHO-209): listings are verified offline against the deployment's pin.
     ...(marketplaceTrust === undefined ? {} : { marketplaceTrust }),
+    // Course library (SCHO-331): bundles are verified against the deployment's publisher pin.
+    ...(courseLibraryTrust === undefined ? {} : { courseLibraryTrust }),
     ...(analytics === undefined ? {} : {
       opsAnalytics: cloudflareAnalytics(analytics, { fetch: seams.analyticsFetch ?? fetch.bind(globalThis), now: () => new Date() }),
     }),

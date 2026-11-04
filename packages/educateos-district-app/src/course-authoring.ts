@@ -185,6 +185,10 @@ export async function exportCourseCartridge(
           losses.push({ kind: "activity", module: module.id, item: item.id });
           return [];
         }
+        if (item.kind === "teacher-note") {
+          losses.push({ kind: "teacher-note", module: module.id, item: item.id });
+          return [];
+        }
         if (item.kind === "link") return [{ kind: "link", title: item.title, url: item.url }];
         const page = pages.get(item.pageId)!;
         return [{ kind: "page", title: page.title, body: page.body }];

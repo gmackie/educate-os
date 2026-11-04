@@ -11,6 +11,7 @@ export const SCREENS = [
   { path: "guardians", label: "Guardians" },
   { path: "modules", label: "Modules and activation" },
   { path: "learning-standards", label: "Learning standards" },
+  { path: "course-library", label: "Course library" },
   { path: "policies", label: "Policies" },
   { path: "ai-usage", label: "AI usage" },
   { path: "ai-budgets", label: "AI budgets" },
