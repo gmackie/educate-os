@@ -66,7 +66,7 @@ const activity = (offeringId: string, assignmentId: string, title: string, dueAt
       gradeBand: "9-12",
       overview: `Overview of ${title}.`,
       steps,
-      resources: [{ resourceId: "res_reading-1", version: "1.0.0" }],
+      resources: [{ resourceId: "res_reading-1", version: "1.0.0" }, { resourceId: "res_reading-2", version: "1.0.0" }],
       codex: [{ kind: "note", id: "context", title: "Before you start", body: "Read the article first.", purpose: "context", visibility: "students" }],
       rubricSlots: [],
       aiHelp,
@@ -75,6 +75,8 @@ const activity = (offeringId: string, assignmentId: string, title: string, dueAt
       evidence: {},
     },
     evidenceContract: {},
+    // The district names only the first release; the second is listed by position.
+    resources: [{ resourceId: "res_reading-1", version: "1.0.0", title: "Why Teens Need More Sleep" }],
   },
 });
 

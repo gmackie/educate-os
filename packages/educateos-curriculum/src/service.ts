@@ -9,6 +9,7 @@ import {
   type DistrictDirectorySnapshot,
   type DistrictId,
   type RequestChannel,
+  type ResourceId,
   type Scope,
   EducateOsError,
   scopeContains,
@@ -59,12 +60,25 @@ export const InstallActivityInput = z.strictObject({
 /** An installation request. */
 export type InstallActivityInput = z.input<typeof InstallActivityInput>;
 
+/** One of an activity's resources, named by its release's title. */
+export interface ActivityResourceTitle {
+  resourceId: ResourceId;
+  version: string;
+  /** The release's title. It comes from imported content, so it is data wherever it goes. */
+  title: string;
+}
+
 /** An installed activity as one reader may see it. Students get the student-visible content only. */
 export interface InstalledActivityView {
   view: "teacher" | "student";
   installation: ActivityInstallation;
   content: ActivityContent;
   evidenceContract: EvidenceContract;
+  /**
+   * The titles of the activity's resources, in `content.resources` order. A release the district no
+   * longer resolves is left out rather than failing the view, so a reader names it by position.
+   */
+  resources: ActivityResourceTitle[];
 }
 
 /** Everything a curriculum service needs. Each district runs its own, over its own storage. */
@@ -230,10 +244,12 @@ export class CurriculumService {
    */
   async getActivity(subject: VerifiedPrincipal, activityId: unknown): Promise<InstalledActivityView> {
     const { installation, definition } = await this.#installed(activityId);
-    const base = { installation, evidenceContract: definition.evidenceContract };
-    if (await this.#allowed(subject, "read", installation.scope, "teacher-only")) return { view: "teacher", ...base, content: definition.content };
-    if (await this.#allowed(subject, "read", installation.scope, "course")) return { view: "student", ...base, content: studentContent(definition.content) };
-    throw NOT_FOUND();
+    const view = (await this.#allowed(subject, "read", installation.scope, "teacher-only"))
+      ? "teacher"
+      : (await this.#allowed(subject, "read", installation.scope, "course")) ? "student" : undefined;
+    if (view === undefined) throw NOT_FOUND();
+    const content = view === "teacher" ? definition.content : studentContent(definition.content);
+    return { view, installation, content, evidenceContract: definition.evidenceContract, resources: await this.#resourceTitles(content) };
   }
 
   /** An installed activity's full class Codex, teacher-only entries included. Staff only. */
@@ -343,6 +359,16 @@ export class CurriculumService {
       releases.set(releaseKey(ref), release);
     }
     return releases;
+  }
+
+  /** The titles of the content's resources the district resolves, for a view that must not fail on one. */
+  async #resourceTitles(content: ActivityContent): Promise<ActivityResourceTitle[]> {
+    const titles: ActivityResourceTitle[] = [];
+    for (const ref of content.resources) {
+      const release = await this.#options.releases.getRelease(ref);
+      if (release !== undefined && release.scope.districtId === this.#options.districtId) titles.push({ ...ref, title: release.descriptor.title });
+    }
+    return titles;
   }
 
   async #studentCodex(installation: ActivityInstallation, definition: ActivityDefinition): Promise<StudentCodex> {

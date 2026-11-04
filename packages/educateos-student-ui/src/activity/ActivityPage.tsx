@@ -107,7 +107,7 @@ const StandardActivityView = ({ offeringId, courseName, entry, work }: { offerin
       </Section>
 
       <Section id="resources" title="Resources">
-        <ResourceList content={content} />
+        <ResourceList activity={activity} />
       </Section>
 
       <AiHelpSlot assigned={{ assignment, activity }} />
