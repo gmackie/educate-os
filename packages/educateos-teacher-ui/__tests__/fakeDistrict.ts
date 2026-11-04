@@ -117,6 +117,11 @@ export interface FakeDistrictOptions {
   maxAiHelp?: "none" | "hints-only" | "full";
   /** The learning goals offered for the class, and how many standards releases are approved. Defaults to {@link GOALS} from one release. */
   learningGoals?: { goals: unknown[]; approvedReleases: number };
+  /**
+   * The district's course library (SCHO-331): one three-unit course whose first unit the class
+   * already has a module for, and the problems that stop it installing. Without it the library is empty.
+   */
+  courseLibrary?: { problems?: string[] };
 }
 
 /** A fake district and the client the app talks to it through. */
@@ -169,6 +174,38 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
     skipped: [{ identifier: "I_TOOL", reason: "lti-tool" }],
     flattened: [],
     truncated: [],
+  };
+
+  // Course library (SCHO-331): a three-unit course, installed a unit per call into draft modules.
+  const COURSE = { packageId: "educateos.io/grade-9-argument", version: "1.0.0" };
+  const UNIT_TITLES = ["Week 1: Claims", "Reasons and Evidence", "Counterclaims"];
+  const courseUnits = UNIT_TITLES.map((title, index) => ({
+    key: `u${index + 1}`, title, standards: [], status: "new" as string, moduleId: undefined as string | undefined,
+    items: [
+      { key: `u${index + 1}-overview`, title: `${title}: overview`, kind: "page", done: false },
+      { key: `u${index + 1}-guide`, title: `${title}: teacher guide`, kind: "teacher-note", purpose: "context", done: false },
+      { key: `u${index + 1}-task`, title: `${title}: task`, kind: "activity", role: "assignment", template: "writing-task", done: false },
+    ],
+  }));
+  let courseInstalled: { done: boolean } | undefined;
+  const coursePlan = () => {
+    for (const unit of courseUnits) {
+      if (unit.status !== "new") continue;
+      const existing = outline.modules.find((m) => m.title.toLowerCase() === unit.title.toLowerCase());
+      if (existing !== undefined) Object.assign(unit, { status: "exists", moduleId: existing.id });
+    }
+    const pending = courseUnits.filter((u) => u.status === "new").length;
+    return {
+      offeringId: IDS.offering, ...COURSE, title: "Grade 9 Argument Writing", standards: [],
+      units: courseUnits.map(({ moduleId, ...unit }) => ({ ...unit, ...(moduleId === undefined ? {} : { moduleId }) })),
+      reusedDefinitions: 0, problems: options.courseLibrary?.problems ?? [], done: pending === 0,
+    };
+  };
+  const LIBRARY_COURSE = {
+    ...COURSE, digest: DIGEST, title: "Grade 9 Argument Writing", summary: "Claims, evidence and counterclaims.",
+    subject: "english-language-arts", gradeBand: "9", language: "en", publisher: { domain: "educateos.io", signed: true }, standards: [],
+    units: UNIT_TITLES.map((title, index) => ({ key: `u${index + 1}`, title, standards: [], activities: 1, pages: 1, teacherNotes: 1, resources: 0 })),
+    activities: 3, imported: { by: "prn_nf-district-admin", at: NOW },
   };
 
   // Gradebook (SCHO-187): a fixed grid of official grades whose markers and settings the UI changes.
@@ -483,6 +520,35 @@ export const fakeDistrict = (options: FakeDistrictOptions = {}) => {
       outline.pages.push(page);
       outline.modules.push(module);
       return changed({ modules: [module], preview: CARTRIDGE_PREVIEW });
+    },
+    // Course library (SCHO-331)
+    "teacher.libraryCourses": () => options.courseLibrary === undefined ? [] : [{
+      ...LIBRARY_COURSE, matchesClass: true, ...(courseInstalled === undefined ? {} : { installed: { version: COURSE.version, ...courseInstalled } }),
+    }],
+    "teacher.previewCourseInstall": () => coursePlan(),
+    "teacher.installCourse": ({ body }) => {
+      const plan = coursePlan();
+      if (plan.problems.length > 0) throw new DistrictApiError(400, { code: "validation-failed", message: plan.problems.join(" ") });
+      for (const unit of courseUnits.filter((u) => u.status === "new").slice(0, Number(body!.maxUnits ?? Infinity))) {
+        const page = { id: next("cpg"), title: unit.items[0]!.title, body: "Overview." };
+        const note = { id: next("cpg"), title: unit.items[1]!.title, body: "Day 1: model a claim." };
+        const module: Module = {
+          id: next("cmod"), title: unit.title, published: false,
+          source: { kind: "course", ...COURSE, packageDigest: DIGEST, unitKey: unit.key },
+          items: [
+            { kind: "page", id: next("cit"), pageId: page.id },
+            { kind: "teacher-note", id: next("cit"), pageId: note.id, purpose: "context" },
+            { kind: "activity", id: next("cit"), activityId: IDS.existingActivity },
+          ],
+        };
+        outline.pages.push(page, note);
+        outline.modules.push(module);
+        Object.assign(unit, { status: "installed", moduleId: module.id, items: unit.items.map((item) => ({ ...item, done: true })) });
+        outline.revision++;
+      }
+      const after = coursePlan();
+      courseInstalled = { done: after.done };
+      return after;
     },
     "teacher.gradebook": () => gradebook,
     "teacher.updateGradebookSettings": ({ body }) => {
