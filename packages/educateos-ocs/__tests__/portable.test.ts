@@ -10,12 +10,15 @@ import {
   type ActivityExportInput,
   activityExportDigest,
   applyInstallPlan,
+  buildBundle,
   checkExportPublication,
   checkPublication,
   composeCourse,
   editCourse,
   formatJson,
   importPlannedActivities,
+  openBundle,
+  planBundleInstall,
   InMemoryCourseInstallTarget,
   InMemoryPackageLibrary,
   type OcsActivity,
@@ -28,6 +31,7 @@ import {
   readPackage,
   resolveActivityExports,
   resolveCourse,
+  serializeBundle,
   signActivityExportPublication,
   signPackagePublication,
   templateInputFor,
@@ -312,5 +316,44 @@ describe("installing a course with portable activities", () => {
   it("refuses a plan whose exports are missing", async () => {
     const { course } = await composed();
     expect(() => planCourseInstall(course, new Map())).toThrow(/is not available/);
+  });
+});
+
+async function signedBundle() {
+  const { publisher, trust } = await signatureSetup();
+  const exportText = text(wordBuilders());
+  const parsed = await readActivityExport(exportText);
+  const files = await portableCourse({ id: parsed.export.id, version: parsed.export.version, digest: parsed.digest });
+  const course = { ...files, "ocs.json": formatJson({ ...JSON.parse(files["ocs.json"]!), id: "openbio.example/reading-1" }) };
+  const pkg = await readPackage(course);
+  const publishedAt = "2026-10-20T09:00:00Z";
+  const bundle = await buildBundle({
+    course: { files: course, signature: await signPackagePublication(publisher, { packageId: pkg.manifest.id, version: pkg.manifest.version, digest: pkg.digest, publishedAt }) },
+    exports: [{ text: exportText, signature: await signActivityExportPublication(publisher, { exportId: parsed.export.id, version: parsed.export.version, digest: parsed.digest, publishedAt }) }],
+  });
+  return { bundle, trust, publisher };
+}
+describe("course bundles", () => {
+  it("open against the district's approved keys and plan the install from the bundle alone", async () => {
+    const { bundle, trust } = await signedBundle();
+    expect(serializeBundle(bundle)).toBe(serializeBundle(JSON.parse(serializeBundle(bundle))));
+    const opened = await openBundle(JSON.parse(serializeBundle(bundle)), trust, NOW);
+    expect([...opened.signed.values()]).toStrictEqual([true, true]);
+    const plan = await planBundleInstall(opened);
+    expect(plan.imports.map((i) => i.export.activity.title)).toStrictEqual(["Word Builders"]);
+    const record = await applyInstallPlan(plan, new InMemoryCourseInstallTarget(), { publishDrafts: true });
+    expect(record.installed).toHaveLength(1);
+  });
+
+  it("refuse tampered parts, missing signatures and keys the district did not approve", async () => {
+    const { bundle, trust } = await signedBundle();
+    const exported = bundle.exports[0]!;
+    const tampered = { ...bundle, exports: [{ ...exported, text: exported.text.replace("Word Builders", "Word Breakers") }] };
+    await expect(openBundle(tampered, trust, NOW)).rejects.toMatchObject({ code: "validation-failed" });
+    const { signature: _signature, ...unsigned } = exported;
+    await expect(openBundle({ ...bundle, exports: [unsigned] }, trust, NOW)).rejects.toMatchObject({ code: "unauthenticated" });
+    await expect(openBundle(bundle, { localDomains: [], publishers: [] }, NOW)).rejects.toMatchObject({ code: "unauthenticated" });
+    await expect(openBundle({ ...bundle, format: "other" }, trust, NOW)).rejects.toMatchObject({ code: "validation-failed" });
+    expect((await openBundle({ ...bundle, exports: [unsigned] }, { ...trust, localDomains: ["openbio.example"] }, NOW)).signed.get(`export:${exported.id}@${exported.version}`)).toBe(false);
   });
 });

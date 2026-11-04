@@ -293,7 +293,8 @@ Studio's permitted uses and the target class (C03, C05).
   `writeActivityExport`, `templateInputFor`; `ActivityExportSource` (both libraries implement it,
   with `publishExport`); `resolveActivityExports`, `planCourseInstall`, `CourseInstallTarget`,
   `importPlannedActivities`, `applyInstallPlan`, and `InMemoryCourseInstallTarget` as the
-  reference target.
+  reference target. Distribution: `OcsBundle`, `buildBundle`, `serializeBundle`, `openBundle`,
+  `planBundleInstall`.
 - Failures are `OcsError`, a `EducateOsError` carrying a structured `OcsProblem`.
 - Thin CC adapter: `ocsFromCartridge`, `cartridgeFromOcs`, both returning `AdapterLoss` lists.
 - Publisher signatures: `PackagePublication`, `signPackagePublication`, `PublisherTrust`,
@@ -419,3 +420,11 @@ unsigned.
   `applyInstallPlan` drives it, recording each mapping from the portable reference to the local
   `definitionId@version`. Drafts may be left for review: activities that use them are reported as
   pending and installed by a later run with the recorded mappings.
+- **Bundles.** A course is distributed as one JSON document (`OcsBundle`, format
+  `educateos.ocs-bundle.v1`): the course package version first, then the packages it includes, then
+  every export they name, each with its files as published, its digest and its publisher signature.
+  `openBundle` checks every digest and every signature against the district's `PublisherTrust`
+  exactly as its library would, so the bundle itself is never trusted, and `planBundleInstall`
+  plans the installation from the bundle alone. EducateOS's own courses are authored in the
+  repository's `curriculum/` directory and bundled by `scripts/curriculum/` (see
+  `curriculum/README.md`).

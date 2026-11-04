@@ -15,4 +15,5 @@ export * from "./export.ts";
 export * from "./signatures.ts";
 export * from "./activity-export.ts";
 export * from "./install-plan.ts";
+export * from "./bundle.ts";
 export * from "./thin-cc.ts";
