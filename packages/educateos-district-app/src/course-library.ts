@@ -330,18 +330,21 @@ export async function planLibraryInstall(library: CourseLibrary, packageId: stri
   return planCourseInstall(course, await resolveActivityExports(course, library));
 }
 
+const versionParts = (version: string) => version.split(".").map(Number);
+
+/** Whether MAJOR.MINOR.PATCH version `a` is newer than `b`. */
+function newerVersion(a: string, b: string): boolean {
+  const [x, y] = [versionParts(a), versionParts(b)];
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i]! > y[i]!;
+  return false;
+}
+
 /** The latest version of each course in the index, by semantic version. */
 export function latestCourses(courses: readonly LibraryCourse[]): LibraryCourse[] {
-  const order = (version: string) => version.split(".").map(Number);
-  const newer = (a: string, b: string) => {
-    const [x, y] = [order(a), order(b)];
-    for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i]! > y[i]!;
-    return false;
-  };
   const latest = new Map<string, LibraryCourse>();
   for (const course of courses) {
     const current = latest.get(course.packageId);
-    if (current === undefined || newer(course.version, current.version)) latest.set(course.packageId, course);
+    if (current === undefined || newerVersion(course.version, current.version)) latest.set(course.packageId, course);
   }
   return [...latest.values()];
 }

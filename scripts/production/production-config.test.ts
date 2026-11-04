@@ -593,5 +593,5 @@ test("the principal bindings reach the district's resolver by its pinned name, o
 test("the course library pin is the committed educateos.io publisher key, public halves only (SCHO-331)", () => {
   const publisher = JSON.parse(readFileSync(join(import.meta.dirname, "../../curriculum/educateos.io/publisher.json"), "utf8"));
   assert.deepEqual(JSON.parse(EDUCATEOS_COURSE_LIBRARY_TRUST), { localDomains: [], publishers: [publisher] });
-  for (const key of publisher.keys) assert.deepEqual(Object.keys(key).sort(), ["keyId", "publicKey"]);
+  for (const key of publisher.keys) assert.deepEqual(Object.keys(key).toSorted(), ["keyId", "publicKey"]);
 });
