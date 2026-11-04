@@ -1,0 +1,152 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 11,
+      "kind": "after-install"
+    },
+    "genre": "informative",
+    "gradeBand": "7",
+    "minWords": 180,
+    "minimumCitations": 1,
+    "overview": "Explain how the Black Death spread across Europe and how it changed the lives of the people who survived.",
+    "prompt": "Read \"The Great Mortality.\" Explain how the plague reached and spread across Europe, then explain at least two effects it had on European society, including one effect on peasants and workers. Use transitions such as because, as a result, and over time to connect causes and effects.",
+    "resources": [
+      "the-great-mortality"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "The Great Mortality"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.14.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.6-8.2.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-the-great-mortality",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "In 1347, ships arriving in Sicily and other Mediterranean ports carried a deadly disease. Within four years it had spread across Europe, the Middle East and North Africa. People at the time called it \"the great mortality\" or \"the pestilence.\" Much later it was named the Black Death.\n\nScientists today have found the DNA of the bacterium Yersinia pestis in the remains of victims, which shows it was plague. The bacterium is carried by fleas that live on rats and other animals, and some forms can spread from person to person. The disease had moved along trade routes from Central Asia, the same routes that carried silk and spices.\n\nBetween 1347 and 1351, the plague killed perhaps a third or more of Europe's people; in some towns, half died. No one at the time knew what caused it. Some blamed bad air, or God's anger. In some places, Jewish communities were falsely blamed and attacked.\n\nThe plague changed Europe for generations. With so many workers dead, the survivors' labor was worth more. Many peasants demanded higher wages or left their manors for better pay elsewhere. Lords and kings tried to hold wages down by law; in England, a law of 1351 tried to fix wages at their old levels. Anger over such rules and over new taxes helped cause the English Peasants' Revolt of 1381. Over the next century, serfdom slowly faded in much of Western Europe.",
+      "id": "the-great-mortality",
+      "title": "The Great Mortality"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "causes",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains causes"
+      },
+      {
+        "id": "effects",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains effects"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses facts from the reading"
+      },
+      {
+        "id": "organization",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear organization and transitions"
+      }
+    ],
+    "title": "Explanatory writing"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

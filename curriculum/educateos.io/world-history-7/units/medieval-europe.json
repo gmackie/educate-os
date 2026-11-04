@@ -1,0 +1,77 @@
+{
+  "id": "medieval-europe",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u5-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "lords-vassals-and-the-manor"
+    },
+    {
+      "kind": "activity",
+      "ref": "magna-carta"
+    },
+    {
+      "kind": "activity",
+      "ref": "the-great-mortality"
+    },
+    {
+      "kind": "activity",
+      "ref": "which-changed-more"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.3.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.6.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.14.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.15.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.6-8.2.B",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.6-8.1.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Life in Western Europe from about 500 to 1450: lords, vassals and the manor, the Church, Magna Carta in 1215, and how the Black Death changed society.",
+  "title": "Medieval Europe"
+}
