@@ -1,8 +1,9 @@
 // The pictures and recordings young learners hand in on the showcase's picture-response and
 // read-and-respond activities (SCHO-324): crayon-style drawings encoded as small, valid PNGs, and
-// short hummed recordings encoded as valid WAVs. Both are made from plain data here, with no
-// canvas, codec or dependency, so the seeder can make them anywhere: in Node, in a Worker, and in
-// the in-browser demo.
+// short recordings as valid WAVs: the child's scripted words, spoken (SCHO-328), or a hummed tune
+// for a step with no spoken line. Both are made from plain data here, with no canvas, codec or
+// dependency, so the seeder can make them anywhere: in Node, in a Worker, and in the in-browser demo.
+import { SPOKEN_RECORDINGS } from "./recordings.ts";
 
 /** The crayons a drawing may use. */
 export type Crayon = "sky" | "sun" | "cloud" | "rain" | "grass" | "soil" | "red" | "yellow" | "blue" | "green" | "brown" | "black" | "skin" | "purple" | "orange";
@@ -199,11 +200,14 @@ function hash(text: string): number {
 const SAMPLE_RATE = 8_000;
 
 /**
- * A short recording standing in for a child's voice: a soft hummed tune of a few notes, about a
- * second and a half, as 8 kHz 8-bit mono WAV. `seed` (such as the student and the step) picks the
- * tune, so two children's recordings differ.
+ * A short recording of a child, as 8 kHz 8-bit mono WAV. For a seed with a spoken line, by the
+ * seeder's `studentId:activityKey:stepId`, it is that line spoken (generated once by
+ * `scripts/demo/spoken-recordings.ts`); for any other, a soft hummed tune of a few notes, about a
+ * second and a half, that `seed` picks, so two children's recordings differ.
  */
 export function recordingWav(seed: string): Uint8Array {
+  const spoken = SPOKEN_RECORDINGS[seed];
+  if (spoken !== undefined) return Uint8Array.from(atob(spoken), (c) => c.charCodeAt(0));
   const h = hash(seed);
   // A pentatonic scale around middle C, comfortably in a child's humming range.
   const scale = [262, 294, 330, 392, 440, 523];

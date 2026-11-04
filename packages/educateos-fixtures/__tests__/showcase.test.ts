@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { drawingPng, NORTHFIELD, NORTHFIELD_GUARDIANS, NORTHFIELD_SHOWCASE, recordingWav, SHOWCASE_BANDS, SHOWCASE_STAGES, rubricMaxPoints } from "../src/index.ts";
+import { base64Of, drawingPng, NORTHFIELD, NORTHFIELD_GUARDIANS, NORTHFIELD_SHOWCASE, recordingWav, SHOWCASE_BANDS, SHOWCASE_STAGES, rubricMaxPoints } from "../src/index.ts";
 import { DRAWINGS } from "../src/showcase/drawings.ts";
 
 const { courses, resources } = NORTHFIELD_SHOWCASE;
@@ -110,6 +110,15 @@ describe("the Northfield showcase", () => {
 
 const ascii = (bytes: Uint8Array, from: number, to: number) => String.fromCharCode(...bytes.subarray(from, to));
 
+/** A WAV's format and length, after checking it is a canonical PCM WAV. */
+const wavInfo = (wav: Uint8Array) => {
+  expect([ascii(wav, 0, 4), ascii(wav, 8, 16), ascii(wav, 36, 40)]).toStrictEqual(["RIFF", "WAVEfmt ", "data"]);
+  const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
+  expect(view.getUint32(4, true)).toBe(wav.length - 8);
+  expect(view.getUint32(40, true)).toBe(wav.length - 44);
+  return { format: view.getUint16(20, true), channels: view.getUint16(22, true), rate: view.getUint32(24, true), bits: view.getUint16(34, true), seconds: view.getUint32(40, true) / view.getUint32(28, true) };
+};
+
 /** Inflates a zlib stream, checking its checksum, as a browser's PNG decoder would. */
 const inflate = async (data: Uint8Array) =>
   new Uint8Array(await new Response(new Blob([data as Uint8Array<ArrayBuffer>]).stream().pipeThrough(new DecompressionStream("deflate"))).arrayBuffer());
@@ -139,13 +148,34 @@ describe("young learners' scripted drawings and recordings", () => {
     expect(new Set(pixels).size).toBeGreaterThan(2);
   });
 
-  it("records a short WAV, different for each child", () => {
-    const wav = recordingWav("prn_nf-student-noah:weather-chart:tell");
-    expect([ascii(wav, 0, 4), ascii(wav, 8, 16), ascii(wav, 36, 40)]).toStrictEqual(["RIFF", "WAVEfmt ", "data"]);
-    const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
-    expect(view.getUint32(4, true)).toBe(wav.length - 8);
-    expect(view.getUint32(40, true) / view.getUint32(28, true)).toBeCloseTo(1.44, 1);
-    expect(recordingWav("prn_nf-student-sofia:weather-chart:tell")).not.toStrictEqual(wav);
+  it("records a short hummed WAV, different for each child, for a step with no spoken line", () => {
+    const wav = recordingWav("prn_nf-student-omar:water-cycle:tell");
+    expect(wavInfo(wav).seconds).toBeCloseTo(1.44, 1);
+    expect(recordingWav("prn_nf-student-elijah:water-cycle:tell")).not.toStrictEqual(wav);
+  });
+
+  it("speaks every K-2 child's handed-in recording as a small, valid WAV (SCHO-328)", () => {
+    // The seeder's step IDs: a picture response's "tell", a read-and-respond question's "question-N".
+    const spokenSteps = (activity: (typeof courses)[number]["activities"][number]) =>
+      activity.template === "picture-response" ? (activity.tellAboutIt ? ["tell"] : [])
+        : activity.template === "read-and-respond" ? activity.questions.flatMap((q, i) => ((q.answerBy ?? activity.answerBy) === "speaking" ? [`question-${i + 1}`] : []))
+          : [];
+    const seeds = courses.filter((c) => c.band === "K-2").flatMap((course) => course.activities.flatMap((activity) =>
+      Object.entries(activity.work).filter(([, work]) => work.stage !== "not-started" && work.stage !== "draft")
+        .flatMap(([student]) => spokenSteps(activity).map((step) => `${student}:${activity.key}:${step}`))));
+    expect(seeds.length).toBeGreaterThanOrEqual(8);
+    const clips = new Set<string>();
+    for (const seed of seeds) {
+      const wav = recordingWav(seed);
+      expect(wav.length, seed).toBeLessThanOrEqual(60_000);
+      const info = wavInfo(wav);
+      expect({ format: info.format, channels: info.channels, rate: info.rate, bits: info.bits }, seed).toStrictEqual({ format: 1, channels: 1, rate: 8_000, bits: 8 });
+      // Longer than a hummed tune: a spoken sentence, not the stand-in.
+      expect(info.seconds, seed).toBeGreaterThan(1);
+      expect(info.seconds, seed).not.toBeCloseTo(1.44, 2);
+      clips.add(base64Of(wav));
+    }
+    expect(clips.size).toBe(seeds.length);
   });
 
   it("uses the young-learner templates in K-2, and gives every drawing step's handed-in work a drawing", () => {
