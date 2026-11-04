@@ -21,7 +21,7 @@ import type { AssessmentService } from "@educateos/assessment";
 import type { RubricDraft } from "@educateos/assessment-ci";
 import { randomIdBody, type ContentStudio, type ImportFetch } from "@educateos/content-studio";
 import { ActivityDefinitionId, EducateOsError, RubricId, type Caller, type DistrictDirectorySnapshot } from "@educateos/contracts";
-import type { CourseContentService, CourseOutline, CurriculumService, OfferingScope, ResourceReleaseRef, RubricRef } from "@educateos/curriculum";
+import type { CourseContentService, CourseOutline, CurriculumService, OfferingScope, ResourceReleaseRef, RubricRef, TemplateInput } from "@educateos/curriculum";
 import {
   applyInstallPlan,
   type CourseInstallPlan,
@@ -71,6 +71,20 @@ export function readingsFetch(imports: readonly PlannedImport[], language = "en"
     if (page === undefined) return new Response("not found", { status: 404 });
     return new Response(page, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
   };
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * An activity whose course sets it due more days after install than the class's term has left (a
+ * semester course added part way through the term) is due when the term ends instead, as an
+ * activity with no due date is: the curriculum refuses a due date after the term.
+ */
+function withinTerm(activity: TemplateInput, termEndsOn: string | undefined, now: string): TemplateInput {
+  const { due } = activity;
+  if (termEndsOn === undefined || due.kind !== "after-install") return activity;
+  const dueOn = new Date(Date.parse(now) + due.days * DAY_MS).toISOString().slice(0, 10);
+  return dueOn > termEndsOn ? { ...activity, due: { kind: "none" } } : activity;
 }
 
 /** The district services an install acts through, as the class's teacher, for one request. */
@@ -231,6 +245,13 @@ class DistrictCourseInstallTarget implements CourseInstallTarget {
     return this.#services.caller.principal;
   }
 
+  /** The last day of the class's term. */
+  get #termEndsOn(): string | undefined {
+    const { snapshot, offering } = this.#services;
+    const termId = snapshot.offerings.find((o) => o.id === offering.offeringId)?.termId;
+    return snapshot.terms.find((t) => t.id === termId)?.endsOn;
+  }
+
   /** Commits the record over the revision it was read at. */
   async save(): Promise<void> {
     const next = { ...this.#installs, revision: this.#installs.revision + 1 };
@@ -276,7 +297,8 @@ class DistrictCourseInstallTarget implements CourseInstallTarget {
         checks: [],
       })),
     } as RubricDraft);
-    const draft = await this.#services.curriculum.createDraft(this.#subject, { scope: offering, activity: templateInputFor(exported, { readings, rubric }) });
+    const activity = withinTerm(templateInputFor(exported, { readings, rubric }), this.#termEndsOn, this.#services.now());
+    const draft = await this.#services.curriculum.createDraft(this.#subject, { scope: offering, activity });
     const definition = { definitionId: draft.id, version: draft.version };
     this.#installs.definitions.push({
       key: item.key,

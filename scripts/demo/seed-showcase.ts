@@ -1,18 +1,21 @@
 #!/usr/bin/env node
 
-// Seeds a live demo district with the K-12 showcase (SCHO-326) and links presenters to its
-// personas, through the district's own demo routes (`/api/demo/showcase/*`, see
+// Seeds a live demo district with the K-12 showcase (SCHO-326), installs the educateos.io sample
+// courses into its classes (SCHO-334), and links presenters to its personas, through the district's own demo routes (`/api/demo/showcase/*`, see
 // packages/educateos-district-worker/src/showcase.ts). The district does the work in its own
 // process; this script only asks, as a district administrator signed in through Cloudflare Access.
 //
 //   node scripts/demo/seed-showcase.ts run --url https://northfield.educateos.io [--dry-run] [--band K-2 ...] [--out <file>]
+//   node scripts/demo/seed-showcase.ts courses --url <district> [--dry-run] [--course educateos.io/english-9 ...]
 //   node scripts/demo/seed-showcase.ts export|verify|personas --url <district>
 //   node scripts/demo/seed-showcase.ts link --url <district> --persona <prn_…|none> (--subject <uuid> | --subject-cookie <cookie>)
 //
 // The administrator's `CF_Authorization` cookie is read from stdin (agent-inbox's scripts/access-sign-in.ts
 // prints one, so pipe it in), which keeps it out of the process list; `--cookie` also takes it. `run` first saves the "before" export (the whole directory and
 // its counts) to `--out`, never overwriting a file, then does a dry run, seeds band by band (each band is
-// one request to the district, to keep each well inside a request's CPU time), and verifies.
+// one request to the district, to keep each well inside a request's CPU time), installs the sample
+// courses of those bands' classes (one course a request, until the district says none is left), and
+// verifies. `courses` does only the course step.
 // An Access service token passes Access but is no person, and the district's demo routes answer only a
 // district administrator, so there is no service-token mode. Only the demo districts' hosts are accepted
 // unless `--force`. See docs/educateos/runbooks/demo-districts.md.
@@ -48,7 +51,28 @@ export interface ShowcaseStatus {
   districtId: string;
   bands: Record<Band, { offerings: { offeringId: string; title: string; present: boolean; assignments: number; students: number }[]; assignments: number }>;
   personas: { present: number; linked: number };
+  /** The sample courses (SCHO-334). Absent from a district deployed before them. */
+  courses?: ShowcaseCourseStatus[];
 }
+
+/** One sample course, as the district holds it. */
+export interface ShowcaseCourseStatus {
+  packageId: string;
+  offeringId: string;
+  imported: boolean;
+  installed: boolean;
+}
+
+/** What a courses request answers: a dry run's status, or what the request did and what is left. */
+export type CoursesOutcome =
+  | { dryRun: true; courses: ShowcaseCourseStatus[] }
+  | {
+    dryRun: false;
+    standardsApproved: number;
+    courses: { packageId: string; offeringId: string; imported: boolean; unitsInstalled: number; unitsSkipped: number; published: number; activities: number; done: boolean }[];
+    created: number;
+    pending: string[];
+  };
 
 /** One persona a presenter can be. */
 export interface ShowcasePersona {
@@ -88,6 +112,7 @@ export interface ShowcaseClient {
   exportDistrict(): Promise<Record<string, unknown>>;
   status(): Promise<ShowcaseStatus>;
   seed(body: { dryRun?: boolean; bands?: Band[] }): Promise<SeedOutcome>;
+  courses(body: { dryRun?: boolean; courses?: string[] }): Promise<CoursesOutcome>;
   personas(): Promise<ShowcasePersona[]>;
   link(subject: string, personaId: string | null): Promise<{ personaId: string | null; previousPersonaId: string | null; changed: boolean }>;
   /** The offerings the admin console lists, by ID. */
@@ -124,6 +149,7 @@ export function showcaseClient(origin: string, cookie: string, fetch: Fetch = gl
     exportDistrict: () => request("GET", "/api/demo/showcase/export"),
     status: () => request("GET", "/api/demo/showcase"),
     seed: (body) => request("POST", "/api/demo/showcase/seed", body),
+    courses: (body) => request("POST", "/api/demo/showcase/courses", body),
     personas: () => request("GET", "/api/demo/showcase/personas"),
     link: (subject, personaId) => request("POST", "/api/demo/showcase/personas", { subject, personaId }),
     adminOfferingIds: async () => (await request<{ offering: { id: string } }[]>("GET", "/api/admin/offerings")).map((o) => o.offering.id),
@@ -154,10 +180,48 @@ export function verifyShowcase(status: ShowcaseStatus, listed: readonly string[]
   return problems;
 }
 
+/** The sample courses of `bands`' classes that are not yet imported and installed; empty when they all are. */
+export function verifyCourses(status: ShowcaseStatus, bands: readonly Band[] = BANDS): string[] {
+  if (status.courses === undefined) return ["the district reports no sample courses; is its Worker older than SCHO-334?"];
+  const classes = new Set(bands.flatMap((band) => status.bands[band]?.offerings.map((o) => o.offeringId) ?? []));
+  return status.courses.filter((c) => classes.has(c.offeringId) && !(c.imported && c.installed))
+    .map((c) => `${c.packageId} is ${c.imported ? "not fully installed" : "not imported"} in ${c.offeringId}`);
+}
+
+/**
+ * Imports and installs `courses` (every sample course by default): one request a course, each
+ * resuming where the last stopped, until the district says none is left. Bounded, so a district
+ * that stopped making progress can never spin the script.
+ *
+ * @throws ShowcaseRequestError for a refusal, and Error if courses are still pending after one
+ *   request per course and one more.
+ */
+export async function installCourses(client: ShowcaseClient, courses: readonly string[] | undefined, log: (line: string) => void): Promise<void> {
+  const body = courses === undefined ? {} : { courses: [...courses] };
+  let pending = courses?.length ?? Infinity;
+  for (let attempt = 0; attempt <= (courses?.length ?? 12) + 1; attempt++) {
+    const outcome = await client.courses(body);
+    if (outcome.dryRun) throw new Error("the district answered a dry run");
+    for (const course of outcome.courses) {
+      if (!course.imported && course.unitsInstalled === 0 && course.published === 0) continue;
+      log(`${course.packageId}: ${course.imported ? "imported, " : ""}${course.unitsInstalled} units installed (${course.activities} activities), ${course.unitsSkipped} already in ${course.offeringId}, ${course.published} published`);
+    }
+    if (outcome.standardsApproved > 0) log(`approved ${outcome.standardsApproved} standards frameworks`);
+    if (outcome.pending.length === 0) {
+      log(outcome.created === 0 && attempt === 0 ? "the sample courses were all installed already" : "the sample courses are installed");
+      return;
+    }
+    if (outcome.pending.length >= pending && outcome.created === 0) break;
+    pending = outcome.pending.length;
+  }
+  throw new Error("the district stopped making progress installing the sample courses");
+}
+
 /** One line per band: its classes, activities and students. */
 export function describeStatus(status: ShowcaseStatus): string[] {
+  const courses = status.courses === undefined ? "" : `, ${status.courses.filter((c) => c.installed).length}/${status.courses.length} sample courses installed`;
   return [
-    `${status.districtId}: showcase ${status.showcase}, ${status.personas.present} personas (${status.personas.linked} linked)`,
+    `${status.districtId}: showcase ${status.showcase}, ${status.personas.present} personas (${status.personas.linked} linked)${courses}`,
     ...BANDS.map((band) => {
       const { offerings, assignments } = status.bands[band];
       const present = offerings.filter((o) => o.present).length;
@@ -179,7 +243,7 @@ export interface RunOptions {
   log?: (line: string) => void;
 }
 
-/** Export, dry run, seed band by band, verify. Returns the problems verification found (none: success). */
+/** Export, dry run, seed band by band, install the bands' sample courses, verify. Returns the problems verification found (none: success). */
 export async function runShowcase(options: RunOptions): Promise<string[]> {
   const log = options.log ?? ((line) => console.log(line));
   const write = options.write ?? ((path, text) => writeFile(path, text, { flag: "wx", mode: 0o600 }));
@@ -189,7 +253,10 @@ export async function runShowcase(options: RunOptions): Promise<string[]> {
 
   const plan = await options.client.seed({ dryRun: true, bands: [...options.bands] });
   log(`the directory would gain: ${Object.entries(plan.directory).map(([k, n]) => `${n} ${k}`).join(", ")}`);
-  if (options.dryRun) return [];
+  if (options.dryRun) {
+    log("then the sample courses of those bands' classes would be installed");
+    return [];
+  }
 
   for (const band of options.bands) {
     const outcome = await options.client.seed({ bands: [band] });
@@ -198,13 +265,21 @@ export async function runShowcase(options: RunOptions): Promise<string[]> {
       + (outcome.guardiansConfirmed ? `; ${outcome.guardiansConfirmed} guardians confirmed` : "")
       + (outcome.showcase?.skipped.length ? `; skipped ${outcome.showcase.skipped.join("; ")}` : ""));
   }
+  const seeded = await options.client.status();
+  if (seeded.courses === undefined) {
+    log("problem: the district reports no sample courses; is its Worker older than SCHO-334?");
+    return ["no sample courses"];
+  }
+  const classes = new Set(options.bands.flatMap((band) => seeded.bands[band].offerings.map((o) => o.offeringId)));
+  const courses = seeded.courses.filter((c) => classes.has(c.offeringId)).map((c) => c.packageId);
+  if (courses.length > 0) await installCourses(options.client, courses, log);
   return verify(options.client, options.bands, log);
 }
 
-async function verify(client: ShowcaseClient, bands: readonly Band[], log: (line: string) => void): Promise<string[]> {
+async function verify(client: ShowcaseClient, bands: readonly Band[], log: (line: string) => void, courses = true): Promise<string[]> {
   const status = await client.status();
   for (const line of describeStatus(status)) log(line);
-  const problems = verifyShowcase(status, await client.adminOfferingIds(), bands);
+  const problems = [...verifyShowcase(status, await client.adminOfferingIds(), bands), ...(courses ? verifyCourses(status, bands) : [])];
   for (const problem of problems) log(`problem: ${problem}`);
   return problems;
 }
@@ -218,8 +293,9 @@ async function readStdin(): Promise<string> {
 
 const log = (line: string): void => console.log(line);
 
-const USAGE = `usage: <CF_Authorization cookie> | seed-showcase.ts <run|export|verify|personas|link> --url <district> [--cookie <CF_Authorization>]
+const USAGE = `usage: <CF_Authorization cookie> | seed-showcase.ts <run|courses|export|verify|personas|link> --url <district> [--cookie <CF_Authorization>]
   run       [--dry-run] [--band K-2 ...] [--out <file>]
+  courses   [--dry-run] [--course educateos.io/<course> ...]
   export    [--out <file>]
   link      --persona <prn_…|none> (--subject <uuid> | --subject-cookie <CF_Authorization of the presenter>)
   --force   accept a host that is not a demo district's`;
@@ -233,6 +309,7 @@ async function main(argv: string[]): Promise<number> {
       cookie: { type: "string" },
       out: { type: "string" },
       band: { type: "string", multiple: true },
+      course: { type: "string", multiple: true },
       "dry-run": { type: "boolean", default: false },
       force: { type: "boolean", default: false },
       persona: { type: "string" },
@@ -256,6 +333,19 @@ async function main(argv: string[]): Promise<number> {
   switch (command) {
     case "run":
       return (await runShowcase({ client, out, dryRun: values["dry-run"], bands, log })).length === 0 ? 0 : 1;
+    case "courses": {
+      if (values["dry-run"]) {
+        const plan = await client.courses({ dryRun: true, ...(values.course === undefined ? {} : { courses: values.course }) });
+        if (!plan.dryRun) throw new Error("the district did not answer a dry run");
+        for (const c of plan.courses) log(`${c.packageId}\t${c.offeringId}\t${c.imported ? "imported" : "not imported"}\t${c.installed ? "installed" : "not installed"}`);
+        return 0;
+      }
+      await installCourses(client, values.course, log);
+      const asked = values.course;
+      const problems = verifyCourses(await client.status()).filter((problem) => asked === undefined || asked.some((id) => problem.startsWith(`${id} `)));
+      for (const problem of problems) log(`problem: ${problem}`);
+      return problems.length === 0 ? 0 : 1;
+    }
     case "export":
       await writeFile(out, `${JSON.stringify(await client.exportDistrict(), null, 2)}\n`, { flag: "wx", mode: 0o600 });
       log(`saved the district's export to ${out}`);

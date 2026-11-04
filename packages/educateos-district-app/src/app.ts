@@ -384,7 +384,23 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   // trail holds only decisions that took effect.
   const simulator = new PolicyEngine({ information, audit: { record: async () => {} }, rules, now });
   const catalog = new CatalogMirror({ storage: stores.catalog, verifyRelease: options.verifyCatalogRelease ?? seedReleasesOnly });
-  const alignments = options.alignments ?? catalogAlignmentSource(catalog);
+  // Each request reads a framework's approved release at most once, rather than once for every
+  // competency it resolves: a course install resolves hundreds, and reading a release is the
+  // whole framework (cloned, or parsed and hashed from storage).
+  const requestAlignments = (): AlignmentSource => {
+    if (options.alignments !== undefined) return options.alignments;
+    const approved = new Map<string, ReturnType<CatalogMirror["approvedRelease"]>>();
+    return catalogAlignmentSource({
+      approvedRelease: (key) => {
+        let release = approved.get(key);
+        if (release === undefined) {
+          release = catalog.approvedRelease(key);
+          approved.set(key, release);
+        }
+        return release;
+      },
+    });
+  };
   // Course library (SCHO-331): reading the library needs no trust (its parts were checked as they
   // entered); this one admits nothing, so a library without a pin is still readable.
   const courseTrust = (): PublisherTrust => options.courseLibraryTrust ?? { localDomains: [], publishers: [] };
@@ -511,6 +527,8 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     readonly decider: PolicyDecider;
     readonly authorizer: Authorizer;
     readonly origin: string;
+    /** The district's approved standards, as this request resolves alignments against them. */
+    readonly alignments: AlignmentSource = requestAlignments();
 
     constructor(correlationId: string, principal: RequestPrincipal, snapshot: DistrictDirectorySnapshot, origin: string) {
       this.correlationId = correlationId;
@@ -571,7 +589,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         fetch,
         // Uploads are not offered by this application yet, so no malware scanner is configured.
         scanner: undefined,
-        alignments,
+        alignments: this.alignments,
         ...(options.contentReviewer === undefined ? {} : { reviewer: options.contentReviewer }),
         now: () => now().toISOString(),
       });
@@ -584,7 +602,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
         authorizer: this.authorizer,
         channel: "http",
         releases: contentStudioReleases(stores.contentStudio),
-        alignments,
+        alignments: this.alignments,
         aiHelpPolicy: options.aiHelp ?? { layersFor: async () => ({ district: "full" }) },
         publisher: stores.codex,
         storage: stores.curriculum,
@@ -670,7 +688,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
           await stores.rubrics.put(release);
           return { rubricId: release.rubricId, version: release.version };
         },
-        isApproved: async (frameworkKey, competencyUri) => (await alignments.resolve(frameworkKey, competencyUri)) !== undefined,
+        isApproved: async (frameworkKey, competencyUri) => (await this.alignments.resolve(frameworkKey, competencyUri)) !== undefined,
         store: stores.courseLibrary,
         now: () => now().toISOString(),
       };

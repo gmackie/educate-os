@@ -1,11 +1,14 @@
 // Northfield, the demo's first district: the real district application over in-memory stores,
 // rostered by OneRoster and seeded with the K-12 showcase (SCHO-322) through its API, as the
-// harness seeds a live district. Imports read the harness's synthetic web, and no AI is funded or
-// reviewed, so no request ever leaves for a model.
+// harness seeds a live district. Each showcase class then gets the rest of its semester from the
+// educateos.io sample course it continues (SCHO-334), imported from its signed bundle and installed
+// by its teacher. Imports read the harness's synthetic web, and no AI is funded or reviewed, so no
+// request ever leaves for a model.
 import type { PrincipalId } from "@educateos/contracts";
-import { createDistrictApp, inMemoryDistrictStores } from "@educateos/district-app";
-import { NORTHFIELD, NORTHFIELD_GUARDIANS, NORTHFIELD_SHOWCASE } from "@educateos/fixtures";
-import { demoWeb, seedShowcase, showcaseResourceUrl } from "@educateos/harness";
+import { createDistrictApp, inMemoryDistrictStores, PublisherTrust } from "@educateos/district-app";
+import { NORTHFIELD, NORTHFIELD_COURSE_CLASSES, NORTHFIELD_GUARDIANS, NORTHFIELD_SHOWCASE } from "@educateos/fixtures";
+import { demoWeb, installSampleCourses, loadSampleCourseBundles, seedShowcase, showcaseResourceUrl } from "@educateos/harness";
+import publisher from "../../../../curriculum/educateos.io/publisher.json" with { type: "json" };
 import { schoolDayDue } from "./schoolDay.ts";
 import { clientsOver, personaVerifier, verifySeedRelease, type DemoDistrict, type Persona, type PersonaSection } from "./shared.ts";
 
@@ -134,6 +137,9 @@ export const NORTHFIELD_PERSONAS: readonly Persona[] = [
   },
 ];
 
+/** The publisher keys the district's course library accepts: educateos.io's committed key, as the demo districts pin it. */
+const COURSE_LIBRARY_TRUST = PublisherTrust.parse({ localDomains: [], publishers: [publisher] });
+
 /** The district's configuration: rostered from OneRoster files previewed before they apply, with the core modules on for every active class. */
 const config = (district: string): Record<string, unknown> => ({
   apiVersion: "educateos.io/v1alpha1",
@@ -159,7 +165,7 @@ export interface NorthfieldOptions {
 }
 
 /**
- * Boots Northfield and seeds the K-12 showcase, without funding pools, a model catalog or a content
+ * Boots Northfield, seeds the K-12 showcase and installs the sample courses, without funding pools, a model catalog or a content
  * reviewer: AI is off, and every AI surface reports that it is not set up. `fetch` is the district
  * application itself, for serving it over HTTP (the mobile dev district).
  */
@@ -173,7 +179,10 @@ export async function bootNorthfield(options: NorthfieldOptions = {}): Promise<D
     unscreenedStudentPosts: "publish",
     importFetch: demoWeb,
     verifyCatalogRelease: verifySeedRelease,
+    courseLibraryTrust: COURSE_LIBRARY_TRUST,
   });
+  // The bundles are their own chunks, fetched while the showcase is seeded.
+  const bundles = loadSampleCourseBundles();
   const clientFor = clientsOver((request) => app.fetch(request));
   const person = (id: string) => directory.principals.find((p) => p.id === id)!;
 
@@ -187,6 +196,16 @@ export async function bootNorthfield(options: NorthfieldOptions = {}): Promise<D
     dueAt: schoolDayDue(options.today ?? new Date()),
   });
   if (seeded.skipped.length > 0) throw new Error(`the showcase left out ${seeded.skipped.join(", ")}`);
+  // Every class's later units, published as its teacher would once they had looked them over.
+  const courses = await installSampleCourses({
+    bundles: await bundles,
+    adminId: ADMIN,
+    actAs: (id) => clientFor(person(id).externalIdentities[0]!.subject),
+    showcase: NORTHFIELD_SHOWCASE,
+    origins: NORTHFIELD_COURSE_CLASSES,
+    publish: true,
+  });
+  if (courses.courses.some((c) => !c.done)) throw new Error("a sample course did not install");
   // A live district runs under a configuration its administrator applied. Without one, the admin
   // console reads "not set up" on its dashboard, roster integration and policies.
   await clientFor(person(ADMIN).externalIdentities[0]!.subject).call("admin.applyConfig", { body: { document: config(directory.district.id), acknowledgeApprovals: true } });

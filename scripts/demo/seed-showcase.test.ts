@@ -4,21 +4,41 @@ import {
   BANDS,
   accessSubject,
   districtOrigin,
+  installCourses,
   runShowcase,
   showcaseClient,
+  verifyCourses,
   verifyShowcase,
   type Band,
+  type CoursesOutcome,
   type ShowcaseStatus,
 } from "./seed-showcase.ts";
 
 const ORIGIN = "https://northfield.educateos.io";
 
-function status(overrides: Partial<{ present: boolean; assignments: number; students: number }> = {}): ShowcaseStatus {
+function status(overrides: Partial<{ present: boolean; assignments: number; students: number; installed: boolean }> = {}): ShowcaseStatus {
+  const { installed = true, ...offering } = overrides;
   const bands = Object.fromEntries(BANDS.map((band) => [band, {
-    offerings: [{ offeringId: `off_${band}`, title: `${band} class`, present: true, assignments: 3, students: 3, ...overrides }],
+    offerings: [{ offeringId: `off_${band}`, title: `${band} class`, present: true, assignments: 3, students: 3, ...offering }],
     assignments: overrides.assignments ?? 3,
   }])) as ShowcaseStatus["bands"];
-  return { showcase: "northfield", districtId: "dst_gmacko-coop", bands, personas: { present: 30, linked: 0 } };
+  const courses = BANDS.map((band) => ({ packageId: `educateos.io/${band}`, offeringId: `off_${band}`, imported: true, installed }));
+  return { showcase: "northfield", districtId: "dst_gmacko-coop", bands, personas: { present: 30, linked: 0 }, courses };
+}
+
+/** A courses route that does one course a request, as the district does, recording what each request asked for. */
+function coursesRoute(asked: unknown[], stall = false): (body: unknown) => CoursesOutcome {
+  const done = new Set<string>();
+  return (body) => {
+    asked.push(body);
+    const wanted = (body as { courses?: string[] }).courses ?? BANDS.map((band) => `educateos.io/${band}`);
+    if (stall) return { dryRun: false, standardsApproved: 0, courses: [], created: 0, pending: wanted };
+    const next = wanted.find((id) => !done.has(id));
+    if (next !== undefined) done.add(next);
+    const course = (packageId: string) => ({ packageId, offeringId: "off_x", imported: packageId === next, unitsInstalled: packageId === next ? 4 : 0, unitsSkipped: 2, published: packageId === next ? 4 : 0, activities: 12, done: done.has(packageId) });
+    const reached = wanted.slice(0, next === undefined ? wanted.length : wanted.indexOf(next) + 1);
+    return { dryRun: false, standardsApproved: 0, courses: reached.map(course), created: next === undefined ? 0 : 5, pending: wanted.filter((id) => !reached.includes(id)) };
+  };
 }
 
 /** A recorded district: answers each route from `routes`, and records what was asked. */
@@ -84,8 +104,9 @@ test("verification names every class that is missing, unlisted, empty or unpopul
   assert.equal(verifyShowcase(status({ students: 1 }), listed, ["9-12"]).length, 1);
 });
 
-test("a run saves the export first, seeds band by band, and verifies", async () => {
+test("a run saves the export first, seeds band by band, installs those bands' courses, and verifies", async () => {
   const seeded: Band[][] = [];
+  const asked: unknown[] = [];
   const district = fakeDistrict({
     "GET /api/demo/showcase/export": () => ({ format: "educateos.showcase-export/v1", directory: { district: { id: "dst_gmacko-coop" } } }),
     "POST /api/demo/showcase/seed": (body) => {
@@ -93,6 +114,7 @@ test("a run saves the export first, seeds band by band, and verifies", async () 
       if (!dryRun) seeded.push(bands);
       return { dryRun: dryRun === true, directory: { offerings: dryRun ? 13 : 0 }, bands, guardiansConfirmed: 0, showcase: { created: 1, skipped: [], bands: Object.fromEntries(BANDS.map((b) => [b, { activities: 1 }])) } };
     },
+    "POST /api/demo/showcase/courses": coursesRoute(asked),
     "GET /api/demo/showcase": () => status(),
     "GET /api/admin/offerings": () => BANDS.map((band) => ({ offering: { id: `off_${band}` } })),
   });
@@ -114,6 +136,29 @@ test("a run saves the export first, seeds band by band, and verifies", async () 
   assert.deepEqual(district.calls.map((c) => `${c.method} ${c.path}`).slice(0, 2), ["GET /api/demo/showcase/export", "POST /api/demo/showcase/seed"]);
   assert.deepEqual(seeded, BANDS.map((band) => [band]));
   assert.ok(lines.some((line) => line.includes("would gain: 13 offerings")));
+  // One request a course, each naming the seeded bands' courses, then none left.
+  assert.equal(asked.length, BANDS.length);
+  assert.deepEqual(asked[0], { courses: BANDS.map((band) => `educateos.io/${band}`) });
+  assert.ok(lines.includes("the sample courses are installed"));
+  const order = district.calls.map((c) => `${c.method} ${c.path}`);
+  assert.ok(order.lastIndexOf("POST /api/demo/showcase/seed") < order.indexOf("POST /api/demo/showcase/courses"));
+});
+
+test("the courses step resumes one course a request, stops on a district that makes no progress, and verifies by band", async () => {
+  const asked: unknown[] = [];
+  const lines: string[] = [];
+  await installCourses(showcaseClient(ORIGIN, "c", fakeDistrict({ "POST /api/demo/showcase/courses": coursesRoute(asked) }).fetch), ["educateos.io/a", "educateos.io/b"], (line) => lines.push(line));
+  assert.equal(asked.length, 2);
+  assert.ok(lines.some((line) => line.startsWith("educateos.io/b: imported, 4 units installed")));
+
+  const stalled = fakeDistrict({ "POST /api/demo/showcase/courses": coursesRoute([], true) });
+  await assert.rejects(installCourses(showcaseClient(ORIGIN, "c", stalled.fetch), ["educateos.io/a"], () => {}), /stopped making progress/);
+  assert.ok(stalled.calls.length <= 3);
+
+  assert.deepEqual(verifyCourses(status()), []);
+  assert.equal(verifyCourses(status({ installed: false })).length, 4);
+  assert.deepEqual(verifyCourses(status({ installed: false }), ["9-12"]), ["educateos.io/9-12 is not fully installed in off_9-12"]);
+  assert.match(verifyCourses({ ...status(), courses: undefined })[0]!, /older than SCHO-334/);
 });
 
 test("a dry run exports and plans, and seeds nothing", async () => {

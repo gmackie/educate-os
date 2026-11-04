@@ -19,6 +19,15 @@ export {
   type DemoPrincipals,
   type SignInAs,
 } from "./district-app.ts";
+export {
+  installSampleCourses,
+  loadSampleCourseBundles,
+  SAMPLE_COURSE_IDS,
+  type InstallSampleCoursesOptions,
+  type SampleCourseBundle,
+  type SampleCourseInstall,
+  type SampleCoursesSummary,
+} from "./sample-courses.ts";
 export { seedShowcase, type SeedShowcaseOptions, type ShowcaseBandSummary, type ShowcaseSummary } from "./showcase.ts";
 export { identityFromBearer } from "./sign-in.ts";
 export { MORGAN_LEE_SUBJECT, signInAcrossDistricts, type DistrictSignIn } from "./scenarios.ts";

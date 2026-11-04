@@ -203,14 +203,29 @@ or off. `demo-district-config.ts` emits `demo` for all five standalone demo dist
   schemas and the policy. The readings are served in-process at `https://open-lessons.example/...`,
   a reserved name that is never fetched. A rerun makes only what is missing. Each band is one
   request, which keeps every request well inside its CPU time.
+- **Sample courses (SCHO-334).** Each showcase class's first two modules are units 1 and 2 of an
+  educateos.io sample course (`NORTHFIELD_COURSE_CLASSES` in `@educateos/fixtures` says which).
+  The courses step gives each class the rest of its semester. `installSampleCourses`
+  (`@educateos/harness/sample-courses`) runs in the district's process, like the seed. The
+  caller approves the standards the courses align to and imports each committed signed bundle
+  (the latest `curriculum/bundles/educateos.io/<course>/<version>.json` of each course, such as
+  English 9's 1.0.1, bundled into the Worker) through
+  `admin.importCourseBundle`. That checks every signature against the Worker's
+  `COURSE_LIBRARY_TRUST`, and without the pin nothing imports (`503`). Each class's teacher then
+  installs their course (`teacher.installCourse`). Units 1 and 2 are skipped because the class has
+  them already. Units 3 onward arrive as modules with their pages, teacher-only notes and assigned
+  activities, and the teacher publishes them. A request does one course and answers `pending` with
+  the courses still to reach. A rerun does nothing. Work a course sets due after the term ends is
+  due on the term's last day.
 
 ### Routes
 
 | Route | Does |
 |---|---|
-| `GET /api/demo/showcase` | Shows, per band, each class's presence, activity count and student count, plus personas present and linked |
+| `GET /api/demo/showcase` | Shows, per band, each class's presence, activity count and student count, plus personas present and linked, and whether each sample course is imported and installed |
 | `GET /api/demo/showcase/export` | The "before" export (read-only): the whole directory, `admin.health`'s counts, and the status above |
 | `POST /api/demo/showcase/seed` | Seeds. Body `{"dryRun"?: true, "bands"?: ["K-2", ...]}`. A dry run only reports what the directory would gain |
+| `POST /api/demo/showcase/courses` | Imports and installs the sample courses, one course a request. Body `{"dryRun"?: true, "courses"?: ["educateos.io/english-9", ...]}`. Answers what it did per course and `pending`. A dry run reports what the library and each class hold. `409` until the showcase's classes are in the directory |
 | `GET /api/demo/showcase/personas` | Lists each persona's bands, classes and linked presenter subjects |
 | `POST /api/demo/showcase/personas` | Links a presenter. Body `{"subject": "<Access user_uuid>", "personaId": "prn_nf-…" \| null}` |
 
@@ -254,9 +269,22 @@ same steps work for a standalone demo district: use `FG_APP=educateos-<slug>` an
    ```
 
    The first line exports and plans only. The second saves the export (mode 600, never overwriting
-   a file), seeds K-2, 3-5, 6-8 and 9-12 one request each, and verifies: every class is present,
-   listed in the admin console, and has activities and students. It exits non-zero on any problem.
-   Rerun it at any time, since it only adds what is missing. `verify` alone rechecks.
+   a file), seeds K-2, 3-5, 6-8 and 9-12 one request each, installs those bands' sample courses one
+   request a course until the district reports none pending, and verifies: every class is present,
+   listed in the admin console, has activities and students, and has its sample course imported and
+   installed. It exits non-zero on any problem. Rerun it at any time, since it only adds what is
+   missing. `verify` alone rechecks.
+
+   A district seeded before SCHO-334 needs only the course step:
+
+   ```sh
+   pbpaste | node scripts/demo/seed-showcase.ts courses --url https://northfield.educateos.io --dry-run
+   pbpaste | node scripts/demo/seed-showcase.ts courses --url https://northfield.educateos.io
+   ```
+
+   `--course educateos.io/<course>` (repeatable) limits it to those courses. The district's Worker
+   must carry `COURSE_LIBRARY_TRUST`. The generated demo and schoolos.gmac.io configs pin
+   educateos.io's key.
 5. **Link the presenters.** Sign in as each test identity
    (`node scripts/access-sign-in.ts https://northfield.educateos.io/ <addr>` in agent-inbox) and link
    it. The script reads the subject from Access's `/cdn-cgi/access/get-identity` with that

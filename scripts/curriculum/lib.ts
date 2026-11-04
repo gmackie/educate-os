@@ -17,7 +17,7 @@ import { catalogSeedRelease } from "../../packages/educateos-catalog/src/index.t
 import { ResourceId, RubricId } from "../../packages/educateos-contracts/src/index.ts";
 import { checkActivityContent, generateActivity } from "../../packages/educateos-curriculum/src/index.ts";
 import { Ed25519PrivateJwk, type SignedEnvelope, SigningIdentity } from "../../packages/educateos-fleet/src/index.ts";
-import { NORTHFIELD_SHOWCASE, type ShowcaseActivity } from "../../packages/educateos-fixtures/src/showcase/index.ts";
+import { NORTHFIELD_COURSE_CLASSES, NORTHFIELD_SHOWCASE, type ShowcaseActivity } from "../../packages/educateos-fixtures/src/showcase/index.ts";
 // By module, not through the package index, which also loads the Thin CC adapter and its LTI
 // dependency: their Web Crypto types are not part of this Node program's library.
 import { type ActivityExport, type ParsedActivityExport, readActivityExport, templateInputFor } from "../../packages/educateos-ocs/src/activity-export.ts";
@@ -59,22 +59,10 @@ export const ALIGNABLE_ITEM_TYPES: ReadonlySet<string> = new Set(["Standard", "C
 /**
  * Courses whose first units are the Northfield showcase's modules (SCHO-322), by course ID: the
  * showcase offering they must match. A district that already teaches the showcase class then
- * installs only the units after them.
+ * installs only the units after them. The fixtures' `NORTHFIELD_COURSE_CLASSES`, which the demo
+ * and the demo districts install the courses by (SCHO-334).
  */
-export const SHOWCASE_ORIGINS: Readonly<Record<string, string>> = {
-  "educateos.io/grade-1-reading-foundations": "off_nf-g1read-fall-r7",
-  "educateos.io/kindergarten-science-weather-watchers": "off_nf-ksci-fall-r4",
-  "educateos.io/grade-1-mathematics": "off_nf-g1math-fall-r7",
-  "educateos.io/mathematics-7": "off_nf-math7-fall-p1",
-  "educateos.io/english-8": "off_nf-eng8-fall-p2",
-  "educateos.io/world-history-7": "off_nf-whist7-fall-p4",
-  "educateos.io/biology-1": "off_nf-bio-fall-p2",
-  "educateos.io/english-9": "off_nf-eng9-fall-p3",
-  "educateos.io/united-states-history": "off_nf-ushist-fall-p5",
-  "educateos.io/grade-4-english-language-arts": "off_nf-g4ela-fall-r12",
-  "educateos.io/grade-4-mathematics": "off_nf-g4math-fall-r12",
-  "educateos.io/grade-5-science": "off_nf-g5sci-fall-lab",
-};
+export const SHOWCASE_ORIGINS: Readonly<Record<string, string>> = NORTHFIELD_COURSE_CLASSES;
 
 const DOMAIN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 const NAME = /^[a-z][a-z0-9-]{0,62}$/;

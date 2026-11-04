@@ -88,6 +88,11 @@ export const JOURNEYS: Readonly<Record<PersonaId, readonly JourneyStep[]>> = {
     },
     release("k2-teacher.release", "Release Jonah's feedback on Apple Orchard Story Problems (Grade 1 Mathematics), so he and his family see it"),
     gradebook("k2-teacher.gradebook", "Open the Grade 1 Reading gradebook"),
+    {
+      id: "k2-teacher.add-course",
+      label: "In Grade 1 Reading's Modules, open Add a course and preview Grade 1 Reading Foundations, the course package units 3 to 6 came from",
+      done: { method: "POST", paths: ["/api/teacher/offerings/:x/course-install/preview"] },
+    },
   ],
   "g35-student": [
     openActivity("g35-student.open", "Open “Should Recess Be Longer?”"),

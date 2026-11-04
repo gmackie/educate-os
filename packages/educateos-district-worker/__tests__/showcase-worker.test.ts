@@ -51,4 +51,30 @@ describe("the demo showcase through the Worker", () => {
     expect(status.bands["9-12"].offerings.every((o) => o.assignments > 0)).toBe(true);
     expect(status.bands["K-2"].assignments).toBe(0);
   }, 180_000);
+
+  it("installs the sample courses one a request, resuming until none is left, and keeps them across a restart", async () => {
+    expect((await call("prn_nf-teacher-rivera", "POST", "showcase/courses", {})).status).toBe(403);
+    expect((await call("prn_nf-district-admin", "POST", "showcase/seed", { bands: ["9-12"] })).status).toBe(200);
+    const courses = ["educateos.io/english-9", "educateos.io/biology-1"];
+    const first = await call("prn_nf-district-admin", "POST", "showcase/courses", { courses });
+    expect(first.status, JSON.stringify(first.body)).toBe(200);
+    expect(first.body.courses).toMatchObject([{ packageId: "educateos.io/english-9", offeringId: "off_nf-eng9-fall-p3", imported: true, unitsSkipped: 2, done: true }]);
+    expect(first.body.pending).toStrictEqual(["educateos.io/biology-1"]);
+
+    await evictDurableObject(district());
+    const second = await call("prn_nf-district-admin", "POST", "showcase/courses", { courses });
+    expect(second.status, JSON.stringify(second.body)).toBe(200);
+    expect(second.body.courses.map((c: { packageId: string; imported: boolean }) => [c.packageId, c.imported])).toStrictEqual([["educateos.io/english-9", false], ["educateos.io/biology-1", true]]);
+    expect(second.body.pending).toStrictEqual([]);
+
+    const again = await call("prn_nf-district-admin", "POST", "showcase/courses", { courses });
+    expect(again.body).toMatchObject({ created: 0, pending: [] });
+    const status: ShowcaseStatus = (await call("prn_nf-district-admin", "GET", "showcase")).body;
+    expect(status.courses.filter((c) => c.installed).map((c) => c.packageId).toSorted()).toStrictEqual(courses.toSorted());
+    // English 9's later units are in the class, published, and its students read them.
+    const assignments = await SELF.fetch("https://district.example/api/teacher/offerings/off_nf-eng9-fall-p3/modules", { headers: { "cf-access-jwt-assertion": await signIn("prn_nf-teacher-rivera") } });
+    const outline = (await assignments.json() as { outline: { modules: { published: boolean; source?: { kind: string } }[] } }).outline;
+    expect(outline.modules.filter((m) => m.source?.kind === "course").every((m) => m.published)).toBe(true);
+    expect(outline.modules.filter((m) => m.source?.kind === "course").length).toBeGreaterThan(0);
+  }, 300_000);
 });

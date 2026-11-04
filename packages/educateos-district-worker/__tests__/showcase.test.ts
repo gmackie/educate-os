@@ -4,7 +4,7 @@
 // only adds, keeps every co-op record as it was, and links presenters' sign-ins to its personas.
 import { beforeAll, describe, expect, it } from "vitest";
 import { DistrictDirectorySnapshot, type VerifiedIdentity } from "@educateos/contracts";
-import { createDistrictApp, inMemoryDistrictStores, type DistrictApp } from "@educateos/district-app";
+import { createDistrictApp, inMemoryDistrictStores, PublisherTrust, type DistrictApp } from "@educateos/district-app";
 import { NORTHFIELD, NORTHFIELD_GUARDIANS, NORTHFIELD_SHOWCASE, SHOWCASE_BANDS } from "@educateos/fixtures";
 import {
   linkPersona,
@@ -18,6 +18,7 @@ import {
   type ShowcasePersona,
   type ShowcaseStatus,
 } from "../src/showcase.ts";
+import publisher from "../../../curriculum/educateos.io/publisher.json" with { type: "json" };
 
 const ISSUER = "https://team.cloudflareaccess.example";
 const D = "dst_test-coop";
@@ -59,6 +60,7 @@ async function bootCoop(directory: DistrictDirectorySnapshot = COOP): Promise<{ 
     authority: "local",
     unscreenedStudentPosts: "publish",
     importFetch: withShowcaseReadings(async () => new Response("not found", { status: 404 })),
+    courseLibraryTrust: PublisherTrust.parse({ localDomains: [], publishers: [publisher] }),
   });
   return { app, showcase: startDistrictShowcase({ app, verifyRequest, accessIssuer: ISSUER, name: "northfield" }) };
 }
@@ -130,7 +132,7 @@ describe("the showcase, seeded inside a co-op district", () => {
   }, 120_000);
 
   it("refuses anyone but a district administrator, and an unsigned request", async () => {
-    for (const [method, path] of [["GET", "showcase"], ["GET", "showcase/export"], ["POST", "showcase/seed"], ["GET", "showcase/personas"], ["POST", "showcase/personas"]] as const) {
+    for (const [method, path] of [["GET", "showcase"], ["GET", "showcase/export"], ["POST", "showcase/seed"], ["POST", "showcase/courses"], ["GET", "showcase/personas"], ["POST", "showcase/personas"]] as const) {
       const body = method === "POST" ? {} : undefined;
       expect((await call(coop.showcase, TEACHER_SUB, method, path, body)).status, `${method} ${path}`).toBe(403);
       expect((await call(coop.showcase, undefined, method, path, body)).status, `${method} ${path}`).toBe(401);
@@ -187,6 +189,27 @@ describe("the showcase, seeded inside a co-op district", () => {
     expect(again.body.showcase.created).toBe(0);
   }, 120_000);
 
+  it("installs a sample course into its showcase class as the co-op's administrator and the class's teacher, once", async () => {
+    const course = "educateos.io/grade-1-reading-foundations";
+    const dry = await call(coop.showcase, ADMIN_SUB, "POST", "showcase/courses", { dryRun: true, courses: [course] });
+    expect(dry.body).toStrictEqual({ dryRun: true, courses: [{ packageId: course, offeringId: "off_nf-g1read-fall-r7", imported: false, installed: false }] });
+    expect(await coop.app.stores.courseLibrary.listCourses()).toStrictEqual([]);
+
+    const installed = await call(coop.showcase, ADMIN_SUB, "POST", "showcase/courses", { courses: [course] });
+    expect(installed.status, JSON.stringify(installed.body)).toBe(200);
+    expect(installed.body.pending).toStrictEqual([]);
+    expect(installed.body.courses).toMatchObject([{ packageId: course, imported: true, unitsSkipped: 2, unitsInstalled: 4, published: 4, done: true }]);
+    // The co-op's administrator imported it, under the deployment's pin.
+    const [entry] = await coop.app.stores.courseLibrary.listCourses();
+    expect(entry).toMatchObject({ packageId: course, publisher: { domain: "educateos.io", signed: true }, imported: { by: "prn_coop-admin" } });
+    const status: ShowcaseStatus = (await call(coop.showcase, ADMIN_SUB, "GET", "showcase")).body;
+    expect(status.courses.find((c) => c.packageId === course)).toStrictEqual({ packageId: course, offeringId: "off_nf-g1read-fall-r7", imported: true, installed: true });
+
+    const again = await call(coop.showcase, ADMIN_SUB, "POST", "showcase/courses", { courses: [course] });
+    expect(again.body).toMatchObject({ created: 0, pending: [] });
+    expect((await call(coop.showcase, ADMIN_SUB, "POST", "showcase/courses", { courses: ["educateos.io/not-a-course"] })).status).toBe(400);
+  }, 120_000);
+
   it("links a presenter to a persona, moves them to another, and frees them", async () => {
     const personas: ShowcasePersona[] = (await call(coop.showcase, ADMIN_SUB, "GET", "showcase/personas")).body;
     const mateo = personas.find((p) => p.principalId === "prn_nf-student-mateo")!;
@@ -232,6 +255,14 @@ describe("a dry run, and a district whose records clash", () => {
     expect(dry.status).toBe(200);
     expect(dry.body).toMatchObject({ dryRun: true, directory: { offerings: NORTHFIELD.offerings.length } });
     expect((await coop.app.stores.directory.load()).snapshot).toStrictEqual(before.snapshot);
+  });
+
+  it("refuses to install the sample courses before the showcase's classes are there", async () => {
+    const coop = await bootCoop();
+    const refused = await call(coop.showcase, ADMIN_SUB, "POST", "showcase/courses", {});
+    expect(refused.status).toBe(409);
+    expect(refused.body.message).toContain("Seed the showcase first");
+    expect(await coop.app.stores.courseLibrary.listCourses()).toStrictEqual([]);
   });
 
   it("refuses to seed over another record under a showcase ID, writing nothing", async () => {

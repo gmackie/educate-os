@@ -86,6 +86,15 @@ and validated exactly as if they had done it by hand. For each unit of the cours
 The teacher's explicit install is the review that publishes the imported drafts for the class. The
 class's install record says who installed the course and when.
 
+**Flagged readings stop the install.** A reading goes through the Content Studio's checks like any
+import. If they raise a blocking flag, such as `instruction-like-text` (the prompt-injection guard,
+threat T7), the install stops at that activity: clicking install is not a review of the reading, so
+the flag is never acknowledged for the teacher. Publish reworded content as a new course version.
+
+**Due dates.** An activity is due as its export says, counted from the install. One that would fall
+due after the class's term ends (a semester course added part way through the term) is due on the
+term's last day instead.
+
 **Only adds.** If the class already has a module with a unit's title (compared ignoring case), the
 unit is marked `exists` and skipped, and that module is left untouched. This is how the Grade 1
 Reading showcase class, whose two modules are the reference course's units 1 and 2, receives only
@@ -120,4 +129,7 @@ teacher-only page and an importing system would show them to students.
   course, and units whose titles the class already has are skipped.
 - `COURSE_LIBRARY_TRUST` is not an installer deploy input yet. Only the generated demo and
   schoolos.gmac.io configs set it.
-- No live import into a deployed district is recorded yet.
+- No live import into a deployed district is recorded yet. The demo districts' showcase installs
+  every sample course through `POST /api/demo/showcase/courses` (SCHO-334,
+  [demo-districts.md](runbooks/demo-districts.md#the-k-12-showcase-scho-326)), and the in-browser
+  demo installs them on every boot.

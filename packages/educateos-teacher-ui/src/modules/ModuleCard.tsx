@@ -95,10 +95,17 @@ export const ModuleCard = ({ offeringId, module, pages, assignments, position, o
   return (
     <LayerCard className="flex flex-col gap-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <h2><Text variant="heading" as="span">{module.title}</Text></h2>
-          {module.source?.kind === "cartridge" && <Badge variant="neutral">Imported</Badge>}
-          {module.source?.kind === "course" && <Badge variant="neutral">From a course</Badge>}
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <h2><Text variant="heading" as="span">{module.title}</Text></h2>
+            {module.source?.kind === "cartridge" && <Badge variant="neutral">Imported</Badge>}
+            {module.source?.kind === "course" && <Badge variant="neutral">From a course</Badge>}
+          </div>
+          {module.source?.kind === "course" && (
+            <Text variant="secondary" size="sm">
+              Installed from {module.source.packageId} {module.source.version}, an Open Course Specification package
+            </Text>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* The switch is the module's one status indicator: a "Draft" badge beside it said the same thing twice. */}

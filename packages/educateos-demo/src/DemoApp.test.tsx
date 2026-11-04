@@ -131,9 +131,15 @@ describe("the demo", () => {
     await userEvent.keyboard("{ArrowRight}");
     expect(await findByRole(container, "heading", { name: /^Submissions · Grade 1 Reading Foundations/ }, BOOT)).toBeDefined();
     expect(banner().textContent).toContain("You're Daniel Yazzie");
-    await userEvent.keyboard("8");
+    // The class's later units, installed from the course package it continues.
+    await userEvent.keyboard("{ArrowRight}");
+    expect(await findByRole(container, "heading", { name: "Modules · Grade 1 Reading Foundations · Room 7" }, BOOT)).toBeDefined();
+    expect(await findByRole(container, "heading", { name: "Animal Facts" }, BOOT)).toBeDefined();
+    expect(container.textContent).toContain("Installed from educateos.io/grade-1-reading-foundations 1.0.0, an Open Course Specification package");
+    expect(getByRole(container, "heading", { name: "Add a course" })).toBeDefined();
+    await userEvent.keyboard("9");
     expect(await findByRole(container, "heading", { name: "All classes" }, BOOT)).toBeDefined();
-    expect(within(strip).getByText("3/8")).toBeDefined();
+    expect(within(strip).getByText("4/9")).toBeDefined();
   });
 
   it("starts over on reset: back to the picker, with the hash route and progress cleared", async () => {
