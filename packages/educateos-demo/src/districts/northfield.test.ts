@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { NORTHFIELD, NORTHFIELD_COURSE_CLASSES, NORTHFIELD_SHOWCASE } from "@educateos/fixtures";
 import { bootNorthfield, NORTHFIELD_PERSONAS as PERSONAS, NORTHFIELD_SECTIONS } from "./northfield.ts";
 import { schoolDayDue } from "./schoolDay.ts";
 
@@ -6,7 +7,9 @@ describe("the demo district", () => {
   let district: Awaited<ReturnType<typeof bootNorthfield>>;
   const as = (id: string) => district.clientFor(PERSONAS.find((p) => p.id === id)!.subject);
   beforeAll(async () => {
+    const started = performance.now();
     district = await bootNorthfield();
+    console.info(`Northfield booted, seeded and installed its courses in ${Math.round(performance.now() - started)} ms`);
   }, 60_000);
 
   it("signs each persona in as who the picker says they are, a student and a teacher in each band", async () => {
@@ -44,8 +47,34 @@ describe("the demo district", () => {
     expect(children.map((c) => c.displayName).toSorted()).toStrictEqual(["Lucía Delgado", "Mateo Delgado"]);
   });
 
-  it("dues work at 3:30 PM on a school day, never at the minute it booted", async () => {
-    const assignments = await as("g912-teacher").call("teacher.listAssignments", { params: { offeringId: "off_nf-eng9-fall-p3" } });
+  it("gives every class the rest of its semester from its sample course, with teacher-only notes kept from students", async () => {
+    const library = await as("admin").call("admin.listLibraryCourses");
+    for (const [packageId, offeringId] of Object.entries(NORTHFIELD_COURSE_CLASSES)) {
+      expect(library.find((c) => c.packageId === packageId)?.publisher).toStrictEqual({ domain: "educateos.io", signed: true });
+      const course = NORTHFIELD_SHOWCASE.courses.find((c) => c.offeringId === offeringId)!;
+      const teacher = district.clientFor(NORTHFIELD.principals.find((p) => p.id === course.teacherId)!.externalIdentities[0]!.subject);
+      const modules = (await teacher.call("teacher.listModules", { params: { offeringId } })).outline.modules;
+      expect(modules.length, packageId).toBeGreaterThan(course.modules.length);
+      expect(modules.slice(course.modules.length).every((m) => m.published && m.source?.kind === "course" && m.source.packageId === packageId), packageId).toBe(true);
+    }
+    const yazzie = as("k2-teacher"), mateo = as("k2-student");
+    const params = { offeringId: "off_nf-g1read-fall-r7" };
+    const modules = (await yazzie.call("teacher.listModules", { params })).outline.modules;
+    expect(modules.map((m) => m.title)).toStrictEqual(["Short Vowel Sounds", "Stories We Love", "Two Letters, One Sound", "Magic E: Long Vowels", "Animal Facts", "Rhymes and Smooth Reading"]);
+    expect(modules.slice(2).some((m) => m.items.some((i) => i.kind === "teacher-note"))).toBe(true);
+    const seen = (await mateo.call("student.listModules", { params })).outline;
+    expect(seen.modules.map((m) => m.title)).toStrictEqual(modules.map((m) => m.title));
+    expect(seen.modules.flatMap((m) => m.items).some((i) => i.kind === "teacher-note")).toBe(false);
+    expect(seen.modules.slice(2).every((m) => m.items.some((i) => i.kind === "page"))).toBe(true);
+    const offered = (await yazzie.call("teacher.libraryCourses", { params })).find((c) => c.packageId === "educateos.io/grade-1-reading-foundations");
+    expect(offered).toMatchObject({ matchesClass: true, installed: { version: "1.0.0", done: true } });
+  });
+
+  it("dues the showcase's work at 3:30 PM on a school day, never at the minute it booted", async () => {
+    // The sample courses' activities are due as their course says, counted from their install.
+    const showcase = new Set(NORTHFIELD_SHOWCASE.courses.find((c) => c.offeringId === "off_nf-eng9-fall-p3")!.activities.map((a) => a.title));
+    const assignments = (await as("g912-teacher").call("teacher.listAssignments", { params: { offeringId: "off_nf-eng9-fall-p3" } })).filter((a) => showcase.has(a.title));
+    expect(assignments.length).toBeGreaterThan(0);
     for (const { dueAt } of assignments) {
       const due = new Date(dueAt);
       expect([due.getHours(), due.getMinutes()]).toStrictEqual([15, 30]);

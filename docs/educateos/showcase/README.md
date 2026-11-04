@@ -22,7 +22,7 @@ claim. The scripts for presenting it are beside it:
 |---|---|---|
 | What it is | A static site. The real district application, Student, Teacher, Guardian and Admin UIs run in the visitor's browser over in-memory stores. | The live demo co-op district (`schoolos-district-worker`), with the Workshop at `/ai`. |
 | Sign-in | None. Pick a persona. | Cloudflare Access. Presenters use the agents.gmac.io test identities, linked to showcase personas ([demo-districts.md](../runbooks/demo-districts.md#the-k-12-showcase-scho-326)). |
-| Data | Northfield's showcase, seeded on every page load. Nothing leaves the tab. Reset demo, or a reload, starts it over. | The showcase seeded into the co-op by an administrator. Additive, persistent and shared: what a presenter does stays. |
+| Data | Northfield's showcase, seeded on every page load, and each class's educateos.io sample course installed from its signed bundle (SCHO-334), so every class has its whole semester. Nothing leaves the tab. Reset demo, or a reload, starts it over. | The showcase seeded into the co-op by an administrator. Additive, persistent and shared: what a presenter does stays. |
 | AI | None. Each band's tutor is a scripted, labelled simulation. | Real AI in the Workshop at `/ai`, behind the AI call guard and Hall Monitor. See the caveats below for students. |
 | Use it for | Every meeting. Zero setup, works offline once loaded. | A question the demo cannot answer: "is this running somewhere real?", or real AI for an educator. |
 
@@ -48,8 +48,10 @@ released. The picker offers ten personas:
 
 Each persona has "Things to try" (the band journeys in `packages/educateos-demo/src/journeys.ts`),
 which tick as the real app makes the requests that doing them takes. The K-12 tour strip under the
-banner opens eight screens in order (`src/tour/storyTour.ts`). `?presenter` in the URL turns on
-presenter mode: number keys 1 to 8 open a step, the arrow keys step through, `?` shows the keys.
+banner opens nine screens in order (`src/tour/storyTour.ts`); the third is Mr. Yazzie's Grade 1
+Reading modules, whose units 3 to 6 came from the Grade 1 Reading Foundations course package, with
+Add a course below them. `?presenter` in the URL turns on presenter mode: number keys 1 to 9 open a
+step, the arrow keys step through, `?` shows the keys.
 
 ## Real and simulated
 
@@ -122,3 +124,11 @@ in-page district boot and seed is 2.5 s. With the CPU throttled four times, read
 a slow network as well, 16.7 s. The bundle is one 3.3 MB script (850 KB compressed), cached as
 immutable, so a second visit is fast. Once loaded the demo makes no network requests at all; a
 reload needs the network.
+
+Since SCHO-334 the boot also imports and installs the twelve sample courses (about 190 activities)
+after the seed. Measured in Node over the same in-memory district, the boot and seed took 2.7 to
+3.1 s before and takes 4.8 to 5.4 s with the courses. The course bundles (2.1 MB of JSON) are
+separate chunks, fetched while the showcase is seeded, so the first script grew by only the
+installer (the main script is 3.4 MB). In headless Chromium on a laptop, serving a local build,
+the in-page boot (`educateos:boot`) took 4.1 to 4.2 s over three loads, against 2.5 s before, and
+the picker shows at once, as before.

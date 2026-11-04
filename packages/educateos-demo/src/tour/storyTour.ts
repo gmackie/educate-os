@@ -1,4 +1,4 @@
-// The K-12 story tour of Northfield (SCHO-324): a five-minute walk across the grade bands, one
+// The K-12 story tour of Northfield (SCHO-324, SCHO-334): a five-minute walk across the grade bands, one
 // screen a step, for a presenter or a visitor. Each step names who to be and where their app opens;
 // the screen is the real app over the seeded showcase, found through the district's own API.
 import type { DistrictApiClient } from "@educateos/api-client";
@@ -49,6 +49,14 @@ export const STORY_STEPS: readonly StoryStep[] = [
     say: "Recordings and drawings arrive as submitted work. He scores them on a rubric written for six-year-olds (“Got it!”) and releases feedback that the family sees too.",
     persona: "k2-teacher",
     route: submissionsRoute("off_nf-g1read-fall-r7", "Retell The Little Seed"),
+  },
+  {
+    id: "k2-course",
+    band: "K-2",
+    title: "Mr. Yazzie's semester, installed from a course package",
+    say: "Units 3 to 6 came from Grade 1 Reading Foundations, an Open Course Specification package signed by educateos.io: pages for students, teacher guides and answer keys only teachers see, and every activity assigned. Add a course previews a package before it adds anything.",
+    persona: "k2-teacher",
+    route: fixed("#/classes/off_nf-g1read-fall-r7/modules"),
   },
   {
     id: "g35-student",
