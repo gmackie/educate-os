@@ -10,6 +10,7 @@ import {dirname, join, relative, sep} from "node:path";
 import {test} from "node:test";
 import {fileURLToPath} from "node:url";
 import {CATALOG_DIR, renderCatalog} from "./catalog.mjs";
+import {DYNAMIC_PATHS} from "../../packages/educateos-control-plane/src/app.ts";
 
 const publicDir = join(dirname(fileURLToPath(import.meta.url)), "public");
 
@@ -38,7 +39,13 @@ function isFile(path) {
   return existsSync(path) && statSync(path).isFile();
 }
 
+// The paths the site Worker serves itself (run_worker_first, site-config.test.mjs), such as the guided
+// install at /app/install (SCHO-340): a link to one resolves to the Worker, not a file.
+const WORKER = "worker";
+const isWorkerPath = (pathname) => DYNAMIC_PATHS.some((path) => (path.endsWith("/*") ? pathname.startsWith(path.slice(0, -1)) : pathname === path));
+
 function resolveTarget(pathname) {
+  if (isWorkerPath(pathname)) return WORKER;
   if (pathname === "/demo/") return isFile(DEMO.source) ? DEMO.source : null;
   const local = join(publicDir, decodeURIComponent(pathname));
   if (pathname.endsWith("/")) return isFile(join(local, "index.html")) ? join(local, "index.html") : null;
@@ -78,7 +85,7 @@ for (const page of pages) {
         continue;
       }
       const fragment = decodeURIComponent(url.hash.slice(1));
-      if (fragment && target.endsWith(".html") && !ids(target).has(fragment)) {
+      if (fragment && target !== WORKER && target.endsWith(".html") && !ids(target).has(fragment)) {
         broken.push(`${ref} (no id="${fragment}" on ${relative(publicDir, target)})`);
       }
     }
