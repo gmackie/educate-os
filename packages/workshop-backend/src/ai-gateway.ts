@@ -156,7 +156,8 @@ export class AiGatewayConfig {
 
   /**
    * Get the AiModelConfig for the deployment's own quick model (used for title generation where
-   * the user's choice is not).
+   * the user's choice is not). Precedence: the user's chosen quick model while it resolves (and
+   * no Cloudflare usage limits apply), else CF_AI_GATEWAY_QUICK_MODEL, else {@link QUICK_MODEL_ID}.
    */
   getQuickModelConfig(): AiModelConfig | undefined {
     return {

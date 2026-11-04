@@ -235,6 +235,23 @@ describe("UserDurableObject gateway model modes", () => {
     expect((await user.getChatContext(null)).quickModel).toEqual(fallback);
   }));
 
+  // Precedence: the user's chosen quick model while it resolves, else CF_AI_GATEWAY_QUICK_MODEL,
+  // else the built-in Workers AI default.
+  it("falls back to CF_AI_GATEWAY_QUICK_MODEL, which a user's own choice still overrides",
+      () => inGatewayUser(async user => {
+    const impl = user as unknown as { env: Cloudflare.Env };
+    impl.env = { ...impl.env, CF_AI_GATEWAY_QUICK_MODEL: "@cf/zai-org/glm-5.3-flash" };
+    expect((await user.getChatContext(null)).quickModel)
+        .toMatchObject({ provider: "cloudflare", model: "@cf/zai-org/glm-5.3-flash" });
+
+    await user.setQuickModel(ENABLED_ID);
+    expect((await user.getChatContext(null)).quickModel)
+        .toMatchObject({ provider: "anthropic", model: ENABLED_ID });
+
+    await user.setQuickModel(null);
+    expect((await user.getChatContext(null)).quickModel?.model).toBe("@cf/zai-org/glm-5.3-flash");
+  }));
+
   it("keeps quick tasks on the deployment's quick model where Cloudflare limits apply",
       () => inGatewayUser(async user => {
     await user.setQuickModel(ENABLED_ID);
