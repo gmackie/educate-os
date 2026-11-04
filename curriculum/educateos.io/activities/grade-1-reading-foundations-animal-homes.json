@@ -1,0 +1,94 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "drawPrompt": "Draw one animal from the text in its home.",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "lookPrompt": "Listen to Animal Homes. It tells how a bird, a beaver, a rabbit and a bee each have a home that keeps them safe.",
+    "overview": "Listen to Animal Homes. Draw an animal in its home and tell about it.",
+    "resources": [
+      "animal-homes"
+    ],
+    "sentenceFrames": [
+      "I drew a ___.",
+      "Its home is a ___.",
+      "The home keeps it ___."
+    ],
+    "subject": "english-language-arts",
+    "tellAboutIt": true,
+    "template": "picture-response",
+    "title": "Animal Homes"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-animal-homes",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Animals need homes, just like people do. A bird builds a nest out of twigs and grass. A beaver builds a lodge out of sticks and mud in the water. A rabbit digs a burrow under the ground. A bee lives in a hive with many other bees. Each home keeps the animal safe and gives it a place to rest.",
+      "id": "animal-homes",
+      "title": "Animal Homes"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "matches-text",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "My animal and its home match the text"
+      },
+      {
+        "id": "tells-fact",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told a fact from the text"
+      }
+    ],
+    "title": "Animal homes"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

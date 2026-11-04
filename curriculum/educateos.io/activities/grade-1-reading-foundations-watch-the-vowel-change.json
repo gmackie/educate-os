@@ -1,0 +1,47 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "1",
+    "overview": "Read word pairs and hear the vowel change from short to long.",
+    "passage": "When we add Magic E to the end of a word, the vowel says its name. Listen: cap, cape. Kit, kite. Hop, hope. The first word has a short vowel. The second word has a long vowel.",
+    "questions": [
+      {
+        "prompt": "Read these two words: tap, tape. Which word has a long a?"
+      },
+      {
+        "prompt": "Read these two words: pin, pine. Which word has a long i?"
+      },
+      {
+        "prompt": "Read these two words: not, note. Which word has a long o?"
+      },
+      {
+        "prompt": "Why does the vowel in cube say its name?"
+      }
+    ],
+    "sentenceFrames": [
+      "The long word is ___.",
+      "The vowel says its name because ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Watch the Vowel Change"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-watch-the-vowel-change",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

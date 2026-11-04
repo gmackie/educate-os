@@ -1,10 +1,10 @@
-# RFC 0001: Open Course Specification (OCS) 1.0
+# RFC 0001: Open Course Specification (OCS) 1.0 and 1.1
 
 - Status: Draft (implemented by `@educateos/ocs`)
-- Date: 2026-10-20
+- Date: 2026-10-20; 1.1 (portable activities, §13.1 and §14): 2026-11-04
 - Issue: SCHO-18 (roadmap PR C06; roadmap §5.3 "OCS/course repository fast-follow" and §15 item 10).
-  Decisions in §13 and the adapter, library and signatures: SCHO-96
-- Format version: `specVersion: "1.0"`
+  Decisions in §13 and the adapter, library and signatures: SCHO-96. Portable activities: SCHO-330
+- Format version: `specVersion: "1.0"`, or `"1.1"` for a package with portable activities
 
 ## 1. Summary
 
@@ -62,6 +62,9 @@ codex/<id>.json          one Codex note per file
 ```
 
 `<id>` is a kebab-case local ID (`[a-z][a-z0-9-]{0,62}`), and the file's `id` field must equal it.
+Activity definition exports (OCS 1.1, §13.1) are not package files: each is a JSON document of its
+own, published to a library beside packages, so a package reader still refuses anything outside
+this layout.
 A reader refuses any other path (`scripts/`, `*.js`, `package.json`, `.github/`, anything), any file
 that is not JSON, and any file over 256 KiB, and reads at most 2,000 files. Every object is strict:
 an unknown field is an error, so nothing rides along unvalidated.
@@ -70,7 +73,7 @@ an unknown field is an error, so nothing rides along unvalidated.
 
 | Field | Meaning |
 | --- | --- |
-| `specVersion` | `"1.0"`. |
+| `specVersion` | `"1.0"`, or `"1.1"` for a package that has a portable activity (§14). |
 | `id` | The package ID: the publisher's domain, `/`, a kebab-case name, such as `northfield.example/biology-9`. The domain keeps publishers' names apart without a central registry. |
 | `version` | The package version (§4). |
 | `title`, `summary` | Plain text (§9). |
@@ -85,9 +88,11 @@ an unknown field is an error, so nothing rides along unvalidated.
 
 - **Unit:** `{ id, title, summary?, standards, items }`, where each item is `{ kind: "activity" |
   "resource" | "codex", ref }` naming a file of this package. An item appears in a unit once.
-- **Activity:** `{ id, title, role, definition: { definitionId, version } }`. `role` is `lesson`,
-  `assignment` or `assessment`, which is how the roadmap's "assignments and assessments" appear: an
-  assessment is an activity whose definition carries its evidence contract and rubric slots.
+- **Activity:** `{ id, title, role, definition }`. `role` is `lesson`, `assignment` or
+  `assessment`, which is how the roadmap's "assignments and assessments" appear: an assessment is an
+  activity whose definition carries its evidence contract and rubric slots. `definition` is
+  `{ definitionId, version }`, a published definition of one district, or (1.1)
+  `{ portable: { id, version, digest } }`, a published activity definition export (§13.1).
 - **Resource:** `{ kind: "release", id, title, release: { resourceId, version }, use }`, a Content
   Studio release and the rights mode the package uses it under. A Gadget Blueprint is
   `{ kind: "gadget-blueprint", id, title, release, releaseCommit, use }` (§9).
@@ -282,11 +287,19 @@ Studio's permitted uses and the target class (C03, C05).
 - Composition: `composeCourse`.
 - Teacher composition: `startCourse`, `editCourse`, `addModule`, `removeModule`, `updateModules`,
   `reorder`, `hide`, `rename`, `preview`, `publish`.
-- Export: `planInstallations` and `installCourse`, over `CurriculumService.install`.
+- Export: `planInstallations` and `installCourse`, over `CurriculumService.install`; a portable
+  activity installs the local definition the district imported it as.
+- Portable activities (1.1): `ActivityExport`, `readActivityExport`, `activityExportDigest`,
+  `writeActivityExport`, `templateInputFor`; `ActivityExportSource` (both libraries implement it,
+  with `publishExport`); `resolveActivityExports`, `planCourseInstall`, `CourseInstallTarget`,
+  `importPlannedActivities`, `applyInstallPlan`, and `InMemoryCourseInstallTarget` as the
+  reference target. Distribution: `OcsBundle`, `buildBundle`, `serializeBundle`, `openBundle`,
+  `planBundleInstall`.
 - Failures are `OcsError`, a `EducateOsError` carrying a structured `OcsProblem`.
 - Thin CC adapter: `ocsFromCartridge`, `cartridgeFromOcs`, both returning `AdapterLoss` lists.
 - Publisher signatures: `PackagePublication`, `signPackagePublication`, `PublisherTrust`,
-  `checkPublication`, `publisherPolicy`.
+  `checkPublication`, `publisherPolicy`; for exports, `ActivityExportPublication`,
+  `signActivityExportPublication`, `checkExportPublication`, `publisherExportPolicy`.
 - Durable library: `DurableObjectPackageLibrary` (`@educateos/ocs/durable-object-library`).
 
 ## 12. Open questions
@@ -307,7 +320,7 @@ Studio's permitted uses and the target class (C03, C05).
 
 ## 13. Decisions
 
-### 13.1 Portable activity references (Q1, for OCS 1.1)
+### 13.1 Portable activity references (Q1, implemented in OCS 1.1)
 
 **Decision.** An activity stays a pointer. OCS 1.1 adds a second, portable form of pointer. It
 names a published **activity definition export** by publisher-scoped ID, version and digest:
@@ -357,3 +370,61 @@ unsigned.
   keeps the accepted signature with the version. The resolver still checks every package's digest,
   so a signed version that changes in storage is refused as well.
 
+## 14. OCS 1.1 changes
+
+1.1 implements §13.1 and changes nothing else. A 1.1 reader reads every 1.0 package and lockfile.
+
+- **Format versions.** `specVersion` is `"1.0"` or `"1.1"`. A package with a portable activity must
+  declare `"1.1"`; one that declares `"1.0"` and uses the portable form is refused. Composition
+  tools write `"1.1"` only when a package needs it. A lockfile is `"1.1"` when the course or any
+  package it includes is 1.1, so a 1.0 reader refuses it rather than composing activities it
+  cannot read.
+- **Portable activity references.** `definition: { portable: { id, version, digest } }`, beside
+  `{ definitionId, version }`. `id` is publisher-scoped like a package ID (`<domain>/<name>`),
+  `version` is exact, and `digest` pins the export's content. The digest is part of the activity
+  file, so the package digest and the lockfile cover it; composition carries the reference through
+  unchanged and never needs the export.
+- **Activity definition exports.** One strict JSON document, digested like a package file
+  (`sha256:` over its canonical JSON):
+
+  ```json
+  {
+    "specVersion": "1.1",
+    "id": "educateos.io/grade-1-reading-foundations-word-builders",
+    "version": "1.0.0",
+    "language": "en",
+    "activity": { "template": "read-and-respond", "title": "…", "subject": "…", "gradeBand": "1", "…": "…" },
+    "rubric": { "title": "…", "criteria": [{ "id": "…", "title": "…", "levels": [{ "id": "…", "label": "…", "points": 1 }] }] },
+    "alignments": [{ "frameworkKey": "ccss-ela", "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.3" }],
+    "readings": [{ "id": "…", "title": "…", "body": "…", "attribution": "…" }]
+  }
+  ```
+
+  `activity` is a curriculum template's inputs minus everything district-local: no `codex`, no
+  `alignments` (they are on the export, by CASE URI), no rubric reference (the rubric is data, with
+  no evaluator checks), no fixed due date, no problem-set answers, and `resources` (and a
+  primary-source analysis's `sources`) name the export's own `readings` by ID instead of Content
+  Studio releases. Every string follows the plain-text rule of §9. Answer keys and teacher guides
+  belong in the course's teacher-only Codex notes.
+- **Publication.** An export is published to the same libraries as packages, as an immutable
+  version, and needs a publisher signature under the same per-domain keys. The statement is
+  `ActivityExportPublication { exportId, version, digest, publishedAt }` in its own signing context
+  (`educateos-ocs/v1` `activity-export-publication`), so a package signature never verifies as an
+  export's, nor the reverse.
+- **Installation.** `resolveActivityExports` fetches and verifies every export a composed course
+  names. `planCourseInstall` turns the course and its exports into a plan: per unit, its items in
+  order (activities; student-visible Codex notes as pages; teacher-only notes, answer keys
+  included; resources), and per portable activity, the export to import as a draft under its
+  mapping key `id@version`. A district implements `CourseInstallTarget` (`importDraft`, `publish`,
+  `createModule`, `addPage`, `addTeacherNote`, `addResource`, `install`) over its own services, and
+  `applyInstallPlan` drives it, recording each mapping from the portable reference to the local
+  `definitionId@version`. Drafts may be left for review: activities that use them are reported as
+  pending and installed by a later run with the recorded mappings.
+- **Bundles.** A course is distributed as one JSON document (`OcsBundle`, format
+  `educateos.ocs-bundle.v1`): the course package version first, then the packages it includes, then
+  every export they name, each with its files as published, its digest and its publisher signature.
+  `openBundle` checks every digest and every signature against the district's `PublisherTrust`
+  exactly as its library would, so the bundle itself is never trusted, and `planBundleInstall`
+  plans the installation from the bundle alone. EducateOS's own courses are authored in the
+  repository's `curriculum/` directory and bundled by `scripts/curriculum/` (see
+  `curriculum/README.md`).

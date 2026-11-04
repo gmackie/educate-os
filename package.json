@@ -23,12 +23,13 @@
     "lint:fix": "vp lint --fix",
     "types:check": "pnpm run build",
     "types:scripts": "tsc -p scripts/tsconfig.json",
-    "lint": "pnpm run lint:check && pnpm run types:scripts && pnpm run configs:check && pnpm run production:check && pnpm run types:check",
+    "lint": "pnpm run lint:check && pnpm run types:scripts && pnpm run configs:check && pnpm run production:check && pnpm run curriculum:check && pnpm run types:check",
     "configs:generate": "node scripts/generate-worker-configs.ts",
     "configs:check": "node scripts/generate-worker-configs.ts --check",
     "production:configs": "node scripts/production/production-config.ts",
     "production:check": "node scripts/production/production-config.ts --check && node scripts/production/watch-paths.ts --check",
     "production:watch-paths": "node scripts/production/watch-paths.ts",
+    "curriculum:check": "node scripts/curriculum/curriculum.ts check",
     "types:generate": "node scripts/generate-worker-configs.ts && node scripts/generate-worker-types.ts"
   },
   "devDependencies": {

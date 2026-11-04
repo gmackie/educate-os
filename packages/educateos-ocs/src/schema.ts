@@ -4,8 +4,19 @@ import { LanguageTag, RightsMode } from "@educateos/registry";
 import { z } from "zod";
 import { SemVer, VersionRange, isExactRange } from "./semver.ts";
 
-/** The OCS format version this package reads and writes (RFC 0001). */
+/**
+ * The OCS format version written for a package that uses no 1.1 feature (RFC 0001 §4, §14). A
+ * package moves to 1.1 only when it needs to, so 1.0 readers keep reading everything they can.
+ */
 export const OCS_SPEC_VERSION = "1.0";
+
+/** The format version that adds portable activities (RFC 0001 §13.1, §14). */
+export const OCS_PORTABLE_SPEC_VERSION = "1.1";
+
+/** The format versions this package reads: 1.0, and 1.1, which adds portable activities. */
+export const OcsSpecVersion = z.enum([OCS_SPEC_VERSION, OCS_PORTABLE_SPEC_VERSION]);
+/** A format version. */
+export type OcsSpecVersion = z.infer<typeof OcsSpecVersion>;
 
 /**
  * Identifies an OCS package across all of its versions: the publisher's domain, a slash, and a
@@ -19,6 +30,15 @@ export const OcsPackageId = z
 /** A package identifier. */
 export type OcsPackageId = z.infer<typeof OcsPackageId>;
 
+/**
+ * Identifies a portable activity (an activity definition export, RFC 0001 §13.1) across all of its
+ * versions, in the same publisher-scoped form as a package ID, such as
+ * `educateos.io/grade-1-reading-foundations-word-builders`.
+ */
+export const ActivityExportId = OcsPackageId;
+/** An activity export identifier. */
+export type ActivityExportId = z.infer<typeof ActivityExportId>;
+
 /** A content digest, `sha256:` and 64 lowercase hex digits, in the form registry releases use. */
 export const Sha256Digest = z.string().regex(/^sha256:[0-9a-f]{64}$/, "expected sha256:<64 lowercase hex digits>");
 /** A content digest. */
@@ -27,6 +47,9 @@ export type Sha256Digest = z.infer<typeof Sha256Digest>;
 // Markup that runs or loads code when rendered. Package text is plain text and is rendered as such;
 // refusing these as well means a renderer that slips cannot be turned into a script host.
 const ACTIVE_CONTENT = /<\s*\/?\s*(script|iframe|object|embed|applet|style|link|meta|base|form|svg)\b|\b(javascript|vbscript)\s*:|data\s*:\s*text\/html/i;
+
+/** Whether text holds script or active markup, which no OCS text may (RFC 0001 §9). */
+export const hasActiveContent = (text: string): boolean => ACTIVE_CONTENT.test(text);
 
 /** Plain text of at most `max` characters, refusing markup that could run code. */
 export const PlainText = (max: number) =>
@@ -37,15 +60,43 @@ export const PlainText = (max: number) =>
     .max(max)
     .refine((text) => !ACTIVE_CONTENT.test(text), "package text is plain text and may not contain scripts or active markup");
 
+/** A published curriculum `ActivityDefinition` version of one district (C05): meaningful only there. */
+export const DistrictDefinitionRef = z.strictObject({ definitionId: ActivityDefinitionId, version: z.int().positive() });
+/** A district-local definition reference. */
+export type DistrictDefinitionRef = z.infer<typeof DistrictDefinitionRef>;
+
 /**
- * One activity in a package: a pointer to a published curriculum `ActivityDefinition` version
- * (C05), never the activity's content. The role says how the course uses it.
+ * A published activity definition export (OCS 1.1, RFC 0001 §13.1): its publisher-scoped ID, its
+ * exact version and the digest of its content, so the reference names one immutable export.
+ */
+export const PortableActivityRef = z.strictObject({ id: ActivityExportId, version: SemVer, digest: Sha256Digest });
+/** A portable activity reference. */
+export type PortableActivityRef = z.infer<typeof PortableActivityRef>;
+
+/** The key a portable reference is mapped and deduplicated by: `id@version`. */
+export const portableKey = (ref: Pick<PortableActivityRef, "id" | "version">): string => `${ref.id}@${ref.version}`;
+
+/**
+ * What an activity points at: a district-local definition version, `{ definitionId, version }`,
+ * valid only inside its own district, or (OCS 1.1) a portable export, `{ portable: { id, version,
+ * digest } }`, which any district can import.
+ */
+export const OcsActivityDefinition = z.union([DistrictDefinitionRef, z.strictObject({ portable: PortableActivityRef })]);
+/** An activity's definition reference. */
+export type OcsActivityDefinition = z.infer<typeof OcsActivityDefinition>;
+
+/** Whether a definition reference is the portable form. */
+export const isPortable = (definition: OcsActivityDefinition): definition is { portable: PortableActivityRef } => "portable" in definition;
+
+/**
+ * One activity in a package: a pointer to an activity definition, never the activity's content.
+ * The role says how the course uses it.
  */
 export const OcsActivity = z.strictObject({
   id: LocalId,
   title: PlainText(200),
   role: z.enum(["lesson", "assignment", "assessment"]),
-  definition: z.strictObject({ definitionId: ActivityDefinitionId, version: z.int().positive() }),
+  definition: OcsActivityDefinition,
 });
 /** An activity reference. */
 export type OcsActivity = z.infer<typeof OcsActivity>;
@@ -175,7 +226,8 @@ export type OcsOverride = z.infer<typeof OcsOverride>;
 /** The package manifest, `ocs.json`. */
 export const OcsManifest = z
   .strictObject({
-    specVersion: z.literal(OCS_SPEC_VERSION),
+    /** `"1.0"`, or `"1.1"` for a package with portable activities (RFC 0001 §14). */
+    specVersion: OcsSpecVersion,
     id: OcsPackageId,
     version: SemVer,
     title: PlainText(200),
@@ -220,7 +272,8 @@ export type OcsLockedPackage = z.infer<typeof OcsLockedPackage>;
  */
 export const OcsLock = z.strictObject({
   lockVersion: z.literal(1),
-  specVersion: z.literal(OCS_SPEC_VERSION),
+  /** `"1.1"` when the course or any package it includes is 1.1, otherwise `"1.0"`. */
+  specVersion: OcsSpecVersion,
   root: OcsLockedPackage,
   /** Every package the course includes, directly or through modules, sorted by ID. */
   packages: z.array(OcsLockedPackage),

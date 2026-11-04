@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:5929e72ea63b0de853babd125e7d730c6b0aa76ee3a9de546cde8d3709ab38f7",
+      "id": "educateos.io/grade-1-reading-foundations-who-where-what",
+      "version": "1.0.0"
+    }
+  },
+  "id": "who-where-what",
+  "role": "lesson",
+  "title": "Who, Where, What Happened"
+}

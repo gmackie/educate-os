@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:8a5a585828904a4a3c1450763d4b244fbcb0780d0846cb14694e355a2b7c0a33",
+      "id": "educateos.io/grade-1-reading-foundations-short-or-long",
+      "version": "1.0.0"
+    }
+  },
+  "id": "short-or-long",
+  "role": "assessment",
+  "title": "Short or Long?"
+}

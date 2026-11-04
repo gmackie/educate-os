@@ -1,0 +1,106 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Read the poem out loud, smoothly, like you are talking.",
+    "passage": "Who Sat Where?\nThe cat sat on a big red mat.\nThe dog sat on a log.\nThe bee sat in a tall green tree.\nAnd I sat with my frog!\nRead the poem three times. Each time, try to make it sound smoother.",
+    "questions": [
+      {
+        "prompt": "Read the poem out loud. This is your first try."
+      },
+      {
+        "prompt": "Read the poem out loud again. Make it smoother."
+      },
+      {
+        "prompt": "Read the poem one last time, with a happy voice."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Read It Smoothly"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-read-it-smoothly",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I read the words right"
+      },
+      {
+        "id": "smoothness",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I read smoothly"
+      },
+      {
+        "id": "expression",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "My voice matched the poem"
+      }
+    ],
+    "title": "Read it smoothly"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

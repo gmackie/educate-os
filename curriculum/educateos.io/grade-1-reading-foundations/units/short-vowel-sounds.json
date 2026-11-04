@@ -1,0 +1,41 @@
+{
+  "id": "short-vowel-sounds",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u1-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "tap-and-blend"
+    },
+    {
+      "kind": "activity",
+      "ref": "word-builders"
+    },
+    {
+      "kind": "activity",
+      "ref": "short-vowel-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u1-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Hear, blend and change the short vowel sounds in three-sound words.",
+  "title": "Short Vowel Sounds"
+}

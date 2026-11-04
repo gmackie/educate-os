@@ -3,6 +3,7 @@
 // needs structurally and imports nothing from `cloudflare:workers`.
 import { EducateOsError } from "@educateos/contracts";
 import { migrateLegacyTables } from "@educateos/contracts/legacy-tables";
+import { activityExportDigest, type ActivityExportSource, type ParsedActivityExport, type PublishedActivityExport, readActivityExport } from "./activity-export.ts";
 import { type OcsFiles, type OcsPackage, packageDigest, readPackage } from "./package.ts";
 import type { PackageSource, PublishedPackage } from "./resolver.ts";
 import type { OcsPackageId } from "./schema.ts";
@@ -14,6 +15,12 @@ import type { OcsPackageId } from "./schema.ts";
  * stays free of the signing code's dependencies.
  */
 export type PublicationPolicy = (pkg: OcsPackage, signature: unknown) => Promise<{ signed: boolean }>;
+
+/**
+ * {@link PublicationPolicy} for activity exports (OCS 1.1): `publisherExportPolicy` checks them
+ * against the same approved publisher keys, in the export signing context.
+ */
+export type ExportPublicationPolicy = (exported: ParsedActivityExport, signature: unknown) => Promise<{ signed: boolean }>;
 
 /** A value SQLite stores in one column. */
 export type LibrarySqlValue = string | number | null;
@@ -38,6 +45,9 @@ export const MAX_LIBRARY_PACKAGE_BYTES = 1_900_000;
 /** The table published versions are kept in. Exported so tests and migrations can name it. */
 export const OCS_LIBRARY_TABLE = "educateos_ocs_library";
 
+/** The table published activity exports (OCS 1.1) are kept in, under the same rules. */
+export const OCS_EXPORT_TABLE = "educateos_ocs_activity_exports";
+
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS ${OCS_LIBRARY_TABLE} (
     package_id TEXT NOT NULL,
@@ -53,11 +63,30 @@ const SCHEMA = [
     BEGIN SELECT RAISE(ABORT, 'published course packages are immutable'); END`,
   `CREATE TRIGGER IF NOT EXISTS ${OCS_LIBRARY_TABLE}_no_delete BEFORE DELETE ON ${OCS_LIBRARY_TABLE}
     BEGIN SELECT RAISE(ABORT, 'published course packages are immutable'); END`,
+  `CREATE TABLE IF NOT EXISTS ${OCS_EXPORT_TABLE} (
+    export_id TEXT NOT NULL,
+    version TEXT NOT NULL,
+    digest TEXT NOT NULL,
+    export_json TEXT NOT NULL,
+    signature_json TEXT,
+    published_at TEXT NOT NULL,
+    PRIMARY KEY (export_id, version)
+  )`,
+  `CREATE TRIGGER IF NOT EXISTS ${OCS_EXPORT_TABLE}_no_update BEFORE UPDATE ON ${OCS_EXPORT_TABLE}
+    BEGIN SELECT RAISE(ABORT, 'published activity exports are immutable'); END`,
+  `CREATE TRIGGER IF NOT EXISTS ${OCS_EXPORT_TABLE}_no_delete BEFORE DELETE ON ${OCS_EXPORT_TABLE}
+    BEGIN SELECT RAISE(ABORT, 'published activity exports are immutable'); END`,
 ];
 
 /** One version as the library holds it: its files, digest, and the publisher signature it was accepted with. */
 export interface LibraryEntry extends PublishedPackage {
   /** The signature envelope, as it was accepted, or undefined for a package published unsigned. */
+  signature: unknown;
+}
+
+/** One export version as the library holds it, with the signature it was accepted with. */
+export interface LibraryExportEntry extends PublishedActivityExport {
+  /** The signature envelope, as it was accepted, or undefined for an export published unsigned. */
   signature: unknown;
 }
 
@@ -75,15 +104,21 @@ export interface LibraryEntry extends PublishedPackage {
  * A version's files are kept in one SQLite value, which holds at most 2 MB; a larger package is
  * refused. Course packages are JSON references, far below that.
  */
-export class DurableObjectPackageLibrary implements PackageSource {
+export class DurableObjectPackageLibrary implements PackageSource, ActivityExportSource {
   readonly #storage: LibrarySqlStorage;
   readonly #policy: PublicationPolicy;
+  readonly #exportPolicy: ExportPublicationPolicy | undefined;
   readonly #now: () => Date;
   #ready = false;
 
-  constructor(storage: LibrarySqlStorage, options: { policy: PublicationPolicy; now?: () => Date }) {
+  /**
+   * `exportPolicy` admits activity exports (OCS 1.1), normally `publisherExportPolicy` over the
+   * same trust as `policy`. Without one, the library refuses every export.
+   */
+  constructor(storage: LibrarySqlStorage, options: { policy: PublicationPolicy; exportPolicy?: ExportPublicationPolicy; now?: () => Date }) {
     this.#storage = storage;
     this.#policy = options.policy;
+    this.#exportPolicy = options.exportPolicy;
     this.#now = options.now ?? (() => new Date());
   }
 
@@ -156,6 +191,77 @@ export class DurableObjectPackageLibrary implements PackageSource {
     if (entry === undefined) return false;
     try {
       return (await packageDigest(entry.files)) === entry.digest;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Publishes an activity export version (OCS 1.1) under the package rules: read and checked, put
+   * to the export policy, and immutable once stored.
+   *
+   * @throws OcsError `invalid-export` for an invalid file; EducateOsError `policy-violation` if the
+   *   library has no export policy; whatever the policy throws; and EducateOsError `conflict` if the
+   *   version was already published with different content.
+   */
+  async publishExport(text: string, signature?: unknown): Promise<PublishedActivityExport> {
+    const parsed = await readActivityExport(text);
+    if (this.#exportPolicy === undefined) throw new EducateOsError("policy-violation", "this course library does not accept shared activities");
+    const { signed } = await this.#exportPolicy(parsed, signature);
+    if (new TextEncoder().encode(text).byteLength > MAX_LIBRARY_PACKAGE_BYTES) {
+      throw new EducateOsError("policy-violation", `the activity is larger than the library's ${MAX_LIBRARY_PACKAGE_BYTES} bytes`);
+    }
+    const { id, version } = parsed.export;
+    this.#ensureSchema();
+    return this.#storage.transactionSync(() => {
+      const existing = this.#storage.sql.exec(`SELECT digest FROM ${OCS_EXPORT_TABLE} WHERE export_id = ? AND version = ?`, id, version).toArray()[0];
+      if (existing !== undefined) {
+        if (existing.digest === parsed.digest) return { text, digest: parsed.digest };
+        throw new EducateOsError("conflict", `${id} ${version} is already published with different content; publish a new version instead`);
+      }
+      this.#storage.sql.exec(
+        `INSERT INTO ${OCS_EXPORT_TABLE} (export_id, version, digest, export_json, signature_json, published_at) VALUES (?, ?, ?, ?, ?, ?)`,
+        id,
+        version,
+        parsed.digest,
+        text,
+        signed ? JSON.stringify(signature) : null,
+        this.#now().toISOString(),
+      );
+      return { text, digest: parsed.digest };
+    });
+  }
+
+  async listExportVersions(id: string): Promise<readonly string[]> {
+    this.#ensureSchema();
+    return this.#storage.sql.exec(`SELECT version FROM ${OCS_EXPORT_TABLE} WHERE export_id = ?`, id).toArray().map((row) => String(row.version));
+  }
+
+  async getExport(id: string, version: string): Promise<PublishedActivityExport | undefined> {
+    const entry = await this.getExportEntry(id, version);
+    return entry === undefined ? undefined : { text: entry.text, digest: entry.digest };
+  }
+
+  /** An export version with the signature it was accepted with. The digest is the one recorded at publication. */
+  async getExportEntry(id: string, version: string): Promise<LibraryExportEntry | undefined> {
+    this.#ensureSchema();
+    const row = this.#storage.sql.exec(`SELECT digest, export_json, signature_json FROM ${OCS_EXPORT_TABLE} WHERE export_id = ? AND version = ?`, id, version).toArray()[0];
+    if (row === undefined) return undefined;
+    let signature: unknown;
+    try {
+      signature = row.signature_json === null ? undefined : JSON.parse(String(row.signature_json));
+    } catch {
+      throw new EducateOsError("unavailable", `the library's copy of ${id} ${version} is unreadable`);
+    }
+    return { text: String(row.export_json), digest: String(row.digest), signature };
+  }
+
+  /** Whether a stored export's text still has the digest it was published with. */
+  async verifyExportEntry(id: string, version: string): Promise<boolean> {
+    const entry = await this.getExportEntry(id, version);
+    if (entry === undefined) return false;
+    try {
+      return (await activityExportDigest(entry.text)) === entry.digest;
     } catch {
       return false;
     }

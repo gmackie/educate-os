@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:9d3784df16b676120c9311c5cb9615df7034e05149279c252ca5a9e916a251b0",
+      "id": "educateos.io/grade-1-reading-foundations-read-it-smoothly",
+      "version": "1.0.0"
+    }
+  },
+  "id": "read-it-smoothly",
+  "role": "assignment",
+  "title": "Read It Smoothly"
+}

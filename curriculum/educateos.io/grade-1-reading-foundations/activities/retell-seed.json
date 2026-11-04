@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:1b379ced7c17d7e7a86ac49669c48caa8ce4cf3be9d37f3095b2530c95018129",
+      "id": "educateos.io/grade-1-reading-foundations-retell-seed",
+      "version": "1.0.0"
+    }
+  },
+  "id": "retell-seed",
+  "role": "assignment",
+  "title": "Retell The Little Seed"
+}

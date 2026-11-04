@@ -1,0 +1,90 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "days": 9,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to the story. Tell what happened first, next and last.",
+    "passage": "A little seed fell into the dirt. First, the rain came and gave it a drink. Next, the sun came and kept it warm. Last, a tiny green sprout popped up to say hello!",
+    "questions": [
+      {
+        "prompt": "What happened first? Tell it in your own words."
+      },
+      {
+        "prompt": "What happened next?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw what happened last."
+      }
+    ],
+    "sentenceFrames": [
+      "First, ___.",
+      "Next, ___.",
+      "Last, ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Retell The Little Seed"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.1.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-retell-seed",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "order",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told it in order"
+      },
+      {
+        "id": "details",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told important parts"
+      }
+    ],
+    "title": "Retell"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

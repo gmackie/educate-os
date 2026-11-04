@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:00aaf5695fd356d8d05ed9ef20ef3ec5ccedfc6e11121f62428890c71b6e640d",
+      "id": "educateos.io/grade-1-reading-foundations-short-vowel-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "short-vowel-check",
+  "role": "assessment",
+  "title": "Short Vowel Check"
+}
