@@ -32,7 +32,41 @@ export type Assignment = {
   permittedArtifactTypes?: string[];
 };
 export type Activity = { assignment: Assignment; activity?: { content?: ActivityContent } };
-export type ActivityContent = { title: string; overview: string; steps: { id: string; title: string; prompt: string }[]; };
+/** One immutable resource release (`ResourceReleaseRef`). The student API names a resource only by its release. */
+export type ResourceRef = { resourceId: string; version: string };
+/** What a step asks the student to produce (`StepResponse` in @educateos/curriculum). */
+export type StepResponse =
+  | { kind: 'none' }
+  | { kind: 'writing'; minWords?: number }
+  | { kind: 'dataset'; columns: { name: string; unit?: string }[] }
+  | { kind: 'artifact'; artifactType: string };
+export type ActivityStep = {
+  id: string; title: string; prompt: string; sources: ResourceRef[]; response: StepResponse;
+  /** Sentence starters such as "I see a ___.", for young learners to say or write their answer from. */
+  sentenceFrames?: string[];
+};
+/** An activity's Codex entry. Students only ever receive `students` entries; notes are the teacher's own text. */
+export type CodexEntry =
+  | { kind: 'resource'; resource: ResourceRef; visibility: 'students' | 'teacher-only' }
+  | { kind: 'note'; id: string; title: string; body: string; purpose: 'context' | 'answer-key'; visibility: 'students' | 'teacher-only' };
+export type ActivityContent = {
+  title: string; overview: string; steps: ActivityStep[];
+  /** Such as "K", "K-2" or "9-12"; parsed by src/gradeBand.ts. */
+  gradeBand?: string; template?: string;
+  resources?: ResourceRef[]; codex?: CodexEntry[]; permittedArtifactTypes?: string[];
+};
+/** `GET /api/student/activities/:id`: an installed activity as the student sees it. */
+export type ActivityView = { view: 'teacher' | 'student'; content: ActivityContent };
+export type Workspace = { id: string; kind: 'personal' | 'course'; offeringId?: string; lifecycle: string };
+export type ArtifactView = {
+  artifact: { id: string; workspaceId: string; type: string; title: string; createdAt: string; deletedAt?: string };
+  head: { id: string; number: number; mediaType: string; createdAt: string };
+};
+/** Revision content as the district returns it; bytes travel as base64. */
+export type RevisionContent = { kind: 'text'; text: string } | { kind: 'bytes'; base64: string } | { kind: 'external'; url: string };
+export type ArtifactRead = { artifact: ArtifactView['artifact']; revision: ArtifactView['head']; content: RevisionContent };
+/** The district's uploadable file types (`UPLOAD_MEDIA_TYPES` in educateos-district-app/src/routes.ts). */
+export type UploadMediaType = 'application/pdf' | 'image/png' | 'image/jpeg' | 'audio/webm' | 'audio/ogg' | 'audio/mp4' | 'audio/mpeg' | 'audio/wav';
 export type Submission = { id: string; assignmentId: string; studentPrincipalId: string; items: { artifactId: string; revisionId: string; artifactType: string }[]; submittedAt: string; attempt: number; withdrawnAt?: string };
 export type GradeSummary = {
   row?: {
@@ -65,9 +99,20 @@ export type DeviceSummary = {
   createdAt: string; lastSeenAt: string; lastCountry: string | null; push: boolean;
   status: 'active' | 'revoked'; revokedAt: string | null; revokedReason: string | null;
 };
-/** A class's modules (SCHO-186): ordered items that are pages or activities. Students see published ones. */
-export type ModuleItem = { kind: 'page'; id: string; pageId: string } | { kind: 'activity'; id: string; activityId: string };
-export type CourseModule = { id: string; title: string; published: boolean; items: ModuleItem[] };
+/**
+ * A class's modules (SCHO-186): ordered pages, activities, external links and teacher-only notes
+ * (SCHO-331). Students see published modules, never teacher notes.
+ */
+export type ModuleItem =
+  | { kind: 'page'; id: string; pageId: string }
+  | { kind: 'activity'; id: string; activityId: string }
+  | { kind: 'link'; id: string; title: string; url: string }
+  | { kind: 'teacher-note'; id: string; pageId: string; purpose: 'context' | 'answer-key' };
+/** Where a module came from: a Common Cartridge, or a unit of a course installed from the district library. */
+export type ModuleSource =
+  | { kind: 'cartridge'; fileName: string; packageDigest: string }
+  | { kind: 'course'; packageId: string; version: string; packageDigest: string; unitKey: string };
+export type CourseModule = { id: string; title: string; published: boolean; items: ModuleItem[]; source?: ModuleSource };
 export type CoursePage = { id: string; title: string; body: string };
 export type CourseOutline = { outline: { offeringId: string; modules: CourseModule[]; pages: CoursePage[] } };
 export type DiscussionTopic = {
