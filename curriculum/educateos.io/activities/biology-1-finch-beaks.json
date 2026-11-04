@@ -1,0 +1,176 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "overview": "Analyze beak measurements from a finch population before and after a drought, and decide whether you are looking at natural selection.",
+    "problems": [
+      {
+        "prompt": "Using the table in the reading, find the mean beak depth before the drought and among the survivors, and the range of each. Calculate the percent change in the mean."
+      },
+      {
+        "prompt": "Make two dot plots or histograms of the data, on the same scale, one above the other. Describe how the center and the spread changed."
+      },
+      {
+        "prompt": "Explain the change in the population using the conditions for natural selection and the information about seeds in the reading."
+      },
+      {
+        "prompt": "The year after the drought, the survivors' offspring had a mean beak depth of 9.7 mm. Why is this important evidence that evolution happened? Suggest a reason why the offspring mean is not exactly the same as the survivors' mean."
+      },
+      {
+        "prompt": "A classmate says, \"The finches grew bigger beaks because they needed to crack big seeds.\" Explain what is wrong with this statement."
+      },
+      {
+        "prompt": "Predict how the mean beak depth might change after several very rainy years when small, soft seeds are plentiful. Explain your prediction."
+      },
+      {
+        "prompt": "Name two limitations of this data set or of the conclusions you can draw from it."
+      }
+    ],
+    "resources": [
+      "finch-data"
+    ],
+    "showWork": true,
+    "subject": "science",
+    "template": "problem-set",
+    "title": "Finch Beaks After the Drought"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.ID.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.7",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-finch-beaks",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS. The measurements are illustrative and rounded, modeled on long-term field studies of Galapagos ground finches.",
+      "body": "On a small island in the Galapagos, scientists have caught, measured and banded nearly every ground finch for decades. Ground finches eat seeds, and the depth of a finch's beak (its height from top to bottom at the base) determines which seeds it can crack. Beak depth varies from bird to bird and is strongly inherited: parents with deep beaks tend to have chicks with deep beaks.\n\nThen came a severe drought. Almost no rain fell for more than a year. Plants made few seeds, and the birds ate the small, soft ones first. What remained were mostly large, hard seeds that only birds with deep, powerful beaks could crack. Most of the island's finches died.\n\nThe table below shows beak depths for a sample of 20 birds measured before the drought and 20 birds that survived it.\n\nBeak depth before the drought (mm), 20 birds:\n8.0, 8.4, 8.6, 8.8, 9.0, 9.0, 9.2, 9.3, 9.4, 9.4, 9.5, 9.6, 9.6, 9.8, 9.8, 9.9, 9.9, 10.0, 10.2, 10.6\nMean: 9.4 mm\n\nBeak depth of drought survivors (mm), 20 birds:\n8.6, 9.0, 9.3, 9.5, 9.6, 9.7, 9.7, 9.8, 9.9, 9.9, 10.0, 10.0, 10.1, 10.2, 10.2, 10.3, 10.4, 10.5, 10.6, 10.6\nMean: 9.9 mm\n\nWhen the rains returned, the survivors bred. Their offspring were measured as adults.",
+      "id": "finch-data",
+      "title": "The Finches of a Dry Island"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Calculates means, ranges and percent change correctly and compares the distributions on the same scale.",
+        "id": "statistics",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Center and spread"
+      },
+      {
+        "description": "Explains the change with variation, inheritance and differential survival, linked to the seed evidence.",
+        "id": "selection",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains selection"
+      },
+      {
+        "description": "Explains why individuals do not evolve in response to need.",
+        "id": "misconceptions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Corrects misconceptions"
+      },
+      {
+        "description": "Makes a reasoned prediction and identifies real limitations of the data.",
+        "id": "limitations",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Limitations and predictions"
+      }
+    ],
+    "title": "Data analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

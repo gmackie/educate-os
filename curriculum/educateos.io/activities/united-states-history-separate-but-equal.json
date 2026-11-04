@@ -1,0 +1,56 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "overview": "Read the Fourteenth Amendment, the lone dissent in Plessy v. Ferguson and Executive Order 9981 to understand the legal ground the civil rights movement stood on.",
+    "problems": [
+      {
+        "prompt": "Quote the Fourteenth Amendment's equal protection clause. Whom does it protect, and against whose actions?"
+      },
+      {
+        "prompt": "What did the Supreme Court decide in Plessy v. Ferguson (1896), and what happened across the South afterward?"
+      },
+      {
+        "prompt": "Explain Justice Harlan's dissent in your own words. Why might a historian call it ahead of its time?"
+      },
+      {
+        "prompt": "Homer Plessy's arrest was planned. Why would a civil rights committee want someone arrested? What does this tell you about the strategy of using courts to win rights?"
+      },
+      {
+        "prompt": "What did Executive Order 9981 declare? Why might it have come in 1948, and why could Truman act without Congress?"
+      }
+    ],
+    "resources": [
+      "separate-but-equal"
+    ],
+    "showWork": false,
+    "subject": "history-social-studies",
+    "template": "problem-set",
+    "title": "Separate but Equal"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.4.9-12",
+      "frameworkKey": "c3"
+    }
+  ],
+  "id": "educateos.io/united-states-history-separate-but-equal",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Constitution of the United States, Amendment XIV, Section 1 (ratified 1868); Plessy v. Ferguson, 163 U.S. 537 (1896), Justice John Marshall Harlan dissenting; Harry S. Truman, Executive Order 9981, July 26, 1948. Public domain (U.S. government work). Background written for EducateOS.",
+      "body": "The Fourteenth Amendment (1868), Section 1, closing clause:\n\"... nor shall any State deprive any person of life, liberty, or property, without due process of law; nor deny to any person within its jurisdiction the equal protection of the laws.\"\n\nBackground: In 1892 Homer Plessy, a man of mixed race, was arrested for sitting in a railroad car Louisiana law reserved for white passengers. His arrest was planned by a New Orleans civil rights committee to test the law. In Plessy v. Ferguson (1896) the Supreme Court ruled, seven to one, that state laws requiring \"separate but equal\" facilities did not violate the Fourteenth Amendment. Southern states went on to segregate schools, transportation, hospitals, parks and nearly every other public place, and the facilities for Black Americans were almost never equal.\n\nJustice John Marshall Harlan, the lone dissenter in Plessy:\n\"Our Constitution is color-blind, and neither knows nor tolerates classes among citizens.\"\n\nExecutive Order 9981 (1948), issued by President Harry S. Truman after the Second World War, in which about a million Black Americans served in segregated units:\n\"It is hereby declared to be the policy of the President that there shall be equality of treatment and opportunity for all persons in the armed services without regard to race, color, religion or national origin.\"",
+      "id": "separate-but-equal",
+      "title": "The Constitution and \"Separate but Equal,\" 1868-1948"
+    }
+  ],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

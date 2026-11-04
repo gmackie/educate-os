@@ -1,0 +1,166 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "overview": "Show what you know about alleles, crosses and probability. Draw a Punnett square for every cross.",
+    "problems": [
+      {
+        "prompt": "Freckles (F) are dominant to no freckles (f). Define genotype, phenotype, homozygous and heterozygous, using this gene for an example of each."
+      },
+      {
+        "prompt": "A heterozygous person with freckles has children with a person who has no freckles. What is the probability that a child has no freckles? Show the Punnett square."
+      },
+      {
+        "prompt": "Two heterozygous parents have three children, all of whom show the dominant trait. A friend says their fourth child is now certain to show the recessive trait. Is the friend right? Explain using probability."
+      },
+      {
+        "prompt": "In pea plants, round seeds (R) are dominant to wrinkled (r), and yellow seeds (Y) are dominant to green (y). The two genes are inherited independently. Cross RrYy x RrYy. Give the phenotype ratio, and calculate the probability of a wrinkled green seed using the multiplication rule."
+      },
+      {
+        "prompt": "A child has type O blood. The mother has type A blood. Three men are possible fathers: one has type A, one has type B, and one has type AB. Which man can be ruled out? Explain using genotypes."
+      },
+      {
+        "prompt": "Hemophilia is an X-linked recessive condition. Explain why it is much more common in males than in females."
+      },
+      {
+        "prompt": "A student crosses two heterozygous plants and counts 200 offspring: 142 show the dominant trait and 58 show the recessive trait. What numbers did the 3:1 model predict? Are the results consistent with the model? Explain."
+      }
+    ],
+    "showWork": true,
+    "subject": "science",
+    "template": "problem-set",
+    "title": "Heredity Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.CP.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-heredity-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Defines and uses genotype, phenotype, allele, homozygous and heterozygous precisely.",
+        "id": "vocabulary",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Genetics vocabulary"
+      },
+      {
+        "description": "Sets up monohybrid, dihybrid and X-linked crosses correctly and states accurate ratios.",
+        "id": "crosses",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Crosses and ratios"
+      },
+      {
+        "description": "Treats offspring as independent events and applies the multiplication rule correctly.",
+        "id": "probability",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Probability reasoning"
+      },
+      {
+        "description": "Uses genotypes and data to justify conclusions, such as ruling out a parent or judging fit to a model.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Reasoning from evidence"
+      }
+    ],
+    "title": "Heredity"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,154 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "genre": "informative",
+    "gradeBand": "9-12",
+    "minWords": 500,
+    "minimumCitations": 3,
+    "overview": "Research another document that used the Declaration of Independence to make a demand, and write a short informative brief about it.",
+    "prompt": "Many Americans and others around the world have quoted or echoed the Declaration of Independence to make a demand. Choose one document from this list or propose your own: David Walker's Appeal (1829), Abraham Lincoln's speech on the Dred Scott decision (1857), Susan B. Anthony's speech after her arrest for voting (1873), the Declaration of Independence of the Democratic Republic of Vietnam (1945), or Martin Luther King Jr.'s \"I Have a Dream\" speech (1963). Research it using at least three reliable sources, including the document itself. Write an informative brief that explains who wrote it, when, for whom and why; how it uses the Declaration's words or ideas; and what happened as a result. Cite every source with its author, title and date, and paraphrase in your own words.",
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Research Brief: A Document That Answered Back"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.8",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.2.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-research-brief",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Explains the document's author, date, audience, purpose and results accurately.",
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Accuracy and context"
+      },
+      {
+        "description": "Explains precisely how the document uses the Declaration's words or ideas.",
+        "id": "analysis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Connection to the Declaration"
+      },
+      {
+        "description": "Uses at least three reliable sources, including the document, and cites each correctly.",
+        "id": "sources",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Research and sources"
+      },
+      {
+        "description": "Organizes information clearly, paraphrases in the student's own words and avoids plagiarism.",
+        "id": "writing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Organization and integrity"
+      }
+    ],
+    "title": "Research brief"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

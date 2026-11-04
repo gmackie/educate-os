@@ -1,0 +1,57 @@
+{
+  "id": "dna-and-proteins",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u4-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "strawberry-dna"
+    },
+    {
+      "kind": "activity",
+      "ref": "transcription-translation"
+    },
+    {
+      "kind": "activity",
+      "ref": "one-letter-disease"
+    },
+    {
+      "kind": "activity",
+      "ref": "dna-and-proteins-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "The molecular basis of the heredity patterns of Unit 2: DNA structure and replication, transcription and translation, the genetic code, and how mutations change proteins, traced through sickle cell disease.",
+  "title": "Unit 4: DNA and Proteins"
+}

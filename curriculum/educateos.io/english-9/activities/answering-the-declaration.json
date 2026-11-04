@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:aa2e5a464576f3cc3641e830184fddf9c3b76f1f0958f702c10d5795d5b36db6",
+      "id": "educateos.io/english-9-answering-the-declaration",
+      "version": "1.0.0"
+    }
+  },
+  "id": "answering-the-declaration",
+  "role": "lesson",
+  "title": "Answering the Declaration"
+}

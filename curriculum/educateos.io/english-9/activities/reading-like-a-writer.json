@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:641dc024eef473b8b1e4eeb5d10670e8c2ba93fad6ec795ada3e666eb039d3ff",
+      "id": "educateos.io/english-9-reading-like-a-writer",
+      "version": "1.0.0"
+    }
+  },
+  "id": "reading-like-a-writer",
+  "role": "lesson",
+  "title": "Reading Like a Writer"
+}

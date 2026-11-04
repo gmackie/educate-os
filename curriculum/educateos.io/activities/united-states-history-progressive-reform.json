@@ -1,0 +1,133 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 21,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "9-12",
+    "minWords": 500,
+    "minimumCitations": 0,
+    "overview": "Argue which Progressive Era reform had the greatest long-term impact.",
+    "prompt": "Which Progressive Era reform had the greatest long-term impact on American life? Defend your choice against at least one alternative, using specific historical evidence.",
+    "resources": [
+      "progressive-reforms-reference"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "The Most Important Progressive Reform"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.14.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D4.1.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/united-states-history-progressive-reform",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Use this card as a starting point. Strong essays add evidence from class readings and your own research.\n\nProtecting consumers: the Meat Inspection Act and the Pure Food and Drug Act (both 1906).\nRegulating business: the Hepburn Act (1906) strengthened railroad regulation; the Supreme Court ordered Standard Oil broken up (1911); the Clayton Antitrust Act and the Federal Trade Commission (both 1914).\nMoney and taxes: the Sixteenth Amendment allowed a federal income tax (1913); the Federal Reserve Act created a central bank (1913).\nDemocracy: the Seventeenth Amendment provided for direct election of senators (1913); many states adopted the initiative, referendum, recall and direct primaries; the Nineteenth Amendment barred denying the vote on account of sex (1920).\nWork: after the Triangle Shirtwaist Factory fire killed 146 garment workers in New York City in 1911, New York passed dozens of factory safety laws. In Muller v. Oregon (1908) the Supreme Court upheld a limit on women's working hours. Congress banned goods made by child labor from interstate commerce in 1916, but the Supreme Court struck the law down in Hammer v. Dagenhart (1918).\nConservation: under Theodore Roosevelt the federal government set aside about 230 million acres of public land, and the National Park Service was created in 1916.\nWho was left out: most Progressive reforms did nothing to stop the spread of segregation laws and the denial of Black Americans' voting rights in the South. Journalist Ida B. Wells documented lynching and campaigned against it; in 1909 reformers founded the National Association for the Advancement of Colored People (NAACP).",
+      "id": "progressive-reforms-reference",
+      "title": "Progressive Era Reforms: A Reference Card"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States a precise thesis naming one reform and the long-term impact that makes it the most important.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim"
+      },
+      {
+        "description": "Supports the claim with specific, accurate evidence about the reform's causes, passage and effects, then and now.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Historical evidence"
+      },
+      {
+        "description": "Treats at least one other reform fairly, with evidence, and explains why the chosen reform still had greater impact.",
+        "id": "alternatives",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Weighs alternatives"
+      }
+    ],
+    "title": "Historical argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

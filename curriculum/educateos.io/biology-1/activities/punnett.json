@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:aa67844df8a5725817a0d94fd52f84d4f99202a92f54d037d7925f8fc5f55f74",
+      "id": "educateos.io/biology-1-punnett",
+      "version": "1.0.0"
+    }
+  },
+  "id": "punnett",
+  "role": "assignment",
+  "title": "Punnett Square Practice"
+}

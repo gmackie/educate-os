@@ -1,0 +1,166 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "overview": "Show what you know about ecosystems, energy flow, cycles and populations. Answer in complete sentences and show your calculations.",
+    "problems": [
+      {
+        "prompt": "Define biotic and abiotic factors, and give two examples of each in a pond ecosystem."
+      },
+      {
+        "prompt": "Identify the type of relationship in each pair and explain who benefits or is harmed: (a) a clownfish shelters among a sea anemone's stinging tentacles and chases off fish that would eat the anemone; (b) a tick feeds on a deer's blood; (c) barnacles attach to a whale's skin and filter food from the water as it swims; (d) bees collect nectar from flowers and carry pollen between them."
+      },
+      {
+        "prompt": "Records of lynx and snowshoe hares in northern Canada show both populations rising and falling in cycles of about ten years, with the lynx peaks coming a year or two after the hare peaks. Explain the cycle and the delay."
+      },
+      {
+        "prompt": "Explain how photosynthesis, cellular respiration, decomposition and the burning of fossil fuels each move carbon. Why is the amount of carbon dioxide in the atmosphere increasing?"
+      },
+      {
+        "prompt": "Zebra mussels, small filter-feeding shellfish native to Eastern Europe, reached the Great Lakes in the 1980s and spread rapidly. Explain why invasive species often grow so quickly in a new ecosystem, and predict two effects the mussels could have on the lakes' food webs."
+      },
+      {
+        "prompt": "In a 500 square meter field, students counted dandelions in ten randomly placed 1 square meter quadrats and found 64 in all. Estimate the population of dandelions in the field, and explain why the quadrats were placed at random."
+      },
+      {
+        "prompt": "A forest fire burns a forest down to the soil. Describe the order in which life returns, and explain how this differs from what happens on a new lava flow."
+      }
+    ],
+    "showWork": true,
+    "subject": "science",
+    "template": "problem-set",
+    "title": "Ecology Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-ecology-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Classifies relationships and explains population interactions such as predator-prey cycles accurately.",
+        "id": "interactions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Interactions"
+      },
+      {
+        "description": "Explains the carbon cycle and the flow of energy, connecting to photosynthesis and respiration.",
+        "id": "energy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Energy and matter"
+      },
+      {
+        "description": "Estimates populations correctly and explains invasive species and succession.",
+        "id": "populations",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Populations and change"
+      },
+      {
+        "description": "Uses ecological terms such as biotic, abiotic, trophic level, mutualism and succession correctly.",
+        "id": "vocabulary",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Precise vocabulary"
+      }
+    ],
+    "title": "Ecology"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

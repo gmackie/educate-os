@@ -63,6 +63,9 @@ export const ALIGNABLE_ITEM_TYPES: ReadonlySet<string> = new Set(["Standard", "C
  */
 export const SHOWCASE_ORIGINS: Readonly<Record<string, string>> = {
   "educateos.io/grade-1-reading-foundations": "off_nf-g1read-fall-r7",
+  "educateos.io/biology-1": "off_nf-bio-fall-p2",
+  "educateos.io/english-9": "off_nf-eng9-fall-p3",
+  "educateos.io/united-states-history": "off_nf-ushist-fall-p5",
 };
 
 const DOMAIN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
@@ -280,7 +283,9 @@ async function checkShowcase(course: CourseDir, pkg: OcsPackage, exports: Valida
       }
       for (const [field, value] of Object.entries(activity)) {
         if (SHOWCASE_LOCAL.has(field)) continue;
-        if (JSON.stringify((match.activity as Record<string, unknown>)[field]) !== JSON.stringify(value)) {
+        // A showcase problem set holds its answers; an export holds the prompts only (README: answers go in the answer key).
+        const expected = field === "problems" ? (value as { prompt: string }[]).map(({ prompt }) => ({ prompt })) : value;
+        if (JSON.stringify((match.activity as Record<string, unknown>)[field]) !== JSON.stringify(expected)) {
           issues.push(error(`${exportFile(match.id)}: activity.${field}`, `must equal the showcase activity "${activity.title}"`));
         }
       }

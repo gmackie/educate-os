@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:5e1a664fb90907010de0747cebefcf0105b9c89d6f3f528d5e6ca9e56b09f10d",
+      "id": "educateos.io/english-9-unfinished-work",
+      "version": "1.0.0"
+    }
+  },
+  "id": "unfinished-work",
+  "role": "assessment",
+  "title": "Unfinished Work"
+}

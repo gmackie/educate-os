@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b7ac9e6de1102c13fa310126f61f1b2ec4183062bb2dd42c58b056beb5662621",
+      "id": "educateos.io/united-states-history-four-presidents",
+      "version": "1.0.0"
+    }
+  },
+  "id": "four-presidents",
+  "role": "assignment",
+  "title": "Four Presidents, One Cold War"
+}
