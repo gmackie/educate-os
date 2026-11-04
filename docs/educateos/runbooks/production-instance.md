@@ -160,13 +160,21 @@ Do them through Forge, in this order, and record the deployment ID, commit and r
    read back, or the operator's own assistant goes off. An invalid config denies every call and
    logs `AI_GUARD_CONFIG is invalid at: <field paths>`; check the guard's logs for it after the first
    call.
-4. **Enable the tutors.** In the Workshop's admin panel, make sure both GLM models are enabled in
+4. **Let students create the tutors.** The district refuses a personal workspace made from a
+   blueprint its Workshop policy does not list, so add `educateos.tutor-k2`,
+   `educateos.tutor-3-5`, `educateos.tutor-6-8` and `educateos.tutor-9-12` to
+   `DISTRICT_CONFIG.workshopPolicy.personalBlueprints` (see the
+   [district Workshop capability policy](../security/district-workshop-capability-policy.md)), set
+   the secret through Forge for app `educateos-district` and redeploy the district Worker. Until
+   then, "Create Gadget" on a tutor's page says "Workshop policy denied workspace.create". Done on
+   Northfield on 2026-11-04 (deployment `417d4027`).
+5. **Enable the tutors.** In the Workshop's admin panel, make sure both GLM models are enabled in
    the gateway's models, and that the four tutors are listed among the output formats (an admin can
    take any of them out). A student creates their band's tutor from
    the Workshop's `/blueprint/<blueprintId>` page (or the formats menu), choosing the
    suggested model; a teacher can share the same link. The binding's band is set then, from the
    blueprint, and cannot be changed by the gadget.
-5. **Verify, per band.** Signed in as each synthetic student, open their tutor and send a benign
+6. **Verify, per band.** Signed in as each synthetic student, open their tutor and send a benign
    message: it answers. In Hall Monitor's evaluation records for the call (input and output), the
    policy profile and grade band are the student's band's. Then check that a 6-8 student using the
    9-12 tutor is screened at 6-8, that a teacher using the K-2 tutor is screened at K-2 under
