@@ -58,7 +58,7 @@ export function mountTutor(options: MountTutorOptions): MountedTutor {
     id: "tutor-message", class: "tutor-input", rows: persona.band === "K-2" ? 2 : 3,
     placeholder: persona.inputPlaceholder, maxlength: 2000, autocomplete: "off",
   });
-  const sendButton = el("button", { type: "submit", class: "tutor-send" }, "Send");
+  const sendButton = el("button", { type: "button", class: "tutor-send", onclick: () => sendTyped() }, "Send");
   const topicInput = el("input", {
     id: "tutor-topic", class: "tutor-topic-input", type: "text", maxlength: 600,
     placeholder: persona.topicPlaceholder, autocomplete: "off",
@@ -150,30 +150,28 @@ export function mountTutor(options: MountTutorOptions): MountedTutor {
     }
   }
 
-  const composer = el("form", { class: "tutor-composer" }, [
+  // The Workshop sandboxes a gadget's frame without allow-forms, so a browser refuses to submit a
+  // form there before any submit handler runs. The page therefore has no forms: its buttons and
+  // Enter keys call their actions directly.
+  function sendTyped(): void {
+    const text = input.value;
+    if (text.trim() === "" || busy) return;
+    input.value = "";
+    void send(text);
+  }
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      sendTyped();
+    }
+  });
+  const composer = el("div", { class: "tutor-composer" }, [
     el("label", { for: "tutor-message", class: "sr-only" }, "Your message"),
     input,
     sendButton,
   ]);
-  composer.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const text = input.value;
-    input.value = "";
-    void send(text);
-  });
-  input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
-      event.preventDefault();
-      composer.requestSubmit();
-    }
-  });
 
-  const topicForm = el("form", { class: "tutor-topic" }, [
-    el("label", { for: "tutor-topic" }, persona.topicLabel),
-    el("div", { class: "tutor-topic-row" }, [topicInput, el("button", { type: "submit", class: "tutor-topic-save" }, "Save"), topicSaved]),
-  ]);
-  topicForm.addEventListener("submit", (event) => {
-    event.preventDefault();
+  function saveTopic(): void {
     const asked = topicInput.value.trim();
     void gadget.setTopic(asked).then((state) => {
       topicInput.value = state.topic;
@@ -181,7 +179,17 @@ export function mountTutor(options: MountTutorOptions): MountedTutor {
       topicSaved.textContent = state.topic !== "" ? "Saved" : asked === "" ? "Cleared" : "Not saved: leave out personal details";
       setTimeout(() => { topicSaved.textContent = ""; }, 4000);
     }, () => setStatus("Couldn't save that. Try again."));
+  }
+  topicInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.isComposing) {
+      event.preventDefault();
+      saveTopic();
+    }
   });
+  const topicField = el("div", { class: "tutor-topic" }, [
+    el("label", { for: "tutor-topic" }, persona.topicLabel),
+    el("div", { class: "tutor-topic-row" }, [topicInput, el("button", { type: "button", class: "tutor-topic-save", onclick: saveTopic }, "Save"), topicSaved]),
+  ]);
 
   const page = el("main", { class: "tutor", "data-band": persona.band }, [
     el("header", { class: "tutor-head" }, [
@@ -193,7 +201,7 @@ export function mountTutor(options: MountTutorOptions): MountedTutor {
       el("span", { class: "tutor-band" }, GRADE_LABELS[persona.band]),
       resetButton,
     ]),
-    topicForm,
+    topicField,
     conversation,
     status,
     quickButtons.length > 0 ? el("div", { class: "tutor-quick-row", role: "group", "aria-label": "Quick replies" }, quickButtons) : null,

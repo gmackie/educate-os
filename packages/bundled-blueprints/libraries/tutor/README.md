@@ -30,5 +30,8 @@ only its `lib/persona.ts`, a ten-line `server.ts` and a three-line `client.ts`.
 - **The system prompt holds nothing the learner wrote**, so it is the same on every turn and the
   model's prompt cache reuses it. The learner's words are quoted in the turn's prompt, and the
   prompt says they are not instructions.
+- **No forms.** The Workshop sandboxes a gadget's frame without `allow-forms`, so Chrome refuses a
+  form submission before any submit handler runs. Send, Save and their Enter keys call their actions
+  directly; `ui.test.ts` drives them with every submit event swallowed.
 - **No assignment context yet.** "Ask AI about this" attaches an assignment to a new *chat*, not to a
   gadget, so a tutor asks the learner what they are working on instead (`topicLabel`).
