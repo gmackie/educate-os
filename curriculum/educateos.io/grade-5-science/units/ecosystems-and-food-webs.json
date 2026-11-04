@@ -1,0 +1,65 @@
+{
+  "id": "ecosystems-and-food-webs",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u4-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "energy-in-ecosystems"
+    },
+    {
+      "kind": "activity",
+      "ref": "pond-food-web"
+    },
+    {
+      "kind": "activity",
+      "ref": "willow-pond-bass"
+    },
+    {
+      "kind": "activity",
+      "ref": "food-web-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u4-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.5.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.5.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.9",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "summary": "Trace energy from the sun through producers, consumers and decomposers, model a food web, and argue from evidence about a change to an ecosystem.",
+  "title": "Ecosystems and Food Webs"
+}

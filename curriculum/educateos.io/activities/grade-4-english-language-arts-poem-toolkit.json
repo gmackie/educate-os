@@ -1,0 +1,58 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "4",
+    "overview": "Read a poem about a storm and name the tools the poet uses: stanzas, rhyme, simile and personification.",
+    "passage": "Thunder Visits\n\nThunder comes stomping down the hill\nlike a giant in a hurry.\nHe rattles every windowsill\nand sends the squirrels to scurry.\n\nThe clouds pull on their coats of gray,\nthe wind runs off to hide,\nthe rain drums fingers on the bay\nand taps on every side.\n\nThen Thunder grumbles, yawns, and sighs,\nand wanders off to bed.\nThe sun peeks out with sleepy eyes\nand paints the sky with red.",
+    "questions": [
+      {
+        "prompt": "How many stanzas does the poem have? How many lines are in each stanza?"
+      },
+      {
+        "prompt": "Find the simile in the first stanza. What two things does it compare?"
+      },
+      {
+        "prompt": "The poet writes about Thunder as if it were a person. Find two lines that show this, and tell what human action each one describes."
+      },
+      {
+        "prompt": "Which words rhyme in the second stanza? Describe the rhyme pattern."
+      },
+      {
+        "prompt": "What does \"the rain drums fingers on the bay\" help you hear or picture?"
+      },
+      {
+        "prompt": "How does the mood change from the first stanza to the last? Use words from the poem."
+      }
+    ],
+    "sentenceFrames": [
+      "The simile compares ___ to ___.",
+      "The line ___ is personification because ___.",
+      "At first the mood is ___, but at the end it is ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Poet's Toolkit: \"Thunder Visits\""
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.4.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-poem-toolkit",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

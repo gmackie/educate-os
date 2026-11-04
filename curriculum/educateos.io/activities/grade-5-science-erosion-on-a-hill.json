@@ -1,0 +1,157 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "analysisPrompt": "Graph your results as points on a coordinate grid, with hill height on the x-axis and soil washed off on the y-axis. What pattern do the points show? Use your numbers to answer the question. Then predict how covering the soil with grass would change your results, and explain which spheres are interacting in your model.",
+    "dataColumns": [
+      {
+        "name": "Hill height",
+        "unit": "cm"
+      },
+      {
+        "name": "Soil washed off",
+        "unit": "g"
+      },
+      {
+        "name": "Trial"
+      }
+    ],
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "5",
+    "methodPrompt": "Write your hypothesis first. Build a soil hill in a tray and raise one end on blocks to change the height. Describe your steps. What will you keep the same each time (the amount of soil, the amount of water, how you pour it)? What will you change? How will you collect and measure the soil that washes off?",
+    "overview": "Test whether a steeper hill loses more soil when it rains.",
+    "question": "Does a steeper hill lose more soil when it rains?",
+    "subject": "science",
+    "template": "science-investigation",
+    "title": "Erosion on a Hill"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.8",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.5.G.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-erosion-on-a-hill",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "hypothesis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Testable question or hypothesis"
+      },
+      {
+        "id": "method",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Fair test"
+      },
+      {
+        "id": "data",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Data recorded with units"
+      },
+      {
+        "id": "conclusion",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Conclusion uses data"
+      }
+    ],
+    "title": "Erosion investigation"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

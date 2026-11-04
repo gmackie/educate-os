@@ -71,6 +71,9 @@ export const SHOWCASE_ORIGINS: Readonly<Record<string, string>> = {
   "educateos.io/biology-1": "off_nf-bio-fall-p2",
   "educateos.io/english-9": "off_nf-eng9-fall-p3",
   "educateos.io/united-states-history": "off_nf-ushist-fall-p5",
+  "educateos.io/grade-4-english-language-arts": "off_nf-g4ela-fall-r12",
+  "educateos.io/grade-4-mathematics": "off_nf-g4math-fall-r12",
+  "educateos.io/grade-5-science": "off_nf-g5sci-fall-lab",
 };
 
 const DOMAIN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;

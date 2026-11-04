@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:00a233647b60f808feb0429816f41cc14d3dce002323619806a4bab50f9ed93e",
+      "id": "educateos.io/grade-5-science-properties-of-matter",
+      "version": "1.0.0"
+    }
+  },
+  "id": "properties-of-matter",
+  "role": "lesson",
+  "title": "Properties of Matter"
+}

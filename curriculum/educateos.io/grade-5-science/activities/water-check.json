@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:aa4a6669a7429404869c850fcedf73bc1252f4626d4871e826bf3688f2004d1d",
+      "id": "educateos.io/grade-5-science-water-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "water-check",
+  "role": "assessment",
+  "title": "Water Check: A Drop's Long Journey"
+}

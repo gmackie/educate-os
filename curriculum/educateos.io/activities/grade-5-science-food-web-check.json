@@ -1,0 +1,160 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "5",
+    "overview": "Read about a meadow ecosystem on your own and show what you know about food webs.",
+    "passage": "Life in Hilltop Meadow\n\nHilltop Meadow is full of life. Grasses and clover cover the ground, soaking up sunlight to make their own food. Grasshoppers chew on the grass blades all summer. Field mice nibble clover leaves and seeds, and they snap up grasshoppers too.\n\nGarter snakes slide through the grass hunting mice and grasshoppers. High above, a red-tailed hawk circles. It swoops down to catch mice and snakes.\n\nUnder the ground, earthworms, fungi and bacteria are busy. They break down dead leaves, fallen seeds and the bodies of dead animals. What they leave behind becomes part of the soil, where the grass and clover roots take it up again.\n\nLast summer, a nearby farm sprayed a chemical that killed most of the grasshoppers in the meadow. By the end of the summer, the grass was taller than anyone could remember.",
+    "questions": [
+      {
+        "prompt": "Name the producers in Hilltop Meadow. How do you know they are producers?"
+      },
+      {
+        "prompt": "Write a food chain from the meadow with four living things. Use arrows that point to the eater."
+      },
+      {
+        "prompt": "The hawk eats mice. Trace the energy in a mouse back to where it started."
+      },
+      {
+        "prompt": "What job do the earthworms, fungi and bacteria do? What would happen to the meadow without them?"
+      },
+      {
+        "prompt": "Explain why the grass grew taller after the grasshoppers died. Use details from the text."
+      },
+      {
+        "prompt": "After the grasshoppers died, how might the mice and the snakes have been affected? Explain your thinking."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Food Web Check: Hilltop Meadow"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-food-web-check",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "science",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Accurate science ideas"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses details from the text"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains how and why"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear, complete sentences"
+      }
+    ],
+    "title": "Food web check"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

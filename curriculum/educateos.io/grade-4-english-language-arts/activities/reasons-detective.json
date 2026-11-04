@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:bf6f60e0d33e5e9420bfc31d201c55a5f496c1fcbe05b7fa97fe81b8d917c7a4",
+      "id": "educateos.io/grade-4-english-language-arts-reasons-detective",
+      "version": "1.0.0"
+    }
+  },
+  "id": "reasons-detective",
+  "role": "lesson",
+  "title": "Reasons Detective"
+}

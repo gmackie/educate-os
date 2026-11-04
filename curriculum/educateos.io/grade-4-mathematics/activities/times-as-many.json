@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b0da7c0287815562c67ebd0c0527572d4caa0a57d275d6465e8a28ec3ecb1bbf",
+      "id": "educateos.io/grade-4-mathematics-times-as-many",
+      "version": "1.0.0"
+    }
+  },
+  "id": "times-as-many",
+  "role": "assignment",
+  "title": "Times as Many"
+}

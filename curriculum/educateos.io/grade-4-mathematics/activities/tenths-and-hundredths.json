@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:c79bb92d5e9088f1aba1cfffe52033a4f285478289fcc1c7727f57eb0873fc59",
+      "id": "educateos.io/grade-4-mathematics-tenths-and-hundredths",
+      "version": "1.0.0"
+    }
+  },
+  "id": "tenths-and-hundredths",
+  "role": "lesson",
+  "title": "Tenths and Hundredths"
+}

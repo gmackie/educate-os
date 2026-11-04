@@ -1,0 +1,141 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "genre": "informative",
+    "gradeBand": "5",
+    "minWords": 120,
+    "minimumCitations": 0,
+    "overview": "Write an explanation of how one drop of water could travel from the ocean to a glacier and back.",
+    "prompt": "A drop of water starts in the ocean. Explain how it could end up frozen in a glacier on a mountain, and then how it could get back to the ocean. Name each part of the water cycle the drop goes through (evaporation, condensation, precipitation and collection), and explain what makes each step happen. Then explain why the drop is fresh water when it reaches the glacier. Use linking words such as first, next, because and finally.",
+    "subject": "science",
+    "template": "writing-task",
+    "title": "Water Check: A Drop's Long Journey"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.5.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-water-check",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "science",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Accurate science ideas"
+      },
+      {
+        "id": "organization",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Ideas in a logical order with linking words"
+      },
+      {
+        "id": "vocabulary",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses science words correctly"
+      },
+      {
+        "id": "conventions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Spelling, capitals and punctuation"
+      }
+    ],
+    "title": "Water explanation"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

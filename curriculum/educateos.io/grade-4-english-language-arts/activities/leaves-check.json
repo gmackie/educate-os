@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:5d350874cd2d7f8639391ac412b312df822f5444f1429db9e9b65a66775a7b04",
+      "id": "educateos.io/grade-4-english-language-arts-leaves-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "leaves-check",
+  "role": "assessment",
+  "title": "Reading Check: Why Leaves Change Color"
+}

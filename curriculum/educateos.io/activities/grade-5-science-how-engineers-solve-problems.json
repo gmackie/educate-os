@@ -1,0 +1,58 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "5",
+    "overview": "Read how a class used the engineering design process, then answer the questions.",
+    "passage": "How Engineers Solve Problems\n\nRoom 14 had a problem. On field trips, the milk in their lunches was always warm by lunch time. They decided to solve it like engineers.\n\nFirst, they defined the problem. They wrote their criteria, the things a good design must do: keep a carton of milk cold for at least four hours, and fit in a backpack. Then they wrote their constraints, the limits they had to work within: they could spend no more than $5 per design, use only materials from the classroom bin, and build in two class periods.\n\nNext, they brainstormed. Teams sketched more than twenty ideas, from a sock stuffed with cotton balls to a box lined with foil. Each team chose the idea that best met the criteria and constraints.\n\nThen each team built a prototype, a first model of its design. They tested every prototype the same way: same milk carton, same ice pack, same sunny windowsill, same amount of time.\n\nThe first tests did not go well. The foil box kept the milk cold for only an hour. But the team did not give up. Their failure gave them data: heat was getting in through the open top. They added a lid and tested again, changing only that one thing. This time the milk stayed cold for almost four hours. They added a second layer of foam, tested again, and reached four and a half hours.\n\nEngineers almost never get a design right the first time. They test, learn and improve, again and again.",
+    "questions": [
+      {
+        "prompt": "What is the difference between criteria and constraints? Give one example of each from the article."
+      },
+      {
+        "prompt": "What is a prototype, and why do engineers build one?"
+      },
+      {
+        "prompt": "When the team improved the foil box, why did they change only one thing at a time?"
+      },
+      {
+        "prompt": "How is the article organized: as a sequence of steps, as a comparison, or as a problem and solution? Give evidence. (More than one answer can be right if you explain it.)"
+      },
+      {
+        "prompt": "Explain what the article means when it says the failure \"gave them data.\""
+      },
+      {
+        "prompt": "You are designing a hook to hang backpacks on the classroom wall. Write two criteria and two constraints for your design."
+      }
+    ],
+    "sentenceFrames": [
+      "Criteria are ___, but constraints are ___.",
+      "A prototype is ___.",
+      "They changed only one thing because ___."
+    ],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "How Engineers Solve Problems"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-how-engineers-solve-problems",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}
