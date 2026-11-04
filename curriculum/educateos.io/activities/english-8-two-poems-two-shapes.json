@@ -1,0 +1,163 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 64,
+      "kind": "after-install"
+    },
+    "genre": "literary-analysis",
+    "gradeBand": "8",
+    "minWords": 350,
+    "minimumCitations": 2,
+    "overview": "Compare how two poems about hope use form and figurative language to say different things.",
+    "prompt": "Emily Dickinson's \"Hope\" is the thing with feathers and \"What Hope Sounds Like on a Tuesday\" both use an extended metaphor for hope, but their forms are very different. Write an essay that compares the two poems. Explain each poem's extended metaphor and what it suggests about hope. Then compare their structures (stanzas, line length, rhyme and rhythm, punctuation) and analyze how each structure contributes to its meaning. Quote at least two lines from each poem.",
+    "resources": [
+      "hope-feathers",
+      "hope-tuesday"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Two Poems, Two Shapes"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-two-poems-two-shapes",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Emily Dickinson (1830-1886). First published in Poems, Second Series (1891). Public domain.",
+      "body": "\"Hope\" is the thing with feathers -\nThat perches in the soul -\nAnd sings the tune without the words -\nAnd never stops - at all -\n\nAnd sweetest - in the Gale - is heard -\nAnd sore must be the storm -\nThat could abash the little Bird\nThat kept so many warm -\n\nI've heard it in the chillest land -\nAnd on the strangest Sea -\nYet - never - in Extremity,\nIt asked a crumb - of Me.",
+      "id": "hope-feathers",
+      "title": "\"Hope\" is the thing with feathers"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "What Hope Sounds Like on a Tuesday\n\nNot a bird.\nNot anything with feathers.\nMore like the furnace in our basement\nthat clanks twice before it catches,\nso that every winter morning\nyou lie there under three blankets\nlistening,\nnot sure,\nand then\nthe long low breath of it\ncoming up through the floor.\n\nNobody writes songs about furnaces.\nBut my father taught me its sounds the way\nother people learn birdsong:\nthe clank, the tick, the rush.\nWhen it catches, he says,\nyou can stop waiting\nand get up.",
+      "id": "hope-tuesday",
+      "title": "What Hope Sounds Like on a Tuesday"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "metaphor",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains each extended metaphor"
+      },
+      {
+        "id": "structure",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Compares structure and its effect"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Quotes both poems"
+      },
+      {
+        "id": "organization",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Organization and conventions"
+      }
+    ],
+    "title": "Comparing poems"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:1d48385cdf7966cb3454ceecae883739b17d810c44cc6dd8f27634c3da8ee617",
+      "id": "educateos.io/english-8-breaking-a-promise",
+      "version": "1.0.0"
+    }
+  },
+  "id": "breaking-a-promise",
+  "role": "assignment",
+  "title": "Is It Ever Right to Break a Promise?"
+}
