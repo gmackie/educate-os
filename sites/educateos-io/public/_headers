@@ -40,3 +40,8 @@
 # origin may read them, such as a district's own console fetching one for its administrator.
 /marketplace/*
   Access-Control-Allow-Origin: *
+
+# The course catalog's signed course files (SCHO-333) are public, and a district verifies each
+# itself, so any origin may read them, as for marketplace listings.
+/courses/*
+  Access-Control-Allow-Origin: *
