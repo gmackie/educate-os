@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:71c475ed7239b13f0b4c5054188cf6ec79af21be90e8ba43c6ef3fc7c252f8f5",
+      "id": "educateos.io/biology-1-looking-at-cells",
+      "version": "1.0.0"
+    }
+  },
+  "id": "looking-at-cells",
+  "role": "lesson",
+  "title": "Looking at Cells"
+}

@@ -1,0 +1,166 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "overview": "Show what you know about photosynthesis, cellular respiration and ATP. Answer in complete sentences and show work for the data question.",
+    "problems": [
+      {
+        "prompt": "For photosynthesis and for cellular respiration, give the reactants, the products and the organelle where the process happens."
+      },
+      {
+        "prompt": "A classmate says, \"Plants do photosynthesis and animals do respiration.\" Explain what is wrong with this statement."
+      },
+      {
+        "prompt": "What is ATP, and why do cells need it? Give one example of cell work that uses ATP, from this unit or Unit 1."
+      },
+      {
+        "prompt": "Compare aerobic respiration and fermentation: does each need oxygen, about how many ATP does each yield per glucose, and where would you find each happening?"
+      },
+      {
+        "prompt": "In a leaf disk experiment, half the disks floated (ET50) after 8 minutes at 10 cm from the lamp, 12 minutes at 20 cm, and 19 minutes at 30 cm. In a cup kept in the dark, no disks floated in 30 minutes. What do these results show about light and the rate of photosynthesis? What is the purpose of the dark cup?"
+      },
+      {
+        "prompt": "Every breath you take connects you to plants. Use both equations to explain where the oxygen you inhale and the carbon dioxide you exhale came from."
+      },
+      {
+        "prompt": "In a famous 18th-century experiment, a mouse sealed in a jar soon died, but a mouse sealed in a jar with a green plant in sunlight lived much longer. Explain this result using photosynthesis and respiration, and predict what would happen if the jar with the plant were kept in the dark."
+      }
+    ],
+    "showWork": true,
+    "subject": "science",
+    "template": "problem-set",
+    "title": "Cell Energy Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-cell-energy-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Describes photosynthesis, respiration and fermentation accurately, with organelles, reactants and products.",
+        "id": "processes",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Process explanations"
+      },
+      {
+        "description": "Explains how the two processes form a cycle of matter and a flow of energy between organisms.",
+        "id": "connections",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Connecting the processes"
+      },
+      {
+        "description": "Draws a correct conclusion from the experimental data and explains the role of the control.",
+        "id": "data",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Interpreting data"
+      },
+      {
+        "description": "Uses ATP, aerobic, anaerobic, reactant and product correctly.",
+        "id": "vocabulary",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Precise vocabulary"
+      }
+    ],
+    "title": "Cell energy"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

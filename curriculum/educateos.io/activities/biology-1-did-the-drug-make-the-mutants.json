@@ -1,0 +1,156 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "9-12",
+    "minWords": 450,
+    "minimumCitations": 1,
+    "overview": "Write a scientific argument about whether antibiotics cause bacteria to become resistant or select resistant bacteria that were already there.",
+    "prompt": "When antibiotics are used, resistant bacteria soon become common. Do antibiotics cause bacteria to mutate into resistant forms, or do they select resistant bacteria that already existed? Write an argument that states a precise claim, supports it with evidence from the replica plating experiment and at least one other piece of evidence from the reading, and explains your reasoning using the conditions for natural selection. Address the strongest counterclaim fairly, and explain what your conclusion means for how antibiotics should be used.",
+    "resources": [
+      "resistance-reading"
+    ],
+    "subject": "science",
+    "template": "writing-task",
+    "title": "Did the Drug Make the Mutants?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.8",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-did-the-drug-make-the-mutants",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Antibiotics are medicines that kill bacteria or stop them from multiplying. Since the 1940s they have saved many millions of lives. But almost every antibiotic eventually meets bacteria it cannot kill. Infections caused by resistant bacteria now kill more than a million people worldwide every year.\n\nWhere does resistance come from? One idea is that the drug itself changes the bacteria: exposed to the antibiotic, the bacteria somehow respond by becoming resistant. Another idea is that, in any large population of bacteria, a few already carry random mutations that happen to make them resistant, and the drug simply kills off all the others.\n\nIn 1952, Joshua and Esther Lederberg designed an experiment to tell these ideas apart. They spread bacteria on a dish of nutrient gel with no antibiotic, where each single cell grew into a visible colony. Then they pressed a disk of sterile velvet onto the dish. The velvet picked up a few cells from every colony, in the same positions. Pressing the velvet onto fresh dishes made exact copies, or replicas, of the original pattern.\n\nSome of the copy dishes contained an antibiotic. On those, only a few colonies grew. The key result: the resistant colonies appeared in the same positions on every antibiotic dish. When the Lederbergs went back to the original dish, which had never touched the antibiotic, and tested the colonies in those positions, they were resistant too. The resistance was there before the drug.\n\nMutations happen at random each time a bacterium copies its DNA, and bacteria multiply fast: under ideal conditions, some can divide every 20 minutes. In an infection with billions of bacteria, a few resistant mutants are likely to be present by chance. Bacteria can also pass resistance genes to one another on small loops of DNA.\n\nWhen a patient takes an antibiotic, the susceptible bacteria die. The resistant ones survive and multiply, and they can spread to other people. Hospitals and farms that use antibiotics heavily tend to have more resistant bacteria. Public health agencies therefore urge doctors to prescribe antibiotics only for bacterial infections (never for viruses such as colds and flu) and patients to take them exactly as prescribed.",
+      "id": "resistance-reading",
+      "title": "Resistance Before the Drug"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States a clear, specific claim that answers the question.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Precise claim"
+      },
+      {
+        "description": "Uses accurate, relevant evidence from the replica plating experiment and the reading.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Evidence"
+      },
+      {
+        "description": "Explains how the evidence supports the claim using the conditions for natural selection and random mutation.",
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Reasoning"
+      },
+      {
+        "description": "Presents the strongest opposing claim fairly and rebuts it with evidence.",
+        "id": "counterclaim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Counterclaim"
+      }
+    ],
+    "title": "Scientific argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

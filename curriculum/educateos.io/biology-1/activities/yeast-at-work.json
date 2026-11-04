@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:d42f201fc4453e1738cbd34002f9b065a8ce9e6eb53effc2cb360c78ab6b9488",
+      "id": "educateos.io/biology-1-yeast-at-work",
+      "version": "1.0.0"
+    }
+  },
+  "id": "yeast-at-work",
+  "role": "assignment",
+  "title": "Yeast at Work"
+}
