@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { NORTHFIELD, NORTHFIELD_COURSE_CLASSES, NORTHFIELD_SHOWCASE } from "@educateos/fixtures";
 import { bootNorthfield, NORTHFIELD_PERSONAS as PERSONAS, NORTHFIELD_SECTIONS } from "./northfield.ts";
-import { schoolDayDue } from "./schoolDay.ts";
+import { schoolDayDue } from "@educateos/harness/school-day";
 
 describe("the demo district", () => {
   let district: Awaited<ReturnType<typeof bootNorthfield>>;

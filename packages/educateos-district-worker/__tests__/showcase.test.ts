@@ -65,6 +65,13 @@ async function bootCoop(directory: DistrictDirectorySnapshot = COOP): Promise<{ 
   return { app, showcase: startDistrictShowcase({ app, verifyRequest, accessIssuer: ISSUER, name: "northfield" }) };
 }
 
+/** An instant's weekday and wall-clock time in the co-op's time zone, such as "Thu 15:30". */
+const detroit = (iso: string) => new Intl.DateTimeFormat("en-US", { timeZone: "America/Detroit", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso)).replace(",", "");
+
+/** The co-op's assignments in `offeringIds`. */
+const assignmentsIn = async (app: DistrictApp, offeringIds: Set<string>) =>
+  (await app.stores.assessment.load()).state.assignments.filter((a) => offeringIds.has(a.offeringId));
+
 /** Calls a showcase route as `subject`, reading the whole body. */
 async function call(showcase: DistrictShowcase, subject: string | undefined, method: "GET" | "POST", path: string, body?: unknown): Promise<{ status: number; body: any }> {
   const headers: Record<string, string> = {};
@@ -158,6 +165,15 @@ describe("the showcase, seeded inside a co-op district", () => {
     }
   });
 
+  it("sets every seeded activity due on a school day at 3:30 PM in the district's time zone (SCHO-328)", async () => {
+    const assignments = await assignmentsIn(coop.app, new Set(NORTHFIELD_SHOWCASE.courses.map((c) => c.offeringId)));
+    expect(assignments.length).toBeGreaterThan(0);
+    for (const { title, dueAt } of assignments) {
+      if (dueAt === undefined) continue;
+      expect(detroit(dueAt), title).toMatch(/^(Mon|Tue|Wed|Thu|Fri) 15:30$/);
+    }
+  });
+
   it("keeps every record the co-op had, exactly as it was", async () => {
     const { snapshot } = await coop.app.stores.directory.load();
     for (const name of ["schools", "terms", "courses", "offerings", "principals", "enrollments", "roleAssignments"] as const) {
@@ -204,6 +220,10 @@ describe("the showcase, seeded inside a co-op district", () => {
     expect(entry).toMatchObject({ packageId: course, publisher: { domain: "educateos.io", signed: true }, imported: { by: "prn_coop-admin" } });
     const status: ShowcaseStatus = (await call(coop.showcase, ADMIN_SUB, "GET", "showcase")).body;
     expect(status.courses.find((c) => c.packageId === course)).toStrictEqual({ packageId: course, offeringId: "off_nf-g1read-fall-r7", imported: true, installed: true });
+    // The course's activities fall due on school days at 3:30 PM too, not at the moment of install.
+    const due = (await assignmentsIn(coop.app, new Set(["off_nf-g1read-fall-r7"]))).flatMap((a) => (a.dueAt === undefined ? [] : [detroit(a.dueAt)]));
+    expect(due.length).toBeGreaterThan(0);
+    expect(due.every((d) => /^(Mon|Tue|Wed|Thu|Fri) 15:30$/.test(d)), due.join(", ")).toBe(true);
 
     const again = await call(coop.showcase, ADMIN_SUB, "POST", "showcase/courses", { courses: [course] });
     expect(again.body).toMatchObject({ created: 0, pending: [] });
