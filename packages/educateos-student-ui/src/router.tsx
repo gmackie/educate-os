@@ -1,4 +1,4 @@
-import { forwardRef, type AnchorHTMLAttributes } from "react";
+import { forwardRef, useEffect, type AnchorHTMLAttributes } from "react";
 import { Empty } from "@cloudflare/kumo";
 import {
   Link as RouterLink,
@@ -11,6 +11,7 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 import { unlinkedSignInOf } from "@educateos/api-client";
+import { shellRoleOf } from "@educateos/shell";
 import { useQuery } from "./api.tsx";
 import { ActivityPage } from "./activity/ActivityPage.tsx";
 import { CoursePage } from "./CoursePage.tsx";
@@ -55,6 +56,19 @@ export const isFamilyPath = (pathname: string): boolean => pathname === "/family
 /** Whether `pathname` is a page every role has, which no audience is taken away from. */
 const isSharedPath = (pathname: string) => pathname === DEVICES_PATH || pathname.startsWith(`${DEVICES_PATH}/`);
 
+/** The Learning Home pages staff use too: the shell links a teacher's Calendar and Inbox here. */
+const isStaffPath = (pathname: string) =>
+  isSharedPath(pathname) || ["/calendar", "/notifications", "/settings"].includes(pathname);
+
+/**
+ * Sends staff from a student page to their own app on the origin, Teacher Studio or the admin
+ * console, as a page load: the Learning Home's student pages are refused to anyone but a student.
+ */
+const StaffHome = ({ href }: { href: string }) => {
+  useEffect(() => window.location.replace(href), [href]);
+  return <LoadingSkeleton label={href === "/admin/" ? "Opening the admin console" : "Opening Teacher Studio"} />;
+};
+
 /**
  * The signed-in frame. Who the principal is decides which places exist: a guardian has only the
  * family view and is taken there from anywhere else, and the family view does not exist for a
@@ -65,12 +79,20 @@ const SignedIn = ({ pathname }: { pathname: string }) => {
   const audience = me.status === "ready" ? (me.data.kind === "guardian" ? "family" : "student") : undefined;
   const unlinked = me.status === "error" ? unlinkedSignInOf(me.error) : undefined;
   const shared = isSharedPath(pathname);
+  const shell = useDistrictShell();
+  // Only on the district origin, where Teacher Studio and the admin console are served beside it.
+  const role = me.status === "ready" ? shellRoleOf(me.data) : undefined;
+  const staffHome = shell !== undefined && (role === "teacher" || role === "school-admin") && !isStaffPath(pathname)
+    ? (role === "teacher" ? "/teach/" : "/admin/")
+    : undefined;
   const content = me.status === "loading" ? (
     <LoadingSkeleton label="Opening your Learning Home" />
   ) : unlinked !== undefined ? (
     <NotAddedYet signIn={unlinked} />
   ) : me.status === "error" ? (
     <ErrorState error={me.error} title="We couldn't open your Learning Home" />
+  ) : staffHome !== undefined ? (
+    <StaffHome href={staffHome} />
   ) : audience === "family" && !isFamilyPath(pathname) && !shared ? (
     <Navigate to={pathname === "/settings" ? FAMILY_SETTINGS_PATH : "/family"} replace />
   ) : audience === "student" && isFamilyPath(pathname) ? (
@@ -78,7 +100,6 @@ const SignedIn = ({ pathname }: { pathname: string }) => {
   ) : (
     <Outlet />
   );
-  const shell = useDistrictShell();
   return shell === undefined ? (
     <Layout studentName={me.status === "ready" ? me.data.displayName : undefined} audience={audience}>{content}</Layout>
   ) : (
