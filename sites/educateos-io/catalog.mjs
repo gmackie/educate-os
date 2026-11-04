@@ -332,7 +332,7 @@ function renderIndex(courses) {
       <div class="copy">
         <div class="eyebrow">What is not shown</div>
         <h2>Teacher materials stay with teachers.</h2>
-        <p>Every unit comes with a teacher guide and an answer key. They install with the course as teacher-only notes, and this site never shows their text.</p>
+        <p>Every unit comes with a teacher guide and an answer key. They install with the course as teacher-only notes, and these pages never show their text, though the downloadable course files include them.</p>
         <p>The marketplace has <a href="/marketplace/">curriculum packs</a> of single activities, and the <a href="/demo/">demo</a> shows a district running courses like these.</p>
       </div>
     </div>
@@ -436,6 +436,7 @@ function renderCourse(course) {
         <div class="eyebrow">Download</div>
         <h2>The signed course file.</h2>
         <p><a class="btn primary" href="/${esc(course.bundle.path)}" download>Download version ${esc(course.version)} (JSON, ${esc(sizeOf(course.bundle.text))})</a></p>
+        <p class="muted small" data-bundle-note>The downloadable bundle includes the teacher materials, the teacher guides and answer keys, because they are part of the signed course.</p>
         <dl class="bundle-facts">
           <div><dt>Format</dt><dd><code>educateos.ocs-bundle.v1</code></dd></div>
           <div><dt>Course</dt><dd><code>${esc(course.id)}</code> version ${esc(course.version)}</dd></div>

@@ -85,16 +85,32 @@ test("index.json lists every course with its page and signed file", () => {
   }
 });
 
+/** Every string value in a parsed JSON document. */
+function strings(value) {
+  if (typeof value === "string") return [value];
+  if (value && typeof value === "object") return Object.values(value).flatMap(strings);
+  return [];
+}
+
+/** The shared activity a course activity's `portable.id` (`<publisher>/<name>`) names. */
+function portable(id) {
+  const slash = id.indexOf("/");
+  return json(join(curriculum, id.slice(0, slash), "activities", `${id.slice(slash + 1)}.json`));
+}
+
 test("no teacher guide or answer key text appears on any catalog page", () => {
   for (const {name, dir} of courses) {
     const notes = readdirSync(join(dir, "codex")).map((file) => json(join(dir, "codex", file)));
     const teacherOnly = notes.filter((note) => note.visibility === "teacher-only");
     assert.ok(teacherOnly.length > 0, `${name} has teacher-only notes to check`);
     // Text a student may see anyway (overviews, the activities' own wording) is not a leak.
+    // Parsed strings, not raw JSON, so a title with quotes matches the answer key heading that repeats it.
     const studentText = [
       ...notes.filter((note) => note.visibility !== "teacher-only").map((note) => note.body),
-      ...readdirSync(join(dir, "activities")).map((file) => json(join(dir, "activities", file)).definition.portable?.id)
-        .filter(Boolean).map((id) => readFileSync(join(curriculum, id.slice(0, id.indexOf("/")), "activities", `${id.slice(id.indexOf("/") + 1)}.json`), "utf8")),
+      ...readdirSync(join(dir, "activities")).map((file) => json(join(dir, "activities", file))).flatMap((activity) => [
+        ...strings(activity),
+        ...(activity.definition.portable?.id ? strings(portable(activity.definition.portable.id)) : []),
+      ]),
     ].join("\n");
     for (const note of teacherOnly) {
       const fragments = note.body.split(/\n+/).map((line) => line.replace(/^[-\s]+/, "").trim()).filter((line) => line.length >= 20 && !studentText.includes(line));
@@ -145,6 +161,7 @@ test("the course model keeps no teacher-only text, and the pages escape course t
   const page = renderCatalogFiles([course]).get(`${CATALOG_DIR}/sample/index.html`);
   for (const marker of ["STUDENT-OVERVIEW-BODY", "STUDENT-UNIT-SUMMARY", "STUDENT-ACTIVITY-OVERVIEW", "CCSS Math 4.NF.A.1"]) assert.ok(page.includes(marker), `the page shows ${marker}`);
   assert.ok(page.includes("a teacher guide and an answer key"));
+  assert.ok(page.includes("The downloadable bundle includes the teacher materials"), "the course page says the bundle carries the teacher materials");
   assert.ok(!page.includes("<script>alert(1)</script>") && page.includes("&lt;script&gt;alert(1)&lt;/script&gt;"));
 });
 
