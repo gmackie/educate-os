@@ -32,7 +32,9 @@ export const ReceiptDetails = ({ receipt }: { receipt: SubmissionReceipt }) => (
  * Submit: a confirmation that lists exactly the saved versions being handed in, then the receipt.
  * Unsaved changes block it, because a submission captures saved versions only and the student would
  * otherwise hand in something other than what is on their screen. Young learners get the same
- * steps in plainer words: "I'm done!", then "Yes, hand it in".
+ * steps in plainer words: "I'm done!", then "Yes, hand it in", without the attempt limit or the
+ * receipt code, which are for older students and the grown-ups (the teacher sees every attempt and
+ * its receipt).
  */
 export const SubmitSection = ({ assignment, work, unsaved, young = false, onSubmitted }: {
   assignment: Assignment;
@@ -112,9 +114,11 @@ export const SubmitSection = ({ assignment, work, unsaved, young = false, onSubm
                   <li key={item.artifactId}>{item.title}</li>
                 ))}
               </ul>
-              <Text variant="secondary" size="sm">
-                You can submit this activity up to {assignment.attemptsAllowed} {assignment.attemptsAllowed === 1 ? "time" : "times"}.
-              </Text>
+              {young ? null : (
+                <Text variant="secondary" size="sm">
+                  You can submit this activity up to {assignment.attemptsAllowed} {assignment.attemptsAllowed === 1 ? "time" : "times"}.
+                </Text>
+              )}
               {error === undefined ? null : (
                 <div role="alert">
                   <Banner variant="error" size="sm" icon={<WarningCircleIcon weight="fill" />} title="Not submitted" description={error} />
@@ -136,7 +140,7 @@ export const SubmitSection = ({ assignment, work, unsaved, young = false, onSubm
               <Dialog.Description className="text-kumo-subtle">
                 {young ? "Your work is handed in. Your teacher will see it soon." : "Keep your receipt code. It shows exactly what you handed in."}
               </Dialog.Description>
-              <ReceiptDetails receipt={receipt} />
+              {young ? null : <ReceiptDetails receipt={receipt} />}
               <div className="flex justify-end">
                 <Dialog.Close render={(props) => <Button {...props} variant="primary">Done</Button>} />
               </div>

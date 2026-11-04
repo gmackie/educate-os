@@ -43,3 +43,15 @@ export const isElementaryBand = (band: string | undefined): boolean => {
   const range = gradeRange(band);
   return range !== undefined && range.low <= 5;
 };
+
+/**
+ * How a class's grades read to its own students (SCHO-328). Young learners (K-2) see stars and a
+ * few kind words, never a percentage, letter grade, receipt code or attempt limit; elementary
+ * students (3-5) see points and percentages but no letter grade; everyone else sees it all. Only
+ * the student's presentation changes: teachers and guardians always see the official grade.
+ */
+export type GradeDisplay = "young" | "elementary" | "standard";
+
+/** The {@link GradeDisplay} for a class's grade band. */
+export const gradeDisplay = (band: string | undefined): GradeDisplay =>
+  isYoungLearnerBand(band) ? "young" : isElementaryBand(band) ? "elementary" : "standard";

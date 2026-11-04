@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { screen, within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
-import { ENGLISH, ESSAY, fakeDistrict, type FakeDistrict } from "./fakeDistrict.ts";
+import { ENGLISH, ESSAY, fakeDistrict, POND, type FakeDistrict } from "./fakeDistrict.ts";
 import { renderApp } from "./render.tsx";
 
 describe("my grades", () => {
@@ -97,5 +97,30 @@ describe("my grades", () => {
     expect(within(failure).getByText("We couldn't load your grades")).toBeTruthy();
     await user.click(within(failure).getByRole("button", { name: "Try again" }));
     expect(await screen.findByRole("table", { name: "Grades for English 9 · Period 3" })).toBeTruthy();
+  });
+});
+
+describe("grades for younger students (SCHO-328)", () => {
+  it("shows a K-2 class's work as stars and kind words, with no percentage or letter grade", async () => {
+    const district = fakeDistrict({ youngClass: true });
+    district.recordGrade(POND, { points: 3, maxPoints: 3 });
+    await renderApp(district, "/grades");
+
+    const young = await screen.findByRole("region", { name: /Kindergarten Science/ });
+    const pond = within(young).getByRole("row", { name: /Who lives in the pond\?/ });
+    expect(within(pond).getByRole("img", { name: "3 of 3 stars" })).toBeTruthy();
+    expect(within(pond).getByText("Great work!")).toBeTruthy();
+    expect(young.textContent).not.toMatch(/%|out of|Course grade|· A/);
+  });
+
+  it("shows a grade 3-5 class's total and points, without a letter grade", async () => {
+    const district = fakeDistrict({ youngClass: { gradeBand: "4" } });
+    district.recordGrade(POND, { points: 1, maxPoints: 4 });
+    await renderApp(district, "/grades");
+
+    const fourth = await screen.findByRole("region", { name: /Kindergarten Science/ });
+    expect(within(fourth).getByText("Course grade: 25.0%")).toBeTruthy();
+    expect(within(fourth).getByText("1 out of 4")).toBeTruthy();
+    expect(within(fourth).queryByText("· F")).toBeNull();
   });
 });

@@ -4,6 +4,8 @@ import type { DistrictApiClient } from "@educateos/api-client";
 import { isNotFound, useQuery } from "./api.tsx";
 import { groupCourses } from "./courses.ts";
 import { ErrorState } from "./ErrorState.tsx";
+import { FriendlyScore } from "./FriendlyScore.tsx";
+import { gradeDisplay, type GradeDisplay } from "./gradeBand.ts";
 import { classTitleIn, formatDateTime } from "./labels.ts";
 import { LoadingSkeleton } from "./LoadingSkeleton.tsx";
 import type { GradeMarker, GradeSummary, OfficialGrade } from "./model.ts";
@@ -24,6 +26,8 @@ interface CourseGrades {
   offeringId: string;
   title: string;
   past: boolean;
+  /** How the class's grades read to its students, from its grade band. */
+  display: GradeDisplay;
   rows: GradeRow[];
   /** The class's running total, or `undefined` for a class with no gradebook to read. */
   summary: GradeSummary | undefined;
@@ -43,7 +47,7 @@ const orNothing = <T,>(read: Promise<T>, nothing: T): Promise<T> =>
  * included, so the rows add up to the total; activities and quizzes link to their screens. A class
  * without a gradebook to read falls back to its activities.
  */
-const loadCourse = async (api: DistrictApiClient, offeringId: string, title: string, past: boolean): Promise<CourseGrades> => {
+const loadCourse = async (api: DistrictApiClient, offeringId: string, title: string, past: boolean, display: GradeDisplay): Promise<CourseGrades> => {
   const [activities, quizzes, summary] = await Promise.all([
     orNothing(api.call("student.listActivities", { params: { offeringId } }), []),
     orNothing(api.call("student.listQuizzes", { params: { offeringId } }), []),
@@ -60,14 +64,19 @@ const loadCourse = async (api: DistrictApiClient, offeringId: string, title: str
     const versions = await api.call("student.officialGrades", { params: { assignmentId } });
     return { assignmentId, title: workTitle, dueAt, href: hrefOf(assignmentId), grade: versions.at(-1), marker: markers.get(assignmentId) };
   }));
-  return { offeringId, title, past, summary, rows: rows.toSorted((a, b) => a.dueAt.localeCompare(b.dueAt)) };
+  return { offeringId, title, past, display, summary, rows: rows.toSorted((a, b) => a.dueAt.localeCompare(b.dueAt)) };
 };
 
-/** The class's running total and letter, as the teacher's gradebook settings compute them. */
-const CourseTotal = ({ summary }: { summary: GradeSummary | undefined }) => {
+/**
+ * The class's running total and letter, as the teacher's gradebook settings compute them. Elementary
+ * students see the total without a letter; young learners see no course total at all, only how each
+ * piece of work went.
+ */
+const CourseTotal = ({ summary, display }: { summary: GradeSummary | undefined; display: GradeDisplay }) => {
+  if (display === "young") return null;
   const final = summary?.row.totals.final ?? null;
   if (final === null) return <Text variant="secondary">No course grade yet.</Text>;
-  const letter = summary!.row.totals.letter;
+  const letter = display === "standard" ? summary!.row.totals.letter : null;
   return (
     <Text>
       <span className="font-semibold">{`Course grade: ${final.toFixed(1)}%`}</span>
@@ -86,7 +95,7 @@ const CourseGradesTable = ({ course }: { course: CourseGrades }) => {
           {course.past ? <Badge variant="neutral">Finished</Badge> : null}
         </span>
       </Text>
-      <CourseTotal summary={course.summary} />
+      <CourseTotal summary={course.summary} display={course.display} />
       {course.rows.length === 0 ? (
         <Text variant="secondary">Nothing has been assigned in this class yet.</Text>
       ) : (
@@ -108,6 +117,8 @@ const CourseGradesTable = ({ course }: { course: CourseGrades }) => {
                     <span className="flex flex-wrap items-center gap-2">
                       {grade === undefined ? (
                         <Text variant="secondary" as="span">Not graded yet</Text>
+                      ) : course.display === "young" ? (
+                        <FriendlyScore points={grade.score.points} maxPoints={grade.score.maxPoints} size={20} />
                       ) : (
                         <>
                           {`${grade.score.points} out of ${grade.score.maxPoints}`}
@@ -141,7 +152,8 @@ export const GradesPage = () => {
     const [me, workspaces, offerings] = await Promise.all([api.call("me.get"), api.call("student.listWorkspaces"), api.call("student.listOfferings")]);
     const { current, past } = groupCourses(me, workspaces);
     const courses = [...current.map((c) => ({ ...c, past: false })), ...past.map((c) => ({ ...c, past: true }))];
-    return Promise.all(courses.map(({ offeringId, past: finished }) => loadCourse(api, offeringId, classTitleIn(offerings, offeringId), finished)));
+    const bandOf = (offeringId: string) => offerings.find((entry) => entry.offering.id === offeringId)?.course.gradeBand;
+    return Promise.all(courses.map(({ offeringId, past: finished }) => loadCourse(api, offeringId, classTitleIn(offerings, offeringId), finished, gradeDisplay(bandOf(offeringId)))));
   });
 
   if (grades.status === "loading") return <LoadingSkeleton label="Loading your grades" lines={4} />;
