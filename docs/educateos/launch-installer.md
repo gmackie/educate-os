@@ -1,7 +1,8 @@
 # `npx launch-educate-os`
 
-- Status: Built, not yet published or deployed (SCHO-341, epic SCHO-320). Verified against the
-  installer's Cloudflare fake only; no live account has been installed with it yet.
+- Status: Published to npm as `launch-educate-os` 0.1.0 (SCHO-341, epic SCHO-320). A full install
+  into the owner's Cloudflare account completed on 2026-11-04 ([below](#live-install-2026-11-04));
+  no district has run it yet.
 - Code: `packages/launch-educate-os` (the npm package), `packages/educateos-control-plane/src/release-files.ts`
   (the release mirror on educateos.io).
 - Operator docs: the package's [README](../../packages/launch-educate-os/README.md), which is also its
@@ -121,6 +122,20 @@ The tests reach the installer's in-memory fake (`cloudflare-fake.ts`) through a 
 (`LAUNCH_EDUCATE_OS_TEST_CLOUDFLARE_RPC`, http on 127.0.0.1 or localhost only, announced on every
 run), and releases signed by a key generated for the run, pinned with `--trust`.
 `packages/educateos-control-plane/__tests__/release-files.test.ts` covers the mirror in workerd.
+
+## Live install, 2026-11-04
+
+`npx launch-educate-os` 0.1.0, from npm, installed signed release `r000002-f690372` from the
+educateos.io mirror into the owner's Cloudflare account, at launch-trial.educateos.dev. It created
+13 resources, and a second `plan` with the saved answers showed nothing to change.
+
+What this does not show yet:
+
+- **A district running it.** The account was the owner's, not a district's.
+- **The district LMS through the installer.** Not verified; it needs a `DISTRICT_CONFIG` file (see
+  Limits above).
+- **Managed hostnames for other accounts.** `<slug>.educateos.io` is still possible only in the
+  account that holds educateos.io (SCHO-243).
 
 ## Publishing
 
