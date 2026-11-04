@@ -1,6 +1,7 @@
 // The control plane's pages: plain server-rendered HTML in the site's own shell (its header,
 // footer, Kumo tokens and site.css), so /app reads as part of educateos.io and ships no framework.
 // Every value that reaches a page passes through `html`, which escapes it.
+import { INSTALL_TOKEN_PERMISSIONS, installTokenLink } from "@educateos/installer";
 import { ACCESS_LOGOUT_PATH } from "./access.ts";
 import type { ProbedEntry } from "./app.ts";
 import { BILLING_PATHS, type BilledInvoice, type BillingOverview, MANAGED_PLANS, PLACEHOLDER_PRICE_NOTE, TERM_DAYS } from "./billing.ts";
@@ -268,32 +269,9 @@ export function messagePage(shell: SiteShell, title: string, message: string): s
   </section>`);
 }
 
-/**
- * The permissions the guided install's token needs, as Cloudflare's token editor names them
- * (docs/educateos/installer-permissions.md). `key` and `type` prefill the editor.
- */
-export const INSTALL_TOKEN_PERMISSIONS = [
-  { scope: "Account", name: "Account Settings", level: "Read", key: "account_settings", type: "read" },
-  { scope: "Account", name: "Billing", level: "Read", key: "billing", type: "read" },
-  { scope: "Account", name: "Workers Scripts", level: "Edit", key: "workers_scripts", type: "edit" },
-  { scope: "Account", name: "Workers KV Storage", level: "Edit", key: "workers_kv_storage", type: "edit" },
-  { scope: "Account", name: "Workers R2 Storage", level: "Edit", key: "workers_r2", type: "edit" },
-  { scope: "Account", name: "D1", level: "Edit", key: "d1", type: "edit" },
-  { scope: "Account", name: "Access: Apps and Policies", level: "Edit", key: "access", type: "edit" },
-  { scope: "Account", name: "Access: Organizations, Identity Providers, and Groups", level: "Read", key: "access_acct", type: "read" },
-  { scope: "Account", name: "AI Gateway", level: "Edit", key: "aig", type: "edit" },
-  { scope: "Zone", name: "Zone", level: "Read", key: "zone", type: "read" },
-  { scope: "Zone", name: "DNS", level: "Edit", key: "dns", type: "edit" },
-  { scope: "Zone", name: "Workers Routes", level: "Edit", key: "workers_routes", type: "edit" },
-  { scope: "Zone", name: "SSL and Certificates", level: "Edit", key: "ssl_and_certificates", type: "edit" },
-] as const;
-
-/** Cloudflare's token editor, prefilled with {@link INSTALL_TOKEN_PERMISSIONS}. */
-export function installTokenLink(): string {
-  const keys = INSTALL_TOKEN_PERMISSIONS.map(({ key, type }) => ({ key, type }));
-  const query = new URLSearchParams({ permissionGroupKeys: JSON.stringify(keys), name: "EducateOS guided install" });
-  return `https://dash.cloudflare.com/profile/api-tokens?${query}`;
-}
+// The token's permissions and the prefilled editor link live in the installer, which the CLI
+// (`launch-educate-os`) shares (SCHO-341).
+export { INSTALL_TOKEN_PERMISSIONS, installTokenLink };
 
 const FIELD_LABELS: Record<(typeof ECHOED_FIELDS)[number], { label: string; hint: string; placeholder: string }> = {
   slug: { label: "Address", hint: "Your installation serves at <slug>.educateos.io. Lowercase letters, digits and hyphens.", placeholder: "riverbend" },
