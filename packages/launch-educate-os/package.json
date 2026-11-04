@@ -1,0 +1,48 @@
+{
+  "name": "launch-educate-os",
+  "version": "0.1.0",
+  "description": "Install EducateOS, the district-owned K-12 LMS and AI Workshop, into your own Cloudflare account: npx launch-educate-os",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "launch-educate-os": "dist/launch-educate-os.mjs"
+  },
+  "files": [
+    "dist/launch-educate-os.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "keywords": [
+    "educateos",
+    "cloudflare",
+    "installer",
+    "k-12",
+    "lms"
+  ],
+  "homepage": "https://educateos.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gmackie/educate-os.git",
+    "directory": "packages/launch-educate-os"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepack": "node scripts/bundle.ts"
+  },
+  "devDependencies": {
+    "@educateos/contracts": "workspace:*",
+    "@educateos/fleet": "workspace:*",
+    "@educateos/installer": "workspace:*",
+    "@educateos/releases": "workspace:*",
+    "@gadgets/scripts": "workspace:*",
+    "@types/node": "^26.1.0",
+    "esbuild": "^0.28.2",
+    "vitest": "catalog:",
+    "zod": "catalog:"
+  }
+}

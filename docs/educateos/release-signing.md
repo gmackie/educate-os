@@ -65,6 +65,10 @@ and run the CLI against the release directory. It reads `manifest.signed.json` f
 manifest unless `--signed-manifest <file>` names another file; rollback does the same for
 `--previous-manifest`.
 
+`npx launch-educate-os` ([launch-installer.md](launch-installer.md)) does this for the operator: it
+downloads the newest release from educateos.io's `/releases/` mirror (or reads `--release-dir`),
+verifies it against the release keys it pins, and writes the signed pin into the config itself.
+
 `"mode": "insecure-pin"` pins an unsigned development build by its SHA-256 only. It is for local
 builds made without the key, and the CLI also demands `--insecure-pin` before it accepts one.
 Never use it for a release the root has signed.

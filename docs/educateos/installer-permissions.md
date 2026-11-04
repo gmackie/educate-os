@@ -20,6 +20,10 @@ not as facts.
 Both modes run the same reconciler. Its state is what it observes in the account, with no local
 state file, so either mode can pick up where the other stopped.
 
+`npx launch-educate-os` ([launch-installer.md](launch-installer.md)) is the district-run mode as one
+command: it links to Cloudflare's token editor prefilled with exactly the permissions below
+(`INSTALL_TOKEN_PERMISSIONS`, now in `@educateos/installer`, shared with the guided install).
+
 District-run mode needs nothing from `educateos.io`: the district builds or downloads a release,
 verifies it offline against the keys it pins ([release-signing.md](release-signing.md)), and
 installs it with its own token. OAuth mode exists for the optional guided bootstrap

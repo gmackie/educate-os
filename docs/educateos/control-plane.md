@@ -27,6 +27,7 @@ before any script runs. Only the paths in `assets.run_worker_first` reach the Wo
 | `/clever/launch` | Clever portal launches, sent on to the registered installation for the user's Clever district (SCHO-249). No sign-in. See [Clever portal launches](#clever-portal-launches). |
 | `/app/billing`, `/app/billing/*` | Billing for managed services, inside the console (SCHO-208). See [Billing](#billing). |
 | `/stripe/webhook` | Stripe's webhook deliveries for billing: verified by Stripe's signature, no sign-in. Outside `/app`, so the Access application doesn't cover it and needs no bypass. |
+| `/releases/*` | The signed releases, read-only and public, for installers outside educateos.io such as `npx launch-educate-os` (SCHO-341): `latest.json`, each release's manifest and statement, and the content-addressed blobs. Never `candidates/`. See [launch-installer.md](launch-installer.md). |
 
 Anything else that reaches the script goes back to the assets binding and its 404 page. The paths
 live under `/app` on the apex rather than at `app.educateos.io`. `app` is a reserved slug either
@@ -357,7 +358,9 @@ exactly as the CLI verifies a release. The installer then checks every blob's ha
   install lands but the record fails, the page says so, and a re-run records it.
 - **Release downgrade.** Whoever can write to the release bucket could delete newer releases so an
   older signed one installs. Today that is only the project owner. A signed "latest" pointer or a
-  pinned minimum would close it.
+  pinned minimum would close it. The CLI (`launch-educate-os`, [launch-installer.md](launch-installer.md))
+  closes it for itself by refusing a release older than the one the account runs; the guided install
+  doesn't yet.
 - **Redirects.** The installer's Cloudflare client never follows one, so the token can't leave
   api.cloudflare.com.
 

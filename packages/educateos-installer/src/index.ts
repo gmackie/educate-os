@@ -8,6 +8,7 @@ export * from "./errors.ts";
 export * from "./manifest.ts";
 export * from "./config.ts";
 export * from "./token.ts";
+export * from "./permissions.ts";
 export * from "./oauth.ts";
 export * from "./cloudflare-api.ts";
 export * from "./cloudflare-http.ts";

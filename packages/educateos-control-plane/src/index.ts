@@ -7,4 +7,5 @@ export * from "./pages.ts";
 export * from "./probe.ts";
 export * from "./registry.ts";
 export * from "./registry-store.ts";
+export * from "./release-files.ts";
 export * from "./store.ts";
