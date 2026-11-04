@@ -85,3 +85,5 @@ test runs against a stub of `cloudflare:workers` that the package's vitest confi
   (stripped of scripts, event handlers and outside links) as a picture with its `src` PNG as the
   fallback for viewers without SVG support.
   Installed gadgets cannot resolve these package imports at runtime.
+
+- [`teacher-board`](teacher-board/README.md) -- source-card presentation and local preparation notes shared by the three teacher connector blueprints, including print and Markdown preparation export.
