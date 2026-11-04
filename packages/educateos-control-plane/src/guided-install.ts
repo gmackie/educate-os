@@ -52,8 +52,8 @@ export interface PublishedRelease {
 const RELEASE_ID = /^r\d{6}-[0-9a-f]{7,40}$/;
 
 /**
- * The newest published release. Release IDs start with a zero-padded sequence number, so the
- * greatest ID is the newest. Only `releases/` is read, never `candidates/`: a candidate isn't
+ * The newest complete published release. Release IDs start with a zero-padded sequence number, so
+ * the greatest ID is the newest. Only `releases/` is read, never `candidates/`: a candidate isn't
  * signed until it passes the release gate (release-signing.md).
  */
 export async function latestRelease(bucket: ReleaseBucket): Promise<PublishedRelease | undefined> {
@@ -64,18 +64,21 @@ export async function latestRelease(bucket: ReleaseBucket): Promise<PublishedRel
     ids.push(...page.delimitedPrefixes.map((prefix) => prefix.slice("releases/".length, -1)).filter((id) => RELEASE_ID.test(id)));
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor !== undefined);
-  const releaseId = ids.toSorted().at(-1);
-  if (releaseId === undefined) return undefined;
-  const [manifest, signed] = await Promise.all([
-    bucket.get(`releases/${releaseId}/manifest.json`),
-    bucket.get(`releases/${releaseId}/manifest.signed.json`),
-  ]);
-  if (manifest === null || signed === null) return undefined;
-  return {
-    releaseId,
-    manifestBytes: new Uint8Array(await manifest.arrayBuffer()),
-    signedManifest: JSON.parse(new TextDecoder().decode(await signed.arrayBuffer())) as unknown,
-  };
+  // Newest first. A release still being uploaded has its statement but not yet its manifest
+  // (upload-release.ts writes the manifest last), so it is passed over for the one before it.
+  for (const releaseId of ids.toSorted().toReversed()) {
+    const [manifest, signed] = await Promise.all([
+      bucket.get(`releases/${releaseId}/manifest.json`),
+      bucket.get(`releases/${releaseId}/manifest.signed.json`),
+    ]);
+    if (manifest === null || signed === null) continue;
+    return {
+      releaseId,
+      manifestBytes: new Uint8Array(await manifest.arrayBuffer()),
+      signedManifest: JSON.parse(new TextDecoder().decode(await signed.arrayBuffer())) as unknown,
+    };
+  }
+  return undefined;
 }
 
 /** The release's module and asset blobs, read from the bucket. The installer checks each one's hash. */

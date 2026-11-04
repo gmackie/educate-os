@@ -7,6 +7,7 @@
 //   /registry/*    the opt-in instance registry's heartbeats: signed by installations, no sign-in
 //   /clever/launch Clever portal launches, sent on to the registered district (SCHO-249), no sign-in
 //   /stripe/webhook Stripe's webhook deliveries for billing (SCHO-208): signed by Stripe, no sign-in
+//   /releases/*    the signed releases, read-only, for installers outside educateos.io (SCHO-341)
 //
 // Anything else that reaches the Worker is handed back to the assets binding, whose 404 page the
 // static site already defines.
@@ -21,11 +22,12 @@ import {
   BILLING_PAGE_HEADERS, billingPage, dashboardPage, installPage, installProgressEvent, installProgressHead, installProgressTail, messagePage, PAGE_HEADERS, type SiteShell,
 } from "./pages.ts";
 import { probeInstallation, type ProbeResult } from "./probe.ts";
+import { RELEASE_FILES_PREFIX, type ReleaseFileBucket, serveReleaseFile } from "./release-files.ts";
 import type { DashboardEntry, RegistryMessage, RegistryReply } from "./registry.ts";
 import type { Installation, Operator, Reservation } from "./store.ts";
 
 /** The paths the Worker handles before the assets binding, as `run_worker_first` lists them. */
-export const DYNAMIC_PATHS = ["/healthz", "/app", "/app/*", "/registry/*", CLEVER_LAUNCH_PATH, BILLING_PATHS.webhook] as const;
+export const DYNAMIC_PATHS = ["/healthz", "/app", "/app/*", "/registry/*", CLEVER_LAUNCH_PATH, BILLING_PATHS.webhook, `${RELEASE_FILES_PREFIX}*`] as const;
 
 /** The largest Stripe webhook delivery accepted. Stripe's events are a few kilobytes. */
 export const MAX_WEBHOOK_BODY_BYTES = 256 * 1024;
@@ -101,6 +103,8 @@ export interface ControlPlaneDeps {
   cleverLaunchUnaffiliated?: string;
   /** The guided install's release source and pinned trust. Without them, installing is unavailable. */
   releases?: { bucket: ReleaseBucket; trust: unknown };
+  /** The release bucket, served read-only under `/releases/`. Without it, every release file is a 404. */
+  releaseFiles?: ReleaseFileBucket;
   /** Keeps a streamed install running if the browser goes away mid-run. */
   waitUntil?: (promise: Promise<unknown>) => void;
   /** The Cloudflare API the guided install drives. Defaults to api.cloudflare.com. */
@@ -168,6 +172,8 @@ async function route(request: Request, deps: ControlPlaneDeps): Promise<Response
   }
 
   if (pathname === BILLING_PATHS.webhook) return receiveStripeWebhook(request, deps);
+
+  if (pathname.startsWith(RELEASE_FILES_PREFIX)) return serveReleaseFile(request, deps.releaseFiles);
 
   if (pathname.startsWith("/registry/")) {
     try {
