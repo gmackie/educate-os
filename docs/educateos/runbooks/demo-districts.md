@@ -117,6 +117,41 @@ Create the targets only once the configs are on `main`. Every merge deploys ever
 target whose config file is missing fails each of those deploys. Kanbanger delivery receipts come
 only from the repository's primary app (`educate-os`), not from these.
 
+## Rosters and the starter pack for the other five (SCHO-326)
+
+The owner decided on 2026-11-02 that riverbend, prairie, cedarvalley, lakeshore and harbor each get
+their own fixture roster and the middle school starter pack, never Northfield's showcase.
+`scripts/demo/seed-district.ts` does this through the district's own admin routes, as a district
+administrator:
+
+```sh
+pbpaste | node scripts/demo/seed-district.ts run --url https://riverbend.educateos.io --dry-run --out /tmp/riverbend-dry-run.json
+pbpaste | node scripts/demo/seed-district.ts run --url https://riverbend.educateos.io --out ~/educateos-exports/riverbend-before.json
+```
+
+- **Roster districts** (riverbend, cedarvalley, lakeshore, harbor) get their fixture as a OneRoster
+  1.2 CSV export built from `oneRosterSeed`. The script previews it and applies it only when the
+  preview adds records without changing, retaining or relinking any already there. The fixture's
+  district administrator and its guardians are left out. The provider fakes are not used: these
+  districts have no roster sync configured, and setting one up is a config change.
+- **prairie** is local-authority, so the script creates its schools, term, courses, classes, students
+  and staff with the authoring routes, and enrolls them. It matches records by name, so a rerun only
+  adds what is missing. A roster import would be refused there.
+- **People** sign in under the Access team as their fixture username (for example `rb-0101`). No
+  Access subject matches, so nobody is anyone until an administrator links them.
+- **The pack** is `sites/educateos-io/public/marketplace/listings/middle-school-starter-pack/1.0.0.json`,
+  posted to `admin.installMarketplacePack` unless that version is already installed.
+- **The before state** (`admin.health`, `admin.authoring`, `admin.listOfferings` and the installed
+  packs) is saved to `--out` first, with mode 600, and an existing file is never overwritten. The
+  showcase export route is off in these districts.
+
+The seed admits only the owner. To let the agents' `admin@agents.gmac.io` administer a district, the
+owner adds `--admit-subject adfd94dd-86a7-5838-b9a7-d1eb94227303` (its Access subject on the gmacko
+team) to the run. This adds a staff person, "EducateOS demo automation", signed in by that subject,
+and makes them a district administrator. A roster district refuses `admin.createPrincipal`, so in a
+roster district the script adds the person to the roster export instead. A roster sync from a
+source without that row would deactivate them.
+
 ## The K-12 showcase (SCHO-326)
 
 The showcase (SCHO-322, `NORTHFIELD_SHOWCASE` in `@educateos/fixtures`) is twelve built-out classes,
