@@ -20,3 +20,5 @@ export * from "./pairing.ts";
 // Operations (SCHO-263)
 export * from "./ops.ts";
 export * from "./ops-analytics.ts";
+// Course library (SCHO-331)
+export * from "./course-library.ts";

@@ -61,6 +61,10 @@ import type { DeviceBody } from "./routes.ts";
 import { CONNECT_PHONE_PATH, isPairApiPath, PairingRelay, type WebPrincipal } from "./pairing.ts";
 // Marketplace (SCHO-209)
 import { installListing, packBody, packTemplates } from "./marketplace.ts";
+// Course library (SCHO-331)
+import type { PublisherTrust } from "@educateos/ocs";
+import { importCourseBundle, latestCourses, libraryPolicies, planLibraryInstall } from "./course-library.ts";
+import { installCourse, previewCourseInstall, readingsFetch, type CourseInstallServices } from "./course-install.ts";
 // Operations (SCHO-263)
 import { DistrictOps, isOpsApiPath, type OpsAiUsage, type OpsAnalyticsSource, type OpsReleaseInfo } from "./ops.ts";
 
@@ -138,6 +142,13 @@ export interface DistrictAppOptions {
    * deployment's pin, never anything a request carries. Without it no marketplace listing installs.
    */
   marketplaceTrust?: ReleaseTrust;
+  /**
+   * The publishers whose OCS courses the district's course library accepts (SCHO-331): the
+   * deployment's committed pin of publisher domains and their public keys, and the district's own
+   * domains, which publish unsigned. Never anything a request carries. Without it no course bundle
+   * imports.
+   */
+  courseLibraryTrust?: PublisherTrust;
   /** Resolves resource and activity alignments. Defaults to the district's approved catalog releases. */
   alignments?: AlignmentSource;
   /** The Content Studio's optional AI reviewer. */
@@ -374,6 +385,9 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
   const simulator = new PolicyEngine({ information, audit: { record: async () => {} }, rules, now });
   const catalog = new CatalogMirror({ storage: stores.catalog, verifyRelease: options.verifyCatalogRelease ?? seedReleasesOnly });
   const alignments = options.alignments ?? catalogAlignmentSource(catalog);
+  // Course library (SCHO-331): reading the library needs no trust (its parts were checked as they
+  // entered); this one admits nothing, so a library without a pin is still readable.
+  const courseTrust = (): PublisherTrust => options.courseLibraryTrust ?? { localDomains: [], publishers: [] };
   const fundingPools = async () => effectivePools(options.fundingPools ?? [], (await stores.fundingAllocations.list()).at(-1));
   const fundingBody = async () => {
     const [report, revision] = await Promise.all([
@@ -547,13 +561,14 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       return new AssessmentCi({ assessment: this.assessment(), runs: assessmentRuns });
     }
 
-    studio(): ContentStudio {
+    /** The Content Studio, importing URLs with `fetch` (the district's import fetch unless given another, as a course install's readings are). */
+    studio(fetch: ImportFetch = options.importFetch): ContentStudio {
       return new ContentStudio({
         districtId,
         storage: stores.contentStudio,
         authorizer: this.authorizer,
         channel: "http",
-        fetch: options.importFetch,
+        fetch,
         // Uploads are not offered by this application yet, so no malware scanner is configured.
         scanner: undefined,
         alignments,
@@ -634,6 +649,31 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     /** Requires the engine to allow `action` on a district-level resource, answering `forbidden` otherwise. */
     async requireDistrict(action: Action, kind: ResourceRef["kind"]): Promise<void> {
       await this.require(action, { kind, scope: { level: "district", districtId }, classification: "district-internal" }, "Only a district administrator can do this.");
+    }
+
+    /** The services a course install in `offeringId` acts through, as this request's caller (SCHO-331). */
+    async courseInstall(offeringId: OfferingId, plan: Awaited<ReturnType<typeof planLibraryInstall>>): Promise<CourseInstallServices> {
+      const offering = this.offeringScope(offeringId);
+      // Installing a course authors the class's activities and content: refused at once to anyone who could not.
+      await this.require("create", { kind: "activity", scope: offering, classification: "teacher-only" }, "Only the class's teachers can install a course in it.");
+      return {
+        offering,
+        caller: this.caller,
+        snapshot: this.snapshot,
+        curriculum: this.curriculum(),
+        content: this.courseContent(),
+        studio: this.studio(readingsFetch(plan.imports)),
+        assessment: this.assessment(),
+        signRubric: async (draft) => {
+          await this.require("create", { kind: "rubric", scope: offering, classification: "teacher-only" }, "Only the class's teachers can sign its rubrics.");
+          const release = await signRubricRelease(draft, this.caller, evaluators, now());
+          await stores.rubrics.put(release);
+          return { rubricId: release.rubricId, version: release.version };
+        },
+        isApproved: async (frameworkKey, competencyUri) => (await alignments.resolve(frameworkKey, competencyUri)) !== undefined,
+        store: stores.courseLibrary,
+        now: () => now().toISOString(),
+      };
     }
 
     courseContent(): CourseContentService {
@@ -925,6 +965,33 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" }, "Only the class's teachers can create its activities.");
       return packTemplates(await stores.marketplacePacks.list());
     },
+    // Course library (SCHO-331)
+    "teacher.libraryCourses": async (ctx, { params }) => {
+      // Offered to whoever may author the class's activities, which is what a course install does.
+      const scope = ctx.offeringScope(params.offeringId);
+      await ctx.require("create", { kind: "activity", scope, classification: "teacher-only" }, "Only the class's teachers can install a course in it.");
+      const offering = ctx.snapshot.offerings.find((o) => o.id === params.offeringId)!;
+      const course = ctx.snapshot.courses.find((c) => c.id === offering.courseId);
+      const installs = await stores.courseLibrary.loadInstalls(params.offeringId);
+      return latestCourses(await stores.courseLibrary.listCourses()).map((entry) => {
+        const installed = installs?.courses.findLast((c) => c.packageId === entry.packageId);
+        return {
+          ...entry,
+          matchesClass: course !== undefined && entry.subject === course.subject && entry.gradeBand === course.gradeBand,
+          ...(installed === undefined ? {} : { installed: { version: installed.version, done: installed.completedAt !== undefined } }),
+        };
+      });
+    },
+    "teacher.previewCourseInstall": async (ctx, { params, body }) => {
+      const plan = await planLibraryInstall(stores.courseLibrary.library(libraryPolicies(courseTrust(), now)), body.packageId, body.version);
+      return previewCourseInstall(await ctx.courseInstall(params.offeringId, plan), plan);
+    },
+    "teacher.installCourse": async (ctx, { params, body }) => {
+      const plan = await planLibraryInstall(stores.courseLibrary.library(libraryPolicies(courseTrust(), now)), body.packageId, body.version);
+      const indexed = (await stores.courseLibrary.listCourses()).find((c) => c.packageId === body.packageId && c.version === body.version);
+      if (indexed === undefined) throw new EducateOsError("not-found", "That course is not in the district's course library.");
+      return installCourse(await ctx.courseInstall(params.offeringId, plan), plan, { maxUnits: body.maxUnits, digest: indexed.digest });
+    },
     "teacher.publishActivity": (ctx, { params }) => ctx.curriculum().publish(ctx.subject, params.definitionId),
     "teacher.installActivity": (ctx, { params, body }) =>
       installAndAssign({
@@ -1138,6 +1205,15 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
     "admin.installMarketplacePack": async (ctx, { body }) => {
       await ctx.requireDistrict("create", "marketplace-pack");
       return packBody(await installListing(stores.marketplacePacks, options.marketplaceTrust, body, { by: ctx.principal.principalId, at: now().toISOString() }));
+    },
+    // Course library (SCHO-331)
+    "admin.listLibraryCourses": async (ctx) => {
+      await ctx.requireDistrict("list", "course-package");
+      return stores.courseLibrary.listCourses();
+    },
+    "admin.importCourseBundle": async (ctx, { body }) => {
+      await ctx.requireDistrict("create", "course-package");
+      return importCourseBundle(stores.courseLibrary, options.courseLibraryTrust, body, { by: ctx.principal.principalId, at: now().toISOString() });
     },
     "admin.previewRoster": async (ctx, { body }) => {
       await ctx.requireDistrict("update", "enrollment");

@@ -38,6 +38,7 @@ import {
   RubricId,
   School,
   SchoolId,
+  Subject,
   SubmissionId,
   SyncMode,
   TermId,
@@ -613,8 +614,12 @@ export type CartridgePreviewBody = z.infer<typeof CartridgePreviewBody>;
 export const CartridgeExportBody = z.strictObject({
   fileName: z.string(),
   base64: z.string(),
-  /** Items a cartridge cannot carry, such as EducateOS activities, by module and item. */
-  losses: z.array(z.strictObject({ kind: z.enum(["activity", "quiz"]), module: z.string(), item: z.string() })),
+  /**
+   * Items a cartridge cannot carry, such as EducateOS activities, by module and item. Teacher-only
+   * notes (SCHO-331) are left out too: a cartridge has no teacher-only page, so an importer would
+   * show them to students.
+   */
+  losses: z.array(z.strictObject({ kind: z.enum(["activity", "quiz", "teacher-note"]), module: z.string(), item: z.string() })),
 });
 /** A cartridge export. */
 export type CartridgeExportBody = z.infer<typeof CartridgeExportBody>;
@@ -941,6 +946,143 @@ export type MarketplacePackTemplatesBody = z.infer<typeof MarketplacePackTemplat
 /** A listing bundle as downloaded from the marketplace. Only its shape is checked here; the district verifies it. */
 const MarketplaceBundleInput = z.record(z.string(), z.json());
 
+// Course library (SCHO-331). Plain schemas, so the browser bundle never carries the OCS verifier.
+
+/** An OCS course package ID, `<publisher domain>/<name>`, such as `educateos.io/grade-1-reading-foundations`. */
+export const CoursePackageId = z.string().regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+\/[a-z0-9][a-z0-9-]{0,99}$/, "expected <publisher domain>/<name>");
+/** A course package ID. */
+export type CoursePackageId = z.infer<typeof CoursePackageId>;
+
+/** A course package version, `MAJOR.MINOR.PATCH`. */
+export const CoursePackageVersion = z.string().regex(/^\d{1,9}\.\d{1,9}\.\d{1,9}$/, "expected MAJOR.MINOR.PATCH");
+
+/** A learning goal a course names: by CASE competency URI, with the code a teacher reads. */
+export const CourseStandardBody = z.strictObject({
+  frameworkKey: z.string(),
+  competencyUri: z.string(),
+  /** The goal's code, such as `RF.1.3`: the last part of its URI. */
+  code: z.string(),
+});
+/** A course standard. */
+export type CourseStandardBody = z.infer<typeof CourseStandardBody>;
+
+/** One unit of a library course: what installing it adds as one module. */
+export const LibraryUnitBody = z.strictObject({
+  /** The unit's place in the composed course. */
+  key: z.string(),
+  title: z.string(),
+  summary: z.string().optional(),
+  standards: z.array(CourseStandardBody),
+  activities: z.int().nonnegative(),
+  /** Student-visible Codex notes, installed as pages. */
+  pages: z.int().nonnegative(),
+  /** Teacher guides and answer keys, installed as teacher-only notes. */
+  teacherNotes: z.int().nonnegative(),
+  /** District-local resources, which a course from another district cannot carry. */
+  resources: z.int().nonnegative(),
+});
+/** A library course's unit. */
+export type LibraryUnitBody = z.infer<typeof LibraryUnitBody>;
+
+/** One course version in the district's course library, as imported from a signed bundle. */
+export const LibraryCourseBody = z.strictObject({
+  packageId: CoursePackageId,
+  version: CoursePackageVersion,
+  /** The package digest the publisher signed. */
+  digest: z.string(),
+  title: z.string(),
+  summary: z.string().optional(),
+  subject: Subject.optional(),
+  gradeBand: z.string().optional(),
+  language: z.string(),
+  /** The publisher domain, and whether the course came signed (false only for the district's own domains). */
+  publisher: z.strictObject({ domain: z.string(), signed: z.boolean() }),
+  standards: z.array(CourseStandardBody),
+  units: z.array(LibraryUnitBody),
+  /** Distinct activities the course installs. */
+  activities: z.int().nonnegative(),
+  imported: z.strictObject({ by: PrincipalId, at: z.string() }),
+});
+/** A library course version. */
+export type LibraryCourseBody = z.infer<typeof LibraryCourseBody>;
+
+/**
+ * A library course as a teacher browses it for one class: the latest version of each course, and
+ * whether it fits the class's subject and grade band.
+ */
+export const TeacherLibraryCourseBody = LibraryCourseBody.extend({
+  /** Whether the course's subject and grade band are the class's. */
+  matchesClass: z.boolean(),
+  /** What of this course the class already has, from an earlier install. */
+  installed: z.strictObject({ version: CoursePackageVersion, done: z.boolean() }).optional(),
+});
+/** A library course for a teacher. */
+export type TeacherLibraryCourseBody = z.infer<typeof TeacherLibraryCourseBody>;
+
+/** A course bundle (`educateos.ocs-bundle.v1`) as an administrator uploads it. Only its shape is checked here; the district verifies it. */
+const CourseBundleInput = z.record(z.string(), z.json());
+
+/** Which course version a teacher previews or installs in a class. */
+export const CourseInstallInput = z.strictObject({ packageId: CoursePackageId, version: CoursePackageVersion });
+
+/** One item of a unit, as installing it adds it. */
+export const CourseInstallItemBody = z.strictObject({
+  key: z.string(),
+  title: z.string(),
+  /** An activity (installed and assigned), a student page, a teacher-only note, or a district-local resource (not carried). */
+  kind: z.enum(["activity", "page", "teacher-note", "resource"]),
+  /** An activity's role in the unit. */
+  role: z.enum(["lesson", "assignment", "assessment"]).optional(),
+  /** An activity's template. */
+  template: z.string().optional(),
+  /** A teacher-only note's purpose. */
+  purpose: z.enum(["context", "answer-key"]).optional(),
+  /** Whether an earlier install already added it. */
+  done: z.boolean(),
+});
+/** An item of a course install. */
+export type CourseInstallItemBody = z.infer<typeof CourseInstallItemBody>;
+
+/**
+ * One unit of a course install. `new` is still to add; `exists` means the class already has a
+ * module with the unit's title, so the unit is skipped; `installing` was begun by an earlier
+ * request; `installed` is complete.
+ */
+export const CourseInstallUnitBody = z.strictObject({
+  key: z.string(),
+  title: z.string(),
+  summary: z.string().optional(),
+  status: z.enum(["new", "exists", "installing", "installed"]),
+  /** The class's module the unit is (or became). */
+  moduleId: CourseModuleId.optional(),
+  standards: z.array(CourseStandardBody),
+  items: z.array(CourseInstallItemBody),
+});
+/** A unit of a course install. */
+export type CourseInstallUnitBody = z.infer<typeof CourseInstallUnitBody>;
+
+/**
+ * What installing a course in a class does, or has done: its units with their items, which of the
+ * course's standards the district has approved, and whether it can go ahead. Installing only adds:
+ * it never edits or removes anything the class has.
+ */
+export const CourseInstallPlanBody = z.strictObject({
+  offeringId: OfferingId,
+  packageId: CoursePackageId,
+  version: CoursePackageVersion,
+  title: z.string(),
+  standards: z.array(CourseStandardBody.extend({ approved: z.boolean() })),
+  units: z.array(CourseInstallUnitBody),
+  /** Activities the class already holds a local definition of, from an earlier install, which are reused. */
+  reusedDefinitions: z.int().nonnegative(),
+  /** Why it cannot be installed yet, such as a standard the district has not approved. Empty when it can. */
+  problems: z.array(z.string()),
+  /** Whether every unit is installed or skipped. */
+  done: z.boolean(),
+});
+/** A course install plan or progress. */
+export type CourseInstallPlanBody = z.infer<typeof CourseInstallPlanBody>;
+
 /** Defines a route, keeping its literal types. */
 function route<const S extends RouteSpec>(spec: S): S {
   return spec;
@@ -1118,6 +1260,28 @@ export const ROUTES = {
     method: "GET", path: "/api/teacher/offerings/:offeringId/marketplace-packs", surface: "teacher",
     params: params({ offeringId: OfferingId }), response: z.array(MarketplacePackTemplatesBody),
   }),
+  // Course library (SCHO-331)
+  "teacher.libraryCourses": route({
+    method: "GET", path: "/api/teacher/offerings/:offeringId/course-library", surface: "teacher",
+    params: params({ offeringId: OfferingId }), response: z.array(TeacherLibraryCourseBody),
+  }),
+  "teacher.previewCourseInstall": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/course-install/preview", surface: "teacher",
+    params: params({ offeringId: OfferingId }), body: CourseInstallInput, response: CourseInstallPlanBody,
+  }),
+  "teacher.installCourse": route({
+    method: "POST", path: "/api/teacher/offerings/:offeringId/course-install", surface: "teacher",
+    params: params({ offeringId: OfferingId }),
+    body: CourseInstallInput.extend({
+      /**
+       * The most units to install in this request, for a client that shows progress unit by unit
+       * or a course too large for one request. Without it, every remaining unit. Call again until
+       * `done`; each call resumes where the last stopped.
+       */
+      maxUnits: z.int().min(1).max(50).optional(),
+    }),
+    response: CourseInstallPlanBody,
+  }),
   "teacher.publishActivity": route({
     method: "POST", path: "/api/teacher/activity-definitions/:definitionId/publish", surface: "teacher",
     params: params({ definitionId: ActivityDefinitionId }), body: NoBody, response: ActivityDefinition,
@@ -1264,6 +1428,13 @@ export const ROUTES = {
   }),
   "admin.installMarketplacePack": route({
     method: "POST", path: "/api/admin/marketplace/packs", surface: "admin", body: MarketplaceBundleInput, response: MarketplacePackBody,
+  }),
+  // Course library (SCHO-331)
+  "admin.listLibraryCourses": route({
+    method: "GET", path: "/api/admin/course-library", surface: "admin", response: z.array(LibraryCourseBody),
+  }),
+  "admin.importCourseBundle": route({
+    method: "POST", path: "/api/admin/course-library", surface: "admin", body: CourseBundleInput, response: LibraryCourseBody,
   }),
   "admin.previewRoster": route({
     method: "POST", path: "/api/admin/roster/preview", surface: "admin", body: RosterFilesInput, response: declared<oneroster.OneRosterPreview>(),

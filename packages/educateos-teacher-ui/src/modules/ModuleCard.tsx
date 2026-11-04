@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Badge, Button, LayerCard, Radio, Switch, Text } from "@cloudflare/kumo";
-import { ArrowDown, ArrowUp, FileText, LinkSimple, NotePencil, Trash } from "@phosphor-icons/react";
+import { ArrowDown, ArrowUp, ChalkboardTeacher, FileText, LinkSimple, NotePencil, Trash } from "@phosphor-icons/react";
 import { Problem } from "../Problem.tsx";
 import type { Assignment, CourseModule, CoursePage, ModuleItem } from "../types.ts";
 import { PageForm } from "./PageForm.tsx";
@@ -20,6 +20,33 @@ const moved = <T,>(list: readonly T[], from: number, to: number): T[] => {
   const next = [...list];
   next.splice(to, 0, ...next.splice(from, 1));
   return next;
+};
+
+/** What an item is, as the teacher reads it. A teacher-only note says so, since students never see it. */
+const kindLabel = (item: ModuleItem): string => {
+  switch (item.kind) {
+    case "page":
+      return "Page";
+    case "activity":
+      return "Activity";
+    case "link":
+      return "Link";
+    case "teacher-note":
+      return item.purpose === "answer-key" ? "Answer key · teachers only" : "Teacher note · teachers only";
+  }
+};
+
+const ItemIcon = ({ kind }: { kind: ModuleItem["kind"] }) => {
+  switch (kind) {
+    case "page":
+      return <FileText aria-hidden />;
+    case "link":
+      return <LinkSimple aria-hidden />;
+    case "activity":
+      return <NotePencil aria-hidden />;
+    case "teacher-note":
+      return <ChalkboardTeacher aria-hidden />;
+  }
 };
 
 /** One module: its title and status, its items in order, and the controls that change them. */
@@ -47,6 +74,8 @@ export const ModuleCard = ({ offeringId, module, pages, assignments, position, o
         return assignments.find((a) => a.activityId === item.activityId)?.title ?? "Activity";
       case "link":
         return item.title;
+      case "teacher-note":
+        return pageOf(item.pageId)?.title ?? "Teacher note";
     }
   };
 
@@ -69,6 +98,7 @@ export const ModuleCard = ({ offeringId, module, pages, assignments, position, o
         <div className="flex items-center gap-2">
           <h2><Text variant="heading" as="span">{module.title}</Text></h2>
           {module.source?.kind === "cartridge" && <Badge variant="neutral">Imported</Badge>}
+          {module.source?.kind === "course" && <Badge variant="neutral">From a course</Badge>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* The switch is the module's one status indicator: a "Draft" badge beside it said the same thing twice. */}
@@ -109,12 +139,12 @@ export const ModuleCard = ({ offeringId, module, pages, assignments, position, o
               <li key={item.id} className="flex flex-col gap-2 py-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="flex items-center gap-2">
-                    {item.kind === "page" ? <FileText aria-hidden /> : item.kind === "link" ? <LinkSimple aria-hidden /> : <NotePencil aria-hidden />}
+                    <ItemIcon kind={item.kind} />
                     <span>{itemLabel(item)}</span>
-                    <Text variant="secondary" size="sm" as="span">{item.kind === "page" ? "Page" : item.kind === "link" ? "Link" : "Activity"}</Text>
+                    <Text variant="secondary" size="sm" as="span">{kindLabel(item)}</Text>
                   </span>
                   <span className="flex gap-1">
-                    {item.kind === "page" && (
+                    {(item.kind === "page" || item.kind === "teacher-note") && (
                       <Button size="sm" variant="ghost" aria-label={`Edit ${itemLabel(item)}`} disabled={action.busy} onClick={() => setEditing({ kind: "page", pageId: item.pageId })}>Edit</Button>
                     )}
                     <Button size="sm" variant="ghost" shape="square" aria-label={`Move ${itemLabel(item)} up`} icon={<ArrowUp aria-hidden />} disabled={action.busy || index === 0} onClick={() => void moveItem(index, index - 1)} />
@@ -134,7 +164,7 @@ export const ModuleCard = ({ offeringId, module, pages, assignments, position, o
                     </Button>
                   </span>
                 </div>
-                {editing.kind === "page" && item.kind === "page" && editing.pageId === item.pageId && (
+                {editing.kind === "page" && (item.kind === "page" || item.kind === "teacher-note") && editing.pageId === item.pageId && (
                   <PageForm
                     label={`Edit ${itemLabel(item)}`}
                     initial={{ title: pageOf(item.pageId)?.title ?? "", body: pageOf(item.pageId)?.body ?? "" }}

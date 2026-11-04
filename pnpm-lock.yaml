@@ -1214,6 +1214,9 @@ importers:
       '@educateos/marketplace':
         specifier: workspace:*
         version: link:../educateos-marketplace
+      '@educateos/ocs':
+        specifier: workspace:*
+        version: link:../educateos-ocs
       '@educateos/policy':
         specifier: workspace:*
         version: link:../educateos-policy

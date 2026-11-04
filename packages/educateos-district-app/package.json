@@ -29,6 +29,7 @@
     "@educateos/integrations": "workspace:*",
     "@educateos/learning-artifacts": "workspace:*",
     "@educateos/marketplace": "workspace:*",
+    "@educateos/ocs": "workspace:*",
     "@educateos/policy": "workspace:*",
     "@educateos/quizzes": "workspace:*",
     "@educateos/registry": "workspace:*",

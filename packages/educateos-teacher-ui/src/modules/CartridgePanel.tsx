@@ -26,13 +26,15 @@ const SKIP_REASONS: Record<string, string> = {
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 
-/** What an export left behind: activities other systems can't run, and quizzes not written as QTI yet (SCHO-191). */
+/** What an export left behind: activities other systems can't run, quizzes not written as QTI yet (SCHO-191), and teacher-only notes (SCHO-331). */
 const lossText = (losses: CartridgeExport["losses"]) => {
   const activities = losses.filter((loss) => loss.kind === "activity").length;
   const quizzes = losses.filter((loss) => loss.kind === "quiz").length;
+  const notes = losses.filter((loss) => loss.kind === "teacher-note").length;
   return [
     activities === 0 ? "" : `${activities} ${activities === 1 ? "activity" : "activities"} stayed behind: other systems can't run EducateOS activities.`,
     quizzes === 0 ? "" : `${quizzes} ${quizzes === 1 ? "quiz" : "quizzes"} stayed behind: cartridges don't carry EducateOS quizzes yet.`,
+    notes === 0 ? "" : `${notes} teacher-only ${notes === 1 ? "note" : "notes"} stayed behind: a cartridge has no way to hide them from students.`,
   ].filter((text) => text !== "").join(" ");
 };
 

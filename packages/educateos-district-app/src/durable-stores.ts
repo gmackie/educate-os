@@ -132,6 +132,9 @@ import { OpsPublicJwk, type OpsAuditRecord, type OpsKeyRecord, type OpsStore } f
 import { KeyId, OpsScope } from "@educateos/fleet/ops";
 // Marketplace (SCHO-209)
 import { InstalledPack, sameRelease, type MarketplacePackStore } from "./marketplace.ts";
+// Course library (SCHO-331)
+import { DurableObjectPackageLibrary } from "@educateos/ocs/durable-object-library";
+import { LibraryCourse, OfferingCourseInstalls, type CourseLibrary, type CourseLibraryStore, type LibraryPolicies } from "./course-library.ts";
 import type { ConfigRevisionStore, DistrictAppStores, FundingAllocationStore, RosterSourceStore, RosterSyncStore, WorkshopUserLinkStore } from "./stores.ts";
 // Communication (SCHO-189)
 import {
@@ -220,6 +223,10 @@ export const DISTRICT_TABLES = {
   opsAudit: "educateos_ops_audit",
   // Marketplace (SCHO-209)
   marketplacePacks: "educateos_marketplace_packs",
+  // Course library (SCHO-331). The packages and exports themselves are in the OCS library's own
+  // tables (`OCS_LIBRARY_TABLE`, `OCS_EXPORT_TABLE` in `@educateos/ocs/durable-object-library`).
+  courseLibraryCourses: "educateos_course_library_courses",
+  courseInstalls: "educateos_course_installs",
   // Delegations (SCHO-175)
   delegations: "educateos_delegations",
 } as const;
@@ -1202,6 +1209,8 @@ export function durableDistrictStores(storage: DistrictSqlStorage, seed: Distric
     ops: new DurableObjectOpsStore(storage),
     // Marketplace (SCHO-209)
     marketplacePacks: new DurableObjectMarketplacePackStore(storage),
+    // Course library (SCHO-331)
+    courseLibrary: new DurableObjectCourseLibraryStore(storage),
     // Delegations (SCHO-175)
     delegations: new DurableObjectDelegationStore(storage),
   };
@@ -2284,5 +2293,76 @@ export class DurableObjectDelegationStore implements DelegationStore {
         JSON.stringify(parsed),
       );
     });
+  }
+}
+
+// Course library (SCHO-331)
+
+/**
+ * A {@link CourseLibraryStore} in a Durable Object's SQLite: the OCS package's immutable
+ * `DurableObjectPackageLibrary` over the same storage, one index row per imported course version,
+ * and one row per class holding its course installs, replaced under a revision check.
+ */
+export class DurableObjectCourseLibraryStore implements CourseLibraryStore {
+  readonly #storage: DistrictSqlStorage;
+  readonly #tables: Tables;
+
+  constructor(storage: DistrictSqlStorage) {
+    this.#storage = storage;
+    this.#tables = new Tables(storage, [
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.courseLibraryCourses} (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, package_id TEXT NOT NULL, version TEXT NOT NULL, course_json TEXT NOT NULL, UNIQUE (package_id, version)
+      )`,
+      `CREATE TABLE IF NOT EXISTS ${DISTRICT_TABLES.courseInstalls} (offering_id TEXT PRIMARY KEY, revision INTEGER NOT NULL, installs_json TEXT NOT NULL)`,
+    ], []);
+  }
+
+  library(policies: LibraryPolicies): CourseLibrary {
+    return new DurableObjectPackageLibrary(this.#storage, policies);
+  }
+
+  async listCourses(): Promise<LibraryCourse[]> {
+    return this.#tables.transaction((sql) => this.#courses(sql));
+  }
+
+  async addCourse(course: LibraryCourse): Promise<LibraryCourse> {
+    const parsed = LibraryCourse.parse(course);
+    return this.#tables.transaction((sql) => {
+      const existing = this.#courses(sql).find((c) => c.packageId === parsed.packageId && c.version === parsed.version);
+      if (existing !== undefined) return existing;
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.courseLibraryCourses} (package_id, version, course_json) VALUES (?, ?, ?)`,
+        parsed.packageId, parsed.version, JSON.stringify(parsed),
+      );
+      return parsed;
+    });
+  }
+
+  async loadInstalls(offeringId: string): Promise<OfferingCourseInstalls | undefined> {
+    return this.#tables.transaction((sql) => this.#installs(sql, offeringId));
+  }
+
+  async commitInstalls(installs: OfferingCourseInstalls, expectedRevision: number): Promise<void> {
+    const parsed = OfferingCourseInstalls.parse(installs);
+    this.#tables.transaction((sql) => {
+      if ((this.#installs(sql, parsed.offeringId)?.revision ?? 0) !== expectedRevision) {
+        throw new EducateOsError("conflict", "The class's course install changed while this request was in progress; try again.");
+      }
+      sql.exec(
+        `INSERT INTO ${DISTRICT_TABLES.courseInstalls} (offering_id, revision, installs_json) VALUES (?, ?, ?)
+         ON CONFLICT (offering_id) DO UPDATE SET revision = excluded.revision, installs_json = excluded.installs_json`,
+        parsed.offeringId, parsed.revision, JSON.stringify(parsed),
+      );
+    });
+  }
+
+  #courses(sql: DistrictSqlStorage["sql"]): LibraryCourse[] {
+    return sql.exec(`SELECT course_json FROM ${DISTRICT_TABLES.courseLibraryCourses} ORDER BY seq`).toArray()
+      .map((row) => parseStored(LibraryCourse, row.course_json, `a row of ${DISTRICT_TABLES.courseLibraryCourses}`));
+  }
+
+  #installs(sql: DistrictSqlStorage["sql"], offeringId: string): OfferingCourseInstalls | undefined {
+    const [row] = sql.exec(`SELECT installs_json FROM ${DISTRICT_TABLES.courseInstalls} WHERE offering_id = ?`, offeringId).toArray();
+    return row === undefined ? undefined : parseStored(OfferingCourseInstalls, row.installs_json, `the course installs of ${offeringId}`);
   }
 }

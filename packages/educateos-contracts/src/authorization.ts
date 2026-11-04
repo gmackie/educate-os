@@ -95,6 +95,12 @@ export const ResourceKind = z.enum([
    * district-level and `district-internal`.
    */
   "marketplace-pack",
+  /**
+   * A course package version in the district's course library (SCHO-331): an OCS course an
+   * administrator imported from a signed bundle, which teachers install into their classes.
+   * District-level and `district-internal`.
+   */
+  "course-package",
   "capability-config",
   "ai-budget",
   "audit-event",
