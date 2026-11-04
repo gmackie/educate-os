@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:23c4669549820cd5c51d3a648a06ca6bc13dbcc7e3b9f4f79445da4307ecaf7e",
+      "id": "educateos.io/grade-1-reading-foundations-meet-the-letter-buddies",
+      "version": "1.0.0"
+    }
+  },
+  "id": "meet-the-letter-buddies",
+  "role": "lesson",
+  "title": "Meet the Letter Buddies"
+}

@@ -1,0 +1,117 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to each word. Write the vowel you hear in the middle.",
+    "passage": "Your teacher will say four words. Listen for the sound in the middle of each word. Is it a, e, i, o or u? Write that letter.",
+    "questions": [
+      {
+        "prompt": "Listen: sun. Write the vowel you hear in the middle."
+      },
+      {
+        "prompt": "Listen: bed. Write the vowel you hear in the middle."
+      },
+      {
+        "prompt": "Listen: map. Write the vowel you hear in the middle."
+      },
+      {
+        "prompt": "Listen: lip. Write the vowel you hear in the middle."
+      },
+      {
+        "answerBy": "speaking",
+        "prompt": "Read this word and say it out loud: pot."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Short Vowel Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-short-vowel-check",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "hears-vowel",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I heard the middle sound"
+      },
+      {
+        "id": "writes-vowel",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I wrote the right vowel"
+      },
+      {
+        "id": "reads-word",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I read the word"
+      }
+    ],
+    "title": "Short vowel check"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

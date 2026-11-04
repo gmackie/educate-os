@@ -1,0 +1,78 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "drawPrompt": "Draw two things whose names rhyme.",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "lookPrompt": "Rhyming words end with the same sound. Cat and hat rhyme. Bee and tree rhyme. Sun and bun rhyme.",
+    "overview": "Draw two things that rhyme, then tell about them.",
+    "sentenceFrames": [
+      "I drew a ___ and a ___.",
+      "___ rhymes with ___."
+    ],
+    "subject": "english-language-arts",
+    "tellAboutIt": true,
+    "template": "picture-response",
+    "title": "My Rhyme Picture"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-my-rhyme-picture",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "rhyme",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "My two things rhyme"
+      },
+      {
+        "id": "tells",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I said the rhyming words"
+      }
+    ],
+    "title": "My rhyme picture"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

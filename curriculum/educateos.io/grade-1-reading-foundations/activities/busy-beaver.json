@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:daecfc078fb4d6ce30058027d6269cae4dae713e3af39eb4a7b6b3670c70f040",
+      "id": "educateos.io/grade-1-reading-foundations-busy-beaver",
+      "version": "1.0.0"
+    }
+  },
+  "id": "busy-beaver",
+  "role": "assessment",
+  "title": "The Busy Beaver"
+}

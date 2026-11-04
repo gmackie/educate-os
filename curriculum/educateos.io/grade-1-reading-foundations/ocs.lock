@@ -1,0 +1,11 @@
+{
+  "lockVersion": 1,
+  "packages": [],
+  "root": {
+    "digest": "sha256:8e5c73abfcc4bd448d1362cd2d898dbc9bea93661d89e4a3a1b5eb62616e4dfe",
+    "id": "educateos.io/grade-1-reading-foundations",
+    "modules": [],
+    "version": "1.0.0"
+  },
+  "specVersion": "1.1"
+}

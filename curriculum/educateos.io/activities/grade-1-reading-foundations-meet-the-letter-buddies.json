@@ -1,0 +1,48 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "speaking",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "1",
+    "overview": "Listen for the sound two letters make together.",
+    "passage": "Letter buddies are two letters that make one sound. Sh says /sh/ in ship. Ch says /ch/ in chop. Th says /th/ in thin. Wh says /wh/ in when. Listen to each word and find the buddy.",
+    "questions": [
+      {
+        "prompt": "Say shop. What letter buddy do you hear at the start?"
+      },
+      {
+        "prompt": "Say chin. What letter buddy do you hear at the start?"
+      },
+      {
+        "prompt": "Say bath. What letter buddy do you hear at the end?"
+      },
+      {
+        "prompt": "Say a word that starts with /sh/."
+      }
+    ],
+    "sentenceFrames": [
+      "I hear ___.",
+      "The buddy is ___.",
+      "My word is ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Meet the Letter Buddies"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-meet-the-letter-buddies",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

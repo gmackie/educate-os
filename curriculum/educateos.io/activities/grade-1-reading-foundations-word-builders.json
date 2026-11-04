@@ -1,0 +1,89 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Change one sound to make a new word.",
+    "passage": "Let's build words! Say a word. Change one sound. Now you have a new word!",
+    "questions": [
+      {
+        "prompt": "Say cat 🐱. Change the first sound to /h/. Write your new word."
+      },
+      {
+        "prompt": "Say pig 🐷. Change the first sound to /b/. Write your new word."
+      },
+      {
+        "prompt": "Say hop. Change the last sound to /t/. Write your new word."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Word Builders"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-word-builders",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "sounds",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I changed the sound"
+      },
+      {
+        "id": "read",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I read my new word"
+      }
+    ],
+    "title": "Word builders"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

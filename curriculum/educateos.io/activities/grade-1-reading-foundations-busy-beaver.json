@@ -1,0 +1,117 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "speaking",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Listen to a true text. Tell the main topic and two key details.",
+    "passage": "Beavers are busy animals. They have big front teeth that never stop growing. Beavers chew down trees with their teeth. They use the sticks to build dams across streams. A dam makes a pond. In the pond, the beaver builds a lodge to live in. A beaver's flat tail helps it swim.",
+    "questions": [
+      {
+        "prompt": "What is this text mostly about?"
+      },
+      {
+        "prompt": "Tell one key detail about a beaver's teeth."
+      },
+      {
+        "prompt": "What do beavers build with sticks?"
+      },
+      {
+        "answerBy": "writing",
+        "prompt": "How does a beaver's tail help it?"
+      }
+    ],
+    "sentenceFrames": [
+      "This text is mostly about ___.",
+      "One key detail is ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "The Busy Beaver"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-busy-beaver",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "main-topic",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told the main topic"
+      },
+      {
+        "id": "key-details",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told key details"
+      },
+      {
+        "id": "answers",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I answered with facts from the text"
+      }
+    ],
+    "title": "The busy beaver"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

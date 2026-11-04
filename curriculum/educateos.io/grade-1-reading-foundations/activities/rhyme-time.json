@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:7b251892c8d95a46ce13f7df1a8cbfea39bb5e9d11148c4e0b833ede1ba7fbfa",
+      "id": "educateos.io/grade-1-reading-foundations-rhyme-time",
+      "version": "1.0.0"
+    }
+  },
+  "id": "rhyme-time",
+  "role": "lesson",
+  "title": "Rhyme Time"
+}

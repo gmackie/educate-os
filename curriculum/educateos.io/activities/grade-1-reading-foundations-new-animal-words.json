@@ -1,0 +1,92 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Use the words around a new word to find out what it means.",
+    "passage": "A rabbit digs a burrow under the ground. A burrow is a hole or tunnel where the rabbit lives. A beaver builds a lodge in the water. Its lodge is made of sticks and mud.",
+    "questions": [
+      {
+        "prompt": "What is a burrow? Write a few words."
+      },
+      {
+        "prompt": "Where does a beaver build its lodge?"
+      },
+      {
+        "prompt": "What is a lodge made of?"
+      },
+      {
+        "answerBy": "drawing",
+        "prompt": "Draw a burrow under the ground."
+      }
+    ],
+    "sentenceFrames": [
+      "A burrow is ___.",
+      "A lodge is made of ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "New Words in Animal Texts"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.1.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-new-animal-words",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "meaning",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told what the new word means"
+      },
+      {
+        "id": "uses-text",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I used words from the text"
+      }
+    ],
+    "title": "New words"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

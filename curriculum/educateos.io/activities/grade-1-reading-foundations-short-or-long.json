@@ -1,0 +1,96 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Read each word and tell if the vowel is short or long.",
+    "passage": "Some words have a short vowel. Some words have Magic E and a long vowel. Read each word. Then write short or long.",
+    "questions": [
+      {
+        "prompt": "Read the word: hat. Write short or long."
+      },
+      {
+        "prompt": "Read the word: hate. Write short or long."
+      },
+      {
+        "prompt": "Read the word: dime. Write short or long."
+      },
+      {
+        "prompt": "Read the word: dim. Write short or long."
+      },
+      {
+        "answerBy": "speaking",
+        "prompt": "Read this word out loud: home."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Short or Long?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RF.1.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-1-reading-foundations-short-or-long",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "reads-word",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I read the word"
+      },
+      {
+        "id": "sorts-vowel",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told short or long"
+      }
+    ],
+    "title": "Short or long"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}
