@@ -21,7 +21,7 @@ test("every watched target has a list and nothing else does", () => {
 test("each list covers the repository inputs, its roots, its build scripts and the scripts manifest", () => {
   for (const [name, target] of Object.entries(WATCHED_TARGETS)) {
     const paths = committed[name]!;
-    for (const path of [...REPOSITORY_INPUTS, ...target.roots.map((dir) => `${dir}/`), ...target.scripts, "scripts/package.json"]) {
+    for (const path of [...REPOSITORY_INPUTS, ...(target.inputs ?? []), ...target.roots.map((dir) => `${dir}/`), ...target.scripts, "scripts/package.json"]) {
       assert.ok(paths.includes(path), `${name} must watch ${path}`);
     }
   }
@@ -46,6 +46,12 @@ test("each list covers every workspace package its roots depend on, transitively
       }
     }
   }
+});
+
+test("the site's deploy follows the curriculum its course catalog renders", () => {
+  // A course merged under curriculum/ must reach educateos.io/courses/ (SCHO-333).
+  assert.ok(committed["educateos-site"]!.includes("curriculum/"));
+  assert.ok(committed["educateos-site"]!.includes("scripts/curriculum/lib.ts"));
 });
 
 test("a relative import into another package is watched", () => {

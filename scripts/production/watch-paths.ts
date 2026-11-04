@@ -47,12 +47,21 @@ const DISTRICT = {
 };
 const STAMP = ["scripts/production/stamp-commit.ts"];
 
+/** What one target's build reads: its packages, its build scripts, and repository data it renders. */
+export interface WatchedTarget {
+  roots: string[];
+  scripts: string[];
+  /** Repository paths outside the workspace its build reads, such as `curriculum/`. */
+  inputs?: string[];
+}
+
 /**
  * ForgeGraph target name -> the workspace packages its build compiles (its appDir and every
- * package its buildCommand builds with `-F`) and the scripts its buildCommand runs. Keep in step
- * with the target specs in docs/educateos/runbooks/production-instance.md.
+ * package its buildCommand builds with `-F`), the scripts its buildCommand runs, and any data
+ * outside the workspace it reads. Keep in step with the target specs in
+ * docs/educateos/runbooks/production-instance.md.
  */
-export const WATCHED_TARGETS: Record<string, { roots: string[]; scripts: string[] }> = {
+export const WATCHED_TARGETS: Record<string, WatchedTarget> = {
   "schoolos-district-worker": DISTRICT,
   "educateos-prairie-district": DISTRICT,
   "educateos-riverbend-district": DISTRICT,
@@ -65,7 +74,8 @@ export const WATCHED_TARGETS: Record<string, { roots: string[]; scripts: string[
   "gatekeeper-schoolos": { roots: ["packages/gatekeeper-educateos"], scripts: STAMP },
   "educateos-admin": { roots: ["packages/educateos-admin"], scripts: STAMP },
   "educateos-demo-fakes": { roots: ["sites/educateos-demo-fakes"], scripts: STAMP },
-  "educateos-site": { roots: ["sites/educateos-io", "packages/educateos-demo"], scripts: STAMP },
+  // build.mjs renders the course catalog from curriculum/ (SCHO-333): a merged course must deploy.
+  "educateos-site": { roots: ["sites/educateos-io", "packages/educateos-demo"], scripts: STAMP, inputs: ["curriculum/"] },
 };
 
 const SOURCE = /\.(?:[cm]?[jt]sx?|jsonc?)$/;
@@ -116,7 +126,7 @@ const buildFiles = (ws: Workspace, dir: string) =>
   (ws.files.get(dir) ?? []).filter((file) => (SOURCE.test(file) && !TEST_ONLY.test(file)) || file.endsWith("package.json"));
 
 /** The paths one target watches, sorted. */
-export function watchPaths(ws: Workspace, target: { roots: string[]; scripts: string[] }): string[] {
+export function watchPaths(ws: Workspace, target: WatchedTarget): string[] {
   const packages = new Set<string>();
   const scriptFiles = new Set<string>();
   const pendingPackages = [...target.roots];
@@ -169,7 +179,7 @@ export function watchPaths(ws: Workspace, target: { roots: string[]; scripts: st
     scriptFiles.add(file);
     if (!TEST_ONLY.test(file)) scan(file);
   }
-  return [...REPOSITORY_INPUTS, ...[...packages].map((dir) => `${dir}/`), ...scriptFiles].toSorted();
+  return [...REPOSITORY_INPUTS, ...(target.inputs ?? []), ...[...packages].map((dir) => `${dir}/`), ...scriptFiles].toSorted();
 }
 
 /** The tracked scripts file a reference names, trying TypeScript extensions; null if none. */
