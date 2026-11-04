@@ -4,13 +4,13 @@
 // and every activity imported, published, installed, assigned and placed. Resumable and add-only.
 import { describe, expect, it } from "vitest";
 import { SigningIdentity } from "@educateos/fleet";
-import type { PublisherTrust } from "@educateos/ocs";
+import { PublisherTrust } from "../src/index.ts";
 import bundleJson from "../../../curriculum/bundles/educateos.io/grade-1-reading-foundations/1.0.0.json" with { type: "json" };
 import publisher from "../../../curriculum/educateos.io/publisher.json" with { type: "json" };
 import { bootDistrict, expectError, NF } from "./support.ts";
 
 const COURSE = { packageId: "educateos.io/grade-1-reading-foundations", version: "1.0.0" } as const;
-const TRUST: PublisherTrust = { localDomains: [], publishers: [publisher] };
+const TRUST = PublisherTrust.parse({ localDomains: [], publishers: [publisher] });
 const bundle = () => structuredClone(bundleJson) as unknown as Record<string, never>;
 
 const UNITS = ["Short Vowel Sounds", "Stories We Love", "Two Letters, One Sound", "Magic E: Long Vowels", "Animal Facts", "Rhymes and Smooth Reading"];

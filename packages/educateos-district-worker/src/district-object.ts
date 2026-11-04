@@ -358,6 +358,8 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         releaseVersion: this.#releaseVersion(),
         // Marketplace (SCHO-209)
         marketplaceTrust: this.env.MARKETPLACE_TRUST,
+        // Course library (SCHO-331)
+        courseLibraryTrust: this.env.COURSE_LIBRARY_TRUST,
         // Demo showcase (SCHO-326)
         demoShowcase: this.env.DEMO_SHOWCASE,
       },

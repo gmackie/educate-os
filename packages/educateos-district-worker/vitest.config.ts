@@ -1,4 +1,5 @@
 import { createHash, generateKeyPairSync, type KeyObject } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import capnwebValidate from "capnweb-validate/vite";
 import { kCurrentWorker } from "miniflare";
@@ -31,6 +32,13 @@ const MARKETPLACE_TRUST = JSON.stringify({
   root: { threshold: 1, keys: [pinned(generateKeyPairSync("ed25519").publicKey)] },
   keySetVersion: 0,
   keys: [pinned(marketplaceKey.publicKey)],
+});
+
+// The course library's publisher pin (SCHO-331): the committed educateos.io key, so the tests import
+// the committed reference course bundle exactly as a deployed district would.
+const COURSE_LIBRARY_TRUST = JSON.stringify({
+  localDomains: [],
+  publishers: [JSON.parse(readFileSync(new URL("../../curriculum/educateos.io/publisher.json", import.meta.url), "utf8"))],
 });
 
 /**
@@ -72,6 +80,8 @@ export default defineConfig({
           TEST_MCP_ISSUER_PUBLIC_JWK: JSON.stringify({ ...mcpIssuerKey.publicKey.export({ format: "jwk" }), kid: "test-mcp-key", alg: "ES256" }),
           // Marketplace installs (SCHO-209).
           MARKETPLACE_TRUST,
+          // Course library imports (SCHO-331).
+          COURSE_LIBRARY_TRUST,
           // The demo showcase (SCHO-326), which TEST_CONFIG.demo names too.
           DEMO_SHOWCASE: "northfield",
           TEST_MARKETPLACE_RELEASE_JWK: JSON.stringify(marketplaceKey.privateKey.export({ format: "jwk" })),

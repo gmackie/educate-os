@@ -8,6 +8,7 @@
 // delivered by ForgeGraph and never written down here; see
 // docs/educateos/runbooks/production-instance.md.
 
+import { EDUCATEOS_COURSE_LIBRARY_TRUST } from "./demo-districts.ts";
 import type { ProductionInstance } from "./production-config.ts";
 
 /** The schoolos.gmac.io instance. */
@@ -77,6 +78,8 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
     // Northfield's demo district, so it may seed the K-12 showcase (SCHO-326) once its
     // DISTRICT_CONFIG.demo names it too (docs/educateos/runbooks/demo-districts.md).
     showcase: "northfield",
+    // Its course library imports the educateos.io reference courses (SCHO-331).
+    courseLibraryTrust: EDUCATEOS_COURSE_LIBRARY_TRUST,
   },
   // One origin per district (ADR-0014, SCHO-259), on since the cutover
   // (docs/educateos/runbooks/one-origin-cutover.md): the router serves northfield.educateos.io,

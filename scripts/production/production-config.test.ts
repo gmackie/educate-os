@@ -16,7 +16,7 @@ import {
   demoDistrictConfigName, demoDistrictWorkerName, generateProductionConfigs, productionBuildEnv, productionPackageNames,
   productionWorkerName, renderProductionConfig, type DemoDistrictDeployment, type ProductionConfig, type ProductionInstance,
 } from "./production-config.ts";
-import { AI_DEMO_URL, DEMO_DISTRICT_DEPLOYMENTS, DEMO_DISTRICTS_ONE_ORIGIN, DEMO_MARKETPLACE_TRUST } from "./demo-districts.ts";
+import { AI_DEMO_URL, DEMO_DISTRICT_DEPLOYMENTS, DEMO_DISTRICTS_ONE_ORIGIN, DEMO_MARKETPLACE_TRUST, EDUCATEOS_COURSE_LIBRARY_TRUST } from "./demo-districts.ts";
 import { SCHOOLOS_GMAC_IO } from "./schoolos-gmac-io.ts";
 
 const PACKAGES = readDeployablePackages(PACKAGES_DIR);
@@ -191,9 +191,10 @@ test("the district Worker has its own custom domains, serves the UIs as assets a
   });
   // Discussion screening reaches the guard's Hall Monitor by the same binding, signing as it does
   // (SCHO-308).
-  // It is Northfield's demo district, so it may seed the showcase (SCHO-326).
+  // It is Northfield's demo district, so it may seed the showcase (SCHO-326), and its course
+  // library imports the educateos.io reference courses (SCHO-331).
   assert.deepEqual(district.vars, {
-    HALL_MONITOR_ISSUER: "educateos", HALL_MONITOR_AUDIENCE: "hall-monitor", DEMO_SHOWCASE: "northfield", LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
+    HALL_MONITOR_ISSUER: "educateos", HALL_MONITOR_AUDIENCE: "hall-monitor", DEMO_SHOWCASE: "northfield", COURSE_LIBRARY_TRUST: EDUCATEOS_COURSE_LIBRARY_TRUST, LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
   });
   assert.deepEqual(district.services, [{ binding: "HALL_MONITOR", service: "hall-monitor" }]);
   assert.deepEqual(district.triggers, { crons: ["7 * * * *", "0 14 * * SUN"] });
@@ -368,6 +369,8 @@ test("deploys five demo districts beside northfield, each its own Worker at its 
       AI_DEMO_URL: AI_DEMO_URL,
       SCHOOL_MANIFEST: JSON.stringify({ origin: `https://${slug}.educateos.io`, features: { ai: false } }),
       MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST,
+      // The educateos.io publisher key its course library imports under (SCHO-331).
+      COURSE_LIBRARY_TRUST: EDUCATEOS_COURSE_LIBRARY_TRUST,
       // The showcase it may seed (SCHO-326).
       DEMO_SHOWCASE: "northfield",
     });
@@ -484,6 +487,7 @@ test("one origin: the district Worker gives up its hostnames, keeps its name, LT
     HALL_MONITOR_ISSUER: "educateos",
     HALL_MONITOR_AUDIENCE: "hall-monitor",
     DEMO_SHOWCASE: "northfield",
+    COURSE_LIBRARY_TRUST: EDUCATEOS_COURSE_LIBRARY_TRUST,
     LTI_TOOL_ORIGIN: "https://district.schoolos.gmac.io",
     // Phones sign in at the district's /connect-phone with Google (SCHO-283).
     SCHOOL_MANIFEST: JSON.stringify({ origin: NORTHFIELD, signIn: [{ id: "google", label: "Google" }], features: { ai: true } }),
@@ -530,6 +534,8 @@ test("one origin: a demo district answers /ai itself, linking to Northfield, and
       AI_DEMO_URL,
       SCHOOL_MANIFEST: JSON.stringify({ origin: `https://${slug}.educateos.io`, features: { ai: false } }),
       MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST,
+      // The educateos.io publisher key its course library imports under (SCHO-331).
+      COURSE_LIBRARY_TRUST: EDUCATEOS_COURSE_LIBRARY_TRUST,
       // The showcase it may seed (SCHO-326).
       DEMO_SHOWCASE: "northfield",
     });
@@ -582,4 +588,10 @@ test("the principal bindings reach the district's resolver by its pinned name, o
     ...withoutDistrict, principalBinding: "migration",
     gatekeepers: withoutDistrict.gatekeepers.filter((name) => name !== EDUCATEOS_GATEKEEPER_PACKAGE),
   }), /principal bindings need the instance's district Worker/);
+});
+
+test("the course library pin is the committed educateos.io publisher key, public halves only (SCHO-331)", () => {
+  const publisher = JSON.parse(readFileSync(join(import.meta.dirname, "../../curriculum/educateos.io/publisher.json"), "utf8"));
+  assert.deepEqual(JSON.parse(EDUCATEOS_COURSE_LIBRARY_TRUST), { localDomains: [], publishers: [publisher] });
+  for (const key of publisher.keys) assert.deepEqual(Object.keys(key).sort(), ["keyId", "publicKey"]);
 });
