@@ -1,9 +1,9 @@
 {
   "definition": {
     "portable": {
-      "digest": "sha256:d4a385ab6f812fce25f6942bff5e8ea45cde539f2d76246d7e0b68f7a75f18fa",
+      "digest": "sha256:fe170a0cd860f03f5815bfa52c821ba3847e7d565f37b6f619538996a4703eed",
       "id": "educateos.io/english-9-one-scene-slowed-down",
-      "version": "1.0.0"
+      "version": "1.0.1"
     }
   },
   "id": "one-scene-slowed-down",

@@ -1,9 +1,9 @@
 {
   "definition": {
     "portable": {
-      "digest": "sha256:0257d390495e5043a5b9b54a44da7b5bcc2f9ad9492503ba12f53d2e2d092168",
+      "digest": "sha256:a433bf344b7b637bb3602bef03dad75718b768d841e2afb609366a75f2fce04e",
       "id": "educateos.io/english-9-a-threshold-of-my-own",
-      "version": "1.0.0"
+      "version": "1.0.1"
     }
   },
   "id": "a-threshold-of-my-own",

@@ -1,9 +1,9 @@
 {
   "definition": {
     "portable": {
-      "digest": "sha256:641dc024eef473b8b1e4eeb5d10670e8c2ba93fad6ec795ada3e666eb039d3ff",
+      "digest": "sha256:90a3cf6c84bf021944f77d691fff189f759abd987b8f72d8233daaa3322ff147",
       "id": "educateos.io/english-9-reading-like-a-writer",
-      "version": "1.0.0"
+      "version": "1.0.1"
     }
   },
   "id": "reading-like-a-writer",
