@@ -19,7 +19,7 @@
 // install of a course naming the same export version reuses the class's definition.
 import type { AssessmentService } from "@educateos/assessment";
 import type { RubricDraft } from "@educateos/assessment-ci";
-import { ADMIN_REVIEW_FLAGS, blockingFlagCodes, randomIdBody, type ContentStudio, type ImportFetch } from "@educateos/content-studio";
+import { randomIdBody, type ContentStudio, type ImportFetch } from "@educateos/content-studio";
 import { ActivityDefinitionId, EducateOsError, RubricId, type Caller, type DistrictDirectorySnapshot } from "@educateos/contracts";
 import type { CourseContentService, CourseOutline, CurriculumService, OfferingScope, ResourceReleaseRef, RubricRef, TemplateInput } from "@educateos/curriculum";
 import {
@@ -281,12 +281,7 @@ class DistrictCourseInstallTarget implements CourseInstallTarget {
     const readings = new Map<string, ResourceReleaseRef>();
     for (const reading of exported.readings) {
       const submitted = await this.#services.studio.submitUrl(this.#subject, { url: readingUrl(exported.id, exported.version, reading.id), targetScope: offering });
-      // The teacher's install is the review of the course's readings too, so it acknowledges what the
-      // checks flagged about what a reading says (a phrase like "who you are now" reads as addressed to
-      // an AI). Reading text is only ever data (threat T7), and the acknowledgement stays on the
-      // decision and in the item's audit trail. A flag only a curriculum admin may decide still stops it.
-      const acknowledgedFlags = blockingFlagCodes(submitted.checks).filter((code) => !ADMIN_REVIEW_FLAGS.includes(code));
-      const release = await this.#services.studio.approve(this.#subject, submitted.id, { alignments: [], acknowledgedFlags });
+      const release = await this.#services.studio.approve(this.#subject, submitted.id, { alignments: [] });
       readings.set(reading.id, { resourceId: release.descriptor.id, version: release.descriptor.release.version } as ResourceReleaseRef);
     }
     // The export's rubric, as data, becomes a rubric release of the district's own: no checks, since an export carries none.
