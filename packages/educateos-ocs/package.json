@@ -2,7 +2,7 @@
   "name": "@educateos/ocs",
   "version": "0.1.0",
   "private": true,
-  "description": "EducateOS Open Course Specification (roadmap \u00a75.3 and \u00a715.10, PR C06): the OCS course package contract (manifest, units, activities, resources, Codex, lockfile), a deterministic module resolver, the composer that flattens a locked course into one outline, friendly composition for teachers, the export to curriculum activity installations, the Thin CC adapter in both directions, publisher signatures against district-approved keys, and an immutable Durable Object SQLite library through its `./durable-object-library` entry point. A library, not a deployable Worker. See docs/educateos/rfc/0001-open-course-specification.md.",
+  "description": "EducateOS Open Course Specification (roadmap \u00a75.3 and \u00a715.10, PR C06): the OCS course package contract (manifest, units, activities, resources, Codex, lockfile), a deterministic module resolver, the composer that flattens a locked course into one outline, friendly composition for teachers, the export to curriculum activity installations, the Thin CC adapter in both directions, publisher signatures against district-approved keys, OCS 1.1 portable activity exports and the course install plan a district carries out through `CourseInstallTarget`, and an immutable Durable Object SQLite library through its `./durable-object-library` entry point. A library, not a deployable Worker. See docs/educateos/rfc/0001-open-course-specification.md.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",

@@ -3,7 +3,8 @@
 
 import { DurableObject } from "cloudflare:workers";
 import { EducateOsError } from "@educateos/contracts";
-import { DurableObjectPackageLibrary, type PublicationPolicy } from "../../src/durable-object-library.ts";
+import type { PublishedActivityExport } from "../../src/activity-export.ts";
+import { DurableObjectPackageLibrary, type ExportPublicationPolicy, type PublicationPolicy } from "../../src/durable-object-library.ts";
 import type { OcsFiles } from "../../src/package.ts";
 import type { PublishedPackage } from "../../src/resolver.ts";
 import type { OcsPackageId } from "../../src/schema.ts";
@@ -30,9 +31,33 @@ export const TEST_POLICY: PublicationPolicy = async (pkg, signature) => {
   throw new EducateOsError("unauthenticated", "the package's publisher signature was not accepted");
 };
 
+/** {@link TEST_POLICY} for activity exports. */
+export const TEST_EXPORT_POLICY: ExportPublicationPolicy = async (parsed, signature) => {
+  if (parsed.export.id.startsWith("northfield.example/")) return { signed: false };
+  if ((signature as { accepted?: unknown } | undefined)?.accepted === true) return { signed: true };
+  throw new EducateOsError("unauthenticated", "the shared activity's publisher signature was not accepted");
+};
+
 /** A district's course library. */
 export class TestLibrary extends DurableObject {
-  readonly #library = new DurableObjectPackageLibrary(this.ctx.storage, { policy: TEST_POLICY, now: () => new Date("2026-10-21T09:00:00Z") });
+  readonly #library = new DurableObjectPackageLibrary(this.ctx.storage, { policy: TEST_POLICY, exportPolicy: TEST_EXPORT_POLICY, now: () => new Date("2026-10-21T09:00:00Z") });
+
+  /** Publishes an activity export version. */
+  async publishExport(text: string, signature?: unknown): Promise<Result<PublishedActivityExport>> {
+    return attempt(() => this.#library.publishExport(text, signature));
+  }
+
+  /** One export version's digest and accepted signature, as JSON, and whether it still verifies. */
+  async exportEntry(id: string, version: string): Promise<{ digest: string; signature: string | undefined; verified: boolean } | undefined> {
+    const entry = await this.#library.getExportEntry(id, version);
+    if (entry === undefined) return undefined;
+    return { digest: entry.digest, signature: entry.signature === undefined ? undefined : JSON.stringify(entry.signature), verified: await this.#library.verifyExportEntry(id, version) };
+  }
+
+  /** Every published version of an export. */
+  async exportVersions(id: string): Promise<readonly string[]> {
+    return this.#library.listExportVersions(id);
+  }
 
   /** Publishes a package version. */
   async publish(files: OcsFiles, signature?: unknown): Promise<Result<PublishedPackage>> {

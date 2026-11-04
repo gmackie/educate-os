@@ -4,7 +4,8 @@
 
 import { env, evictDurableObject, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { DurableObjectPackageLibrary, OCS_LIBRARY_TABLE } from "../../src/durable-object-library.ts";
+import { activityExportDigest } from "../../src/activity-export.ts";
+import { DurableObjectPackageLibrary, OCS_EXPORT_TABLE, OCS_LIBRARY_TABLE } from "../../src/durable-object-library.ts";
 import { formatJson, packageDigest, readPackage } from "../../src/package.ts";
 import { resolveCourse } from "../../src/resolver.ts";
 import { TEST_POLICY } from "./worker.ts";
@@ -20,6 +21,15 @@ function files(id: string, version = "1.0.0", title = "Cells"): Record<string, s
     "resources/reading.json": formatJson({ kind: "release", id: "reading", title: "Reading", release: { resourceId: "rsc_reading", version: "1.0.0" }, use: "link" }),
   };
 }
+
+/** A one-step picture-response export. */
+const exported = (id: string, language = "en"): string => formatJson({
+  specVersion: "1.1", id, version: "1.0.0", language, alignments: [],
+  activity: {
+    template: "picture-response", title: "Pond", subject: "science", gradeBand: "K", overview: "Draw a pond.", aiHelp: "none", due: { kind: "none" },
+    lookPrompt: "Look at the pond.", drawPrompt: "Draw an animal that lives there.", tellAboutIt: false, sentenceFrames: [],
+  },
+});
 
 const COURSE = "northfield.example/biology-9";
 const EXTERNAL = "openbio.example/cells-core";
@@ -67,5 +77,31 @@ describe("DurableObjectPackageLibrary", () => {
     expect(await library.publish(files(EXTERNAL), signature)).toMatchObject({ ok: true });
     await evictDurableObject(library);
     expect(JSON.parse((await library.entry(EXTERNAL, "1.0.0"))!.signature!)).toStrictEqual(signature);
+  });
+
+  it("keeps activity exports immutable and admits them only by its export policy (OCS 1.1)", async () => {
+    const library = fresh();
+    const own = exported("northfield.example/pond");
+    expect(await library.publishExport(own)).toMatchObject({ ok: true, value: { digest: await activityExportDigest(own) } });
+    expect(await library.publishExport(own)).toMatchObject({ ok: true });
+    expect(await library.publishExport(exported("northfield.example/pond", "es"))).toStrictEqual({ ok: false, code: "conflict" });
+    expect(await library.publishExport(exported(EXTERNAL))).toStrictEqual({ ok: false, code: "unauthenticated" });
+    expect(await library.publishExport(exported(EXTERNAL), { accepted: true })).toMatchObject({ ok: true });
+    expect(await library.publishExport("{")).toStrictEqual({ ok: false, code: "validation-failed" });
+    await evictDurableObject(library);
+    expect(await library.exportVersions("northfield.example/pond")).toStrictEqual(["1.0.0"]);
+    expect(await library.exportEntry("northfield.example/pond", "1.0.0")).toMatchObject({ signature: undefined, verified: true });
+    expect(JSON.parse((await library.exportEntry(EXTERNAL, "1.0.0"))!.signature!)).toStrictEqual({ accepted: true });
+    await runInDurableObject(library, (_, state) => {
+      expect(() => state.storage.sql.exec(`UPDATE ${OCS_EXPORT_TABLE} SET digest = 'x'`)).toThrow(/immutable/);
+      expect(() => state.storage.sql.exec(`DELETE FROM ${OCS_EXPORT_TABLE}`)).toThrow(/immutable/);
+    });
+  });
+
+  it("refuses every activity export without an export policy", async () => {
+    await runInDurableObject(fresh(), async (_, state) => {
+      const plain = new DurableObjectPackageLibrary(state.storage, { policy: TEST_POLICY });
+      await expect(plain.publishExport(exported("northfield.example/pond"))).rejects.toMatchObject({ code: "policy-violation" });
+    });
   });
 });

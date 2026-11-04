@@ -13,4 +13,6 @@ export * from "./composer.ts";
 export * from "./drafts.ts";
 export * from "./export.ts";
 export * from "./signatures.ts";
+export * from "./activity-export.ts";
+export * from "./install-plan.ts";
 export * from "./thin-cc.ts";
