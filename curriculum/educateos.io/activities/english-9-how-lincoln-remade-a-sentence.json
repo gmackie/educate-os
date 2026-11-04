@@ -1,0 +1,171 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "genre": "literary-analysis",
+    "gradeBand": "9-12",
+    "minWords": 500,
+    "minimumCitations": 1,
+    "overview": "Write a rhetorical analysis of the Gettysburg Address: what Lincoln wanted his listeners to believe, and how his choices made them believe it.",
+    "prompt": "In 272 words, Lincoln turned a cemetery dedication into a statement of what the Civil War was for. Write a rhetorical analysis that states Lincoln's purpose and analyzes how at least three of his choices advance it. Consider the speech's structure (past, present, future), repetition and parallelism (\"we can not dedicate - we can not consecrate - we can not hallow\"), contrast (\"what we say here\" and \"what they did here\"), images of birth, and the closing phrase \"of the people, by the people, for the people.\" Quote the speech accurately and explain the effect of each choice on his audience in 1863.",
+    "resources": [
+      "gettysburg-address",
+      "four-documents-in-context"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "How Lincoln Remade a Sentence"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.9-10.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.9-10.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.9-10.9",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.9-10.9.B",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-how-lincoln-remade-a-sentence",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Abraham Lincoln, address at the dedication of the Soldiers' National Cemetery, Gettysburg, Pennsylvania, November 19, 1863. The text of the Bliss copy. Public domain.",
+      "body": "Four score and seven years ago our fathers brought forth on this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal.\n\nNow we are engaged in a great civil war, testing whether that nation, or any nation so conceived and so dedicated, can long endure. We are met on a great battle-field of that war. We have come to dedicate a portion of that field, as a final resting place for those who here gave their lives that that nation might live. It is altogether fitting and proper that we should do this.\n\nBut, in a larger sense, we can not dedicate - we can not consecrate - we can not hallow - this ground. The brave men, living and dead, who struggled here, have consecrated it, far above our poor power to add or detract. The world will little note, nor long remember what we say here, but it can never forget what they did here. It is for us the living, rather, to be dedicated here to the unfinished work which they who fought here have thus far so nobly advanced. It is rather for us to be here dedicated to the great task remaining before us - that from these honored dead we take increased devotion to that cause for which they gave the last full measure of devotion - that we here highly resolve that these dead shall not have died in vain - that this nation, under God, shall have a new birth of freedom - and that government of the people, by the people, for the people, shall not perish from the earth.",
+      "id": "gettysburg-address",
+      "title": "The Gettysburg Address (1863)"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "The Declaration of Independence (1776). Drafted mainly by Thomas Jefferson and adopted by the Continental Congress, it announced that the thirteen colonies were breaking from Great Britain. Its second paragraph states a theory of government: people have natural rights, and governments exist to protect them. When it was signed, slavery was legal in every one of the colonies, women could not vote, and in most colonies men without property could not either.\n\nThe Declaration of Sentiments (1848). About three hundred people gathered at Seneca Falls, New York, for the first women's rights convention in the United States. Elizabeth Cady Stanton modeled the convention's declaration closely on Jefferson's, sentence by sentence, but replaced King George with \"man\" and added \"and women.\" One hundred people signed it, including Frederick Douglass. Its call for women's right to vote was the most controversial resolution; it passed narrowly.\n\n\"What to the Slave Is the Fourth of July?\" (1852). Frederick Douglass had escaped slavery in 1838 and become one of the most famous speakers in the country. Invited to speak at an Independence Day event in Rochester, New York, he chose to speak on July 5. He praised the founders and the principles of the Declaration, then turned to his audience and asked what those principles meant to four million enslaved people.\n\nThe Gettysburg Address (1863). In July 1863, the Battle of Gettysburg left more than 7,000 soldiers dead in three days. That November, Abraham Lincoln spoke at the dedication of a national cemetery there. The main speaker talked for two hours; Lincoln spoke for about two minutes. \"Four score and seven years ago\" counts back eighty-seven years, from 1863 to 1776: Lincoln dated the nation's birth from the Declaration, not from the Constitution.",
+      "id": "four-documents-in-context",
+      "title": "Four Documents in Context"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States Lincoln's purpose precisely, in the context of 1863.",
+        "id": "purpose",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Purpose"
+      },
+      {
+        "description": "Analyzes at least three rhetorical or structural choices and their effect on the audience.",
+        "id": "rhetoric",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analysis of rhetoric"
+      },
+      {
+        "description": "Quotes accurately and explains each quotation.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Textual evidence"
+      },
+      {
+        "description": "Organizes the analysis logically with a formal style and clear transitions.",
+        "id": "organization",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Organization and style"
+      }
+    ],
+    "title": "Rhetorical analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

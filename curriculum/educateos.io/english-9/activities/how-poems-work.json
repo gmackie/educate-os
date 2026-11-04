@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:dc3a606838d9075a1dd2efef2a8e9bb372001ed76617071f2e11c3f0dd2c1253",
+      "id": "educateos.io/english-9-how-poems-work",
+      "version": "1.0.0"
+    }
+  },
+  "id": "how-poems-work",
+  "role": "lesson",
+  "title": "How Poems Work"
+}

@@ -1,0 +1,152 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "overview": "Decode the fourteen-line Prologue to Romeo and Juliet and ask why Shakespeare tells you the ending first.",
+    "problems": [
+      {
+        "prompt": "Paraphrase the Prologue in three or four sentences of modern English. What do you learn about the setting, the conflict and the ending?"
+      },
+      {
+        "prompt": "Explain the words \"star-cross'd\" and \"death-mark'd.\" What do they suggest about whether the lovers' deaths can be avoided?"
+      },
+      {
+        "prompt": "Count the lines and label the rhyme scheme. What form is the Prologue written in, and why might Shakespeare open a tragedy in that form?"
+      },
+      {
+        "prompt": "Line 4 reads \"Where civil blood makes civil hands unclean.\" Explain the double meaning of \"civil\" and what the line says about the feud."
+      },
+      {
+        "prompt": "Dramatic irony is when the audience knows something the characters do not. How does the Prologue create dramatic irony for the rest of the play?"
+      },
+      {
+        "prompt": "Why would a playwright reveal the ending in the first fourteen lines? Give your best answer and one reason a modern audience might still keep watching."
+      }
+    ],
+    "resources": [
+      "the-prologue",
+      "the-play-in-brief"
+    ],
+    "showWork": false,
+    "subject": "english-language-arts",
+    "template": "problem-set",
+    "title": "The Prologue as a Spoiler"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-the-prologue-as-a-spoiler",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "William Shakespeare, Romeo and Juliet (first printed 1597). Public domain. Spelling and punctuation follow common modern editions.",
+      "body": "Enter Chorus.\n\nTwo households, both alike in dignity,\nIn fair Verona, where we lay our scene,\nFrom ancient grudge break to new mutiny,\nWhere civil blood makes civil hands unclean.\nFrom forth the fatal loins of these two foes\nA pair of star-cross'd lovers take their life;\nWhose misadventured piteous overthrows\nDo with their death bury their parents' strife.\nThe fearful passage of their death-mark'd love,\nAnd the continuance of their parents' rage,\nWhich, but their children's end, nought could remove,\nIs now the two hours' traffic of our stage;\nThe which if you with patient ears attend,\nWhat here shall miss, our toil shall strive to mend.",
+      "id": "the-prologue",
+      "title": "Romeo and Juliet: The Prologue"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Romeo and Juliet takes place over about four days in the Italian city of Verona, where two rich families, the Montagues and the Capulets, have feuded for so long that no one remembers why.\n\nAct 1. A street brawl between the families' servants ends with the Prince of Verona declaring that anyone who fights again will be put to death. Romeo, a Montague, is lovesick over a young woman named Rosaline. To cheer him up, his friends Benvolio and Mercutio bring him, masked, to a Capulet party. There he sees Juliet, the Capulets' thirteen-year-old daughter, and forgets Rosaline instantly. They speak, kiss, and only afterward learn each other's family names. Juliet's hot-tempered cousin Tybalt recognizes Romeo and swears revenge.\n\nAct 2. That night Romeo climbs into the Capulet orchard and overhears Juliet, on her balcony, wishing he were not a Montague. They declare their love and agree to marry. Friar Laurence, Romeo's adviser, agrees to marry them in secret, hoping the match will end the feud, though he warns Romeo against rushing. Juliet's Nurse carries messages between them. The next afternoon they are married.\n\nAct 3. Tybalt challenges Romeo, who refuses to fight his new, secret relative. Mercutio fights Tybalt instead and is fatally wounded when Romeo steps between them. Enraged, Romeo kills Tybalt. The Prince banishes Romeo from Verona. Romeo and Juliet spend one night together before he flees. Juliet's father, unaware of her marriage, announces that she will marry Paris, a nobleman, in a few days, and threatens to throw her out when she refuses.\n\nAct 4. Desperate, Juliet goes to Friar Laurence, who gives her a potion that will make her appear dead for about two days. He promises to send word to Romeo so that he can return and take her away when she wakes. Juliet drinks the potion; her family finds her \"dead\" on her wedding morning.\n\nAct 5. The Friar's message never reaches Romeo; the messenger is quarantined because of plague. Romeo hears only that Juliet is dead. He buys poison, returns to her tomb, kills Paris there, drinks the poison and dies beside her. Juliet wakes, sees Romeo dead, and stabs herself with his dagger. The families arrive, learn the whole story from the Friar, and finally make peace over their children's bodies.",
+      "id": "the-play-in-brief",
+      "title": "Romeo and Juliet in Brief"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Paraphrases the Prologue accurately.",
+        "id": "comprehension",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Comprehension"
+      },
+      {
+        "description": "Explains key words and the double meaning of \"civil.\"",
+        "id": "language",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Language"
+      },
+      {
+        "description": "Explains the sonnet form and how revealing the ending creates dramatic irony.",
+        "id": "structure",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Structure and irony"
+      }
+    ],
+    "title": "Prologue analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:c9637e06a7a4a009d2dda9c37f27d0f5317f3134a102f67fa4c0a0f6fa7dd2c5",
+      "id": "educateos.io/english-9-how-lincoln-remade-a-sentence",
+      "version": "1.0.0"
+    }
+  },
+  "id": "how-lincoln-remade-a-sentence",
+  "role": "assignment",
+  "title": "How Lincoln Remade a Sentence"
+}
