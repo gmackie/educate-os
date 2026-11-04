@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:826e7d0934fe2eb51c1a43d790b91fc31950ebd8b4550988edb73408d0848827",
+      "id": "educateos.io/mathematics-7-geometry-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "geometry-check",
+  "role": "assessment",
+  "title": "Geometry Check"
+}

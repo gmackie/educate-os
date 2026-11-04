@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:ebf96c91f63b8fa8227b442f62335ac1884fb2c8988f73c39499fc7aa12398fa",
+      "id": "educateos.io/mathematics-7-probability-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "probability-check",
+  "role": "assessment",
+  "title": "Probability Check"
+}

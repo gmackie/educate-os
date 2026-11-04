@@ -1,0 +1,7 @@
+{
+  "body": "An equation is like a balance: whatever you do to one side, you must do to the other.\n\nTo solve a two-step equation, undo the operations in reverse order.\n\nWorked example: 3x + 5 = 20\n3x = 15 (subtract 5 from both sides)\nx = 5 (divide both sides by 3)\nAlways check: 3(5) + 5 = 20 ✔\n\nEquivalent expressions name the same amount in different ways. 2(x + 4) and 2x + 8 are equivalent: for any x they give the same value.\n\nAn inequality, like 4n + 12 ≤ 40, has many solutions. Solve it like an equation, then think about which numbers make sense in the story.\n\nIn this unit you will expand, factor and combine expressions, then write and solve equations and inequalities for real situations.",
+  "id": "u2-overview",
+  "purpose": "context",
+  "title": "Two-Step Equations",
+  "visibility": "students"
+}

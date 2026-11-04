@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:720a8d76e5e4d0bfc7e0bba884bc933c38706dff613a27d9e081be8556118cd3",
+      "id": "educateos.io/mathematics-7-scale-drawings",
+      "version": "1.0.0"
+    }
+  },
+  "id": "scale-drawings",
+  "role": "lesson",
+  "title": "Scale Drawings and Triangles"
+}

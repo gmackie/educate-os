@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:d2e79ba43a1c5d77d3db5c958ad4d75acd63d83ccc8d02bd6f45b9afd82b79f2",
+      "id": "educateos.io/mathematics-7-compound-events",
+      "version": "1.0.0"
+    }
+  },
+  "id": "compound-events",
+  "role": "assignment",
+  "title": "Compound Events"
+}

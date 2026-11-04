@@ -1,0 +1,46 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "7",
+    "overview": "Use scales to find real lengths and areas, and decide when side lengths and angles make a triangle.",
+    "problems": [
+      {
+        "prompt": "A map has a scale of 1 cm : 4 km. Two towns are 6.5 cm apart on the map. How far apart are they in real life?"
+      },
+      {
+        "prompt": "A floor plan has a scale of 1 inch : 8 feet. A room on the plan is 2.5 inches by 1.5 inches. Find the room's actual length, width and area."
+      },
+      {
+        "prompt": "A rectangle is 6 cm by 4 cm. Redraw it with a scale factor of 1/2. What are the new dimensions, and how does the area change?"
+      },
+      {
+        "prompt": "Can you draw a triangle with sides 3 cm, 4 cm and 8 cm? Try it, then explain."
+      },
+      {
+        "prompt": "Draw a triangle with angles of 50°, 60° and 70°. Is there only one triangle with these angles? Explain."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Scale Drawings and Triangles"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.G.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.G.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-scale-drawings",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

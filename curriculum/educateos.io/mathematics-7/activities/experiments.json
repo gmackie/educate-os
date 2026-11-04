@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:2b91b83d962ddc0367eab518b04bc024e874edf54da20df527974ed2c4cbe7bd",
+      "id": "educateos.io/mathematics-7-experiments",
+      "version": "1.0.0"
+    }
+  },
+  "id": "experiments",
+  "role": "assignment",
+  "title": "Experiments and Simulations"
+}

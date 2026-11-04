@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:c3e696d406627033bb14af1c5c320b16ec1943533ca928160e96d266e0085682",
+      "id": "educateos.io/mathematics-7-percent-problems",
+      "version": "1.0.0"
+    }
+  },
+  "id": "percent-problems",
+  "role": "assignment",
+  "title": "Percent Problems: Tax, Tips and Discounts"
+}
