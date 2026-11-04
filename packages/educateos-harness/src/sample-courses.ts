@@ -18,11 +18,16 @@ export interface SampleCourseBundle {
   bundle: unknown;
 }
 
-/** The sample courses committed under `curriculum/bundles/educateos.io/`, each loaded only when asked for. */
+/**
+ * The latest committed version of each sample course under `curriculum/bundles/educateos.io/`, each
+ * loaded only when asked for. The paths are literal so every bundler (Vite, Wrangler's esbuild) and
+ * Node can resolve them. Publishing a new course version means pointing its entry at the new file:
+ * `sample-courses.test.ts` fails while any entry is not the newest bundle committed for its course.
+ */
 const BUNDLES: Readonly<Record<string, () => Promise<{ default: unknown }>>> = {
   "educateos.io/biology-1": () => import("../../../curriculum/bundles/educateos.io/biology-1/1.0.0.json", { with: { type: "json" } }),
   "educateos.io/english-8": () => import("../../../curriculum/bundles/educateos.io/english-8/1.0.0.json", { with: { type: "json" } }),
-  "educateos.io/english-9": () => import("../../../curriculum/bundles/educateos.io/english-9/1.0.0.json", { with: { type: "json" } }),
+  "educateos.io/english-9": () => import("../../../curriculum/bundles/educateos.io/english-9/1.0.1.json", { with: { type: "json" } }),
   "educateos.io/grade-1-mathematics": () => import("../../../curriculum/bundles/educateos.io/grade-1-mathematics/1.0.0.json", { with: { type: "json" } }),
   "educateos.io/grade-1-reading-foundations": () => import("../../../curriculum/bundles/educateos.io/grade-1-reading-foundations/1.0.0.json", { with: { type: "json" } }),
   "educateos.io/grade-4-english-language-arts": () => import("../../../curriculum/bundles/educateos.io/grade-4-english-language-arts/1.0.0.json", { with: { type: "json" } }),
@@ -38,7 +43,7 @@ const BUNDLES: Readonly<Record<string, () => Promise<{ default: unknown }>>> = {
 export const SAMPLE_COURSE_IDS: readonly string[] = Object.keys(BUNDLES);
 
 /**
- * Loads the committed bundles of `packageIds` (every sample course by default), in that order.
+ * Loads the latest committed bundle of each of `packageIds` (every sample course by default), in that order.
  * Bundlers split each into its own chunk, so nothing is loaded until this is called.
  *
  * @throws Error for a package ID with no committed bundle.

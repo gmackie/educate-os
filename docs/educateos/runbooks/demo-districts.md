@@ -208,7 +208,8 @@ or off. `demo-district-config.ts` emits `demo` for all five standalone demo dist
   The courses step gives each class the rest of its semester. `installSampleCourses`
   (`@educateos/harness/sample-courses`) runs in the district's process, like the seed. The
   caller approves the standards the courses align to and imports each committed signed bundle
-  (`curriculum/bundles/educateos.io/<course>/1.0.0.json`, bundled into the Worker) through
+  (the latest `curriculum/bundles/educateos.io/<course>/<version>.json` of each course, such as
+  English 9's 1.0.1, bundled into the Worker) through
   `admin.importCourseBundle`. That checks every signature against the Worker's
   `COURSE_LIBRARY_TRUST`, and without the pin nothing imports (`503`). Each class's teacher then
   installs their course (`teacher.installCourse`). Units 1 and 2 are skipped because the class has

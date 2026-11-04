@@ -24,14 +24,27 @@ import {
 const ADMIN = "prn_nf-district-admin" as PrincipalId;
 const name = (id: string) => NORTHFIELD.principals.find((p) => p.id === id)!.displayName;
 
+/** MAJOR.MINOR.PATCH, compared numerically. */
+const newer = (a: string, b: string) => {
+  const [x, y] = [a.split(".").map(Number), b.split(".").map(Number)];
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i]! > y[i]!;
+  return false;
+};
+
 describe("the committed sample course bundles", () => {
-  it("are every bundle under curriculum/bundles, one per showcase class", async () => {
-    const committed = readdirSync(new URL("../../../curriculum/bundles/educateos.io", import.meta.url)).map((dir) => `educateos.io/${dir}`);
+  it("are every course under curriculum/bundles, one per showcase class, each at its newest committed version", async () => {
+    const root = new URL("../../../curriculum/bundles/educateos.io/", import.meta.url);
+    const committed = readdirSync(root).map((dir) => `educateos.io/${dir}`);
     expect(SAMPLE_COURSE_IDS.toSorted()).toStrictEqual(committed.toSorted());
     expect(Object.keys(NORTHFIELD_COURSE_CLASSES).toSorted()).toStrictEqual(committed.toSorted());
     const bundles = await loadSampleCourseBundles();
     expect(bundles.map((b) => b.packageId)).toStrictEqual(SAMPLE_COURSE_IDS);
-    expect(bundles.every((b) => b.version === "1.0.0")).toBe(true);
+    for (const { packageId, version } of bundles) {
+      const versions = readdirSync(new URL(`${packageId.slice("educateos.io/".length)}/`, root)).map((file) => file.replace(/\.json$/, ""));
+      const latest = versions.reduce((a, b) => (newer(b, a) ? b : a));
+      expect(version, `point ${packageId} in src/sample-courses.ts at its newest bundle`).toBe(latest);
+    }
+    expect(bundles.find((b) => b.packageId === "educateos.io/english-9")!.version).toBe("1.0.1");
   });
 });
 
