@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:c9388b3733c5bf5e58c83ee12a28792aed512a692eb397be3b01225bd2a63bbb",
+      "id": "educateos.io/biology-1-floating-leaf-disks",
+      "version": "1.0.0"
+    }
+  },
+  "id": "floating-leaf-disks",
+  "role": "lesson",
+  "title": "Floating Leaf Disks"
+}

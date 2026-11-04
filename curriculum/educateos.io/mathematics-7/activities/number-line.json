@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:d89b8cb074412d985d181ec0923c2fe32efc23de7e4e15cf8a6841f2dc7cc8e0",
+      "id": "educateos.io/mathematics-7-number-line",
+      "version": "1.0.0"
+    }
+  },
+  "id": "number-line",
+  "role": "lesson",
+  "title": "Moving on the Number Line"
+}

@@ -1,0 +1,180 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "overview": "Compare the Declaration of Independence with the Declaration of Sentiments and Frederick Douglass's 1852 speech, and see how each writer turns the founding words to a new purpose.",
+    "problems": [
+      {
+        "prompt": "Place the Declaration of Sentiments sentence beside the Declaration of Independence sentence. List every change Stanton made. Why might she have kept everything else almost exactly the same?"
+      },
+      {
+        "prompt": "In the Declaration of Sentiments, who is accused of \"repeated injuries and usurpations\"? Whom did the 1776 Declaration accuse? What is the effect of the substitution?"
+      },
+      {
+        "prompt": "In Douglass's first excerpt, track the pronouns \"you\" and \"me.\" What do they do to the relationship between Douglass and his audience?"
+      },
+      {
+        "prompt": "What is Douglass's purpose in asking \"What, to the American slave, is your 4th of July?\" and then answering it himself? How does that structure help him persuade?"
+      },
+      {
+        "prompt": "Douglass says, near the end of the speech, \"I do not despair of this country.\" How does that sentence change your understanding of his criticism?"
+      },
+      {
+        "prompt": "Lincoln begins the Gettysburg Address with \"Four score and seven years ago.\" Do the arithmetic from 1863. Which document does he treat as the nation's birth, and why does that choice matter?"
+      },
+      {
+        "prompt": "In two or three sentences, explain what all three later writers have in common in how they use the Declaration, and one important way they differ."
+      }
+    ],
+    "resources": [
+      "four-documents-in-context",
+      "declaration-of-independence-excerpt",
+      "declaration-of-sentiments-excerpt",
+      "douglass-fourth-of-july-excerpt",
+      "gettysburg-address"
+    ],
+    "showWork": false,
+    "subject": "english-language-arts",
+    "template": "problem-set",
+    "title": "Answering the Declaration"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.9-10.9",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.9-10.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.9-10.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-answering-the-declaration",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "The Declaration of Independence (1776). Drafted mainly by Thomas Jefferson and adopted by the Continental Congress, it announced that the thirteen colonies were breaking from Great Britain. Its second paragraph states a theory of government: people have natural rights, and governments exist to protect them. When it was signed, slavery was legal in every one of the colonies, women could not vote, and in most colonies men without property could not either.\n\nThe Declaration of Sentiments (1848). About three hundred people gathered at Seneca Falls, New York, for the first women's rights convention in the United States. Elizabeth Cady Stanton modeled the convention's declaration closely on Jefferson's, sentence by sentence, but replaced King George with \"man\" and added \"and women.\" One hundred people signed it, including Frederick Douglass. Its call for women's right to vote was the most controversial resolution; it passed narrowly.\n\n\"What to the Slave Is the Fourth of July?\" (1852). Frederick Douglass had escaped slavery in 1838 and become one of the most famous speakers in the country. Invited to speak at an Independence Day event in Rochester, New York, he chose to speak on July 5. He praised the founders and the principles of the Declaration, then turned to his audience and asked what those principles meant to four million enslaved people.\n\nThe Gettysburg Address (1863). In July 1863, the Battle of Gettysburg left more than 7,000 soldiers dead in three days. That November, Abraham Lincoln spoke at the dedication of a national cemetery there. The main speaker talked for two hours; Lincoln spoke for about two minutes. \"Four score and seven years ago\" counts back eighty-seven years, from 1863 to 1776: Lincoln dated the nation's birth from the Declaration, not from the Constitution.",
+      "id": "four-documents-in-context",
+      "title": "Four Documents in Context"
+    },
+    {
+      "attribution": "Thomas Jefferson and the Second Continental Congress, the Declaration of Independence, July 4, 1776. Excerpt. Public domain.",
+      "body": "We hold these truths to be self-evident, that all men are created equal, that they are endowed by their Creator with certain unalienable Rights, that among these are Life, Liberty and the pursuit of Happiness.",
+      "id": "declaration-of-independence-excerpt",
+      "title": "From the Declaration of Independence (1776)"
+    },
+    {
+      "attribution": "Elizabeth Cady Stanton and the Seneca Falls Convention, the Declaration of Sentiments, July 1848. Excerpts. Public domain.",
+      "body": "We hold these truths to be self-evident: that all men and women are created equal; that they are endowed by their Creator with certain inalienable rights; that among these are life, liberty, and the pursuit of happiness.\n\nThe history of mankind is a history of repeated injuries and usurpations on the part of man toward woman, having in direct object the establishment of an absolute tyranny over her.",
+      "id": "declaration-of-sentiments-excerpt",
+      "title": "From the Declaration of Sentiments (1848)"
+    },
+    {
+      "attribution": "Frederick Douglass, speech to the Rochester Ladies' Anti-Slavery Society, Rochester, New York, July 5, 1852. Excerpts. Public domain.",
+      "body": "The rich inheritance of justice, liberty, prosperity and independence, bequeathed by your fathers, is shared by you, not by me.\n\nWhat, to the American slave, is your 4th of July? I answer: a day that reveals to him, more than all other days in the year, the gross injustice and cruelty to which he is the constant victim.\n\nFrom near the end of the speech:\nI do not despair of this country.",
+      "id": "douglass-fourth-of-july-excerpt",
+      "title": "From \"What to the Slave Is the Fourth of July?\" (1852)"
+    },
+    {
+      "attribution": "Abraham Lincoln, address at the dedication of the Soldiers' National Cemetery, Gettysburg, Pennsylvania, November 19, 1863. The text of the Bliss copy. Public domain.",
+      "body": "Four score and seven years ago our fathers brought forth on this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal.\n\nNow we are engaged in a great civil war, testing whether that nation, or any nation so conceived and so dedicated, can long endure. We are met on a great battle-field of that war. We have come to dedicate a portion of that field, as a final resting place for those who here gave their lives that that nation might live. It is altogether fitting and proper that we should do this.\n\nBut, in a larger sense, we can not dedicate - we can not consecrate - we can not hallow - this ground. The brave men, living and dead, who struggled here, have consecrated it, far above our poor power to add or detract. The world will little note, nor long remember what we say here, but it can never forget what they did here. It is for us the living, rather, to be dedicated here to the unfinished work which they who fought here have thus far so nobly advanced. It is rather for us to be here dedicated to the great task remaining before us - that from these honored dead we take increased devotion to that cause for which they gave the last full measure of devotion - that we here highly resolve that these dead shall not have died in vain - that this nation, under God, shall have a new birth of freedom - and that government of the people, by the people, for the people, shall not perish from the earth.",
+      "id": "gettysburg-address",
+      "title": "The Gettysburg Address (1863)"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Identifies precisely how each later text reuses or changes the Declaration.",
+        "id": "comparison",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Comparison"
+      },
+      {
+        "description": "Explains each author's purpose and how specific choices advance it.",
+        "id": "purpose",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Purpose and rhetoric"
+      },
+      {
+        "description": "States what the documents share and how they differ.",
+        "id": "synthesis",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Synthesis"
+      }
+    ],
+    "title": "Document comparison"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

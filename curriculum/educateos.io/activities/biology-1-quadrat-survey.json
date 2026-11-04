@@ -1,0 +1,49 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "analysisPrompt": "Calculate the population density of your species in each area (plants per square meter) and estimate the total population of each area. Why does placing quadrats at random let you make an inference about the whole area? Compare the two areas and explain the difference using abiotic factors. How could you make your estimate more reliable?",
+    "dataColumns": [
+      {
+        "name": "Quadrat"
+      },
+      {
+        "name": "Area (sunny or shaded)"
+      },
+      {
+        "name": "Number of plants counted"
+      },
+      {
+        "name": "Total plant cover",
+        "unit": "%"
+      },
+      {
+        "name": "Notes on abiotic conditions"
+      }
+    ],
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "methodPrompt": "Measure the length and width of each study area. Choose one plant species that is easy to identify. Use random numbers to choose coordinates and place a 1 m square quadrat at each point: five in the sunny area and five in the shaded area. In each quadrat, count the individuals of your species and estimate the percent of the ground covered by all plants. Describe how you chose the random points and why that matters.",
+    "overview": "Use randomly placed quadrats to estimate the population of one plant species on the school grounds, and compare a sunny area with a shaded one.",
+    "question": "How large is the population of one plant species in a sunny and a shaded area of the school grounds, and how do the two areas compare?",
+    "subject": "science",
+    "template": "science-investigation",
+    "title": "Schoolyard Quadrat Survey"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.HSS.IC.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/biology-1-quadrat-survey",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

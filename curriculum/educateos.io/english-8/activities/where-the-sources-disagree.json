@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:9c648df53d3d4608690e2d9da56a7808b7f774f25ebaf3eb520f763563531bee",
+      "id": "educateos.io/english-8-where-the-sources-disagree",
+      "version": "1.0.0"
+    }
+  },
+  "id": "where-the-sources-disagree",
+  "role": "assignment",
+  "title": "Where the Sources Disagree"
+}

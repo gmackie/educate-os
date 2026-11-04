@@ -1,0 +1,176 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "9-12",
+    "overview": "Draw food webs and energy pyramids from descriptions, calculate how much energy reaches each level, and explain why some chemicals build up at the top.",
+    "problems": [
+      {
+        "prompt": "The producers in a meadow store 10,000 kilocalories of energy in their tissues. Using the 10% rule, how much energy is stored by the primary, secondary and tertiary consumers? Draw the energy pyramid, and explain where the other 90% goes at each step."
+      },
+      {
+        "prompt": "Use your answer to problem 1 to explain why food chains rarely have more than four or five levels."
+      },
+      {
+        "prompt": "Draw the meadow food web described in the reading, with arrows showing the direction of energy flow. Identify the trophic level of the snake and of the hawk. Why can the hawk be on more than one level?"
+      },
+      {
+        "prompt": "A disease kills most of the frogs in the meadow. Predict the effect on the grasshoppers, the grass, the snakes and the hawks, and explain each prediction using the food web."
+      },
+      {
+        "prompt": "The reading gives the concentration of a pesticide at each level of a food chain. By what factor does the concentration increase from the plankton to the fish-eating birds? Explain why the concentration increases at each level, and which organisms are most at risk."
+      },
+      {
+        "prompt": "A pyramid of numbers for an oak tree, the caterpillars that eat its leaves, and the birds that eat the caterpillars has a narrow base. Draw it. Can a pyramid of energy ever look like this? Explain."
+      },
+      {
+        "prompt": "The reading gives a deer population over ten years after a few deer were released on an island with no predators. Graph the data. Estimate the island's carrying capacity, identify when the population grew fastest, and name three factors that could limit the population."
+      }
+    ],
+    "resources": [
+      "meadow-food-web"
+    ],
+    "showWork": true,
+    "subject": "science",
+    "template": "problem-set",
+    "title": "Energy Through the Food Web"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RST.9-10.2",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/biology-1-energy-food-web",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS. All numbers are illustrative and rounded; the pesticide figures are modeled on mid-20th-century measurements of DDT in coastal food chains.",
+      "body": "The meadow food web. In a meadow, grass is eaten by grasshoppers and by rabbits. Grasshoppers are eaten by frogs and by sparrows. Frogs are eaten by snakes. Rabbits are eaten by foxes and by hawks. Snakes and sparrows are also eaten by hawks. Bacteria and fungi decompose every organism when it dies.\n\nA pesticide in a coastal food chain. Before it was banned for most uses in the United States in 1972, the insecticide DDT was sprayed widely. DDT does not dissolve in water, but it does dissolve in fat, and animals store it rather than breaking it down. Concentrations measured in one coastal food chain, in parts per million (ppm):\nWater: 0.00005 ppm\nPlankton: 0.04 ppm\nSmall fish: 0.5 ppm\nLarge fish: 2 ppm\nFish-eating birds: 25 ppm\n\nDeer on an island. Twenty deer were released on an island with plenty of plants and no predators. The population at the start of each year:\nYear 0: 20\nYear 1: 35\nYear 2: 60\nYear 3: 95\nYear 4: 130\nYear 5: 150\nYear 6: 158\nYear 7: 160\nYear 8: 157\nYear 9: 161",
+      "id": "meadow-food-web",
+      "title": "A Meadow by the Numbers"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Draws food webs with arrows in the direction of energy flow and pyramids in correct proportion.",
+        "id": "diagrams",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Food webs and pyramids"
+      },
+      {
+        "description": "Applies the 10% rule, magnification factors and density correctly, with work shown.",
+        "id": "calculations",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Calculations"
+      },
+      {
+        "description": "Predicts effects of a change in the food web by following each feeding relationship.",
+        "id": "predictions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Predictions"
+      },
+      {
+        "description": "Explains energy loss, biomagnification and carrying capacity accurately.",
+        "id": "explanations",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explanations"
+      }
+    ],
+    "title": "Energy and populations"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

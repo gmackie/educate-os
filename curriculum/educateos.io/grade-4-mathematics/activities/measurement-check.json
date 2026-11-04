@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:21ae9d700d4c0ef4861acff9ca8df96f880b170af24098adc439f9bebebe1c56",
+      "id": "educateos.io/grade-4-mathematics-measurement-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "measurement-check",
+  "role": "assessment",
+  "title": "Measurement and Data Check"
+}

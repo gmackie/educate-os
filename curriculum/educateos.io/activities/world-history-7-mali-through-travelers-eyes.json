@@ -1,0 +1,169 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "claimPrompt": "What do these two sources reveal about Mali's wealth and government in the 1300s? Support your claim with at least two pieces of evidence, and explain one thing the sources might leave out.",
+    "contextualizationQuestions": [
+      "Why would Mansa Musa travel through Cairo, and why would Cairo's officials and merchants remember his visit for so long?",
+      "Mali's own history was kept mostly by griots, through oral tradition. What can oral tradition tell historians that these written sources cannot?"
+    ],
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "minimumEvidence": 2,
+    "overview": "Compare two writers from outside Mali, decide what their accounts reveal about the empire, and what they might leave out.",
+    "resources": [
+      "mali-travelers"
+    ],
+    "sources": [
+      "mali-travelers"
+    ],
+    "sourcingQuestions": [
+      "Who created each source, when, and how did each author get his information?",
+      "Neither writer was from Mali. How might where each author came from, and what he believed, shape what he praised or criticized?"
+    ],
+    "subject": "history-social-studies",
+    "template": "primary-source-analysis",
+    "title": "Mali Through Travelers' Eyes"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.6.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.10.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.6",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-mali-through-travelers-eyes",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Source A is paraphrased for EducateOS from the description of Mansa Musa's visit in al-Umari's encyclopedia (written about 1337-1338). Source B is adapted into modern English from H. A. R. Gibb's translation, Ibn Battuta: Travels in Asia and Africa (1929), with a summary written for EducateOS.",
+      "body": "Source A: al-Umari. Ibn Fadl Allah al-Umari was an official and writer in Cairo, Egypt. He did not travel to Mali. About twelve years after Mansa Musa passed through Cairo on his pilgrimage in 1324, al-Umari collected the memories of Cairo officials and merchants who had met him. This is a paraphrase of what they told him.\n\nParaphrase of al-Umari: Mansa Musa arrived with a great company and a huge amount of gold. He gave gifts of gold to the officials of the sultan's court and to almost everyone who held an office, and his people bought goods in the markets without bargaining. So much gold came into Cairo that its value fell, and twelve years later it had still not returned to its old price.\n\nSource B: Ibn Battuta. Ibn Battuta was a scholar and judge from Tangier, in Morocco, who traveled for nearly thirty years across Africa and Asia. He visited Mali in 1352 and 1353, during the reign of Mansa Sulayman, Mansa Musa's brother. Years later, back in Morocco, he told his travels to a writer, Ibn Juzayy, who wrote them down in 1355.\n\nFrom Ibn Battuta's account: The people of this country have some admirable qualities. They are seldom unjust, and they hate injustice more than any other people. Their sultan shows no mercy to anyone guilty of the least act of it. There is complete safety in their country. Neither traveler nor resident has anything to fear from robbers or men of violence. When a foreign merchant dies in their country, they do not take his goods, even if they are of great value, but keep them safe until the rightful heir comes to claim them.\n\nAlso from Ibn Battuta: He praised how carefully people kept their prayers and learned the Quran by heart. He also criticized some local customs that he, as a strict judge from North Africa, thought were wrong, such as how women and girls dressed and spoke freely with men who were not their relatives.",
+      "id": "mali-travelers",
+      "title": "Two Writers Describe Mali (excerpts, adapted)"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sourcing and point of view"
+      },
+      {
+        "id": "context",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Context"
+      },
+      {
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim and evidence"
+      },
+      {
+        "id": "limits",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Notices what the sources leave out"
+      }
+    ],
+    "title": "Source analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

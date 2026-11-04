@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:fc97744453702771c86acbb8657020c4c20af56eebd79fade0502df7d3eefdae",
+      "id": "educateos.io/english-9-research-brief",
+      "version": "1.0.0"
+    }
+  },
+  "id": "research-brief",
+  "role": "assignment",
+  "title": "Research Brief: A Document That Answered Back"
+}

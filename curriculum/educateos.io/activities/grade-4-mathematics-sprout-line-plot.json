@@ -1,0 +1,128 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Make a line plot of bean sprout lengths in eighths of an inch and use it to solve problems.",
+    "problems": [
+      {
+        "prompt": "Our class measured 10 bean sprouts. Their lengths in inches were: 3/8, 1/2, 1/2, 5/8, 5/8, 5/8, 3/4, 3/4, 7/8, 1. Make a line plot from 0 to 1 inch marked in eighths. (Hint: 1/2 = 4/8 and 3/4 = 6/8.) Take a photo of your line plot or describe where each X goes."
+      },
+      {
+        "prompt": "What length was measured most often?"
+      },
+      {
+        "prompt": "What is the difference in length between the longest sprout and the shortest sprout?"
+      },
+      {
+        "prompt": "How many sprouts were longer than 1/2 inch?"
+      },
+      {
+        "prompt": "If you lined up all the sprouts that are 5/8 inch long end to end, how long would the line be?"
+      },
+      {
+        "prompt": "What is the total length of the two 3/4-inch sprouts and the 1-inch sprout?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Line Plots: Bean Sprout Lengths"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.MD.B.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-sprout-line-plot",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows the steps or a model"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains thinking with math words"
+      }
+    ],
+    "title": "Line plots"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

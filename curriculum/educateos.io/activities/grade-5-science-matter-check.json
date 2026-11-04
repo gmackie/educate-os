@@ -1,0 +1,164 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "5",
+    "overview": "Read about two experiments on your own and show what you know about properties, changes and mass.",
+    "passage": "The Sealed Bag Test\n\nRoom 9 put 50 grams of baking soda in a zip bag. They set a small cup holding 200 grams of vinegar inside the bag, then sealed it. The empty bag had a mass of 10 grams and the cup had a mass of 20 grams. On the scale, everything together read 280 grams.\n\nThen they tipped the cup. The vinegar and baking soda fizzed and bubbled. The bag puffed up like a pillow, and it felt cold in their hands. When the fizzing stopped, they put the sealed bag back on the scale. It still read 280 grams.\n\nMystery Materials\n\nNext the class tested three mystery samples.\nSample A is shiny and gray. A magnet pulls on it, and electricity flows through it.\nSample B is white and grainy. It dissolves in water. A magnet does not pull on it.\nSample C is clear and hard. It does not dissolve in water, and electricity does not flow through it.",
+    "questions": [
+      {
+        "prompt": "Was mixing the vinegar and baking soda a physical change or a chemical change? Give two pieces of evidence from the text."
+      },
+      {
+        "prompt": "What was the mass of the bag before mixing and after mixing? What does this tell you about matter?"
+      },
+      {
+        "prompt": "Write the mass of the bag and everything in it in kilograms. Show how you converted."
+      },
+      {
+        "prompt": "Predict: if the class did the same test with the bag open, would the scale read more than, less than or the same as 280 grams after the fizzing? Explain why."
+      },
+      {
+        "prompt": "Which sample is most likely a metal? Which two properties tell you?"
+      },
+      {
+        "prompt": "Sample B got mixed with sand. Describe how you could separate them and get Sample B back, using its properties."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "science",
+    "template": "read-and-respond",
+    "title": "Matter Check: The Sealed Bag Test"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.5.3",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.5.MD.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-5-science-matter-check",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "science",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Accurate science ideas"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses details from the text"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains how and why"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear, complete sentences"
+      }
+    ],
+    "title": "Matter check"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

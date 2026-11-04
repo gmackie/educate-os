@@ -1,0 +1,56 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "9-12",
+    "overview": "Graph and interpret unemployment and other economic indicators from 1929 to 1944 to see the shape of the Great Depression.",
+    "problems": [
+      {
+        "prompt": "Make a line graph of the unemployment rate from 1929 to 1944. How much did it rise from 1929 to 1933, in percentage points? What fraction of workers was unemployed in 1933?"
+      },
+      {
+        "prompt": "Describe what happened to unemployment between 1933 and 1938. Use the key events to explain the rise in 1938."
+      },
+      {
+        "prompt": "Describe what happened to unemployment from 1940 to 1944, and explain why."
+      },
+      {
+        "prompt": "The Dow Jones average fell from about 381 to about 41. Calculate the percentage loss. Then explain why bank failures may have hurt more ordinary families than the stock market crash did."
+      },
+      {
+        "prompt": "Based only on these figures, write two or three sentences on how well the New Deal (1933-1940) brought back jobs."
+      }
+    ],
+    "resources": [
+      "depression-data"
+    ],
+    "showWork": true,
+    "subject": "history-social-studies",
+    "template": "problem-set",
+    "title": "Reading the Depression in Numbers"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Eco.11.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.9-10.7",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/united-states-history-depression-in-numbers",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Compiled for EducateOS from standard historical estimates. Unemployment rates are the Stanley Lebergott estimates published in Historical Statistics of the United States, rounded to the nearest whole percent. Other figures are rounded; sources differ slightly.",
+      "body": "Unemployment, percent of the civilian labor force:\n1929: 3\n1930: 9\n1931: 16\n1932: 24\n1933: 25\n1934: 22\n1935: 20\n1936: 17\n1937: 14\n1938: 19\n1939: 17\n1940: 15\n1941: 10\n1942: 5\n1943: 2\n1944: 1\n\nOther indicators:\nFrom 1929 to 1933, the economy's real output (real gross domestic product) fell by about one quarter.\nFrom 1930 to 1933, about 9,000 banks failed. Depositors in a failed bank usually lost their savings; there was no federal deposit insurance until 1933.\nThe Dow Jones Industrial Average, a measure of stock prices, peaked at about 381 in September 1929 and fell to about 41 in July 1932, a loss of almost 90 percent.\n\nKey events:\n1929: The stock market crashes in October.\n1932: Franklin D. Roosevelt is elected president.\n1933: Roosevelt takes office in March. The first New Deal creates federal relief programs, the Civilian Conservation Corps, and the Federal Deposit Insurance Corporation (FDIC).\n1935: The Works Progress Administration employs millions; Congress passes the Social Security Act and the National Labor Relations (Wagner) Act, which protects workers' right to join unions.\n1937: Believing recovery was under way, the government cuts spending while the Federal Reserve tightens credit. A sharp recession follows in 1937-1938.\n1941: The United States enters the Second World War in December. Federal spending on the war rises enormously from 1941 to 1945.",
+      "id": "depression-data",
+      "title": "The Great Depression in Numbers"
+    }
+  ],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

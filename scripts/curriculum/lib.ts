@@ -63,6 +63,17 @@ export const ALIGNABLE_ITEM_TYPES: ReadonlySet<string> = new Set(["Standard", "C
  */
 export const SHOWCASE_ORIGINS: Readonly<Record<string, string>> = {
   "educateos.io/grade-1-reading-foundations": "off_nf-g1read-fall-r7",
+  "educateos.io/kindergarten-science-weather-watchers": "off_nf-ksci-fall-r4",
+  "educateos.io/grade-1-mathematics": "off_nf-g1math-fall-r7",
+  "educateos.io/mathematics-7": "off_nf-math7-fall-p1",
+  "educateos.io/english-8": "off_nf-eng8-fall-p2",
+  "educateos.io/world-history-7": "off_nf-whist7-fall-p4",
+  "educateos.io/biology-1": "off_nf-bio-fall-p2",
+  "educateos.io/english-9": "off_nf-eng9-fall-p3",
+  "educateos.io/united-states-history": "off_nf-ushist-fall-p5",
+  "educateos.io/grade-4-english-language-arts": "off_nf-g4ela-fall-r12",
+  "educateos.io/grade-4-mathematics": "off_nf-g4math-fall-r12",
+  "educateos.io/grade-5-science": "off_nf-g5sci-fall-lab",
 };
 
 const DOMAIN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
@@ -280,7 +291,9 @@ async function checkShowcase(course: CourseDir, pkg: OcsPackage, exports: Valida
       }
       for (const [field, value] of Object.entries(activity)) {
         if (SHOWCASE_LOCAL.has(field)) continue;
-        if (JSON.stringify((match.activity as Record<string, unknown>)[field]) !== JSON.stringify(value)) {
+        // A showcase problem set holds its answers; an export holds the prompts only (README: answers go in the answer key).
+        const expected = field === "problems" ? (value as { prompt: string }[]).map(({ prompt }) => ({ prompt })) : value;
+        if (JSON.stringify((match.activity as Record<string, unknown>)[field]) !== JSON.stringify(expected)) {
           issues.push(error(`${exportFile(match.id)}: activity.${field}`, `must equal the showcase activity "${activity.title}"`));
         }
       }

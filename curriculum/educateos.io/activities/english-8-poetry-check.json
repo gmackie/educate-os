@@ -1,0 +1,136 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 66,
+      "kind": "after-install"
+    },
+    "gradeBand": "8",
+    "overview": "Read a new poem on your own and analyze its word choice, structure and theme.",
+    "passage": "Inheritance\n\nMy grandmother left me no silver, no land,\njust a wooden spoon worn flat on one side\nfrom sixty years of stirring to the left.\n\nI hold it the way she did, thumb on the dent,\nand it fits, as if the wood had been waiting\nfor a hand that knew the way.\n\nSome things you inherit are kept in a drawer.\nSome you inherit only\nby using them.",
+    "questions": [
+      {
+        "prompt": "What did the speaker inherit, and what did the speaker not inherit? Why does the poem begin with what was not left?"
+      },
+      {
+        "prompt": "What does the detail \"worn flat on one side / from sixty years of stirring to the left\" tell you about the grandmother?"
+      },
+      {
+        "prompt": "\"As if the wood had been waiting / for a hand that knew the way.\" What figure of speech is this, and what does it suggest?"
+      },
+      {
+        "prompt": "The last stanza breaks a line after \"only.\" How does this line break affect the way you read the ending?"
+      },
+      {
+        "prompt": "State a theme of the poem in one sentence, and explain how the last stanza develops it."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Poetry Check: \"Inheritance\""
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.5",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-poetry-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "language",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analyzes word choice and figurative language"
+      },
+      {
+        "id": "structure",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analyzes structure"
+      },
+      {
+        "id": "theme",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "States and supports a theme"
+      }
+    ],
+    "title": "Poetry analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

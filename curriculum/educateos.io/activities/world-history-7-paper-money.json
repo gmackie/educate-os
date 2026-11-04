@@ -1,0 +1,169 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "claimPrompt": "What does this source reveal about how the Great Khan's government made trade easier, and why might a merchant have found paper money useful or risky? Support your claim with at least two details from the source.",
+    "contextualizationQuestions": [
+      "Who ruled China at the time Marco Polo describes, and how did that ruler's empire connect to the Silk Roads?",
+      "Why would a merchant from Venice, where people paid with gold and silver coins, find paper money so surprising?"
+    ],
+    "due": {
+      "days": 19,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "minimumEvidence": 2,
+    "overview": "Analyze Marco Polo's description of paper money and decide what it shows about trade, and how far to trust it.",
+    "resources": [
+      "polo-paper-money"
+    ],
+    "sources": [
+      "polo-paper-money"
+    ],
+    "sourcingQuestions": [
+      "Who told this story, who wrote it down, and when?",
+      "The book was told years after the journey, by a prisoner, and copied many times by hand. How might each of these facts affect how reliable it is?"
+    ],
+    "subject": "history-social-studies",
+    "template": "primary-source-analysis",
+    "title": "Paper Money in the Great Khan's China"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.10.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Eco.5.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Geo.7.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.6",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-paper-money",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "The excerpts are adapted into modern English from Henry Yule's translation of The Book of Ser Marco Polo (1871, revised 1903), which is in the public domain. The introduction was written for EducateOS.",
+      "body": "Marco Polo was a merchant from Venice who said he spent about seventeen years in China in the service of Kublai Khan, the Mongol ruler, in the late 1200s. After he returned, he was taken prisoner in a war between Venice and Genoa. In prison, around 1298, he told his stories to a writer named Rustichello of Pisa, who wrote them down. Many copies and versions of the book were made by hand, and they do not all agree.\n\nFrom the book: The Emperor's mint is in the city of Cambaluc [Beijing]. He has the bark taken from mulberry trees, the same trees whose leaves feed the silkworms. The thin inner bark is made into something like sheets of paper, but black. These sheets are cut into pieces of different sizes, and each is worth a different amount. All these pieces of paper are issued with as much ceremony and authority as if they were pure gold or silver. Officials write their names on each piece and stamp it with the seal of the Emperor in red.\n\nFrom the book: He makes all payments with this money, and he has it passed throughout his lands. No one dares to refuse it, on pain of death. Everyone takes it readily, because wherever a person goes in the Great Khan's lands, they can use these papers to buy anything, just as if they were coins of pure gold.",
+      "id": "polo-paper-money",
+      "title": "Marco Polo on Paper Money in the Great Khan's China (excerpt, adapted)"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sourcing: author, date, purpose and reliability"
+      },
+      {
+        "id": "context",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Places the source in the Silk Roads"
+      },
+      {
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim supported by evidence from the source"
+      },
+      {
+        "id": "economics",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains how paper money made exchange easier"
+      }
+    ],
+    "title": "Source analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

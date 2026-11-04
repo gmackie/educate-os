@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:efd3702eb2d40d1a4bd6d365cc8b11232c92d290568cb8da819dd91e2882622f",
+      "id": "educateos.io/grade-4-english-language-arts-taking-notes",
+      "version": "1.0.0"
+    }
+  },
+  "id": "taking-notes",
+  "role": "lesson",
+  "title": "Taking Notes Like a Researcher"
+}

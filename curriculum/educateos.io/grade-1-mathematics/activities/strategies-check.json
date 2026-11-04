@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:229ac9fcb1f476de59178dd4eac369cdeceea5cb30aafa030a2bd94faf4138c9",
+      "id": "educateos.io/grade-1-mathematics-strategies-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "strategies-check",
+  "role": "assessment",
+  "title": "Strategies Check"
+}

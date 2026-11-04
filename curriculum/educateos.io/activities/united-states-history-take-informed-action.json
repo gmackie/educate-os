@@ -1,0 +1,158 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 14,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "9-12",
+    "minWords": 700,
+    "minimumCitations": 3,
+    "overview": "Trace a current public issue to its roots in the history we studied this semester, weigh the options, deliberate with classmates, and propose a specific action.",
+    "prompt": "Choose a current public issue in your community or the nation that has roots in this course, for example worker pay and unions, food and product safety, voting access, free speech and surveillance during national emergencies, or equal access to schools. Write a civic proposal addressed to a specific official or body. Pose a compelling question about the issue. Explain its history, using evidence from at least one unit of this course and at least two current, authoritative sources. Evaluate at least two options for action, including their intended and unintended consequences and who would bear their costs. Recommend one, describe the action you will take (a letter, public comment, or presentation), and summarize what your deliberation group agreed and disagreed on.",
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Take Informed Action"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D4.6.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D4.7.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D4.8.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.Civ.13.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.7",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/united-states-history-take-informed-action",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "Poses a compelling question and traces the issue to its historical roots with accurate evidence from the course.",
+        "id": "question",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Compelling question and history"
+      },
+      {
+        "description": "Evaluates at least two options by their intended and unintended consequences and who bears their costs.",
+        "id": "options",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Weighs options"
+      },
+      {
+        "description": "Recommends an option with reasons supported by current, authoritative, cited sources.",
+        "id": "recommendation",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Recommendation and evidence"
+      },
+      {
+        "description": "Names a specific audience and action, and fairly reports the views of the deliberation group.",
+        "id": "action",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Action and deliberation"
+      }
+    ],
+    "title": "Civic proposal"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

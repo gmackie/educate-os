@@ -1,0 +1,42 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "7",
+    "overview": "Decide whether a sample represents its population, and describe how to choose a random sample.",
+    "problems": [
+      {
+        "prompt": "The student council wants to know the favorite lunch of all 600 students. They survey the 25 students in the chess club. Is this a good sample? Explain."
+      },
+      {
+        "prompt": "Describe a way to choose a random sample of 60 students from the 600 students in the school."
+      },
+      {
+        "prompt": "Which sample is biased, and why? (a) Asking people at the public library whether the town should build a new library. (b) Randomly choosing 50 residents from a list of every household in town."
+      },
+      {
+        "prompt": "A factory tests 200 of the 10,000 light bulbs it made today. What is the population, and what is the sample?"
+      },
+      {
+        "prompt": "Why do larger random samples usually give better estimates than smaller ones?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Good Samples, Fair Conclusions"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.A.1",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-good-samples",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

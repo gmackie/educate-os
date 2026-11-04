@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:dd8480ca627db3676c27bcf4d6076e2addf8b4fae84b5a07317eb3982e83a75a",
+      "id": "educateos.io/united-states-history-muckrakers-and-lawmakers",
+      "version": "1.0.0"
+    }
+  },
+  "id": "muckrakers-and-lawmakers",
+  "role": "lesson",
+  "title": "Muckrakers and Lawmakers"
+}

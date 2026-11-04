@@ -1,0 +1,156 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "genre": "literary-analysis",
+    "gradeBand": "4",
+    "minWords": 100,
+    "minimumCitations": 1,
+    "overview": "Explain the figurative language in a poem and what it tells us about the poem's theme.",
+    "prompt": "In \"Grandpa's Hands,\" the speaker says, \"My grandpa's hands are maps.\" What does this metaphor mean? Explain it, then choose one more example of figurative language from the poem and explain it too. End by telling what the poem's theme is and how the figurative language helps show it. Quote at least one line from the poem.",
+    "resources": [
+      "grandpas-hands"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "What the Poet Means: \"Grandpa's Hands\""
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.4.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.4.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-what-the-poet-means",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "My grandpa's hands are maps,\nwith rivers running blue\nand roads of tiny wrinkles\nfrom all the work they knew.\n\nThey built the porch we sit on.\nThey planted every tree.\nThey once held my mother\nand now they carry me.\n\nHis hands are slow as Sunday\nwhen they button up his coat,\nbut when he shows me how to fish\nthey dance across the boat.\n\nI trace the roads and rivers\nand think of every place\nthose hands will someday show me,\nand smile up at his face.",
+      "id": "grandpas-hands",
+      "title": "Grandpa's Hands"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "meaning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains what the figurative language means"
+      },
+      {
+        "id": "theme",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Connects it to the poem's theme"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Quotes lines from the poem"
+      },
+      {
+        "id": "conventions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Spelling, capitals and punctuation"
+      }
+    ],
+    "title": "Figurative language response"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

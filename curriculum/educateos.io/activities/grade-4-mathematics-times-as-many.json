@@ -1,0 +1,135 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Solve comparison word problems with multiplication and division, and multiply bigger numbers.",
+    "problems": [
+      {
+        "prompt": "A red ribbon is 6 inches long. A blue ribbon is 4 times as long. How long is the blue ribbon? Write an equation with a letter for the unknown number."
+      },
+      {
+        "prompt": "Ella has 56 stickers. That is 7 times as many stickers as Dev has. How many stickers does Dev have? Write an equation."
+      },
+      {
+        "prompt": "A school sold 145 fair tickets on Monday. On Friday it sold 3 times as many. How many tickets did it sell on Friday?"
+      },
+      {
+        "prompt": "A giraffe is 18 feet tall. A child is 3 feet tall. How many times as tall as the child is the giraffe?"
+      },
+      {
+        "prompt": "A bakery bakes 24 muffins on each tray. How many muffins are on 15 trays?"
+      },
+      {
+        "prompt": "A farmer plants 38 rows of corn with 27 plants in each row. How many corn plants are there?"
+      },
+      {
+        "prompt": "Maria has 12 shells. Ana has 3 times as many shells as Maria. Leo has 3 more shells than Maria. Who has more shells, Ana or Leo? How many more?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Times as Many"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.OA.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NBT.B.5",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-times-as-many",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows the steps or a model"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains thinking with math words"
+      }
+    ],
+    "title": "Multiplication word problems"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

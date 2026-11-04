@@ -1,0 +1,126 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 18,
+      "kind": "after-install"
+    },
+    "genre": "literary-analysis",
+    "gradeBand": "8",
+    "minWords": 300,
+    "minimumCitations": 2,
+    "overview": "Analyze how a theme develops over the course of the story.",
+    "prompt": "Identify a theme of \"The Lighthouse Keeper's Daughter\" and analyze how it develops from the beginning to the end of the story. Cite at least two passages.",
+    "resources": [
+      "lighthouse-story"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Theme in \"The Lighthouse Keeper's Daughter\""
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-lighthouse-theme",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Nell was afraid of the stairs. One hundred and twelve iron steps spiraled up the inside of the lighthouse, and through the gaps she could see all the way down to the stone floor.\n\nEvery night her father climbed them to light the lamp, and every night Nell stayed below, reading by the stove and pretending she did not care.\n\nThe storm came in November. Her father had gone to the mainland for supplies, and the wind was too strong for his boat to return. As darkness fell, Nell saw the lights of a fishing boat beyond the rocks.\n\nHer hands shook on the railing. She counted each step out loud, the way her father did, and did not look down. At the top, she struck the match three times before it caught.\n\nThe beam swept out across the water. In the morning, the fishermen came to thank the keeper. \"It wasn't me,\" her father said, looking at Nell. \"It was the bravest person on this island.\" Nell did not feel brave. She had been afraid the whole way up. Maybe, she thought, that was the point.",
+      "id": "lighthouse-story",
+      "title": "The Lighthouse Keeper's Daughter"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "theme",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Theme"
+      },
+      {
+        "id": "development",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Traces development"
+      },
+      {
+        "id": "citations",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses passages"
+      }
+    ],
+    "title": "Literary analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

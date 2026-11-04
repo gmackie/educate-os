@@ -1,0 +1,138 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 12,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Judge samples, make estimates and compare two groups with data.",
+    "problems": [
+      {
+        "prompt": "A principal wants to know how all 900 students feel about a new schedule. Which sample is best: the 15 students on the basketball team, the first 30 students who arrive in the morning, or 90 students chosen at random from the school roster? Explain."
+      },
+      {
+        "prompt": "In the random sample of 90 students, 54 like the new schedule. Estimate how many of the 900 students like it."
+      },
+      {
+        "prompt": "Quiz scores: Class 1: 6, 7, 7, 8, 9, 11. Class 2: 8, 9, 10, 10, 11, 12. Find the mean and the mean absolute deviation of each class. Round to the nearest hundredth."
+      },
+      {
+        "prompt": "Use your answers to problem 3. How many MADs apart are the means (use the larger MAD)? Which class typically scored higher, and how much do the two distributions overlap?"
+      },
+      {
+        "prompt": "Two random samples of 10 seventh graders were asked whether they have a pet. In one sample, 40% said yes; in the other, 70% said yes. Why can two random samples give such different results, and what could you do to get a better estimate?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Statistics Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.B.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-statistics-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "sampling",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Judges samples"
+      },
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct statistics"
+      },
+      {
+        "id": "inference",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Draws supported conclusions"
+      }
+    ],
+    "title": "Statistics check"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

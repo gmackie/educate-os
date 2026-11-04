@@ -1,0 +1,53 @@
+{
+  "id": "measuring-and-time",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u5-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "how-long-is-it"
+    },
+    {
+      "kind": "activity",
+      "ref": "measure-and-compare"
+    },
+    {
+      "kind": "activity",
+      "ref": "clocks-and-charts"
+    },
+    {
+      "kind": "activity",
+      "ref": "measuring-and-time-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u5-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.A.2",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.A.1",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.C.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "summary": "Order and compare lengths, measure with same-size units, tell time to the hour and half hour, and read simple charts.",
+  "title": "Measuring and Telling Time"
+}

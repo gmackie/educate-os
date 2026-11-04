@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:6f718b5d575cf807164c1df464cb0c99a0c1e6b264a4d789b3761238d484091a",
+      "id": "educateos.io/united-states-history-civil-rights-turning-point",
+      "version": "1.0.0"
+    }
+  },
+  "id": "civil-rights-turning-point",
+  "role": "assessment",
+  "title": "The Movement's Turning Point"
+}

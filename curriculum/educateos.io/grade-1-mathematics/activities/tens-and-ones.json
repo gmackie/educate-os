@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:25b8af6c88ae54c2d6a84aba9bb6e9922b557ac7c5261165a54299f962d5e091",
+      "id": "educateos.io/grade-1-mathematics-tens-and-ones",
+      "version": "1.0.0"
+    }
+  },
+  "id": "tens-and-ones",
+  "role": "assignment",
+  "title": "Tens and Ones"
+}

@@ -1,0 +1,142 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 12,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "8",
+    "minWords": 150,
+    "minimumCitations": 0,
+    "overview": "Take a position on a hard question, then prepare to discuss it with classmates who disagree.",
+    "prompt": "Is it ever right to break a promise? Write a short argument: state your position, give one reason with a specific example (from your life, a story or history), then write the strongest objection someone could make and your reply. Bring it to a small-group discussion. In the discussion, before you reply to a classmate who sees it differently, name the strongest part of their argument. After the discussion, add two sentences: did anything a classmate said change or sharpen your thinking?",
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Is It Ever Right to Break a Promise?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.SL.8.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.8.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-breaking-a-promise",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "position",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear position and reason"
+      },
+      {
+        "id": "example",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Specific example"
+      },
+      {
+        "id": "objection",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Fair objection and reply"
+      },
+      {
+        "id": "reflection",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Reflects on the discussion"
+      }
+    ],
+    "title": "Discussion argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

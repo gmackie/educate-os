@@ -1,0 +1,142 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 68,
+      "kind": "after-install"
+    },
+    "genre": "narrative",
+    "gradeBand": "8",
+    "minWords": 150,
+    "minimumCitations": 0,
+    "overview": "Write a poem that compares an idea to an everyday object all the way through, and explain your choices.",
+    "prompt": "Choose an idea that is hard to describe (patience, home, worry, courage, friendship, grief, hope) and an everyday object to compare it to. Write a poem of at least 12 lines that carries the comparison all the way through, using at least two specific images and one sound device (repetition, alliteration or rhyme). Make deliberate choices about line breaks and stanzas. Then write an author's note of about 100 words that explains your metaphor and one choice you made about the poem's form.",
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "My Extended Metaphor Poem"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.8.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-my-extended-metaphor",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "metaphor",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sustained extended metaphor"
+      },
+      {
+        "id": "imagery",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Specific images and sound"
+      },
+      {
+        "id": "form",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Purposeful line breaks and stanzas"
+      },
+      {
+        "id": "note",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Author's note explains choices"
+      }
+    ],
+    "title": "Poem and author's note"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

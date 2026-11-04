@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:a34be563eb1186a9d9fc1301ebb3dffc047ee37b3216bebd7d2044dbea097564",
+      "id": "educateos.io/grade-4-english-language-arts-character-change",
+      "version": "1.0.0"
+    }
+  },
+  "id": "character-change",
+  "role": "assignment",
+  "title": "How Mr. Okafor Changes"
+}

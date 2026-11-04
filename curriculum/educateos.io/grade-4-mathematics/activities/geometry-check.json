@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:13c2779de47d0d0d1a22208335ecfaa02ceb0eb6228446e6c396519605b6b0e5",
+      "id": "educateos.io/grade-4-mathematics-geometry-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "geometry-check",
+  "role": "assessment",
+  "title": "Geometry Check"
+}

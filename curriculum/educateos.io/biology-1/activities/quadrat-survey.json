@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:8a2ccf624a762e93f619e2cee76bd5933c55afe1022e49ba1669f5675ff3bcef",
+      "id": "educateos.io/biology-1-quadrat-survey",
+      "version": "1.0.0"
+    }
+  },
+  "id": "quadrat-survey",
+  "role": "lesson",
+  "title": "Schoolyard Quadrat Survey"
+}

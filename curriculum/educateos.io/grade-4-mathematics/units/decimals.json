@@ -1,0 +1,45 @@
+{
+  "id": "decimals",
+  "items": [
+    {
+      "kind": "codex",
+      "ref": "u3-overview"
+    },
+    {
+      "kind": "codex",
+      "ref": "u3-teacher-guide"
+    },
+    {
+      "kind": "activity",
+      "ref": "tenths-and-hundredths"
+    },
+    {
+      "kind": "activity",
+      "ref": "comparing-decimals"
+    },
+    {
+      "kind": "activity",
+      "ref": "decimal-check"
+    },
+    {
+      "kind": "codex",
+      "ref": "u3-answer-key"
+    }
+  ],
+  "standards": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.C.5",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.C.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.C.7",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "summary": "Connect fractions with denominators of 10 and 100 to decimals, add tenths and hundredths, and compare decimals.",
+  "title": "Decimals: Tenths and Hundredths"
+}

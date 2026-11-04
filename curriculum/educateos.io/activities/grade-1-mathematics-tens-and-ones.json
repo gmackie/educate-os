@@ -1,0 +1,63 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 14,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Show each number as tens and ones.",
+    "problems": [
+      {
+        "prompt": "Show **34** as tens and ones."
+      },
+      {
+        "prompt": "Show **50** as tens and ones."
+      },
+      {
+        "prompt": "What number is **1 ten and 7 ones**?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Tens and Ones"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.NBT.B.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-tens-and-ones",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "place-value",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I showed tens and ones"
+      }
+    ],
+    "title": "Tens and ones"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

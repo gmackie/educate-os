@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:4003acdeef7d9e087eca4687ca84735219432c513f5a38557cbd9e93eb8fedcb",
+      "id": "educateos.io/english-8-drama-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "drama-check",
+  "role": "assessment",
+  "title": "Drama Check: \"The Interview\""
+}

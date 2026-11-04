@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:7f06afdc010aaaf38a9f0d8583475ea25a00e209b1314793602f583ad619162c",
+      "id": "educateos.io/kindergarten-science-weather-watchers-sun-or-shade",
+      "version": "1.0.0"
+    }
+  },
+  "id": "sun-or-shade",
+  "role": "assignment",
+  "title": "Sun or Shade: Which Is Warmer?"
+}

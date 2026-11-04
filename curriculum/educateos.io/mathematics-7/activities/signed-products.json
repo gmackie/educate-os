@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:7060aa23cbb56e12951e01a8be329630f13b3f70ede8db0704da148d9efdf905",
+      "id": "educateos.io/mathematics-7-signed-products",
+      "version": "1.0.0"
+    }
+  },
+  "id": "signed-products",
+  "role": "assignment",
+  "title": "Multiplying and Dividing Signed Numbers"
+}

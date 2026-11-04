@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:4d23b19564a5a0dfd413d60acdd6acdf7585209c637df8553533752f15352f10",
+      "id": "educateos.io/world-history-7-a-faith-and-an-empire",
+      "version": "1.0.0"
+    }
+  },
+  "id": "a-faith-and-an-empire",
+  "role": "lesson",
+  "title": "A Faith and an Empire Spread"
+}

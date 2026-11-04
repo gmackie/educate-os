@@ -1,0 +1,147 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "claimPrompt": "Why did Abbasid rulers and scholars invest in translating and writing books? Make a claim and support it with at least two pieces of evidence, at least one from al-Khwarizmi's own words.",
+    "contextualizationQuestions": [
+      "What was happening in Baghdad in the early 800s that made a book like this possible?",
+      "Al-Khwarizmi lists inheritance, trade, measuring land and digging canals. What does that list tell you about daily life in the caliphate?"
+    ],
+    "due": {
+      "days": 10,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "minimumEvidence": 2,
+    "overview": "Read a Baghdad mathematician's own explanation of why he wrote his book, and decide why rulers supported scholars.",
+    "resources": [
+      "al-khwarizmi-preface",
+      "house-of-wisdom"
+    ],
+    "sources": [
+      "al-khwarizmi-preface",
+      "house-of-wisdom"
+    ],
+    "sourcingQuestions": [
+      "Who wrote the preface, when, and to whom did he dedicate his book?",
+      "Why might an author praise the ruler at the start of his book? How does that affect how you read the praise?"
+    ],
+    "subject": "history-social-studies",
+    "template": "primary-source-analysis",
+    "title": "The House of Wisdom"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.2.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.1.6-8",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RH.6-8.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/world-history-7-house-of-wisdom",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "The excerpt is adapted into modern English from Frederic Rosen's translation, The Algebra of Mohammed ben Musa (1831), which is in the public domain. The introduction was written for EducateOS.",
+      "body": "Muhammad ibn Musa al-Khwarizmi wrote his book on algebra in Baghdad in the early 800s and dedicated it to the caliph al-Ma'mun. In the preface, he explains why he wrote it.\n\nFrom the preface: The love of learning, which God has given to the caliph al-Ma'mun, and the kindness he shows to the learned, and the help he gives them in making clear what is unclear and easy what is hard, have encouraged me to write a short work on calculating by completion and balancing. I have kept to what is easiest and most useful in arithmetic, the kind of thing people constantly need in cases of inheritance, wills, dividing property, lawsuits and trade, and in all their dealings with one another, or in measuring land, digging canals, geometry, and other matters of many kinds.",
+      "id": "al-khwarizmi-preface",
+      "title": "Al-Khwarizmi Explains Why He Wrote His Book (excerpt, adapted)"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "By 800 CE, Baghdad was one of the largest cities in the world. Ships and caravans brought goods from China, India, Africa and Europe. Paper-making, learned from Chinese craftspeople, spread to Baghdad by the late 700s, and paper soon replaced more expensive papyrus and parchment for books and records.\n\nThe Abbasid caliphs, especially Harun al-Rashid and his son al-Ma'mun (who ruled from 813 to 833), paid scholars to collect and translate books from Greek, Persian, Syriac and Sanskrit into Arabic. Works on medicine, astronomy, mathematics and philosophy were copied and studied. Scholars of many faiths took part. A royal library known as the House of Wisdom was at the center of some of this work. Historians still debate how large and organized it was, but they agree that Baghdad became a great center of translation and new learning.\n\nScholars did more than translate. The mathematician Muhammad ibn Musa al-Khwarizmi worked in Baghdad in the early 800s. His book on solving equations gave us the word algebra (from the Arabic al-jabr), and his name gave us the word algorithm. He also helped spread the Hindu numerals, including zero, that we now call Hindu-Arabic numerals. Later, the physician Ibn Sina (died 1037) wrote The Canon of Medicine, which was used in European universities for centuries.\n\nBaghdad's power did not last forever. In 1258, Mongol armies captured and destroyed much of the city. But the knowledge preserved and created there had already spread to Cairo, Cordoba, and, through translations into Latin, to Europe.",
+      "id": "house-of-wisdom",
+      "title": "Baghdad and the House of Wisdom"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Sourcing"
+      },
+      {
+        "id": "context",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Context"
+      },
+      {
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim and evidence"
+      }
+    ],
+    "title": "Source analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

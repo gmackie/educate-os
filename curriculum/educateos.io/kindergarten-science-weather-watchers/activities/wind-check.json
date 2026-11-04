@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:f51456a1110ae2a97a1438c3bc1a79c9460422b08b7a32a67400d55b8e96e980",
+      "id": "educateos.io/kindergarten-science-weather-watchers-wind-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "wind-check",
+  "role": "assessment",
+  "title": "Wind Check"
+}

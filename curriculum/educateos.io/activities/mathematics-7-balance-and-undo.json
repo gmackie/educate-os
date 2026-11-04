@@ -1,0 +1,42 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "7",
+    "overview": "Solve one-step and two-step equations by undoing operations in reverse order, and check each solution.",
+    "problems": [
+      {
+        "prompt": "Solve x + 9 = 23."
+      },
+      {
+        "prompt": "Solve 5x = 45."
+      },
+      {
+        "prompt": "Solve 2x + 3 = 17. Show each step and check your answer."
+      },
+      {
+        "prompt": "Solve x/4 - 2 = 3. Show each step and check your answer."
+      },
+      {
+        "prompt": "To solve 3x + 6 = 21, Dev subtracts 6 before dividing by 3. Explain why this order works, then solve the equation."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Balance and Undo"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.EE.B.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-balance-and-undo",
+  "language": "en",
+  "readings": [],
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

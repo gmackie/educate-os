@@ -1,0 +1,165 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "answerBy": "writing",
+    "due": {
+      "days": 20,
+      "kind": "after-install"
+    },
+    "gradeBand": "8",
+    "overview": "Read a new story on your own, state its theme and trace how it develops.",
+    "passage": "The Paper Cranes\n\nJi-ho had folded nine hundred and ninety-one paper cranes when his grandmother came home from the hospital. He had started the morning she left, because a library book said that a person who folds a thousand cranes may be granted a wish. He hadn't told anyone what he was wishing for. He didn't need to.\n\n\"Nine more,\" he said, showing her the shoebox. \"Then it works.\"\n\nHis grandmother looked at the cranes for a long time. Some were crisp and perfect. The early ones were lopsided, their wings bent where his fingers had pressed too hard. \"You learned,\" she said, touching one of the crooked ones. \"Look how you learned.\"\n\n\"It doesn't matter how they look. It matters that there's a thousand.\"\n\n\"Does it?\" She took a square of paper from the stack beside him and began to fold, slowly, her hands not as steady as they used to be. Her crane came out worse than his worst one. She laughed and set it on the pile. \"Nine hundred and ninety-two.\"\n\nOver the next week they folded the last eight together, one each evening, while she told him about the village where she grew up, where the river froze so hard in winter that the children skated to school. Ji-ho noticed he had stopped counting.\n\nOn the night they finished, he held the thousandth crane and realized he had forgotten to make the wish. His grandmother was asleep in her chair with a crooked crane in her lap. He decided the wish had already been granted, in a different form than he expected, and put the crane in the box with the others.",
+    "questions": [
+      {
+        "prompt": "What does Ji-ho want at the beginning of the story, and why is he folding cranes?"
+      },
+      {
+        "prompt": "Reread the dialogue: \"It doesn't matter how they look. It matters that there's a thousand.\" What does this line reveal about Ji-ho at this point in the story?"
+      },
+      {
+        "prompt": "How does his grandmother's crooked crane move the story in a new direction?"
+      },
+      {
+        "prompt": "\"Ji-ho noticed he had stopped counting.\" Explain what this detail shows about how he has changed."
+      },
+      {
+        "prompt": "State a theme of the story in one complete sentence."
+      },
+      {
+        "prompt": "Write a paragraph that traces your theme from the beginning to the end of the story, citing at least two passages."
+      }
+    ],
+    "sentenceFrames": [],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Theme Check: \"The Paper Cranes\""
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.8.3",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-8-theme-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "theme",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "States a theme"
+      },
+      {
+        "id": "development",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Traces development"
+      },
+      {
+        "id": "dialogue",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Analyzes dialogue and incidents"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Cites strong evidence"
+      }
+    ],
+    "title": "Theme check"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

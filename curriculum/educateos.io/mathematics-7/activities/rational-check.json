@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:96658454ece47648cb2c7891bfa130b427d48816b6f7d14a6ea5f15a1799215d",
+      "id": "educateos.io/mathematics-7-rational-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "rational-check",
+  "role": "assessment",
+  "title": "Rational Numbers Check"
+}

@@ -1,0 +1,189 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "genre": "informative",
+    "gradeBand": "4",
+    "minWords": 200,
+    "minimumCitations": 2,
+    "overview": "Use your research notes to write an informative report about sea otters.",
+    "prompt": "Write an informative report about sea otters for a reader who knows nothing about them. Begin with an introduction that tells what the report is about. Write at least two sections with headings, using facts, definitions and details from both texts. Use topic words such as kelp, blubber, keystone species and groom, and explain what they mean. Connect ideas with linking words such as also, another, for example and because. End with a conclusion. Name the sources you used.",
+    "resources": [
+      "sea-otters-kelp",
+      "otter-care-center"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Report: All About Sea Otters"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.7",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.9",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-otter-report",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Off the rocky coasts of the North Pacific Ocean, tall forests grow underwater. These kelp forests are made of a giant seaweed that can grow taller than a ten-story building. Fish hide among the kelp, and seals and seabirds hunt there. And floating on top, often on its back, you might find a sea otter.\n\nSea otters spend almost their whole lives in the water. Unlike seals and whales, they have no layer of blubber to keep them warm. Instead, they have the thickest fur of any animal on Earth, with up to about a million hairs in a patch of skin the size of a postage stamp. Air trapped in the fur keeps the cold water away from their skin. Otters spend hours every day cleaning and fluffing their fur so it keeps working.\n\nStaying warm takes a lot of energy, so sea otters are always hungry. An otter eats about one quarter of its body weight in food every day. It dives to the sea floor to collect crabs, clams, snails and sea urchins. Back at the surface, it floats on its back, rests a flat rock on its chest, and bangs a shell against the rock until it cracks. Sea otters are one of the few animals that use tools.\n\nSea urchins are spiny animals that eat kelp. When there are too many urchins, they chew through the bottoms of the kelp, and the whole forest can disappear. Sea otters eat so many urchins that they keep their numbers down. Where otters live, kelp forests stay healthy, and so do all the animals that depend on them. That is why scientists call the sea otter a keystone species: like the keystone at the top of a stone arch, if you take it away, the rest falls apart.",
+      "id": "sea-otters-kelp",
+      "title": "Sea Otters: Keepers of the Kelp"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "At the Otter Care Center on the coast, a young otter named Pip rolls over and over in a pool. Pip was found alone on a beach when she was only a few weeks old. Without her mother, she could not have survived.\n\nOtter pups depend on their mothers for about six months. A mother otter floats on her back and carries her pup on her chest. She grooms its fluffy fur, which is so full of air that a young pup bobs on the water like a cork and cannot dive. While the mother hunts, she may wrap her pup in a strand of kelp so it does not drift away.\n\nAt the center, caretakers do the mother's jobs. They feed Pip clams and squid several times a day and show her how to search for food in a tank with rocks and shells. They also teach her to groom her fur, because an otter with dirty or matted fur can get dangerously cold.\n\nThe caretakers wear dark capes and masks when they work with Pip. That way, she does not learn to trust people, which could put her in danger in the wild. When she is old enough to dive, find food and keep her fur clean, the team will return her to the ocean near a group of wild otters. A small tag on her flipper will help scientists follow how she does.",
+      "id": "otter-care-center",
+      "title": "A Visit to the Otter Care Center"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "focus",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Introduces the topic and stays on it"
+      },
+      {
+        "id": "development",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Develops sections with facts, definitions and details from both sources"
+      },
+      {
+        "id": "organization",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Headings, linking words and a conclusion"
+      },
+      {
+        "id": "vocabulary",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses precise topic words"
+      },
+      {
+        "id": "conventions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Spelling, capitals and punctuation"
+      }
+    ],
+    "title": "Informative report"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

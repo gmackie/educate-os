@@ -1,0 +1,7 @@
+{
+  "body": "A population is the whole group you want to learn about. A sample is the part of the group you actually ask or measure.\n\nA random sample gives every member of the population the same chance of being chosen. Random samples tend to represent the population well. A sample of only your friends, or only the people in one club, may be biased.\n\nWorked example: in a random sample of 50 students from a school of 600, 20 say they ride a bike to school.\n20 ÷ 50 = 0.4, so we estimate 0.4 × 600 = 240 bike riders in the whole school.\n\nTo compare two groups, look at center and spread.\n- The mean is the balance point: add the values and divide by how many there are.\n- The mean absolute deviation (MAD) is the average distance of the values from the mean.\nFor 4, 6, 8, 10, 12: the mean is 8, the distances are 4, 2, 0, 2, 4, and the MAD is 12 ÷ 5 = 2.4.\n\nIn this unit you will judge samples, make estimates from them, and compare groups using data.",
+  "id": "u6-overview",
+  "purpose": "context",
+  "title": "What Can a Sample Tell Us?",
+  "visibility": "students"
+}

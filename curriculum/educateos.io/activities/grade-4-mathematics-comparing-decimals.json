@@ -1,0 +1,135 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "overview": "Place decimals on a number line and compare them by reasoning about their size.",
+    "problems": [
+      {
+        "prompt": "Draw a number line from 0 to 1 and place 0.3, 0.75 and 0.5 on it. Which is closest to 1?"
+      },
+      {
+        "prompt": "Compare 0.4 and 0.38. Write <, > or =, and explain using hundredths."
+      },
+      {
+        "prompt": "Compare 0.7 and 0.70. Write <, > or =."
+      },
+      {
+        "prompt": "In the long jump, Rosa jumped 1.62 meters and Theo jumped 1.6 meters. Who jumped farther? Explain."
+      },
+      {
+        "prompt": "Order these decimals from least to greatest: 0.09, 0.9, 0.19."
+      },
+      {
+        "prompt": "Jamal says 0.25 is greater than 0.3 because 25 is greater than 3. Explain Jamal's mistake."
+      },
+      {
+        "prompt": "Mia drank 0.5 of a small bottle of water. Leo drank 0.4 of a large bottle. Mia says she drank more. Can you be sure she is right? Explain."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Decimals on the Number Line"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.C.6",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.4.NF.C.7",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-4-mathematics-comparing-decimals",
+  "language": "en",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct answers"
+      },
+      {
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Shows the steps or a model"
+      },
+      {
+        "id": "communication",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains thinking with math words"
+      }
+    ],
+    "title": "Comparing decimals"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

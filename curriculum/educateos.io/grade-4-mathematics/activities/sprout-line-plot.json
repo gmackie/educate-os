@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:289f88b548f5a1da3598523111517be666a805fcd1e60794688dac41a35814b9",
+      "id": "educateos.io/grade-4-mathematics-sprout-line-plot",
+      "version": "1.0.0"
+    }
+  },
+  "id": "sprout-line-plot",
+  "role": "assignment",
+  "title": "Line Plots: Bean Sprout Lengths"
+}

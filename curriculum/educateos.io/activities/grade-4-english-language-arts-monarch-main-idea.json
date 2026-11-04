@@ -1,0 +1,58 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "answerBy": "writing",
+    "due": {
+      "kind": "none"
+    },
+    "gradeBand": "4",
+    "overview": "Read an article about monarch migration. Find the main idea, key details and the meaning of new words.",
+    "passage": "Every fall, millions of orange and black butterflies leave the northern United States and southern Canada and fly south. These monarch butterflies are on one of the longest journeys of any insect in the world. Some travel close to 3,000 miles to reach the mountain forests of central Mexico.\n\nA monarch weighs less than a paper clip, so how can it fly so far? Monarchs save energy by gliding on warm, rising air, the way a hawk does. They stop to drink nectar from flowers, which gives them fuel and helps them store fat for the winter.\n\nThe monarchs that fly south are special. Most monarchs live only two to six weeks as adults. The fall travelers, sometimes called the super generation, can live for up to eight months. They spend the winter packed together on fir trees, so many that the branches bend under their weight.\n\nIn spring, the monarchs fly north again, but no single butterfly makes the whole trip. Along the way, females lay eggs on milkweed, the only plant monarch caterpillars can eat. Their children, and then their grandchildren, carry the migration farther north. It takes three or four generations to get back to where the trip began.\n\nToday, monarchs face problems. Fields of milkweed have been replaced by roads, lawns and farms, so there are fewer places to lay eggs. Scientists and volunteers are helping by planting milkweed and by tagging monarchs to learn where they go.",
+    "questions": [
+      {
+        "prompt": "What is the main idea of the whole article? Write it in one sentence."
+      },
+      {
+        "prompt": "Paragraph 2 asks how a monarch can fly so far. Write two details that answer the question."
+      },
+      {
+        "prompt": "Read paragraph 3 again. What does super generation mean? Which words helped you figure it out?"
+      },
+      {
+        "prompt": "Why do monarchs need milkweed? Use details from paragraph 4."
+      },
+      {
+        "prompt": "Paragraph 4 says it takes three or four generations to get back north. Explain what that means in your own words."
+      },
+      {
+        "prompt": "Summarize the article in three or four sentences. Include the main idea and the most important details."
+      }
+    ],
+    "sentenceFrames": [
+      "The article is mostly about ___.",
+      "One key detail is ___.",
+      "I think ___ means ___ because the text says ___."
+    ],
+    "subject": "english-language-arts",
+    "template": "read-and-respond",
+    "title": "Monarchs on the Move: Main Idea and Details"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.2",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.4.4",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-monarch-main-idea",
+  "language": "en",
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

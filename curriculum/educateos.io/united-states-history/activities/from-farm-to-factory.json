@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:60ad08349194508f9eed72ee2965da3e856f4bab56202a0df625ee20a8d38838",
+      "id": "educateos.io/united-states-history-from-farm-to-factory",
+      "version": "1.0.0"
+    }
+  },
+  "id": "from-farm-to-factory",
+  "role": "lesson",
+  "title": "From Farm to Factory"
+}

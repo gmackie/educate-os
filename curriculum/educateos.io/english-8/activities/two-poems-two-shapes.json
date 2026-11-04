@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:e7bc922980ce2c97eea48545566546b4db313fb38d460750ac68d0d12f49ee13",
+      "id": "educateos.io/english-8-two-poems-two-shapes",
+      "version": "1.0.0"
+    }
+  },
+  "id": "two-poems-two-shapes",
+  "role": "assignment",
+  "title": "Two Poems, Two Shapes"
+}

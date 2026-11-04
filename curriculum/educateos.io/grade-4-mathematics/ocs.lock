@@ -1,0 +1,11 @@
+{
+  "lockVersion": 1,
+  "packages": [],
+  "root": {
+    "digest": "sha256:429ec721b96a528360f4f7c2ae5423e25343892d0c364eec5376237a82b06907",
+    "id": "educateos.io/grade-4-mathematics",
+    "modules": [],
+    "version": "1.0.0"
+  },
+  "specVersion": "1.1"
+}

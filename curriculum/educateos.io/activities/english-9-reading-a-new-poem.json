@@ -1,0 +1,164 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 2,
+      "kind": "after-install"
+    },
+    "genre": "literary-analysis",
+    "gradeBand": "9-12",
+    "minWords": 300,
+    "minimumCitations": 1,
+    "overview": "Analyze a poem you have not seen before in one class period.",
+    "prompt": "Read \"Inventory at Fifteen\" at least twice. In a focused analysis, explain what the poem suggests about being fifteen. Analyze how the poet uses figurative language (at least two metaphors) and one choice of structure or sound (such as the stanza pattern, the rhyme, or the short sentences in the third stanza) to develop that meaning and the poem's tone. Quote the poem at least three times.",
+    "resources": [
+      "inventory-at-fifteen"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Reading a New Poem"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.4",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.5",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.L.9-10.5.A",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RL.9-10.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/english-9-reading-a-new-poem",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS. An original poem.",
+      "body": "My childhood is a coat I still keep on the hook,\ntwo sizes small, the zipper bitten through.\nI do not wear it. Some mornings I just look.\n\nMy mother's kitchen is a country with one rule:\nwe eat together, even when we fight.\nI learned its anthem: dishes, bread, the stool.\n\nMy future is a hallway with the lights turned low.\nI hear a door. I cannot see the knob.\nI walk toward it anyway. I go.\n\nAnd this, tonight, is mine: a window and a moon,\na notebook with its pages mostly white.\nI write one line. I'll write the next one soon.",
+      "id": "inventory-at-fifteen",
+      "title": "Inventory at Fifteen"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States what the poem suggests about being fifteen as a clear claim.",
+        "id": "meaning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Meaning and theme"
+      },
+      {
+        "description": "Analyzes at least two metaphors and their effect.",
+        "id": "figurative",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Figurative language"
+      },
+      {
+        "description": "Explains how a structural or sound choice shapes tone or meaning.",
+        "id": "structure",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Structure and sound"
+      },
+      {
+        "description": "Quotes the poem accurately at least three times and explains each quotation.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Textual evidence"
+      }
+    ],
+    "title": "On-demand poetry analysis"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

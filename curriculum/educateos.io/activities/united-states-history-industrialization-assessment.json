@@ -1,0 +1,181 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "9-12",
+    "minWords": 450,
+    "minimumCitations": 2,
+    "overview": "Write a timed historical argument about what industrialization meant for American workers, using the sources from this unit.",
+    "prompt": "To what extent did industrialization between 1840 and 1900 expand opportunity for American workers? Take a clear position. Support it with evidence from at least two of the unit's sources and with specific historical knowledge, and address at least one group of workers whose experience challenges your claim.",
+    "resources": [
+      "mill-letter",
+      "carnegie-wealth",
+      "omaha-platform",
+      "farm-to-factory"
+    ],
+    "subject": "history-social-studies",
+    "template": "writing-task",
+    "title": "Did Industrialization Expand Opportunity?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.14.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:c3:C3.D2.His.16.9-12",
+      "frameworkKey": "c3"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.WHST.9-10.1",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/united-states-history-industrialization-assessment",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS: a composite letter drawing on the experiences Lowell mill workers described in their letters and in the Lowell Offering. Not a historical document; read it as a model source.",
+      "body": "Lowell, May the 4th, 1845\n\nDear Sister,\n\nI take up my pen on the Sabbath, the only day the mill is still. You asked in your last whether I mean to come home for haying. I cannot say yet. I am now in the weaving room and tend three looms, and the overseer says that if I keep my cloth clean I may have a fourth by summer, which would raise my pay.\n\nI will not pretend it is easy. The bell rules us from before light until after dark. It wakes us at half past four, calls us to the mill, sends us to breakfast and back again, and does not let us go until seven in the evening. The noise of the looms is such that we talk with our hands, and the air is so full of lint that I cough at night. Two girls in our boardinghouse went home this spring with their health broken.\n\nBut I have money of my own for the first time. After my board is paid I put by near two dollars a week. I have sent three dollars in this letter toward Father's note at the bank, and I have bought a bonnet and a book of poems besides. There is a lecture hall, a library, and an improvement circle where the girls read their own compositions aloud. Mrs. Abbott, who keeps our house, is strict, and we must be in by ten and go to meeting on Sunday, but she is fair.\n\nSome of the girls are getting up a petition to the legislature for a ten-hour day. Several have signed. I have not signed yet, for some say the agents will put the names of those who sign on a list. Do not tell Mother I wrote of it.\n\nKiss the little ones for me. I shall write again when I have news of the fourth loom.\n\nYour affectionate sister,\nHannah",
+      "id": "mill-letter",
+      "title": "A Mill Worker Writes Home (Lowell, Massachusetts, 1845)"
+    },
+    {
+      "attribution": "Andrew Carnegie, \"Wealth,\" North American Review, June 1889. Public domain.",
+      "body": "\"The problem of our age is the proper administration of wealth, that the ties of brotherhood may still bind together the rich and poor in harmonious relationship.\"\n\n\"The man who dies thus rich dies disgraced.\"\n\nAbout the author: Carnegie emigrated from Scotland as a boy, worked as a telegraph messenger and railroad clerk, and built Carnegie Steel into the largest steel company in the world. He argued that great fortunes were a natural result of competition and that the rich had a duty to give their surplus wealth away during their lifetimes, for libraries, universities, and other public goods. He funded more than 2,500 public libraries. The Homestead strike at his company's works, in which a battle between strikers and Pinkerton guards left at least ten people dead, came three years after this essay.",
+      "id": "carnegie-wealth",
+      "title": "Andrew Carnegie, \"Wealth\" (1889), excerpts"
+    },
+    {
+      "attribution": "Preamble, Platform of the People's Party, adopted at Omaha, Nebraska, July 4, 1892. Public domain.",
+      "body": "\"The fruits of the toil of millions are boldly stolen to build up colossal fortunes for a few, unprecedented in the history of mankind; and the possessors of these, in turn, despise the Republic and endanger liberty.\"\n\nAbout the source: The People's Party, or Populists, was founded mainly by farmers in the South and West, with support from some labor organizations. Its platform called for government ownership of the railroads and telegraph, a graduated income tax, the direct election of United States senators, and an expanded money supply. Its presidential candidate won more than a million votes in 1892.",
+      "id": "omaha-platform",
+      "title": "People's Party Platform (Omaha, 1892), excerpt"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "In 1800 most Americans lived on farms and made much of what they used at home. By 1900 the United States was the largest industrial economy in the world. Historians call this transformation the Industrial Revolution, and it happened in two waves.\n\nThe first wave began in New England textile mills. In the 1820s investors known as the Boston Associates built water-powered mills along the Merrimack River at Lowell, Massachusetts. They hired young, unmarried women from New England farms, housed them in company boardinghouses, and paid them cash wages. A typical worker labored about twelve hours a day, six days a week. In the 1840s, as mill owners cut piece rates and sped up the machines, workers organized. The Lowell Female Labor Reform Association, formed in 1845, petitioned the Massachusetts legislature for a ten-hour workday. The legislature held hearings but passed no law. By the 1850s Irish immigrants, many of them fleeing famine, made up a growing share of the mill workforce.\n\nThe second wave, after the Civil War, was larger and faster. Railroads, steel, oil, and electricity created national markets and giant corporations. Between 1870 and 1900 about twelve million immigrants arrived, many from southern and eastern Europe, and most found work in industry. Wealth grew enormously, and so did the gap between owners and workers. Industrial work was dangerous: thousands of workers died in accidents each year, and there was no unemployment insurance or workers' compensation.\n\nWorkers responded by organizing. The Knights of Labor grew rapidly in the 1880s. The American Federation of Labor, founded in 1886 under Samuel Gompers, organized skilled workers by craft and pressed for higher wages and an eight-hour day. Major strikes, including the Great Railroad Strike of 1877, the Homestead strike at a Carnegie steel works in 1892, and the Pullman strike of 1894, often ended when state militias or federal troops were sent in. Farmers, squeezed by debt and falling crop prices, formed the People's Party in 1892 to challenge the power of railroads and banks.",
+      "id": "farm-to-factory",
+      "title": "From Farm to Factory, 1820-1900"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "description": "States a precise, defensible thesis that takes a position on the question and sets up a line of reasoning.",
+        "id": "claim",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Claim"
+      },
+      {
+        "description": "Supports the claim with specific, accurate and sufficient evidence, cited from the sources where required.",
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Historical evidence"
+      },
+      {
+        "description": "Explains how the evidence supports the claim using causation, comparison, or change and continuity.",
+        "id": "reasoning",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Historical reasoning"
+      },
+      {
+        "description": "Addresses a counterclaim or competing interpretation fairly and explains why the claim still holds.",
+        "id": "alternatives",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Weighs alternatives"
+      }
+    ],
+    "title": "Historical argument"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

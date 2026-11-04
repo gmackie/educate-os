@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:2c73ea72a0e9324816e96d372286338629ca5ede0500def4fe3812f351334da3",
+      "id": "educateos.io/grade-1-mathematics-make-a-story-problem",
+      "version": "1.0.0"
+    }
+  },
+  "id": "make-a-story-problem",
+  "role": "assignment",
+  "title": "Make Your Own Story Problem"
+}

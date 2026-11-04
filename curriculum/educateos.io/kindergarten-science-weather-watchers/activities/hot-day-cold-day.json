@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b850535827d86d0bf3b1b9266adf637a82cbc177d64f9684438a876f9ce694f5",
+      "id": "educateos.io/kindergarten-science-weather-watchers-hot-day-cold-day",
+      "version": "1.0.0"
+    }
+  },
+  "id": "hot-day-cold-day",
+  "role": "assignment",
+  "title": "Hot Day or Cold Day?"
+}

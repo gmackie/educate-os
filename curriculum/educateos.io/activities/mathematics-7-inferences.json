@@ -1,0 +1,100 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 8,
+      "kind": "after-install"
+    },
+    "gradeBand": "7",
+    "overview": "Use random samples to estimate facts about a population, and describe how much estimates can vary.",
+    "problems": [
+      {
+        "prompt": "In a random sample of 80 students from a school of 720, 24 students walk to school. Estimate how many students in the school walk to school."
+      },
+      {
+        "prompt": "Three random samples of 50 voters were asked about a plan for a new park. In the samples, 28, 31 and 25 voters supported the plan. Estimate the percent of all voters who support the plan, and describe how much the samples vary."
+      },
+      {
+        "prompt": "A biologist catches and tags 60 fish in a lake, then releases them. Later she catches 100 fish, and 12 of them are tagged. Estimate the number of fish in the lake."
+      },
+      {
+        "prompt": "A random sample of 25 seventh graders reported a mean of 32 minutes of reading per day. Predict the mean reading time for all seventh graders in the school. Would a random sample of 5 students give a more reliable or less reliable prediction? Explain."
+      },
+      {
+        "prompt": "In a random sample of 40 students from a school of 400, 18 prefer a later start time. Estimate how many students in the school prefer a later start. Is your estimate certain to be exact? Explain."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Making Inferences from Samples"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.7.SP.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/mathematics-7-inferences",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Correct estimates"
+      },
+      {
+        "id": "inference",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Explains sampling and variation"
+      }
+    ],
+    "title": "Inferences from samples"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

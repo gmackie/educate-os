@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:37005cf6bd235c09a16ed73f840d219e6089175ec7a8b24e6f005938b2725c25",
+      "id": "educateos.io/grade-1-mathematics-tens-and-ones-check",
+      "version": "1.0.0"
+    }
+  },
+  "id": "tens-and-ones-check",
+  "role": "assessment",
+  "title": "Tens and Ones Check"
+}
