@@ -18,6 +18,7 @@ import {
   persistSelectedModel,
   toModelSelectValue,
 } from '../../modelSelection'
+import { useOptionalAuthenticatedApi } from '../../AuthContext'
 import { useDialogSelectPortalContainer } from '../../useDialogSelectPortalContainer'
 import { logRpcFailure } from '../../rpcErrors'
 import { toBlueprintChoice, type BlueprintChoice } from './blueprintChoices'
@@ -40,8 +41,6 @@ type Load =
   | {
     status: 'loaded'
     models: AiChatAuthorInfo[]
-    /** The model a new chat would start with, which reviews a merge unless the user picks another. */
-    defaultReviewerId: string | null
     followed: BlueprintPublicInfo | null
   }
 
@@ -101,6 +100,7 @@ export const UpdateFromBlueprintDialog = ({
   onClose,
   onProposed,
 }: UpdateFromBlueprintDialogProps) => {
+  const preferredModel = useOptionalAuthenticatedApi()?.preferredModel ?? null
   const followedId = gadget.upstream?.blueprintId
 
   const [load, setLoad] = useState<Load>({ status: 'loading' })
@@ -123,8 +123,7 @@ export const UpdateFromBlueprintDialog = ({
       followedId === undefined ? null : publicApi.getBlueprint(followedId),
     ]).then(([models, followed]) => {
       if (cancelled) return
-      // The same choice a new chat's composer starts on, since a new chat is where this lands.
-      setLoad({ status: 'loaded', models, defaultReviewerId: getStoredSelectedModel(models), followed })
+      setLoad({ status: 'loaded', models, followed })
     }, err => {
       logRpcFailure('Failed to load the blueprint to update from:', err)
       if (!cancelled) setLoad({ status: 'failed' })
@@ -158,9 +157,11 @@ export const UpdateFromBlueprintDialog = ({
     })
   }
 
+  // Unless the user picks another, the model a new chat's composer starts on, since a new chat is
+  // where this lands.
   const reviewerId = pickedReviewer
     ? pickedReviewer.modelId
-    : load.status === 'loaded' ? load.defaultReviewerId : null
+    : load.status === 'loaded' ? getStoredSelectedModel(load.models, preferredModel) : null
 
   const pickReviewer = (modelId: string | null) => {
     setPickedReviewer({ modelId })

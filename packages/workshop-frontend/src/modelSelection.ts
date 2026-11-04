@@ -5,8 +5,14 @@ const LAST_SELECTED_MODEL_KEY = "lastSelectedModel";
 /** Sentinel used for UI values and localStorage so an explicit null choice can persist. */
 export const NO_AGENT_OPTION_VALUE = "__gadgets_no_agent__";
 
+/**
+ * The model a new conversation starts on: this browser's last pick while it is offered (an explicit
+ * "No agent" included), else the user's own preferred model (chosen at onboarding, kept by the
+ * server so a new browser honours it) while it is offered, else the first model.
+ */
 export function getStoredSelectedModel(
   models: AiChatAuthorInfo[],
+  preferredModel: string | null,
 ): string | null {
   const storedModel = localStorage.getItem(LAST_SELECTED_MODEL_KEY);
 
@@ -18,8 +24,7 @@ export function getStoredSelectedModel(
     return storedModel;
   }
 
-  // Default: Return the first configured model, or null if none are configured.
-  return models[0]?.id ?? null;
+  return (models.find((model) => model.id === preferredModel) ?? models[0])?.id ?? null;
 }
 
 export function persistSelectedModel(modelId: string | null): void {

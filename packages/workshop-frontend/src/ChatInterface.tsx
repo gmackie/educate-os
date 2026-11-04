@@ -2472,17 +2472,6 @@ function inferChatAgentFromMessages(messages: AiChatMessage[]): AiChatAuthorInfo
   return null;
 }
 
-function fallbackToStoredModelSelection(
-  modelId: string | null,
-  availableModels: AiChatAuthorInfo[],
-): string | null {
-  if (modelId !== null || availableModels.length > 0) {
-    return modelId;
-  }
-
-  return getStoredSelectedModel(availableModels);
-}
-
 interface ChatInterfaceProps {
   workspaceId: string | undefined;
   overseer: RpcStub<Overseer>;
@@ -2725,7 +2714,7 @@ function ChatInterface({
 }: ChatInterfaceProps) {
   // Persistent cache that survives reconnects
   const toasts = useKumoToastManager();
-  const { currentUser } = useAuthenticatedApi();
+  const { currentUser, preferredModel } = useAuthenticatedApi();
   const getOverseer = useCallback(() => overseer, [overseer]);
   const cacheRef = useRef<ChatCache>({
     chats: new Map(),
@@ -3399,12 +3388,12 @@ function ChatInterface({
   // Update selected model when switching chats
   useEffect(() => {
     if (selectedChatId === null) {
-      setSelectedModel(getStoredSelectedModel(availableModels));
+      setSelectedModel(getStoredSelectedModel(availableModels, preferredModel));
     } else {
       // An existing thread takes its active agent's model, else the one that last spoke.
-      setSelectedModel(fallbackToStoredModelSelection(chatAgent?.id ?? null, availableModels));
+      setSelectedModel(chatAgent?.id ?? null);
     }
-  }, [selectedChatId, availableModels, chatAgent?.id]);
+  }, [selectedChatId, availableModels, chatAgent?.id, preferredModel]);
 
   // Keep the ref in sync with selectedChatId state
   useEffect(() => {
@@ -3859,9 +3848,8 @@ function ChatInterface({
           bumpChatListVersion();
           setChatListReady(true);
 
+          // The selection follows from the models (see the effect on availableModels).
           setAvailableModels(models);
-
-          setSelectedModel(getStoredSelectedModel(models));
 
           forceUpdate();
         }
