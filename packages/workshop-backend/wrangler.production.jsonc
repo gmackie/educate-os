@@ -146,6 +146,7 @@
     "REQUIRE_WORKSHOP_CAPABILITY_POLICY": "true",
     "CF_AI_GATEWAY": "default",
     "CF_AI_GATEWAY_ACCOUNT_ID": "c07a7e704db1808e1fff91bed2b1cd49",
-    "CF_AI_GATEWAY_PROVIDERS": "cloudflare"
+    "CF_AI_GATEWAY_PROVIDERS": "cloudflare",
+    "CF_AI_GATEWAY_QUICK_MODEL": "@cf/zai-org/glm-5.3-flash"
   }
 }

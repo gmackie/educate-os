@@ -45,6 +45,8 @@ export const SCHOOLOS_GMAC_IO: ProductionInstance = {
       CF_AI_GATEWAY: "default",
       CF_AI_GATEWAY_ACCOUNT_ID: "c07a7e704db1808e1fff91bed2b1cd49",
       CF_AI_GATEWAY_PROVIDERS: "cloudflare",
+      // Titles on a model the AI call guard prices: it refuses any model without a rate (SCHO-325).
+      CF_AI_GATEWAY_QUICK_MODEL: "@cf/zai-org/glm-5.3-flash",
     },
     "gatekeeper-websearch": {
       CF_AI_GATEWAY: "default",

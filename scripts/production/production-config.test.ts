@@ -116,6 +116,7 @@ test("the backend binds the gatekeepers' vendor entrypoint, the guard, Workers A
     CF_AI_GATEWAY: "default",
     CF_AI_GATEWAY_ACCOUNT_ID: SCHOOLOS_GMAC_IO.accountId,
     CF_AI_GATEWAY_PROVIDERS: "cloudflare",
+    CF_AI_GATEWAY_QUICK_MODEL: "@cf/zai-org/glm-5.3-flash",
   });
 });
 

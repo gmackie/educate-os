@@ -94,6 +94,8 @@ export class AiGatewayConfig {
   readonly binding?: Ai;
   /** The providers CF_AI_GATEWAY_PROVIDERS lists, which an admin can add to (see GatewayModels). */
   readonly providers: Set<string>;
+  /** The Workers AI model for quick tasks: CF_AI_GATEWAY_QUICK_MODEL, or {@link QUICK_MODEL_ID}. */
+  readonly quickModelId: string;
 
   constructor(env: Cloudflare.Env) {
     this.gateway = env.CF_AI_GATEWAY!;
@@ -119,6 +121,7 @@ export class AiGatewayConfig {
           "with --use-workers-ai-binding) or set CF_AI_GATEWAY_API_TOKEN (a Run + Read token).");
     }
     this.sameAccountGateway = this.binding ? this.gateway : undefined;
+    this.quickModelId = env.CF_AI_GATEWAY_QUICK_MODEL?.trim() || QUICK_MODEL_ID;
     this.providers = new Set(
       (env.CF_AI_GATEWAY_PROVIDERS || "").split(",").map(s => s.trim()).filter(s => s !== "")
     );
@@ -149,7 +152,7 @@ export class AiGatewayConfig {
     // Always use Workers AI here.
     return {
       provider: "cloudflare",
-      model: QUICK_MODEL_ID,
+      model: this.quickModelId,
       apiToken: "",
     };
   }
