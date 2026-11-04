@@ -39,6 +39,8 @@ type GuardLogFields = {
   callSite: string;
   checkId: string;
   audience: string;
+  profileId: string;
+  gradeBand: string;
   decision: string;
   reason: string;
   reasonCodes: string[];
@@ -86,6 +88,15 @@ function textChunks(parts: AiCallMessagePart[]): string[] {
     start = end;
   }
   return chunks;
+}
+
+/** Who a call is moderated as, for its log entries: the audience, profile and grade band labels. */
+function contextFields(context: GuardContext): Partial<GuardLogFields> {
+  return {
+    audience: context.audience,
+    profileId: context.profile.hallMonitorProfileId,
+    ...(context.gradeBand === undefined ? {} : { gradeBand: context.gradeBand }),
+  };
 }
 
 function machineReason(prefix: string, reason: AiDenialReason): string {
@@ -163,10 +174,11 @@ export class AiCallGuardService {
       log.info("AI call refused: initiator is no principal of this deployment", { event: "ai_guard.denied", reason: "unknown_principal" });
       return deny("unknown_principal", this.#messages.unknownPrincipal);
     }
+    const contextLog = log.with(contextFields(context));
     try {
       sourceEligibility(this.#config, context, Math.floor(Date.now() / 1000));
     } catch {
-      log.info("AI call refused: source eligibility is unavailable", { event: "ai_guard.denied", reason: "source_eligibility_unavailable" });
+      contextLog.info("AI call refused: source eligibility is unavailable", { event: "ai_guard.denied", reason: "source_eligibility_unavailable" });
       return deny("source_eligibility_unavailable", this.#messages.aiUnavailable);
     }
     const model: ModelRef = { provider: call.model.provider, modelId: call.model.id };
@@ -174,7 +186,7 @@ export class AiCallGuardService {
     if (rate === undefined) {
       // Refused rather than guessed: a model with no configured rate cannot be held for, so any
       // spend on it would escape the budget.
-      log.warn("AI call refused: model has no configured rate", { event: "ai_guard.denied", reason: "model_unpriced" });
+      contextLog.warn("AI call refused: model has no configured rate", { event: "ai_guard.denied", reason: "model_unpriced" });
       return deny("model_unpriced", this.#messages.notAllowed);
     }
 
@@ -188,31 +200,31 @@ export class AiCallGuardService {
     });
     if (reserved.outcome === "denied") {
       const reason = machineReason("ledger", reserved.reason);
-      log.info("AI call refused by the ledger", { event: "ai_guard.denied", reason });
+      contextLog.info("AI call refused by the ledger", { event: "ai_guard.denied", reason });
       return deny(reason, denialErrorCode(reserved.reason) === "budget-exceeded" ? this.#messages.budget : this.#messages.notAllowed);
     }
     if (reserved.status !== "held") {
-      log.warn("AI call refused: its call ID was already settled", { event: "ai_guard.denied", reason: "request_already_completed" });
+      contextLog.warn("AI call refused: its call ID was already settled", { event: "ai_guard.denied", reason: "request_already_completed" });
       return deny("request_already_completed", this.#messages.notAllowed);
     }
 
     let moderation: Moderation;
     try {
-      moderation = await this.#moderate(call, context, log.with({ audience: context.audience }));
+      moderation = await this.#moderate(call, context, contextLog);
     } catch (error) {
       await this.#ledger.void(call.callId);
-      log.error("AI call refused: the guard failed while moderating", { event: "ai_guard.failed", reason: "guard_error", error: error instanceof Error ? error.name : "unknown" });
+      contextLog.error("AI call refused: the guard failed while moderating", { event: "ai_guard.failed", reason: "guard_error", error: error instanceof Error ? error.name : "unknown" });
       return deny("guard_error", this.#messages.aiUnavailable);
     }
     if (moderation.kind === "deny") {
       await this.#ledger.void(call.callId);
-      log.info("AI call refused by moderation", { event: "ai_guard.denied", reason: moderation.reason });
+      contextLog.info("AI call refused by moderation", { event: "ai_guard.denied", reason: moderation.reason });
       return deny(moderation.reason, moderation.message);
     }
     const languageModel = call.kind === "language-model";
     const screenOutput = languageModel && context.profile.outputModeration === "required";
     const coach = languageModel && moderation.coach;
-    log.debug("AI call admitted", { event: "ai_guard.admitted", ...(coach ? { decision: "coach" } : {}) });
+    contextLog.debug("AI call admitted", { event: "ai_guard.admitted", ...(coach ? { decision: "coach" } : {}) });
     return {
       action: "proceed",
       ...(screenOutput ? { screenOutput } : {}),
@@ -246,19 +258,20 @@ export class AiCallGuardService {
       log.warn("AI response withheld: its principal is no longer served", { event: "ai_guard.output.withheld", reason: "unknown_principal" });
       return withhold("unknown_principal", this.#messages.notAllowed);
     }
+    const contextLog = log.with(contextFields(context));
     const checks = textChunks(output.parts).map((text, c) => ({ checkId: `${callId}.o.c${c}`, text }));
     let moderation: Moderation;
     try {
-      moderation = await this.#evaluate(callId, context, checks, "interaction.output", log.with({ audience: context.audience }));
+      moderation = await this.#evaluate(callId, context, checks, "interaction.output", contextLog);
     } catch (error) {
-      log.error("AI response withheld: the guard failed while screening it", { event: "ai_guard.failed", reason: "guard_error", error: error instanceof Error ? error.name : "unknown" });
+      contextLog.error("AI response withheld: the guard failed while screening it", { event: "ai_guard.failed", reason: "guard_error", error: error instanceof Error ? error.name : "unknown" });
       return withhold("guard_error", this.#messages.aiUnavailable);
     }
     if (moderation.kind === "deny") {
-      log.info("AI response withheld by moderation", { event: "ai_guard.output.withheld", reason: moderation.reason });
+      contextLog.info("AI response withheld by moderation", { event: "ai_guard.output.withheld", reason: moderation.reason });
       return withhold(moderation.reason, moderation.message);
     }
-    log.debug("AI response released", { event: "ai_guard.output.released" });
+    contextLog.debug("AI response released", { event: "ai_guard.output.released" });
     return RELEASE;
   }
 

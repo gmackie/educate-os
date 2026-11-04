@@ -309,7 +309,9 @@ alongside the gatekeepers and the backend's `AI_CALL_GUARD` is pointed at it.
   `afterModelCall`, since the model billed the call either way.
 - **Privacy.** Message text goes only to Hall Monitor. It is never logged or stored. Logs carry
   IDs, decisions, Hall Monitor reason codes and error codes only, and a test spies on the console
-  to check this. Hall Monitor error messages aren't logged either, only their codes.
+  to check this. Hall Monitor error messages aren't logged either, only their codes. Once the
+  guard knows who a call is for, its entries also carry the labels it was moderated under:
+  `audience`, `profileId` (the Hall Monitor profile) and `gradeBand` when there is one.
 - **Initiators.** `user` and `gadget` initiators resolve by Workshop user ID; a gadget's calls are
   billed to its owner. An `agent` initiator names a model, not a person, so it is refused.
 - **Gadget calls** (SCHO-307, SCHO-325). Whoever a gadget is shown to may be typing into it (a
