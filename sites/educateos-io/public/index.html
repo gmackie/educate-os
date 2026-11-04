@@ -325,10 +325,10 @@
         <h2>Bring EducateOS to your district.</h2>
         <p class="lede" style="margin-left:auto;margin-right:auto">Start with the demo: it runs the real district application in your browser, with no sign-in. When you're ready to run your own, EducateOS installs into your Cloudflare account.</p>
         <!-- One-line flip: set data-installer-published="true" once `npm view launch-educate-os` finds the installer (SCHO-341). -->
-        <div class="install" data-installer-published="false" style="max-width:560px;margin:26px auto 0;text-align:left">
+        <div class="install" data-installer-published="true" style="max-width:560px;margin:26px auto 0;text-align:left">
           <div class="cmd"><span class="prompt" aria-hidden="true">$</span><code>npx launch-educate-os</code><span class="status planned when-unpublished" style="margin-left:auto">Coming soon</span></div>
           <p class="muted when-unpublished" style="margin:0;font-size:.88rem">The installer that sets up EducateOS in a district's own Cloudflare account from one command is being built and isn't published yet. Until it is, use the guided install on educateos.io (sign in with a verified email), or tell us about your district and we'll walk through it with you. No full install into a district's own account has completed yet; the live demo district runs the same code, deployed from source.</p>
-          <p class="muted when-published" style="margin:0;font-size:.88rem">Run it in a terminal with Node.js installed. It asks for a Cloudflare account and sets up EducateOS there, under your credentials.</p>
+          <p class="muted when-published" style="margin:0;font-size:.88rem">Run it in a terminal with Node.js 22.12 or later. It asks for a Cloudflare API token and account, checks the account, shows exactly what it will create and what Cloudflare will bill you for, and installs a signed release under your credentials. Run <code>npx launch-educate-os plan</code> first to see the plan without changing anything. See the <a href="https://www.npmjs.com/package/launch-educate-os">package README</a>. No full install into a district's own account has completed yet; the live demo district runs the same code, deployed from source.</p>
         </div>
         <div class="ctas">
           <a class="btn primary" href="/app/install">Start the guided install</a>
