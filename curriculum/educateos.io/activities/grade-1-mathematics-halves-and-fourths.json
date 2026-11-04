@@ -1,0 +1,90 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Split shapes into equal shares. Use the words halves and fourths.",
+    "problems": [
+      {
+        "prompt": "Draw a circle. Split it into 2 equal shares. What do we call each share?"
+      },
+      {
+        "prompt": "Draw a rectangle. Split it into 4 equal shares. What do we call each share?"
+      },
+      {
+        "prompt": "Two friends share a sandwich. They cut it into 2 parts, but one part is much bigger. Did they cut it in halves? Tell why."
+      },
+      {
+        "prompt": "A pizza is cut into 4 equal shares. You eat 1 share. How much of the pizza did you eat?"
+      },
+      {
+        "prompt": "Which is bigger: one half of a pizza or one fourth of the same pizza? Tell why."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Halves and Fourths"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.G.A.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-halves-and-fourths",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "equal",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I split shapes into equal shares"
+      },
+      {
+        "id": "words",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I used the words halves and fourths"
+      }
+    ],
+    "title": "Halves and fourths"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

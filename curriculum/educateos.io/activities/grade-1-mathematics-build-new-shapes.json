@@ -1,0 +1,79 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "drawPrompt": "Draw a new shape you made by putting two or more shapes together. Show each small shape.",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "lookPrompt": "Two triangles can make a square. Two half-circles can make a circle.",
+    "overview": "Put shapes together to make a new shape. Draw it and tell which shapes you used.",
+    "sentenceFrames": [
+      "I put ___ and ___ together.",
+      "I made a ___."
+    ],
+    "subject": "mathematics",
+    "tellAboutIt": true,
+    "template": "picture-response",
+    "title": "Build New Shapes"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.G.A.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-build-new-shapes",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "compose",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I put shapes together to make a new shape"
+      },
+      {
+        "id": "tell",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I told which shapes I used"
+      }
+    ],
+    "title": "Build new shapes"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

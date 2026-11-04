@@ -1,0 +1,90 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Compare two numbers using tens and ones. Write >, < or =.",
+    "problems": [
+      {
+        "prompt": "Compare 34 and 43. Write >, < or = between them."
+      },
+      {
+        "prompt": "Compare 71 and 17. Write >, < or = between them."
+      },
+      {
+        "prompt": "Compare 58 and 58. Write >, < or = between them."
+      },
+      {
+        "prompt": "Compare 90 and 89. Write >, < or = between them."
+      },
+      {
+        "prompt": "Zoe has 62 beads. Omar has 26 beads. Who has more? Tell how the tens help you know."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Greater Than, Less Than"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.NBT.B.3",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-greater-than-less-than",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "compare",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I compared the numbers with >, < or ="
+      },
+      {
+        "id": "tens",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I used tens and ones to tell why"
+      }
+    ],
+    "title": "Greater than, less than"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

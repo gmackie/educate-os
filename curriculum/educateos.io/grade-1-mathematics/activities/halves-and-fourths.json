@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:4a1cbafab3ef8ef996b06deefe2eb28d0c6d9951bcd9bcc132077c8e0bcec78a",
+      "id": "educateos.io/grade-1-mathematics-halves-and-fourths",
+      "version": "1.0.0"
+    }
+  },
+  "id": "halves-and-fourths",
+  "role": "assignment",
+  "title": "Halves and Fourths"
+}

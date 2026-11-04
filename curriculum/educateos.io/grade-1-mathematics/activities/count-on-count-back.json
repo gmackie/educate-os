@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:b5bd2d806a9e2ffe9e6e2d44fd7469d4bfb9474fe048e1c17b52ebf640cbc784",
+      "id": "educateos.io/grade-1-mathematics-count-on-count-back",
+      "version": "1.0.0"
+    }
+  },
+  "id": "count-on-count-back",
+  "role": "lesson",
+  "title": "Count On, Count Back"
+}

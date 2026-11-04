@@ -1,0 +1,90 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 7,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Find the tens and ones in each number. Draw or write to show how you know.",
+    "problems": [
+      {
+        "prompt": "Write 47 as tens and ones."
+      },
+      {
+        "prompt": "What number is 6 tens and 2 ones?"
+      },
+      {
+        "prompt": "What number is 1 ten and 9 ones?"
+      },
+      {
+        "prompt": "Show 80 as tens and ones. How many ones are there?"
+      },
+      {
+        "prompt": "Mia says 13 is 3 tens and 1 one. Is she right? Tell why."
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Tens and Ones Check"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.NBT.B.2",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-tens-and-ones-check",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "place-value",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can find the tens and ones in a number"
+      },
+      {
+        "id": "explain",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can show why with a drawing or words"
+      }
+    ],
+    "title": "Tens and ones"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

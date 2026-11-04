@@ -1,0 +1,100 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "gradeBand": "1",
+    "overview": "Tell time to the hour and half hour, then read a class chart.",
+    "problems": [
+      {
+        "prompt": "The short hand points to 3. The long hand points to 12. What time is it?"
+      },
+      {
+        "prompt": "The short hand is halfway between 7 and 8. The long hand points to 6. What time is it?"
+      },
+      {
+        "prompt": "Draw a clock that shows 9:00."
+      },
+      {
+        "prompt": "Draw a clock that shows 4:30."
+      },
+      {
+        "prompt": "A digital clock says 11:30. Say the time in words."
+      },
+      {
+        "prompt": "Our class chart shows how we get to school. Walk: 5 children. Bus: 8 children. Car: 3 children. How many more children ride the bus than walk?"
+      },
+      {
+        "prompt": "Use the same chart. How many children are on the chart in all?"
+      }
+    ],
+    "showWork": true,
+    "subject": "mathematics",
+    "template": "problem-set",
+    "title": "Clocks and Charts"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.B.3",
+      "frameworkKey": "ccss-math"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-math:CCSS.MATH.CONTENT.1.MD.C.4",
+      "frameworkKey": "ccss-math"
+    }
+  ],
+  "id": "educateos.io/grade-1-mathematics-clocks-and-charts",
+  "language": "en",
+  "readings": [],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "time",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can read and show the time"
+      },
+      {
+        "id": "chart",
+        "levels": [
+          {
+            "id": "not-yet",
+            "label": "Not yet",
+            "points": 1
+          },
+          {
+            "id": "getting-there",
+            "label": "Getting there",
+            "points": 2
+          },
+          {
+            "id": "got-it",
+            "label": "Got it!",
+            "points": 3
+          }
+        ],
+        "title": "I can answer questions about a chart"
+      }
+    ],
+    "title": "Clocks and charts"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}
