@@ -63,6 +63,10 @@ interface VendorEntry {
 
 // ─── component ──────────────────────────────────────────────────────────────────
 
+/** Whether `err` is the Workshop's capability policy refusing the action, as the backend words it. */
+const isPolicyRefusal = (err: unknown): boolean =>
+  err instanceof Error && err.message.startsWith('Workshop policy denied ')
+
 export default function OnboardingWizard({
   onComplete,
 }: {
@@ -343,7 +347,9 @@ export default function OnboardingWizard({
           await authenticatedApi.provisionAmbientAccount(id)
         } catch (err) {
           logRpcFailure(`Failed to turn on ${id}:`, err)
-          failedNames.push(description.displayName)
+          // A school's policy keeping a tool from this user is its decision, not a failure to
+          // report: the tool simply isn't theirs to turn on.
+          if (!isPolicyRefusal(err)) failedNames.push(description.displayName)
         }
       }))
       if (failedNames.length > 0) {
