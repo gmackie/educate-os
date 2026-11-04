@@ -30,7 +30,7 @@
       EducateOS
     </a>
     <nav class="links" aria-label="Primary">
-      <a href="/#platform">Platform</a>
+      <a href="/tour/">Product tour</a>
       <a href="/integrations/" aria-current="page">Integrations</a>
       <a href="/gadgets/">Gadgets</a>
       <a href="/courses/">Courses</a>
@@ -44,6 +44,7 @@
       <details class="menu">
         <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
         <nav class="sheet" aria-label="Menu">
+          <a href="/tour/">Product tour</a>
           <a href="/#platform">Platform</a>
           <a href="/integrations/" aria-current="page">Integrations</a>
           <a href="/connectors/">Connectors</a>
@@ -54,6 +55,7 @@
           <a href="/student-privacy/">Student privacy</a>
           <a href="/developers/">Developers</a>
           <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
           <a href="/students/">For students</a>
           <a href="/parents/">For families</a>
           <a href="/teachers/">For teachers</a>
@@ -79,7 +81,7 @@
   </section>
   <section class="tight">
     <div class="wrap">
-      <div class="grid3" style="margin-top:0"><a class="card feat" href="/integrations/lti/"><h3>LTI 1.3 and LTI Advantage</h3><p>Launch, Deep Linking, AGS and NRPS, passed against current Canvas and Moodle 4.5. Schoology and other LTI 1.3 platforms aren't tested yet.</p><div class="for"><span class="status supported" data-status="summary.lti">Supported</span></div></a><a class="card feat" href="/integrations/canvas/"><h3>Canvas</h3><p>A developer key, four placements, rosters and teacher-approved grade passback.</p><div class="for"><span class="status supported" data-status="summary.canvas">Supported</span></div></a><a class="card feat" href="/integrations/google-classroom/"><h3>Google Classroom</h3><p>Courses, rosters, coursework and grades that wait for the teacher's approval.</p><div class="for"><span class="status unit" data-status="summary.google-classroom">Unit-tested</span></div></a><a class="card feat" href="/integrations/clever/"><h3>Clever</h3><p>Sign-in through Cloudflare Access now, and roster sync next.</p><div class="for"><span class="status validating" data-status="clever.sso">Validating against live sandbox</span><span class="status unit" data-status="clever.roster">Unit-tested</span></div></a><a class="card feat" href="/integrations/oneroster/"><h3>OneRoster 1.2 and ClassLink</h3><p>CSV and REST rosters with preview, quarantine and deactivation instead of deletion.</p><div class="for"><span class="status unit" data-status="summary.oneroster">Unit-tested</span><span class="status planned" data-status="oneroster.classlink">Implemented (fakes only)</span></div></a></div>
+      <div class="grid3" style="margin-top:0"><a class="card feat" href="/integrations/lti/"><h3>LTI 1.3 and LTI Advantage</h3><p>Launch, Deep Linking, AGS and NRPS, passed against current Canvas and Moodle 4.5. Schoology and other LTI 1.3 platforms aren't tested yet.</p><div class="for"><span class="status supported" data-status="summary.lti">Supported</span></div></a><a class="card feat" href="/integrations/canvas/"><h3>Canvas</h3><p>A developer key, four placements, rosters and teacher-approved grade passback.</p><div class="for"><span class="status supported" data-status="summary.canvas">Supported</span></div></a><a class="card feat" href="/integrations/google-classroom/"><h3>Google Classroom</h3><p>Courses, rosters, coursework and grades that wait for the teacher's approval.</p><div class="for"><span class="status unit" data-status="summary.google-classroom">Unit-tested</span></div></a><a class="card feat" href="/integrations/clever/"><h3>Clever</h3><p>Sign-in through Cloudflare Access, and roster sync from the Data API, tested end to end against a fake of Clever's API.</p><div class="for"><span class="status validating" data-status="clever.sso">Validating against live sandbox</span><span class="status unit" data-status="clever.roster">Harness-tested</span></div></a><a class="card feat" href="/integrations/oneroster/"><h3>OneRoster 1.2 and ClassLink</h3><p>CSV and REST rosters with preview, quarantine and deactivation instead of deletion.</p><div class="for"><span class="status unit" data-status="summary.oneroster">Unit-tested</span><span class="status planned" data-status="oneroster.classlink">Implemented (fakes only)</span></div></a></div>
     </div>
   </section>
   <section class="band tight">
@@ -87,10 +89,11 @@
       <div class="split" style="align-items:start">
         <div class="copy" id="statuses">
           <div class="eyebrow">What the statuses mean</div>
-          <h2>Five levels. Only LTI 1.3 and Canvas are Supported so far, from live runs against current Canvas and Moodle 4.5.</h2>
+          <h2>Six levels. Only LTI 1.3 and Canvas are Supported so far, from live runs against current Canvas and Moodle 4.5.</h2>
           <div class="list" style="margin-top:22px">
             <div class="li"><span class="status planned">Implemented (fakes only)</span><div class="t">The code exists and has run only against our own fakes of the service. We have no account with the vendor to test against yet.</div></div>
             <div class="li"><span class="status unit">Unit-tested</span><div class="t">Code exists and its tests pass against fakes that behave like the real service, including failure paths.</div></div>
+            <div class="li"><span class="status unit">Harness-tested</span><div class="t">Exercised end to end in process, against the synthetic districts or a fake of the vendor's API, as a district would run it. Still no run against the vendor itself.</div></div>
             <div class="li"><span class="status validating">Validating against live sandbox</span><div class="t">A run against the vendor's own sandbox is under way.</div></div>
             <div class="li"><span class="status supported">Supported</span><div class="t">It has passed runs against the real service.</div></div>
             <div class="li"><span class="status planned">Planned</span><div class="t">Designed or scheduled, with no working code yet.</div></div>
@@ -119,6 +122,7 @@
       <div>
         <h4>Product</h4>
         <ul>
+          <li><a href="/tour/">Product tour</a></li>
           <li><a href="/#platform">Platform</a></li>
           <li><a href="/integrations/" aria-current="page">Integrations</a></li>
           <li><a href="/connectors/">Connectors</a></li>
@@ -126,6 +130,7 @@
           <li><a href="/courses/">Course catalog</a></li>
           <li><a href="/mcp/">MCP</a></li>
           <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
         </ul>
       </div>
       <div>
@@ -160,7 +165,7 @@
     <div class="legal">
       <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
       <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
-      <div>All people, schools and districts shown are fictional. Product previews show EducateOS as it is being designed.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
     </div>
   </div>
 </footer>

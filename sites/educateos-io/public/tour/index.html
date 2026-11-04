@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product tour · EducateOS</title>
+<meta name="description" content="Real screenshots of EducateOS from kindergarten to the district office: student activities by grade band, Teacher Studio with installed open courses, the family view, the admin console and AI tutors screened by Hall Monitor.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23155dfc'/><path d='M9 10h14M9 16h10M9 22h14' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<!-- Kumo design tokens (MIT, see /assets/kumo-LICENSE.txt), the same system the Cloudflare OS Workshop UI uses. -->
+<link rel="stylesheet" href="/assets/kumo-2.14.0.css">
+<script>
+  // Kumo switches themes on [data-mode]; follow the reader's system setting, live.
+  (() => {
+    const q = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => { document.documentElement.dataset.mode = q.matches ? "dark" : "light"; };
+    apply(); q.addEventListener("change", apply);
+  })();
+</script>
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/integration-status.js" defer></script>
+</head>
+<body>
+<!-- site:header -->
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="EducateOS home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+      EducateOS
+    </a>
+    <nav class="links" aria-label="Primary">
+      <a href="/tour/" aria-current="page">Product tour</a>
+      <a href="/integrations/">Integrations</a>
+      <a href="/gadgets/">Gadgets</a>
+      <a href="/courses/">Courses</a>
+      <a href="/security/">Security</a>
+      <a href="/student-privacy/">Student privacy</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+    <div class="right">
+      <a class="btn hide-sm" href="/demo/">Try the demo</a>
+      <a class="btn primary" href="/interest/">Share your interest</a>
+      <details class="menu">
+        <summary aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="sheet" aria-label="Menu">
+          <a href="/tour/" aria-current="page">Product tour</a>
+          <a href="/#platform">Platform</a>
+          <a href="/integrations/">Integrations</a>
+          <a href="/connectors/">Connectors</a>
+          <a href="/gadgets/">Gadgets</a>
+          <a href="/courses/">Course catalog</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/security/">Security</a>
+          <a href="/student-privacy/">Student privacy</a>
+          <a href="/developers/">Developers</a>
+          <a href="/demo/">Try the demo</a>
+          <a href="/#install">Install</a>
+          <a href="/students/">For students</a>
+          <a href="/parents/">For families</a>
+          <a href="/teachers/">For teachers</a>
+          <a href="/leaders/">For school leaders</a>
+          <a href="/schools/">Schools</a>
+          <a href="/educateos-district-overview.pdf">District overview (PDF)</a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+<!-- /site:header -->
+
+<main>
+  <section class="hero page-hero">
+    <div class="wrap">
+      <div class="eyebrow rise">Product tour</div>
+      <h1 class="rise" style="--d:1">EducateOS, screen by screen.</h1>
+      <p class="lede rise" style="--d:2">Every image here is a real screenshot. Most come from the <a href="/demo/">zero-login demo</a>, which runs the real district application in your browser for Northfield Public Schools, a fictional K-12 district. The AI tutor screenshots come from the live demo district, signed in as synthetic students.</p>
+      <nav class="tour-nav rise" style="--d:3" aria-label="Tour sections">
+        <a class="btn" href="#students">Students by grade band</a>
+        <a class="btn" href="#teachers">Teachers</a>
+        <a class="btn" href="#families">Families</a>
+        <a class="btn" href="#district">District office</a>
+        <a class="btn" href="#tutors">AI tutors</a>
+        <a class="btn" href="#demo">The demo</a>
+      </nav>
+    </div>
+  </section>
+
+  <section class="tight band tour-section" id="students">
+    <div class="wrap">
+      <div class="eyebrow">Students</div>
+      <h2>Built for the grade, from first grade to high school.</h2>
+      <p class="lede">A first grader answers by speaking and drawing, one step a screen, with every instruction read aloud. Older students get read-aloud on request, rubric feedback and official grades once the teacher releases them.</p>
+      <div class="shot-grid two">
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/k2-student-activity.webp" width="1240" height="814" decoding="async" alt="A grade-1 activity, Retell The Little Seed: Let's get started, Listen to the story and tell what happened first, next and last, with a Read to me button, a resource, and Reading Buddy labelled Simulated preview."></div><figcaption><b>Grades K–2.</b> Mateo's activity opens with Read to me and his Reading Buddy.</figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/k2-drawing-pad.webp" width="888" height="1104" loading="lazy" decoding="async" alt="Question 3 of a grade-1 activity: Draw what happened last, with Read to me, sentence starters First, Next and Last, a colour palette, brush sizes, and a drawing of a sprout under the sun and rain."></div><figcaption><b>Grades K–2.</b> The drawing pad and sentence starters. Questions 1 and 2 are answered by voice recording.</figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/g35-student-activity.webp" width="1240" height="814" loading="lazy" decoding="async" alt="A grade-4 activity, Should Recess Be Longer?, with instructions in three steps, plan, draft and revise, each with its own Read to me button."></div><figcaption><b>Grades 3–5.</b> An opinion piece, every instruction readable aloud.</figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/k2-simulated-tutor.webp" width="860" height="720" loading="lazy" decoding="async" alt="Reading Buddy, labelled Simulated preview. The student taps Tell me a scary story, and a Hall Monitor note says it is not about this story and not for grades K to 2, was not sent to the AI, and Reading Buddy steers back kindly."></div><figcaption><b>Grades K–2.</b> The demo's tutor is a labelled simulation, showing what Hall Monitor would decide for each message.</figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/g68-student-feedback.webp" width="900" height="587" loading="lazy" decoding="async" alt="A grade-7 student's Grade and feedback on Hammurabi's laws: official grade 11 out of 12, a receipt code, the teacher's comment, and rubric scores for sourcing, context and claim."></div><figcaption><b>Grades 6–8.</b> A primary-source analysis with released rubric feedback.</figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/g912-student-feedback.webp" width="900" height="633" loading="lazy" decoding="async" alt="A grade-9 student's argument essay feedback: official grade 15 out of 16, the teacher's comment, and rubric scores for claim, evidence, counterclaim and conventions."></div><figcaption><b>Grades 9–12.</b> An argument essay's feedback and official grade.</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight tour-section" id="teachers">
+    <div class="wrap">
+      <div class="eyebrow">Teachers</div>
+      <h2>A semester ready to edit, and grades that wait for the teacher.</h2>
+      <p class="lede">Every showcase class has its whole semester from one of the 12 <a href="/courses/">open courses</a>. Teacher guides and answer keys come with each unit and are visible to teachers only.</p>
+      <div class="shot-grid two">
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/teacher-course-modules.webp" width="1000" height="805" loading="lazy" decoding="async" alt="Teacher Studio modules for Grade 1 Reading Foundations: units marked From a course, Installed from educateos.io/grade-1-reading-foundations 1.0.0, an Open Course Specification package, each with a page, activities, and a teacher guide and answer key marked teachers only."></div><figcaption><b>Grade 1.</b> Units installed from the Grade 1 Reading Foundations course package.</figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/teacher-english9-modules.webp" width="1000" height="857" loading="lazy" decoding="async" alt="Teacher Studio modules for English 9: Unit 3, Poetry in Small Spaces, and Unit 4, Drama: Romeo and Juliet, both From a course, installed from educateos.io/english-9 1.0.1, with teacher guides and answer keys marked teachers only."></div><figcaption><b>Grade 9.</b> English 9's poetry and drama units, from the same kind of package.</figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/k2-teacher-review.webp" width="1240" height="857" loading="lazy" decoding="async" alt="A teacher reviewing a grade-1 student's submitted drawing of a cloud with rain, the sun and a green sprout, with a download link."></div><figcaption><b>Review.</b> Recordings and drawings arrive as ordinary submitted work.</figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/g68-teacher-gradebook.webp" width="1240" height="814" loading="lazy" decoding="async" alt="Teacher Studio gradebook for World History 7, Period 4: official grades only, with Gradebook settings, Export CSV, and Chidi Okafor's 11 out of 12 on What Do Hammurabi's Laws Tell Us."></div><figcaption><b>Gradebook.</b> Official grades only: a rubric score counts once the teacher records or approves it.</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight band tour-section" id="families">
+    <div class="wrap">
+      <div class="eyebrow">Families</div>
+      <h2>One sign-in for every child, and only what teachers share.</h2>
+      <p class="lede">Rosa Delgado follows Mateo in grade 1 and Lucía in grade 10, in two schools. She sees classes, announcements, released feedback and official grades, never a child's drafts or private space.</p>
+      <div class="shot-grid three">
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/guardian-home.webp" width="1240" height="620" loading="lazy" decoding="async" alt="A guardian's view with tabs for Lucía Delgado and Mateo Delgado. Mateo Delgado's classes this term: Grade 1 Reading Foundations and Grade 1 Mathematics, each graded so far 10 of 10 points, with a note that she sees only what teachers have shared."></div><figcaption>Each child's classes this term.</figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/guardian-feedback.webp" width="900" height="550" loading="lazy" decoding="async" alt="A guardian's view of Mateo's Word Builders activity: official grade 6 of 6 points, shared by the teacher, the comment You are a word-building star, Mateo, and rubric scores."></div><figcaption>Feedback once the teacher shares it.</figcaption></figure>
+        <figure class="shot"><div class="phone"><img class="screen" src="/assets/screens/phone-guardian.webp" width="780" height="1180" loading="lazy" decoding="async" alt="On a phone, the guardian's view of Mateo Delgado's classes with a My children link."></div><figcaption>The same view on a phone.</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight tour-section" id="district">
+    <div class="wrap">
+      <div class="eyebrow">District office</div>
+      <h2>Every class, standard and course in one console.</h2>
+      <p class="lede">The administrator sees the whole district: people, rosters, classes from kindergarten to grade 12, the course library, which learning standards are approved, policies and the AI budget.</p>
+      <div class="shot-grid two">
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/admin-dashboard.webp" width="1440" height="700" loading="lazy" decoding="async" alt="The district admin Dashboard: 34 students and staff, 13 classes, 0 permission and configuration issues, 0 pending teacher tasks, AI usage and cost of $0.00, and the roster integration, a OneRoster CSV export."></div><figcaption>Dashboard. AI cost reads $0.00 because no AI runs in the browser demo.</figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/admin-all-classes.webp" width="1440" height="814" loading="lazy" decoding="async" alt="All classes: 13 classes across Northfield Elementary, Middle and High School, with term, teachers and student counts."></div><figcaption>All classes, K to 12.</figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/admin-course-library.webp" width="1440" height="814" loading="lazy" decoding="async" alt="The Course library: import a signed course bundle, and the courses in the library from educateos.io, each marked Signed with its units and activities."></div><figcaption>The course library: every course checked against its publisher's signature.</figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/admin-standards.webp" width="1440" height="814" loading="lazy" decoding="async" alt="Learning standards: Common Core Mathematics, Common Core ELA and the C3 social studies framework approved, CASEL 5 and the Head Start framework not approved, and a note that standards such as the Next Generation Science Standards are not built in and cannot be approved yet."></div><figcaption>Learning standards ship only where the publisher's licence allows. NGSS isn't built in, and the console says so.</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="tight band tour-section" id="tutors">
+    <div class="wrap">
+      <div class="eyebrow">AI tutors</div>
+      <h2>Four tutors, each screened at its grade band.</h2>
+      <p class="lede">Captured on the live demo district, with real AI behind the AI call guard and Hall Monitor, signed in as synthetic students. <span class="pill-note">Pilot preview · synthetic students only</span></p>
+      <div class="shot-grid four">
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/live-tutor-k2.webp" width="860" height="804" loading="lazy" decoding="async" alt="Reading Buddy for grades K to 2 tells a seed story, then answers a request for its address and phone number by saying it is a computer helper and returning to the story."></div><figcaption><b>Reading Buddy, K–2.</b></figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/live-tutor-g35.webp" width="860" height="804" loading="lazy" decoding="async" alt="Homework Helper for grades 3 to 5 refuses to give all the homework answers or a violent video website, and returns to adding fractions with pizza slices."></div><figcaption><b>Homework Helper, 3–5.</b></figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/live-tutor-g68.webp" width="860" height="804" loading="lazy" decoding="async" alt="Study Coach for grades 6 to 8 asks guiding questions about proportional relationships; a blocked message shows This message can't be sent to the AI assistant."></div><figcaption><b>Study Coach, 6–8.</b></figcaption></figure>
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/live-tutor-g912.webp" width="860" height="804" loading="lazy" decoding="async" alt="Research and Essay Coach for grades 9 to 12 explains how to write an arguable thesis about the Industrial Revolution, and a message with personal information shows it wasn't kept."></div><figcaption><b>Research &amp; Essay Coach, 9–12.</b></figcaption></figure>
+      </div>
+      <p class="note-box">No real student uses EducateOS or its tutors yet. Turning student AI on is the district's decision, inside the spending limits it sets. <a href="/security/">How the guardrails work →</a></p>
+    </div>
+  </section>
+
+  <section class="tight tour-section" id="demo">
+    <div class="wrap">
+      <div class="eyebrow">The demo</div>
+      <h2>Try every one of these screens yourself.</h2>
+      <p class="lede">Pick a persona, a student or teacher in each grade band, a parent or the district administrator, or follow the nine-step K-12 tour. Nothing you do leaves your browser.</p>
+      <div class="shot-grid three">
+        <figure class="shot"><div class="frame"><img class="screen" src="/assets/screens/demo-tour-strip.webp" width="1440" height="560" loading="lazy" decoding="async" alt="The demo's banner, Fictional district, everything stays in your browser, AI tutors are simulated, above the K-12 tour strip at step 1 of 9, and Mateo's activity."></div><figcaption>The K-12 tour: nine screens, kindergarten to the district office.</figcaption></figure>
+        <figure class="shot"><div class="phone"><img class="screen" src="/assets/screens/phone-picker.webp" width="780" height="1688" loading="lazy" decoding="async" alt="On a phone, the demo's Try EducateOS picker for Northfield, with a Start the tour button and personas such as the Grade 1 student and Grade 1 teacher."></div><figcaption>The persona picker on a phone.</figcaption></figure>
+        <figure class="shot"><div class="phone"><img class="screen" src="/assets/screens/phone-k2-tutor.webp" width="780" height="1688" loading="lazy" decoding="async" alt="On a phone, the simulated Reading Buddy with Hall Monitor notes under each message."></div><figcaption>The simulated tutor on a phone.</figcaption></figure>
+      </div>
+      <p style="margin-top:24px"><a class="btn primary" href="/demo/">Open the demo</a> <a class="btn" href="/courses/">Browse the courses</a> <a class="btn" href="/#install">Install</a></p>
+    </div>
+  </section>
+</main>
+
+<!-- site:footer -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <b class="strong">EducateOS</b>
+        <p>Cloudflare OS for schools. Open source under Apache-2.0, and run in each district's own Cloudflare account.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/tour/" aria-current="page">Product tour</a></li>
+          <li><a href="/#platform">Platform</a></li>
+          <li><a href="/integrations/">Integrations</a></li>
+          <li><a href="/connectors/">Connectors</a></li>
+          <li><a href="/gadgets/">Gadgets and blueprints</a></li>
+          <li><a href="/courses/">Course catalog</a></li>
+          <li><a href="/mcp/">MCP</a></li>
+          <li><a href="/demo/">Demo</a></li>
+          <li><a href="/#install">Install</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Who it's for</h4>
+        <ul>
+          <li><a href="/students/">Students</a></li>
+          <li><a href="/parents/">Families</a></li>
+          <li><a href="/teachers/">Teachers</a></li>
+          <li><a href="/leaders/">School leaders</a></li>
+          <li><a href="/developers/">Developers</a></li>
+          <li><a href="/schools/">Schools and co-ops</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="/security/">Security</a></li>
+          <li><a href="/student-privacy/">Student privacy</a></li>
+          <li><a href="/privacy/">Privacy Policy</a></li>
+          <li><a href="/student-privacy/dpa/">DPA template</a></li>
+          <li><a href="/educateos-district-overview.pdf">District overview (PDF)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="mailto:hello@educateos.io">Contact: hello@educateos.io</a></li>
+          <li><a href="https://github.com/gmackie/educate-os">Open source · Apache-2.0</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <div><b class="strong">EducateOS</b> is developed by Gmacko Ventures LLC. © 2026.</div>
+      <div>EducateOS is an independent project built on the open-source Cloudflare OS. It is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc. The interface styling uses Cloudflare's MIT-licensed Kumo design tokens.</div>
+      <div>All people, schools and districts shown are fictional. Screenshots are of the demo's fictional districts and synthetic accounts on the live demo district; drawn product previews show EducateOS as it is being designed.</div>
+    </div>
+  </div>
+</footer>
+<!-- /site:footer -->
+</body>
+</html>

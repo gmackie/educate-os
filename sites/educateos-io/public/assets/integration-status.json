@@ -1,8 +1,9 @@
 {
-  "$comment": "Integration feature statuses for educateos.io (SCHO-229). Change a feature's level here, then run node sites/educateos-io/build.mjs. Levels follow docs/educateos/maturity.md: Implemented (fakes only) means code that has run only against our own fakes of the vendor, with no live account yet (ClassLink, SCHO-204); Unit-tested means package tests against fakes; Validating means a run against a live vendor sandbox is under way; Supported needs a passed run against a real external party (for LTI and Canvas: the live runs against current Canvas and Moodle 4.5 on 2026-10-26, SCHO-177 and SCHO-240, docs/educateos/integrations/canvas-lti.md and moodle-lti.md). It is not 1EdTech certification.",
+  "$comment": "Integration feature statuses for educateos.io (SCHO-229). Change a feature's level here, then run node sites/educateos-io/build.mjs. Levels follow docs/educateos/maturity.md: Implemented (fakes only) means code that has run only against our own fakes of the vendor, with no live account yet (ClassLink, SCHO-204); Unit-tested means package tests against fakes; Harness-tested means exercised end to end in process against the synthetic districts or a fake of the vendor's API (Clever, SCHO-203); Validating means a run against a live vendor sandbox is under way; Supported needs a passed run against a real external party (for LTI and Canvas: the live runs against current Canvas and Moodle 4.5 on 2026-10-26, SCHO-177 and SCHO-240, docs/educateos/integrations/canvas-lti.md and moodle-lti.md). It is not 1EdTech certification.",
   "levels": {
     "implemented": { "label": "Implemented (fakes only)", "class": "planned" },
     "unit-tested": { "label": "Unit-tested", "class": "unit" },
+    "harness-tested": { "label": "Harness-tested", "class": "unit" },
     "validating": { "label": "Validating against live sandbox", "class": "validating" },
     "supported": { "label": "Supported", "class": "supported" },
     "planned": { "label": "Planned", "class": "planned" }
@@ -45,9 +46,9 @@
     "gc.live": "validating",
 
     "clever.sso": "validating",
-    "clever.mapping": "unit-tested",
-    "clever.roster": "unit-tested",
-    "clever.events": "unit-tested",
+    "clever.mapping": "harness-tested",
+    "clever.roster": "harness-tested",
+    "clever.events": "harness-tested",
 
     "oneroster.csv": "unit-tested",
     "oneroster.rest": "unit-tested",

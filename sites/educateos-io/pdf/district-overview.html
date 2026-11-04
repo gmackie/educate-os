@@ -39,7 +39,7 @@
 <body>
   <div class="top">
     <span class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#155dfc"/><path d="M9 10h14M9 16h10M9 22h14" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>EducateOS</span>
-    <span class="meta">District overview · October 2026<br>educateos.io · hello@educateos.io</span>
+    <span class="meta">District overview · November 2026<br>educateos.io · hello@educateos.io</span>
   </div>
 
   <div class="intro">
@@ -57,7 +57,7 @@
         <li><b>Agents</b> for each class, limited to what policy allows.</li>
         <li><b>Gadgets</b>: small apps built by asking, each in its own sandbox.</li>
         <li><b>Gatekeepers</b>: connectors where reads are recorded and writes wait for a person.</li>
-        <li><b>LMS-lite</b>: courses, assignments, quizzes, gradebook and families.</li>
+        <li><b>LMS-lite</b>: courses, quizzes, gradebook and families, K-12, with 12 open courses.</li>
       </ul>
     </div>
     <div class="box">
@@ -84,17 +84,18 @@
       <tr class="grp"><td colspan="3">Platform and safety</td></tr>
       <tr><td>Agent chat, gadgets and sandboxes</td><td><small>Each agent and gadget starts with access to nothing.</small></td><td><span class="status avail">Available in Cloudflare OS</span></td></tr>
       <tr><td>Gatekeepers and the approval queue</td><td><small>Google Workspace, MCP servers and portal, Context Library, Web Search, GitHub and more.</small></td><td><span class="status avail">Available in Cloudflare OS</span></td></tr>
-      <tr><td>District app: classes, gradebook, families</td><td><small>Tested end to end against simulated districts. Not yet deployed for a district.</small></td><td><span class="status dev">In development</span></td></tr>
+      <tr><td>District app: classes, gradebook, families</td><td><small>Runs the live demo district, deployed from source. Not yet from a signed release or the installer.</small></td><td><span class="status dev">In development</span></td></tr>
       <tr><td>Default-deny policy and teacher approvals</td><td><small>Grades that AI drafts stay drafts until a teacher approves them.</small></td><td><span class="status dev">In development</span></td></tr>
-      <tr><td>Hall Monitor screening and AI spend caps</td><td><small>Default: student AI limited to hints, capped at $2 a month per person. Districts can turn it off.</small></td><td><span class="status dev">In development</span></td></tr>
+      <tr><td>Hall Monitor screening and AI spend caps</td><td><small>Guard deployed. Grade-band tutors: pilot preview, synthetic students only.</small></td><td><span class="status dev">In development</span></td></tr>
       <tr class="grp"><td colspan="3">Integrations (no 1EdTech certification is claimed)</td></tr>
-      <tr><td>LTI 1.3 and LTI Advantage (Deep Linking, AGS, NRPS)</td><td><small>Tool-side launch, rosters and teacher-approved grade passback.</small></td><td><span class="status unit">Unit-tested</span></td></tr>
-      <tr><td>Canvas</td><td><small>Developer key and four placements. A live sandbox run is under way.</small></td><td><span class="status validating">Validating against live sandbox</span></td></tr>
-      <tr><td>Google Classroom</td><td><small>Teacher OAuth: courses, rosters, coursework, grades the teacher approves.</small></td><td><span class="status unit">Unit-tested</span></td></tr>
+      <tr><td>LTI 1.3 and LTI Advantage (Deep Linking, AGS, NRPS)</td><td><small>Passed live runs against current Canvas and Moodle 4.5.</small></td><td><span class="status supported">Supported</span></td></tr>
+      <tr><td>Canvas</td><td><small>Developer key and four placements, passed against a current Canvas.</small></td><td><span class="status supported">Supported</span></td></tr>
+      <tr><td>Google Classroom</td><td><small>Coursework and an approved grade run live on one course.</small></td><td><span class="status unit">Unit-tested</span></td></tr>
       <tr><td>OneRoster 1.2 (CSV and REST)</td><td><small>Preview, quarantine, all-or-nothing apply, deactivation instead of deletion.</small></td><td><span class="status unit">Unit-tested</span></td></tr>
       <tr><td>Clever sign-in through Cloudflare Access</td><td><small>Running against Clever's sandbox.</small></td><td><span class="status validating">Validating against live sandbox</span></td></tr>
-      <tr><td>Clever rosters, ClassLink, large-removal holds</td><td><small>Scheduled, with no working code yet.</small></td><td><span class="status planned">Planned</span></td></tr>
-      <tr><td>District MCP server for outside AI clients</td><td><small>Designed. The MCP client (agents calling MCP servers) is available today.</small></td><td><span class="status planned">Planned</span></td></tr>
+      <tr><td>Clever roster sync and large-removal holds</td><td><small>End to end against a fake of Clever's Data API. No live roster import yet.</small></td><td><span class="status unit">Harness-tested</span></td></tr>
+      <tr><td>ClassLink (OneRoster REST and sign-in)</td><td><small>Built against our own fakes. No ClassLink account to test against yet.</small></td><td><span class="status planned">Implemented (fakes only)</span></td></tr>
+      <tr><td>District MCP server for outside AI clients</td><td><small>Tested with the official MCP client. Off in production.</small></td><td><span class="status unit">Harness-tested</span></td></tr>
     </tbody>
   </table>
 
@@ -105,11 +106,11 @@
     </div>
     <div class="cta">
       <h2>Talk to us</h2>
-      <p>We're piloting with demo districts across Clever, ClassLink, Google Classroom, Canvas and schools with no LMS. Email <b>hello@educateos.io</b>.</p>
+      <p>We're piloting with demo districts across Clever, ClassLink, Google Classroom, Canvas and schools with no LMS. Try <b>educateos.io/demo</b> or email <b>hello@educateos.io</b>.</p>
       <p>Details: educateos.io/integrations · /security · /student-privacy</p>
     </div>
   </div>
 
-  <p class="fine">Statuses as of October 25, 2026, from the project's maturity record: Available in Cloudflare OS = part of Cloudflare OS today; In development = code and tests exist but it isn't deployed for a district; Unit-tested = tested against fakes; Validating = a run against the vendor's live sandbox is under way; Planned = no working code yet. EducateOS is developed by Gmacko Ventures LLC. It is an independent project built on the open-source Cloudflare OS and is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc.</p>
+  <p class="fine">Statuses as of November 4, 2026, from the project's maturity record: Available in Cloudflare OS = part of Cloudflare OS today; In development = code and tests exist but it isn't deployed for a district; Unit-tested = tested against fakes; Harness-tested = run end to end in process against synthetic districts or a vendor fake; Supported = passed live runs against the real service (not a certification); Implemented (fakes only) = no vendor account to test against yet; Validating = a run against the vendor's live sandbox is under way; Planned = no working code yet. EducateOS is developed by Gmacko Ventures LLC. It is an independent project built on the open-source Cloudflare OS and is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare and Cloudflare OS are trademarks of Cloudflare, Inc.</p>
 </body>
 </html>
