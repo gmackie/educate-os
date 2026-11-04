@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { SigningIdentity } from "@educateos/fleet";
 import { PublisherTrust } from "../src/index.ts";
 import bundleJson from "../../../curriculum/bundles/educateos.io/grade-1-reading-foundations/1.0.0.json" with { type: "json" };
+import english9 from "../../../curriculum/bundles/educateos.io/english-9/1.0.0.json" with { type: "json" };
 import publisher from "../../../curriculum/educateos.io/publisher.json" with { type: "json" };
 import { bootDistrict, expectError, NF } from "./support.ts";
 
@@ -135,6 +136,25 @@ describe("course library (SCHO-331)", () => {
     expectError(await district.call(rivera, "teacher.installCourse", { params, body: COURSE }), 400, "validation-failed");
     expect((await district.ok(rivera, "teacher.listModules", { params })).outline.modules).toStrictEqual([]);
     expect(await district.ok(rivera, "teacher.listAssignments", { params })).toStrictEqual([]);
+  });
+
+  it("installs a semester course late in its term: work the course sets due after the term ends is due when it ends", async () => {
+    // A week before Fall 2026 ends, English 9's activities due ten days after install cannot be.
+    const at = new Date("2027-01-15T15:00:00Z");
+    const district = await bootDistrict(undefined, { courseLibraryTrust: TRUST, now: () => at });
+    const admin = district.tokenFor(NF.admin), rivera = district.tokenFor(NF.rivera);
+    await district.ok(admin, "admin.importCourseBundle", { body: structuredClone(english9) as never });
+    const course = { packageId: "educateos.io/english-9", version: "1.0.0" };
+    const params = { offeringId: NF.eng9 };
+    expect((await district.ok(rivera, "teacher.installCourse", { params, body: course })).done).toBe(true);
+    const due = (await district.ok(rivera, "teacher.listAssignments", { params })).map((a) => a.dueAt);
+    expect(due.every((d) => Date.parse(d) > at.getTime() && d <= "2027-01-22T23:59:59.000Z")).toBe(true);
+    expect(due).toContain("2027-01-22T23:59:59.000Z");
+    // A reading the checks flagged (its "who you are now" reads as addressed to an AI) is approved by
+    // the teacher's install, with the flag acknowledged on the decision.
+    const flagged = (await district.stores.contentStudio.listItems()).filter((item) => item.checks?.flags.some((f) => f.code === "instruction-like-text"));
+    expect(flagged.length).toBeGreaterThan(0);
+    expect(flagged.every((item) => item.decision?.outcome === "approved" && item.decision.acknowledgedFlags?.includes("instruction-like-text"))).toBe(true);
   });
 
   it("answers not-found for a course the library does not hold", async () => {

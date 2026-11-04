@@ -83,8 +83,16 @@ and validated exactly as if they had done it by hand. For each unit of the cours
 | An activity (a portable export) | Each of its readings imported through the Content Studio and approved; its rubric signed as the district's own rubric release (no checks); a draft definition, published, installed, assigned with that rubric, and placed in the module |
 | A district-local resource | Nothing. Another district's Content Studio releases mean nothing here (RFC 0001 §13.1) |
 
-The teacher's explicit install is the review that publishes the imported drafts for the class. The
+The teacher's explicit install is the review that publishes the imported drafts for the class, and
+approves its readings. A reading the Content Studio's checks flag for what it says (such as
+`instruction-like-text`, which a phrase like "who you are now" trips) is approved with that flag
+acknowledged on the decision and in the item's audit trail; reading text is only ever data. A flag
+only a curriculum administrator may decide (`license-conflicting`) still stops the install. The
 class's install record says who installed the course and when.
+
+**Due dates.** An activity is due as its export says, counted from the install. One that would fall
+due after the class's term ends (a semester course added part way through the term) is due on the
+term's last day instead.
 
 **Only adds.** If the class already has a module with a unit's title (compared ignoring case), the
 unit is marked `exists` and skipped, and that module is left untouched. This is how the Grade 1
@@ -120,4 +128,7 @@ teacher-only page and an importing system would show them to students.
   course, and units whose titles the class already has are skipped.
 - `COURSE_LIBRARY_TRUST` is not an installer deploy input yet. Only the generated demo and
   schoolos.gmac.io configs set it.
-- No live import into a deployed district is recorded yet.
+- No live import into a deployed district is recorded yet. The demo districts' showcase installs
+  every sample course through `POST /api/demo/showcase/courses` (SCHO-334,
+  [demo-districts.md](runbooks/demo-districts.md#the-k-12-showcase-scho-326)), and the in-browser
+  demo installs them on every boot.

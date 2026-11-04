@@ -19,9 +19,9 @@
 // install of a course naming the same export version reuses the class's definition.
 import type { AssessmentService } from "@educateos/assessment";
 import type { RubricDraft } from "@educateos/assessment-ci";
-import { randomIdBody, type ContentStudio, type ImportFetch } from "@educateos/content-studio";
+import { ADMIN_REVIEW_FLAGS, blockingFlagCodes, randomIdBody, type ContentStudio, type ImportFetch } from "@educateos/content-studio";
 import { ActivityDefinitionId, EducateOsError, RubricId, type Caller, type DistrictDirectorySnapshot } from "@educateos/contracts";
-import type { CourseContentService, CourseOutline, CurriculumService, OfferingScope, ResourceReleaseRef, RubricRef } from "@educateos/curriculum";
+import type { CourseContentService, CourseOutline, CurriculumService, OfferingScope, ResourceReleaseRef, RubricRef, TemplateInput } from "@educateos/curriculum";
 import {
   applyInstallPlan,
   type CourseInstallPlan,
@@ -71,6 +71,20 @@ export function readingsFetch(imports: readonly PlannedImport[], language = "en"
     if (page === undefined) return new Response("not found", { status: 404 });
     return new Response(page, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
   };
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * An activity whose course sets it due more days after install than the class's term has left (a
+ * semester course added part way through the term) is due when the term ends instead, as an
+ * activity with no due date is: the curriculum refuses a due date after the term.
+ */
+function withinTerm(activity: TemplateInput, termEndsOn: string | undefined, now: string): TemplateInput {
+  const { due } = activity;
+  if (termEndsOn === undefined || due.kind !== "after-install") return activity;
+  const dueOn = new Date(Date.parse(now) + due.days * DAY_MS).toISOString().slice(0, 10);
+  return dueOn > termEndsOn ? { ...activity, due: { kind: "none" } } : activity;
 }
 
 /** The district services an install acts through, as the class's teacher, for one request. */
@@ -231,6 +245,13 @@ class DistrictCourseInstallTarget implements CourseInstallTarget {
     return this.#services.caller.principal;
   }
 
+  /** The last day of the class's term. */
+  get #termEndsOn(): string | undefined {
+    const { snapshot, offering } = this.#services;
+    const termId = snapshot.offerings.find((o) => o.id === offering.offeringId)?.termId;
+    return snapshot.terms.find((t) => t.id === termId)?.endsOn;
+  }
+
   /** Commits the record over the revision it was read at. */
   async save(): Promise<void> {
     const next = { ...this.#installs, revision: this.#installs.revision + 1 };
@@ -260,7 +281,12 @@ class DistrictCourseInstallTarget implements CourseInstallTarget {
     const readings = new Map<string, ResourceReleaseRef>();
     for (const reading of exported.readings) {
       const submitted = await this.#services.studio.submitUrl(this.#subject, { url: readingUrl(exported.id, exported.version, reading.id), targetScope: offering });
-      const release = await this.#services.studio.approve(this.#subject, submitted.id, { alignments: [] });
+      // The teacher's install is the review of the course's readings too, so it acknowledges what the
+      // checks flagged about what a reading says (a phrase like "who you are now" reads as addressed to
+      // an AI). Reading text is only ever data (threat T7), and the acknowledgement stays on the
+      // decision and in the item's audit trail. A flag only a curriculum admin may decide still stops it.
+      const acknowledgedFlags = blockingFlagCodes(submitted.checks).filter((code) => !ADMIN_REVIEW_FLAGS.includes(code));
+      const release = await this.#services.studio.approve(this.#subject, submitted.id, { alignments: [], acknowledgedFlags });
       readings.set(reading.id, { resourceId: release.descriptor.id, version: release.descriptor.release.version } as ResourceReleaseRef);
     }
     // The export's rubric, as data, becomes a rubric release of the district's own: no checks, since an export carries none.
@@ -276,7 +302,8 @@ class DistrictCourseInstallTarget implements CourseInstallTarget {
         checks: [],
       })),
     } as RubricDraft);
-    const draft = await this.#services.curriculum.createDraft(this.#subject, { scope: offering, activity: templateInputFor(exported, { readings, rubric }) });
+    const activity = withinTerm(templateInputFor(exported, { readings, rubric }), this.#termEndsOn, this.#services.now());
+    const draft = await this.#services.curriculum.createDraft(this.#subject, { scope: offering, activity });
     const definition = { definitionId: draft.id, version: draft.version };
     this.#installs.definitions.push({
       key: item.key,
