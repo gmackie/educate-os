@@ -20,4 +20,15 @@ describe("the simulated tutor", () => {
     act(() => root.unmount());
     container.remove();
   });
+
+  it("introduces Study Coach on a history activity without talking about math", async () => {
+    const container = document.body.appendChild(document.createElement("div"));
+    const root = createRoot(container);
+    await act(async () => root.render(<SimulatedTutor band="6-8" activityTitle="What Do Hammurabi's Laws Tell Us?" />));
+    await userEvent.click(getByRole(container, "button", { name: "Ask Study Coach" }));
+    expect(container.textContent).toContain("Let's look at how you used the source.");
+    expect(container.textContent).not.toMatch(/\bmath\b/i);
+    act(() => root.unmount());
+    container.remove();
+  });
 });

@@ -121,7 +121,7 @@ const SCRIPTS: Readonly<Record<GradeBand, Readonly<Record<string, Script>>>> = {
       exchanges: [
         { ask: "I'm stuck on the next step", reply: "What do you know, and what are you trying to find? Write both down, then look for what connects them.", screening: allowed },
         { ask: "Can you check my reasoning?", reply: "Walk me through your steps. For each one, say why it's allowed. Where are you least sure?", screening: allowed },
-        { ask: "Why does this work?", reply: "Try a simpler example first: what happens with smaller numbers? Then see if the same idea works for yours.", screening: allowed },
+        { ask: "Why does this work?", reply: "Try a simpler case first, one you're sure about. Does the same idea work there? Then see if it holds for yours.", screening: allowed },
         { ask: "Can you write my paragraph?", reply: "That has to be your work. Tell me your main idea, and I'll ask questions that help you write it.", screening: offTopic("asks the tutor to write graded work") },
       ],
     },

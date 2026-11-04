@@ -20,4 +20,8 @@ describe("Study Coach", () => {
     expect(prompt).toMatch(/Never rewrite their sentences/);
     expect(prompt).toMatch(/thinking and writing must be their own/);
   });
+
+  it("introduces itself without naming a subject, whatever class opens it (SCHO-328)", () => {
+    for (const line of [PERSONA.tagline, PERSONA.greeting]) expect(line).not.toMatch(/\b(math|science|history|english)\b/i);
+  });
 });
