@@ -1,0 +1,12 @@
+{
+  "definition": {
+    "portable": {
+      "digest": "sha256:d5c891ccae8b2c7deccb333618d07febf0d868202429134bcd785dddfad13504",
+      "id": "educateos.io/grade-4-english-language-arts-poem-or-story",
+      "version": "1.0.0"
+    }
+  },
+  "id": "poem-or-story",
+  "role": "assignment",
+  "title": "Poem or Story? The Morning Bus"
+}

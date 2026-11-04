@@ -1,0 +1,178 @@
+{
+  "activity": {
+    "aiHelp": "none",
+    "due": {
+      "days": 5,
+      "kind": "after-install"
+    },
+    "genre": "argument",
+    "gradeBand": "4",
+    "minWords": 120,
+    "minimumCitations": 1,
+    "overview": "Use a fact sheet to write an opinion piece about the best class pet.",
+    "prompt": "Read \"Two Class Pets: A Fact Sheet.\" Should Room 12 choose a goldfish or a guinea pig? Write an opinion piece. State your opinion in the first paragraph. Give at least two reasons, and support each one with a fact from the fact sheet. Use linking words such as because, for example, also and in addition. End with a conclusion that restates your opinion.",
+    "resources": [
+      "two-class-pets"
+    ],
+    "subject": "english-language-arts",
+    "template": "writing-task",
+    "title": "Which Class Pet Should Room 12 Choose?"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.W.4.9",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-pick-a-class-pet",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Room 12 is choosing a class pet. Here are facts about two choices.\n\nGOLDFISH\n- Lives in a tank of water with a filter. A single goldfish needs a tank of at least 20 gallons to stay healthy.\n- Eats a small pinch of fish flakes once or twice a day.\n- The tank water must be partly changed every week.\n- Can live 10 years or more with good care.\n- Is quiet and does not need to be held. Students can watch it swim and learn about water and fish.\n- Can be left over a weekend with an automatic feeder.\n\nGUINEA PIG\n- Lives in a large cage with bedding. Guinea pigs are happiest with a partner, so most experts suggest keeping two.\n- Eats hay all day, fresh vegetables every day and a small amount of pellets. Needs vitamin C from food.\n- The cage must be cleaned every few days.\n- Usually lives 5 to 7 years.\n- Likes gentle handling and makes squeaking sounds called wheeks when it is excited.\n- Cannot be left alone over a weekend; someone must take it home or visit to feed it.",
+      "id": "two-class-pets",
+      "title": "Two Class Pets: A Fact Sheet"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "opinion",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "States a clear opinion"
+      },
+      {
+        "id": "reasons",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Gives reasons supported by facts"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Uses facts from the fact sheet"
+      },
+      {
+        "id": "organization",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Linking words and a conclusion"
+      },
+      {
+        "id": "conventions",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Spelling, capitals and punctuation"
+      }
+    ],
+    "title": "Opinion on a text"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}

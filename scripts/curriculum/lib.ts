@@ -63,6 +63,7 @@ export const ALIGNABLE_ITEM_TYPES: ReadonlySet<string> = new Set(["Standard", "C
  */
 export const SHOWCASE_ORIGINS: Readonly<Record<string, string>> = {
   "educateos.io/grade-1-reading-foundations": "off_nf-g1read-fall-r7",
+  "educateos.io/grade-4-english-language-arts": "off_nf-g4ela-fall-r12",
 };
 
 const DOMAIN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;

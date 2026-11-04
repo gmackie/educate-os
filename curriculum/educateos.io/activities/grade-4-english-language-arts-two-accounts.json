@@ -1,0 +1,171 @@
+{
+  "activity": {
+    "aiHelp": "hints-only",
+    "claimPrompt": "Which account helps you understand monarch migration better, the firsthand journal or the secondhand article? Explain how the two accounts are different in what they focus on and the information they give. Use at least two details, including at least one from each text.",
+    "contextualizationQuestions": [
+      "When and where was the journal entry written? Why does the season matter for a monarch?",
+      "What does the article tell you about the journey that the journal writer could not see for herself?",
+      "What does the journal tell you that the article does not?"
+    ],
+    "due": {
+      "days": 6,
+      "kind": "after-install"
+    },
+    "gradeBand": "4",
+    "minimumEvidence": 2,
+    "overview": "Compare a firsthand journal and a secondhand article about monarch butterflies.",
+    "sources": [
+      "monarchs-on-the-move",
+      "my-tagging-day"
+    ],
+    "sourcingQuestions": [
+      "Who wrote \"My Tagging Day\"? Was the writer there when the events happened? How do you know?",
+      "Who wrote \"Monarchs on the Move\"? Is it a firsthand or a secondhand account? What clues tell you?",
+      "Which text uses the words I and me? What does that tell you about the account?"
+    ],
+    "subject": "english-language-arts",
+    "template": "primary-source-analysis",
+    "title": "Two Accounts of the Monarch Journey"
+  },
+  "alignments": [
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.6",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.1",
+      "frameworkKey": "ccss-ela"
+    },
+    {
+      "competencyUri": "urn:educateos:catalog:ccss-ela:CCSS.ELA-LITERACY.RI.4.9",
+      "frameworkKey": "ccss-ela"
+    }
+  ],
+  "id": "educateos.io/grade-4-english-language-arts-two-accounts",
+  "language": "en",
+  "readings": [
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "Every fall, millions of orange and black butterflies leave the northern United States and southern Canada and fly south. These monarch butterflies are on one of the longest journeys of any insect in the world. Some travel close to 3,000 miles to reach the mountain forests of central Mexico.\n\nA monarch weighs less than a paper clip, so how can it fly so far? Monarchs save energy by gliding on warm, rising air, the way a hawk does. They stop to drink nectar from flowers, which gives them fuel and helps them store fat for the winter.\n\nThe monarchs that fly south are special. Most monarchs live only two to six weeks as adults. The fall travelers, sometimes called the super generation, can live for up to eight months. They spend the winter packed together on fir trees, so many that the branches bend under their weight.\n\nIn spring, the monarchs fly north again, but no single butterfly makes the whole trip. Along the way, females lay eggs on milkweed, the only plant monarch caterpillars can eat. Their children, and then their grandchildren, carry the migration farther north. It takes three or four generations to get back to where the trip began.\n\nToday, monarchs face problems. Fields of milkweed have been replaced by roads, lawns and farms, so there are fewer places to lay eggs. Scientists and volunteers are helping by planting milkweed and by tagging monarchs to learn where they go.",
+      "id": "monarchs-on-the-move",
+      "title": "Monarchs on the Move"
+    },
+    {
+      "attribution": "Written for EducateOS.",
+      "body": "September 14\nToday Aunt Rosa took me to the meadow behind the nature center to tag monarchs. I have never held a butterfly before. I thought I would be scared, but mostly I was careful.\n\nThe guide showed us how to sweep the net slowly over the goldenrod. On my fourth try I caught a male. (You can tell a male by the two small black spots on his back wings.) The guide held his wings closed with two fingers, gently, like holding a piece of paper.\n\nThen I pressed a tiny round sticker onto his back wing. It was smaller than my fingernail and had a code on it: a few letters and numbers. We wrote the code on a data sheet, with the date and the place. If someone finds him in Mexico this winter, they can report the code, and scientists will know how far he flew.\n\nWhen I opened my hand, he sat there for a second. Then he flew straight up and turned south, like he already knew the way. I watched until he was a speck. I hope somebody finds him.",
+      "id": "my-tagging-day",
+      "title": "My Tagging Day: A Journal Entry"
+    }
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "sourcing",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Identifies firsthand and secondhand accounts"
+      },
+      {
+        "id": "comparison",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Compares the focus and information of each"
+      },
+      {
+        "id": "evidence",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Supports ideas with details from both texts"
+      },
+      {
+        "id": "clarity",
+        "levels": [
+          {
+            "id": "beginning",
+            "label": "Beginning",
+            "points": 1
+          },
+          {
+            "id": "developing",
+            "label": "Developing",
+            "points": 2
+          },
+          {
+            "id": "proficient",
+            "label": "Proficient",
+            "points": 3
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "points": 4
+          }
+        ],
+        "title": "Clear, complete sentences"
+      }
+    ],
+    "title": "Comparing accounts"
+  },
+  "specVersion": "1.1",
+  "version": "1.0.0"
+}
