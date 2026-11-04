@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
-import { CheckCircle2, Circle, ClipboardList, FileText, Flag, Megaphone, MessagesSquare, PenLine, Pin, Square, SquareCheck } from 'lucide-react-native';
+import { CheckCircle2, Circle, ClipboardList, ExternalLink, FileText, Flag, Megaphone, MessagesSquare, PenLine, Pin, Square, SquareCheck } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type {
   Activity, Announcement, CourseOutline, Detail, DiscussionPost, DiscussionThread, QuizAnswer, QuizAttempt, QuizQuestion,
@@ -8,7 +8,8 @@ import type {
 } from '../types';
 import { useLoad } from '../hooks/useLoad';
 import { usePalette } from '../ui/theme-context';
-import { Markdown, plainText } from '../ui/Markdown';
+import { Markdown, openExternal, plainText } from '../ui/Markdown';
+import { moduleRows, teacherNoteFor } from '../modules.ts';
 import { Button, Card, Chip, dateLabel, Item, Page, Placeholder, QueryState, Section, Title, useStyles } from '../ui/Primitives';
 
 type Role = 'student' | 'teacher';
@@ -35,7 +36,7 @@ export function CourseSections({ offeringId, extras, activities, navigate }: {
 }) {
   const palette = usePalette();
   const [openAnnouncement, setOpenAnnouncement] = useState<string | null>(null);
-  const pages = new Map((extras.outline?.pages ?? []).map((p) => [p.id, p]));
+  const pages = extras.outline?.pages ?? [];
   const byActivity = new Map(activities.map((a) => [a.assignment.activityId, a.assignment]));
   const modules = (extras.outline?.modules ?? []).filter((m) => m.published && m.items.length > 0);
   return <>
@@ -52,15 +53,21 @@ export function CourseSections({ offeringId, extras, activities, navigate }: {
     {modules.length > 0 && <Section title="Modules">
       <View style={{ gap: 12 }}>{modules.map((module) => <Card key={module.id}>
         <Text accessibilityRole="header" style={{ color: palette.ink, fontWeight: '800', fontSize: 16, marginBottom: 4 }}>{module.title}</Text>
-        {module.items.map((item) => {
-          if (item.kind === 'page') {
-            const page = pages.get(item.pageId);
-            return page && <Item key={item.id} title={page.title} detail="Page"
+        {moduleRows(module, pages, 'student').map((row) => {
+          if (row.kind === 'page') {
+            return <Item key={row.id} title={row.page.title} detail="Page"
               leading={<FileText size={19} color={palette.primary}/>}
-              onPress={() => navigate({ type: 'page', offeringId, pageId: page.id })}/>;
+              onPress={() => navigate({ type: 'page', offeringId, pageId: row.page.id })}/>;
           }
-          const assignment = byActivity.get(item.activityId);
-          return assignment && <Item key={item.id} title={assignment.title} detail={'Due ' + dateLabel(assignment.dueAt, true)}
+          if (row.kind === 'link') {
+            return <Item key={row.id} title={row.title} detail={row.url ? 'Link · ' + new URL(row.url).host : 'Link · open it on a computer'}
+              leading={<ExternalLink size={19} color={palette.primary}/>}
+              onPress={row.url ? () => openExternal(row.url!) : undefined}/>;
+          }
+          if (row.kind !== 'activity') return null;
+          // An activity placed in a module but not assigned to this student yet is not listed.
+          const assignment = byActivity.get(row.activityId);
+          return assignment && <Item key={row.id} title={assignment.title} detail={'Due ' + dateLabel(assignment.dueAt, true)}
             leading={<ClipboardList size={19} color={palette.primary}/>}
             onPress={() => navigate({ type: 'assignment', id: assignment.id, offeringId })}/>;
         })}
@@ -97,10 +104,11 @@ export function PageScreen({ client, offeringId, pageId, role }: { client: Distr
     const outline = role === 'teacher' ? await client.teacherModules(offeringId) : await client.studentModules(offeringId);
     const page = outline.outline.pages.find((p) => p.id === pageId);
     if (!page) throw new Error('This page is no longer in the class.');
-    return page;
+    return { page, note: role === 'teacher' ? teacherNoteFor(outline.outline.modules, pageId) : null };
   });
-  return <Page refresh={reload}><QueryState state={state} retry={reload}>{(page) => <>
+  return <Page refresh={reload}><QueryState state={state} retry={reload}>{({ page, note }) => <>
     <Title>{page.title}</Title>
+    {note && <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}><Chip label="Teacher only" tone="amber"/><Chip label={note} tone="neutral"/></View>}
     <Card><Markdown source={page.body}/></Card>
   </>}</QueryState></Page>;
 }

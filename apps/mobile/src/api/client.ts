@@ -1,5 +1,5 @@
 import type {
-  Activity, Announcement, Assignment, CalendarEvent, ClassItem, Credential, DeviceSummary, GradeSummary,
+  Activity, ActivityView, Announcement, ArtifactRead, ArtifactView, UploadMediaType, Workspace, Assignment, CalendarEvent, ClassItem, Credential, DeviceSummary, GradeSummary,
   CourseOutline, DiscussionPost, EmailPreferences, Gradebook, GradeProposal, ModerationQueue, QuizResults, StaffAttempt, StaffQuizSummary, DiscussionThread, GuardianChild, GuardianCourse, Notifications, Principal,
   QuizAnswer, QuizAttempt, QuizResult, QuizSummary, Submission, TopicListing,
 } from '../types';
@@ -94,7 +94,7 @@ export class DistrictClient {
   teacherRoster(offeringId: string): Promise<{ enrollment: { principalId: string }; displayName: string }[]> {
     return this.call('GET', '/api/teacher/offerings/' + this.id(offeringId) + '/roster');
   }
-  studentActivity(activityId: string): Promise<{ content: { overview: string; steps: { id: string; title: string; prompt: string }[] } }> {
+  studentActivity(activityId: string): Promise<ActivityView> {
     return this.call('GET', '/api/student/activities/' + this.id(activityId));
   }
   studentOfficialGrades(assignmentId: string): Promise<{ score: { points: number; maxPoints: number } }[]> {
@@ -103,23 +103,40 @@ export class DistrictClient {
   openCourseWorkspace(offeringId: string): Promise<{ id: string }> {
     return this.call('POST', '/api/student/offerings/' + this.id(offeringId) + '/workspace');
   }
-  createDocument(workspaceId: string, title: string, text: string): Promise<{
-    artifact: { id: string }; head: { id: string };
-  }> {
+  /** The student's personal and course workspaces, with their lifecycles. */
+  studentWorkspaces(): Promise<Workspace[]> { return this.call('GET', '/api/student/workspaces'); }
+  /** A workspace's artifacts, each with its latest saved version. */
+  workspaceArtifacts(workspaceId: string): Promise<ArtifactView[]> {
+    return this.call('GET', '/api/student/workspaces/' + this.id(workspaceId) + '/artifacts');
+  }
+  /** One of the student's artifacts at its latest version, with its content. */
+  studentArtifact(artifactId: string): Promise<ArtifactRead> {
+    return this.call('GET', '/api/student/artifacts/' + this.id(artifactId));
+  }
+  createDocument(workspaceId: string, title: string, text: string): Promise<ArtifactView> {
     return this.call('POST', '/api/student/artifacts', {
       workspaceId, title, type: 'document', content: { kind: 'text', text }, aiAssistance: { level: 'none' },
     });
   }
-  saveDocumentRevision(artifactId: string, text: string): Promise<{ artifact: { id: string }; head: { id: string } }> {
+  saveDocumentRevision(artifactId: string, text: string): Promise<ArtifactView> {
     return this.call('POST', '/api/student/artifacts/' + this.id(artifactId) + '/revisions', {
       content: { kind: 'text', text }, aiAssistance: { level: 'none' },
     });
   }
-  /** An uploaded photo or PDF (`bytes` content; the district checks the type and the 5 MiB limit). */
-  createUpload(workspaceId: string, title: string, type: 'image' | 'evidence', mediaType: 'image/jpeg' | 'image/png' | 'application/pdf',
-    base64: string): Promise<{ artifact: { id: string }; head: { id: string } }> {
+  /**
+   * An uploaded photo, drawing, recording or PDF (`bytes` content). The district checks the media
+   * type against the file's leading bytes and the 5 MiB limit.
+   */
+  createUpload(workspaceId: string, title: string, type: string, mediaType: UploadMediaType,
+    base64: string): Promise<ArtifactView> {
     return this.call('POST', '/api/student/artifacts', {
       workspaceId, title, type, content: { kind: 'bytes', mediaType, base64 }, aiAssistance: { level: 'none' },
+    });
+  }
+  /** A new version of an uploaded file; earlier versions stay in the artifact's history. */
+  saveUploadRevision(artifactId: string, mediaType: UploadMediaType, base64: string): Promise<ArtifactView> {
+    return this.call('POST', '/api/student/artifacts/' + this.id(artifactId) + '/revisions', {
+      content: { kind: 'bytes', mediaType, base64 }, aiAssistance: { level: 'none' },
     });
   }
   withdrawSubmission(submissionId: string): Promise<unknown> {
@@ -131,14 +148,18 @@ export class DistrictClient {
     return this.call('GET', '/api/student/assignments/' + this.id(assignmentId) + '/starter-materials/' + this.id(materialId));
   }
   submitDocument(assignmentId: string, revision: { artifactId: string; revisionId: string }): Promise<{ submissionId: string }> {
-    return this.call('POST', '/api/student/assignments/' + this.id(assignmentId) + '/submissions',
-      { revisions: [revision] });
+    return this.submit(assignmentId, [revision]);
+  }
+  /** One submission handing in exactly these saved versions, such as one per activity step. */
+  submit(assignmentId: string, revisions: { artifactId: string; revisionId: string }[]): Promise<{ submissionId: string }> {
+    return this.call('POST', '/api/student/assignments/' + this.id(assignmentId) + '/submissions', { revisions });
   }
   teacherAssignment(assignmentId: string): Promise<{ assignment: Assignment }> {
     return this.call('GET', '/api/teacher/assignments/' + this.id(assignmentId));
   }
   teacherSubmittedContent(submissionId: string, artifactId: string): Promise<{
-    title?: string; content: { kind: string; text?: string; base64?: string };
+    item?: { mediaType?: string; artifactType?: string };
+    title?: string; content: { kind: string; text?: string; base64?: string; url?: string };
   }> {
     return this.call('GET', '/api/teacher/submissions/' + this.id(submissionId) + '/artifacts/' + this.id(artifactId));
   }

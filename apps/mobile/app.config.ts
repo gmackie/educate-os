@@ -20,6 +20,14 @@ export function appVariant(value = process.env.APP_VARIANT): AppVariant {
   return variant as AppVariant;
 }
 
+const CAMERA_USAGE = "Scan your school's QR code to connect this phone, and attach photos of your own schoolwork when you choose to.";
+/**
+ * Recording is only ever started by the student, for an activity step that asks for their voice
+ * (SCHO-342). Every plugin that touches the microphone gets the same description: one given `false`
+ * would delete the iOS key, or block Android's RECORD_AUDIO, for the whole app.
+ */
+const MICROPHONE_USAGE = 'Record your voice when an activity asks you to tell or read something.';
+
 export const appConfig = (variant: AppVariant): ExpoConfig => ({
   name: VARIANTS[variant].name,
   slug: 'educateos-mobile',
@@ -40,7 +48,8 @@ export const appConfig = (variant: AppVariant): ExpoConfig => ({
     associatedDomains: ['applinks:mobile.educateos.io', 'webcredentials:mobile.educateos.io'],
     infoPlist: {
       NSFaceIDUsageDescription: 'Confirm access to your EducateOS school account.',
-      NSCameraUsageDescription: "Scan your school's QR code to connect this phone, and attach photos of your own schoolwork when you choose to.",
+      NSCameraUsageDescription: CAMERA_USAGE,
+      NSMicrophoneUsageDescription: MICROPHONE_USAGE,
       NSPhotoLibraryUsageDescription: 'Choose photos to attach to your work.',
       // Only standard, exempt encryption (HTTPS, platform crypto), so uploads skip the export question.
       ITSAppUsesNonExemptEncryption: false,
@@ -63,21 +72,20 @@ export const appConfig = (variant: AppVariant): ExpoConfig => ({
       category: ['BROWSABLE', 'DEFAULT'],
       autoVerify: true,
     }],
-    permissions: [],
+    permissions: ['android.permission.RECORD_AUDIO'],
   },
   plugins: [
     'expo-router',
     ['expo-secure-store', { configureAndroidBackup: true }],
-    ['expo-camera', {
-      cameraPermission: "Scan your school's QR code to connect this phone, and attach photos of your own schoolwork when you choose to.",
-      microphonePermission: false, recordAudioAndroid: false,
-    }],
-    // Photos of schoolwork for evidence and image assignments (SCHO-272). Never the microphone.
+    // The camera never records video, so it adds no microphone permission of its own.
+    ['expo-camera', { cameraPermission: CAMERA_USAGE, microphonePermission: MICROPHONE_USAGE, recordAudioAndroid: false }],
+    // Photos of schoolwork for evidence and image assignments (SCHO-272).
     ['expo-image-picker', {
-      photosPermission: 'Choose photos to attach to your work.',
-      cameraPermission: "Scan your school's QR code to connect this phone, and attach photos of your own schoolwork when you choose to.",
-      microphonePermission: false,
+      photosPermission: 'Choose photos to attach to your work.', cameraPermission: CAMERA_USAGE, microphonePermission: MICROPHONE_USAGE,
     }],
+    // Voice recordings for activity steps (SCHO-342): foreground only, no background audio service.
+    ['expo-audio', { microphonePermission: MICROPHONE_USAGE, recordAudioAndroid: true,
+      enableBackgroundPlayback: false, enableBackgroundRecording: false }],
     ['expo-local-authentication', { faceIDPermission: 'Confirm access to your EducateOS school account.' }],
     ['expo-notifications', { icon: './assets/notification-icon.png', color: '#0035D3' }],
   ],
