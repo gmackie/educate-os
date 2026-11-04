@@ -1,19 +1,26 @@
-import React, { useMemo } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ViewStyle } from 'react-native';
+import React, { createContext, useMemo } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ScrollViewInstance, type ViewStyle } from 'react-native';
 import { ArrowRight, ChevronRight, RotateCw } from 'lucide-react-native';
 import { font, radius, spacing, type Palette } from '../theme';
 import { usePalette } from './theme-context';
 import type { LoadState } from '../hooks/useLoad';
 
-export function Page({ children, refresh, busy, scroll = true }: {
-  children: React.ReactNode; refresh?: () => void; busy?: boolean; scroll?: boolean;
+/**
+ * Turns a page's scrolling off while a child takes a drag of its own, such as the drawing pad, so
+ * the page does not scroll away under the pen. The page that holds such a child provides it.
+ */
+export const ScrollLock = createContext<(locked: boolean) => void>(() => {});
+
+export function Page({ children, refresh, busy, scroll = true, scrollRef, scrollEnabled = true }: {
+  children: React.ReactNode; refresh?: () => void; busy?: boolean; scroll?: boolean; scrollRef?: React.Ref<ScrollViewInstance>;
+  scrollEnabled?: boolean;
 }) {
   const palette = usePalette();
   const styles = useStyles();
   const content = <View style={styles.page}>{children}</View>;
   if (!scroll) return <View style={{ flex: 1 }}>{content}</View>;
   // Forms (quizzes, posts, responses) stay reachable above the keyboard, which a drag puts away.
-  return <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+  return <ScrollView ref={scrollRef} scrollEnabled={scrollEnabled} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
     automaticallyAdjustKeyboardInsets keyboardDismissMode="interactive"
     contentContainerStyle={{ paddingBottom: 48 }} accessibilityLabel="Page content">
     {refresh && <Pressable accessibilityRole="button" accessibilityLabel="Refresh page"

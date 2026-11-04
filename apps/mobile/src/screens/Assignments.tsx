@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Alert, Text, TextInput, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Alert, Text, TextInput, View, type ScrollViewInstance } from 'react-native';
 import { GraduationCap, Send } from 'lucide-react-native';
 import type { DistrictClient } from '../api/client';
 import type { Detail } from '../types';
@@ -7,8 +7,11 @@ import { useLoad, useReloadOnFocus } from '../hooks/useLoad';
 import { useAppState } from '../state/app-state';
 import { Markdown } from '../ui/Markdown';
 import { AssignmentActions, StarterMaterials } from './AssignmentWork';
+import { ActivityWork, YoungActivity, loadActivityWork } from './ActivityWork';
+import { workSteps } from '../activity.ts';
+import { isYoungLearnerBand } from '../gradeBand.ts';
 import { usePalette } from '../ui/theme-context';
-import { Button, Card, Chip, dateLabel, Field, Item, Page, QueryState, Section, Title } from '../ui/Primitives';
+import { Button, Card, Chip, dateLabel, Field, Item, Page, QueryState, ScrollLock, Section, Title } from '../ui/Primitives';
 
 
 /** Never renders staff-only fields or answer keys; the district returns a student-filtered activity view. */
@@ -27,8 +30,15 @@ export function AssignmentScreen({ client, assignmentId, offeringId, navigate }:
       client.studentAssignmentFeedback(assignmentId).catch(() => []),
       client.studentQuizzes(offering).catch(() => []),
     ]);
-    return { details, submissions, grades, activity, feedback, offering, quiz: quizzes.find((q) => q.assignmentId === assignmentId) ?? null };
+    // Each step's saved work, when the activity asks for any; a failure here fails the page, so a
+    // student never starts over on top of work they already saved.
+    const work = !activity ? null : workSteps(activity.content).length > 0
+      ? await loadActivityWork(client, offering, details.assignment, activity.content)
+      : { saved: new Map(), workspaceId: null, readOnly: false };
+    return { details, submissions, grades, activity, work, feedback, offering, quiz: quizzes.find((q) => q.assignmentId === assignmentId) ?? null };
   });
+  const scroll = useRef<ScrollViewInstance>(null);
+  const [locked, setLocked] = useState(false);
   useReloadOnFocus(reload);
   const { session } = useAppState();
   const [withdrawing, setWithdrawing] = useState(false);
@@ -41,66 +51,74 @@ export function AssignmentScreen({ client, assignmentId, offeringId, navigate }:
           Alert.alert("Couldn't withdraw", e instanceof Error ? e.message : 'Try again.')).finally(() => setWithdrawing(false));
       } },
     ]);
-  return <Page refresh={reload}>
-    <QueryState state={result} retry={reload}>{({ details, submissions, grades, activity, feedback, offering, quiz }) => <>
-      <Title subtitle={'Due ' + dateLabel(details.assignment.dueAt, true)}>{details.assignment.title}</Title>
-      <View style={{ gap: 11, flexDirection: 'row', marginBottom: 24 }}>
-        <Chip label={submissions.some((s) => !s.withdrawnAt) ? 'Submitted' : 'Not submitted'}
-          tone={submissions.some((s) => !s.withdrawnAt) ? 'green' : 'amber'}/>
-        <Chip label={submissions.length + '/' + details.assignment.attemptsAllowed + ' attempts'} tone="neutral"/>
-      </View>
-      {activity && <Section title="Instructions">
-        <Card style={{ gap: 14 }}>
-          <Markdown source={activity.content.overview}/>
-          {activity.content.steps.map((step, i) => <View key={step.id} style={{ gap: 6,
-            borderTopColor: palette.line, borderTopWidth: 1, paddingTop: 12 }}>
-            <Text style={{ color: palette.primary, fontSize: 12, fontWeight: '800' }}>
-              STEP {i + 1} · {step.title}
-            </Text>
-            <Markdown source={step.prompt} size={14}/>
-          </View>)}
-        </Card>
-      </Section>}
-      {details.starterMaterials && details.starterMaterials.length > 0 &&
-        <StarterMaterials client={client} assignmentId={assignmentId} materials={details.starterMaterials}/>}
-      <Section title="My submission">
-        <Card style={{ gap: 12 }}>
-          {submissions.length === 0 ? <Text style={{ color: palette.muted }}>No work submitted yet.</Text> :
-            submissions.map((s) => <View key={s.id} style={{ gap: 5, paddingVertical: 7 }}>
-              <Chip label={s.withdrawnAt ? 'Withdrawn' : 'Submitted'} tone={s.withdrawnAt ? 'neutral' : 'green'}/>
-              <Text style={{ color: palette.ink, fontWeight: '700' }}>Attempt {s.attempt}</Text>
-              <Text style={{ color: palette.muted, fontSize: 12 }}>{dateLabel(s.submittedAt, true)}</Text>
-            </View>)}
-          {grades.length > 0 && <View style={{ marginTop: 10, borderTopWidth: 1,
-            borderColor: palette.line, paddingTop: 14 }}>
-            <Text style={{ color: palette.ink, fontWeight: '800' }}>Official grade</Text>
-            <Text style={{ color: palette.primary, fontSize: 22, fontWeight: '800' }}>
-              {grades.at(-1)!.score.points} / {grades.at(-1)!.score.maxPoints}
-            </Text>
-          </View>}
-        </Card>
-      </Section>
-      {feedback.length > 0 && <Section title="Teacher feedback">
-        <Card style={{ gap: 14 }}>{feedback.flatMap((record) => record.comments).map((comment, i) =>
-          <Markdown key={i} source={comment.body}/>)}
-        </Card>
-      </Section>}
-      {(() => {
-        const active = submissions.filter((x) => !x.withdrawnAt);
-        const used = submissions.length >= details.assignment.attemptsAllowed;
+  return <ScrollLock.Provider value={setLocked}><Page refresh={reload} scrollRef={scroll} scrollEnabled={!locked}>
+    <QueryState state={result} retry={reload}>{({ details, submissions, grades, activity, work, feedback, offering, quiz }) => {
+      const { assignment } = details;
+      const content = activity?.content;
+      const active = submissions.filter((x) => !x.withdrawnAt);
+      const used = submissions.length >= assignment.attemptsAllowed;
+      const schoolHost = session ? new URL(session.district.origin).host : 'your school';
+      const workProps = content && work ? {
+        client, offeringId: offering, assignment, content, data: work, canSubmit: !used,
+        attemptsLeft: Math.max(0, assignment.attemptsAllowed - submissions.length), schoolHost, onSubmitted: reload,
+      } : null;
+
+      const record = <>
+        <Section title="My submission">
+          <Card style={{ gap: 12 }}>
+            {submissions.length === 0 ? <Text style={{ color: palette.muted }}>No work submitted yet.</Text> :
+              submissions.map((s) => <View key={s.id} style={{ gap: 5, paddingVertical: 7 }}>
+                <Chip label={s.withdrawnAt ? 'Withdrawn' : 'Submitted'} tone={s.withdrawnAt ? 'neutral' : 'green'}/>
+                <Text style={{ color: palette.ink, fontWeight: '700' }}>Attempt {s.attempt}</Text>
+                <Text style={{ color: palette.muted, fontSize: 12 }}>{dateLabel(s.submittedAt, true)}</Text>
+              </View>)}
+            {grades.length > 0 && <View style={{ marginTop: 10, borderTopWidth: 1,
+              borderColor: palette.line, paddingTop: 14 }}>
+              <Text style={{ color: palette.ink, fontWeight: '800' }}>Official grade</Text>
+              <Text style={{ color: palette.primary, fontSize: 22, fontWeight: '800' }}>
+                {grades.at(-1)!.score.points} / {grades.at(-1)!.score.maxPoints}
+              </Text>
+            </View>}
+          </Card>
+        </Section>
+        {feedback.length > 0 && <Section title={content && isYoungLearnerBand(content.gradeBand) ? 'What your teacher said' : 'Teacher feedback'}>
+          <Card style={{ gap: 14 }}>{feedback.flatMap((record) => record.comments).map((comment, i) =>
+            <Markdown key={i} source={comment.body}/>)}
+          </Card>
+        </Section>}
+        {active.length > 0 && <Button label={withdrawing ? 'Withdrawing…' : 'Withdraw my submission'} variant="danger"
+          disabled={withdrawing} onPress={() => withdraw(active.at(-1)!.id)}/>}
+      </>;
+      const actions = <AssignmentActions offeringId={offering} quiz={quiz} activityMissing={!content}
+        ai={session?.district.features?.ai !== false} schoolHost={schoolHost} navigate={navigate}/>;
+
+      // Young learners (K-2): one step a screen, with the submission record on the finish screen.
+      if (workProps && content && isYoungLearnerBand(content.gradeBand)) {
         return <>
-          {!used && <AssignmentActions client={client} assignmentId={assignmentId} offeringId={offering}
-            permitted={details.assignment.permittedArtifactTypes ?? []} quiz={quiz}
-            ai={session?.district.features?.ai !== false} schoolHost={session ? new URL(session.district.origin).host : 'your school'}
-            navigate={navigate} onSubmitted={reload}/>}
-          {used && <Card style={{ marginBottom: 18 }}><Text style={{ color: palette.muted }}>You have used all {details.assignment.attemptsAllowed} attempts.</Text></Card>}
-          {active.length > 0 && <Button label={withdrawing ? 'Withdrawing…' : 'Withdraw my submission'} variant="danger"
-            disabled={withdrawing} onPress={() => withdraw(active.at(-1)!.id)}/>}
+          <Title subtitle={'Due ' + dateLabel(assignment.dueAt, true)}>{assignment.title}</Title>
+          {quiz && actions}
+          {details.starterMaterials && details.starterMaterials.length > 0 &&
+            <StarterMaterials client={client} assignmentId={assignmentId} materials={details.starterMaterials}/>}
+          <YoungActivity {...workProps} scrollToTop={() => scroll.current?.scrollTo({ y: 0, animated: false })}
+            finish={<View style={{ marginTop: 8 }}>{record}</View>}/>
         </>;
-      })()}
-      <View style={{ height: 24 }}/>
-    </>}</QueryState>
-  </Page>;
+      }
+      return <>
+        <Title subtitle={'Due ' + dateLabel(assignment.dueAt, true)}>{assignment.title}</Title>
+        <View style={{ gap: 11, flexDirection: 'row', marginBottom: 24 }}>
+          <Chip label={active.length > 0 ? 'Submitted' : 'Not submitted'} tone={active.length > 0 ? 'green' : 'amber'}/>
+          <Chip label={submissions.length + '/' + assignment.attemptsAllowed + ' attempts'} tone="neutral"/>
+        </View>
+        {details.starterMaterials && details.starterMaterials.length > 0 &&
+          <StarterMaterials client={client} assignmentId={assignmentId} materials={details.starterMaterials}/>}
+        {actions}
+        {workProps && <ActivityWork {...workProps}/>}
+        {used && <Card style={{ marginBottom: 18 }}><Text style={{ color: palette.muted }}>You have used all {assignment.attemptsAllowed} attempts.</Text></Card>}
+        {record}
+        <View style={{ height: 24 }}/>
+      </>;
+    }}</QueryState>
+  </Page></ScrollLock.Provider>;
 }
 
 /**
