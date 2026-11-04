@@ -24,6 +24,21 @@ function env(overrides: Partial<Cloudflare.Env> = {}): Cloudflare.Env {
   } as Cloudflare.Env;
 }
 
+describe("AiGatewayConfig quick model", () => {
+  const base = { CF_AI_GATEWAY_ACCOUNT_ID: "account-id", CF_AI_GATEWAY_PROVIDERS: "cloudflare" };
+
+  it("titles on Llama 3.3 70B unless the deployment names another Workers AI model", () => {
+    expect(new AiGatewayConfig(env(base)).getQuickModelConfig()?.model).toBe("@cf/meta/llama-3.3-70b-instruct-fp8-fast");
+    expect(new AiGatewayConfig(env({ ...base, CF_AI_GATEWAY_QUICK_MODEL: " @cf/zai-org/glm-5.3-flash " })).getQuickModelConfig())
+      .toStrictEqual({ provider: "cloudflare", model: "@cf/zai-org/glm-5.3-flash", apiToken: "" });
+  });
+
+  it("keeps the default for a blank CF_AI_GATEWAY_QUICK_MODEL", () => {
+    expect(new AiGatewayConfig(env({ ...base, CF_AI_GATEWAY_QUICK_MODEL: "  " })).getQuickModelConfig()?.model)
+      .toBe("@cf/meta/llama-3.3-70b-instruct-fp8-fast");
+  });
+});
+
 describe("AiGatewayConfig transport selection", () => {
   const binding = { gateway: () => ({}) } as unknown as Ai;
   // google needs the HTTPS+token transport, so token-less configs must not enable it.

@@ -21,6 +21,8 @@ declare global {
       CF_AI_GATEWAY_API_TOKEN?: string;   // Run + Read token; optional when the binding transport
                                           // applies (still required for google)
       CF_AI_GATEWAY_USE_BINDING?: string;
+      CF_AI_GATEWAY_QUICK_MODEL?: string; // Workers AI model for title generation; a deployment
+                                          // whose AI call guard prices only some models names one
       // Note: outside gateway mode, Workers AI (provider "cloudflare") is BYOK like every other
       // provider -- the account ID and API token live in the user's model config, not in env.
 
