@@ -22,7 +22,7 @@ import type {
 import { getAuthErrorCode } from "@gadgets/workshop-shared/api";
 import { verifyCfAccessJwt, type CfAccessEnv } from "../access.js";
 import { createWorkshopLogger } from "../observability.js";
-import { isAdminUserName } from "./admins.js";
+import { isDeploymentAdmin } from "./config.js";
 import { PRINCIPAL_USER_PREFIX, resolvePrincipalUser } from "./principal-sign-in.js";
 
 const logger = createWorkshopLogger("workshop.principal-migration");
@@ -220,7 +220,7 @@ export async function handlePrincipalMigrationRequest(
     // Refused (403), or the resolver could not answer (503); either way the message says which.
     return refuse(getAuthErrorCode(error) === undefined ? 503 : 403, (error as Error).message);
   }
-  if (!isAdminUserName(env, name)) {
+  if (!isDeploymentAdmin(env, name)) {
     return refuse(403, "Only a Workshop administrator can run the principal migration.");
   }
   let body: unknown;

@@ -60,6 +60,11 @@ const EXPECTED: Record<string, ExpectedArea> = {
   "packages/gatekeeper-educateos": {
     injected: ["GATEKEEPER_APP_UNMINIFIED"],
   },
+  // The live-tenant suite (`vitest.contract.config.ts`) and its sign-in and rendering tooling under
+  // `scripts/` run as package.json scripts and by hand, never as vp tasks.
+  "packages/gatekeeper-microsoft": {
+    external: ["MICROSOFT_CONTRACT_BASE_URL", "MICROSOFT_CONTRACT_TOKENS"],
+  },
   // `build/runtime.ts` defines `process.env.NODE_ENV` as "production" for the libraries it bundles
   // into the configurator runtime; the ambient value is never read.
   "packages/configurator-ui": {

@@ -18,6 +18,7 @@
       "description": "Read and edit documents you choose.",
       "grantable": true,
       "creatable": true,
+      "groupedWith": "https://drive.google.com/drive/my-drive",
       "oauthScopes": [
         "https://www.googleapis.com/auth/documents",
         "https://www.googleapis.com/auth/drive.metadata.readonly"
@@ -29,6 +30,7 @@
       "description": "Read the values and formatting of a spreadsheet you choose, and change its values, tabs, rows, columns, and formatting, with your approval.",
       "grantable": true,
       "creatable": true,
+      "groupedWith": "https://drive.google.com/drive/my-drive",
       "oauthScopes": [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive.metadata.readonly"
@@ -40,6 +42,7 @@
       "description": "Read a presentation you choose, its slides, layouts, masters, and formatting, and, with your approval, edit its text and design, copy, move, or delete slides, and change its backgrounds and theme colours.",
       "grantable": true,
       "creatable": true,
+      "groupedWith": "https://drive.google.com/drive/my-drive",
       "oauthScopes": [
         "https://www.googleapis.com/auth/presentations",
         "https://www.googleapis.com/auth/drive.metadata.readonly"
@@ -59,7 +62,7 @@
     {
       "urlPattern": "https://drive.google.com/drive/my-drive",
       "title": "Google Drive",
-      "description": "Find files and folders anywhere this Google account can read in Drive, including shared drives. Full-text search examines indexed file content, descriptions, and OCR text; search results contain metadata only, while native Google Docs, Sheets and Slides can be opened read-only, and PDFs can be read as text.",
+      "description": "Find files you can open anywhere in Drive, including shared drives, and read Docs, Sheets, Slides and PDFs. Connect all of Drive, or just one shared drive, folder or file; a Doc, spreadsheet or presentation connected on its own can also be edited, with your approval.",
       "grantable": true,
       "oauthScopes": [
         "https://www.googleapis.com/auth/drive.readonly",
@@ -232,7 +235,7 @@
         "listMembers(): Promise<Cursor<ChatMembership>>;",
         "findMember(user: string): Promise<ChatMembership | null>;",
         "post(text: string): Promise<ChatMessageEntry>;",
-        "subscribeNewMessages(hook: RpcStub<ChatMessageHook>): Promise<void>;"
+        "subscribeNewMessages(hook: RpcStub<ChatMessageHook>, options?: ChatSubscribeOptions): Promise<void>;"
       ]
     },
     {
@@ -247,7 +250,7 @@
         "getRootMessage(): Promise<ChatMessageEntry | null>;",
         "listMessages(options?: ChatListMessagesOptions): Promise<Cursor<ChatMessageEntry>>;",
         "post(text: string): Promise<ChatMessageEntry>;",
-        "subscribeNewMessages(hook: RpcStub<ChatMessageHook>): Promise<void>;"
+        "subscribeNewMessages(hook: RpcStub<ChatMessageHook>, options?: ChatSubscribeOptions): Promise<void>;"
       ]
     },
     {

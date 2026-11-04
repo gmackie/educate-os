@@ -524,6 +524,7 @@ const SHARED_GATEKEEPER_CREDS: Record<string, { id: string; secret: string }> = 
   "gatekeeper-spotify": { id: "SPOTIFY_CLIENT_ID", secret: "SPOTIFY_CLIENT_SECRET" },
   "gatekeeper-x": { id: "X_CLIENT_ID", secret: "X_CLIENT_SECRET" },
   "gatekeeper-clever": { id: "CLEVER_CLIENT_ID", secret: "CLEVER_CLIENT_SECRET" },
+  "gatekeeper-microsoft": { id: "MICROSOFT_CLIENT_ID", secret: "MICROSOFT_CLIENT_SECRET" },
 };
 
 // Deployment-configured vars a gatekeeper reads that its committed `wrangler.jsonc` deliberately
@@ -550,6 +551,11 @@ const PASSTHROUGH_GATEKEEPER_VARS: Record<string, string[]> = {
   // is: unset, it talks to clever.com and api.clever.com, with no district connected. Point both
   // bases at a demo district's fakes, with the login-hint form on, to try it without a Clever app.
   "gatekeeper-clever": ["CLEVER_DISTRICT_TOKENS", "CLEVER_API_BASE", "CLEVER_OAUTH_BASE", "CLEVER_LOGIN_HINT_FORM"],
+  // The Entra tenant (or allowlist of tenant IDs) to accept, which must be set or the gatekeeper
+  // refuses to start, the most agents may do in SharePoint, Outlook and Calendar (unset: write, send
+  // and schedule), and whether SharePoint asks for every site or only those granted to the app
+  // (unset, every site).
+  "gatekeeper-microsoft": ["MICROSOFT_TENANT_ID", "MICROSOFT_ALLOWED_TENANT_IDS", "MICROSOFT_SHAREPOINT_ACCESS", "MICROSOFT_SHAREPOINT_SITES", "MICROSOFT_OUTLOOK_ACCESS", "MICROSOFT_CALENDAR_ACCESS"],
 };
 
 for (const gk of gatekeepers) {

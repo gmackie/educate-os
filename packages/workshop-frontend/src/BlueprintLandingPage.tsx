@@ -4,7 +4,7 @@ import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
 import { RpcStub } from 'capnweb'
 import { PublicApi, AuthenticatedApi, AdminApi, BlueprintPublicInfo, BlueprintBinding, BlueprintBindingAssignment, BlueprintUserSummary, AiChatAuthorInfo } from '@gadgets/workshop-shared/api'
 import { SupportedResource, VendorDescription, ResourceConfiguratorFrame, matchesResourceUrlPattern } from '@gadgets/workshop-shared/gatekeeper'
-import { Button, Dialog, DropdownMenu, Select, Tooltip, useKumoToastManager } from '@cloudflare/kumo'
+import { Banner, Button, Dialog, DropdownMenu, Select, Tooltip, useKumoToastManager } from '@cloudflare/kumo'
 import { ArrowsOutSimple, ArrowLeft, ArrowSquareOut, DotsThree, DownloadSimple, Lightning, Plus, Robot, Sparkle, Star, Trash, X } from '@phosphor-icons/react'
 
 import { useAuth } from './useAuth'
@@ -920,7 +920,7 @@ export default function BlueprintLandingPage({ rpcStub }: Props) {
               />
               <DropdownMenu.Content className={MENU_CONTENT}>
                 <DropdownMenu.Item
-                  icon={<DownloadSimple size={13} className="mr-2" />}
+                  icon={<DownloadSimple className="size-3.25" />}
                   onClick={handleDownload}
                   disabled={downloading}
                   className={MENU_ITEM}
@@ -929,7 +929,7 @@ export default function BlueprintLandingPage({ rpcStub }: Props) {
                 </DropdownMenu.Item>
 
                 <DropdownMenu.Item
-                  icon={<Star size={13} className="mr-2" weight={isPinned ? 'fill' : 'regular'} />}
+                  icon={<Star className="size-3.25" weight={isPinned ? 'fill' : 'regular'} />}
                   onClick={handleTogglePinned}
                   disabled={updatingPinned}
                   className={MENU_ITEM}
@@ -939,7 +939,7 @@ export default function BlueprintLandingPage({ rpcStub }: Props) {
 
                 {sourceWorkspace && (
                   <DropdownMenu.Item
-                    icon={<ArrowSquareOut size={13} className="mr-2" />}
+                    icon={<ArrowSquareOut className="size-3.25" />}
                     onClick={() => window.open(workshopPath(`/workspace/${sourceWorkspace.workspaceId}`), '_blank', 'noopener,noreferrer')}
                     className={MENU_ITEM}
                   >
@@ -951,7 +951,7 @@ export default function BlueprintLandingPage({ rpcStub }: Props) {
                   <>
                     <DropdownMenu.Separator />
                     <DropdownMenu.Item
-                      icon={<Trash size={13} className="mr-2" />}
+                      icon={<Trash className="size-3.25" />}
                       variant="danger"
                       onClick={() => setShowDeleteConfirm(true)}
                       className={MENU_ITEM_DANGER}
@@ -966,7 +966,7 @@ export default function BlueprintLandingPage({ rpcStub }: Props) {
                     <DropdownMenu.Separator />
                     {isUploadedBlueprint ? (
                       <DropdownMenu.Item
-                        icon={<Trash size={13} className="mr-2" />}
+                        icon={<Trash className="size-3.25" />}
                         variant="danger"
                         onClick={() => setShowDeleteConfirm(true)}
                         className={MENU_ITEM_DANGER}
@@ -975,7 +975,7 @@ export default function BlueprintLandingPage({ rpcStub }: Props) {
                       </DropdownMenu.Item>
                     ) : (
                       <DropdownMenu.Item
-                        icon={<Trash size={13} className="mr-2" />}
+                        icon={<Trash className="size-3.25" />}
                         variant="danger"
                         onClick={handleRemoveFromLibrary}
                         disabled={removingFromLibrary}
@@ -991,7 +991,7 @@ export default function BlueprintLandingPage({ rpcStub }: Props) {
                   <>
                     <DropdownMenu.Separator />
                     <DropdownMenu.Item
-                      icon={<Sparkle size={13} className="mr-2" weight={isFeatured ? 'fill' : 'regular'} />}
+                      icon={<Sparkle className="size-3.25" weight={isFeatured ? 'fill' : 'regular'} />}
                       onClick={handleToggleFeatured}
                       disabled={updatingFeatured}
                       className={MENU_ITEM}
@@ -1620,6 +1620,11 @@ function BlueprintGatekeeperBindingField({
     account.vendorId === vendor?.id &&
     account.supportedResources.some(r => r.urlPattern === binding.typeUrlPattern)
   ), [accounts, vendor?.id, binding.typeUrlPattern])
+  // A gatekeeper may offer an account fewer resource types than its vendor does. When that leaves
+  // the chooser empty, say why, or an account the user just connected silently never appears.
+  const unusableAccountCount = matchingAccounts.length === 0
+    ? accounts.filter(account => account.vendorId === vendor?.id).length
+    : 0
 
   const selectedAccountId = (value as any).accountId ?? null
   const selectedAccount = matchingAccounts.find(a => a.id === selectedAccountId && a.credentialsValid) ?? null
@@ -1782,6 +1787,17 @@ function BlueprintGatekeeperBindingField({
         onGrantAccess={(id) => onGrantAccountResources(id, missingResourceUrlPatternsFor(id))}
         onReconnect={onReconnectAccount}
       />
+
+      {unusableAccountCount > 0 && (
+        <Banner
+          variant="alert"
+          size="sm"
+          title={unusableAccountCount === 1
+            ? `Your connected ${vendor.description.displayName} account can't be used for ${resource.title}`
+            : `Your ${unusableAccountCount} connected ${vendor.description.displayName} accounts can't be used for ${resource.title}`}
+          description="Connect an account that has access to it."
+        />
+      )}
 
       {selectedAccount && (
         <div className="space-y-2.5">

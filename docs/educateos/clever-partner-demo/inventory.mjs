@@ -34,7 +34,7 @@ for (const statement of file.statements) {
   if (!ts.isVariableStatement(statement)) continue;
   for (const declaration of statement.declarationList.declarations) {
     const name = declaration.name.getText(file);
-    if (name.endsWith("_RESOURCE") || name.endsWith("_HOST") || name === "CHAT_SCOPES" || name === "RESOURCE_SCOPES") {
+    if (name.endsWith("_RESOURCE") || name.endsWith("_HOST") || name.endsWith("_CARD") || name === "CHAT_SCOPES" || name === "RESOURCE_SCOPES") {
       constants.set(name, value(declaration.initializer));
     }
   }
