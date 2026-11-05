@@ -160,6 +160,39 @@ export function nonAdditive(preview: RosterPreview): string[] {
   return problems;
 }
 
+/** A class as the admin console lists it (`/api/admin/offerings`), as far as the run reads it. */
+export interface ListedClass {
+  offering: { id: string; sectionName: string };
+  course: { title: string };
+  students: number;
+}
+
+/** The fixture's classes, as course title · section. */
+const fixtureClasses = (demo: DemoDistrict): string[] => {
+  const courses = new Map(demo.directory.courses.map((c) => [c.id, c.title]));
+  return demo.directory.offerings.map((o) => `${courses.get(o.courseId)!} · ${o.sectionName}`);
+};
+
+/** How many of the fixture's classes (by course title and section) the district already lists. */
+export function fixtureClassesListed(demo: DemoDistrict, listed: readonly ListedClass[]): { matched: number; total: number } {
+  const there = new Set(listed.map((row) => `${row.course.title} · ${row.offering.sectionName}`));
+  const classes = fixtureClasses(demo);
+  return { matched: classes.filter((c) => there.has(c)).length, total: classes.length };
+}
+
+/**
+ * Whether a roster district already holds its fixture roster from an earlier import under other
+ * sourcedIds, so that the fixture export's preview is refused only for that: the district lists
+ * every fixture class by course title and section, and the preview would add classes again (the
+ * same classes under the fixture's IDs). A district that lists only some of them does not qualify,
+ * nor does a preview that adds no classes (such as a rerun that would drop someone).
+ */
+export function rosteredUnderOtherIds(demo: DemoDistrict, listed: readonly ListedClass[], preview: RosterPreview): boolean {
+  const { matched, total } = fixtureClassesListed(demo, listed);
+  const offerings = preview.changes.offerings;
+  return total > 0 && matched === total && offerings !== undefined && offerings.added.length > 0;
+}
+
 /** The counts a preview would add, as one line. */
 export function describePreview(preview: RosterPreview): string {
   const counts = Object.entries(preview.changes).map(([kind, change]) => `${change.added.length} ${kind}`).join(", ");
@@ -341,7 +374,9 @@ export interface SeedDemoDistrictOptions {
 /**
  * Export, seed the roster (import or authoring), install the pack, verify. Returns the "before"
  * export and the problems found (none: success). Only additive: a roster import whose preview would
- * change, retain or relink anything already there is refused before anything is written.
+ * change, retain or relink anything already there is refused before anything is written, unless the
+ * district already holds the fixture's roster under other sourcedIds ({@link rosteredUnderOtherIds}),
+ * when the import (and admitting the automation, which needs it) is skipped and the run goes on.
  */
 export async function seedDemoDistrict(options: SeedDemoDistrictOptions): Promise<{ before: Record<string, unknown>; problems: string[] }> {
   const before = await exportDistrict(options.client);
@@ -365,13 +400,20 @@ async function seedAfterExport(options: SeedDemoDistrictOptions, before: Record<
     for (const q of preview.quarantined) log(`  quarantined ${q.sourcedId}: ${q.message}`);
     const problems = nonAdditive(preview);
     const nothingNew = Object.values(preview.changes).every((c) => c.added.length === 0);
-    if (problems.length > 0) return problems.map((p) => `roster: ${p}`);
-    if (!dryRun && !nothingNew) {
+    // Already rostered under other sourcedIds: importing the fixture's would only swap one copy of
+    // the same classes for another, so the roster is left as it is and the run goes on.
+    const skipped = problems.length > 0 && rosteredUnderOtherIds(demo, before.offerings as ListedClass[], preview);
+    if (skipped) {
+      log(`roster: already present (${fixtureClassesListed(demo, before.offerings as ListedClass[]).matched} classes match the fixture); skipped`);
+      // A roster district admits people only through its roster import, which is skipped.
+      if (options.admitSubject !== undefined) log(`admit: skipped; ${AUTOMATION.displayName} can only join through a roster import, and the roster is already present`);
+    } else if (problems.length > 0) return problems.map((p) => `roster: ${p}`);
+    if (!skipped && !dryRun && !nothingNew) {
       const applied = await client.post<{ applied: boolean; preview: RosterPreview; grantsRevoked: number }>("/api/admin/roster/apply", { files });
       if (!applied.applied) return [`roster: the district did not apply it: ${nonAdditive(applied.preview).join("; ")}`];
       log(`roster applied: ${describePreview(applied.preview)}`);
     }
-    if (options.admitSubject !== undefined && !dryRun) {
+    if (!skipped && options.admitSubject !== undefined && !dryRun) {
       const after = await client.get<AuthoringDirectory>("/api/admin/authoring");
       const automation = after.principals.find((p) => p.displayName === AUTOMATION.displayName);
       if (automation === undefined) return ["the automation person is not in the directory after the import"];
@@ -395,7 +437,7 @@ async function seedAfterExport(options: SeedDemoDistrictOptions, before: Record<
 export async function verify(client: DistrictAdminClient, demo: DemoDistrict, listingId: string, log: (line: string) => void): Promise<string[]> {
   const [health, offerings, packs] = await Promise.all([
     client.get<DistrictHealth>("/api/admin/health"),
-    client.get<{ offering: { id: string; sectionName: string }; course: { title: string }; students: number }[]>("/api/admin/offerings"),
+    client.get<ListedClass[]>("/api/admin/offerings"),
     client.get<InstalledPack[]>("/api/admin/marketplace/packs"),
   ]);
   log(`after: ${describeHealth(health)}; packs: ${packs.map((p) => `${p.listingId} ${p.version}`).join(", ") || "none"}`);
