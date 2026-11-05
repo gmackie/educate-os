@@ -14,6 +14,12 @@
 /demo/assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# The demo videos (SCHO-343) carry a version in each name (-v1, -v2 ...), so a browser may keep one
+# for good. The Worker serves them first, for Safari's byte ranges (video-range.mjs), and sets the
+# same header itself.
+/assets/videos/*
+  Cache-Control: public, max-age=31536000, immutable
+
 # Closed intake pages add no tracking. CSP also prevents zone analytics/beacon injection.
 /interest/*
   Cache-Control: no-store, no-transform

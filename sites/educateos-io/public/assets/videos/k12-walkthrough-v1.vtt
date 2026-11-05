@@ -1,0 +1,109 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:05.000
+K-12 walkthrough. A K-12 learning platform the district owns outright. Recorded on the zero-login demo: Northfield Public Schools, a fictional district running entirely in the browser.
+
+2
+00:00:05.104 --> 00:00:09.908
+Northfield Public Schools · a fictional district: The zero-login demo runs the real EducateOS district application in your browser. Nothing you do is sent anywhere.
+
+3
+00:00:09.908 --> 00:00:18.241
+Northfield Public Schools · a fictional district: A student and a teacher in every grade band, a parent, and the district office.
+
+4
+00:00:18.241 --> 00:00:23.019
+Northfield Public Schools · a fictional district: The K-12 tour walks through it in nine screens, from first grade to the district office.
+
+5
+00:00:23.019 --> 00:00:27.972
+Grade 1 · Mateo: Mateo retells a story: one step a screen, big type, and Read to me on every instruction.
+
+6
+00:00:27.972 --> 00:00:34.046
+Grade 1 · Mateo: His Reading Buddy is a labelled simulation in the demo. Under each message: what Hall Monitor would decide.
+
+7
+00:00:34.046 --> 00:00:40.095
+Grade 1 · Mateo: Off-topic requests are stopped before they reach the AI, and the tutor steers back to the story.
+
+8
+00:00:40.095 --> 00:01:03.148
+Grade 1 · Mateo: He answers by voice: record, save, and play it back. No typing or reading needed.
+
+9
+00:01:03.148 --> 00:01:16.410
+Grade 1 · Mateo: And draws how the story ended.
+
+10
+00:01:16.410 --> 00:01:24.699
+Grade 1 · Mateo: He hands it in. His teacher sees it now, and his family once the teacher shares feedback.
+
+11
+00:01:24.699 --> 00:01:34.653
+Grade 1 · Mr. Yazzie, teacher: Mr. Yazzie reviews Priya's retelling. Recordings and drawings arrive as submitted work.
+
+12
+00:01:34.653 --> 00:01:44.942
+Grade 1 · Mr. Yazzie, teacher: A rubric written for six-year-olds. His scores become the official grade only when he approves it.
+
+13
+00:01:44.942 --> 00:01:50.868
+Grade 1 · Mr. Yazzie, teacher: Sharing the feedback releases it to Priya and her family at the same moment.
+
+14
+00:01:50.868 --> 00:01:54.482
+Teacher Studio · open courses: His semester came from Grade 1 Reading Foundations, a signed open course package from educateos.io.
+
+15
+00:01:54.482 --> 00:01:58.672
+Teacher Studio · open courses: Each unit brings pages, activities, and a teacher guide and answer key that only teachers see.
+
+16
+00:01:58.672 --> 00:02:11.675
+Teacher Studio · open courses: Add a course previews any of the 12 open courses as draft modules. Nothing he already has changes.
+
+17
+00:02:11.675 --> 00:02:17.959
+Grade 4 · Abena: Grade 4: Abena's Homework Helper gives hints and sentence starters, never answers.
+
+18
+00:02:17.959 --> 00:02:28.185
+Grade 4 · Abena: Asking it to do the graded work is redirected, and every message shows what Hall Monitor decided.
+
+19
+00:02:28.185 --> 00:02:36.558
+Grade 7 · Chidi: Grade 7: Chidi's primary-source analysis of Hammurabi's laws, with his teacher's comment and rubric scores.
+
+20
+00:02:36.558 --> 00:02:45.506
+World History 7 · Mr. Ortega, teacher: The gradebook holds official grades only: a score counts once the teacher records or approves it.
+
+21
+00:02:45.506 --> 00:02:54.263
+Grade 9 · Amara: Grade 9: feedback and the official grade on an argument essay. Her Research & Essay Coach won't write it for her.
+
+22
+00:02:54.263 --> 00:02:59.591
+Family · Rosa Delgado: Rosa Delgado follows Mateo in grade 1 and Lucía in grade 10, in two schools, with one sign-in.
+
+23
+00:02:59.591 --> 00:03:07.040
+Family · Rosa Delgado: She sees what teachers have shared, never a child's drafts or private space.
+
+24
+00:03:07.040 --> 00:03:12.773
+District office · Avery Admin: The district office: every class from kindergarten to grade 12, in one console.
+
+25
+00:03:12.773 --> 00:03:18.714
+District office · Avery Admin: The course library: each course is checked against its publisher's signature before it is stored.
+
+26
+00:03:18.714 --> 00:03:23.307
+District office · Avery Admin: Standards ship only where their licences allow. NGSS isn't built in, and the console says so.
+
+27
+00:03:23.307 --> 00:03:28.807
+District-owned. Open source. Runs in your own Cloudflare account. Try the demo at educateos.io/demo, no sign-in. Apache-2.0. In development: no real students use EducateOS yet.

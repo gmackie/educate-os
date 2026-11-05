@@ -1,7 +1,8 @@
 # Investor walkthrough (5 to 7 minutes)
 
 - Issue: SCHO-327. Rehearsed on <https://educateos.io/demo/> at 1280x800, 2026-11-02.
-- Fallback video of this script: `investor-walkthrough.webm` (see the
+- Fallback video of this script: `investor-walkthrough.webm`, or the shorter published K-12
+  walkthrough on <https://educateos.io/tour/#videos> (see the
   [presenter checklist](presenter-checklist.md#fallback-video)).
 
 One story, kindergarten to the district office, on the in-browser demo. Open
