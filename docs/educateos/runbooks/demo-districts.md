@@ -61,7 +61,7 @@ requires the Clever login method; `EducateOS demo Google accounts`).
 | Application | Covers |
 |---|---|
 | `EducateOS demo district: <Name> (<slug>.educateos.io)` | the hostname; its audience is the district's `CF_ACCESS_AUD` |
-| `EducateOS demo districts health (bypass)` | `<slug>.educateos.io/healthz` for all five |
+| `EducateOS demo districts health (bypass)` | `<slug>.educateos.io/healthz` for all five, and `/api/demo/operator/*` while seeding without a sign-in |
 | `EducateOS demo districts LTI 1.3 Tool (bypass)` | `/lti/login`, `/lti/launch`, `/lti/jwks`, `/lti/deep-link` and `/lti/register` on all five |
 
 The Access applications must exist before a district's first deploy. That deploy attaches its custom
@@ -82,6 +82,7 @@ never in this repository.
 | `DISTRICT_CONFIG` | `node packages/educateos-district-worker/scripts/demo-district-config.ts <slug> --admin-subject <operator's Access user_uuid>`, piped into `FG_APP=educateos-<slug> forge secret set DISTRICT_CONFIG --stage production --stdin` |
 | `CF_ACCESS_AUD` | the district application's audience (one; no Workshop instance is in front of these) |
 | `CF_ACCESS_ISS` | `https://gmacko.cloudflareaccess.com` |
+| `DEMO_OPERATOR_TOKEN` | Only while seeding without a sign-in: a random token of 32 or more characters ([below](#seeding-without-a-sign-in-operator-token)). Unset, the operator routes are 404 |
 
 Always set these with `FG_APP=educateos-<slug>`, because `forge secret set` takes its app from
 `FG_APP` or the repository link. From the repository, a demo seed would otherwise land on another
@@ -151,6 +152,67 @@ team) to the run. This adds a staff person, "EducateOS demo automation", signed 
 and makes them a district administrator. A roster district refuses `admin.createPrincipal`, so in a
 roster district the script adds the person to the roster export instead. A roster sync from a
 source without that row would deactivate them.
+
+## Seeding without a sign-in (operator token)
+
+The same seed can run with no one's Access sign-in, through the district's own operator routes
+(`packages/educateos-district-worker/src/demo-operator.ts`). The script sends a bearer token, and
+the district runs the seed in-process as its own seeded district administrator (the earliest
+district-admin grant at district scope held by active staff), through the same admin routes and
+policy, audited as that person. The run is `@educateos/harness/demo-district`, the same code the
+cookie path uses, so it is additive in the same way: an import whose preview would change,
+deactivate, retain or relink anything is refused before it writes. The starter pack is bundled into
+the Worker.
+
+| Route | Does |
+|---|---|
+| `GET /api/demo/operator/status` | The export (`admin.health`, `admin.authoring`, `admin.listOfferings`, the installed packs) and what verification finds missing |
+| `POST /api/demo/operator/seed` | Exports, seeds, installs the pack, verifies. Body `{"dryRun"?: true, "admitSubject"?: "<Access user_uuid>"}`. Answers the "before" export, the run's log and its `problems` |
+
+The routes are 404 unless the district's config has `demo`, the Worker's `DEMO_SHOWCASE` var names
+the same showcase, and the Worker has a `DEMO_OPERATOR_TOKEN` secret of 32 or more characters. They
+are 404 on any district that is not one of the five. A missing or wrong token is `401`. After 10
+failures in a minute they answer `429` to everyone until the minute is up.
+
+Live steps, per slug (riverbend, prairie, cedarvalley, lakeshore, harbor):
+
+1. Generate a token and keep it only in the Keychain:
+
+   ```sh
+   security add-generic-password -U -a "$USER" -s educateos-<slug>-demo-operator-token -w "$(openssl rand -hex 32)"
+   ```
+
+2. Set it as the Worker's secret, from the Keychain:
+
+   ```sh
+   security find-generic-password -s educateos-<slug>-demo-operator-token -w |
+     FG_APP=educateos-<slug> forge secret set DEMO_OPERATOR_TOKEN --stage production --stdin
+   ```
+
+3. Add `<slug>.educateos.io/api/demo/operator/*` to the destinations of the
+   `EducateOS demo districts health (bypass)` Access application, for all five hosts. Without it,
+   Access answers the script with a redirect, which it reports as such.
+4. Deploy (`forge` deploys the app's target, syncing the secret onto the Worker). Check
+   `https://<slug>.educateos.io/healthz`.
+5. Run the script, dry first. The token is read from the variable named and never printed:
+
+   ```sh
+   export DEMO_OPERATOR_TOKEN="$(security find-generic-password -s educateos-<slug>-demo-operator-token -w)"
+   node scripts/demo/seed-district.ts run --url https://<slug>.educateos.io --operator-token-env DEMO_OPERATOR_TOKEN --dry-run --out /tmp/<slug>-dry-run.json
+   node scripts/demo/seed-district.ts run --url https://<slug>.educateos.io --operator-token-env DEMO_OPERATOR_TOKEN --out ~/educateos-exports/<slug>-before.json
+   node scripts/demo/seed-district.ts verify --url https://<slug>.educateos.io --operator-token-env DEMO_OPERATOR_TOKEN
+   unset DEMO_OPERATOR_TOKEN
+   ```
+
+   Add `--admit-subject adfd94dd-86a7-5838-b9a7-d1eb94227303` to `run` to admit the agents'
+   `admin@agents.gmac.io`, as above. Pass it on every later run of a roster district too: a run
+   without it would deactivate the automation person, so it is refused.
+6. Optionally close it again: remove the bypass destinations, then
+   `FG_APP=educateos-<slug> forge secret rm DEMO_OPERATOR_TOKEN --stage production` and delete it
+   from the Worker too (`pnpm exec wrangler secret delete DEMO_OPERATOR_TOKEN -c wrangler.demo-<slug>.jsonc`
+   in `packages/educateos-district-worker`), since a sync may not remove a secret it no longer
+   holds. Check that `GET /api/demo/operator/status` is now 404 (or Access's redirect), then delete
+   the Keychain item.
 
 ## The K-12 showcase (SCHO-326)
 
