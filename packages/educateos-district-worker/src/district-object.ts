@@ -38,6 +38,7 @@ import { onLegacyTableMigrated, type LegacyTableReport } from "@educateos/contra
 import { LTI_API_PREFIX, type DistrictLti } from "./lti.ts";
 import { readSchoolManifestSettings } from "./school-manifest.ts";
 import { DEMO_API_PREFIX, type ShowcaseEvent } from "./showcase.ts";
+import { DEMO_OPERATOR_PREFIX, type DemoOperatorEvent } from "./demo-operator.ts";
 
 // Each table recovered from before the rename (SCHO-232), with its counts, so the migration's
 // outcome in production can be read from the logs.
@@ -59,6 +60,9 @@ interface DistrictLogFields {
 
 // The demo showcase's routes (SCHO-326): who did what, by counts and IDs.
 const showcaseLogger = createLogger<Omit<ShowcaseEvent, "event" | "error">>({ component: "educateos.district.showcase" });
+
+// The demo operator's seed routes (SCHO-326): outcomes by counts and IDs, never the token.
+const operatorLogger = createLogger<Omit<DemoOperatorEvent, "event" | "error">>({ component: "educateos.district.demo-operator" });
 
 const logger = createLogger<DistrictLogFields>({ component: "educateos.district" });
 
@@ -156,8 +160,15 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
    * the LTI Tool's `/lti/` routes (SCHO-177), which are 404 when the deployment runs no LTI Tool.
    */
   override async fetch(request: Request): Promise<Response> {
-    const { app, lti, mcp, showcase } = await this.#boot();
+    const { app, lti, mcp, showcase, demoOperator } = await this.#boot();
     const { pathname } = new URL(request.url);
+    // The demo operator's seed routes (SCHO-326): their own bearer token, no Access sign-in; 404
+    // unless the district is a demo one with a DEMO_OPERATOR_TOKEN.
+    if (pathname.startsWith(DEMO_OPERATOR_PREFIX)) {
+      if (demoOperator !== undefined) return demoOperator.serve(request);
+      await request.body?.cancel();
+      return Response.json({ code: "not-found", message: "No such route." }, { status: 404 });
+    }
     // The demo showcase (SCHO-326): 404 on every district that is not a demo one.
     if (pathname.startsWith(DEMO_API_PREFIX)) {
       if (showcase !== undefined) return showcase.serve(request);
@@ -362,6 +373,7 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         courseLibraryTrust: this.env.COURSE_LIBRARY_TRUST,
         // Demo showcase (SCHO-326)
         demoShowcase: this.env.DEMO_SHOWCASE,
+        demoOperatorToken: this.env.DEMO_OPERATOR_TOKEN,
       },
       {
         importFetch: (url, init) => this.importFetch(url, init),
@@ -387,6 +399,11 @@ export class DistrictObject extends DurableObject<Cloudflare.Env> {
         onShowcaseEvent: ({ event, error, ...fields }) => {
           if (event === "demo.showcase.failed") showcaseLogger.error("a showcase request failed", { event, error, ...fields });
           else showcaseLogger.info("a showcase request ran", { event, ...fields });
+        },
+        onDemoOperatorEvent: ({ event, error, ...fields }) => {
+          if (event === "demo.operator.failed") operatorLogger.error("a demo operator request failed", { event, error, ...fields });
+          else if (event === "demo.operator.refused") operatorLogger.warn("a demo operator request was refused", { event, ...fields });
+          else operatorLogger.info("a demo operator request ran", { event, ...fields });
         },
         ...(keys === undefined ? {} : { accessKeys: keys }),
         ...(mcpKeys === undefined ? {} : { mcpKeys }),

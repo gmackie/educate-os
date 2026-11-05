@@ -6,6 +6,7 @@
 //
 //   <cookie> | node scripts/demo/seed-district.ts run --url https://riverbend.educateos.io [--dry-run] [--out <file>]
 //   <cookie> | node scripts/demo/seed-district.ts export|verify --url <district> [--out <file>]
+//   node scripts/demo/seed-district.ts run|export|verify --url <district> --operator-token-env <VAR> [...]
 //
 // A roster district (riverbend, cedarvalley, lakeshore, harbor) gets its fixture as a OneRoster 1.2
 // bulk CSV export built from `oneRosterSeed` (`admin.previewRoster`, then `admin.applyRoster`). The
@@ -26,24 +27,48 @@
 // (admin@agents.gmac.io) can administer the district afterwards. In a roster district there is no
 // other way to give a sign-in a person: a roster district refuses `admin.createPrincipal`.
 //
-// The cookie is read from stdin, as in seed-showcase.ts. See docs/educateos/runbooks/demo-districts.md.
+// The cookie is read from stdin, as in seed-showcase.ts. With `--operator-token-env <VAR>` there is
+// no cookie: the script calls the district's operator route (`/api/demo/operator/*`, see
+// packages/educateos-district-worker/src/demo-operator.ts) with the bearer token in that environment
+// variable, and the district runs the same seed in-process as its own district administrator. The
+// token is never printed. The run itself lives in @educateos/harness/demo-district, so both paths
+// seed exactly alike. See docs/educateos/runbooks/demo-districts.md.
 
 import { readFile, writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import type { DemoDistrict } from "../../packages/educateos-fixtures/src/index.ts";
-import { AUTOMATION, demoFor, describePreview, isLocal, localSteps, nonAdditive, rosterFiles, type AuthoringDirectory, type LocalStep, type RosterPreview } from "./district-roster.ts";
+import {
+  demoFor,
+  exportDistrict,
+  seedDemoDistrict,
+  verify,
+  type DemoDistrict,
+  type DistrictAdminClient,
+} from "../../packages/educateos-harness/src/demo-district.ts";
 import { ShowcaseRequestError, districtOrigin } from "./seed-showcase.ts";
+
+export { listingOf, seedLocal, verify, type DistrictAdminClient } from "../../packages/educateos-harness/src/demo-district.ts";
 
 /** The starter pack every demo district gets: the listing educateos.io publishes. */
 export const STARTER_PACK = fileURLToPath(new URL("../../sites/educateos-io/public/marketplace/listings/middle-school-starter-pack/1.0.0.json", import.meta.url));
 
 type Fetch = (input: string, init: RequestInit) => Promise<Response>;
 
-/** The district's admin routes this script uses, as one administrator. */
-export interface DistrictAdminClient {
-  get<T>(path: string): Promise<T>;
-  post<T>(path: string, body: unknown): Promise<T>;
+/** Reads a JSON answer, throwing a {@link ShowcaseRequestError} for a redirect, no JSON, or an error status. */
+async function readAnswer<T>(response: Response, label: string, redirected: string): Promise<T> {
+  const text = await response.text();
+  if (response.status >= 300 && response.status < 400) throw new ShowcaseRequestError(response.status, redirected);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new ShowcaseRequestError(response.status, `${label} answered ${response.status} with no JSON`);
+  }
+  if (!response.ok) {
+    const { code, message } = parsed as { code?: string; message?: string };
+    throw new ShowcaseRequestError(response.status, `${label} answered ${response.status} ${code ?? ""}: ${message ?? ""}`.trim());
+  }
+  return parsed as T;
 }
 
 /** A client for `origin`'s admin routes, signed in by an Access `CF_Authorization` cookie. */
@@ -55,120 +80,9 @@ export function adminClient(origin: string, cookie: string, fetch: Fetch = globa
       headers: { cookie: `CF_Authorization=${cookie}`, accept: "application/json", ...(body === undefined ? {} : { "content-type": "application/json" }) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
-    const text = await response.text();
-    if (response.status >= 300 && response.status < 400) {
-      throw new ShowcaseRequestError(response.status, "Access did not accept the cookie (expired, or for another application); sign in again");
-    }
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      throw new ShowcaseRequestError(response.status, `${method} ${path} answered ${response.status} with no JSON`);
-    }
-    if (!response.ok) {
-      const { code, message } = parsed as { code?: string; message?: string };
-      throw new ShowcaseRequestError(response.status, `${method} ${path} answered ${response.status} ${code ?? ""}: ${message ?? ""}`.trim());
-    }
-    return parsed as T;
+    return readAnswer<T>(response, `${method} ${path}`, "Access did not accept the cookie (expired, or for another application); sign in again");
   }
   return { get: (path) => request("GET", path), post: (path, body) => request("POST", path, body) };
-}
-
-/** The district's directory and work counts (`admin.health`). */
-export interface DistrictHealth {
-  districtId: string;
-  directory: { schools: number; terms: number; offerings: number; students: number; staff: number; activeEnrollments: number };
-}
-
-/** An installed marketplace pack, as far as this script reads it. */
-export interface InstalledPack {
-  listingId: string;
-  version: string;
-}
-
-/** The listing a bundle (`educateos.marketplace.listing/v1`) carries, from its signed payload. */
-export function listingOf(bundle: unknown): InstalledPack {
-  const payload = (bundle as { listing?: { payload?: { listingId?: unknown; version?: unknown } } }).listing?.payload;
-  if (typeof payload?.listingId !== "string" || typeof payload.version !== "string") throw new Error("that is not a marketplace listing bundle");
-  return { listingId: payload.listingId, version: payload.version };
-}
-
-/** The "before" record: everything the admin read routes say. */
-export async function exportDistrict(client: DistrictAdminClient): Promise<Record<string, unknown>> {
-  const [health, authoring, offerings, packs] = await Promise.all([
-    client.get("/api/admin/health"),
-    client.get("/api/admin/authoring"),
-    client.get("/api/admin/offerings"),
-    client.get("/api/admin/marketplace/packs"),
-  ]);
-  return { exportedAt: new Date().toISOString(), health, authoring, offerings, packs };
-}
-
-/** One line of counts. */
-export const describeHealth = (h: DistrictHealth): string =>
-  `${h.districtId}: ${h.directory.schools} schools, ${h.directory.terms} terms, ${h.directory.offerings} classes, ${h.directory.staff} staff, ${h.directory.students} students, ${h.directory.activeEnrollments} active enrollments`;
-
-/**
- * Runs `steps` against a local district, creating only what `directory` lacks (matched by name,
- * title, section or sign-in). Returns how many of each it made.
- */
-export async function seedLocal(client: DistrictAdminClient, steps: readonly LocalStep[], directory: AuthoringDirectory, log: (line: string) => void, dryRun: boolean): Promise<Record<string, number>> {
-  const ids = new Map<string, string>();
-  const made: Record<string, number> = {};
-  const count = (kind: string) => (made[kind] = (made[kind] ?? 0) + 1);
-  const rosters = new Map<string, { principalId: string; role: string }[]>();
-  const rosterOf = async (offeringId: string) => {
-    if (!rosters.has(offeringId)) {
-      const roster = offeringId.startsWith("dry:") ? [] : await client.get<{ enrollment: { principalId: string; role: string; status: string } }[]>(`/api/admin/offerings/${offeringId}/roster`);
-      rosters.set(offeringId, roster.map((e) => e.enrollment).filter((e) => e.status === "active"));
-    }
-    return rosters.get(offeringId)!;
-  };
-  const create = async <T extends { id: string }>(kind: string, path: string, body: unknown): Promise<string> => {
-    count(kind);
-    if (dryRun) return `dry:${kind}:${made[kind]}`;
-    return (await client.post<T>(path, body)).id;
-  };
-  const people = new Map(directory.principals.map((p) => [p.displayName, p]));
-  for (const step of steps) {
-    switch (step.kind) {
-      case "school":
-        ids.set(step.fixtureId, directory.schools.find((s) => s.name === step.body.name)?.id ?? await create("schools", "/api/admin/schools", step.body));
-        break;
-      case "term":
-        ids.set(step.fixtureId, directory.terms.find((t) => t.name === step.body.name)?.id ?? await create("terms", "/api/admin/terms", step.body));
-        break;
-      case "course":
-        ids.set(step.fixtureId, directory.courses.find((c) => c.title === step.body.title)?.id ?? await create("courses", "/api/admin/courses", step.body));
-        break;
-      case "offering": {
-        const body = { schoolId: ids.get(step.school)!, termId: ids.get(step.term)!, courseId: ids.get(step.course)!, sectionName: step.sectionName };
-        const present = directory.offerings.find((o) => o.schoolId === body.schoolId && o.termId === body.termId && o.courseId === body.courseId && o.sectionName === body.sectionName);
-        ids.set(step.fixtureId, present?.id ?? await create("offerings", "/api/admin/offerings", body));
-        break;
-      }
-      case "principal": {
-        const present = people.get(step.body.displayName);
-        const id = present?.id ?? await create("principals", "/api/admin/principals", step.body);
-        ids.set(step.fixtureId, id);
-        if (step.districtAdmin && !present?.districtAdmin) {
-          count("district admins");
-          if (!dryRun) await client.post(`/api/admin/principals/${id}/district-admin`, {});
-        }
-        break;
-      }
-      case "enrollment": {
-        const offeringId = ids.get(step.offering)!;
-        const principalId = ids.get(step.principal)!;
-        if ((await rosterOf(offeringId)).some((e) => e.principalId === principalId)) break;
-        count("enrollments");
-        if (!dryRun) await client.post(`/api/admin/offerings/${offeringId}/enrollments`, { principalId, role: step.role });
-        break;
-      }
-    }
-  }
-  log(`${dryRun ? "would make" : "made"}: ${Object.entries(made).map(([k, n]) => `${n} ${k}`).join(", ") || "nothing new"}`);
-  return made;
 }
 
 /** What {@link runDistrict} needs. */
@@ -186,73 +100,109 @@ export interface RunOptions {
   log?: (line: string) => void;
 }
 
-/** Export, seed the roster (import or authoring), install the pack, verify. Returns the problems found (none: success). */
+/** Saves `text` to `path`, mode 600, never overwriting. */
+const saveNew = (path: string, text: string) => writeFile(path, text, { flag: "wx", mode: 0o600 });
+
+/** Export (saved to `out` first), seed the roster (import or authoring), install the pack, verify. Returns the problems found (none: success). */
 export async function runDistrict(options: RunOptions): Promise<string[]> {
-  const { client, demo, dryRun } = options;
   const log = options.log ?? ((line) => console.log(line));
-  const write = options.write ?? ((path, text) => writeFile(path, text, { flag: "wx", mode: 0o600 }));
-  const before = await exportDistrict(client);
-  await write(options.out, `${JSON.stringify(before, null, 2)}\n`);
-  log(`saved the district's "before" state to ${options.out}`);
-  log(`before: ${describeHealth(before.health as DistrictHealth)}`);
-  const authoring = before.authoring as AuthoringDirectory;
-  const admit = options.admitSubject === undefined ? {} : { admitSubject: options.admitSubject };
-
-  if (isLocal(demo)) {
-    if (authoring.authority.principal !== "local") return [`${demo.slug} is expected to be local-authority, but the district says principals belong to ${authoring.authority.principal}`];
-    await seedLocal(client, localSteps(demo, admit), authoring, log, dryRun);
-  } else {
-    const files = rosterFiles(demo, admit);
-    const preview = await client.post<RosterPreview>("/api/admin/roster/preview", { files });
-    log(`roster preview: ${describePreview(preview)}`);
-    for (const q of preview.quarantined) log(`  quarantined ${q.sourcedId}: ${q.message}`);
-    const problems = nonAdditive(preview);
-    const nothingNew = Object.values(preview.changes).every((c) => c.added.length === 0);
-    if (problems.length > 0) return problems.map((p) => `roster: ${p}`);
-    if (!dryRun && !nothingNew) {
-      const applied = await client.post<{ applied: boolean; preview: RosterPreview; grantsRevoked: number }>("/api/admin/roster/apply", { files });
-      if (!applied.applied) return [`roster: the district did not apply it: ${nonAdditive(applied.preview).join("; ")}`];
-      log(`roster applied: ${describePreview(applied.preview)}`);
-    }
-    if (options.admitSubject !== undefined && !dryRun) {
-      const after = await client.get<AuthoringDirectory>("/api/admin/authoring");
-      const automation = after.principals.find((p) => p.displayName === AUTOMATION.displayName);
-      if (automation === undefined) return ["the automation person is not in the directory after the import"];
-      if (!automation.districtAdmin) await client.post(`/api/admin/principals/${automation.id}/district-admin`, {});
-      log(`${AUTOMATION.displayName} (${automation.id}) is a district administrator`);
-    }
-  }
-
-  const { listingId, version } = listingOf(options.pack);
-  const packs = before.packs as InstalledPack[];
-  if (packs.some((p) => p.listingId === listingId && p.version === version)) log(`${listingId} ${version} is already installed`);
-  else if (dryRun) log(`would install ${listingId} ${version}`);
-  else {
-    const pack = await client.post<InstalledPack>("/api/admin/marketplace/packs", options.pack);
-    log(`installed ${pack.listingId} ${pack.version}`);
-  }
-  return dryRun ? [] : verify(client, demo, listingId, log);
+  const write = options.write ?? saveNew;
+  const { problems } = await seedDemoDistrict({
+    client: options.client,
+    demo: options.demo,
+    dryRun: options.dryRun,
+    pack: options.pack,
+    log,
+    ...(options.admitSubject === undefined ? {} : { admitSubject: options.admitSubject }),
+    saveBefore: async (before) => {
+      await write(options.out, `${JSON.stringify(before, null, 2)}\n`);
+      log(`saved the district's "before" state to ${options.out}`);
+    },
+  });
+  return problems;
 }
 
-/** Checks the fixture's classes are all listed with students, and the pack is installed. */
-export async function verify(client: DistrictAdminClient, demo: DemoDistrict, listingId: string, log: (line: string) => void): Promise<string[]> {
-  const [health, offerings, packs] = await Promise.all([
-    client.get<DistrictHealth>("/api/admin/health"),
-    client.get<{ offering: { id: string; sectionName: string }; course: { title: string }; students: number }[]>("/api/admin/offerings"),
-    client.get<InstalledPack[]>("/api/admin/marketplace/packs"),
-  ]);
-  log(`after: ${describeHealth(health)}; packs: ${packs.map((p) => `${p.listingId} ${p.version}`).join(", ") || "none"}`);
-  const problems: string[] = [];
-  const courses = new Map(demo.directory.courses.map((c) => [c.id, c.title]));
-  for (const o of demo.directory.offerings) {
-    const title = courses.get(o.courseId)!;
-    const listed = offerings.find((row) => row.course.title === title && row.offering.sectionName === o.sectionName);
-    if (listed === undefined) problems.push(`${title} · ${o.sectionName} is not in the admin console's classes`);
-    else if (listed.students === 0 && demo.directory.enrollments.some((e) => e.offeringId === o.id && e.role === "student" && e.status === "active")) problems.push(`${title} · ${o.sectionName} has no students`);
-  }
-  if (!packs.some((p) => p.listingId === listingId)) problems.push(`${listingId} is not installed`);
-  for (const problem of problems) log(`problem: ${problem}`);
-  return problems;
+// Operator token (SCHO-326)
+
+/** The shortest operator token the district accepts. */
+export const MIN_OPERATOR_TOKEN_LENGTH = 32;
+
+/** What the district's operator seed route answers (`OperatorSeedResult` in demo-operator.ts). */
+export interface OperatorSeedAnswer {
+  districtId: string;
+  slug: string;
+  dryRun: boolean;
+  adminPrincipalId: string;
+  before: Record<string, unknown>;
+  log: string[];
+  problems: string[];
+}
+
+/** What the district's operator status route answers. */
+export interface OperatorStatusAnswer {
+  districtId: string;
+  slug: string;
+  adminPrincipalId: string;
+  export: Record<string, unknown>;
+  problems: string[];
+}
+
+/** The operator token in `variable`, or an error that names the variable and never the value. */
+export function operatorToken(variable: string, env: NodeJS.ProcessEnv = process.env): string {
+  const token = env[variable]?.trim();
+  if (token === undefined || token === "") throw new Error(`${variable} is not set`);
+  if (token.length < MIN_OPERATOR_TOKEN_LENGTH) throw new Error(`${variable} is shorter than ${MIN_OPERATOR_TOKEN_LENGTH} characters`);
+  return token;
+}
+
+/** A client for `origin`'s operator routes, with the bearer token: no Access sign-in. */
+export function operatorClient(origin: string, token: string, fetch: Fetch = globalThis.fetch.bind(globalThis)) {
+  const headers = { authorization: `Bearer ${token}`, accept: "application/json" };
+  const redirected = "Access redirected the request: is /api/demo/operator/* in the demo districts' bypass application?";
+  return {
+    async status(): Promise<OperatorStatusAnswer> {
+      const response = await fetch(`${origin}/api/demo/operator/status`, { method: "GET", redirect: "manual", headers });
+      return readAnswer(response, "GET /api/demo/operator/status", redirected);
+    },
+    async seed(body: { dryRun?: boolean; admitSubject?: string }): Promise<OperatorSeedAnswer> {
+      const response = await fetch(`${origin}/api/demo/operator/seed`, {
+        method: "POST",
+        redirect: "manual",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return readAnswer(response, "POST /api/demo/operator/seed", redirected);
+    },
+  };
+}
+
+/** What {@link runOperator} needs. */
+export interface OperatorRunOptions {
+  client: ReturnType<typeof operatorClient>;
+  demo: DemoDistrict;
+  /** Where to save the "before" export the district returns. */
+  out: string;
+  dryRun: boolean;
+  admitSubject?: string;
+  write?: (path: string, text: string) => Promise<void>;
+  log?: (line: string) => void;
+}
+
+/**
+ * Seeds through the operator route: the district exports, seeds and verifies in-process, and this
+ * saves the "before" export it returns. Refused when the district is not the one `demo` names.
+ * Returns the problems found (none: success).
+ */
+export async function runOperator(options: OperatorRunOptions): Promise<string[]> {
+  const log = options.log ?? ((line) => console.log(line));
+  const write = options.write ?? saveNew;
+  const answer = await options.client.seed({ dryRun: options.dryRun, ...(options.admitSubject === undefined ? {} : { admitSubject: options.admitSubject }) });
+  await write(options.out, `${JSON.stringify(answer.before, null, 2)}\n`);
+  log(`saved the district's "before" state to ${options.out}`);
+  if (answer.slug !== options.demo.slug) return [`the district says it is ${answer.slug}, not ${options.demo.slug}`];
+  log(`seeded as ${answer.adminPrincipalId}`);
+  for (const line of answer.log) log(line);
+  return answer.problems;
 }
 
 const log = (line: string): void => console.log(line);
@@ -264,7 +214,8 @@ async function readStdin(): Promise<string> {
 }
 
 const USAGE = `usage: <CF_Authorization cookie> | seed-district.ts <run|export|verify> --url https://<slug>.educateos.io [--cookie <CF_Authorization>]
-  run       [--dry-run] [--out <file>] [--admit-subject <Access user_uuid>] [--pack <listing bundle>]
+       seed-district.ts <run|export|verify> --url https://<slug>.educateos.io --operator-token-env <VAR>
+  run       [--dry-run] [--out <file>] [--admit-subject <Access user_uuid>] [--pack <listing bundle> (cookie only)]
   export    [--out <file>]`;
 
 async function main(argv: string[]): Promise<number> {
@@ -274,6 +225,7 @@ async function main(argv: string[]): Promise<number> {
     options: {
       url: { type: "string" },
       cookie: { type: "string" },
+      "operator-token-env": { type: "string" },
       out: { type: "string" },
       pack: { type: "string" },
       "admit-subject": { type: "string" },
@@ -281,24 +233,61 @@ async function main(argv: string[]): Promise<number> {
     },
   });
   const command = positionals[0] ?? "run";
-  const cookie = values.cookie ?? (values.url === undefined ? undefined : await readStdin());
-  if (values.url === undefined || cookie === undefined || cookie === "") {
+  if (values.url === undefined) {
     console.error(USAGE);
     return 2;
   }
   const origin = districtOrigin(values.url);
   const demo = demoFor(origin);
-  const client = adminClient(origin, cookie);
   const out = values.out ?? `district-export-${new URL(origin).hostname}-${new Date().toISOString().replaceAll(":", "-")}.json`;
+  const admit = values["admit-subject"] === undefined ? {} : { admitSubject: values["admit-subject"] };
+
+  const tokenVariable = values["operator-token-env"];
+  if (tokenVariable !== undefined) {
+    if (values.cookie !== undefined || values.pack !== undefined) {
+      console.error("--operator-token-env takes no --cookie, and the district installs its own bundled starter pack (no --pack)");
+      return 2;
+    }
+    const client = operatorClient(origin, operatorToken(tokenVariable));
+    switch (command) {
+      case "run": {
+        const problems = await runOperator({ client, demo, out, dryRun: values["dry-run"], log, ...admit });
+        for (const problem of problems) console.error(`problem: ${problem}`);
+        return problems.length === 0 ? 0 : 1;
+      }
+      case "export": {
+        const status = await client.status();
+        await saveNew(out, `${JSON.stringify(status.export, null, 2)}\n`);
+        log(`saved the district's "before" state to ${out}`);
+        return 0;
+      }
+      case "verify": {
+        const status = await client.status();
+        for (const problem of status.problems) console.error(`problem: ${problem}`);
+        log(`${status.slug}: ${status.problems.length === 0 ? "every fixture class is listed with students, and the starter pack is installed" : `${status.problems.length} problems`}`);
+        return status.problems.length === 0 ? 0 : 1;
+      }
+      default:
+        console.error(USAGE);
+        return 2;
+    }
+  }
+
+  const cookie = values.cookie ?? await readStdin();
+  if (cookie === "") {
+    console.error(USAGE);
+    return 2;
+  }
+  const client = adminClient(origin, cookie);
   switch (command) {
     case "run": {
       const pack: unknown = JSON.parse(await readFile(values.pack ?? STARTER_PACK, "utf8"));
-      const problems = await runDistrict({ client, demo, out, dryRun: values["dry-run"], pack, log, ...(values["admit-subject"] === undefined ? {} : { admitSubject: values["admit-subject"] }) });
+      const problems = await runDistrict({ client, demo, out, dryRun: values["dry-run"], pack, log, ...admit });
       for (const problem of problems) console.error(`problem: ${problem}`);
       return problems.length === 0 ? 0 : 1;
     }
     case "export":
-      await writeFile(out, `${JSON.stringify(await exportDistrict(client), null, 2)}\n`, { flag: "wx", mode: 0o600 });
+      await saveNew(out, `${JSON.stringify(await exportDistrict(client), null, 2)}\n`);
       log(`saved the district's "before" state to ${out}`);
       return 0;
     case "verify":

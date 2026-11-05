@@ -1,12 +1,13 @@
-// The rosters scripts/demo/seed-district.ts gives the standalone roster demo districts (SCHO-326):
-// each fixture's OneRoster export, imported by the real importer into the directory that district's
-// DISTRICT_CONFIG seeds, must add the fixture's classes and people without touching the seeded
-// administrator, and importing it again must add nothing.
+// The rosters @educateos/harness/demo-district gives the standalone roster demo districts (SCHO-326),
+// through scripts/demo/seed-district.ts or the operator route: each fixture's OneRoster export,
+// imported by the real importer into the directory that district's DISTRICT_CONFIG seeds, must add
+// the fixture's classes and people without touching the seeded administrator, and importing it again
+// must add nothing.
 
 import { DEMO_DISTRICTS, type DemoDistrict } from "@educateos/fixtures";
 import { oneroster } from "@educateos/integrations";
 import { describe, expect, it } from "vitest";
-import { AUTOMATION, isLocal, nonAdditive, rosterFiles, type RosterPreview } from "../../../scripts/demo/district-roster.ts";
+import { AUTOMATION, isLocal, nonAdditive, rosterFiles, type RosterPreview } from "@educateos/harness/demo-district";
 import { demoDistrictConfig } from "../scripts/demo-district-config.ts";
 import { readDistrictWorkerConfig } from "../src/config.ts";
 

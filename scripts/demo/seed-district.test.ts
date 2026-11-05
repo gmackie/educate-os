@@ -4,8 +4,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { DEMO_DISTRICTS } from "../../packages/educateos-fixtures/src/index.ts";
-import { AUTOMATION, demoFor, isLocal, localSteps, nonAdditive, type AuthoringDirectory, type RosterPreview } from "./district-roster.ts";
-import { STARTER_PACK, listingOf, runDistrict, seedLocal, type DistrictAdminClient } from "./seed-district.ts";
+import { AUTOMATION, demoFor, isLocal, localSteps, nonAdditive, type AuthoringDirectory, type RosterPreview } from "../../packages/educateos-harness/src/demo-district.ts";
+import { MIN_OPERATOR_TOKEN_LENGTH, STARTER_PACK, listingOf, operatorClient, operatorToken, runDistrict, runOperator, seedLocal, type DistrictAdminClient } from "./seed-district.ts";
 
 const AUTOMATION_SUBJECT = "adfd94dd-86a7-5838-b9a7-d1eb94227303";
 
@@ -15,10 +15,10 @@ test("demoFor names the standalone demo districts and refuses Northfield", () =>
   assert.equal(DEMO_DISTRICTS.filter((d) => d.slug !== "northfield" && !isLocal(d)).map((d) => d.slug).join(), "riverbend,cedarvalley,lakeshore,harbor");
 });
 
-test("nonAdditive refuses a preview that would change, retain or relink what is there", () => {
+test("nonAdditive refuses a preview that would change, deactivate, retain or relink what is there", () => {
   const empty = { added: [], updated: [], deactivated: [], retained: [] };
-  const preview: RosterPreview = { canApply: true, issues: [], integrity: [], quarantined: [], linked: [], changes: { principals: { ...empty, updated: ["prn_x"] }, roleAssignments: { added: [], removed: [{}] } } };
-  assert.deepEqual(nonAdditive(preview), ["it would change 1 existing principals", "it would remove 1 roleAssignments"]);
+  const preview: RosterPreview = { canApply: true, issues: [], integrity: [], quarantined: [], linked: [], changes: { principals: { ...empty, updated: ["prn_x"] }, enrollments: { ...empty, deactivated: ["enr_x"] }, roleAssignments: { added: [], removed: [{}] } } };
+  assert.deepEqual(nonAdditive(preview), ["it would change 1 existing principals", "it would deactivate 1 enrollments", "it would remove 1 roleAssignments"]);
   assert.match(nonAdditive({ ...preview, canApply: false, changes: {}, issues: [{ severity: "error", file: "users.csv", row: 2, message: "bad" }] }).join("\n"), /would not apply[\s\S]*users\.csv:2/);
 });
 
@@ -103,4 +103,54 @@ test("runDistrict saves the before state first, and installs the starter pack on
   await runDistrict({ client, demo, out: "/tmp/before-2.json", dryRun: false, pack, write: async (p) => void writes.push(p), log: () => {} });
   assert.deepEqual(writes, ["/tmp/before.json", "/tmp/before-2.json"]);
   assert.equal(posts.filter((p) => p === "/api/admin/marketplace/packs").length, 1);
+});
+
+test("the operator token comes from the named variable, and is refused when missing or short, never quoted", () => {
+  const token = "t".repeat(MIN_OPERATOR_TOKEN_LENGTH);
+  assert.equal(operatorToken("OP", { OP: ` ${token}\n` }), token);
+  assert.throws(() => operatorToken("OP", {}), /^Error: OP is not set$/);
+  assert.throws(() => operatorToken("OP", { OP: "short-secret" }), (error: Error) => error.message === "OP is shorter than 32 characters" && !error.message.includes("short-secret"));
+});
+
+test("an operator run sends the bearer token and no cookie, saves the before export, and reports the district's problems", async () => {
+  const token = "x".repeat(40);
+  const requests: { url: string; init: RequestInit }[] = [];
+  const answer = { districtId: "dst_harbor", slug: "harbor", dryRun: false, adminPrincipalId: "prn_hb-school-admin", before: { health: { districtId: "dst_harbor" } }, log: ["roster preview: adds"], problems: ["x is not installed"] };
+  const fetch = async (url: string, init: RequestInit) => {
+    requests.push({ url, init });
+    return Response.json(answer);
+  };
+  const writes: [string, string][] = [];
+  const lines: string[] = [];
+  const problems = await runOperator({
+    client: operatorClient("https://harbor.educateos.io", token, fetch),
+    demo: demoFor("https://harbor.educateos.io"),
+    out: "/tmp/harbor-before.json",
+    dryRun: true,
+    admitSubject: AUTOMATION_SUBJECT,
+    write: async (path, text) => void writes.push([path, text]),
+    log: (line) => void lines.push(line),
+  });
+  assert.deepEqual(problems, ["x is not installed"]);
+  assert.equal(requests.length, 1);
+  const [{ url, init }] = requests as [{ url: string; init: RequestInit }];
+  assert.equal(url, "https://harbor.educateos.io/api/demo/operator/seed");
+  assert.equal(init.redirect, "manual");
+  const headers = init.headers as Record<string, string>;
+  assert.equal(headers.authorization, `Bearer ${token}`);
+  assert.equal(headers.cookie, undefined);
+  assert.deepEqual(JSON.parse(init.body as string), { dryRun: true, admitSubject: AUTOMATION_SUBJECT });
+  assert.deepEqual(writes.map(([path, text]) => [path, JSON.parse(text)]), [["/tmp/harbor-before.json", answer.before]]);
+  assert.ok(!lines.join("\n").includes(token));
+
+  // The district another host answers for is refused.
+  const elsewhere = await runOperator({ client: operatorClient("https://harbor.educateos.io", token, async () => Response.json({ ...answer, slug: "lakeshore", problems: [] })), demo: demoFor("https://harbor.educateos.io"), out: "/tmp/x", dryRun: false, write: async () => {}, log: () => {} });
+  assert.deepEqual(elsewhere, ["the district says it is lakeshore, not harbor"]);
+});
+
+test("an operator request Access redirects, or the district refuses, is an error that says which", async () => {
+  const client = (response: Response) => operatorClient("https://harbor.educateos.io", "x".repeat(40), async () => response);
+  await assert.rejects(client(new Response(null, { status: 302, headers: { location: "https://gmacko.cloudflareaccess.com/" } })).status(), /bypass application/);
+  await assert.rejects(client(Response.json({ code: "unauthenticated", message: "Unauthorized." }, { status: 401 })).seed({}), /401 unauthenticated/);
+  await assert.rejects(client(Response.json({ code: "not-found", message: "No such route." }, { status: 404 })).status(), /404 not-found/);
 });

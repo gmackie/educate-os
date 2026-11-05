@@ -97,5 +97,11 @@ declare namespace Cloudflare {
      * configs (scripts/production), never by the package's own config or a release.
      */
     DEMO_SHOWCASE?: string;
+    /**
+     * Demo deployments only (SCHO-326): the bearer token of the demo operator's seed routes
+     * (`/api/demo/operator/*`, demo-operator.ts), a Worker secret of at least 32 characters. Unset,
+     * shorter, or on a Worker without `DEMO_SHOWCASE`, those routes are 404. Set only while seeding.
+     */
+    DEMO_OPERATOR_TOKEN?: string;
   }
 }

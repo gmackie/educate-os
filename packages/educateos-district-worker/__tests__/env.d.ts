@@ -30,5 +30,9 @@ declare namespace Cloudflare {
     TEST_MCP_ISSUER_PRIVATE_JWK: string;
     /** The public half of the synthetic MCP authorization server's key, as a JWK (SCHO-174). */
     TEST_MCP_ISSUER_PUBLIC_JWK: string;
+    /** Riverbend's district object, as its demo Worker runs it (SCHO-326). */
+    RIVERBEND: DurableObjectNamespace<import("./worker.ts").RiverbendDistrictObject>;
+    /** Riverbend's district object with no `DEMO_OPERATOR_TOKEN` (SCHO-326). */
+    RIVERBEND_WITHOUT_TOKEN: DurableObjectNamespace<import("./worker.ts").RiverbendWithoutTokenDistrictObject>;
   }
 }

@@ -71,3 +71,6 @@ export const TEST_CONFIG: DistrictWorkerConfig = {
 
 /** Where the test district reaches Hall Monitor; the test object answers it with the fake. */
 export const HALL_MONITOR_URL = "https://hall-monitor.example";
+
+/** The demo operator's token as the tests deploy it (SCHO-326): `DEMO_OPERATOR_TOKEN`. */
+export const DEMO_OPERATOR_TOKEN = "test-demo-operator-token-0123456789-abcdef";
