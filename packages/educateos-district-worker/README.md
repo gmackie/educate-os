@@ -167,6 +167,17 @@ and only appends. A persona's sign-in can be linked, moved or freed, but never t
 is not a persona. The routes, the gate and the live procedure are in
 [demo-districts.md](../../docs/educateos/runbooks/demo-districts.md#the-k-12-showcase-scho-326).
 
+### Demo operator seed (SCHO-326)
+
+`src/demo-operator.ts` serves `GET /api/demo/operator/status` and `POST /api/demo/operator/seed`,
+which seed a standalone demo district (riverbend, prairie, cedarvalley, lakeshore, harbor) with its
+fixture roster and the bundled middle school starter pack without anyone's Access sign-in: the
+caller brings `authorization: Bearer <DEMO_OPERATOR_TOKEN>`, and the district runs
+`@educateos/harness/demo-district` in-process as its own seeded district administrator through
+`serveAs`. They are 404 unless the demo gate above holds and the `DEMO_OPERATOR_TOKEN` secret (32 or
+more characters) is set. See
+[demo-districts.md](../../docs/educateos/runbooks/demo-districts.md#seeding-without-a-sign-in-operator-token).
+
 ## Entrypoints
 
 | Entrypoint | For | Contract |

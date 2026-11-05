@@ -5,7 +5,7 @@ import capnwebValidate from "capnweb-validate/vite";
 import { kCurrentWorker } from "miniflare";
 import { defineConfig } from "vitest/config";
 import deployed from "./cloudflare.config.ts";
-import { ACCESS_AUDIENCES, ACCESS_ISSUER, DEVICE_TOKEN_SECRET, HALL_MONITOR_URL, LTI_TOOL_ORIGIN, TEST_CONFIG } from "./__tests__/fixtures.ts";
+import { ACCESS_AUDIENCES, ACCESS_ISSUER, DEMO_OPERATOR_TOKEN, DEVICE_TOKEN_SECRET, HALL_MONITOR_URL, LTI_TOOL_ORIGIN, TEST_CONFIG } from "./__tests__/fixtures.ts";
 
 const { compatibilityDate, compatibilityFlags } = deployed.worker;
 
@@ -84,11 +84,16 @@ export default defineConfig({
           COURSE_LIBRARY_TRUST,
           // The demo showcase (SCHO-326), which TEST_CONFIG.demo names too.
           DEMO_SHOWCASE: "northfield",
+          // The demo operator's seed routes (SCHO-326): a test-only token.
+          DEMO_OPERATOR_TOKEN,
           TEST_MARKETPLACE_RELEASE_JWK: JSON.stringify(marketplaceKey.privateKey.export({ format: "jwk" })),
         },
         durableObjects: {
           // The Worker reaches the district through ctx.exports; the tests restart it through this binding.
           DISTRICT: { className: "DistrictObject", useSQLite: true },
+          // Riverbend as its demo Worker runs it, with and without the operator token (SCHO-326).
+          RIVERBEND: { className: "RiverbendDistrictObject", useSQLite: true },
+          RIVERBEND_WITHOUT_TOKEN: { className: "RiverbendWithoutTokenDistrictObject", useSQLite: true },
         },
         serviceBindings: {
           WORKSHOP_POLICY: { name: kCurrentWorker, entrypoint: "DistrictWorkshopCapabilityPolicy" },

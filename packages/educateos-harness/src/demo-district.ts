@@ -1,10 +1,22 @@
-// The pure half of seed-district.ts (SCHO-326): a standalone demo district's fixture as the OneRoster
-// 1.2 bulk CSV export its roster import reads, or as the authoring steps a local-authority district
-// is built with, and the check that an import's preview only adds. It imports nothing but the
-// fixtures, so the district Worker's suite can run it against the real importer
-// (packages/educateos-district-worker/__tests__/demo-district-rosters.test.ts).
+// A standalone demo district's seed (SCHO-326): its fixture as the OneRoster 1.2 bulk CSV export its
+// roster import reads, or as the authoring steps a local-authority district is built with, the check
+// that an import's preview only adds, and the run itself, through the district's own admin routes as
+// one district administrator. It imports nothing but the fixtures and the starter pack's listing
+// bundle, and reaches the district only through a `DistrictAdminClient`, so the same run serves two
+// callers:
+//
+// - scripts/demo/seed-district.ts, over HTTPS with an administrator's Access cookie, or with the
+//   demo operator token;
+// - the district Worker's operator route (packages/educateos-district-worker/src/demo-operator.ts),
+//   in-process through `DistrictApp.serveAs` as the district's own administrator.
 
-import { DEMO_DISTRICTS, oneRosterSeed, type DemoDistrict, type OneRosterSeed } from "../../packages/educateos-fixtures/src/index.ts";
+import { DEMO_DISTRICTS, oneRosterSeed, type DemoDistrict, type OneRosterSeed } from "@educateos/fixtures";
+import STARTER_PACK from "../../../sites/educateos-io/public/marketplace/listings/middle-school-starter-pack/1.0.0.json" with { type: "json" };
+
+export type { DemoDistrict };
+
+/** The middle school starter pack every standalone demo district gets: the listing bundle educateos.io publishes. */
+export const DEMO_STARTER_PACK: unknown = STARTER_PACK;
 
 /** The Access team every demo district trusts, and so the issuer a local person's sign-in uses. */
 export const DEMO_ACCESS_ISSUER = "https://gmacko.cloudflareaccess.com";
@@ -35,13 +47,23 @@ const csv = <F extends RosterFile>(file: F, rows: Row<F>[]) =>
 
 const list = (values: readonly string[]) => values.join(",");
 
+/** The standalone demo districts: every demo district but Northfield, whose showcase is seeded on its own. */
+export const STANDALONE_DEMO_DISTRICTS: readonly DemoDistrict[] = DEMO_DISTRICTS.filter((d) => d.slug !== "northfield");
+
 /** The demo district a host serves (`<slug>.educateos.io`), other than Northfield. */
 export function demoFor(origin: string): DemoDistrict {
   const slug = new URL(origin).hostname.split(".")[0];
-  const demo = DEMO_DISTRICTS.find((d) => d.slug === slug);
-  if (demo === undefined || demo.slug === "northfield") throw new Error(`${origin} is not a standalone demo district (${DEMO_DISTRICTS.filter((d) => d.slug !== "northfield").map((d) => d.slug).join(", ")})`);
+  const demo = STANDALONE_DEMO_DISTRICTS.find((d) => d.slug === slug);
+  if (demo === undefined) throw new Error(`${origin} is not a standalone demo district (${STANDALONE_DEMO_DISTRICTS.map((d) => d.slug).join(", ")})`);
   return demo;
 }
+
+/**
+ * The standalone demo district whose fixture names `districtId`, as each one's `DISTRICT_CONFIG`
+ * keeps its fixture's district ID; none for Northfield or any other district.
+ */
+export const demoForDistrictId = (districtId: string): DemoDistrict | undefined =>
+  STANDALONE_DEMO_DISTRICTS.find((d) => d.directory.district.id === districtId);
 
 /** Whether a demo district builds its own classes (`authority: "local"` in its config) rather than importing a roster. */
 export const isLocal = (demo: DemoDistrict): boolean => demo.profile.roster === "local";
@@ -131,6 +153,7 @@ export function nonAdditive(preview: RosterPreview): string[] {
       if (change.removed.length > 0) problems.push(`it would remove ${change.removed.length} ${kind}`);
     } else {
       if (change.updated.length > 0) problems.push(`it would change ${change.updated.length} existing ${kind}`);
+      if (change.deactivated.length > 0) problems.push(`it would deactivate ${change.deactivated.length} ${kind}`);
       if (change.retained.length > 0) problems.push(`${change.retained.length} roster ${kind} are no longer in the export`);
     }
   }
@@ -197,3 +220,195 @@ export function localSteps(demo: DemoDistrict, options: { admitSubject?: string 
     })),
   ];
 }
+
+/** The district's admin routes the run uses, as one administrator. */
+export interface DistrictAdminClient {
+  get<T>(path: string): Promise<T>;
+  post<T>(path: string, body: unknown): Promise<T>;
+}
+
+/** The district's directory and work counts (`admin.health`). */
+export interface DistrictHealth {
+  districtId: string;
+  directory: { schools: number; terms: number; offerings: number; students: number; staff: number; activeEnrollments: number };
+}
+
+/** An installed marketplace pack, as far as the run reads it. */
+export interface InstalledPack {
+  listingId: string;
+  version: string;
+}
+
+/** The listing a bundle (`educateos.marketplace.listing/v1`) carries, from its signed payload. */
+export function listingOf(bundle: unknown): InstalledPack {
+  const payload = (bundle as { listing?: { payload?: { listingId?: unknown; version?: unknown } } }).listing?.payload;
+  if (typeof payload?.listingId !== "string" || typeof payload.version !== "string") throw new Error("that is not a marketplace listing bundle");
+  return { listingId: payload.listingId, version: payload.version };
+}
+
+/** The "before" record: everything the admin read routes say. */
+export async function exportDistrict(client: DistrictAdminClient): Promise<Record<string, unknown>> {
+  const [health, authoring, offerings, packs] = await Promise.all([
+    client.get("/api/admin/health"),
+    client.get("/api/admin/authoring"),
+    client.get("/api/admin/offerings"),
+    client.get("/api/admin/marketplace/packs"),
+  ]);
+  return { exportedAt: new Date().toISOString(), health, authoring, offerings, packs };
+}
+
+/** One line of counts. */
+export const describeHealth = (h: DistrictHealth): string =>
+  `${h.districtId}: ${h.directory.schools} schools, ${h.directory.terms} terms, ${h.directory.offerings} classes, ${h.directory.staff} staff, ${h.directory.students} students, ${h.directory.activeEnrollments} active enrollments`;
+
+/**
+ * Runs `steps` against a local district, creating only what `directory` lacks (matched by name,
+ * title, section or sign-in). Returns how many of each it made.
+ */
+export async function seedLocal(client: DistrictAdminClient, steps: readonly LocalStep[], directory: AuthoringDirectory, log: (line: string) => void, dryRun: boolean): Promise<Record<string, number>> {
+  const ids = new Map<string, string>();
+  const made: Record<string, number> = {};
+  const count = (kind: string) => (made[kind] = (made[kind] ?? 0) + 1);
+  const rosters = new Map<string, { principalId: string; role: string }[]>();
+  const rosterOf = async (offeringId: string) => {
+    if (!rosters.has(offeringId)) {
+      const roster = offeringId.startsWith("dry:") ? [] : await client.get<{ enrollment: { principalId: string; role: string; status: string } }[]>(`/api/admin/offerings/${offeringId}/roster`);
+      rosters.set(offeringId, roster.map((e) => e.enrollment).filter((e) => e.status === "active"));
+    }
+    return rosters.get(offeringId)!;
+  };
+  const create = async <T extends { id: string }>(kind: string, path: string, body: unknown): Promise<string> => {
+    count(kind);
+    if (dryRun) return `dry:${kind}:${made[kind]}`;
+    return (await client.post<T>(path, body)).id;
+  };
+  const people = new Map(directory.principals.map((p) => [p.displayName, p]));
+  for (const step of steps) {
+    switch (step.kind) {
+      case "school":
+        ids.set(step.fixtureId, directory.schools.find((s) => s.name === step.body.name)?.id ?? await create("schools", "/api/admin/schools", step.body));
+        break;
+      case "term":
+        ids.set(step.fixtureId, directory.terms.find((t) => t.name === step.body.name)?.id ?? await create("terms", "/api/admin/terms", step.body));
+        break;
+      case "course":
+        ids.set(step.fixtureId, directory.courses.find((c) => c.title === step.body.title)?.id ?? await create("courses", "/api/admin/courses", step.body));
+        break;
+      case "offering": {
+        const body = { schoolId: ids.get(step.school)!, termId: ids.get(step.term)!, courseId: ids.get(step.course)!, sectionName: step.sectionName };
+        const present = directory.offerings.find((o) => o.schoolId === body.schoolId && o.termId === body.termId && o.courseId === body.courseId && o.sectionName === body.sectionName);
+        ids.set(step.fixtureId, present?.id ?? await create("offerings", "/api/admin/offerings", body));
+        break;
+      }
+      case "principal": {
+        const present = people.get(step.body.displayName);
+        const id = present?.id ?? await create("principals", "/api/admin/principals", step.body);
+        ids.set(step.fixtureId, id);
+        if (step.districtAdmin && !present?.districtAdmin) {
+          count("district admins");
+          if (!dryRun) await client.post(`/api/admin/principals/${id}/district-admin`, {});
+        }
+        break;
+      }
+      case "enrollment": {
+        const offeringId = ids.get(step.offering)!;
+        const principalId = ids.get(step.principal)!;
+        if ((await rosterOf(offeringId)).some((e) => e.principalId === principalId)) break;
+        count("enrollments");
+        if (!dryRun) await client.post(`/api/admin/offerings/${offeringId}/enrollments`, { principalId, role: step.role });
+        break;
+      }
+    }
+  }
+  log(`${dryRun ? "would make" : "made"}: ${Object.entries(made).map(([k, n]) => `${n} ${k}`).join(", ") || "nothing new"}`);
+  return made;
+}
+
+/** What {@link seedDemoDistrict} needs. */
+export interface SeedDemoDistrictOptions {
+  client: DistrictAdminClient;
+  demo: DemoDistrict;
+  dryRun: boolean;
+  /** An Access subject to add as the automation district administrator. */
+  admitSubject?: string;
+  /** The listing bundle to install. */
+  pack: unknown;
+  /** Keeps the "before" export, before anything is changed. */
+  saveBefore: (before: Record<string, unknown>) => Promise<void>;
+  log: (line: string) => void;
+}
+
+/**
+ * Export, seed the roster (import or authoring), install the pack, verify. Returns the "before"
+ * export and the problems found (none: success). Only additive: a roster import whose preview would
+ * change, retain or relink anything already there is refused before anything is written.
+ */
+export async function seedDemoDistrict(options: SeedDemoDistrictOptions): Promise<{ before: Record<string, unknown>; problems: string[] }> {
+  const before = await exportDistrict(options.client);
+  await options.saveBefore(before);
+  return { before, problems: await seedAfterExport(options, before) };
+}
+
+async function seedAfterExport(options: SeedDemoDistrictOptions, before: Record<string, unknown>): Promise<string[]> {
+  const { client, demo, dryRun, log } = options;
+  log(`before: ${describeHealth(before.health as DistrictHealth)}`);
+  const authoring = before.authoring as AuthoringDirectory;
+  const admit = options.admitSubject === undefined ? {} : { admitSubject: options.admitSubject };
+
+  if (isLocal(demo)) {
+    if (authoring.authority.principal !== "local") return [`${demo.slug} is expected to be local-authority, but the district says principals belong to ${authoring.authority.principal}`];
+    await seedLocal(client, localSteps(demo, admit), authoring, log, dryRun);
+  } else {
+    const files = rosterFiles(demo, admit);
+    const preview = await client.post<RosterPreview>("/api/admin/roster/preview", { files });
+    log(`roster preview: ${describePreview(preview)}`);
+    for (const q of preview.quarantined) log(`  quarantined ${q.sourcedId}: ${q.message}`);
+    const problems = nonAdditive(preview);
+    const nothingNew = Object.values(preview.changes).every((c) => c.added.length === 0);
+    if (problems.length > 0) return problems.map((p) => `roster: ${p}`);
+    if (!dryRun && !nothingNew) {
+      const applied = await client.post<{ applied: boolean; preview: RosterPreview; grantsRevoked: number }>("/api/admin/roster/apply", { files });
+      if (!applied.applied) return [`roster: the district did not apply it: ${nonAdditive(applied.preview).join("; ")}`];
+      log(`roster applied: ${describePreview(applied.preview)}`);
+    }
+    if (options.admitSubject !== undefined && !dryRun) {
+      const after = await client.get<AuthoringDirectory>("/api/admin/authoring");
+      const automation = after.principals.find((p) => p.displayName === AUTOMATION.displayName);
+      if (automation === undefined) return ["the automation person is not in the directory after the import"];
+      if (!automation.districtAdmin) await client.post(`/api/admin/principals/${automation.id}/district-admin`, {});
+      log(`${AUTOMATION.displayName} (${automation.id}) is a district administrator`);
+    }
+  }
+
+  const { listingId, version } = listingOf(options.pack);
+  const packs = before.packs as InstalledPack[];
+  if (packs.some((p) => p.listingId === listingId && p.version === version)) log(`${listingId} ${version} is already installed`);
+  else if (dryRun) log(`would install ${listingId} ${version}`);
+  else {
+    const pack = await client.post<InstalledPack>("/api/admin/marketplace/packs", options.pack);
+    log(`installed ${pack.listingId} ${pack.version}`);
+  }
+  return dryRun ? [] : verify(client, demo, listingId, log);
+}
+
+/** Checks the fixture's classes are all listed with students, and the pack is installed. */
+export async function verify(client: DistrictAdminClient, demo: DemoDistrict, listingId: string, log: (line: string) => void): Promise<string[]> {
+  const [health, offerings, packs] = await Promise.all([
+    client.get<DistrictHealth>("/api/admin/health"),
+    client.get<{ offering: { id: string; sectionName: string }; course: { title: string }; students: number }[]>("/api/admin/offerings"),
+    client.get<InstalledPack[]>("/api/admin/marketplace/packs"),
+  ]);
+  log(`after: ${describeHealth(health)}; packs: ${packs.map((p) => `${p.listingId} ${p.version}`).join(", ") || "none"}`);
+  const problems: string[] = [];
+  const courses = new Map(demo.directory.courses.map((c) => [c.id, c.title]));
+  for (const o of demo.directory.offerings) {
+    const title = courses.get(o.courseId)!;
+    const listed = offerings.find((row) => row.course.title === title && row.offering.sectionName === o.sectionName);
+    if (listed === undefined) problems.push(`${title} · ${o.sectionName} is not in the admin console's classes`);
+    else if (listed.students === 0 && demo.directory.enrollments.some((e) => e.offeringId === o.id && e.role === "student" && e.status === "active")) problems.push(`${title} · ${o.sectionName} has no students`);
+  }
+  if (!packs.some((p) => p.listingId === listingId)) problems.push(`${listingId} is not installed`);
+  for (const problem of problems) log(`problem: ${problem}`);
+  return problems;
+}
+

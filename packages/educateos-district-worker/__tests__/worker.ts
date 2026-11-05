@@ -9,7 +9,10 @@ import type { PrincipalId } from "@educateos/contracts";
 import { DistrictObject as DeployedDistrictObject } from "../src/district-object.ts";
 import type { SendEmailBinding } from "../src/mail.ts";
 import { fakeHallMonitor } from "@educateos/ai-guard/src/fake-hall-monitor.ts";
+import { DEMO_DISTRICTS } from "@educateos/fixtures";
 import { LMS_ISSUER, PLATFORM_TOOL_JWKS_URL } from "./fixtures.ts";
+import { demoDistrictConfig } from "../scripts/demo-district-config.ts";
+import { DEMO_MARKETPLACE_TRUST } from "../../../scripts/production/demo-districts.ts";
 import { WorkerEntrypoint } from "cloudflare:workers";
 
 /** Synthetic upstream release service. Its fixtures persist across district object restarts. */
@@ -164,5 +167,27 @@ export class DistrictObject extends DeployedDistrictObject {
     await catalog.install(release, actor);
     await catalog.approve("ccss-ela", release.version, actor);
     return { frameworkKey: "ccss-ela", competencyUri: release.content.nodes![0]!.uri };
+  }
+}
+
+/** Riverbend's DISTRICT_CONFIG, as its demo Worker is given it (SCHO-326). */
+const RIVERBEND_CONFIG = JSON.stringify(demoDistrictConfig(DEMO_DISTRICTS.find((d) => d.slug === "riverbend")!, { adminSubject: "00000000-0000-4000-8000-000000000001" }));
+
+/**
+ * Riverbend as its own demo Worker deploys it (SCHO-326): the same object, with riverbend's
+ * DISTRICT_CONFIG as demo-district-config.ts makes it and the demo districts' marketplace pin, so the
+ * demo operator's seed routes can be driven against a real SQLite object.
+ */
+export class RiverbendDistrictObject extends DistrictObject {
+  constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
+    super(ctx, { ...env, DISTRICT_CONFIG: RIVERBEND_CONFIG, MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST });
+  }
+}
+
+/** Riverbend with no `DEMO_OPERATOR_TOKEN` secret: the operator routes are off. */
+export class RiverbendWithoutTokenDistrictObject extends DistrictObject {
+  constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
+    const { DEMO_OPERATOR_TOKEN: _, ...rest } = env;
+    super(ctx, { ...rest, DISTRICT_CONFIG: RIVERBEND_CONFIG, MARKETPLACE_TRUST: DEMO_MARKETPLACE_TRUST });
   }
 }

@@ -35,6 +35,7 @@ import { platformToolPolicySources, TablePlatformAgsStore, TablePlatformToolStor
 import { DurableObjectRecordTable } from "@educateos/lti-district/durable-object";
 // Demo showcase (SCHO-326)
 import { showcaseEnabled, startDistrictShowcase, withShowcaseReadings, type DistrictShowcase, type ShowcaseEvent } from "./showcase.ts";
+import { demoOperatorEnabled, startDemoOperator, type DemoOperator, type DemoOperatorEvent } from "./demo-operator.ts";
 
 /** The district application and its school tools. */
 export interface District {
@@ -50,6 +51,8 @@ export interface District {
   mcp: { fetch(request: Request): Promise<Response> } | undefined;
   /** The demo showcase's administrators' routes, on a demo district only (SCHO-326, see showcase.ts). */
   showcase: DistrictShowcase | undefined;
+  /** The demo operator's token-authenticated seed routes, on a demo district with `DEMO_OPERATOR_TOKEN` only (SCHO-326, see demo-operator.ts). */
+  demoOperator: DemoOperator | undefined;
 }
 
 /** The paths the organization MCP endpoint answers (SCHO-174). */
@@ -118,6 +121,8 @@ export interface DistrictSettings {
   // Demo showcase (SCHO-326)
   /** `DEMO_SHOWCASE`, the showcase a demo deployment may seed; `DISTRICT_CONFIG.demo` must name it too. */
   demoShowcase?: string | undefined;
+  /** `DEMO_OPERATOR_TOKEN`, the bearer token of the demo operator's seed routes, a Worker secret. */
+  demoOperatorToken?: string | undefined;
 }
 
 /** What a district reaches outside its storage. */
@@ -148,6 +153,8 @@ export interface DistrictSeams {
   discussionHallMonitor?: (settings: DiscussionScreeningSettings) => DiscussionScreening["hallMonitor"];
   /** Told what each demo showcase route did (SCHO-326), to log it. */
   onShowcaseEvent?: (event: ShowcaseEvent) => void;
+  /** Told what each demo operator route did (SCHO-326), to log it. */
+  onDemoOperatorEvent?: (event: DemoOperatorEvent) => void;
 }
 
 /** The Hall Monitor of a district that configures screening but cannot reach it: it refuses every post. */
@@ -389,6 +396,11 @@ export async function startDistrict(storage: DistrictSqlStorage, settings: Distr
       accessIssuer: settings.accessIssuer,
       name: showcase,
       ...(seams.onShowcaseEvent === undefined ? {} : { onEvent: seams.onShowcaseEvent }),
+    }),
+    demoOperator: !demoOperatorEnabled(config.demo, settings.demoShowcase, settings.demoOperatorToken) ? undefined : startDemoOperator({
+      app,
+      token: settings.demoOperatorToken,
+      ...(seams.onDemoOperatorEvent === undefined ? {} : { onEvent: seams.onDemoOperatorEvent }),
     }),
   };
 }
