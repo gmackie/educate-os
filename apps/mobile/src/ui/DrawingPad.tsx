@@ -1,11 +1,40 @@
-import { useContext, useMemo, useRef, useState } from 'react';
-import { PanResponder, Pressable, Text, View } from 'react-native';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { PanResponder, PixelRatio, Pressable, Text, View } from 'react-native';
+import { useNavigation } from 'expo-router';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { Eraser, Trash2, Undo2 } from 'lucide-react-native';
 import { usePalette } from './theme-context';
 import { Button, ScrollLock } from './Primitives';
-import { CANVAS_HEIGHT, CANVAS_WIDTH, PAPER, PEN_COLOURS, PEN_WIDTHS, canvasPoint, extend, strokePath, type Stroke } from '../drawing.ts';
+import { CANVAS_HEIGHT, CANVAS_WIDTH, PAPER, PEN_COLOURS, PEN_WIDTHS, canvasPoint, exportViewSize, extend, strokePath, type Stroke } from '../drawing.ts';
 import { uploadTypeFor } from '../media.ts';
+
+/**
+ * Whether the pad is on screen. The young-learner activity keeps every step mounted and hides all
+ * but one, so each step says whether its pad is showing.
+ */
+export const PadOnScreen = createContext(true);
+
+const padsShowing = new WeakMap<object, number>();
+
+/**
+ * Turns the screen's swipe back off while a pad shows on it: on iOS 26 the back swipe starts
+ * anywhere on the screen, so a left-to-right stroke would leave the activity and lose the drawing.
+ * Counted per screen, so the gesture returns only when its last showing pad goes.
+ */
+function useNoSwipeBack(showing: boolean) {
+  const navigation = useNavigation();
+  useEffect(() => {
+    if (!showing) return;
+    const count = padsShowing.get(navigation) ?? 0;
+    padsShowing.set(navigation, count + 1);
+    if (count === 0) navigation.setOptions({ gestureEnabled: false });
+    return () => {
+      const left = (padsShowing.get(navigation) ?? 1) - 1;
+      padsShowing.set(navigation, left);
+      if (left === 0) navigation.setOptions({ gestureEnabled: true });
+    };
+  }, [navigation, showing]);
+}
 
 /**
  * A touch drawing pad for young learners (SCHO-342), like the web's (SCHO-323): eight colours, an
@@ -25,7 +54,11 @@ export function DrawingPad({ stepTitle, disabled = false, onDrawn }: {
   const pen = useRef({ color, width });
   pen.current = { color, width };
   const drawing = useRef<Stroke | null>(null);
-  const svg = useRef<Svg>(null);
+  // The PNG comes from a copy of the drawing laid out at the canvas's own size in pixels, hidden
+  // under the pad, so it is the whole drawing at 960×720 whatever size the pad shows at.
+  const exported = useRef<Svg>(null);
+  const exportSize = exportViewSize(PixelRatio.get());
+  useNoSwipeBack(useContext(PadOnScreen));
   // The pad's responder is made once, so it reads the page's scroll lock through a ref.
   const lock = useContext(ScrollLock);
   const lockScroll = useRef(lock);
@@ -66,14 +99,19 @@ export function DrawingPad({ stepTitle, disabled = false, onDrawn }: {
 
   const save = () => {
     setError(null);
-    svg.current?.toDataURL((base64: string) => {
+    exported.current?.toDataURL((base64: string) => {
       const data = base64.replace(/^data:image\/png;base64,/, '');
       if (uploadTypeFor('picture', data) !== 'image/png') { setError('The drawing could not be saved. Try again.'); return; }
       onDrawn({ base64: data, mediaType: 'image/png' });
-    }, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT });
+    });
   };
 
   const shown = live ? [...strokes, live] : strokes;
+  const paper = (list: Stroke[]) => <>
+    <Rect x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill={PAPER}/>
+    {list.map((stroke, i) => <Path key={i} d={strokePath(stroke)} stroke={stroke.color} strokeWidth={stroke.width}
+      strokeLinecap="round" strokeLinejoin="round" fill="none"/>)}
+  </>;
   const swatch = (selected: boolean) => ({ width: 44, height: 44, borderRadius: 22, alignItems: 'center' as const, justifyContent: 'center' as const,
     borderWidth: selected ? 3 : 1, borderColor: selected ? palette.primary : palette.line });
   return <View style={{ gap: 12 }}>
@@ -82,11 +120,15 @@ export function DrawingPad({ stepTitle, disabled = false, onDrawn }: {
       onLayout={(e) => { size.current = { width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height }; }}
       style={{ width: '100%', aspectRatio: CANVAS_WIDTH / CANVAS_HEIGHT, borderRadius: 16, overflow: 'hidden',
         borderWidth: 2, borderColor: palette.line, backgroundColor: PAPER }}>
+      <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
+        style={{ position: 'absolute', left: 0, top: 0, ...exportSize }}>
+        <Svg ref={exported} width={exportSize.width} height={exportSize.height} viewBox={'0 0 ' + CANVAS_WIDTH + ' ' + CANVAS_HEIGHT}>
+          {paper(strokes)}
+        </Svg>
+      </View>
       {/* The pad, not its paths, takes the touches, so every touch is measured against the whole pad. */}
-      <Svg ref={svg} width="100%" height="100%" viewBox={'0 0 ' + CANVAS_WIDTH + ' ' + CANVAS_HEIGHT} pointerEvents="none">
-        <Rect x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill={PAPER}/>
-        {shown.map((stroke, i) => <Path key={i} d={strokePath(stroke)} stroke={stroke.color} strokeWidth={stroke.width}
-          strokeLinecap="round" strokeLinejoin="round" fill="none"/>)}
+      <Svg width="100%" height="100%" viewBox={'0 0 ' + CANVAS_WIDTH + ' ' + CANVAS_HEIGHT} pointerEvents="none">
+        {paper(shown)}
       </Svg>
     </View>
     <View accessibilityRole="radiogroup" accessibilityLabel="Colours" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

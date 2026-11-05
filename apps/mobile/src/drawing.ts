@@ -54,3 +54,14 @@ export function extend(stroke: Stroke, point: Point): Stroke {
   if (last && Math.hypot(last.x - point.x, last.y - point.y) < 2) return stroke;
   return { ...stroke, points: [...stroke.points, point] };
 }
+
+/**
+ * The size, in points, of the hidden view a drawing is exported from, so the PNG is exactly the
+ * canvas. react-native-svg exports a view at its own size times the screen's pixel ratio (iOS
+ * ignores a requested size for the drawing itself, so asking for 960×720 draws the pad's on-screen
+ * size in one corner); a view of 960×720 pixels exports the whole canvas.
+ */
+export function exportViewSize(pixelRatio: number): { width: number; height: number } {
+  const ratio = Number.isFinite(pixelRatio) && pixelRatio > 0 ? pixelRatio : 1;
+  return { width: CANVAS_WIDTH / ratio, height: CANVAS_HEIGHT / ratio };
+}

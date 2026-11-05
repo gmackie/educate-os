@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { moduleRows, provenance, safeLink, teacherNoteFor } from '../src/modules.ts';
-import { CANVAS_HEIGHT, CANVAS_WIDTH, canvasPoint, extend, strokePath } from '../src/drawing.ts';
+import { CANVAS_HEIGHT, CANVAS_WIDTH, canvasPoint, exportViewSize, extend, strokePath } from '../src/drawing.ts';
 
 const pages = [{ id: 'pg_1', title: 'Welcome', body: 'Hi' }, { id: 'pg_key', title: 'Answer key', body: 'B' }];
 const module = {
@@ -54,4 +54,16 @@ test('the drawing pad maps touches onto its fixed canvas and draws dots and line
   const line = extend(extend(dot, { x: 1.5, y: 2 }), { x: 10, y: 20 });
   assert.equal(line.points.length, 2, 'a point too close to the last is skipped');
   assert.equal(strokePath(line), 'M1 2L10 20');
+});
+
+test('a drawing exports from a view that is the whole canvas in pixels at any screen scale', () => {
+  for (const ratio of [1, 2, 3, 2.625]) {
+    const { width, height } = exportViewSize(ratio);
+    assert.ok(Math.abs(width * ratio - CANVAS_WIDTH) < 1e-9);
+    assert.ok(Math.abs(height * ratio - CANVAS_HEIGHT) < 1e-9);
+  }
+  assert.deepEqual(exportViewSize(3), { width: 320, height: 240 });
+  for (const broken of [0, -2, Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.deepEqual(exportViewSize(broken), { width: CANVAS_WIDTH, height: CANVAS_HEIGHT });
+  }
 });

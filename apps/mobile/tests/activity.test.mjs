@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  clock, isFinished, permittedResources, readiness, spokenFrame, spokenText, stepWork, studentNotes, workByStep, workSteps, workTitle,
+  clock, handInStatus, isFinished, permittedResources, readiness, spokenFrame, spokenText, stepWork, studentNotes, workByStep, workSteps, workTitle,
 } from '../src/activity.ts';
 import { gradeRange, isElementaryBand, isYoungLearnerBand } from '../src/gradeBand.ts';
 
@@ -101,4 +101,14 @@ test('a finished term makes the class workspace read-only', () => {
   assert.equal(isFinished(undefined), false);
   assert.equal(isFinished({ lifecycle: 'active' }), false);
   for (const lifecycle of ['completed', 'retained', 'eligible-for-deletion']) assert.equal(isFinished({ lifecycle }), true);
+});
+
+test('hand-in status: the newest attempt not withdrawn, with every attempt counted as used', () => {
+  assert.deepEqual(handInStatus([], 2), { handedIn: false, attempt: null, submittedAt: null, used: 0, allowed: 2 });
+  const first = { attempt: 1, submittedAt: '2026-11-01T10:00:00Z' };
+  const second = { attempt: 2, submittedAt: '2026-11-02T10:00:00Z' };
+  assert.deepEqual(handInStatus([second, first], 3), { handedIn: true, attempt: 2, submittedAt: second.submittedAt, used: 2, allowed: 3 });
+  assert.deepEqual(handInStatus([first, { ...second, withdrawnAt: '2026-11-03T10:00:00Z' }], 3),
+    { handedIn: true, attempt: 1, submittedAt: first.submittedAt, used: 2, allowed: 3 });
+  assert.equal(handInStatus([{ ...first, withdrawnAt: '2026-11-03T10:00:00Z' }], 1).handedIn, false);
 });

@@ -44,7 +44,9 @@ function Navigator() {
         <Stack.Screen name="class/[id]/page/[pageId]" options={{ title: 'Page' }}/>
         <Stack.Screen name="class/[id]/discussion/[topicId]" options={{ title: 'Discussion' }}/>
         <Stack.Screen name="class/[id]/quiz/[quizId]" options={{ title: 'Quiz' }}/>
-        <Stack.Screen name="assignment/[id]/index" options={{ title: 'Assignment' }}/>
+        {/* The activity can hold a drawing pad: no full-screen back swipe (on by default on iOS 26),
+            only the edge swipe, and the pad turns that off too while it shows (src/ui/DrawingPad.tsx). */}
+        <Stack.Screen name="assignment/[id]/index" options={{ title: 'Assignment', fullScreenGestureEnabled: false }}/>
         <Stack.Screen name="assignment/[id]/write" options={{ title: 'Write a response' }}/>
         <Stack.Screen name="review/[id]" options={{ title: 'Review' }}/>
         <Stack.Screen name="family/[id]/index" options={{ title: 'Family' }}/>
