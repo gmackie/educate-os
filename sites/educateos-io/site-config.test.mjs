@@ -6,7 +6,6 @@ import {readFileSync} from "node:fs";
 import {createRequire} from "node:module";
 import {test} from "node:test";
 import {INTAKE_PATHS} from "./intake/core.mjs";
-import {VIDEO_PATHS} from "./video-range.mjs";
 import {DYNAMIC_PATHS} from "../../packages/educateos-control-plane/src/app.ts";
 
 // jsonc-parser is a dependency of the shared scripts package, as the production configs read it there.
@@ -23,7 +22,7 @@ test("the Worker and its Durable Object class keep the names their data lives un
 });
 
 test("the paths that reach the Worker first are the ones the control plane routes", () => {
-  assert.deepEqual(config.assets.run_worker_first, [...DYNAMIC_PATHS, ...INTAKE_PATHS, ...VIDEO_PATHS]);
+  assert.deepEqual(config.assets.run_worker_first, [...DYNAMIC_PATHS, ...INTAKE_PATHS]);
 });
 
 test("the guided install reads releases from educateos.io's release bucket and pins its release keys", async () => {

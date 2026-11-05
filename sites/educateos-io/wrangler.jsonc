@@ -21,8 +21,8 @@
     "directory": "./public",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page",
-    // Includes the isolated intake paths and the demo videos (video-range.mjs, SCHO-343: Safari needs byte ranges) in addition to DYNAMIC_PATHS in packages/educateos-control-plane/src/app.ts (site-config.test.mjs).
-    "run_worker_first": ["/healthz", "/app", "/app/*", "/registry/*", "/clever/launch", "/stripe/webhook", "/releases/*", "/api/interest", "/api/interest/*", "/assets/videos/*"]
+    // Includes the isolated intake paths in addition to DYNAMIC_PATHS in packages/educateos-control-plane/src/app.ts (site-config.test.mjs).
+    "run_worker_first": ["/healthz", "/app", "/app/*", "/registry/*", "/clever/launch", "/stripe/webhook", "/releases/*", "/api/interest", "/api/interest/*"]
   },
   // The control plane's operators and installations. This Worker owns the data, so it must never
   // be renamed, nor the class (SCHO-231): a new name starts an empty namespace.
