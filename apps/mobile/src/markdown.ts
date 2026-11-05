@@ -25,6 +25,20 @@ const isDivider = (row: string[]) => row.length > 0 && row.every((cell) => /^:?-
 /** The most columns and rows a table draws; larger tables are rare in teacher text and unreadable on a phone. */
 const MAX_COLUMNS = 8, MAX_ROWS = 60;
 
+/** The narrowest a table column draws, in points; narrower and a word a line is unreadable. */
+export const MIN_TABLE_COLUMN = 96;
+
+/**
+ * Each column's width for a table of `columns` columns in `available` points (its 1-point border
+ * included): the width shared evenly, but never under {@link MIN_TABLE_COLUMN}, so a table too
+ * wide for the screen scrolls sideways rather than squeezing. `scrolls` says whether it must.
+ */
+export function tableLayout(available: number, columns: number): { column: number; scrolls: boolean } {
+  const inner = Math.max(0, available - 2);
+  const even = Math.floor(inner / Math.max(1, columns));
+  return even >= MIN_TABLE_COLUMN ? { column: even, scrolls: false } : { column: MIN_TABLE_COLUMN, scrolls: true };
+}
+
 export function parseBlocks(source: string): Block[] {
   const blocks: Block[] = [];
   let paragraph: string[] = [];
