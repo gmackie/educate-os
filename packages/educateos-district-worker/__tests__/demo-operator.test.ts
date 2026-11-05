@@ -6,8 +6,8 @@
 import { describe, expect, it } from "vitest";
 import { DistrictDirectorySnapshot } from "@educateos/contracts";
 import { createDistrictApp, inMemoryDistrictStores, type DistrictApp } from "@educateos/district-app";
-import { DEMO_DISTRICTS, NORTHFIELD } from "@educateos/fixtures";
-import { AUTOMATION, DEMO_STARTER_PACK, listingOf } from "@educateos/harness/demo-district";
+import { DEMO_DISTRICTS, NORTHFIELD, type DemoDistrict } from "@educateos/fixtures";
+import { AUTOMATION, DEMO_STARTER_PACK, listingOf, rosterFiles } from "@educateos/harness/demo-district";
 import { demoDistrictConfig } from "../scripts/demo-district-config.ts";
 import { readDistrictWorkerConfig } from "../src/config.ts";
 import { readMarketplaceTrust } from "../src/district.ts";
@@ -207,6 +207,72 @@ describe("seeding a roster demo district", () => {
     const dropping = await seed(operator);
     expect(dropping.problems.join("\n")).toMatch(/^roster: it would deactivate 1 principals$/m);
     expect(await counts(app)).toStrictEqual(before);
+  }, 60_000);
+});
+
+/**
+ * Imports `demo`'s fixture roster as an earlier export did, under other sourcedIds (each fixture ID
+ * prefixed `old-`, the district's own org aside), as harbor's live roster was.
+ */
+async function rosterUnderOtherIds(app: DistrictApp, adminId: string, demo: DemoDistrict) {
+  const d = demo.directory;
+  const ids = [...d.schools, ...d.terms, ...d.courses, ...d.offerings, ...d.principals, ...d.enrollments].map((r) => r.id).toSorted((a, b) => b.length - a.length);
+  const pattern = new RegExp(ids.map((id) => id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
+  const files = Object.fromEntries(Object.entries(rosterFiles(demo)).map(([name, text]) => [name, text.replace(pattern, (id) => `old-${id}`)]));
+  const response = await app.serveAs({ principalId: adminId as never, districtId: app.districtId }, new Request("https://demo.example/api/admin/roster/apply", {
+    method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ files }),
+  }));
+  const body = await response.json() as { applied?: boolean };
+  expect(response.status, JSON.stringify(body)).toBe(200);
+  expect(body.applied).toBe(true);
+}
+
+describe("seeding a roster demo district that already holds its fixture roster under other IDs", () => {
+  it("skips the roster, leaves the people as they are, installs the pack, skips admitting, and a rerun adds nothing", async () => {
+    const { app, operator, adminId } = await boot("harbor");
+    await rosterUnderOtherIds(app, adminId, demo("harbor"));
+    const rostered = await counts(app);
+    const { snapshot: rosteredSnapshot } = await app.stores.directory.load();
+    expect(rosteredSnapshot.offerings.every((o) => o.id.startsWith("off_or-"))).toBe(true);
+
+    const dry = await seed(operator, { dryRun: true });
+    expect(dry.problems).toStrictEqual([]);
+    expect(dry.log.join("\n")).toMatch(/^roster: already present \(4 classes match the fixture\); skipped$/m);
+    expect(dry.log.join("\n")).toMatch(/would install middle-school-starter-pack 1\.0\.0/);
+
+    const run = await seed(operator, { admitSubject: AUTOMATION_SUBJECT });
+    expect(run.problems).toStrictEqual([]);
+    expect(run.log.join("\n")).toMatch(/^roster: already present \(4 classes match the fixture\); skipped$/m);
+    expect(run.log.join("\n")).toMatch(/^admit: skipped; /m);
+    expect(run.log.join("\n")).toMatch(/installed middle-school-starter-pack 1\.0\.0/);
+    // The directory is exactly what the earlier import left; only the pack is new.
+    expect(await counts(app)).toStrictEqual(rostered);
+    expect((await app.stores.directory.load()).snapshot).toStrictEqual(rosteredSnapshot);
+    expect((await app.stores.marketplacePacks.list()).map((p) => p.listing.listingId)).toStrictEqual([listingOf(DEMO_STARTER_PACK).listingId]);
+    expect((await call(operator, "GET", "status")).body.problems).toStrictEqual([]);
+
+    const again = await seed(operator);
+    expect(again.problems).toStrictEqual([]);
+    expect(again.log.join("\n")).toMatch(/already installed/);
+    expect((await app.stores.directory.load()).snapshot).toStrictEqual(rosteredSnapshot);
+    expect(await app.stores.marketplacePacks.list()).toHaveLength(1);
+  }, 60_000);
+
+  it("still refuses, writing nothing, when only some of the fixture's classes are there", async () => {
+    const { app, operator, adminId } = await boot("harbor");
+    const fixture = demo("harbor");
+    const dropped = fixture.directory.offerings[0]!.id;
+    await rosterUnderOtherIds(app, adminId, {
+      ...fixture,
+      directory: { ...fixture.directory, offerings: fixture.directory.offerings.filter((o) => o.id !== dropped), enrollments: fixture.directory.enrollments.filter((e) => e.offeringId !== dropped) },
+    });
+    const before = await counts(app);
+    const run = await seed(operator);
+    expect(run.problems.length).toBeGreaterThan(0);
+    expect(run.problems.every((p) => p.startsWith("roster: "))).toBe(true);
+    expect(run.log.join("\n")).not.toMatch(/already present/);
+    expect(await counts(app)).toStrictEqual(before);
+    expect(await app.stores.marketplacePacks.list()).toStrictEqual([]);
   }, 60_000);
 });
 
