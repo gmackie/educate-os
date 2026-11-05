@@ -7,7 +7,7 @@ import {
 import type { DistrictClient } from '../api/client';
 import type { ActivityContent, ActivityStep, Assignment, ArtifactView, RevisionContent, UploadMediaType } from '../types';
 import {
-  isFinished, permittedResources, readiness, spokenFrame, spokenText, stepWork, studentNotes, workByStep, workSteps, workTitle, type StepWork,
+  isFinished, permittedResources, readiness, spokenFrame, spokenText, stepWork, studentNotes, workByStep, workSteps, workTitle, type HandInStatus, type StepWork,
 } from '../activity.ts';
 import { isElementaryBand } from '../gradeBand.ts';
 import { imageType, uploadTypeFor } from '../media.ts';
@@ -16,7 +16,7 @@ import { Markdown } from '../ui/Markdown';
 import { Button, Card, Chip, dateLabel, Section, useStyles } from '../ui/Primitives';
 import { ReadAloudButton, stopReading, useStopReadingOnLeave } from '../ui/ReadAloud';
 import { Base64Audio, VoiceRecorder } from '../ui/Audio';
-import { DrawingPad } from '../ui/DrawingPad';
+import { DrawingPad, PadOnScreen } from '../ui/DrawingPad';
 
 // An activity's work on the phone, step by step (SCHO-342), the way the web's activity page keeps
 // it (SCHO-323): each step that asks for something is saved as its own artifact in the class
@@ -336,7 +336,7 @@ function stepIcon(step: ActivityStep, color: string): React.ReactNode {
  * steps. Moving screens stops any reading and returns to the top.
  */
 export function YoungActivity({ client, offeringId, assignment, content, data, canSubmit, attemptsLeft, schoolHost, onSubmitted,
-  scrollToTop, finish }: Props & { scrollToTop: () => void; finish: React.ReactNode }) {
+  scrollToTop, finish, handIn }: Props & { scrollToTop: () => void; finish: React.ReactNode; handIn: HandInStatus }) {
   const palette = usePalette();
   const work = useWork(client, offeringId, assignment, content, data);
   useStopReadingOnLeave();
@@ -363,7 +363,8 @@ export function YoungActivity({ client, offeringId, assignment, content, data, c
 
     <Card style={{ padding: 20 }}>
       <View style={shown(0)}>
-        {heading(<Rocket size={40} color={palette.primary}/>, "Let's get started")}
+        {handIn.handedIn && <HandedIn handIn={handIn}/>}
+        {heading(<Rocket size={40} color={palette.primary}/>, handIn.handedIn ? 'Look at your work' : "Let's get started")}
         <Markdown source={content.overview} size={22}/>
         <ReadAloudButton id="young:overview" text={spokenText(content.overview)} label="what this activity is about" prominent/>
         {(permittedResources(content).length > 0 || studentNotes(content).length > 0) && <View style={{ gap: 10 }}>
@@ -379,7 +380,9 @@ export function YoungActivity({ client, offeringId, assignment, content, data, c
           <Markdown source={step.prompt} size={22}/>
           <ReadAloudButton id={'young:step:' + step.id} text={spokenText(step.prompt)} label={'step ' + (index + 1) + ', ' + step.title} prominent/>
           {step.sentenceFrames && <SentenceFrames frames={step.sentenceFrames} stepId={step.id} large/>}
-          {mode && <StepWorkView client={client} work={work} step={step} mode={mode} young schoolHost={schoolHost}/>}
+          {mode && <PadOnScreen.Provider value={page === index + 1}>
+            <StepWorkView client={client} work={work} step={step} mode={mode} young schoolHost={schoolHost}/>
+          </PadOnScreen.Provider>}
         </View>;
       })}
 
@@ -406,6 +409,20 @@ export function YoungActivity({ client, offeringId, assignment, content, data, c
     <View style={{ flexDirection: 'row', gap: 12 }}>
       {page > 0 && <BigNav label="Back" onPress={() => go(page - 1)} primary={false}/>}
       {page < last && <BigNav label={page === 0 ? "Let's start" : page === steps.length ? 'Finish' : 'Next'} onPress={() => go(page + 1)} primary/>}
+    </View>
+  </View>;
+}
+
+/** "Handed in", with the attempt and when, for a young learner coming back to work they already handed in. */
+function HandedIn({ handIn }: { handIn: HandInStatus }) {
+  const palette = usePalette();
+  return <View accessibilityRole="summary" accessibilityLabel={'Handed in. Attempt ' + handIn.attempt + ' of ' + handIn.allowed}
+    style={{ flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 18, padding: 14, backgroundColor: palette.tealSoft }}>
+    <CheckCircle2 size={36} color={palette.teal}/>
+    <View style={{ flex: 1, gap: 2 }}>
+      <Text style={{ color: palette.ink, fontSize: 22, fontWeight: '800' }}>Handed in</Text>
+      <Text style={{ color: palette.muted, fontSize: 16 }}>
+        Attempt {handIn.attempt} of {handIn.allowed}{handIn.submittedAt ? ' · ' + dateLabel(handIn.submittedAt, true) : ''}</Text>
     </View>
   </View>;
 }

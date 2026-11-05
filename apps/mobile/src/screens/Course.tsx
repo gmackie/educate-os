@@ -10,6 +10,7 @@ import { useLoad } from '../hooks/useLoad';
 import { usePalette } from '../ui/theme-context';
 import { Markdown, openExternal, plainText } from '../ui/Markdown';
 import { moduleRows, teacherNoteFor } from '../modules.ts';
+import type { HandInStatus } from '../activity.ts';
 import { Button, Card, Chip, dateLabel, Item, Page, Placeholder, QueryState, Section, Title, useStyles } from '../ui/Primitives';
 
 type Role = 'student' | 'teacher';
@@ -31,8 +32,9 @@ export async function loadStudentExtras(client: DistrictClient, offeringId: stri
 }
 
 /** A class's announcements, modules, quizzes and discussions, for its student page. */
-export function CourseSections({ offeringId, extras, activities, navigate }: {
-  offeringId: string; extras: CourseExtras; activities: Activity[]; navigate: (d: Detail) => void;
+export function CourseSections({ offeringId, extras, activities, handIns, navigate }: {
+  offeringId: string; extras: CourseExtras; activities: Activity[]; handIns?: ReadonlyMap<string, HandInStatus | null>;
+  navigate: (d: Detail) => void;
 }) {
   const palette = usePalette();
   const [openAnnouncement, setOpenAnnouncement] = useState<string | null>(null);
@@ -67,7 +69,9 @@ export function CourseSections({ offeringId, extras, activities, navigate }: {
           if (row.kind !== 'activity') return null;
           // An activity placed in a module but not assigned to this student yet is not listed.
           const assignment = byActivity.get(row.activityId);
-          return assignment && <Item key={row.id} title={assignment.title} detail={'Due ' + dateLabel(assignment.dueAt, true)}
+          const handIn = handIns?.get(assignment?.id ?? '');
+          return assignment && <Item key={row.id} title={assignment.title} detail={handInDetail(assignment, handIn)}
+            trailing={handIn?.handedIn ? <Chip label="Handed in" tone="green"/> : undefined}
             leading={<ClipboardList size={19} color={palette.primary}/>}
             onPress={() => navigate({ type: 'assignment', id: assignment.id, offeringId })}/>;
         })}
@@ -87,6 +91,12 @@ export function CourseSections({ offeringId, extras, activities, navigate }: {
         onPress={() => navigate({ type: 'discussion', offeringId, topicId: topic.id })}/>)}</Card>
     </Section>}
   </>;
+}
+
+/** An activity's line in a list: when it is due, or, once handed in, which attempt and when. */
+export function handInDetail(assignment: { dueAt: string }, handIn: HandInStatus | null | undefined): string {
+  if (!handIn?.handedIn) return 'Due ' + dateLabel(assignment.dueAt, true);
+  return 'Attempt ' + handIn.attempt + ' of ' + handIn.allowed + (handIn.submittedAt ? ' · ' + dateLabel(handIn.submittedAt, true) : '');
 }
 
 function quizDetail(quiz: QuizSummary): string {

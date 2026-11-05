@@ -8,7 +8,7 @@ import { useAppState } from '../state/app-state';
 import { Markdown } from '../ui/Markdown';
 import { AssignmentActions, StarterMaterials } from './AssignmentWork';
 import { ActivityWork, YoungActivity, loadActivityWork } from './ActivityWork';
-import { workSteps } from '../activity.ts';
+import { handInStatus, workSteps } from '../activity.ts';
 import { isYoungLearnerBand } from '../gradeBand.ts';
 import { usePalette } from '../ui/theme-context';
 import { Button, Card, Chip, dateLabel, Item, Page, QueryState, ScrollLock, Section, Title } from '../ui/Primitives';
@@ -56,6 +56,7 @@ export function AssignmentScreen({ client, assignmentId, offeringId, navigate }:
       const { assignment } = details;
       const content = activity?.content;
       const active = submissions.filter((x) => !x.withdrawnAt);
+      const handIn = handInStatus(submissions, assignment.attemptsAllowed);
       const used = submissions.length >= assignment.attemptsAllowed;
       const schoolHost = session ? new URL(session.district.origin).host : 'your school';
       const workProps = content && work ? {
@@ -100,7 +101,7 @@ export function AssignmentScreen({ client, assignmentId, offeringId, navigate }:
           {details.starterMaterials && details.starterMaterials.length > 0 &&
             <StarterMaterials client={client} assignmentId={assignmentId} materials={details.starterMaterials}/>}
           <YoungActivity {...workProps} scrollToTop={() => scroll.current?.scrollTo({ y: 0, animated: false })}
-            finish={<View style={{ marginTop: 8 }}>{record}</View>}/>
+            handIn={handIn} finish={<View style={{ marginTop: 8 }}>{record}</View>}/>
         </>;
       }
       return <>

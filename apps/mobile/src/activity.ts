@@ -2,7 +2,7 @@
 // (packages/educateos-student-ui/src/activity, SCHO-323): each step that asks for something is
 // saved as its own artifact in the class workspace, titled "<assignment>: <step>", and one
 // submission hands in the saved version of every step. Pure, so the rules are tested in Node.
-import type { ActivityContent, ActivityStep, ArtifactView } from './types';
+import type { ActivityContent, ActivityStep, ArtifactView, Submission } from './types';
 import { plainText } from './markdown.ts';
 
 /**
@@ -145,4 +145,17 @@ export const MAX_RECORDING_SECONDS = 120;
 export function clock(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+/** Where the student's hand-ins for an assignment stand: the newest attempt not withdrawn, and the attempts used. */
+export type HandInStatus = {
+  handedIn: boolean; attempt: number | null; submittedAt: string | null; used: number; allowed: number;
+};
+
+/** The hand-in status from the student's submissions. A withdrawn attempt still counts as used. */
+export function handInStatus(submissions: Pick<Submission, 'attempt' | 'submittedAt' | 'withdrawnAt'>[], attemptsAllowed: number): HandInStatus {
+  const latest = submissions.filter((s) => !s.withdrawnAt).reduce<typeof submissions[number] | null>(
+    (best, s) => !best || s.attempt > best.attempt ? s : best, null);
+  return { handedIn: latest !== null, attempt: latest?.attempt ?? null, submittedAt: latest?.submittedAt ?? null,
+    used: submissions.length, allowed: attemptsAllowed };
 }
