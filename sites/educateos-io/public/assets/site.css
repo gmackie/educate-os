@@ -469,3 +469,21 @@ pre.code .k { color: var(--text-color-kumo-brand); }
 .tour-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
 .shot > .phone { max-width: 270px; margin: 0 auto; }
 .shot-grid.three > .shot:has(> .phone) figcaption { text-align: center; }
+
+/* ---- Demo videos (SCHO-343) ---- */
+/* Recordings of the demo: light-mode screens with captions burned in, so they sit on a dark stage in both themes. */
+.video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #0b1220; }
+.window > .video { border-top: 0; }
+.video-feature { margin-top: 32px; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+.video-feature .copy h3 { margin: 0 0 8px; }
+.video-feature .copy p { margin: 0 0 12px; color: var(--text-color-kumo-subtle); }
+@media (max-width: 900px) { .video-feature { grid-template-columns: minmax(0, 1fr); } }
+.video-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; margin-top: 32px; }
+@media (max-width: 760px) { .video-grid { grid-template-columns: minmax(0, 1fr); } }
+.clip { margin: 0; min-width: 0; display: grid; gap: 10px; align-content: start; }
+.clip .frame { background: #0b1220; }
+.clip h3 { margin: 4px 0 0; font-size: 1.05rem; }
+.clip p { margin: 0; font-size: .9rem; color: var(--text-color-kumo-subtle); }
+.clip .len { font-weight: 500; color: var(--text-color-kumo-subtle); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.dl { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0; list-style: none; font-size: .8rem; }
+.dl a { white-space: nowrap; }

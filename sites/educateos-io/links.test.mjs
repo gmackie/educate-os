@@ -75,7 +75,7 @@ for (const page of pages) {
     const html = read(page).replace(/<!--[\s\S]*?-->/g, "");
     const base = new URL(pagePath(page), "https://educateos.io");
     const broken = [];
-    for (const [, ref] of html.matchAll(/\s(?:href|src)="([^"]+)"/g)) {
+    for (const [, ref] of html.matchAll(/\s(?:href|src|poster)="([^"]+)"/g)) {
       if (/^(?:mailto:|data:|tel:|javascript:)/i.test(ref)) continue;
       const url = new URL(ref, base);
       if (url.hostname !== "educateos.io") continue;
@@ -90,5 +90,34 @@ for (const page of pages) {
       }
     }
     assert.deepEqual(broken, [], `Broken internal links on ${relative(publicDir, page)}`);
+  });
+}
+
+// The demo videos (SCHO-343): each offers WebM then MP4, English captions and a poster, never plays
+// with sound on its own, and every file fits the Workers static-asset limit of 25 MiB a file.
+const ASSET_LIMIT = 25 * 1024 * 1024;
+const videos = pages.flatMap((page) => [...read(page).replace(/<!--[\s\S]*?-->/g, "").matchAll(/<video\b([^>]*)>([\s\S]*?)<\/video>/g)].map((m) => ({page, attrs: m[1], body: m[2]})));
+
+test("the site embeds the demo videos", () => {
+  assert.ok(videos.length > 0);
+});
+
+for (const [i, {page, attrs, body}] of videos.entries()) {
+  test(`video ${i + 1} on ${relative(publicDir, page)} has both formats, captions and a poster under the size limit`, () => {
+    const sources = [...body.matchAll(/<source\s[^>]*src="([^"]+)"[^>]*type="([^"]+)"/g)].map((m) => [m[2], m[1]]);
+    assert.deepEqual(sources.map(([type]) => type), ["video/webm", "video/mp4"], "WebM first, then MP4");
+    assert.match(body, /<track\s[^>]*kind="captions"[^>]*srclang="en"[^>]*src="[^"]+\.vtt"/);
+    assert.match(attrs, /\sposter="[^"]+"/);
+    assert.match(attrs, /\splaysinline\b/);
+    assert.ok(/\scontrols\b/.test(attrs) || /\smuted\b/.test(attrs), "a video either has controls or is muted");
+    assert.ok(!/\sautoplay\b/.test(attrs) || /\smuted\b/.test(attrs), "nothing autoplays with sound");
+    assert.ok(/aria-label(?:ledby)?="/.test(attrs), "a video has an accessible name");
+    const files = [...`${attrs} ${body}`.matchAll(/\s(?:src|poster)="(\/assets\/videos\/[^"]+)"/g)].map((m) => join(publicDir, m[1]));
+    for (const file of files) {
+      assert.ok(isFile(file), `${relative(publicDir, file)} exists`);
+      assert.ok(statSync(file).size < ASSET_LIMIT, `${relative(publicDir, file)} is under 25 MiB`);
+    }
+    const vtt = files.find((file) => file.endsWith(".vtt"));
+    assert.match(readFileSync(vtt, "utf8"), /^WEBVTT\n\n1\n\d\d:\d\d:\d\d\.\d{3} --> /);
   });
 }

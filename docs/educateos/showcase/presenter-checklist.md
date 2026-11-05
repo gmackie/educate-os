@@ -58,12 +58,18 @@
 
 ## Fallback video
 
-- `investor-walkthrough.webm`: the investor walkthrough recorded on the deployed demo at 1280x800,
-  with captions and no sound, 5 minutes 37 seconds. It plays in Chrome, Edge and Firefox, and in
-  VLC. Talk over it as you would over the live demo.
-- The video and the Playwright script that records it (`video.mjs`, which follows this walkthrough
-  and overlays the captions) are kept with the meeting materials, not in the repository. Re-record
-  after a demo change by rerunning the script against `https://educateos.io/demo/`.
+- The published demo videos (SCHO-343) are on <https://educateos.io/tour/#videos>, each with an MP4
+  and a WebM download and English captions burned in: a K-12 walkthrough of the tour (about three
+  and a half minutes), one clip per grade band, the AI tutors (pilot preview on synthetic
+  students), the open courses and the installer. Download the walkthrough's MP4 before the meeting;
+  it plays offline in any browser, QuickTime and VLC. Talk over it as you would over the live demo.
+- `investor-walkthrough.webm`: the longer investor walkthrough recorded on the deployed demo at
+  1280x800, with captions and no sound, 5 minutes 37 seconds. It plays in Chrome, Edge and Firefox,
+  and in VLC.
+- The Playwright scripts that record these are kept with the meeting materials, not in the
+  repository. Re-record after a demo change by rerunning them against `https://educateos.io/demo/`,
+  and give the re-encoded files a new version in their names (`-v2`): the site caches them for a
+  year.
 
 ## Known rough edges
 
