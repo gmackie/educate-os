@@ -73,10 +73,8 @@
 ## Known rough edges
 
 From the 2026-11-02 rehearsal ([README](README.md#rehearsal-findings-2026-11-02)), rechecked on the
-deployed demo on 2026-11-05 at 1280x800:
-
-- Tour steps 5 (Chidi) and 7 (Amara) stop at the tutor and **My work**, not at **Grade and
-  feedback**, which is about two screens further down. Scroll to it on cue.
+deployed demo on 2026-11-05 at 1280x800: none left. Each tour step opens at its point of interest
+(the tutor in step 4, **Grade and feedback** in steps 5 and 7).
 
 ## Live district: northfield.educateos.io
 

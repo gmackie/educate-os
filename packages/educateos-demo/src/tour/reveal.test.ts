@@ -53,4 +53,40 @@ describe("revealWhenShown", () => {
     await new Promise((resolve) => setTimeout(resolve, 5));
     expect(scrolled).toStrictEqual([]);
   });
+
+  it("follows the element while the page above it is still rendering, then lets go", async () => {
+    window.location.hash = "#/courses/b";
+    let top = 400;
+    const feedback = panel("feedback");
+    feedback.getBoundingClientRect = () => ({ top }) as DOMRect;
+    document.body.append(feedback);
+    revealWhenShown(".tutor", "#/courses/b");
+    await vi.waitFor(() => expect(scrolled).toStrictEqual([feedback]));
+
+    // The tutor and "My work" render above it and push it down the page.
+    top = 2400;
+    document.body.prepend(document.createElement("section"));
+    await vi.waitFor(() => expect(scrolled).toStrictEqual([feedback, feedback]));
+
+    // A change that leaves it where it is scrolls nothing.
+    document.body.prepend(document.createElement("p"));
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(scrolled).toHaveLength(2);
+  });
+
+  it("stops following once the visitor scrolls for themselves", async () => {
+    window.location.hash = "#/courses/b";
+    let top = 400;
+    const feedback = panel("feedback");
+    feedback.getBoundingClientRect = () => ({ top }) as DOMRect;
+    document.body.append(feedback);
+    revealWhenShown(".tutor", "#/courses/b");
+    await vi.waitFor(() => expect(scrolled).toStrictEqual([feedback]));
+
+    window.dispatchEvent(new Event("wheel"));
+    top = 2400;
+    document.body.prepend(document.createElement("section"));
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(scrolled).toStrictEqual([feedback]);
+  });
 });

@@ -79,7 +79,7 @@ The three messages to land, in this order:
 
 ## 3:45 Step 5: Chidi, grade 7 (key `5`)
 
-**Screen:** "What Do Hammurabi's Laws Tell Us?". Scroll to **Grade and feedback** at the bottom.
+**Screen:** "What Do Hammurabi's Laws Tell Us?", scrolled to **Grade and feedback** at the bottom.
 
 - "A primary-source analysis: sourcing, context, a claim with evidence. His teacher's comment,
   rubric scores and official grade, released to him and his family."
@@ -91,7 +91,7 @@ The three messages to land, in this order:
 
 ## 4:25 [Step 7: Amara, grade 9 (key `7`)]
 
-- Scroll to **Grade and feedback**. "High school: an argument essay, rubric scores, the official
+- At **Grade and feedback**: "High school: an argument essay, rubric scores, the official
   grade. Her Research & Essay Coach won't write it for her and won't invent sources."
 
 ## 4:45 Step 8: Rosa Delgado, a parent (key `8`)
