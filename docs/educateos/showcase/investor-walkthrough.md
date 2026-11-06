@@ -51,17 +51,24 @@ The three messages to land, in this order:
 **Screen:** Retell The Little Seed in Submissions.
 
 - Click **Review Priya Natarajan's work**. Play Question 1's recording, scroll to her drawing.
-  "Recordings and drawings arrive as ordinary submitted work." (Priya's seeded recording is a short
-  hummed stand-in. If you recorded Mateo in step 1 and handed it in, open his instead.)
+  "Recordings and drawings arrive as ordinary submitted work." (If you recorded Mateo in step 1 and
+  handed it in, you can open his instead.)
 - Scroll to the rubric: "A rubric written for six-year-olds: Not yet, Getting there, Got it!"
   Pick **Got it!** on both rows and **Save score** each.
 - Type a comment, **Add comment**, then **Approve official grade** and confirm. "Scores become the
   official grade only when the teacher approves it. Nothing is graded behind their back."
 - **Share feedback with student**: "Priya and her family see it at the same moment."
 
-## 3:00 Step 3: Abena, grade 4 (key `3`)
+## 2:40 [Step 3: Mr. Yazzie's semester (key `3`)]
 
-**Screen:** "Should Recess Be Longer?". The tutor is below the fold: scroll to it.
+**Screen:** Mr. Yazzie's course, installed from an Open Course Specification package.
+
+- "The whole semester arrived as one signed course package: units, activities, rubrics. Any district
+  can install it, edit it, and publish their own."
+
+## 3:00 Step 4: Abena, grade 4 (key `4`)
+
+**Screen:** "Should Recess Be Longer?", scrolled to the tutor.
 
 - "Grade 4: an opinion piece, instructions read aloud on request."
 - **Ask Homework Helper**, **What's the first step?**: "Hints and sentence starters, never answers."
@@ -70,32 +77,32 @@ The three messages to land, in this order:
 - Type `my address is 12 Oak Street` and **Send**: "Personal details are neither sent to the AI nor
   kept."
 
-## 3:45 Step 4: Chidi, grade 7 (key `4`)
+## 3:45 Step 5: Chidi, grade 7 (key `5`)
 
 **Screen:** "What Do Hammurabi's Laws Tell Us?". Scroll to **Grade and feedback** at the bottom.
 
 - "A primary-source analysis: sourcing, context, a claim with evidence. His teacher's comment,
   rubric scores and official grade, released to him and his family."
 
-## 4:05 Step 5: Mr. Ortega's gradebook (key `5`)
+## 4:05 Step 6: Mr. Ortega's gradebook (key `6`)
 
 - Point at "Official grades only" and Chidi's 11/12. "The gradebook holds official grades only.
-  Quizzes add theirs when released." (Only one of three students is graded here; don't dwell.)
+  Quizzes add theirs when released."
 
-## 4:25 [Step 6: Amara, grade 9 (key `6`)]
+## 4:25 [Step 7: Amara, grade 9 (key `7`)]
 
 - Scroll to **Grade and feedback**. "High school: an argument essay, rubric scores, the official
   grade. Her Research & Essay Coach won't write it for her and won't invent sources."
 
-## 4:45 Step 7: Rosa Delgado, a parent (key `7`)
+## 4:45 Step 8: Rosa Delgado, a parent (key `8`)
 
-**Screen:** Lucía's classes. Click **Mateo Delgado**, then **Grade 1 Reading Foundations**.
+**Screen:** Mateo Delgado's classes. Click **Grade 1 Reading Foundations**.
 
 - "One parent, two children in two schools, one sign-in."
 - Point at the Word Builders comment: "She sees what teachers have shared. Never her child's own
   drafts or private space."
 
-## 5:15 Step 8: the district office (key `8`)
+## 5:15 Step 9: the district office (key `9`)
 
 **Screen:** All classes.
 

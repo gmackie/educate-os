@@ -101,7 +101,7 @@ Ranked by what an investor or teacher would notice. Evidence screenshots are in
 
 | Rank | Finding | Status |
 |---|---|---|
-| Major | The admin persona lands on a Dashboard that read "Classes: EducateOS is not set up yet" and "Roster integration: Not set up", and Policies read "Set up the district under Modules and activation first", because the demo's Northfield had no applied configuration. | Fixed in SCHO-327 (Northfield applies a configuration on boot); live after the next demo deploy. Until then, present the admin from tour step 8 (All classes) and skip Dashboard and Policies. |
+| Major | The admin persona lands on a Dashboard that read "Classes: EducateOS is not set up yet" and "Roster integration: Not set up", and Policies read "Set up the district under Modules and activation first", because the demo's Northfield had no applied configuration. | Fixed in SCHO-327 (Northfield applies a configuration on boot); verified on the deployed demo on 2026-11-05. |
 | Major | "Mr. Yazzie listens to Priya's retelling": Priya's recordings are 1.4-second hummed tunes, not a child's voice. | Fixed in SCHO-328: every K-2 child's seeded recording speaks their words (a synthetic voice). Live after the next demo deploy; a seeded live district keeps its old recordings. |
 | Major | The 3-5 copy promised "Sentence starters" on Abena's screen; only K-2 activities show them. The Homework Helper's hints give starters. | Copy fixed in SCHO-327. |
 | Major | K-2 teacher: "release feedback to Jonah" had no pointer, and Jonah's Word Builders work is ungraded, so releasing it shares nothing. His graded, unreleased work is Apple Orchard Story Problems in Grade 1 Mathematics. | Persona and journey copy fixed in SCHO-327. |
