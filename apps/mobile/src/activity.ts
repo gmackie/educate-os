@@ -159,3 +159,13 @@ export function handInStatus(submissions: Pick<Submission, 'attempt' | 'submitte
   return { handedIn: latest !== null, attempt: latest?.attempt ?? null, submittedAt: latest?.submittedAt ?? null,
     used: submissions.length, allowed: attemptsAllowed };
 }
+
+/**
+ * The newest comment a teacher has shared on a child's work, for the family view: the guardian
+ * route returns only feedback released to the child, so whatever it holds may be shown.
+ */
+export function sharedComment(feedback: readonly { comments: readonly { body: string; enteredAt: string }[] }[] | undefined): string | undefined {
+  const comments = (feedback ?? []).flatMap((entry) => entry.comments).filter((comment) => comment.body.trim() !== '');
+  return comments.reduce<{ body: string; enteredAt: string } | undefined>(
+    (latest, comment) => (!latest || comment.enteredAt >= latest.enteredAt ? comment : latest), undefined)?.body.trim();
+}
