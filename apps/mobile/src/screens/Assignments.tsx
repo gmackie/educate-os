@@ -26,7 +26,10 @@ export function AssignmentScreen({ client, assignmentId, offeringId, navigate }:
     ]);
     const offering = offeringId || details.assignment.offeringId;
     const [activity, feedback, quizzes] = await Promise.all([
-      client.studentActivity(details.assignment.activityId).catch(() => null),
+      // The resources' titles travel beside the content; carry them in it for the resource list.
+      client.studentActivity(details.assignment.activityId)
+        .then((view) => ({ ...view, content: { ...view.content, resourceTitles: view.resources } }))
+        .catch(() => null),
       client.studentAssignmentFeedback(assignmentId).catch(() => []),
       client.studentQuizzes(offering).catch(() => []),
     ]);
