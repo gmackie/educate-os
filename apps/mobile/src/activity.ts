@@ -104,13 +104,13 @@ function list(steps: ActivityStep[]): string {
 export type PermittedResource = { key: string; title: string; usedIn: string[] };
 
 /**
- * The activity's resources, in the order students meet them. The student API names a resource only
- * by its release, so each is listed by position with the steps that use it, as on the web.
+ * The activity's resources, in the order students meet them, each named by its release's title with
+ * the steps that use it, as on the web. A release the district could not name is listed by position.
  */
 export function permittedResources(content: ActivityContent): PermittedResource[] {
   return (content.resources ?? []).map((ref, i) => ({
     key: ref.resourceId + '@' + ref.version,
-    title: 'Resource ' + (i + 1),
+    title: content.resourceTitles?.find((named) => named.resourceId === ref.resourceId && named.version === ref.version)?.title ?? 'Resource ' + (i + 1),
     usedIn: content.steps.filter((step) => step.sources.some((s) => s.resourceId === ref.resourceId && s.version === ref.version))
       .map((step) => step.title),
   }));

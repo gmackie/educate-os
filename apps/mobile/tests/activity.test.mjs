@@ -86,6 +86,10 @@ test('resources are listed with the steps that use them, and only student notes 
   assert.deepEqual(permittedResources(picture), [{ key: 'res_story@1.0.0', title: 'Resource 1', usedIn: ['Look and listen'] }]);
   assert.deepEqual(studentNotes(picture), [{ id: 'tip', title: 'Tip', body: 'Use big shapes.' }]);
   assert.deepEqual(permittedResources({ ...picture, resources: undefined }), []);
+  // Named by the release's title the district resolved, as on the web; another release of it is not.
+  assert.deepEqual(permittedResources({ ...picture, resourceTitles: [{ ...ref, title: 'The Little Seed' }] }),
+    [{ key: 'res_story@1.0.0', title: 'The Little Seed', usedIn: ['Look and listen'] }]);
+  assert.equal(permittedResources({ ...picture, resourceTitles: [{ ...ref, version: '2.0.0', title: 'Later' }] })[0].title, 'Resource 1');
 });
 
 test('read-aloud text: blanks are pauses and Markdown marks are not spoken', () => {

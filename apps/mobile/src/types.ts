@@ -54,9 +54,15 @@ export type ActivityContent = {
   /** Such as "K", "K-2" or "9-12"; parsed by src/gradeBand.ts. */
   gradeBand?: string; template?: string;
   resources?: ResourceRef[]; codex?: CodexEntry[]; permittedArtifactTypes?: string[];
+  /** Client-side, not part of the API's content: each resource release's title, from {@link ActivityView}'s `resources`. */
+  resourceTitles?: NamedResource[];
 };
 /** `GET /api/student/activities/:id`: an installed activity as the student sees it. */
-export type ActivityView = { view: 'teacher' | 'student'; content: ActivityContent };
+/** A resource release with the title the district resolved for it. */
+export type NamedResource = ResourceRef & { title: string };
+export type ActivityView = { view: 'teacher' | 'student'; content: ActivityContent;
+  /** Each resource's release title, in `content.resources` order; one the district cannot resolve is absent. */
+  resources?: NamedResource[] };
 export type Workspace = { id: string; kind: 'personal' | 'course'; offeringId?: string; lifecycle: string };
 export type ArtifactView = {
   artifact: { id: string; workspaceId: string; type: string; title: string; createdAt: string; deletedAt?: string };
