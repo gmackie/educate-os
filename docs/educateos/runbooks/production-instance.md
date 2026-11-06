@@ -408,7 +408,9 @@ district Workers at their own `<slug>.educateos.io`; see [the demo districts run
   of the zero subject, minified:
   `forge secret set DISTRICT_CONFIG --stage production --stdin` for app `educateos-district`.
   `__tests__/demo-config.test.ts` in the package checks that the example parses and fits in a
-  secret. The seed is read only on the object's first start.
+  secret. The seed is read only on the object's first start. To rename the district afterwards, a district
+  administrator uses "District name" on the admin console's Dashboard (`admin.renameDistrict`,
+  SCHO-344); changing the secret's name does nothing.
 - **The K-12 showcase (SCHO-326).** The co-op is Northfield's demo district, so it can seed the
   showcase. The generated `wrangler.production.jsonc` sets `DEMO_SHOWCASE` to `northfield`
   (`district.showcase` in `scripts/production/schoolos-gmac-io.ts`). The deployed `DISTRICT_CONFIG`

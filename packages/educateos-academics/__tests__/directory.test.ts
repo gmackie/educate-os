@@ -554,4 +554,21 @@ describe("managing people (SCHO-212)", () => {
     const { directory } = directoryFor(projected);
     expect((await rejectsWith(directory.revokeDistrictAdmin(NF.admin, RIVERA), "conflict")).message).toContain("roster");
   });
+
+  it("lets a district administrator rename the district, trimmed, and no one else", async () => {
+    const { store, directory } = directoryFor(NORTHFIELD, { authority: ROSTER_EXTERNAL });
+    const renamed = await directory.renameDistrict(NF.admin, { name: "  Northfield Co-op " });
+    expect(renamed).toStrictEqual({ ...NORTHFIELD.district, name: "Northfield Co-op" });
+    expect((await store.load()).snapshot.district).toStrictEqual(renamed);
+    // The same name again changes nothing.
+    const { version } = await store.load();
+    await directory.renameDistrict(NF.admin, { name: "Northfield Co-op" });
+    expect((await store.load()).version).toBe(version);
+    await rejectsWith(directory.renameDistrict(NF.admin, { name: "   " }), "validation-failed");
+    await rejectsWith(directory.renameDistrict(NF.admin, { name: "x".repeat(121) }), "validation-failed");
+    await rejectsWith(directory.renameDistrict(NF.highPrincipal, { name: "X" }), "forbidden");
+    await rejectsWith(directory.renameDistrict(NF.morgan, { name: "X" }), "forbidden");
+    await rejectsWith(directory.renameDistrict(RB_ADMIN, { name: "X" }), "forbidden");
+    expect((await store.load()).version).toBe(version);
+  });
 });

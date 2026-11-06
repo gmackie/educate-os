@@ -24,6 +24,7 @@ import {
   ContentDigest,
   ContentItemId,
   CourseOffering,
+  District,
   DistrictId,
   Enrollment,
   EnrollmentId,
@@ -132,7 +133,7 @@ import {
   StudentQuizView,
 } from "@educateos/quizzes";
 import type { AcademicOperationName } from "@educateos/academics";
-import { CoursePatch, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, PrincipalPatch, SchoolPatch, TermPatch } from "@educateos/academics";
+import { CoursePatch, DistrictRename, NewCourse, NewEnrollment, NewOffering, NewPrincipal, NewSchool, NewTerm, OfferingPatch, PrincipalPatch, SchoolPatch, TermPatch } from "@educateos/academics";
 import { EvidenceContract } from "@educateos/registry";
 import { AssessmentReport, IdempotencyKey, RubricDraft, RubricRelease, RunError, RunState } from "@educateos/assessment-ci";
 import { FundingPoolId, UsdNano, type AiCostSummary, type AiFundingReport, type AiProjectionReport, type UsageReport } from "@educateos/ai-governance";
@@ -441,9 +442,11 @@ export const CiRunBody = z.strictObject({
 /** A CI run. */
 export type CiRunBody = z.infer<typeof CiRunBody>;
 
-/** District health for administrators: counts and states only, never names or content. */
+/** District health for administrators: counts and states only, never people's names or content. */
 export const DistrictHealthBody = z.strictObject({
   districtId: DistrictId,
+  /** The district's own name, which `admin.renameDistrict` changes (SCHO-344). */
+  districtName: District.shape.name,
   directory: z.strictObject({
     schools: z.int(),
     terms: z.int(),
@@ -1640,6 +1643,12 @@ export const ROUTES = {
     method: "POST", path: "/api/admin/principals/:principalId/district-admin/revoke", surface: "admin",
     params: params({ principalId: PrincipalId }), body: NoBody, response: AuthoringPrincipalBody,
   }),
+  /**
+   * Renames the district (SCHO-344): the name the LMS, the family and admin screens, the school
+   * manifest the phone app reads, and the calendar feed show. District administrators only; the
+   * policy decision is audited. Answers the district as it now stands.
+   */
+  "admin.renameDistrict": route({ method: "POST", path: "/api/admin/district", surface: "admin", body: DistrictRename, response: District }),
   // Guardians (ADR-0012, SCHO-188). Guardian routes are read-only; every read is decided by the
   // policy engine with the guardian as subject, and built from the child's own view.
   "guardian.listChildren": route({ method: "GET", path: "/api/guardian/children", surface: "guardian", response: z.array(GuardianChildBody) }),

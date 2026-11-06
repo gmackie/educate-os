@@ -3,6 +3,7 @@ import { LayerCard, Text } from "@cloudflare/kumo";
 import type { RouteResponse } from "@educateos/api-client";
 import { count, rosterProviderName } from "../app/labels.ts";
 import { LoadState } from "../app/LoadState.tsx";
+import { DistrictNameForm } from "./DistrictNameForm.tsx";
 import { useLoad } from "../app/useLoad.ts";
 import type { DistrictConfigState } from "../app/useDistrictConfig.ts";
 import { documentFromDesired, type DesiredStateView } from "../configDocument.ts";
@@ -34,7 +35,7 @@ const Tile = ({ title, value, children }: { title: string; value: string; childr
 
 /**
  * The district at a glance: its people, classes, issues, pending teacher work, AI spend and roster
- * integration. Every figure is a count or a total. It never names a person and never shows
+ * integration, and its name, which an administrator can change here. Every figure is a count or a total. It never names a person and never shows
  * what anyone wrote.
  */
 export const Dashboard = ({ state }: { state: DistrictConfigState }) => {
@@ -54,6 +55,7 @@ export const Dashboard = ({ state }: { state: DistrictConfigState }) => {
       <Text as="h2" variant="heading" size="lg">Dashboard</Text>
       <LoadState loaded={health} what="district health" onRetry={health.reload}>
         {(h) => (
+          <>
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="District at a glance">
             <li>
               {/* Everyone the district has added, enrolled or not: administrators are staff too. */}
@@ -96,6 +98,8 @@ export const Dashboard = ({ state }: { state: DistrictConfigState }) => {
               )}
             </li>
           </ul>
+          <DistrictNameForm name={h.districtName} onRenamed={health.reload} />
+          </>
         )}
       </LoadState>
     </div>

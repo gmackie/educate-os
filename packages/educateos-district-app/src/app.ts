@@ -1132,6 +1132,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       const head = revisions.at(-1);
       return {
         districtId,
+        districtName: snapshot.district.name,
         directory: {
           schools: snapshot.schools.length,
           terms: snapshot.terms.length,
@@ -1470,6 +1471,7 @@ export async function createDistrictApp(options: DistrictAppOptions): Promise<Di
       await ctx.academics().revokeDistrictAdmin(ctx.caller, params.principalId);
       return authoringPrincipalById((await stores.directory.load()).snapshot, params.principalId, now());
     },
+    "admin.renameDistrict": (ctx, { body }) => ctx.academics().renameDistrict(ctx.caller, body),
 
     // Gradebook (SCHO-187). Kept in one block, apart from the handlers above.
     "teacher.gradebook": (ctx, { params }) => ctx.gradebook().grid(ctx.caller, params.offeringId),

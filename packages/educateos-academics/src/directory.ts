@@ -14,6 +14,7 @@ import {
   type CourseId,
   type CourseOffering,
   type Decision,
+  type District,
   type DistrictDirectorySnapshot,
   type Enrollment,
   type EnrollmentId,
@@ -32,6 +33,7 @@ import { assertOperationRoutable, bindingsFromAuthorityMap, type DirectoryEntity
 import {
   CoursePatch,
   DepartedStatus,
+  DistrictRename,
   NewCourse,
   NewEnrollment,
   NewOffering,
@@ -741,6 +743,24 @@ export class AcademicDirectory {
     this.#assertKeepsAnAdmin(snapshot, caller, principalId, "remove administration from");
     const kept = snapshot.roleAssignments.filter((a) => !(isAdminAssignment(a) && a.source === "local-grant"));
     await this.#commit({ ...snapshot, roleAssignments: kept }, version);
+  }
+
+  // The district
+
+  /**
+   * Renames the district (SCHO-344): the name every screen, the school manifest and the calendar
+   * feed show. A district administrator's `update` on the district, decided (and so audited) by the
+   * authorizer. The name is the district's own, whatever owns its roster, so no binding refuses it;
+   * renaming it to its current name changes nothing.
+   */
+  async renameDistrict(caller: Caller, rawInput: DistrictRename): Promise<District> {
+    const { name } = parseInput(DistrictRename, rawInput);
+    const { snapshot, version } = await this.#store.load();
+    await this.#require(caller, "update", new Targets(snapshot).district("district"));
+    if (snapshot.district.name === name) return snapshot.district;
+    const district: District = { ...snapshot.district, name };
+    await this.#commit({ ...snapshot, district }, version);
+    return district;
   }
 
   // Authorization and commit

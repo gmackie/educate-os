@@ -218,7 +218,11 @@ export default {
     if (pathname === "/healthz") return new Response("ok", { headers: { "content-type": "text/plain" } });
     // The public school manifest (ADR-0014): no sign-in, so a deployment exempts it from Access too.
     if (pathname === SCHOOL_MANIFEST_PATH) {
-      return serveSchoolManifest(request, { districtConfig: env.DISTRICT_CONFIG, settings: env.SCHOOL_MANIFEST, versionTag: env.CF_VERSION_METADATA?.tag });
+      // The name is the directory's (SCHO-344); the configured one stands in when it cannot be read.
+      const districtName = request.method === "GET" || request.method === "HEAD"
+        ? await Promise.resolve().then(() => districtObject(env, ctx.exports).districtName()).catch(() => undefined)
+        : undefined;
+      return serveSchoolManifest(request, { districtConfig: env.DISTRICT_CONFIG, settings: env.SCHOOL_MANIFEST, versionTag: env.CF_VERSION_METADATA?.tag, districtName });
     }
     if (pathname.startsWith("/lti/")) return districtObject(env, ctx.exports).fetch(request);
     // The pairing relay's connect page (SCHO-261). Its API, `/api/pair/*`, is under `/api/` below.
